@@ -1,0 +1,15 @@
+docs/part-11-gpu-kubernetes/27-virtual-machines-on-kubernetes-kubevirt-kata-and-gpu-passthrough.md 22
+docs/part-11-gpu-kubernetes/28-dpus-bluefield-and-doca.md 42
+docs/part-11-gpu-kubernetes/29-multi-tenancy-quotas-fault-tolerance-and-health-on-gpu-clusters.md 54
+docs/part-11-gpu-kubernetes/30-lab-multi-node-gpu-kubernetes-on-gke-and-nebius.md 23
+docs/part-11-gpu-kubernetes/31-nvidias-open-source-ai-factory-kubernetes-stack.md 21
+docs/part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md 6
+docs/part-12-ai-networking/02-rdma-fundamentals-verbs-queue-pairs-and-memory-registration.md 9
+docs/part-12-ai-networking/03-rocev2-transport-and-congestion-management.md 6
+docs/part-12-ai-networking/06-infiniband-fundamentals-and-addressing.md 8
+docs/part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md 8
+docs/part-12-ai-networking/14-load-balancing-and-routing-for-ai-fabrics.md 19
+docs/part-12-ai-networking/17-nccl-tests-and-fabric-benchmarking.md 6
+docs/part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md 5
+docs/part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md 5
+docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md 20

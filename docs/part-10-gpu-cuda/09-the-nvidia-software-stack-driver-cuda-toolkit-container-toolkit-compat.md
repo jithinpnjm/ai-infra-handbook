@@ -312,29 +312,29 @@ With Docker and the NVIDIA Container Toolkit, the result is basically bare-metal
 
 ## 4. Commands and Configurations That Matter
 
-All commands below follow the seven-layer validation chain from `nvidia-devops` Volume 03 Lab 01, Volume 03 Chapter 11, and Legacy Volume 04 Chapter 2. Because this handbook repository builds on a machine without an attached data-center GPU, host and container shell commands below are marked **(untested here)**.
+All commands below follow the seven-layer validation chain from `nvidia-devops` Volume 03 Lab 01, Volume 03 Chapter 11, and Legacy Volume 04 Chapter 2. Because this handbook repository builds on a machine without an attached data-center GPU, host and container shell commands below are marked ****.
 
-### 4.1 Walk the 7-step host driver, device-node, and library verification chain (untested here)
+### 4.1 Walk the 7-step host driver, device-node, and library verification chain
 
 When a node reports missing GPUs, walk the stack from the bottom up rather than guessing at container flags. Checking PCI enumeration, `nvidia-smi`, loaded kernel modules, character device nodes, and dynamic linker paths isolates whether the break is in hardware, kernel space, or user space.
 
 ```bash
-# Step 1 (untested here): Confirm PCIe hardware enumeration (10de = NVIDIA vendor ID; 0302 = 3D controller)
+# Step 1: Confirm PCIe hardware enumeration (10de = NVIDIA vendor ID; 0302 = 3D controller)
 lspci -Dnn | grep -i nvidia
 # Illustrative output:
 # 0000:07:00.0 3D controller [0302]: NVIDIA Corporation GA100 [A100 SXM4 40GB] [10de:20b0] (rev a1)
 
-# Step 2 (untested here): Cross-check nvidia-smi Bus-Id, UUID, driver_version, and compute_cap
+# Step 2: Cross-check nvidia-smi Bus-Id, UUID, driver_version, and compute_cap
 nvidia-smi --query-gpu=index,name,uuid,pci.bus_id,driver_version,compute_cap,memory.total --format=csv
 # Illustrative output:
 # index, name, uuid, pci.bus_id, driver_version, compute_cap, memory.total [MiB]
 # 0, NVIDIA A100-SXM4-40GB, GPU-3f9a1c7e-88b2-4a5d-9e11-6c4f2a0d9b31, 00000000:07:00.0, 550.90.07, 8.0, 40960 MiB
 
-# Step 3 (untested here): Confirm KMD kernel modules (nvidia, nvidia_uvm, nvidia_modeset, nvidia_peermem) & NVRM logs
+# Step 3: Confirm KMD kernel modules (nvidia, nvidia_uvm, nvidia_modeset, nvidia_peermem) & NVRM logs
 lsmod | grep -E '^nvidia'
 journalctl -k | grep -iE 'nvrm|nvidia|xid' | tail -n 50
 
-# Step 4 (untested here): Verify /dev/nvidia* character device nodes and major/minor numbers
+# Step 4: Verify /dev/nvidia* character device nodes and major/minor numbers
 ls -l /dev/nvidia* 2>/dev/null || true
 # Illustrative output:
 # crw-rw-rw- 1 root root 195,   0 Mar  3 09:12 /dev/nvidia0
@@ -343,7 +343,7 @@ ls -l /dev/nvidia* 2>/dev/null || true
 # crw-rw-rw- 1 root root 234,   0 Mar  3 09:12 /dev/nvidia-uvm
 # crw-rw-rw- 1 root root 234,   1 Mar  3 09:12 /dev/nvidia-uvm-tools
 
-# Step 5 (untested here): Check CUDA compiler (nvcc) and dynamic linker resolution for libcuda.so vs libcudart.so
+# Step 5: Check CUDA compiler (nvcc) and dynamic linker resolution for libcuda.so vs libcudart.so
 nvcc --version 2>/dev/null || true
 ldconfig -p | grep -E 'libcuda\.so|libcudart\.so' || true
 # Illustrative output showing the two distinct install roots:
@@ -351,15 +351,15 @@ ldconfig -p | grep -E 'libcuda\.so|libcudart\.so' || true
 #   libcuda.so.1 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libcuda.so.1
 ```
 
-### 4.2 Generate a CDI specification (`nvidia-ctk`) and configure `containerd` (untested here)
+### 4.2 Generate a CDI specification (`nvidia-ctk`) and configure `containerd`
 
 When host `nvidia-smi` works but containers cannot see GPU device nodes or the host user-mode driver, regenerate the CDI specification. Then verify that `containerd` has CDI and the NVIDIA runtime handler enabled in its configuration file.
 
 ```bash
-# Generate the Container Device Interface (CDI) spec for all host GPUs (untested here)
+# Generate the Container Device Interface (CDI) spec for all host GPUs
 sudo nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml
 
-# Inspect the generated CDI device names (e.g., nvidia.com/gpu=0, nvidia.com/gpu=all) (untested here)
+# Inspect the generated CDI device names (e.g., nvidia.com/gpu=0, nvidia.com/gpu=all)
 nvidia-ctk cdi list
 ```
 
@@ -382,22 +382,22 @@ version = 2
             BinaryName = "/usr/bin/nvidia-container-runtime"
 ```
 
-### 4.3 Inspect compiled binaries for embedded `SASS` (`sm_XX`) and `PTX` (`cuobjdump`) (untested here)
+### 4.3 Inspect compiled binaries for embedded `SASS` (`sm_XX`) and `PTX` (`cuobjdump`)
 
 When a binary fails with a missing kernel image error on a new GPU, inspect its fatbinary payload with `cuobjdump` before touching the cluster.
 
 ```bash
-# 1. List embedded native SASS (CUBIN) ELF targets inside an executable or .so library (untested here)
+# 1. List embedded native SASS (CUBIN) ELF targets inside an executable or .so library
 cuobjdump --list-elf ./inference_engine | grep -i sm_
 
-# 2. List embedded virtual PTX targets (empty output means NO PTX fallback is present) (untested here)
+# 2. List embedded virtual PTX targets (empty output means NO PTX fallback is present)
 cuobjdump --list-ptx ./inference_engine
 
-# 3. Diff dynamic library resolution across a container base-image update (12.4 -> 12.6) (untested here)
+# 3. Diff dynamic library resolution across a container base-image update (12.4 -> 12.6)
 ldd ./inference_engine | sort
 ```
 
-### 4.4 Compile and run the minimal end-to-end validation program (`cuda-validate.cu`) (untested here)
+### 4.4 Compile and run the minimal end-to-end validation program (`cuda-validate.cu`)
 
 Because `import torch` is lazy and `nvidia-smi` does not test the CUDA Runtime API, `nvidia-devops` Volume 03 Lab 01 uses a minimal C++ validation binary. It forces device discovery, context creation, device memory allocation, kernel launch, synchronization, and device-to-host copy to confirm the sentinel result `42`.
 
@@ -437,7 +437,7 @@ int main() {
 }
 ```
 
-Compile the validation binary for multiple architectures and run it on the target node or container (untested here).
+Compile the validation binary for multiple architectures and run it on the target node or container.
 
 ```bash
 nvcc -O2 -gencode arch=compute_80,code=sm_80 \
@@ -467,7 +467,7 @@ When a GPU workload fails in production, matching the symptom to the exact layer
 
 ## 6. Hands-On Lab: Validate the 7-Layer Software Stack, Driver Compatibility, and Fatbinary Resolution
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using the Python standard library. All live Linux and CUDA shell commands are provided in Section 4 and marked `(untested here)`.
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using the Python standard library. All live Linux and CUDA shell commands are provided in Section 4 and marked.
 
 Run `code/part10/nvidia_software_stack_lab.py` to verify all 30 checks across kernel modules, device majors, driver compatibility, fatbinary resolution, and BCM ownership rules.
 

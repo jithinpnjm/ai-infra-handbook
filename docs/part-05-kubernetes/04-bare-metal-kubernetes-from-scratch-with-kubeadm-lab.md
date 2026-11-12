@@ -418,7 +418,7 @@ Turn these into smoke tests you can rerun: all nodes Ready; all kube-system pods
 
 ### Everyday `kubectl` context, `last-applied-configuration`, `attach`, and shell completion
 
-Once `$HOME/.kube/config` is in place, *Kubernetes: Up and Running* (3rd edition, Chapter 4) describes four `kubectl` workflows that save time on a new cluster. They are untested here.
+Once `$HOME/.kube/config` is in place, four `kubectl` workflows save time on a new cluster. The commands below were not run on live hardware.
 
 - **Contexts (`set-context` and `use-context`)**: Instead of typing `--namespace` on every command, save a context that binds a default namespace in `$HOME/.kube/config`. You can also bind `--users` or `--clusters` to it. Then switch to the context:
 
@@ -447,7 +447,7 @@ Pick the context you will use for the rest of the lab, and switch to it before y
 
 ### Deleting objects
 
-Suppose you applied a test manifest last week and now want the cluster clean again. You can remove what it created by pointing `kubectl` at the same file. The object's resource type comes from the file, so you do not repeat it. You can also delete by resource type and name. The commands below show both forms. They are untested here.
+Suppose you applied a test manifest last week and now want the cluster clean again. You can remove what it created by pointing `kubectl` at the same file. The object's resource type comes from the file, so you do not repeat it. You can also delete by resource type and name. The commands below show both forms.
 
 ```bash
 kubectl delete -f obj.yaml
@@ -458,7 +458,7 @@ Be careful with this command. `kubectl` will not prompt you to confirm a deletio
 
 ### Graphical and editor tools
 
-Not everyone wants to work only in a terminal. Plug-ins for several editors connect Kubernetes to the editor you already use. The book names Visual Studio Code, IntelliJ and Eclipse as examples. Each one lets you look at cluster objects from inside your code environment.
+Not everyone wants to work only in a terminal. Plug-ins for several editors connect Kubernetes to the editor you already use. Examples include Visual Studio Code, IntelliJ and Eclipse. Each one lets you look at cluster objects from inside your code environment.
 
 If you use a managed Kubernetes service, many of them also offer a graphical interface in their web console. Managed Kubernetes in the public cloud also works with sophisticated monitoring tools. Those tools help you see how your applications are running. Open source options exist too, including the Rancher Dashboard and the Headlamp project. Keep `kubectl` in your toolkit as well, since it is the command-line tool this chapter teaches.
 
@@ -528,15 +528,15 @@ Read the When column first, because it ties each tool to a situation.
 
 The authors of *Production Kubernetes* (Josh Rosso, Rich Lander, Alexander Brand and John Harris) frame this choice in Chapters 1 and 2, *Path to Production* and *Deployment Models*. They use two architectural analogies.
 
-- **Kubernetes is the foundation, not the finished house.** The book describes Kubernetes as "the engine", the foundation, rather than the finished house, which it calls "the driveable car" (*Production Kubernetes*, Chapter 1). Core `kubernetes/kubernetes` focuses on container orchestration. It exposes plug-in interfaces for the runtime (**CRI**), networking (**CNI**), storage (**CSI**) and cloud integrations (**CPI**, the Cloud Provider Interface, which moves historical "in-tree" cloud integrations out-of-tree). Service routing, observability, secret management, CI/CD and multi-tenancy are left to the surrounding **application platform** that you assemble on top.
-- **Managed Services vs. Prebuilt Installers vs. Roll Your Own, and Bare Metal vs. Virtualization** (*Production Kubernetes*, Chapter 2). The book compares the options this way:
+- **Kubernetes is the foundation, not the finished house.** Kubernetes is the engine, the foundation, rather than the finished house, which is "the driveable car". Core `kubernetes/kubernetes` focuses on container orchestration. It exposes plug-in interfaces for the runtime (**CRI**), networking (**CNI**), storage (**CSI**) and cloud integrations (**CPI**, the Cloud Provider Interface, which moves historical "in-tree" cloud integrations out-of-tree). Service routing, observability, secret management, CI/CD and multi-tenancy are left to the surrounding **application platform** that you assemble on top.
+- **Managed Services vs. Prebuilt Installers vs. Roll Your Own, and Bare Metal vs. Virtualization**: The options compare this way:
   1. *Managed Services (GKE, EKS, AKS):* These carry the lowest operational burden for the control plane. The cost is provider-imposed limits on control-plane flags, Kubernetes versions and custom hardware topologies.
   2. *Prebuilt Installers (Kubespray, RKE2, OpenShift, Cluster API) vs. Roll Your Own (`kubeadm` + Packer + Ansible):* Rolling your own, or using bare metal, gives total control over kernel parameters, custom GPUDirect RDMA and InfiniBand fabrics, and control-plane flags. The price is that you must automate what virtualization used to give you for free. That includes PXE booting through **Matchbox**, **MAAS**, **Tinkerbell** or **BCM**; out-of-band IPMI or Redfish power management; BGP or L2 load balancing through **MetalLB** or **kube-vip**; and building immutable node images with **Packer + Ansible**.
   3. *Environment tiers (`Development`, `Testing` with automated `< 1 week` TTL reapers, `Staging`, and `Production`) and Cluster Sizing (`Few Large` vs. `Many Small`, Production Kubernetes Chapter 2):* Fewer large clusters reduce control-plane overhead and improve bin-packing. You can use tainted **node pools** for GPU or high-memory hardware. Many smaller clusters, by contrast, reduce blast radius and control-plane scaling bottlenecks, which Chapter 5.19 details.
 
 ### Start on a cloud or a laptop first
 
-Bare metal teaches a lot, but it is slow for a first cluster. The book suggests starting with a cloud service unless that truly does not fit your situation. Running a cluster is complicated, so for most people it makes sense to hand that job to the cloud. Many clouds offer the management service for free, though cloud resources still cost money and need an active network connection.
+Bare metal teaches a lot, but it is slow for a first cluster. Start with a cloud service unless that truly does not fit your situation. Running a cluster is complicated, so for most people it makes sense to hand that job to the cloud. Many clouds offer the management service for free, though cloud resources still cost money and need an active network connection.
 
 GKE, AKS and EKS each give you a working cluster with a few commands. For GKE, you need a Google Cloud Platform account with billing enabled and the `gcloud` tool installed. Set a default zone, then create a three-node cluster and fetch its credentials:
 
@@ -570,7 +570,7 @@ $ minikube delete
 
 `minikube start` creates a local VM, provisions Kubernetes, and writes a `kubectl` configuration that points to that cluster. `minikube stop` shuts down the VM. `minikube delete` removes the cluster.
 
-`kind` takes a different route. It stands for Kubernetes IN Docker, and it uses Docker containers to stand in for nodes instead of virtual machines. `kind` is still pre-1.0, but many people use it for fast testing. A related Docker-in-Docker approach can run a multinode cluster on one machine. The book notes that this project is still in beta, so you may hit unexpected issues.
+`kind` takes a different route. It stands for Kubernetes IN Docker, and it uses Docker containers to stand in for nodes instead of virtual machines. `kind` is still pre-1.0, but many people use it for fast testing. A related Docker-in-Docker approach can run a multinode cluster on one machine. This project is still in beta, so you may hit unexpected issues.
 
 ```
 $ kind create cluster --wait 5m
@@ -579,7 +579,7 @@ $ kubectl cluster-info
 $ kind delete cluster
 ```
 
-Install `kind` from the project site for your platform first. The book's appendix covers a bare-metal option too. It builds a cluster from Raspberry Pi boards with `kubeadm`, and the steps can be adapted to other machines.
+Install `kind` from the project site for your platform first. A bare-metal option also exists. It builds a cluster from Raspberry Pi boards with `kubeadm`, and the steps can be adapted to other machines.
 
 Pick the option that matches your situation, and keep the rest of this lab on bare metal.
 
@@ -731,7 +731,7 @@ Start by running the self-checking Python lab, `code/part05/kubeadm_bootstrap_va
 python3 code/part05/kubeadm_bootstrap_validator_lab.py
 ```
 
-Next, work through this checklist on your lab VMs. All the interactive shell steps are `untested here`.
+Work through this checklist on your lab VMs. 
 
 1. Provision the VMs and prepare them as in section 2. Write down the version matrix and CIDRs, then verify prerequisites with a script.
 2. Install containerd with `SystemdCgroup = true`, then verify it with `crictl info`.

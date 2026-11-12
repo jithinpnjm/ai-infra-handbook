@@ -336,7 +336,7 @@ Profile before you buy hardware or rewrite the loader. The timeline tells you wh
 
 ## Commands and configurations that matter
 
-Some of these commands touch live cluster filesystems, block devices, or running training processes, so be careful where you run them. This chapter did not run any of them on a live cluster. Each command that falls into that group is marked `untested here`. The group includes `strace`, `lctl`, `blockdev`, `fio`, `mdtest`, and `tar`.
+Some of these commands touch live cluster filesystems, block devices, or running training processes, so be careful where you run them. This chapter did not run any of them on a live cluster, so they are untested. The group includes `strace`, `lctl`, `blockdev`, `fio`, `mdtest`, and `tar`.
 
 ### 1. Diagnosing Small-File Open Rates, Batch Wait, and Lustre Metadata Stats
 
@@ -667,7 +667,7 @@ The trace recorded 267,500 `openat` calls in 2.140 seconds. That works out to 12
 </details>
 
 <details>
-<summary>**4. In the Volume 06 14M PNG incident, what percentage of syscall time was spent in `stat`, `openat`, `close`, and `read`?**</summary>
+<summary>**4. In the 14-million-PNG incident, what percentage of syscall time was spent in `stat`, `openat`, `close`, and `read`?**</summary>
 
 In the 5.311-second trace, `stat` took 85.12 percent and `openat` took 10.05 percent. `close` took 4.02 percent, and `read` took only 0.81 percent. Metadata calls therefore account for 99.19 percent of kernel I/O time, which starves a 400 GB/s array down to 5 GB/s.
 </details>

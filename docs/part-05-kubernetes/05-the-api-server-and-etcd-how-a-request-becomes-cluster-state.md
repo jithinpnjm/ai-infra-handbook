@@ -245,7 +245,7 @@ Before you raise any limit, give the noisy client its own level and check whethe
 
 etcd is the database behind every object in a cluster. It is a distributed store. It uses a consensus algorithm to keep one copy of the cluster state on several machines. Consensus depends on reliable network links between the etcd members, and those members need low latency. Two choices shape the deployment. One is whether etcd runs on dedicated machines or shares them with the control plane. The other is whether etcd runs in a container or directly on the host.
 
-On the network side, the default etcd settings suit the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across regions, because the book strongly discourages this. For better availability, keep your datacenters close together, inside one region.
+On the network side, the default etcd settings suit the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across regions, because that is strongly discouraged. For better availability, keep your datacenters close together, inside one region.
 
 Start the placement decision with cluster size, meaning the number of worker nodes in each cluster. If etcd slows down, your control over the cluster's resources slows down too. Workloads that do not depend on the Kubernetes API keep running during etcd trouble. The control plane must still stay healthy, though. A car that keeps rolling with a broken steering wheel gives little comfort. When a large cluster puts heavy read and write demand on etcd, give etcd its own machines. That removes resource contention with the other control plane components. What counts as large depends on the size of the control plane machines. Still, anything above 50 worker nodes deserves the question. For clusters with over 200 workers, plan for dedicated etcd from the start. For smaller clusters, colocated etcd saves management overhead and infrastructure cost. Kubeadm supports that model and handles its concerns.
 
@@ -538,7 +538,7 @@ Start with the self-checking Python lab. You run it locally first, because it te
 python3 code/part05/apiserver_etcd_mvcc_lab.py
 ```
 
-Next, you should work on a `kind` or `kubeadm` cluster. The interactive shell steps below are untested here, so check each result yourself. Work through these exercises in order.
+Next, you should work on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware, so check each result yourself. Work through these exercises in order.
 
 1. Start `kubectl proxy`. Use `curl` to read the discovery documents and list pods. Get one pod, and create a ConfigMap with `curl -X POST`. Watch with `?watch=1`, and read the response headers and the chunked events. Then repeat the same steps with `kubectl get --raw`.
 2. Set `-v=8` and apply a Deployment. Map each HTTP call to a stage in the pipeline. Enable audit logging with a policy that records `RequestResponse` for ConfigMaps in one namespace. Read the events for authentication, the authorization decision and the stage timings.

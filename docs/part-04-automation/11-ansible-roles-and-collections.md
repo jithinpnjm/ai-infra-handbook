@@ -63,7 +63,7 @@ Notice that `defaults/` and `vars/` answer different questions. One holds settin
 
 Create the skeleton with `ansible-galaxy role init gpu_driver`, or with `ansible-galaxy init`. Ansible then looks for roles in `roles_path`, in a `roles/` directory next to the playbook, and in installed collections under the name `namespace.collection.role`.
 
-The book *Ansible: Up and Running*, Chapter 9 (*Roles: Scaling Up Your Playbooks*), walks through the same idea. The authors split the monolithic `mezzanine.yml` playbook into reusable `database` and `mezzanine` roles, and the refactored playbook is `mezzanine-across-hosts.yml`. The chapter also shows how Ansible resolves relative file paths inside a role.
+The same idea works on a larger playbook. Splitting the monolithic `mezzanine.yml` playbook gives reusable `database` and `mezzanine` roles, and the refactored playbook is `mezzanine-across-hosts.yml`. Ansible also resolves relative file paths inside a role in a fixed order.
 
 Here is where the `copy` module looks. When a task in `roles/database/tasks/main.yml` runs `copy: src=pg_hba.conf ...` or `script: setadmin.py`, Ansible checks these six locations in order. The function `role_file_search_candidates()` in `code/part04/ansible_roles_collections.py` models the same search.
 
@@ -436,13 +436,13 @@ NVIDIA-provided automation, such as DeepOps, `nvidia.nvue` for Cumulus and Spect
 
 ## 8. Lab
 
-Start with the self-checking Python lab, which you can run locally: `code/part04/ansible_roles_collections_lab.py`. It checks three things. It verifies runtime validation of `meta/argument_specs.yml` through `validate_role_argument_spec`. It checks dependency traversal and deduplication through `resolve_role_dependency_order`, which respects `allow_duplicates`. It also checks the relative file search precedence in `role_file_search_candidates`, which the book covers in Chapters 9 and 15 of *Ansible: Up and Running*.
+Start with the self-checking Python lab, which you can run locally: `code/part04/ansible_roles_collections_lab.py`. It checks three things. It verifies runtime validation of `meta/argument_specs.yml` through `validate_role_argument_spec`. It checks dependency traversal and deduplication through `resolve_role_dependency_order`, which respects `allow_duplicates`. It also checks the relative file search precedence in `role_file_search_candidates`.
 
 ```bash
 python3 code/part04/ansible_roles_collections_lab.py
 ```
 
-Next, move to a control node that has `ansible-core` and `ansible-galaxy`. The interactive shell steps below are `untested here`, so you should run them yourself and check the results. Work through these exercises in order, and note what you see at each step.
+Next, move to a control node that has `ansible-core` and `ansible-galaxy`. The interactive shell steps below are untested, so you should run them yourself and check the results. Work through these exercises in order, and note what you see at each step.
 
 1. Take the playbook from 4.9 and extract the `app_deploy`, `nginx_proxy` and `postgres` roles. Keep the behaviour identical, and check that with `--check --diff` and a second run.
 2. Write `defaults/main.yml` with prefixed variables, `meta/argument_specs.yml` and a `README.md`. Feed the role invalid input to see the argument spec error, then view the result with `ansible-doc -t role`.
@@ -612,7 +612,7 @@ An Ansible Collection is named `namespace.name`, such as `acme.gpu` or `communit
 <details>
 <summary>16. Why should you prefer using explicit FQCNs (`acme.gpu.my_module`) in tasks over the play-level `collections:` search-list keyword (*Ansible: Up and Running*, Chapter 15)?</summary>
 
-The play-level keyword in *Ansible: Up and Running*, Chapter 15, Example 15-2, is `collections: [our_namespace.her_collection]`. It lets tasks use short module names, such as `her_module:`. But when a play imports several collections, a short name leaves it unclear which collection provides the module. `ansible-lint`'s `fqcn` rule flags short names as well. Writing the full name, `our_namespace.her_collection.her_module`, on every task documents the source and is immune to namespace shadowing.
+The play-level keyword is `collections: [our_namespace.her_collection]`. It lets tasks use short module names, such as `her_module:`. But when a play imports several collections, a short name leaves it unclear which collection provides the module. `ansible-lint`'s `fqcn` rule flags short names as well. Writing the full name, `our_namespace.her_collection.her_module`, on every task documents the source and is immune to namespace shadowing.
 </details>
 
 <details>
@@ -636,7 +636,7 @@ Keep a new role in the monorepo's `roles/` directory while it changes quickly an
 <details>
 <summary>20. What security and supply-chain checks should you apply before adopting a third-party role or collection from Ansible Galaxy?</summary>
 
-Ansible roles usually run with `become: true`, which means `root`, across your entire fleet, and on the control node through lookups and local tasks. Audit the source in `tasks/`, `handlers/`, `templates/`, `library/` and `plugins/` before you install it. Pin exact semantic versions, or commit SHAs, in `requirements.yml`, and never pull a floating `main` or an unpinned latest into CI or production. Mirror approved tarballs and repositories in a private Automation Hub, Pulp, Artifactory or Nexus proxy, so production never depends on public internet Galaxy or GitHub. The book covers this in Chapters 15 and 22 of *Ansible: Up and Running*. Finally, run `ansible-lint` and Molecule integration tests against every version bump in CI before merging.
+Ansible roles usually run with `become: true`, which means `root`, across your entire fleet, and on the control node through lookups and local tasks. Audit the source in `tasks/`, `handlers/`, `templates/`, `library/` and `plugins/` before you install it. Pin exact semantic versions, or commit SHAs, in `requirements.yml`, and never pull a floating `main` or an unpinned latest into CI or production. Mirror approved tarballs and repositories in a private Automation Hub, Pulp, Artifactory or Nexus proxy, so production never depends on public internet Galaxy or GitHub. Finally, run `ansible-lint` and Molecule integration tests against every version bump in CI before merging.
 </details>
 
 ## Sources and review notes

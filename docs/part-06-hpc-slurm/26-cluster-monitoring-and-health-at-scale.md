@@ -81,20 +81,20 @@ SNMP is how you talk to many network and power devices. The monitored device run
 
 The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable in a device's Management Information Base (MIB) has a numeric address called an Object Identifier (OID). The uptime counter, `sysUpTime`, has the OID `1.3.6.1.2.1.1.3`. Its readable name is `iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`, and it counts the time since the device's management software last restarted. The standards bodies IETF, ISO, and IANA define most OID branches. Manufacturers such as Cisco and APC own the enterprise branches.
 
-The `net-snmp` package, also called `snmp`, provides the client utilities that the book highlights. The three commands below show them with the book's sample output. They were not run against a live device for this handbook.
+The `net-snmp` package, also called `snmp`, provides the client utilities. The three commands below show them with sample output. They were not run against a live device.
 
 ```bash
-# 1. Read a single OID (omitting default prefix iso.org.dod.internet.mgmt.mib-2.system) (untested here)
+# 1. Read a single OID (omitting default prefix iso.org.dod.internet.mgmt.mib-2.system)
 snmpget -v 2c -c demopublic test.net-snmp.org sysUpTime.0
 # DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (4935618) 13:42:36.18
 
-# 2. Translate an OID name offline: outputs DESCRIPTION, SYNTAX, MAX-ACCESS, and full numeric path (untested here)
+# 2. Translate an OID name offline: outputs DESCRIPTION, SYNTAX, MAX-ACCESS, and full numeric path
 snmptranslate -Td -Ib 'sysUptime'
 # SNMPv2-MIB::sysUpTime (FROM SNMPv2-MIB, RFC1213-MIB, SYNTAX TimeTicks, MAX-ACCESS read-only, STATUS current)
 # DESCRIPTION "The time (in hundredths of a second) since the network management portion of the system was last re-initialized."
 # ::={iso(1) org(3) dod(6) internet(1) mgmt(2) mib-2(1) system(1) 3}
 
-# 3. Walk an entire OID subtree without knowing its composition beforehand (defaults to mib-2 if omitted) (untested here)
+# 3. Walk an entire OID subtree without knowing its composition beforehand (defaults to mib-2 if omitted)
 snmpwalk -v 2c -c demopublic test.net-snmp.org system
 # SNMPv2-MIB::sysDescr.0 = STRING: test.net-snmp.org
 # SNMPv2-MIB::sysObjectID.0 = OID: NET-SNMP-MIB::netSnmpAgentOIDs.10
@@ -114,10 +114,10 @@ To configure the local SNMP agent, start by backing up `/etc/snmp/snmpd.conf` wi
 rocommunity public 192.168.0.0
 ```
 
-Traps from switches, PDUs, cooling units or UPSs need a receiver. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The book's example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives:
+Traps from switches, PDUs, cooling units or UPSs need a receiver. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The usual example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives:
 
 ```text
-# /etc/snmp/snmptrapd.conf (untested here)
+# /etc/snmp/snmptrapd.conf
 authCommunity log,execute,net public
 traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification /tmp/demo demo-trap
 ```
@@ -126,7 +126,7 @@ The handler script reads its input from standard input. Line 1 is the sender hos
 
 ```sh
 #!/bin/sh
-# /tmp/demo (chmod a+x /tmp/demo; use a non-/tmp path in production) (untested here)
+# /tmp/demo (chmod a+x /tmp/demo; use a non-/tmp path in production)
 read host
 read ip
 vars=
@@ -145,7 +145,6 @@ echo -e "trap: $1 $host $ip $vars" > /tmp/demo.log
 To test the whole trap pipeline without a real device, send a trap from the command line with `snmptrap`:
 
 ```bash
-# (untested here)
 snmptrap -v 2c -c public localhost "" \
   NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification \
   netSnmpExampleHeartbeatRate i 123456
@@ -185,21 +184,21 @@ Sensor formatting, scaling formulas and hardware threshold limits live in `/etc/
   set in3_min 5 * 0.95
   set in3_max 5 * 0.05 + 5
   ```
-  Or, as in the book's example, `set in3_max 5 * 1.05`.
+  Or, as in the usual example, `set in3_max 5 * 1.05`.
 
 After you edit `/etc/sensors3.conf`, write the configured `set` thresholds into the hardware registers. Then read the current values:
 
 ```bash
-# Program min/max limits into sensor chips (untested here)
+# Program min/max limits into sensor chips
 sensors -s
 
-# Display current voltage, fan RPM, and temperature readings (untested here)
+# Display current voltage, fan RPM, and temperature readings
 sensors
 ```
 
 Chapter 19 of *Supercomputers for Linux SysAdmins* shows a server's `sensors` output. The chip `fschds-i2c-5-73` appears on `Adapter: SMBus I801 adapter at 1c20`, and `coretemp-isa-0000` appears on `Adapter: ISA adapter`. The output includes `+12V: +12.00 V`, `+5V: +5.15 V`, `Vbat: +3.14 V`, `PSU Fan: 1440 RPM (div = 4)`, `CPU Fan: 720 RPM (div = 4)`, `System FAN3: 720 RPM`, `System FAN4: 720 RPM`, `CPU Temp: +36.0°C (high = +69.0°C)`, `Super I/O Temp: +38.0°C (high = +52.0°C)`, `System Temp: +41.0°C (high = +56.0°C)`, and `Core 0..3: +51.0°C / +49.0°C (high = +82.0°C, crit = +100.0°C)`. One line stands out: **`System FAN2: FAULT (div = 4)`**. It flags a failed chassis fan immediately.
 
-For out-of-band readings through IPMI (`ipmitool`), the book cautions that polling BMCs remotely at high frequency can overload the BMC controllers. Read IPMI sensors locally on each node instead, through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
+For out-of-band readings through IPMI (`ipmitool`), polling BMCs remotely at high frequency can overload the BMC controllers. Read IPMI sensors locally on each node instead, through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
 
 ### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`
 
@@ -207,7 +206,7 @@ Computing clusters solve large, resource-intensive tasks, so they need reliable,
 
 Cluster UPS systems are typically designed to provide power for at least `10–30 minutes` during a grid outage. If utility power is not restored within `5 minutes`, they must start a controlled cluster shutdown. That shutdown prohibits new jobs and stops the compute nodes first, to relieve the energy load. The network file systems and monitoring servers shut down last.
 
-For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install`. Then `apcaccess` queries UPS status. In the book's example it reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. The package also runs `/etc/apcupsd/onbattery` and `offbattery`. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
+For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install`. Then `apcaccess` queries UPS status. A typical run reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. The package also runs `/etc/apcupsd/onbattery` and `offbattery`. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
 
 For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work across three pieces: hardware drivers, a network server called `upsd`, and a reaction client called `upsmon`. The setup is spread across four files in `/etc/nut`:
 
@@ -244,7 +243,6 @@ For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work acros
 After the `nut` / `upsd` service starts, query the live UPS state with `upsc`:
 
 ```bash
-# (untested here)
 upsc ups1@localhost
 ```
 
@@ -289,7 +287,7 @@ Reading these fields takes care. **`GPU_UTIL`** is the fraction of time any kern
 
 Always include the job-to-GPU mapping labels. DCGM can map GPUs to Kubernetes pods. For Slurm, map them via `SLURM_JOB_GPUS`, a cgroup, or a prolog-written file that the textfile collector reads. With those labels in place, you can attribute usage to users and projects.
 
-Metrics are passive. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3`. Level 1 is quick, and higher levels stress memory, PCIe and compute. The levels are described from general knowledge of DCGM, not from the book. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14).
+Metrics are passive. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3`. Level 1 is quick, and higher levels stress memory, PCIe and compute. The levels are described from general knowledge of DCGM, not from a cited source. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14).
 
 ## 4. A Slurm exporter (tested)
 

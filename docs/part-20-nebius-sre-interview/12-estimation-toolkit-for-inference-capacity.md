@@ -49,7 +49,7 @@ Every number in the chain is an input you can state. Every box is a ceiling, not
 
 Imagine a pod that goes into a crash loop with an out-of-memory error before it serves a single request. The weights alone did not fit. This is the cheapest check you can do, so do it first.
 
-Weights memory is parameters multiplied by bytes per parameter. The book Hands-On LLM Serving and Optimization, in Chapter 5, gives the table: FP32 uses 4 bytes, FP16 and BF16 use 2 bytes, and INT8 and FP8 use 1 byte. It works the example of a 7-billion-parameter model at 2 bytes, which gives 14 GB. The book LLMs in Production, in Chapter 3, offers the same shortcut: multiply billions of parameters by two to get gigabytes at half precision.
+Weights memory is parameters multiplied by bytes per parameter. Hands-On LLM Serving and Optimization, in Chapter 5, gives the table: FP32 uses 4 bytes, FP16 and BF16 use 2 bytes, and INT8 and FP8 use 1 byte. It works the example of a 7-billion-parameter model at 2 bytes, which gives 14 GB. LLMs in Production, in Chapter 3, offers the same shortcut: multiply billions of parameters by two to get gigabytes at half precision.
 
 Four-bit weights use half a byte per parameter. That is plain arithmetic from 4 bits, not a figure the books give. Real four-bit formats also store scales, so the true size is a little larger. Mark that as unverified if you quote it.
 
@@ -70,7 +70,7 @@ Before you pick a GPU, multiply parameters by bytes and compare the result with 
 
 A user pastes a long document and your endpoint starts rejecting requests, yet the weights fit with room to spare. The room was not spare. It was reserved for the KV cache, and the cache grows with every token of every live request.
 
-During generation, each layer keeps a key vector and a value vector for every token seen so far. Without that store, the model would recompute them at every step. The book Hands-On LLM Serving and Optimization, Chapter 5, gives the per-token formula in its multi-head form. Replace the head count with the number of key-value heads, because models with grouped-query attention store only those.
+During generation, each layer keeps a key vector and a value vector for every token seen so far. Without that store, the model would recompute them at every step. Hands-On LLM Serving and Optimization, Chapter 5, gives the per-token formula in its multi-head form. Replace the head count with the number of key-value heads, because models with grouped-query attention store only those.
 
 ```text
 KV bytes per token = 2 x layers x kv_heads x head_dim x bytes_per_element
@@ -79,7 +79,7 @@ KV bytes per request = KV bytes per token x (prompt tokens + output tokens)
 
 The 2 is one key plus one value. The result is the memory one request needs at its longest point. Use the prompt plus the full answer length, because the cache is still full when the last token is produced.
 
-First check the formula against the book. Llama-2-7B has 32 layers, 32 heads and head dimension 128, with no grouped-query attention. At 2 bytes: 2 x 32 x 32 x 128 x 2 equals 524,288 bytes, or 0.5 MB per token. The book prints that figure and then multiplies by 4,096 tokens and 16 requests to get 32 GB, which is more than the 14 GB of weights. The book LLMs in Production says one token is about 1 MB. That is a rougher rule, so trust the formula.
+First check the formula on a known model. Llama-2-7B has 32 layers, 32 heads and head dimension 128, with no grouped-query attention. At 2 bytes: 2 x 32 x 32 x 128 x 2 equals 524,288 bytes, or 0.5 MB per token. Multiplying that by 4,096 tokens and 16 requests gives 32 GB, which is more than the 14 GB of weights. LLMs in Production says one token is about 1 MB. That is a rougher rule, so trust the formula.
 
 Now the worked example for Qwen3-8B in BF16. The arithmetic is 2 x 36 x 8 x 128 x 2.
 
@@ -111,7 +111,7 @@ flowchart TD
 
 Two inputs need care. The first is the usable fraction. vLLM exposes `gpu_memory_utilization`, a fraction of memory the engine may use. On the main branch the source, read on 2026-11-09, says the default is 0.92 when unspecified, or 1.0 with its extensible cache. The source for releases v0.10.0 and v0.11.0 sets the default to 0.9, so the value depends on your version. This chapter plans with 0.90, which is a cautious round number and my choice, not the engine's.
 
-The second input is overhead for activations, CUDA graphs and fragmentation. The book Hands-On LLM Serving and Optimization says you cannot reach the theoretical batch size because activations also need room. This chapter reserves 5 GB per GPU. That figure is a planning assumption, not a measurement. Replace it with the number your own engine logs at startup.
+The second input is overhead for activations, CUDA graphs and fragmentation. Hands-On LLM Serving and Optimization says you cannot reach the theoretical batch size because activations also need room. This chapter reserves 5 GB per GPU. That figure is a planning assumption, not a measurement. Replace it with the number your own engine logs at startup.
 
 The worked example on an H100 SXM with 80 GB follows. The datasheet figure is on the NVIDIA H100 page.
 
@@ -122,7 +122,7 @@ The worked example on an H100 SXM with 80 GB follows. The datasheet figure is on
 | After overhead | 55.6 - 5 | 50.6 GB |
 | Requests that fit | 50.6 / 0.36864 = 137.3 | 137 |
 
-With FP8 weights the same GPU holds 159 requests, because the budget grows by 8.2 GB. The book's Table 5-7 does the same sum for two cards. The book's table lists 4 requests on a 24 GB card and 16 on a 48 GB card for a 7B model, though its own formula in the same row gives 5 and 17, so treat the digits as approximate. Either way the pricier card is cheaper per request.
+With FP8 weights the same GPU holds 159 requests, because the budget grows by 8.2 GB. Hands-On LLM Serving and Optimization does the same sum for two cards. Its table lists 4 requests on a 24 GB card and 16 on a 48 GB card for a 7B model, though its own formula in the same row gives 5 and 17, so treat the digits as approximate. Either way the pricier card is cheaper per request.
 
 For a model that needs several GPUs, add the memory and the overhead per GPU. Four H100s serving Qwen2.5-72B in BF16 have 4 x 80 x 0.90 equals 288 GB usable. Subtract 145.4 GB of weights and 20 GB of overhead, and 122.6 GB remains. Divided by 0.8192 GB, that is 149 requests.
 
@@ -132,9 +132,9 @@ The fit number is a ceiling on in-flight requests, not a target. **Running at th
 
 An engineer asks why a GPU showing 90 percent utilisation produces so few tokens per second. The answer is that utilisation counts time with a kernel running, not useful arithmetic. During decode the GPU spends most of that time waiting for memory.
 
-The book Hands-On LLM Serving and Optimization, Chapter 5, explains this with arithmetic intensity, the number of operations per byte moved. For a matrix multiply of shapes M by K and K by N, the operations are 2 x M x N x K. The bytes moved are two bytes times the sum of the three matrix sizes. Compare the result with the chip's ridge point, which is peak compute divided by memory bandwidth. Below the ridge, the memory system limits you. Above it, the arithmetic units limit you.
+Hands-On LLM Serving and Optimization, Chapter 5, explains this with arithmetic intensity, the number of operations per byte moved. For a matrix multiply of shapes M by K and K by N, the operations are 2 x M x N x K. The bytes moved are two bytes times the sum of the three matrix sizes. Compare the result with the chip's ridge point, which is peak compute divided by memory bandwidth. Below the ridge, the memory system limits you. Above it, the arithmetic units limit you.
 
-The book works the L40S: 362 TFLOPS divided by 864 GB/s gives a ridge near 419 operations per byte. Its Table 5-10 then shows that decode with one row per request has an intensity of about 1 whatever the sequence length. Prefill, which processes the whole prompt as many rows, climbs from 62 at 64 tokens to 1,365 at 4,096 tokens. The book's conclusion is that prefill can be compute-bound while decode is always bandwidth-bound at batch size one.
+Take the L40S: 362 TFLOPS divided by 864 GB/s gives a ridge near 419 operations per byte. Worked through, decode with one row per request has an intensity of about 1 whatever the sequence length. Before that was shown: decode with one row per request has an intensity of about 1 whatever the sequence length. Prefill, which processes the whole prompt as many rows, climbs from 62 at 64 tokens to 1,365 at 4,096 tokens. The book's conclusion is that prefill can be compute-bound while decode is always bandwidth-bound at batch size one.
 
 For an H100 the same step needs two datasheet numbers. The NVIDIA H100 page lists 1,979 TFLOPS for BF16 Tensor Core and 3.35 TB/s memory bandwidth for the SXM form factor. A footnote on that page marks the 1,979 as with sparsity. The NVIDIA L40S page shows its BF16 as 362.05 dense and 733 with sparsity, so the sparse figure is double the dense one. I apply the same halving to the H100, which gives 989.5 TFLOPS dense. NVIDIA's Hopper architecture in-depth blog, fetched 2026-11-09, lists H100 SXM5 BF16 at 1,000 TFLOPS dense and 2,000 with sparsity, so the halving holds, and 1,000 is the same figure rounded.
 
@@ -142,7 +142,7 @@ For an H100 the same step needs two datasheet numbers. The NVIDIA H100 page list
 Ridge point = 989.5e12 FLOP/s / 3.35e12 B/s = 295 FLOP/B
 ```
 
-At 295 operations per byte, a prompt of roughly 345 tokens already reaches the ridge in the book's simple matrix model with a hidden size of 4,096. That calculation sets the intensity formula s x h / (2s + h) equal to 295 and solves for s. So long prompts are compute-bound, and compute decides prefill time. Decode at batch size one sits near 1 operation per byte, far below 295, so bandwidth decides decode time.
+At 295 operations per byte, a prompt of roughly 345 tokens already reaches the ridge in a simple matrix model with a hidden size of 4,096. That calculation sets the intensity formula s x h / (2s + h) equal to 295 and solves for s. So long prompts are compute-bound, and compute decides prefill time. Decode at batch size one sits near 1 operation per byte, far below 295, so bandwidth decides decode time.
 
 The practical formulas follow. Both are ceilings.
 
@@ -151,9 +151,9 @@ Prefill tokens/s  = peak FLOP/s x efficiency / (2 x parameters)
 Decode step time  = (weight bytes + KV bytes of all live requests) / bandwidth
 ```
 
-The factor of 2 per parameter per token comes from the matmul rule of 2 operations per multiply-add, applied to every weight. The efficiency term, often called MFU, is something you must assume or measure. This chapter assumes 0.40. That is my assumption and the book gives no such number.
+The factor of 2 per parameter per token comes from the matmul rule of 2 operations per multiply-add, applied to every weight. The efficiency term, often called MFU, is something you must assume or measure. This chapter assumes 0.40. That is an assumption of this chapter, not a published figure.
 
-Decode reads every weight once per step no matter how many requests share the step. That is why batching is the main lever, which the next section quantifies. For a single replica spread over several GPUs, the book Distributed AI Systems, Chapter 6, notes that tensor parallelism multiplies effective memory bandwidth in decode, because each GPU loads its share of the weights.
+Decode reads every weight once per step no matter how many requests share the step. That is why batching is the main lever, which the next section quantifies. For a single replica spread over several GPUs, Distributed AI Systems, Chapter 6, notes that tensor parallelism multiplies effective memory bandwidth in decode, because each GPU loads its share of the weights.
 
 When someone asks why decode is slow, say that each step must stream the whole model through memory and the arithmetic units are mostly idle.
 
@@ -175,7 +175,7 @@ Read the table in two directions. Total throughput rises from 200 to 6,744 token
 
 The table also shows why returns diminish. Weights are a fixed cost, and the cache is a cost per request. At batch 128, the cache read is larger than the weight read. The gain from doubling the batch has shrunk to about 26 percent. The compute needed at batch 128 is 2 x 8.2e9 x 128 operations, which is about 2.1 ms at 989.5 TFLOPS. That is a small share of the 19 ms step, so decode is still bandwidth-bound.
 
-The book AI Systems Performance Engineering, Chapter 16, gives the operating rule. Plot throughput against latency, find the knee, and cap the batch slightly below peak. Teams typically target about 90 percent of peak throughput, which the book calls the headroom buffer.
+AI Systems Performance Engineering, Chapter 16, gives the operating rule. Plot throughput against latency, find the knee, and cap the batch slightly below peak. Teams typically target about 90 percent of peak throughput, which is the headroom buffer.
 
 Continuous batching, covered in Hands-On LLM Serving and Optimization Chapter 6, is what makes the batch stay full in practice. A finished request leaves and a waiting one joins at the next step. The two limits that control it are the maximum number of sequences and the maximum batched tokens.
 
@@ -200,7 +200,7 @@ For Qwen3-8B on one H100, using a batch of 64:
 
 That is the ceiling for one GPU: 5.68 requests per second, which is about 2,840 output tokens per second. It is not a promise. Real engines overlap prefill chunks with decode and lose some time to scheduling, so measure.
 
-Now run Little's law as a check. Concurrency equals arrival rate times time in system. With 64 in flight at 5.68 per second, each request spends 64 / 5.68 equals 11.3 seconds in the system. That is twice the 6 seconds you would get from decode alone, because prefill work interrupts decode. The mean time per output token is then about 22.4 ms, not the 11.9 ms step time. Compare that with a latency target. The book AI Systems Performance Engineering, Chapter 17, quotes a DistServe-style target of 0.4 seconds at the 90th percentile for time to first token and 0.04 seconds for time per output token. At 22.4 ms you meet the second one on paper.
+Now run Little's law as a check. Concurrency equals arrival rate times time in system. With 64 in flight at 5.68 per second, each request spends 64 / 5.68 equals 11.3 seconds in the system. That is twice the 6 seconds you would get from decode alone, because prefill work interrupts decode. The mean time per output token is then about 22.4 ms, not the 11.9 ms step time. Compare that with a latency target. AI Systems Performance Engineering, Chapter 17, quotes a DistServe-style target of 0.4 seconds at the 90th percentile for time to first token and 0.04 seconds for time per output token. At 22.4 ms you meet the second one on paper.
 
 Notice what this teaches. A high-capacity ceiling and a good latency are different things. If your product needs a faster response, you lower the batch, and the requests per second per GPU fall with it.
 
@@ -210,7 +210,7 @@ Quote the per-GPU requests per second together with the batch size and the laten
 
 Demand is 40 requests per second at peak. Your ceiling is 5.68 per GPU. Dividing gives 7.04, so seven GPUs run at 100 percent of the ceiling, with no room for a burst, a slow batch or a failure.
 
-Headroom fixes the first problem. The book AI Systems Performance Engineering, Chapter 16, gives the rule of targeting about 90 percent of peak throughput. It also recommends extra replicas that sit mostly idle as a buffer, and warns that autoscaling takes time to provision new resources. Apply the 90 percent and the arithmetic changes: 5.68 x 0.9 equals 5.11, and 40 / 5.11 equals 7.83, which rounds up to 8.
+Headroom fixes the first problem. AI Systems Performance Engineering, Chapter 16, gives the rule of targeting about 90 percent of peak throughput. It also recommends extra replicas that sit mostly idle as a buffer, and warns that autoscaling takes time to provision new resources. Apply the 90 percent and the arithmetic changes: 5.68 x 0.9 equals 5.11, and 40 / 5.11 equals 7.83, which rounds up to 8.
 
 N+1 fixes the second problem. The plan records that the public Nebius chat-app case study mentions X+1 redundancy, and that is a vendor source, not documentation of the exact policy. Adding one spare replica gives 9 GPUs. If one fails, the other eight still carry the peak.
 
@@ -221,7 +221,7 @@ GPUs     = replicas x GPUs_per_replica
 
 When a replica spans several GPUs, spares are whole replicas. For Qwen2.5-72B on four H100s per replica, the estimator gives a ceiling of 2.61 requests per second at batch 32. At 10 requests per second you need ceil(10 / (2.61 x 0.9)) equals 5 replicas plus 1 spare, which is 6 replicas and 24 GPUs. The spare alone is four GPUs. Whether a design with fewer, larger replicas is better depends on the failure domain you want, and 20.16 covers it.
 
-The book AI Factory, in Chapter 9, makes the general cloud argument that capacity should follow load instead of being bought for the peak. That argument is why spare capacity is a deliberate, priced choice.
+AI Factory, in Chapter 9, makes the general cloud argument that capacity should follow load instead of being bought for the peak. That argument is why spare capacity is a deliberate, priced choice.
 
 Nebius has not published its autoscaling signals, thresholds or spare policy. A reasonable design is to plan to the peak with this formula and let autoscaling handle the slow daily curve. That is my reasoning, not Nebius practice.
 
@@ -235,7 +235,7 @@ The finance partner asks what you charge per million tokens and whether you are 
 cost per million tokens = price per GPU-hour x GPUs / (tokens per second x 3600 x utilisation) x 1e6
 ```
 
-Price comes from a source. The public Nebius pricing page, fetched on 2026-11-09, lists on-demand rates per GPU-hour: H100 at $4.50, H200 at $5.40, B200 at $8.50, and L40S with an Intel CPU from $1.55. The book Hands-On LLM Serving and Optimization, Chapter 5, prints a spring 2026 table with different figures for other clouds, including about $6.2 for an H100. Prices move, so state the date.
+Price comes from a source. The public Nebius pricing page, fetched on 2026-11-09, lists on-demand rates per GPU-hour: H100 at $4.50, H200 at $5.40, B200 at $8.50, and L40S with an Intel CPU from $1.55. Hands-On LLM Serving and Optimization, Chapter 5, prints a spring 2026 table with different figures for other clouds, including about $6.2 for an H100. Prices move, so state the date.
 
 Using $4.50 and the 2,840 output tokens per second from before, at full utilisation:
 
@@ -255,7 +255,7 @@ Quote the cost per million output tokens with its utilisation, and say that low 
 
 A dashboard shows every GPU at 95 percent and yet customers complain. High utilisation can hide wasted work: requests that finished too late, retries, and preempted requests whose cache was thrown away.
 
-The book AI Systems Performance Engineering, Chapter 16, defines goodput as useful utilisation, and cautions against pushing for full use if the latency objective is broken. Chapter 17 of the same book makes it concrete with a DistServe example. The objective is a 0.4 second 90th-percentile time to first token and a 0.04 second time per output token. A colocated GPU reaches about 3 requests per second within the first bound and 1.6 within the second. Goodput is the lower of the two, 1.6, because both bounds must hold. A split of two prefill GPUs and one decode GPU reaches 10 requests per second across three GPUs, or 3.3 per GPU.
+AI Systems Performance Engineering, Chapter 16, defines goodput as useful utilisation, and cautions against pushing for full use if the latency objective is broken. Chapter 17 of the same book makes it concrete with a DistServe example. The objective is a 0.4 second 90th-percentile time to first token and a 0.04 second time per output token. A colocated GPU reaches about 3 requests per second within the first bound and 1.6 within the second. Goodput is the lower of the two, 1.6, because both bounds must hold. A split of two prefill GPUs and one decode GPU reaches 10 requests per second across three GPUs, or 3.3 per GPU.
 
 The takeaway for your estimates: count only requests that meet the objective. If 5 percent of requests miss it, goodput is 95 percent of the throughput, and the cost of a good token rises by about 5 percent. The estimator has a one-line function for this.
 
@@ -290,14 +290,14 @@ The fifth step is a comparison with a measured value. When the benchmark disagre
 | DGX B200 total memory and bandwidth | 1,440 GB and 64 TB/s across 8 GPUs, so 180 GB and 8 TB/s each by division | NVIDIA DGX B200 page, same date, per-GPU by my division |
 | H100 SXM BF16 Tensor Core | 1,979 TFLOPS with sparsity, so about 989.5 dense | NVIDIA H100 page, dense is my halving |
 | NVLink and PCIe on H100 SXM | 900 GB/s and 128 GB/s | NVIDIA H100 page |
-| Bytes per parameter | FP32 4, BF16 2, FP8 1 | Hands-On LLM Serving and Optimization, Chapter 5, Table 5-6 |
+| Bytes per parameter | FP32 4, BF16 2, FP8 1 | Hands-On LLM Serving and Optimization, Chapter 5 |
 | Weights shortcut | billions of parameters x 2 equals GB at half precision | LLMs in Production, Chapter 3 |
 | KV per token, Llama-2-7B BF16 | 524,288 bytes | Hands-On LLM Serving and Optimization, Chapter 5 |
 | KV per token, Qwen3-8B BF16 | 147,456 bytes | Computed from the Qwen3-8B model card and `config.json` |
 | KV per token, Qwen2.5-72B BF16 | 327,680 bytes | Computed from the Qwen2.5-72B model card and `config.json` |
 | L40S ridge point | about 419 FLOP/B | Hands-On LLM Serving and Optimization, Chapter 5 |
 | H100 ridge point | about 295 FLOP/B | Computed from the two H100 page figures above |
-| Decode arithmetic intensity at batch one | about 1 FLOP/B | Hands-On LLM Serving and Optimization, Chapter 5, Table 5-10 |
+| Decode arithmetic intensity at batch one | about 1 FLOP/B | Hands-On LLM Serving and Optimization, Chapter 5 |
 | Headroom target | about 90 percent of peak throughput | AI Systems Performance Engineering, Chapter 16 |
 | Example latency objective | 0.4 s time to first token, 0.04 s per output token, both at p90 | AI Systems Performance Engineering, Chapter 17 |
 | Nebius on-demand H100, H200, B200 | $4.50, $5.40, $8.50 per GPU-hour | nebius.com/prices, fetched 2026-11-09 |

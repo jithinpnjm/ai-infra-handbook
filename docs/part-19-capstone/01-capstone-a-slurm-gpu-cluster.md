@@ -432,7 +432,7 @@ The runbook that carries all of this has a fixed anatomy: symptom, impact, mitig
 
 ### Game days
 
-The last day-2 practice is the game day, taken from the incident-response material in Volume 19. Pick a hypothesis, such as "a Xid 79 on one node should drain that node within five minutes and requeue its jobs." Inject the fault in a controlled window. Watch the alerts fire, the drain happen, and the SLO hold. Record every gap between what happened and what the runbook promised. The gaps are the next quarter's runbook work, found on a Tuesday afternoon instead of at 2 a.m.
+The last day-2 practice is the game day. Pick a hypothesis, such as "a Xid 79 on one node should drain that node within five minutes and requeue its jobs." Inject the fault in a controlled window. Watch the alerts fire, the drain happen, and the SLO hold. Record every gap between what happened and what the runbook promised. The gaps are the next quarter's runbook work, found on a Tuesday afternoon instead of at 2 a.m.
 
 **Decision rule:** upgrade in the order `slurmdbd`, `slurmctld`, `slurmd`, clients, in per-node waves with backups first and a three-part smoke test after; run incidents with separate IC, SME, and comms roles.
 

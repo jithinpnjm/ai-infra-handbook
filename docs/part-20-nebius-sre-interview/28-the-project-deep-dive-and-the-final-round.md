@@ -216,7 +216,7 @@ The trade-off sentence has four parts. Given this constraint, I chose A over B, 
 
 The mistake story has five parts. What you did, what it caused with a number, how you found out, what you changed, and what you now do differently. Keep blame out of it. Systems Performance, chapter 2, names a blame-someone-else anti-method. You pick a component you do not own, say the problem is there and hand it off. An interviewer who hears "it was the network team's problem" will hear that anti-method.
 
-Two other traps matter. One is false certainty. If you do not know why something worked, say "I do not know why it worked, my best explanation is this, and here is how I would test it." The book's scientific method, a question then a hypothesis then a prediction then a test, gives you the vocabulary. The second is the streetlight habit. Systems Performance describes it as picking whichever tool is familiar and hoping something obvious shows up. If your failure story is "I tried a few things and it fixed itself", admit it is weak and say what method you would use now.
+Two other traps matter. One is false certainty. If you do not know why something worked, say "I do not know why it worked, my best explanation is this, and here is how I would test it." The scientific method, a question then a hypothesis then a prediction then a test, gives you the vocabulary. The second is the streetlight habit. Systems Performance describes it as picking whichever tool is familiar and hoping something obvious shows up. If your failure story is "I tried a few things and it fixed itself", admit it is weak and say what method you would use now.
 
 Say "we" for what the team did and "I" for what you did. Interviewers listen for that boundary.
 
@@ -343,15 +343,15 @@ The team leader asks, "What are your expectations, and when could you start?" An
 
 ## Hands-on lab
 
-This lab runs on a laptop with Python 3 and pytest. I ran steps 1 to 4 on a Mac with Python 3.12.7 and pytest 8.3.5. Steps 5 and 6 are practice you do yourself.
+This lab runs on a laptop with Python 3 and pytest. Steps 1 to 4 were run on a Mac with Python 3.12.7 and pytest 8.3.5. Steps 5 and 6 are practice you do yourself.
 
 1. Copy the template. Run `cp code/part20/c28_dossier_template.md dossier.md`. Expected result: a new file with `[YOUR ...]` markers in it.
 
-2. Run the checker on the blank copy. Run `python3 -I code/part20/c28_dossier_check.py dossier.md`. Expected result, which I ran: many `placeholder` lines, several `empty_section` and `entry_incomplete` lines, and a summary that ends with counts such as `placeholder: 58`. The exit code is 1.
+2. Run the checker on the blank copy. Run `python3 -I code/part20/c28_dossier_check.py dossier.md`. Expected result: many `placeholder` lines, several `empty_section` and `entry_incomplete` lines, and a summary that ends with counts such as `placeholder: 58`. The exit code is 1.
 
-3. Half-fill one decision. Replace the first decision with a chosen option, one alternative and the reason "it made alerting much faster to ship". Run the checker again. Expected result, which I ran: a `decision_no_alternatives` line, an `entry_incomplete` line for the missing cost accepted, and an `unquantified` line quoting "much faster".
+3. Half-fill one decision. Replace the first decision with a chosen option, one alternative and the reason "it made alerting much faster to ship". Run the checker again. Expected result: a `decision_no_alternatives` line, an `entry_incomplete` line for the missing cost accepted, and an `unquantified` line quoting "much faster".
 
-4. Run the tests. Run `python3 -m pytest code/part20/test_c28_dossier_check.py -q`. Expected result, which I ran: 11 passed.
+4. Run the tests. Run `python3 -m pytest code/part20/test_c28_dossier_check.py -q`. Expected result: 11 passed.
 
 5. Fill your real dossier until the checker prints `summary: clean`. Use `--json` if you want to count findings. Expected result: exit code 0. A clean checker means the structure is complete. It does not mean the answers are good, so go on to step 6.
 
@@ -619,7 +619,7 @@ What you did, what it caused with a number, how you found out, what you changed,
 
 <details><summary>Answer</summary>
 
-The blame-someone-else anti-method. You choose a component you do not own, say the problem is there and redirect it. The book says to investigate instead.
+The blame-someone-else anti-method. You choose a component you do not own, say the problem is there and redirect it. Investigate instead.
 
 </details>
 

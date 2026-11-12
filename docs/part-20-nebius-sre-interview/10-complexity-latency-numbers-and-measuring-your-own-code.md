@@ -16,7 +16,7 @@ lab_venue: "Laptop / Docker"
 
 You finish a coding answer and the interviewer asks, "What is the complexity, and would it survive ten million items?" This chapter serves the coding round and feeds the design round, where the plan lists "estimate performance and compute".
 
-One secondary source says candidates should know "Numbers Every Programmer Should Know". I could not verify that Nebius asks. Treat the table as estimation training, not a certain quiz.
+One secondary source says candidates should know "Numbers Every Programmer Should Know". Whether Nebius asks it is not verified. Treat the table as estimation training, not a certain quiz.
 
 A realistic question in the interviewer's voice: "Your function checks each of 10 million log lines against a list of 5,000 blocked IPs. Is that fine? Then tell me how you would measure it."
 
@@ -28,7 +28,7 @@ You write `if ip in blocked` inside a loop and say "that is O(n)". The interview
 
 Start every complexity answer by naming the variables. Here there are two: the number of log lines, call it n, and the number of blocked addresses, call it m. A list scan costs O(m) per line, so the loop costs O(n times m). Make the blocked list a set and the cost per line is O(1) on average, so the loop costs O(n). Say "on average" because a hash table can degrade when many keys collide.
 
-Amortised cost is the other phrase that gets probed. Appending to a Python list is usually cheap, but sometimes the list must grow and copy its items. Averaged over many appends the cost per append is constant. I ran a check on this machine. Appending 64 items changed the list's allocated size only 8 times, so most appends did no copying. 
+Amortised cost is the other phrase that gets probed. Appending to a Python list is usually cheap, but sometimes the list must grow and copy its items. Averaged over many appends the cost per append is constant. A check on one machine shows it. Appending 64 items changed the list's allocated size only 8 times, so most appends did no copying. 
 
 Name worst case against average case too. Fluent Python, chapter 3, explains that a dict or set derives an index from the key's hash. Chapter 2 says Python's sort is Timsort, which adapts to how ordered the data is, so sorted input sorts faster.
 
@@ -36,7 +36,7 @@ Name worst case against average case too. Fluent Python, chapter 3, explains tha
 
 ### 2. The hidden costs of Python operations, measured
 
-You review code that looks like O(n) and runs like O(n squared). Python hides the cost behind a short operator. The table below comes from `c10_complexity_bench.py`, which I ran on an Apple M3 laptop with 24 GB of memory, macOS, and CPython 3.12.7. Times are the best of several repeats. Your numbers will differ, and the ratios matter more than the digits.
+You review code that looks like O(n) and runs like O(n squared). Python hides the cost behind a short operator. The table below comes from `c10_complexity_bench.py`, which ran on an Apple M3 laptop with 24 GB of memory, macOS, and CPython 3.12.7. Times are the best of several repeats. Your numbers will differ, and the ratios matter more than the digits.
 
 | Operation | Small size | Large size | What it shows |
 |---|---|---|---|
@@ -50,7 +50,7 @@ You review code that looks like O(n) and runs like O(n squared). Python hides th
 
 The official Python documentation page "Time complexity of built-in types" lists `list.pop(0)` and `list.insert(0, x)` as O(n), `x in list` as O(n), set and dict lookups as O(1) on average and O(n) in the worst case, and `list.append` as O(1) amortised. The collections page gives deque appends and pops at either end as O(1). Fluent Python, chapter 2, says inserting at the head of a list is costly because the whole list shifts in memory. It recommends `collections.deque` for both ends, and warns that removing from the middle of a deque is not fast.
 
-The string result needs care. The textbook says `+=` on strings is quadratic, and my first run showed no such thing. CPython can resize a string in place when nothing else refers to it. That is an implementation detail, so do not rely on it. When I kept a second reference to the string, the optimisation was defeated, and four times the data cost about 17 times the time. Say "it is quadratic in general, CPython sometimes hides it, so I use join".
+The string result needs care. The textbook says `+=` on strings is quadratic, and the first run showed no such thing. CPython can resize a string in place when nothing else refers to it. That is an implementation detail, so do not rely on it. When a second reference was kept to the string, the optimisation was defeated, and four times the data cost about 17 times the time. Say "it is quadratic in general, CPython sometimes hides it, so I use join".
 
 For the opening question the membership gap matters most. At 100,000 items a list scan took 330 microseconds and a set lookup 0.015, a factor of about 22,000.
 
@@ -67,7 +67,7 @@ The KV cache in chapter 20.12 is the same trade in serving: GPU memory spent so 
 
 An interviewer says "how long does a network call take compared with reading memory?" You need a ruler in your head. Here are three printed sources. Each has an age, and hardware has changed since all of them, so use the table for ratios and orders of magnitude.
 
-The first is Jeff Dean's keynote slides "Designs, Lessons and Advice from Building Large Distributed Systems", given at LADIS 2009. The file's creation date is October 2009. Its slide "Numbers Everyone Should Know" is the table below. The second is an undated Dean slide set, "Software Engineering Advice from Building Large-Scale Distributed Systems", with older values for a few rows. The third is Peter Norvig's page "Teach Yourself Programming in Ten Years", which lists a similar table without the datacenter round trip. I fetched all three on 2026-11-09.
+The first is Jeff Dean's keynote slides "Designs, Lessons and Advice from Building Large Distributed Systems", given at LADIS 2009. The file's creation date is October 2009. Its slide "Numbers Everyone Should Know" is the table below. The second is an undated Dean slide set, "Software Engineering Advice from Building Large-Scale Distributed Systems", with older values for a few rows. The third is Peter Norvig's page "Teach Yourself Programming in Ten Years", which lists a similar table without the datacenter round trip.
 
 | Operation | Time in 2009 slide | Time as a ratio to a memory read |
 |---|---|---|
@@ -86,9 +86,9 @@ The first is Jeff Dean's keynote slides "Designs, Lessons and Advice from Buildi
 
 The older Stanford slides list mutex lock/unlock at 100 ns and reading 1 MB from disk at 30,000,000 ns. Norvig's table gives a disk seek of 8,000,000 ns. The digits move between versions and the orders of magnitude do not.
 
-A newer, book-based ruler comes from Systems Performance, chapter 2, Table 2.2. It gives main memory access at 100 ns, a solid-state disk I/O at 10 to 100 microseconds, a rotational disk I/O at 1 to 10 ms, and an internet round trip from San Francisco to New York at 40 ms. The book scales this to human time: if one CPU cycle took one second, a memory access would take about 6 minutes.
+A newer ruler comes from Systems Performance, chapter 2, in its table of latency scales. It gives main memory access at 100 ns, a solid-state disk I/O at 10 to 100 microseconds, a rotational disk I/O at 1 to 10 ms, and an internet round trip from San Francisco to New York at 40 ms. It scales this to human time: if one CPU cycle took one second, a memory access would take about 6 minutes.
 
-For inference numbers, such as KV bytes per token or GPU memory bandwidth, use the table in chapter 20.12 and do not copy it from here. The 500 microsecond figure is from 2009. I did not measure a round trip on current cloud hardware, and Nebius has not published its network latencies. Say "half a millisecond is the 2009 figure, and today I would measure it".
+For inference numbers, such as KV bytes per token or GPU memory bandwidth, use the table in chapter 20.12 and do not copy it from here. The 500 microsecond figure is from 2009. A round trip on current cloud hardware was not measured, and Nebius has not published its network latencies. Say "half a millisecond is the 2009 figure, and today I would measure it".
 
 **Remember the rungs: nanoseconds for cache and memory, microseconds for flash, milliseconds for a disk or datacenter hop, tens of milliseconds for a continent.** Say the year when you quote a figure.
 
@@ -100,7 +100,7 @@ The same division shows why chatty designs fail. Twenty sequential calls cost 20
 
 The second piece of arithmetic is what a nine in an availability target means in requests. At 99.9 percent, one request in a thousand may fail. Out of one million requests that is 1,000 failures. Over a 24-hour day, the same target allows 86.4 seconds of total failure. Say both forms. Chapter 20.19 turns this into error budgets.
 
-The third piece is queueing. Systems Performance, chapter 2, gives the M/D/1 formula for mean response time, r equals s times two minus u, divided by two times one minus u. Here s is service time and u is utilisation. I computed the results with `c10_latency_math.py`. At 50 percent busy the response time is 1.5 times the service time. At 80 percent it is 3 times, at 90 percent 5.5 times, and at 95 percent 10.5 times. The book summarises that beyond 60 percent utilisation the average response time doubles. The model is simplified, so treat it as a shape. AI Systems Performance Engineering, chapter 16, says p95 latency can rise steeply as load nears a limit.
+The third piece is queueing. Systems Performance, chapter 2, gives the M/D/1 formula for mean response time, r equals s times two minus u, divided by two times one minus u. Here s is service time and u is utilisation. The script `c10_latency_math.py` computes the results. At 50 percent busy the response time is 1.5 times the service time. At 80 percent it is 3 times, at 90 percent 5.5 times, and at 95 percent 10.5 times. Systems Performance summarises that beyond 60 percent utilisation the average response time doubles. The model is simplified, so treat it as a shape. AI Systems Performance Engineering, chapter 16, says p95 latency can rise steeply as load nears a limit.
 
 ```python
 # code/part20/c10_latency_math.py
@@ -269,7 +269,7 @@ if __name__ == "__main__":
         print(f"{n:>6}  {p50:7.1f}  {p99:7.1f}")
 ```
 
-I ran it. The output was:
+Running it gives:
 
 ```text
 closed-form single-call p99: 40.4 ms
@@ -289,7 +289,7 @@ The paper describes the defences. A hedged request sends the same request to a s
 
 A loop reads the same array twice, once in order and once in a random order. The work is identical and the second loop is slower. The reason is the memory hierarchy. Systems Performance, chapter 6, says a CPU cache line, the unit stored and transferred together, is typically 64 bytes on x86. Reading one value pulls in its neighbours. A sequential walk uses the neighbours and a random walk wastes them.
 
-I measured this with `c10_locality.py`. It sums 5 million 8-byte values from an `array`, first in index order and then in a shuffled order. On this machine the ordered pass took 0.157 seconds and the shuffled pass took 0.622 seconds, a ratio of about 4. I did not isolate how much of the gap is CPU cache, so I claim only that scattered access costs time.
+The script `c10_locality.py` measures this. It sums 5 million 8-byte values from an `array`, first in index order and then in a shuffled order. On this machine the ordered pass took 0.157 seconds and the shuffled pass took 0.622 seconds, a ratio of about 4. The gap was not isolated to CPU cache, so the claim is only that scattered access costs time.
 
 Systems Performance, chapter 2, gives the cache formula: runtime is hit rate times hit latency plus miss rate times miss latency. It notes that going from 98 to 99 percent hits matters far more than 10 to 11 percent, because a miss is so much slower. The same reasoning applies to a KV cache, a page cache and a CDN. In Python remember that a list of objects stores pointers, so even a sequential walk touches objects wherever they live.
 
@@ -395,7 +395,7 @@ if __name__ == "__main__":
     print("append growth (length, bytes):", growth_points())
 ```
 
-For finding where time goes in a whole program, use `cProfile`. The documentation describes it as a deterministic profiler, a C extension with reasonable overhead. It reports for each function the call count, `tottime` for time inside the function itself, and `cumtime` including callees. I ran `c10_profile_demo.py` on 20,000 items. The slow version removes duplicates with a list scan:
+For finding where time goes in a whole program, use `cProfile`. The documentation describes it as a deterministic profiler, a C extension with reasonable overhead. It reports for each function the call count, `tottime` for time inside the function itself, and `cumtime` including callees. Running `c10_profile_demo.py` on 20,000 items shows it. The slow version removes duplicates with a list scan:
 
 ```text
          4002 function calls in 0.133 seconds
@@ -422,7 +422,7 @@ Four things separate a textbook figure from your measurement: newer hardware, wh
 
 The interviewer says, "Ten million items, one second, yes or no?" Do not answer from feeling. Compute a budget. One second divided by 10 million items leaves 100 ns per item. Then estimate the work per item and compare.
 
-A pure Python loop that does one addition costs tens of nanoseconds per item on this machine. I measured it with `c10_loop_budget.py` on 10 million items:
+A pure Python loop that does one addition costs tens of nanoseconds per item on this machine. `c10_loop_budget.py` measures it on 10 million items:
 
 | Loop body | Cost per item | Time for 10 million |
 |---|---|---|
@@ -432,7 +432,7 @@ A pure Python loop that does one addition costs tens of nanoseconds per item on 
 
 So a simple loop fits in a second here, and a loop with a function call fits with a margin of about two. One network call per item is out of the question: at 500 microseconds each, 10 million calls take 5,000 seconds, or about 83 minutes.
 
-Now return to the opening question. Ten million lines against a list of 5,000 addresses cost, in the worst case, 50 billion comparisons. At about 3 ns each that is 150 seconds, on the order of minutes. I derived the 3 ns from my measured list scan, which was 3.2 us for 1,000 items, and it is a rough figure. With a set the work is 10 million lookups at 15 to 20 ns each, so under a second of lookups. State both, and then say you would measure with `timeit` on a sample before you commit.
+Now return to the opening question. Ten million lines against a list of 5,000 addresses cost, in the worst case, 50 billion comparisons. At about 3 ns each that is 150 seconds, on the order of minutes. The 3 ns comes from a measured list scan, which was 3.2 us for 1,000 items, and it is a rough figure. With a set the work is 10 million lookups at 15 to 20 ns each, so under a second of lookups. State both, and then say you would measure with `timeit` on a sample before you commit.
 
 ```python
 # code/part20/c10_loop_budget.py
@@ -507,7 +507,7 @@ Answer. Per-shard dashboards hide the effect. Measure the gateway's own latency,
 
 ## Hands-on lab
 
-I ran every step on the Apple M3 machine named above. 
+Every step ran on the Apple M3 machine named above.
 
 1. Print the latency arithmetic.
 
@@ -556,7 +556,7 @@ Expected result: `dedupe_slow` takes nearly all the time, and `dedupe_fast` is f
 python3 -m pytest code/part20/test_c10_latency_math.py code/part20/test_c10_fanout_sim.py code/part20/test_c10_complexity_bench.py -q
 ```
 
-Expected result: 23 passed. I ran them several times with the same result. On a very noisy machine rerun before you suspect the code.
+Expected result: 23 passed. They ran several times with the same result. On a very noisy machine rerun before you suspect the code.
 
 ```python
 # code/part20/test_c10_complexity_bench.py

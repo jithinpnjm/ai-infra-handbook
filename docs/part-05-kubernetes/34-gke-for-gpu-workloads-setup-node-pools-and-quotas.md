@@ -96,7 +96,7 @@ gcloud container clusters create "$CLUSTER" \
 
 The help output for `gcloud container clusters create` (584.0.0) confirms these flags. `--release-channel` sets the upgrade channel. `--workload-pool` turns on Workload Identity. `--enable-dataplane-v2` selects the Cilium-based dataplane, covered in 5.14 and 5.15. `--enable-ip-alias` and `--enable-managed-prometheus` are also present. The `--monitoring` flag accepts a component list that includes `DCGM` and `JOBSET`, and the help states that DCGM requires Google Managed Prometheus. Add `--enable-multi-networking` if you will attach additional NICs to Pods, as described in section 8. Add `--enable-private-nodes` for private clusters, and review the defaults for `--enable-shielded-nodes`.
 
-### The minimal GKE path from the book
+### The minimal GKE path
 
 Before you add GPUs, start with the plain version. Google Kubernetes Engine (GKE) is Google's hosted Kubernetes service. You need a Google Cloud Platform account with billing enabled and the `gcloud` tool installed. Set a default zone first, so that later commands know where to go:
 
@@ -132,7 +132,7 @@ gcloud container node-pools create h100-pool \
 
 The help output confirms the flags in this command. `--accelerator` takes `type`, `count`, `gpu-driver-version` (`default`, `latest`, `disabled`; `latest` only on Container-Optimized OS), `gpu-partition-size`, `gpu-sharing-strategy` and `max-shared-clients-per-gpu`. `--placement-type` accepts `UNSPECIFIED` or `COMPACT`, and `--placement-policy` takes a named resource policy. `--reservation-affinity` accepts `any`, `none`, `specific` and `any-reservation-then-fail`, and it works with `--reservation`. The help also lists `--spot`, `--flex-start`, `--max-run-duration`, and `--additional-node-network`, which can repeat up to 7 times. Further flags are `--accelerator-network-profile=auto`, `--enable-gvnic`, `--enable-image-streaming`, `--node-taints`, `--node-labels`, `--node-locations` and `--local-nvme-ssd-block`. The machine and accelerator type strings in the example, `a3-highgpu-8g` and `nvidia-h100-80gb`, come from memory. Confirm them with the listing commands in section 2.
 
-What happens after creation is documented behaviour, but I have not verified it here. GKE installs a GPU driver DaemonSet automatically when `gpu-driver-version` is not `disabled`. The node then advertises `nvidia.com/gpu` through the GKE device plugin. The help text says that for GKE 1.30.1 and later the default is to install the default driver version, and for earlier versions the default was `disabled`.
+What happens after creation is documented behaviour. GKE installs a GPU driver DaemonSet automatically when `gpu-driver-version` is not `disabled`. The node then advertises `nvidia.com/gpu` through the GKE device plugin. The help text says that for GKE 1.30.1 and later the default is to install the default driver version, and for earlier versions the default was `disabled`.
 
 Nodes also get labels such as `cloud.google.com/gke-accelerator=<type>`. Run `kubectl get node -L cloud.google.com/gke-accelerator` to see them. GKE normally taints GPU nodes so that only Pods requesting GPUs land there, using `nvidia.com/gpu=present:NoSchedule`. A built-in admission step adds the matching toleration to Pods that request `nvidia.com/gpu`. Confirm this on your cluster with `kubectl describe node`. If you add your own taints, for example to isolate a team, you must add tolerations explicitly.
 
@@ -250,7 +250,7 @@ The book *Generative AI on Kubernetes*, Chapter 3 (*Kubernetes and GPUs*), by Ro
 2. **MIG `single` vs. `mixed` strategy.** The strategy decides how partitions are advertised.
    - **`nvidia.com/mig.strategy=single`:** Every GPU on the node is partitioned the same way. For example, two A100 GPUs each split into seven `1g.5gb` slices, so the node advertises **`nvidia.com/gpu: 14`**.
    - **`nvidia.com/mig.strategy=mixed`:** Different MIG slice sizes coexist on the same node. Each size gets its own extended resource name: **`nvidia.com/mig-1g.5gb`**, **`nvidia.com/mig-2g.10gb`**, and **`nvidia.com/mig-3g.20gb`**.
-3. **Time-slicing with `renameByDefault: true`** (Chapter 3, Example 3-12). In the GPU Operator's `gpu-sharing-config` ConfigMap, setting `renameByDefault: true` with `replicas: 8` advertises time-sliced slots as **`nvidia.com/gpu.shared: 8`**. It also appends `-SHARED` to `nvidia.com/gpu.product`. Pods therefore have to opt into shared GPUs. Otherwise a Pod that requests a whole `nvidia.com/gpu` could land on them by accident.
+3. **Time-slicing with `renameByDefault: true`** (*Generative AI on Kubernetes*, Chapter 3). In the GPU Operator's `gpu-sharing-config` ConfigMap, setting `renameByDefault: true` with `replicas: 8` advertises time-sliced slots as **`nvidia.com/gpu.shared: 8`**. It also appends `-SHARED` to `nvidia.com/gpu.product`. Pods therefore have to opt into shared GPUs. Otherwise a Pod that requests a whole `nvidia.com/gpu` could land on them by accident.
 4. **Kubernetes Dynamic Resource Allocation (DRA)** (`resource.k8s.io/v1beta1`, Chapter 3, Examples 3-8 and 3-9). Traditional device plugins expose only integer counts, such as `nvidia.com/gpu: 1`. They have no native way to express a minimum VRAM such as `memory >= 40Gi`, a compute capability, or fractional sharing inside the request itself. DRA replaces those static counters with `DeviceClass`, **`ResourceClaimTemplate`**, and `ResourceClaim`, which you reference in `Pod.spec.resourceClaims` and `Container.resources.claims`. A Pod can then request a `DeviceClass` such as `gpu.nvidia.com`, filtered by CEL attributes.
 
 Choose the sharing method by how strictly its tenants must be isolated. Then verify the MIG profile names for your GPU before you write the node pool.
@@ -334,7 +334,7 @@ resource "google_container_node_pool" "h100" {
 }
 ```
 
-The argument names come from the Google provider as I remember it, so validate them with `terraform validate` against your provider version. Pin your module to a version. Manage the cluster and the GPU pools in separate states, or at least in separate modules. Set `lifecycle.prevent_destroy` on anything that holds state. Part 4 covers Terraform structure.
+The argument names may differ between Google provider versions, so validate them with `terraform validate` against your provider version. Pin your module to a version. Manage the cluster and the GPU pools in separate states, or at least in separate modules. Set `lifecycle.prevent_destroy` on anything that holds state. Part 4 covers Terraform structure.
 
 ## 12. Failure modes and troubleshooting
 
@@ -362,7 +362,7 @@ Run the self-checking Python lab locally before you touch any cloud project. It 
 python3 code/part05/gke_gpu_pool_planner_lab.py
 ```
 
-Next, move to a GCP lab project with a budget alert configured. Every live cloud step below is `untested here`, and each one incurs GPU billing. Work through these exercises in order.
+Next, move to a GCP lab project with a budget alert configured. The live cloud steps below were not run on live hardware, and each one incurs GPU billing. Work through these exercises in order.
 
 1. Create a project budget alert first.
 2. Create a small Standard cluster (`e2-standard-4`, 1 node), then a single-GPU pool with a cheap GPU, such as L4 or T4, whichever your quota allows. Record the exact commands and errors.
@@ -511,7 +511,7 @@ For multi-node training, request the entire node, `nvidia.com/gpu: 8` plus match
 <summary>13. In *Generative AI on Kubernetes* Chapter 3, why is there a difference between an advertised `80 GB` GPU and ~`74.5 GiB` in Kubernetes, and how do you select GPUs with `> 40 GB` of VRAM using GFD labels?</summary>
 
 - **Decimal `GB` vs. binary `GiB`:** Hardware vendors market GPU HBM in base-10 gigabytes, so 80 × 10^9 bytes is 80 GB. Kubernetes memory quantities use base-2 gibibytes, so the same memory is `80 * 10^9 / 2^30 ≈ 74.5 GiB`, and `40 GB ≈ 37.25 GiB`.
-- **Selecting GPUs by VRAM with GFD labels (Generative AI on Kubernetes, Chapter 3, Example 3-4):** GPU Feature Discovery (GFD) labels each node with `nvidia.com/gpu.memory` in MiB, such as `40536` or `81920`. To require more than 40 GB of VRAM, use a `nodeAffinity` `matchExpressions` rule:
+- **Selecting GPUs by VRAM with GFD labels (*Generative AI on Kubernetes*, Chapter 3):** GPU Feature Discovery (GFD) labels each node with `nvidia.com/gpu.memory` in MiB, such as `40536` or `81920`. To require more than 40 GB of VRAM, use a `nodeAffinity` `matchExpressions` rule:
   ```yaml
   key: nvidia.com/gpu.memory
   operator: Gt

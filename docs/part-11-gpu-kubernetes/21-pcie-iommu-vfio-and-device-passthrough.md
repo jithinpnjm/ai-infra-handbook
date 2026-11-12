@@ -42,7 +42,7 @@ Motherboard, Passthrough, and Virtualization Summary Metrics:
 - PCIe Gen4 x16 unidirectional bandwidth: ~32 GB/s
 - Cross-NUMA (SYS) inter-socket UPI / xGMI penalty: 50% throughput drop (2x training runtime)
 - Hypervisor I/O path (Qumranet 2006 benchmark): 5 steps in KVM vs 10 steps in Xen without PV
-- Sources: volume-07/chapter-02, volume-18/chapter-07, Systems Performance 2nd Ed. Ch. 11
+- Source: Systems Performance 2nd Ed. Ch. 11
 ```
 
 Two gaps stand out. The bus is far narrower than HBM3, and a cross-NUMA path loses about half its throughput.
@@ -94,7 +94,7 @@ Only `PIX` and `PXB` keep Peer-to-Peer traffic off the CPU Root Complex. `SYS` i
 Keep these reference figures beside any topology report you audit.
 
 ```text
-Motherboard PCIe vs GPU Bandwidth Reference (volume-07/chapter-02):
+Motherboard PCIe vs GPU Bandwidth Reference:
 - PCIe Lanes per GPU or high-speed NIC: 16 lanes (x16)
 - PCIe Gen4 x16 (Ampere A100 generation): ~32 GB/s per direction
 - PCIe Gen5 x16 (Hopper H100 generation): ~64 GB/s per direction (2x Gen4)
@@ -128,7 +128,7 @@ VFIO then exposes an isolated group to user-space hypervisors, such as QEMU or C
 The example below shows one IOMMU group and the device node that VFIO creates from it.
 
 ```text
-IOMMU Group 42 and VFIO Viability Example (volume-18/chapter-07):
+IOMMU Group 42 and VFIO Viability Example:
 - GPU Endpoint BDF: 0000:4b:00.0 (Vendor:Device 10de:2330, host drivers: nvidia, nouveau)
 - Companion Audio Endpoint BDF: 0000:4b:00.1 (Vendor:Device 10de:1aef, host driver: snd_hda_intel)
 - Sysfs group path: /sys/kernel/iommu_groups/42/devices/
@@ -273,13 +273,13 @@ When a container stalls, check the cgroup counters before you blame the hardware
 Before you launch a distributed training job or bind a GPU to a VM, audit the host topology. Check how the GPU and the network card connect across PCIe switches and NUMA sockets. Then confirm that the motherboard IOMMU is active in the kernel ring buffer. These checks catch cross-socket wiring mistakes and missing BIOS virtualization settings before the workloads fail.
 
 ```bash
-# 1. Inspect GPU-to-NIC PCIe switch (PIX/PXB vs PHB/NODE/SYS) and NUMA affinity (untested here)
+# 1. Inspect GPU-to-NIC PCIe switch (PIX/PXB vs PHB/NODE/SYS) and NUMA affinity
 nvidia-smi topo -m
 
-# 2. Verify IOMMU (Intel VT-d / AMD-Vi) and DMAR tables are active in kernel dmesg (untested here)
+# 2. Verify IOMMU (Intel VT-d / AMD-Vi) and DMAR tables are active in kernel dmesg
 dmesg | grep -E -i "DMAR|IOMMU|AMD-Vi"
 
-# 3. List all IOMMU groups and the PCIe BDF endpoints inside each group (untested here)
+# 3. List all IOMMU groups and the PCIe BDF endpoints inside each group
 for g in $(find /sys/kernel/iommu_groups/* -maxdepth 0 -type d | sort -V); do
     echo "IOMMU Group ${g##*/}:"
     for d in "$g"/devices/*; do
@@ -295,7 +295,7 @@ The first command shows the topology codes, the second confirms the IOMMU, and t
 Preparing a host for GPU passthrough under KVM, KubeVirt or Kata Containers depends on clean IOMMU group isolation. Suppose the GPU, or one sibling endpoint in its group, still uses a host driver. Then VFIO initialization breaks. The commands below do four things in order. They load `vfio-pci`, unbind the GPU from the host driver, and bind it to `vfio-pci`. Last, they check that `/dev/vfio/<group_id>` is ready for the hypervisor.
 
 ```bash
-# Bind GPU (0000:4b:00.0, 10de:2330) to vfio-pci for VM passthrough (untested here)
+# Bind GPU (0000:4b:00.0, 10de:2330) to vfio-pci for VM passthrough
 sudo modprobe vfio-pci
 
 # Unbind from host nvidia driver if bound
@@ -317,10 +317,10 @@ After the binding, `lspci` should report `vfio-pci` as the driver in use, and `l
 Virtualized and containerized GPU workloads sometimes show latency spikes that nothing explains, especially under multi-tenant load. The host operator then has three things to check. The first is the KVM guest exit rate. The second is the host PID behind a container process. The third is the cgroup throttling counters. The commands below trace live KVM exits and map container guest PID 753 to host PID 4915.
 
 ```bash
-# 1. Live KVM VM-EXIT breakdown on a hypervisor host (SP 11.2.4, untested here)
+# 1. Live KVM VM-EXIT breakdown on a hypervisor host (SP 11.2.4)
 sudo perf kvm stat live
 
-# 2. Map a container guest PID (753) to its host PID (4915) and inspect CFS throttling (SP 11.3.4, untested here)
+# 2. Map a container guest PID (753) to its host PID (4915) and inspect CFS throttling (SP 11.3.4)
 awk '$1 == "NSpid:" && $3 == 753 { print $2 }' /proc/*/status
 ls -lh /proc/4915/ns/pid
 cat /sys/fs/cgroup/cpu,cpuacct/kubepods/burstable/pod*/cpu.stat
@@ -334,9 +334,9 @@ Consider how a single wrong setting in one of four places can cause a serious se
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. Tenant in bare-metal/SR-IOV cloud reads host management agent memory via custom NIC driver (`volume-18/chapter-07`)** | Penetration test loads a modified VF driver in the tenant OS and successfully DMA-reads physical RAM outside its allocation; `dmesg \| grep -i dmar` shows IOMMU is disabled. | **Missing IOMMU Hardware Firewall:** SR-IOV slices the NIC into VFs, but without **IOMMU (`Intel VT-d` / `AMD-Vi`)** enabled, VFs can issue unrestricted DMA requests across host physical RAM. | Enable VT-d / AMD-Vi in server BIOS and pass `intel_iommu=on` (or `amd_iommu=on`) on the kernel command line so the IOMMU blocks unauthorized DMA with a **DMAR fault**. |
+| **1. Tenant in bare-metal/SR-IOV cloud reads host management agent memory via custom NIC driver** | Penetration test loads a modified VF driver in the tenant OS and successfully DMA-reads physical RAM outside its allocation; `dmesg \| grep -i dmar` shows IOMMU is disabled. | **Missing IOMMU Hardware Firewall:** SR-IOV slices the NIC into VFs, but without **IOMMU (`Intel VT-d` / `AMD-Vi`)** enabled, VFs can issue unrestricted DMA requests across host physical RAM. | Enable VT-d / AMD-Vi in server BIOS and pass `intel_iommu=on` (or `amd_iommu=on`) on the kernel command line so the IOMMU blocks unauthorized DMA with a **DMAR fault**. |
 | **2. QEMU / KubeVirt fails to start GPU passthrough VM with `vfio: error, group 42 is not viable` (`Layer 2/3` VFIO)** | `virsh start` or KubeVirt `virt-launcher` fails with `group 42 is not viable, please ensure all devices within the iommu_group are bound to their vfio bus driver`. | **Incomplete IOMMU Group Binding:** A sibling PCIe endpoint in Group `42` (or a shared non-ACS PCIe bridge) is still bound to a host kernel driver (`snd_hda_intel` or `nvidia`). | Bind **every** non-bridge endpoint in `/sys/kernel/iommu_groups/42/devices/` to `vfio-pci` (or enable PCIe ACS appropriately for virtualization isolation when not using bare-metal GPUDirect P2P). |
-| **3. PyTorch distributed training on Node B runs `2x` slower (`50%` drop) than on identical Node A (`volume-07/chapter-02`)** | `nvidia-smi topo -m` on Node B shows the allocated GPUs (`GPU 2, 3` on NUMA 1) communicate with the single `400G` NIC (on NUMA 0) via **`SYS`**. | **Cross-NUMA (`SYS`) Inter-Socket Bottleneck:** Scheduler assigned GPUs on CPU 1 while the NIC is wired to CPU 0, forcing all RDMA traffic across the Intel UPI / AMD xGMI link. | Configure `kubelet` with `--topology-manager-policy=single-numa-node` and `--cpu-manager-policy=static` so pods are only admitted onto NUMA-aligned GPU + CPU + NIC tuples. |
+| **3. PyTorch distributed training on Node B runs `2x` slower (`50%` drop) than on identical Node A** | `nvidia-smi topo -m` on Node B shows the allocated GPUs (`GPU 2, 3` on NUMA 1) communicate with the single `400G` NIC (on NUMA 0) via **`SYS`**. | **Cross-NUMA (`SYS`) Inter-Socket Bottleneck:** Scheduler assigned GPUs on CPU 1 while the NIC is wired to CPU 0, forcing all RDMA traffic across the Intel UPI / AMD xGMI link. | Configure `kubelet` with `--topology-manager-policy=single-numa-node` and `--cpu-manager-policy=static` so pods are only admitted onto NUMA-aligned GPU + CPU + NIC tuples. |
 | **4. Containerized workload drops `10x` in CPU dataloader throughput when additional pods land on the node (`SP 11.3.3`)** | Dataloader ran fast during isolated staging tests (`100%` CPU via bursting), then slowed `10x` in production; `cpu.stat` shows `nr_throttled` or `nonvoluntary_ctxt_switches` climbing. | **CFS Share Bursting "Bait-and-Switch" (`SP 11.3.3`):** Container A (`10` shares of `100`) burst to `100%` on an idle host, then dropped to its `10%` guaranteed share once neighbors became busy. | Cap bursting with explicit **CFS bandwidth limits** (or use exclusive `cpuset` pinning via Kubernetes `Guaranteed` QoS + `static` CPU Manager) so staging benchmarks match production capacity. |
 | **5. Engineer inside an idle container runs `iostat -sxz 1` and sees `nvme0n1` at `2,578` tps and `100%` utilization (`SP 11.3.4` Table 11.6)** | User reports a mystery disk bottleneck inside their idle container because `iostat`, `free`, `vmstat`, `mpstat`, and `uptime` show heavy system load. | **Un-Namespaced `/proc` & `/sys` Host Statistics in Containers (`SP 11.3.4`):** Traditional Linux tools read host-wide kernel counters inside containers. | Inspect container-specific cgroup files (`cat /sys/fs/cgroup/blkio/blkio.throttle.io_serviced` and `io_service_bytes` across a `sleep 10` interval) or cgroup-aware monitoring (`cAdvisor`, `systemd-cgtop`). |
 
@@ -346,14 +346,14 @@ When a job breaks, you should match its symptom to a row first, then read the ro
 
 ### Venue and scope
 
-Checking PCIe topology policies, IOMMU DMAR faults and VFIO group viability before you touch production nodes can prevent costly outages. This lab runs locally with the Python 3 standard library. It uses `code/part11/pcie_iommu_vfio_passthrough.py` and `code/part11/pcie_iommu_vfio_passthrough_lab.py`. The host commands shown earlier are marked untested here, so you should treat them as unverified.
+Checking PCIe topology policies, IOMMU DMAR faults and VFIO group viability before you touch production nodes can prevent costly outages. This lab runs locally with the Python 3 standard library. It uses `code/part11/pcie_iommu_vfio_passthrough.py` and `code/part11/pcie_iommu_vfio_passthrough_lab.py`. The host commands shown earlier were not run on live hardware, so treat them as unverified.
 
 The matrix below names the numbers the lab verifies, grouped by source. Each line covers one set of figures.
 
 ```text
 Lab Verification Coverage Matrix:
-- PCIe Gen4/Gen5 & NUMA model (volume-07/chapter-02): 32 GB/s vs 64 GB/s vs 3,350 GB/s HBM3; PIX, PXB, PHB, NODE, SYS; single-numa-node policy
-- IOMMU & VFIO validator (volume-18/chapter-07): DMAR firewall, 0000:4b:00.0 + 0000:4b:00.1 in /dev/vfio/42
+- PCIe Gen4/Gen5 & NUMA model: 32 GB/s vs 64 GB/s vs 3,350 GB/s HBM3; PIX, PXB, PHB, NODE, SYS; single-numa-node policy
+- IOMMU & VFIO validator: DMAR firewall, 0000:4b:00.0 + 0000:4b:00.1 in /dev/vfio/42
 - Systems Performance Ch. 11 checks: m5.large to m5.24xlarge, Pinterest $54/hr -> $20/hr, Shopify 61% -> 19%, KVM 5 vs 10 steps, perf kvm stat live 2,421 samples, kvmexits.bt EPT_VIOLATION 7,686 samples, vmstat %st 97-99%, CFS share bursting 25% vs 10%, cpu.stat 74 / 507 (3.8 s), NSpid: 4915 -> 753, iostat 2,578 tps leak, and QEMU 1.4M LoC vs Firecracker 50K LoC / 100 ms / < 5 MB vs Clear/Kata < 45 ms / 48-50 MB
 ```
 
@@ -442,7 +442,7 @@ Direct Memory Access lets PCIe devices read and write physical system RAM withou
 </details>
 
 <details>
-<summary>**5. In the Volume 18 Chapter 7 penetration test, why was a tenant able to read the cloud provider's management memory even though SR-IOV was enabled on the ConnectX-6 NIC?**</summary>
+<summary>**5. In the SR-IOV penetration test case, why was a tenant able to read the cloud provider's management memory even though SR-IOV was enabled on the ConnectX-6 NIC?**</summary>
 
 SR-IOV only splits a physical network adapter into several Virtual Functions, so tenants can share hardware queues. It does not limit which host physical RAM addresses those functions reach through DMA. The cloud provider had not enabled the IOMMU with `intel_iommu=on`. So the tenant's custom VF driver could read motherboard RAM freely.
 </details>

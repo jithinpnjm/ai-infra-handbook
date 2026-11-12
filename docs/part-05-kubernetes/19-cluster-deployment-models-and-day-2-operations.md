@@ -137,7 +137,7 @@ Teams need a clear path for a change to travel from an idea to production. Calli
 
 A node pool groups nodes of one type inside a single cluster. The grouping can follow a unique characteristic of the machines or the role they play. Before you create pools, weigh them against separate clusters. Pools keep the cluster count down, but they add work. Workloads need node selectors to land in the right pool. Taints keep other workloads off nodes where they do not belong. Scaling gets harder too, because the system must watch each pool and scale it on its own. Separate clusters move that complexity into cluster management and federation, and you need more of them.
 
-Table 2-1 summarizes these pros and cons of using node pools.
+The table below summarizes these pros and cons of using node pools.
 
 | Pros | Cons |
 |---|---|
@@ -173,9 +173,9 @@ Smaller clusters offer these benefits:
 
 When you run a self-managed control plane, you must decide whether etcd shares the control-plane machines (colocated) or runs on its own machines (dedicated). Take a small cluster first. The book *Production Kubernetes*, in its Chapter 2 cluster-sizing guidance, says colocated etcd is fine there. `kubeadm` manages it as static pods, which saves management overhead and infrastructure cost.
 
-The picture changes as the cluster grows. Once a cluster passes `50` worker nodes, the same guidance says to consider moving etcd onto dedicated machines. Otherwise etcd competes for resources with `kube-apiserver`, `kube-scheduler` and `kube-controller-manager`. Past `200` worker nodes, the book recommends planning for dedicated etcd clusters from the start. Give etcd fast local disks of its own and low-latency links within the region. Never put a load balancer between `kube-apiserver` and etcd, because the API server's etcd client connects to each member directly.
+The picture changes as the cluster grows. Once a cluster passes `50` worker nodes, the same guidance says to consider moving etcd onto dedicated machines. Otherwise etcd competes for resources with `kube-apiserver`, `kube-scheduler` and `kube-controller-manager`. Past `200` worker nodes, the same guidance recommends planning for dedicated etcd clusters from the start. Give etcd fast local disks of its own and low-latency links within the region. Never put a load balancer between `kube-apiserver` and etcd, because the API server's etcd client connects to each member directly.
 
-Worker node pools raise a similar choice. You can organize them as **characteristic-based** pools, grouped by hardware attributes such as GPUs, NICs, or CPU-to-memory ratios. Or you can organize them as **role-based** pools, sliced off to isolate a specific platform function such as cluster ingress. In the book's AWS EC2 example, matching each pool's shape to the ratio its workloads consume avoids stranded resources. Consider a general-purpose node, which uses the `M5` instance types, at a `1CPU:4GiB` ratio. A memory-optimized node, which uses the `R5` types, runs at `1CPU:8GiB`. That stops memory-heavy workloads from leaving half of a general-purpose node's CPUs idle. Compute-optimized nodes, the `C5` types, run at `1CPU:2GiB` for CPU-intensive work.
+Worker node pools raise a similar choice. You can organize them as **characteristic-based** pools, grouped by hardware attributes such as GPUs, NICs, or CPU-to-memory ratios. Or you can organize them as **role-based** pools, sliced off to isolate a specific platform function such as cluster ingress. In an AWS EC2 example, matching each pool's shape to the ratio its workloads consume avoids stranded resources. Consider a general-purpose node, which uses the `M5` instance types, at a `1CPU:4GiB` ratio. A memory-optimized node, which uses the `R5` types, runs at `1CPU:8GiB`. That stops memory-heavy workloads from leaving half of a general-purpose node's CPUs idle. Compute-optimized nodes, the `C5` types, run at `1CPU:2GiB` for CPU-intensive work.
 
 ## 3. Node lifecycle
 
@@ -350,7 +350,7 @@ Start with the self-checking Python lab. Run it on your own machine, and it will
 python3 code/part05/day2_node_lifecycle_sim_lab.py
 ```
 
-Next, move to a multi-node `kind` or `kubeadm` cluster. All the interactive shell steps below are `untested here`. Work through these exercises in order.
+Next, move to a multi-node `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware. Work through these exercises in order.
 
 1. Run a node lifecycle drill. Join a worker with a validating taint, run a validation Job, and then remove the taint. Cordon, drain and uncordon the node while a Deployment with a PDB and a StatefulSet keep running. Watch the PDB block a drain, fix the problem, and time the full cycle.
 2. Test a drain with checkpointing. Run a training stub that checkpoints on SIGTERM, then drain its node. Confirm that the checkpoint is written and the job resumes on another node. Then set the grace period too short and see what you lose.

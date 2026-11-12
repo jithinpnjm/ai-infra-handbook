@@ -88,7 +88,7 @@ transfer_method = smart               # sftp/scp/piped
 
 `ControlPersist` lets many tasks share one SSH session per host. That is the biggest win. `pipelining` cuts the round trips each task needs, and it is the second biggest win.
 
-The book *Ansible: Up and Running*, in chapter 20 (*Making Ansible Go Faster*), benchmarks SSH multiplexing directly. Its benchmark runs `time ssh vagrant@192.168.56.10.nip.io /usr/bin/true`. The first connection takes **`0.319s`** (`real 0m0.319s`) to complete the TCP and SSH handshake and create the Unix domain control socket at `~/.ssh/sockets/vagrant@192.168.56.10.nip.io:22`.
+You can benchmark SSH multiplexing directly by running `time ssh vagrant@192.168.56.10.nip.io /usr/bin/true`. The first connection takes **`0.319s`** (`real 0m0.319s`) to complete the TCP and SSH handshake and create the Unix domain control socket at `~/.ssh/sockets/vagrant@192.168.56.10.nip.io:22`.
 
 Later connections reuse that master socket and take just **`0.010s`**. You can check the master with `ssh -O check`, which prints `Master running (pid=5099)`, and stop it with `ssh -O exit`. Each reused session saves about 0.3s.
 
@@ -398,7 +398,7 @@ The lab also compares the `linear` and `free` strategies under a 5x straggler ho
 python3 code/part04/ansible_scale_performance_lab.py
 ```
 
-Next, on a control node with lightweight targets, work through these exercises. Every interactive shell step below is `untested here`.
+Next, on a control node with lightweight targets, work through these exercises. The interactive shell steps below were not run on live hardware.
 
 1. Create 30 to 50 lightweight targets, using Docker with sshd, or use `ansible_connection=local` loopback hosts. Run a 10-task playbook with defaults and `profile_tasks`, and record the totals.
 2. Change one setting at a time, such as `forks`, `ControlPersist`, `pipelining`, fact gathering off, `gather_subset`, or the fact cache. Chart the improvements, and find the point where more forks stop helping.
@@ -478,7 +478,7 @@ The kernel limits Unix domain socket paths (`sun_path`) to 104 bytes on macOS an
 <details>
 <summary>4. How does `pipelining = True` speed up task execution, and how did *Ansible: Up and Running*, chapter 20, safely validate `/etc/sudoers.d/disable-requiretty` before enabling pipelining?</summary>
 
-Without pipelining, Ansible opens **2 to 3 SSH sessions per task**. It creates a temp directory, copies the `AnsiballZ` zip with `sftp` or `scp`, then runs and removes it over `ssh`. With **`pipelining = True`**, Ansible streams the Python payload over **`stdin`** in **1 single SSH session**. Streaming over stdin has no TTY, so `requiretty` must be disabled first. The book validates the drop-in file, which holds `Defaults:{{ ansible_user }} !requiretty` with `mode: '0440'` and references settings in `/etc/sudoers`, with `validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`. It runs the play once with `pipelining = False` before turning `pipelining = True` on.
+Without pipelining, Ansible opens **2 to 3 SSH sessions per task**. It creates a temp directory, copies the `AnsiballZ` zip with `sftp` or `scp`, then runs and removes it over `ssh`. With **`pipelining = True`**, Ansible streams the Python payload over **`stdin`** in **1 single SSH session**. Streaming over stdin has no TTY, so `requiretty` must be disabled first. Validate the drop-in file, which holds `Defaults:{{ ansible_user }} !requiretty` with `mode: '0440'` and references settings in `/etc/sudoers`, with `validate: 'bash -c "cat /etc/sudoers /etc/sudoers.d/* %s | visudo -cf-"'`. Run the play once with `pipelining = False` before turning `pipelining = True` on.
 </details>
 
 <details>
@@ -518,9 +518,9 @@ On a play that targets 5,000 hosts, a task with `delegate_to: localhost` runs it
 </details>
 
 <details>
-<summary>10. How did *Ansible: Up and Running*, chapter 20 (`Example 20-13`), use `async` and `poll: 0` to overlap slow I/O tasks with package installation?</summary>
+<summary>10. How can you use `async` and `poll: 0` to overlap slow I/O tasks with package installation?</summary>
 
-In `Example 20-13`, a `git` task clones the Linux kernel Git repository with `async: 3600`, `poll: 0` and `register: clone`. Because of `poll: 0`, Ansible moves straight on to installing several `apt` packages while the clone downloads in parallel. After the package tasks, an `async_status: { jid: "{{ clone.ansible_job_id }}" }` task waits for the background clone to finish, with `until: result.finished, retries: 3600`.
+In one worked example, a `git` task clones the Linux kernel Git repository with `async: 3600`, `poll: 0` and `register: clone`. Because of `poll: 0`, Ansible moves straight on to installing several `apt` packages while the clone downloads in parallel. After the package tasks, an `async_status: { jid: "{{ clone.ansible_job_id }}" }` task waits for the background clone to finish, with `until: result.finished, retries: 3600`.
 </details>
 
 <details>

@@ -23,9 +23,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapter 11.24 showed how Multi-Instance GPU, or MIG, isolates GPU compute, HBM memory capacity, L2 cache banks, memory controllers and crossbar paths in silicon. That raises a direct question for AI platform engineers. Why run Virtual Machines with KubeVirt, or MicroVMs with Kata Containers, inside a Kubernetes cluster when hardware MIG already exists? Two hard security and operational problems answer that question. Both come from the GPU sharing and confidential computing threat models in Volume 18.
+Chapter 11.24 showed how Multi-Instance GPU, or MIG, isolates GPU compute, HBM memory capacity, L2 cache banks, memory controllers and crossbar paths in silicon. That raises a direct question for AI platform engineers. Why run Virtual Machines with KubeVirt, or MicroVMs with Kata Containers, inside a Kubernetes cluster when hardware MIG already exists? Two hard security and operational problems answer that question. Both come from the GPU sharing and confidential computing threat models.
 
-The first problem is that standard Linux containers still share one host OS kernel, even with MIG enabled. Volume 18 Chapter 6 compares its isolation tiers in plain terms. Time-Slicing is a hostel room, MIG is a set of concrete-walled hotel suites, and vGPU or VM virtualization is a VIP penthouse guarded by a hypervisor. All seven MIG containers on a bare-metal worker node still make syscalls to the same host Linux kernel. Picture a hostile tenant in MIG Instance 0 who exploits a Linux kernel vulnerability to escape the container and gain host root. That tenant can then run `nvidia-smi mig` on the host, destroy sibling partitions and inspect host memory.
+The first problem is that standard Linux containers still share one host OS kernel, even with MIG enabled. The isolation tiers compare in plain terms. Time-Slicing is a hostel room, MIG is a set of concrete-walled hotel suites, and vGPU or VM virtualization is a VIP penthouse guarded by a hypervisor. All seven MIG containers on a bare-metal worker node still make syscalls to the same host Linux kernel. Picture a hostile tenant in MIG Instance 0 who exploits a Linux kernel vulnerability to escape the container and gain host root. That tenant can then run `nvidia-smi mig` on the host, destroy sibling partitions and inspect host memory.
 
 The second problem is Data in Use. Disk encryption protects Data at Rest, and network encryption protects Data in Transit. Neither one protects proprietary LLM weights or classified user prompts while they sit decrypted in system RAM and GPU VRAM during inference. Protecting Data in Use against an untrusted cloud hypervisor takes a hardware-encrypted Confidential Virtual Machine. That VM pairs a CPU Trusted Execution Environment, such as AMD SEV-SNP or Intel TDX, with NVIDIA Hopper H100 Confidential Computing and Remote Attestation.
 
@@ -47,7 +47,7 @@ Before you pick a runtime for a tenant, decide whether a host-kernel escape belo
 After completing this chapter, you will be able to:
 - Trace how kubelet starts a Pod over the Container Runtime Interface and Open Container Initiative specifications, and contrast containerd, CRI-O and Kata Containers.
 - Architect KubeVirt and NVIDIA GPU Operator Sandboxed Workloads using the VFIO manager, vGPU manager and KubeVirt GPU device plugin. These components attach whole GPUs or vGPU profiles into guest VMs.
-- Apply the Volume 18 Chapter 6 Multi-Tenant GPU Security Threat Matrix to regulated medical workloads on HGX H100 servers. The matrix defends against both VRAM snooping and host-kernel container escapes.
+- Apply the Multi-Tenant GPU Security Threat Matrix to regulated medical workloads on HGX H100 servers. The matrix defends against both VRAM snooping and host-kernel container escapes.
 - Design a Confidential Computing AI architecture that combines AMD SEV-SNP or Intel TDX Confidential VMs with NVIDIA Hopper H100 Confidential Computing. You will also walk through the five-step Cryptographic Remote Attestation Protocol.
 
 ## Concepts: basics to intermediate to advanced
@@ -130,11 +130,11 @@ If you set the passthrough label, the table advertises `nvidia.com/GH100_H100_SX
 ### 3. Advanced: The multi-tenant GPU threat matrix and Confidential Computing VMs
 
 #### 1. Why MIG Alone Cannot Stop a Host-Kernel Container Escape
-Many teams assume that a dedicated Kubernetes Namespace, or enabling hardware MIG, guarantees complete multi-tenant isolation. Volume 18 Chapter 6 shows why both assumptions fail when untrusted tenants share a bare-metal host kernel.
+Many teams assume that a dedicated Kubernetes Namespace, or enabling hardware MIG, guarantees complete multi-tenant isolation. Both assumptions fail when untrusted tenants share a bare-metal host kernel.
 
 Software time-slicing is the "Hostel Room" of GPU sharing. It gives no hardware quotas and no memory walls. One tenant can allocate all 80 GB of VRAM, which triggers an immediate out-of-memory denial of service against a neighbor. Both tenants also share the same L2 cache and CUDA fault domain.
 
-Volume 18 Chapter 6 gives a clear case. Consider a university IT team that proposed running HIPAA medical research in a separate Namespace on a time-sliced H100 cluster. Kubernetes Namespaces only isolate API objects in etcd, and they do nothing to isolate GPU VRAM. Time-slicing therefore fails HIPAA compliance immediately.
+Consider a university IT team that proposed running HIPAA medical research in a separate Namespace on a time-sliced H100 cluster. Kubernetes Namespaces only isolate API objects in etcd, and they do nothing to isolate GPU VRAM. Time-slicing therefore fails HIPAA compliance immediately.
 
 Put the numbers together. For example, if one tenant allocates all 80 GB, the shared pool has nothing left for the neighbor.
 
@@ -143,7 +143,7 @@ Hardware MIG is the "Hotel Suites" option. Quarantining an HGX H100 server, tain
 KubeVirt or Kata with vGPU or VFIO passthrough is the "VIP Penthouse". Untrusted tenants and LLM code sandboxes need stronger kernel isolation. Placing each tenant inside a KubeVirt VM or Kata MicroVM inserts a hardware hypervisor and IOMMU boundary between the guest and host kernels. If a host-kernel escape is in your threat model, choose that boundary over MIG alone.
 
 #### 2. Protecting "Data in Use": Confidential Computing VMs and Remote Attestation
-Now consider a different threat. The risk is not a neighboring container. It is the cloud provider or the hypervisor administrator. As Volume 18 Chapter 9 explains, encrypting a hard drive protects Data at Rest, and encrypting network links protects Data in Transit. However, when a standard cloud VM runs an LLM, its model weights and user prompts sit in plaintext inside host DRAM and GPU HBM. A rogue hypervisor administrator with host root access, or someone with a physical PCIe bus logic analyzer, can dump that plaintext memory trivially.
+Now consider a different threat. The risk is not a neighboring container. It is the cloud provider or the hypervisor administrator. Encrypting a hard drive protects Data at Rest, and encrypting network links protects Data in Transit. However, when a standard cloud VM runs an LLM, its model weights and user prompts sit in plaintext inside host DRAM and GPU HBM. A rogue hypervisor administrator with host root access, or someone with a physical PCIe bus logic analyzer, can dump that plaintext memory trivially.
 
 To run classified defense models or high-value proprietary weights in an untrusted cloud, you must deploy a Confidential Virtual Machine. That architecture combines three hardware mechanisms. The diagram shows the key flow. The enclave sends a signed quote, the attestation service checks it, and only then does the KMS release keys into the enclave.
 
@@ -155,7 +155,7 @@ flowchart LR
     Enclave -->|"4. Encrypted PCIe Bounce Buffers & Protected H100 VRAM"| Math["Neural Network Executes in Hardware TEE; Host Hypervisor Reads Only Ciphertext"]
 ```
 
-The CPU Trusted Execution Environment encrypts the system RAM of the Confidential VM at the silicon level. As Volume 18 Chapter 9 stresses, a GPU alone cannot make a Virtual Machine confidential. The CPU side must run inside an AMD SEV-SNP or Intel TDX Trusted Execution Environment.
+The CPU Trusted Execution Environment encrypts the system RAM of the Confidential VM at the silicon level. A GPU alone cannot make a Virtual Machine confidential. The CPU side must run inside an AMD SEV-SNP or Intel TDX Trusted Execution Environment.
 
 NVIDIA Hopper H100 Confidential Computing mode places H100 VRAM inside a hardware-protected region that the host OS and hypervisor cannot read. All data moving between the CPU TEE and the H100 GPU over the PCIe bus is encrypted in hardware through encrypted bounce buffers. Session keys are negotiated directly between the CPU TEE and the GPU hardware Root of Trust.
 
@@ -191,13 +191,13 @@ The table turns these choices into four decision scenarios. Use it when you pick
 | **1. Trusted Internal Training & Inference Pods** | Standard `containerd` (`runc` + `nvidia-container-runtime`) + Whole GPU or **MIG** | `container` | Zero VM memory translation (`EPT`) overhead; full host-level DCGM & process visibility (`SP 11.6`). |
 | **2. Untrusted Code Execution / Agentic AI Sandboxes** | **Kata Containers** (`runtimeClassName: kata-containers`) + VFIO GPU or MIG VF | `vm-passthrough` (or CDI VFIO) | Dedicated guest Linux kernel per Pod (`45–100 ms` boot) blocks host-kernel container escapes (*Production Kubernetes* Ch. 3). |
 | **3. Persistent Linux/Windows Workstations or Legacy VM Apps** | **KubeVirt** (`VirtualMachine` CRD inside `virt-launcher` Pod) + **vGPU** or Whole GPU | `vm-vgpu` or `vm-passthrough` | Full persistent guest OS lifecycle, Windows support, and hypervisor boundary managed via `kubectl` / GitOps. |
-| **4. Classified / Proprietary Models on Untrusted Public Cloud** | **Confidential VM** (**AMD SEV-SNP** / **Intel TDX** + **NVIDIA Hopper `H100` CC**) + **Remote Attestation** | `vm-passthrough` (Confidential VM) | Encrypts **Data in Use** across CPU RAM, PCIe bounce buffers, and H100 VRAM (`volume-18/chapter-09`). |
+| **4. Classified / Proprietary Models on Untrusted Public Cloud** | **Confidential VM** (**AMD SEV-SNP** / **Intel TDX** + **NVIDIA Hopper `H100` CC**) + **Remote Attestation** | `vm-passthrough` (Confidential VM) | Encrypts **Data in Use** across CPU RAM, PCIe bounce buffers, and H100 VRAM |
 
 Notice that only the first scenario keeps the host kernel. Each of the other three puts a VM or MicroVM boundary between the workload and the host, so pick the row that matches your threat model before you label any node.
 
 ## Commands and configurations that matter
 
-Each block below is marked untested here, so none of it has been run on a live cluster.
+The commands below were not run on a live cluster.
 
 ### 1. Kubernetes RuntimeClass and Pod Manifest for Kata Containers
 
@@ -289,8 +289,8 @@ When a VM or MicroVM deployment fails on Kubernetes, you usually see one of thre
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. HIPAA compliance audit rejects running medical LLM training in a separate Kubernetes Namespace on a time-sliced H100 cluster (`volume-18/chapter-06`)** | IT placed medical research pods in `namespace: medical` on a node pool sharing GPUs with student notebooks via `replicas: 8`. | **Logical API Boundary Confused with Physical Hardware Boundary:** Kubernetes Namespaces only isolate API objects; time-slicing shares one global HBM pool and L2 cache with zero hardware memory or fault isolation. | Quarantine dedicated HGX H100 servers with Node Taints, disable time-slicing, and enforce hardware **MIG** (`Chapter 11.24`)—or **KubeVirt / vGPU VMs** if host-kernel escape is in the threat model. |
-| **2. Defense compliance officer rejects uploading encrypted model weights (`AES-256` on disk) to standard public-cloud GPU VMs (`volume-18/chapter-09`)** | Team encrypted the EBS/persistent volume (`Data at Rest`) and network (`TLS`), but the cloud hypervisor admin still has root access to host DRAM and GPU VRAM while the model runs. | **Unprotected "Data in Use" on an Untrusted Hypervisor:** Standard VMs must decrypt weights into plaintext RAM/VRAM during inference, allowing a rogue hypervisor admin to dump memory. | Deploy a **Confidential VM** on **AMD SEV-SNP** (or **Intel TDX**) CPUs paired with **NVIDIA Hopper (`H100`) Confidential Computing**, and gate key release on **5-step Remote Attestation**. |
+| **1. HIPAA compliance audit rejects running medical LLM training in a separate Kubernetes Namespace on a time-sliced H100 cluster** | IT placed medical research pods in `namespace: medical` on a node pool sharing GPUs with student notebooks via `replicas: 8`. | **Logical API Boundary Confused with Physical Hardware Boundary:** Kubernetes Namespaces only isolate API objects; time-slicing shares one global HBM pool and L2 cache with zero hardware memory or fault isolation. | Quarantine dedicated HGX H100 servers with Node Taints, disable time-slicing, and enforce hardware **MIG** (Chapter 11.24)—or **KubeVirt / vGPU VMs** if host-kernel escape is in the threat model. |
+| **2. Defense compliance officer rejects uploading encrypted model weights (`AES-256` on disk) to standard public-cloud GPU VMs** | Team encrypted the EBS/persistent volume (`Data at Rest`) and network (`TLS`), but the cloud hypervisor admin still has root access to host DRAM and GPU VRAM while the model runs. | **Unprotected "Data in Use" on an Untrusted Hypervisor:** Standard VMs must decrypt weights into plaintext RAM/VRAM during inference, allowing a rogue hypervisor admin to dump memory. | Deploy a **Confidential VM** on **AMD SEV-SNP** (or **Intel TDX**) CPUs paired with **NVIDIA Hopper (`H100`) Confidential Computing**, and gate key release on **5-step Remote Attestation**. |
 | **3. KubeVirt `VirtualMachine` requesting `nvidia.com/GH100_H100_SXM5_80GB` stays `Pending` on a GPU node (`Layer 3/4` Sandboxed Mode)** | `kubectl get pods -n gpu-operator` shows `nvidia-driver-daemonset` running on the node instead of `nvidia-vfio-manager` and `kubevirt-gpu-device-plugin`. | **Missing Node Workload Config Label:** The node defaulted to `nvidia.com/gpu.workload.config=container` (`nvidia.ko`), so the GPUs were not bound to `vfio-pci` for KubeVirt. | Enable `sandboxWorkloads.enabled: true` in `ClusterPolicy` and label the target node `nvidia.com/gpu.workload.config=vm-passthrough` (or `vm-vgpu`). |
 | **4. Pod specifying `runtimeClassName: kata-containers` stays stuck in `ContainerCreating` with `runtime "io.containerd.kata.v2" binary not found` (*Production Kubernetes* Ch. 3)** | `kubectl describe pod` logs `FailedCreatePodSandBox: ... handler "kata" not configured in containerd`. | **Missing `containerd` CRI Handler Mapping:** The `RuntimeClass` object exists in the API server, but `/etc/containerd/config.toml` on the worker node lacks the `[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata]` entry or `containerd-shim-kata-v2` binary. | Install the Kata runtime binaries on the node, register the `kata` runtime handler in `/etc/containerd/config.toml` (or via GPU Operator / Kata Operator), and restart `containerd`. |
 | **5. Operator runs `ctr containers ls` on a `containerd` node and sees `0` containers even though `kubectl get pods` shows `20` running Pods (*Production Kubernetes* Ch. 3)** | `sudo ctr containers ls` returns an empty table on a healthy worker node. | **Missing `containerd` Namespace Flag (`k8s.io` vs `default`/`moby`):** `ctr` defaults to the `default` namespace (and Docker uses `moby`), whereas Kubernetes `kubelet` places all CRI containers into the **`k8s.io`** namespace. | Run `sudo ctr --namespace k8s.io containers ls` or use the CRI-native CLI `sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps`. |
@@ -300,7 +300,7 @@ Start with the command evidence column. It tells you which layer to check before
 ## Hands-on lab
 
 ### Venue and scope
-You can run this lab on your own machine with the Python 3 standard library. The scripts are `code/part11/vms_on_k8s_kubevirt_kata_gpu.py` and `code/part11/vms_on_k8s_kubevirt_kata_gpu_lab.py`. They check the OCI and CRI startup sequence from *Production Kubernetes* Chapter 3, the runtime decision engine, the Multi-Tenant GPU Threat Matrix and the five-step Remote Attestation validator from Volume 18. Cluster and node commands are marked untested here.
+You can run this lab on your own machine with the Python 3 standard library. The scripts are `code/part11/vms_on_k8s_kubevirt_kata_gpu.py` and `code/part11/vms_on_k8s_kubevirt_kata_gpu_lab.py`. They check the OCI and CRI startup sequence, the runtime decision engine, the Multi-Tenant GPU Threat Matrix and the five-step Remote Attestation validator. The cluster and node commands are untested.
 
 ### Step 1: Run the self-checking KubeVirt, Kata and GPU passthrough lab (tested here)
 
@@ -417,7 +417,7 @@ If you label a node `vm-vgpu`, the GPU Operator deploys `nvidia-vgpu-manager` an
 </details>
 
 <details>
-<summary>**9. In Volume 18 Chapter 6, compare Time-Slicing, MIG, and vGPU or VM Virtualization across memory isolation and host-kernel risk.**</summary>
+<summary>**9. Compare Time-Slicing, MIG, and vGPU or VM Virtualization across memory isolation and host-kernel risk.**</summary>
 
 - **Time-Slicing:** It gives zero hardware memory or compute isolation, because all containers share one VRAM pool and L2 cache.
 - **MIG:** It gives each instance hardware-isolated crossbar ports, L2 cache banks, memory controllers and DRAM address buses. All MIG containers still share the same Host OS kernel.
@@ -425,19 +425,19 @@ If you label a node `vm-vgpu`, the GPU Operator deploys `nvidia-vgpu-manager` an
 </details>
 
 <details>
-<summary>**10. Why does Volume 18 Chapter 6 Section 2 state that MIG is secure against GPU-level attacks, but still vulnerable to OS-level container escapes?**</summary>
+<summary>**10. Why is MIG secure against GPU-level attacks, but still vulnerable to OS-level container escapes?**</summary>
 
 Every MIG partition on a bare-metal container host is managed by the same shared Linux host kernel. If a malicious tenant exploits a Linux kernel vulnerability inside their container to gain host root privileges, they can run `nvidia-smi mig` on the host. From there they can destroy or reconfigure sibling MIG partitions and inspect host memory.
 </details>
 
 <details>
-<summary>**11. In the Volume 18 Chapter 6 Customer Scenario, why was running HIPAA medical research in a separate Kubernetes Namespace on a time-sliced HGX H100 cluster a severe compliance violation, and how did the architect fix it?**</summary>
+<summary>**11. In the university customer scenario, why was running HIPAA medical research in a separate Kubernetes Namespace on a time-sliced HGX H100 cluster a severe compliance violation, and how did the architect fix it?**</summary>
 
 Kubernetes Namespaces only isolate Kubernetes API objects in etcd. Under software time-slicing they give no hardware isolation on the shared GPU VRAM pool. The architect quarantined a dedicated HGX H100 server, disabled time-slicing and formatted the H100 GPUs with hardware MIG. They also applied Kubernetes Node Taints, so student coursework pods could never schedule onto the HIPAA medical nodes.
 </details>
 
 <details>
-<summary>**12. Define Data at Rest, Data in Transit, and Data in Use encryption in Volume 18 Chapter 9, and explain why traditional cloud VMs fail to protect Data in Use.**</summary>
+<summary>**12. Define Data at Rest, Data in Transit, and Data in Use encryption, and explain why traditional cloud VMs fail to protect Data in Use.**</summary>
 
 - **Data at Rest:** Encrypts files stored on disk or SSD using AES-256.
 - **Data in Transit:** Encrypts packets moving across the network using TLS or IPSec.
@@ -449,7 +449,7 @@ If you run an LLM in a traditional cloud VM, the weights and prompts must be dec
 <details>
 <summary>**13. What two hardware components must be paired to create a Confidential AI Virtual Machine, and can an NVIDIA H100 GPU provide Confidential Computing without a CPU TEE?**</summary>
 
-You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or Intel TDX, with an NVIDIA Hopper H100 GPU in Confidential Computing mode. As Volume 18 Chapter 9 Section 1 states explicitly, the GPU alone does not make a VM confidential. The CPU side needs an AMD SEV-SNP or Intel TDX TEE to encrypt system RAM.
+You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or Intel TDX, with an NVIDIA Hopper H100 GPU in Confidential Computing mode. The GPU alone does not make a VM confidential. The CPU side needs an AMD SEV-SNP or Intel TDX TEE to encrypt system RAM.
 </details>
 
 <details>
@@ -460,7 +460,7 @@ You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or I
 </details>
 
 <details>
-<summary>**15. Walk through the five steps of the Cryptographic Remote Attestation Protocol in Volume 18 Chapter 9 Section 2.**</summary>
+<summary>**15. Walk through the five steps of the Cryptographic Remote Attestation Protocol.**</summary>
 
 - **Step 1:** The Confidential VM boots and requests a cryptographic quote from the CPU TEE and the NVIDIA GPU hardware.
 - **Step 2:** The hardware generates a cryptographic document with exact firmware hashes, boot state measurements and proof that the Secure Enclave is active.
@@ -470,7 +470,7 @@ You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or I
 </details>
 
 <details>
-<summary>**16. In the Volume 18 Chapter 9 Customer Scenario, why did the military compliance officer reject encrypting only the cloud VM hard drives for a classified drone-footage AI model, and what architecture satisfied the requirement?**</summary>
+<summary>**16. In the military customer scenario, why did the military compliance officer reject encrypting only the cloud VM hard drives for a classified drone-footage AI model, and what architecture satisfied the requirement?**</summary>
 
 For example, hard drive encryption only protects Data at Rest. Once the model loads into RAM and VRAM as Data in Use, a rogue cloud administrator with hypervisor root access can dump the VM memory. The approved architecture ran a Confidential VM on AMD SEV-SNP or Intel TDX, paired with NVIDIA Hopper H100 Confidential Computing. It also required Remote Attestation from the enterprise on-premises KMS before releasing model decryption keys.
 </details>

@@ -343,7 +343,7 @@ Long multi-GPU training runs inevitably encounter hardware faults such as double
 
 This crash is the `FULL_STATE_DICT` rank-zero out-of-memory trap. Calling `model.state_dict()` under default settings gathers all shards of a 70B model onto rank zero. That gather requires 280.0 GB in FP32 or up to 700 GB with optimizer states, instantly exhausting an 80 GB GPU. You should reserve `full_state_dict=True` with `cpu_offload=True` strictly for final model export when host CPU RAM is large enough.
 
-For all periodic training checkpoints, use PyTorch Distributed Checkpoint (`torch.distributed.checkpoint`) with `full_state_dict=False`. Each rank writes only its local DTensor shard in parallel to shared storage, which is just 8.75 GB of FP16 weights per rank on sixteen GPUs. Furthermore, `dcp.load` supports automatic elastic resharding when resuming on a different number of GPUs. Bit-for-bit reproducible recovery needs four kinds of state saved and restored behind `dist.barrier()`. They are the model weights, the AdamW momentum and variance, the learning-rate scheduler state and every random number generator state. The NVIDIA Zero-to-Hero Volume 13 lab on checkpointing demonstrates this.
+For all periodic training checkpoints, use PyTorch Distributed Checkpoint (`torch.distributed.checkpoint`) with `full_state_dict=False`. Each rank writes only its local DTensor shard in parallel to shared storage, which is just 8.75 GB of FP16 weights per rank on sixteen GPUs. Furthermore, `dcp.load` supports automatic elastic resharding when resuming on a different number of GPUs. Bit-for-bit reproducible recovery needs four kinds of state saved and restored behind `dist.barrier()`. They are the model weights, the AdamW momentum and variance, the learning-rate scheduler state and every random number generator state.
 
 ```text
 70B Model Checkpointing Comparison on N = 16 GPUs (80 GB H100 per Rank):
@@ -376,7 +376,9 @@ Progressive FSDP Bring-Up and Optimization Order:
 
 ## Commands and configurations that matter
 
-### 1. FSDP2 Hierarchical Sharding, 2D HSDP DeviceMesh, Meta Init, and torch.compile (`untested here`)
+The commands below were not run on live multi-GPU hardware.
+
+### 1. FSDP2 Hierarchical Sharding, 2D HSDP DeviceMesh, Meta Init, and torch.compile
 
 ```python
 import os
@@ -451,7 +453,7 @@ def setup_fsdp2_model(model_cls, model_args, use_hsdp: bool = False, use_compile
     return model
 ```
 
-### 2. FSDP2 Distributed Checkpoint (DCP) Save, Elastic Load, and DTensor Shard Verification (`untested here`)
+### 2. FSDP2 Distributed Checkpoint (DCP) Save, Elastic Load, and DTensor Shard Verification
 
 ```python
 import os
@@ -503,7 +505,7 @@ def load_checkpoint_dcp(model, optimizer, checkpoint_dir: str, epoch: int) -> in
     return int(state_dict["epoch"])
 ```
 
-### 3. FSDP1 Wrapper with HYBRID_SHARD, limit_all_gathers=True, BACKWARD_PRE, and torch.compile (`untested here`)
+### 3. FSDP1 Wrapper with HYBRID_SHARD, limit_all_gathers=True, BACKWARD_PRE, and torch.compile
 
 ```python
 import functools
@@ -552,7 +554,7 @@ fsdp_model = FSDP(
 )
 ```
 
-### 4. Multi-Node SLURM Launch, NCCL Fabric Verification, and CUDA Allocator Tuning (`untested here`)
+### 4. Multi-Node SLURM Launch, NCCL Fabric Verification, and CUDA Allocator Tuning
 
 ```bash
 #!/bin/bash
@@ -588,7 +590,7 @@ srun torchrun \
 
 ### 5. Production FSDP Health Signals & Thresholds
 
-| Telemetry Signal | Command / Source (`untested here`) | Healthy Baseline | Red Flag Threshold | Primary Root Cause |
+| Telemetry Signal | Command / Source | Healthy Baseline | Red Flag Threshold | Primary Root Cause |
 |---|---|---|---|---|
 | **Step 1 -> Step 2+ Warmup Delta** | Per-step training log (`18.4 s -> 14.1–14.3 s`) | Step 1 is **`~20–30%` slower** than Step 2+ | Step 2+ fails to speed up or regresses **`> 50%`** | Prefetching disabled, `torch.compile` recompilation churn, or `limit_all_gathers=False` allocator thrashing |
 | **`AllGather` Share of Step Time** | `torch.profiler` (`Kineto`) / `HTA` / `nsys` | **`20–40%`** of total step time (overlapped) | **`> 60%`** of step time | Cross-node `FULL_SHARD` over slow fabric, `NVLink` fallback to `PCIe` (`PIX`/`SYS` in `nvidia-smi topo -m`), or `ACS` enabled in BIOS |
@@ -836,7 +838,7 @@ In FSDP1, wrap at the `TransformerBlock` level with `use_orig_params=True` so `T
 </details>
 
 <details>
-<summary>**19. Why did NCCL switch from Ring to Tree in Volume 13 Chapter 8's 512-GPU collective example, and why is multi-node FSDP sensitive to ACS and NVLink topology?**</summary>
+<summary>**19. Why did NCCL switch from Ring to Tree in a 512-GPU collective example, and why is multi-node FSDP sensitive to ACS and NVLink topology?**</summary>
 
 On eight GPUs over 900 GB/s NVLink, a ring AllReduce moves 49.0 GB in roughly 54 milliseconds with under 0.1 milliseconds of hop latency across eight hops. On 512 GPUs over 25 GB/s InfiniBand, moving 55.9 GB takes roughly 2.2 seconds and 512 sequential ring hops accumulate severe scheduling latency. A double binary tree cuts the hop count to 9 hops. If PCIe Access Control Services (`ACS`) is enabled in the BIOS or NVLink bridges fail and show `PIX` or `SYS` in `nvidia-smi topo -m`, intra-node AllGather bandwidth collapses from 400 to 900 GB/s down to 20 to 32 GB/s over PCIe.
 </details>

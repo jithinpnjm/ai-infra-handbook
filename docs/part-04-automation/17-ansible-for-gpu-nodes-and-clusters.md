@@ -164,7 +164,7 @@ Kernel parameters go into GRUB drop-ins through `GRUB_CMDLINE_LINUX_DEFAULT`. Th
 
 For networking and memory, the role sets sysctls such as `net.core.rmem_max`, `vm.max_map_count` and `vm.swappiness=1`. It writes `limits.d` entries, with memlock unlimited for RDMA and a high nofile. It also sets tuned or `cpupower` governors, and IRQ affinity through an `irqbalance` policy or explicit pinning for NICs. It sets `ulimit` values in systemd units, disables services you do not need, and keeps `/dev/shm` sizes consistent for NCCL and PyTorch. The details are in Parts 1, 9 and 12.
 
-The book *AI Systems Performance Engineering*, Chapter 3, gives four tuning insights that belong in this role. The first concerns GPU bubbles. The GPU does the matrix math, but the host CPU must keep launching CUDA kernels and preparing data batches. When a CPU core falls into a deep sleep state (`C-state`), waking it adds microseconds of jitter. That jitter piles up as GPU bubbles, which are idle gaps between kernels. Set the BIOS profile to High Performance, lock the Linux CPU frequency governor to `performance` with `cpupower frequency-set -g performance`, and disable deep C-states. Kernel launch latency then stays predictable.
+Four tuning insights that belong in this role. The first concerns GPU bubbles. The GPU does the matrix math, but the host CPU must keep launching CUDA kernels and preparing data batches. When a CPU core falls into a deep sleep state (`C-state`), waking it adds microseconds of jitter. That jitter piles up as GPU bubbles, which are idle gaps between kernels. Set the BIOS profile to High Performance, lock the Linux CPU frequency governor to `performance` with `cpupower frequency-set -g performance`, and disable deep C-states. Kernel launch latency then stays predictable.
 
 The second insight is NUMA affinity. On a dual-socket server, a data-loader process on NUMA node 0 may feed a GPU attached to the PCIe root complex on NUMA node 1. Host-to-device pinned-memory transfers (`H2D`) then cross the inter-socket UPI or Infinity Fabric link. That nearly doubles memory access latency. Capture `nvidia-smi topo -m` in the playbook. Configure the Kubernetes kubelet with `--topology-manager-policy=single-numa-node` (or `restricted`) and `--cpu-manager-policy=static`, and verify `pin_memory=True` and `non_blocking=True` readiness.
 
@@ -172,7 +172,7 @@ On integrated Grace Blackwell superchips, the Grace CPU and the Blackwell GPU sh
 
 The third insight is page-cache write-back. Large training runs write multi-gigabyte checkpoints in bursts. Tuning `vm.dirty_background_ratio` and `vm.dirty_ratio`, along with asynchronous or distributed checkpointing, keeps Linux page-cache write-back from freezing training steps. Preloading `jemalloc` (`narenas`, `background_thread:true`) or `tcmalloc` reduces host RAM fragmentation in multi-worker Python data loaders.
 
-The fourth insight covers ECC, clocks and MIG. Keep ECC enabled on production AI fleets. A single undetected cosmic-ray bit flip during a multi-week training run can silently corrupt gradients into `NaN`. Changing ECC requires a GPU reset or a reboot. For acceptance benchmarks, use locked clocks (`nvidia-smi -lgc`), so thermal throttling on later runs does not skew the comparison. Use MIG for multi-tenant small-model inference. The book's Table 3-1 lists the Blackwell B200 profiles, for example `MIG 1g.23gb` x7, `1g.45gb` x4, `2g.45gb` x3, `3g.90gb` x2, `4g.90gb` x1, or `7g.180gb` x1. Large multi-GPU training jobs turn MIG off so they can use full GPUs.
+The fourth insight covers ECC, clocks and MIG. Keep ECC enabled on production AI fleets. A single undetected cosmic-ray bit flip during a multi-week training run can silently corrupt gradients into `NaN`. Changing ECC requires a GPU reset or a reboot. For acceptance benchmarks, use locked clocks (`nvidia-smi -lgc`), so thermal throttling on later runs does not skew the comparison. Use MIG for multi-tenant small-model inference. The Blackwell B200 profiles include `MIG 1g.23gb` x7, `1g.45gb` x4, `2g.45gb` x3, `3g.90gb` x2, `4g.90gb` x1, or `7g.180gb` x1. Large multi-GPU training jobs turn MIG off so they can use full GPUs.
 
 ### 3.3 mofed (MLNX_OFED / DOCA-Host)
 
@@ -588,7 +588,7 @@ Work through these exercises after you have read the chapter and run the lab. Co
 7. Explain how `dpkg_options: "force-confold,force-confdef"` and `DEBIAN_FRONTEND: noninteractive` prevent a fleet-wide hang. Then explain why `dpkg_selections: hold` prevents a DKMS kernel mismatch.
 8. Explain why the `reboot` task sets `reboot_timeout: 1800`, and why `meta: flush_handlers` comes before the next role.
 9. Explain what `nvidia-persistenced` and `nvidia_peermem` each do.
-10. Use Table 3-1 in *AI Systems Performance Engineering*, Chapter 3. Name two Blackwell B200 MIG profiles, and say when a large training job turns MIG off.
+10. Name two Blackwell B200 MIG profiles, and say when a large training job turns MIG off.
 11. Contrast `dcgmi diag -r 1`, `-r 2` and `-r 3` by time and coverage.
 12. Trace the validation stages in Section 5 from PCIe and NVLink checks up to `gpu-burn`. Say where `journalctl -k` fits.
 13. Use `parse_and_gate_nccl_busbw()` to follow the last stage, the multi-node bus-bandwidth assertion.
@@ -672,7 +672,7 @@ Keep ECC enabled in production with `nvidia-smi -e 1`. Disabling ECC frees a sma
 </details>
 
 <details>
-<summary>12. When should you use Multi-Instance GPU (`MIG`) versus full GPUs (*AI Systems Performance Engineering* Chapter 3 Table 3-1), and what is required to change MIG mode in Ansible?</summary>
+<summary>12. When should you use Multi-Instance GPU (`MIG`) versus full GPUs, and what is required to change MIG mode in Ansible?</summary>
 
 - Use MIG for multi-tenant small-model inference, development notebooks and CI jobs that do not saturate a full H100 or B200 GPU. MIG partitions SMs, HBM bandwidth, L2 cache and copy engines into isolated instances. Examples are `1g.23gb`, `2g.45gb` and `3g.90gb` on B200, or `1g.10gb` and `3g.40gb` on A100 and H100. Each instance gets hard fault and QoS isolation.
 - For large distributed training or large LLM tensor-parallel inference, keep MIG disabled, so the workload uses the whole GPU and the NVLink fabric.

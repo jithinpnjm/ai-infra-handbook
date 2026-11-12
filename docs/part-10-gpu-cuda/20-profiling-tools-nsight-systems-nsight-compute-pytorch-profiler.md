@@ -33,12 +33,12 @@ The remedy is to pick the profiler that fits the layer. A wrong pick is like usi
 | Bottleneck Layer | Profiler or Diagnostic Tool | Representative Metric or Benchmark Shift |
 |---|---|---|
 | Macro Cluster Health | DCGM / Prometheus & `nvidia-smi` ("The Thermometer") | Detects a nightly cluster utilization drop from `90%` down to `10%` with near-zero (`~0%`) overhead. |
-| Operator Attribution (64-Expert MoE) | PyTorch Profiler (`Kineto`) + NVTX markers (Table 13-2) | Top 10 ops sum to `138.00 ms`: `aten::matmul` takes `43.00 ms` (`128` calls), `aten::linear` `35.50 ms` (`64` calls), `dispatch` (`18.70 ms`) + `combine` (`12.10 ms`) = `30.80 ms`, and `aten::add_` `2.20 ms` (`64` calls). |
-| System Timeline & NVTX Projection | Nsight Systems (`nsys stats --report=nvtx_gpu_proj_sum`, Table 13-3) | Projects `train_step` (`138.0 ms` Child GPU time) across `forward` (`60.5 ms`, `130` instances), `backward` (`58.3 ms`, `130` instances), and `optimizer_step` (`19.2 ms`, `1` instance bracketing `64` `aten::add_` kernels). |
-| Single-Kernel Micro-Architecture | Nsight Compute (`ncu`, Table 13-4 & V17 Ch 2 `4x` slower H100 Triton case) | Shifts expert `matmul` from Memory-Bound Baseline (`50%` peak FLOPS, `70%` DRAM BW, `60%` occupancy) to Compute-Bound Optimized (`85%` FLOPS, `40%` DRAM BW, `80%` occupancy). |
+| Operator Attribution (64-Expert MoE) | PyTorch Profiler (`Kineto`) + NVTX markers | Top 10 ops sum to `138.00 ms`: `aten::matmul` takes `43.00 ms` (`128` calls), `aten::linear` `35.50 ms` (`64` calls), `dispatch` (`18.70 ms`) + `combine` (`12.10 ms`) = `30.80 ms`, and `aten::add_` `2.20 ms` (`64` calls). |
+| System Timeline & NVTX Projection | Nsight Systems (`nsys stats --report=nvtx_gpu_proj_sum`) | Projects `train_step` (`138.0 ms` Child GPU time) across `forward` (`60.5 ms`, `130` instances), `backward` (`58.3 ms`, `130` instances), and `optimizer_step` (`19.2 ms`, `1` instance bracketing `64` `aten::add_` kernels). |
+| Single-Kernel Micro-Architecture | Nsight Compute (`ncu`) | Shifts expert `matmul` from Memory-Bound Baseline (`50%` peak FLOPS, `70%` DRAM BW, `60%` occupancy) to Compute-Bound Optimized (`85%` FLOPS, `40%` DRAM BW, `80%` occupancy). |
 | Host CPU & Grace-Blackwell Fabric | Linux `perf stat`, `perf record` (`-F 2000 --call-graph dwarf`), and NVLink-C2C PMUs | Measures `1.58` IPC vs `8` (`8.0`) max IPC on ARM Neoverse V2 Grace core; flags `45.0%` `py::forward`, `20.5%` `aten::matmul`, `10.2%` `dataloader_iter_next`, `8.7%` `ncclAllReduce`, and `5.3%` `read` syscalls. |
 | Compiler, Allocator & Distributed Scaling | `torch.compile`, `PYTORCH_ALLOC_CONF`, `SuperOffload` (`GraceAdam`), and `SimpleFSDP` | Cuts MoE step time from `248 ms` to `173 ms` (`~30%` / `30.24%` faster, `1.43x`); rounds `600 MB` allocator request to `768 MB`; `SimpleFSDP` cuts memory `~28%` and raises throughput `~69%`. |
-| Multi-GPU Trace & CI Regression Gates | Holistic Trace Analysis (HTA), TorchBench CI, PyTorch HUD, and MLPerf Logging (Table 13-6) | Enforces `>= 5%` regression gate over `3` runs; breaks down a `24.0 ms` MLPerf step into `10.5 ms` forward (`43.8%`), `9.0 ms` backward (`37.5%`), `4.0 ms` all-reduce (`16.7%` = `1/6`), and `0.5 ms` other (`2.1%`). |
+| Multi-GPU Trace & CI Regression Gates | Holistic Trace Analysis (HTA), TorchBench CI, PyTorch HUD, and MLPerf Logging | Enforces `>= 5%` regression gate over `3` runs; breaks down a `24.0 ms` MLPerf step into `10.5 ms` forward (`43.8%`), `9.0 ms` backward (`37.5%`), `4.0 ms` all-reduce (`16.7%` = `1/6`), and `0.5 ms` other (`2.1%`). |
 
 :::note About the numbers in this chapter
 The profile outputs, step times, call-stack percentages, and Grace hardware counter values come from *AI Systems Performance Engineering*, which notes that its metric-table numbers are illustrative, and from the Volume 17 notes. They show how to read each tool rather than what your specific cluster will print, and none were captured on live GPU hardware for this handbook. Shell commands are marked untested here.
@@ -105,7 +105,7 @@ Modern PyTorch engineering relies on specialized tools for operator attribution,
 
 ## 2. Four-Tool Walkthrough: Profiling a 64-Expert Mixture-of-Experts Training Step
 
-### 2.1 Step 1 — Operator-level attribution with `torch.profiler` (Table 13-2)
+### 2.1 Step 1 — Operator-level attribution with `torch.profiler`
 
 When a Mixture-of-Experts language model trains slowly, you first need to know which PyTorch operators consume the most GPU time. Unlike a dense Transformer where a handful of large matrix multiplications dominate, a 64-expert model dispatches tokens dynamically across dozens of smaller expert layers. Furthermore, if you start recording on the very first batch, one-time CUDA context initialization, JIT compilation, and allocator warmup distort the trace completely.
 
@@ -162,9 +162,9 @@ Calling `prof.key_averages().table` sorted by `self_cuda_time_total` produces th
 | 8 | `aten::gather` | `3.60 ms` | `16` | Token index gather operations. |
 | 9 | `aten::to` | `2.90 ms` | `8` | Dtype and device conversion casts. |
 | 10 | `aten::add_` | `2.20 ms` | `64` | Per-expert in-place parameter and gradient updates (`1` per expert inside `optimizer_step`). |
-| Total | Top 10 CUDA Operations | `138.00 ms` | — | Matches the `138.0 ms` `train_step` NVTX projection in Nsight Systems (Table 13-3). |
+| Total | Top 10 CUDA Operations | `138.00 ms` | — | Matches the `138.0 ms` `train_step` NVTX projection in Nsight Systems. |
 
-### 2.2 Step 2 — System timeline and NVTX GPU projection with Nsight Systems (Table 13-3)
+### 2.2 Step 2 — System timeline and NVTX GPU projection with Nsight Systems
 
 Operator tables tell you how much GPU time each kernel family spent, but they hide how those kernels align with CPU phases. Because CUDA kernel launches are asynchronous, the CPU thread pushes and pops the forward NVTX range long before the GPU finishes executing the forward kernels. If you measure the CPU wall-clock duration of an NVTX range, you measure only host launch speed rather than true GPU execution time.
 
@@ -187,7 +187,7 @@ The table below shows the resulting NVTX GPU Projection Summary from Table 13-3.
 | `backward` | `58.3 ms` | `58.3 ms` | `0.0 ms` | `130` | Captures `130` GPU activities launched during `loss.backward()`. |
 | `optimizer_step` | `19.2 ms` | `19.2 ms` | `0.0 ms` | `1` | Single NVTX push/pop on the host that CUPTI projects onto all `64` `aten::add_` expert update kernels (`1` per expert). |
 
-### 2.3 Step 3 — Kernel Roofline analysis with Nsight Compute (`ncu`, Table 13-4)
+### 2.3 Step 3 — Kernel Roofline analysis with Nsight Compute (`ncu`)
 
 Once PyTorch Profiler and Nsight Systems confirm that matrix multiplications dominate the training step, timeline tools cannot tell you whether those kernels are limited by Tensor Core math or high-bandwidth memory traffic. Trying to guess whether a kernel needs better tiling or lower precision without hardware counters leads to blind trial and error.
 
@@ -245,7 +245,7 @@ The block below summarizes the exact hardware counter outputs on the Grace CPU a
 
 Sampling DWARF call stacks at two thousand hertz via `perf record` and `perf report` isolates the five host CPU hotspots shown in the table below.
 
-| `perf report` Symbol (`Shared Object`) | Sample Share (`%`) | Bottleneck Diagnosis | Targeted Mitigation (*AI Systems Performance Engineering* Ch 13) |
+| `perf report` Symbol (`Shared Object`) | Sample Share (`%`) | Bottleneck Diagnosis | Targeted Mitigation |
 |---|---:|---|---|
 | `py::forward` (`python` — `/src/train.py`) | `45.0%` | Python interpreter opcode dispatch and per-op launch overhead in the forward loop. | Enable `torch.compile` to fuse Python operations into compiled Triton and CUDA graphs. |
 | `aten::matmul` (`python` / C++ dispatcher) | `20.5%` | C++ operator dispatch and launch wrapper overhead across `128` expert GEMMs per step. | Fuse and compile with `torch.compile` (`mode="max-autotune"`) or grouped/custom GEMM kernels. |
@@ -344,7 +344,7 @@ When scaling compiled models across GPUs, structure your distributed wrappers ar
 | `AsyncTP` & `AutoParallel` | Dual streams + SM-wave-aware scheduling via `torch.compile` and `DTensor` sharding search | Overlaps Tensor Parallel `all-gather` and `reduce-scatter` collectives with matmul waves and searches optimal FSDP/TP/PP plans automatically. |
 | `SimpleFSDP` (in `TorchTitan`) | `torch.compile`-native FSDP built on `DTensor` and selective activation checkpointing | Reduces memory usage by up to `~28%` (`-28%`) and increases training throughput by up to `~69%` (`+69%`) compared to the traditional eager `FSDP2` path. |
 
-### 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging (Table 13-6)
+### 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging
 
 Even after a model is carefully profiled and tuned, routine pull requests or library upgrades can quietly introduce a graph break or allocator regression. Without automated performance gates and structured step-time breakdowns in continuous integration, teams discover a ten percent throughput loss only weeks later during a costly production training run.
 
@@ -404,7 +404,7 @@ When profiling sessions mislead an engineering team or memory optimizations back
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| 1 | Using `nsys` instead of `ncu` to debug a slow custom CUDA/Triton kernel (V17 Ch 2) | Custom sparse Triton kernel runs `4x` slower than PyTorch on an H100; team stares at `nsys` for days seeing only one long blue bar on the GPU row. | Nsight Systems (`nsys`) is a macro system timeline tool and cannot inspect intra-SM register spills, L1 bank conflicts, or warp stalls. | Switch to Nsight Compute (`ncu`) (`--kernel-name-regex` + `--set full`) to inspect SM Roofline ceilings, register spilling to Local Memory, and L1/L2 hit rates. |
+| 1 | Using `nsys` instead of `ncu` to debug a slow custom CUDA/Triton kernel | Custom sparse Triton kernel runs `4x` slower than PyTorch on an H100; team stares at `nsys` for days seeing only one long blue bar on the GPU row. | Nsight Systems (`nsys`) is a macro system timeline tool and cannot inspect intra-SM register spills, L1 bank conflicts, or warp stalls. | Switch to Nsight Compute (`ncu`) (`--kernel-name-regex` + `--set full`) to inspect SM Roofline ceilings, register spilling to Local Memory, and L1/L2 hit rates. |
 | 2 | Timing GPU regions with Python `time.time()` or calling `tensor.item()` inside the training loop | Reported layer timings are near-zero while the final loss step takes hundreds of milliseconds, or `nsys` shows a full device stall on every step. | `time.time()` records CPU enqueue time unless synchronized, and `tensor.item()` or `print(cuda_tensor)` forces a blocking `D2H` copy plus `cudaDeviceSynchronize`. | Time GPU regions exclusively with `torch.cuda.Event(enable_timing=True)` (`start.elapsed_time(end)`), and log scalar metrics only at intervals using `.detach()` outside the hot path. |
 | 3 | Setting `torch.set_float32_matmul_precision("highest")` in production or forgetting `autocast` | `ncu` (`sm__inst_executed_pipe_tensor`) shows `0%` Tensor Core utilization and `aten::matmul` runs at scalar FP32 CUDA core speed. | `"highest"` disables TF32 Tensor Core math and forces scalar FP32; `torch.autocast` was omitted. | Set `torch.set_float32_matmul_precision("high")` (or `"medium"`), wrap forward and loss in `torch.autocast("cuda", dtype=torch.bfloat16)`, and verify `sm__inst_executed_pipe_tensor` in `ncu`. |
 | 4 | Variable-sized MoE expert allocations causing allocator fragmentation OOM | Multi-day MoE training job crashes with `CUDA out of memory` as `torch.cuda.mem_get_info()` free memory steadily drops across epochs despite constant model size. | Dynamic token routing creates different expert tensor sizes every batch, splitting caching-allocator blocks into unusable fragments. | Preallocate a fixed-size expert buffer sized to the maximum token capacity per expert, and configure `PYTORCH_ALLOC_CONF` (`max_split_size_mb:256`, `roundup_power2_divisions`, `backend:cudaMallocAsync`). |

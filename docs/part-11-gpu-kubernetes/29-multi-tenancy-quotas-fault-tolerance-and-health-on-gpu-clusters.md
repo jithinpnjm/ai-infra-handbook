@@ -27,19 +27,19 @@ Building a cluster is only the start of an AI platform team's work. Picture a GP
 
 Each control in this chapter answers a failure that really happened. The table below lists five of them from our operational notes, along with the fix that followed each one.
 
-| Incident name | Source chapter | Triggering event | Production impact | Primary fix |
-|---|---|---|---|---|
-| Big-Bang Kernel Upgrade Outage | `volume-19/chapter-01` | Emergency `apt-get upgrade -y && reboot` across 500 GPU nodes at 2:00 AM without GPU Operator coordination | 400 nodes (80% of the cluster) booted with 0 `nvidia.com/gpu` capacity because `nvidia.ko` mismatched the new kernel headers | 6-Step Safe Eviction Pipeline and 3-Stage Canary Rollout (`1` Vanguard Node `24h` -> `1` Rack -> Global `>= 90%`) |
-| 1-GPU Student Loop Crash | `volume-19/chapter-07` | 500 students and 5 research labs shared 80 GB A100 GPUs via Namespace `ResourceQuotas` (1 GPU) and software Time-Slicing | One infinite tensor loop consumed 100% of physical VRAM in 5 minutes and crashed 10 professor jobs with CUDA OOM | Partition shared 80 GB GPUs into 7 hardware `1g.10gb` MIG slices |
-| $5 Million Empty Hotel | `volume-19/chapter-03` & `06` | Team requested $5 Million for 16 HGX H100 servers because Kubernetes GPU allocation stayed at 98% for 3 weeks | 30-day DCGM audit showed `DCGM_FI_PROF_SM_ACTIVE` averaged 12% while idle `p4d.24xlarge` notebooks wasted $2,000+ per weekend vs $20 for a CPU VM | Automated FinOps Reaper (`< 5%` SM activity for 4 hours), `7 × 1g.10gb` MIG, and `10:1` dev time-slicing |
-| 60-Second Grafana 504 Timeout | `volume-19/chapter-09` | 1,000 GPUs emitting 500 metrics/sec with ephemeral pod labels overwhelmed a monolithic Prometheus server on a 200-node cluster | Dashboards spun for 60 seconds and failed with `504 Gateway Timeout` during an active outage | 4-Tier Thanos / Cortex architecture plus 5-minute Prometheus Recording Rules (`cluster:gpu:utilization_avg_5m`) |
-| 1-Petabyte Dataset Corruption | `volume-19/chapter-10` | A data-cleaning script corrupted a 1 PB NVMe training directory, and 10 PB over 10 Gbps takes ~92 days to back up over the network | Nightly network backups were impossible, risking months of lost training progress | Hourly Copy-on-Write (`CoW`) storage snapshots (`<= 60 min` loss) and 30-day S3 Object Lock (`WORM`) Compliance mode |
+| Incident name | Triggering event | Production impact | Primary fix |
+|---|---|---|---|
+| Big-Bang Kernel Upgrade Outage | Emergency `apt-get upgrade -y && reboot` across 500 GPU nodes at 2:00 AM without GPU Operator coordination | 400 nodes (80% of the cluster) booted with 0 `nvidia.com/gpu` capacity because `nvidia.ko` mismatched the new kernel headers | 6-Step Safe Eviction Pipeline and 3-Stage Canary Rollout (`1` Vanguard Node `24h` -> `1` Rack -> Global `>= 90%`) |
+| 1-GPU Student Loop Crash | 500 students and 5 research labs shared 80 GB A100 GPUs via Namespace `ResourceQuotas` (1 GPU) and software Time-Slicing | One infinite tensor loop consumed 100% of physical VRAM in 5 minutes and crashed 10 professor jobs with CUDA OOM | Partition shared 80 GB GPUs into 7 hardware `1g.10gb` MIG slices |
+| $5 Million Empty Hotel | Team requested $5 Million for 16 HGX H100 servers because Kubernetes GPU allocation stayed at 98% for 3 weeks | 30-day DCGM audit showed `DCGM_FI_PROF_SM_ACTIVE` averaged 12% while idle `p4d.24xlarge` notebooks wasted $2,000+ per weekend vs $20 for a CPU VM | Automated FinOps Reaper (`< 5%` SM activity for 4 hours), `7 × 1g.10gb` MIG, and `10:1` dev time-slicing |
+| 60-Second Grafana 504 Timeout | 1,000 GPUs emitting 500 metrics/sec with ephemeral pod labels overwhelmed a monolithic Prometheus server on a 200-node cluster | Dashboards spun for 60 seconds and failed with `504 Gateway Timeout` during an active outage | 4-Tier Thanos / Cortex architecture plus 5-minute Prometheus Recording Rules (`cluster:gpu:utilization_avg_5m`) |
+| 1-Petabyte Dataset Corruption | A data-cleaning script corrupted a 1 PB NVMe training directory, and 10 PB over 10 Gbps takes ~92 days to back up over the network | Nightly network backups were impossible, risking months of lost training progress | Hourly Copy-on-Write (`CoW`) storage snapshots (`<= 60 min` loss) and 30-day S3 Object Lock (`WORM`) Compliance mode |
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
 As you read the table, notice that each failure has its own cause, and each one maps to a control covered later in this chapter.
 
-This chapter draws on Volume 19 and Volume 11 of our operational notes, and on *Scalable Kubernetes Infrastructure for AI Platforms*, to form one operational blueprint. By the end, you will know how to isolate competing tenants, cut cloud GPU bills in half, upgrade drivers without downtime, and find silent hardware stalls. The rest of the chapter takes these controls one at a time, so you can read each one as the answer to a specific failure.
+This chapter combines operational practice for GPU clusters into one blueprint. By the end, you will know how to isolate competing tenants, cut cloud GPU bills in half, upgrade drivers without downtime, and find silent hardware stalls. The rest of the chapter takes these controls one at a time, so you can read each one as the answer to a specific failure.
 
 ## Prerequisites and outcomes
 
@@ -66,11 +66,11 @@ Stopping noisy neighbors from crossing tenant boundaries takes hardware isolatio
 
 Network and storage finish the boundary. Default-deny NetworkPolicies in Calico or Cilium stop unauthorized pod-to-pod scans. SR-IOV Virtual Functions isolate kernel-bypass RDMA traffic on ConnectX NICs. On a shared Weka or Lustre parallel file system, per-tenant IOPS and bandwidth QoS rules stop one large checkpoint write from starving the latency-sensitive inference APIs.
 
-| Isolation pillar | Source reference | Unisolated failure mode | Hardware and software enforcement |
-|---|---|---|---|
-| Pillar 1: Compute Isolation | `volume-19/chapter-07` Sec. 1 & `volume-11/chapter-08` | Infinite tensor loop on time-sliced 80 GB A100 exhausts 100% VRAM in 5 minutes and kills 10 co-located jobs | Partition shared 80 GB GPUs into `7 × 1g.10gb` MIG slices; dedicate regulated PCI/HIPAA nodes via Node Taints and Tolerations |
-| Pillar 2: Network Isolation | `volume-19/chapter-07` Sec. 2 & Chapter 11.22 | Marketing pods scan Finance pods over TCP/IP, or RDMA traffic bypasses Linux kernel software policies | Enforce Default-Deny `NetworkPolicies` (Calico/Cilium) per namespace and slice ConnectX NICs into hardware SR-IOV Virtual Functions (`VFs`) |
-| Pillar 3: Storage Isolation | `volume-19/chapter-07` Sec. 3 | Multi-terabyte Marketing checkpoint saturates 100% of Weka/Lustre IOPS and stalls Finance inference APIs | Configure hard per-tenant IOPS and bandwidth QoS limits with guaranteed minimum IOPS reserves, plus scoped subdirectory `chroot` mounts (never root `/`) |
+| Isolation pillar | Unisolated failure mode | Hardware and software enforcement |
+|---|---|---|
+| Pillar 1: Compute Isolation | Infinite tensor loop on time-sliced 80 GB A100 exhausts 100% VRAM in 5 minutes and kills 10 co-located jobs | Partition shared 80 GB GPUs into `7 × 1g.10gb` MIG slices; dedicate regulated PCI/HIPAA nodes via Node Taints and Tolerations |
+| Pillar 2: Network Isolation | Marketing pods scan Finance pods over TCP/IP, or RDMA traffic bypasses Linux kernel software policies | Enforce Default-Deny `NetworkPolicies` (Calico/Cilium) per namespace and slice ConnectX NICs into hardware SR-IOV Virtual Functions (`VFs`) |
+| Pillar 3: Storage Isolation | Multi-terabyte Marketing checkpoint saturates 100% of Weka/Lustre IOPS and stalls Finance inference APIs | Configure hard per-tenant IOPS and bandwidth QoS limits with guaranteed minimum IOPS reserves, plus scoped subdirectory `chroot` mounts (never root `/`) |
 
 As you read the table, notice that each pillar pairs one specific failure with one specific enforcement layer. The chapter asks for all three because the boundary is incomplete without any of them.
 
@@ -92,14 +92,14 @@ A straight-line forecast fails for generative AI, because batching and sequence 
 
 Allocation numbers can also mislead you. Kubernetes allocation metrics routinely disagree with actual hardware use. A cluster can show ninety-eight percent GPU allocation for weeks, while DCGM reports Streaming Multiprocessors that sit idle in abandoned Jupyter notebooks over the weekend. A three-tier purchasing strategy, combined with an automated FinOps Reaper, cuts cloud GPU bills in half. It also prevents unnecessary multi-million-dollar hardware purchases.
 
-| Capacity / FinOps lever | Source reference | Target workload or scenario | Mechanism and exact thresholds | Verified financial impact |
-|---|---|---|---|---|
-| Forecasting: Batching vs Context | `volume-19/chapter-03` Sec. 1 | Inference traffic doubling (`10 -> 20 req/s`) vs `1 -> 100`-page PDF uploads | Dynamic batching raises GPU util from `40%` to `55%`; `100`-page PDFs explode KV-cache linearly into CUDA OOM | Prevents over-buying compute for RPS growth while sizing VRAM for sequence length |
-| 1. Baseline Tier (Reserved / On-Prem) | `volume-19/chapter-03` & `06` | `24/7` steady-state production inference and baseline R&D | Commit to 1-to-3-Year Reserved Instances (`RIs`), Savings Plans, or on-premises bare metal | `40%–50%` off (1-Year RI) to `60%+` cheaper than On-Demand |
-| 2. Burst Tier (On-Demand Cloud) | `volume-19/chapter-03` & `06` | Daily traffic peaks, seasonal spikes, urgent ad-hoc runs | Autoscale elastic On-Demand instances only during active peak hours | Eliminates idle reservation waste during off-peak hours |
-| 3. Spot / Preemptible ("Scavenger Tier") | `volume-19/chapter-03` & `06` | Fault-tolerant batch training and async data processing | Save async S3 checkpoints every `15 minutes` and use AWS Node Termination Handler to catch the `2-minute` warning for a final sync flush | Up to `60%–70%` discount with `< 15 minutes` (or `0` steps) lost on preemption |
-| 4. Dev/Staging Sharing (MIG + Time-Slicing) | `volume-19/chapter-03` & `06` | Dev/staging using `5 GB` VRAM and `12%` `SM_ACTIVE` behind `98%` K8s allocation | Partition staging H100s into `7 × 1g.10gb` MIG slices and set `10:1` dev time-slicing (`80` devs on `1` `8`-GPU node); cuts `$500,000/month` AWS bill in half in `30 days` | Rejected premature `$5 Million` (`16` HGX H100) CapEx request for `12 months` |
-| 5. Automated FinOps Reaper Bot | `volume-19/chapter-03` & `06` | Zombie Jupyter notebooks left running over weekends (`$2,000+` per `p4d.24xlarge` vs `$20` CPU VM) | Kubernetes Operator queries Prometheus: if `DCGM_FI_PROF_SM_ACTIVE < 5%` continuously for `4 hours`, evict Pod and send Slack alert | Reclaims stranded `$30,000` GPUs automatically |
+| Capacity / FinOps lever | Target workload or scenario | Mechanism and exact thresholds | Verified financial impact |
+|---|---|---|---|
+| Forecasting: Batching vs Context | Inference traffic doubling (`10 -> 20 req/s`) vs `1 -> 100`-page PDF uploads | Dynamic batching raises GPU util from `40%` to `55%`; `100`-page PDFs explode KV-cache linearly into CUDA OOM | Prevents over-buying compute for RPS growth while sizing VRAM for sequence length |
+| 1. Baseline Tier (Reserved / On-Prem) | `24/7` steady-state production inference and baseline R&D | Commit to 1-to-3-Year Reserved Instances (`RIs`), Savings Plans, or on-premises bare metal | `40%–50%` off (1-Year RI) to `60%+` cheaper than On-Demand |
+| 2. Burst Tier (On-Demand Cloud) | Daily traffic peaks, seasonal spikes, urgent ad-hoc runs | Autoscale elastic On-Demand instances only during active peak hours | Eliminates idle reservation waste during off-peak hours |
+| 3. Spot / Preemptible ("Scavenger Tier") | Fault-tolerant batch training and async data processing | Save async S3 checkpoints every `15 minutes` and use AWS Node Termination Handler to catch the `2-minute` warning for a final sync flush | Up to `60%–70%` discount with `< 15 minutes` (or `0` steps) lost on preemption |
+| 4. Dev/Staging Sharing (MIG + Time-Slicing) | Dev/staging using `5 GB` VRAM and `12%` `SM_ACTIVE` behind `98%` K8s allocation | Partition staging H100s into `7 × 1g.10gb` MIG slices and set `10:1` dev time-slicing (`80` devs on `1` `8`-GPU node); cuts `$500,000/month` AWS bill in half in `30 days` | Rejected premature `$5 Million` (`16` HGX H100) CapEx request for `12 months` |
+| 5. Automated FinOps Reaper Bot | Zombie Jupyter notebooks left running over weekends (`$2,000+` per `p4d.24xlarge` vs `$20` CPU VM) | Kubernetes Operator queries Prometheus: if `DCGM_FI_PROF_SM_ACTIVE < 5%` continuously for `4 hours`, evict Pod and send Slack alert | Reclaims stranded `$30,000` GPUs automatically |
 
 Read each row as a pairing of a workload with a tier. Steady production inference goes on reserved capacity, daily peaks go on On-Demand, and fault-tolerant batch jobs go on Spot.
 
@@ -170,12 +170,12 @@ The second control is object locking. Lock model checkpoints in S3 with Object L
 
 The third control is snapshots. Configure Weka, NetApp, or ZFS-backed Lustre to take hourly read-only Copy-on-Write pointer snapshots. Pair those snapshots with dark-fiber asynchronous delta replication, so a corrupted directory reverts through a single API call.
 
-| DR metric or control | Source reference | Scale and timing numbers | Operational behavior and guarantee |
-|---|---|---|---|
-| Network Backup Bottleneck | `volume-19/chapter-10` Sec. 1 | `10 Petabytes` (`80 × 10^15` bits) over `10 Gbps` link = `~92 days` (`8,000,000 s`) | Proves traditional nightly network backups are physically impossible at petabyte scale |
-| `RPO` and `RTO` Alignment | `volume-19/chapter-10` Sec. 1 | Checkpoint every `4 hours` -> `RPO = 4 hours`; `5 PB` cold S3 Glacier restore -> `RTO = 3 weeks` | Ties compute loss directly to checkpoint frequency and recovery speed to storage tier |
-| S3 Object Lock (`WORM` Compliance Mode) | `volume-19/chapter-10` Sec. 2 | `50 TB` model checkpoints locked for a `30-day` retention window | Blocks ransomware and compromised `root` accounts from overwriting or deleting checkpoints (unlike bypassable Governance mode) |
-| Hourly Copy-on-Write (`CoW`) Snapshots | `volume-19/chapter-10` Customer Scenario | `1-Petabyte` NVMe production directory snapped every `1 hour` (`<= 60 minutes` loss) | Reverts accidental `rm -rf` or data-cleaning corruption via `1` storage API call with zero network transfer |
+| DR metric or control | Scale and timing numbers | Operational behavior and guarantee |
+|---|---|---|
+| Network Backup Bottleneck | `10 Petabytes` (`80 × 10^15` bits) over `10 Gbps` link = `~92 days` (`8,000,000 s`) | Proves traditional nightly network backups are physically impossible at petabyte scale |
+| `RPO` and `RTO` Alignment | Checkpoint every `4 hours` -> `RPO = 4 hours`; `5 PB` cold S3 Glacier restore -> `RTO = 3 weeks` | Ties compute loss directly to checkpoint frequency and recovery speed to storage tier |
+| S3 Object Lock (`WORM` Compliance Mode) | `50 TB` model checkpoints locked for a `30-day` retention window | Blocks ransomware and compromised `root` accounts from overwriting or deleting checkpoints (unlike bypassable Governance mode) |
+| Hourly Copy-on-Write (`CoW`) Snapshots | `1-Petabyte` NVMe production directory snapped every `1 hour` (`<= 60 minutes` loss) | Reverts accidental `rm -rf` or data-cleaning corruption via `1` storage API call with zero network transfer |
 
 Notice that the RPO row ties lost compute to the checkpoint interval, and the snapshot row restores data without any network transfer.
 
@@ -211,17 +211,17 @@ Each branch of the tree points to one hardware counter or one runtime setting. T
 
 On the network side, finding a silent RDMA drop on a large RoCEv2 fabric means reading the NIC hardware sequence counters. Running ICMP pings will not show it. Once you isolate the fault, deterministic runbooks and structured Follow-the-Sun handoffs get the hardware replaced and the maintenance done, so engineers are not woken up unnecessarily.
 
-| Forensic scenario | Source reference | Telemetry proof and exact numbers | Root cause and remediation |
-|---|---|---|---|
-| 1. PyTorch VRAM Fragmentation vs Model Size OOM | `volume-19/chapter-04` Sec. 2 & `chapter-11` | `torch.cuda.memory_summary()` shows `Max Reserved = 80 GB` vs `Max Allocated = 40 GB`; `20 GB` (`15 GB`) free in `10,000 × 2 MB` gaps fails a contiguous `5 GB` tensor alloc | Swiss-cheese allocator fragmentation -> set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. (`1B` model OOM = lower batch size / grad accum; `70B` model OOM on `80 GB` GPU = shard via FSDP / ZeRO-3) |
-| 2. The 2:00 PM 40% Thermal Slowdown | `volume-19/chapter-04` Customer Scenario | `nvidia-smi` shows `100%` util, but `DCGM_FI_DEV_GPU_TEMP` hits `85°C` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` asserts `HW_SLOWDOWN` (`1,500 MHz -> 500 MHz`) | Afternoon HVAC strain / fan failure downclocked the GPU `3x` -> alert on throttle bitmask and escalate rack cooling to Facilities |
-| 3. The 100% Utilization Lie & Triton 200 ms SLA Breach | `volume-19/chapter-04` & `chapter-11` | `TENSOR_ACTIVE < 10%` (`5%`) vs `> 50%` target; `PCIE_RX_BYTES` maxed; Triton breaches `200 ms` `p99` at `80–100%` util with `nv_inference_queue_duration_us` or `DCGM_FI_DEV_MEM_COPY_UTIL` at `100%` | Enable AMP (`BF16`/`FP16`) for Tensor Cores; set `pin_memory=True` / GDS for PCIe; raise `Instance Group` count in `config.pbtxt` and enable TensorRT-LLM `PagedAttention` + `INT8` |
-| 4. Node 84 Degraded Optic in 128-Node 400G RoCEv2 | `volume-19/chapter-05` Customer Scenario | `NCCL WARN NET/IB : Got completion ... with error 12` (retry exceeded), `0` PFC storms (`rx_prio<N>_pause`), `1` in `10,000` RDMA drop stalls `1,000` GPUs; `Node 84` spikes `packet_seq_err` | Dying laser on `Node 84` -> scan `/sys/class/infiniband/<dev>/ports/<port>/hw_counters/` (`packet_seq_err`, `out_of_sequence`, `implied_nak_seq_err`, `local_ack_timeout_err`) and `perfquery` (`SymbolErrorCounter`, `LinkDownedCounter`), cordon `Node 84`, and replace optic |
-| 5. Zero-Touch XID 48 Runbook & Follow-the-Sun Handoff | `volume-19/chapter-12` & `chapter-02` | `XID 48` (double-bit ECC) on `node-worker-42` GPU `3`; handoff logs `3` NCCL timeouts on `Llama-3-FineTune`, PCIe drops on `node-55`, `14:00 UTC` `dcgmi diag` window, Jira `#4092`; Game Day tests `< 5s` (`99.999%`) master failover | Automate `XID 48` via Alertmanager webhook (`1. Cordon` -> `2. dmesg -T \| grep NVRM` -> `3. Drain & Reset/Reboot` for row remap -> `4. RMA Jira` if recurring) |
+| Forensic scenario | Telemetry proof and exact numbers | Root cause and remediation |
+|---|---|---|
+| 1. PyTorch VRAM Fragmentation vs Model Size OOM | `torch.cuda.memory_summary()` shows `Max Reserved = 80 GB` vs `Max Allocated = 40 GB`; `20 GB` (`15 GB`) free in `10,000 × 2 MB` gaps fails a contiguous `5 GB` tensor alloc | Swiss-cheese allocator fragmentation -> set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. (`1B` model OOM = lower batch size / grad accum; `70B` model OOM on `80 GB` GPU = shard via FSDP / ZeRO-3) |
+| 2. The 2:00 PM 40% Thermal Slowdown | `nvidia-smi` shows `100%` util, but `DCGM_FI_DEV_GPU_TEMP` hits `85°C` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` asserts `HW_SLOWDOWN` (`1,500 MHz -> 500 MHz`) | Afternoon HVAC strain / fan failure downclocked the GPU `3x` -> alert on throttle bitmask and escalate rack cooling to Facilities |
+| 3. The 100% Utilization Lie & Triton 200 ms SLA Breach | `TENSOR_ACTIVE < 10%` (`5%`) vs `> 50%` target; `PCIE_RX_BYTES` maxed; Triton breaches `200 ms` `p99` at `80–100%` util with `nv_inference_queue_duration_us` or `DCGM_FI_DEV_MEM_COPY_UTIL` at `100%` | Enable AMP (`BF16`/`FP16`) for Tensor Cores; set `pin_memory=True` / GDS for PCIe; raise `Instance Group` count in `config.pbtxt` and enable TensorRT-LLM `PagedAttention` + `INT8` |
+| 4. Node 84 Degraded Optic in 128-Node 400G RoCEv2 | `NCCL WARN NET/IB : Got completion ... with error 12` (retry exceeded), `0` PFC storms (`rx_prio<N>_pause`), `1` in `10,000` RDMA drop stalls `1,000` GPUs; `Node 84` spikes `packet_seq_err` | Dying laser on `Node 84` -> scan `/sys/class/infiniband/<dev>/ports/<port>/hw_counters/` (`packet_seq_err`, `out_of_sequence`, `implied_nak_seq_err`, `local_ack_timeout_err`) and `perfquery` (`SymbolErrorCounter`, `LinkDownedCounter`), cordon `Node 84`, and replace optic |
+| 5. Zero-Touch XID 48 Runbook & Follow-the-Sun Handoff | `XID 48` (double-bit ECC) on `node-worker-42` GPU `3`; handoff logs `3` NCCL timeouts on `Llama-3-FineTune`, PCIe drops on `node-55`, `14:00 UTC` `dcgmi diag` window, Jira `#4092`; Game Day tests `< 5s` (`99.999%`) master failover | Automate `XID 48` via Alertmanager webhook (`1. Cordon` -> `2. dmesg -T \| grep NVRM` -> `3. Drain & Reset/Reboot` for row remap -> `4. RMA Jira` if recurring) |
 
 ## Commands and configurations that matter
 
-Each command and manifest below targets one of the failure modes covered in the concepts section above. Before you replace a network part, grant a pod S3 access, or deploy a FinOps reaper, you need exact queries that work cleanly across the whole cluster.
+Each command and manifest below targets one of the failure modes covered in the concepts section above. Before you replace a network part, grant a pod S3 access, or deploy a FinOps reaper, you need exact queries that work cleanly across the whole cluster. The commands and manifests below were not run on a live cluster.
 
 ### 1. Scanning RDMA Hardware Sequence-Error Counters Across a Node
 
@@ -305,11 +305,11 @@ Even mature platform teams fall into subtle traps when they upgrade kernels, coo
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| 1. `400` of `500` GPU nodes lose all `nvidia.com/gpu` capacity after a `2:00 AM` `apt-get upgrade -y && reboot` (`volume-19/chapter-01`) | `kubectl get nodes` shows `0` allocatable GPUs on `400` nodes after an emergency Ubuntu kernel patch; `dmesg` shows `nvidia.ko` module version mismatch. | Big-Bang Kernel Reboot Breaking Driver Compatibility: Upgrading the host kernel without matching headers and GPU Operator driver-container recompilation blinded `80%` of the fleet at once. | Restart `nvidia-driver-daemonset` with matching kernel headers to rebuild `nvidia.ko`, ban raw Ansible reboots, and enforce the 6-Step Eviction Pipeline + 3-Stage Canary Rollout (`1` Vanguard `24h` -> `1` Rack -> Global `>= 90%`). |
-| 2. Training iteration time spikes `40%` every day at `2:00 PM` while `nvidia-smi` shows `100%` utilization (`volume-19/chapter-04`) | Network switches are idle and `nvidia-smi` reports `100%` GPU-Util, but overlaying `DCGM_FI_DEV_GPU_TEMP` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` shows `85°C` and `HW_SLOWDOWN` (`1500 -> 500 MHz`). | Data Center HVAC Thermal Throttling: Afternoon heat strained rack cooling; the GPU downclocked `3x` to protect silicon while `nvidia-smi` stayed at `100%`. | Alert on `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` bitmask and escalate rack cooling / fan failures to Data Center Facilities. |
-| 3. `128`-node `400G` RoCEv2 training jobs fail randomly with `NCCL WARN NET/IB : Got completion ... with error 12` (`volume-19/chapter-05`) | Core switches show links `UP` and `0` PFC storms, `ping` succeeds, but `Node 84`'s `/sys/class/infiniband/.../hw_counters/packet_seq_err` and `local_ack_timeout_err` climb rapidly. | Silent Layer 1 Optical Transceiver Degradation: A dying laser on `Node 84` drops `1` in `10,000` RDMA packets, triggering Go-Back-N retransmissions that poison the synchronous `128`-node `AllReduce` ring. | Monitor NIC RDMA `hw_counters` (`packet_seq_err`, `out_of_sequence`, `implied_nak_seq_err`, `local_ack_timeout_err`) and switch FEC/CRC counters; cordon `Node 84` and replace the optical transceiver. |
-| 4. Triton LLM inference breaches `200 ms` `p99` SLA at `80–100%` GPU-Util, and team demands new GPUs (`volume-19/chapter-11`) | `nvidia-smi` bounces between `80%` and `100%`, while `nv_inference_queue_duration_us` spikes and/or `DCGM_FI_DEV_MEM_COPY_UTIL` is pegged at `100%`. | Software Queue Saturation & KV-Cache Memory-Bandwidth Bottleneck: Requests wait in Triton's thread queue, and token decoding (`TPOT`) is memory-bandwidth-bound rather than compute-bound. | Increase `Instance Group` count in Triton `config.pbtxt`, deploy TensorRT-LLM with PagedAttention, and apply INT8 quantization to halve memory bandwidth per token. |
-| 5. Grafana dashboards spin for `60 seconds` and fail with `504 Gateway Timeout` during a `200`-node outage (`volume-19/chapter-09`) | Single monolithic Prometheus server hits `100%` RAM/CPU when incident error series spike and SREs query `30-day` raw DCGM metrics simultaneously. | High-Cardinality Ingest + Query Coupling: Ephemeral pod labels created millions of series on a single server with no read/write separation or pre-computation. | Deploy the 4-Tier Thanos / Cortex Architecture (decoupling `Scraping Agents` and `Thanos Receive` from `Thanos Querier` + S3) and pre-compute aggregations with `5-minute` Prometheus Recording Rules (`cluster:gpu:utilization_avg_5m`). |
+| 1. `400` of `500` GPU nodes lose all `nvidia.com/gpu` capacity after a `2:00 AM` `apt-get upgrade -y && reboot` | `kubectl get nodes` shows `0` allocatable GPUs on `400` nodes after an emergency Ubuntu kernel patch; `dmesg` shows `nvidia.ko` module version mismatch. | Big-Bang Kernel Reboot Breaking Driver Compatibility: Upgrading the host kernel without matching headers and GPU Operator driver-container recompilation blinded `80%` of the fleet at once. | Restart `nvidia-driver-daemonset` with matching kernel headers to rebuild `nvidia.ko`, ban raw Ansible reboots, and enforce the 6-Step Eviction Pipeline + 3-Stage Canary Rollout (`1` Vanguard `24h` -> `1` Rack -> Global `>= 90%`). |
+| 2. Training iteration time spikes `40%` every day at `2:00 PM` while `nvidia-smi` shows `100%` utilization | Network switches are idle and `nvidia-smi` reports `100%` GPU-Util, but overlaying `DCGM_FI_DEV_GPU_TEMP` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` shows `85°C` and `HW_SLOWDOWN` (`1500 -> 500 MHz`). | Data Center HVAC Thermal Throttling: Afternoon heat strained rack cooling; the GPU downclocked `3x` to protect silicon while `nvidia-smi` stayed at `100%`. | Alert on `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` bitmask and escalate rack cooling / fan failures to Data Center Facilities. |
+| 3. `128`-node `400G` RoCEv2 training jobs fail randomly with `NCCL WARN NET/IB : Got completion ... with error 12` | Core switches show links `UP` and `0` PFC storms, `ping` succeeds, but `Node 84`'s `/sys/class/infiniband/.../hw_counters/packet_seq_err` and `local_ack_timeout_err` climb rapidly. | Silent Layer 1 Optical Transceiver Degradation: A dying laser on `Node 84` drops `1` in `10,000` RDMA packets, triggering Go-Back-N retransmissions that poison the synchronous `128`-node `AllReduce` ring. | Monitor NIC RDMA `hw_counters` (`packet_seq_err`, `out_of_sequence`, `implied_nak_seq_err`, `local_ack_timeout_err`) and switch FEC/CRC counters; cordon `Node 84` and replace the optical transceiver. |
+| 4. Triton LLM inference breaches `200 ms` `p99` SLA at `80–100%` GPU-Util, and team demands new GPUs | `nvidia-smi` bounces between `80%` and `100%`, while `nv_inference_queue_duration_us` spikes and/or `DCGM_FI_DEV_MEM_COPY_UTIL` is pegged at `100%`. | Software Queue Saturation & KV-Cache Memory-Bandwidth Bottleneck: Requests wait in Triton's thread queue, and token decoding (`TPOT`) is memory-bandwidth-bound rather than compute-bound. | Increase `Instance Group` count in Triton `config.pbtxt`, deploy TensorRT-LLM with PagedAttention, and apply INT8 quantization to halve memory bandwidth per token. |
+| 5. Grafana dashboards spin for `60 seconds` and fail with `504 Gateway Timeout` during a `200`-node outage | Single monolithic Prometheus server hits `100%` RAM/CPU when incident error series spike and SREs query `30-day` raw DCGM metrics simultaneously. | High-Cardinality Ingest + Query Coupling: Ephemeral pod labels created millions of series on a single server with no read/write separation or pre-computation. | Deploy the 4-Tier Thanos / Cortex Architecture (decoupling `Scraping Agents` and `Thanos Receive` from `Thanos Querier` + S3) and pre-compute aggregations with `5-minute` Prometheus Recording Rules (`cluster:gpu:utilization_avg_5m`). |
 
 Notice that the same evidence can point you to different causes. A GPU at one hundred percent utilization may be cooling-bound in one case and memory-bound in another.
 
@@ -319,7 +319,7 @@ When you see a slow job, the rows that mention utilization are the ones to read 
 
 ### Venue and scope
 
-You need a dedicated staging fleet before you run a live five-hundred-node reboot or inject hardware ECC errors. This lab does not. It runs a local Python 3 verification suite, found in `code/part11/multi_tenancy_quotas_fault_tolerance_health.py` and `code/part11/multi_tenancy_quotas_fault_tolerance_health_lab.py`. The suite checks the six-step eviction pipeline, the three-stage canary rollout, the FinOps zombie reaper, the petabyte disaster recovery math, and the Universal AI SRE Diagnostic Matrix. All cluster CLI commands are marked `(untested here)`.
+You need a dedicated staging fleet before you run a live five-hundred-node reboot or inject hardware ECC errors. This lab does not. It runs a local Python 3 verification suite, found in `code/part11/multi_tenancy_quotas_fault_tolerance_health.py` and `code/part11/multi_tenancy_quotas_fault_tolerance_health_lab.py`. The suite checks the six-step eviction pipeline, the three-stage canary rollout, the FinOps zombie reaper, the petabyte disaster recovery math, and the Universal AI SRE Diagnostic Matrix. The cluster commands are untested.
 
 ### Step 1: Run the self-checking multi-tenancy, FinOps, fault tolerance and health lab (tested here)
 
@@ -376,121 +376,121 @@ The summary line at the bottom reports 25 passed and 0 failed. Each line names t
 ## Checkpoint questions
 
 <details>
-<summary>**1. In Volume 19 Chapter 1, what are the three categories of AI cluster upgrades ranked by blast radius, and why did an emergency apt-get upgrade -y && reboot across 500 nodes blind 400 nodes (80%) to their GPUs?**</summary>
+<summary>**1. What are the three categories of AI cluster upgrades ranked by blast radius, and why did an emergency apt-get upgrade -y && reboot across 500 nodes blind 400 nodes (80%) to their GPUs?**</summary>
 
 There are three categories: low-risk application container updates, high-risk GPU Operator driver reloads, and extreme-risk OS kernel or firmware reboots. The emergency reboot went into a new Linux kernel without coordination with the GPU Operator. That broke the kernel-to-driver ABI, because `nvidia.ko` no longer matched the new kernel headers. Service came back once `nvidia-driver-daemonset` restarted with matching kernel headers, so the driver container could recompile `nvidia.ko`.
 </details>
 
 <details>
-<summary>**2. List the six steps of the Safe Eviction Pipeline and the three stages of the Canary Rollout Strategy in Volume 19 Chapter 1.**</summary>
+<summary>**2. List the six steps of the Safe Eviction Pipeline and the three stages of the Canary Rollout Strategy.**</summary>
 
 If you need the order, the six eviction steps are cordoning the node, draining pods with checkpointing, verifying zero GPU processes in `nvidia-smi`, executing the upgrade, running a `dcgmi diag` burn-in, and uncordoning the node. The canary starts by soaking one Vanguard Node for twenty-four hours. It then upgrades one full rack fault domain. The last stage rolls across the cluster and keeps at least ninety percent of capacity online.
 </details>
 
 <details>
-<summary>**3. Contrast the Economies of Scale (Dynamic Batching) with the Diseconomies of Scale (Context Windows) in AI capacity forecasting (Volume 19 Chapter 3 Section 1).**</summary>
+<summary>**3. Contrast the Economies of Scale (Dynamic Batching) with the Diseconomies of Scale (Context Windows) in AI capacity forecasting.**</summary>
 
 Dynamic batching gives you economies of scale. Doubling inference traffic from ten to twenty requests per second packs the extra queries into existing CUDA kernels, and GPU utilization rises modestly from forty to fifty-five percent. Context windows bring diseconomies of scale. Growing inputs from one-page documents to hundred-page PDFs raises KV-cache memory linearly, and that triggers immediate out-of-memory crashes.
 </details>
 
 <details>
-<summary>**4. In Volume 19 Chapter 3, how does the automated FinOps Reaper bot identify and reclaim "zombie" Jupyter notebook pods, and how did DCGM metrics refute a $5 Million (16 HGX H100) hardware request?**</summary>
+<summary>**4. How does the automated FinOps Reaper bot identify and reclaim "zombie" Jupyter notebook pods, and how did DCGM metrics refute a $5 Million (16 HGX H100) hardware request?**</summary>
 
 The FinOps Reaper queries Prometheus continuously. It evicts any pod holding a GPU whose `DCGM_FI_PROF_SM_ACTIVE` metric stays below five percent for four hours. A thirty-day audit refuted the five-million-dollar request. Ninety-eight percent Kubernetes allocation had hidden an average Streaming Multiprocessor utilization of only twelve percent. Partitioning staging GPUs into seven `1g.10gb` MIG slices absorbed twelve months of growth for zero capital outlay.
 </details>
 
 <details>
-<summary>**5. Walk through the three-phase FinOps plan in Volume 19 Chapter 6 that cuts a $500,000/month all-On-Demand AWS GPU bill in half within 30 days.**</summary>
+<summary>**5. Walk through the three-phase FinOps plan that cuts a $500,000/month all-On-Demand AWS GPU bill in half within 30 days.**</summary>
 
 If you run the plan, the first phase covers steady-state production inference with one-year Reserved Instances or Savings Plans, for a forty to fifty percent discount. On-Demand is kept for burst peaks only. The second phase moves batch training to Spot GPU instances, for up to seventy percent savings. Spot nodes pair with fifteen-minute asynchronous S3 checkpoints, and the AWS Node Termination Handler catches the two-minute warning. The third phase enables ten-to-one GPU Time-Slicing on development nodes, so eighty developers share one eight-GPU machine.
 </details>
 
 <details>
-<summary>**6. If nvidia-smi shows 100% GPU Utilization, how do you prove whether the GPU is stalled on PCIe transfers, missing Automatic Mixed Precision (AMP), or suffering from hardware thermal throttling (Volume 19 Chapter 4)?**</summary>
+<summary>**6. If nvidia-smi shows 100% GPU Utilization, how do you prove whether the GPU is stalled on PCIe transfers, missing Automatic Mixed Precision (AMP), or suffering from hardware thermal throttling?**</summary>
 
 Consider a GPU that shows 100% utilization. Query DCGM Exporter metrics to separate the three stalls. Maxed-out `DCGM_FI_PROF_PCIE_RX_BYTES` with low SM activity points to a PCIe copy bottleneck, which needs `pin_memory=True` or GPUDirect Storage. High FP32 activity with `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` below ten percent means the job is missing Automatic Mixed Precision. When `DCGM_FI_DEV_GPU_TEMP` reaches eighty-five degrees Celsius and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` asserts `HW_SLOWDOWN`, the GPU is thermally throttled.
 </details>
 
 <details>
-<summary>**7. How do you prove that a PyTorch CUDA Out of Memory crash was caused by VRAM fragmentation rather than genuine capacity exhaustion, and what environment variable fixes it (Volume 19 Chapter 4 Section 2)?**</summary>
+<summary>**7. How do you prove that a PyTorch CUDA Out of Memory crash was caused by VRAM fragmentation rather than genuine capacity exhaustion, and what environment variable fixes it?**</summary>
 
 Inspect the output of `torch.cuda.memory_summary()` after the crash. When `Max Reserved` sits near eighty gigabytes while `Max Allocated` is only forty gigabytes, the free memory is chopped into thousands of small, non-contiguous gaps. Setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` lets PyTorch stitch non-contiguous pages together, which removes the fragmentation crash.
 </details>
 
 <details>
-<summary>**8. Why is fixing a CUDA OOM on a 70B parameter model fundamentally different from fixing a CUDA OOM on a 1B parameter model (Volume 19 Chapter 11 Interview Question 2)?**</summary>
+<summary>**8. Why is fixing a CUDA OOM on a 70B parameter model fundamentally different from fixing a CUDA OOM on a 1B parameter model?**</summary>
 
 An out-of-memory error on a one-billion-parameter model is usually caused by activation memory from a large batch size. Lowering the batch size or enabling Gradient Accumulation fixes it. A seventy-billion-parameter model cannot fit its static weights, gradients, and Adam optimizer states on a single eighty-gigabyte GPU, even at batch size one. It needs Fully Sharded Data Parallel or ZeRO-3 to shard the model states across multiple GPUs.
 </details>
 
 <details>
-<summary>**9. In Volume 19 Chapter 5, why is ping useless for diagnosing a degraded AI training fabric, and how do you isolate a single bad optical transceiver causing NCCL error 12 across a 128-node 400G RoCEv2 cluster?**</summary>
+<summary>**9. Why is ping useless for diagnosing a degraded AI training fabric, and how do you isolate a single bad optical transceiver causing NCCL error 12 across a 128-node 400G RoCEv2 cluster?**</summary>
 
 A degraded optical transceiver uses Forward Error Correction to keep the link up and still passes tiny ICMP `ping` packets. It drops one in ten thousand burst RDMA packets, though, and that triggers Go-Back-N stalls across all nodes. If you want to isolate Node 84, read `packet_seq_err`, `out_of_sequence`, `implied_nak_seq_err`, and `local_ack_timeout_err` under `/sys/class/infiniband/<device>/ports/<port>/hw_counters/`, along with the `perfquery` symbol counters. Then cordon the node and replace the optic.
 </details>
 
 <details>
-<summary>**10. How do you distinguish a Layer 1 optical fault, a Layer 2 Priority Flow Control (PFC) storm, and a Layer 3 Subnet Manager (OpenSM) routing flap on an AI network (Volume 19 Chapter 5)?**</summary>
+<summary>**10. How do you distinguish a Layer 1 optical fault, a Layer 2 Priority Flow Control (PFC) storm, and a Layer 3 Subnet Manager (OpenSM) routing flap on an AI network?**</summary>
 
 A Layer 1 optical fault increments `SymbolErrorCounter` and `LinkDownedCounter` in `perfquery`, or `packet_seq_err` on the NIC, and it needs fiber or transceiver replacement. A Layer 2 PFC congestion storm drives throughput to zero, while `ethtool -S` shows skyrocketing `rx_prio<N>_pause` frames. A Layer 3 routing flap shows up in OpenSM logs as continuous Heavy Sweeps, triggered by a port that keeps flapping up and down.
 </details>
 
 <details>
-<summary>**11. What are the three physical isolation pillars required to share a GPU cluster safely between competing departments (Volume 19 Chapter 7)?**</summary>
+<summary>**11. What are the three physical isolation pillars required to share a GPU cluster safely between competing departments?**</summary>
 
 The first pillar is compute isolation, which uses hardware MIG slices on shared GPUs and Kubernetes Node Taints for dedicated compliance servers. The second is network isolation, which uses default-deny NetworkPolicies for TCP/IP pod traffic and ConnectX SR-IOV Virtual Functions for kernel-bypass RDMA traffic. The third is storage isolation on Weka or Lustre, which uses per-tenant IOPS and bandwidth QoS limits paired with scoped subdirectory `chroot` mounts.
 </details>
 
 <details>
-<summary>**12. Why must vulnerability scanning run both in the container registry AND at runtime in the cluster, and how does the Golden Base Image pipeline patch CVEs with zero downtime (Volume 19 Chapter 8)?**</summary>
+<summary>**12. Why must vulnerability scanning run both in the container registry AND at runtime in the cluster, and how does the Golden Base Image pipeline patch CVEs with zero downtime?**</summary>
 
 Nightly registry scans in Harbor or ECR catch vulnerabilities in built images. Runtime agents such as Falco, Prisma Cloud, or Aqua catch researchers running `kubectl exec` to install unverified packages inside live pods. When a critical CVE appears, the Golden Base Image pipeline rebuilds and signs the central base image, triggers downstream model rebuilds automatically, and rolls out patched pods through a Kubernetes RollingUpdate.
 </details>
 
 <details>
-<summary>**13. In Volume 19 Chapter 8 Customer Scenario, why did auditors fail a healthcare company whose GPU worker nodes had an AWS IAM policy granting s3:GetObject on the patient-records bucket, and how does IRSA fix it?**</summary>
+<summary>**13. In the customer scenario, why did auditors fail a healthcare company whose GPU worker nodes had an AWS IAM policy granting s3:GetObject on the patient-records bucket, and how does IRSA fix it?**</summary>
 
 Attaching S3 permissions to the EC2 node instance profile gives every container scheduled on that machine full access to all patient records, which breaks least privilege. IAM Roles for Service Accounts removes the S3 permissions from the node role. It binds a prefix-scoped IAM role via OIDC to the `medical-training-sa` ServiceAccount. That setup injects short-lived STS tokens only into the authorized training pods.
 </details>
 
 <details>
-<summary>**14. What causes a "Cardinality Explosion" in Prometheus on a 1,000-GPU Kubernetes cluster, and how do the 4-Tier Thanos Architecture and Recording Rules prevent 504 Gateway Timeouts (Volume 19 Chapter 9)?**</summary>
+<summary>**14. What causes a "Cardinality Explosion" in Prometheus on a 1,000-GPU Kubernetes cluster, and how do the 4-Tier Thanos Architecture and Recording Rules prevent 504 Gateway Timeouts?**</summary>
 
 Every short-lived training pod adds a unique pod label across hundreds of DCGM metrics per GPU. That creates millions of time series, which exhaust RAM on a single Prometheus server and cause `504 Gateway Timeout` errors during incident queries. The four-tier Thanos architecture separates Scraping Agents, Thanos Receive ingestion, S3 Object Storage, and Thanos Queriers. Prometheus Recording Rules pre-compute `cluster:gpu:utilization_avg_5m` every five minutes.
 </details>
 
 <details>
-<summary>**15. Why does traditional nightly backup software fail on a 10-Petabyte AI data lake, and how do Storage Snapshots and Asynchronous Replication replace it (Volume 19 Chapter 10)?**</summary>
+<summary>**15. Why does traditional nightly backup software fail on a 10-Petabyte AI data lake, and how do Storage Snapshots and Asynchronous Replication replace it?**</summary>
 
 Transferring ten petabytes over a ten-gigabit network link takes roughly ninety-two days and saturates core spine switches. Storage arrays such as Weka, NetApp, and ZFS-backed Lustre take hourly read-only Copy-on-Write pointer snapshots instead. Those snapshots revert a corrupted petabyte directory in a single API call, with at most sixty minutes of lost work. Asynchronous delta replication over dark fiber handles site recovery.
 </details>
 
 <details>
-<summary>**16. How do you define RPO and RTO for an AI training cluster, and how does S3 Object Lock (WORM) in Compliance Mode defeat ransomware (Volume 19 Chapter 10)?**</summary>
+<summary>**16. How do you define RPO and RTO for an AI training cluster, and how does S3 Object Lock (WORM) in Compliance Mode defeat ransomware?**</summary>
 
 Recovery Point Objective equals your training checkpoint interval, so a four-hour checkpoint cadence limits lost compute to four hours. Recovery Time Objective measures how long it takes to restore storage and resume training. With S3 Object Lock Write Once Read Many in Compliance Mode, checkpoint objects are locked for a thirty-day retention window. During that window, not even the cloud root account can overwrite or delete them.
 </details>
 
 <details>
-<summary>**17. In Volume 19 Chapter 11, if GPUs are sitting idle (low compute utilization) during distributed training, what three checks isolate whether the bottleneck is Host CPU, Storage I/O, or 3D Parallelism Network configuration?**</summary>
+<summary>**17. If GPUs are sitting idle (low compute utilization) during distributed training, what three checks isolate whether the bottleneck is Host CPU, Storage I/O, or 3D Parallelism Network configuration?**</summary>
 
 First, check host CPU utilization. If CPUs are pegged at one hundred percent on image decoding or tokenization, increase dataloader workers or move preprocessing to NVIDIA DALI. Second, if CPUs are idle while disk `iowait` is high, pack small files into WebDataset tarballs or stage data on local NVMe. Third, if GPUs sit idle during heavy InfiniBand traffic, keep Tensor Parallelism strictly inside the node on NVLink, with `TP <= 8`.
 </details>
 
 <details>
-<summary>**18. In Volume 19 Chapter 11 Customer Scenario, a Triton LLM inference service misses its 200 ms p99 SLA while nvidia-smi shows 80–100% utilization. What two metrics prove you do NOT need to buy more GPUs, and what software fixes restore the SLA?**</summary>
+<summary>**18. In the customer scenario, a Triton LLM inference service misses its 200 ms p99 SLA while nvidia-smi shows 80–100% utilization. What two metrics prove you do NOT need to buy more GPUs, and what software fixes restore the SLA?**</summary>
 
 First, inspect `nv_inference_queue_duration_us`. If queue latency is spiking, requests are waiting for a worker thread, so increase the `Instance Group` count in Triton's `config.pbtxt`. Second, inspect `DCGM_FI_DEV_MEM_COPY_UTIL`. If memory bandwidth is pegged at one hundred percent during token decoding, deploy TensorRT-LLM with PagedAttention and INT8 quantization to halve memory bandwidth per token.
 </details>
 
 <details>
-<summary>**19. Walk through the five-step Operational Runbook for an XID 48 (Double-Bit ECC Error) alert on node-worker-42 GPU 3, and explain how Zero-Touch Ops automates it (Volume 19 Chapter 12).**</summary>
+<summary>**19. Walk through the five-step Operational Runbook for an XID 48 (Double-Bit ECC Error) alert on node-worker-42 GPU 3, and explain how Zero-Touch Ops automates it.**</summary>
 
 When PagerDuty fires for `XID 48` on `node-worker-42` GPU 3, run `kubectl cordon node-worker-42` right away and verify device-plugin health. Next, check `dmesg -T | grep NVRM` over SSH, drain the node, and execute a GPU reset or reboot so row remapping takes effect. Open a hardware RMA Jira ticket if the error recurs. The whole sequence can be automated with a Prometheus Alertmanager webhook that cordons the node and files the ticket.
 </details>
 
 <details>
-<summary>**20. What makes a Senior SRE Follow-the-Sun On-Call Handoff effective compared to a vague status note (Volume 19 Chapter 12 Section 3)?**</summary>
+<summary>**20. What makes a Senior SRE Follow-the-Sun On-Call Handoff effective compared to a vague status note?**</summary>
 
 A senior handoff never leaves vague notes about jobs that failed earlier. It records the exact job name, failure count, hardware telemetry signal, affected node, containment status, scheduled UTC maintenance window, and tracking ticket in one concise block. In the reference scenario, the engineer reports three NCCL timeouts on `Llama-3-FineTune`, intermittent PCIe drops on cordoned `node-55`, a `14:00 UTC` `dcgmi diag` maintenance window, and Jira `#4092`.
 </details>

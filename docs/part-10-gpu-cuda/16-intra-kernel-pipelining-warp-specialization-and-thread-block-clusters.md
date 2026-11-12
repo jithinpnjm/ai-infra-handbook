@@ -28,12 +28,12 @@ Suppose a tiled matrix kernel already has coalesced loads, sensible occupancy, a
 
 *AI Systems Performance Engineering* Chapter 10 describes how Hopper and Blackwell kernels remove these gaps inside a kernel. They use four tools: asynchronous ring buffers, warp specialization across the warp schedulers, persistent megakernels, and Thread Block Clusters linked by Distributed Shared Memory. Together they keep the memory pipeline and the Tensor Cores busy at the same time.
 
-| Pattern (*AI Systems Performance Engineering* Chapter 10) | Baseline | Optimized Result | Mechanism & Hardware Units |
+| Pattern | Baseline | Optimized Result | Mechanism & Hardware Units |
 |---|---|---|---|
-| Asynchronous double/triple buffering (`<cuda/pipeline>`, Table 10-2) | `41.3 ms` runtime, `68%` SM Active (`__syncthreads()` tiling) | `20.5 ms` (`2.01x` faster), `92%` SM Active (`+24%`) | `cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES>` (`STAGES = 2` or `3`) + `cuda::memcpy_async` (`cp.async`) into ring-buffer slot `s = tile % STAGES`. |
-| Warp specialization & ping-pong MMA (Table 10-3) | `20.5 ms` double-buffered (`~6` warps/SM limit) | `18.4 ms` (`+10.2%` faster), `96%` efficiency, `165 GB/s` L2, scales to `64` warps/SM | Assigns loader (`warp_id 0`), compute (`warp_id 1`), and storer (`warp_id 2`) or CUTLASS `gemm_tma_warpspecialized_pingpong` across `4` SM warp schedulers. |
+| Asynchronous double/triple buffering (`<cuda/pipeline>`) | `41.3 ms` runtime, `68%` SM Active (`__syncthreads()` tiling) | `20.5 ms` (`2.01x` faster), `92%` SM Active (`+24%`) | `cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES>` (`STAGES = 2` or `3`) + `cuda::memcpy_async` (`cp.async`) into ring-buffer slot `s = tile % STAGES`. |
+| Warp specialization & ping-pong MMA | `20.5 ms` double-buffered (`~6` warps/SM limit) | `18.4 ms` (`+10.2%` faster), `96%` efficiency, `165 GB/s` L2, scales to `64` warps/SM | Assigns loader (`warp_id 0`), compute (`warp_id 1`), and storer (`warp_id 2`) or CUTLASS `gemm_tma_warpspecialized_pingpong` across `4` SM warp schedulers. |
 | Persistent kernels, megakernels & cooperative grids (`grid.sync()`) | `1,000` tasks × `0.1 ms` = `100 ms` work + `20 ms` launch overhead (`1,000 × 0.02 ms`), `~35%` GPU util | `1` launch (`0.02 ms` cost), `100%` active SMs (`132` blocks × `256` threads = `33,792` threads at `12.5%` thread occ); megakernels `1.2x–6.7x` faster decode | Atomic queue `atomicAdd(&g_index, 1)` vs `vLLM`/`SGLang` per-layer launches; `cudaLaunchCooperativeKernel` + `grid.sync()` fuses `2,000` launches (`2` stages × `1,000` iters) into `1`. |
-| Thread Block Clusters (`CTA` Clusters), DSMEM & TMA multicast (Tables 10-4 & 10-5) | `2x` global loads, `50%` L2 hit, `300 GB/s` DRAM BW/CTA (`18.4 ms` single-block warp-spec) | `1x` loads, `85%` L2 hit, `150 GB/s` DRAM BW/CTA (`0.6x` time = `40%` speedup, Table 10-4); `17.2 ms` (`+6.5%`, `2.40x` vs naive, `97%` eff, `170 GB/s` L2, Table 10-5) | Co-schedules `2` to `8` CTAs (`16` non-portable on Blackwell) in a GPC with DSMEM (`cluster.map_shared_rank()`), Scratch Memory, and `cluster.sync()`. |
+| Thread Block Clusters (`CTA` Clusters), DSMEM & TMA multicast (Tables 10-4 & 10-5) | `2x` global loads, `50%` L2 hit, `300 GB/s` DRAM BW/CTA (`18.4 ms` single-block warp-spec) | `1x` loads, `85%` L2 hit, `150 GB/s` DRAM BW/CTA (`0.6x` time = `40%` speedup); `17.2 ms` (`+6.5%`, `2.40x` vs naive, `97%` eff, `170 GB/s` L2) | Co-schedules `2` to `8` CTAs (`16` non-portable on Blackwell) in a GPC with DSMEM (`cluster.map_shared_rank()`), Scratch Memory, and `cluster.sync()`. |
 
 :::note About the numbers and code in this chapter
 *AI Systems Performance Engineering* states that the numeric values in its metric tables, including Tables 10-2 through 10-5, are illustrative and explain concepts. Therefore, none were rerun on live hardware for this handbook. The CUDA code is reproduced from the book and was not compiled here. Three cautions apply to the printed listings.
@@ -65,7 +65,7 @@ Traditional SIMT execution hides memory latency only by context-switching across
 
 Both designs rely on four producer-consumer primitives in `<cuda/pipeline>`. The producer calls `pipe.producer_acquire()` to reserve the next ring-buffer stage slot and `pipe.producer_commit()` to batch-commit all `cuda::memcpy_async` copies issued in that stage. The consumer calls `pipe.consumer_wait()` or `cuda::pipeline_consumer_wait_prior<N>(pipe)` to wait only until the target stage arrives in Shared Memory. It then calls `pipe.consumer_release()` once computation finishes so the producer can reuse that slot.
 
-| `<cuda/pipeline>` Variant (Table 10-1) | Best For | Main Execution Mechanism |
+| `<cuda/pipeline>` Variant | Best For | Main Execution Mechanism |
 |---|---|---|
 | Double-buffered or triple-buffered pipeline (`cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES>`) | Uniform loop-based tiling (`GEMM`, stencil, convolution) where all threads in the CTA step through tiles together. | Overlaps asynchronous tile prefetch (`Stage 0`) with tile computation (`Stage 1`) using a ring buffer of `STAGES` (`2` or `3`) shared-memory slots. |
 | Warp-specialized pipeline (`loader`, `compute`, `storer` warps) | Persistent kernels, fused attention (`FlashAttention-3`), and deep irregular pipelines with distinct hardware phases. | Dedicates separate warps (`warp_id 0`, `warp_id 1`, `warp_id 2`, or ping-pong consumer warp groups) to separate hardware engines (`TMA` / `LD/ST` vs Tensor Cores). |
@@ -209,10 +209,10 @@ void gemm_tiled_pipeline(const float* __restrict__ A_global, // [M x K]
 }
 ```
 
-| Metric (Table 10-2 & SMEM Sizing) | Naive Tiling | Two-Stage Double-Buffered (`STAGES = 2`) | Three-Stage Triple-Buffered (`STAGES = 3`) / Notes |
+| Metric (SMEM Sizing) | Naive Tiling | Two-Stage Double-Buffered (`STAGES = 2`) | Three-Stage Triple-Buffered (`STAGES = 3`) / Notes |
 |---|---:|---:|---|
-| Kernel execution time | `41.3 ms` | `20.5 ms` | `~2x` (`2.01x`) faster vs naive (Table 10-2) |
-| SM Active % | `68%` | `92%` | `+24%` (`+24` percentage points vs naive, Table 10-2) |
+| Kernel execution time | `41.3 ms` | `20.5 ms` | `~2x` (`2.01x`) faster vs naive |
+| SM Active % | `68%` | `92%` | `+24%` (`+24` percentage points vs naive) |
 | Dynamic SMEM (`TILE_SIZE = 32`) | `8,192 B` (`2` tiles) | `16,384 B` (`16 KiB`, `4` buffers) | `24,576 B` (`24 KiB`, `6` buffers); FlashAttention-3 reaches `~75%` of peak FP16 FLOPS |
 
 ---
@@ -229,10 +229,10 @@ Because those specialized warps reside on different hardware warp schedulers, Sc
 
 | Warp Specialization Pattern | Role Assignment across `4` SM Schedulers | Hardware Overlap & Nsight Compute Signature |
 |---|---|---|
-| Uniform double buffering (Figure 10-3) | All warps alternate Load → Wait → Compute | L2 bandwidth and Tensor Core utilization oscillate out of phase; scales to `~6` warps/SM. |
-| 2-role producer / consumer (Figure 10-4) | `4` producer ("memory") warps + `8` consumer ("compute") warps | Producer warps queue TMA / `memcpy_async`; consumer warps stay on Tensor Cores. |
-| 3-role loader / compute / storer (Figure 10-5) | `warp_id == 0` (Loader), `warp_id == 1` (Compute), `warp_id == 2` (Storer) | Schedulers 0, 1, and 2 issue load, MMA, and store in the same cycle; L2 and Tensor Cores run in-phase up to `64` warps/SM. |
-| Ping-pong consumer groups (CUTLASS `gemm_tma_warpspecialized_pingpong`, Figure 10-6) | `1` TMA loader group + `2` consumer groups (Group A & Group B) | While Consumer Group A runs post-MMA epilogue (scaling, shuffling, global store), Consumer Group B occupies Tensor Cores with the next MMA. |
+| Uniform double buffering | All warps alternate Load → Wait → Compute | L2 bandwidth and Tensor Core utilization oscillate out of phase; scales to `~6` warps/SM. |
+| 2-role producer / consumer | `4` producer ("memory") warps + `8` consumer ("compute") warps | Producer warps queue TMA / `memcpy_async`; consumer warps stay on Tensor Cores. |
+| 3-role loader / compute / storer | `warp_id == 0` (Loader), `warp_id == 1` (Compute), `warp_id == 2` (Storer) | Schedulers 0, 1, and 2 issue load, MMA, and store in the same cycle; L2 and Tensor Cores run in-phase up to `64` warps/SM. |
+| Ping-pong consumer groups (CUTLASS `gemm_tma_warpspecialized_pingpong`) | `1` TMA loader group + `2` consumer groups (Group A & Group B) | While Consumer Group A runs post-MMA epilogue (scaling, shuffling, global store), Consumer Group B occupies Tensor Cores with the next MMA. |
 
 ```mermaid
 flowchart TB
@@ -345,7 +345,7 @@ void warp_specialized_pipeline_kernel(const float* __restrict__ A_global,
 }
 ```
 
-| Metric (Table 10-3) | Naive Tiling | Two-Stage Double-Buffered (`double_buffered_pipeline`) | Single-Block Warp-Specialized (`warp_specialized_pipeline`) |
+| Metric | Naive Tiling | Two-Stage Double-Buffered (`double_buffered_pipeline`) | Single-Block Warp-Specialized (`warp_specialized_pipeline`) |
 |---|---:|---:|---:|
 | Kernel execution time | `41.3 ms` | `20.5 ms` (`2.01x` faster vs naive) | `18.4 ms` (`+10.2%` speedup vs two-stage, `2.24x` vs naive) |
 | Warp execution efficiency | `68%` | `92%` (`+24%` vs naive) | `96%` (`+4%` vs two-stage) |
@@ -425,7 +425,7 @@ The Cooperative Groups API in `<cooperative_groups.h>` provides explicit thread 
 
 Before calling `cudaLaunchCooperativeKernel`, the host code must query `cudaOccupancyMaxActiveBlocksPerMultiprocessor` and clamp `gridSize` to `maxCoopGrid` while using a grid-stride loop inside the kernel. If an unclamped grid requests more blocks than can co-reside simultaneously, `cudaLaunchCooperativeKernel` fails immediately to prevent a missing-block deadlock. When concurrent streams need to share SMs on the same GPU, engineers should avoid locking the full grid with `grid.sync()` and use Thread Block Clusters with `cluster.sync()` instead.
 
-| Cooperative Group Granularity / Metric (Figure 10-9) | API Handle & Barrier | Sizing / Co-Residency Math & Rules |
+| Cooperative Group Granularity / Metric | API Handle & Barrier | Sizing / Co-Residency Math & Rules |
 |---|---|---|
 | 1. Warp / sub-warp tiles | `cg::tiled_partition<32>(cta)` (or power-of-2 tiles `16, 8, 4, 2`) | Intra-warp collective shuffles and reductions |
 | 2. Thread Block (`CTA`) | `cg::thread_block cta = cg::this_thread_block();` + `cta.sync()` | Equivalent to block-wide `__syncthreads()` |
@@ -504,7 +504,7 @@ A Thread Block Cluster is a hardware-level execution group introduced on Hopper 
 | Thread Block Cluster (`CTA` Cluster) | `2` to `8` portable CTAs (`16` non-portable on Blackwell via `cudaFuncAttributeNonPortableClusterSizeAllowed`) | Hardware guarantees simultaneous coscheduling onto SMs inside the same GPC. |
 | Blackwell dual-die `NV-HBI` logical GPC | `B200` / `B300` & `GB200` / `GB300` dual-die packages | `10 TB/s` High-Bandwidth Interface (`NV-HBI`) links both dies with full L2 cache coherence as a single logical GPC. |
 | Cluster Launch Control (`CLC`) | Blackwell hardware cluster scheduler | Dynamically launches and balances persistent thread block clusters across available SMs. |
-| Thread Block Swizzling (Figure 10-12) | 2D reordering of `(blockIdx.x, blockIdx.y)` across output matrix `C` | Maximizes L2 cache hit rate within each scheduling wave, yielding double-digit percentage gains on tiled/persistent GEMMs. |
+| Thread Block Swizzling | 2D reordering of `(blockIdx.x, blockIdx.y)` across output matrix `C` | Maximizes L2 cache hit rate within each scheduling wave, yielding double-digit percentage gains on tiled/persistent GEMMs. |
 
 ### 4.2 Distributed Shared Memory versus hardware Scratch Memory
 
@@ -590,7 +590,7 @@ In CUTLASS, this hardware capability is exposed as a 2-SM Unified MMA GEMM using
 
 Engineers also need a clear rule for choosing between TMA multicast to `shared::cluster` and DSMEM pointer sharing via `cluster.map_shared_rank()`. Choose TMA multicast when per-block tile reuse is high or the cluster size is large, because TMA broadcasts one L2 fetch into every CTA's local Shared Memory simultaneously for repeated local reads. Choose DSMEM pointer sharing when Shared Memory capacity is tight or the cluster size is small and each follower block reads its slice of the leader's tile only once.
 
-| Metric or Architecture Parameter (Table 10-4 & Figs. 10-13 to 10-16) | Two Independent CTAs (No DSMEM) | CTA Pair with DSMEM (`clusterDim.x = 2`, `2-SM UMMA`) | Improvement / Rule |
+| Metric or Architecture Parameter | Two Independent CTAs (No DSMEM) | CTA Pair with DSMEM (`clusterDim.x = 2`, `2-SM UMMA`) | Improvement / Rule |
 |---|---:|---:|---|
 | Tile split across `2-SM CTA Pair` (`256 × 256` output tile) | Exceeds single-CTA resource budget | Each CTA holds `128 × 16` in local `SMEM` and `128 × 256` in per-SM `TMEM` | Exposed in CUTLASS as `2-SM UMMA` (`tcgen05.mma` with `cta_group::2`) |
 | Global load transactions | `2x` (each CTA loads tile from HBM) | `1x` (tile loaded once) | `50%` fewer global loads |
@@ -711,7 +711,7 @@ void warp_specialized_cluster_pipeline(const float* __restrict__ A_global,
 }
 ```
 
-| Metric (Table 10-5 Progression) | Naive Tiling | Two-Stage Double-Buffered (`double_buffer_pipeline`) | Single-Block Warp-Specialized (`warp_specialized_pipeline`) | Thread Block Cluster Pipeline (`warp_specialized_cluster_pipeline`) |
+| Metric | Naive Tiling | Two-Stage Double-Buffered (`double_buffer_pipeline`) | Single-Block Warp-Specialized (`warp_specialized_pipeline`) | Thread Block Cluster Pipeline (`warp_specialized_cluster_pipeline`) |
 |---|---:|---:|---:|---:|
 | Kernel execution time | `41.3 ms` | `20.5 ms` (`+2.01x` vs naive) | `18.4 ms` (`+10.2%` vs two-stage) | `17.2 ms` (`+6.5%` / `~1.2 ms` faster vs warp-spec, `2.40x` vs naive) |
 | Warp execution efficiency | `68%` | `92%` (`+24%` vs naive) | `96%` (`+4%` vs two-stage) | `97%` (`+1%` vs warp-spec) |
@@ -764,12 +764,12 @@ Synchronizing asynchronous pipelines, whole-device grids, and multi-SM clusters 
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| 1 | Calling unified CTA `cuda::pipeline` collectives inside divergent `warp_id` branches | Kernel hangs indefinitely or produces corrupted output tiles when transitioning from `double_buffered_pipeline` to `warp_specialized_pipeline`. | A unified `cuda::make_pipeline(cta, &pipe_state)` requires all threads in `cta` to execute `producer_acquire`, `producer_commit`, `consumer_wait`, and `consumer_release` in collective order (*AI Systems Performance Engineering* Ch 10). | Keep unified CTA pipeline collectives outside `if (warp_id == ...)` branches with explicit `cta.sync()` handoffs, or use a partitioned pipeline (`thread_scope_block` with explicit producer/consumer partitions). |
-| 2 | Expecting a block-scoped `cuda::pipeline` in CTA 0 to synchronize follower CTAs (`cluster_rank > 0`) | Follower blocks (`cluster_rank > 0`) in `warp_specialized_cluster_pipeline` read zeros or stale tiles from `cluster.map_shared_rank(A_tile_local, 0)`. | `cuda::pipeline` is scoped strictly to its creating CTA (`thread_scope_block`); `producer_commit()` in rank 0 does not block or release `consumer_wait()` in rank 1 (*AI Systems Performance Engineering* Ch 10). | Have rank 0 complete its local `pipeline_consumer_wait_prior<1>(pipe)`, then call `cluster.sync()` across all blocks before follower blocks call `map_shared_rank()`, and call a second `cluster.sync()` before rank 0 overwrites the buffer. |
-| 3 | Unclamped `gridSize` in `cudaLaunchCooperativeKernel` (`gridSize > 528`) | `cudaLaunchCooperativeKernel` returns `cudaErrorCooperativeLaunchTooLarge` immediately and the kernel never executes when `N` increases. | Cooperative launches (`grid.sync()`) require every block in the grid to co-reside simultaneously (`maxCoopGrid = maxBlocksPerSm × multiProcessorCount`, e.g., `4 × 132 = 528` blocks; *AI Systems Performance Engineering* Ch 10). | Query `cudaOccupancyMaxActiveBlocksPerMultiprocessor`, clamp `gridSize = std::min(gridSize, maxCoopGrid)`, and use a grid-stride loop (`for (int i = tid; i < N; i += stride)`). |
-| 4 | Divergent control flow skipping `cluster.sync()` or `grid.sync()` | Kernel hangs until the hardware watchdog or Kubernetes health check terminates the process (`Xid 31` / timeout). | Just like warp intrinsics (`__shfl_sync`) and `__syncthreads()`, every participating thread block in a cluster must reach `cluster.sync()` and every thread in the grid must reach `grid.sync()` in lockstep (*AI Systems Performance Engineering* Ch 10). | Never place `cluster.sync()` or `grid.sync()` inside conditional branches where a subset of blocks or threads can exit early (`if (tile >= numTiles) return;`). |
-| 5 | Exceeding `227,328 bytes` (`~227 KB`) per-block dynamic SMEM or forgetting opt-in attribute | Launching `warp_specialized_pipeline_kernel` with `TILE_SIZE = 112` (`150,528 B`) or `128` (`196,608 B`) fails with `cudaErrorInvalidValue`. | Default per-block dynamic shared memory without opt-in is `48 KB`, and the hardware maximum per block on Blackwell is `227,328 bytes` (`~227 KB`; `TILE_SIZE = 160` requires `307,200 B` and cannot fit; *AI Systems Performance Engineering* Ch 10). | Choose `TILE_SIZE` so `3 × TILE_SIZE^2 × 4 <= 227,328 B` and call `cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes)`. |
-| 6 | Monopolizing all SMs with a persistent kernel or `16`-CTA cluster when concurrent streams need the GPU | High-priority inference control streams or async prefetch kernels starve behind a background persistent kernel or oversized `16`-CTA cluster launch. | A full-grid persistent/cooperative kernel occupies all `132` SMs continuously, and `16`-CTA clusters lock `16` SMs per cluster (*AI Systems Performance Engineering* Ch 10). | Use `2`-CTA or `4`-CTA Thread Block Clusters instead of full-grid `grid.sync()` or `16`-CTA clusters so remaining SMs stay free to schedule independent streams concurrently. |
+| 1 | Calling unified CTA `cuda::pipeline` collectives inside divergent `warp_id` branches | Kernel hangs indefinitely or produces corrupted output tiles when transitioning from `double_buffered_pipeline` to `warp_specialized_pipeline`. | A unified `cuda::make_pipeline(cta, &pipe_state)` requires all threads in `cta` to execute `producer_acquire`, `producer_commit`, `consumer_wait`, and `consumer_release` in collective order. | Keep unified CTA pipeline collectives outside `if (warp_id == ...)` branches with explicit `cta.sync()` handoffs, or use a partitioned pipeline (`thread_scope_block` with explicit producer/consumer partitions). |
+| 2 | Expecting a block-scoped `cuda::pipeline` in CTA 0 to synchronize follower CTAs (`cluster_rank > 0`) | Follower blocks (`cluster_rank > 0`) in `warp_specialized_cluster_pipeline` read zeros or stale tiles from `cluster.map_shared_rank(A_tile_local, 0)`. | `cuda::pipeline` is scoped strictly to its creating CTA (`thread_scope_block`); `producer_commit()` in rank 0 does not block or release `consumer_wait()` in rank 1. | Have rank 0 complete its local `pipeline_consumer_wait_prior<1>(pipe)`, then call `cluster.sync()` across all blocks before follower blocks call `map_shared_rank()`, and call a second `cluster.sync()` before rank 0 overwrites the buffer. |
+| 3 | Unclamped `gridSize` in `cudaLaunchCooperativeKernel` (`gridSize > 528`) | `cudaLaunchCooperativeKernel` returns `cudaErrorCooperativeLaunchTooLarge` immediately and the kernel never executes when `N` increases. | Cooperative launches (`grid.sync()`) require every block in the grid to co-reside simultaneously (`maxCoopGrid = maxBlocksPerSm × multiProcessorCount`, e.g., `4 × 132 = 528` blocks). | Query `cudaOccupancyMaxActiveBlocksPerMultiprocessor`, clamp `gridSize = std::min(gridSize, maxCoopGrid)`, and use a grid-stride loop (`for (int i = tid; i < N; i += stride)`). |
+| 4 | Divergent control flow skipping `cluster.sync()` or `grid.sync()` | Kernel hangs until the hardware watchdog or Kubernetes health check terminates the process (`Xid 31` / timeout). | Just like warp intrinsics (`__shfl_sync`) and `__syncthreads()`, every participating thread block in a cluster must reach `cluster.sync()` and every thread in the grid must reach `grid.sync()` in lockstep. | Never place `cluster.sync()` or `grid.sync()` inside conditional branches where a subset of blocks or threads can exit early (`if (tile >= numTiles) return;`). |
+| 5 | Exceeding `227,328 bytes` (`~227 KB`) per-block dynamic SMEM or forgetting opt-in attribute | Launching `warp_specialized_pipeline_kernel` with `TILE_SIZE = 112` (`150,528 B`) or `128` (`196,608 B`) fails with `cudaErrorInvalidValue`. | Default per-block dynamic shared memory without opt-in is `48 KB`, and the hardware maximum per block on Blackwell is `227,328 bytes` (`~227 KB`; `TILE_SIZE = 160` requires `307,200 B` and cannot fit). | Choose `TILE_SIZE` so `3 × TILE_SIZE^2 × 4 <= 227,328 B` and call `cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes)`. |
+| 6 | Monopolizing all SMs with a persistent kernel or `16`-CTA cluster when concurrent streams need the GPU | High-priority inference control streams or async prefetch kernels starve behind a background persistent kernel or oversized `16`-CTA cluster launch. | A full-grid persistent/cooperative kernel occupies all `132` SMs continuously, and `16`-CTA clusters lock `16` SMs per cluster. | Use `2`-CTA or `4`-CTA Thread Block Clusters instead of full-grid `grid.sync()` or `16`-CTA clusters so remaining SMs stay free to schedule independent streams concurrently. |
 
 ---
 

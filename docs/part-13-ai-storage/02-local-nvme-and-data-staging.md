@@ -359,7 +359,7 @@ Put cleanup in Prolog and Epilog, not in the training script itself. A `SIGKILL`
 
 ## Commands and configurations that matter
 
-### 1. Provisioning an Aligned `mdadm` RAID 0 `/raid` Volume and Tuning `blk-mq` (*untested here*)
+### 1. Provisioning an Aligned `mdadm` RAID 0 `/raid` Volume and Tuning `blk-mq`
 
 ```bash
 # 1. Inspect the two NVMe tiers (2x 1.92 TB M.2 OS RAID 1 vs 8x 3.84 TB U.2 scratch) (untested here)
@@ -387,7 +387,7 @@ done
 blockdev --setra 8192 /dev/md0
 ```
 
-### 2. Benchmarking Local NVMe vs Shared Storage (`fio` and `gdsio`, *untested here*)
+### 2. Benchmarking Local NVMe vs Shared Storage (`fio` and `gdsio`)
 
 ```bash
 # Workload 1: Model Load (10 GB sequential read, 1 MB blocks, O_DIRECT) (untested here)
@@ -411,7 +411,7 @@ fio --name=checkpoint-write --ioengine=libaio --rw=write --bs=4M --size=500M \
 /usr/local/cuda/gds/tools/gdsio -f /raid/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
 ```
 
-### 3. Checking NVMe SMART Health, Checksum Manifests, Async Checkpointing, and Slurm Hooks (*untested here*)
+### 3. Checking NVMe SMART Health, Checksum Manifests, Async Checkpointing, and Slurm Hooks
 
 ```bash
 # Inspect SMART wear-leveling (percentage_used, available_spare), temperature, and media_errors (untested here)
@@ -501,7 +501,7 @@ Each row starts from a symptom you can see on a node and ends with the fix. Star
 
 ### Venue and Scope
 
-Run this lab on GCP or GKE, using Local SSD NVMe scratch disks attached with `--local-ssd-interface=NVME`. You can also run it on any workstation with the deterministic Python model in `code/part13/local_nvme_staging_lab.py`. The destructive bare-metal commands above, including `mdadm`, `mkfs.xfs`, `blockdev`, `nvme`, `fio`, and `gdsio`, are marked *(untested here)*. Run those only on scratch hardware you can rebuild.
+Run this lab on GCP or GKE, using Local SSD NVMe scratch disks attached with `--local-ssd-interface=NVME`. You can also run it on any workstation with the deterministic Python model in `code/part13/local_nvme_staging_lab.py`. The destructive bare-metal commands above, including `mdadm`, `mkfs.xfs`, `blockdev`, `nvme`, `fio`, and `gdsio`, were not run on live hardware. Run those only on scratch hardware you can rebuild.
 
 The lab runs 28 self-checks. The table groups them by theme, so a failing check points you back to the matching part of this chapter.
 
@@ -683,7 +683,7 @@ Without `noatime`, the filesystem updates each file's last-access timestamp on d
 </details>
 
 <details>
-<summary>**14. In Volume 15 Lab 02, what are the four benchmark workload profiles, and what NVMe-to-shared ratio justifies local caching?**</summary>
+<summary>**14. In the local NVMe benchmark lab, what are the four benchmark workload profiles, and what NVMe-to-shared ratio justifies local caching?**</summary>
 
 The first profile, Model Load, is a large sequential read. NVMe reaches about 3.5 GB per second, versus 1.5 to 3.0 GB per second on shared storage. Batch Stream runs parallel medium-block reads, and it reaches about 2.8 GB per second on NVMe. Random Read / Metadata Storm reaches about 1.2 GB per second for 4 MB random reads. It reaches over 50,000 operations per second for local metadata, against 1,000 to 5,000 on a shared metadata server. Checkpoint Write reaches 2.1 to 3.5 GB per second per writer on NVMe. A Model Load ratio above 2x justifies local caching and checkpoint staging.
 </details>

@@ -99,9 +99,9 @@ The table lists only facts with a source. It has no speed rows, because a speed 
 
 Sources for the table: vLLM health and metric facts from the v0.32.0 source and chapter 20.22. TensorRT-LLM facts from chapter 20.22, which read the v1.2.1 source. Triton ports and paths from the v2.74.0 documentation. NIM paths from the default probes in the NIM Operator v3.1.3 source. KServe runtimes from the v0.21.0 `config/runtimes` directory.
 
-Four facts matter more than the table suggests. First, the book says NIM picks a backend by itself, preferring TensorRT-LLM, then vLLM, then SGLang, based on the model profiles for the detected GPU. You do not choose the engine inside NIM, you choose a profile.
+Four facts matter more than the table suggests. First, NIM picks a backend by itself, preferring TensorRT-LLM, then vLLM, then SGLang, based on the model profiles for the detected GPU. You do not choose the engine inside NIM, you choose a profile.
 
-Second, the book and the upstream docs disagree about TensorRT-LLM. The book says it builds tuned engines from a checkpoint, and the book LLMs in Production says a compiled engine is tied to the hardware it was built on. The v1.2.1 documentation describes a PyTorch-based design. Whether your version has a separate build step is something you must check before promising a hardware move.
+Second, the sources disagree about TensorRT-LLM. One says it builds tuned engines from a checkpoint, and *LLMs in Production* says a compiled engine is tied to the hardware it was built on. The upstream documentation, in turn, differs from both. The v1.2.1 documentation describes a PyTorch-based design. Whether your version has a separate build step is something you must check before promising a hardware move.
 
 Third, TensorRT-LLM v1.2.1 is the latest stable release. Releases numbered 1.3 and 1.4 exist only as release candidates, so do not plan a production rollout on them.
 
@@ -109,7 +109,7 @@ Fourth, NVIDIA's own benchmarking tool changed. The GenAI-Perf README now says i
 
 How do you choose? The book gives a method, and it fits on one page. Write down your objectives for time to first token, throughput, cost and availability. Analyse real prompts for length and shape. Compare contenders with the same model, precision and settings. Measure operability: start-up time, observability, autoscaling and upgrade friction. Weigh vendor lock-in. Plan for change by keeping an exit path.
 
-For this capstone the choice is vLLM, for reasons that are mine, not the book's. The model is a single 8B model with open weights, the team wants the shortest path to production, and the hardware may change. The book recommends vLLM for the fastest path and a Python-native workflow. It recommends TensorRT-LLM when you are committed to NVIDIA and want peak tokens per dollar.
+For this capstone the choice is vLLM, for reasons specific to this capstone. The model is a single 8B model with open weights, the team wants the shortest path to production, and the hardware may change. The usual advice is vLLM for the fastest path and a Python-native workflow, and TensorRT-LLM when you are committed to NVIDIA and want peak tokens per dollar.
 
 **Decision rule:** default to vLLM for one open model on a short timeline. Pick Triton when one server must host many model types. Pick TensorRT-LLM or NIM only after a measured gap and a written plan for hardware changes.
 
@@ -285,7 +285,7 @@ spec:
         failureThreshold: 6
 ```
 
-Three choices in that file need a reason. The image is pinned to v0.32.0, because the book warns that a floating tag can change under you. The startup probe allows 900 seconds, which is a planning figure for a first download of about 16 GB plus a load. Replace it with a measured time. And `/health` is used for all three probes, which is what the vLLM Kubernetes guide does. That endpoint proves the engine process is alive. It does not prove a good answer, a short queue or free KV cache.
+Three choices in that file need a reason. The image is pinned to v0.32.0, because a floating tag can change under you. The startup probe allows 900 seconds, which is a planning figure for a first download of about 16 GB plus a load. Replace it with a measured time. And `/health` is used for all three probes, which is what the vLLM Kubernetes guide does. That endpoint proves the engine process is alive. It does not prove a good answer, a short queue or free KV cache.
 
 KServe's own `kserve-vllmserver` runtime uses `/v1/models` for readiness and allows about 30 minutes to start. It is a useful point of comparison, and it is in the KServe v0.21.0 repository.
 
@@ -350,7 +350,7 @@ spec:
               value: "8"
 ```
 
-Several fields in the InferenceService are easy to get wrong. The annotation `serving.kserve.io/deploymentMode: Standard` is the current name, which replaced `RawDeployment`, according to the book Generative AI on Kubernetes. The `autoscalerClass` annotation set to `keda` is required to use KEDA, and KServe rejects `scaleMetric` in that mode. The `maxReplicas` value is 2, not 4, because the pool has two GPUs. The `deploymentStrategy` has `maxSurge: 0`, because a rolling update that wants a third Pod needs a third GPU, and it would wait forever.
+Several fields in the InferenceService are easy to get wrong. The annotation `serving.kserve.io/deploymentMode: Standard` is the current name, which replaced `RawDeployment`, as *Generative AI on Kubernetes* notes. The `autoscalerClass` annotation set to `keda` is required to use KEDA, and KServe rejects `scaleMetric` in that mode. The `maxReplicas` value is 2, not 4, because the pool has two GPUs. The `deploymentStrategy` has `maxSurge: 0`, because a rolling update that wants a third Pod needs a third GPU, and it would wait forever.
 
 The engine caps are `--max-model-len=16384`, `--max-num-seqs=64` and `--gpu-memory-utilization=0.90`. They are starting values from the arithmetic above, not constants. The v0.32.0 defaults on an A100 are 256 for `--max-num-seqs` and 2048 for `--max-num-batched-tokens`, and 0.92 for the memory fraction. Do not set `--swap-space`. That flag was removed in v0.32.0.
 
@@ -362,7 +362,7 @@ The model comes from Hugging Face at start-up, using the secret created in the l
 
 ## 5. Place Triton, TensorRT-LLM and NIM beside it
 
-Suppose the product team adds a reranker and a classifier next week. One vLLM Deployment per model starts to look wasteful. This is where the book's framing of Triton helps: it is a general server with one API, one metrics format and one health API across model types.
+Suppose the product team adds a reranker and a classifier next week. One vLLM Deployment per model starts to look wasteful. This is where Triton helps: it is a general server with one API, one metrics format and one health API across model types.
 
 Triton reads a model repository, a directory with one folder per model. Each model has a configuration file named `config.pbtxt`. The documented keys for classic models include `max_batch_size`, a `dynamic_batching` block with `preferred_batch_size` and `max_queue_delay_microseconds`, and an `instance_group` that places model copies on GPUs. The chapter does not paste a configuration file, because no tool here can validate it.
 
@@ -606,13 +606,13 @@ Imagine a promotion starts and traffic jumps in a step. An autoscaler that watch
 
 Production Kubernetes, chapter 13, warns against scaling on a metric that does not change in proportion to load. Generative AI on Kubernetes, chapter 4, says the default HPA mostly looks at CPU and memory, which suits GPU workloads poorly. It also says Knative's autoscaler counts requests, which is closer, but that LLM start-up is slow and one request can be cheap or expensive depending on its tokens.
 
-KServe's code agrees with the book. Concurrency and request-rate scaling are supported by the Knative Pod Autoscaler. In Standard mode with the HPA class, only CPU and memory are allowed. KEDA is the route for custom metrics in Standard mode.
+KServe's code agrees. Concurrency and request-rate scaling are supported by the Knative Pod Autoscaler. In Standard mode with the HPA class, only CPU and memory are allowed. KEDA is the route for custom metrics in Standard mode.
 
 The InferenceService in section 4 uses KEDA with an external Prometheus query. It adds running and waiting requests for this model, using metric names that exist in the v0.32.0 source. The target is a total across replicas, so the autoscaler asks for the total divided by the target value, rounded up. The starting target of 8 is a placeholder. Replace it with the scale target from the decision rule.
 
 The book's own example uses a pod-level metric through an OpenTelemetry sidecar with a value of 4, based on a benchmark. It says a pod metric and an external one are equivalent for pod-local queries, and the pod-level source reacts faster. Choose the external form when you need joins across replicas.
 
-Autoscaling cannot be faster than start-up. The book lists the phases: image pull, model fetch and mount, runtime start, weight load and warm-up. It says the image pull is a real cost and that `Always` should be avoided. Chapter 20.22 measured the v0.32.0 image at about 9.2 GB for amd64, which is larger than the book's estimate. Production Kubernetes adds that a cluster autoscaler reacts only after Pods are `Pending`, so a node pool that must grow adds node start time on top.
+Autoscaling cannot be faster than start-up. The phases are image pull, model fetch and mount, runtime start, weight load and warm-up. The image pull is a real cost, and `Always` should be avoided. Chapter 20.22 measured the v0.32.0 image at about 9.2 GB for amd64, which is larger than the usual estimate. Production Kubernetes adds that a cluster autoscaler reacts only after Pods are `Pending`, so a node pool that must grow adds node start time on top.
 
 Probe timing follows from start-up. The startup probe has to outlast the slowest start, and liveness only begins after startup passes. A test checks that the window is at least 600 seconds and that a startup probe exists.
 
@@ -769,7 +769,7 @@ kubectl -n "${NS}" logs -l serving.kserve.io/inferenceservice=llama31-8b --tail=
 
 **Exercise 2.** The runtime `startupProbe` allows 900 seconds. Your measured first start in step 5 is 1,100 seconds. What happens, and what are two ways to fix it?
 
-*Solution sketch:* the kubelet kills the container before it is ready, and it restarts and repeats. Raise `failureThreshold`, or cut the start time with a pre-populated volume, an OCI image, or the KServe local model cache named in the book.
+*Solution sketch:* the kubelet kills the container before it is ready, and it restarts and repeats. Raise `failureThreshold`, or cut the start time with a pre-populated volume, an OCI image, or the KServe local model cache.
 
 **Exercise 3.** Your sweep shows levels 4 and 8 pass, level 16 fails and level 32 passes. What operating point does the rule choose, and why?
 

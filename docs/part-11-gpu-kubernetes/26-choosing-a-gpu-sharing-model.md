@@ -34,12 +34,12 @@ The block below sets the two classic failures side by side, with the cause of ea
 ```text
 The Two Classic GPU Sharing Platform Failures (volume-11/chapter-06 & chapter-09)
 ---------------------------------------------------------------------------------
-1. The 48% Utilization Planning Trap (volume-11/chapter-09):
+1. The 48% Utilization Planning Trap:
    - Fleet dashboard average: 48% GPU utilization -> Hardware order deferred
    - 2 weeks later: New inference tenant stuck Pending (0 placeable 3g.40gb slices)
    - Root cause: 48% average blended 1g.10gb pools, maintenance drains, and p99 reserves
 
-2. Allocation Efficiency vs. Delivered Efficiency Trap (volume-11/chapter-06):
+2. Allocation Efficiency vs. Delivered Efficiency Trap:
    - 10 inference pods packed on 1 GPU via Time-Slicing -> 100% Allocation Efficiency
    - Context-switch jitter pushes p99 past client timeout -> 0% Delivered Efficiency
    - Capacity Sizing Equation: N = ceil((D + F) / (A * (1 - H)))
@@ -113,7 +113,7 @@ Hardware MIG cuts the silicon into isolated GPU Instances and Compute Instances,
 
 The table below compares the four mechanisms on the same dimensions.
 
-| Dimension (`volume-11/chapter-06`) | Dedicated Whole GPU | Hardware MIG | Time-Slicing and CUDA MPS | NVIDIA vGPU |
+| Dimension | Dedicated Whole GPU | Hardware MIG | Time-Slicing and CUDA MPS | NVIDIA vGPU |
 |---|---|---|---|---|
 | **Primary Resource Boundary** | Physical GPU device (`100%` SMs and HBM) | Supported hardware GPU Instance (`GI`/`CI` partition of SMs, HBM, L2, memory controllers) | Software-advertised logical replica (Time-Slicing) or shared context (MPS) | Virtual GPU device assigned to a guest VM (Time-Sliced or MIG-Backed) |
 | **Capacity Unit** | Whole device (`nvidia.com/gpu: 1`) | Supported MIG profile (`nvidia.com/mig-1g.10gb`) | Logical replica (`nvidia.com/gpu.shared`) + physical GPU headroom | Supported virtual profile (`GRID A100-20Q`) |
@@ -137,7 +137,7 @@ Next, look from inside the affected pod. Run `nvidia-smi` in the container and c
 The same three steps appear below as a playbook.
 
 ```text
-3-Step Live Incident Mechanism Diagnostic Playbook (volume-11/chapter-06)
+3-Step Live Incident Mechanism Diagnostic Playbook
 -------------------------------------------------------------------------
 Step 1: Host Worker Check (SSH to node)
   - nvidia-smi -i 0 --query-gpu=mig.mode.current -> Enabled + nvidia-smi mig -lgi -> MIG is active
@@ -224,7 +224,7 @@ Start with Showback. It reports consumption and cost attribution to teams withou
 
 The table below gives the defensible billable unit for each service model, along with its rate logic and the mistake to avoid.
 
-| Service Model (`volume-11/chapter-09`) | Defensible Primary Billable Unit | Example Rate-Card Logic (`volume-11/chapter-09`) | Anti-Pattern to Avoid |
+| Service Model | Defensible Primary Billable Unit | Example Rate-Card Logic | Anti-Pattern to Avoid |
 |---|---|---|---|
 | **1. Reserved Whole GPU** | **Reserved GPU-hour** or committed capacity period | `100%` of node/GPU hourly rate even while idle, because capacity is withheld from others | Billing a fluctuating utilization `%` sample as if it were a reservation |
 | **2. Standard MIG Profile** | **Allocated profile-hour** with named profile and service tier | Requesting `MIG 3g.40gb` reserves `~50%` of H100 memory and compute, billed at `50%` of hardware + reserve rate | Calling every profile a universal throughput fraction without layout or reserve context |
@@ -278,7 +278,7 @@ Ad-hoc changes to MIG layouts or replica ratios break capacity forecasts and str
 The block below lists the eight fields and the four review cadences.
 
 ```text
-8-Field Capacity Decision Record & 4 Review Cadences (volume-11/chapter-09)
+8-Field Capacity Decision Record & 4 Review Cadences
 ---------------------------------------------------------------------------
 8-Field Capacity Decision Record:
   1. Service change         : New profile, revised time-slicing policy, added pool, or reserve rule
@@ -303,7 +303,7 @@ Suppose a weekly chart shows low streaming multiprocessor activity inside a rese
 
 Use the four-stage governance matrix across your review cadences. It turns idle allocation metrics into structured right-sizing or borrowing conversations. The matrix below shows what to ask first, and who owns each response.
 
-| Operational Observation (`volume-11/chapter-09`) | Diagnostic Question Before Acting | Approved Governance Response | Review Cadence Owner |
+| Operational Observation | Diagnostic Question Before Acting | Approved Governance Response | Review Cadence Owner |
 |---|---|---|---|
 | **1. Low SM activity in a protected Reserved or MIG allocation** | Is the reservation holding a documented `p99` burst buffer, deadline, or failover guarantee? | Retain the reservation if required by the SLO; otherwise right-size to a smaller MIG profile at renewal or define scheduled off-peak release windows. | **Monthly Service Review** (SLO and queue trends and idle commitments) |
 | **2. Long-lived GPU allocation with missing or stale owner labels** | Is `kube-state-metrics` or Project attribution broken or did team ownership change mid-quarter? | Reconcile namespace and project ownership labels in the billing pipeline before modifying or evicting the workload. | **Weekly Operational Review** (pending requests, drift, and expiring reservations) |
@@ -333,13 +333,13 @@ Treat the exit gate as a checklist you finish before the class goes live.
 In a production incident, you need to know how a worker node splits its GPUs. The node may partition them in hardware, multiplex them in a hypervisor or time-slice them in software. The first block below asks the host about MIG mode, active GPU Instances, virtual GPU attachments and process density on the physical card. The second block checks the Kubernetes allocatable counts and matches the device UUID seen inside the pod.
 
 ```bash
-# 1. Host-side check: MIG vs vGPU vs Time-Slicing process density (untested here)
+# 1. Host-side check: MIG vs vGPU vs Time-Slicing process density
 nvidia-smi -i 0 --query-gpu=mig.mode.current --format=csv,noheader
 nvidia-smi mig -lgi
 nvidia-smi vgpu
 nvidia-smi --query-processes=pid,process_name,gpu_memory_usage --format=csv
 
-# 2. Kubernetes-side check: Allocatable counts and Host-to-Pod UUID cross-reference (untested here)
+# 2. Kubernetes-side check: Allocatable counts and Host-to-Pod UUID cross-reference
 kubectl get nodes -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu,SHARED:.status.allocatable.nvidia\.com/gpu\.shared
 kubectl exec -n prod-serving pod/inference-0 -- nvidia-smi --query-gpu=uuid --format=csv
 ```
@@ -351,7 +351,7 @@ Run the host commands first, then the Kubernetes commands.
 Before you move a workload between whole GPUs, MIG slices and time-sliced pools, run a controlled trial. Keep the node, the container image and the runtime probe the same in every trial. The Kubernetes Job manifest below pins the trial pod to one test node and requests a single hardware MIG slice. The pod logs the visible device geometry and utilization, and then it prints the completion marker that you check in the logs.
 
 ```yaml
-# sharing-trial-comparative-probe.yaml (volume-11/labs/lab-03, untested here)
+# sharing-trial-comparative-probe.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -392,11 +392,11 @@ When a sharing strategy or capacity model breaks, you usually see the symptoms a
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. Fleet dashboard shows `48%` average GPU utilization, yet new MIG `3g.40gb` requests stay Pending for days (`volume-11/chapter-09` Story)** | `kubectl describe pod` logs `0/N nodes are available: Insufficient nvidia.com/mig-3g.40gb`, while fleet-wide `DCGM_FI_DEV_GPU_UTIL` averages `48%`. | **Collapsing the 5 Capacity Layers:** The `48%` average blended incompatible `1g.10gb` pools, counted draining or maintenance nodes, and ignored `p99` burst headroom and profile geometry fragmentation. | Report **Sellable Capacity** per named profile and node pool (Layer 5), separate from Physical (Layer 1) and Allocatable (Layer 3) inventory, and size pools with `N = ceil((D + F) / (A * (1 - H)))`. |
-| **2. Supposedly isolated inference service suffers erratic `p99` tail-latency spikes during daytime notebook hours (`volume-11/chapter-06` Scenario 1)** | Pod requested generic `nvidia.com/gpu: 1`; `kubectl exec <pod> -- nvidia-smi --query-gpu=uuid` returns the same physical GPU UUID as `7` neighboring dev notebooks. | **Ambiguous Resource Identity Across Pools:** Time-sliced nodes advertised `nvidia.com/gpu` without `renameByDefault: true`, allowing `kube-scheduler` to place a latency-sensitive service onto a best-effort node. | Rename time-sliced resources to `nvidia.com/gpu.shared`, isolate pools with distinct node labels, taints, and `ResourceQuotas`, and migrate the inference service to a validated **MIG** or **Dedicated** pool. |
-| **3. Migrating a workload from Time-Slicing to a `1g.10gb` MIG slice causes immediate CUDA Out of Memory crashes (`volume-11/chapter-06`)** | Workload ran without OOM on an `80 GB` time-sliced GPU when neighbors were idle, but crashes immediately on `1g.10gb` (`10 GB`). | **Unmeasured Peak Memory Borrowed During Time-Slicing:** On the `80 GB` time-sliced card, the workload silently burst to `14 GB` using idle neighbor VRAM; `1g.10gb` enforces a hard `10 GB` silicon wall. | Profile cold, steady, and concurrent-peak memory in a discovery trial (`labs/lab-03`) before migrating classes, and assign the workload to `2g.20gb` (`20 GB`) or `3g.40gb` (`40 GB`). |
-| **4. Chargeback model bills teams by sampled `DCGM_FI_DEV_GPU_UTIL`, causing a budget deficit while `100%` of MIG slices are allocated (`volume-11/chapter-09`)** | All `20` H100 MIG nodes are `100%` allocated to tenant pods (`0` free slices), but because tenants sit at `15%` average SM utilization, chargeback recovers only `15%` of hardware cost. | **Billing Utilization Instead of Allocation Contract:** A tenant holding a `3g.40gb` slice (`50%` of the GPU) blocks anyone else from using those SMs and HBM whether their utilization is `1%` or `100%`. | Bill Reserved Whole GPU, Standard MIG Profile, and vGPU tiers on **Allocated or Reserved Profile-Hours** (`kube-state-metrics` resource requests multiplied by time), using DCGM utilization only as supplementary right-sizing evidence. |
-| **5. Planned driver maintenance drain violates protected inference SLOs because `H = 0%` reserve was budgeted (`volume-11/chapter-09`)** | Every MIG slot in the `20`-node pool was sold (`100%` sellable); draining `1` node (`5` slots) leaves evicted pods Pending with nowhere to land. | **Missing Named Maintenance and Node-Failure Reserves:** Capacity planning equated Allocatable Inventory (Layer 3) with Sellable Capacity (Layer 5). | Budget explicit **Node-failure**, **Maintenance**, **Rollout**, **Demand-variance**, and **Fragmentation** reserves (`H > 0` in `N = ceil((D + F) / (A * (1 - H)))`) and test maintenance drains against the reserve model before launch. |
+| **1. Fleet dashboard shows `48%` average GPU utilization, yet new MIG `3g.40gb` requests stay Pending for days** | `kubectl describe pod` logs `0/N nodes are available: Insufficient nvidia.com/mig-3g.40gb`, while fleet-wide `DCGM_FI_DEV_GPU_UTIL` averages `48%`. | **Collapsing the 5 Capacity Layers:** The `48%` average blended incompatible `1g.10gb` pools, counted draining or maintenance nodes, and ignored `p99` burst headroom and profile geometry fragmentation. | Report **Sellable Capacity** per named profile and node pool (Layer 5), separate from Physical (Layer 1) and Allocatable (Layer 3) inventory, and size pools with `N = ceil((D + F) / (A * (1 - H)))`. |
+| **2. Supposedly isolated inference service suffers erratic `p99` tail-latency spikes during daytime notebook hours** | Pod requested generic `nvidia.com/gpu: 1`; `kubectl exec <pod> -- nvidia-smi --query-gpu=uuid` returns the same physical GPU UUID as `7` neighboring dev notebooks. | **Ambiguous Resource Identity Across Pools:** Time-sliced nodes advertised `nvidia.com/gpu` without `renameByDefault: true`, allowing `kube-scheduler` to place a latency-sensitive service onto a best-effort node. | Rename time-sliced resources to `nvidia.com/gpu.shared`, isolate pools with distinct node labels, taints, and `ResourceQuotas`, and migrate the inference service to a validated **MIG** or **Dedicated** pool. |
+| **3. Migrating a workload from Time-Slicing to a `1g.10gb` MIG slice causes immediate CUDA Out of Memory crashes** | Workload ran without OOM on an `80 GB` time-sliced GPU when neighbors were idle, but crashes immediately on `1g.10gb` (`10 GB`). | **Unmeasured Peak Memory Borrowed During Time-Slicing:** On the `80 GB` time-sliced card, the workload silently burst to `14 GB` using idle neighbor VRAM; `1g.10gb` enforces a hard `10 GB` silicon wall. | Profile cold, steady, and concurrent-peak memory in a discovery trial (`labs/lab-03`) before migrating classes, and assign the workload to `2g.20gb` (`20 GB`) or `3g.40gb` (`40 GB`). |
+| **4. Chargeback model bills teams by sampled `DCGM_FI_DEV_GPU_UTIL`, causing a budget deficit while `100%` of MIG slices are allocated** | All `20` H100 MIG nodes are `100%` allocated to tenant pods (`0` free slices), but because tenants sit at `15%` average SM utilization, chargeback recovers only `15%` of hardware cost. | **Billing Utilization Instead of Allocation Contract:** A tenant holding a `3g.40gb` slice (`50%` of the GPU) blocks anyone else from using those SMs and HBM whether their utilization is `1%` or `100%`. | Bill Reserved Whole GPU, Standard MIG Profile, and vGPU tiers on **Allocated or Reserved Profile-Hours** (`kube-state-metrics` resource requests multiplied by time), using DCGM utilization only as supplementary right-sizing evidence. |
+| **5. Planned driver maintenance drain violates protected inference SLOs because `H = 0%` reserve was budgeted** | Every MIG slot in the `20`-node pool was sold (`100%` sellable); draining `1` node (`5` slots) leaves evicted pods Pending with nowhere to land. | **Missing Named Maintenance and Node-Failure Reserves:** Capacity planning equated Allocatable Inventory (Layer 3) with Sellable Capacity (Layer 5). | Budget explicit **Node-failure**, **Maintenance**, **Rollout**, **Demand-variance**, and **Fragmentation** reserves (`H > 0` in `N = ceil((D + F) / (A * (1 - H)))`) and test maintenance drains against the reserve model before launch. |
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 

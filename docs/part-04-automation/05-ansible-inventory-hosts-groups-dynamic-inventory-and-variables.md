@@ -110,13 +110,13 @@ Choose YAML when your variables are structured, such as lists and dicts stored o
 
 `all` contains every host. `ungrouped` contains the hosts that belong to no other group. `localhost` is implicit, with the connection `local`, and it is not part of `all` unless you define it explicitly.
 
-Give each host a stable logical name, and put its network address in `ansible_host`. The name in the inventory, `inventory_hostname`, can differ from that address. The trap appears when several machines share one address. *Ansible: Up and Running*, chapter 4, works through this trap in `Example 4-5`, using three local Vagrant VMs. The first is `vagrant1` on port `2222`, the second is `vagrant2` on port `2200`, and the third is `vagrant3` on port `2201`. If you list `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` without aliases, Ansible uses the hostname `127.0.0.1` as the unique dictionary key for the host. All three lines then overwrite the same entry. As a result, `ansible vagrant -m ping` pings only one machine, `127.0.0.1` on port `2201`.
+Give each host a stable logical name, and put its network address in `ansible_host`. The name in the inventory, `inventory_hostname`, can differ from that address. The trap appears when several machines share one address. A lab with three local Vagrant VMs shows this trap. The first is `vagrant1` on port `2222`, the second is `vagrant2` on port `2200`, and the third is `vagrant3` on port `2201`. If you list `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` without aliases, Ansible uses the hostname `127.0.0.1` as the unique dictionary key for the host. All three lines then overwrite the same entry. As a result, `ansible vagrant -m ping` pings only one machine, `127.0.0.1` on port `2201`.
 
 Give each VM its own alias to fix this. You can write `vagrant1 ansible_port=2222`, `vagrant2 ansible_port=2200` and `vagrant3 ansible_port=2201` with `[vagrant:vars] ansible_host=127.0.0.1`. You can also define `Host vagrant*` in `~/.ssh/config`. Either way, Ansible tracks all three hosts separately.
 
 Ranges come from the pets-versus-cattle idea in *Ansible: Up and Running*, chapter 4. You name pets one at a time, such as `frankfurt.example.com` and `helsinki.example.com`. A scale-out fleet works better with numbered or alphabetic ranges, such as `web[01:20].example.com`, `web-[a:t].example.com` and `gpu[001:032]`. The leading zeros in `[001:032]` are kept automatically, so the range gives you `gpu001` through `gpu032`.
 
-Behavioral connection variables tell Ansible how to reach each host. Table 4-1 in *Ansible: Up and Running*, chapter 4, lists them. The ones you will set most often are `ansible_host`, `ansible_port`, `ansible_user` and `ansible_connection`. The last one takes values such as `ssh`, `local`, `docker`, `winrm`, `network_cli`, `httpapi` and `kubectl`. Others cover the key file (`ansible_ssh_private_key_file`), a jump host (`ansible_ssh_common_args` for ProxyJump), privilege escalation (`ansible_become`, `ansible_become_method`, `ansible_become_user`) and the remote Python (`ansible_python_interpreter`).
+Behavioral connection variables tell Ansible how to reach each host. The ones you will set most often are `ansible_host`, `ansible_port`, `ansible_user` and `ansible_connection`. The last one takes values such as `ssh`, `local`, `docker`, `winrm`, `network_cli`, `httpapi` and `kubectl`. Others cover the key file (`ansible_ssh_private_key_file`), a jump host (`ansible_ssh_common_args` for ProxyJump), privilege escalation (`ansible_become`, `ansible_become_method`, `ansible_become_user`) and the remote Python (`ansible_python_interpreter`).
 
 Ansible assumes Bourne shell syntax (`/bin/sh`) by default. If the remote user's login shell is `csh` or `fish`, set `ansible_shell_type=csh` or `ansible_shell_type=fish`. Ansible then formats environment-variable exports and command wrappers for that shell. Keep passwords in Vault or a secrets lookup, never in plaintext inventory.
 
@@ -336,7 +336,7 @@ if __name__ == "__main__":
 
 The `_meta.hostvars` key matters for speed. It lets Ansible skip the per-host `--host` call, which makes a major difference on a large inventory. Your script must be executable (`chmod +x`), deterministic and quick. It must never print anything else on stdout, and it must exit non-zero when an API call fails.
 
-*Ansible: Up and Running*, chapter 4, builds a complete dynamic inventory script in `Example 4-12`, `vagrant.py`. It also shows how to combine several inventory sources in one directory.
+A complete dynamic inventory example is the `vagrant.py` script. You can also combine several inventory sources in one directory.
 
 In the `--list` step, `list_running_hosts()` runs `vagrant status --machine-readable` through `subprocess.check_output`. It splits each comma-separated line with `(timestamp, host, key, value) = line.split(',')[:4]`, and it keeps every `host` where `key == 'state' and value == 'running'`. The result looks like `{"vagrant": ["vagrant1", "vagrant2", "vagrant3"]}`.
 
@@ -442,7 +442,7 @@ Use these questions to check how well you can explain the chapter out loud.
 
 ## Exercises
 
-1. Use `expand_inventory_range()` in `code/part04/ansible_inventory_model.py` to show why three Vagrant machines on `127.0.0.1` collapse into one host. They listen on ports `2222`, `2200` and `2201`, and the problem is *Ansible: Up and Running*, chapter 4, `Example 4-5`. Then fix it with aliases and `ansible_host`.
+1. Use `expand_inventory_range()` in `code/part04/ansible_inventory_model.py` to show why three Vagrant machines on `127.0.0.1` collapse into one host. They listen on ports `2222`, `2200` and `2201`, and this is the same trap described earlier. Then fix it with aliases and `ansible_host`.
 2. Explain how zero-padded ranges such as `gpu[001:032]` and alphabetic ranges such as `web-[a:t]` expand. Then say what the implicit `localhost` is, and why it is not part of `all`.
 3. A play says `hosts: gpu`, and you run it with `--limit`. Explain how the two patterns combine. Then say what `gpu:&rack_r01` and `gpu:!gpu_a100` select.
 4. A rolling change failed on four hosts. Explain what `--limit @failed_hosts.txt` does, and what you must have enabled beforehand for it to work. Then decide when `order: sorted` suits a play better than `order: shuffle`.
@@ -461,7 +461,7 @@ Use these questions to check how well you can explain the chapter out loud.
 <summary>1. Compare INI and YAML inventory files, and explain why listing `127.0.0.1:2222` and `127.0.0.1:2200` in an inventory without aliases fails (*Ansible: Up and Running* Chapter 4).</summary>
 
 - **INI vs YAML:** INI is compact for simple host lists, `[group:children]`, and `[group:vars]`. YAML (`all: children: ... hosts: ...`) is cleaner for deeply nested group hierarchies and structured host variables, such as lists and dicts. It is also easy to produce from a generator.
-- **The `127.0.0.1:2222` trap (*Ansible: Up and Running* Chapter 4, `Example 4-5`):** In `host:port` shorthand, Ansible uses the hostname part, `127.0.0.1`, as the unique identifier (`inventory_hostname`) in its host dictionary. So `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` each overwrite the same `127.0.0.1` entry, and only port `2201` survives. Always give each machine a distinct logical alias. For example, use `vagrant1 ansible_port=2222` and `vagrant2 ansible_port=2200`, with `ansible_host=127.0.0.1`.
+- **The `127.0.0.1:2222` trap:** In `host:port` shorthand, Ansible uses the hostname part, `127.0.0.1`, as the unique identifier (`inventory_hostname`) in its host dictionary. So `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` each overwrite the same `127.0.0.1` entry, and only port `2201` survives. Always give each machine a distinct logical alias. For example, use `vagrant1 ansible_port=2222` and `vagrant2 ansible_port=2200`, with `ansible_host=127.0.0.1`.
 </details>
 
 <details>
@@ -527,7 +527,7 @@ Suppose a host belongs to both `gpu_h100` and `rack_r01`. These are sibling grou
 <details>
 <summary>9. Contrast `ansible.builtin.group_by` and `ansible.builtin.add_host`, and explain when to use `meta: refresh_inventory` (*Ansible: Up and Running* Chapter 4).</summary>
 
-- **`group_by`**: runs against existing hosts in a play. It groups them dynamically, in memory, based on gathered facts or variables. For example, `group_by: key="gpu_model_{{ gpu_model }}"` or `key="{{ ansible_facts.distribution }}"` (*Ansible: Up and Running* Chapter 4, `Example 4-13`). A later play in the same playbook can then target `hosts: Ubuntu` or `hosts: gpu_model_h100`.
+- **`group_by`**: runs against existing hosts in a play. It groups them dynamically, in memory, based on gathered facts or variables. For example, `group_by: key="gpu_model_{{ gpu_model }}"` or `key="{{ ansible_facts.distribution }}"` A later play in the same playbook can then target `hosts: Ubuntu` or `hosts: gpu_model_h100`.
 - **`add_host`**: runs on `localhost` after a cloud or VM provisioning task. It inserts a brand-new host into the in-memory inventory for the rest of the run. For example, `name: "{{ new_vm_ip }}"` with `groups: new_nodes`.
 - **`meta: refresh_inventory`**: forces Ansible to run the dynamic inventory plugins or scripts again, in the middle of a playbook. Use it when new cloud instances must be discovered from the cloud API.
 </details>
@@ -565,7 +565,7 @@ In early Ansible versions, without `_meta`, a `--list` that returned 2,000 hosts
 </details>
 
 <details>
-<summary>14. In *Ansible: Up and Running* Chapter 4 (`Example 4-12`), how does `vagrant.py` discover running VMs and extract their SSH connection details?</summary>
+<summary>14. How does the `vagrant.py` dynamic inventory script discover running VMs and extract their SSH connection details?</summary>
 
 1. To implement `--list`, `vagrant.py` runs **`vagrant status --machine-readable`** through `subprocess.check_output`. It then splits each CSV line with `(timestamp, host, key, value) = line.split(',')[:4]`. It collects every `host` where `key == 'state'` and `value == 'running'`.
 2. To extract host variables, it runs **`vagrant ssh-config <host>`**. It parses the OpenSSH config block with **`paramiko.SSHConfig()`**. Then it maps `hostname` to `ansible_host`, `int(port)` to `ansible_port`, `user` to `ansible_user`, and `identityfile[0]` to `ansible_private_key_file`.

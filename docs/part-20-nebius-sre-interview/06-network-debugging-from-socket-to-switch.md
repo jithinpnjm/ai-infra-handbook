@@ -40,7 +40,7 @@ When someone reports an error, ask for the exact words. Refused points to the se
 
 ### 2. The method: split the path in half
 
-Under stress it is tempting to run twenty commands. The networking book, in its Troubleshooting chapter, gives a better habit called half split. Map the path of the signal. Split it roughly in half. Test the signal at the middle. If it is wrong there, move toward the source. If it is right, move toward the destination.
+Under stress it is tempting to run twenty commands. Computer Networking Problems and Solutions, in its Troubleshooting chapter, describes a better habit called half split. Map the path of the signal. Split it roughly in half. Test the signal at the middle. If it is wrong there, move toward the source. If it is right, move toward the destination.
 
 For a request from a pod to a database, the path has these hops: the application, the resolver, the pod network, the node, the fabric, the remote node and the remote service. A good first test is in the middle. Can the node reach the destination IP at all? You then learn which half to search.
 
@@ -79,9 +79,9 @@ The book lists the TCP states: LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-
 
 CLOSE-WAIT deserves emphasis because interviewers like it. The kernel has done its part. The remote side sent its close, and the kernel is waiting for your program to call close. A pile of CLOSE-WAIT sockets is nearly always a leak in the application, such as a forgotten response body.
 
-For a LISTEN socket the two queue columns change meaning. On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. The ss manual page does not define these columns, and I checked. The source does. The kernel file `net/ipv4/tcp_diag.c`, which answers ss, fills the two numbers for a listening socket from `sk_ack_backlog`, the current queue length, and `sk_max_ack_backlog`, the limit. I also saw it live: a listener created with backlog 5 and never accepted showed `LISTEN 6 5` once it was full. The queue holds one more than the limit, so a full listener reads Recv-Q one above Send-Q. The parser in code/part20 flags a listener whose Recv-Q has reached its Send-Q, which catches both the at-limit and the over-limit row.
+For a LISTEN socket the two queue columns change meaning. On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. The ss manual page does not define these columns, but the kernel source does. The kernel file `net/ipv4/tcp_diag.c`, which answers ss, fills the two numbers for a listening socket from `sk_ack_backlog`, the current queue length, and `sk_max_ack_backlog`, the limit. A live run confirms it: a listener created with backlog 5 and never accepted showed `LISTEN 6 5` once it was full. The queue holds one more than the limit, so a full listener reads Recv-Q one above Send-Q. The parser in code/part20 flags a listener whose Recv-Q has reached its Send-Q, which catches both the at-limit and the over-limit row.
 
-For one connection, `ss -tiepm` gives a deep view. The book's example shows the process and file descriptor, the retransmission timeout, the round-trip time, the maximum segment size, the congestion window, and flags such as `app_limited`, `rwnd_limited` and `sndbuf_limited`. You use those flags to learn which side is the bottleneck, and you will use them again in chapter 20.18 when streaming slows.
+For one connection, `ss -tiepm` gives a deep view. A typical output shows the process and file descriptor, the retransmission timeout, the round-trip time, the maximum segment size, the congestion window, and flags such as `app_limited`, `rwnd_limited` and `sndbuf_limited`. You use those flags to learn which side is the bottleneck, and you will use them again in chapter 20.18 when streaming slows.
 
 Here is the parser from the code folder. It turns `ss -tan` text into counts and finds a full accept queue.
 
@@ -136,9 +136,9 @@ Systems Performance explains that Linux keeps two queues. The first holds connec
 
 Both lengths can be tuned. The accept queue is limited by the backlog argument to listen, and the kernel caps it at net.core.somaxconn. The listen man page says that since Linux 5.4 the default of that cap is 4096, and in earlier kernels it was 128. The SYN queue is limited by net.ipv4.tcp_max_syn_backlog. The tcp man page gives its default as 256, raised to 1024 on systems with at least 128 MB of memory. Systems Performance shows one production tuning with 1024 for somaxconn and 8192 for tcp_max_syn_backlog, and calls it a point-in-time example, not a recipe.
 
-When the accept queue is full, the book says SYN packets are dropped and later retransmitted by the client. The client sees this as slow connects, with a gap of seconds, then success or a timeout. The book names the signs: "Backlog drops and SYN retransmits are indicators of host overload." The kernel counter documentation says that when the accept queue has no room the kernel drops the SYN and adds one to TcpExtListenOverflows. TcpExtListenDrops counts any packet the kernel drops on a listening socket.
+When the accept queue is full, SYN packets are dropped and later retransmitted by the client. The client sees this as slow connects, with a gap of seconds, then success or a timeout. Backlog drops and SYN retransmits are signs of host overload. The kernel counter documentation says that when the accept queue has no room the kernel drops the SYN and adds one to TcpExtListenOverflows. TcpExtListenDrops counts any packet the kernel drops on a listening socket.
 
-There is a switch that changes the client's view. The tcp man page describes tcp_abort_on_overflow, disabled by default, as enabling reset of connections when the service is too slow. The Netflix example in the book sets it to 1. With it on, clients get a fast refusal instead of a silent retry. That is a policy choice. Fast failure is good when a load balancer can retry elsewhere, and bad for a client with no other option.
+There is a switch that changes the client's view. The tcp man page describes tcp_abort_on_overflow, disabled by default, as enabling reset of connections when the service is too slow. A well-known Netflix tuning example sets it to 1. With it on, clients get a fast refusal instead of a silent retry. That is a policy choice. Fast failure is good when a load balancer can retry elsewhere, and bad for a client with no other option.
 
 The cure is rarely a bigger queue alone. A longer queue hides a slow application and adds waiting time. You find out why accept is slow, for example a single-threaded accept loop or a saturated CPU, and you raise the queue only to absorb short bursts.
 
@@ -150,7 +150,7 @@ A different story. A service makes thousands of short calls per second to one do
 
 Systems Performance explains the mechanism. A fully closed session enters TIME_WAIT so late packets are not mixed with a new session on the same ports. The state is typically held for about two minutes, though the same book later describes it as possibly 60 seconds, and the Linux fin timeout default in the tcp man page is 60 seconds. Which value applies depends on the kernel, so state your assumption aloud.
 
-A connection is identified by source address, source port, destination address and destination port. When a client talks to one server address and one port, only the source port can vary. That port comes from the ephemeral range. The book notes that with 65,536 ports and a 60-second TIME_WAIT, a rate above 65,536 connections in 60 seconds can clash.
+A connection is identified by source address, source port, destination address and destination port. When a client talks to one server address and one port, only the source port can vary. That port comes from the ephemeral range. With 65,536 ports and a 60-second TIME_WAIT, a rate above 65,536 connections in 60 seconds can clash.
 
 The arithmetic is short. The code folder has it as a function.
 
@@ -163,7 +163,7 @@ The arithmetic is short. The code folder has it as a function.
 
 The real range on your host is smaller than 65,536 unless it was widened, and the default is set by net.ipv4.ip_local_port_range. We did not fetch the default value, so read it with sysctl on the machine.
 
-The book's fixes are reuse and recycle behavior in the kernel, more server IP addresses, or a low SO_LINGER time. The tcp man page describes tcp_tw_reuse as allowing reuse of TIME_WAIT sockets "when it is safe from protocol viewpoint" and tells you not to change it without expert knowledge. The best fix is usually in the client. Use connection pooling and keep-alive so you do not open a fresh connection per request.
+The usual fixes are reuse and recycle behavior in the kernel, more server IP addresses, or a low SO_LINGER time. The tcp man page describes tcp_tw_reuse as allowing reuse of TIME_WAIT sockets "when it is safe from protocol viewpoint" and tells you not to change it without expert knowledge. The best fix is usually in the client. Use connection pooling and keep-alive so you do not open a fresh connection per request.
 
 Do not say "TIME_WAIT is a bug". It is a safety feature, and the answer is to open fewer connections.
 
@@ -173,7 +173,7 @@ Another story. Pods on one node begin to lose new connections at random, while e
 
 The Networking and Kubernetes book explains it in the Linux Networking chapter. Conntrack is part of Netfilter. It tracks flows by a tuple of source address, source port, destination address, destination port and protocol, and it stores them in a hash table. NAT depends on it. The book connects this to Kubernetes directly. Kube-proxy builds Service load balancing with iptables, and without connection tracking every packet would need to be mapped to the same backend, which cannot be done when the backend list changes.
 
-The danger, in the book's words, is that "Conntrack runs out of space for connection tracking, and new connections cannot be made". The maximum is read from /proc/sys/net/nf_conntrack_max and the hash table size from /sys/module/nf_conntrack/parameters/hashsize. The kernel documentation says nf_conntrack_count is the current number of allocated entries, and that the bucket count defaults to total memory divided by 16384, with a floor of 1024 and a ceiling of 262144. The same page lists the default established-state timeout as 432000 seconds, which is five days. So an idle but tracked flow can occupy a slot for a very long time unless something shortens it.
+The danger is that conntrack runs out of space for connection tracking, and new connections cannot be made. The maximum is read from /proc/sys/net/nf_conntrack_max and the hash table size from /sys/module/nf_conntrack/parameters/hashsize. The kernel documentation says nf_conntrack_count is the current number of allocated entries, and that the bucket count defaults to total memory divided by 16384, with a floor of 1024 and a ceiling of 262144. The same page lists the default established-state timeout as 432000 seconds, which is five days. So an idle but tracked flow can occupy a slot for a very long time unless something shortens it.
 
 You check it with two numbers and one division. The code below turns sysctl text into a percentage and a verdict.
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     sys.exit(2 if f >= 0.8 else 0)
 ```
 
-On a live host you run `conntrack -L` to list flows, and `conntrack -C` for the count. The book says you may need to install the conntrack tool and load the nf_conntrack module. I ran them in the Ubuntu container with `--cap-add NET_ADMIN`. The count stayed at 0 at first, because a fresh container namespace tracks nothing until a rule needs tracking. After I added one iptables rule that matches on connection state and made a single curl request, the tools showed a real flow.
+On a live host you run `conntrack -L` to list flows, and `conntrack -C` for the count. You may need to install the conntrack tool and load the nf_conntrack module. In the Ubuntu test container, started with `--cap-add NET_ADMIN`, the count stayed at 0 at first, because a fresh container namespace tracks nothing until a rule needs tracking. After one iptables rule that matches on connection state was added and a single curl request was made, the tools showed a real flow.
 
 ```text
 $ conntrack -L
@@ -222,7 +222,7 @@ net.netfilter.nf_conntrack_max = 262144
 net.netfilter.nf_conntrack_tcp_timeout_established = 432000
 ```
 
-The last number is 432,000 seconds, which is the five days the kernel documentation gives for the established timeout. I could not make the table fill. The container may not write that sysctl, and Docker refused to set it at start. So the full-table message in scenario 3 is the checker run on real values at 0.0 percent, and the full case stays a test with sample input.
+The last number is 432,000 seconds, which is the five days the kernel documentation gives for the established timeout. The table could not be filled in the test container, which may not write that sysctl, and Docker refused to set it at start. So the full-table message in scenario 3 is the checker run on real values at 0.0 percent, and the full case stays a test with sample input.
 
 The fix has layers. Raise the maximum if memory allows. Reduce the number of short-lived flows through connection reuse. Look for a client that opens connections in a loop. And in Kubernetes, remember that every pod-to-Service flow passes through here on the node.
 
@@ -232,7 +232,7 @@ For any "new connections fail, old ones work" symptom, compare conntrack count t
 
 An engineer reports that a pod's calls to an external API are slow, and sometimes fail, but pinging the IP is fast. That points to name resolution. The fix often hides in one line of a file.
 
-How Linux Works describes the resolver. The C library follows rules in nsswitch.conf, often checks the hosts file first, then asks the name server found in resolv.conf. The search line, the book says, defines rules for incomplete names. A name server cache such as systemd-resolved may sit in front.
+How Linux Works describes the resolver. The C library follows rules in nsswitch.conf, often checks the hosts file first, then asks the name server found in resolv.conf. The search line defines rules for incomplete names. A name server cache such as systemd-resolved may sit in front.
 
 Kubernetes sets the pod's resolv.conf for you. The Kubernetes documentation on DNS for Services and Pods shows an example with the nameserver as the cluster DNS Service, a search line with the pod's namespace domain, the svc domain and the cluster domain, and `options ndots:5`. The docs note that a query for just a short name may be expanded using those search domains.
 
@@ -337,7 +337,7 @@ if __name__ == "__main__":
         print(mtu, "mss", tcp_mss(mtu), "ping -s", ping_payload_for(mtu))
 ```
 
-To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The ping command line is the Linux iputils form. I ran it in the container against a dummy interface set to MTU 1,450, which needs `--cap-add NET_ADMIN`. The oversize probe failed at once on the sender with the message below, and the probe sized for 1,450 was sent.
+To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The ping command line is the Linux iputils form. It was run in the test container against a dummy interface set to MTU 1,450, which needs `--cap-add NET_ADMIN`. The oversize probe failed at once on the sender with the message below, and the probe sized for 1,450 was sent.
 
 ```text
 $ ping -c1 -W1 -M do -s 1472 10.9.0.2
@@ -369,9 +369,9 @@ The signals to look for:
 
 The book describes two ways TCP retransmits. A timer-based retransmit waits for the retransmit timeout, which on Linux is at least 200 ms for the first retransmit and doubles on later ones. A fast retransmit starts after duplicate acknowledgements and does not wait for the timer. Tail loss probe sends an extra packet to catch loss of the last segment. Many timer retransmits mean packets are vanishing without any later traffic to trigger the faster path.
 
-Counters give you the same story without a capture. The book's nstat and netstat -s output contains lines such as segments retransmitted, and TCPSynRetrans, which it says can be caused by the remote endpoint dropping SYNs from a full listen backlog. For per-event tracing the book offers tcpretrans, and says a high rate in the ESTABLISHED state can point to an external network problem, while a high rate in SYN_SENT can point to an overloaded server application.
+Counters give you the same story without a capture. The nstat and netstat -s output contains lines such as segments retransmitted, and TCPSynRetrans, which can be caused by the remote endpoint dropping SYNs from a full listen backlog. For per-event tracing, tcpretrans helps. A high rate in the ESTABLISHED state can point to an external network problem, while a high rate in SYN_SENT can point to an overloaded server application.
 
-The parser below reads tcpdump text and finds repeated segments and unanswered SYNs. Its fixture combines lines that follow the book's output format with synthetic lines.
+The parser below reads tcpdump text and finds repeated segments and unanswered SYNs. Its fixture combines lines that follow the standard output format with synthetic lines.
 
 ```python
 # code/part20/net06_tcpdump_reader.py
@@ -422,7 +422,7 @@ Name the signal before you name the fault. "I see the same sequence range twice,
 
 A new client cannot connect to the endpoint over HTTPS, but a plain TCP connect works. The TCP handshake is fine, so the fault is in the layer above it.
 
-The handbook's chapter 2.10 covers TLS and certificates, so here we only sort the failures by what you see. The command for a quick view is `openssl s_client -connect host:443 -servername host`. The servername flag sets SNI, the name the client asks for, which matters when one address serves many names. I ran it on Linux against a local test server started with `openssl s_server`, using a self-signed certificate. Four results are worth knowing by sight.
+The handbook's chapter 2.10 covers TLS and certificates, so here we only sort the failures by what you see. The command for a quick view is `openssl s_client -connect host:443 -servername host`. The servername flag sets SNI, the name the client asks for, which matters when one address serves many names. The test used a local server started with `openssl s_server` and a self-signed certificate. Four results are worth knowing by sight.
 
 | Situation | What `s_client` printed |
 |---|---|
@@ -431,7 +431,7 @@ The handbook's chapter 2.10 covers TLS and certificates, so here we only sort th
 | Certificate not trusted | `verify error:num=18:self-signed certificate`, return code 18 |
 | Closed port | `connect:errno=111`, the refused case from section 1 |
 
-A client that speaks plain HTTP to the TLS port got no answer at all. `curl -sS https://127.0.0.1:8443/` said `SSL certificate problem: self-signed certificate`. An OpenSSL client pointed at a plain HTTP port printed `wrong version number` and `no peer certificate available`. The version matters, so I record it here: OpenSSL 3.0.13 in Ubuntu 24.04.
+A client that speaks plain HTTP to the TLS port got no answer at all. `curl -sS https://127.0.0.1:8443/` said `SSL certificate problem: self-signed certificate`. An OpenSSL client pointed at a plain HTTP port printed `wrong version number` and `no peer certificate available`. The messages depend on the version. These came from OpenSSL 3.0.13 in Ubuntu 24.04.
 
 Ask where the failure occurs. If it occurs at connect, it is not TLS at all. If the server sends an alert straight after the hello, suspect a protocol or cipher mismatch, or a wrong SNI. If the handshake completes but the client rejects the certificate, suspect expiry, an incomplete chain, a name that does not match, or a client clock that is wrong. If the failure appears only after hours, suspect a rotated certificate that a long-lived process never reloaded. This last one matters for a platform with long-lived gateway pods. These are general TLS causes, and the exact messages differ per client library, so read the message and do not guess.
 
@@ -508,7 +508,7 @@ Last story. A pod cannot reach a Service by name, or it can but the calls go now
 
 The Kubernetes debug guide gives an order that you can recite. First confirm that the pods themselves work, by calling a pod IP and the pod port directly from another pod. Then check that the Service exists, because without it the lookup fails with `Name or service not known`. Then check DNS with the short, namespaced and full names. Then check that the Service has endpoints. The guide's command is `kubectl get endpointslices -l kubernetes.io/service-name=hostnames`, and it says that if the ENDPOINTS column is `<none>` you should check that the Service's selector matches the pods' labels. Then check the ports. The guide asks whether the Service port is listed, whether the targetPort is correct for the pods, whether a numeric or a string value was meant, and whether a named port has a match.
 
-Then you look at kube-proxy. In iptables mode, the guide says each Service port should have one rule in the KUBE-SERVICES chain and one KUBE-SVC chain, and each endpoint should have a KUBE-SEP chain. You see them with `iptables-save | grep hostnames`. In IPVS mode you use `ipvsadm -ln`. The kube-proxy log should include a line saying which proxier is in use. Chapter 5.10 of this handbook explains how the Service becomes those rules, and chapter 5.15 covers NetworkPolicy and the same netfilter machinery.
+Then you look at kube-proxy. In iptables mode, each Service port should have one rule in the KUBE-SERVICES chain and one KUBE-SVC chain, and each endpoint should have a KUBE-SEP chain. You see them with `iptables-save | grep hostnames`. In IPVS mode you use `ipvsadm -ln`. The kube-proxy log should include a line saying which proxier is in use. Chapter 5.10 of this handbook explains how the Service becomes those rules, and chapter 5.15 covers NetworkPolicy and the same netfilter machinery.
 
 The script `net06_k8s_service_path.sh` runs the read-only part of this ladder with kubectl. It does not change anything. It was syntax checked but not run, because there is no cluster here.
 
@@ -530,15 +530,15 @@ When a Service fails, confirm in order: pod, Service, DNS, endpoints, ports, kub
 
 ## Worked scenarios
 
-Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only and read-only. The demos need no root. I ran every scenario in an Ubuntu 24.04 container on Linux kernel 6.18.37, and the outputs below are from there.
+Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only and read-only. The demos need no root. Every scenario ran in an Ubuntu 24.04 container on Linux kernel 6.18.37, and the outputs below are from there.
 
 ### Scenario 1: the full accept queue
 
 **Problem.** A gateway listens on port 8000. During bursts some clients wait seconds to connect and a few time out. CPU is low.
 
-**Reasoning.** Slow connects with gaps of seconds suggest SYN retransmits. Retransmits suggest the listener's queue is full, because the book says SYNs are dropped when the backlog is full. So look at the queue, not the network.
+**Reasoning.** Slow connects with gaps of seconds suggest SYN retransmits. Retransmits suggest the listener's queue is full, because SYNs are dropped when the backlog is full. So look at the queue, not the network.
 
-**Commands.** On a Linux host you run `ss -ltn` and read the listener row. A row like `LISTEN 129 128 0.0.0.0:8000` means the queue is over its limit of 128. Then `nstat -az TcpExtListenOverflows TcpExtListenDrops` shows whether the kernel counted drops. The snapshot script `net06_linux_net_snapshot.sh` collects these, and I ran it. Here is the real result of the demo below with backlog 5 and ten clients, sampled while the server held the queue full.
+**Commands.** On a Linux host you run `ss -ltn` and read the listener row. A row like `LISTEN 129 128 0.0.0.0:8000` means the queue is over its limit of 128. Then `nstat -az TcpExtListenOverflows TcpExtListenDrops` shows whether the kernel counted drops. The snapshot script `net06_linux_net_snapshot.sh` collects these. Here is the real result of the demo below with backlog 5 and ten clients, sampled while the server held the queue full.
 
 ```text
 $ python3 net06_accept_queue_demo.py 5 10 4
@@ -554,7 +554,7 @@ TcpExtListenOverflows           8                  0.0
 TcpExtListenDrops               8                  0.0
 ```
 
-Backlog 5 let six connections in, so the rule is the limit plus one. The listener row reads 6 and 5, the four late clients sit in SYN-SENT, and both counters rose. Each late client sent its SYN again about once a second. In a separate run I held a `listen(1)` socket full and let `nc -w 5` try to connect. A loopback capture showed the SYN from one source port repeating at intervals of 1.02 seconds, four more times, and `nstat` counted four `TcpExtTCPSynRetrans`. That is not the doubling you may remember. The kernel documentation for `tcp_syn_linear_timeouts`, default 4 on this kernel, says the first four retries use a linear one second timeout, and doubling starts after that.
+Backlog 5 let six connections in, so the rule is the limit plus one. The listener row reads 6 and 5, the four late clients sit in SYN-SENT, and both counters rose. Each late client sent its SYN again about once a second. In a separate run, a `listen(1)` socket was held full and let `nc -w 5` try to connect. A loopback capture showed the SYN from one source port repeating at intervals of 1.02 seconds, four more times, and `nstat` counted four `TcpExtTCPSynRetrans`. That is not the doubling you may remember. The kernel documentation for `tcp_syn_linear_timeouts`, default 4 on this kernel, says the first four retries use a linear one second timeout, and doubling starts after that.
 
 The demo reproduces the effect in Python.
 
@@ -622,7 +622,7 @@ if __name__ == "__main__":
 
 **Reasoning.** All those rows share a destination, so only the source port varies. The budget is the range size divided by the hold time.
 
-**Commands.** `ss -tan | awk 'NR>1 {c[$1]++} END {for (s in c) print s, c[s]}'` gives counts by state. Then `sysctl net.ipv4.ip_local_port_range` reads the range. The parser in section 3 gives counts, and its port budget function gives the rate: 55,296 ports over 60 seconds is about 922 connects per second for the book's Netflix range. Both the counting and the budget function were tested with pytest, and I ran the parser on real `ss -tan` output in the container, where it counted the states and named the full listener. The default range on this kernel, read with `sysctl`, is 32768 to 60999. That is 28,232 ports, so about 470 connects per second over 60 seconds. The Netflix range from the book gives the larger 922. Read the range on your own host before you quote a number.
+**Commands.** `ss -tan | awk 'NR>1 {c[$1]++} END {for (s in c) print s, c[s]}'` gives counts by state. Then `sysctl net.ipv4.ip_local_port_range` reads the range. The parser in section 3 gives counts, and its port budget function gives the rate: 55,296 ports over 60 seconds is about 922 connects per second for the Netflix range. Both the counting and the budget function were tested with pytest, and the parser was run on real `ss -tan` output in the container, where it counted the states and named the full listener. The default range on this kernel, read with `sysctl`, is 32768 to 60999. That is 28,232 ports, so about 470 connects per second over 60 seconds. The Netflix range gives the larger 922. Read the range on your own host before you quote a number.
 
 **Answer.** If the call rate is above the budget, the client must reuse connections. Pooling with keep-alive removes the problem. Widening the range raises the budget a little. Several destination addresses multiply it.
 
@@ -638,7 +638,7 @@ if __name__ == "__main__":
 sysctl net.netfilter.nf_conntrack_count net.netfilter.nf_conntrack_max | python3 net06_conntrack_check.py
 ```
 
-The full case prints a line such as `100.0% FULL: no space left, new connections cannot be made`, with exit code 2. I fed the checker a sample of equal count and max and it printed that line. On the real container values it printed `0.0% ok`. The sysctl commands ran, and their output is shown in section 6.
+The full case prints a line such as `100.0% FULL: no space left, new connections cannot be made`, with exit code 2. Feeding the checker a sample of equal count and max prints that line. On the real container values it printed `0.0% ok`. The sysctl commands ran, and their output is shown in section 6.
 
 **Answer.** Confirm usage, find which clients create the flows, cut short-lived flows by reuse, and raise the maximum with an eye on memory. Remember the established timeout default of five days when you look for stale entries.
 
@@ -654,7 +654,7 @@ The full case prints a line such as `100.0% FULL: no space left, new connections
 printf 'search ml.svc.cluster.local svc.cluster.local cluster.local\noptions ndots:5\n' | python3 net06_resolv_ndots.py api.example.com
 ```
 
-I ran this in the Linux container and it printed the three suffixed names and then `api.example.com`. The container's own `/etc/resolv.conf` came from Docker and has no search list or ndots line, so the sample stands in for a pod. The test suite checks that the cost is eight queries for the unsuffixed hit and two with a trailing dot.
+Run in the Linux container, it printed the three suffixed names and then `api.example.com`. The container's own `/etc/resolv.conf` came from Docker and has no search list or ndots line, so the sample stands in for a pod. The test suite checks that the cost is eight queries for the unsuffixed hit and two with a trailing dot.
 
 **Answer.** Use the fully qualified name with a trailing dot in configuration, or set a lower ndots in the pod's dnsConfig, or add NodeLocal DNSCache. Do not start by scaling CoreDNS, because that treats the symptom.
 
@@ -670,7 +670,7 @@ I ran this in the Linux container and it printed the three suffixed names and th
 tcpdump -nn -r capture.pcap | python3 net06_tcpdump_reader.py
 ```
 
-I ran the reader on a real `tcpdump -nn` capture taken on loopback during the accept queue demo. It printed `retransmits: []`, because those were SYN retries and the reader looks for repeated data segments. It listed the three SYNs that never got an answer under `unanswered SYN`. The data retransmit case was tested only on fixture text. The MTU math script prints the sizes to test: 1,450 gives a TCP payload of 1,410 and a ping payload of 1,422.
+The reader was run on a real `tcpdump -nn` capture taken on loopback during the accept queue demo. It printed `retransmits: []`, because those were SYN retries and the reader looks for repeated data segments. It listed the three SYNs that never got an answer under `unanswered SYN`. The data retransmit case was tested only on fixture text. The MTU math script prints the sizes to test: 1,450 gives a TCP payload of 1,410 and a ping payload of 1,422.
 
 **Answer.** Set the pod and tunnel MTU to the underlay MTU minus 50, or use a jumbo underlay, or clamp the maximum segment size. Check that ICMP packet-too-big can pass.
 
@@ -686,7 +686,7 @@ I ran the reader on a real `tcpdump -nn` capture taken on loopback during the ac
 python3 code/part20/net06_idle_reset_demo.py
 ```
 
-I ran it on Linux. The silent client ended with `BrokenPipeError` after the middlebox logged an idle timeout. The heartbeat client reported `still alive`. I also captured the exchange with `tcpdump -i lo -nn`, and the packets taught me something the code comment did not. The demo's middlebox closes politely, so the capture shows a FIN from the server, then the client's ACK. Silence follows. The client's next write, 0.6 seconds later, is answered with `Flags [R]`, a reset, from the server. So the reset appears only when the client speaks again.
+The silent client ended with `BrokenPipeError` after the middlebox logged an idle timeout. The heartbeat client reported `still alive`. A capture with `tcpdump -i lo -nn` shows something the code comment does not say. The demo's middlebox closes politely, so the capture shows a FIN from the server, then the client's ACK. Silence follows. The client's next write, 0.6 seconds later, is answered with `Flags [R]`, a reset, from the server. So the reset appears only when the client speaks again.
 
 ```text
 20:52:02.458899 IP 127.0.0.1.33653 > 127.0.0.1.56856: Flags [F.], seq 1, ack 1, ...
@@ -701,7 +701,7 @@ A real middlebox that silently drops its state sends nothing at the idle moment 
 
 ## Hands-on lab
 
-The lab needs a Linux VM or a container with iproute2, and a second shell. I ran it in a disposable container: image `ubuntu:24.04`, Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt` aarch64 from the Rancher Desktop VM, started with `docker run --rm --cap-add NET_ADMIN`, with `code/part20` mounted read-only. I added `NET_ADMIN` for the dummy interface, the iptables rule and `conntrack`. Nothing else was privileged. Packages came from apt: iproute2, tcpdump, conntrack, iputils-ping, procps, dnsutils, openssl, netcat-openbsd.
+The lab needs a Linux VM or a container with iproute2, and a second shell. It ran in a disposable container: image `ubuntu:24.04`, Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt` aarch64 from the Rancher Desktop VM, started with `docker run --rm --cap-add NET_ADMIN`, with `code/part20` mounted read-only. `NET_ADMIN` was added for the dummy interface, the iptables rule and `conntrack`. Nothing else was privileged. Packages came from apt: iproute2, tcpdump, conntrack, iputils-ping, procps, dnsutils, openssl, netcat-openbsd.
 
 1. Run the tests. In the repository root, run `python3 -m pytest -q code/part20/test_net06_*.py`. Expected: 19 passed. Ran: yes, on the Mac and in the Linux container.
 2. Run the code checker with `python3 tools/check_code_files.py code/part20`. Expected: no problems for the files of this chapter. Ran: yes.
@@ -728,7 +728,7 @@ Nobody answered, so a packet or its reply was dropped, or a queue was full. With
 
 <details><summary>3. On a LISTEN socket in ss, what do Recv-Q and Send-Q show, and when is it a problem?</summary>
 
-On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. It is a problem when Recv-Q reaches Send-Q, since new connections are then dropped. On the kernel I tested a full listener read one above the limit, `LISTEN 6 5`. The kernel source for ss fills these two numbers from the accept queue length and its limit.
+On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. It is a problem when Recv-Q reaches Send-Q, since new connections are then dropped. On the tested kernel a full listener read one above the limit, `LISTEN 6 5`. The kernel source for ss fills these two numbers from the accept queue length and its limit.
 
 </details>
 

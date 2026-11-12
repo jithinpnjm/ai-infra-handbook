@@ -337,7 +337,7 @@ tolerations:
 
 **Root cause.** A member sits far from the others. Production Kubernetes, chapter 2, says etcd defaults assume one datacenter, that you should test round trips and tune the heartbeat interval and election timeout if you span datacenters, and that it strongly discourages etcd across regions. The Kubernetes etcd page says resource starvation or slow heartbeats can leave no leader, and then the cluster cannot change state, so no new pods can be scheduled. This differs from the 20.26 etcd drill, where disk fsync was the cause.
 
-**What still works.** The same book says that workloads without API dependencies should not suffer, but control of the cluster does. That is why serving continues while deploys hang. It is also why you should not roll the whole control plane.
+**What still works.** The same chapter says that workloads without API dependencies should not suffer, but control of the cluster does. That is why serving continues while deploys hang. It is also why you should not roll the whole control plane.
 
 **Fix.** Bring the member back close to the others, or remove it and add one in the same datacenter. Use the member-management commands, one change at a time, and take a snapshot first, as in [5.20](../part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md). Do not defragment a live member as a reflex. The Kubernetes etcd page calls defragmentation expensive.
 
@@ -364,7 +364,7 @@ tolerations:
 
 ## Hands-on lab
 
-I ran steps 1 to 5 on macOS with Python 3.12 and kubeconform from `~/go/bin`. I ran steps 1 to 4 again in a disposable Linux container, `ubuntu:24.04` on kernel `6.18.37-0-virt` with Python 3.12.3 and the repository mounted read-only. The results were the same on both. I did not run kubeconform on Linux. Step 6 is not run, because there is no cluster, and Docker alone cannot stand one up without privileged mode.
+Steps 1 to 5 were run on a laptop, and steps 1 to 4 again in a disposable Linux container, with the same results on both. Step 6 is not run, because there is no cluster, and Docker alone cannot stand one up without privileged mode.
 
 1. Run the tests.
 
@@ -545,7 +545,7 @@ Fetched on 2026-11-09. Kubernetes pages were read from the `main` branch of the 
 
 ### Verification log
 
-Fact-check pass on 2026-11-09 against the kubernetes/website `main` branch and kubernetes/kubernetes source, latest release tag v1.37.2. Eleven claims were checked. Ten are confirmed, none were corrected, one stays unverified.
+Lab runs: steps 1 to 5 on macOS with Python 3.12 and kubeconform from `~/go/bin`; steps 1 to 4 again in a disposable Linux container, `ubuntu:24.04` on kernel `6.18.37-0-virt` with Python 3.12.3 and the repository mounted read-only. kubeconform was not run on Linux. Fact-check pass on 2026-11-09 against the kubernetes/website `main` branch and kubernetes/kubernetes source, latest release tag v1.37.2. Eleven claims were checked. Ten are confirmed, none were corrected, one stays unverified.
 
 | Claim | Result | Source |
 |---|---|---|

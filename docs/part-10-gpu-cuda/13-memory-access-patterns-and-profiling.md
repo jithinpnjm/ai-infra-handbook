@@ -127,7 +127,7 @@ In C++ code, uncoalesced strided access most commonly comes from storing records
 
 Converting the layout to a Structure of Arrays stores all first coordinates in one contiguous array. Separate contiguous arrays hold the remaining coordinates. When all threads in a warp read the first coordinate array, all lanes read contiguous floats in a single cache line.
 
-| Nsight Compute Metric | Before (`uncoalescedCopy`, `stride = 2`) | After (`coalescedCopy`, `stride = 1`) | Improvement Factor (*AI Systems Performance Engineering* Ch 7 Table 7-1, p. 220) |
+| Nsight Compute Metric | Before (`uncoalescedCopy`, `stride = 2`) | After (`coalescedCopy`, `stride = 1`) | Improvement Factor |
 |---|---:|---:|---|
 | **DRAM Throughput (`% of peak`)** | `25%` | **`90%`** | **`3.6x` higher** |
 | **Global Memory Load Efficiency** | `23%` | **`99%`** | **`4.3x` higher** (`100%` theoretical useful bytes) |
@@ -301,7 +301,7 @@ Second, maximum vector width doubled on Blackwell with CUDA 13. On Hopper and ea
 
 Comparing a scalar copy kernel against a 16-byte `float4` vectorized copy kernel shows how wide loads reduce instruction overhead and improve bus utilization.
 
-| Nsight Compute Metric | Before (`copyScalar`) | After (`copyVector16B` / `float4`) | Improvement Factor (*AI Systems Performance Engineering* Ch 7 Table 7-2, p. 225) |
+| Nsight Compute Metric | Before (`copyScalar`) | After (`copyVector16B` / `float4`) | Improvement Factor |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `28%` | **`97%`** | **`~3.5x` higher** |
 | **Average Sectors per Request** | `31.8` | **`4.0` (per `128 B` line)** | Eliminates scattered sector waste |
@@ -505,7 +505,7 @@ Shared-memory tiling partitions the input matrices into square tiles stored in f
 
 Third, every thread loops across the elements of the cached tile and accumulates products from fast on-chip shared memory instead of slow off-chip HBM. Each global memory load is reused 32 times on chip. Fourth, the block calls `__syncthreads()` a second time before advancing to load the next tile. This second barrier prevents faster threads from overwriting the shared buffer while slower threads are still reading it.
 
-| Nsight Compute Metric | Before (`naiveMatMul`) | After (`tiledMatMul` `32 × 32`) | Architectural Interpretation (*AI Systems Performance Engineering* Ch 7 Table 7-4, pp. 230–231) |
+| Nsight Compute Metric | Before (`naiveMatMul`) | After (`tiledMatMul` `32 × 32`) | Architectural Interpretation |
 |---|---:|---:|---|
 | **Global Memory Load Sectors** | `9,800` | **`1,200`** | **`8.17x` (`~8x`) reduction** in 32-byte HBM sector reads from `32x` reuse |
 | **DRAM Throughput (`% of peak`)** | `90%` (wasteful) | **`25%` (`3.6x` less)** | Desirable drop because redundant HBM traffic was removed (`10 GB/s -> 21 GB/s`) |
@@ -564,7 +564,7 @@ Shared-Memory Bank Modulo Math (32 banks x 4-byte width = 128-byte wrap; analyze
   - Uniform Broadcast (tile[const_r][const_c] across 32 lanes): Same address across all lanes -> hardware single-cycle broadcast (0 bank conflicts)
 ```
 
-| Nsight Compute Metric | Before (`tile[32][32]`, no padding) | After (`tile[32][33]`, `+1` padding) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-5, p. 237) |
+| Nsight Compute Metric | Before (`tile[32][32]`, no padding) | After (`tile[32][33]`, `+1` padding) | Improvement |
 |---|---:|---:|---|
 | **Shared-Memory Load Bank Conflicts** | `4.8 million` | **`0`** | **100% eliminated** |
 | **Shared-Memory Utilization (`% of peak`)** | `52%` | **`100%`** | Full 32-bank parallel throughput |
@@ -804,7 +804,7 @@ Inference kernels frequently perform random gather lookups into immutable tables
 
 For larger lookup tables, the GPU's L1 read-only data cache can serve scattered reads without polluting the regular read/write cache lines. However, the compiler will only emit read-only `__ldg()` loads automatically if it can prove that the table pointer is never written and never aliases another pointer. Adding `const __restrict__` to the input pointer gives the compiler that guarantee and cuts off-chip DRAM traffic by three times.
 
-| Nsight Compute Metric | Before (`const float* table`, no `__restrict__`) | After (`const float* __restrict__ table`) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-6, p. 243) |
+| Nsight Compute Metric | Before (`const float* table`, no `__restrict__`) | After (`const float* __restrict__ table`) | Improvement |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `52%` | **`97%`** | Most fetched cache lines carry useful data |
 | **DRAM Throughput (`GB/s`)** | `600 GB/s` | **`200 GB/s`** | **`3.0x` less off-chip DRAM traffic** |
@@ -847,7 +847,7 @@ processTile(tiles[(nTiles - 1) & 1]);
 pipe.consumer_release();
 ```
 
-| Nsight Compute Metric | Before (No Prefetch) | After (`TMA` + `cuda::memcpy_async` Double Buffering) | Improvement (*AI Systems Performance Engineering* Ch 7 Table 7-7, pp. 248–249) |
+| Nsight Compute Metric | Before (No Prefetch) | After (`TMA` + `cuda::memcpy_async` Double Buffering) | Improvement |
 |---|---:|---:|---|
 | **Global Memory Load Efficiency** | `23%` | **`99%`** | **`4.3x` higher** |
 | **Average Sectors per Request** | `6.4` | **`4.0` (optimal)** | Coalesced 128-byte TMA bulk transfers |
@@ -1046,12 +1046,12 @@ When a production kernel misses its latency or throughput target, the Nsight Com
 
 | # | Failure Mode | Nsight Compute Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| **1** | **Strided / `AoS` / `index_select` uncoalesced global loads** | `DRAM Throughput = 25%`, `Global Memory Load Efficiency = 23%`, `Average Sectors per Request = 8.0` (up to `32.0`), runtime `4.8 ms` (Table 7-1) | Adjacent threads in a warp index memory with `stride > 1` (`in[idx * 2]`, `AoS` structs, or `torch.index_select` gather), touching multiple 128-byte cache lines per warp | Restructure layout to Structure of Arrays (`SoA`) and contiguous `stride = 1` (`in[idx]`), reducing sectors/request to `4.0` (`1.3 ms`, `3.7x` faster) |
-| **2** | **Scalar loads or misaligned `float4` / `float8` casts** | `Global Memory Load Efficiency = 28%`, `Average Sectors per Request = 31.8`, or `cudaErrorMisalignedAddress` crash (Table 7-2 & p. 223) | Kernel issues 4-byte scalar loads instead of wide vector loads, or casts `d_ptr + offset` to `float4*` / `float8*` when `offset` is not a multiple of `16 B` (`4` floats) or `32 B` (`8` floats) | Use `float4` (`16 B`, `ld.global.v4.f32`) on Hopper or `alignas(32) float8` (`32 B`, `ld.global.v8.f32`) on Blackwell (CUDA 13+), ensuring `offset % 4 == 0` or `offset % 8 == 0` (`1.2 ms`, `3.5x` faster) |
-| **3** | **Redundant HBM loads in untiled GEMM / attention kernels** | `DRAM Throughput = 90%`, `Global Load Sectors = 9,800`, `Achieved Occupancy = 42%`, compute stuck at `15 GFLOPS` (`1.5 FLOPs/byte`, Table 7-4) | Inner loop reads `A[row, k]` and `B[k, col]` directly from global HBM on every step (`N` redundant loads per element) | Stage `32 × 32` tiles in `__shared__` memory with `__syncthreads()`, cutting global load sectors to `1,200` and raising throughput to `170 GFLOPS` (`~11x`) |
+| **1** | **Strided / `AoS` / `index_select` uncoalesced global loads** | `DRAM Throughput = 25%`, `Global Memory Load Efficiency = 23%`, `Average Sectors per Request = 8.0` (up to `32.0`), runtime `4.8 ms` | Adjacent threads in a warp index memory with `stride > 1` (`in[idx * 2]`, `AoS` structs, or `torch.index_select` gather), touching multiple 128-byte cache lines per warp | Restructure layout to Structure of Arrays (`SoA`) and contiguous `stride = 1` (`in[idx]`), reducing sectors/request to `4.0` (`1.3 ms`, `3.7x` faster) |
+| **2** | **Scalar loads or misaligned `float4` / `float8` casts** | `Global Memory Load Efficiency = 28%`, `Average Sectors per Request = 31.8`, or `cudaErrorMisalignedAddress` crash | Kernel issues 4-byte scalar loads instead of wide vector loads, or casts `d_ptr + offset` to `float4*` / `float8*` when `offset` is not a multiple of `16 B` (`4` floats) or `32 B` (`8` floats) | Use `float4` (`16 B`, `ld.global.v4.f32`) on Hopper or `alignas(32) float8` (`32 B`, `ld.global.v8.f32`) on Blackwell (CUDA 13+), ensuring `offset % 4 == 0` or `offset % 8 == 0` (`1.2 ms`, `3.5x` faster) |
+| **3** | **Redundant HBM loads in untiled GEMM / attention kernels** | `DRAM Throughput = 90%`, `Global Load Sectors = 9,800`, `Achieved Occupancy = 42%`, compute stuck at `15 GFLOPS` (`1.5 FLOPs/byte`) | Inner loop reads `A[row, k]` and `B[k, col]` directly from global HBM on every step (`N` redundant loads per element) | Stage `32 × 32` tiles in `__shared__` memory with `__syncthreads()`, cutting global load sectors to `1,200` and raising throughput to `170 GFLOPS` (`~11x`) |
 | **4** | **Oversized tile (`64 × 64`+) exhausting registers per SM** | Increasing tile size reduces achieved occupancy below `50%` or triggers local-memory register spills (`100s–1,000` cycles) | A `1,024`-thread block using `> 32` registers/thread exceeds half of the SM's `65,536`-register file, dropping residency from `2` blocks (`2,048` threads) to `1` block (pp. 231–232) | Balance tile size (`32 × 32` vs `64 × 64`) against `65,536` regs/SM and `227 KB` usable SMEM using `ncu` occupancy reports or `CUTLASS` / `cuTile` autotuners |
-| **5** | **32-way Shared-Memory Bank Conflicts on column reads (`tile[32][32]`)** | `Shared-Memory Load Bank Conflicts = 4.8 million`, `Shared-Memory Utilization = 52%`, `Warp Stall Fraction (memory) = 38%`, runtime `4.0 ms` (Table 7-5) | Reading down a column of `__shared__ float tile[32][32]` strides by `32 floats = 128 B`, mapping all 32 lanes to `Bank 0` (`32`-way serialization) | Pad shared array to `__shared__ float tile[32][33]` (`+1` column = `~3%` / `1 KB` overhead) or apply XOR index swizzling, dropping conflicts to `0` (`1.3 ms`, `3x` faster) |
-| **6** | **Missing `const __restrict__` on read-only tables or unpipelined `800-cycle` DRAM loads** | High DRAM traffic (`600 GB/s`) and low `SM Active = 45%` on lookup tables (Table 7-6), or warps stalled waiting on synchronous global-to-shared loads (`18 ms`, Table 7-7) | Compiler cannot prove table immutability/non-aliasing without `const __restrict__`, and SM `LD/ST` units stall on 800-cycle HBM round trips | Mark immutable tables `const __restrict__` (`2.5 ms -> 1.0 ms`), use `__shfl_down_sync` for intra-warp reductions, and double-buffer tile loads with `TMA` (`cuda::memcpy_async` + `cuda::pipeline`, `18 ms -> 7 ms`) |
+| **5** | **32-way Shared-Memory Bank Conflicts on column reads (`tile[32][32]`)** | `Shared-Memory Load Bank Conflicts = 4.8 million`, `Shared-Memory Utilization = 52%`, `Warp Stall Fraction (memory) = 38%`, runtime `4.0 ms` | Reading down a column of `__shared__ float tile[32][32]` strides by `32 floats = 128 B`, mapping all 32 lanes to `Bank 0` (`32`-way serialization) | Pad shared array to `__shared__ float tile[32][33]` (`+1` column = `~3%` / `1 KB` overhead) or apply XOR index swizzling, dropping conflicts to `0` (`1.3 ms`, `3x` faster) |
+| **6** | **Missing `const __restrict__` on read-only tables or unpipelined `800-cycle` DRAM loads** | High DRAM traffic (`600 GB/s`) and low `SM Active = 45%` on lookup tables, or warps stalled waiting on synchronous global-to-shared loads (`18 ms`) | Compiler cannot prove table immutability/non-aliasing without `const __restrict__`, and SM `LD/ST` units stall on 800-cycle HBM round trips | Mark immutable tables `const __restrict__` (`2.5 ms -> 1.0 ms`), use `__shfl_down_sync` for intra-warp reductions, and double-buffer tile loads with `TMA` (`cuda::memcpy_async` + `cuda::pipeline`, `18 ms -> 7 ms`) |
 
 **Treat every Nsight Compute counter as a pointer to a specific hardware unit.** Sector counts diagnose global coalescing, bank conflict counters diagnose shared memory layout, and DRAM versus L2 throughput diagnoses read-only caching.
 

@@ -34,7 +34,7 @@ Guessing is the costly habit here. A responder who restarts the device plugin or
 The summary below collects the thresholds and rules that the rest of the chapter depends on. Treat it as the reference you come back to when a page fires. Notice that the stale-telemetry rule is written as UNKNOWN, never as healthy.
 
 ```text
-Shared-GPU & KAI Scheduler Operational Thresholds Summary (volume-11 & volume-19)
+Shared-GPU & KAI Scheduler Operational Thresholds Summary
 ---------------------------------------------------------------------------------
 - Triage Architecture: 6 ordered layers, 7 KAI microservices, 6 KAI CRDs
 - Reserved MIG Inference Tier:
@@ -138,7 +138,7 @@ A best-effort time-sliced pool should not carry a strict tail-latency target. It
 The recording rules below turn those targets into Prometheus queries. Each comment line carries the target or the alert threshold.
 
 ```yaml
-# Reserved MIG inference SLI/SLO recording rules (volume-11/chapter-10, untested here)
+# Reserved MIG inference SLI/SLO recording rules
 sli_mig_inference_request_success: |
   rate(inference_requests_total{service="mig-inference", status="success"}[5m])
   / rate(inference_requests_total{service="mig-inference"}[5m])
@@ -153,7 +153,7 @@ mig_pod_pending_reasons: |
 ```
 
 ```yaml
-# Best-effort time-sliced pool & telemetry freshness rules (volume-11/chapter-10, untested here)
+# Best-effort time-sliced pool & telemetry freshness rules
 timeslice_queue_time_p95: |
   histogram_quantile(0.95, rate(gpu_queue_wait_seconds_bucket{pool="time-sliced"}[10m]))
   # Target: < 30 seconds
@@ -207,7 +207,7 @@ A workload that asks for a hardware MIG slice stays pending. Before anyone resta
 Here are the same five checks as commands. Each step's arrow line says what a healthy answer looks like.
 
 ```text
-Playbook A: 5-Step Read-Only MIG Absence Commands (volume-11/chapter-11, untested here)
+Playbook A: 5-Step Read-Only MIG Absence Commands
 ---------------------------------------------------------------------------------------
 1. Layer 1 (Host GPU & MIG Mode):
    ssh gpu-node-1 'nvidia-smi -i 0 --query-gpu=gpu_name,gpu_uuid,mig.mode.current --format=csv'
@@ -263,7 +263,7 @@ Every AI infrastructure platform should execute three mandatory Game Day fault i
 The postmortem below shows why the failover test matters. The hypothesis looked safe on paper, and the outcome was not.
 
 ```text
-Game Day Postmortem: The 99.999% Control-Plane Master Failover Trap (volume-19/chapter-02)
+Game Day Postmortem: The 99.999% Control-Plane Master Failover Trap
 ------------------------------------------------------------------------------------------
 - Hypothesis: Powering off 1 of 3 master nodes keeps Triton inference degradation < 5 seconds
   to meet a Five Nines (99.999%) availability target.
@@ -330,7 +330,7 @@ Run the exercise before the rotation goes live, so that the first classification
 Before you restart a component or drain a node, preserve the scene. Capture the five-file read-only evidence bundle first. The files record node state, Pod placement, cluster events, allocatable resources, and KAI Scheduler custom resources. Once they exist, you can compare the node's state before and after any change.
 
 ```bash
-# Preserve node, pod, event, allocatable, and KAI state before any mutation (untested here)
+# Preserve node, pod, event, allocatable, and KAI state before any mutation
 export GPU_NODE="gpu-node-1"
 export LAB_NAMESPACE="gpu-sharing-incident-lab"
 export EVIDENCE_DIR="shared-gpu-incident"
@@ -350,7 +350,7 @@ Each command writes one file into `shared-gpu-incident`. Run them all before you
 A bounded diagnostic Pod in a disposable namespace tests GPU access on a single node. Pair it with a reversible zero-capacity ResourceQuota to test API admission denial. Neither object touches production workloads, because the lab namespace is the only place they run.
 
 ```yaml
-# diagnostic-gpu-pod-and-quota-test.yaml (volume-11/labs/lab-04, untested here)
+# diagnostic-gpu-pod-and-quota-test.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -392,7 +392,7 @@ The Pod runs `nvidia-smi -L` and then prints `DIAGNOSTIC_GPU_OK`. The ResourceQu
 When a shared node suffers latency spikes, capture timestamped host metrics. The timestamps let you line up GPU memory, clocks, power, and processes against the moment users complained. Record GPU memory utilization, Streaming Multiprocessor clocks, power draw, active container process identifiers, and host swap state.
 
 ```bash
-# Capture timestamped host GPU memory, SM clock, power, and PID breakdown (untested here)
+# Capture timestamped host GPU memory, SM clock, power, and PID breakdown
 INCIDENT_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 ssh gpu-node-1 'nvidia-smi --query-gpu=name,memory.used,memory.total,clocks.current.sm,power.draw --format=csv -l 2' | tee /tmp/gpu-activity.txt
 ssh gpu-node-1 'nvidia-smi --query-processes=pid,process_name,gpu_memory_usage --format=csv'
@@ -407,11 +407,11 @@ When you run a KAI-scheduled shared GPU cluster, most operational failures fall 
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. `nvidia.com/mig-1g.10gb` disappears from `status.allocatable` while `nvidia-smi mig -lgi` still shows instances (`volume-11/chapter-11`)** | `ssh gpu-node-1 'nvidia-smi mig -lgi -i 0'` lists active `1g.10gb` instances, but `kubectl describe node gpu-node-1` shows `0` allocatable MIG resources and `ds/nvidia-device-plugin-daemonset` logs `"failed to discover"`. | **Layer 3 Registration (`nvidia-device-plugin`):** The host MIG layout (`Layer 2`) is intact, but the device-plugin pod on that node lost synchronization with NVML / `kubelet`. | Restart only the device-plugin pod (`kubectl delete pod -n nvidia-driver-install -l app=nvidia-device-plugin`), wait `30 s`, and verify `status.allocatable` without reconfiguring MIG or draining running workloads. |
+| **1. `nvidia.com/mig-1g.10gb` disappears from `status.allocatable` while `nvidia-smi mig -lgi` still shows instances** | `ssh gpu-node-1 'nvidia-smi mig -lgi -i 0'` lists active `1g.10gb` instances, but `kubectl describe node gpu-node-1` shows `0` allocatable MIG resources and `ds/nvidia-device-plugin-daemonset` logs `"failed to discover"`. | **Layer 3 Registration (`nvidia-device-plugin`):** The host MIG layout (`Layer 2`) is intact, but the device-plugin pod on that node lost synchronization with NVML / `kubelet`. | Restart only the device-plugin pod (`kubectl delete pod -n nvidia-driver-install -l app=nvidia-device-plugin`), wait `30 s`, and verify `status.allocatable` without reconfiguring MIG or draining running workloads. |
 | **2. Workload Pods stay `Pending` with `schedulerName: kai-scheduler` and zero `PodGroup` objects in namespace (*Generative AI on Kubernetes* chapter 7)** | `kubectl get pods -n team-a` shows Pods `Pending`, `kubectl get podgroups -n team-a` returns `No resources found`, and `kai-scheduler` logs show no scheduling attempts for those pods. | **Layer 4 Scheduling Policy (`kai-pod-grouper`):** Either the `pod-grouper` deployment is down/missing RBAC watches for the workload CRD, or the workload is missing its `kai.scheduler/queue` label. | Check `kubectl logs -n kai-scheduler deploy/pod-grouper`, verify the workload carries `kai.scheduler/queue: <queue>`, and confirm `pod-grouper` watches the parent CRD (`PyTorchJob`, `JobSet`, `LWS`). |
 | **3. `PodGroup` is allocated by `kai-scheduler`, but fractional GPU pods remain `Pending` (`BindRequest` stuck)** | `kubectl get podgroups` shows the group scheduled, `kubectl get bindrequests -n team-a` shows a `BindRequest` object that never completes, and the integer GPU reservation pod on the target node is `Pending` or failing. | **Layer 5 Runtime / KAI Binding (`kai-binder`):** `binder` created an integer `nvidia.com/gpu: 1` reservation pod to back the fractional user pods, but `kubelet` or `nvidia-device-plugin` rejected the reservation pod on the target node. | Inspect `kubectl get bindrequests -n team-a -o yaml`, check `kubectl logs -n kai-scheduler deploy/binder`, and verify `status.allocatable["nvidia.com/gpu"]` and CDI runtime health on the target node. |
-| **4. Reserved MIG or shared inference `p99` breaches `> 120 ms` while DCGM dashboards appear flat or healthy (`volume-11/chapter-10`)** | Users report timeouts (`p99 = 135 ms > 120 ms` breach), while Grafana GPU health panels show `0` errors—and `dcgm_exporter_scrape_age_seconds` is `180 s` (`> 120 s`). | **Layer 6 Service & Telemetry (`UNKNOWN_STALE_TELEMETRY` + Contention):** Stale scrape targets (`> 120 s`) created a false green hardware view while co-tenant memory pressure (`> 90%`) degraded tail latency. | Immediately route the protected service to dedicated/MIG capacity (`kubectl patch deployment ...`), restore `dcgm-exporter` scraping, and alert on `dcgm_exporter_scrape_age_seconds > 120`. |
-| **5. Killing `1` of `3` master nodes in a Game Day crashes all running Triton GPU pods on worker nodes (`volume-19/chapter-02`)** | During a brief `kube-apiserver` leader-election pause, `nvidia-device-plugin` pods on worker nodes restart, `nvidia.com/gpu` briefly drops to `0`, and `kubelet` terminates all running GPU pods despite `PodDisruptionBudgets`. | **Aggressive Device-Plugin Liveness Probes:** Device-plugin liveness probes timed out against the API server pause and restarted; `PDBs` only block voluntary Eviction API calls, not `kubelet` resource-loss termination. | Increase liveness probe timeouts and failure thresholds in the GPU Operator / device-plugin Helm chart so transient control-plane blips never restart the device plugin. |
+| **4. Reserved MIG or shared inference `p99` breaches `> 120 ms` while DCGM dashboards appear flat or healthy** | Users report timeouts (`p99 = 135 ms > 120 ms` breach), while Grafana GPU health panels show `0` errors—and `dcgm_exporter_scrape_age_seconds` is `180 s` (`> 120 s`). | **Layer 6 Service & Telemetry (`UNKNOWN_STALE_TELEMETRY` + Contention):** Stale scrape targets (`> 120 s`) created a false green hardware view while co-tenant memory pressure (`> 90%`) degraded tail latency. | Immediately route the protected service to dedicated/MIG capacity (`kubectl patch deployment ...`), restore `dcgm-exporter` scraping, and alert on `dcgm_exporter_scrape_age_seconds > 120`. |
+| **5. Killing `1` of `3` master nodes in a Game Day crashes all running Triton GPU pods on worker nodes** | During a brief `kube-apiserver` leader-election pause, `nvidia-device-plugin` pods on worker nodes restart, `nvidia.com/gpu` briefly drops to `0`, and `kubelet` terminates all running GPU pods despite `PodDisruptionBudgets`. | **Aggressive Device-Plugin Liveness Probes:** Device-plugin liveness probes timed out against the API server pause and restarted; `PDBs` only block voluntary Eviction API calls, not `kubelet` resource-loss termination. | Increase liveness probe timeouts and failure thresholds in the GPU Operator / device-plugin Helm chart so transient control-plane blips never restart the device plugin. |
 
 Read each row from left to right. The symptom is what you see, the root cause boundary is where the break sits, and the remediation is the narrowest fix you can apply. Try the narrowest one first.
 
@@ -419,7 +419,7 @@ Read each row from left to right. The symptom is what you see, the root cause bo
 
 ### Venue and scope
 
-You run this lab on your own machine, and it needs only the Python standard library. The two scripts, `code/part11/kai_operations_and_troubleshooting.py` and `code/part11/kai_operations_and_troubleshooting_lab.py`, check the six-layer triage classifier. The checks cover hardware, MIG state, device-plugin registration, scheduling policy, Binder runtime, and service telemetry. The lab also tests the Prometheus service level objective evaluator and the AI Game Day fault models. The host and cluster commands earlier in the chapter are marked untested here, because this lab does not run them.
+You run this lab on your own machine, and it needs only the Python standard library. The two scripts, `code/part11/kai_operations_and_troubleshooting.py` and `code/part11/kai_operations_and_troubleshooting_lab.py`, check the six-layer triage classifier. The checks cover hardware, MIG state, device-plugin registration, scheduling policy, Binder runtime, and service telemetry. The lab also tests the Prometheus service level objective evaluator and the AI Game Day fault models. The host and cluster commands earlier in the chapter were not run on live hardware, because this lab does not run them.
 
 ### Step 1: Run the self-checking KAI operations and troubleshooting lab (tested here)
 

@@ -204,7 +204,7 @@ The exporter labels each MIG series with the instance it came from. The labels a
 For a production cluster, you mount a custom `default-counters.csv` file into `dcgm-exporter` and enable the `SYS_ADMIN` capability. The file below exports seven gauges to Prometheus. They cover clock, thermal, power, tensor-core and NVLink throughput.
 
 ```csv
-# /etc/dcgm-exporter/default-counters.csv (untested here)
+# /etc/dcgm-exporter/default-counters.csv
 DCGM_FI_DEV_SM_CLOCK, gauge, SM clock frequency (in MHz).
 DCGM_FI_DEV_MEM_CLOCK, gauge, Memory clock frequency (in MHz).
 DCGM_FI_DEV_GPU_TEMP, gauge, GPU temperature (in C).
@@ -285,7 +285,7 @@ Partitions created by hand with `nvidia-smi mig -cgi` over SSH do not survive no
 The ConfigMap below defines the accepted serving layout from the fleet plan as a named profile.
 
 ```yaml
-# custom-mig-parted-configmap.yaml (untested here)
+# custom-mig-parted-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -307,7 +307,7 @@ data:
 The profile name in the ConfigMap is the value you apply to the node label in the next block.
 
 ```bash
-# Label a node to trigger GPU Operator mig-manager reconfiguration under mixed strategy (untested here)
+# Label a node to trigger GPU Operator mig-manager reconfiguration under mixed strategy
 kubectl patch clusterpolicy cluster-policy --type merge -p '{"spec":{"mig":{"strategy":"mixed"}}}'
 kubectl label nodes gpu-node-1 nvidia.com/mig.config=serving-pack --overwrite
 ```
@@ -319,7 +319,7 @@ Once the label has taken effect, confirm the advertised resources with the alloc
 Your automation must check before it changes MIG mode or unloads kernel modules. The script below cordons the node, drains it, and then refuses to continue while any process still has a GPU open. It reads the process list from the driver instead of inferring idleness from a utilization counter.
 
 ```bash
-# Drain gate before a MIG mode change (untested here)
+# Drain gate before a MIG mode change
 NODE="gpu-node-1"
 kubectl cordon "$NODE"
 kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data --timeout=10m
@@ -340,7 +340,7 @@ A monitoring daemon such as `nv-hostengine` may show up as a holder. Stop it, or
 On GKE you do not run `mig-manager` yourself. You choose a partition size when you create the node pool, and GKE partitions every GPU on every node the same way. The flag takes the form below, and the supported sizes for an H100 80 GB node are `1g.10gb`, `1g.20gb`, `2g.20gb`, `3g.40gb` and `7g.80gb`.
 
 ```bash
-# GKE MIG node pool (untested here)
+# GKE MIG node pool
 gcloud container node-pools create mig-3g \
   --cluster my-cluster --region us-central1 \
   --machine-type a3-highgpu-8g \
@@ -368,7 +368,7 @@ When a MIG node misbehaves, find the row that matches what you see before you ch
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally with the Python 3 standard library, through `code/part11/mig_in_depth.py` and `code/part11/mig_in_depth_lab.py`. It checks the six-layer MIG validation chain, the six-phase change workflow, the profile sizer and the twenty-four-node H100 fleet capacity calculator. It also checks the seven-field DCGM Exporter config, the automated drain and Known-Good Validation sequence, and the XID and MPS troubleshooting rules. Host and cluster commands earlier in the chapter are marked `(untested here)`.
+This lab runs locally with the Python 3 standard library, through `code/part11/mig_in_depth.py` and `code/part11/mig_in_depth_lab.py`. It checks the six-layer MIG validation chain, the six-phase change workflow, the profile sizer and the twenty-four-node H100 fleet capacity calculator. It also checks the seven-field DCGM Exporter config, the automated drain and Known-Good Validation sequence, and the XID and MPS troubleshooting rules. Host and cluster commands earlier in the chapter are marked ``.
 
 ### Step 1: Run the self-checking MIG in depth lab (tested here)
 

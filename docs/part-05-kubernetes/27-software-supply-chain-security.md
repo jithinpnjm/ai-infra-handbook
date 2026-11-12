@@ -119,13 +119,13 @@ The first problem is broken upstream dependencies and testing. Upstream and vend
 
 The second problem is maintenance sprawl, which also makes the fleet less secure. The internal platform team must rebuild and maintain forked copies of dozens or hundreds of upstream images. Manual rebasing is slow and fragile, so updates happen infrequently. The fleet then runs older, more vulnerable software than it would if it tracked upstream releases.
 
-The better alternative is to codify requirements into pipeline scanning and quarantine registries. A small set of curated internal base images works well for your own first-party applications, such as `gcr.io/distroless/base` running as `USER nonroot:nonroot`, or pinned `alpine:3.12` packages like `RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]` in the book's examples. Third-party and vendor images should instead pass through the automated quarantine and promotion pipeline in Section 5. That pipeline scans for CVEs, checks non-root user permissions, signs passing images and pushes them to an approved internal registry.
+The better alternative is to codify requirements into pipeline scanning and quarantine registries. A small set of curated internal base images works well for your own first-party applications, such as `gcr.io/distroless/base` running as `USER nonroot:nonroot`, or pinned `alpine:3.12` packages like `RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]` in *Production Kubernetes*. Third-party and vendor images should instead pass through the automated quarantine and promotion pipeline in Section 5. That pipeline scans for CVEs, checks non-root user permissions, signs passing images and pushes them to an approved internal registry.
 
 ### In-cluster cloud-native build pipelines with Tekton (`Task` and `Pipeline`)
 
 Suppose your builds must run inside a cluster without mounting the host Docker socket. Cloud-native CI tools such as Tekton model each build step as a Kubernetes custom resource: `Task`, `Pipeline`, `TaskRun` and `PipelineRun`. Those steps run in Pods, and rootless builders such as Kaniko or Cloud Native Buildpacks (`pack`) do the image build.
 
-In the examples from *Production Kubernetes*, Chapter 15 (untested here), a reusable `git-clone` `Task` checks out source code into a shared `Workspace`. A `buildpacks-phases` `Task` then runs `/cnb/lifecycle/builder` to produce an OCI image. A `Pipeline` chains the two together, from checkout to registry push:
+In the examples from *Production Kubernetes*, Chapter 15, a reusable `git-clone` `Task` checks out source code into a shared `Workspace`. A `buildpacks-phases` `Task` then runs `/cnb/lifecycle/builder` to produce an OCI image. A `Pipeline` chains the two together, from checkout to registry push:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -250,7 +250,7 @@ Workshops and hands-on help with Dockerfiles make a reasonable first step. They 
 
 ### Triggering builds from commits
 
-Builds should start when code lands in the central repository. Local builds with Docker are fine for early work. A pipeline tool can either poll the repositories for changes or receive a webhook from version control. The examples in the book use Tekton, a pipeline tool built for Kubernetes. Tekton models each component as a custom resource, and its catalog includes common tasks such as cloning a Git repository.
+Builds should start when code lands in the central repository. Local builds with Docker are fine for early work. A pipeline tool can either poll the repositories for changes or receive a webhook from version control. The examples use Tekton, a pipeline tool built for Kubernetes. Tekton models each component as a custom resource, and its catalog includes common tasks such as cloning a Git repository.
 
 A pipeline can grow from there, adding tests, linting, static analysis and a signing step. When you do not use buildpacks, tasks can run other build tools such as Kaniko or BuildKit.
 
@@ -340,7 +340,7 @@ Notary is the main project in this area. Docker originally built it on The Updat
 - Notary names each image with a GUN that includes the registry URL. Signatures then cannot move to copies in caches or edge registries.
 - Notary and TUF use different key pairs, each with its own security needs. Rotating those keys after a breach is hard.
 
-At the time the book was written, a second version of Notary was in development. It aimed to simplify key management and to bundle signatures with the OCI images themselves. Several projects already run admission webhooks that check for signatures before a cluster runs an image.
+At the time of the source, a second version of Notary was in development. It aimed to simplify key management and to bundle signatures with the OCI images themselves. Several projects already run admission webhooks that check for signatures before a cluster runs an image.
 
 ### Admission-time enforcement in Kubernetes
 
@@ -536,7 +536,7 @@ Start with the self-checking Python lab, which runs locally. It checks three thi
 python3 code/part05/supply_chain_policy_verifier_lab.py
 ```
 
-Run the command above first, because you need its result before the cluster work. The cluster exercises come next. They need a cluster with BuildKit, `cosign`, `syft`, `trivy` or `grype`, and Kyverno. Every interactive shell step below is `untested here`, so treat those steps as a plan until you have run them.
+Run the command above first, because you need its result before the cluster work. The cluster exercises come next. They need a cluster with BuildKit, `cosign`, `syft`, `trivy` or `grype`, and Kyverno. The interactive shell steps below were not run on live hardware, so treat those steps as a plan until you have run them.
 
 1. Scan and SBOM. Build a PyTorch-based image. Generate SPDX and CycloneDX SBOMs with Syft, and scan with Trivy and Grype. Compare the findings, triage one CVE with VEX, and look for how a PyTorch-bundled CUDA library appears.
 2. Hash-pinned Python. Create `requirements.in`, and compile it with hashes. Install with `--require-hashes`, then swap a wheel on a mirror to prove that the install fails. Last, configure a private index and demonstrate dependency confusion in a sandbox. Then apply the fix, a single index with name reservation.

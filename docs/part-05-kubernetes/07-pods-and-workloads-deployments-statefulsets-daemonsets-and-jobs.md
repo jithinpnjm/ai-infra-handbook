@@ -130,7 +130,7 @@ As *Kubernetes: Up and Running* (3rd edition, Chapter 6) explains, Kubernetes en
 
 A label value follows the same character rules as a key name. It also has a limit of `63` characters.
 
-Querying and displaying labels with `kubectl` (untested here) works through a few flags. Use `--show-labels` to print every label on each object. Use `-L` with a label key to show that label's value as its own table column. Use `-l` or `--selector` to filter with equality operators (`=`, `!=`) or set-based operators (`in`, `notin`, `key`, `!key`).
+Querying and displaying labels with `kubectl` works through a few flags. Use `--show-labels` to print every label on each object. Use `-L` with a label key to show that label's value as its own table column. Use `-l` or `--selector` to filter with equality operators (`=`, `!=`) or set-based operators (`in`, `notin`, `key`, `!key`).
 
 ```bash
 kubectl get pods --show-labels
@@ -141,7 +141,7 @@ kubectl label deployments alpaca-test "canary=true"    # add or update (--overwr
 kubectl label deployments alpaca-test "canary-"        # remove the 'canary' label with a trailing dash
 ```
 
-Table 6-1 gives some valid label keys and values that follow these rules.
+The table below gives some valid label keys and values that follow these rules.
 
 | Key | Value |
 |---|---|
@@ -164,7 +164,7 @@ selector:
 
 ### Why labels exist
 
-A team usually starts with one copy of a program. As the app matures, that single copy multiplies into a set of objects. Kubernetes uses labels so you can work with sets of objects, not single ones. The second lesson is that a fixed hierarchy eventually falls short. A team may decide that every app is made of several services. Later, one service may be shared by several apps, and the tidy tree no longer fits. Labels stay flexible enough for this, because you can attach any grouping you need and change it later. For background on how Google approaches production systems, the book points to *Site Reliability Engineering* by Betsy Beyer et al. (O'Reilly).
+A team usually starts with one copy of a program. As the app matures, that single copy multiplies into a set of objects. Kubernetes uses labels so you can work with sets of objects, not single ones. The second lesson is that a fixed hierarchy eventually falls short. A team may decide that every app is made of several services. Later, one service may be shared by several apps, and the tidy tree no longer fits. Labels stay flexible enough for this, because you can attach any grouping you need and change it later. For background on how Google approaches production systems, *Site Reliability Engineering* by Betsy Beyer et al. (O'Reilly).
 
 ### Applying and changing labels
 
@@ -212,7 +212,7 @@ bandicoot-prod ... app=bandicoot,env=prod,ver=2
 bandicoot-staging ... app=bandicoot,env=staging,ver=2
 ```
 
-The book also draws these labels as a Venn diagram (Figure 6-1).
+Drawn as a Venn diagram, these labels overlap as sets.
 
 You can add or change labels after an object exists. This command adds a `canary` label to `alpaca-test`.
 
@@ -220,7 +220,7 @@ You can add or change labels after an object exists. This command adds a `canary
 $ kubectl label deployments alpaca-test "canary=true"
 ```
 
-**Warning.** This command changes only the label on the Deployment itself. It does not change the ReplicaSets or Pods that the Deployment creates. To change those, edit the template embedded in the Deployment, which Chapter 10 of the book covers.
+**Warning.** This command changes only the label on the Deployment itself. It does not change the ReplicaSets or Pods that the Deployment creates. To change those, edit the template embedded in the Deployment.
 
 The `-L` option to `kubectl get` shows one label's value as a column.
 
@@ -256,7 +256,7 @@ bandicoot-prod-373860099-k2wcf ... app=bandicoot,env=prod,ver=2,...
 bandicoot-staging-1839769971-3ndv ... app=bandicoot,env=staging,ver=2,...
 ```
 
-You may see a label you have not seen before, `pod-template-hash`. The Deployment applies it to track which Pods came from which template version. That lets the Deployment manage updates cleanly, which Chapter 10 of the book covers.
+You may see a label you have not seen before, `pod-template-hash`. The Deployment applies it to track which Pods came from which template version. That lets the Deployment manage updates cleanly.
 
 To list only Pods whose `ver` label is `2`, use the `--selector` flag.
 
@@ -300,7 +300,7 @@ NAME DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
 alpaca-test 1 1 1 1 7m
 ```
 
-Each of these has a negative version. Table 6-2 lists the operators.
+Each of these has a negative version. The table below lists the operators.
 
 | Operator | Description |
 |---|---|
@@ -407,7 +407,7 @@ The book's printed command also carries `--generator=run-pod/v1`. Current `kubec
 
 Run `kubectl get pods` to watch its status. The container may show `Pending` at first, then `Running` once the Pod and its containers exist. Remove it with `kubectl delete pods/kuard` when you are done.
 
-For real work, write a manifest. YAML is the usual format because it is easy for people to edit and it supports comments. Treat a manifest like source code, since comments help new team members understand the Pod. A Pod manifest has a `metadata` section for the name and labels, a `spec` section for volumes, and a list of containers. Example 5-1 is a minimal manifest for the same `kuard` server.
+For real work, write a manifest. YAML is the usual format because it is easy for people to edit and it supports comments. Treat a manifest like source code, since comments help new team members understand the Pod. A Pod manifest has a `metadata` section for the name and labels, a `spec` section for volumes, and a list of containers. A minimal manifest for the same `kuard` server follows.
 
 ```yaml
 apiVersion: v1
@@ -460,7 +460,7 @@ Most people adopt containers and Kubernetes for better packaging and reliable de
 
 Kubernetes has two settings for this. A resource request is the minimum an application needs. A resource limit is the most it may use. Kubernetes accepts many notations, from plain numbers such as `12345` to millicores such as `100m`. A lowercase `m` means milli, while an uppercase `M` means mega. So `400m` and `400M` differ by a factor of a thousand. Mixing them up is a common and costly error. The book also explains the binary units, such as `MiB` and `GiB`. Its sentence on this swaps the two families, so check the definitions yourself before you size anything.
 
-A request guarantees that the resource is there for the Pod. CPU and memory are the most common, though GPUs and other types also count. Requests belong to each container, not to the whole Pod. The Pod's total is the sum of all its containers' requests, because a web server and a data synchronizer need very different CPU. Example 5-3 asks for half a CPU and 128 MiB of memory.
+A request guarantees that the resource is there for the Pod. CPU and memory are the most common, though GPUs and other types also count. Requests belong to each container, not to the whole Pod. The Pod's total is the sum of all its containers' requests, because a web server and a data synchronizer need very different CPU. The next manifest asks for half a CPU and 128 MiB of memory.
 
 ```yaml
 apiVersion: v1
@@ -485,7 +485,7 @@ The scheduler uses requests to place Pods. It makes sure the sum of all requests
 
 Memory works differently. Memory a process already holds cannot be taken back as easily. When a node runs out, the `kubelet` terminates containers that use more memory than they requested. Those containers restart automatically, but the node then has less memory to give them.
 
-A limit is a ceiling. Example 5-4 keeps the same request and adds a limit of 1.0 CPU and 256 MiB of memory.
+A limit is a ceiling. The manifest after it keeps the same request and adds a limit of 1.0 CPU and 256 MiB of memory.
 
 ```yaml
 apiVersion: v1
@@ -521,7 +521,7 @@ Several mount options matter. `readOnly` makes the mount read-only, and `subPath
 
 A container's filesystem disappears when its Pod is deleted or the container restarts. That is often a good thing, because stale files from a stateless web app should not pile up. Some data must survive, though, and Kubernetes models that with volumes. A manifest needs two additions. The `spec.volumes` list defines every volume the Pod may use. Each container's `volumeMounts` list says which volumes it mounts and where. Not every container must mount every volume, and two containers can mount the same volume at different paths.
 
-Example 5-5 defines one volume named `kuard-data` and mounts it at `/data` in the `kuard` container.
+The next manifest defines one volume named `kuard-data` and mounts it at `/data` in the `kuard` container.
 
 ```yaml
 apiVersion: v1
@@ -640,7 +640,7 @@ Several fields control where a pod lands. `nodeName` bypasses the scheduler, so 
 
 ### Putting it all together
 
-Many applications are stateful. Their data must survive, and its storage must follow the app to whichever machine it runs on. A persistent volume backed by network storage does that. You also want a healthy instance running at all times, so the container should be ready before clients reach it. Persistent volumes, readiness and liveness probes, and resource limits together let Kubernetes run stateful applications reliably. Example 5-6 combines them in one manifest.
+Many applications are stateful. Their data must survive, and its storage must follow the app to whichever machine it runs on. A persistent volume backed by network storage does that. You also want a healthy instance running at all times, so the container should be ready before clients reach it. Persistent volumes, readiness and liveness probes, and resource limits together let Kubernetes run stateful applications reliably. One manifest can combine them.
 
 ```yaml
 apiVersion: v1
@@ -774,7 +774,7 @@ spec:
         kubernetes.io/change-cause: "Update to green kuard"
 ```
 
-You can then inspect, pause, resume or roll back the rollout with `kubectl rollout`. These commands come from the book's `kuard` example and are untested here.
+You can then inspect, pause, resume or roll back the rollout with `kubectl rollout`. These commands use the `kuard` example.
 
 ```bash
 kubectl rollout status deployments kuard
@@ -896,7 +896,7 @@ When a new node joins the cluster, the DaemonSet controller notices the missing 
 
 ### Creating a DaemonSet
 
-You create a DaemonSet by submitting its configuration to the Kubernetes API server. Example 11-1 is a DaemonSet that creates a `fluentd` logging agent on every node in the target cluster. Save it as `fluentd.yaml`.
+You create a DaemonSet by submitting its configuration to the Kubernetes API server. The next manifest is a DaemonSet that creates a `fluentd` logging agent on every node in the target cluster. Save it as `fluentd.yaml`.
 
 ```yaml
 apiVersion: apps/v1
@@ -1019,7 +1019,7 @@ NAME STATUS ROLES AGE VERSION
 k0-default-pool-35609c18-z7tb Ready agent 1d v1.21.1
 ```
 
-Node selectors limit which nodes a Pod can run on. You define them in the Pod spec of a DaemonSet. Example 11-2 limits NGINX to nodes that have the `ssd=true` label.
+Node selectors limit which nodes a Pod can run on. You define them in the Pod spec of a DaemonSet. The next manifest limits NGINX to nodes that have the `ssd=true` label.
 
 ```yaml
 apiVersion: apps/v1
@@ -1072,7 +1072,7 @@ DaemonSets are a good way to deploy services across a whole cluster. Upgrades ne
 
 A DaemonSet can roll out with the same `RollingUpdate` strategy that Deployments use. Set the strategy in the `spec.updateStrategy.type` field to `RollingUpdate`. After that, any change to `spec.template`, or to one of its subfields, starts a rolling update.
 
-As with Deployments, which Chapter 10 of the book covers, the rolling update moves gradually. It updates members of the DaemonSet until every Pod runs the new configuration. Two parameters control the pace.
+As with Deployments, the rolling update moves gradually. It updates members of the DaemonSet until every Pod runs the new configuration. Two parameters control the pace.
 
 - `spec.minReadySeconds`: how long a Pod must be ready before the rollout upgrades the next Pod.
 - `spec.updateStrategy.rollingUpdate.maxUnavailable`: how many Pods the rollout may update at the same time.
@@ -1139,7 +1139,7 @@ For tightly coupled multi-node training, use JobSet, MPIJob or PyTorchJob with g
 
 Some work should run once and then stop. Other work comes as many small items that you want processed side by side. A Job covers both cases with two settings. `completions` is how many successful finishes the Job needs. `parallelism` is how many Pods may run at the same time. A Job with neither setting changed runs a single Pod once until it succeeds.
 
-Table 12-1 shows how the two settings combine into three common patterns.
+The table below shows how the two settings combine into three common patterns.
 
 | Pattern | Use case | `completions` | `parallelism` |
 |---|---|---|---|
@@ -1173,7 +1173,7 @@ When the run ends, the Job object and its Pod stay on the cluster, so you can re
 $ kubectl delete pods oneshot
 ```
 
-You can also describe the same Job in a file, as Example 12-1 shows.
+You can also describe the same Job in a file, as the next manifest shows.
 
 ```yaml
 apiVersion: batch/v1
@@ -1227,7 +1227,7 @@ spec:
 ...
 ```
 
-Apply the file and let it run for a few minutes. Then check the Pod with `kubectl get pod -l job-name=oneshot`. You should see the same Pod restart again and again. In the book's run, the Pod had four restarts and showed `CrashLoopBackOff`.
+Apply the file and let it run for a few minutes. Then check the Pod with `kubectl get pod -l job-name=oneshot`. You should see the same Pod restart again and again. In the example run, the Pod had four restarts and showed `CrashLoopBackOff`.
 
 Many programs crash as soon as they start, usually because of a bug. Kubernetes then waits longer before each restart, so a crash loop does not eat the node's resources. The `kubelet` handles that wait on the node itself. The Job controller is not involved.
 
@@ -1241,7 +1241,7 @@ A worker can also fail without exiting. It may get stuck and stop making progres
 
 Generating keys is slow, so you can start several workers at once. The goal here is 100 keys, made by 10 runs of `kuard` with 10 keys in each run. You do not want to swamp the cluster, so you limit the job to five Pods at a time.
 
-That means setting `completions` to `10` and `parallelism` to `5`. Example 12-3 shows the full file.
+That means setting `completions` to `10` and `parallelism` to `5`. The full file follows.
 
 ```yaml
 apiVersion: batch/v1
@@ -1279,7 +1279,7 @@ Study the finished Pods and their logs if you like. Each one prints the fingerpr
 
 A common use of Jobs is to process work from a queue. A task creates a set of work items and publishes them to a queue. Then a worker Job runs until the queue is empty.
 
-The `kuard` image includes a simple memory-based work queue, so you can use it as the queue server. First, run a single queue daemon with a ReplicaSet. A ReplicaSet creates a new Pod if the machine running the old one fails. Example 12-4 shows the file.
+The `kuard` image includes a simple memory-based work queue, so you can use it as the queue server. First, run a single queue daemon with a ReplicaSet. A ReplicaSet creates a new Pod if the machine running the old one fails. The file follows.
 
 ```yaml
 apiVersion: apps/v1
@@ -1316,7 +1316,7 @@ Apply it with `kubectl apply -f rs-queue.yaml`. To reach the queue from your lap
 $ kubectl port-forward rs/queue 8080:8080
 ```
 
-Open http://localhost:8080 in a browser to see the `kuard` interface. The “MemQ Server” tab shows what is happening in the queue. Next, expose the queue with a Service, as Example 12-5 shows. The Service gives producers and consumers a stable DNS name for the queue. Create it with `kubectl apply -f service-queue.yaml`.
+Open http://localhost:8080 in a browser to see the `kuard` interface. The “MemQ Server” tab shows what is happening in the queue. Next, expose the queue with a Service, as the next manifest shows. The Service gives producers and consumers a stable DNS name for the queue. Create it with `kubectl apply -f service-queue.yaml`.
 
 Now load the queue. The simplest way is `curl`, which talks to the queue API through the port forward. The script creates a queue named `keygen` and adds 100 work items to it.
 
@@ -1338,7 +1338,7 @@ $ curl 127.0.0.1:8080/memq/server/stats
 
 The stats show a `depth` of 100 and an `enqueued` count of 100, with nothing dequeued yet.
 
-Consumers are the last piece. The `kuard` image can also act as a consumer. In this mode it takes an item from the queue, makes a key, and exits when the queue is empty. Example 12-7 starts five of these workers in parallel.
+Consumers are the last piece. The `kuard` image can also act as a consumer. In this mode it takes an item from the queue, makes a key, and exits when the queue is empty. The next manifest starts five of these workers in parallel.
 
 ```yaml
 apiVersion: batch/v1
@@ -1384,7 +1384,7 @@ $ kubectl delete rs,svc,job -l chapter=jobs
 
 ### CronJobs: run a Job on a schedule
 
-Some work has to repeat on a timer, such as a periodic batch task. A CronJob handles that. It creates a new Job object at each interval you set. Example 12-8 runs a batch image every fifth hour.
+Some work has to repeat on a timer, such as a periodic batch task. A CronJob handles that. It creates a new Job object at each interval you set. The next manifest runs a batch image every fifth hour.
 
 ```yaml
 apiVersion: batch/v1
@@ -1614,7 +1614,7 @@ Start on your own machine. The self-checking Python lab at `code/part05/pod_qos_
 python3 code/part05/pod_qos_workload_validator_lab.py
 ```
 
-Next, move to a `kind` or GPU cluster and work through these exercises. All interactive shell steps below are untested here.
+Next, move to a `kind` or GPU cluster and work through these exercises. The interactive shell steps below were not run on live hardware.
 
 1. Start with pod anatomy. Write a pod with an init container, a native sidecar, a shared `emptyDir`, and environment taken from a ConfigMap, a Secret and the Downward API. View it with `kubectl get -o yaml`, then read its `status` fields and conditions.
 2. Compare QoS and OOM. Create pods with Guaranteed, Burstable and BestEffort QoS. Inspect `/proc/<pid>/oom_score_adj` through `crictl` or the node. Run a memory hog beyond its limit and observe `OOMKilled`. In a lab only, fill node memory to see the eviction order.

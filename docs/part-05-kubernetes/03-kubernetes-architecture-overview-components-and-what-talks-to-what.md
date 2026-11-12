@@ -187,9 +187,9 @@ Before you trust a new cluster, ask whether its core parts are healthy. The comm
 $ kubectl get componentstatuses
 ```
 
-In the book's example, the `scheduler`, the `controller-manager`, and `etcd-0` all report `Healthy`. Each row is one part of the control plane. The `controller-manager` runs the controllers that keep behavior right, such as making sure all replicas of a service are available and healthy. The `scheduler` places Pods onto nodes. The etcd server stores all of the API objects.
+In the example output, the `scheduler`, the `controller-manager`, and `etcd-0` all report `Healthy`. Each row is one part of the control plane. The `controller-manager` runs the controllers that keep behavior right, such as making sure all replicas of a service are available and healthy. The `scheduler` places Pods onto nodes. The etcd server stores all of the API objects.
 
-Your output may differ as Kubernetes changes over time. That is normal, so do not worry if your lines do not match the book exactly. Use the three rows as a first health check before you go deeper.
+Your output may differ as Kubernetes changes over time. That is normal, so do not worry if your lines do not match this output exactly. Use the three rows as a first health check before you go deeper.
 
 ## 3. Node components
 
@@ -214,33 +214,33 @@ In chapter 3 of *Kubernetes: Up and Running* (*Deploying a Kubernetes Cluster*),
 
 ### Reading one node with `kubectl describe nodes`
 
-A node can look fine in a simple list and still behave oddly. The `describe` command shows what one node is doing. The book uses a node named `kube1` as its example:
+A node can look fine in a simple list and still behave oddly. The `describe` command shows what one node is doing. The example here is a node named `kube1`:
 
 ```
 $ kubectl describe nodes kube1
 ```
 
-Read the output from top to bottom. The labels come first and give you the basics. In the book's example, `kube1` runs Linux on an ARM processor.
+Read the output from top to bottom. The labels come first and give you the basics. In this example, `kube1` runs Linux on an ARM processor.
 
-The `Conditions` block answers one question: is this node healthy? Every pressure check reads `False`, and `Ready` reads `True`. The book reads that as a node with enough disk and memory that reports healthy to the Kubernetes master. The network reason, `FlannelIsUp`, names the network plugin the node uses.
+The `Conditions` block answers one question: is this node healthy? Every pressure check reads `False`, and `Ready` reads `True`. That means a node with enough disk and memory that reports healthy to the Kubernetes master. The network reason, `FlannelIsUp`, names the network plugin the node uses.
 
-The `Capacity` block shows what the machine offers. The book's node reports `cpu: 4`, `memory: 882636Ki`, and `pods: 110`. Its `Allocatable` block matches the same values, and the `alpha.kubernetes.io/nvidia-gpu` count is `0`.
+The `Capacity` block shows what the machine offers. The example node reports `cpu: 4`, `memory: 882636Ki`, and `pods: 110`. Its `Allocatable` block matches the same values, and the `alpha.kubernetes.io/nvidia-gpu` count is `0`.
 
-The system section lists the software on the node. It covers the container runtime, the kubelet, kube-proxy, the Linux kernel, and the Pod address range. The book's node runs `containerd://1.4.12`, with `Kubelet Version` and `Kube-Proxy Version` both at `v1.22.4`.
+The system section lists the software on the node. It covers the container runtime, the kubelet, kube-proxy, the Linux kernel, and the Pod address range. The example node runs `containerd://1.4.12`, with `Kubelet Version` and `Kube-Proxy Version` both at `v1.22.4`.
 
-The last section lists the Pods running on the node. The book shows three, including `kube-dns`, which asks for `260m` of CPU and `140Mi` of memory. Each Pod gets two numbers for each resource: a request and a limit. A request is guaranteed to be present on the node. A limit is the most the Pod can consume. When the limit is higher than the request, the extra is supplied on a best-effort basis and is not guaranteed. Chapter 5 of the book covers this in detail.
+The last section lists the Pods running on the node. The example shows three, including `kube-dns`, which asks for `260m` of CPU and `140Mi` of memory. Each Pod gets two numbers for each resource: a request and a limit. A request is guaranteed to be present on the node. A limit is the most the Pod can consume. When the limit is higher than the request, the extra is supplied on a best-effort basis and is not guaranteed.
 
-Read the `Allocated resources` totals the same way. They can go over 100 percent, which the book calls overcommitted. Compare those totals with the `Allocatable` values so you know how much room the node really has.
+Read the `Allocated resources` totals the same way. They can go over 100 percent, which means the node is overcommitted. Compare those totals with the `Allocatable` values so you know how much room the node really has.
 
 ### kube-proxy and DNS in practice
 
-Two cluster components make Services usable. The first is the Kubernetes proxy, which routes traffic to load-balanced Services. It has to run on every node. Many clusters run it as a DaemonSet, which chapter 11 of the book covers. Check it with:
+Two cluster components make Services usable. The first is the Kubernetes proxy, which routes traffic to load-balanced Services. It has to run on every node. Many clusters run it as a DaemonSet, which a later chapter covers. Check it with:
 
 ```
 $ kubectl get daemonSets --namespace=kube-system kube-proxy
 ```
 
-In the book's output, the DESIRED, CURRENT, READY, UP-TO-DATE, and AVAILABLE columns all read `5`. Your cluster may name the DaemonSet differently, or skip it entirely. Either way, the kube-proxy container should run on every node.
+In the example output, the DESIRED, CURRENT, READY, UP-TO-DATE, and AVAILABLE columns all read `5`. Your cluster may name the DaemonSet differently, or skip it entirely. Either way, the kube-proxy container should run on every node.
 
 The DNS server gives names and discovery to the Services in the cluster. It runs as a replicated service, so a large cluster can run more than one copy. A Deployment manages those copies, and its name may be `coredns` or another variant:
 
@@ -248,13 +248,13 @@ The DNS server gives names and discovery to the Services in the cluster. It runs
 $ kubectl get deployments --namespace=kube-system core-dns
 ```
 
-The book's output shows one copy desired and one available. A Service load-balances across the DNS copies:
+The example output shows one copy desired and one available. A Service load-balances across the DNS copies:
 
 ```
 $ kubectl get services --namespace=kube-system core-dns
 ```
 
-The book's DNS Service has the cluster address `10.96.0.10`. Any container in the cluster has that address written into its `/etc/resolv.conf` file. If you open a shell in a running container, you can check that file yourself. It is the quickest way to confirm which DNS address a container uses.
+The example DNS Service has the cluster address `10.96.0.10`. Any container in the cluster has that address written into its `/etc/resolv.conf` file. If you open a shell in a running container, you can check that file yourself. It is the quickest way to confirm which DNS address a container uses.
 
 ## 4. Ports and trust
 
@@ -489,7 +489,7 @@ Notice that several commands mention the same components from different angles. 
 
 ### Seeing the cluster in a UI
 
-A command line is not the only way to look at a cluster. Most cloud providers add a visual view of the cluster to their console, so check there first. If your provider does not offer one, or you want a GUI inside the cluster, the book points to a community-supported dashboard. Install it by following that project's documentation. Editor extensions, such as those for Visual Studio Code, can also show the state of your cluster at a glance.
+A command line is not the only way to look at a cluster. Most cloud providers add a visual view of the cluster to their console, so check there first. If your provider does not offer one, or you want a GUI inside the cluster, a community-supported dashboard exists. Install it by following that project's documentation. Editor extensions, such as those for Visual Studio Code, can also show the state of your cluster at a glance.
 
 ## 13. Lab
 
@@ -499,7 +499,7 @@ Start with the self-checking Python lab. Run it locally with `python3 code/part0
 python3 code/part05/k8s_architecture_flow_lab.py
 ```
 
-Next, work through the exercises below on a `kind` or `kubeadm` cluster. Every interactive shell step is `untested here`.
+Next, work through the exercises below on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware.
 
 1. Build a map of the system pods. On a kind cluster, list every system pod. For each one, write down which component it is, where it runs, and what it connects to. Confirm your list with `kubectl get pods -n kube-system -o wide` and `crictl`.
 2. Watch the flow. Run `kubectl get events -w` and `kubectl get pods -w`, then apply a Deployment. Annotate the timeline (Scheduled, Pulling, Created, Started) with the component responsible for each event. Events show `reportingComponent`, which tells you who wrote them.

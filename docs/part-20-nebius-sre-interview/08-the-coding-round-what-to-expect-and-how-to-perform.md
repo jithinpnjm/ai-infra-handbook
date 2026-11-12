@@ -355,7 +355,7 @@ Integer division differs from float division. Python gives `7 / 2` as `3.5` and 
 
 Multiplying a list copies references. The grid `[[0] * 2] * 2` holds the same row twice, so setting one cell changes both rows: `[[1, 0], [1, 0]]`. Build the grid with a comprehension instead and you get `[[1, 0], [0, 0]]`.
 
-Slicing makes a copy. `data[1:4]` is a new list, and changing it does not change `data`. On a list of one million items, I measured `a[1:]` at about 2.7 ms on this Mac. So a loop that slices on every step, such as `s[1:]` in a recursion, turns a linear algorithm into a quadratic one. Pass indexes instead. Similarly `list.pop(0)` moves every other item. On a 100,000-item list I measured about 14 microseconds per `pop(0)` and `append`, against about 0.05 for a `deque` doing `popleft` and `append`. These are single measurements on my machine, so trust the ratio and not the digits. The Systems Performance book, chapter 2, gives a time-scale table that is the right mental model: a copy goes through memory, so cost scales with size.
+Slicing makes a copy. `data[1:4]` is a new list, and changing it does not change `data`. On a list of one million items, `a[1:]` takes about 2.7 ms on a Mac. So a loop that slices on every step, such as `s[1:]` in a recursion, turns a linear algorithm into a quadratic one. Pass indexes instead. Similarly `list.pop(0)` moves every other item. On a 100,000-item list, `pop(0)` with `append` costs about 14 microseconds, against about 0.05 for a `deque` doing `popleft` and `append`. These are single measurements on one machine, so trust the ratio and not the digits. Systems Performance, chapter 2, gives a time-scale table that is the right mental model: a copy goes through memory, so cost scales with size.
 
 The recursion limit is 1000 by default. `sys.getrecursionlimit()` returned `1000`, and recursing 5000 deep raised `RecursionError`. For a depth that large, write the loop or use an explicit stack. Raising the limit is a risky answer. The Python 3.12 documentation for `sys.setrecursionlimit` says a too-high limit can lead to a crash, because the limit exists to protect the C stack. In my test on Python 3.12.7, a pure Python function recursed 5,000,000 deep after raising the limit without crashing, so the risk depends on the version and on recursion through C code. Treat the crash as a documented risk and not as something you can reproduce on demand.
 
@@ -438,7 +438,7 @@ Brute force. Count runs with nested loops, which is quadratic if you rescan. The
 
 Code. The `compress` function earlier. Test by hand. Trace `"aaa"`: `run_char` is `a`, `run_len` becomes 3, the loop ends, the last run is appended, giving `"a3"`, which is shorter than `"aaa"`, so it returns `"a3"`. Trace `"aa"`: the packed form is `"a2"`, which has length 2, not shorter than 2, so it returns `"aa"`. That check is why the comparison is `<` and not `<=`. The unit tests cover these cases and pass.
 
-Follow-up: "What if I want the output in place, in a list of characters?" That needs two pointers, a reader and a writer, and a rule for writing counts above 9 as several characters. I did not implement this variant. Say it is a different function with the same pattern.
+Follow-up: "What if I want the output in place, in a list of characters?" That needs two pointers, a reader and a writer, and a rule for writing counts above 9 as several characters. This variant has no implementation in the code folder. Say it is a different function with the same pattern.
 
 ### Scenario 2: top error endpoints from a log
 
@@ -466,12 +466,12 @@ Step four: test. `[(1,2),(2,3)]` gives `[(1,3)]`. `[(1,5),(2,3)]` gives `[(1,5)]
 
 ## Hands-on lab
 
-You will set up the harness and run everything. This took about five minutes on a laptop. I ran steps 1 to 4 on 2026-11-09 with Python 3.12.7, pytest 8.3.5 and Go 1.23.2.
+You will set up the harness and run everything. This takes about five minutes on a laptop. Steps 1 to 3 were run with Python 3.12.7, pytest 8.3.5 and Go 1.23.2.
 
-1. Change into the repository root and run the Python tests: `cd code/part20 && python3 -m pytest -q test_c08_*.py`. Expected result: 30 passed. I ran this and saw 30 passed.
-2. Run the Go tests: `cd code/part20/c08_go && go vet ./... && go test ./...`. Expected result: `ok  c08toolkit`. I ran this and it passed.
-3. Open a Python shell in `code/part20` and run `import c08_stdlib_tour as t; t.statistics_demo()`. Expected result: `(22, 3, 2.5, [1.5, 3.0, 52.0])`. I ran this.
-4. Break a function on purpose. In a scratch copy, change `<` to `<=` in `compress`, then run `python3 -m pytest -q test_c08_edge_cases.py`. Expected result: at least one failure on `"aa"`. I did not run this exact mutation, so treat the result as the expected shape. The point is to see the harness catch a boundary bug.
+1. Change into the repository root and run the Python tests: `cd code/part20 && python3 -m pytest -q test_c08_*.py`. Expected result: 30 passed.
+2. Run the Go tests: `cd code/part20/c08_go && go vet ./... && go test ./...`. Expected result: `ok  c08toolkit`.
+3. Open a Python shell in `code/part20` and run `import c08_stdlib_tour as t; t.statistics_demo()`. Expected result: `(22, 3, 2.5, [1.5, 3.0, 52.0])`.
+4. Break a function on purpose. In a scratch copy, change `<` to `<=` in `compress`, then run `python3 -m pytest -q test_c08_edge_cases.py`. Expected result: at least one failure on `"aa"`. This exact mutation was not run, so treat the result as the expected shape. The point is to see the harness catch a boundary bug.
 5. Timed drill, which you do alone. Pick one problem from the practice set in c20-11, set a 25-minute timer, open a plain text editor with no autocomplete, and talk aloud while you work. Then run the harness. Count the bugs it finds that you did not find by hand. That count is your real score.
 
 ## Drill questions
@@ -518,7 +518,7 @@ The default list is created once when the function is defined and is shared by e
 
 <details><summary>9. Why is `s[1:]` inside a recursion a problem?</summary>
 
-Slicing copies, so each step costs time proportional to the remaining length, and the total becomes quadratic. Pass indexes instead. I measured about 2.7 ms for one slice of a million-item list on my laptop.
+Slicing copies, so each step costs time proportional to the remaining length, and the total becomes quadratic. Pass indexes instead. One slice of a million-item list takes about 2.7 ms on a laptop.
 </details>
 
 <details><summary>10. The interviewer says the log no longer fits in memory. What do you say?</summary>
@@ -567,7 +567,7 @@ Explicitly labelled inferences:
 
 Not verified:
 
-- I did not run the `<` to `<=` mutation in the lab. I did not implement the in-place compression variant.
+- The `<` to `<=` mutation in the lab was not run, and the in-place compression variant was not implemented.
 - The timing figures for slicing and `pop(0)` are single runs on one laptop.
 - I could not crash CPython 3.12.7 with a raised recursion limit. The crash claim rests on the documentation only.
 

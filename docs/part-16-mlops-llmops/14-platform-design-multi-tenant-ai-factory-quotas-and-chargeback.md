@@ -282,7 +282,7 @@ The book says the community was discussing removal of the PodSecurityPolicy API.
 
 Picture two teams. One runs exploratory notebooks on spare capacity. The other runs a production model that cannot wait in line. One tier for both would serve neither well. Tiers match each team's use case and budget to a quota.
 
-The tier idea follows *LLMOps*, chapter 9, and NVIDIA Zero-to-Hero Volume 21, chapter 3. The GPU ranges in the table are example values, so choose your own from your pool size and budget.
+The tier idea follows *LLMOps*, Chapter 9. The GPU ranges in the table are example values, so choose your own from your pool size and budget.
 
 | Tier | GPU pool | Use case | Quota |
 |---|---|---|---|
@@ -448,7 +448,7 @@ The bug is fixed in Linux kernel 5.4. The fix was also backported to 4.14.154 an
 
 ### 3.1 The cost model
 
-The cost model below follows *LLMOps*, chapter 9, and NVIDIA Zero-to-Hero Volume 21, chapter 2. A team's monthly bill has four parts. Each part is a quantity multiplied by a price.
+The cost model below follows *LLMOps*, Chapter 9. A team's monthly bill has four parts. Each part is a quantity multiplied by a price.
 
 - Compute cost is GPU-hours times the price per GPU-hour. The team pays for every GPU-hour its workloads consume.
 - Storage cost is GB-months times the storage price. The team pays for every gigabyte its data occupies.
@@ -938,7 +938,7 @@ The limit gives 100 ms of CPU time per 100 ms period. Five busy threads can use 
 </details>
 
 <details><summary>11. Why does the chapter say Pod Security Policy examples are a description and not a manifest to apply?</summary>
-PodSecurityPolicy was removed in Kubernetes 1.25, and the book the section draws on predates that. On a current cluster use Pod Security Admission or a ValidatingAdmissionPolicy, or a policy engine such as Open Policy Agent or Kyverno. The policy shows what a restrictive default must forbid.
+PodSecurityPolicy was removed in Kubernetes 1.25, and the older Kubernetes material this policy comes from predates that. On a current cluster use Pod Security Admission or a ValidatingAdmissionPolicy, or a policy engine such as Open Policy Agent or Kyverno. The policy shows what a restrictive default must forbid.
 </details>
 
 <details><summary>12. A team wants memory limits above its requests so its jobs can burst. When would you allow it, and what do you give up?</summary>

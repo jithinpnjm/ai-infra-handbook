@@ -32,8 +32,8 @@ This capstone chapter ties every layer together into one four-phase workflow for
 | Operational phase | Primary sources | Key cloud metrics and configuration targets | Failure trap prevented |
 |---|---|---|---|
 | Cloud Kubernetes Growth Baseline | *Kubernetes for Generative AI Solutions* Ch. 3 | `5x` faster cloud K8s growth vs on-prem (2023 report); `99.95%` control-plane SLA across `3` AZs; `3` releases/yr with `12-month` community vs `26-month` extended cloud support | Eliminates manual control-plane upgrades and single-AZ control-plane outages |
-| Phase 1: 4-Layer Nebius GPU VM Stack Audit | `volume-25/labs/lab-01` | Host `nvidia-smi` -> `docker run --rm --gpus all` (`nvidia-ctk`) -> empty `blkid` check + `UUID=` `/etc/fstab` `/data/mlops` -> `ufw allow OpenSSH` (`2222/tcp`) verified from a new SSH session and across `sudo reboot` | Catches missing `capabilities: [[gpu]]` runtime wiring, disk device-name shifts, and SSH firewall lockouts |
-| Phase 2: Multi-Node Provisioning & GPU Operator | *Kubernetes for Generative AI Solutions* Ch. 3 & `volume-10/labs/lab-01..02` | Terraform (`>= 1.11`, `vpc` `10.0.0.0/16` `23` resources + `eks` `1.32` `33` resources); `gpu-node-07` (`8/8`) vs `gpu-node-11` (`8/0`); `GPU_NODE_VALIDATED` and `GPU_OPERATOR_VALIDATED` (`DESIRED 3 / READY 3 / AVAILABLE 3`) | Exposes `CAPACITY 8 / ALLOCATABLE 0` zombie nodes and untolerated GPU Operator DaemonSet taints |
+| Phase 1: 4-Layer Nebius GPU VM Stack Audit | Nebius L40S VM lab | Host `nvidia-smi` -> `docker run --rm --gpus all` (`nvidia-ctk`) -> empty `blkid` check + `UUID=` `/etc/fstab` `/data/mlops` -> `ufw allow OpenSSH` (`2222/tcp`) verified from a new SSH session and across `sudo reboot` | Catches missing `capabilities: [[gpu]]` runtime wiring, disk device-name shifts, and SSH firewall lockouts |
+| Phase 2: Multi-Node Provisioning & GPU Operator | *Kubernetes for Generative AI Solutions* Ch. 3 | Terraform (`>= 1.11`, `vpc` `10.0.0.0/16` `23` resources + `eks` `1.32` `33` resources); `gpu-node-07` (`8/8`) vs `gpu-node-11` (`8/0`); `GPU_NODE_VALIDATED` and `GPU_OPERATOR_VALIDATED` (`DESIRED 3 / READY 3 / AVAILABLE 3`) | Exposes `CAPACITY 8 / ALLOCATABLE 0` zombie nodes and untolerated GPU Operator DaemonSet taints |
 | Phase 3: Multi-Dimensional GenAI Autoscaling | *Kubernetes for Generative AI Solutions* Ch. 6 | HPA (`1..5` replicas, `70%` CPU, `180s` scaleDown), VPA (`Off`, `Auto`, `Recreate`, `Initial`), KEDA (`http_requests_total > 10` & `DCGM_FI_DEV_GPU_UTIL > 70`), and Karpenter (`eks-gpu-np`, `~2 min` launch, `karpenter.sh/disrupted:NoSchedule`) | Prevents HPA+VPA replica thrashing and idle multi-thousand-dollar GPU node waste |
 | Phase 4: Cloud AI Networking Optimization | *Kubernetes for Generative AI Solutions* Ch. 8 | Native CNI (`IPv6` / secondary CIDRs), `aws-load-balancer-nlb-target-type: ip` + `/healthz`, Chatbot `NetworkPolicies` (`TCP/80` & Qdrant `TCP/6333`), `kube-proxy` `IPVS`, `NodeLocal DNSCache`, and `Cluster` Placement Groups + RDMA (`EFA` / GPUDirect) | Eliminates `NodePort` hops, `iptables` `O(N)` bottlenecks, CoreDNS egress blackholes, and slow inter-node TCP collectives |
 
@@ -93,14 +93,14 @@ In the multi-node inspection lab, comparing capacity with allocatable counts exp
 
 The table walks through the inspection in order. Each step names the command, the evidence it captures, and the trap it catches.
 
-| Inspection step | Source reference | Command executed | Captured baseline evidence | Operational meaning and trap caught |
-|---|---|---|---|---|
-| 1. Cluster Context & Node Readiness | `volume-10/labs/lab-01` | `kubectl config current-context` & `kubectl get nodes -o wide` | Context `gpu-staging-us-east-1`; `cpu-node-01`, `gpu-node-07`, `gpu-node-11` all `Ready` (`v1.29.4`, `Ubuntu 22.04.4 LTS`, kernel `5.15.0-1053-aws`) | Prevents mutating prod by mistake; `STATUS Ready` only proves `kubelet` is alive, not that GPUs are schedulable |
-| 2. Capacity vs Allocatable Audit | `volume-10/labs/lab-01` | `kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.nvidia\.com/gpu,ALLOCATABLE:.status.allocatable.nvidia\.com/gpu` | `gpu-node-07`: `CAPACITY 8 / ALLOCATABLE 8`; `gpu-node-11`: `CAPACITY 8 / ALLOCATABLE 0` | `gpu-node-07` is healthy; `gpu-node-11` (`8 / 0`) catches a crashed device plugin, driver reload, or GPU reset in progress |
-| 3. Taints & 5 GPU Operands | `volume-10/labs/lab-01` | `kubectl describe node gpu-node-07` & `kubectl get pods -A -o wide \| grep -Ei 'nvidia\|gpu-feature\|node-feature\|dcgm'` | Taint `nvidia.com/gpu=present:NoSchedule`; `5` pods `1/1 Running` in `gpu-operator` (`driver`, `toolkit`, `device-plugin`, `gfd`, `dcgm-exporter`) | Explains why Pods without the matching toleration stay `Pending`; `1/1 Running` on DaemonSets still requires host and pod verification |
-| 4. Host Ground-Truth & Containerd Config | `volume-10/labs/lab-01` | `nvidia-smi`, `nvidia-smi -L`, `nvidia-smi topo -m`, `sudo crictl info` | `NVIDIA-SMI 550.90.07`, `CUDA 12.4`, `NVIDIA A100-SXM4-80GB`, `34C`, `62W / 400W`, `4MiB / 81920MiB`, `Bus-Id 00000000:1B:00.0`, `UUID GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`, `CPU Affinity 0-31`, `NUMA 0`; `io.containerd.runc.v2`, `pause:3.9`, `default_runtime_name = "nvidia"` | Captures the exact physical `Bus-Id` and `UUID` join keys to match inside the validation container |
-| 5. Bounded Validation Pod | `volume-10/labs/lab-01` & `02` | Apply `gpu-node-validation` (`Pending 1s -> ContainerCreating 3s -> Running 9s -> Completed 11s`) & `gpu-operator-validation` (`--timeout 15m` Helm install, `DESIRED 3 / READY 3 / AVAILABLE 3`, `ALLOCATABLE: 4`) | In-container `kubectl logs` prints `NVIDIA-SMI 550.90.07`, `Bus-Id 00000000:1B:00.0` (or `00000000:07:00.0`), and `GPU_NODE_VALIDATED` / `GPU_OPERATOR_VALIDATED` | Proves the entire `Driver -> Toolkit -> Device Plugin -> Kubelet -> Scheduler -> Container` chain works end to end |
-| 6. Safe Over-Request Failure Exercise | `volume-10/labs/lab-01` & `02` | Request `nvidia.com/gpu: 99` (Lab 01) or `8` on a `4`-GPU pool (Lab 02) | `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` (or `3 Insufficient nvidia.com/gpu`) | Proves `kube-scheduler` enforces extended-resource capacity bounds before reaching `ContainerCreating` |
+| Inspection step | Command executed | Captured baseline evidence | Operational meaning and trap caught |
+|---|---|---|---|
+| 1. Cluster Context & Node Readiness | `kubectl config current-context` & `kubectl get nodes -o wide` | Context `gpu-staging-us-east-1`; `cpu-node-01`, `gpu-node-07`, `gpu-node-11` all `Ready` (`v1.29.4`, `Ubuntu 22.04.4 LTS`, kernel `5.15.0-1053-aws`) | Prevents mutating prod by mistake; `STATUS Ready` only proves `kubelet` is alive, not that GPUs are schedulable |
+| 2. Capacity vs Allocatable Audit | `kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.nvidia\.com/gpu,ALLOCATABLE:.status.allocatable.nvidia\.com/gpu` | `gpu-node-07`: `CAPACITY 8 / ALLOCATABLE 8`; `gpu-node-11`: `CAPACITY 8 / ALLOCATABLE 0` | `gpu-node-07` is healthy; `gpu-node-11` (`8 / 0`) catches a crashed device plugin, driver reload, or GPU reset in progress |
+| 3. Taints & 5 GPU Operands | `kubectl describe node gpu-node-07` & `kubectl get pods -A -o wide \| grep -Ei 'nvidia\|gpu-feature\|node-feature\|dcgm'` | Taint `nvidia.com/gpu=present:NoSchedule`; `5` pods `1/1 Running` in `gpu-operator` (`driver`, `toolkit`, `device-plugin`, `gfd`, `dcgm-exporter`) | Explains why Pods without the matching toleration stay `Pending`; `1/1 Running` on DaemonSets still requires host and pod verification |
+| 4. Host Ground-Truth & Containerd Config | `nvidia-smi`, `nvidia-smi -L`, `nvidia-smi topo -m`, `sudo crictl info` | `NVIDIA-SMI 550.90.07`, `CUDA 12.4`, `NVIDIA A100-SXM4-80GB`, `34C`, `62W / 400W`, `4MiB / 81920MiB`, `Bus-Id 00000000:1B:00.0`, `UUID GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`, `CPU Affinity 0-31`, `NUMA 0`; `io.containerd.runc.v2`, `pause:3.9`, `default_runtime_name = "nvidia"` | Captures the exact physical `Bus-Id` and `UUID` join keys to match inside the validation container |
+| 5. Bounded Validation Pod | Apply `gpu-node-validation` (`Pending 1s -> ContainerCreating 3s -> Running 9s -> Completed 11s`) & `gpu-operator-validation` (`--timeout 15m` Helm install, `DESIRED 3 / READY 3 / AVAILABLE 3`, `ALLOCATABLE: 4`) | In-container `kubectl logs` prints `NVIDIA-SMI 550.90.07`, `Bus-Id 00000000:1B:00.0` (or `00000000:07:00.0`), and `GPU_NODE_VALIDATED` / `GPU_OPERATOR_VALIDATED` | Proves the entire `Driver -> Toolkit -> Device Plugin -> Kubelet -> Scheduler -> Container` chain works end to end |
+| 6. Safe Over-Request Failure Exercise | Request `nvidia.com/gpu: 99` (Lab 01) or `8` on a `4`-GPU pool (Lab 02) | `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` (or `3 Insufficient nvidia.com/gpu`) | Proves `kube-scheduler` enforces extended-resource capacity bounds before reaching `ContainerCreating` |
 
 Step 2 is the one that exposes `gpu-node-11`. Step 4 records the Bus-Id and UUID values that the validation pod has to match.
 
@@ -113,7 +113,7 @@ Picture a team that builds clusters by clicking through cloud consoles. That app
 To make multi-node deployments reproducible, *Kubernetes for Generative AI Solutions* Chapter 3 splits the Terraform stack into three layers. The network layer builds a multi-zone VPC and tags private subnets for Karpenter discovery. The cluster layer provisions the Kubernetes control plane and four worker data-plane options: self-managed nodes, managed node groups, serverless Fargate microVMs, and Karpenter. The last layer is the add-ons module. It installs the load balancer controller and exposes the containerized Llama service through an external network load balancer.
 
 ```text
-Terraform Multi-Node Cloud Kubernetes Architecture (K8GS Chapter 3):
+Terraform Multi-Node Cloud Kubernetes Architecture:
   Tooling Versions : terraform >= 1.11, aws >= 5.96, helm >= 2.17, kubernetes >= 2.36
   1. Network Layer : terraform-aws-modules/vpc/aws ~> 5.21
      - CIDR 10.0.0.0/16 across 3 AZs (us-west-2), private/public cidrsubnet, NAT gateway (23 resources added)
@@ -205,7 +205,7 @@ Run this checklist before you hand the cluster to any team, because one missed l
 
 ## Commands and configurations that matter
 
-Each block below carries out one phase of the multi-node cloud deployment. Run them in order when you bring up a new GPU VM, provision a managed node pool, or wire up KEDA, Karpenter, and zero-trust NetworkPolicies.
+The commands below were not run on live hardware. Each block carries out one phase of the multi-node cloud deployment. Run them in order when you bring up a new GPU VM, provision a managed node pool, or wire up KEDA, Karpenter, and zero-trust NetworkPolicies.
 
 ### 1. Phase 1: Nebius L40S and Cloud GPU VM 4-Layer Verification Script
 
@@ -234,7 +234,7 @@ sudo ufw --force enable
 sudo ufw status verbose
 ```
 
-The `(untested here)` markers mean these commands were not run in this chapter. Read the block in order, because each step assumes the one above it passed.
+Read the block in order, because each step assumes the one above it passed.
 
 ### 2. Phase 2: Provisioning GPU Node Pools on GKE and Nebius and Validating GPU Operator
 
@@ -339,9 +339,9 @@ Multi-node cloud GPU clusters can fail in many places. The trouble may sit in th
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| 1. `nvidia-smi` works on the Nebius GPU host, but `docker run --gpus all` fails with `could not select device driver "" with capabilities: [[gpu]]` (`volume-25/labs/lab-01`) | Step 1 host `nvidia-smi` prints the L40S table, but Step 2 container launch fails immediately before starting the container. | Layer 2 Container Toolkit Not Wired into Runtime: `nvidia-container-toolkit` is installed on the host, but `/etc/docker/daemon.json` (or `/etc/containerd/config.toml`) has not registered the `nvidia` runtime handler. | Run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker` (or `--runtime=containerd` + `systemctl restart containerd`) and re-run the container check. |
-| 2. `kubectl get nodes` shows `gpu-node-11` `Ready` with `CAPACITY: 8`, but `ALLOCATABLE: 0` (`volume-10/labs/lab-01` Section 7) | Pods requesting `nvidia.com/gpu: 1` stay `Pending` (`Insufficient nvidia.com/gpu`) even though `gpu-node-11` has `8` physical GPUs. | Layer 3 Device Plugin / Driver Registration Loss: `Capacity` reflects the last historical count reported to `kubelet`, while `Allocatable: 0` shows all GPUs are currently unhealthy or the device-plugin socket disconnected. | Do not schedule baseline workloads on `gpu-node-11`; inspect `nvidia-driver-daemonset` and `nvidia-device-plugin-daemonset` logs (`Lab 03` workflow) and check host `nvidia-smi` / `dmesg` for XIDs. |
-| 3. `helm upgrade --install gpu-operator --wait --timeout 15m` times out with `nvidia-driver-daemonset` stuck `Pending` (`volume-10/labs/lab-02` Section 16) | `kubectl get events -n gpu-operator` logs `0/3 nodes are available: 3 node(s) had taint {nvidia.com/gpu: NoSchedule}, that the pod didn't tolerate`. | Values-File Toleration Mismatch: The GPU nodes were tainted with a custom key/effect that was not added to `target-values.yaml` for the GPU Operator DaemonSets. | Do not re-run `helm upgrade` blindly; add the matching taint tolerations to `target-values.yaml` and re-apply the pinned Helm release. |
+| 1. `nvidia-smi` works on the Nebius GPU host, but `docker run --gpus all` fails with `could not select device driver "" with capabilities: [[gpu]]` | Step 1 host `nvidia-smi` prints the L40S table, but Step 2 container launch fails immediately before starting the container. | Layer 2 Container Toolkit Not Wired into Runtime: `nvidia-container-toolkit` is installed on the host, but `/etc/docker/daemon.json` (or `/etc/containerd/config.toml`) has not registered the `nvidia` runtime handler. | Run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker` (or `--runtime=containerd` + `systemctl restart containerd`) and re-run the container check. |
+| 2. `kubectl get nodes` shows `gpu-node-11` `Ready` with `CAPACITY: 8`, but `ALLOCATABLE: 0` | Pods requesting `nvidia.com/gpu: 1` stay `Pending` (`Insufficient nvidia.com/gpu`) even though `gpu-node-11` has `8` physical GPUs. | Layer 3 Device Plugin / Driver Registration Loss: `Capacity` reflects the last historical count reported to `kubelet`, while `Allocatable: 0` shows all GPUs are currently unhealthy or the device-plugin socket disconnected. | Do not schedule baseline workloads on `gpu-node-11`; inspect `nvidia-driver-daemonset` and `nvidia-device-plugin-daemonset` logs (`Lab 03` workflow) and check host `nvidia-smi` / `dmesg` for XIDs. |
+| 3. `helm upgrade --install gpu-operator --wait --timeout 15m` times out with `nvidia-driver-daemonset` stuck `Pending` | `kubectl get events -n gpu-operator` logs `0/3 nodes are available: 3 node(s) had taint {nvidia.com/gpu: NoSchedule}, that the pod didn't tolerate`. | Values-File Toleration Mismatch: The GPU nodes were tainted with a custom key/effect that was not added to `target-values.yaml` for the GPU Operator DaemonSets. | Do not re-run `helm upgrade` blindly; add the matching taint tolerations to `target-values.yaml` and re-apply the pinned Helm release. |
 | 4. Enabling both `HPA` and `VPA` (`updateMode: "Auto"`) on `my-llama-deployment` causes continuous Pod evictions and replica oscillation (*Kubernetes for Generative AI Solutions* Ch. 6) | Replica count oscillates wildly between `1` and `5` while `VPA` repeatedly evicts running inference pods to rewrite their CPU/memory `requests`. | Simultaneous HPA + VPA Control-Loop Conflict (*Kubernetes for Generative AI Solutions* Ch. 6): VPA mutating a Pod's `requests` changes the denominator of HPA's `averageUtilization` calculation, causing HPA and VPA to fight each other. | Set VPA `updateMode: "Off"` (using VPA strictly for right-sizing recommendations) whenever HPA or KEDA is actively scaling replica counts on CPU/memory metrics. |
 | 5. Applying an Egress `NetworkPolicy` to `rag-app` breaks all internal Kubernetes Service lookups (*Kubernetes for Generative AI Solutions* Ch. 8) | After locking down egress on `rag-app`, requests to `http://qdrant:6333` fail with `Could not resolve host: qdrant`. | Blocked `UDP/TCP 53` Egress to `CoreDNS`: A default-deny egress `NetworkPolicy` blocks DNS queries unless `kube-system` `CoreDNS` (and `NodeLocal DNSCache`) is explicitly permitted. | Add an egress rule allowing `UDP` and `TCP` port `53` to the `CoreDNS` pods in the `kube-system` namespace. |
 
@@ -351,7 +351,7 @@ Find the row that matches what you see. Its root cause boundary tells you which 
 
 ### Venue and scope
 
-Provisioning multi-node GPU pools on Nebius, GKE, and EKS means you pay cloud billing charges. You can run the local suite without any cloud spend. This lab therefore pairs the cloud steps with a local Python 3 verification suite, in `code/part11/multi_node_gke_and_nebius.py` and `code/part11/multi_node_gke_and_nebius_lab.py`. The suite tests the four-layer Nebius L40S VM audit, the multi-node Kubernetes GPU inspection gates, and the Terraform, HPA, VPA, KEDA, Karpenter, and cloud networking configurations from *Kubernetes for Generative AI Solutions*. All cloud CLI commands are marked `(untested here)`.
+Provisioning multi-node GPU pools on Nebius, GKE, and EKS means you pay cloud billing charges. You can run the local suite without any cloud spend. This lab therefore pairs the cloud steps with a local Python 3 verification suite, in `code/part11/multi_node_gke_and_nebius.py` and `code/part11/multi_node_gke_and_nebius_lab.py`. The suite tests the four-layer Nebius L40S VM audit, the multi-node Kubernetes GPU inspection gates, and the Terraform, HPA, VPA, KEDA, Karpenter, and cloud networking configurations. The cloud commands are untested.
 
 ### Step 1: Run the self-checking multi-node GPU Kubernetes capstone lab (tested here)
 
@@ -406,49 +406,49 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>**1. In Volume 25 Lab 01 (Provision a GPU Node and Verify the Stack on a Nebius L40S VM), what are the four layers that must be verified independently before running a training workload?**</summary>
+<summary>**1. When you provision a GPU node on a Nebius L40S VM, what are the four layers that must be verified independently before running a training workload?**</summary>
 
 The first layer is the host driver, which you check with `nvidia-smi` to confirm the kernel module sees the physical GPU. The second is container GPU passthrough, which you test with a disposable Docker CUDA container to confirm the NVIDIA Container Toolkit is wired into the runtime. The third is persistent block storage. It should be mounted at `/data/mlops` by UUID in `/etc/fstab`, after you check that `blkid` is empty. The fourth is the UFW firewall, which you verify from a brand-new SSH session and again after a reboot.
 </details>
 
 <details>
-<summary>**2. In Volume 25 Lab 01, how do you distinguish "Docker is stopped" from "nvidia-container-toolkit is not configured for Docker," and what command fixes the toolkit configuration?**</summary>
+<summary>**2. How do you distinguish "Docker is stopped" from "nvidia-container-toolkit is not configured for Docker," and what command fixes the toolkit configuration?**</summary>
 
 Consider two cases. A stopped Docker daemon makes a GPU container fail right away with a daemon connection error. If Docker is running but the NVIDIA toolkit is not registered in `/etc/docker/daemon.json`, the command fails with `could not select device driver "" with capabilities: [[gpu]]`. To fix the registration, run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`.
 </details>
 
 <details>
-<summary>**3. Why must you check that sudo blkid /dev/vdX returns empty output before running mkfs.ext4, and why must /etc/fstab use UUID= rather than /dev/vdX (Volume 25 Lab 01)?**</summary>
+<summary>**3. Why must you check that sudo blkid /dev/vdX returns empty output before running mkfs.ext4, and why must /etc/fstab use UUID= rather than /dev/vdX?**</summary>
 
 If `blkid` returns an existing UUID and filesystem type, the volume already holds formatted data, and `mkfs.ext4` would destroy it. Device names are unreliable too. For example, `/dev/vda` or `/dev/vdb` can change order after a kernel update or a new disk attachment. Mounting by UUID in `/etc/fstab` means the same filesystem lands at `/data/mlops` on every reboot.
 </details>
 
 <details>
-<summary>**4. Why must you verify a ufw firewall change from a brand-new SSH terminal before closing your current session (Volume 25 Lab 01)?**</summary>
+<summary>**4. Why must you verify a ufw firewall change from a brand-new SSH terminal before closing your current session?**</summary>
 
 Enabling UFW does not end an SSH connection that is already open. If the OpenSSH rule was left out, or the server listens on a non-default SSH port with no matching rule, your current terminal keeps working while new connections are dropped. So test from a second terminal while the original session stays open. That lets you fix the rule without locking yourself out of the VM.
 </details>
 
 <details>
-<summary>**5. In Volume 10 Lab 01 (Inspect a Kubernetes GPU Node), what is the difference between gpu-node-07 (CAPACITY 8 / ALLOCATABLE 8) and gpu-node-11 (CAPACITY 8 / ALLOCATABLE 0)?**</summary>
+<summary>**5. When you inspect a Kubernetes GPU node, what is the difference between gpu-node-07 (CAPACITY 8 / ALLOCATABLE 8) and gpu-node-11 (CAPACITY 8 / ALLOCATABLE 0)?**</summary>
 
 Capacity is the total GPU count the kubelet last reported. Allocatable is the set of healthy devices that are available for scheduling right now. On `gpu-node-07`, all eight physical GPUs are healthy and schedulable. On `gpu-node-11`, eight capacity and zero allocatable shows that the device plugin socket disconnected, the driver is reloading, or every GPU is marked unhealthy.
 </details>
 
 <details>
-<summary>**6. In Volume 10 Lab 01 Section 10 and 12, how do you prove that the physical GPU enumerated on the host is the exact same GPU injected into the gpu-node-validation container?**</summary>
+<summary>**6. How do you prove that the physical GPU enumerated on the host is the exact same GPU injected into the gpu-node-validation container?**</summary>
 
 Record the physical PCIe Bus-Id (`00000000:1B:00.0`) and UUID (`GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`) from host `nvidia-smi` on the worker node. After the validation pod completes, read its logs. The in-container banner should print the same driver version (`550.90.07`), memory size (`81920MiB`), Bus-Id, and UUID, followed by `GPU_NODE_VALIDATED`.
 </details>
 
 <details>
-<summary>**7. In Volume 10 Lab 01, how do the Kubernetes events for a container runtime injection failure differ from an unsatisfiable resource request (nvidia.com/gpu: 99)?**</summary>
+<summary>**7. How do the Kubernetes events for a container runtime injection failure differ from an unsatisfiable resource request (nvidia.com/gpu: 99)?**</summary>
 
 A request for ninety-nine GPUs never binds to a worker node. Describing the pod shows `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu`, and the pod stays Pending. A container runtime injection failure is different. The scheduler passes, the pod binds to a node, and the failure happens during container creation or when the process starts and exits non-zero.
 </details>
 
 <details>
-<summary>**8. In Volume 10 Lab 02 (Install and Validate GPU Operator), why is helm status showing STATUS: deployed insufficient proof of a working GPU cluster, and what four checks complete the evidence chain?**</summary>
+<summary>**8. When you install and validate the GPU Operator, why is helm status showing STATUS: deployed insufficient proof of a working GPU cluster, and what four checks complete the evidence chain?**</summary>
 
 A deployed status in Helm only shows that the chart manifests reached the Kubernetes API server. To finish the evidence chain, check that the ClusterPolicy reports ready. Then confirm that the operator DaemonSets show three desired, ready, and available pods, with the CUDA validator completed. Last, confirm the numeric allocatable counts (`4`) and the GFD node labels, along with `GPU_OPERATOR_VALIDATED` in the validation pod logs.
 </details>

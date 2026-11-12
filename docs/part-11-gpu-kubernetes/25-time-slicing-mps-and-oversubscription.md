@@ -72,7 +72,7 @@ Suppose a platform team sets `replicas: N` in the NVIDIA Device Plugin ConfigMap
 
 Every Pod admitted onto a time-sliced GPU gets permission to open the same underlying device node. Asking for two shared tokens in one Pod does not double the memory or compute share. That trap is why production configurations always reject multi-token requests on shared pools. The table below compares what the Kubernetes control plane reports with what happens on the physical hardware.
 
-| Control-Plane Claim | Actual Hardware and Runtime Reality (`volume-11/chapter-04` and `volume-04/03`) |
+| Control-Plane Claim | Actual Hardware and Runtime Reality |
 |---|---|
 | The Pod is `Running` with `nvidia.com/gpu: 1` | The Pod received an admission token to open `/dev/nvidia0`; it did not receive a fixed share of SMs or a reserved slice of VRAM. |
 | The Node has `8` or `10` Allocatable GPUs | One physical GPU (`16 GB` T4 or `80 GB` A100) is represented by `8` or `10` logical scheduler tokens; all pods contend in the same memory and fault domain. |
@@ -119,7 +119,7 @@ Engineers begin with a single-tenant baseline. That run measures normal tail lat
 During each run, host telemetry tools sample SM utilization, memory consumption, power and thermal counters every second over a five-minute window. Take an eighty-gigabyte A100 hosting interactive PyTorch notebooks as an example. Keeping at least twenty gigabytes of free HBM headroom stops sudden allocation spikes from triggering out-of-memory kills.
 
 ```text
-5-Phase Replica-Ratio Measurement Protocol (volume-11/chapter-04):
+5-Phase Replica-Ratio Measurement Protocol:
 - Telemetry Commands:
   nvidia-smi dmon -s puctem -n 300 (5 minutes of 1-second samples)
   nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv
@@ -132,7 +132,7 @@ During each run, host telemetry tools sample SM utilization, memory consumption,
 
 The table below shows what happened as the notebook count rose on one 80 GB A100.
 
-| Concurrent Notebooks on `1 × A100 80GB` | Per-Notebook SM Activity (`%`) | Combined HBM Used (`GB` of `80 GB`) | Observed `p99` Kernel Launch Latency | Engineering Verdict (`volume-11/chapter-04`) |
+| Concurrent Notebooks on `1 × A100 80GB` | Per-Notebook SM Activity (`%`) | Combined HBM Used (`GB` of `80 GB`) | Observed `p99` Kernel Launch Latency | Engineering Verdict |
 |---|---|---|---|---|
 | `1` Notebook (Baseline) | `25%` SM | `12 GB` (`68 GB` free) | `8 ms` (imperceptible) | Clean single-tenant baseline |
 | `2` Concurrent Notebooks | `~40%` SM | `24 GB` (`56 GB` free) | `25 ms` (interactive smooth) | Low interference |
@@ -175,7 +175,7 @@ Kubernetes treats each logical GPU token as a binary admission ticket. The defau
 You protect a cluster with six layered controls. They keep best-effort sharing apart from guaranteed production capacity. The first control renames the shared resource to `nvidia.com/gpu.shared`, so workloads must opt in to time-slicing on purpose. The second control is a ResourceQuota in every production namespace, with the shared resource hard limit set to zero. Controls three through six add application concurrency limits, bounded request queueing, workload-correlated host telemetry and a pre-approved dedicated escape pool.
 
 ```text
-Six Operational Controls for Shared GPU Pools (volume-11/chapter-04):
+Six Operational Controls for Shared GPU Pools:
 1. Separate shared node pool and explicit resource naming: Set renameByDefault: true to advertise nvidia.com/gpu.shared.
    Prevents Scenario 3 where a critical service (p99 < 100 ms SLO) requests generic nvidia.com/gpu: 1, lands on a shared node, and degrades to p99 > 300 ms.
 2. Namespace quota and admission control: Set nvidia.com/gpu.shared: "0" and nvidia.com/gpu: "unlimited" in production ResourceQuotas.
@@ -190,7 +190,7 @@ Six Operational Controls for Shared GPU Pools (volume-11/chapter-04):
 The block above gives each control with the failure it prevents. Controls one and two work as a pair: the rename makes the shared pool visible in manifests, and the quota refuses shared requests in production. The manifest below puts the quota into practice.
 
 ```yaml
-# Deny shared best-effort GPUs in production namespaces (volume-11/chapter-04, untested here)
+# Deny shared best-effort GPUs in production namespaces
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -238,7 +238,7 @@ In architecture reviews, it is easy to assume that Kubernetes scheduling enforce
 
 So each scheduling primitive needs a complementary runtime control, at the application, MPS or hardware MIG layer. Upgrades add another risk: a cluster upgrade can silently reset device-plugin ConfigMaps, alter node labels or change driver scheduling behavior. After every GPU Operator, device-plugin, driver or node-image update, you must run the eight-step pre-production and post-upgrade acceptance checklist. The table and checklist below map each Kubernetes primitive to its hardware gap and to its verification steps.
 
-| Kubernetes Primitive (`volume-11/chapter-04`) | What It Contributes to a Shared GPU Pool | What It Cannot Protect on the Physical GPU | Complementary Runtime / Platform Control Required |
+| Kubernetes Primitive | What It Contributes to a Shared GPU Pool | What It Cannot Protect on the Physical GPU | Complementary Runtime / Platform Control Required |
 |---|---|---|---|
 | 1. `resources.requests` / `limits` (`nvidia.com/gpu.shared: 1`) | Reserves `1` logical admission token in `kube-scheduler` accounting | Does not divide physical HBM memory or SMs; `1` pod can still allocate `100%` of VRAM | Application memory caps (`PYTORCH_CUDA_ALLOC_CONF`), KAI `gpu-memory` admission, or `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` |
 | 2. `nodeSelector` / `nodeAffinity` | Routes best-effort pods (`nvidia.com/device-plugin.config=all`) to the shared node pool | Does not validate workload memory or latency behavior once placed on the node | 5-phase pre-admission concurrency envelope test (`Single -> Concurrent -> Burst -> Failure -> Upgrade`) |
@@ -249,7 +249,7 @@ So each scheduling primitive needs a complementary runtime control, at the appli
 Notice that each row pairs a Kubernetes primitive with a runtime or platform control it still needs.
 
 ```text
-8-Step Pre-Production and Post-Upgrade Acceptance Checklist (volume-11/chapter-04):
+8-Step Pre-Production and Post-Upgrade Acceptance Checklist:
 1. Schedule known concurrent benchmark workloads (time-slice-a, time-slice-b) on the target shared pool.
 2. Confirm advertised resource name (nvidia.com/gpu.shared) and node labels/selectors match the design.
 3. Measure application p50/p95/p99 latency and queue behavior under concurrent load.
@@ -269,7 +269,7 @@ Run this checklist once before you admit traffic, and again after every upgrade.
 Suppose a cluster turns on time-slicing but never renames the resource or blocks multi-token requests. Users inevitably schedule multi-GPU jobs or production APIs onto shared nodes. The ConfigMap below enables four logical replicas per physical GPU. It renames the resource to `nvidia.com/gpu.shared` and rejects any Pod that requests more than one token.
 
 ```yaml
-# time-slicing-safe-configmap.yaml (volume-11/chapter-04 & labs/lab-02, untested here)
+# time-slicing-safe-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -290,7 +290,7 @@ data:
 After you create the ConfigMap, the operator patches the ClusterPolicy and verifies the updated allocatable count on the target node. The commands below do the patch and the check.
 
 ```bash
-# Select the time-slicing ConfigMap in ClusterPolicy and check node allocatable (untested here)
+# Select the time-slicing ConfigMap in ClusterPolicy and check node allocatable
 kubectl patch clusterpolicy gpu-cluster-policy --type merge \
   --patch '{"spec":{"devicePlugin":{"config":{"name":"time-slicing-config","default":"any"}}}}'
 kubectl get node gpu-node-1 -o jsonpath='{.status.allocatable.nvidia\.com/gpu\.shared}{" shared allocatable\n"}'
@@ -304,7 +304,7 @@ Picture several small inference servers running under the default compute mode. 
 
 ```bash
 #!/usr/bin/env bash
-# Enable CUDA MPS on GPU 0 with 20% active thread cap and 8GiB pinned memory limit (volume-04/03, untested here)
+# Enable CUDA MPS on GPU 0 with 20% active thread cap and 8GiB pinned memory limit
 export CUDA_VISIBLE_DEVICES=0
 export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps
 export CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-log
@@ -327,7 +327,7 @@ Notice the order: the GPU is locked first, the daemon starts second, and the cap
 Suppose users report slow kernel execution on a shared node. Standard container metrics cannot show which neighbor Pod is hogging the GPU. On-call responders must read host-level device telemetry and process tables directly on the node. The commands below stream three hundred one-second samples of SM, memory, power and thermal counters. They also list the exact host PIDs and memory footprints on each GPU.
 
 ```bash
-# Stream 5 minutes of 1-second SM/memory/power/thermal samples and list active PIDs (untested here)
+# Stream 5 minutes of 1-second SM/memory/power/thermal samples and list active PIDs
 nvidia-smi dmon -s puctem -n 300
 nvidia-smi pmon -c 1
 nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv
@@ -341,11 +341,11 @@ Software GPU sharing fails when the combined demand from workloads crosses physi
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| 1. `8` concurrent notebooks on an `80 GB` A100 hit `p99 = 500 ms` and crash with `CUDA OOM` (`volume-11/chapter-04`) | At `replicas: 8`, `nvidia-smi` shows combined memory demand (`8 × 12 GB = 96 GB`) exceeding `80 GB`, `p99` kernel latency jumps from `8 ms` to `500 ms`, and pods are OOM-killed. | Time-Slicing Memory Over-Subscription: logical tokens do not partition HBM; `8` active `12 GB` notebooks exceed physical memory by `16 GB`. | Reduce `replicas` to `4` (`48 GB` used, `32 GB >= 20 GB` headroom, `p99 = 120 ms`) or use KAI Scheduler's `gpu-memory` admission cap (Chapter 11.17). |
-| 2. Production inference service (`p99 < 100 ms`) degrades to `p99 > 300 ms` while all Pods report `1/1 Running` (`volume-11/chapter-04` Scenario 3) | `kubectl get pods` is green, `curl .../metrics \| grep latency_p99_ms` reports `> 300 ms`, and `kubectl exec <pod> -- nvidia-smi` shows multiple notebook PIDs on the same GPU. | Critical Workload Scheduled onto Best-Effort Pool: time-sliced nodes advertised `nvidia.com/gpu` instead of `nvidia.com/gpu.shared`, and the prod namespace lacked a `ResourceQuota` guard. | Enable `renameByDefault: true` (`nvidia.com/gpu.shared`), enforce `ResourceQuota` `nvidia.com/gpu.shared: "0"` in production namespaces, and evacuate the deployment to a dedicated or MIG pool. |
-| 3. Container A under CUDA MPS crashes with `CUDA OOM` on a `40 GB` A100 while `nvidia-smi` shows only `10 GB` used (`volume-04/03` Scenario 1) | Application logs `CUDA error: out of memory`, but host `nvidia-smi` shows `10000MiB / 40960MiB`. | MPS Ghost OOM (`CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` or Transient Neighbor Spike): either a per-client MPS memory limit capped Container A below its burst need, or Container B spiked and freed memory before `nvidia-smi` was sampled. | Inspect `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` / `get_default_device_pinned_mem_limit` in `nvidia-cuda-mps-control`, or migrate the services to MIG for hardware-isolated HBM slices. |
-| 4. Pod requesting `nvidia.com/gpu: 2` on a time-sliced node receives two tokens on the same contended physical GPU (`volume-11/chapter-04`) | User requests `nvidia.com/gpu: 2` expecting `2x` the compute/memory of `1` replica, but gets zero extra memory isolation and still contends with `6` other pods. | Misunderstood Logical Replica Semantics: device-plugin replicas are access tokens, not additive hardware slices. | Set `failRequestsGreaterThanOne: true` in the time-slicing ConfigMap so any pod requesting `> 1` shared token is rejected clearly, and route multi-GPU jobs to dedicated whole-GPU nodes. |
-| 5. Fatal GPU context fault (`XID 13` / `XID 31` / `XID 48`) in one CUDA MPS client terminates all co-running MPS containers (`volume-04/03` & `volume-11/chapter-04`) | One buggy inference container triggers an uncontained GPU fault, and all `5` containers connected to `/tmp/nvidia-mps` crash simultaneously. | Shared MPS Hardware Context Fault Domain: because `nvidia-cuda-mps-server` funnels all clients into a single hardware GPU context, a fatal context error tearing down that context kills every connected client. | Never use CUDA MPS across untrusted tenants; restrict MPS to cooperative single-tenant microservices and use MIG (Chapter 11.24) or vGPU (Chapter 11.23) for fault-isolated multi-tenancy. |
+| 1. `8` concurrent notebooks on an `80 GB` A100 hit `p99 = 500 ms` and crash with `CUDA OOM` | At `replicas: 8`, `nvidia-smi` shows combined memory demand (`8 × 12 GB = 96 GB`) exceeding `80 GB`, `p99` kernel latency jumps from `8 ms` to `500 ms`, and pods are OOM-killed. | Time-Slicing Memory Over-Subscription: logical tokens do not partition HBM; `8` active `12 GB` notebooks exceed physical memory by `16 GB`. | Reduce `replicas` to `4` (`48 GB` used, `32 GB >= 20 GB` headroom, `p99 = 120 ms`) or use KAI Scheduler's `gpu-memory` admission cap (Chapter 11.17). |
+| 2. Production inference service (`p99 < 100 ms`) degrades to `p99 > 300 ms` while all Pods report `1/1 Running` | `kubectl get pods` is green, `curl .../metrics \| grep latency_p99_ms` reports `> 300 ms`, and `kubectl exec <pod> -- nvidia-smi` shows multiple notebook PIDs on the same GPU. | Critical Workload Scheduled onto Best-Effort Pool: time-sliced nodes advertised `nvidia.com/gpu` instead of `nvidia.com/gpu.shared`, and the prod namespace lacked a `ResourceQuota` guard. | Enable `renameByDefault: true` (`nvidia.com/gpu.shared`), enforce `ResourceQuota` `nvidia.com/gpu.shared: "0"` in production namespaces, and evacuate the deployment to a dedicated or MIG pool. |
+| 3. Container A under CUDA MPS crashes with `CUDA OOM` on a `40 GB` A100 while `nvidia-smi` shows only `10 GB` used | Application logs `CUDA error: out of memory`, but host `nvidia-smi` shows `10000MiB / 40960MiB`. | MPS Ghost OOM (`CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` or Transient Neighbor Spike): either a per-client MPS memory limit capped Container A below its burst need, or Container B spiked and freed memory before `nvidia-smi` was sampled. | Inspect `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` / `get_default_device_pinned_mem_limit` in `nvidia-cuda-mps-control`, or migrate the services to MIG for hardware-isolated HBM slices. |
+| 4. Pod requesting `nvidia.com/gpu: 2` on a time-sliced node receives two tokens on the same contended physical GPU | User requests `nvidia.com/gpu: 2` expecting `2x` the compute/memory of `1` replica, but gets zero extra memory isolation and still contends with `6` other pods. | Misunderstood Logical Replica Semantics: device-plugin replicas are access tokens, not additive hardware slices. | Set `failRequestsGreaterThanOne: true` in the time-slicing ConfigMap so any pod requesting `> 1` shared token is rejected clearly, and route multi-GPU jobs to dedicated whole-GPU nodes. |
+| 5. Fatal GPU context fault (`XID 13` / `XID 31` / `XID 48`) in one CUDA MPS client terminates all co-running MPS containers | One buggy inference container triggers an uncontained GPU fault, and all `5` containers connected to `/tmp/nvidia-mps` crash simultaneously. | Shared MPS Hardware Context Fault Domain: because `nvidia-cuda-mps-server` funnels all clients into a single hardware GPU context, a fatal context error tearing down that context kills every connected client. | Never use CUDA MPS across untrusted tenants; restrict MPS to cooperative single-tenant microservices and use MIG (Chapter 11.24) or vGPU (Chapter 11.23) for fault-isolated multi-tenancy. |
 
 Notice that the fixes differ, so you can match each one to its symptom. Some change `replicas` or add an admission cap, while others move the workload to MIG or vGPU. If your workload needs a hard memory wall, act on the MIG fix in the table.
 

@@ -104,10 +104,10 @@ To find targets, Prometheus asks the Kubernetes API. Its `kubernetes_sd_configs`
 
 *Production Kubernetes*, Chapter 9 (*Observability*), by Josh Rosso et al., covers three more architectural patterns for metrics, showback and distributed tracing.
 
-1. **Pull scraping vs. Pushgateway for short batch jobs (Production Kubernetes, Figure 9-2).** Prometheus's pull model suits long-lived services and DaemonSets. A short batch `Job` is different. It can run for 8 seconds and exit before the 15–30s scrape interval comes around. A database migration or checkpoint validator may finish that quickly. Such a job can push its completion metrics to a Prometheus `Pushgateway`, and Prometheus then scrapes the gateway. Group the metrics by job or role rather than by unique Pod names, so stale series do not accumulate forever.
-2. **Federation vs. Thanos (Figure 9-3) and showback models (Figure 9-5).**
+1. **Pull scraping vs. Pushgateway for short batch jobs (Production Kubernetes, Chapter 9).** Prometheus's pull model suits long-lived services and DaemonSets. A short batch `Job` is different. It can run for 8 seconds and exit before the 15–30s scrape interval comes around. A database migration or checkpoint validator may finish that quickly. Such a job can push its completion metrics to a Prometheus `Pushgateway`, and Prometheus then scrapes the gateway. Group the metrics by job or role rather than by unique Pod names, so stale series do not accumulate forever.
+2. **Federation vs. Thanos and showback models.**
    - *Federation vs. Thanos:* Hierarchical `/federate` scraping works for aggregating low-cardinality recording rules across clusters. It struggles to keep full historical series. Thanos takes a different approach. It attaches a `thanos-sidecar` to each Prometheus pod, and that sidecar uploads 2-hour TSDB blocks to S3 or GCS object storage. A `Store Gateway` and a `Compactor` handle history, and the Compactor does downsampling to 5m and 1h resolutions. A global `Querier` deduplicates HA Prometheus pairs labelled `replica="a"` and `replica="b"`.
-   - *Requests vs. consumption showback (Figure 9-5):* Production Kubernetes, Chapter 9, contrasts requests-based showback with consumption-based showback. Requests-based showback charges a team for what its Pods requested. Consumption-based showback charges for `max(resource_request, actual_usage)`. That way a team answers both for idle capacity it over-reserved and for Burstable usage spikes above its requests. The model is `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`.
+   - *Requests vs. consumption showback:* Production Kubernetes, Chapter 9, contrasts requests-based showback with consumption-based showback. Requests-based showback charges a team for what its Pods requested. Consumption-based showback charges for `max(resource_request, actual_usage)`. That way a team answers both for idle capacity it over-reserved and for Burstable usage spikes above its requests. The model is `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`.
 3. **Distributed tracing concepts (OpenTracing and OpenCensus to OpenTelemetry and Jaeger, Production Kubernetes, Chapter 9).** A distributed `Trace` shows the end-to-end path of one request across microservices. It is built from timed `Span`s, one per service or operation. Spans link to their parents through span IDs, and each carries key-value `Tags`, `Baggage` and logs. Node-local tracing `Agents` collect the spans, and `Collectors` sample and process them before storage.
 
 ### kube-prometheus-stack
@@ -364,7 +364,7 @@ App-specific metrics form the last category. They measure things only your app c
 
 ### Key exporters and sources
 
-The table lists the main metric sources, what each one exposes and the notes you need. Use it as a lookup when you wire up a new component.
+The table lists the main metric sources, what each one exposes and the points you need. Use it as a lookup when you wire up a new component.
 
 | Source | Metrics | Notes |
 |---|---|---|
@@ -765,7 +765,7 @@ Start with the self-checking Python lab, which runs locally. The lab checks thre
 python3 code/part05/k8s_observability_slo_sim_lab.py
 ```
 
-Next, work through these exercises on a `kind` or `kubeadm` cluster. Every interactive shell step below is `untested here`.
+Next, work through these exercises on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware.
 
 1. Install kube-prometheus-stack with persistent storage. Explore its default dashboards and rules, and find a control-plane metric for each component. Confirm that the Watchdog alert is firing.
 2. Instrument a small FastAPI app (3.7) with `prometheus-fastapi-instrumentator`. Create a Service and a ServiceMonitor, then verify the target, labels and queries. Deliberately fall into the `release` label mismatch trap, and then fix it.
@@ -817,7 +817,7 @@ Each exercise asks you to write, trace or explain something in your own cluster,
 3. Cover SLO-driven alerting with multi-window, multi-burn-rate rules, Alertmanager inhibition, and the dead man's switch, which is the Watchdog alert in Production Kubernetes, Chapter 9. Using `evaluate_slo_multiwindow_burn_rate()` in `code/part05/k8s_observability_slo_sim.py`, derive the `14.4x` fast-burn page threshold for `1h` and `5m`. Then derive the `6.0x` slow-burn ticket threshold for `6h` and `30m`. Both apply to a `99.5%` 30-day availability SLO. Explain why pairing a long window (`1h`) with a short window (`5m`) stops alerts from staying firing for 55 minutes after recovery. Finally, explain Alertmanager inhibition and the Watchdog alert.
 4. Compare the standard DCGM gauges, `DCGM_FI_DEV_GPU_UTIL`, `FB_USED`, `GPU_TEMP`, `XID_ERRORS`, `ECC_DBE_VOL_TOTAL` and `CLOCK_THROTTLE_REASONS`, with the DCGM hardware profiling counters, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `DRAM_ACTIVE` and `NVLINK_TX_BYTES`. Then trace the decision tree in Section 8 to decide whether a slow 1,000-GPU training job is bottlenecked by CPU data loading, storage I/O, or a single straggler rank or NIC.
 5. Cover logging with Fluent Bit and Loki, Kubernetes `Events` with their `1h` TTL, audit logs, and distributed tracing with the OpenTelemetry Collector and Tempo or Jaeger (Production Kubernetes, Chapter 9). Trace the `Fluent Bit` ConfigMap in Section 4. Explain why Loki index labels must stay low-cardinality, while high-cardinality fields stay in JSON log lines and are queried with LogQL. Explain why Kubernetes `Events` must be exported before their `1h` TTL expires. Then explain how OpenTelemetry (`Trace -> Span -> Tags`, `traceparent`, tail sampling) traces RAG and LLM pipelines.
-6. Work through cardinality control, long-term storage with Thanos, Mimir or VictoriaMetrics, and showback models in Production Kubernetes, Chapter 9. Using `estimate_prometheus_series_cardinality()` and `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`, show how adding a 50,000-value `user_id` label explodes 10,000 series into 500,000,000 series. Compare Prometheus federation with Thanos or Mimir remote write. Then compare requests-based and consumption-based showback, where consumption uses `max(request, usage)`, as in Figure 9-5.
+6. Work through cardinality control, long-term storage with Thanos, Mimir or VictoriaMetrics, and showback models in Production Kubernetes, Chapter 9. Using `estimate_prometheus_series_cardinality()` and `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`, show how adding a 50,000-value `user_id` label explodes 10,000 series into 500,000,000 series. Compare Prometheus federation with Thanos or Mimir remote write. Then compare requests-based and consumption-based showback, where consumption uses `max(request, usage)`.
 
 ## Checkpoint questions (20)
 
@@ -879,7 +879,7 @@ kube_pod_container_resource_limits{resource="memory"} > 0.90
 </details>
 
 <details>
-<summary>7. In *Production Kubernetes* Chapter 9, when is the Prometheus `Pushgateway` (`Figure 9-2`) appropriate, and what is its main pitfall?</summary>
+<summary>7. In *Production Kubernetes* Chapter 9, when is the Prometheus `Pushgateway` appropriate, and what is its main pitfall?</summary>
 
 - It is appropriate for ephemeral, short-lived batch `Job`s or `CronJob`s, such as a 5-second backup or checkpoint verification script. These finish and exit before Prometheus's 15–30 second pull-scrape cycle can reach them. The job pushes its completion timestamp and exit status to the `Pushgateway`, and Prometheus scrapes that.
 - Its main pitfall is that the `Pushgateway` never expires pushed metrics on its own when a Pod exits. If the grouping key includes a unique `pod_name` or `job_uid`, every batch run leaves series behind for good. Group only by stable job or role labels, such as `job="nightly-backup"`. Alternatively, use Prometheus's newer native **OTLP / Remote-Write receiver**, or the KSM `kube_job_status_*` metrics.
@@ -946,7 +946,7 @@ Running `kubernetes-event-exporter`, or Grafana Alloy with `loki.source.kubernet
 </details>
 
 <details>
-<summary>15. In *Production Kubernetes* Chapter 9 (`Example 9-1`), how does a Kubernetes Audit Policy (`audit.k8s.io/v1`) balance security forensics against disk/CPU overhead?</summary>
+<summary>15. In *Production Kubernetes* Chapter 9, how does a Kubernetes Audit Policy (`audit.k8s.io/v1`) balance security forensics against disk/CPU overhead?</summary>
 
 An Audit Policy evaluates its rules from top to bottom, and the `first match wins`. It works across four levels: `None`, `Metadata`, `Request` and `RequestResponse`.
 1. `level: None` handles noisy read-only system watches. It drops high-frequency watches, such as `system:kube-proxy` watching `endpoints` or `services` (`verbs: ["watch"]`), and `/healthz` checks.

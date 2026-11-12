@@ -199,7 +199,7 @@ The Kubernetes API server can serve its own OIDC discovery document at `/.well-k
 
 Suppose your workloads span several clouds, bare-metal GPU clusters and virtual machines. That is where SPIFFE and its reference implementation, SPIRE, help. SPIFFE stands for Secure Production Identity Framework for Everyone, and SPIRE stands for SPIFFE Runtime Environment. Together they issue portable cryptographic identities, written as `spiffe://trust-domain/hierarchical/workload`. Those identities are encoded as short-lived X.509 certificates (**X.509-SVIDs**) or JWT tokens (**JWT-SVIDs**). *Production Kubernetes* (Chapter 10) describes the attestation flow in two stages.
 
-1. **Node attestation (`spire-server` and `spire-agent`)**: `spire-server` runs as the central signing authority and registration store, while `spire-agent` runs as a `DaemonSet` on every node. When an agent starts, it proves its node identity to `spire-server` using platform evidence, such as a Kubernetes Projected ServiceAccount Token via the `k8s_psat` attestor or cloud instance metadata. In return, it receives an X.509-SVID for the node. In the book's example (untested here), the administrator registers the node group with:
+1. **Node attestation (`spire-server` and `spire-agent`)**: `spire-server` runs as the central signing authority and registration store, while `spire-agent` runs as a `DaemonSet` on every node. When an agent starts, it proves its node identity to `spire-server` using platform evidence, such as a Kubernetes Projected ServiceAccount Token via the `k8s_psat` attestor or cloud instance metadata. In return, it receives an X.509-SVID for the node. The administrator registers the node group with:
 
 ```bash
 /opt/spire/bin/spire-server entry create \
@@ -210,7 +210,7 @@ Suppose your workloads span several clouds, bare-metal GPU clusters and virtual 
   -node
 ```
 
-2. **Workload attestation (Workload API Unix domain socket)**: workloads connect to the node-local `spire-agent` over a Unix domain socket (`unix:///run/spire/sockets/agent.sock` in the *Production Kubernetes* example). They present no initial secret, which solves the "secure introduction" problem. The `spire-agent` inspects kernel and kubelet metadata for the calling process, such as the Pod namespace, ServiceAccount, Pod labels and container image. It matches that metadata against registration entries created on `spire-server`. The book's example (untested here) looks like this:
+2. **Workload attestation (Workload API Unix domain socket)**: workloads connect to the node-local `spire-agent` over a Unix domain socket (`unix:///run/spire/sockets/agent.sock` in the *Production Kubernetes* example). They present no initial secret, which solves the "secure introduction" problem. The `spire-agent` inspects kernel and kubelet metadata for the calling process, such as the Pod namespace, ServiceAccount, Pod labels and container image. It matches that metadata against registration entries created on `spire-server`. A registration entry looks like this:
 
 ```bash
 /opt/spire/bin/spire-server entry create \
@@ -924,7 +924,7 @@ OPA Gatekeeper is an admission controller. It uses **Rego** in `ConstraintTempla
 
 As *Production Kubernetes* (Chapter 8) and *Kubernetes: Up and Running* (3rd edition, Chapter 20) show, Gatekeeper runs in the `gatekeeper-system` namespace. Its `gatekeeper-controller-manager` and `gatekeeper-audit` deployments run there, and it registers `gatekeeper-validating-webhook-configuration`. That configuration defaults to `failurePolicy: Ignore`, and it skips namespaces that carry the `admission.gatekeeper.sh/ignore` label. Four building blocks cover validation, cross-resource checks, dry-run auditing, and mutation.
 
-1. **Inventory replication (`Config` resource in `config.gatekeeper.sh/v1alpha1`)**: By default, OPA sees only the incoming `input.review` object. A policy that compares that object with existing objects needs more data. For example, checking that an `Ingress` host is unique across all namespaces requires those kinds to be synced into Gatekeeper's `data.inventory` cache. Another policy might read an allowed host regex from the target `Namespace`. In the books' examples (untested here), a `Config` resource caches `Namespace`, `Pod` and `Ingress` objects:
+1. **Inventory replication (`Config` resource in `config.gatekeeper.sh/v1alpha1`)**: By default, OPA sees only the incoming `input.review` object. A policy that compares that object with existing objects needs more data. For example, checking that an `Ingress` host is unique across all namespaces requires those kinds to be synced into Gatekeeper's `data.inventory` cache. Another policy might read an allowed host regex from the target `Namespace`. A `Config` resource caches `Namespace`, `Pod` and `Ingress` objects:
 
 ```yaml
 apiVersion: config.gatekeeper.sh/v1alpha1
@@ -949,7 +949,7 @@ spec:
         kind: "Ingress"
 ```
 
-2. **`ConstraintTemplate` and `Constraint` (with `enforcementAction: deny | dryrun | warn`)**: A `ConstraintTemplate` defines two things. The first is the OpenAPI v3 parameter schema for a new constraint CRD, such as `K8sAllowedRepos`, `K8sRequiredLabels` / `k8srequiredlabels`, `K8sUniqueIngressHost` or `LimitNamespaceIngress`. The second is the Rego `violation[{"msg": msg}]` rule, which the target `admission.k8s.gatekeeper.sh` evaluates. When you roll out a new `Constraint` on an existing cluster, set `enforcementAction: dryrun` or `warn`. The `gatekeeper-audit` controller then records existing non-compliant objects in the constraint's `status.totalViolations` and `status.violations` list, along with `status.auditTimestamp`. Workloads are not blocked while teams remediate. In the books' examples (untested here), the template and constraint look like this:
+2. **`ConstraintTemplate` and `Constraint` (with `enforcementAction: deny | dryrun | warn`)**: A `ConstraintTemplate` defines two things. The first is the OpenAPI v3 parameter schema for a new constraint CRD, such as `K8sAllowedRepos`, `K8sRequiredLabels` / `k8srequiredlabels`, `K8sUniqueIngressHost` or `LimitNamespaceIngress`. The second is the Rego `violation[{"msg": msg}]` rule, which the target `admission.k8s.gatekeeper.sh` evaluates. When you roll out a new `Constraint` on an existing cluster, set `enforcementAction: dryrun` or `warn`. The `gatekeeper-audit` controller then records existing non-compliant objects in the constraint's `status.totalViolations` and `status.violations` list, along with `status.auditTimestamp`. Workloads are not blocked while teams remediate. The template and constraint look like this:
 
 ```yaml
 apiVersion: templates.gatekeeper.sh/v1beta1

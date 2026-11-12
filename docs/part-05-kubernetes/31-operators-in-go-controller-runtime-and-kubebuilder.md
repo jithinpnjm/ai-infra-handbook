@@ -182,14 +182,14 @@ In *Kubernetes Programming with Go*, chapters 9 and 13, Philippe Martin compares
    func (*MyResource) Hub() {}
    ```
    Every Spoke version, here `v1beta1`, implements `conversion.Convertible`. The methods are `ConvertTo(dstRaw conversion.Hub) error` and `ConvertFrom(srcRaw conversion.Hub) error`. You wire the conversion into the Manager with `kubebuilder create webhook --group mygroup --version v1alpha1 --kind MyResource --conversion`. The sample `convert_myresource_spoke_to_hub_and_back()` in `code/part05/controller_runtime_reconciler_sim.py` models this step.
-3. Applying child resources with Server-Side Apply in controller-runtime, from *Kubernetes Programming with Go*, chapters 10 and 11. Fragile `Get -> Update` loops on child `Deployment`s are easy to get wrong. Instead, the book constructs the desired child `appsv1.Deployment`, sets `TypeMeta` `APIVersion` and `Kind`, and sets `ownerReferences` with `ctrl.SetControllerReference`. Then it applies the object in one idempotent call:
+3. Applying child resources with Server-Side Apply in controller-runtime, from *Kubernetes Programming with Go*, chapters 10 and 11. Fragile `Get -> Update` loops on child `Deployment`s are easy to get wrong. Instead, construct the desired child `appsv1.Deployment`, sets `TypeMeta` `APIVersion` and `Kind`, and sets `ownerReferences` with `ctrl.SetControllerReference`. Then apply the object in one idempotent call:
    `err := r.Client.Patch(ctx, deploy, client.Apply, client.FieldOwner("myresource-controller"), client.ForceOwnership)`
 
 ### Choosing the data model for a Namespace operator
 
 Designing an operator starts with the data model, just as designing a web application starts with its database schema. You often know what the spec needs before you write any code. As soon as you spot a problem to solve or a gap to fill, the desired-state fields begin to take shape.
 
-Take the Namespace operator from earlier. It could create a Namespace with a LimitRange, a ResourceQuota, Roles and NetworkPolicies for a new app team. You might also bind a team lead to the `namespace-admin` Role right away, then hand off management of the Namespace to that person. That suggests an `adminUsername` field in the spec. Example 11-3 shows the resulting manifest.
+Take the Namespace operator from earlier. It could create a Namespace with a LimitRange, a ResourceQuota, Roles and NetworkPolicies for a new app team. You might also bind a team lead to the `namespace-admin` Role right away, then hand off management of the Namespace to that person. That suggests an `adminUsername` field in the spec. The next manifest shows the result.
 
 ```yaml
 apiVersion: tenancy.acme.com/v1alpha1
@@ -203,7 +203,7 @@ spec:
 
 The name `team-x` is arbitrary. The `app-y` Namespace hosts a workload. The username `sam` comes from the company's identity provider, usually an Active Directory system or something similar.
 
-Submitting Example 11-3 results in `sam` being added to the subjects of a RoleBinding to the `namespace-admin` Role. Example 11-4 shows what the controller creates.
+Submitting that manifest results in `sam` being added to the subjects of a RoleBinding to the `namespace-admin` Role. The manifest after it shows what the controller creates.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -236,7 +236,7 @@ subjects:
 
 The `adminUsername` from the AcmeNamespace manifest goes into the RoleBinding, bound to the `namespace-admin` Role.
 
-Start from the behavior you want. Sam should be bound to the `namespace-admin` Role. The data you need is Sam's username and the Namespace name. Put those obvious pieces into your CRD spec first. Example 11-5 shows the Go type for the spec.
+Start from the behavior you want. Sam should be bound to the `namespace-admin` Role. The data you need is Sam's username and the Namespace name. Put those obvious pieces into your CRD spec first. The Go type for the spec follows.
 
 ```go
 // api/v1alpha1/acmenamespace_types.go
@@ -253,7 +253,7 @@ type AcmeNamespaceSpec struct {
 
 Kubebuilder generates your CRD manifest and a sample AcmeNamespace manifest from this source. Your first data model will probably prove too thin once you write the controller. You will then find fields you need, so expect to add them.
 
-Suppose you add a `deploymentTier` field. Example 11-6 shows a manifest that uses it.
+Suppose you add a `deploymentTier` field. A manifest that uses it follows.
 
 ```yaml
 apiVersion: tenancy.acme.com/v1alpha1
@@ -266,7 +266,7 @@ spec:
   deploymentTier: dev
 ```
 
-That field prompts the controller to create a ResourceQuota. Example 11-7 shows the quota for the `dev` tier.
+That field prompts the controller to create a ResourceQuota. The quota for the `dev` tier follows.
 
 ```yaml
 apiVersion: v1
@@ -280,7 +280,7 @@ spec:
     pods: "10"
 ```
 
-A `prod` tier gets a much larger default quota. Example 11-8 shows it.
+A `prod` tier gets a much larger default quota. It follows.
 
 ```yaml
 apiVersion: v1
@@ -394,7 +394,7 @@ Some state lives outside the cluster. Cloud infrastructure controllers must quer
 
 The desired state lives in the `spec`. In the Namespace operator, `namespaceName` sets the `metadata.name` of the Namespace, and `adminUsername` sets the name in the RoleBinding's subject. These are direct mappings. Often the mapping is less direct. The `deploymentTier` field works that way, because one value chooses many defaults in the controller logic.
 
-Example 11-10 shows the controller creating the Role and RoleBinding after the Namespace.
+The code below shows the controller creating the Role and RoleBinding after the Namespace.
 
 ```go
 // controllers/acmenamespace_controller.go
@@ -520,7 +520,7 @@ Suppose the webhook that approves every write to a resource goes down. Then noth
 
 Admission webhooks handle defaulting, validation and conversion. The same manager serves them, through `ctrl.NewWebhookManagedBy`. They need TLS certificates, normally from cert-manager. You also choose a `failurePolicy`. `Fail` protects correctness, but a down webhook blocks all writes of that type. `Ignore` does the opposite. For simple checks, prefer CEL validation rules and `ValidatingAdmissionPolicy`, so the operator is not on the admission path. Never run a webhook for a resource that the webhook's own Pod depends on.
 
-When you write a custom mutating or validating webhook with `controller-runtime`, your webhook struct implements the `admission.Handler` interface, which is `Handle(ctx context.Context, req admission.Request) admission.Response`. It uses `admission.PatchResponseFromRaw` to compute the JSONPatch diff automatically. That diff sits between the incoming raw object (`req.Object.Raw`) and the mutated Go struct marshaled to JSON. *Production Kubernetes*, chapter 8, shows this in its Cluster API `VSphereMachine` Infoblox IPAM webhook example. The same pattern applies when you mutate a `Pod` into `marshaledPod`. You should short-circuit immediately with `admission.Allowed(...)` if the target annotation is absent. Always check `req.DryRun` before you mutate external state, so that `kubectl --dry-run=server` requests stay side-effect free (untested here):
+When you write a custom mutating or validating webhook with `controller-runtime`, your webhook struct implements the `admission.Handler` interface, which is `Handle(ctx context.Context, req admission.Request) admission.Response`. It uses `admission.PatchResponseFromRaw` to compute the JSONPatch diff automatically. That diff sits between the incoming raw object (`req.Object.Raw`) and the mutated Go struct marshaled to JSON. *Production Kubernetes*, chapter 8, shows this in its Cluster API `VSphereMachine` Infoblox IPAM webhook example. The same pattern applies when you mutate a `Pod` into `marshaledPod`. You should short-circuit immediately with `admission.Allowed(...)` if the target annotation is absent. Always check `req.DryRun` before you mutate external state, so that `kubectl --dry-run=server` requests stay side-effect free:
 
 ```go
 // +kubebuilder:webhook:path=/infoblox-ipam,mutating=true,failurePolicy=fail,groups="infrastructure.cluster.x-k8s.io",resources=vspheremachines,verbs=create,versions=v1alpha3,name=mutating.infoblox.ipam.vspheremachines.infrastructure.cluster.x-k8s.io
@@ -683,7 +683,7 @@ Start with the self-checking Python lab. You can run it locally with the command
 python3 code/part05/controller_runtime_reconciler_sim_lab.py
 ```
 
-Next, work through the exercises below with `controller-gen`, `setup-envtest` and a kind cluster. The cluster deployment steps are untested here, so you will need to run them yourself.
+Next, work through the exercises below with `controller-gen`, `setup-envtest` and a kind cluster. The cluster deployment steps were not run on live hardware, so you will need to run them yourself.
 
 1. Scaffold or copy the 5.32 project, run `controller-gen`, and run the envtest suite with `-race`.
 2. Break the operator on purpose. Remove the node-event predicate, then observe the reconcile counts through the metrics endpoint. Remove the status no-op check, then observe the hot loop.

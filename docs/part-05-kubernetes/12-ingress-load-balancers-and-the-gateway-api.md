@@ -247,7 +247,7 @@ kubernetes 10.115.240.1 ... 443/TCP ... <none>
 
 The simplest use of Ingress is to pass everything it sees to one upstream service. `kubectl` has only limited commands for Ingress, so you start with a YAML file.
 
-Example 8-1. `simple-ingress.yaml`
+The `simple-ingress.yaml` manifest:
 
 ```
 apiVersion: networking.k8s.io/v1
@@ -294,9 +294,9 @@ With this file, every HTTP request that reaches the controller goes to the `alpa
 
 ### Routing by hostname
 
-Ingress gets useful when it routes on something in the request. The most common case is the HTTP `Host` header, which carries the DNS name from the original URL. Example 8-2 adds a second Ingress that sends traffic for `alpaca.example.com` to the `alpaca` service.
+Ingress gets useful when it routes on something in the request. The most common case is the HTTP `Host` header, which carries the DNS name from the original URL. The `host-ingress.yaml` manifest adds a second Ingress that sends traffic for `alpaca.example.com` to the `alpaca` service.
 
-Example 8-2. `host-ingress.yaml`
+The `host-ingress.yaml` manifest:
 
 ```
 apiVersion: networking.k8s.io/v1
@@ -357,9 +357,9 @@ You should now reach the `alpaca` service at `http://alpaca.example.com`. Reach 
 
 ### Routing by path
 
-Routing on the path as well as the hostname comes next. You add a `path` to the `paths` entry. Example 8-3 sends everything for `bandicoot.example.com` to the `bandicoot` service, and it sends `bandicoot.example.com/a` to the `alpaca` service. You can use this to host several services on different paths of one domain.
+Routing on the path as well as the hostname comes next. You add a `path` to the `paths` entry. The `path-ingress.yaml` manifest sends everything for `bandicoot.example.com` to the `bandicoot` service, and it sends `bandicoot.example.com/a` to the `alpaca` service. You can use this to host several services on different paths of one domain.
 
-Example 8-3. `path-ingress.yaml`
+The `path-ingress.yaml` manifest:
 
 ```
 apiVersion: networking.k8s.io/v1
@@ -425,9 +425,9 @@ Rewriting is not a silver bullet, though, and it often causes bugs. Many web app
 
 ### Serving TLS
 
-Secure HTTPS is now the norm for websites. Ingress supports TLS, as do most Ingress controllers. First, you give Ingress a Secret that holds your certificate and private key, and Example 8-4 shows its shape. You can also create the Secret from the command line with `kubectl create secret tls <secret-name> --cert <certificate-pem-file> --key <private-key-pem-file>`.
+Secure HTTPS is now the norm for websites. Ingress supports TLS, as do most Ingress controllers. First, you give Ingress a Secret that holds your certificate and private key, and the `tls-secret.yaml` manifest shows its shape. You can also create the Secret from the command line with `kubectl create secret tls <secret-name> --cert <certificate-pem-file> --key <private-key-pem-file>`.
 
-Example 8-4. `tls-secret.yaml`
+The `tls-secret.yaml` manifest:
 
 ```
 apiVersion: v1
@@ -441,9 +441,9 @@ tls.crt: <base64 encoded certificate>
 tls.key: <base64 encoded private key>
 ```
 
-Once the Secret exists, an Ingress object references it. The Ingress lists each certificate together with the hostnames it should serve, as Example 8-5 shows. If several Ingress objects name certificates for the same hostname, the behavior is undefined.
+Once the Secret exists, an Ingress object references it. The Ingress lists each certificate together with the hostnames it should serve, as the `tls-ingress.yaml` manifest shows. If several Ingress objects name certificates for the same hostname, the behavior is undefined.
 
-Example 8-5. `tls-ingress.yaml`
+The `tls-ingress.yaml` manifest:
 
 ```
 apiVersion: networking.k8s.io/v1
@@ -490,7 +490,7 @@ The table lists the common controllers and the proxy each one uses.
 | **Cloud**: AWS Load Balancer Controller (ALB/NLB), GKE Ingress/Gateway, AGIC (Azure) | Cloud LB | Managed, integrates with WAF/IAM; may route to pod IPs |
 | **Kong, Apache APISIX, Ambassador** | Envoy/NGINX | API gateway features: plugins, auth, rate limiting, developer portals |
 
-Read the notes column before you pick one. It flags risky snippet annotations and maintenance status.
+Read the Notes column before you pick one. It flags risky snippet annotations and maintenance status.
 
 You can run the controller as an autoscaled Deployment, or as a DaemonSet that uses `hostNetwork` or a NodePort with an external load balancer. Give it dedicated nodes when traffic is heavy. Set resource requests, a PDB, anti-affinity, `terminationGracePeriodSeconds` and a lifecycle so the controller drains gracefully. Finally, expose metrics for Prometheus and write access logs as structured JSON to stdout.
 
@@ -526,7 +526,7 @@ Kubernetes does not isolate network I/O or file descriptors with cgroups. So a n
 
 The first setting is node labels, taints and a `DaemonSet`. Label and taint the dedicated ingress nodes, then deploy the Ingress controller as a `DaemonSet` with a matching `nodeSelector` and taint `tolerations`. A small, fixed set of edge nodes also simplifies firewall exceptions and static backend pools on hardware load balancers.
 
-The second setting is host networking with `hostNetwork: true` and `ClusterFirstWithHostNet`. Binding the Ingress proxy container directly to the node's network namespace lets incoming packets reach the proxy without traversing the Kubernetes Service `iptables`/`IPVS` fabric. When `hostNetwork: true` is enabled, you must set `dnsPolicy: ClusterFirstWithHostNet`. That lets the proxy still resolve in-cluster `*.svc.cluster.local` Service names through CoreDNS, as in the book's Pod template snippet (untested here):
+The second setting is host networking with `hostNetwork: true` and `ClusterFirstWithHostNet`. Binding the Ingress proxy container directly to the node's network namespace lets incoming packets reach the proxy without traversing the Kubernetes Service `iptables`/`IPVS` fabric. When `hostNetwork: true` is enabled, you must set `dnsPolicy: ClusterFirstWithHostNet`. That lets the proxy still resolve in-cluster `*.svc.cluster.local` Service names through CoreDNS, as in this Pod template snippet:
 
 ```yaml
 spec:
@@ -787,7 +787,7 @@ Start with the self-checking Python lab. You can run it locally before you touch
 python3 code/part05/gateway_llm_router_lab.py
 ```
 
-Next, move to a cluster that has a LoadBalancer implementation and Helm. The shell steps below have not been run against live hardware. You work through these exercises in order.
+Next, move to a cluster that has a LoadBalancer implementation and Helm. The shell steps below were not run on live hardware. You work through these exercises in order.
 
 1. Install ingress-nginx and MetalLB, or a cloud LB. Deploy two echo services and create an Ingress with host and path rules. Test it with `curl --resolve`, observe the generated nginx config, and add TLS first with a self-signed cert, then with cert-manager and an internal CA.
 2. Deploy a mock SSE server that emits a token every 200 ms for 5 minutes. Observe the buffering effects with the defaults, then set timeouts and `proxy-buffering: off`. Verify with `curl -N`, test through a cloud or LB idle timeout, for example 60 s, and add keepalive comments.

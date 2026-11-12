@@ -1,0 +1,14 @@
+docs/part-03-python/16-classes-and-object-oriented-programming-in-depth.md 107
+docs/part-03-python/17-exceptions-unicode-managed-attributes-and-decorators.md 56
+docs/part-04-automation/05-ansible-inventory-hosts-groups-dynamic-inventory-and-variables.md 7
+docs/part-04-automation/08-ansible-handlers-conditionals-loops-blocks-and-error-handling.md 5
+docs/part-04-automation/10-debugging-ansible-playbooks.md 6
+docs/part-04-automation/11-ansible-roles-and-collections.md 5
+docs/part-04-automation/13-testing-ansible-ansible-lint-molecule-and-ci.md 7
+docs/part-04-automation/14-ansible-at-scale-performance-strategies-and-callbacks.md 5
+docs/part-04-automation/16-ansible-for-containers-cloud-and-network-devices.md 9
+docs/part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md 5
+docs/part-04-automation/23-production-grade-terraform-structure-testing-and-team-workflows.md 6
+docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md 8
+docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md 16
+docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md 9

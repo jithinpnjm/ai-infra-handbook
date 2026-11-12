@@ -30,11 +30,11 @@ Chapter 10.6 described the wires of NVLink and NVSwitch in two-GPU PCIe bridges,
 
 On an eight-GPU HGX or DGX server, that control plane is the NVIDIA Fabric Manager daemon `nvidia-fabricmanager.service`. On a multi-node NVL72 rack, it expands into NVOS on the switch trays coordinated by NMX-M. When Fabric Manager is stopped, version-mismatched, or beaten in a boot race by `kubelet`, workloads either fail peer-to-peer initialization or silently fall back onto the host PCIe bus.
 
-| Production incident (`nvidia-devops` & `bcm11-admin`) | What went wrong in the control or data plane | Measured operational impact |
+| Production incident | What went wrong in the control or data plane | Measured operational impact |
 |---|---|---|
-| 1. Post-reboot intra-node collective collapse (`nvidia-devops` V13 Ch 8; Legacy V1 Ch 4) | `nvidia-fabricmanager.service` (`15.234s` boot time) was disabled, mismatched against the driver, or started after `containerd` (`10.123s`) and `kubelet` (`5.234s`). | `nvidia-smi` shows 8 healthy GPUs, `nvidia-smi topo -m` prints `SYS` / `NODE` instead of `NV18`, and `nccl-tests` drops from `~800 GB/s` to `~90 GB/s`. |
-| 2. The 5th-pod / 8th-pod `TopologyAffinityError` (`nvidia-devops` V7 Ch 8 Customer Scenario) | Dual-socket `128`-core, `8`-GPU node (`64` cores and `4` GPUs per NUMA socket) runs `single-numa-node`, and OS daemonsets reserve `2` CPU cores on NUMA 1 (`62` free cores). | Pods requesting `16` integer cores + `1` GPU fit 4 pods on NUMA 0 (`64` cores) and 3 pods on NUMA 1 (`48` cores), stranding `14` free cores and `1` idle GPU (`14 < 16`). |
-| 3. 40% slowdown or `~50 Gbps` cap on a 400G InfiniBand fabric (`nvidia-devops` V7 Ch 5 & Ch 10) | Missing `nvidia-peermem` / BIOS Large BAR forces a Host Bounce Buffer, PCIe downtrains to x8 (`25–30 GB/s`), IB port sticks in `State: Initializing`, or DDP sends tiny `256 KB` messages. | Throughput drops from `~390 Gbps` to `~50 Gbps` (`6.25 GB/s`), or PyTorch runs 40% slow until DDP `bucket_cap_mb` is raised from `25 MB` to `50 MB`. |
+| 1. Post-reboot intra-node collective collapse | `nvidia-fabricmanager.service` (`15.234s` boot time) was disabled, mismatched against the driver, or started after `containerd` (`10.123s`) and `kubelet` (`5.234s`). | `nvidia-smi` shows 8 healthy GPUs, `nvidia-smi topo -m` prints `SYS` / `NODE` instead of `NV18`, and `nccl-tests` drops from `~800 GB/s` to `~90 GB/s`. |
+| 2. The 5th-pod / 8th-pod `TopologyAffinityError` | Dual-socket `128`-core, `8`-GPU node (`64` cores and `4` GPUs per NUMA socket) runs `single-numa-node`, and OS daemonsets reserve `2` CPU cores on NUMA 1 (`62` free cores). | Pods requesting `16` integer cores + `1` GPU fit 4 pods on NUMA 0 (`64` cores) and 3 pods on NUMA 1 (`48` cores), stranding `14` free cores and `1` idle GPU (`14 < 16`). |
+| 3. 40% slowdown or `~50 Gbps` cap on a 400G InfiniBand fabric | Missing `nvidia-peermem` / BIOS Large BAR forces a Host Bounce Buffer, PCIe downtrains to x8 (`25–30 GB/s`), IB port sticks in `State: Initializing`, or DDP sends tiny `256 KB` messages. | Throughput drops from `~390 Gbps` to `~50 Gbps` (`6.25 GB/s`), or PyTorch runs 40% slow until DDP `bucket_cap_mb` is raised from `25 MB` to `50 MB`. |
 
 The chapter explains what Fabric Manager does and how the three NVLink domain sizes differ. It then shows how NVSM and NVDebug collect health data from inside the operating system. The last sections follow the path from GPU to network adapter to fabric, and finish with a three-step benchmark ladder for finding which layer is slow.
 
@@ -70,9 +70,9 @@ As modeled in `code/part10/fabric_manager_nvlink.py`, NVIDIA platforms form thre
 
 | NVLink domain type | Max GPUs in domain | NVSwitch ASICs | Per-GPU bidirectional NVLink BW | Aggregate domain BW | Control plane that programs the fabric | Supports NVLink SHARP (`NVLS`)? |
 |---|---:|---:|---:|---:|---|---|
-| 1. PCIe 2-Way Bridge Pair (e.g., H100 NVL) | `2` | `0` | `600 GB/s` | `1.2 TB/s` | Direct P2P link training in `nvidia.ko` GPU driver; no Fabric Manager needed (`nvidia-devops` V4 Ch 4). | No |
-| 2. 8-GPU HGX / DGX Baseboard (H100/H200 or B200) | `8` | `4` (soldered on HGX PCB) | `900 GB/s` (H100)<br/>`1,800 GB/s` (B200) | `7.2 TB/s` (H100)<br/>`14.4 TB/s` (B200) | Host daemon `nvidia-fabricmanager.service` (`/usr/bin/nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg`) (`nvidia-devops` V7 Ch 3). | Yes (3rd/4th-gen NVSwitch) |
-| 3. 72-GPU GB200 / GB300 NVL72 Rack (`18` compute trays) | `72` | `18` (`9` switch trays x `2` ASICs) | `1,800 GB/s` (`1.8 TB/s`) | `129.6 TB/s` (`~130 TB/s`) | NVOS on switch trays + NMX-M (Network Manager eXperience) & cluster Fabric Manager (*AI Systems Performance Engineering* Ch 2; `superpod-gb300-ra`). | Yes (NVLS in-switch reduction engines) |
+| 1. PCIe 2-Way Bridge Pair (e.g., H100 NVL) | `2` | `0` | `600 GB/s` | `1.2 TB/s` | Direct P2P link training in `nvidia.ko` GPU driver; no Fabric Manager needed. | No |
+| 2. 8-GPU HGX / DGX Baseboard (H100/H200 or B200) | `8` | `4` (soldered on HGX PCB) | `900 GB/s` (H100)<br/>`1,800 GB/s` (B200) | `7.2 TB/s` (H100)<br/>`14.4 TB/s` (B200) | Host daemon `nvidia-fabricmanager.service` (`/usr/bin/nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg`). | Yes (3rd/4th-gen NVSwitch) |
+| 3. 72-GPU GB200 / GB300 NVL72 Rack (`18` compute trays) | `72` | `18` (`9` switch trays x `2` ASICs) | `1,800 GB/s` (`1.8 TB/s`) | `129.6 TB/s` (`~130 TB/s`) | NVOS on switch trays + NMX-M (Network Manager eXperience) & cluster Fabric Manager (`superpod-gb300-ra`). | Yes (NVLS in-switch reduction engines) |
 
 As documented in *AI Data Center Network Design and Technologies* Chapter 13, switched scale-up fabrics achieve sub-microsecond GPU-to-GPU latency compared to PCIe Gen5. That gap has also led to open scale-up specifications such as UALink and SUE-T, covered in Part 12.
 
@@ -111,7 +111,7 @@ The second rule is about order. In the `systemd-analyze blame` example below, Fa
 
 The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink error, recall from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit. The four NVSwitch ASICs are soldered onto the HGX baseboard, so a failed switch ASIC means returning the whole baseboard to the vendor under a return merchandise authorization, or RMA.
 
-| Operational rule (`bcm11-admin` §10.13; `nvidia-devops` Legacy V1 Ch 4, V4 Ch 3, V10 Ch 4, V13 Ch 8) | Exact versions, timings, or error codes | Consequence of violation & remediation |
+| Operational rule | Exact versions, timings, or error codes | Consequence of violation & remediation |
 |---|---|---|
 | 1. Strict driver version lock | `nvidia-driver` `570.59` must match `datacenter-gpu-manager-fabricmanager` `570.59-1` (`nvsm versions` on p. 671; mismatch example `570.59` vs `550.90.07-1`). | Fabric Manager exits on startup, leaving NVSwitch uninitialized; lock both packages in apt/yum or BCM software image. |
 | 2. Systemd boot ordering (`After=` + `Wants=`) | `systemd-analyze blame`: `nvidia-fabricmanager.service` takes `15.234s` (`144` sub-links across `4` switches), `containerd.service` takes `10.123s`, and `kubelet.service` takes `5.234s`. | Kubelet admits GPU pods before NVSwitch programming finishes, dropping NCCL from `~800 GB/s` to `~90 GB/s`; add `After=` and `Wants=` drop-ins. |
@@ -127,7 +127,7 @@ When an HGX or DGX node reports a degraded NVLink fabric or missing PCIe device,
 
 In the BCM 11 Administrator Manual Section 10.13, Base Command Manager provides a cluster-wide `nvsm` wrapper inside `cmsh` device mode alongside an automated `NVSMHealthDump` monitoring action on the active head node. When extracted, an `nvsm health` archive exposes a structured two-level directory tree (`boot/`, `etc/`, `nvsmhealth_commands/`, `proc/`, `usr/`, `var/`, plus JSON health files). That archive captures hundreds of system command outputs and `/proc` states for offline root-cause analysis.
 
-| `cmsh` `device -> nvsm` subcommand | Options | Operational purpose & output (`bcm11-admin` pp. 668–672) |
+| `cmsh` `device -> nvsm` subcommand | Options | Operational purpose & output |
 |---|---|---|
 | `nvsm alerts` | `--start <idx>`, `--limit <N>`, `-n <nodes>` | Lists active hardware and fabric alerts across nodes, such as `NVLink-C2C is reporting... System entered degraded... Unexpected Link Count`, `GPU0 is reporting NVLink link 0...`, or `PCI sub-system... Device is missing`. |
 | `nvsm health` | `--quick`, `--tags <tags>`, `-n <nodes>` | Executes a full health dump on target nodes and writes `/cm/shared/nvsm/<node>_YYYY-MM-DD-HH-MM-SS.tar.xz` (`417MiB` in the manual's example, `node001_2025-01-24-04-51-31.tar.xz`). A full dump takes about `15 minutes`; `--quick` finishes faster (`5.9MiB`) using more transient CPU and RAM. |
@@ -142,7 +142,7 @@ While `nvsm` targets in-band DGX health, complex fabric failures often require p
 
 To automate multi-plane log collection, the BCM 11 Administrator Manual Section 10.14 provides the `nvdebug` tool inside `cmsh` device mode. Starting a collection on a target node launches a transient systemd service and writes compressed log bundles to the shared cluster filesystem.
 
-| `nvdebug` parameter or command (`bcm11-admin` §10.14, pp. 672–674) | Supported values & flags | Operational behavior & telemetry |
+| `nvdebug` parameter or command | Supported values & flags | Operational behavior & telemetry |
 |---|---|---|
 | Platform types (`-t, --platform`) | `5` platform types: `DGX`, `arm64`, `x86_64`, `NVSwitch`, and `HGX-HMC`. | Selects platform-specific hardware registers and firmware log collectors. |
 | Log collector groups (`-g, --loggroup`) | `5` log groups: `HealthCheck`, `Host`, `IPMI`, `Redfish`, and `SSH`. | Filters which management planes are queried during bundle generation. |
@@ -188,11 +188,11 @@ In synchronous distributed training across Data, Pipeline, and Tensor Parallelis
 
 Standard Linux TCP/IP socket calls force a seven-step kernel penalty: user-to-kernel context switches, socket buffer copies, software TCP checksums, MTU segmentation, and millions of CPU interrupts per second. Similarly, routing AI training traffic through shared deep-buffer enterprise Ethernet switches introduces microburst queueing delays and packet drops unless lossless RDMA flow control is engineered end-to-end.
 
-| Production scenario (`nvidia-devops` V7 Ch 1 & Ch 4) | Network bottleneck mechanism | Quantified impact & architectural fix |
+| Production scenario | Network bottleneck mechanism | Quantified impact & architectural fix |
 |---|---|---|
-| 1. Synchronous 3D Parallelism collective wait (`V7 Ch 1`) | `10,000` GPUs finish forward/backward compute in `2 ms`, then wait `50 ms` for network `AllReduce` / `AllGather`. | Cluster runs at `2 / 52 ≈ 4%` compute efficiency (`9,999` GPUs stall if GPU `10,000` is delayed by `10 ms`). |
-| 2. 7-step TCP/IP kernel socket penalty (`V7 Ch 4 Customer Scenario`) | `100`-node Ray reinforcement-learning cluster with `100GbE` ConnectX-5 NICs uses standard Linux TCP sockets (`send()`) instead of RDMA. | `node_cpu_seconds_total` (`system` kernel threads) pins at `100%` CPU utilization and network throughput caps at `30 Gbps`; fixed by switching to kernel-bypass RDMA (`RoCEv2` / Verbs). |
-| 3. Enterprise Ethernet VLAN & deep-buffer switch proposal (`V7 Ch 1 Customer Scenario`) | Proposal to save `$2 Million` on a `500`-server H100 cluster by sharing enterprise core switches via VLANs and QoS. | Fails under synchronous `AllReduce` microbursts (`10 ms` deep-buffer queuing stalls all ranks); requires dedicated non-blocking InfiniBand or lossless RoCEv2 (`PFC`/`ECN`). |
+| 1. Synchronous 3D Parallelism collective wait | `10,000` GPUs finish forward/backward compute in `2 ms`, then wait `50 ms` for network `AllReduce` / `AllGather`. | Cluster runs at `2 / 52 ≈ 4%` compute efficiency (`9,999` GPUs stall if GPU `10,000` is delayed by `10 ms`). |
+| 2. 7-step TCP/IP kernel socket penalty | `100`-node Ray reinforcement-learning cluster with `100GbE` ConnectX-5 NICs uses standard Linux TCP sockets (`send()`) instead of RDMA. | `node_cpu_seconds_total` (`system` kernel threads) pins at `100%` CPU utilization and network throughput caps at `30 Gbps`; fixed by switching to kernel-bypass RDMA (`RoCEv2` / Verbs). |
+| 3. Enterprise Ethernet VLAN & deep-buffer switch proposal | Proposal to save `$2 Million` on a `500`-server H100 cluster by sharing enterprise core switches via VLANs and QoS. | Fails under synchronous `AllReduce` microbursts (`10 ms` deep-buffer queuing stalls all ranks); requires dedicated non-blocking InfiniBand or lossless RoCEv2 (`PFC`/`ECN`). |
 
 ### 3.2 `GPUDirect RDMA` (`BAR1` + `nvidia-peermem`) vs `GPUDirect Storage` (`GDS`, `libcufile`, `DALI`)
 
@@ -200,16 +200,16 @@ Enabling RDMA on the network adapter is only half the battle. Standard RDMA move
 
 NVIDIA solves both host-memory bottlenecks by exposing GPU HBM directly onto the PCIe bus via BAR1 so network adapters and NVMe controllers can DMA straight into GPU memory without touching the host CPU. GPUDirect RDMA uses the `nvidia-peermem.ko` kernel module to register GPU HBM pages with the InfiniBand or RoCE subsystem. Similarly, GPUDirect Storage uses `libcufile` and `nvidia-fs.ko` to move data directly between local NVMe or remote NVMe-oF storage arrays and GPU HBM.
 
-| Zero-copy technology (`nvidia-devops` V7 Ch 5 & Ch 6) | Required host hardware, BIOS, & kernel components | Production symptom when broken (`Customer Scenarios`) | Validated engineering fix |
+| Zero-copy technology | Required host hardware, BIOS, & kernel components | Production symptom when broken (`Customer Scenarios`) | Validated engineering fix |
 |---|---|---|---|
-| GPUDirect RDMA (GPU `←>` NIC `←>` Network `←>` NIC `←>` GPU) | BIOS Above 4G Decoding / Large BAR (`BAR1`), PCIe ACS disabled, `nvidia-peermem.ko` loaded, and GPU + NIC sharing a local PCIe Switch (`PIX`). | `4` DGX H100 servers on a `400G` InfiniBand switch achieve only `~50 Gbps` (`6.25 GB/s`) in PyTorch/NCCL due to Host Bounce Buffer staging (`V7 Ch 5`). | Load `nvidia-peermem`, disable PCIe ACS, enable BIOS Large BAR, and confirm `GPU Direct RDMA` on `NET/IB` in `NCCL_DEBUG=INFO`. |
-| GPUDirect Storage (GDS: NVMe / NVMe-oF `←>` NIC/PCIe `←>` GPU) | Local NVMe or remote NVMe-oF parallel file system (`WEKA`, `Lustre`, `IBM Storage Scale`), `nvidia-fs.ko`, and `libcufile` (`cuFileRead` / `cuFileWrite`). | `200 GB/s` WEKA array feeding `10 million` dashcam videos over `400G` IB caps at `10 GB/s` and `15%` GPU utilization via POSIX `open()`/`read()` Page Cache (`V7 Ch 6`). | Refactor data loader to NVIDIA DALI with GDS (`cuFile`) and verify with `gdscheck -p` and `gds_stats`. |
+| GPUDirect RDMA (GPU `←>` NIC `←>` Network `←>` NIC `←>` GPU) | BIOS Above 4G Decoding / Large BAR (`BAR1`), PCIe ACS disabled, `nvidia-peermem.ko` loaded, and GPU + NIC sharing a local PCIe Switch (`PIX`). | `4` DGX H100 servers on a `400G` InfiniBand switch achieve only `~50 Gbps` (`6.25 GB/s`) in PyTorch/NCCL due to Host Bounce Buffer staging. | Load `nvidia-peermem`, disable PCIe ACS, enable BIOS Large BAR, and confirm `GPU Direct RDMA` on `NET/IB` in `NCCL_DEBUG=INFO`. |
+| GPUDirect Storage (GDS: NVMe / NVMe-oF `←>` NIC/PCIe `←>` GPU) | Local NVMe or remote NVMe-oF parallel file system (`WEKA`, `Lustre`, `IBM Storage Scale`), `nvidia-fs.ko`, and `libcufile` (`cuFileRead` / `cuFileWrite`). | `200 GB/s` WEKA array feeding `10 million` dashcam videos over `400G` IB caps at `10 GB/s` and `15%` GPU utilization via POSIX `open()`/`read()` Page Cache. | Refactor data loader to NVIDIA DALI with GDS (`cuFile`) and verify with `gdscheck -p` and `gds_stats`. |
 
 ### 3.3 `ConnectX-6`, `ConnectX-7`, and `ConnectX-8` PCIe physics & the dual-200G OEM trap
 
 A GPU cannot push data onto the network faster than its local PCIe slot and network adapter can carry it. If a server pairs a Hopper or Blackwell GPU with an older PCIe generation or splits bandwidth across mismatched network cards, the PCIe bus becomes the bottleneck before packets ever reach the switch.
 
-Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 slot bandwidth (`code/part10/fabric_manager_nvlink.py`). In the Volume 07 Chapter 7 customer scenario, a discount OEM advertised 400 Gbps per H100 GPU by pairing two 200 Gbps ConnectX-6 PCIe Gen4 cards per GPU. Because each ConnectX-6 is capped at 200 Gbps and the GPU often lacks a direct local PCIe switch path to the second card, multi-rail NCCL routing degrades. Production H100 and B200 servers require a 1:1 generationally matched 400G ConnectX-7 or 800G ConnectX-8 pairing.
+Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 slot bandwidth (`code/part10/fabric_manager_nvlink.py`). In one customer scenario, a discount OEM advertised 400 Gbps per H100 GPU by pairing two 200 Gbps ConnectX-6 PCIe Gen4 cards per GPU. Because each ConnectX-6 is capped at 200 Gbps and the GPU often lacks a direct local PCIe switch path to the second card, multi-rail NCCL routing degrades. Production H100 and B200 servers require a 1:1 generationally matched 400G ConnectX-7 or 800G ConnectX-8 pairing.
 
 | SmartNIC generation | Line rate per port | Line rate in Bytes/sec | Host PCIe bus interface | Unidirectional PCIe x16 ceiling | Optical transceiver form factor | Matched GPU generation |
 |---|---:|---:|---|---:|---|---|
@@ -221,9 +221,9 @@ Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 s
 
 Even when every server has healthy NVSwitches, GPUDirect RDMA, and matched ConnectX-7 adapters, the cluster will stall if the top-of-rack and spine switches are oversubscribed or shared with bulk storage traffic. Because all ranks in a synchronous training collective transmit at line rate at the exact same microsecond, traditional data-center oversubscription ratios immediately cause congestion.
 
-As detailed in `nvidia-devops` Volume 07 Chapter 11 and Chapters 9.6 through 9.9, production AI fabrics follow three non-negotiable topology rules. They use 1:1 non-blocking rail-optimized fat-trees, enforce zero spine oversubscription on compute fabrics, and maintain physical separation between the compute fabric and the storage fabric.
+As Chapters 9.6 through 9.9 describe, production AI fabrics follow three non-negotiable topology rules. They use 1:1 non-blocking rail-optimized fat-trees, enforce zero spine oversubscription on compute fabrics, and maintain physical separation between the compute fabric and the storage fabric.
 
-| Cluster fabric design scenario (`nvidia-devops` V7 Ch 11) | Port & switch geometry | Operational behavior & why it matters |
+| Cluster fabric design scenario | Port & switch geometry | Operational behavior & why it matters |
 |---|---|---|
 | 1. Sizing a `128`-node (`1,024`-GPU) DGX H100 fat-tree (`Scenario 1`) | `64`-port Quantum-2 `400G` NDR switches (`32` ports down / `32` ports up = `1:1`). `1` Leaf Group of `8` rail-optimized Leaf switches serves `32` DGX nodes (`256` GPUs). | `128` servers (`1,024` GPUs / `1,024` NICs) require `4` Leaf Groups (`32` Leaf switches, `1,024` uplinks) connected to `16` Spine switches. |
 | 2. Why `2:1` spine oversubscription fails (`Scenario 2`) | Leaf switch connects `32` server ports down (`32 x 400G`) with only `16` uplinks to the Spine (`2:1` oversubscription). | A `512`-GPU training job running synchronous `AllReduce` drives `400 Gbps` on all `32` downlinks simultaneously, saturating the `16` uplinks and triggering IB credit backpressure. |
@@ -237,9 +237,9 @@ As detailed in `nvidia-devops` Volume 07 Chapter 11 and Chapters 9.6 through 9.9
 
 On a dual-socket GPU server, if Kubernetes assigns a pod a GPU on NUMA node 0 but allocates CPU cores or an SR-IOV NIC on NUMA node 1, every host-to-device transfer and network call must cross the inter-socket UPI or Infinity Fabric link. Conversely, enabling strict single-NUMA enforcement without accounting for OS and DaemonSet CPU overhead causes pods to fail admission with a topology affinity error while GPUs sit idle.
 
-The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. The simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces the Volume 07 Chapter 8 incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
+The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. The simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces a real customer incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
 
-| Policy or scenario (`nvidia-devops` V7 Ch 8) | Kubelet admission rule & NUMA math | Result on a `128`-core (`64`/NUMA), `8`-GPU (`4`/NUMA) server |
+| Policy or scenario | Kubelet admission rule & NUMA math | Result on a `128`-core (`64`/NUMA), `8`-GPU (`4`/NUMA) server |
 |---|---|---|
 | `none` (default) / `best-effort` | `none` ignores NUMA locality; `best-effort` prefers aligned placement but admits split-NUMA pods if needed. | Admits pods across split sockets, causing non-deterministic cross-socket latency. |
 | `restricted` / `single-numa-node` | Rejects pod with `TopologyAffinityError` unless devices fit within the minimum NUMA nodes (`restricted`) or `1` single NUMA node (`single-numa-node`). | Enforces local PCIe/NUMA locality for `Guaranteed` QoS pods with integer CPU requests. |
@@ -250,7 +250,7 @@ The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for
 
 When a distributed training job runs slowly or stalls, debugging inside Python or tweaking NCCL environment variables at random wastes hours. A slow job can be caused by a dead InfiniBand Subnet Manager, a dirty optical transceiver, a downtrained PCIe riser, a missing peer-memory kernel module, or tiny PyTorch gradient buckets.
 
-Follow the sequential C++ benchmark ladder from `nvidia-devops` Volume 07 Chapter 10 and Labs 03–04. By checking port state first, intra-node `nvbandwidth` second, raw wire `ib_write_bw` third, and `nccl-tests` fourth, you prove each physical layer before inspecting application code.
+Follow a sequential benchmark ladder. By checking port state first, intra-node `nvbandwidth` second, raw wire `ib_write_bw` third, and `nccl-tests` fourth, you prove each physical layer before inspecting application code.
 
 ```mermaid
 flowchart TB
@@ -270,21 +270,21 @@ flowchart TB
 
 | Step | Check | Finding | Cause and fix |
 |---|---|---|---|
-| 0 | `ibstat mlx5_0`, `rdma link show`, `/sys/class/infiniband/*/counters` | `Physical state: LinkUp` but `State: Initializing` (`CA type: MT4129`, FW `28.39.2048`) | Subnet Manager (`OpenSM` / `UFM`) not running or unreachable; start SM and verify `State: Active` and `SM lid` (`V7 Lab 03 Step 1`). |
-| 0 | Same (`/sys/class/infiniband/mlx5_0/ports/1/counters/*`) | `symbol_error`, `port_rcv_errors`, `link_error_recovery`, or `VL15_dropped` above `0` | Dirty optical transceiver or damaged fiber: clean or replace optics and verify with `mlxlink` (`V7 Lab 03 Step 2`). |
-| 1 | `nvbandwidth -t device_to_host_memcpy_ce` | `25–30 GB/s` (`28 GB/s`) instead of `50–60 GB/s` (`56 GB/s`) on PCIe Gen5 x16 | PCIe link downtrained (`x16` to `x8`): inspect `lspci -vv` `LnkSta`, reseat the riser or GPU (`V7 Ch 10 §1`). |
-| 2 | `ib_write_bw --report_gbits --duration 30` | `~195 Gbps`, half of `~390 Gbps` (`392 Gbps`) on `400G` NDR | Degraded optical lane or RoCE PFC/ECN loss: inspect `ibstat` and `mlxlink` width and speed (`V7 Ch 10 §2`). |
-| 3 | `nccl-tests` (`all_reduce_perf`) with `NCCL_DEBUG=INFO` | Log shows `NET/Socket` | TCP/IP socket fallback: expose `/dev/infiniband` in the container and set `NCCL_IB_HCA` (`V7 Ch 10 §3`). |
-| 3 | Same (`all_reduce_perf` with `NCCL_DEBUG=INFO`) | `NET/IB` without GDR (`~50 Gbps`, `6.25 GB/s`) | Host CPU bounce buffer: load `nvidia-peermem`, disable PCIe ACS, enable BIOS Large BAR (`V7 Ch 5 Customer Scenario`). |
-| 4 | Nsight Systems, PyTorch DDP `AllReduce` message sizes | Thousands of tiny `256 KB` `AllReduce` calls (job `40%` slow) | Latency-dominated small messages: raise DDP `bucket_cap_mb` from default `25 MB` to `50 MB` (`V7 Ch 10 Customer Scenario`). |
+| 0 | `ibstat mlx5_0`, `rdma link show`, `/sys/class/infiniband/*/counters` | `Physical state: LinkUp` but `State: Initializing` (`CA type: MT4129`, FW `28.39.2048`) | Subnet Manager (`OpenSM` / `UFM`) not running or unreachable; start SM and verify `State: Active` and `SM lid`. |
+| 0 | Same (`/sys/class/infiniband/mlx5_0/ports/1/counters/*`) | `symbol_error`, `port_rcv_errors`, `link_error_recovery`, or `VL15_dropped` above `0` | Dirty optical transceiver or damaged fiber: clean or replace optics and verify with `mlxlink`. |
+| 1 | `nvbandwidth -t device_to_host_memcpy_ce` | `25–30 GB/s` (`28 GB/s`) instead of `50–60 GB/s` (`56 GB/s`) on PCIe Gen5 x16 | PCIe link downtrained (`x16` to `x8`): inspect `lspci -vv` `LnkSta`, reseat the riser or GPU. |
+| 2 | `ib_write_bw --report_gbits --duration 30` | `~195 Gbps`, half of `~390 Gbps` (`392 Gbps`) on `400G` NDR | Degraded optical lane or RoCE PFC/ECN loss: inspect `ibstat` and `mlxlink` width and speed. |
+| 3 | `nccl-tests` (`all_reduce_perf`) with `NCCL_DEBUG=INFO` | Log shows `NET/Socket` | TCP/IP socket fallback: expose `/dev/infiniband` in the container and set `NCCL_IB_HCA`. |
+| 3 | Same (`all_reduce_perf` with `NCCL_DEBUG=INFO`) | `NET/IB` without GDR (`~50 Gbps`, `6.25 GB/s`) | Host CPU bounce buffer: load `nvidia-peermem`, disable PCIe ACS, enable BIOS Large BAR. |
+| 4 | Nsight Systems, PyTorch DDP `AllReduce` message sizes | Thousands of tiny `256 KB` `AllReduce` calls (job `40%` slow) | Latency-dominated small messages: raise DDP `bucket_cap_mb` from default `25 MB` to `50 MB`. |
 
 ---
 
 ## 5. Commands and Configurations That Matter
 
-All commands below are drawn from the BCM 11 Administrator Manual Sections 10.13 and 10.14 and `nvidia-devops` Volume 01 Chapter 4, Volume 05 Chapter 3, Volume 07 Labs 01–04, and Volume 13 Chapter 8. No multi-node HGX or InfiniBand hardware was available for this chapter, so the shell commands below are marked **(untested here)**.
+The commands below follow the BCM 11 Administrator Manual, Sections 10.13 and 10.14. No multi-node HGX or InfiniBand hardware was available for this chapter, so the commands below were not run on live hardware.
 
-### 5.1 Verify `nvidia-fabricmanager.service` and enforce systemd ordering before `containerd`/`kubelet` (untested here)
+### 5.1 Verify `nvidia-fabricmanager.service` and enforce systemd ordering before `containerd`/`kubelet`
 
 When an eight-GPU HGX server boots or updates its driver packages, verify that Fabric Manager matches the exact driver version. Then inspect systemd boot timings so `kubelet` cannot race ahead of NVSwitch initialization.
 
@@ -299,7 +299,7 @@ systemd-analyze blame | head -n 10
 systemd-analyze critical-chain kubelet.service
 ```
 
-Create `/etc/systemd/system/containerd.service.d/wait-for-fabricmanager.conf` and the identical drop-in for `kubelet.service` (`nvidia-devops` Legacy V1 Ch 4, Section 2.2).
+Create `/etc/systemd/system/containerd.service.d/wait-for-fabricmanager.conf` and the identical drop-in for `kubelet.service`.
 
 ```ini
 [Unit]
@@ -307,7 +307,7 @@ After=nvidia-fabricmanager.service
 Wants=nvidia-fabricmanager.service
 ```
 
-### 5.2 Run `nvsm` and `nvdebug` on a DGX host and inside BCM `cmsh` (untested here)
+### 5.2 Run `nvsm` and `nvdebug` on a DGX host and inside BCM `cmsh`
 
 To inspect in-band health on a single DGX node or collect cluster-wide support archives from the Base Command Manager head node, use `nvsm` and `nvdebug`.
 
@@ -320,7 +320,7 @@ sudo nvsm dump health
 curl -u admin:password -k https://<BMC_IP>/redfish/v1/Chassis/1/Thermal
 ```
 
-Inside Base Command Manager `cmsh` (`bcm11-admin` Sections 10.13 and 10.14, pp. 668–674) (untested here).
+Inside Base Command Manager `cmsh`:
 
 ```text
 [basecm11]% device
@@ -334,7 +334,7 @@ Inside Base Command Manager `cmsh` (`bcm11-admin` Sections 10.13 and 10.14, pp. 
 [basecm11->device]% nvdebug history -v
 ```
 
-### 5.3 Execute the 3-step data-path benchmark sequence (`nvbandwidth` → `ib_write_bw` → `nccl-tests`) (untested here)
+### 5.3 Execute the 3-step data-path benchmark sequence (`nvbandwidth` → `ib_write_bw` → `nccl-tests`)
 
 Run the four verification steps in strict order to isolate InfiniBand link state, intra-node PCIe bandwidth, raw RDMA wire speed, and multi-node GPUDirect RDMA collectives.
 
@@ -374,18 +374,18 @@ When an intra-node NVLink mesh or scale-out RDMA fabric degrades, use the sympto
 
 | # | Failure mode | Production symptom | Root cause & diagnostic evidence | Fix |
 |---|---|---|---|---|
-| 1 | `nvidia-fabricmanager` stopped, mismatched, or started after `kubelet` | After a node reboot or driver update, `nvidia-smi` shows 8 healthy GPUs, but `nccl-tests` bus bandwidth drops from `~800 GB/s` to `~90 GB/s` (or jobs fail P2P init). | `systemctl status nvidia-fabricmanager` is inactive/failed, or `nvidia-smi topo -m` shows `SYS`/`NODE` instead of `NV18` (`V4 Ch 1 §5.3`, `V13 Ch 8`). On boot races, `kubelet` (`5.234s`) started before `nvidia-fabricmanager` (`15.234s`). | Lock `nvidia-fabricmanager-<branch>` to the exact driver version (`570.59 == 570.59-1`), enable `nvidia-fabricmanager.service`, and add `After=` + `Wants=nvidia-fabricmanager.service` drop-ins to `containerd` and `kubelet`. |
-| 2 | `Xid 74` (NVLink Error) or failed NVSwitch ASIC on HGX baseboard | Multi-GPU training hangs at collective barriers or drops to `312 GB/s` on one pair; `dmesg` logs `NVRM: Xid ...: 74`. | `nvidia-smi nvlink --errorcounters`, `cmsh` `nvsm alerts`, and `dcgmi diag -r 2` show CRC/replay errors or dead NVSwitch ports (`VL4 Ch 3 §220`, `V6 Ch 2`). | Cordon the node and collect `/cm/shared/nvsm/<node>_*.tar.xz` (`nvsm health`). If a single SXM GPU failed, RMA the SXM FRU; if an on-board NVSwitch ASIC failed, RMA the full HGX baseboard via the OEM. |
-| 3 | InfiniBand port stuck at `Physical state: LinkUp` + `State: Initializing` | `rdma link show` and `nccl-tests` fail across the cluster even though optical transceivers show green link LEDs. | `ibstat mlx5_0` shows `Physical state: LinkUp` (fiber and optics are good) but logical `State: Initializing` (`V7 Lab 03 Step 1`). The InfiniBand Subnet Manager (`OpenSM` / `UFM`) is down or unreachable. | Start or fail over the InfiniBand Subnet Manager (`UFM` appliance / `opensm`) and verify `State: Active` and `SM lid` in `ibstat`. |
-| 4 | GPUDirect RDMA disabled (`~50 Gbps` Host Bounce Buffer on `400G` IB) | `ib_write_bw` hits `~390 Gbps`, yet multi-node `nccl-tests` / PyTorch crawls at `~50 Gbps` (`6.25 GB/s`) with high host CPU memory bus traffic. | `lsmod \| grep nvidia_peermem` is empty, PCIe ACS is enabled (`SrcValid+`), GPU and NIC sit across `SYS` NUMA sockets, or BIOS lacks Above 4G Decoding / Large BAR (`V7 Ch 5 Customer Scenario`). | Load and persist `nvidia-peermem`, disable PCIe ACS, enable Above 4G Decoding / Large BAR in BIOS, and verify `GPU Direct RDMA` enabled on `NET/IB` lines in `NCCL_DEBUG=INFO`. |
-| 5 | Kubelet `TopologyAffinityError` stranding GPUs under `single-numa-node` | On a `128`-core, `8`-GPU dual-socket node (`64` cores + `4` GPUs per NUMA socket), 4 pods requesting `16` CPUs + `1` GPU start, but the 5th/8th pod hangs in `TopologyAffinityError`. | System/DaemonSet processes consume `2` CPU cores on NUMA 1, leaving `62` free cores. After 3 pods take `48` cores on NUMA 1, only `14` cores remain (`< 16` requested), so `single-numa-node` rejects admission (`V7 Ch 8 Customer Scenario`). | Right-size the pod integer CPU request from `16` cores to `12` cores (`4 x 12 = 48 <= 62`) so all `8` pods fit within their local NUMA socket. |
-| 6 | Healthy `nvbandwidth`, `ib_write_bw`, and `nccl-tests`, but PyTorch DDP is `40%` slow | All three C++ hardware benchmarks pass at line rate (`56 GB/s` PCIe, `392 Gbps` IB, full `nccl-tests` bus BW), yet distributed PyTorch training runs `40%` below expectation. | Nsight Systems profiling shows the model issuing thousands of tiny `256 KB` `AllReduce` calls dominated by per-message handshake latency rather than bandwidth (`V7 Ch 10 Customer Scenario`). | Increase PyTorch `DistributedDataParallel` `bucket_cap_mb` from the `25 MB` default to `50 MB` (or higher, measured with Nsight Systems) to coalesce gradients into bandwidth-efficient transfers. |
+| 1 | `nvidia-fabricmanager` stopped, mismatched, or started after `kubelet` | After a node reboot or driver update, `nvidia-smi` shows 8 healthy GPUs, but `nccl-tests` bus bandwidth drops from `~800 GB/s` to `~90 GB/s` (or jobs fail P2P init). | `systemctl status nvidia-fabricmanager` is inactive/failed, or `nvidia-smi topo -m` shows `SYS`/`NODE` instead of `NV18`. On boot races, `kubelet` (`5.234s`) started before `nvidia-fabricmanager` (`15.234s`). | Lock `nvidia-fabricmanager-<branch>` to the exact driver version (`570.59 == 570.59-1`), enable `nvidia-fabricmanager.service`, and add `After=` + `Wants=nvidia-fabricmanager.service` drop-ins to `containerd` and `kubelet`. |
+| 2 | `Xid 74` (NVLink Error) or failed NVSwitch ASIC on HGX baseboard | Multi-GPU training hangs at collective barriers or drops to `312 GB/s` on one pair; `dmesg` logs `NVRM: Xid ...: 74`. | `nvidia-smi nvlink --errorcounters`, `cmsh` `nvsm alerts`, and `dcgmi diag -r 2` show CRC/replay errors or dead NVSwitch ports. | Cordon the node and collect `/cm/shared/nvsm/<node>_*.tar.xz` (`nvsm health`). If a single SXM GPU failed, RMA the SXM FRU; if an on-board NVSwitch ASIC failed, RMA the full HGX baseboard via the OEM. |
+| 3 | InfiniBand port stuck at `Physical state: LinkUp` + `State: Initializing` | `rdma link show` and `nccl-tests` fail across the cluster even though optical transceivers show green link LEDs. | `ibstat mlx5_0` shows `Physical state: LinkUp` (fiber and optics are good) but logical `State: Initializing`. The InfiniBand Subnet Manager (`OpenSM` / `UFM`) is down or unreachable. | Start or fail over the InfiniBand Subnet Manager (`UFM` appliance / `opensm`) and verify `State: Active` and `SM lid` in `ibstat`. |
+| 4 | GPUDirect RDMA disabled (`~50 Gbps` Host Bounce Buffer on `400G` IB) | `ib_write_bw` hits `~390 Gbps`, yet multi-node `nccl-tests` / PyTorch crawls at `~50 Gbps` (`6.25 GB/s`) with high host CPU memory bus traffic. | `lsmod \| grep nvidia_peermem` is empty, PCIe ACS is enabled (`SrcValid+`), GPU and NIC sit across `SYS` NUMA sockets, or BIOS lacks Above 4G Decoding / Large BAR. | Load and persist `nvidia-peermem`, disable PCIe ACS, enable Above 4G Decoding / Large BAR in BIOS, and verify `GPU Direct RDMA` enabled on `NET/IB` lines in `NCCL_DEBUG=INFO`. |
+| 5 | Kubelet `TopologyAffinityError` stranding GPUs under `single-numa-node` | On a `128`-core, `8`-GPU dual-socket node (`64` cores + `4` GPUs per NUMA socket), 4 pods requesting `16` CPUs + `1` GPU start, but the 5th/8th pod hangs in `TopologyAffinityError`. | System/DaemonSet processes consume `2` CPU cores on NUMA 1, leaving `62` free cores. After 3 pods take `48` cores on NUMA 1, only `14` cores remain (`< 16` requested), so `single-numa-node` rejects admission. | Right-size the pod integer CPU request from `16` cores to `12` cores (`4 x 12 = 48 <= 62`) so all `8` pods fit within their local NUMA socket. |
+| 6 | Healthy `nvbandwidth`, `ib_write_bw`, and `nccl-tests`, but PyTorch DDP is `40%` slow | All three C++ hardware benchmarks pass at line rate (`56 GB/s` PCIe, `392 Gbps` IB, full `nccl-tests` bus BW), yet distributed PyTorch training runs `40%` below expectation. | Nsight Systems profiling shows the model issuing thousands of tiny `256 KB` `AllReduce` calls dominated by per-message handshake latency rather than bandwidth. | Increase PyTorch `DistributedDataParallel` `bucket_cap_mb` from the `25 MB` default to `50 MB` (or higher, measured with Nsight Systems) to coalesce gradients into bandwidth-efficient transfers. |
 
 ---
 
 ## 7. Hands-On Lab: Verify NVLink Domains, Fabric Manager Rules, Topology Manager Admission, and 3-Step Benchmark Triage
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using the Python standard library. All live `systemctl`, `nvsm`, `nvdebug`, `nvbandwidth`, `ib_write_bw`, and `all_reduce_perf` commands are in Section 5 and marked `(untested here)`.
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using the Python standard library. All live `systemctl`, `nvsm`, `nvdebug`, `nvbandwidth`, `ib_write_bw`, and `all_reduce_perf` commands are in Section 5.
 
 Run `code/part10/fabric_manager_nvlink_lab.py` to execute all 25 verification checks.
 
@@ -471,7 +471,7 @@ A two-GPU PCIe bridge wires two GPUs directly together point-to-point and is ini
 <details>
 <summary>**4. Why must `systemctl edit containerd.service` and `kubelet.service` include both `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service`?**</summary>
 
-In systemd, `Wants=` or `Requires=` declares a dependency but does not enforce startup ordering. Because Fabric Manager can take many seconds to initialize NVSwitches (15 seconds in the book's example) while `containerd` and `kubelet` start faster, omitting `After=nvidia-fabricmanager.service` allows `kubelet` to schedule GPU pods before the NVLink mesh is ready.
+In systemd, `Wants=` or `Requires=` declares a dependency but does not enforce startup ordering. Because Fabric Manager can take many seconds to initialize NVSwitches (15 seconds in the reference example) while `containerd` and `kubelet` start faster, omitting `After=nvidia-fabricmanager.service` allows `kubelet` to schedule GPU pods before the NVLink mesh is ready.
 </details>
 
 <details>
@@ -524,7 +524,7 @@ Without GPUDirect RDMA, incoming RDMA packets land in host CPU system RAM and mu
 </details>
 
 <details>
-<summary>**12. How does `GPUDirect Storage` (`GDS`) differ from `GPUDirect RDMA`, and why did the Volume 07 Chapter 6 customer see only `10 GB/s` from a `200 GB/s` WEKA array?**</summary>
+<summary>**12. How does `GPUDirect Storage` (`GDS`) differ from `GPUDirect RDMA`, and why did a customer see only `10 GB/s` from a `200 GB/s` WEKA array?**</summary>
 
 GPUDirect RDMA moves data directly between local GPU HBM and remote GPU HBM over the network. GPUDirect Storage uses `libcufile` and `nvidia-fs.ko` to DMA data directly between local NVMe or remote NVMe-oF storage and GPU HBM. The customer saw only 10 GB/s because standard Python file reads invoke the Linux POSIX VFS and stage frames through the host CPU Page Cache. Switching to NVIDIA DALI with GDS unlocks the direct DMA path.
 </details>

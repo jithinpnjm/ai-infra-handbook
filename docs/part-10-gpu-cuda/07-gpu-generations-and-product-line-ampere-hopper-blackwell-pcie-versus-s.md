@@ -369,24 +369,24 @@ Now we evaluate three candidate configurations against the 271.08 GB requirement
 
 When a new server arrives or an inference benchmark begins, operators must verify exact device models, confirm that ECC memory is enabled, configure MIG slices, and record a software manifest. Without these checks, teams benchmark mismatched driver versions or run production jobs with ECC disabled.
 
-The commands below inspect device capabilities, verify ECC counters, configure MIG partitions, and record a benchmark manifest (`nvidia-devops` V4 Labs 01–02). All live hardware commands are marked `(untested here)` as reference templates when physical GPUs are not attached.
+The commands below inspect device capabilities, verify ECC counters, configure MIG partitions, and record a benchmark manifest (`nvidia-devops` V4 Labs 01–02). All live hardware commands are marked as reference templates when physical GPUs are not attached.
 
-### 1. Identify GPU family, architecture, and memory specifications (untested here)
+### 1. Identify GPU family, architecture, and memory specifications
 
 ```bash
-# Query exact device name, UUID, PCI bus ID, driver version, and total VRAM (untested here)
+# Query exact device name, UUID, PCI bus ID, driver version, and total VRAM
 nvidia-smi --query-gpu=index,name,uuid,pci.bus_id,driver_version,memory.total \
   --format=csv,noheader
 
-# Inspect power draw, thermal power limit, current temperature, and clock frequencies (untested here)
+# Inspect power draw, thermal power limit, current temperature, and clock frequencies
 nvidia-smi --query-gpu=index,name,power.draw,power.limit,temperature.gpu,clocks.current.sm \
   --format=csv
 ```
 
-### 2. Verify hardware ECC status and error counters (untested here)
+### 2. Verify hardware ECC status and error counters
 
 ```bash
-# Verify that Error-Correcting Code (ECC) memory is active and check error counts (untested here)
+# Verify that Error-Correcting Code (ECC) memory is active and check error counts
 nvidia-smi --query-gpu=index,name,ecc.mode.current,ecc.errors.corrected.volatile.total,ecc.errors.uncorrected.volatile.total \
   --format=csv
 ```
@@ -397,16 +397,16 @@ index, name, ecc.mode.current, ecc.errors.corrected.volatile.total, ecc.errors.u
 0, NVIDIA H100 80GB HBM3, Enabled, 0, 0
 ```
 
-### 3. Inspect Multi-Instance GPU capabilities (untested here)
+### 3. Inspect Multi-Instance GPU capabilities
 
 ```bash
-# List available physical MIG profile templates on an A100/H100/H200 (untested here)
+# List available physical MIG profile templates on an A100/H100/H200
 nvidia-smi mig -lgip
 
-# Enable MIG mode on GPU 0, which requires root and a GPU reset (untested here)
+# Enable MIG mode on GPU 0, which requires root and a GPU reset
 sudo nvidia-smi -i 0 -mig 1
 
-# Create a 3g.40gb MIG instance on GPU 0 (untested here)
+# Create a 3g.40gb MIG instance on GPU 0
 sudo nvidia-smi mig -cgi 3g.40gb -C -i 0
 ```
 

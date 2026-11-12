@@ -199,7 +199,7 @@ def longest_run_below(values, limit):
 
 The second function is the classic follow-up: the maximum of every window of k values. The deque stores indexes of values in decreasing order. When a new value arrives, every smaller value at the back can never be the maximum again, so you pop them. Each index enters and leaves once, so the work is O(n) even though there is a loop inside a loop.
 
-I measured the claim on this Mac with Python 3.12.7, window size 1,000. The deque version took 0.0012, 0.0028 and 0.0052 seconds for 10,000, 20,000 and 40,000 values. The naive version took 0.0567, 0.1184 and 0.2495 seconds. Doubling n doubles both, as it should for fixed k, but the naive one pays a factor of about k. That is a timing on one machine, not a guarantee.
+A timing on a Mac with Python 3.12.7 and window size 1,000 shows the claim. The deque version took 0.0012, 0.0028 and 0.0052 seconds for 10,000, 20,000 and 40,000 values. The naive version took 0.0567, 0.1184 and 0.2495 seconds. Doubling n doubles both, as it should for fixed k, but the naive one pays a factor of about k. That is a timing on one machine, not a guarantee.
 
 
 
@@ -344,7 +344,7 @@ class RunningMedian:
         return (-self.low[0] + self.high[0]) / 2
 ```
 
-Time is O(n log k) and memory O(k). I measured k equal to 10. The heap took 0.0045 seconds for 100,000 samples and 0.0185 for 400,000. Sorting and slicing took 0.0154 and 0.0735. So the heap was three to four times faster here, but both grew linearly with n. Do not claim a dramatic speedup. The honest claim is the memory: the heap never holds more than k items, which matters on a stream.
+Time is O(n log k) and memory O(k). A measurement with k equal to 10 gives this. The heap took 0.0045 seconds for 100,000 samples and 0.0185 for 400,000. Sorting and slicing took 0.0154 and 0.0735. So the heap was three to four times faster here, but both grew linearly with n. Do not claim a dramatic speedup. The honest claim is the memory: the heap never holds more than k items, which matters on a stream.
 
 The second function merges k sorted streams, such as the logs from k servers, lazily. The heap holds one head per stream. Pop the smallest, refill from the same stream. The stream index in the tuple is the tiebreaker, because Python compares tuples element by element and would otherwise try to compare two payloads that may not be comparable. The test proves laziness with an endless generator, because an eager merge would never return.
 
@@ -652,7 +652,7 @@ class LRUList:
 
 In `LRUOrdered`, `move_to_end` marks a key as most recent and `popitem(last=False)` drops the oldest. Fluent Python, chapter 3, lists both methods. In `LRUList`, the map goes from key to node. The sentinels at each end remove every special case for an empty list. Each node stores its key, and that is not decoration. When you evict the tail node, you must know which dictionary key to delete.
 
-Every operation is O(1). I timed 200,000 get-or-put operations with capacity 1,000. The `OrderedDict` took 0.030 seconds and the hand-built list 0.053. Both are constant per operation. The built-in structure is simply written in C.
+Every operation is O(1). A timing of 200,000 get-or-put operations with capacity 1,000 shows this. The `OrderedDict` took 0.030 seconds and the hand-built list 0.053. Both are constant per operation. The built-in structure is simply written in C.
 
 The test runs both caches against a reference model through 2,000 random operations, comparing the full recency order after every step. It also stores a value of 0, since the classic bug is treating a falsy value as a miss.
 
@@ -722,7 +722,7 @@ def modulo_moved_fraction(n_before, n_after, keys):
 
 The built-in `hash` for strings changes between Python processes, so the ring uses a SHA-256 prefix. That is the first thing to say when asked why you did not just call `hash()`.
 
-Lookup is a binary search on the sorted points, and the modulo wraps the circle. I measured balance as the highest node load divided by the mean, for 10 nodes and 100,000 keys. With 1 point per node the ratio was 1.935. With 10 points it was 1.573, with 100 it was 1.106 and with 1,000 it was 1.035. The lookup cost rose only from 0.054 to 0.074 seconds per 100,000 lookups when the number of ring points went from 200 to 20,000, which fits O(log N).
+Lookup is a binary search on the sorted points, and the modulo wraps the circle. Balance here is the highest node load divided by the mean, for 10 nodes and 100,000 keys. With 1 point per node the ratio was 1.935. With 10 points it was 1.573, with 100 it was 1.106 and with 1,000 it was 1.035. The lookup cost rose only from 0.054 to 0.074 seconds per 100,000 lookups when the number of ring points went from 200 to 20,000, which fits O(log N).
 
 The tests check the movement claim. Adding an eleventh node to ten moved between 5 and 15 percent of 20,000 keys on the ring, against over 85 percent for modulo hashing. Removing a node moved only that node's keys.
 
@@ -1150,7 +1150,7 @@ def true_p99(groups):
     return percentile(sorted(x for g in groups for x in g), 99)
 ```
 
-A t-digest is a more advanced sketch. At a high level it keeps a small set of clusters, each with a mean and a count, with very small clusters at the tails so extreme percentiles stay accurate, and two digests can be merged. I did not implement it. If asked, describe that idea and say a library is the right choice in practice.
+A t-digest is a more advanced sketch. At a high level it keeps a small set of clusters, each with a mean and a count, with very small clusters at the tails so extreme percentiles stay accurate, and two digests can be merged. It is not implemented in the code folder. If asked, describe that idea and say a library is the right choice in practice.
 
 The trap in the last two functions is the one to remember. If a quiet server has 1,000 requests with p99 of 10 and a busy one has 10 requests with p99 of 100, the average of the two p99s is 55. The true p99 across all 1,010 requests is 12. The test asserts exactly those numbers. Averaging percentiles weights a server with ten requests as much as one with a thousand. **To combine servers, merge the histograms or the raw samples, then take the percentile.** The same rule explains why a Prometheus query for a fleet p99 uses `histogram_quantile` over summed bucket rates and not an average of per-instance quantiles. The Prometheus histogram guide shows `histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))` as the good form. It says averaging quantiles gives statistically nonsensical values, and it adds that this works only while the bucket boundaries match across instances.
 
@@ -1339,7 +1339,7 @@ async def fetch_all(fns, per_call_timeout, overall_timeout):
 
 Producer and consumer. A bounded `queue.Queue` connects them, so a slow consumer slows the producer instead of letting memory grow. This is the same idea as the bounded request queue that Distributed AI Systems, chapter 9, recommends, with 503 as the overflow response. The producer sends one sentinel per worker so each worker knows when to stop.
 
-The thread-safe counter. The Python FAQ for 3.12 says that `i = i+1` is not atomic and that, when in doubt, you should use a mutex. So the locked `Counter` is correct and `UnsafeCounter` is wrong by specification. I ran the unsafe counter with 8 threads and 200,000 increments each on Python 3.12.7. It reported exactly 1,600,000, so I could not make the race appear. That does not make it safe. The scheduler may switch between the bytecodes of the read, the add and the write, and other interpreter versions or other operations can lose updates. Never offer "it worked when I ran it" as a proof. Systems Performance, chapter 5, describes mutexes as making other threads block and wait off the CPU.
+The thread-safe counter. The Python FAQ for 3.12 says that `i = i+1` is not atomic and that, when in doubt, you should use a mutex. So the locked `Counter` is correct and `UnsafeCounter` is wrong by specification. Running the unsafe counter with 8 threads and 200,000 increments each on Python 3.12.7 reported exactly 1,600,000, so the race did not appear. That does not make it safe. The scheduler may switch between the bytecodes of the read, the add and the write, and other interpreter versions or other operations can lose updates. Never offer "it worked when I ran it" as a proof. Systems Performance, chapter 5, describes mutexes as making other threads block and wait off the CPU.
 
 Asyncio. Fluent Python, chapter 21, shows `asyncio.gather` waiting for all awaitables and returning results in the order they were submitted. The 3.12 documentation adds that if one raises and `return_exceptions` is false, the exception propagates immediately and the other awaitables keep running. Our `fetch_all` therefore wraps each call so it never raises, gives each call its own timeout with `wait_for`, and puts an overall timeout around the whole gather. The tests show three different outcomes for a fast, a slow and a failing call, and that the overall timeout cancels everything. Python 3.11 added `asyncio.timeout` and `asyncio.TaskGroup` as the modern alternatives.
 
@@ -1403,7 +1403,7 @@ All of this lab ran on this Mac with Python 3.12.7 and pytest 8.3.5. Nothing nee
 python3 -m pytest code/part20/test_c09_logs_windows.py code/part20/test_c09_heaps_intervals.py code/part20/test_c09_ratelimit_lru_ring.py code/part20/test_c09_rest.py -q
 ```
 
-Expected result: 65 passed. That is what I observed.
+Expected result: 65 passed.
 
 2. Measure the complexity claims.
 
@@ -1424,7 +1424,7 @@ ring balance (max load / mean) 10 nodes, 100k keys
 
 3. Break the code on purpose. In `c09_intervals.py`, replace `max(out[-1][1], e)` with `e`, and rerun the second test file. Expected result: `test_merge_intervals` fails. Restore the line. Then in `c09_lru.py`, delete the `move_to_end` call in `get` and watch the random cross-check fail. These mutations show what the tests guard.
 
-I did not run these lab steps in a container, and I did not run the mutation steps. The test and measurement steps are the ones that ran.
+These lab steps were not run in a container, and the mutation steps were not run. The test and measurement steps are the ones that ran.
 
 ## Drill questions
 

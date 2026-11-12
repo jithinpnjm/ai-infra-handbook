@@ -566,7 +566,7 @@ Dual ownership is what you avoid. When OS packages and Operator containers both 
 </details>
 
 <details>
-<summary>**11. What are the five sequential GPU node readiness gates defined in Volume 10 Chapter 7?**</summary>
+<summary>**11. What are the five sequential GPU node readiness gates defined Chapter 7?**</summary>
 
 1. **Infrastructure gate:** Correct OS image, kernel policy, network, registry access, and node-pool controls are in place.
 2. **Driver gate:** The GPU is visible on PCIe, and `nvidia-smi` exits zero against the driver interface.

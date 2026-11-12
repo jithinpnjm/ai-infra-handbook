@@ -78,7 +78,7 @@ After completing this chapter you will be able to:
 
 ### 1.1 The four profilers
 
-You have four profilers to choose from when a job is slow. NVIDIA Zero-to-Hero Volume 16 chapter 7 and Volume 7 chapter 2 walk through all four.
+You have four profilers to choose from when a job is slow. The sections below cover all four.
 
 | Profiler | What it profiles | When to use |
 |---|---|---|
@@ -264,7 +264,7 @@ Nsight Systems dashboard panels:
 - NVTX range timeline: the application's logical ranges
 ```
 
-AI Systems Performance Engineering, chapter 13, treats large gaps in the timeline, which it calls bubbles, as a problem. Small synchronization gaps are expected. Check that host-side data loading overlaps with GPU compute, as the book recommends.
+*AI Systems Performance Engineering*, Chapter 13, treats large gaps in the timeline, which it calls bubbles, as a problem. Small synchronization gaps are expected. Check that host-side data loading overlaps with GPU compute.
 
 Before you tune a kernel, confirm that the timeline shows the GPU is busy in the first place.
 

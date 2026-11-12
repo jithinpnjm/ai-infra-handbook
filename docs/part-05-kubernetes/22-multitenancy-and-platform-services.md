@@ -208,7 +208,7 @@ In a multitenant setup, the pipeline creates Namespaces and their related object
 - **Network policies**: let the application talk to itself and to shared cluster services, but not to other applications, where that is required.
 - **Quotas**: limit how many resources one Namespace may use. That reduces the risk of a noisy neighbor.
 - **Limit ranges**: set sensible defaults for objects created in the Namespace.
-- **Pod Security Admission labels**: keep workloads on safe defaults, such as not running as the root user. The source book names Pod Security Policies here, but those were removed in Kubernetes 1.25.
+- **Pod Security Admission labels**: keep workloads on safe defaults, such as not running as the root user. Pod Security Policies, which older guidance names here, were removed in Kubernetes 1.25.
 
 Not every item is needed in every case. Together, though, they let platform teams onboard a new team without manual steps.
 
@@ -254,7 +254,7 @@ Owning a cluster is less common, though. Even skilled teams rarely want to spend
 
 ### The `Team` custom resource operator pattern and the 4-stage spectrum of platform abstractions
 
-Rendering tenant YAML in CI/CD pipelines is one option. *Production Kubernetes* (Chapter 16) shows a second one. Mature platforms implement self-service tenant onboarding inside the cluster, using a custom **`Team` operator**. A platform engineer or a portal submits a `Team` custom resource that names the owner and the resource quotas. The in-cluster controller then keeps reconciling the tenant's `Namespace`, `RoleBinding`s, `ResourceQuota`, `LimitRange`, `NetworkPolicy`, and even Grafana dashboards or Alertmanager routes. If someone accidentally deletes a role or a quota, the controller restores it. In the book's example (untested here):
+Rendering tenant YAML in CI/CD pipelines is one option. *Production Kubernetes* (Chapter 16) shows a second one. Mature platforms implement self-service tenant onboarding inside the cluster, using a custom **`Team` operator**. A platform engineer or a portal submits a `Team` custom resource that names the owner and the resource quotas. The in-cluster controller then keeps reconciling the tenant's `Namespace`, `RoleBinding`s, `ResourceQuota`, `LimitRange`, `NetworkPolicy`, and even Grafana dashboards or Alertmanager routes. If someone accidentally deletes a role or a quota, the controller restores it. An example:
 
 ```yaml
 apiVersion: examples.namespace-operator.io/v1
@@ -278,7 +278,7 @@ After onboarding, you still have to decide how much Kubernetes to expose to appl
 
 1. **Stage 1, command-line tooling and local UIs (no API abstraction):** Developers use raw `kubectl`, helped by shell tools. `kubectx` switches contexts, `kubens` switches namespaces, and other plug-ins tail logs or handle SSO credentials. Workstation clients such as Octant and Lens render cluster state from the developer's local `kubeconfig`. This stage gives full flexibility. The price is that every developer needs RBAC, admission guardrails and Kubernetes knowledge.
 2. **Stage 2, templating with Helm and Kustomize:** Platform engineers package the roughly ten underlying objects a typical service needs (`Deployment`, `StatefulSet`, `Service`, PVC, `ConfigMap`, `Secret`) into a Helm chart. It exposes a small `Values.yaml` interface, which can be piped into Kustomize, or into a web UI generator such as Ambassador's K8s Initializer, to patch fields the chart did not template. Developers still apply native Kubernetes objects. That keeps the upstream community documentation and debugging familiarity.
-3. **Stage 3, abstracting Kubernetes primitives with custom workload CRDs (`PinterestService`):** The platform team defines a high-level custom resource and an operator that wraps several native resources and external integrations, such as internal DNS registration. In the book's example from Pinterest (`PinterestService`, untested here), a 25-line custom resource replaces more than 350 lines of raw `Deployment`, `Service`, `Ingress`, IAM role and sidecar YAML:
+3. **Stage 3, abstracting Kubernetes primitives with custom workload CRDs (`PinterestService`):** The platform team defines a high-level custom resource and an operator that wraps several native resources and external integrations, such as internal DNS registration. In the Pinterest example (`PinterestService`), a 25-line custom resource replaces more than 350 lines of raw `Deployment`, `Service`, `Ingress`, IAM role and sidecar YAML:
 
 ```yaml
 apiVersion: pinterest.com/v1
@@ -308,7 +308,7 @@ spec:
           image: gcr.io/kuar-demo/kuard-amd64:1
 ```
 
-   When you build custom workload CRDs, the book recommends keeping a **break-glass** window into the underlying native objects, such as `Pod`s, PVCs and events. That way, engineers can still use standard Kubernetes troubleshooting knowledge when an abstraction leaks.
+   When you build custom workload CRDs, keep a **break-glass** window into the underlying native objects, such as `Pod`s, PVCs and events. That way, engineers can still use standard Kubernetes troubleshooting knowledge when an abstraction leaks.
 4. **Stage 4, making Kubernetes invisible (full PaaS and developer portals):** Developers push source code or a minimal build, deploy and release file, and never write Kubernetes YAML. The platforms involved are ported to Kubernetes or built on top of it. Examples include Cloud Foundry, Google App Engine, Red Hat OpenShift, Spotify's Backstage developer portal, and HashiCorp Waypoint. Waypoint encapsulates `build` with `pack`, `deploy` to `kubernetes` and `release` in a single HCL file.
 
 ### Stage 1 in practice: raw kubectl and its limits
@@ -651,7 +651,7 @@ Start with the self-checking Python lab, which you can run on your own machine w
 python3 code/part05/multitenancy_quota_reconciler_lab.py
 ```
 
-Next, move to a `kind` or `kubeadm` cluster. All interactive shell steps below are `untested here`, so treat them as a plan until you run them yourself. Work through these exercises:
+Next, move to a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware, so treat them as a plan until you run them yourself. Work through these exercises:
 
 1. Build a namespace baseline. Write a tenant template as Helm or Kustomize. It should include the namespace, labels, RBAC for an OIDC group, a ResourceQuota and LimitRange, a default-deny and DNS NetworkPolicy, PSA labels and StorageClass access. Instantiate it for two teams. Then verify isolation with cross-tenant access tests for pod-to-pod traffic, secrets and PVCs.
 2. Test quota behaviour. Exceed each quota type, which covers pods, GPUs through a fake extended resource, storage and object counts. Read the errors you get. Then test quota with Pending and completed pods, and apply PriorityClass-scoped quotas.
@@ -798,7 +798,7 @@ Garbage collection forbids a namespaced resource from being the `ownerReference`
 </details>
 
 <details>
-<summary>13. Summarize the 4-Stage Spectrum of Platform Abstractions from *Production Kubernetes* Chapter 16 (Figure 16-2), and state the trade-off of moving from Stage 1 to Stage 4.</summary>
+<summary>13. Summarize the 4-Stage Spectrum of Platform Abstractions from *Production Kubernetes* Chapter 16, and state the trade-off of moving from Stage 1 to Stage 4.</summary>
 
 1. **Stage 1, raw Kubernetes with CLI and UI helpers (`kubectl`, `kubectx`, `kubens`, Octant, Lens):** There is no API abstraction. You get full upstream Kubernetes compatibility and skills that transfer. But every developer must understand Kubernetes primitives, and you need strict RBAC and admission guardrails.
 2. **Stage 2, templating (Helm + Kustomize, K8s Initializer):** Developers fill in a small `values.yaml`, or a web wizard, that renders standard `Deployment`/`Service`/`Ingress` objects. This hides the YAML boilerplate, and the standard Kubernetes objects stay visible for debugging.

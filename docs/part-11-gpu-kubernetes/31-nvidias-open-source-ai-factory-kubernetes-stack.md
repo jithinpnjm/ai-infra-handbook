@@ -195,7 +195,7 @@ One boundary matters in an incident. The NVKE docs say it is not responsible for
 
 ### What managed means here
 
-This comparison is my own reasoning. The NVKE documents do not compare it with other services, and I did not read the Nebius or hyperscaler documents for this chapter.
+This comparison is the handbook's own reasoning. The NVKE documents do not compare it with other services, and the Nebius and hyperscaler documents were not consulted.
 
 | Question | Managed Kubernetes from a cloud provider | NVKE |
 |---|---|---|
@@ -249,7 +249,7 @@ nodePools:
       release: example-ubuntu-24.04-amd64
 ```
 
-Three fields deserve attention. The version has no leading `v`, and the API rejects one. `etcdEncrypted` is required, and the API reference says it can be turned on later but never off. The node labels are applied once when a node joins, and the preview cannot change them afterwards. I validated this file against the repository's OpenAPI schema for `CreateClusterRequest` at commit `487f511` of 2026-11-10. NVKE's real CRDs, such as `NvkeCluster`, are internal. The public interface is the REST API. The OpenAPI file is version `0.1.0-alpha`, so the schema itself may change. I did not run it against a management plane.
+Three fields deserve attention. The version has no leading `v`, and the API rejects one. `etcdEncrypted` is required, and the API reference says it can be turned on later but never off. The node labels are applied once when a node joins, and the preview cannot change them afterwards. This file validates against the repository's OpenAPI schema for `CreateClusterRequest` at commit `487f511` of 2026-11-10. NVKE's real CRDs, such as `NvkeCluster`, are internal. The public interface is the REST API. The OpenAPI file is version `0.1.0-alpha`, so the schema itself may change. It was not run against a management plane.
 
 ### Preview limits
 
@@ -270,7 +270,7 @@ The roadmap lists, as coming soon, per-customer authorization, managing the mana
 
 NVKR has its own preview label. Its README says commands, input schemas and behaviour can change and that it is not recommended for production. A local NVKR build is unsigned. Only the hosted workflows sign and publish releases.
 
-The local quickstart needs no GPU. It uses a simulated NICo on a Linux host with 6 CPUs, 12 GiB of free memory and 100 GiB of free disk. I did not run it, because my host is a Mac and the guide for macOS uses a virtual machine.
+The local quickstart needs no GPU. It uses a simulated NICo on a Linux host with 6 CPUs, 12 GiB of free memory and 100 GiB of free disk. It was not run, because the guide for macOS uses a virtual machine.
 
 ### Running a management plane as an SRE
 
@@ -443,9 +443,9 @@ spec:
 
 Four details matter. `cliqueStartupType: CliqueStartupTypeExplicit` is what makes `startsAfter` take effect. Without it, the order of cliques is not guaranteed. The constraint `pack.required: rack` replaces the older `packDomain` field, which version v0.2.0-beta1 removed from the beta API. The `minAvailable` values say how many pods are guaranteed to be gang scheduled. The `terminationDelay` is how long Grove waits before it terminates a gang that has fallen below its minimum, and its default is four hours.
 
-The image names and GPU counts are placeholders. This listing is a shape check validated against the upstream CRD schema, and I did not run it on a cluster.
+The image names and GPU counts are placeholders. This listing is a shape check validated against the upstream CRD schema, and it was not run on a cluster.
 
-Maturity is the important caveat. Grove's APIs were promoted to beta only on 30 October 2026, in v0.2.0-beta1, and the earlier line was alpha. The release notes say the old alpha API is still served but deprecated, existing objects stay stored as alpha until they are next written, and a later release will migrate them before the alpha version is dropped. Treat Grove as a fast-moving beta. Pin the chart version, read the release notes before every upgrade, and keep the downgrade command from the notes in your runbook.
+Maturity is the important caveat. Grove's APIs were promoted to beta only on 30 October 2026, in v0.2.0-beta1, and the earlier line was alpha. The release notes say the old alpha API is still served but deprecated, existing objects stay stored as alpha until they are next written, and a later release will migrate them before the alpha version is dropped. Treat Grove as a fast-moving beta. Pin the chart version, read the release notes before every upgrade, and keep the downgrade command from the release notes in your runbook.
 
 Grove also needs Kubernetes 1.34 or later. The README lists 1.34 as the minimum tested version, and the regular end-to-end tests run on 1.35.
 
@@ -469,7 +469,7 @@ The most important boundary is what AICR does not do. The README says it is not 
 
 Version drift in the API is the practical trap. The 5 November blog post shows a recipe with `aicr.run/v1alpha2`. On 2026-11-11 the repository's overlays use `aicr.run/v1beta1`, and the CLI documentation shows a `RecipeResult` on `aicr.run/v1beta2`. Do not copy a recipe from a blog post. Generate it with the CLI version you pin, and keep the output in Git.
 
-The next listing is a handbook sample in the shape of an AICR overlay. It is not a file from the AICR repository, and I did not run it through the `aicr` binary. It exists so the tested order checker in the lab has a realistic input.
+The next listing is a handbook sample in the shape of an AICR overlay. It is not a file from the AICR repository, and it was not run through the `aicr` binary. It exists so the tested order checker in the lab has a realistic input.
 
 ```yaml
 kind: RecipeMetadata
@@ -515,7 +515,7 @@ spec:
 
 The tested module `code/part11/c31_stack_order.py` reads this shape. It returns an install order, rejects a missing dependency or a cycle, and checks a short list of prerequisites taken from upstream overlays. For the sample above, it puts `dynamo-platform` last. It is a teaching model. AICR's own engine does more, including constraint checks and validation phases.
 
-Several supply-chain features matter for a regulated cluster. The README states that images carry build provenance, signed software bills of materials and attestations, and that `aicr verify` checks bundles offline. I did not test these, so treat them as the README's claims.
+Several supply-chain features matter for a regulated cluster. The README states that images carry build provenance, signed software bills of materials and attestations, and that `aicr verify` checks bundles offline. These were not tested, so treat them as the README's claims.
 
 **Decision rule:** Generate recipes with a pinned CLI, commit the output, and gate every change with a drift diff against a golden snapshot.
 
@@ -599,7 +599,7 @@ fault-quarantine:
     duration: "5m"
 ```
 
-This values file enables the cordon and drain stages in dry-run mode. It leaves remediation, the janitor and preflight off. I rendered the NVSentinel chart with it using Helm and confirmed the `--dry-run=true` flag on the fault-quarantine and node-drainer deployments. I did not install it on a cluster.
+This values file enables the cordon and drain stages in dry-run mode. It leaves remediation, the janitor and preflight off. Rendering the NVSentinel chart with it using Helm shows the `--dry-run=true` flag on the fault-quarantine and node-drainer deployments. It was not installed on a cluster.
 
 NVSentinel and NVCRE connect through a monitor. The monitor reads every Certification, turns each failed node into a health event, and publishes it. The downstream ruleset taints the node with `nvsentinel.dgxc.nvidia.com/nvcre-cert-failed=true:NoSchedule` and does not cordon it. This is deliberate, because a rerun of the certification must be able to land on the failed node. A passing rerun clears the hold. The monitor sweeps every fifteen minutes by default.
 
@@ -607,7 +607,7 @@ The 5 November post adds a lifecycle controller that creates `ValidationRequest`
 
 Maturity: version 1.31.0 on 2026-11-07, and the roadmap file says the project reached "Beta / Stable" status at v1.0.0 and is "recommended for production testing and use". That is NVIDIA's wording. It is a stronger claim than for Grove or NVCRE, but it is not general availability, and automated actions are off by default for good reason.
 
-The tested module `code/part11/c31_sentinel_sim.py` models the staged stages, the dry-run, the circuit breaker arithmetic and the `CONTACT_SUPPORT` rule. In the model, the cordon that would reach the threshold is refused and trips the breaker. Whether the real service allows that last cordon first is not stated in the documentation I read, so treat the exact off-by-one as unverified. Chapter 19.6 builds a different node-health policy in `code/part19/c06_node_policy.py`, which I did not reuse because the stages and breaker semantics differ.
+The tested module `code/part11/c31_sentinel_sim.py` models the staged stages, the dry-run, the circuit breaker arithmetic and the `CONTACT_SUPPORT` rule. In the model, the cordon that would reach the threshold is refused and trips the breaker. Whether the real service allows that last cordon first is not stated in the documentation, so treat the exact off-by-one as unverified. Chapter 19.6 builds a different node-health policy in `code/part19/c06_node_policy.py`, which is not reused here because the stages and breaker semantics differ.
 
 **Decision rule:** Run NVSentinel in monitor mode for weeks, enable cordon only after the conditions match reality, and enable remediation last.
 
@@ -715,7 +715,7 @@ A tool that protects the cluster also fails in its own ways. This section lists 
 | KAI Scheduler | Slow scheduling cycles on a large cluster | `e2e_scheduling_latency_milliseconds`, `task_scheduling_latency_milliseconds` |
 | KAI Scheduler | Churn from preemption | `total_preemption_attempts`, `pod_group_eviction_events_total` |
 | Run:ai platform | Control plane and cluster out of sync | Cluster connection status in the UI, control-plane pod health. No metric names verified here |
-| Grove | Operator or webhook down, so PodCliqueSets cannot change | Operator pod readiness. The chart can create a ServiceMonitor, but I did not verify metric names |
+| Grove | Operator or webhook down, so PodCliqueSets cannot change | Operator pod readiness. The chart can create a ServiceMonitor, but the metric names were not verified |
 | Grove | Gang stuck below `minAvailable` and then terminated after `terminationDelay` | PodGang and pod phase counts, events on the PodCliqueSet |
 | Grove | Topology constraint rejected or unsatisfiable | Admission errors, pending pods with a required rack constraint |
 | AICR | Cluster drifts from the golden recipe | Output of `aicr diff --fail-on-drift` in CI |
@@ -745,9 +745,9 @@ Neither story is a real incident. Both follow from the documented behaviour and 
 
 This lab checks the manifests and code in this chapter without a GPU or a cluster. It needs Python 3, `pyyaml`, `jsonschema`, `pytest` and Docker, and runs from the root of the handbook repository.
 
-**What was run here.** I cloned the upstream repositories into a scratch directory on 2026-11-11 and validated the YAML against their CRDs. I rendered the Grove and NVSentinel Helm charts with the `alpine/helm` container. I ran the pytest files.
+**What was run.** The upstream repositories were cloned into a scratch directory on 2026-11-11 and the YAML was validated against their CRDs. The Grove and NVSentinel Helm charts were rendered with the `alpine/helm` container. The pytest files were run.
 
-**What was not run.** I installed nothing on a Kubernetes cluster. I did not run `aicr`, `nvcrectl`, `nvkectl`, the NVKE local quickstart or `helm install`. No GPU was involved, so no scheduling, gang placement, DCGM, Xid handling or draining was observed. All "expected" shapes below are not run.
+**What was not run.** Nothing was installed on a Kubernetes cluster. `aicr`, `nvcrectl`, `nvkectl`, the NVKE local quickstart and `helm install` were not run. No GPU was involved, so no scheduling, gang placement, DCGM, Xid handling or draining was observed. All "expected" shapes below are not run.
 
 ### Step 1: Clone the upstream repositories
 
@@ -773,7 +773,7 @@ python3 -I tools/check_crd_yaml.py \
 
 Expected result: the checker reports the resources it checked and zero problems. Here it reported 3 resources checked and 0 problems. The recipe and the two values files have no matching CRD and are not checked by this command. What to record: the checker's output line.
 
-To see the checker fail, add a `packDomain: rack` field under `topologyConstraint` in a copy and run it again. The removed field is rejected as unknown. I ran this case, and the checker reported that `packDomain` was unexpected under `topologyConstraint`.
+To see the checker fail, add a `packDomain: rack` field under `topologyConstraint` in a copy and run it again. The removed field is rejected as unknown. Running this case, the checker reports that `packDomain` was unexpected under `topologyConstraint`.
 
 ### Step 2b: Validate the NVKE cluster spec
 
@@ -782,7 +782,7 @@ NVKE_OPENAPI=/tmp/nvstack/nvke/controller/api/openapi.yaml \
   python3 -m pytest code/part11/test_c31_nvke_cluster.py -q
 ```
 
-Expected result: five tests pass. They check the spec against the `CreateClusterRequest` schema, walk it for unknown fields, and prove that a missing `etcdEncrypted`, a leading `v` in the version and two providers are rejected. Here all five passed against NVKE commit `487f511` of 2026-11-10. The tests skip if the OpenAPI file is missing. What to record: the NVKE commit hash. I did not call a management plane.
+Expected result: five tests pass. They check the spec against the `CreateClusterRequest` schema, walk it for unknown fields, and prove that a missing `etcdEncrypted`, a leading `v` in the version and two providers are rejected. Here all five passed against NVKE commit `487f511` of 2026-11-10. The tests skip if the OpenAPI file is missing. What to record: the NVKE commit hash. No management plane was called.
 
 ### Step 3: Render the Helm charts
 

@@ -34,12 +34,12 @@ The third limit is the batch size and learning rate. They are not only statistic
 
 The table collects one worked number for each limit. Read it as a lookup, and return to the sections that derive each row.
 
-| Constraint Domain | Model & Hardware Scenario | Mathematical Law or Breakdown | Physical Consequence (`V13 Ch. 01`, `DMLS Ch. 2, Ch. 6`, `V21 Ch. 07`) |
+| Constraint Domain | Model & Hardware Scenario | Mathematical Law or Breakdown | Physical Consequence |
 |---|---|---|---|
 | **The Memory Wall** | `GPT-3` (`175B` params) in `FP32` (`4 bytes/param`) on `1` `80 GB` `H100` (`HBM3`) | `175 x 10^9 x 4 bytes = 700 GB` weights alone | Exceeds a single `80 GB` `H100` by **`8.75x`** before gradients, optimizer states, or activations |
 | **The Memory Wall** | `7B` model trained in `FP32` with `Adam` on `1` `80 GB` GPU | `28 GB` weights + `28 GB` gradients + `56 GB` optimizer states (`112 GB` static) + `42–80 GB` (`60–80 GB`) activations + `5–10 GB` buffers = **`180–190 GB`** total | Crashes with `RuntimeError: CUDA out of memory. Tried to allocate 2.45 GiB` (`79,456 MiB` used, `103 MiB` free out of `79,559 MiB`) |
 | **The Compute Wall** | `GPT-3` `175B` single step at batch `2,048`, seq `2,048` (`4,194,304` tokens) | Forward `2PD = 2 x 175 x 10^9 x 2048 x 2048 ~= 1.46 x 10^18 FLOPs` (`1.4680 x 10^18` exact; `4.4040 x 10^18` for `6PD`) | Forward pass alone on `1` `A100` (`312 TFLOPS` peak `BF16`/`FP16` tensor rate): **`4,679.49 s` (`78 min`)**; on `128` `A100` GPUs: **`36.56 s`**. The full `6PD` step is three times longer. |
-| **The Compute Wall** | `GPT-3` `175B` full pretraining run on `500B` tokens (`DMLS Ch. 2`) | `6PD = 6 x 175 x 10^9 x 500 x 10^9 = 5.25 x 10^23 FLOPs` (**`525.0 ZFLOPs`**) | Requires hundreds or thousands of GPUs running continuously across high-speed fabrics |
+| **The Compute Wall** | `GPT-3` `175B` full pretraining run on `500B` tokens | `6PD = 6 x 175 x 10^9 x 500 x 10^9 = 5.25 x 10^23 FLOPs` (**`525.0 ZFLOPs`**) | Requires hundreds or thousands of GPUs running continuously across high-speed fabrics |
 | **Hyperparameter Knobs** | Global batch scaling (`3.2M` tokens on `GPT-3` `175B`; `64` GPUs x `128` seq/GPU = `8,192` seqs) | Square-root LR scaling from base batch `32` (`1e-4`): `1e-4 x sqrt(8192 / 32) = 1.6e-3`; critical batch size `B_crit` limit | Exceeding `B_crit` wastes GPU-hours in curvature-dominated regime; missing warmup + LR scaling causes `NaN` divergence or `30%` throughput diagnosis errors (`20M` vs `32M tokens/sec`, `512` to `1,024` GPU scaling stalls) |
 
 Before you approve a training cluster request, work out two numbers yourself: the static memory per parameter and the total training FLOPs.
@@ -72,10 +72,10 @@ Classical data-driven machine learning learns patterns directly from structured 
 
 Foundation models occupy the third tier of the taxonomy. They use self-supervised pretraining on massive unlabeled corpora followed by supervised fine-tuning on labeled instructions. This two-stage paradigm handles unstructured language, vision, audio, video, and multimodal tasks across multi-node GPU clusters.
 
-| Category | Learning Paradigm & Data | When to Choose (*Engineering AI Systems* Ch. 3, `DMLS Ch. 1`) | Execution & Infrastructure Profile |
+| Category | Learning Paradigm & Data | When to Choose (*Engineering AI Systems* Ch. 3) | Execution & Infrastructure Profile |
 |---|---|---|---|
 | **1. Symbolic & Rule-Based AI** | Explicit human-authored rules (`if/else` knowledge base); no training dataset | Well-understood domain; well-defined scope (`a few hundred rules`, failing when rules grow into the `thousands`); strict regulatory compliance and `100%` audit traceability | CPU-bound rules engine; latency governed by **rule ordering**, **rule grouping** (cache locality), **conflict resolution** (`specificity`, `salience`, `chronological order`), **condition indexing/filtering**, pre-compilation, and thread parallelism (*Engineering AI Systems* ch 3.3.1) |
-| **2. Classical Data-Driven ML** | **Supervised** (labeled input-target pairs), **Unsupervised** (unlabeled pattern discovery / clustering) | Large structured/tabular datasets where complex patterns exist (`DMLS Ch. 1`: `9` criteria—capacity to learn, complex patterns, existing data, predictive framing, unseen data shares distribution, repetitive, cheap wrong predictions, at scale, changing patterns) | Often fits on CPU or single GPU (`scikit-learn`, `XGBoost`, `LightGBM`); fast training and sub-millisecond inference (`1 GB` to `16 GB` RAM) |
+| **2. Classical Data-Driven ML** | **Supervised** (labeled input-target pairs), **Unsupervised** (unlabeled pattern discovery / clustering) | Large structured/tabular datasets where complex patterns exist (`9` criteria—capacity to learn, complex patterns, existing data, predictive framing, unseen data shares distribution, repetitive, cheap wrong predictions, at scale, changing patterns) | Often fits on CPU or single GPU (`scikit-learn`, `XGBoost`, `LightGBM`); fast training and sub-millisecond inference (`1 GB` to `16 GB` RAM) |
 | **3. Foundation Models (`FMs`) & Deep Learning** | **Self-supervised pretraining** (models generate their own labels from massive unlabeled corpora, e.g., masked token or next-token prediction) followed by **supervised fine-tuning (`SFT`)** on labeled instruction datasets (*Engineering AI Systems* Ch. 3) | Unstructured modalities (**Language**, **Vision**, **Audio**, **Video**, **Multimodal**, and **Domain-specific** models such as `BloombergGPT` `50B` for finance, `NVIDIA Nemotron`, `BLOOM` [`1,000+` researchers], `OpenAI GPT-x`, `Google Gemini`, `Meta LLaMA`, `BERT-Large` `340M` params / `1.35 GB`) | Multi-GPU / multi-node accelerated clusters (`PyTorch`, `TensorFlow`, `Megatron-LM`, `DeepSpeed`) across cloud platforms (`AWS SageMaker`, `Azure ML`, `Google Vertex AI`, `IBM Watson Studio`, `MosaicML`) or on-prem GPU fabrics |
 
 ### 1.2 Research vs Production Systems and Latency vs Throughput
@@ -88,14 +88,14 @@ Research and production also have opposite computational priorities. Research pr
 
 Finally, every production ML platform must satisfy four foundational systems requirements: reliability, scalability, maintainability, and adaptability. Traditional software crashes loudly with an HTTP 500 error, whereas a broken ML model fails silently by returning HTTP 200 garbage predictions. Scaling requires handling both larger artifacts and higher request volumes without suffering costly autoscaling outages.
 
-| Production Dimension | Research vs Production Contrast (`DMLS Ch. 1–2`) | Concrete Numbers, Benchmarks & Business Impact |
+| Production Dimension | Research vs Production Contrast | Concrete Numbers, Benchmarks & Business Impact |
 |---|---|---|
 | **Stakeholder & Latency SLAs** | Single static SOTA metric vs multi-stakeholder production trade-offs | Sales `10%` restaurant order fee; product `< 100 ms` SLA (`> 100 ms` causes `10%` of users to close app); Akamai (`2017`): `100 ms` delay hurts conversion by **`7%`**; Booking.com (`2019`): `30%` latency increase costs **`0.5%`** conversion; Google (`2016`): **`> 50%`** mobile users abandon pages taking **`> 3 seconds`** |
 | **Customer Economics & Enterprise ROI** | Leaderboard accuracy vs acquisition/retention cost and resource efficiency | Acquiring a mobile user who makes an in-app purchase costs **`$86.61`**; acquiring a Lyft rider costs **`$158`**; customer acquisition is **`5 to 25x`** more expensive than retention; `0.1%` cloud resource efficiency saves millions vs `0.2%` CTR gain |
 | **Decoupled Multi-Objective Ranking** | Monolithic loss `alpha * quality_loss + beta * engagement_loss` vs decoupled serving | Separate `quality_model` and `engagement_model` combined as `alpha * quality_score + beta * engagement_score` at serving time avoids Pareto retraining when `alpha` or `beta` changes |
-| **Batching: Latency vs Throughput** | Unbatched (`1` query at a time) vs dynamic request batching (`DMLS Ch. 1`, Fig. 1-4) | `1` query in `10 ms` = **`100 queries/sec`**; `1` query in `100 ms` = **`10 queries/sec`**; batching `10` queries in `10 ms` = **`1,000 queries/sec`** at `10 ms`; batching `50` queries in `20 ms` = **`2,500 queries/sec`** at `20 ms` |
+| **Batching: Latency vs Throughput** | Unbatched (`1` query at a time) vs dynamic request batching | `1` query in `10 ms` = **`100 queries/sec`**; `1` query in `100 ms` = **`10 queries/sec`**; batching `10` queries in `10 ms` = **`1,000 queries/sec`** at `10 ms`; batching `50` queries in `20 ms` = **`2,500 queries/sec`** at `20 ms` |
 | **Tail Latency Percentiles (`p50`, `p90`, `p99`)** | Arithmetic mean vs percentile SLAs across `10` requests `[100, 102, 100, 100, 99, 104, 110, 90, 3000, 95] ms` | Arithmetic mean = **`390.0 ms`** (`390 ms`), median **`p50 = 100.0 ms`** (`100 ms`), tail outlier **`p90 = 3,000.0 ms`** (`3,000 ms` / `3.0 s`) |
-| **Four Systems Requirements & Maturity** | Reliability, Scalability, Maintainability, Adaptability (`DMLS Ch. 2`) | Scaling from `1 GB` RAM logistic regression to `100M`-param model needing `16 GB` RAM; `10,000` to `10M` daily requests; `8,000` per-customer enterprise models; Amazon Prime Day autoscaling crash cost **`$72M–$99M` per hour**; Algorithmia (`2020`): **`75%`** of orgs with `> 5` years maturity deploy in `< 30` days vs **`60%`** of beginners taking `> 30` days |
+| **Four Systems Requirements & Maturity** | Reliability, Scalability, Maintainability, Adaptability | Scaling from `1 GB` RAM logistic regression to `100M`-param model needing `16 GB` RAM; `10,000` to `10M` daily requests; `8,000` per-customer enterprise models; Amazon Prime Day autoscaling crash cost **`$72M–$99M` per hour**; Algorithmia (`2020`): **`75%`** of orgs with `> 5` years maturity deploy in `< 30` days vs **`60%`** of beginners taking `> 30` days |
 
 ### 1.3 Taxonomy of ML Tasks, Algorithms, Ensembles, and the Four Adoption Phases
 
@@ -115,14 +115,14 @@ Majority-Vote Ensemble of 3 Uncorrelated Classifiers (each 70% = 0.70 accurate, 
 
 To avoid over-engineering, teams should progress through four disciplined adoption phases. Start with non-ML heuristics in Phase 1, and deploy the simplest ML models in Phase 2 to validate the end-to-end pipeline. Next, optimize those simple models with feature engineering and ensembles in Phase 3. Move to complex deep neural networks and foundation models in Phase 4 only when simple models plateau.
 
-| Task or Adoption Dimension | Core Algorithms, Framing & Mechanics (*Engineering AI Systems* ch 3.2.2, `DMLS Ch. 2, Ch. 6`) | Production Trade-Offs & Empirical Numbers |
+| Task or Adoption Dimension | Core Algorithms, Framing & Mechanics (*Engineering AI Systems* ch 3.2.2) | Production Trade-Offs & Empirical Numbers |
 |---|---|---|
-| **Classification (*Engineering AI Systems* ch 3.2.2, `DMLS Ch. 2`)** | Assigns static inputs to discrete classes (distinct from temporal *prediction/forecasting*): **binary** (`2` classes, e.g., spam, hotdog), **multiclass** (`>= 3` classes; **hierarchical classification** for high cardinality), **multilabel** (variable subset e.g. `[0, 1, 1, 0]` via multi-output sigmoid). Algorithms: **KNN** (`k` nearest by Euclidean distance), **Logistic Regression** (sigmoid `1 / (1 + exp(-z))` with `0.5` threshold), **Decision Trees**, **Random Forests**, **Naive Bayes**, **SVM**, **Neural Networks** (softmax output) | High-cardinality classification with `1,000` classes requires `>= 100` examples/class = **`>= 100,000`** labeled examples; reframing `N`-class next-app prediction as scalar `[0, 1]` regression avoids retraining when new apps arrive |
+| **Classification (*Engineering AI Systems* ch 3.2.2)** | Assigns static inputs to discrete classes (distinct from temporal *prediction/forecasting*): **binary** (`2` classes, e.g., spam, hotdog), **multiclass** (`>= 3` classes; **hierarchical classification** for high cardinality), **multilabel** (variable subset e.g. `[0, 1, 1, 0]` via multi-output sigmoid). Algorithms: **KNN** (`k` nearest by Euclidean distance), **Logistic Regression** (sigmoid `1 / (1 + exp(-z))` with `0.5` threshold), **Decision Trees**, **Random Forests**, **Naive Bayes**, **SVM**, **Neural Networks** (softmax output) | High-cardinality classification with `1,000` classes requires `>= 100` examples/class = **`>= 100,000`** labeled examples; reframing `N`-class next-app prediction as scalar `[0, 1]` regression avoids retraining when new apps arrive |
 | **Regression (*Engineering AI Systems* ch 3.2.2)** | Predicts continuous values: **Linear Regression**, **Polynomial Regression** (`n`-th degree nonlinear trends), **Support Vector Regression (`SVR`)** (`epsilon`-insensitive buffer zone), **Decision Tree Regression**, **Random Forest Regression**, **Gradient Boosting Regression**, **Neural Network Regression** | Tree ensembles (`XGBoost`, `LightGBM`) dominate tabular regression on CPUs with minimal memory overhead |
 | **Clustering (*Engineering AI Systems* ch 3.2.2)** | Unsupervised grouping via Euclidean or **Levenshtein edit distance** (strings), using **hard clustering** (single cluster) or **soft clustering** (probabilities): **K-Means** (`k` centroids, used in Netflix movie/show clustering), **DBSCAN** (`MinPts` and radius `epsilon` for **core**, **border**, and **noise** points), **Hierarchical Clustering** (**agglomerative** bottom-up vs **divisive** top-down) | Discovers structure in unlabeled data without human annotation cost |
-| **Ensembles: Bagging, Boosting, Stacking (`DMLS Ch. 6`)** | **Bagging** (*bootstrap aggregating*, e.g., Random Forests) samples in parallel to **reduce variance**; **Boosting** (`GBM`, `XGBoost`, distributed `LightGBM`) trains sequentially on residual errors to **reduce bias**; **Stacking** trains a **meta-learner** on base predictions | **`20` of `22`** Kaggle winning solutions (`2021`, including a `33`-model winner) and all **`top 20` `SQuAD 2.0`** entries use ensembles; `3` uncorrelated `70%` classifiers reach **`78.4%`** |
-| **Six Selection Tips & Seven Assumptions (`DMLS Ch. 6`)** | (1) Avoid SOTA trap, (2) start simple, (3) equal hyperparameter budgets, (4) learning curves for now vs later (Andrew Ng: high-variance improves with data, high-bias does not), (5) trade-offs (`FP` vs `FN`, latency vs accuracy, interpretability), (6) verify **7 assumptions**: **Prediction**, **IID**, **Smoothness**, **Tractability** `P(Z\|X)`, **Linear Boundaries**, **Conditional Independence**, **Normal Distribution** | Stanford HAI (`2019`): only **`13%`** of large enterprises mitigated fairness risks and **`19%`** worked on explainability; Geoffrey Hinton's surgeon survey: **`50%`** of `30` tech executives rejected a **`90%`**-cure black-box AI surgeon in favor of an **`80%`**-cure human surgeon |
-| **Four Adoption Phases (`DMLS Ch. 6`)** | **Phase 1:** Non-ML heuristics `->` **Phase 2:** Simplest ML (`logistic regression`, `GBDT`, `KNN`) `->` **Phase 3:** Optimizing simple models `->` **Phase 4:** Complex models (`DNNs`, `FMs`) | Top-`3` English letters (`"e"`, `"t"`, `"a"`) give **`30%`** accuracy; Facebook used chronological newsfeed from **`2006–2011`**; Martin Zinkevich's rule: if ML gives a **`100%`** boost, a heuristic gets you **`50%`** of the way there |
+| **Ensembles: Bagging, Boosting, Stacking** | **Bagging** (*bootstrap aggregating*, e.g., Random Forests) samples in parallel to **reduce variance**; **Boosting** (`GBM`, `XGBoost`, distributed `LightGBM`) trains sequentially on residual errors to **reduce bias**; **Stacking** trains a **meta-learner** on base predictions | **`20` of `22`** Kaggle winning solutions (`2021`, including a `33`-model winner) and all **`top 20` `SQuAD 2.0`** entries use ensembles; `3` uncorrelated `70%` classifiers reach **`78.4%`** |
+| **Six Selection Tips & Seven Assumptions** | (1) Avoid SOTA trap, (2) start simple, (3) equal hyperparameter budgets, (4) learning curves for now vs later (Andrew Ng: high-variance improves with data, high-bias does not), (5) trade-offs (`FP` vs `FN`, latency vs accuracy, interpretability), (6) verify **7 assumptions**: **Prediction**, **IID**, **Smoothness**, **Tractability** `P(Z\|X)`, **Linear Boundaries**, **Conditional Independence**, **Normal Distribution** | Stanford HAI (`2019`): only **`13%`** of large enterprises mitigated fairness risks and **`19%`** worked on explainability; Geoffrey Hinton's surgeon survey: **`50%`** of `30` tech executives rejected a **`90%`**-cure black-box AI surgeon in favor of an **`80%`**-cure human surgeon |
+| **Four Adoption Phases** | **Phase 1:** Non-ML heuristics `->` **Phase 2:** Simplest ML (`logistic regression`, `GBDT`, `KNN`) `->` **Phase 3:** Optimizing simple models `->` **Phase 4:** Complex models (`DNNs`, `FMs`) | Top-`3` English letters (`"e"`, `"t"`, `"a"`) give **`30%`** accuracy; Facebook used chronological newsfeed from **`2006–2011`**; Martin Zinkevich's rule: if ML gives a **`100%`** boost, a heuristic gets you **`50%`** of the way there |
 
 Before you provision a multi-node GPU cluster for a new product feature, require the modeling team to establish a Phase 1 heuristic baseline and a Phase 2 simple model baseline.
 
@@ -175,12 +175,12 @@ Dense Linear Layer Y = X * W (Weight matrix W of shape [d_in, d_out], P = d_in *
 
 *Designing Machine Learning Systems* traces the exponential growth of language model pretraining datasets over the past decade. Early neural language benchmarks in 2013 trained on less than one billion tokens, whereas modern open-weight models train on trillions of tokens. Total training compute scales with the product of parameters and tokens. Doubling both model size and dataset size therefore quadruples the required GPU hours.
 
-| Model & Workload Scenario | Parameters (`P`) | Tokens (`D`) | Forward (`2PD`) | Backward (`4PD`) | Total Standard (`6PD`) | With Checkpointing (`8PD`) | Hardware Timing & Corpus Context (`V13 Ch. 01`, `DMLS Ch. 2`, `code/part14/ml_dl_fundamentals.py`) |
+| Model & Workload Scenario | Parameters (`P`) | Tokens (`D`) | Forward (`2PD`) | Backward (`4PD`) | Total Standard (`6PD`) | With Checkpointing (`8PD`) | Hardware Timing & Corpus Context (`code/part14/ml_dl_fundamentals.py`) |
 |---|---|---|---|---|---|---|---|
-| **Historical Dataset Growth** (`DMLS Ch. 2`, Fig. 2-8) | — | **`0.8B`** (`2013` One Billion Word) `->` **`10B`** (`2019` `GPT-2`) `->` **`500B`** (`2020` `GPT-3`) | — | — | Scales `625x` in token volume from `0.8B` to `500B` | — | Modern open-weights runs (`7B` to `70B`) train on **`1 trillion` (`1T`) to `2 trillion` (`2T`) tokens** |
-| **`GPT-3` `175B` Single Step** (`V13 Ch. 01`, batch `2048`, seq `2,048`) | `175 x 10^9` | `4,194,304` (`4.19M`) | `1.468 x 10^18` (`~1.46e18`) | `2.936 x 10^18` | `4.404 x 10^18` | `5.872 x 10^18` | Forward pass only, `1.46e18` FLOPs on `1` `A100` (`312 TFLOPS`): **`4,679.49 s` (`~78 min`)**; on `128` `A100` GPUs: **`36.56 s` (`~37 s`)** |
+| **Historical Dataset Growth** | — | **`0.8B`** (`2013` One Billion Word) `->` **`10B`** (`2019` `GPT-2`) `->` **`500B`** (`2020` `GPT-3`) | — | — | Scales `625x` in token volume from `0.8B` to `500B` | — | Modern open-weights runs (`7B` to `70B`) train on **`1 trillion` (`1T`) to `2 trillion` (`2T`) tokens** |
+| **`GPT-3` `175B` Single Step** (batch `2048`, seq `2,048`) | `175 x 10^9` | `4,194,304` (`4.19M`) | `1.468 x 10^18` (`~1.46e18`) | `2.936 x 10^18` | `4.404 x 10^18` | `5.872 x 10^18` | Forward pass only, `1.46e18` FLOPs on `1` `A100` (`312 TFLOPS`): **`4,679.49 s` (`~78 min`)**; on `128` `A100` GPUs: **`36.56 s` (`~37 s`)** |
 | **`7B` Model Pretraining** (`1T` tokens) | `7 x 10^9` | `1.0 x 10^12` | `1.40 x 10^22` (`14.0 ZFLOPs`) | `2.80 x 10^22` (`28.0 ZFLOPs`) | **`4.20 x 10^22` (`42.0 ZFLOPs`)** | `5.60 x 10^22` (`56.0 ZFLOPs`) | On `64` `H100` GPUs (`989 TFLOPS` peak) at `50%` `MFU` (`494.50 TFLOPS/GPU`, `31.648 PFLOPS`): **`368.64 hours` (`15.36 days`)** |
-| **`GPT-3` `175B` Full Run** (`DMLS Ch. 2`, `500B` tokens) | `175 x 10^9` | `5.0 x 10^11` | `1.75 x 10^23` (`175.0 ZFLOPs`) | `3.50 x 10^23` (`350.0 ZFLOPs`) | **`5.25 x 10^23` (`525.0 ZFLOPs`)** | `7.00 x 10^23` (`700.0 ZFLOPs`) | Requires multi-node distributed training across hundreds or thousands of GPUs |
+| **`GPT-3` `175B` Full Run** (`500B` tokens) | `175 x 10^9` | `5.0 x 10^11` | `1.75 x 10^23` (`175.0 ZFLOPs`) | `3.50 x 10^23` (`350.0 ZFLOPs`) | **`5.25 x 10^23` (`525.0 ZFLOPs`)** | `7.00 x 10^23` (`700.0 ZFLOPs`) | Requires multi-node distributed training across hundreds or thousands of GPUs |
 | **`70B` Model Pretraining** (`2T` tokens) | `70 x 10^9` | `2.0 x 10^12` | `2.80 x 10^23` (`280.0 ZFLOPs`) | `5.60 x 10^23` (`560.0 ZFLOPs`) | **`8.40 x 10^23` (`840.0 ZFLOPs`)** | `1.12 x 10^24` (`1,120.0 ZFLOPs` / `1.12 YFLOPs`) | On `512` `H100` GPUs (`989 TFLOPS` peak) at `45%` `MFU` (`445.05 TFLOPS/GPU`, `227.8656 PFLOPS`): **`1,024.0 hours` (`42.67 days`)** |
 
 Always multiply your forward-pass FLOP estimate by three for standard training, or by four when full activation checkpointing is enabled.
@@ -225,7 +225,7 @@ Static Memory Breakdown per Parameter Across Optimizers (V13 Ch. 01–02, EAS 3.
 |---|---|---|---|---|---|---|---|---|
 | **Vanilla `SGD` (`FP32`)** | `4 B` (`FP32`) | `4 B` (`FP32`) | `0 B` | `0 B` (`0` states) | **`8 B / param`** | **`56.0 GB`** | `560.0 GB` | `1,400.0 GB` |
 | **`SGD` + Momentum (`FP32`)** | `4 B` (`FP32`) | `4 B` (`FP32`) | `0 B` | `4 B` (`1` state: `v_t`) | **`12 B / param`** | **`84.0 GB`** | `840.0 GB` | `2,100.0 GB` |
-| **Pure `FP32` `Adam` / `AdamW`** (`V13 Ch. 01–02`) | `4 B` (`FP32`) | `4 B` (`FP32`) | `0 B` | `8 B` (`4 B` `m_t` + `4 B` `v_t`) | **`16 B / param`** | **`112.0 GB`** | `1,120.0 GB` | `2,800.0 GB` |
+| **Pure `FP32` `Adam` / `AdamW`** | `4 B` (`FP32`) | `4 B` (`FP32`) | `0 B` | `8 B` (`4 B` `m_t` + `4 B` `v_t`) | **`16 B / param`** | **`112.0 GB`** | `1,120.0 GB` | `2,800.0 GB` |
 | **Mixed-Precision `AdamW` (`BF16`/`FP16` + `FP32` Master)** | `2 B` (`BF16`) | `2 B` (`BF16`) | `4 B` (`FP32`) | `8 B` (`4 B` `m_t` + `4 B` `v_t`) | **`16 B / param`** | **`112.0 GB`** (`14+14+28+28+28`) | **`1,120.0 GB`** (`~1.2 TB` with buffers) | **`2,800.0 GB`** (`2.8 TB`) |
 
 ### 3.2 Timeline of the Five Memory Consumers Across a 7B Training Step
@@ -234,9 +234,9 @@ Static parameter states are only part of the memory budget. During the forward p
 
 Tracing memory usage across the four phases of a single training step explains why jobs crash at specific lines of code. If a job runs out of memory during the forward pass or early backward pass, intermediate activations have overflowed HBM. You can fix that activation overflow by enabling activation checkpointing, enabling Automatic Mixed Precision, or reducing the micro-batch size. Sometimes a job survives the backward pass with activation checkpointing enabled, yet crashes inside `optimizer.step()`. In that case, the 112 GB AdamW state peak has exceeded single-GPU memory, so you must shard optimizer states across GPUs using ZeRO or FSDP.
 
-| Step Phase (`V13 Ch. 02` `7B` Transformer: `32` layers, `hidden_dim = 4096`, `batch_size = 4`, `seq_len = 2048`) | Active Memory Components in `VRAM` | Peak Memory Total | Status on `1` `80 GB` `H100` & Engineering Takeaway |
+| Step Phase (`7B` Transformer: `32` layers, `hidden_dim = 4096`, `batch_size = 4`, `seq_len = 2048`) | Active Memory Components in `VRAM` | Peak Memory Total | Status on `1` `80 GB` `H100` & Engineering Takeaway |
 |---|---|---|---|
-| **Stage 1 — Forward Pass (`FP32`)** | `28.0 GB` `FP32` weights + `42.0 GB` saved forward activations (`32 x 4 x 4096 x 4 x 2048 ~= 42.0 GB`; up to `60–80 GB` on `120`-layer deeper variants in `V13 Ch. 01`) | **`70.0 GB`** (`87.5%` of `80 GB` `H100`) | Fits barely during forward, leaving almost no headroom before backward starts |
+| **Stage 1 — Forward Pass (`FP32`)** | `28.0 GB` `FP32` weights + `42.0 GB` saved forward activations (`32 x 4 x 4096 x 4 x 2048 ~= 42.0 GB`; up to `60–80 GB` on `120`-layer deeper variants) | **`70.0 GB`** (`87.5%` of `80 GB` `H100`) | Fits barely during forward, leaving almost no headroom before backward starts |
 | **Stage 2 — Backward Without Activation Checkpointing** | `28.0 GB` weights + `42.0 GB` saved forward activations + `28.0 GB` newly allocated gradients | **`98.0 GB`** | **Immediate `OOM`** (`98.0 GB > 80 GB`) as gradients allocate alongside saved activations |
 | **Stage 3 — Backward With Activation Checkpointing** | `28.0 GB` weights + **`10.0 GB`** (`5–10 GB`) recomputed layer-boundary activations + `28.0 GB` gradients | **`66.0 GB`** | **Fits in `80 GB`** during backward, at the cost of `30–50%` slower backward compute |
 | **Stage 4 — Optimizer Step (`FP32` `Adam`)** | `28.0 GB` weights + `28.0 GB` gradients + `28.0 GB` momentum (`m_t`) + `28.0 GB` variance (`v_t`) + `5–15 GB` workspace buffers | **`112.0 GB`** static (`180–190 GB` unoptimized total) | **Immediate `OOM`** on `optimizer.step()` without **`ZeRO-1` / `FSDP`** optimizer-state sharding |
@@ -302,11 +302,11 @@ McCandlish et al. (2018, DMLS Ch. 6) Critical Batch Size Scaling Laws:
 
 Once your global batch size reaches the critical batch size, you cannot add more GPUs via Data Parallelism alone without wasting compute. Instead, you must hold the global batch size at or below the critical batch size. You then scale across more GPUs using Tensor Parallelism inside each node and Pipeline Parallelism across nodes. **Keep Tensor Parallelism strictly within a single node's NVLink domain, and use Pipeline Parallelism with enough micro-batches to shrink the pipeline bubble across InfiniBand.**
 
-| Parallelism & Synchronization Strategy | Execution & Communication Mechanics (`DMLS Ch. 6`, `V21 Ch. 07`) | Hardware Bandwidth & Bubble Math |
+| Parallelism & Synchronization Strategy | Execution & Communication Mechanics | Hardware Bandwidth & Bubble Math |
 |---|---|---|
-| **Synchronous vs Asynchronous Data Parallel SGD** (`DMLS Ch. 6`, Fig. 6-6) | **Synchronous SGD** waits at an `All-Reduce` barrier for every worker to finish its mini-batch (exact mini-batch SGD, vulnerable to the **straggler problem** across `N` workers). **Asynchronous SGD** (`Hogwild!`) updates weights immediately per worker, risking **gradient staleness** unless updates are sparse | Inter-node Data Parallelism (`DDP` / `FSDP`) runs over **`50 GB/s`** InfiniBand once per micro-batch step |
-| **Tensor Parallelism (`TP`)** (`V21 Ch. 07`) | Splits weight matrices *inside* each layer (`column-parallel` first MLP matrix + `row-parallel` second MLP matrix in `Megatron-Core`, e.g., `Llama-70B` with `80` layers, `hidden_size = 8192`, `64` attention heads, `tensor_model_parallel_size = 8`) | Executes `2` `All-Reduce` collectives *per layer* in forward and backward; **must stay inside a single node's `900 GB/s` `NVLink` domain**, never across `50 GB/s` inter-node InfiniBand |
-| **Pipeline Parallelism (`PP`)** (`DMLS Ch. 6` Fig. 6-8, `V21 Ch. 07`) | Places consecutive layer groups (`p` stages) on different machines (`pipeline_model_parallel_size = 2` or `4`) and splits each mini-batch into `m` micro-batches (`GPipe`, `1F1B`) so stage `2` computes micro-batch `1` while stage `1` computes micro-batch `2` | **Pipeline Bubble Fraction = `(p - 1) / (m + p - 1)`**: for `p = 4` stages and `m = 4` micro-batches, bubble is `3 / 7 =` **`42.86%`** (`0.4286`); increasing to `m = 16` micro-batches shrinks the bubble to `3 / 19 =` **`15.79%`** (`0.1579`) |
+| **Synchronous vs Asynchronous Data Parallel SGD** | **Synchronous SGD** waits at an `All-Reduce` barrier for every worker to finish its mini-batch (exact mini-batch SGD, vulnerable to the **straggler problem** across `N` workers). **Asynchronous SGD** (`Hogwild!`) updates weights immediately per worker, risking **gradient staleness** unless updates are sparse | Inter-node Data Parallelism (`DDP` / `FSDP`) runs over **`50 GB/s`** InfiniBand once per micro-batch step |
+| **Tensor Parallelism (`TP`)** | Splits weight matrices *inside* each layer (`column-parallel` first MLP matrix + `row-parallel` second MLP matrix in `Megatron-Core`, e.g., `Llama-70B` with `80` layers, `hidden_size = 8192`, `64` attention heads, `tensor_model_parallel_size = 8`) | Executes `2` `All-Reduce` collectives *per layer* in forward and backward; **must stay inside a single node's `900 GB/s` `NVLink` domain**, never across `50 GB/s` inter-node InfiniBand |
+| **Pipeline Parallelism (`PP`)** | Places consecutive layer groups (`p` stages) on different machines (`pipeline_model_parallel_size = 2` or `4`) and splits each mini-batch into `m` micro-batches (`GPipe`, `1F1B`) so stage `2` computes micro-batch `1` while stage `1` computes micro-batch `2` | **Pipeline Bubble Fraction = `(p - 1) / (m + p - 1)`**: for `p = 4` stages and `m = 4` micro-batches, bubble is `3 / 7 =` **`42.86%`** (`0.4286`); increasing to `m = 16` micro-batches shrinks the bubble to `3 / 19 =` **`15.79%`** (`0.1579`) |
 
 ### 4.3 Cross-Entropy Loss, Perplexity, and Production Offline Evaluation
 
@@ -333,13 +333,13 @@ Worked Example 2 — LLM Vocabulary Guessing vs Converged Pretraining (V = 50,00
 
 Before deploying a trained checkpoint, *Designing Machine Learning Systems* requires evaluating the candidate against five explicit baselines. Those baselines are random guessing, simple heuristics, the zero-rule majority baseline, human performance, and existing production solutions. Beyond baselines, teams must run five behavioral and subgroup checks. They include perturbation tests for noisy inputs, invariance tests for protected attributes, directional expectation tests, probability calibration via Platt scaling, and slice-based evaluation.
 
-| Evaluation Method (`DMLS Ch. 6`) | Purpose & Mechanism | Concrete Corpus Examples & Numbers |
+| Evaluation Method | Purpose & Mechanism | Concrete Corpus Examples & Numbers |
 |---|---|---|
-| **1. Five Production Baselines** | Prevent shipping complex models that fail to beat trivial rules | **(i) Random baseline (`Table 6-2`, `90%` `NEGATIVE` / `10%` `POSITIVE`):** uniform random (`50%/50%`) gets `F1 = 0.167`, `Accuracy = 0.50` (`50%`); label-distribution random (`90%` NEG / `10%` POS) gets `F1 = 0.10`, `Accuracy = 0.82` (`82%`); if `90%` are `POSITIVE`, random guessing at `90%` gets `F1 = 0.90`, `Accuracy = 0.80`. **(ii) Simple heuristic:** reverse-chronological feed. **(iii) Zero-rule baseline:** always predict most common class (most-used phone app gives **`70%`** accuracy; predicting `90%` majority class gives **`90%`** accuracy / `0.90`). **(iv) Human baseline.** **(v) Existing solutions.** |
+| **1. Five Production Baselines** | Prevent shipping complex models that fail to beat trivial rules | **(i) Random baseline (`90%` `NEGATIVE` / `10%` `POSITIVE`):** uniform random (`50%/50%`) gets `F1 = 0.167`, `Accuracy = 0.50` (`50%`); label-distribution random (`90%` NEG / `10%` POS) gets `F1 = 0.10`, `Accuracy = 0.82` (`82%`); if `90%` are `POSITIVE`, random guessing at `90%` gets `F1 = 0.90`, `Accuracy = 0.80`. **(ii) Simple heuristic:** reverse-chronological feed. **(iii) Zero-rule baseline:** always predict most common class (most-used phone app gives **`70%`** accuracy; predicting `90%` majority class gives **`90%`** accuracy / `0.90`). **(iv) Human baseline.** **(v) Existing solutions.** |
 | **2. Perturbation & Invariance Tests** | Verify noise robustness and fairness invariance | **Perturbation:** inject microphone background chatter/clipping on `2`-second hospital cough recordings. **Invariance:** outputs must not change when sensitive attributes change (Berkeley mortgage study: **`1.3 million`** creditworthy Black and Latino applicants rejected between **`2008` and `2015`**; deleting race identifiers reversed rejections). |
 | **3. Directional & Calibration Tests** | Verify monotonic expectations and true probability calibration | **Directional:** increasing house lot size must never decrease predicted price. **Calibration:** a model predicting `70%` win rate that wins `60%` of `1,000` games (or `10%` ad CTR getting `5%` clicks, or recommender showing `100%` romance instead of `80%` romance / `20%` comedy) is miscalibrated; measure with `sklearn.calibration.calibration_curve` and fix via **Platt scaling** (`CalibratedClassifierCV`). |
-| **4. Slice-Based Evaluation (`Table 6-3`)** | Expose minority-group failures hidden by aggregate metrics (discovered via heuristics, error analysis such as a half-hidden mobile button, and **Slice Finder**) | Dataset with `90%` majority and `10%` minority: **Model A** (`98%` majority, `80%` minority) scores **`96.2%`** overall; **Model B** (`95%` majority, `95%` minority) scores **`95.0%`** overall—aggregate accuracy hides Model A's `80%` minority failure. |
-| **5. Simpson's Paradox (`Tables 6-4 & 6-5`)** | Subgroup winners reverse when aggregated across unequal group sizes | **`Table 6-4`** (Charig et al. `1986` kidney stone study): **Model A** beats **Model B** in **Group A** (`81/87 = 93%` [`93.10%`] vs `234/270 = 87%` [`86.67%`]) *and* in **Group B** (`192/263 = 73%` [`73.00%`] vs `55/80 = 69%` [`68.75%`]), yet loses overall (**`273/350 = 78%` [`78.0%`] vs `289/350 = 83%` [`82.57%`]**). **`Table 6-5`** (Berkeley `1973` admissions across **`12,763`** applicants): men had **`44%`** (`8,442`) aggregate admission vs **`35%`** (`4,321`) for women despite women having higher admission rates in **`4` of `6`** departments `A..F`. |
+| **4. Slice-Based Evaluation** | Expose minority-group failures hidden by aggregate metrics (discovered via heuristics, error analysis such as a half-hidden mobile button, and **Slice Finder**) | Dataset with `90%` majority and `10%` minority: **Model A** (`98%` majority, `80%` minority) scores **`96.2%`** overall; **Model B** (`95%` majority, `95%` minority) scores **`95.0%`** overall—aggregate accuracy hides Model A's `80%` minority failure. |
+| **5. Simpson's Paradox** | Subgroup winners reverse when aggregated across unequal group sizes | **Kidney stone example** (Charig et al. `1986` kidney stone study): **Model A** beats **Model B** in **Group A** (`81/87 = 93%` [`93.10%`] vs `234/270 = 87%` [`86.67%`]) *and* in **Group B** (`192/263 = 73%` [`73.00%`] vs `55/80 = 69%` [`68.75%`]), yet loses overall (**`273/350 = 78%` [`78.0%`] vs `289/350 = 83%` [`82.57%`]**). **Berkeley admissions example** (Berkeley `1973` admissions across **`12,763`** applicants): men had **`44%`** (`8,442`) aggregate admission vs **`35%`** (`4,321`) for women despite women having higher admission rates in **`4` of `6`** departments `A..F`. |
 
 Always gate model deployment on per-slice validation metrics rather than a single aggregate accuracy or perplexity score.
 
@@ -388,7 +388,7 @@ Because distributed training runs cost thousands of GPU hours and fail silently,
 
 Before launching any multi-node job, *Designing Machine Learning Systems* prescribes three non-negotiable debugging steps. Start with a simple architecture, lock all random seeds to isolate code changes, and overfit a single batch down to near-zero loss. If a model cannot memorize ten images or a hundred sentence pairs on one GPU, launching it across 512 GPUs will only burn money faster.
 
-| Operational Discipline (`DMLS Ch. 6`, *Engineering AI Systems* ch 3.3.2) | Core Practices & Mechanisms | Key Tools, Benchmarks & Warnings |
+| Operational Discipline (*Engineering AI Systems* ch 3.3.2) | Core Practices & Mechanisms | Key Tools, Benchmarks & Warnings |
 |---|---|---|
 | **Experiment Tracking & Telemetry** | Log `6` streams: (i) train/val loss curves, (ii) task metrics (`F1`, `accuracy`, `perplexity`), (iii) sample predictions, (iv) speed (`steps/sec`, `tokens/sec`), (v) system metrics (`GPU memory`, `GPU/CPU util`), (vi) dynamic norms (`lr`, **gradient norms** under clipping, **weight norms** under `L1` Lasso, `L2` Ridge, `ElasticNet`, or `dropout` regularization) | `MLflow`, `Weights & Biases`; diffs as small as `lr = 0.003` vs `lr = 0.002` alter convergence; `CUDA` atomic operation nondeterminism requires seed locking |
 | **Data Versioning (`DVC` vs `Git`)** | Tracks directory checksums and file additions/removals instead of line-by-line diffs | Datasets cannot be duplicated locally; `1,000,000`-character binary lines cannot be line-diffed; merging dataset `X` (model `A`) + dataset `Y` (model `B`) into `Z` yields no merged model; `GDPR` right-to-erasure requires deleting user records across versions |
@@ -402,7 +402,7 @@ Always verify that a new model architecture can overfit a single batch on one GP
 
 ## Commands and configurations that matter
 
-When a training job stalls or crashes, the first question is where the memory and the time went. The commands below show live GPU memory and utilization, memory use in each phase of a step, and a launch template that restarts a failed multi-node job.
+When a training job stalls or crashes, the first question is where the memory and the time went. The commands below show live GPU memory and utilization, memory use in each phase of a step, and a launch template that restarts a failed multi-node job. The commands below were not run on live hardware.
 
 ### 1. Live GPU Memory & Utilization Telemetry
 
@@ -415,7 +415,7 @@ nvidia-smi --query-compute-apps=index,pid,process_name,used_memory --format=csv
 nvidia-smi pmon -c 5
 ```
 
-| `nvidia-smi` Metric (`V13 Ch. 01`) | Healthy Production Range | Unhealthy Readings & Root-Cause Diagnosis |
+| `nvidia-smi` Metric | Healthy Production Range | Unhealthy Readings & Root-Cause Diagnosis |
 |---|---|---|
 | **Memory Used / Total (`%`)** | **`70–90%`** steady working set after step `1` | **`> 95%`** leaves no headroom for temporary `NCCL`/`cuBLAS` buffers (`OOM` risk); **`< 30%`** indicates micro-batch under-sizing; linear growth after step `5` indicates a tensor history leak (accumulating `loss` instead of `loss.item()`) |
 | **GPU Utilization (`%`)** | **`80–95%`** sustained during step loop | **`< 50%`** indicates CPU dataloader starvation or inter-node network bottleneck; **`100%`** static with zero step progress indicates a deadlocked `NCCL` collective |
@@ -496,13 +496,13 @@ torchrun --nnodes=8 --nproc_per_node=8 --max-restarts=3 \
 
 Most failed training jobs match one of five patterns: activation memory runs out, optimizer memory runs out, ranks are launched unevenly, the loss diverges, or a collective stalls. The table gives the symptom, the check, the cause and the fix for each.
 
-| Failure Mode & Symptom | Diagnostic Commands & Evidence (`untested here`) | Root Cause | Production Resolution |
+| Failure Mode & Symptom | Diagnostic Commands & Evidence | Root Cause | Production Resolution |
 |---|---|---|---|
-| **1. `CUDA out of memory` Immediately After Forward or Early Backward (`V13 Ch. 01–02`):** `RuntimeError: CUDA out of memory. Tried to allocate 2.45 GiB` (`79,456 MiB` used / `103 MiB` free) | `log_memory("after_forward")` shows `~70 GB` (`28 GB` weights + `42 GB` activations for `7B`); `prof.key_averages().table(sort_by="cuda_memory_usage")` shows `aten::_backward` at `42.1 GB` | Intermediate forward activations (`32 x 4 x 4096 x B x S`) plus `28 GB` backward gradients require `98 GB > 80 GB` `HBM3` | Enable **activation (gradient) checkpointing** (`~66 GB` peak, saving `~40%` activation memory at `~30–33.3%` extra compute) and **Automatic Mixed Precision (`AMP`)** (`51 GB` theoretical / `48.2 GB` measured), or reduce micro-batch size with gradient accumulation |
-| **2. `CUDA out of memory` Specifically During `optimizer.step()` (`V13 Ch. 02`):** Forward and backward succeed (with checkpointing), but step crashes inside `aten::addmm` / Adam update | `log_memory("after_backward")` fits (`~66 GB`), then crashes on `optimizer.step()` allocating `28 GB` `m_t` + `28 GB` `v_t` | `AdamW` requires `16 bytes/param` (`112 GB` static state for `7B` or `1,120 GB` for `70B`) simultaneously in `VRAM` during the parameter update | Shard optimizer states across data-parallel ranks using **`ZeRO-1` / `FSDP`** (`112 / N GB` per GPU), enable `AMP`, or use `8-bit Adam` / CPU optimizer offload |
-| **3. Unbalanced Multi-GPU Memory & Idle Ranks (`V13 Ch. 01`):** `nvidia-smi` shows GPU `0` at `89%` memory (`68+ GB` or `OOM`), while GPUs `1` and `2` sit at `45%` and `52%` memory with low utilization | `nvidia-smi pmon` and `nvidia-smi --query-compute-apps=index,name,used_memory --format=csv`; rerun with `NCCL_DEBUG=TRACE` | Script was launched with `torchrun` or `DataParallel` (`DP`), or model/dataloader was not wrapped in `DistributedDataParallel` (`DDP`) + `DistributedSampler`, concentrating master tensors or unsharded batches on `rank 0` | Wrap model in `DDP(model, device_ids=[local_rank])` after `torch.cuda.set_device(local_rank)`, shard dataset via `DistributedSampler`, and never gather full-batch outputs onto `cuda:0` |
-| **4. Model Divergence (`loss = NaN` After `1,000` Steps, `V21 Ch. 07`):** Training loss decreases initially, then suddenly spikes and prints `NaN` at step `~1,000` | Print per-layer gradient magnitudes `max(p.grad.abs().max() for p in model.parameters())` and current learning rate `scheduler.get_last_lr()` | (a) Global batch size was scaled up across `64+` GPUs using aggressive linear LR scaling without sufficient **linear warmup** (`W = 2,000` steps); (b) `FP16` gradient overflow without `GradScaler` or `BF16`; or (c) corrupted data sample | Cut peak learning rate by `2x`, use `BF16` or `GradScaler`, enforce **gradient norm clipping** (`clip_grad_norm_(model.parameters(), 1.0)`), add linear LR warmup, and inspect the offending batch |
-| **5. Throughput `30%` Below Target (`8 hours` Instead of `6 hours` / Epoch, `20M` vs `32M tokens/sec`, `V21 Ch. 07`):** Job runs without crashing, but `MFU` drops from `45%` to `< 30%`; or fault recovery restarts at step `5243 -> 5000` | Compare per-rank iteration times (`dist.all_gather`), run `nccl-tests` (`all_reduce_perf`), check `nvidia-smi dmon` for thermal throttling, and inspect `ibstat` / `perfquery` | (a) **Tensor Parallelism (`TP`)** accidentally configured across nodes over `50 GB/s` InfiniBand instead of inside `1` node's `900 GB/s` `NVLink`; (b) a single **straggler GPU** thermal-throttling or stalling `All-Reduce`; or (c) excessive synchronous checkpointing / small micro-batch size | Restrict `tensor_model_parallel_size <= 8` (`intra-node NVLink`), increase micro-batch count `m` to shrink the `(p-1)/(m+p-1)` pipeline bubble, drain straggler nodes, and use asynchronous checkpointing |
+| **1. `CUDA out of memory` Immediately After Forward or Early Backward:** `RuntimeError: CUDA out of memory. Tried to allocate 2.45 GiB` (`79,456 MiB` used / `103 MiB` free) | `log_memory("after_forward")` shows `~70 GB` (`28 GB` weights + `42 GB` activations for `7B`); `prof.key_averages().table(sort_by="cuda_memory_usage")` shows `aten::_backward` at `42.1 GB` | Intermediate forward activations (`32 x 4 x 4096 x B x S`) plus `28 GB` backward gradients require `98 GB > 80 GB` `HBM3` | Enable **activation (gradient) checkpointing** (`~66 GB` peak, saving `~40%` activation memory at `~30–33.3%` extra compute) and **Automatic Mixed Precision (`AMP`)** (`51 GB` theoretical / `48.2 GB` measured), or reduce micro-batch size with gradient accumulation |
+| **2. `CUDA out of memory` Specifically During `optimizer.step()`:** Forward and backward succeed (with checkpointing), but step crashes inside `aten::addmm` / Adam update | `log_memory("after_backward")` fits (`~66 GB`), then crashes on `optimizer.step()` allocating `28 GB` `m_t` + `28 GB` `v_t` | `AdamW` requires `16 bytes/param` (`112 GB` static state for `7B` or `1,120 GB` for `70B`) simultaneously in `VRAM` during the parameter update | Shard optimizer states across data-parallel ranks using **`ZeRO-1` / `FSDP`** (`112 / N GB` per GPU), enable `AMP`, or use `8-bit Adam` / CPU optimizer offload |
+| **3. Unbalanced Multi-GPU Memory & Idle Ranks:** `nvidia-smi` shows GPU `0` at `89%` memory (`68+ GB` or `OOM`), while GPUs `1` and `2` sit at `45%` and `52%` memory with low utilization | `nvidia-smi pmon` and `nvidia-smi --query-compute-apps=index,name,used_memory --format=csv`; rerun with `NCCL_DEBUG=TRACE` | Script was launched with `torchrun` or `DataParallel` (`DP`), or model/dataloader was not wrapped in `DistributedDataParallel` (`DDP`) + `DistributedSampler`, concentrating master tensors or unsharded batches on `rank 0` | Wrap model in `DDP(model, device_ids=[local_rank])` after `torch.cuda.set_device(local_rank)`, shard dataset via `DistributedSampler`, and never gather full-batch outputs onto `cuda:0` |
+| **4. Model Divergence (`loss = NaN` After `1,000` Steps):** Training loss decreases initially, then suddenly spikes and prints `NaN` at step `~1,000` | Print per-layer gradient magnitudes `max(p.grad.abs().max() for p in model.parameters())` and current learning rate `scheduler.get_last_lr()` | (a) Global batch size was scaled up across `64+` GPUs using aggressive linear LR scaling without sufficient **linear warmup** (`W = 2,000` steps); (b) `FP16` gradient overflow without `GradScaler` or `BF16`; or (c) corrupted data sample | Cut peak learning rate by `2x`, use `BF16` or `GradScaler`, enforce **gradient norm clipping** (`clip_grad_norm_(model.parameters(), 1.0)`), add linear LR warmup, and inspect the offending batch |
+| **5. Throughput `30%` Below Target (`8 hours` Instead of `6 hours` / Epoch, `20M` vs `32M tokens/sec`):** Job runs without crashing, but `MFU` drops from `45%` to `< 30%`; or fault recovery restarts at step `5243 -> 5000` | Compare per-rank iteration times (`dist.all_gather`), run `nccl-tests` (`all_reduce_perf`), check `nvidia-smi dmon` for thermal throttling, and inspect `ibstat` / `perfquery` | (a) **Tensor Parallelism (`TP`)** accidentally configured across nodes over `50 GB/s` InfiniBand instead of inside `1` node's `900 GB/s` `NVLink`; (b) a single **straggler GPU** thermal-throttling or stalling `All-Reduce`; or (c) excessive synchronous checkpointing / small micro-batch size | Restrict `tensor_model_parallel_size <= 8` (`intra-node NVLink`), increase micro-batch count `m` to shrink the `(p-1)/(m+p-1)` pipeline bubble, drain straggler nodes, and use asynchronous checkpointing |
 
 ---
 
@@ -602,25 +602,25 @@ Symbolic AI uses explicit predefined rules in an if-else knowledge base. It is p
 </details>
 
 <details>
-<summary>**2. What are the five key differences between ML in research and ML in production (DMLS Ch. 1, Table 1-1)?**</summary>
+<summary>**2. What are the five key differences between ML in research and ML in production?**</summary>
 
 First, research optimizes single-objective state-of-the-art benchmark accuracy. Production instead balances conflicting stakeholder requirements including revenue, sub-100-millisecond latency, stability, and margin. Second, research prioritizes high training throughput, whereas production prioritizes low inference tail latency at the 90th and 99th percentiles. Third, research datasets are clean and static, whereas production data is noisy, privacy-sensitive, and constantly shifting. Fourth and fifth, fairness and interpretability are often optional in research leaderboards, yet mandatory in production to prevent discrimination and pass audits.
 </details>
 
 <details>
-<summary>**3. Why can batching online queries increase both latency and throughput simultaneously, and why must SLAs use percentiles instead of average latency (DMLS Ch. 1)?**</summary>
+<summary>**3. Why can batching online queries increase both latency and throughput simultaneously, and why must SLAs use percentiles instead of average latency?**</summary>
 
 Processing 1 query in 10 ms yields 100 queries per second. Grouping 50 queries into a 20 ms batch increases per-query latency to 20 ms plus queue wait time while boosting throughput 25-fold to 2,500 queries per second. Arithmetic average latency hides severe tail outliers because a single 3,000 ms request among nine 100 ms requests skews the mean to 390.0 ms. By contrast, the median p50 of 100.0 ms and p90 of 3,000.0 ms cleanly separate typical performance from tail stalls.
 </details>
 
 <details>
-<summary>**4. Why should a multi-objective system decouple objectives into separate models rather than training one model on a combined weighted loss (DMLS Ch. 2)?**</summary>
+<summary>**4. Why should a multi-objective system decouple objectives into separate models rather than training one model on a combined weighted loss?**</summary>
 
 Combining losses at training time requires retraining the entire model from scratch whenever product managers adjust the business weights. Training separate quality and engagement models lets engineers combine their predicted scores at serving time. That decoupling allows instant weight tuning without retraining and lets each model be updated on its own maintenance schedule.
 </details>
 
 <details>
-<summary>**5. Why is framing next-app recommendation as regression or scalar scoring superior to framing it as N-class classification (DMLS Ch. 2)?**</summary>
+<summary>**5. Why is framing next-app recommendation as regression or scalar scoring superior to framing it as N-class classification?**</summary>
 
 In N-class classification, the output softmax layer has a fixed dimension N. Adding a single new app therefore requires changing the network architecture and retraining the model. In regression or scalar scoring framing, the model takes user, context, and candidate app features as input and outputs a single probability. That design allows newly added apps to be scored zero-shot without retraining.
 </details>
@@ -632,7 +632,7 @@ Each parameter in a linear layer performs one multiply and one add—2 FLOPs—p
 </details>
 
 <details>
-<summary>**7. How long does a single GPT-3 (175B) training step take on 1 NVIDIA A100 versus 128 A100 GPUs (V13 Ch. 01)?**</summary>
+<summary>**7. How long does a single GPT-3 (175B) training step take on 1 NVIDIA A100 versus 128 A100 GPUs?**</summary>
 
 ```text
 GPT-3 175B Single Step Timing (batch = 2048, seq = 2048 -> 4,194,304 tokens, 1.46 x 10^18 FLOPs):
@@ -653,7 +653,7 @@ Static Memory per Parameter and 7B Footprint:
 </details>
 
 <details>
-<summary>**9. In the V13 Ch. 02 7B Transformer step timeline, what are the exact memory totals during forward, uncheckpointed backward, checkpointed backward, optimizer step, and AMP?**</summary>
+<summary>**9. In the 7B Transformer step timeline, what are the exact memory totals during forward, uncheckpointed backward, checkpointed backward, optimizer step, and AMP?**</summary>
 
 ```text
 V13 Ch. 02 7B Transformer Step Memory Totals (32 layers, batch = 4, seq = 2048):
@@ -678,7 +678,7 @@ Linear Warmup (0 <= t <= W = 2,000) and Cosine Decay (W < t <= T = 100,000, lr_p
 </details>
 
 <details>
-<summary>**11. How do you scale a base learning rate of 1e-4 at batch size 32 when scaling data parallelism across 64 GPUs at 128 sequences per GPU (V21 Ch. 07)?**</summary>
+<summary>**11. How do you scale a base learning rate of 1e-4 at batch size 32 when scaling data parallelism across 64 GPUs at 128 sequences per GPU?**</summary>
 
 ```text
 Square-Root Learning Rate Scaling Heuristic (V21 Ch. 07):
@@ -688,7 +688,7 @@ Square-Root Learning Rate Scaling Heuristic (V21 Ch. 07):
 </details>
 
 <details>
-<summary>**12. What is the Critical Batch Size, and what happens to step count and total compute cost when global batch size equals 1x versus 8x the critical batch size (DMLS Ch. 6)?**</summary>
+<summary>**12. What is the Critical Batch Size, and what happens to step count and total compute cost when global batch size equals 1x versus 8x the critical batch size?**</summary>
 
 The critical batch size is the batch size where stochastic gradient noise equals true gradient signal, governed by the gradient noise scale. At 1x the critical batch size, training requires 2.0x the minimum steps and 2.0x the minimum compute, giving 50.0 percent parallel scaling efficiency. At 8x the critical batch size, required steps drop to only 1.125x the minimum while total compute balloons to 9.0x the minimum. That jump drops parallel scaling efficiency down to 11.11 percent.
 </details>
@@ -710,7 +710,7 @@ Pipeline Bubble Fraction = (p - 1) / (m + p - 1)
 </details>
 
 <details>
-<summary>**15. Define cross-entropy loss and perplexity, and compute both for the 4-class politics example (DMLS Ch. 2).**</summary>
+<summary>**15. Define cross-entropy loss and perplexity, and compute both for the 4-class politics example.**</summary>
 
 ```text
 Cross-Entropy and Perplexity (p = [0, 0, 0, 1], q = [0.45, 0.2, 0.02, 0.33]):
@@ -726,7 +726,7 @@ With three uncorrelated 70 percent classifiers, all three are correct 34.3 perce
 </details>
 
 <details>
-<summary>**17. On a binary classification task with 90 percent NEGATIVE and 10 percent POSITIVE labels (DMLS Ch. 6, Table 6-2), what are the F1 and Accuracy of uniform random guessing, label-distribution random guessing, and the zero-rule baseline?**</summary>
+<summary>**17. On a binary classification task with 90 percent NEGATIVE and 10 percent POSITIVE labels, what are the F1 and Accuracy of uniform random guessing, label-distribution random guessing, and the zero-rule baseline?**</summary>
 
 ```text
 DMLS Ch. 6 Table 6-2 Baselines (90% NEGATIVE / 10% POSITIVE):
@@ -743,7 +743,7 @@ In slice-based evaluation with 90 percent majority and 10 percent minority data,
 </details>
 
 <details>
-<summary>**19. What are the three core debugging practices recommended in DMLS Ch. 6, and why is data versioning fundamentally harder than code versioning?**</summary>
+<summary>**19. What are the three core debugging practices recommended for debugging ML systems, and why is data versioning fundamentally harder than code versioning?**</summary>
 
 The three debugging practices are starting with a simple architecture, overfitting a single batch to near-zero loss, and locking all random seeds. Data versioning is harder than Git code versioning because multi-terabyte datasets cannot be duplicated locally and binary records cannot be line-diffed. Furthermore, merging two dataset versions does not produce a merged trained model, and GDPR erasure requires deleting user records from historical snapshots.
 </details>

@@ -108,7 +108,7 @@ Suppose you need a backup tonight and can only use tools that already ship with 
 
 ### tar
 
-`tar` archives files, optionally compressed, into a single file or onto tape. Every `tar` command needs one of eight operation modes. Table 20-1 of the book lists them, and the table below shows the same modes.
+`tar` archives files, optionally compressed, into a single file or onto tape. Every `tar` command needs one of eight operation modes. The table below shows them.
 
 | Key | Meaning |
 |---|---|
@@ -125,10 +125,10 @@ The modes you will use most in this section are `-c` to create an archive, `-t` 
 
 GNU `tar` can compress with `-z` (`gzip`, for `.tar.gz` or `.tgz` files) or `-j` (`bzip2`, for `.tar.bz2` or `.tbz2` files). `-I` calls an external compressor instead, as long as it supports `-d`. Multi-core `pigz` is one example, and it compresses across many CPU cores.
 
-In chapter 20 of the book, basic archive creation, compression, listing, and extraction all appear. Extraction uses `-C` to change the target directory. Appending with `-r` works only on uncompressed `.tar` archives. The examples are `(untested here)`:
+The examples below cover basic archive creation, compression, listing, and extraction. Extraction uses `-C` to change the target directory. Appending with `-r` works only on uncompressed `.tar` archives. The examples are:
 
 ```bash
-# (untested here) — SCL Chapter 20 tar examples
+# SCL Chapter 20 tar examples
 tar cf filename_archive file1 file2
 tar cf project.tar *.c includes
 tar cvzf project.tar.gz *.c includes    # gzip archive (v outputs processed files)
@@ -140,14 +140,13 @@ tar rvf project.tar new_file            # append file/folder to uncompressed arc
 tar rvf project.tar new_folder
 ```
 
-`tar` keeps ownership, permissions, symbolic links and special device files more faithfully than plain `cp` does. That is why the book clones a directory tree with a pipeline. One side writes the archive to standard output, and the other reads it from standard input. You can run that locally, or over `ssh` or `netcat` `(untested here)`:
+`tar` keeps ownership, permissions, symbolic links and special device files more faithfully than plain `cp` does. That is why a pipeline is the usual way to clone a directory tree. One side writes the archive to standard output, and the other reads it from standard input. You can run that locally, or over `ssh` or `netcat`:
 
 ```bash
-# (untested here)
 tar cf - data01 | (cd /db01; tar xvf -)
 ```
 
-GNU `tar` supports incremental backups. It keeps a snapshot metadata file, with the `.snar` extension, that records what it has already archived. Pass `--level=0`, or delete the `.snar` file (such as `/var/log/usr.snar` in the book's example), and `tar` writes a full level-0 archive again. The test below used GNU tar 1.35 on a 4 MB directory.
+GNU `tar` supports incremental backups. It keeps a snapshot metadata file, with the `.snar` extension, that records what it has already archived. Pass `--level=0`, or delete the `.snar` file (such as `/var/log/usr.snar`), and `tar` writes a full level-0 archive again. The test below used GNU tar 1.35 on a 4 MB directory.
 
 ```bash
 tar --listed-incremental=lvl.snar -czf full.tgz data      # level 0 (the .snar file is created)
@@ -165,15 +164,15 @@ The default `tar` on macOS is bsdtar, which lacks this option, so use GNU tar in
 
 `rsync -a` mirrors a tree efficiently. It does a one-way delta transfer, comparing modification times and block checksums, and it preserves permissions, times and links. Plain `rsync` has three gaps, though. It has no built-in incremental or differential archive chains, unless you add `--link-dest` or a wrapper tool. It cannot read data from standard input, which rules out streaming database dumps. It also cannot work with removable tape drives. For relatively small backup tasks, it remains a great tool.
 
-The book shows two copy commands. The trailing slash copies the contents of the directory without creating an extra subdirectory. The second command adds an SSH login and a key file `(untested here)`:
+The book shows two copy commands. The trailing slash copies the contents of the directory without creating an extra subdirectory. The second command adds an SSH login and a key file:
 
 ```bash
-# (untested here) — SCL Chapter 20 rsync examples (trailing slash copies contents without creating extra subdir)
+# SCL Chapter 20 rsync examples (trailing slash copies contents without creating extra subdir)
 rsync -avz host1:data_dir /backups/host1
 rsync -av -e "ssh -l backuper -i secret_key" host1:/to_backup/ /backups/host1
 ```
 
-Table 20-3 of the book summarises the commonly used `rsync` flags:
+The commonly used `rsync` flags are:
 
 | Key | Meaning |
 |---|---|
@@ -191,7 +190,7 @@ Table 20-3 of the book summarises the commonly used `rsync` flags:
 
 Use `-n` when you want to preview a run, because it shows what would transfer without copying anything. `--delete` is the flag that removes destination files which no longer exist in the source.
 
-Sometimes you need the same incremental update on many nodes. `rsync --write-batch=update` `(untested here)` helps there, because it avoids recomputing the deltas for each host. Instead of changing a remote host directly, it records the delta stream into two files, `update` and `update.sh`. You distribute those files, or mount them over a network file system, and run `update.sh` on each target. That script runs `rsync --read-batch=update` underneath.
+Sometimes you need the same incremental update on many nodes. `rsync --write-batch=update` helps there, because it avoids recomputing the deltas for each host. Instead of changing a remote host directly, it records the delta stream into two files, `update` and `update.sh`. You distribute those files, or mount them over a network file system, and run `update.sh` on each target. That script runs `rsync --read-batch=update` underneath.
 
 The classic way to keep versioned backups without dedup software is `--link-dest`. Each new snapshot directory hard-links unchanged files from the previous one. The test used rsync 3.4.4 on 200 files of 20 KB each, 4,004 KB in total.
 
@@ -211,14 +210,14 @@ The caveats matter. The first run copies everything. A file modified in place co
 
 ### Bacula
 
-Bacula is an enterprise network backup system, and Bareos is a fork of it. Bacula has several parts. The Director is the scheduler and the brain. Its configuration is `/etc/bacula/bacula-dir.conf`, and it listens on port `9101`. The Storage Daemon writes to disk shelves or tape drives such as `/dev/nst0`. Its configuration is `/etc/bacula/bacula-sd.conf`, and it listens on port `9103`. The File Daemon is the agent on each machine with direct access to the files. Its configuration is `/etc/bacula/bacula-fd.conf`, and it listens on port `9102`.
+The Bacula commands and configuration files in this section were not run on live hardware. Bacula is an enterprise network backup system, and Bareos is a fork of it. Bacula has several parts. The Director is the scheduler and the brain. Its configuration is `/etc/bacula/bacula-dir.conf`, and it listens on port `9101`. The Storage Daemon writes to disk shelves or tape drives such as `/dev/nst0`. Its configuration is `/etc/bacula/bacula-sd.conf`, and it listens on port `9103`. The File Daemon is the agent on each machine with direct access to the files. Its configuration is `/etc/bacula/bacula-fd.conf`, and it listens on port `9102`.
 
 The Catalog is an SQLite, MySQL or PostgreSQL database that records where volumes and files live. The console, `bconsole`, is what operators use, and it reads `/etc/bacula/bconsole.conf`. The configuration itself is made of objects. A Client names the machine. A FileSet says what to include and exclude. A Schedule says when to run, and at which level: full, differential or incremental. A Pool is a set of volumes with a retention policy, and a Volume is one archive file or tape in that pool. A Device is the physical drive or directory. Storage, Job, JobDefs and Messages complete the list.
 
-The Storage Daemon configuration is `/etc/bacula/bacula-sd.conf`. On `stor1`, it defines the `Storage` listener, authorises the `Director`, and declares a disk `Device`. A disk device uses `Random Access = Yes;` and `RemovableMedia = no;`. A tape device uses `Random Access = No;` and `RemovableMedia = Yes;`, with `Archive Device = /dev/nst0`. `(untested here)`:
+The Storage Daemon configuration is `/etc/bacula/bacula-sd.conf`. On `stor1`, it defines the `Storage` listener, authorises the `Director`, and declares a disk `Device`. A disk device uses `Random Access = Yes;` and `RemovableMedia = no;`. A tape device uses `Random Access = No;` and `RemovableMedia = Yes;`, with `Archive Device = /dev/nst0`.:
 
 ```text
-# /etc/bacula/bacula-sd.conf (untested here)
+# /etc/bacula/bacula-sd.conf
 Storage {
   Name = stor1
   SDPort = 9103
@@ -240,10 +239,10 @@ Device {
 }
 ```
 
-On the Director server, `/etc/bacula/bacula-dir.conf` links the `Director`, `Storage`, `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` stanzas together `(untested here)`:
+On the Director server, `/etc/bacula/bacula-dir.conf` links the `Director`, `Storage`, `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` stanzas together:
 
 ```text
-# /etc/bacula/bacula-dir.conf (untested here)
+# /etc/bacula/bacula-dir.conf
 Director {
   Name = my-director
   DIRport = 9101
@@ -317,10 +316,10 @@ Job {
 
 Notice the `Write Bootstrap = "/var/spool/bacula/%n.bsr"` line. `%n` expands to the job `Name`, so each job writes its own file. That bootstrap file lets you recover data even when the Bacula Catalog database is unavailable.
 
-Each data server, which acts as a client, needs its own File Daemon configuration. The file is `/etc/bacula/bacula-fd.conf`, and it can also be named `/etc/bacula/bacula-fd`. It holds the Director password and the File Daemon listener, which must match the Director's `Client` name `(untested here)`:
+Each data server, which acts as a client, needs its own File Daemon configuration. The file is `/etc/bacula/bacula-fd.conf`, and it can also be named `/etc/bacula/bacula-fd`. It holds the Director password and the File Daemon listener, which must match the Director's `Client` name:
 
 ```text
-# /etc/bacula/bacula-fd.conf (untested here)
+# /etc/bacula/bacula-fd.conf
 Director {
   Name = my-director
   Password = "my-password"
@@ -334,10 +333,10 @@ FileDaemon {
 }
 ```
 
-Finally, the operator console reads `/etc/bacula/bconsole.conf`, which points to the Director `(untested here)`:
+Finally, the operator console reads `/etc/bacula/bconsole.conf`, which points to the Director:
 
 ```text
-# /etc/bacula/bconsole.conf (untested here)
+# /etc/bacula/bconsole.conf
 Director {
   Name = my-director
   DIRport = 9101
@@ -346,7 +345,7 @@ Director {
 }
 ```
 
-Inside `bconsole`, Table 20-2 of the book lists the essential interactive commands `(untested here)`:
+These are the essential interactive commands inside `bconsole`:
 
 | Command | Meaning |
 |---|---|
@@ -542,7 +541,7 @@ Snapshots from ZFS, GPFS or a storage array sit on the same array and trust doma
 </details>
 
 <details>
-<summary>4. List the eight primary operation modes of `tar` (chapter 20 of the Supercomputers for Linux SysAdmins book, `Table 20-1`) and explain why `tar cf - src | (cd /dst; tar xvf -)` is preferred over `cp -r`.</summary>
+<summary>4. List the eight primary operation modes of `tar` (chapter 20 of *Supercomputers for Linux SysAdmins*) and explain why `tar cf - src | (cd /dst; tar xvf -)` is preferred over `cp -r`.</summary>
 
 The eight operation modes are `-A` (`--catenate`), `-c` (`--create`), `-d` (`--diff`/`--compare`), `--delete` (disk archives only, not tape), `-r` (`--append`, uncompressed archives only), `-t` (`--list`), `-u` (`--update`), and `-x` (`--extract`/`--get`). A streaming pipe such as `tar cf - | tar xvf -` keeps ownership, permissions, hard links, symbolic links, device nodes and directory structures more faithfully than naive `cp`.
 </details>
@@ -581,7 +580,7 @@ After every backup job, it writes a small text Bootstrap Record file with the `.
 </details>
 
 <details>
-<summary>10. Name eight interactive commands in Bacula's `bconsole` (chapter 20 of the Supercomputers for Linux SysAdmins book, `Table 20-2`).</summary>
+<summary>10. Name eight interactive commands in Bacula's `bconsole` (chapter 20 of *Supercomputers for Linux SysAdmins*).</summary>
 
 The commands are `run` (for example `run job=users-backup`), `status` (for the director, storage, client, or all together), `messages`, `list`, `restore`, `cancel`, `disable` and `enable`, `reload`, and `show` (with `show help` or `show tasks`).
 </details>

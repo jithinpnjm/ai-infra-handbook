@@ -346,7 +346,7 @@ If you want more than one Pod on a card, configure time-slicing or Multi-Process
 
 The kube-scheduler treats `nvidia.com/gpu` as a plain integer counter. So a bare resource request states a capacity need, not a hardware need. Put a latency-sensitive workload with no node affinity on a mixed cluster, and it guarantees intermittent SLA violations.
 
-Consider the production fleet from Volume 10 chapter 4. It has 40 GPU worker nodes, each advertising eight allocatable GPUs. Of those, 25 newer nodes have NVLink-connected GPUs. Those links run at NV12, which is 600 GB/s on A100 or 900 GB/s on H100. The same nodes also show NIC-local PCIe switch placement, labelled PIX. The other 15 older nodes have PCIe-only GPUs that traverse cross-socket SYS links.
+Consider the production fleet chapter 4. It has 40 GPU worker nodes, each advertising eight allocatable GPUs. Of those, 25 newer nodes have NVLink-connected GPUs. Those links run at NV12, which is 600 GB/s on A100 or 900 GB/s on H100. The same nodes also show NIC-local PCIe switch placement, labelled PIX. The other 15 older nodes have PCIe-only GPUs that traverse cross-socket SYS links.
 
 Suppose a developer deploys the latency-sensitive service with only a single-GPU limit, and no nodeSelector or nodeAffinity. Then all 40 nodes satisfy the scheduler predicate. Under uniform availability, kube-scheduler has a `15 / 40 = 37.5%` chance of placing the Pod on one of the 15 unqualified PCIe nodes. Publishing a node label such as `gpu.platform.example/class=latency-optimized` on the 25 qualified nodes, and enforcing `requiredDuringSchedulingIgnoredDuringExecution` node affinity, reduces the wrong-pool placement risk from 37.5% to 0.0%.
 
@@ -526,7 +526,7 @@ Use this one-GPU check as a last step, after the host and plugin checks above.
 
 ## How it fails
 
-A live outage is the worst moment to start restarting things. When a node drops its allocatable GPUs, or containers fail at startup, resist the urge to restart the device plugin DaemonSet before you preserve evidence. Follow the dependency-ordered decision tree from Volume 10 Lab 03 instead. It helps you isolate the exact failing boundary, working from the bottom up.
+A live outage is the worst moment to start restarting things. When a node drops its allocatable GPUs, or containers fail at startup, resist the urge to restart the device plugin DaemonSet before you preserve evidence. Follow the dependency-ordered decision tree instead. It helps you isolate the exact failing boundary, working from the bottom up.
 
 ```mermaid
 flowchart TD

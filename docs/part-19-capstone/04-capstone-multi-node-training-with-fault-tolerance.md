@@ -86,7 +86,7 @@ After completing this capstone you will be able to:
 
 A team trains for 54 days on thousands of GPUs. Meta's report of its Llama 3 405B run, reproduced in AI Systems Performance Engineering, counted 419 unexpected interruptions over those 54 days. That is one stop about every three hours. Nobody on that team could have operated the run by hand.
 
-The cause of each stop was different. The table in the book lists 148 faulty GPUs, 72 GPU memory faults, 54 software bugs, 35 network switch or cable faults, and 32 host maintenance events. It also lists 7 NCCL watchdog timeouts and 6 silent data corruption cases. The percentages printed in the book table do not equal each count divided by 419, so this chapter uses the counts only.
+The cause of each stop was different. The published failure breakdown lists 148 faulty GPUs, 72 GPU memory faults, 54 software bugs, 35 network switch or cable faults, and 32 host maintenance events. It also lists 7 NCCL watchdog timeouts and 6 silent data corruption cases. The percentages printed in that breakdown do not equal each count divided by 419, so this chapter uses the counts only.
 
 Most of these stops are not a single dead machine. A GPU memory fault usually kills one process on one node. Every other rank is then stuck in a collective that can never finish. The job does not fail. It waits. That distinction drives the whole design, because waiting needs a detector and dying needs a restart.
 
@@ -279,7 +279,7 @@ def shard_model(model, mesh, cfg, blocks):
     return model
 ```
 
-Hybrid sharding changes what a checkpoint contains. Replicas hold identical shards. The default save planner has a `dedup_replicated_tensors` option, and I did not test what it does for hybrid sharding. The smoke test does not exercise hybrid mode, and the NCCL behaviour of a 2D mesh was not run here.
+Hybrid sharding changes what a checkpoint contains. Replicas hold identical shards. The default save planner has a `dedup_replicated_tensors` option, and what it does for hybrid sharding is untested. The smoke test does not exercise hybrid mode, and the NCCL behaviour of a 2D mesh was not run.
 
 **Decision rule:** write sharded checkpoints with DCP on the training path, convert to a full file offline when you need one, and prove that a checkpoint written at one world size loads at another before you rely on elasticity.
 
@@ -580,7 +580,7 @@ The module supports only a homogeneous local world size, so every node must run 
 
 ### What ran
 
-The smoke test starts two workers with `--max-restarts=6`, raises an error at step 6 on the first attempt, and checks that the second attempt resumes from step 4 and finishes at step 12. It passed. Three launches in the container went wrong at startup. Two failed with a gloo connection refused error, apparently because one worker tried to connect before the other was listening. The third hung until I stopped it. I did not root-cause any of them, and the smoke helper allows extra restarts to absorb the first kind. It shows why a restart budget above zero is useful even for a clean job, and it is a CPU-only artifact that may not appear with NCCL.
+The smoke test starts two workers with `--max-restarts=6`, raises an error at step 6 on the first attempt, and checks that the second attempt resumes from step 4 and finishes at step 12. It passed in a CPU-only container. Some early launches went wrong at startup. Two failed with a gloo connection refused error, apparently because one worker tried to connect before the other was listening, and a third hung. None was traced to a root cause, and the smoke helper allows extra restarts to absorb the first kind. It shows why a restart budget above zero is useful even for a clean job, and it is a CPU-only artifact that may not appear with NCCL.
 
 **Decision rule:** set `--nnodes` as a range only if you also have a scheduler that provides replacement nodes and a checkpoint format that reloads at a different world size, and otherwise use a fixed size with a restart budget and let the scheduler replace failed nodes.
 
@@ -768,7 +768,7 @@ After the stop, the script calls `scontrol requeue`. Slurm's `sbatch` page says 
 - `--no-requeue` prevents recovery from node failure or preemption, because the page says it stops administrators from restarting the job. Do not use it for long training.
 - `JobRequeue` in `slurm.conf` sets the cluster default for requeue. The book notes that preempted jobs are requeued only with `--requeue` or `JobRequeue=1`.
 - Use `--open-mode=append` so the log from before the requeue is not overwritten.
-- A failed prologue drains the node and requeues or cancels the job, per the book. A good health check turns a sick GPU into a drain before the next job lands on it.
+- A failed prologue drains the node and requeues or cancels the job. A good health check turns a sick GPU into a drain before the next job lands on it.
 
 ### Draining a bad node
 
@@ -794,7 +794,7 @@ Two controllers do that. JobSet is a Kubernetes SIG project that groups Jobs and
 
 I cloned the upstream repositories on 2026-11-10 and read the CRD schemas. The JobSet CRD at tag v0.13.0 serves `jobset.x-k8s.io/v1alpha2`. The Kubeflow Training Operator CRD at tag v1.9.4 serves `kubeflow.org/v1` for `PyTorchJob`. The validator rejects unknown fields, and a negative test with a misspelled field failed as it should.
 
-The upstream repository at `github.com/kubeflow/training-operator` has changed. Its main branch now has a README titled Kubeflow Trainer and a `VERSION` file reading v2.4.0, and its CRD is `TrainJob` at `trainer.kubeflow.org/v1alpha1`. The `PyTorchJob` API in this chapter belongs to the v1.9 line. If you start a new platform, evaluate Trainer v2. I did not write or validate a `TrainJob` manifest.
+The upstream repository at `github.com/kubeflow/training-operator` has changed. Its main branch now has a README titled Kubeflow Trainer and a `VERSION` file reading v2.4.0, and its CRD is `TrainJob` at `trainer.kubeflow.org/v1alpha1`. The `PyTorchJob` API in this chapter belongs to the v1.9 line. If you start a new platform, evaluate Trainer v2. No `TrainJob` manifest is written or validated here.
 
 ### JobSet
 
@@ -869,11 +869,11 @@ spec:
                     medium: Memory
 ```
 
-The fields that matter for fault tolerance are in `spec.failurePolicy`. The CRD describes `maxRestarts` as the limit on JobSet restarts. It describes `restartStrategy` as `Recreate` by default, with `BlockingRecreate` and `InPlaceRestart` as the other values. The CRD does not describe the strategies further, so I did not verify exactly how `Recreate` replaces the Jobs. The intent is that every pod restarts together and rejoins the rendezvous.
+The fields that matter for fault tolerance are in `spec.failurePolicy`. The CRD describes `maxRestarts` as the limit on JobSet restarts. It describes `restartStrategy` as `Recreate` by default, with `BlockingRecreate` and `InPlaceRestart` as the other values. The CRD does not describe the strategies further, so exactly how `Recreate` replaces the Jobs is not verified. The intent is that every pod restarts together and rejoins the rendezvous.
 
 The inner Job uses `backoffLimit: 0`, so one pod failure fails that Job at once and JobSet takes over the restart. The pod's `restartPolicy` is `Never` for the same reason. `network.enableDNSHostnames` gives each pod a stable name. The CRD describes the format as the JobSet name, the replicated job name, the job index and the pod index, followed by the subdomain. The torchrun endpoint in the manifest uses that name for pod 0 of job 0.
 
-The CRD also offers `failurePolicy.rules`, with actions such as `FailJobSet`, `RestartJobSet` and `RestartJob`, selected by failure reason. That lets you fail fast on an application error and restart on a node loss. The manifest here does not use rules. I did not test rule behaviour on a cluster.
+The CRD also offers `failurePolicy.rules`, with actions such as `FailJobSet`, `RestartJobSet` and `RestartJob`, selected by failure reason. That lets you fail fast on an application error and restart on a node loss. The manifest here does not use rules. Rule behaviour was not tested on a cluster.
 
 The pod sets `terminationGracePeriodSeconds: 180`. The Kubernetes documentation says deletion sends SIGTERM to the main process of each container, and SIGKILL after the grace period. `torchrun` as the container's main process forwards SIGTERM to the workers, as the CPU test showed for the signal case. The grace period must be longer than a checkpoint takes, or the kill arrives mid-write and the manager's staging rule has to catch it.
 
@@ -1031,7 +1031,7 @@ What was run here: all of step 1 on a macOS arm64 host. What was not run: the de
 
 ### Step 2: validate that the validator can fail
 
-Edit a copy of `c04_jobset.yaml` and misspell `restartStrategy`. Run the validation again. It should report an unexpected property. I ran this and the validator reported the unknown field. This step matters because a validator that cannot fail proves nothing.
+Edit a copy of `c04_jobset.yaml` and misspell `restartStrategy`. Run the validation again. It should report an unexpected property.  This step matters because a validator that cannot fail proves nothing.
 
 What to record: the exact message, and the field you broke.
 
@@ -1075,7 +1075,7 @@ What to record: the skip line, and the directory listing before and after.
 
 ### Step 5: reshard on resume
 
-Run a 2-process job to write checkpoints, then resume with `--nproc-per-node=1`. It should resume from the newest step and carry on. I ran this and it worked on CPU. This shows DCP resharding on a tiny model, not on a 32-GPU FSDP2 job.
+Run a 2-process job to write checkpoints, then resume with `--nproc-per-node=1`. It should resume from the newest step and carry on.  This shows DCP resharding on a tiny model, not on a 32-GPU FSDP2 job.
 
 What to record: the world size stored in the manifest and the world size of the resume.
 

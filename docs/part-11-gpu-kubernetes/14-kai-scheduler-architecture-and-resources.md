@@ -67,7 +67,7 @@ By the end of this chapter, you should be able to do five things.
 - Inspect and author the core KAI Scheduler custom resources, including Project, Queue, PodGroup, Topology, and BindRequest.
 - Explain how the pod-grouper controller derives member counts and total GPU demand across PyTorchJob, JobSet, LeaderWorkerSet, and MPIJob workloads.
 - Walk through the six stages of a KAI Scheduler batch session cycle.
-- Solve the 8-GPU, 20-job multi-class scheduling benchmark from Volume 24 Chapter 7 with 100% GPU packing and zero starvation.
+- Solve the 8-GPU, 20-job multi-class scheduling benchmark with 100% GPU packing and zero starvation.
 
 Use this list as a checklist as you read, and return to it when you reach the lab.
 
@@ -183,7 +183,7 @@ When a job stalls, work out which of these six stages is holding it back.
 #### Worked Production Benchmark: Packing 20 Diverse Jobs onto an 8-GPU Cluster
 Consider a cluster that receives inference services, whole-GPU training runs, and fractional research notebooks in the same instant. Naive scheduling breaks down here. It either starves the low-priority research or lets training take every GPU. Platform architects need to see how priority ordering, per-class quota caps, and fractional bin-packing work together during a live session.
 
-We will trace KAI Scheduler's session pipeline on the capstone benchmark from Volume 24 Chapter 7. The cluster has 2 worker nodes. Each node has 4 GPUs and 320 GB of GPU memory, so the cluster totals 8 GPUs and 640 GB of HBM. The fairness rule caps any single job class at 60% of the cluster's GPUs. Since 60% of 8 GPUs is 4.8, no class can hold more than 4.8 GPUs. The platform also targets over 85% total GPU utilization, with inference p99 latency below 10 ms. At time 0:00, 20 jobs arrive across three priority classes.
+We will trace KAI Scheduler's session pipeline on the capstone benchmark. The cluster has 2 worker nodes. Each node has 4 GPUs and 320 GB of GPU memory, so the cluster totals 8 GPUs and 640 GB of HBM. The fairness rule caps any single job class at 60% of the cluster's GPUs. Since 60% of 8 GPUs is 4.8, no class can hold more than 4.8 GPUs. The platform also targets over 85% total GPU utilization, with inference p99 latency below 10 ms. At time 0:00, 20 jobs arrive across three priority classes.
 
 ```text
 Volume 24 Chapter 7 Capstone Benchmark Specification & Wave 1 Packing (8.0 GPUs across node-1 and node-2):
@@ -250,7 +250,7 @@ Before you promote a KAI version, run these five fixtures against it.
 
 ### 1. Defining PriorityClasses, KAI Queues, and a 60% Scoped Quota
 
-The manifest below comes from Volume 24, Chapter 7 and the KAI Scheduler Queue specification. It defines three PriorityClass tiers and the `training-queue` custom resource. KAI Queue units are devices for GPU, millicores for CPU and megabytes for memory, so the 32-core quota is written 32000 and the 256 GB quota is 256000. Setting `quota: 4` and `limit: 4.8` guarantees the training team its baseline GPUs. It also caps the team's total burst usage at 60% of the cluster, which is 4.8 GPUs on an 8-GPU cluster.
+The manifest below comes and the KAI Scheduler Queue specification. It defines three PriorityClass tiers and the `training-queue` custom resource. KAI Queue units are devices for GPU, millicores for CPU and megabytes for memory, so the 32-core quota is written 32000 and the 256 GB quota is 256000. Setting `quota: 4` and `limit: 4.8` guarantees the training team its baseline GPUs. It also caps the team's total burst usage at 60% of the cluster, which is 4.8 GPUs on an 8-GPU cluster.
 
 ```yaml
 # kai-priority-and-queues.yaml (volume-24/chapter-07 + KAI Queue CRDs). Queue units: gpu in devices, cpu in millicores, memory in MB.
@@ -341,7 +341,7 @@ Take row 3 as a worked example, because you will meet this pattern often. Ten tr
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally with two Python 3 standard library scripts, `code/part11/kai_architecture_and_resources.py` and `code/part11/kai_architecture_and_resources_lab.py`. The first script deterministically simulates the pod-grouper controller across PyTorchJob, MPIJob, and fractional Pod workloads. The lab then runs the 8-GPU, 20-job multi-class session packing benchmark from Volume 24, Chapter 7. Cluster commands are marked `(untested here)`, so you can tell them apart from what you actually ran.
+This lab runs locally with two Python 3 standard library scripts, `code/part11/kai_architecture_and_resources.py` and `code/part11/kai_architecture_and_resources_lab.py`. The first script deterministically simulates the pod-grouper controller across PyTorchJob, MPIJob, and fractional Pod workloads. The lab then runs the 8-GPU, 20-job multi-class session packing benchmark. Cluster commands are marked `(untested here)`, so you can tell them apart from what you actually ran.
 
 ### Step 1: Run the self-checking KAI Scheduler architecture and resources lab (tested here)
 
@@ -469,7 +469,7 @@ The fairness policy caps any single job type at 60% of the 8-GPU cluster, which 
 </details>
 
 <details>
-<summary>**11. How does the remaining 1.0 GPU get utilized during Wave 1 of Volume 24 Project 7 after 6 Inference jobs and 4 Training jobs are placed?**</summary>
+<summary>**11. How does the remaining 1.0 GPU get utilized during Wave 1 Project 7 after 6 Inference jobs and 4 Training jobs are placed?**</summary>
 
 The 6 Inference jobs use 3.0 GPUs and the 4 Training jobs use 4.0 GPUs, which leaves 1.0 physical GPU free. All 4 Type C Research jobs, each requesting 0.25 GPU, are backfilled onto that eighth GPU. Wave 1 then reaches 8.0 of 8.0 GPUs, or 100.0% utilization, across 14 BindRequests with zero starvation.
 </details>
@@ -481,7 +481,7 @@ Kubernetes extended resources in `Pod.spec.resources` accept only whole integers
 </details>
 
 <details>
-<summary>**13. What happens in Volume 24 Project 7 if Type B Inference pods share a physical GPU via time-slicing with a heavy training loop?**</summary>
+<summary>**13. What happens Project 7 if Type B Inference pods share a physical GPU via time-slicing with a heavy training loop?**</summary>
 
 Time-slicing switches GPU contexts without hardware compute or memory bandwidth isolation. Contention from the training loop pushes Inference tail latency from under 10 ms up to 25 ms, which breaks the SLO. Co-locating only compatible inference shares, or partitioning the card into hardware-isolated MIG slices, prevents that degradation.
 </details>

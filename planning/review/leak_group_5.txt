@@ -1,0 +1,11 @@
+docs/part-10-gpu-cuda/10-fabric-manager-nvsm-and-nvlink-domains.md 16
+docs/part-10-gpu-cuda/11-cuda-programming-basics-kernels-indexing-and-memory.md 16
+docs/part-10-gpu-cuda/12-streams-events-asynchronous-copies-and-pinned-memory.md 15
+docs/part-10-gpu-cuda/13-memory-access-patterns-and-profiling.md 36
+docs/part-10-gpu-cuda/14-occupancy-warp-efficiency-and-instruction-level-parallelism.md 19
+docs/part-10-gpu-cuda/15-kernel-efficiency-and-arithmetic-intensity.md 17
+docs/part-10-gpu-cuda/16-intra-kernel-pipelining-warp-specialization-and-thread-block-clusters.md 43
+docs/part-10-gpu-cuda/17-inter-kernel-pipelining-synchronization-and-stream-ordered-allocation.md 33
+docs/part-10-gpu-cuda/18-dynamic-scheduling-cuda-graphs-and-device-initiated-orchestration.md 42
+docs/part-10-gpu-cuda/19-triton-language-and-compilers-openai-triton-torch-compile-xla.md 6
+docs/part-10-gpu-cuda/20-profiling-tools-nsight-systems-nsight-compute-pytorch-profiler.md 43

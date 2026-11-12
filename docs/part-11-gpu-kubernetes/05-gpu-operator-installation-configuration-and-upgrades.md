@@ -428,7 +428,7 @@ Node `gpu-node-04` has UEFI Secure Boot enabled. The public key used to sign the
 </details>
 
 <details>
-<summary>**4. What are the seven criteria in the Volume 10 Chapter 10 production acceptance contract for a GPU node pool?**</summary>
+<summary>**4. What are the seven criteria production acceptance contract for a GPU node pool?**</summary>
 
 - Expected GPUs are detected on the host, and the driver is healthy.
 - The configured container runtime path creates a GPU container and initializes CUDA.
@@ -529,7 +529,7 @@ A short smoke test can exit zero before an intermittent driver or firmware fault
 </details>
 
 <details>
-<summary>**18. What is the correct six-step dependency order for troubleshooting any post-upgrade GPU failure (Volume 10 Chapters 11 and 12)?**</summary>
+<summary>**18. What is the correct six-step dependency order for troubleshooting any post-upgrade GPU failure?**</summary>
 
 - Hardware inventory, node boot state, kernel version, and host driver health, checked with `nvidia-smi` and `dmesg`.
 - The container runtime device-injection path, checked with `crictl inspect`, CDI `/var/run/cdi`, and fresh Pod sandbox creation.
@@ -546,7 +546,7 @@ Whether you installed the GPU Operator with the `cm-kubernetes-setup` wizard or 
 </details>
 
 <details>
-<summary>**20. What twelve items belong in an actionable escalation evidence package for NVIDIA or platform support (Volume 10 Chapter 11)?**</summary>
+<summary>**20. What twelve items belong in an actionable escalation evidence package for NVIDIA or platform support?**</summary>
 
 - The scope, business impact, and a timestamped change timeline.
 - The Kubernetes and GPU Operator versions from `helm history`, plus the pinned release values (`values-before.yaml` and `target-values.yaml`).

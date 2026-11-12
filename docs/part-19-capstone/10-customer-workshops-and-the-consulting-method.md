@@ -30,7 +30,7 @@ A customer tells you on a call that they want "an AI platform by spring." Nobody
 
 This capstone teaches the part of the job that happens before and around the technical build. You will learn what to ask, how to turn the answers into a short list of risks, how to score the customer's current state, how to turn requirements into a design with the costs written down, how to run a proof of concept that can fail honestly, and how to hand the result over. The method is a sequence of small artefacts, each of which another person can check.
 
-An honest word about sourcing. The gem books describe customer projects and platform choices, and I use them for what they say. They do not contain a consulting playbook. The workshop agenda, the questionnaire weights, the scorecard scale and the verdict rules here are my own recommended practice, and the text says so each time. I do not describe how NVIDIA, Nebius or any named company runs its engagements. I have no source for that.
+An honest word about sourcing. The gem books describe customer projects and platform choices, and this chapter uses them for what they say. They do not contain a consulting playbook. The workshop agenda, the questionnaire weights, the scorecard scale and the verdict rules here are this chapter's own recommended practice, and the text says so each time. This chapter does not describe how NVIDIA, Nebius or any named company runs its engagements, because there is no source for that.
 
 Everything runnable is in `code/part19/c10_*`. The customer in the worked example, Larkfield Mutual, is fictional. Every number about it is invented to make the arithmetic readable, and none of it was measured on a system.
 
@@ -85,7 +85,7 @@ Notice that each artefact is small and can be read in five minutes. That is deli
 
 **Decision rule:** Do not start the next step until the artefact of the current step exists and the customer has seen it.
 
-**In one minute:** An engagement is five steps that each leave behind a small, checkable file. The Fraunhofer case gives the proof of concept, implementation and operation phases. The steps before and after are my own practice.
+**In one minute:** An engagement is five steps that each leave behind a small, checkable file. The Fraunhofer case gives the proof of concept, implementation and operation phases. The steps before and after are this chapter's own practice.
 
 ## 2. Discovery: what to ask and why
 
@@ -173,7 +173,7 @@ Midway through the workshop the customer's lead says "we have solid MLOps." The 
 
 ### 4.1 The scorecard
 
-`c10_scorecard.json` lists 16 criteria in five categories: infrastructure, security, MLOps, team and governance. Each criterion has a weight from 1 to 3 and a plain-English sentence. The scale is my own and has four levels.
+`c10_scorecard.json` lists 16 criteria in five categories: infrastructure, security, MLOps, team and governance. Each criterion has a weight from 1 to 3 and a plain-English sentence. The scale is this chapter's own and has four levels.
 
 | Score | Meaning |
 |---|---|
@@ -182,7 +182,7 @@ Midway through the workshop the customer's lead says "we have solid MLOps." The 
 | 2 | Defined and repeatable |
 | 3 | Measured and automated |
 
-The five categories are my own grouping of the topics those books cover: the infrastructure, the access and secrets, the pipelines and monitoring, and the people who run them. The weights and the default target of 2 are heuristics.
+The five categories are this chapter's own grouping of the topics those books cover: the infrastructure, the access and secrets, the pipelines and monitoring, and the people who run them. The weights and the default target of 2 are heuristics.
 
 ### 4.2 Evidence is mandatory
 
@@ -222,7 +222,7 @@ My procedure is the author's practice. List the hard constraints such as residen
 
 `c10_adr.py` turns a small JSON decision into a numbered markdown record. It refuses a record with fewer than two options, an option with no cons, an option with no pros, a decision that is not one of the options, or no revisit trigger. These checks exist because the most common failure of a design document is a one-sided case.
 
-The record format, with context, options, decision and consequences, is a widely used convention. I am using it from memory of common practice and I have not verified it against a source, so I do not call it a standard.
+The record format, with context, options, decision and consequences, is a widely used convention. It is described from common practice and is not verified against a source, so it is not called a standard.
 
 The record for the Larkfield example ends like this, produced by the script:
 
@@ -459,7 +459,7 @@ The criteria and results in section 6 belong to this scenario. The verdict was g
 
 ## 9. Hands-on lab
 
-All steps run on a laptop with Python 3 and pytest. No GPU, no cluster and no customer data are involved. I ran steps 1 to 5 here on 2026-11-11 on macOS arm64. The outputs quoted are from that run.
+All steps run on a laptop with Python 3 and pytest. No GPU, no cluster and no customer data are involved. Steps 1 to 5 were run on 2026-11-11 on macOS arm64, and the outputs quoted are from that run.
 
 ### Step 1: score the discovery answers
 
@@ -503,7 +503,7 @@ Expected result: a path such as `/tmp/adr_out/0001-serve-the-claims-summariser-.
 python3 -m pytest test_c10_consulting.py -q
 ```
 
-Result when I ran it: 37 passed. The tests cover the scoring arithmetic, every verdict path, input validation and the refusal cases.
+Result: 37 passed. The tests cover the scoring arithmetic, every verdict path, input validation and the refusal cases.
 
 ### What was run and what was not
 
@@ -511,7 +511,7 @@ Run here: steps 1 to 5 and the demo script `c10_engagement_demo.py`. Not run: no
 
 ## How to answer out loud
 
-The question is "walk me through how you would run a discovery workshop." The interviewer wants to hear a structure, an awareness of risk and some humility about what you do not know. This chapter's method is built from the gem books and my own practice. It is not how any particular company works, and I would not claim it is.
+The question is "walk me through how you would run a discovery workshop." The interviewer wants to hear a structure, an awareness of risk and some humility about what you do not know. This chapter's method is built from the gem books and the chapter's own practice. It is not how any particular company works, and you should not claim it is.
 
 ### Speaking order
 

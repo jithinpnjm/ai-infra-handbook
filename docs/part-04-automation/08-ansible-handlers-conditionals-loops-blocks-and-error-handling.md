@@ -192,7 +192,7 @@ Installing packages one call at a time repeats work that a single call could do.
 
 The first task passes the whole package list in one transaction, which is the preferred form where the module accepts a list. The second repeats a template for each item. The third loops over a list of dicts and labels each item with a short name. The last task retries until the metrics endpoint returns 200.
 
-The `loop:` keyword replaces most of the older `with_*` forms. Filters such as `dict2items`, `subelements`, `product`, `zip` and `flatten` reshape data for a loop. Older code still uses `with_fileglob` (`keys/*.pub`), `with_lines` (`cat files/turing.txt`), `with_first_found` (`~/.ssh/id_ed25519.pub`, `id_rsa.pub`), `with_dict` (`ansible_enp0s8.ipv4`), `with_nested` and `with_subelements`. *Ansible: Up and Running*, Chapter 10, Table 10-4, lists them.
+The `loop:` keyword replaces most of the older `with_*` forms. Filters such as `dict2items`, `subelements`, `product`, `zip` and `flatten` reshape data for a loop. Older code still uses `with_fileglob` (`keys/*.pub`), `with_lines` (`cat files/turing.txt`), `with_first_found` (`~/.ssh/id_ed25519.pub`, `id_rsa.pub`), `with_dict` (`ansible_enp0s8.ipv4`), `with_nested` and `with_subelements`.
 
 You can also write your own Jinja2 filter plugins. Put them in `filter_plugins/` next to your playbook, and put custom lookup plugins in `lookup_plugins/`. *Ansible: Up and Running*, Chapter 10, gives an example. Its file `filter_plugins/surround_by_quotes.py` defines `class FilterModule:` with a `surround_by_quotes(a_list)` method. With that filter, `ALLOWED_HOSTS = [{{ domains | surround_by_quotes | join(", ") }}]` renders `["www.example.com", "example.com"]`. The code is tested in `code/part04/ansible_control_flow_lab.py`.
 
@@ -202,7 +202,7 @@ A task that uses both `loop` and `register` stores its output in `register.resul
 
 Loops over thousands of items are slow, because each item means one module call per host. Where you can, push the iteration into the module by passing a list, into a template, or into a single script or module.
 
-Nested loops need their own variable names. Set `loop_control: loop_var: outer_item` on the outer loop to avoid name clashes. A common case is `loop_var: vhost` when `vhost-tasks.yml` is included inside a loop over virtual hosts, and that file loops over `logs`, `public_http`, `public_https` and `includes`. *Ansible: Up and Running*, Chapter 10, shows this in `Example 10-23`. When an included task file also loops, rename the outer `item`.
+Nested loops need their own variable names. Set `loop_control: loop_var: outer_item` on the outer loop to avoid name clashes. A common case is `loop_var: vhost` when `vhost-tasks.yml` is included inside a loop over virtual hosts, and that file loops over `logs`, `public_http`, `public_https` and `includes`. When an included task file also loops, rename the outer `item`.
 
 Loops across hosts that depend on each other are a different case. When each node of a quorum must upgrade one at a time, use `serial: 1` at the play level rather than a loop.
 
@@ -446,7 +446,7 @@ Start on your own machine. Run the self-checking Python lab, `code/part04/ansibl
 python3 code/part04/ansible_control_flow_lab.py
 ```
 
-Next, move to a control node with 2–3 Linux targets. All interactive shell steps below are `untested here`. Work through these exercises:
+Next, move to a control node with 2–3 Linux targets. The interactive shell steps below were not run on live hardware. Work through these exercises:
 
 1. Test handlers. Notify a restart from two tasks, and verify that only one restart happens. Use `listen` topics. Then reproduce the "handler lost after failure" case by failing a later task. Fix it once with `force_handlers` and once with `meta: flush_handlers`.
 2. Break a restart storm. Make a template non-idempotent by adding a timestamp, and watch the service restart on every run. Then fix it.
@@ -545,7 +545,7 @@ By default, each `loop:` puts its current element in a variable called `item`. S
 <details>
 <summary>7. How do you write a custom Jinja2 Filter Plugin (`filter_plugins/surround_by_quotes.py`) in Ansible (*Ansible: Up and Running*, Chapter 10)?</summary>
 
-Create a Python file inside a `filter_plugins/` directory next to your playbook, or inside a role or collection. In that file, define a class named `FilterModule` with a `filters(self)` method. The method returns a dictionary that maps filter names to functions. *Ansible: Up and Running*, Chapter 10, `Example 10-11`, shows the pattern:
+Create a Python file inside a `filter_plugins/` directory next to your playbook, or inside a role or collection. In that file, define a class named `FilterModule` with a `filters(self)` method. The method returns a dictionary that maps filter names to functions. The pattern looks like this:
 ```python
 class FilterModule:
     @staticmethod
@@ -581,7 +581,7 @@ When every task in `rescue:` succeeds, Ansible counts the error as recovered. Th
 <details>
 <summary>11. Why did *Ansible: Up and Running*, Chapter 10's web-app example put "Re-add server to load balancer" in `always:`, whereas our GPU node maintenance playbook puts `scontrol State=RESUME` AFTER the `block`/`rescue`?</summary>
 
-- In *Ansible: Up and Running*, Chapter 10 (`Example 10-29`), the `rescue:` block reverted the VM to a known-good pre-upgrade snapshot, `cs_vmsnapshot: state=revert`. The web server was therefore healthy again before `always:` re-added it to the load balancer.
+- In a rolling-upgrade example, the `rescue:` block reverted the VM to a known-good pre-upgrade snapshot, `cs_vmsnapshot: state=revert`. The web server was therefore healthy again before `always:` re-added it to the load balancer.
 - A bare-metal GPU node cannot be reverted with a hypervisor snapshot. If a failed driver or firmware update, or a failed `nvidia-smi` validation, put the node back into Slurm with `State=RESUME` in `always:`, it would become a "black hole" node. It would crash every multi-node training job scheduled onto it. So on GPU nodes, `rescue:` leaves the node `DRAIN`ed and fails, and `State=RESUME` runs only after the `block` succeeds.
 </details>
 

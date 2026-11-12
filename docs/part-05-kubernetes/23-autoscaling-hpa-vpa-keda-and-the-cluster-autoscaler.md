@@ -335,9 +335,9 @@ In *Production Kubernetes* Chapter 13 (*Autoscaling*), Josh Rosso et al. highlig
 
 1. **Service Decomposition and When NOT to Autoscale (Production Kubernetes Chapter 13):** Decomposing a monolith into independent services lets each tier scale on its own bottleneck metric. For example, you can separate CPU-bound tokenization and preprocessing from GPU-bound LLM prefill and decode. However, do **not** enable autoscaling blindly. Stateful singleton services, workloads with predictable flat traffic, and workloads that have not been load-tested are poor candidates, because you do not yet know their saturation point or startup latency.
 2. **Cluster Autoscaler Configuration (`--nodes=1:10:worker-auto-scaling-group`) and Pod Shuffling (Production Kubernetes Chapter 13):** When you configure `cluster-autoscaler` against cloud node groups, such as with `--cloud-provider=aws --nodes=1:10:worker-auto-scaling-group`, expect pod placement to shift. Adding and removing worker nodes inevitably shuffles pods across the cluster. Every autoscaled workload should therefore define `PodDisruptionBudget`s (`PDB`s), `readinessProbe`s and `preStop` graceful drain hooks.
-3. **Hiding Node Spin-Up Latency with `cluster-overprovisioner` (Production Kubernetes Chapter 13, Figures 13-6 & 13-7):** The Cluster Autoscaler reacts only after a pod becomes Pending, which happens once existing nodes are already full. A sudden traffic spike therefore normally waits 5 to 15 minutes for a cloud GPU VM to boot and install drivers. You can remove that wait without setting artificially low HPA thresholds (`30%`). Deploy a `PriorityClass` with negative priority (`value: -10`), and a `pause` (`registry.k8s.io/pause`) **`cluster-overprovisioner` Deployment** sized to 1 to 2 nodes' worth of resources. The model is in `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`.
-   - In steady state, the negative-priority `pause` pods sit on warm, ready GPU nodes (`Figure 13-6`).
-   - When real production inference pods scale out (`priority >= 0`), `kube-scheduler` immediately preempts the `pause` pods, with a `0s` node wait, and places the real pods on the warm nodes. The preempted `pause` pods go `Pending`, which triggers the `Cluster Autoscaler` to provision replacement buffer nodes in the background (`Figure 13-7`).
+3. **Hiding Node Spin-Up Latency with `cluster-overprovisioner` (Production Kubernetes Chapter 13):** The Cluster Autoscaler reacts only after a pod becomes Pending, which happens once existing nodes are already full. A sudden traffic spike therefore normally waits 5 to 15 minutes for a cloud GPU VM to boot and install drivers. You can remove that wait without setting artificially low HPA thresholds (`30%`). Deploy a `PriorityClass` with negative priority (`value: -10`), and a `pause` (`registry.k8s.io/pause`) **`cluster-overprovisioner` Deployment** sized to 1 to 2 nodes' worth of resources. The model is in `simulate_overprovisioning_pause_pods()` in `code/part05/autoscaling_hpa_ca_simulator.py`.
+   - In steady state, the negative-priority `pause` pods sit on warm, ready GPU nodes.
+   - When real production inference pods scale out (`priority >= 0`), `kube-scheduler` immediately preempts the `pause` pods, with a `0s` node wait, and places the real pods on the warm nodes. The preempted `pause` pods go `Pending`, which triggers the `Cluster Autoscaler` to provision replacement buffer nodes in the background.
 
 ### Cluster Autoscaler configuration example
 
@@ -407,7 +407,7 @@ Because each placeholder reserves a whole node, the replica count of the overpro
 
 Create a priority class with a negative value, for example `value: -1` as in *Production Kubernetes* (the lab below uses `-10`; any value below zero works), and apply it to the overprovisioner Deployment. Every other workload then outranks these pods by default. When a real pod needs the room, the overprovisioner pod is evicted immediately. The evicted pod goes Pending, which triggers the Cluster Autoscaler to provision a new node to stand by.
 
-Figure 13-6 shows one placeholder replica, but you can run as many as the buffer requires.
+The placeholder setup uses one replica, but you can run as many as the buffer requires.
 
 With the Cluster Autoscaler and cluster-overprovisioner, you have two solid ways to scale Kubernetes clusters horizontally. This fits well with horizontal workload scaling. Vertical cluster scaling is not covered here, because horizontal scaling has covered every use the authors found.
 
@@ -446,7 +446,7 @@ Before you let an autoscaler manage a GPU pool, check that the pool's minimum, l
 
 ## 6. Autoscaling patterns for AI workloads
 
-Each AI workload scales differently, so the right pattern depends on what the workload does. The table gives a pattern for each common workload, and the notes below it cover techniques that apply to several of them.
+Each AI workload scales differently, so the right pattern depends on what the workload does. The table gives a pattern for each common workload, and the topics below it cover techniques that apply to several of them.
 
 | Workload | Pod scaling | Node scaling | Notes |
 |---|---|---|---|
@@ -458,7 +458,7 @@ Each AI workload scales differently, so the right pattern depends on what the wo
 | **Interactive notebooks** | None (per-user) | Pool scaling + idle culling | Quotas to cap spend |
 | **Gateways/ingress** | HPA on CPU/RPS/connections | CPU pool | Keep ≥3 for HA |
 
-Read the table one row at a time, and check the notes column before you settle on a pattern. The topics below apply across several of these workloads.
+Read the table one row at a time, and check the last column before you settle on a pattern. The topics below apply across several of these workloads.
 
 - **Warm pools & pre-pulled images:** A DaemonSet pre-pulls model server images and, optionally, model weights onto local NVMe. The scheduler's `ImageLocality` scores favour those nodes, which cuts start time from minutes to seconds.
 - **Model load acceleration:** Use a shared read-only weights volume, a local NVMe cache, sharded or parallel loading, `tensorizer` or safetensors, and CUDA graph warmup in readiness gating. Snapshotting, through CRIU or CUDA checkpoint, is emerging and can speed up restore.
@@ -548,7 +548,7 @@ Check each answer against the code or manifest it names. The simulator lives in 
 4. Compare the VPA modes `Off`, `Initial`, `Recreate` and `InPlaceOrRecreate`. Explain why `Off` with Goldilocks is the safest way to right-size requests. Then explain why VPA in `Auto` and HPA on the same CPU metric fight each other.
 5. Read the `batch-embed` `ScaledObject` and the `transcribe-job` `ScaledJob` in Section 4. Then explain how Knative and KServe differ from KEDA when an endpoint scales from 0 to 1.
 6. Run `evaluate_ca_node_scale_down()` and say what blocks a scale-down. Then explain how Karpenter consolidation works with `WhenEmptyOrUnderutilized` and `do-not-disrupt`.
-7. Run `simulate_overprovisioning_pause_pods()`. Say in your own words how low-priority pause pods hide a 10-minute GPU node boot. Production Kubernetes, Chapter 13, shows the idea in Figures 13-6 and 13-7.
+7. Run `simulate_overprovisioning_pause_pods()`. Say in your own words how low-priority pause pods hide a 10-minute GPU node boot. Production Kubernetes, Chapter 13, describes the idea.
 8. Explain why pod-by-pod scale-up fails for a 16-node synchronous training job. Then explain how a `ProvisioningRequest` with a Kueue `AdmissionCheck` gives all-or-nothing provisioning.
 9. List five ways to cut a 70B model cold start from 12 minutes to under 60 seconds, and say which you would try first.
 
@@ -664,13 +664,13 @@ A node becomes a scale-down candidate when its CPU, memory and GPU requests stay
 </details>
 
 <details>
-<summary>13. Walk through the `cluster-overprovisioner` ("Pause Pod") pattern from *Production Kubernetes* Chapter 13 (`Figures 13-6` & `13-7`).</summary>
+<summary>13. Walk through the `cluster-overprovisioner` ("Pause Pod") pattern from *Production Kubernetes* Chapter 13.</summary>
 
 Starting a new cloud GPU VM and loading its drivers takes 5 to 15 minutes. If you wait for a production spike to create Pending Pods before scale-up begins, you break your latency SLOs. The `cluster-overprovisioner` pattern avoids that wait in five steps.
 1. Create a `PriorityClass` named `overprovisioning` with a negative value (`value: -10`). Real workloads use priority $\ge 0$.
 2. Deploy a `Deployment` that runs the small `registry.k8s.io/pause` image, with `priorityClassName: overprovisioning`. Its resource requests equal one or two warm GPU nodes (`nvidia.com/gpu: 8`).
-3. In steady state (`Figure 13-6`), the `pause` Pod occupies a warm, fully initialized GPU node.
-4. When HPA scales out a real inference Deployment (`Figure 13-7`), `kube-scheduler` immediately preempts the `-10` priority `pause` Pod. It then schedules the real inference Pod onto the warm GPU node in **0 seconds**.
+3. In steady state, the `pause` Pod occupies a warm, fully initialized GPU node.
+4. When HPA scales out a real inference Deployment, `kube-scheduler` immediately preempts the `-10` priority `pause` Pod. It then schedules the real inference Pod onto the warm GPU node in **0 seconds**.
 5. The preempted `pause` Pod becomes Pending. That immediately triggers the Cluster Autoscaler to provision a new warm buffer node in the background, for the *next* spike.
 </details>
 

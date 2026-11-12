@@ -84,7 +84,7 @@ flowchart TD
 | 3b | `mpirun all_reduce_perf` | busbw near the per-GPU link rate or your baseline, NET/IB in the log | Under 1 GB/s with `NET/Socket` in the log, as in the real table in Section 5 |
 | 4 | `nsys`, `torch.profiler` | Collective time hidden under backward compute | Wire passes, training is slow: many small buckets |
 
-The reference numbers in this table are deliberately loose. The only hard anchors come from sources. A 4x NDR InfiniBand link carries 400 Gbps, which is 50 GB/s (*Supercomputers for Linux SysAdmins*, Table 5-1; the division by eight is arithmetic). A PCIe Gen5 x16 slot gives roughly 64 GB/s per direction (*Distributed AI Systems*, ch. 2). Everything else is judged against a baseline that you capture on your own healthy fabric.
+The reference numbers in this table are deliberately loose. The only hard anchors come from sources. A 4x NDR InfiniBand link carries 400 Gbps, which is 50 GB/s (*Supercomputers for Linux SysAdmins*, Chapter 5; the division by eight is arithmetic). A PCIe Gen5 x16 slot gives roughly 64 GB/s per direction (*Distributed AI Systems*, ch. 2). Everything else is judged against a baseline that you capture on your own healthy fabric.
 
 The lab produces three standing artifacts. The first is a baseline per tier, saved with the versions that produced it. The second is a pass or fail gate per tier. The third is an evidence pack that ties both together, so a firmware change or a cable swap becomes a diff against the pack.
 
@@ -223,7 +223,7 @@ flowchart LR
 | Item | Lab value | Source |
 |---|---|---|
 | Ranks | 16, one process per GPU | lab design |
-| NIC rate | 400 Gbps per rail, which is 50 GB/s | NDR 4x: *Supercomputers*, Table 5-1; division is arithmetic |
+| NIC rate | 400 Gbps per rail, which is 50 GB/s | NDR 4x: *Supercomputers for Linux Sysadmins*, Chapter 5; division is arithmetic |
 | Check for a healthy run | busbw plateau near 45 GB/s, at least 80 percent of 50 | 80 percent is my reasoning, see Section 7 |
 
 ### The pre-benchmark audit
@@ -303,7 +303,7 @@ esac
 
 NCCL's own diagnostics use the same idea. The network bandwidth check in NCCL 2.31 and later runs `ib_write_bw` between nodes and reports minimum, median and maximum rates. The documentation example shows a median of 391.5 Gbit/s on a 400G link. That is the only source in this chapter for "about 390", and it is an example in the NCCL guide, not a promise. The same example flags a rank more than 30 percent off the median, which is the rule the analyser reuses for slow members.
 
-GPUDirect RDMA depends on physical layout. NCCL's `NCCL_NET_GDR_LEVEL` variable sets the maximum distance between NIC and GPU for which GPUDirect is used. `PIX` allows it only on the same PCI switch. When no level is set, NCCL picks one from the architecture. The common causes of a collapse are the missing module, PCIe ACS settings that block peer traffic, and a far GPU-NIC pair. The ACS and BIOS causes come from the nvidia-devops Volume 07 chapter on GPUDirect and are not re-verified here.
+GPUDirect RDMA depends on physical layout. NCCL's `NCCL_NET_GDR_LEVEL` variable sets the maximum distance between NIC and GPU for which GPUDirect is used. `PIX` allows it only on the same PCI switch. When no level is set, NCCL picks one from the architecture. The common causes of a collapse are the missing module, PCIe ACS settings that block peer traffic, and a far GPU-NIC pair. The ACS and BIOS causes come from NVIDIA GPUDirect material and are not re-verified here.
 
 ### The transport check
 
@@ -415,7 +415,7 @@ The slow-rank signature needs a different tool. One nccl-tests table is an avera
 
 At 3 a.m. the watchdog fires on most ranks, and the log makes the network look guilty. The ranks that printed the timeout are the healthy ones. They arrived on time and waited. The real fault is on the one rank that never entered the collective, or on the hardware that made it late.
 
-*AI Systems Performance Engineering* (ch. 4, Table 4-4) lists root causes of unexpected interruptions during a 54-day Llama 3 405B pretraining run. As printed, faulty GPU is 30.1 percent, GPU HBM3 memory 17.2 percent, software bug 12.9 percent, network switch or cable 8.4 percent, and NIC 1.7 percent. The lesson for a fabric lab is that many incidents that look like network faults are GPU or software faults, so layered evidence matters.
+*AI Systems Performance Engineering* (Chapter 4) lists root causes of unexpected interruptions during a 54-day Llama 3 405B pretraining run. As printed, faulty GPU is 30.1 percent, GPU HBM3 memory 17.2 percent, software bug 12.9 percent, network switch or cable 8.4 percent, and NIC 1.7 percent. The lesson for a fabric lab is that many incidents that look like network faults are GPU or software faults, so layered evidence matters.
 
 | Failure | Symptom | Cause | Fix and proof |
 |---|---|---|---|
@@ -426,7 +426,7 @@ At 3 a.m. the watchdog fires on most ranks, and the log makes the network look g
 | Small buckets | wire and 1 GiB test pass, training slow | many small AllReduce calls | raise DDP bucket size above its default of 25 MB, then check in Nsight Systems |
 | Straggler | one node or rail slower | throttle, bad rail, dataloader skew | subset runs and counters |
 
-The first four rows are the transport and path problems this lab can reproduce. The default DDP bucket size of 25 MB is from *AI Systems Performance Engineering*. The book says larger buckets can help models with very large layers, and I did not verify any specific speedup.
+The first four rows are the transport and path problems this lab can reproduce. The default DDP bucket size of 25 MB is from *AI Systems Performance Engineering*. Larger buckets can help models with very large layers, but no specific speedup is verified here.
 
 ### Built-in diagnostics
 
@@ -459,7 +459,7 @@ A month after commissioning, the platform team hears that training is slower tha
 | 5 Multi node | `mpirun all_reduce_perf` | no flags; `Using network IB`; plateau at least 80 percent of link rate | table and INFO log |
 | 6 Integrity | `-c 1`, `NCCL_RUN_DIAGNOSTICS=1` | `#wrong` zero; no `[INFO]` lines from the P2P check | diagnostic lines |
 
-The 80 percent figure appears in chapter 12.17 as a multi-node policy against the single-node or per-rail baseline. I did not find it in an NVIDIA source, so it is a starting point to tune. A gate with a number you cannot defend is worse than a gate that says "equal to the baseline within recorded variance".
+The 80 percent figure appears in chapter 12.17 as a multi-node policy against the single-node or per-rail baseline. It is not found in an NVIDIA source, so it is a starting point to tune. A gate with a number you cannot defend is worse than a gate that says "equal to the baseline within recorded variance".
 
 The evidence pack holds the artifacts plus their context. That means the topology file, counters before and after, the INFO log with the transport lines, the tables, and the pinned versions of the driver, NCCL, nccl-tests commit, NIC firmware and switch. Date it and sign it. Recertify after a firmware or driver change, a cable or transceiver swap, or a node replacement. That cadence is an operating policy, not a rule from a source.
 

@@ -1,0 +1,16 @@
+docs/part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md 30
+docs/part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md 34
+docs/part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md 26
+docs/part-20-nebius-sre-interview/08-the-coding-round-what-to-expect-and-how-to-perform.md 7
+docs/part-20-nebius-sre-interview/09-algorithm-patterns-for-sre-flavoured-problems.md 7
+docs/part-20-nebius-sre-interview/10-complexity-latency-numbers-and-measuring-your-own-code.md 11
+docs/part-20-nebius-sre-interview/12-estimation-toolkit-for-inference-capacity.md 27
+docs/part-20-nebius-sre-interview/13-design-a-multi-tenant-llm-inference-api.md 8
+docs/part-20-nebius-sre-interview/14-design-dedicated-endpoints-and-safe-model-rollout.md 10
+docs/part-20-nebius-sre-interview/15-design-an-observability-pipeline-for-very-high-volume.md 9
+docs/part-20-nebius-sre-interview/16-design-gpu-fleet-health-and-capacity.md 11
+docs/part-20-nebius-sre-interview/18-how-llm-serving-fails.md 17
+docs/part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md 13
+docs/part-20-nebius-sre-interview/20-autoscaling-gpu-inference.md 6
+docs/part-20-nebius-sre-interview/21-request-routing-retries-and-overload-control.md 10
+docs/part-20-nebius-sre-interview/22-operating-vllm-triton-ray-and-tensorrt-llm.md 26

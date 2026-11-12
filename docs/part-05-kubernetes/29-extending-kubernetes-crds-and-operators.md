@@ -209,7 +209,7 @@ Here is a fictional WebApp type to make this concrete. One WebApp describes a we
 
 A WebApp Operator watches for WebApp resources. When one appears, the operator creates these six children, and together they form a working copy of the app for end users.
 
-Example 11-1 shows a CRD that defines the WebApp type.
+The next manifest is a CRD that defines the WebApp type.
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -277,7 +277,7 @@ spec:
 
 Two names matter here. The `metadata.name` of the CRD names the definition itself. The `names` block sets the kind, the list kind, and the plural and singular forms used for the custom resource. The `deploymentTier` field must match one of the values under `enum`, and the API server enforces that on every create or update. The `webAppReplicas` field has a default of 2, which applies when a manifest leaves it out. The `required` list names `deploymentTier`, `webAppHostname` and `webAppImage`. It leaves out `webAppReplicas` because that field has a default.
 
-Before you submit a WebApp manifest, the CRD must exist. Otherwise the API server does not know the kind and rejects the request. Example 11-2 shows a WebApp manifest.
+Before you submit a WebApp manifest, the CRD must exist. Otherwise the API server does not know the kind and rejects the request. The next manifest is a WebApp manifest.
 
 ```yaml
 apiVersion: workloads.apps.acme.com/v1alpha1
@@ -453,7 +453,7 @@ Before you write a controller, check whether templated resources from Helm, Kust
 
 Go, with `client-go` and `controller-runtime` covered in 5.30 and 5.31, is the primary language for cluster-core controllers. ML platform engineers, however, often write automation, job launch wrappers and light controllers in Python. The official `kubernetes` client is generated from the OpenAPI specification. The Python, Java and .NET clients therefore share a structure. They organise calls by API group, such as `CoreV1Api` and `AppsV1Api`, and they separate namespaced methods from cluster-scoped ones. You can see the exact HTTP calls behind any `kubectl` command by passing `--v=10`.
 
-As *Kubernetes: Up and Running* (third edition, Chapter 18) shows, the core Python patterns look like this (untested here):
+As *Kubernetes: Up and Running* (third edition, Chapter 18) shows, the core Python patterns look like this:
 
 ```python
 from kubernetes import client, config, watch
@@ -609,7 +609,7 @@ You can also forward network connections from a Pod to your local machine. As wi
 
 The setup is the same either way. In Python you call `portforward` with `connect_get_namespaced_pod_portforward`, the Pod name, the namespace and `ports='8080'`. Java uses a `PortForward` object and its `forward` method. .NET calls `WebSocketNamespacedPodPortForwardAsync` with the `v4.channel.k8s.io` protocol.
 
-Each of these examples connects port 8080 in the Pod to port 8080 in your program. The code gets back the byte streams for that channel, and you use those streams to send and receive messages. Because these samples are untested here, run them against your own cluster before you rely on them.
+Each of these examples connects port 8080 in the Pod to port 8080 in your program. The code gets back the byte streams for that channel, and you use those streams to send and receive messages. Because these samples were not run on live hardware, run them against your own cluster before you rely on them.
 
 ## 4. Packaging, distribution and lifecycle
 
@@ -669,7 +669,7 @@ Start with the self-checking Python lab. You can run it locally. It checks three
 python3 code/part05/crd_schema_conversion_sim_lab.py
 ```
 
-Next, move to a `kind` or `kubeadm` cluster, where you can work through the steps below. Every interactive shell step below is `untested here`. Work through these exercises:
+Next, move to a `kind` or `kubeadm` cluster, where you can work through the steps below. The interactive shell steps below were not run on live hardware. Work through these exercises:
 
 1. Write a CRD. Create the `GPUHealthPolicy` CRD above and apply it. Test valid and invalid objects, including an enum violation, a missing `codes` field, a CEL rule failure and an unknown field that gets pruned. Run `kubectl explain gpuhealthpolicy.spec --recursive`, add printer columns, and check the output of `kubectl get`.
 2. Try defaults and pruning. Remove a field from the schema and watch what gets pruned. Then add `x-kubernetes-preserve-unknown-fields` and compare the two results. Finally, test defaulting on create and on update.

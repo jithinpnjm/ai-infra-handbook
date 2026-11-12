@@ -225,7 +225,7 @@ During execution, forward and backward matrix multiplications stay on the GPU to
 
 However, PCIe Gen4 and Gen5 buses are thirty to one hundred times slower than GPU HBM. When ZeRO-2 offloads only optimizer states for a moderate model with heavy per-layer compute, throughput drops by a manageable twenty to forty percent. When ZeRO-3 offloads state for a 70B model on eight A100 GPUs over PCIe Gen4, the PCIe bus saturates. Training speed plunges by twenty-one times and GPU utilization drops to twelve percent.
 
-| Offload Scenario & Interconnect | Hardware Bandwidth | Memory Footprint Breakdown | Measured Throughput & Utilization Impact (*Distributed AI Systems* Ch. 5, `V13 Ch. 5`) |
+| Offload Scenario & Interconnect | Hardware Bandwidth | Memory Footprint Breakdown | Measured Throughput & Utilization Impact (*Distributed AI Systems* Ch. 5) |
 |---|---|---|---|
 | **GPU HBM Baseline (No Offload)** | **`2–3 TB/s`** per GPU | `70B` needs `79 GB` GPU VRAM (when fitted) | **`8.5 tokens/sec`**, **`80–95%`** GPU utilization |
 | **Moderate Model `ZeRO-2` CPU Offload** | `PCIe Gen4 x16` (**`32 GB/s`**) or `Gen5 x16` (**`64 GB/s`**) | `354.3M` params (`0.71 GB` `FP16`) uses **`3.41–3.52 GB`** peak GPU VRAM across steps `0–10` | **`20–40%` throughput reduction** when compute overlaps optimizer transfer |
@@ -253,7 +253,7 @@ The Grace ARM CPU and the Blackwell GPU do not cross a narrow PCIe bus. They tal
 
 SuperOffload also removes the synchronization barrier between GPU backpropagation and the CPU optimizer step using Speculation-Then-Validation. In standard ZeRO-Offload, the CPU must wait until the GPU finishes checking the entire backward pass for NaN or Inf gradient norms. Speculation-Then-Validation streams gradients over NVLink-C2C and starts the CPU optimizer update concurrently with GPU backpropagation. It rolls back only on the rare step where an overflow actually occurs.
 
-Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**. That figure is reported by the book, not measured in this chapter.
+Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**. That figure is a reported number, not measured in this chapter.
 
 ---
 
@@ -378,11 +378,11 @@ flowchart TD
 
 ## 5. Commands and configurations that matter
 
-A wrong DeepSpeed JSON file, or a direct call to a PyTorch optimizer, can corrupt gradients without any error. Run the training loop through the DeepSpeed engine. Check the batch-size and bucket-size settings before a multi-node launch.
+A wrong DeepSpeed JSON file, or a direct call to a PyTorch optimizer, can corrupt gradients without any error. Run the training loop through the DeepSpeed engine. Check the batch-size and bucket-size settings before a multi-node launch. The commands below were not run on live multi-GPU hardware.
 
 ### 5.1 DeepSpeed Engine Initialization
 
-Unlike PyTorch DDP, where you instantiate `torch.optim.AdamW` manually and wrap the module in `DistributedDataParallel`, DeepSpeed takes a declarative JSON configuration file. Calling `deepspeed.initialize()` builds the sharded optimizer, gradient scaler, and communication buckets automatically. For huge models like a 70B Transformer that exceed single-GPU or host memory at construction time, wrap model instantiation inside `deepspeed.zero.Init()`. That context manager partitions parameters immediately as each layer is allocated (`untested here`).
+Unlike PyTorch DDP, where you instantiate `torch.optim.AdamW` manually and wrap the module in `DistributedDataParallel`, DeepSpeed takes a declarative JSON configuration file. Calling `deepspeed.initialize()` builds the sharded optimizer, gradient scaler, and communication buckets automatically. For huge models like a 70B Transformer that exceed single-GPU or host memory at construction time, wrap model instantiation inside `deepspeed.zero.Init()`. That context manager partitions parameters immediately as each layer is allocated.
 
 ```python
 import deepspeed
@@ -526,7 +526,7 @@ When a multi-node DeepSpeed job hangs or drops to a fraction of its expected spe
 
 ### Failure Mode 1: ZeRO-3 AllGather Straggler Hang and Collective Timeout
 
-A multi-GPU ZeRO-3 job runs cleanly for hours, then stalls during a layer AllGather and aborts (`untested here`).
+A multi-GPU ZeRO-3 job runs cleanly for hours, then stalls during a layer AllGather and aborts.
 
 ```text
 [14:23:40] Rank 0-7: Step 1-10 complete, avg loss: 4.52
@@ -692,7 +692,7 @@ ZeRO-3:        1,120 / 8                                   =   140.0 GB (8.0x re
 </details>
 
 <details>
-<summary>**3. For Volume 13 Chapter 5's 10B pure-FP32 model on 8 80 GB GPUs, which ZeRO stage is the production sweet spot and why?**</summary>
+<summary>**3. For the 10B pure-FP32 model on 8 80 GB GPUs, which ZeRO stage is the production sweet spot and why?**</summary>
 
 ```text
 DDP:          160.0 GB (exceeds 80 GB GPU)

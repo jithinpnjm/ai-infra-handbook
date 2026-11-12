@@ -398,7 +398,7 @@ Run the same three checks, capacity, bandwidth, and metadata, against your own c
 
 The checklist turns the sizing work into six gates. Each gate names the requirement and the tool that proves it. Read the table as a sign-off list, not as a reference you skim.
 
-| Verification Domain | Production Gate / Requirement | Verification Tool / Metric (untested here) |
+| Verification Domain | Production Gate / Requirement | Verification Tool / Metric |
 |---|---|---|
 | **1. Seven-Layer Data Path & GDS** | Benchmark media, storage server, fabric, client FS, page cache, CPU RAM, PCIe, and GPU HBM independently; confirm `PHB` or better topology for GDS and verify zero CPU bounce copies | `nvidia-smi topo -m`, `perf record` (absence of `__memcpy_avx2`), `/proc/driver/nvidia-fs/stats`, `nvidia-smi dmon -s t` |
 | **2. Capacity & Target Balance** | Reserve **30% capacity headroom** (alert at `75%`, hard gate before **90% fill**); keep all OST or `beegfs-storage` targets within **±5% fill** (`> 10%` spread triggers migration) | `lfs df -h`, `lfs df -i`, `beegfs-ctl --listtargets --nodetype=storage --spaceinfo` |
@@ -415,7 +415,7 @@ Gate 6 is the one that ties everything together. It lets you put a price on idle
 
 ## Commands and configurations that matter
 
-Before you run any of these, read the `(untested here)` markers. They mean the chapter did not test those commands. Check each one against your own cluster and storage layout before you rely on its output.
+The commands below were not run on live hardware. Check each one against your own cluster and storage layout before you rely on its output.
 
 ### 1. Auditing Usable Capacity, Inode Headroom, and Target Skew
 
@@ -473,7 +473,7 @@ python3 -B code/part13/storage_capacity_cost_planning_lab.py
 
 The table lists six failure modes that show up in AI storage. You can use it as a troubleshooting map when a job slows down. For each one it gives the symptom you see, the root cause, the command that confirms it, and the architectural fix.
 
-| Failure Mode | Observable Symptom | Root Cause | Diagnosis Command (untested here) | Architectural Fix |
+| Failure Mode | Observable Symptom | Root Cause | Diagnosis Command | Architectural Fix |
 |---|---|---|---|---|
 | **1. The 90% Fill Fragmentation Cliff** | Checkpoint write time jumps `3x–5x` (`78 s -> 350 s`) or jobs crash with `ENOSPC` even though `df -h` shows `12%` free space on the cluster | Unbalanced OST or storage targets (one target hits `92–100%` while others sit at `65%`) or failure to reserve **30% capacity headroom** | `lfs df -h` or `beegfs-ctl --listtargets --spaceinfo` (check max spread `> 10%`) | Enforce `30%` free-space headroom (`< 75–80%` steady fill); automate rolling-$K$ checkpoint pruning; run `lfs_migrate` or `beegfs-ctl --migrate` on skewed targets |
 | **2. Epoch-Start Metadata Storm (`47`-Minute Stall)** | GPU SM utilization drops to `0%` for `30–47 minutes` at the start of every epoch; storage network bandwidth is `< 100 MB/s` while MDS CPU is `100%` | Dataset stored as millions of raw `100 KB` JPEGs (`25,600–200,000+` opens/sec) exceeding the `50,000` ops/sec per-MDS ceiling | `strace -c -e openat -p <PID>` and `beegfs-ctl --serverstats --nodetype=meta` (latency `> 20 ms`) | Repackage small files into WebDataset `.tar` or TFRecord shards (`1,000x` metadata reduction to `25.6` ops/sec) and scale out MDS/MDT nodes with `+40%` headroom |
@@ -708,7 +708,7 @@ Hot local NVMe has sub-millisecond latency and costs $5.00 per GB-year. Warm par
 </details>
 
 <details>
-<summary>**18. In the Volume 15 Cost-per-GPU-Hour comparison on 128 GPUs, how does investing in Balanced Storage save $18.9M/year compared to Minimal Storage?**</summary>
+<summary>**18. In the cost-per-GPU-hour comparison on 128 GPUs, how does investing in Balanced Storage save $18.9M/year compared to Minimal Storage?**</summary>
 
 Minimal Storage causes a five percent data stall across 128 GPUs. At $435 per hour per stream, that wastes $2,784 an hour, or $24.4M a year. Balanced Storage pairs a Lustre tier with NVMe cache to cut the stall to one percent. That brings waste down to $4.9M a year. Including storage, the total is $5.5M a year, which gives a net saving of $18.9M a year.
 </details>

@@ -563,7 +563,7 @@ Each numbered part of the block matches one of the traps above, and the seven-la
 
 ## Commands and configurations that matter
 
-### 1. Non-Destructive Incident Evidence Bundle Collector (`untested here`)
+### 1. Non-Destructive Incident Evidence Bundle Collector
 
 Before you reset a switch port, clear a counter or kill a stalled training job, capture a timestamped, read-only baseline. Take it on the affected node and on a healthy reference node, so the two can be compared later.
 
@@ -601,7 +601,7 @@ dcgmi nvlink -e > "${INCIDENT_DIR}/gpu/dcgmi_nvlink_e.txt" 2>&1
 
 The script puts everything under one timestamped folder, grouped into host, InfiniBand, RoCEv2, GPU and log files. Run the same script on both nodes, and keep the two folders side by side so you can compare them.
 
-### 2. InfiniBand and RoCEv2 Layer-by-Layer Verification Commands (`untested here`)
+### 2. InfiniBand and RoCEv2 Layer-by-Layer Verification Commands
 
 Work through these commands in gate order, one gate at a time, so you never skip ahead. The first group checks the InfiniBand gates, the second checks RoCEv2, and the last two groups cover host RDMA, GPUDirect RDMA and collectives.
 
@@ -627,7 +627,7 @@ ib_write_bw -d mlx5_0 -i 1 --use_cuda=0 --report_gbits 10.20.8.5
 
 Each command maps to one gate. As you run it, compare the output with the baseline values in the playbook tables, and move to the next gate only after the current one passes.
 
-### 3. Host PCIe Rescan, NVLink Isolation, and NCCL Stalled-Rank Triage (`untested here`)
+### 3. Host PCIe Rescan, NVLink Isolation, and NCCL Stalled-Rank Triage
 
 These host-level commands cover three jobs. They recover a down-trained PCIe link without a reboot, isolate an asymmetric NVLink transceiver failure, and show per-rank collective operation counts.
 
@@ -675,7 +675,7 @@ Consider row 2 and the story in Section 3.1. Both show a rising ECN count, but o
 ## Hands-on lab
 
 ### Venue and Scope
-The verification script `code/part12/ai_networking_troubleshooting_lab.py` uses only the Python standard library. You can run it on any laptop or on a Nebius GPU instance. The hardware commands marked `untested here` in earlier sections need live multi-node switch and GPU hardware, so the lab does not run them. The local verification suite validates twenty-eight deterministic checks across all four playbook domains:
+The verification script `code/part12/ai_networking_troubleshooting_lab.py` uses only the Python standard library. You can run it on any laptop or on a Nebius GPU instance. The hardware commands in earlier sections were not run, and they need live multi-node switch and GPU hardware, so the lab does not run them. The local verification suite validates twenty-eight deterministic checks across all four playbook domains:
 - InfiniBand seven-gate checks cover port-down detection, reduced lane width and unprogrammed Subnet Manager ports. They also cover credit loops, tail-latency spikes, GPUDirect RDMA fallbacks and clean-link congestion.
 - RoCEv2 six-gate and pause-tree checks cover physical FEC and CRC losses, secondary ECN inflation and MTU drops. They also cover GID mismatches, DSCP trust failures, DCQCN pacing and downstream PFC root-port isolation.
 - Host Xid, NVLink and PCIe DMA checks cover chronological Xid precursor chains and three-tier severity actions. They also cover asymmetric NVLink transceiver isolation and PCIe Gen3 x8 down-training math.

@@ -395,9 +395,9 @@ Treat the baseline file as a release gate, not a record you file away.
 
 ## Commands and configurations that matter
 
-The commands below are marked `(untested here)`, because this workspace has no physical switches or HCAs attached. Only the deterministic Python lab, `code/part12/fabric_validation_capacity_lab.py`, was run and checked locally.
+The commands below were not run on live hardware, because this workspace has no physical switches or HCAs attached. Only the deterministic Python lab, `code/part12/fabric_validation_capacity_lab.py`, was run and checked locally.
 
-### 1. Stage L1 & L2 InfiniBand inventory, routing, and counter baseline (untested here)
+### 1. Stage L1 & L2 InfiniBand inventory, routing, and counter baseline
 
 Start by building the evidence folder, so you always know where each output went. Then check the HCAs, the Subnet Manager, and the counters.
 
@@ -440,7 +440,7 @@ ibqueryerrors | tee acceptance-ib/counters/after.txt
 tar -czf acceptance-ib-evidence.tar.gz acceptance-ib
 ```
 
-### 2. Stage L1–L4 RoCEv2 Ethernet path inventory, QoS under load, and collectives (untested here)
+### 2. Stage L1–L4 RoCEv2 Ethernet path inventory, QoS under load, and collectives
 
 These checks confirm the RoCEv2 endpoint identity, and then capture the counters before and after load so you can compare them. The last two commands run the full-scale collectives.
 
@@ -473,7 +473,7 @@ srun --nodes=16 --ntasks-per-node=8 --mpi=pmix \
   ./build/alltoall_perf -b 8M -e 1G -f 2 -g 1 -c 1 -w 10 -n 100
 ```
 
-### 3. NVIDIA Base Command Manager switch port mapping and Topograph configuration (untested here)
+### 3. NVIDIA Base Command Manager switch port mapping and Topograph configuration
 
 This block maps node MACs to switch ports, then upgrades Topograph and turns on Prometheus scraping. Run it in order, because each step depends on the one before.
 

@@ -117,7 +117,7 @@ Sometimes the quickest fix is to look at what Ansible actually sees. A value tha
 
 The `debug` module prints values after templating. That is why it reveals typing problems, such as a string `"False"` where you expected a boolean. Use `verbosity:` to keep helpful diagnostics in the code permanently, because they stay silent on normal runs. For structured output, pass the value through `to_nice_json` or `to_nice_yaml`. Never leave debug output of secrets in committed code or CI logs.
 
-In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), the authors pair `ansible.builtin.stat` with `ansible.builtin.assert`. You use them to verify filesystem state before or after a task runs. Registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary. The fields you will assert on most are `exists`, `isdir`, `isreg`, `mode`, `pw_name`, `size` and `checksum`, which is a SHA-1. Checkpoint question 5 lists them all. You can assert on them directly, as in `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
+Pair `ansible.builtin.stat` with `ansible.builtin.assert`. You use them to verify filesystem state before or after a task runs. Registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary. The fields you will assert on most are `exists`, `isdir`, `isreg`, `mode`, `pw_name`, `size` and `checksum`, which is a SHA-1. Checkpoint question 5 lists them all. You can assert on them directly, as in `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
 
 Put the `stat` and `assert` pair in front of any task that depends on the file, so a bad state fails with a clear message.
 
@@ -201,7 +201,7 @@ When a host is `UNREACHABLE`, Ansible never got a working SSH session. The table
 | `Failed to create temporary directory` | Home not writable, full disk, `noexec` mount on tmp, `remote_tmp` | Set `remote_tmp`, check `df`, mount options |
 | `Shared connection to host closed` with output truncated | Output after SSH closed; tty issues | Pipelining, `-o ControlPersist`, check `requiretty` |
 
-The book *Ansible: Up and Running*, chapter 8, covers some SSH problems that come up again and again. The first is a changed host key. When a lab VM (`192.168.33.10`) is destroyed and recreated, or a bare-metal GPU node is re-imaged, its Ed25519 host key changes. OpenSSH then aborts with `Host key verification failed`, and the warning `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` appears. Remove the stale key entry, then record the new host key cleanly:
+Some SSH problems come up again and again. The first is a changed host key. When a lab VM (`192.168.33.10`) is destroyed and recreated, or a bare-metal GPU node is re-imaged, its Ed25519 host key changes. OpenSSH then aborts with `Host key verification failed`, and the warning `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` appears. Remove the stale key entry, then record the new host key cleanly:
 
 ```bash
 ssh-keygen -R 192.168.33.10
@@ -373,7 +373,7 @@ Each exercise uses a debugging tool from this chapter. Work through them in orde
 1. Use `classify_ansible_failure_layer()` in `code/part04/ansible_debugging_toolkit.py` on seven common error messages. Sort each one into its layer. The five layers come from *Ansible: Up and Running*, chapter 8.
 2. State what `-v`, `-vv`, `-vvv` and `-vvvv` each add to the output.
 3. Write a task pair that runs `ansible.builtin.stat` on `/etc/slurm/slurm.conf`. Then add an `assert` with `quiet: true` that checks `exists`, `isreg` and `size`.
-4. Extend that assert to check the owner and the mode. Use `pw_name == 'slurm'` and `mode == '0644'`. Table 8-3 in the book is your reference.
+4. Extend that assert to check the owner and the mode. Use `pw_name == 'slurm'` and `mode == '0644'`.
 5. Explain what `verbosity: 1` on a `debug` task does, and what `{{ var | type_debug }}` tells you.
 6. In the task debugger, explain the difference between `task.args['name'] = 'chrony'` and `task_vars['ntp_pkg'] = 'chrony'` followed by `u` and `r`. Use `InteractiveTaskDebuggerSession` in `code/part04/ansible_debugging_toolkit.py` to show it.
 7. List the five values the `debugger:` keyword accepts, and say how `ANSIBLE_ENABLE_TASK_DEBUGGER` differs from setting the keyword.
@@ -419,7 +419,7 @@ Set **`stdout_callback = yaml`** in `[defaults]` in `ansible.cfg`. Newer `ansibl
 </details>
 
 <details>
-<summary>5. In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), what fields does `ansible.builtin.stat` return, and how do you use them with `assert`?</summary>
+<summary>5. What fields does `ansible.builtin.stat` return, and how do you use them with `assert`?</summary>
 
 Registering `stat: { path: /etc/nginx/conf }` into `st` fills `st.stat` with these fields:
 - **`exists`** (`bool`) tells you whether the path exists at all. Always check `st.stat.exists` first.
@@ -440,7 +440,7 @@ You can enable the debugger with `strategy: debug`, with the `debugger:` keyword
 </details>
 
 <details>
-<summary>7. Inside the interactive `(debug)` prompt, what is the difference between changing `task.args[key]` and changing `task_vars[key]` (*Ansible: Up and Running*, chapter 8, `Table 8-2`)?</summary>
+<summary>7. Inside the interactive `(debug)` prompt, what is the difference between changing `task.args[key]` and changing `task_vars[key]`?</summary>
 
 - **`p task`, `p task.args`, `p task_vars`, and `p result._result`** show the task name, the module arguments, the variables and the failure dictionary.
 - **`task.args['name'] = 'chrony'`, followed by `r` (`redo`),** overwrites the module argument that is already rendered, then re-runs the task right away.

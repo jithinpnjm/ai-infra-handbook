@@ -521,7 +521,7 @@ In the NFD naming convention, each code points to a PCIe device category or a ha
 </details>
 
 <details>
-<summary>**3. What are the three tiers of node labels defined in Volume 10 Chapter 5, and who is the authoritative writer and consumer of each tier?**</summary>
+<summary>**3. What are the three tiers of node labels defined, and who is the authoritative writer and consumer of each tier?**</summary>
 
 1. A discovered fact is a label such as `nvidia.com/gpu.product` or `feature.node.kubernetes.io/pci-10de.present`. NFD and GFD write it, and platform automation and diagnostics consume it.
 2. A lifecycle assertion is a label such as `gpu-validation=passed`. A platform validation controller writes it after the driver, runtime, plugin, and workload checks succeed. Admission control consumes it.
@@ -586,7 +586,7 @@ Suppose your workloads hard-select `nvidia.com/gpu.product=NVIDIA-A100-40GB`, re
 <details>
 <summary>**13. How do you prove from nfd-worker logs whether node labels on gpu-node-19 are fresh or stale after a 09:15 MIG maintenance window?**</summary>
 
-To check this yourself, read the probe timestamp in `kubectl logs -n node-feature-discovery nfd-worker-gpu-node-19-p8k1`. In the Volume 10 incident, the log showed `I0812 08:40:11.002331 ... labeling node "gpu-node-19"` and `0 label(s) changed since last run`. That probe ran before the `09:15` maintenance change, so the node labels in the Kubernetes API are proven stale.
+To check this yourself, read the probe timestamp in `kubectl logs -n node-feature-discovery nfd-worker-gpu-node-19-p8k1`. In the incident, the log showed `I0812 08:40:11.002331 ... labeling node "gpu-node-19"` and `0 label(s) changed since last run`. That probe ran before the `09:15` maintenance change, so the node labels in the Kubernetes API are proven stale.
 </details>
 
 <details>

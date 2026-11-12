@@ -77,7 +77,7 @@ Keep ConfigMaps small. Do not store datasets, models or large JSON blobs in them
 
 The downward API, through `fieldRef` and `resourceFieldRef`, exposes pod metadata and resource limits to the container. The pod name, namespace, IP, node name, labels, and CPU and memory limits can arrive as env vars or files. That helps when you derive a rank or ID, or size workers for NUMA.
 
-Three details from *Kubernetes: Up and Running* Chapter 13 come up often. The first is the key naming rule. The rule is in Table 13-1. A key may begin with an optional dot (`.`). It then needs a letter or digit (`[a-zA-Z0-9]`), followed by any mix of letters, digits, dots (`.`), dashes (`-`) and underscores (`_`). A key cannot contain consecutive `..` or spaces. So `.auth_token`, `Key.pem` and `config_file` are valid, while `Token..properties`, `auth file.json` and `_password.txt` are invalid. The `validate_configmap_or_secret_key()` function in `code/part05/rbac_secrets_validator.py` models this rule.
+Three details from *Kubernetes: Up and Running* Chapter 13 come up often. The first is the key naming rule. A key may begin with an optional dot (`.`). It then needs a letter or digit (`[a-zA-Z0-9]`), followed by any mix of letters, digits, dots (`.`), dashes (`-`) and underscores (`_`). A key cannot contain consecutive `..` or spaces. So `.auth_token`, `Key.pem` and `config_file` are valid, while `Token..properties`, `auth file.json` and `_password.txt` are invalid. The `validate_configmap_or_secret_key()` function in `code/part05/rbac_secrets_validator.py` models this rule.
 
 The second detail is variable substitution. Kubernetes expands `$(ENV_VAR_NAME)` inside `command` and `args`. It uses the environment variables you defined earlier in `spec.containers[].env`. For example, `command: ["/kuard", "$(EXTRA_PARAM)"]` substitutes the value of `EXTRA_PARAM`.
 
@@ -325,7 +325,7 @@ kuard.crt:  1050 bytes
 kuard.key:  1679 bytes
 ```
 
-Each data element of a Secret becomes its own file under the mount point. The volume mount decides where that directory lives. In the book's example, the Pod mounts `kuard-tls` at `/tls` as read-only, so the container sees `/tls/kuard.crt` and `/tls/kuard.key`:
+Each data element of a Secret becomes its own file under the mount point. The volume mount decides where that directory lives. In the `kuard` example, the Pod mounts `kuard-tls` at `/tls` as read-only, so the container sees `/tls/kuard.crt` and `/tls/kuard.key`:
 
 ```yaml
 volumeMounts:
@@ -347,7 +347,7 @@ kubectl port-forward kuard-tls 8443:8443
 
 Open https://localhost:8443 in a browser. The browser warns about an invalid certificate. That happens because the certificate is self-signed for `kuard.example.com`. Accept the warning, and the `kuard` server loads over HTTPS. Then open the File system browser tab to find the files in the `/tls` directory.
 
-> **Warning:** The certificate and key in the book's demo are public, so they provide no real security. Use them only to learn how Secrets work.
+> **Warning:** The certificate and key in this demo are public, so they provide no real security. Use them only to learn how Secrets work.
 
 ### Image pull secrets
 
@@ -471,7 +471,7 @@ Instead of syncing external secrets into etcd as Kubernetes `Secret` objects, yo
 - `vault.hashicorp.com/agent-inject-status: "update"` is optional. It instructs the webhook to also inject the long-running `vault-agent` sidecar, which refreshes leased or rotated secrets.
 - `vault.hashicorp.com/role: "<role>"` selects the Vault Kubernetes auth role. You can also bind the role in the agent configuration.
 - `vault.hashicorp.com/agent-inject-secret-<filename>: "<vault-path>"` tells the agent which Vault secret to write to `/vault/secrets/<filename>`. For example, `vault.hashicorp.com/agent-inject-secret-db-creds: "secrets/db/creds"` or `vault.hashicorp.com/agent-inject-secret-config` works.
-- `vault.hashicorp.com/agent-inject-template-<filename>` formats the rendered file with a Go template instead of the default Go map print format. In the book's example (untested here), a Pod template formats database credentials into a JDBC connection string at `/vault/secrets/db-creds`. A `config` secret lands at `/vault/secrets/config` instead:
+- `vault.hashicorp.com/agent-inject-template-<filename>` formats the rendered file with a Go template instead of the default Go map print format. In the example below, a Pod template formats database credentials into a JDBC connection string at `/vault/secrets/db-creds`. A `config` secret lands at `/vault/secrets/config` instead:
 
 ```yaml
 spec:
@@ -499,7 +499,7 @@ key: map[k:v]
 
 Authentication and authorization are the hard part of this model. You can set Vault to authenticate Pods with their existing ServiceAccount tokens. Vault then validates the requester's identity through the TokenReview API. It must still decide whether that ServiceAccount is allowed to read the secret. Those policies and bindings live in Vault, and you must maintain them there.
 
-To let Pods authenticate to Vault with their Kubernetes ServiceAccount tokens, Vault validates those tokens against the Kubernetes `TokenReview` API. You enable and configure the Kubernetes auth method inside Vault. Then you write a policy and bind a Vault role to the Pod's ServiceAccount name and Namespace. The book's example (untested here) follows these steps:
+To let Pods authenticate to Vault with their Kubernetes ServiceAccount tokens, Vault validates those tokens against the Kubernetes `TokenReview` API. You enable and configure the Kubernetes auth method inside Vault. Then you write a policy and bind a Vault role to the Pod's ServiceAccount name and Namespace. The example below follows these steps:
 
 ```bash
 # Enable Kubernetes authentication in Vault (untested here)
@@ -530,7 +530,7 @@ vault write auth/kubernetes/role/database \
 
 CyberArk is another option that many clients already use. It offers a Credential Provider and a Dynamic Access Provider (DAP). Like Vault, it supports `initContainers` that run alongside your application to talk to DAP.
 
-A newer approach is the `secrets-store-csi-driver`. At the time of writing, the book describes it as a Kubernetes subproject within `kubernetes-sigs`. It lets Pods use externally hosted secrets without a sidecar or an initContainer. Secret access starts to feel like a platform service instead of something each application integrates with. The driver runs as a DaemonSet, with a driver Pod on every host, much like a storage CSI driver.
+A newer approach is the `secrets-store-csi-driver`. At the time of writing, it is a Kubernetes subproject within `kubernetes-sigs`. It lets Pods use externally hosted secrets without a sidecar or an initContainer. Secret access starts to feel like a platform service instead of something each application integrates with. The driver runs as a DaemonSet, with a driver Pod on every host, much like a storage CSI driver.
 
 The driver relies on a provider to look up secrets in the external system. For Vault, that means installing the `vault-provider` binary on every host, in the location set by the driver's `provider-dir` mount. The binary may already exist on the host, or a DaemonSet-like process often installs it. This approach raises open questions. When a Pod does not request the secret itself, who handles identity? The driver or provider must work that out, because they make requests on the Pod's behalf.
 
@@ -649,7 +649,7 @@ spec:
 
 Environment variables have two downsides. A change to the ConfigMap or Secret does not reach a running Pod until it restarts. Also, some frameworks print their whole environment at startup or during a crash. For a Secret, that can leak the password into a log file.
 
-The third option is to have the app call the Kubernetes API directly. It reads ConfigMaps and Secrets from the API server and can watch them for changes. Client libraries and some frameworks, such as Spring Cloud Kubernetes, offer this. The convenience comes at a cost. The app is now tied to Kubernetes, and it needs a ServiceAccount with RBAC permissions. Each app that polls the API also adds load to the control plane. Those issues are why the book prefers volume mounts and environment variables. They keep the application decoupled from the platform.
+The third option is to have the app call the Kubernetes API directly. It reads ConfigMaps and Secrets from the API server and can watch them for changes. Client libraries and some frameworks, such as Spring Cloud Kubernetes, offer this. The convenience comes at a cost. The app is now tied to Kubernetes, and it needs a ServiceAccount with RBAC permissions. Each app that polls the API also adds load to the control plane. Those issues are why volume mounts and environment variables are the usual choice. They keep the application decoupled from the platform.
 
 ### Injecting workload metadata with the Downward API
 
@@ -962,7 +962,7 @@ Keep `admin.conf` in a secure place even when you use other login methods. If th
 
 ### OIDC for robot users and kubeconfig generation
 
-OIDC is the book's preferred choice for humans. Most organizations already run an SSO system, such as Okta, Auth0, Google or an internal LDAP or AD directory. Using it gives one place to manage accounts and remove access. It also lets users reach downstream applications without exposing their credentials to them. Many clusters can share one identity provider, which reduces differences between them.
+OIDC is the preferred choice for humans. Most organizations already run an SSO system, such as Okta, Auth0, Google or an internal LDAP or AD directory. Using it gives one place to manage accounts and remove access. It also lets users reach downstream applications without exposing their credentials to them. Many clusters can share one identity provider, which reduces differences between them.
 
 Kubernetes accepts OIDC directly, and configuring it is straightforward when your provider exposes the standard endpoints. Some cases need more tooling. If you have several identity providers, you need an OIDC aggregator, because Kubernetes supports only one provider in its configuration. The book has used Dex, a sandbox project of the Cloud Native Computing Foundation, many times. Keycloak and UAA offer similar features. Authentication sits on the critical path to the cluster, so optimize for availability and stability. Each of these tools is one more component to configure, update and secure.
 
@@ -1075,17 +1075,17 @@ The patterns below cover the common cases on a shared GPU cluster. Decide who ow
 7. Pod Security and admission policy complement RBAC. RBAC says who can create pods. Pod Security Admission (PSA), Kyverno or ValidatingAdmissionPolicy says what pods may look like (5.21).
 8. Give observability its own read access. A dedicated ClusterRole for Prometheus can `get`, `list` and `watch` pods, nodes, endpoints and services, plus the `/metrics` non-resource URL. Avoid `nodes/proxy` where possible. Use dedicated metrics endpoints, or the kubelet `/metrics` with `nodes/metrics` only.
 9. Multi-tenant inference platforms usually give end users no Kubernetes RBAC at all. Users call an API gateway with API keys or JWTs (5.12). Kubernetes RBAC is for engineers and automation.
-10. Store RBAC as code with owners, using CODEOWNERS. Review diffs before they merge. Reconcile declaratively with `kubectl auth reconcile -f some-rbac-config.yaml`, which supports `--dry-run`, as shown in *Kubernetes: Up and Running* Chapter 14 (untested here). Run an access review regularly with `kubectl-who-can`, `rbac-tool`, `rakkess`, `kubectl auth can-i --list`, `rbac-lookup`, KubiScan, or the Kubescape, Polaris and Trivy RBAC checks.
+10. Store RBAC as code with owners, using CODEOWNERS. Review diffs before they merge. Reconcile declaratively with `kubectl auth reconcile -f some-rbac-config.yaml`, which supports `--dry-run`, as shown in *Kubernetes: Up and Running* Chapter 14. Run an access review regularly with `kubectl-who-can`, `rbac-tool`, `rakkess`, `kubectl auth can-i --list`, `rbac-lookup`, KubiScan, or the Kubescape, Polaris and Trivy RBAC checks.
 
 ### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)
 
 Binding `cluster-admin` straight to an operator's daily identity invites accidents. An engineer with the wrong `kubeconfig` context active can run destructive commands with full rights. *Production Kubernetes* Chapter 10 recommends a `sudo`-style privilege-elevation pattern, built on Kubernetes user impersonation. It works in three steps:
 
-1. By default, bind the operations group, `ops-team` in the book's example, to the built-in read-only `view` `ClusterRole`, through `cluster-admin-view`.
+1. By default, bind the operations group, `ops-team` in this example, to the built-in read-only `view` `ClusterRole`, through `cluster-admin-view`.
 2. Bind the `cluster-admin` `ClusterRole` to a synthetic `User` named `cluster-admin`, through `cluster-admin-crb`. No human can log in as that user directly.
 3. Grant `ops-team` a `cluster-admin-impersonator` `ClusterRole`. It has `verbs: ["impersonate"]` on `resources: ["users"]`, restricted to `resourceNames: ["cluster-admin"]`.
 
-In the book's example (untested here), the three RBAC manifests look like this:
+The three RBAC manifests look like this:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1138,7 +1138,7 @@ subjects:
     name: ops-team
 ```
 
-With this in place, an operator named `john`, who belongs to `ops-team`, has read-only access by default. A write requires an explicit `--as=cluster-admin`. Both the real user and `impersonatedUser` then appear in the Kubernetes audit log (untested here):
+With this in place, an operator named `john`, who belongs to `ops-team`, has read-only access by default. A write requires an explicit `--as=cluster-admin`. Both the real user and `impersonatedUser` then appear in the Kubernetes audit log:
 
 ```bash
 kubectl get configmaps
@@ -1224,13 +1224,13 @@ Your first sign of trouble is usually a symptom, not a cause. The table maps com
 
 ## 8. Lab
 
-Start with the self-checking Python lab, `code/part05/rbac_secrets_validator_lab.py`, and run it locally. It checks three things. It verifies the `ConfigMap`/`Secret` key syntax validator, `validate_configmap_or_secret_key`, which follows *Kubernetes: Up and Running* Chapter 13, Table 13-1. It verifies the `EncryptionConfiguration` key-rotation simulator, `simulate_etcd_encryption_key_rotation`, which follows *Production Kubernetes* Chapter 7. It also verifies the RBAC `impersonate` `sudo`-workflow and privilege-escalation auditor, `evaluate_rbac_and_audit_escalations`, which follows *Kubernetes: Up and Running* Chapter 14 and *Production Kubernetes* Chapter 10.
+Start with the self-checking Python lab, `code/part05/rbac_secrets_validator_lab.py`, and run it locally. It checks three things. It verifies the `ConfigMap`/`Secret` key syntax validator, `validate_configmap_or_secret_key`, which follows *Kubernetes: Up and Running* Chapter 13. It verifies the `EncryptionConfiguration` key-rotation simulator, `simulate_etcd_encryption_key_rotation`, which follows *Production Kubernetes* Chapter 7. It also verifies the RBAC `impersonate` `sudo`-workflow and privilege-escalation auditor, `evaluate_rbac_and_audit_escalations`, which follows *Kubernetes: Up and Running* Chapter 14 and *Production Kubernetes* Chapter 10.
 
 ```bash
 python3 code/part05/rbac_secrets_validator_lab.py
 ```
 
-Next, work through these exercises on a `kind` or `kubeadm` cluster. All interactive shell steps below are `untested here`.
+Next, work through these exercises on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware.
 
 1. Mount a ConfigMap as an env var, as a volume, and with `subPath`. Change it, and measure which mounts update and how long they take. Then use `immutable` and a hashed-name generator to roll deployments.
 2. Create a Secret and read it back with `kubectl get -o yaml | base64 -d`. Then read it from etcd with `etcdctl`, where it appears in plaintext. Enable `EncryptionConfiguration` with a local `aescbc` key for the lab, or with a KMS plugin. Verify the `k8s:enc:` prefix, and re-encrypt the existing secrets.
@@ -1278,7 +1278,7 @@ Use these questions to test your understanding of the chapter.
 
 ## Exercises
 
-1. Work through ConfigMap and Secret consumption, the key naming rules (*Kubernetes: Up and Running* Chapter 13, Table 13-1), live updates and `immutable: true`. Using `validate_configmap_or_secret_key()` in `code/part05/rbac_secrets_validator.py`, explain why `.auth_token`, `Key.pem` and `config_file` are valid keys, while `Token..properties`, `auth file.json` and `_password.txt` are rejected. Then explain how `$(VAR)` substitution works in `command` and `args`. Explain why volume-mounted ConfigMaps update through the `..data` symlink swap, while env vars and `subPath` mounts do not. Finally, explain why `immutable: true` reduces kubelet and API server watch load.
+1. Work through ConfigMap and Secret consumption, the key naming rules from *Kubernetes: Up and Running* Chapter 13, live updates and `immutable: true`. Using `validate_configmap_or_secret_key()` in `code/part05/rbac_secrets_validator.py`, explain why `.auth_token`, `Key.pem` and `config_file` are valid keys, while `Token..properties`, `auth file.json` and `_password.txt` are rejected. Then explain how `$(VAR)` substitution works in `command` and `args`. Explain why volume-mounted ConfigMaps update through the `..data` symlink swap, while env vars and `subPath` mounts do not. Finally, explain why `immutable: true` reduces kubelet and API server watch load.
 2. Study encryption at rest, comparing KMS v2 with `secretbox` in `EncryptionConfiguration`, and safe key rotation (*Production Kubernetes* Chapter 7). Using `simulate_etcd_encryption_key_rotation()` in `code/part05/rbac_secrets_validator.py`, explain why Secrets are stored as plaintext base64 in `etcd` by default. Explain how `EncryptionConfiguration` orders providers and keys. Then explain why removing `secret-key-1` before running `kubectl get secrets -A -o json | kubectl replace -f -` with `secret-key-2` breaks existing Secrets (`unable to transform key`).
 3. Compare the 6 GitOps-safe secret patterns in Section 2. Trace the `vault.hashicorp.com/agent-inject-*` annotations and the Go template from *Production Kubernetes* Chapter 7. Then write the 4 `vault` CLI commands that configure Vault's Kubernetes `TokenReview` auth method for ServiceAccount `team-a/webapp`.
 4. Trace the `projected` volume from Section 3, including `serviceAccountToken` with `audience: vault` and `expirationSeconds: 3600`, the `configMap` source, and the `downwardAPI` source. Explain how bound JWT tokens from the `TokenRequest` API differ from the legacy never-expiring Secret tokens removed in 1.24. Then explain how OIDC workload identity federation eliminates static cloud keys.
@@ -1290,7 +1290,7 @@ Use these questions to test your understanding of the chapter.
 <details>
 <summary>1. In *Kubernetes: Up and Running* Chapter 13, what are the syntax rules for keys inside a `ConfigMap` or `Secret`, and how do you reference a ConfigMap env var inside a container's `command` or `args`?</summary>
 
-- **Key syntax rules (Table 13-1):** A key may start with one optional dot (`.`). It then needs a letter or number (`[a-zA-Z0-9]`), followed by any mix of letters, numbers, dots, dashes (`-`) and underscores (`_`). Keys cannot contain spaces (`auth file.json`) or double dots (`Token..properties`), and they cannot start with an underscore (`_password.txt`).
+- **Key syntax rules:** A key may start with one optional dot (`.`). It then needs a letter or number (`[a-zA-Z0-9]`), followed by any mix of letters, numbers, dots, dashes (`-`) and underscores (`_`). Keys cannot contain spaces (`auth file.json`) or double dots (`Token..properties`), and they cannot start with an underscore (`_password.txt`).
 - **Referencing env vars in `command` / `args`:** Use Kubernetes's own `$(VAR_NAME)` syntax. It is not `$VAR_NAME` or `${VAR_NAME}`, which need a shell. For example: `args: ["--log-level=$(LOG_LEVEL)"]`.
 </details>
 

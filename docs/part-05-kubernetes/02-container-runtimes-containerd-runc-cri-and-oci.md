@@ -106,7 +106,7 @@ The most important operation in Kubernetes is starting a Pod on a node. Once the
 ... other flags here ...
 ```
 
-The book's walkthrough is based on Kubernetes v1.18.2 and containerd v1.3.4. Those versions use the `v1alpha2` version of the CRI.
+The walkthrough here is based on Kubernetes v1.18.2 and containerd v1.3.4. Those versions use the `v1alpha2` version of the CRI.
 
 The kubelet starts by creating a Pod sandbox with the `RunPodSandbox` method of the RuntimeService. A Pod is made of one or more containers, so the sandbox must come first. The sandbox sets up the Linux network namespace, among other things, for all the containers to share. The kubelet sends the Pod's name, unique ID, Kubernetes Namespace and DNS configuration. The runtime replies with a Pod sandbox ID, and the kubelet uses that ID to create containers.
 
@@ -180,7 +180,7 @@ Images lead to content blobs, which you find by digest. Blobs become layered sna
 
 ### The containerd CRI plugin on a node
 
-The containerd CRI plugin is a native containerd plugin. It has been available since containerd v1.1 and is enabled by default. Of the runtimes the book's authors encounter when building Kubernetes-based platforms, containerd is perhaps the most common. It is the default in Cluster API node images, and it is available across managed offerings such as AKS, EKS and GKE. containerd serves its gRPC APIs through the Unix socket `/run/containerd/containerd.sock`, and the kubelet connects there to run Pods.
+The containerd CRI plugin is a native containerd plugin. It has been available since containerd v1.1 and is enabled by default. Of the runtimes used when building Kubernetes-based platforms, containerd is perhaps the most common. It is the default in Cluster API node images, and it is available across managed offerings such as AKS, EKS and GKE. containerd serves its gRPC APIs through the Unix socket `/run/containerd/containerd.sock`, and the kubelet connects there to run Pods.
 
 Containers started this way show the same process tree you would see with Docker Engine. That is expected, because Docker Engine uses containerd to manage containers:
 
@@ -218,7 +218,7 @@ Which runtime should your platform team pick? The answer depends on a few trade-
 
 Because the CRI exists, platform teams can pick the container runtime that suits them. Over the last couple of years, though, the container runtime has become an implementation detail. If you use a Kubernetes distribution or a managed service, the runtime is most likely chosen for you. That holds even for Cluster API, which ships prebaked node images with a container runtime included.
 
-If you do have the choice, or you need a specialized runtime such as a VM-based one, weigh four things. The first is experience. Organizations with a long history in containers usually use Docker and know its toolchain. Kubernetes supports Docker, but the book's authors discourage its use. The full Docker daemon has extra capabilities that Kubernetes does not need, such as building images and creating container networks. The good news is that Docker uses containerd under the covers. The downside is that operators then have to learn the containerd CLI.
+If you do have the choice, or you need a specialized runtime such as a VM-based one, weigh four things. The first is experience. Organizations with a long history in containers usually use Docker and know its toolchain. Kubernetes supports Docker, but its use is discouraged. The full Docker daemon has extra capabilities that Kubernetes does not need, such as building images and creating container networks. The good news is that Docker uses containerd under the covers. The downside is that operators then have to learn the containerd CLI.
 
 The second is support. Kubernetes distributions such as VMware's Tanzu Kubernetes Grid and RedHat's OpenShift usually ship a specific container runtime. Stick to that choice unless you have an extremely compelling reason not to. If you do switch, make sure you understand the support implications.
 
@@ -255,7 +255,7 @@ CONTAINER IMAGE CREATED STATE NAME POD ID
 
 ### Docker Engine and the dockershim
 
-Docker Engine can still run through cri-dockerd. That path adds layers, so teams use it mainly when they need Docker-specific features on nodes. The book also walks through the Docker path in detail, as it worked in the Kubernetes versions it describes. Kubernetes supported Docker Engine through a CRI shim called the dockershim. Docker Engine does not implement the CRI itself, so the shim had to. The shim is built into the kubelet and is a gRPC server that implements the CRI services.
+Docker Engine can still run through cri-dockerd. That path adds layers, so teams use it mainly when they need Docker-specific features on nodes. The Docker path worked this way in the Kubernetes versions described here. Kubernetes supported Docker Engine through a CRI shim called the dockershim. Docker Engine does not implement the CRI itself, so the shim had to. The shim is built into the kubelet and is a gRPC server that implements the CRI services.
 
 Rather than special-casing every kubelet code path for both the CRI and Docker Engine, the dockershim acts as a facade. It translates CRI calls into Docker Engine API calls. Docker uses containerd under the hood, so calls from the kubelet are relayed to containerd, which starts the containers. The spawned container ends up under containerd, not under the Docker daemon:
 
@@ -300,7 +300,7 @@ Podman is not a CRI runtime. It shares libraries with CRI-O, though, and it can 
 
 Virtual Kubelet is an open source project. It acts like a kubelet, but its backend is a pluggable API. Strictly speaking, it is not a container runtime. Its job is to bring alternative runtimes to Kubernetes pods. Those runtimes can be any system that can run an application, such as serverless or edge frameworks. On a cloud service, for example, it can start pods on Azure Container Instances or AWS Fargate.
 
-Providers come from the Virtual Kubelet community, and they include AWS Fargate, Azure Container Instances, HashiCorp Nomad and others. If you need a custom backend, you can write your own provider. A provider is a Go program that uses the Virtual Kubelet libraries. It handles node registration, running pods, and exporting the APIs that Kubernetes expects. The book's authors have not yet needed Virtual Kubelet in the field, but it is still useful to know that it exists.
+Providers come from the Virtual Kubelet community, and they include AWS Fargate, Azure Container Instances, HashiCorp Nomad and others. If you need a custom backend, you can write your own provider. A provider is a Go program that uses the Virtual Kubelet libraries. It handles node registration, running pods, and exporting the APIs that Kubernetes expects. Virtual Kubelet is not yet common in the field, but it is still useful to know that it exists.
 
 If your distribution ships a runtime, stick with it unless you have an extremely compelling reason to switch.
 
@@ -446,7 +446,7 @@ root 38290 1 0 16:02 ? 00:00:17
 ...
 ```
 
-The book calls Kata Containers a niche, and its authors have not seen it used in the field. Still, if you need VM-level isolation guarantees in your Kubernetes cluster, it is worth a look. For untrusted workloads, weigh Kata and gVisor against their overhead and GPU limits before you choose.
+Kata Containers is a niche choice and is rarely seen in the field. Still, if you need VM-level isolation guarantees in your Kubernetes cluster, it is worth a look. For untrusted workloads, weigh Kata and gVisor against their overhead and GPU limits before you choose.
 
 ## 5. GPU runtimes: NVIDIA Container Toolkit with containerd
 
@@ -580,7 +580,7 @@ Run the self-checking Python lab (`code/part05/cri_runtime_simulator_lab.py`) lo
 python3 code/part05/cri_runtime_simulator_lab.py
 ```
 
-Next, work through the exercises on a Linux node with containerd, runc and crictl. All the interactive shell steps below are `untested here`.
+Next, work through the exercises on a Linux node with containerd, runc and crictl. The interactive shell steps below were not run on live hardware.
 
 1. Start with the layers on a node. On a kind or kubeadm node, run `crictl pods`, `crictl ps`, `ctr -n k8s.io containers ls` and `ctr -n k8s.io snapshots ls`. Map one Kubernetes pod to its sandbox and containers using labels. Then find the pause container and the pod's network namespace with `crictl inspectp` and `nsenter`.
 2. Run an OCI bundle with runc. Create a rootfs with `docker export`, and generate `config.json` with `runc spec`. Adjust `process.args` and the namespaces, then run it with `runc run`. Add a cgroup memory limit and watch for an OOM kill. Compare the result with a containerd `ctr run` of the same image.

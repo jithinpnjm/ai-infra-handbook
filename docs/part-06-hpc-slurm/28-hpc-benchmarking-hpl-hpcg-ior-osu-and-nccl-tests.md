@@ -188,14 +188,14 @@ For storage tests (6.18, 6.19), follow a method. Defeat the client caches with r
 To benchmark the storage-to-GPU DMA paths, GPUDirect Storage (GDS, Part 13), NVIDIA ships `/usr/local/cuda/gds/tools/gdsio`. Compare the CPU-staged path, `-x 2`, which uses pinned host memory with async copies, against the direct GDS path, `-x 0`, which moves data from storage straight into GPU HBM through `cuFile` and `nvidia-fs`. Both run in read mode (`-I 0`), with 4 workers (`-w 4`), a 10 GiB file (`-s 10G`), a 1 MiB I/O size (`-i 1M`) and GPU 0 (`-d 0`). They have not been run on a live system.
 
 ```bash
-# Before: Storage -> CPU Memory -> GPU (CPU-staged path, -x 2) (untested here)
+# Before: Storage -> CPU Memory -> GPU (CPU-staged path, -x 2)
 /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 2
 
-# After: Storage -> GPU Memory via GPUDirect Storage (GDS path, -x 0) (untested here)
+# After: Storage -> GPU Memory via GPUDirect Storage (GDS path, -x 0)
 /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
 ```
 
-The book's example, Table 5-1, shows what this comparison looks like. The CPU-staged path reaches 8.0 GB/s of total throughput at 1.25 ms average latency, with 85% CPU utilisation. The GDS path reaches 9.6 GB/s at 1.00 ms, with 25% CPU utilisation. That is a 20% throughput gain and 20% lower latency, and it also frees host CPU cores. VAST Data's GDS benchmarks in the book report a 20% sequential read throughput boost on an A100 GPU, and 30% or more on an H100. To trace `cuFile` calls alongside CUDA and OS runtime activity on a timeline, run Nsight Systems with `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here), and enable the `cuFile` static tracepoints in `/etc/cufile.json`.
+The book's example, Table 5-1, shows what this comparison looks like. The CPU-staged path reaches 8.0 GB/s of total throughput at 1.25 ms average latency, with 85% CPU utilisation. The GDS path reaches 9.6 GB/s at 1.00 ms, with 25% CPU utilisation. That is a 20% throughput gain and 20% lower latency, and it also frees host CPU cores. VAST Data's GDS benchmarks in the book report a 20% sequential read throughput boost on an A100 GPU, and 30% or more on an H100. To trace `cuFile` calls alongside CUDA and OS runtime activity on a timeline, run Nsight Systems with `nsys profile --trace=cuda,gds,nvtx,osrt`, and enable the `cuFile` static tracepoints in `/etc/cufile.json`.
 
 ### OSU Micro-Benchmarks (MPI)
 

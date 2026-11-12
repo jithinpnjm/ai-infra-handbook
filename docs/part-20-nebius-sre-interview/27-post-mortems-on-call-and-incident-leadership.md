@@ -65,9 +65,9 @@ flowchart TD
   PLAN --> DOC
 ```
 
-The book gives three signs that you should declare an incident. A second team is needed, the outage is visible to customers, or the problem is unsolved after an hour of focused analysis. Declaring early is better than starting the process hours into a worsening problem.
+The Google SRE book gives three signs that you should declare an incident. A second team is needed, the outage is visible to customers, or the problem is unsolved after an hour of focused analysis. Declaring early is better than starting the process hours into a worsening problem.
 
-Handover is where incidents lose time. The book says the outgoing commander fully briefs the successor and then says "You're now the incident commander, okay?". They stay on the call until the successor firmly acknowledges. Then they tell everyone else who is in charge. The workbook's PagerDuty case study says that company rotated on-call engineers and the incident commander every four hours during a long incident, to give people rest and fresh ideas.
+Handover is where incidents lose time. In the same chapter, the outgoing commander fully briefs the successor and then says "You're now the incident commander, okay?". They stay on the call until the successor firmly acknowledges. Then they tell everyone else who is in charge. The workbook's PagerDuty case study says that company rotated on-call engineers and the incident commander every four hours during a long incident, to give people rest and fresh ideas.
 
 In an interview, name the roles you filled. If you did everything yourself, say so, and say what you would delegate with more people. When you are asked about a team incident, say who held which role.
 
@@ -421,7 +421,7 @@ flowchart TD
   F --> G
 ```
 
-To work with product engineers, bring the budget, not opinions. Offer cheap reliability: canary gates, feature flags and rollbacks. Ask what latency or error figure their users notice, and set the SLO from that. The book adds that if the budget is exhausted so often that launches stall, the team can loosen the SLO.
+To work with product engineers, bring the budget, not opinions. Offer cheap reliability: canary gates, feature flags and rollbacks. Ask what latency or error figure their users notice, and set the SLO from that. The same chapter adds that if the budget is exhausted so often that launches stall, the team can loosen the SLO.
 
 **Say the budget in minutes, offer the engineer a choice, and let the policy make the decision.**
 
@@ -607,7 +607,7 @@ If the engineer insists on a full Friday rollout, follow the policy. The workboo
 
 ## Hands-on lab
 
-Run these in `code/part20` on a Mac or Linux box. No Docker is needed. I ran steps 1 to 4 on a Mac with Python 3.12 and pytest 8.3.5.
+Run these in `code/part20` on a Mac or Linux box. No Docker is needed. Steps 1 to 4 were run on a Mac with Python 3.12 and pytest 8.3.5.
 
 1. Run the tests: `python3 -m pytest -q test_c27_postmortem_lint.py test_c27_timeline_builder.py`. Expected: 24 passed.
 2. Lint the good fixture: `python3 c27_postmortem_lint.py c27_pm_good.md`. Expected output: `0 finding(s)` and exit code 0.

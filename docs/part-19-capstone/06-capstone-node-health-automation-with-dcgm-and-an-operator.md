@@ -130,7 +130,7 @@ kubectl get pods --all-namespaces --selector app=nvidia-dcgm-exporter
 
 One metric deserves its own warning. `DCGM_FI_DEV_XID_ERROR` holds the value of the last Xid. It stays at that value until another Xid replaces it or the exporter restarts. A rule that says "equals 79" keeps firing after the repair unless the node reboots. Chapter 20.16 makes the same point, and the rule file below handles it by leaving the cleanup to the operator and the restart.
 
-The default file also lists exporter-owned metrics as comments. They include `DCGM_EXP_GPU_HEALTH_STATUS`, which carries the DCGM-reported health status, and `DCGM_EXP_XID_ERRORS_TOTAL`, a counter of Xid errors. Both are off by default. They are worth enabling once you have checked their semantics on your build. I did not use them in the rules because I could not read their value ranges in the sources I fetched.
+The default file also lists exporter-owned metrics as comments. They include `DCGM_EXP_GPU_HEALTH_STATUS`, which carries the DCGM-reported health status, and `DCGM_EXP_XID_ERRORS_TOTAL`, a counter of Xid errors. Both are off by default. They are worth enabling once you have checked their semantics on your build. The rules do not use them, because their value ranges could not be read in the sources consulted.
 
 ### Watching the watcher
 
@@ -525,7 +525,7 @@ Four limits keep safe actions from becoming a meltdown. They match the fields of
 - A budget, `maxUnavailableNodes`, caps how many matched nodes may be unschedulable. A percentage rounds up.
 - A dry-run flag reports what would happen and changes nothing.
 
-The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. I checked both numbers by running the operator's own `Budget` function.
+The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. The operator's own `Budget` function returns both numbers.
 
 The Go operator enforces the rule that an unlimited drain cannot exist. Its custom resource definition carries a validation rule. I created a policy with `action: CordonAndDrain` and no budget against a real kube-apiserver, version 1.31.0, started by the operator's envtest suite. The server answered with this text.
 
@@ -568,9 +568,9 @@ flowchart LR
 | Circuit breaker | Not present | Freeze when several nodes flag together |
 | Ticket and diagnostic gate | Not present | Required before an owned node returns |
 
-I ran the Go side here. `go build ./...` and `go vet ./...` in `code/gpuhealth` completed without output. The test suite passes, and it needs the envtest binaries, which start a real kube-apiserver and etcd. Without them the tests stop in `TestMain`. Here the tests ran against Kubernetes 1.31.0 and seven tests passed: `TestJudge`, `TestBudgetAndPlan`, `TestCordonThenUncordon`, `TestBudgetLimitsCordons`, `TestDryRunDoesNothing`, `TestPendingWindowWaits` and `TestFinalizerReleasesOwnCordonsOnly`. The Kubebuilder and controller-runtime material describes this structure. The Reconcile function makes the system match the resource, and other controllers act on the objects it changes.
+On the Go side, `go build ./...` and `go vet ./...` in `code/gpuhealth` completed without output. The test suite passes, and it needs the envtest binaries, which start a real kube-apiserver and etcd. Without them the tests stop in `TestMain`. With them, the tests ran against Kubernetes 1.31.0 and seven tests passed: `TestJudge`, `TestBudgetAndPlan`, `TestCordonThenUncordon`, `TestBudgetLimitsCordons`, `TestDryRunDoesNothing`, `TestPendingWindowWaits` and `TestFinalizerReleasesOwnCordonsOnly`. The Kubebuilder and controller-runtime material describes this structure. The Reconcile function makes the system match the resource, and other controllers act on the objects it changes.
 
-Reading the code against the safety model turned up a gap. In `Judge`, a node with no `GPUHealthy` condition counts as healthy. For cordoning that is right, because a missing signal must never cordon. For uncordoning it is risky. The reconciler releases any owned, unschedulable node that `Judge` calls healthy. If the condition vanished after a cordon, the node would be released with no proof. I confirmed the first half by calling `Judge` on a node with no condition, and it returned healthy. The second half follows from reading the controller loop. I did not run a scenario that deletes a condition, so treat the release path as read and not run. The reference model closes the gap by requiring an explicit true condition before any return.
+Reading the code against the safety model turned up a gap. In `Judge`, a node with no `GPUHealthy` condition counts as healthy. For cordoning that is right, because a missing signal must never cordon. For uncordoning it is risky. The reconciler releases any owned, unschedulable node that `Judge` calls healthy. If the condition vanished after a cordon, the node would be released with no proof. Calling `Judge` on a node with no condition returns healthy, which confirms the first half. The second half follows from reading the controller loop. No scenario that deletes a condition was run, so treat the release path as read and not run. The reference model closes the gap by requiring an explicit true condition before any return.
 
 Next, the policy objects. They are validated against the operator's CRD with `tools/check_crd_yaml.py`, which rejects unknown fields. The first is the production policy for the training pool.
 
@@ -611,7 +611,7 @@ spec:
   dryRun: true
 ```
 
-The detector side needs a stand-in for the lab. This script sets the `GPUHealthy` condition by hand with a strategic merge patch on the node status. I could not run `kubectl` here. I did run the same patch shape against the envtest apiserver. Two patches in a row, true and then false, left one `GPUHealthy` condition set to false and the `Ready` condition untouched.
+The detector side needs a stand-in for the lab. This script sets the `GPUHealthy` condition by hand with a strategic merge patch on the node status. `kubectl` was not run here. The same patch shape was run against the envtest apiserver. Two patches in a row, true and then false, left one `GPUHealthy` condition set to false and the `Ready` condition untouched.
 
 ```bash
 #!/usr/bin/env bash
@@ -698,7 +698,7 @@ This is the runbook the operator automates and the human follows when it may not
 4. For Xid 48 and 95, review the jobs that ran in the affected window. An uncorrectable or uncontained memory error means data integrity was not guaranteed. Flag those outputs for review or re-run.
 5. Do not return the node without a passed diagnostic and a closed ticket.
 
-The catalog's investigatory column adds that for Xid 48 a solo event should run the field diagnostic, and an SRAM error that exceeds its threshold follows the RMA flow. I did not try to restate that flow. Read the catalog entry for your driver.
+The catalog's investigatory column adds that for Xid 48 a solo event should run the field diagnostic, and an SRAM error that exceeds its threshold follows the RMA flow. This chapter does not restate that flow. Read the catalog entry for your driver.
 
 The catalog does not give a PCIe rescan procedure for Xid 79, and the nvidia-devops DCGM chapter says to collect a bug report and hand it to the hardware owner. So this chapter keeps only the catalog's action.
 
@@ -769,7 +769,7 @@ Several failures never produce an Xid. The nvidia-devops fan-failure chapter lis
 
 A team spent a quarter building node-health automation and never ran it against a fault. The first real incident was also the first time the paging key had been rotated, the first time a drain met a disruption budget, and the first time the runbook link pointed to a retired channel. This story is a composite that I wrote. The fix it argues for is real: break something on purpose, on a quiet afternoon, and find the gaps before 3 a.m. does.
 
-A game day is a hypothesis with a clock. The targets here are my own, and I derive them from the loop's settings so each one is checkable. The incident-response project in nvidia-devops volume 24 has success criteria about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem.
+A game day is a hypothesis with a clock. The targets here are this chapter's own, derived from the loop's settings so each one is checkable. The incident-response project in the source material has success criteria about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem.
 
 | Clause | Target | Why this number |
 |---|---|---|
@@ -817,7 +817,7 @@ For each injection, write one row per clause: seconds from fault to alert, secon
 
 ## 7. Hands-on lab
 
-This lab splits cleanly. Steps 1 to 5 run on a laptop and I ran them. Steps 6 to 10 need a GKE cluster with a GPU node pool and were not run. This chapter's cluster steps are untested, and I give the expected shape of the output and label it as such.
+This lab splits cleanly. Steps 1 to 5 run on a laptop and were run there. Steps 6 to 10 need a GKE cluster with a GPU node pool and were not run. These cluster steps are untested, and the expected shape of the output is labeled as such.
 
 ### 7.1 Prerequisites
 
@@ -962,7 +962,7 @@ It prevents a short blip from triggering a cordon. `unhealthyFor` defaults to 2 
 
 <details><summary>10. On a four-node pool, how many nodes does a 10 percent budget allow?</summary>
 
-One, because percentages round up. I checked it by running the operator's `Budget` function. On a 32-node pool the same budget allows four.
+One, because percentages round up. The operator's `Budget` function confirms it. On a 32-node pool the same budget allows four.
 </details>
 
 <details><summary>11. How does the CRD stop an unlimited drain?</summary>

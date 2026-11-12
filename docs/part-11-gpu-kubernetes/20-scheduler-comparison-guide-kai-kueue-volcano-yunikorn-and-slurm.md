@@ -33,9 +33,9 @@ Read the block below as a short list of what goes wrong at scale.
 
 ```text
 Scale Failures That Force Purpose-Built Scheduling & Health Gating:
-- Partial-Allocation Deadlock (volume-01/chapter-05): 16-GPU or 64-GPU job submitted when 8 or 30 GPUs are free -> running ranks crash in NCCL Timeout loops.
-- Inverse Cluster MTBF Scaling (volume-10/09): 512 nodes (4,096 GPUs) with 1,000-day (~3-year) single-node MTBF -> 1,000 / 512 = 1.95 days between hardware faults.
-- Silent Collective Straggler (volume-10/09): 1 throttled GPU or degraded 400G transceiver stalls peer GPUs inside ncclKernel_AllReduce at 100% spinlock utilization, doubling step time from 1.2 s to 2.4 s.
+- Partial-Allocation Deadlock: 16-GPU or 64-GPU job submitted when 8 or 30 GPUs are free -> running ranks crash in NCCL Timeout loops.
+- Inverse Cluster MTBF Scaling: 512 nodes (4,096 GPUs) with 1,000-day (~3-year) single-node MTBF -> 1,000 / 512 = 1.95 days between hardware faults.
+- Silent Collective Straggler: 1 throttled GPU or degraded 400G transceiver stalls peer GPUs inside ncclKernel_AllReduce at 100% spinlock utilization, doubling step time from 1.2 s to 2.4 s.
 ```
 
 This chapter brings Chapters 11.7 through 11.19 together into one six-way scheduler comparison. It covers Coscheduling, Kueue, Volcano, NVIDIA KAI Scheduler, Apache YuniKorn, and Slurm. Before you select a scheduler for your cluster, compare your workload mix and operational maturity with the architectural boundaries of each engine.
@@ -86,7 +86,7 @@ flowchart TD
 
 #### Comprehensive 6-Scheduler Comparison Matrix
 
-Table 7-1 of *Generative AI on Kubernetes* compares four primary Kubernetes batch schedulers. The matrix below adds Apache YuniKorn and bare-metal Slurm to that comparison.
+The source compares four primary Kubernetes batch schedulers. The matrix below adds Apache YuniKorn and bare-metal Slurm to that comparison.
 
 | Dimension | Coscheduling Plugin | Kueue | Volcano | NVIDIA KAI Scheduler | Apache YuniKorn | Slurm (`+ Enroot / Pyxis`) |
 |---|---|---|---|---|---|---|
@@ -129,7 +129,7 @@ Enroot turns OCI container images into unprivileged squashfs files that end in `
 The block below lists the operating rules for Enroot and Pyxis on Slurm.
 
 ```text
-NVIDIA Enroot and Pyxis Operational Rules on Slurm (volume-10/08):
+NVIDIA Enroot and Pyxis Operational Rules on Slurm:
 1. Enroot Configuration Directories (/etc/enroot, ENROOT_SYSCONF_PATH) & Required File Extensions:
    - environ.d/*.env   (Environment variables)
    - mounts.d/*.fstab  (Filesystem bind mounts)
@@ -159,7 +159,7 @@ When you operate Slurm at scale, import shared `.sqsh` images onto Lustre once, 
 Why do large training clusters spend so much effort on automated health gating before and after each job? The reason is simple arithmetic. Cluster mean time between failures shrinks as the node count of a job grows, because it scales inversely with the number of nodes.
 
 ```text
-Cluster MTBF and Silent Straggler Math (volume-10/09):
+Cluster MTBF and Silent Straggler Math:
 - Formula: Cluster MTBF = Single Node MTBF / N
 - 512-Node (4,096-GPU) Example: 1,000-day (~3-year) single-node MTBF / 512 nodes = 1.95 days between hardware/link faults.
 - Silent Straggler Impact (128-node, 1,024-GPU 405B training run):
@@ -176,7 +176,7 @@ The formula gives the expected interval between faults, and the straggler case s
 Production Slurm clusters use three tiers of health gating to catch hard hardware faults and silent stragglers before they ruin a multi-node job. Tier 1 runs the Node Health Check daemon every 300 seconds in the background. Tier 2 runs a fast pre-job `Prolog` script in under 10 seconds, before job allocation. If any GPU, ECC, NVLink, or 400G InfiniBand check fails, that script drains the node and requeues the job. Tier 3 runs a post-job `Epilog` script. It cleans up residual processes, resets GPUs, and audits kernel logs against the NVIDIA Xid Catalog.
 
 ```text
-3-Tier Slurm Health Gating Architecture & DCGM Diagnostic Run Levels (volume-10/09):
+3-Tier Slurm Health Gating Architecture & DCGM Diagnostic Run Levels:
 - Tier 1 Background NHC (HealthCheckProgram=/usr/sbin/nhc, HealthCheckInterval=300):
   * Verifies NFS mounts, 2 TB (2,000,000,000 kB) host RAM, slurmd daemon, PCIe ACS disabled (ACSCtl), and 400 Gb/s IB ports (check_hw_ib 400 mlx5_0:1).
 - Tier 2 Pre-Job Prolog (< 10 s, target < 8 s, PrologFlags=Alloc, PrologEpilogTimeout=300):
@@ -213,7 +213,7 @@ The Xid table below lists each code with its immediate action and its investigat
 Suppose you present a hybrid Slurm and Kubernetes design to executives. Ground the physical layout in the verified NVIDIA DGX H100 SuperPOD reference architecture and in Base Command Manager 11 capabilities.
 
 ```text
-DGX H100 SuperPOD Reference Architecture & BCM 11 Coexistence Facts (volume-10/00c):
+DGX H100 SuperPOD Reference Architecture & BCM 11 Coexistence Facts:
 1. Scalable Units (SUs) and the 128 vs 127 Node UFM Detail:
    - Nominal Sizing: 1 SU = 32 nodes (256 GPUs); 4 SUs = 128 nodes (1,024 GPUs), scaling to > 64 SUs (>= 2,000 nodes).
    - Compute-Fabric Table Detail: 1 DGX node is removed to accommodate UFM connectivity -> 1 SU shows 31 nodes and 4 SUs show 127 nodes (1,016 GPUs).
@@ -248,14 +248,14 @@ Before you move production workloads, validate your recommended scheduler with a
 
 ## Commands and configurations that matter
 
-The configurations below control how Slurm places jobs, launches containers and admits GPU work. Each block is shown as the source gives it, and the blocks marked untested here were not run on a live cluster.
+The configurations below control how Slurm places jobs, launches containers and admits GPU work. The commands below were not run on live hardware. Each block is shown as the source gives it.
 
 ### 1. Slurm Topology, cons_tres, and 3-Tier Health Gate Configuration
 
 Start with the `slurm.conf` excerpt, which you can read as the Slurm side of the design. It sets the topology plugin, the GPU selection, and the Prolog, Epilog and health-check options that the three tiers rely on.
 
 ```ini
-# /etc/slurm/slurm.conf excerpt for an NVIDIA DGX H100 AI Factory (volume-10/09, untested here)
+# /etc/slurm/slurm.conf excerpt for an NVIDIA DGX H100 AI Factory
 TopologyPlugin=topology/tree
 SelectType=select/cons_tres
 SelectTypeParameters=CR_Core_Memory,CR_CORE_DEFAULT_DIST_BLOCK
@@ -279,7 +279,7 @@ The `Prolog` and `Epilog` lines point to the scripts behind Tiers 2 and 3. The H
 To launch a containerized PyTorch job across four nodes, you run one `srun` command and set a few environment variables. The variables set the NCCL transport before the job starts.
 
 ```bash
-# Launch a 4-node (32-GPU) containerized PyTorch job via Slurm + Pyxis + Enroot (untested here)
+# Launch a 4-node (32-GPU) containerized PyTorch job via Slurm + Pyxis + Enroot
 export NCCL_NET=IB
 export NCCL_IB_HCA=mlx5_0:1,mlx5_1:1,mlx5_2:1,mlx5_3:1,mlx5_4:1,mlx5_5:1,mlx5_6:1,mlx5_7:1
 export NCCL_IB_TIMEOUT=22
@@ -299,7 +299,7 @@ Each node reads the same `.sqsh` file from shared storage, so the job does not p
 Kueue admission and KAI Scheduler placement can work on the same job. The manifest below shows both in one PyTorchJob.
 
 ```yaml
-# kueue-plus-kai-scheduler-pytorchjob.yaml (untested here)
+# kueue-plus-kai-scheduler-pytorchjob.yaml
 apiVersion: kubeflow.org/v1
 kind: PyTorchJob
 metadata:
@@ -333,11 +333,11 @@ Across both Kubernetes and Slurm clusters, production scheduling failures come f
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. `16`-GPU job on vanilla Kubernetes has `8` Pods `Running` and `8` Pods `Pending`, then crashes with `NCCL Timeout` (`volume-01/chapter-05`)** | `kubectl get pods` shows `worker-0..7` `Running` and `worker-8..15` `Pending`; running workers crash after `10–30 min` waiting for rank rendezvous. | **Missing Gang Scheduling in Default `kube-scheduler`:** `kube-scheduler` schedules pods one by one without `PodGroup` all-or-nothing semantics. | Deploy **KAI Scheduler**, **Volcano**, **Kueue**, **YuniKorn**, or **Coscheduling** so all `16` pods are held until all `16` GPUs can be allocated simultaneously. |
-| **2. `128`-node (`1,024`-GPU) training step time doubles from `1.2 s` to `2.4 s` while all GPUs show `100%` utilization (`volume-10/09` Scenario 1)** | No node crashes and `DCGM_FI_DEV_GPU_UTIL` is `100%` everywhere, but `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` on one GPU lags the node average by `> 0.15` (`15%`) and IB `PortXmitWait` spikes. | **Silent Straggler Behind `AllReduce` Spinlock:** One GPU (thermal slowdown or degraded `400G` optical transceiver falling back or retransmitting) stalls all `1,023` peers inside `ncclKernel_AllReduce`. | Set `export NCCL_NET=IB` (so NCCL fails fast instead of falling back to TCP), alert on `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` lag `> 0.15` for `5m` and `PortXmitWait > 3σ`, and gate `400G` IB rates + NVLink health in `Prolog`. |
-| **3. Slurm `Epilog` drains healthy nodes whenever a user's PyTorch script hits `CUDA out of memory` (`volume-10/09` Scenario 2)** | Fleet capacity shrinks rapidly during hyperparameter sweeps because every user OOM or `Xid 31` / `Xid 13` triggers `State=DRAIN`. | **Conflating User-Space Application Faults with Hardware Xids:** `Xid 13` and `Xid 31` (and `Xid 44` `IGNORE`) are application/context faults (`RESTART_APP`), not dead silicon. | Follow the **NVIDIA Xid Catalog**: only drain/escalate on hardware/bus/ECC faults (`Xid 48`, `62`, `64`, `74`, `79`, `95`, `109`, `119`, `120`), while cleaning up user processes and leaving the node `IDLE` after user OOMs (`Xid 31`). |
-| **4. After upgrading Slurm (`>= 21.08`), `srun --container-image=...` fails to load the Pyxis plugin (`volume-10/08`)** | `slurmd` logs `spank: pyxis.so: incompatible plugin version` and rejects containerized jobs after a minor Slurm upgrade. | **Pyxis SPANK ABI Tie (`Slurm >= 21.08`):** Pyxis must be compiled against the exact `spank.h` header of the running Slurm release. | Include rebuilding and redeploying the `pyxis` package across all compute nodes in every Slurm upgrade playbook before restarting `slurmd`. |
-| **5. `64`-node NCCL run freezes at `0%` GPU utilization while Slurm shows the job `RUNNING` (`volume-10/00c` Scenario 2)** | `squeue` shows `RUNNING`, GPU utilization drops to `0%`, and operators are tempted to `scancel` and restart immediately. | **Uncollected Hang Forensics:** Restarting before running `ncclras` (NCCL `>= 2.24` RAS client) and checking `dmesg` destroys the evidence of which rank is `MISMATCH` or `INCOMPLETE`. | Run `ncclras` twice a few seconds apart to identify `MISMATCH` / `INCOMPLETE` ranks, check `ulimit -l` (`unlimited` for `ibv_reg_mr`), grep `NVRM: Xid` in `dmesg`, and check `ibstat` error counter deltas before terminating the job. |
+| **1. `16`-GPU job on vanilla Kubernetes has `8` Pods `Running` and `8` Pods `Pending`, then crashes with `NCCL Timeout`** | `kubectl get pods` shows `worker-0..7` `Running` and `worker-8..15` `Pending`; running workers crash after `10–30 min` waiting for rank rendezvous. | **Missing Gang Scheduling in Default `kube-scheduler`:** `kube-scheduler` schedules pods one by one without `PodGroup` all-or-nothing semantics. | Deploy **KAI Scheduler**, **Volcano**, **Kueue**, **YuniKorn**, or **Coscheduling** so all `16` pods are held until all `16` GPUs can be allocated simultaneously. |
+| **2. `128`-node (`1,024`-GPU) training step time doubles from `1.2 s` to `2.4 s` while all GPUs show `100%` utilization** | No node crashes and `DCGM_FI_DEV_GPU_UTIL` is `100%` everywhere, but `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` on one GPU lags the node average by `> 0.15` (`15%`) and IB `PortXmitWait` spikes. | **Silent Straggler Behind `AllReduce` Spinlock:** One GPU (thermal slowdown or degraded `400G` optical transceiver falling back or retransmitting) stalls all `1,023` peers inside `ncclKernel_AllReduce`. | Set `export NCCL_NET=IB` (so NCCL fails fast instead of falling back to TCP), alert on `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` lag `> 0.15` for `5m` and `PortXmitWait > 3σ`, and gate `400G` IB rates + NVLink health in `Prolog`. |
+| **3. Slurm `Epilog` drains healthy nodes whenever a user's PyTorch script hits `CUDA out of memory`** | Fleet capacity shrinks rapidly during hyperparameter sweeps because every user OOM or `Xid 31` / `Xid 13` triggers `State=DRAIN`. | **Conflating User-Space Application Faults with Hardware Xids:** `Xid 13` and `Xid 31` (and `Xid 44` `IGNORE`) are application/context faults (`RESTART_APP`), not dead silicon. | Follow the **NVIDIA Xid Catalog**: only drain/escalate on hardware/bus/ECC faults (`Xid 48`, `62`, `64`, `74`, `79`, `95`, `109`, `119`, `120`), while cleaning up user processes and leaving the node `IDLE` after user OOMs (`Xid 31`). |
+| **4. After upgrading Slurm (`>= 21.08`), `srun --container-image=...` fails to load the Pyxis plugin** | `slurmd` logs `spank: pyxis.so: incompatible plugin version` and rejects containerized jobs after a minor Slurm upgrade. | **Pyxis SPANK ABI Tie (`Slurm >= 21.08`):** Pyxis must be compiled against the exact `spank.h` header of the running Slurm release. | Include rebuilding and redeploying the `pyxis` package across all compute nodes in every Slurm upgrade playbook before restarting `slurmd`. |
+| **5. `64`-node NCCL run freezes at `0%` GPU utilization while Slurm shows the job `RUNNING`** | `squeue` shows `RUNNING`, GPU utilization drops to `0%`, and operators are tempted to `scancel` and restart immediately. | **Uncollected Hang Forensics:** Restarting before running `ncclras` (NCCL `>= 2.24` RAS client) and checking `dmesg` destroys the evidence of which rank is `MISMATCH` or `INCOMPLETE`. | Run `ncclras` twice a few seconds apart to identify `MISMATCH` / `INCOMPLETE` ranks, check `ulimit -l` (`unlimited` for `ibv_reg_mr`), grep `NVRM: Xid` in `dmesg`, and check `ibstat` error counter deltas before terminating the job. |
 
 Read the table row by row, and start from the symptom you can check with your own commands. Each row pairs what you see with the cause behind it and the fix to apply. If you start with the symptom column, each row leads you to its cause and fix.
 
@@ -345,7 +345,7 @@ Read the table row by row, and start from the symptom you can check with your ow
 
 ### Venue and scope
 
-You can run this lab locally with only the Python 3 standard library. It uses `code/part11/scheduler_comparison_guide.py` and `code/part11/scheduler_comparison_guide_lab.py`. The checks fall into three groups. The first verifies the six-scheduler comparison matrix and the workload-to-scheduler decision engine. The second covers the 512-node cluster MTBF math and the NVIDIA Xid Catalog classifier. The third checks the DGX H100 SuperPOD reference architecture sizing calculator and the `cm-scale` Auto Scaler coexistence rules. Cluster and Slurm commands are marked untested here.
+You can run this lab locally with only the Python 3 standard library. It uses `code/part11/scheduler_comparison_guide.py` and `code/part11/scheduler_comparison_guide_lab.py`. The checks fall into three groups. The first verifies the six-scheduler comparison matrix and the workload-to-scheduler decision engine. The second covers the 512-node cluster MTBF math and the NVIDIA Xid Catalog classifier. The third checks the DGX H100 SuperPOD reference architecture sizing calculator and the `cm-scale` Auto Scaler coexistence rules. The cluster and Slurm commands were not run on live hardware.
 
 ### Step 1: Run the self-checking scheduler comparison guide lab
 
@@ -406,7 +406,7 @@ Kueue is a job-level admission controller. It decides when a job is unsuspended,
 </details>
 
 <details>
-<summary>**2. What makes NVIDIA KAI Scheduler unique among the Kubernetes schedulers compared in Table 7-1 of Generative AI on Kubernetes?**</summary>
+<summary>**2. What makes NVIDIA KAI Scheduler unique among the Kubernetes schedulers compared in this chapter?**</summary>
 
 KAI Scheduler is built for GPU optimization, and its seven microservices do that work. It combines hierarchical `SubGroup` gang and topology placement with native fractional GPU scheduling. That scheduling is backed by `binder` reservation pods and dynamic MIG consolidation.
 </details>
@@ -430,7 +430,7 @@ Picture the default `kube-scheduler` with no gang scheduling. It starts 8 pods r
 </details>
 
 <details>
-<summary>**6. What are the six stages of the Architecture Methodology Framework and the six critical paths to model in Volume 8 Chapter 1?**</summary>
+<summary>**6. What are the six stages of the Architecture Methodology Framework and the six critical paths to model?**</summary>
 
 - The six stages are Discover, Model, Compare, Recommend, Validate, and Adopt.
 - The six critical paths are the Data and Request Path, Control Path, Trust and Identity Path, Persistent State, Failure Domains, and Observability Path.
@@ -463,7 +463,7 @@ Since Slurm 21.08, Pyxis has to be compiled against the exact `spank.h` header o
 </details>
 
 <details>
-<summary>**11. Using the Cluster MTBF formula in Volume 10 Chapter 9, how often does a 512-node cluster experience a node fault if a single node has an illustrative 1,000-day MTBF?**</summary>
+<summary>**11. Using the cluster MTBF formula, how often does a 512-node cluster experience a node fault if a single node has an illustrative 1,000-day MTBF?**</summary>
 
 ```text
 Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
@@ -477,7 +477,7 @@ Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
 </details>
 
 <details>
-<summary>**13. Compare the four DCGM diagnostic run levels in Volume 10 Chapter 9 Section 7.**</summary>
+<summary>**13. Compare the four DCGM diagnostic run levels.**</summary>
 
 - `-r 1` is Level 1. It runs in seconds and checks NVML libraries, device access, row remap, InfoROM, and Fabric Manager, which makes it safe for pre-job `Prolog` readiness.
 - `-r 2` is Level 2. It runs in about 2 minutes and adds memory and PCIe or NVLink bandwidth tests for investigating failed workloads.
@@ -492,7 +492,7 @@ When one GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_Al
 </details>
 
 <details>
-<summary>**15. What seven pre-flight checks are executed by the production Slurm Prolog script in Volume 10 Chapter 9?**</summary>
+<summary>**15. What seven pre-flight checks are executed by the production Slurm Prolog script?**</summary>
 
 1. GPU enumeration verifies that all 8 GPUs respond within 5 seconds.
 2. Volatile uncorrectable ECC verifies that `ecc.errors.uncorrected.volatile.total` equals 0.
@@ -504,7 +504,7 @@ When one GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_Al
 </details>
 
 <details>
-<summary>**16. According to the NVIDIA Xid Catalog table in Volume 10 Chapter 9 Section 9, what is the Immediate Action for Xid 13/31/94, Xid 44/63, Xid 48, Xid 64/95/109/119/120, Xid 74, and Xid 79?**</summary>
+<summary>**16. According to the NVIDIA Xid Catalog table, what is the Immediate Action for Xid 13/31/94, Xid 44/63, Xid 48, Xid 64/95/109/119/120, Xid 74, and Xid 79?**</summary>
 
 - Xid 13, Xid 31, and Xid 94 map to `RESTART_APP`. They are application or contained memory faults, so you should not drain the node for them.
 - Xid 44 and Xid 63 map to `IGNORE`.

@@ -48,7 +48,7 @@ Most wrong answers come from three mistakes. The first is counting fields from t
 
 The second is `uniq`. It collapses only neighbouring equal lines, so it must come after `sort`. The third is sorting numbers as text. A text sort puts `9.5` above `61.004`, because the character 9 is greater than 6. Always write `sort -n` or `-rn` for numbers, and add a second sort key so ties come out in the same order every time.
 
-One more habit pays off under pipefail. When a pipeline ends in `head`, `head` closes its input early and the earlier command can die with signal 13, which shows up as exit status 141. I ran this with `set -o pipefail` on the Mac and in the Linux container, and both printed the same:
+One more habit pays off under pipefail. When a pipeline ends in `head`, `head` closes its input early and the earlier command can die with signal 13, which shows up as exit status 141. Running this with `set -o pipefail` on the Mac and in the Linux container gives the same output:
 
 ```text
 $ bash -c 'set -o pipefail; yes | head -1 >/dev/null; echo st=$?'
@@ -61,7 +61,7 @@ Decide: use `$NF` when the tail is stable, a regular expression when the middle 
 
 ### 3. The Mac is not the interview box
 
-Your laptop runs BSD tools and the interview shell is almost certainly GNU Linux. I ran everything in this chapter twice. The first run was on macOS with `awk version 20200816`, `bash 3.2.57` and `openrsync`. The second was in a throwaway Ubuntu 24.04 container, image `ubuntu:24.04` (Ubuntu 24.04.5 LTS), kernel `6.18.37-0-virt` on aarch64, with GNU bash 5.2.21, GNU awk 5.2.1, GNU sed 4.9, GNU grep 3.11, GNU tar 1.35, GNU findutils 4.9.0, GNU coreutils sort 9.4, rsync 3.2.7, curl 8.5.0 and jq 1.7. The code folder was mounted read-only and no extra privileges were given. All twelve solutions printed byte-identical output on both systems. The 17 tests passed on both. These differences showed up.
+Your laptop runs BSD tools and the interview shell is almost certainly GNU Linux. Everything in this chapter ran twice. The first run was on macOS with `awk version 20200816`, `bash 3.2.57` and `openrsync`. The second was in a throwaway Ubuntu 24.04 container, image `ubuntu:24.04` (Ubuntu 24.04.5 LTS), kernel `6.18.37-0-virt` on aarch64, with GNU bash 5.2.21, GNU awk 5.2.1, GNU sed 4.9, GNU grep 3.11, GNU tar 1.35, GNU findutils 4.9.0, GNU coreutils sort 9.4, rsync 3.2.7, curl 8.5.0 and jq 1.7. The code folder was mounted read-only and no extra privileges were given. All twelve solutions printed byte-identical output on both systems. The 17 tests passed on both. These differences showed up.
 
 | Command | On the Mac | On Ubuntu with GNU tools |
 |---|---|---|
@@ -74,7 +74,7 @@ Your laptop runs BSD tools and the interview shell is almost certainly GNU Linux
 | `grep -oP '\d+'` | not available in the BSD grep | prints each number. This is a GNU extension. |
 | default `awk` | one true awk, 20200816 | gawk when installed. A fresh Ubuntu has **mawk** 1.3.4 as awk. |
 
-The last row matters. On a bare Ubuntu image `awk` may be mawk, not gawk. I ran all eleven file-argument solutions and the tests again with mawk selected and every output was identical. The pipelines avoid gawk-only features such as `asort`, `gensub` and `strftime`. If you reach for one, say so aloud.
+The last row matters. On a bare Ubuntu image `awk` may be mawk, not gawk. The eleven file-argument solutions and the tests were run again with mawk selected, and every output was identical. The pipelines avoid gawk-only features such as `asort`, `gensub` and `strftime`. If you reach for one, say so aloud.
 
 The `xargs` and `((i++))` rows are the ones that break scripts silently. The first runs a command you did not expect. The second kills a script that worked on a Mac.
 
@@ -111,7 +111,7 @@ A service keeps dying and the on-call engineer says "check the logs". On a syste
 
 The same chapter warns that `-g` needs a build of `journalctl` with a particular library, so some distributions lack it. It also notes that you need root, or membership of the `adm` or `systemd-journal` group, to read everything. `tail -f` does not work, because the journal is not a plain text file.
 
-Then look at the unit itself. `systemctl status sshd.service` shows state, the main process and the last log lines. Dependencies matter: the book explains that `Requires` is strict, so if the dependency fails systemd stops the dependent unit too. `Wants` only asks for activation and does not care if the dependency fails. Order is separate again. Without an explicit ordering directive, units that depend on each other start at the same time.
+Then look at the unit itself. `systemctl status sshd.service` shows state, the main process and the last log lines. Dependencies matter: `Requires` is strict, so if the dependency fails systemd stops the dependent unit too. `Wants` only asks for activation and does not care if the dependency fails. Order is separate again. Without an explicit ordering directive, units that depend on each other start at the same time.
 
 Restart behaviour is where flapping services come from. The systemd.service page, which the page header reported as version 262, lists `Restart=` values: `no`, `on-success`, `on-failure`, `on-abnormal`, `on-watchdog`, `on-abort` and `always`. The default is `no`. It says `RestartSec=` defaults to 100ms. A service that fails instantly and restarts every 100 ms hits the start rate limit, set by `StartLimitIntervalSec=` and `StartLimitBurst=`, whose defaults come from the manager configuration. The systemd.unit page says `systemctl reset-failed` flushes the restart counter, and that a unit past its limit is not restarted any more.
 
@@ -119,9 +119,9 @@ The fixture `journal.txt` is a synthetic journal in the `short-iso` style. Task 
 
 Timers replace cron on many systems. A timer unit only says when. The book explains that it activates a service unit, and the systemd.timer page says `foo.timer` activates `foo.service` unless `Unit=` says otherwise. `OnCalendar=` takes wall-clock expressions. `Persistent=` defaults to false, so a run missed while the machine was off is not made up unless you set it. `AccuracySec=` defaults to one minute, so a timer can fire up to a minute late.
 
-Override mechanics: the book says unit files you write belong in `/etc/systemd/system`, and that `systemctl daemon-reload` reloads all unit configuration. Drop-in files and `systemctl edit` are not covered by the books or pages I read. Unverified: check `man systemctl` before relying on them in the interview.
+Override mechanics: unit files you write belong in `/etc/systemd/system`, and that `systemctl daemon-reload` reloads all unit configuration. Drop-in files and `systemctl edit` are not covered by the sources used for this chapter, so they are not verified here. Check `man systemctl` before relying on them in the interview.
 
-Mostly not run: the real service commands need systemd as PID 1, and a plain container does not have it. A systemd container would need privileged mode or special cgroup mounts, which I did not use. In the container, `systemctl status` printed `System has not been booted with systemd as init system (PID 1). Can't operate.` and `journalctl -n1` printed `No journal files were found.` What did run was `systemd-analyze verify` on a sample unit with `Restart=on-failure`, `RestartSec=100ms`, `StartLimitBurst=3` and `LimitNOFILE=65536`. It exited 0, so those settings parse on systemd 255. The restart counter, start limit and journal formats were not observed live. The fixtures contain only the text those tools would have printed.
+Mostly not run: the real service commands need systemd as PID 1, and a plain container does not have it. A systemd container would need privileged mode or special cgroup mounts, which were not used. In the container, `systemctl status` printed `System has not been booted with systemd as init system (PID 1). Can't operate.` and `journalctl -n1` printed `No journal files were found.` What did run was `systemd-analyze verify` on a sample unit with `Restart=on-failure`, `RestartSec=100ms`, `StartLimitBurst=3` and `LimitNOFILE=65536`. It exited 0, so those settings parse on systemd 255. The restart counter, start limit and journal formats were not observed live. The fixtures contain only the text those tools would have printed.
 
 Decide: in a restart loop, read the exit status line first, then the restart counter, then the limit, and only then think about changing `Restart=`.
 
@@ -129,7 +129,7 @@ Decide: in a restart loop, read the exit status line first, then the restart cou
 
 A pod will not die, a process shows as `<defunct>`, a deploy hangs for exactly 30 seconds. All three are signal stories. How Linux Works, chapter 2, says the default signal of `kill pid` is TERM, that most processes get a chance to clean up through a handler, and that a process may ignore it. `kill -STOP` freezes a process and `kill -CONT` resumes it. Run `kill -l` for the number-to-name map.
 
-SIGKILL is different. The process cannot catch or ignore it. The shell reports a death by signal as 128 plus the signal number. I ran the demo script on the Mac and on Linux and got the same exit codes on both.
+SIGKILL is different. The process cannot catch or ignore it. The shell reports a death by signal as 128 plus the signal number. The demo script gives the same exit codes on the Mac and on Linux.
 
 ```text
 A_handles_TERM: exit=0
@@ -165,15 +165,15 @@ Decide: for a stuck process, send TERM and wait, then KILL, and say what you los
 
 ### 7. cron and logrotate gotchas
 
-A nightly backup silently produces nothing, or a log file keeps growing after rotation. Both are classics. The crontab(5) man page says a percent sign in the command, unless escaped with a backslash, becomes a newline, and all data after the first one is sent to the command as standard input. So `date +%Y%m%d` inside a crontab line is cut in two. Task 11 below finds these lines. I ran it with real cron in the Ubuntu container. Two lines ran every minute: `date +%Y%m%d > /tmp/cr1` and the same with `\%` escapes writing to `/tmp/cr2`. The file `cr2` held `20261109`. The file `cr1` was never created, because cron cut the command at the first percent sign and the redirect was on the far side of the cut.
+A nightly backup silently produces nothing, or a log file keeps growing after rotation. Both are classics. The crontab(5) man page says a percent sign in the command, unless escaped with a backslash, becomes a newline, and all data after the first one is sent to the command as standard input. So `date +%Y%m%d` inside a crontab line is cut in two. Task 11 below finds these lines. A test with real cron in the Ubuntu container shows the effect. Two lines ran every minute: `date +%Y%m%d > /tmp/cr1` and the same with `\%` escapes writing to `/tmp/cr2`. The file `cr2` held `20261109`. The file `cr1` was never created, because cron cut the command at the first percent sign and the redirect was on the far side of the cut.
 
-The same page says `SHELL` defaults to `/bin/sh` and does not state a default `PATH`, so always use absolute paths in cron commands. It also says times that do not exist during a spring-forward change never match, and repeated times in a fall-back change run twice. The book adds that cron mails output to the job owner, so redirect output you do not want. A systemd timer needs two units and cron does not, which is one of the book's reasons cron survives.
+The same page says `SHELL` defaults to `/bin/sh` and does not state a default `PATH`, so always use absolute paths in cron commands. It also says times that do not exist during a spring-forward change never match, and repeated times in a fall-back change run twice. Cron also mails output to the job owner, so redirect output you do not want. A systemd timer needs two units and cron does not, which is one reason cron survives.
 
-Log rotation has one deep idea, and the book gives it. Rotation renames files: `auth.log` becomes `auth.log.1`, and so on. Once a process has a log open, the kernel does not know the file was renamed. The process keeps writing to the renamed file. The book says the message "will be the file with the new name". So after a rotation a service that never reopens its log keeps writing into `app.log.1` while a fresh empty `app.log` sits there. Chapter 20.4 shows the sibling problem, a deleted file that is still open.
+Log rotation has one deep idea. Rotation renames files: `auth.log` becomes `auth.log.1`, and so on. Once a process has a log open, the kernel does not know the file was renamed. The process keeps writing to the renamed file. The message goes to the file under its new name. So after a rotation a service that never reopens its log keeps writing into `app.log.1` while a fresh empty `app.log` sits there. Chapter 20.4 shows the sibling problem, a deleted file that is still open.
 
 The logrotate man page describes two cures. `postrotate` runs a script after rotation, usually to tell the service to reopen its log. `copytruncate` copies the file and truncates the original in place, and the page warns that some logging data might be lost in the small gap between copy and truncate. The page also says `create` makes the new file immediately after rotation, `delaycompress` postpones compression to the next cycle, and `missingok` skips a missing log without error. `logrotate -d` is a dry run that changes nothing, and `-f` forces rotation. Use `-d` before you promise anyone a config is right.
 
-I ran this with logrotate on Ubuntu 24.04. A Python writer held two logs open and wrote a line every half second. One config used plain `create`, the other `copytruncate`, and I forced a rotation with `-f` in the middle. The result is the whole lesson in four numbers.
+The test used logrotate on Ubuntu 24.04. A Python writer held two logs open and wrote a line every half second. One config used plain `create`, the other `copytruncate`, and a rotation was forced with `-f` in the middle. The result is the whole lesson in four numbers.
 
 ```text
 app.log:    0 lines     (fresh file created by logrotate, never written)
@@ -182,7 +182,7 @@ app2.log:   3 lines     (copytruncate: writer kept using the original name)
 app2.log.1: 3 lines     (the copy made at rotation)
 ```
 
-With `copytruncate` I lost no lines in this run, but the manual page warns that a gap exists. `logrotate -d` printed `warning: logrotate in debug mode does nothing except printing debug messages!` and changed nothing.
+With `copytruncate` no lines were lost in this run, but the manual page warns that a gap exists. `logrotate -d` printed `warning: logrotate in debug mode does nothing except printing debug messages!` and changed nothing.
 
 Decide: when a log does not rotate, check whether the writer reopens the file before you blame the schedule.
 
@@ -192,15 +192,15 @@ Someone asks "which filesystems are nearly full" or "who has sudo on this box". 
 
 For users, `/etc/passwd` and `/etc/group` are colon-separated. The book shows the group file as name, password placeholder, group number and a comma-separated member list. In passwd the third field is the user ID and the seventh is the shell. A login user has an ID of 1000 or more on most distributions, and a shell that is not `nologin`. Any account other than root with user ID 0 deserves a hard look, because it is a second root. The 1000 threshold is a convention of common distributions, not a law. Say so.
 
-I ran `id`, `findmnt`, `lsblk` and `mount` in the container, and they work, but a container shows an overlay root and no real disks, so the tasks keep their fixtures. I also fed live `df -P` output to the task 8 pipeline. It printed one line, `95% /code`, the read-only code mount. The container's other filesystems were under 85 percent. The live `ps -eo pid,ppid,stat,comm` worked in task 7 as described above. Not run: `visudo`. Unverified: the exact `visudo` workflow, which no source I read covers.
+The commands `id`, `findmnt`, `lsblk` and `mount` work in the container, but a container shows an overlay root and no real disks, so the tasks keep their fixtures. Live `df -P` output was also fed to the task 8 pipeline. It printed one line, `95% /code`, the read-only code mount. The container's other filesystems were under 85 percent. The live `ps -eo pid,ppid,stat,comm` worked in task 7 as described above. Not run: `visudo`. The exact `visudo` workflow is not verified, because no source used here covers it.
 
 Decide: parse by delimiter and field number from a trusted file layout, never by guessing columns of human-formatted output.
 
 ### 9. tar, rsync, curl and jq one-liners
 
-Four tools turn up in every console round. The demo script `c07_transfer_demo.sh` ran on the Mac with `openrsync` and `curl 8.9.1`, and on Ubuntu with rsync 3.2.7 and curl 8.5.0. The output was identical. On a bare Ubuntu image the script failed with `rsync: command not found` until I installed the package, which is itself a lesson about minimal hosts.
+Four tools turn up in every console round. The demo script `c07_transfer_demo.sh` ran on the Mac with `openrsync` and `curl 8.9.1`, and on Ubuntu with rsync 3.2.7 and curl 8.5.0. The output was identical. On a bare Ubuntu image the script fails with `rsync: command not found` until the package is installed, which is itself a lesson about minimal hosts.
 
-`tar` is safest with `-C`, which changes directory first so the archive holds relative paths. The round trip I ran produced `src/`, `src/a.txt`, `src/sub dir/` and `src/sub dir/b.txt`, and `diff -r` said the restored tree equals the original. `rsync` takes a trailing-slash rule: `src/` means the contents, `src` means the directory itself. The dry run with `--itemize-changes` printed `>f+++++++ c.txt` on the Mac and `>f+++++++++ c.txt` with rsync 3.2.7. Both read "a new file would be sent", and only the count of plus signs differs. Always dry-run before a copy that can delete or overwrite.
+`tar` is safest with `-C`, which changes directory first so the archive holds relative paths. The tar round trip produced `src/`, `src/a.txt`, `src/sub dir/` and `src/sub dir/b.txt`, and `diff -r` said the restored tree equals the original. `rsync` takes a trailing-slash rule: `src/` means the contents, `src` means the directory itself. The dry run with `--itemize-changes` printed `>f+++++++ c.txt` on the Mac and `>f+++++++++ c.txt` with rsync 3.2.7. Both read "a new file would be sent", and only the count of plus signs differs. Always dry-run before a copy that can delete or overwrite.
 
 `curl` hides the HTTP status unless you ask. Against my local test server a missing page printed status 404 but the exit code was 0. With `-f` the same request exits with 22. That matters in scripts, where the exit code is the only thing `set -e` sees. `-w` prints timings, so `%{time_connect}` and `%{time_total}` separate a slow connect from a slow response. How Linux Works, chapter 12, covers file transfer and sharing, and Part 1 chapter 30 covers rsync in depth.
 
@@ -223,7 +223,7 @@ A script works on your laptop and does something awful at 03:00. Chapter 11 of H
 | `trap ... EXIT` then `false` | printed `cleaned`, exit 1 | The trap ran and the exit code survived. |
 | `set -e; i=0; ((i++))` | bash 3.2: reached the next line. bash 5.2.21: exit 1, nothing printed | `((i++))` returns status 1 when the old value was 0. Newer bash stops the script. Use `i=$((i+1))`. |
 
-The Bash manual page for `set` was not fetched, because the connection failed twice. These results are from runs, not from the manual. Do not rely on `set -e` as a safety net. Check the commands that matter with `||` and an explicit message. Quote every expansion. Put cleanup in a `trap` on `EXIT`. Use `mktemp`, as the book does. Under pipefail, remember the `head` exit status 141 from idea 2.
+These results come from test runs, not from the Bash manual page for `set`, which was not fetched. Do not rely on `set -e` as a safety net. Check the commands that matter with `||` and an explicit message. Quote every expansion. Put cleanup in a `trap` on `EXIT`. Use `mktemp`. Under pipefail, remember the `head` exit status 141 from idea 2.
 
 Decide: start every script with `set -euo pipefail`, then still handle the failures you care about by hand.
 
@@ -542,7 +542,7 @@ rate_limited 6
 unknown 5
 ```
 
-Why it works: `-R` reads raw lines, `fromjson?` drops any line that does not parse, and `// "unknown"` names the missing code. Common wrong approach: `jq -s`. It failed with `parse error: Unfinished string at EOF at line 502, column 0` and printed nothing useful. The test skips this task if `jq` is not installed. I ran it with jq 1.6.
+Why it works: `-R` reads raw lines, `fromjson?` drops any line that does not parse, and `// "unknown"` names the missing code. Common wrong approach: `jq -s`. It failed with `parse error: Unfinished string at EOF at line 502, column 0` and printed nothing useful. The test skips this task if `jq` is not installed. It ran with jq 1.6.
 
 ### Task 11. The percent sign in a crontab (fixture `crontab.txt`)
 
@@ -609,18 +609,18 @@ Why it works: the first file passes load the set of real login users, those with
 
 ## Hands-on lab
 
-Everything below runs on a Mac or Linux laptop with bash, awk, sed, python3, jq and rsync. I ran it on both a Mac and in an `ubuntu:24.04` container.
+Everything below runs on a Mac or Linux laptop with bash, awk, sed, python3, jq and rsync. It ran on both a Mac and in an `ubuntu:24.04` container.
 
 1. Generate the fixtures. Expected result: nine files in `code/part20/c07_fixtures/`, a repeat run gives byte-identical files.
    `python3 code/part20/c07_make_fixtures.py`
-2. Run all twelve solutions and compare with the outputs above. I ran them all on macOS and on Ubuntu with gawk and mawk and the outputs matched.
+2. Run all twelve solutions and compare with the outputs above. They ran on macOS and on Ubuntu with gawk and mawk, and the outputs matched.
    `for f in code/part20/c07_t0*.sh code/part20/c07_t1[0-2]*.sh; do echo "== $f"; bash $f; done`
    Task 9 needs a path argument, so create the tree first with `--tree`.
-3. Run the tests. Expected result: 17 passed. I ran it on the Mac and on Ubuntu. It needs rsync installed.
+3. Run the tests. Expected result: 17 passed. It ran on the Mac and on Ubuntu. It needs rsync installed.
    `python3 -m pytest -q code/part20/test_c07_solutions.py`
 4. Run the three demos: `c07_signals_demo.sh`, `c07_robust_demo.sh` and `c07_transfer_demo.sh`. The first prints the exit codes 0, 137 and 143, and a zombie row. On Linux the zombie row ends in `sleep`, not `<defunct>`.
 5. Time yourself. Cover the solutions, open each task statement, and solve it in four minutes. Then extend each pipeline with a cross-check by a second method.
-6. On a Linux host, repeat tasks 7 and 8 with the live commands `ps -eo pid,ppid,stat,comm` and `df -P`, and confirm the same pipelines work on real output. I ran both in the container and they did. Task 6 with `journalctl -u` was not run. It needs systemd as PID 1 and the container has none.
+6. On a Linux host, repeat tasks 7 and 8 with the live commands `ps -eo pid,ppid,stat,comm` and `df -P`, and confirm the same pipelines work on real output. Both ran in the container and worked. Task 6 with `journalctl -u` was not run. It needs systemd as PID 1 and the container has none.
 
 ## Drill questions
 
@@ -692,7 +692,7 @@ Rotation renames the file, and the kernel does not tell a process that has it op
 - Passing file names through `xargs` without `-0`. Spaces split names and you act on the wrong files.
 - Treating `set -e` as a guarantee. It is switched off inside conditions, so check what matters.
 - Saying "kill -9" first. Say TERM, wait, then KILL, and what you lose.
-- Claiming a Linux flag you never saw work. Say "not sure, I would check the man page" and name the page.
+- Claiming a Linux flag you have never seen work. Say "not sure, I would check the man page" and name the page.
 - Running a destructive command without a dry run. Print the targets first.
 
 ## Connections to the rest of the handbook

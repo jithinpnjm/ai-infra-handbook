@@ -30,15 +30,15 @@ Four real production incidents from our reference notes show how quickly small k
 
 | Incident Scenario | What Went Wrong in Production | Reference Impact | Root Fix |
 |---|---|---|---|
-| **4K Image Filter at 10% GPU Utilization** (`nvidia-devops` V3 Ch 4) | Startup launched a `3840 × 2160` filter with `<<<dim3(3840, 2160), dim3(1, 1)>>>`, creating `8,294,400` blocks of `1` thread each. | Each 1-thread block consumed a 32-lane warp slot and left `31` of `32` lanes (`96.88%`, or `~97%`) idle. | Reconfigure the thread block size to `dim3(16, 16)` (`256` threads = `8` full warps) for `100%` warp lane fill. |
-| **Silent 67-Element Truncation vs Out-of-Bounds Crash** (`nvidia-devops` V3 Ch 4 & Lab 02) | Team ported a vector loop of `N = 1,000,003` floats with `256` threads per block using either truncated division or ceiling division without a guard. | Truncated division (`3,906` blocks = `999,936` threads) left `67` tail elements at `0.000000`; unguarded ceiling division (`3,907` blocks = `1,000,192` threads) let `189` extra threads write out of bounds. | Pair ceiling division `(N + 255) / 256` with an explicit `if (idx < N)` bounds check inside the kernel. |
-| **Cross-Block Spin-Wait Deadlock on A100** (`nvidia-devops` V3 Ch 6) | A 1,000-block risk kernel had Block 100 spin in a `while(true)` loop waiting for Block 1 to set a flag in global memory. | Passed by luck on a desktop GPU, but hung forever on a production A100 or MIG slice because spinning blocks starved Block 1 from ever entering an SM. | Remove cross-block spin loops and split global dependencies into two sequential kernel launches. |
-| **15-Minute `.to('cuda')` Normalization Slowdown** (`nvidia-devops` V3 Ch 5) | Data scientist moved a single-division normalization of `1 billion` numbers onto an H100 using `.to('cuda')`. | Took `15 minutes` on the GPU over the `64 GB/s` PCIe Gen5 bus versus `2 minutes` on the CPU reading local DDR5 RAM at `~300 GB/s` (in Lab 02, `1.259 ms` copy time is `13.11x` / `~13x` the `0.096 ms` kernel). | Keep low-arithmetic-intensity passes on the CPU or fuse them into existing GPU kernels so data crosses PCIe only once. |
+| **4K Image Filter at 10% GPU Utilization** | Startup launched a `3840 × 2160` filter with `<<<dim3(3840, 2160), dim3(1, 1)>>>`, creating `8,294,400` blocks of `1` thread each. | Each 1-thread block consumed a 32-lane warp slot and left `31` of `32` lanes (`96.88%`, or `~97%`) idle. | Reconfigure the thread block size to `dim3(16, 16)` (`256` threads = `8` full warps) for `100%` warp lane fill. |
+| **Silent 67-Element Truncation vs Out-of-Bounds Crash** | Team ported a vector loop of `N = 1,000,003` floats with `256` threads per block using either truncated division or ceiling division without a guard. | Truncated division (`3,906` blocks = `999,936` threads) left `67` tail elements at `0.000000`; unguarded ceiling division (`3,907` blocks = `1,000,192` threads) let `189` extra threads write out of bounds. | Pair ceiling division `(N + 255) / 256` with an explicit `if (idx < N)` bounds check inside the kernel. |
+| **Cross-Block Spin-Wait Deadlock on A100** | A 1,000-block risk kernel had Block 100 spin in a `while(true)` loop waiting for Block 1 to set a flag in global memory. | Passed by luck on a desktop GPU, but hung forever on a production A100 or MIG slice because spinning blocks starved Block 1 from ever entering an SM. | Remove cross-block spin loops and split global dependencies into two sequential kernel launches. |
+| **15-Minute `.to('cuda')` Normalization Slowdown** | Data scientist moved a single-division normalization of `1 billion` numbers onto an H100 using `.to('cuda')`. | Took `15 minutes` on the GPU over the `64 GB/s` PCIe Gen5 bus versus `2 minutes` on the CPU reading local DDR5 RAM at `~300 GB/s` (in Lab 02, `1.259 ms` copy time is `13.11x` / `~13x` the `0.096 ms` kernel). | Keep low-arithmetic-intensity passes on the CPU or fuse them into existing GPU kernels so data crosses PCIe only once. |
 
 This chapter builds a clear mental model of CUDA programming from the ground up. We start with why CUDA replaced graphics-shader workarounds and how execution space specifiers divide work between the CPU and GPU. Next, we trace thread indexing, launch geometry, and hardware limits on modern architectures. Finally, we cover explicit, stream-ordered, and Unified Memory lifecycles alongside scoped synchronization and asynchronous error bisection.
 
 :::note About the numbers in this chapter
-The timings, percentages, and throughput figures taken from `nvidia-devops` Volume 03 are marked in those notes as illustrative or as one reference run. They show the shape of each problem rather than guaranteed specifications. None of those figures were measured on live hardware for this handbook. The hardware limits for warp size, thread blocks, and grids come from *AI Systems Performance Engineering* Chapter 6.
+The timings, percentages, and throughput figures in this chapter are illustrative or come from one reference run. They show the shape of each problem rather than guaranteed specifications. None of those figures were measured on live hardware for this handbook. The hardware limits for warp size, thread blocks, and grids come from *AI Systems Performance Engineering* Chapter 6.
 :::
 
 :::tip In one minute
@@ -68,7 +68,7 @@ The timings, percentages, and throughput figures taken from `nvidia-devops` Volu
 
 When early deep learning and physics teams tried to run matrix math on GPUs before 2006, every project stalled on graphics APIs. Those APIs were never designed for general computation. Engineers had to disguise numerical arrays as 2D textures and rewrite math loops as OpenGL or DirectX pixel shaders. They then read results back as rendered framebuffers. If a calculation produced wrong numbers, the team had no numerical debugger and had to guess what went wrong from rendering counters.
 
-The Volume 03 Chapter 1 note calls this overhead the graphics translation tax. It breaks that tax into three concrete engineering costs.
+This overhead is called the graphics translation tax. It breaks into three concrete engineering costs.
 - Data had to look like textures and algorithms had to look like shader stages before any real math could begin.
 - Developers had no direct linear buffers that they could allocate, index, and copy on their own.
 - There was no compute debugger, and every job stayed tied to the graphics rendering pipeline.
@@ -77,7 +77,7 @@ Two additional details come from general background knowledge and are not stated
 
 NVIDIA removed the translation tax in 2006 by introducing CUDA as a compute-first platform. It gave developers linear device pointers, threads, thread blocks, grids, and the `nvcc` compiler. Over time, that foundation grew into a deep ecosystem of domain libraries (`cuBLAS`, `cuDNN`, `NCCL`, `cuFFT`, `CUTLASS`, FlashAttention) and cluster telemetry tools (`DCGM`, Nsight Systems, Nsight Compute).
 
-In the Volume 03 Chapter 1 customer scenario, a startup CFO proposes replacing NVIDIA GPUs with a competitor chip. The rival chip advertises half the price and 20% higher raw TFLOPS. That scenario shows why raw silicon TFLOPS mislead buyers. Unoptimized translation layers for PyTorch, DeepSpeed, and FlashAttention can cut real cluster utilization by 50%. At the same time, the SRE team must rebuild its entire monitoring stack from scratch.
+In one customer scenario, a startup CFO proposes replacing NVIDIA GPUs with a competitor chip. The rival chip advertises half the price and 20% higher raw TFLOPS. That scenario shows why raw silicon TFLOPS mislead buyers. Unoptimized translation layers for PyTorch, DeepSpeed, and FlashAttention can cut real cluster utilization by 50%. At the same time, the SRE team must rebuild its entire monitoring stack from scratch.
 
 ### 1.2 The heterogeneous execution contract: `__host__`, `__device__`, and `__global__`
 
@@ -111,7 +111,7 @@ sequenceDiagram
     H->>R: 7. cudaFree(d_in) / cudaFreeAsync
 ```
 
-The hardware boundary between Host RAM and Device HBM enforces one strict pointer rule in explicit-memory CUDA. Host pointers returned by `malloc()` point to CPU system memory. Device pointers returned by `cudaMalloc()` point to GPU HBM. As shown in the Volume 03 Chapter 3 customer scenario, passing a raw host pointer directly into a kernel causes GPU threads to dereference an unmapped device address. The hardware raises `CUDA error: an illegal memory access was encountered` and leaves the output buffer all zeros.
+The hardware boundary between Host RAM and Device HBM enforces one strict pointer rule in explicit-memory CUDA. Host pointers returned by `malloc()` point to CPU system memory. Device pointers returned by `cudaMalloc()` point to GPU HBM. In one customer scenario, passing a raw host pointer directly into a kernel causes GPU threads to dereference an unmapped device address. The hardware raises `CUDA error: an illegal memory access was encountered` and leaves the output buffer all zeros.
 
 ---
 
@@ -123,7 +123,7 @@ If an engineer launches a kernel with 100,000 threads in a single thread block, 
 
 When host code launches a kernel with chevron syntax, it defines a two-level hierarchy of a Grid divided into Thread Blocks, which are divided into Threads. Under the hood, the hardware GigaThread Engine assigns whole Thread Blocks to SMs. Each SM then slices every assigned block into 32-thread Warps. Tables 6-1 through 6-4 of *AI Systems Performance Engineering* Chapter 6 define the exact hardware limits on modern NVIDIA GPUs such as Blackwell B200 and Hopper H100.
 
-| Scope | Hardware Parameter (Blackwell B200 / Hopper H100) | Hard Limit | Operational & Sizing Rule (*AI Systems Performance Engineering* Ch 6, pp. 178–185) |
+| Scope | Hardware Parameter (Blackwell B200 / Hopper H100) | Hard Limit | Operational & Sizing Rule |
 |---|---|---:|---|
 | **Warp** | Warp size (`warpSize`) | `32` threads | Fundamental SIMT lockstep unit; always pick `threadsPerBlock` as a multiple of `32` (`128`, `256`, `512`). |
 | **Thread Block (CTA)** | Max threads per block (`blockDim.x * y * z`) | `1,024` threads | Requesting `> 1,024` threads (such as `100,000` in Lab 02 Failure B) fails immediately at launch with `invalid configuration argument`. |
@@ -152,7 +152,7 @@ To ensure enough threads are launched when $N$ is not divisible by the block siz
 int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
 ```
 
-The block below traces the exact indexing and boundary arithmetic across the four worked examples from `nvidia-devops` Volume 03 Chapter 4, Lab 02, and *AI Systems Performance Engineering* Chapter 6.
+The block below traces the exact indexing and boundary arithmetic across four worked examples, following *AI Systems Performance Engineering* Chapter 6.
 
 ```text
 Worked 1D Indexing & Ceiling-Division Examples (verified in cuda_programming_basics_lab.py):
@@ -197,10 +197,10 @@ Three launch-geometry rules govern how effectively a kernel fills the hardware.
 
 | Launch Scenario | Launch Geometry (`<<<grid, block>>>`) | Hardware Allocation & Efficiency Breakdown | Operational Result |
 | --- | --- | --- | --- |
-| **Non-multiple-of-32 1D block** (`V3 Ch 3` §3) | `<<<1, 50>>>` (`50` threads in `1` block) | Allocates `2` warps (`64` warp lanes): Warp 0 runs `32` active threads; Warp 1 runs `18` active threads and leaves `64 - 50 = 14` lanes idle. | `78.12%` warp lane efficiency (`14` wasted lanes per block). |
-| **4K Image with 1-thread blocks** (`V3 Ch 4` Customer Scenario) | `<<<dim3(3840, 2160), dim3(1, 1)>>>` on `3840 × 2160` image | Spawns `8,294,400` blocks of `1` thread; each block consumes a 32-lane warp and leaves `31` of `32` lanes idle. | `96.88%` (`~97%`) of warp compute lanes wasted; GPU sits near `10%` utilization. |
-| **4K Image or `1024 × 1024` Matrix with `16 × 16` tiles** (`V3 Ch 4` & *AI Systems Performance Engineering* Ch 6 p. 191) | `<<<dim3(240, 135), dim3(16, 16)>>>` (`32,400` blocks of `256` threads) | Each `16 × 16` block has `256` threads = `8` full warps of `32` threads (`0` idle warp lanes). | `100%` warp lane utilization across all `8,294,400` pixels. |
-| **Fixed 64-block grid moved from A10 to H100** (`V3 Ch 3` §Production Troubleshooting) | `<<<64, 256>>>` (`64` total blocks) | Nearly fills an A10 GPU (`72` SMs), but on an H100 (`132` SMs) at most `64` SMs get a block while `132 - 64 = 68` SMs sit completely idle. | Upgrading to H100 yields almost no speedup until `gridDim` scales with the GPU or uses a grid-stride loop. |
+| **Non-multiple-of-32 1D block** | `<<<1, 50>>>` (`50` threads in `1` block) | Allocates `2` warps (`64` warp lanes): Warp 0 runs `32` active threads; Warp 1 runs `18` active threads and leaves `64 - 50 = 14` lanes idle. | `78.12%` warp lane efficiency (`14` wasted lanes per block). |
+| **4K Image with 1-thread blocks** | `<<<dim3(3840, 2160), dim3(1, 1)>>>` on `3840 × 2160` image | Spawns `8,294,400` blocks of `1` thread; each block consumes a 32-lane warp and leaves `31` of `32` lanes idle. | `96.88%` (`~97%`) of warp compute lanes wasted; GPU sits near `10%` utilization. |
+| **4K Image or `1024 × 1024` Matrix with `16 × 16` tiles** | `<<<dim3(240, 135), dim3(16, 16)>>>` (`32,400` blocks of `256` threads) | Each `16 × 16` block has `256` threads = `8` full warps of `32` threads (`0` idle warp lanes). | `100%` warp lane utilization across all `8,294,400` pixels. |
+| **Fixed 64-block grid moved from A10 to H100** | `<<<64, 256>>>` (`64` total blocks) | Nearly fills an A10 GPU (`72` SMs), but on an H100 (`132` SMs) at most `64` SMs get a block while `132 - 64 = 68` SMs sit completely idle. | Upgrading to H100 yields almost no speedup until `gridDim` scales with the GPU or uses a grid-stride loop. |
 
 Below is the standard 2D indexing pattern alongside the 1D grid-stride loop pattern that lets any grid size process an array of arbitrary length.
 
@@ -237,15 +237,15 @@ In the explicit CUDA memory model, the host allocates device HBM with `cudaMallo
 
 | Workload Scenario | Stage Breakdown & Bandwidths | Transfer-to-Compute Comparison | Operational Takeaway |
 |---|---|---|---|
-| **`vector_add.cu` on A100** (`N = 1,000,003` floats = `4.0 MB` per vector, `V3 Lab 02` reference run) | `copy in`: `0.847 ms`; `kernel`: `0.096 ms`; `copy out`: `0.412 ms` | Total PCIe transfer is `0.847 + 0.412 = 1.259 ms` vs `0.096 ms` kernel = `13.11x` (`~13x`) more time moving data than computing. | A single elementwise kernel cannot amortize host-to-device and device-to-host PCIe copies. |
-| **1-Billion-Number `.to('cuda')` Normalization** (`V3 Ch 5` Customer Scenario) | CPU reads local DDR5 RAM at `~300 GB/s`; `.to('cuda')` crosses PCIe Gen5 at `64 GB/s` out and back | Takes `2 minutes` on the CPU versus `15 minutes` on an H100 GPU (`7.5x` slower on GPU). | Only move data to the GPU when arithmetic intensity is high or when data stays resident in HBM across many fused kernels. |
-| **7B FP16 LLM Serving Budget** (`V3 Ch 5` capacity example on `40 GB` GPU) | Model weights: `14 GB` FP16; dynamic KV cache + activations: `8.6 GB` | Persistent weights + KV cache stay resident in HBM across thousands of token steps. | High reuse in HBM amortizes the initial weight load across millions of matrix multiplications. |
+| **`vector_add.cu` on A100** (`N = 1,000,003` floats = `4.0 MB` per vector) | `copy in`: `0.847 ms`; `kernel`: `0.096 ms`; `copy out`: `0.412 ms` | Total PCIe transfer is `0.847 + 0.412 = 1.259 ms` vs `0.096 ms` kernel = `13.11x` (`~13x`) more time moving data than computing. | A single elementwise kernel cannot amortize host-to-device and device-to-host PCIe copies. |
+| **1-Billion-Number `.to('cuda')` Normalization** | CPU reads local DDR5 RAM at `~300 GB/s`; `.to('cuda')` crosses PCIe Gen5 at `64 GB/s` out and back | Takes `2 minutes` on the CPU versus `15 minutes` on an H100 GPU (`7.5x` slower on GPU). | Only move data to the GPU when arithmetic intensity is high or when data stays resident in HBM across many fused kernels. |
+| **7B FP16 LLM Serving Budget** (capacity example on `40 GB` GPU) | Model weights: `14 GB` FP16; dynamic KV cache + activations: `8.6 GB` | Persistent weights + KV cache stay resident in HBM across thousands of token steps. | High reuse in HBM amortizes the initial weight load across millions of matrix multiplications. |
 
 ### 3.2 Synchronous allocation churn (`77.6%` API time) and stream-ordered pools
 
 Even when tensors stay on the GPU for multiple kernels, a C++ inference server that calls `cudaMalloc` and `cudaFree` on every incoming request will suffer severe latency spikes. Worse, under variable-size requests, an application can crash with an out-of-memory error even while `nvidia-smi` reports gigabytes of free VRAM. Both problems come from calling synchronous OS-backed device allocations inside a hot loop and from allocator fragmentation.
 
-Standard `cudaMalloc` and `cudaFree` are synchronous, heavyweight operations. They trigger OS kernel `mmap` and `ioctl` calls, GPU page-table updates, and device-wide synchronization across streams. Look at the Nsight Systems API summary across 4,000 requests from `nvidia-devops` Volume 03 Chapter 5, alongside the fragmentation state from the same chapter.
+Standard `cudaMalloc` and `cudaFree` are synchronous, heavyweight operations. They trigger OS kernel `mmap` and `ioctl` calls, GPU page-table updates, and device-wide synchronization across streams. Look at the Nsight Systems API summary across 4,000 requests, alongside the fragmentation state from the same run.
 
 ```text
 1. Nsight Systems CUDA API Summary across 4,000 requests (V3 Ch 5 lines 300-309):
@@ -280,7 +280,7 @@ To avoid managing separate host and device pointers, developers sometimes switch
 
 First, distinguish Unified Virtual Addressing (UVA) from Unified Memory. UVA simply places CPU and GPU pointers into a single virtual address table so the runtime can tell whether a pointer lives on the host or device. Unified Memory goes further by creating a managed allocation backed by the `nvidia-uvm.ko` kernel module. It automatically migrates pages on demand across PCIe or NVLink-C2C via hardware page faults whenever the CPU or GPU touches a nonresident page.
 
-| Unified Memory Scenario (`nvidia-devops` V3 Ch 9) | Configuration / Working Set Size | Reference Timing or Effective Bandwidth | Root Cause & Remediation |
+| Unified Memory Scenario | Configuration / Working Set Size | Reference Timing or Effective Bandwidth | Root Cause & Remediation |
 |---|---|---|---|
 | **Cold First-Touch Faults vs Warm Iteration** | `--mode=cold` (Iteration 1 vs Iteration 2) | Iteration 1: `812.4 ms`; Iteration 2: `41.2 ms` (`19.72x`, or `~20x` slower on first touch) | GPU faults on thousands of nonresident pages over PCIe during Iteration 1. |
 | **Bulk Prefetching Ahead of Compute** | `--mode=prefetch` (`cudaMemPrefetchAsync`) | Prefetch: `38.9 ms`; Iteration 1: `41.6 ms`; Iteration 2: `41.2 ms` | `cudaMemPrefetchAsync` bulk-migrates pages in `38.9 ms` via DMA without per-page fault storms (note: CUDA 13 updates the device argument to a `cudaMemLocation` struct). |
@@ -298,25 +298,25 @@ When engineers try to coordinate threads across a GPU without respecting CUDA's 
 
 Because CUDA executes asynchronously across the host, across streams, and across thread blocks, ordering is always scoped to a specific level of the hierarchy. You must pick the narrowest synchronization primitive that matches your data dependency.
 
-| Scope Level | CUDA Primitive | Hardware Scope & Critical Correctness Rule (`V3 Ch 6` & *AI Systems Performance Engineering* Ch 6) |
+| Scope Level | CUDA Primitive | Hardware Scope & Critical Correctness Rule |
 |---|---|---|
 | **1. Single Thread** | Sequential C++ statements | Orders instructions within one individual GPU thread. |
 | **2. Warp (`32` lanes)** | `__syncwarp()` / warp shuffle | Synchronizes active lanes within a single 32-thread warp. |
 | **3. Thread Block (CTA)** | `__syncthreads()` | Hardware barrier across all threads in the same Thread Block (used around Shared Memory reads and writes). Never place `__syncthreads()` inside a warp-divergent `if/else` branch where only some threads in the block reach it, or the block will deadlock. |
-| **4. Thread Block Cluster** | `cluster.sync()` (Hopper / Blackwell) | Hardware barrier across cooperative blocks in a Thread Block Cluster sharing Distributed Shared Memory (`DSMEM`, *AI Systems Performance Engineering* Ch 6 p. 181; covered in Chapter 10.16). |
+| **4. Thread Block Cluster** | `cluster.sync()` (Hopper / Blackwell) | Hardware barrier across cooperative blocks in a Thread Block Cluster sharing Distributed Shared Memory (`DSMEM`; covered in Chapter 10.16). |
 | **5. Stream** | `cudaStreamSynchronize(stream)` | Operations in the same stream run in issue order automatically; `cudaStreamSynchronize` blocks the host CPU thread until `stream` finishes. |
 | **6. Cross-Stream Event** | `cudaEventRecord` + `cudaStreamWaitEvent` | Makes Stream B wait on the GPU hardware for an event recorded in Stream A without blocking the host CPU thread (covered in Chapter 10.12). |
 | **7. Full Device** | `cudaDeviceSynchronize()` | Blocks the host CPU until all work on all streams across the entire GPU completes. Use for debugging checkpoints or shutdown, never inside a hot request loop. |
 
-Why did the financial-risk kernel in `nvidia-devops` Volume 03 Chapter 6 deadlock on a production A100 when Block 100 spun waiting for Block 1 to write a flag. Standard CUDA kernels provide no global barrier across independent thread blocks. Furthermore, the hardware scheduler makes zero guarantee about the order in which blocks enter SMs. When spinning blocks such as Block 100 occupy all resident SM slots, Block 1 sits in the hardware queue waiting for an SM slot to open. Meanwhile, Block 100 waits forever for Block 1 to run. Whenever step B depends on the global output of step A across all blocks, split the work into two sequential kernel launches separated by stream ordering.
+Why did a financial-risk kernel deadlock on a production A100 when Block 100 spun waiting for Block 1 to write a flag. Standard CUDA kernels provide no global barrier across independent thread blocks. Furthermore, the hardware scheduler makes zero guarantee about the order in which blocks enter SMs. When spinning blocks such as Block 100 occupy all resident SM slots, Block 1 sits in the hardware queue waiting for an SM slot to open. Meanwhile, Block 100 waits forever for Block 1 to run. Whenever step B depends on the global output of step A across all blocks, split the work into two sequential kernel launches separated by stream ordering.
 
-A second synchronization bug appears when thousands of threads increment a shared counter or accumulate a sum without coordination. In Volume 03 Chapter 6, running an unguarded reduction three times in a row produced three different wrong answers. That non-deterministic drift across identical inputs is the signature of a read-modify-write data race. Replacing the increment with `atomicAdd` restores correctness at the L2 cache. However, if 100,000 threads hit the same global address at once, the L2 atomic unit serializes all 100,000 updates. The production fix is to accumulate partial sums inside each block's fast on-chip Shared Memory using `__syncthreads()`, and let thread 0 issue a single `atomicAdd` per block to global memory.
+A second synchronization bug appears when thousands of threads increment a shared counter or accumulate a sum without coordination. In one customer scenario, running an unguarded reduction three times in a row produced three different wrong answers. That non-deterministic drift across identical inputs is the signature of a read-modify-write data race. Replacing the increment with `atomicAdd` restores correctness at the L2 cache. However, if 100,000 threads hit the same global address at once, the L2 atomic unit serializes all 100,000 updates. The production fix is to accumulate partial sums inside each block's fast on-chip Shared Memory using `__syncthreads()`, and let thread 0 issue a single `atomicAdd` per block to global memory.
 
 ### 4.2 Asynchronous timing (`0.014 ms` vs `4.812 ms`) and bisecting deferred errors
 
 Because kernel launches return control to the CPU immediately after placing a command in the stream queue, two operational traps catch engineers off guard. First, timing a kernel launch with a standard C++ CPU timer measures only the microsecond queue submission overhead. It underreports kernel time by hundreds of times. Second, when a kernel writes out of bounds on the GPU, the error surfaces several lines later on an innocent `cudaMemcpy` call.
 
-Look at the timing and error-attribution numbers from `nvidia-devops` Volume 03 Chapters 3 and 6.
+Look at the timing and error-attribution numbers in the two customer scenarios above.
 
 ```text
 1. Asynchronous Host Timer Trap vs CUDA Event Timing (V3 Ch 3 lines 235-252):
@@ -353,7 +353,7 @@ To catch immediate launch-configuration mistakes and bisect which kernel trigger
 
 ## 5. Commands and Code Patterns That Matter
 
-All compilation and execution commands below come from `nvidia-devops` Volume 03 Lab 02 and *AI Systems Performance Engineering* Chapter 6. Because this handbook builds without an attached GPU, compilation and binary execution commands are marked as untested here.
+The compilation and execution commands below follow *AI Systems Performance Engineering* Chapter 6. Because this handbook builds without an attached GPU, the commands below were not run on live hardware.
 
 ### 5.1 Complete reference implementation: `vector_add.cu`
 
@@ -456,7 +456,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-### 5.2 Compile, test boundary shapes, and profile API overhead (untested here)
+### 5.2 Compile, test boundary shapes, and profile API overhead
 
 ```bash
 # 1. Compile and run baseline + warp boundary shapes (untested here)
@@ -483,16 +483,16 @@ nsys stats --report cuda_api_sum profile-report.nsys-rep
 |---|---|---|---|---|
 | **1** | **Out-of-bounds write or silent tail truncation (`N = 1,000,003`)** | Crashes at `cudaMemcpy` or `cudaDeviceSynchronize` with `an illegal memory access was encountered`, or returns `cudaSuccess` while the last `67` elements stay `0.000000`. | Missing `if (idx < count)` guard lets the `189` extra threads in Block `3,906` (`3,907 × 256 - 1,000,003`) write past the buffer (Lab 02 Failure A), or truncated division `count / 256 = 3,906` underlaunched the grid by `67` elements (Lab 02 Failure D). | Pair ceiling division `(count + threads - 1) / threads` with an explicit `if (idx < count)` guard, and test non-divisible sizes (`1, 31, 32, 33, 1000003`). |
 | **2** | **Invalid launch configuration (`threads_per_block > 1,024`)** | Kernel never runs; if `cudaGetLastError()` is omitted, the output buffer stays unmodified zeros. | Launching `<<<11, 100000>>>` exceeds the hardware limit of `1,024` threads per block (Lab 02 Failure B); `CUDA_CHECK(cudaGetLastError())` catches `invalid configuration argument` at launch time. | Keep `blockDim.x * blockDim.y * blockDim.z <= 1,024` (typically `128`, `256`, or `512`, always a multiple of `32`) and check `cudaGetLastError()` after every launch. |
-| **3** | **2D `dim3(1, 1)` warp lane waste (`96.88%`) or fixed-grid SM underfill** | Kernel output is valid, but GPU utilization sits at `10%`, or upgrading from A10 (`72` SMs) to H100 (`132` SMs) produces no speedup. | `<<<dim3(3840, 2160), dim3(1, 1)>>>` allocates 1 warp (32 lanes) per 1-thread block, wasting `31/32 = 96.88%` (`~97%`) of lanes (`V3 Ch 4`); `<<<64, 256>>>` launches only `64` blocks, leaving `68` of `132` H100 SMs idle (`V3 Ch 3`). | Use 2D block tiles that are multiples of 32 threads (`dim3(16, 16) = 256` threads) and size grids with enough blocks or a grid-stride loop to feed all SMs. |
-| **4** | **Cross-block `while(true)` spin-wait deadlock on SMs** | Kernel passes on a desktop GPU, but hangs indefinitely on a production A100, H100, or MIG slice. | Block 100 spins waiting for Block 1 to write a global flag (`V3 Ch 6` Customer Scenario); CUDA blocks have no guaranteed scheduling order, so resident spinning blocks starve Block 1 from entering an SM. | Never synchronize across independent blocks with a spin loop in standard kernels; split the dependency into two sequential kernel launches separated by stream ordering. |
-| **5** | **Per-request `cudaMalloc` / `cudaFree` churn (`77.6%` API time) or fragmentation OOM** | Kernel takes `< 1 ms`, yet throughput is low (`cudaMalloc` takes `71.2%` of API time), or `cudaErrorMemoryAllocation` fires with `9,727 MiB` free in `nvidia-smi`. | Synchronous `cudaMalloc` and `cudaFree` per request invoke OS `mmap` and `ioctl` calls and device synchronization (`V3 Ch 5`), or non-contiguous free blocks cause allocator fragmentation. | Switch to stream-ordered memory pools (`cudaMallocAsync` and `cudaFreeAsync` on a `cudaStreamNonBlocking` stream, *AI Systems Performance Engineering* Ch 6 pp. 193–194) or reusable buffer pools. |
-| **6** | **Unified Memory (`cudaMallocManaged`) oversubscription thrashing (`104 → 9 GB/s`) or CPU debug stalls** | Managed-memory throughput drops from `104 GB/s` (at `36 GB`) to `9 GB/s` when the dataset reaches `44 GB` on a `40 GB` GPU, or `std::cout << data[0]` adds `96.7 ms` to a `4.1 ms` kernel. | Working set exceeds `40 GB` HBM capacity, causing continuous page eviction and refault thrashing across PCIe; or CPU read forces device sync and page migration back to host RAM (`V3 Ch 9`). | Keep the active hot working set below device HBM capacity, prefetch ahead of compute with `cudaMemPrefetchAsync`, and remove host CPU reads of managed buffers from hot loops. |
+| **3** | **2D `dim3(1, 1)` warp lane waste (`96.88%`) or fixed-grid SM underfill** | Kernel output is valid, but GPU utilization sits at `10%`, or upgrading from A10 (`72` SMs) to H100 (`132` SMs) produces no speedup. | `<<<dim3(3840, 2160), dim3(1, 1)>>>` allocates 1 warp (32 lanes) per 1-thread block, wasting `31/32 = 96.88%` (`~97%`) of lanes; `<<<64, 256>>>` launches only `64` blocks, leaving `68` of `132` H100 SMs idle. | Use 2D block tiles that are multiples of 32 threads (`dim3(16, 16) = 256` threads) and size grids with enough blocks or a grid-stride loop to feed all SMs. |
+| **4** | **Cross-block `while(true)` spin-wait deadlock on SMs** | Kernel passes on a desktop GPU, but hangs indefinitely on a production A100, H100, or MIG slice. | Block 100 spins waiting for Block 1 to write a global flag; CUDA blocks have no guaranteed scheduling order, so resident spinning blocks starve Block 1 from entering an SM. | Never synchronize across independent blocks with a spin loop in standard kernels; split the dependency into two sequential kernel launches separated by stream ordering. |
+| **5** | **Per-request `cudaMalloc` / `cudaFree` churn (`77.6%` API time) or fragmentation OOM** | Kernel takes `< 1 ms`, yet throughput is low (`cudaMalloc` takes `71.2%` of API time), or `cudaErrorMemoryAllocation` fires with `9,727 MiB` free in `nvidia-smi`. | Synchronous `cudaMalloc` and `cudaFree` per request invoke OS `mmap` and `ioctl` calls and device synchronization, or non-contiguous free blocks cause allocator fragmentation. | Switch to stream-ordered memory pools (`cudaMallocAsync` and `cudaFreeAsync` on a `cudaStreamNonBlocking` stream) or reusable buffer pools. |
+| **6** | **Unified Memory (`cudaMallocManaged`) oversubscription thrashing (`104 → 9 GB/s`) or CPU debug stalls** | Managed-memory throughput drops from `104 GB/s` (at `36 GB`) to `9 GB/s` when the dataset reaches `44 GB` on a `40 GB` GPU, or `std::cout << data[0]` adds `96.7 ms` to a `4.1 ms` kernel. | Working set exceeds `40 GB` HBM capacity, causing continuous page eviction and refault thrashing across PCIe; or CPU read forces device sync and page migration back to host RAM. | Keep the active hot working set below device HBM capacity, prefetch ahead of compute with `cudaMemPrefetchAsync`, and remove host CPU reads of managed buffers from hot loops. |
 
 ---
 
 ## 7. Hands-On Lab: Validate CUDA Launch Geometry, Indexing, Memory Lifecycles, and Unified Memory Behavior
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. Full C++ source and compilation commands are provided in Section 5 and marked as untested here.
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. Full C++ source and compilation commands are provided in Section 5.
 
 Run `code/part10/cuda_programming_basics_lab.py`.
 
@@ -541,7 +541,7 @@ Summary: 25 passed, 0 failed (total 25)
 2. **Warp lane waste in 1D and 2D:** Using the 1D and 2D launch configurations in the table below, calculate how many warps and warp lanes are allocated per block. Also determine how many lanes sit idle and the percentage of wasted warp lanes for each case.
 3. **SM residency and grid underfill:** Using the hardware limits from *AI Systems Performance Engineering* Chapter 6, state the maximum resident warps, threads, and blocks per SM on Blackwell. Calculate how many 256-thread blocks versus 1,024-thread blocks can reside on one SM simultaneously, and find how many SMs sit idle when a 64-block grid runs on an H100.
 4. **Transfer-to-compute ratio and allocation API overhead:** Using the Lab 02 stage timings and Chapter 5 API profile figures in the table below, compute the ratio of total PCIe transfer time to kernel execution time. Then find the combined percentage of CUDA API time spent in allocation plus deallocation, its ratio to kernel launch time, and the stream-ordered replacement calls.
-5. **Unified Memory first-touch, CPU debug stall, and oversubscription cliff:** Using the Volume 03 Chapter 9 figures in the table below, calculate the cold-vs-warm iteration ratio, the CPU-check-vs-kernel stall ratio, and the throughput drop factor when crossing from 90% to 110% of VRAM capacity. State the API call that eliminates the cold first-touch spike.
+5. **Unified Memory first-touch, CPU debug stall, and oversubscription cliff:** Using the figures in the table below, calculate the cold-vs-warm iteration ratio, the CPU-check-vs-kernel stall ratio, and the throughput drop factor when crossing from 90% to 110% of VRAM capacity. State the API call that eliminates the cold first-touch spike.
 6. **Bisecting asynchronous errors and fixing inter-block deadlocks:** A program launches two kernels followed by a device-to-host copy, and crashes on the copy line with an illegal memory access error. Explain why the copy call is innocent, show how to bisect the true culprit, and explain how to fix a kernel that deadlocks because Block 100 spins waiting for Block 1.
 
 | Exercise | Input Parameters & Reference Figures |
@@ -560,7 +560,7 @@ Summary: 25 passed, 0 failed (total 25)
 <details>
 <summary>**1. Why did pre-CUDA GPGPU programming require disguising math problems as 3D graphics, and what three costs did CUDA remove in 2006?**</summary>
 
-Before CUDA, developers had to encode numerical arrays as textures and algorithms as shader stages, so every project paid a translation tax. The Volume 03 note names three costs that CUDA removed. First, data and algorithms had to be expressed in graphics terms. Second, there were no direct buffers you allocate and copy yourself. Third, there was no numerical debugger because evidence came only from rendering instrumentation. CUDA gave compute its own abstractions of threads, blocks, grids, explicit linear memory, and compute-native error reporting.
+Before CUDA, developers had to encode numerical arrays as textures and algorithms as shader stages, so every project paid a translation tax. Three costs were removed by CUDA. First, data and algorithms had to be expressed in graphics terms. Second, there were no direct buffers you allocate and copy yourself. Third, there was no numerical debugger because evidence came only from rendering instrumentation. CUDA gave compute its own abstractions of threads, blocks, grids, explicit linear memory, and compute-native error reporting.
 </details>
 
 <details>
@@ -667,7 +667,7 @@ Thread blocks cannot be split across SMs. A fixed grid of 64 blocks nearly fills
 </details>
 
 <details>
-<summary>**13. In the Volume 03 Chapter 5 Nsight Systems profile across 4,000 requests, what percentage of total CUDA API time was spent in `cudaMalloc` and `cudaFree`, and how do `cudaMallocAsync` and `cudaFreeAsync` eliminate it?**</summary>
+<summary>**13. In the Nsight Systems profile across 4,000 requests, what percentage of total CUDA API time was spent in `cudaMalloc` and `cudaFree`, and how do `cudaMallocAsync` and `cudaFreeAsync` eliminate it?**</summary>
 
 ```text
 - Synchronous API overhead: cudaMalloc (71.2%) + cudaFree (6.4%) = 77.6% of total CUDA API time across

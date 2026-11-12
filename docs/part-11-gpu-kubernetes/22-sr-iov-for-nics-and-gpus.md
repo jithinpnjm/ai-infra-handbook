@@ -106,8 +106,8 @@ On Ampere A100, Hopper H100 and H200, Ada L40S, and Blackwell B200 GPUs, SR-IOV 
 |---|---|---|
 | **What Silicon Is Sliced?** | **Network Interface Card (`NIC`)** (and NVMe storage controllers in `AWS Nitro`, `SP 11.2.2`) | **GPU PCIe Bus Interface (`SR-IOV VFs`)** + **GPU Compute/Memory Silicon (`MIG` / `vGPU`)** |
 | **Host PF Management Tool** | `mlxconfig -d <bdf> set SRIOV_EN=1 NUM_OF_VFS=16` + `echo 8 > .../sriov_numvfs` (or `sriov-network-operator`) | `/usr/lib/nvidia/sriov-manage -e ALL` (enables GPU VFs) + `nvidia-smi -mig 1` / **NVIDIA Virtual GPU Manager** (`nvidia-smi vgpu`) |
-| **Two GPU SR-IOV Modes (`volume-11/chapter-05`)** | Each VF is an independent hardware RDMA/RoCEv2 or InfiniBand virtual HCA (`mlx5_vf`) | **1. Time-Sliced vGPU over SR-IOV VF:** Multiple VFs share the GPU's SMs (`NVIDIA GRID A100-20Q`, `2000MiB / 20000MiB`, `18W / 400W` in `volume-11/chapter-05`).<br/>**2. MIG-Backed vGPU over SR-IOV VF:** Each SR-IOV VF is backed by a hardware-isolated **MIG GPU Instance (`GI`)** (`1g.10gb`, `2g.20gb`, `3g.40gb`). |
-| **Guest Driver & Licensing** | Standard inbox `mlx5_core` / `MLNX_OFED` VF driver (`ena`, `ixgbe`, `hv_netvsc` in cloud VMs, `SP 11.2`) | Guest VM loads the **NVIDIA Guest vGPU Driver** (must match the Host vGPU Manager compatibility matrix) and acquires an entitlement lease from the **NVIDIA License System (`NLS`)** (`volume-11/chapter-05`). |
+| **Two GPU SR-IOV Modes** | Each VF is an independent hardware RDMA/RoCEv2 or InfiniBand virtual HCA (`mlx5_vf`) | **1. Time-Sliced vGPU over SR-IOV VF:** Multiple VFs share the GPU's SMs (`NVIDIA GRID A100-20Q`, `2000MiB / 20000MiB`, `18W / 400W`).<br/>**2. MIG-Backed vGPU over SR-IOV VF:** Each SR-IOV VF is backed by a hardware-isolated **MIG GPU Instance (`GI`)** (`1g.10gb`, `2g.20gb`, `3g.40gb`). |
+| **Guest Driver & Licensing** | Standard inbox `mlx5_core` / `MLNX_OFED` VF driver (`ena`, `ixgbe`, `hv_netvsc` in cloud VMs, `SP 11.2`) | Guest VM loads the **NVIDIA Guest vGPU Driver** (must match the Host vGPU Manager compatibility matrix) and acquires an entitlement lease from the **NVIDIA License System (`NLS`)**. |
 
 Notice that each NIC Virtual Function is an independent virtual HCA, while the GPU side offers two modes to choose from.
 
@@ -197,9 +197,9 @@ If you follow the rows in order, you will see why each step sits where it does.
 
 #### 3. The 14-Item Production Security Checklist for SR-IOV and GPU Clusters
 
-Before a multi-tenant SR-IOV and GPU cluster goes into production, security architects need an objective audit gate, not verbal assurances. Volume 18 sets out five core principles: defense in depth, trust verification, evidence over assertions, explicit trade-offs, and insider threat awareness. Those five principles translate directly into the fourteen-item checklist below.
+Before a multi-tenant SR-IOV and GPU cluster goes into production, security architects need an objective audit gate, not verbal assurances. The security guidance here rests on five core principles: defense in depth, trust verification, evidence over assertions, explicit trade-offs, and insider threat awareness. Those five principles translate directly into the fourteen-item checklist below.
 
-| Security Domain | Production Verification Gate (`volume-18/index.md`) | How to Audit on a Live GPU / SR-IOV Node |
+| Security Domain | Production Verification Gate | How to Audit on a Live GPU / SR-IOV Node |
 |---|---|---|
 | **1. Hardware & Firmware Root of Trust** | 1. **UEFI Secure Boot** enabled on all nodes with audited boot logs.<br/>2. **Kernel module signing** enforced and NVIDIA GPU / ConnectX NIC drivers signed.<br/>8. **IOMMU** (`Intel VT-d` / `AMD-Vi`) enabled and configured with DMA faults monitored. | Check `mokutil --sb-state`, `modinfo nvidia \| grep sig`, and `dmesg \| grep -E -i "DMAR\|IOMMU"`. |
 | **2. Container & Model Supply Chain** | 3. **Container images scanned for CVEs** (Trivy); only approved digests deployed (never `:latest`).<br/>11. **Model artifacts signed and verified** (Cosign + `.safetensors`, never untrusted Python `pickle`) before deployment. | Verify admission controller rejects unsigned images and scan model repositories for `.bin`/`.pt` pickle files. |
@@ -217,12 +217,12 @@ Use the right-hand column as your audit list, since each item names a command or
 Before you write a Virtual Function count to sysfs on a bare-metal worker node, check the kernel boot logs for an active motherboard IOMMU. Then enable the network Virtual Functions with `sriov_numvfs`, and activate the GPU Virtual Functions with `/usr/lib/nvidia/sriov-manage`.
 
 ```bash
-# 1. Enable 8 SR-IOV VFs on a ConnectX-7 PF (0000:4b:00.0 / ens1f0np0) after verifying IOMMU (untested here)
+# 1. Enable 8 SR-IOV VFs on a ConnectX-7 PF (0000:4b:00.0 / ens1f0np0) after verifying IOMMU
 dmesg | grep -E -i "DMAR|IOMMU"
 echo 8 | sudo tee /sys/class/net/ens1f0np0/device/sriov_numvfs
 lspci | grep -i "Mellanox"
 
-# 2. Enable SR-IOV Virtual Functions on NVIDIA GPUs for vGPU / MIG-backed VM passthrough (untested here)
+# 2. Enable SR-IOV Virtual Functions on NVIDIA GPUs for vGPU / MIG-backed VM passthrough
 sudo /usr/lib/nvidia/sriov-manage -e ALL
 nvidia-smi vgpu -s
 nvidia-smi vgpu
@@ -235,7 +235,7 @@ Notice that the IOMMU check comes first. Only after it passes should you change 
 When an intrusion alert fires on a GPU pod, cordon the node first and then apply a quarantine `NetworkPolicy` right away. This manifest drops all outbound traffic and allows inbound connections only from the forensic collector workstation IP.
 
 ```yaml
-# quarantine-compromised-gpu-pod.yaml ("Isolate, don't terminate", untested here)
+# quarantine-compromised-gpu-pod.yaml ("Isolate, don't terminate")
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -262,11 +262,11 @@ Read the `ingress` and `egress` blocks together. The empty `egress` list is what
 When a vGPU inside a virtual machine misbehaves, check both sides of the hypervisor boundary. Start on the host with the Virtual GPU Manager. Then move into the guest to verify PCIe enumeration, virtual device UUIDs, and license lease status.
 
 ```bash
-# 1. Host-side vGPU Manager check (before entering guest VM, untested here)
+# 1. Host-side vGPU Manager check (before entering guest VM)
 nvidia-smi vgpu
 nvidia-smi vgpu -q
 
-# 2. Guest-side vGPU & license verification inside the VM (untested here)
+# 2. Guest-side vGPU & license verification inside the VM
 lspci | grep -i nvidia
 nvidia-smi --query-gpu=driver_version,vbios_version,gpu_uuid --format=csv
 nvidia-smi -q | grep -A 5 "vGPU Software Licensed Product"
@@ -280,11 +280,11 @@ Even when your SR-IOV hardware is healthy, configuration ceilings, kernel bypass
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. Responder runs `kubectl delete pod` on a compromised GPU notebook scanning `port 22`, and ransomware hits the cluster a week later (`volume-18/chapter-12`)** | IDS alerts on outbound `port 22` scan or crypto-mining pool; deleting the pod stops the alert immediately, but the attacker returns days later via the same unpatched CVE. | **Destruction of Volatile RAM/VRAM Forensic Evidence:** Deleting the pod or rebooting the node wipes volatile memory and bash/socket state without identifying or patching the entry CVE. | Follow the **6-Step Forensic Containment Protocol**: `kubectl cordon` -> apply a Deny-All **Quarantine `NetworkPolicy`** -> dump RAM/VRAM and audit logs -> patch the CVE globally -> PXE re-image OS + reflash GPU/NIC firmware -> rotate all Secrets. |
+| **1. Responder runs `kubectl delete pod` on a compromised GPU notebook scanning `port 22`, and ransomware hits the cluster a week later** | IDS alerts on outbound `port 22` scan or crypto-mining pool; deleting the pod stops the alert immediately, but the attacker returns days later via the same unpatched CVE. | **Destruction of Volatile RAM/VRAM Forensic Evidence:** Deleting the pod or rebooting the node wipes volatile memory and bash/socket state without identifying or patching the entry CVE. | Follow the **6-Step Forensic Containment Protocol**: `kubectl cordon` -> apply a Deny-All **Quarantine `NetworkPolicy`** -> dump RAM/VRAM and audit logs -> patch the CVE globally -> PXE re-image OS + reflash GPU/NIC firmware -> rotate all Secrets. |
 | **2. Writing `32` to `sriov_numvfs` fails with `Numerical result out of range` (`EINVAL` / `ERANGE`)** | `echo 32 > /sys/class/net/ens1f0np0/device/sriov_numvfs` fails, and `cat .../sriov_totalvfs` prints `16`. | **Firmware `NUM_OF_VFS` Ceiling (`sriov_totalvfs`):** The NIC's non-volatile firmware configuration (`mlxconfig`) only allocated PCIe BAR space for `16` VFs. | Configure `mlxconfig -d <bdf> set SRIOV_EN=1 NUM_OF_VFS=32`, perform a cold/firmware reboot of the node, and verify `cat sriov_totalvfs` equals `32`. |
 | **3. Host `iostat -sxz 1` and `sar -n DEV 1` show `0` traffic while SR-IOV tenant VMs saturate a `400G` NIC (`SP 11.2.4`)** | Tenant VMs drive `400 Gbps` of RoCEv2/RDMA traffic, but standard Linux host OS network and block counters appear completely idle. | **SR-IOV Host Kernel Bypass (`SP 11.2.4`):** SR-IOV VFs DMA directly between guest memory and NIC hardware rings, bypassing the host OS kernel network stack and `QEMU` proxy. | Monitor hardware port counters (`perfquery`, `ethtool -S` physical port metrics, PMCs, `DCGM`), or run eBPF tools (`biosnoop`, `tcplife`) inside the guest VM's dedicated kernel. |
-| **4. Compromised x86 host OS flushes its local `iptables` firewall rules and moves laterally across the AI cluster (`volume-18/chapter-12-volume-18-summary.md`)** | Attacker escapes a container onto the host kernel and runs `iptables -F`, disabling host software micro-segmentation. | **Host Firewall "Shared Fate" Anti-Pattern:** Running the security enforcement plane on the same x86 host kernel as untrusted workloads means a host compromise disables the firewall. | Offload micro-segmentation and zero-trust firewall enforcement onto an **NVIDIA BlueField DPU**, whose isolated ARM processors enforce network policy independently of the x86 host OS. |
-| **5. Guest VM with NVIDIA vGPU (`GRID A100-20Q`) boots and runs `nvidia-smi`, but CUDA throughput throttles after a grace period (`volume-11/chapter-05` Scenario 2)** | `nvidia-smi` inside the guest shows `Memory: 2000MiB / 20000MiB` and `Temp: 45C`, but `nvidia-smi -q` reports `vGPU Software Licensed Product: Unlicensed`. | **Unlicensed Guest vGPU Entitlement (`NLS`):** The guest vGPU driver checks out its license directly from the **NVIDIA License System (`NLS`)**; DNS, firewall, or certificate failure blocked lease acquisition. | Verify guest network/DNS reachability and TLS trust to the NLS / DLS endpoint, validate license edition against the assigned vGPU profile on a single canary VM, and confirm `nvidia-smi -q` shows `Licensed`. |
+| **4. Compromised x86 host OS flushes its local `iptables` firewall rules and moves laterally across the AI cluster** | Attacker escapes a container onto the host kernel and runs `iptables -F`, disabling host software micro-segmentation. | **Host Firewall "Shared Fate" Anti-Pattern:** Running the security enforcement plane on the same x86 host kernel as untrusted workloads means a host compromise disables the firewall. | Offload micro-segmentation and zero-trust firewall enforcement onto an **NVIDIA BlueField DPU**, whose isolated ARM processors enforce network policy independently of the x86 host OS. |
+| **5. Guest VM with NVIDIA vGPU (`GRID A100-20Q`) boots and runs `nvidia-smi`, but CUDA throughput throttles after a grace period** | `nvidia-smi` inside the guest shows `Memory: 2000MiB / 20000MiB` and `Temp: 45C`, but `nvidia-smi -q` reports `vGPU Software Licensed Product: Unlicensed`. | **Unlicensed Guest vGPU Entitlement (`NLS`):** The guest vGPU driver checks out its license directly from the **NVIDIA License System (`NLS`)**; DNS, firewall, or certificate failure blocked lease acquisition. | Verify guest network/DNS reachability and TLS trust to the NLS / DLS endpoint, validate license edition against the assigned vGPU profile on a single canary VM, and confirm `nvidia-smi -q` shows `Licensed`. |
 
 If you get an alert about a compromised pod, start with the first row, because the fix there is to contain the pod rather than delete it. If a VM's GPU throttles, check the license state before you blame the hardware.
 
@@ -292,7 +292,7 @@ If you get an alert about a compromised pod, start with the first row, because t
 
 ### Venue and scope
 
-This lab runs on your own machine with the Python standard library. It simulates Physical Function to Virtual Function allocation and security checks for ConnectX-7 NICs and NVIDIA H100 and A100 GPUs. It also checks Brendan Gregg's SR-IOV observability and CNI rules, the five-layer Zero-Trust AI defense-in-depth stack, and the six-step forensic incident response playbook. Host and cluster commands are marked as untested here.
+This lab runs on your own machine with the Python standard library. It simulates Physical Function to Virtual Function allocation and security checks for ConnectX-7 NICs and NVIDIA H100 and A100 GPUs. It also checks Brendan Gregg's SR-IOV observability and CNI rules, the five-layer Zero-Trust AI defense-in-depth stack, and the six-step forensic incident response playbook. The host and cluster commands in this chapter were not run on live hardware.
 
 The inventory below lists the files and simulated targets you will see.
 
@@ -356,7 +356,7 @@ Work through the six exercises below. Each one uses the simulation module or the
 3. Host `iostat` shows no traffic for an SR-IOV device. Why? Name the four guest drivers Brendan Gregg cites. Then say which Linux qdisc implements Kubernetes bandwidth annotations.
 4. List the five defense layers in order and the controls at each. Then explain why a BlueField DPU solves the shared-fate problem of a host firewall.
 5. A platform engineer ran `kubectl delete pod` on a pod that was scanning port 22. Why did that lead to a later ransomware outage? List the six containment steps in order.
-6. Group the fourteen checklist items from Volume 18 under hardware and boot, supply chain and models, Kubernetes and network isolation, confidential compute, and audit and incident response.
+6. Group the fourteen checklist items under hardware and boot, supply chain and models, Kubernetes and network isolation, confidential compute, and audit and incident response.
 
 ## Checkpoint questions
 
@@ -368,7 +368,7 @@ Work through the six exercises below. Each one uses the simulation module or the
 </details>
 
 <details>
-<summary>**2. Why does Volume 23 Chapter 13 compare SR-IOV and MIG as philosophically the same thing for different pieces of silicon?**</summary>
+<summary>**2. Why do architect interviews compare SR-IOV and MIG as philosophically the same thing for different pieces of silicon?**</summary>
 
 SR-IOV slices a network card at the PCIe silicon level into isolated Virtual Functions that skip the software hypervisor. MIG does the same kind of slicing on a GPU, producing isolated GPU Instances with their own streaming multiprocessors, HBM memory channels, and L2 cache banks. The two split different silicon, but you can think of them as one idea applied twice.
 </details>
@@ -412,7 +412,7 @@ SR-IOV splits the NIC into separate Virtual Functions, but each one is still a P
 </details>
 
 <details>
-<summary>**9. In Volume 11 Chapter 5, what are the four checks to run in order when a guest VM with an NVIDIA vGPU boots but sees no usable GPU or suffers throttled performance?**</summary>
+<summary>**9. What are the four checks to run in order when a guest VM with an NVIDIA vGPU boots but sees no usable GPU or suffers throttled performance?**</summary>
 
 1. **Check the Host.** Run `nvidia-smi vgpu` on the host to confirm that the physical GPU is healthy, the Virtual GPU Manager is loaded, and the VM has an active vGPU assignment.
 2. **Check Guest PCIe Enumeration.** Run `lspci` inside the guest to confirm that the guest OS sees the virtual NVIDIA PCIe device.
@@ -427,7 +427,7 @@ The guest does not see the physical GPU hardware. If you run nvidia-smi inside i
 </details>
 
 <details>
-<summary>**11. List the five layers of the Zero-Trust AI Defense-in-Depth Architecture in Volume 18 Chapter 12 Summary.**</summary>
+<summary>**11. List the five layers of the Zero-Trust AI Defense-in-Depth Architecture.**</summary>
 
 1. **Supply Chain Defense.** Trivy CVE scanning, Cosign image signatures, Admission Controller enforcement, and `.safetensors` model format.
 2. **Kubernetes Defense.** Least-privilege RBAC, locked-down operator namespaces, and Pod Security Admission set to Restricted.
@@ -455,7 +455,7 @@ Hopper GPU Confidential Computing mode works with a CPU Trusted Execution Enviro
 </details>
 
 <details>
-<summary>**15. What is the Golden Rule of Security Incident Response in Volume 18 Chapter 12 when an IDS alerts on a compromised GPU Pod or Node?**</summary>
+<summary>**15. What is the Golden Rule of Security Incident Response when an IDS alerts on a compromised GPU Pod or Node?**</summary>
 
 Suppose an IDS alert fires on a compromised GPU pod. The golden rule is to isolate rather than terminate. Do not run `kubectl delete pod` or reboot the server right away. Doing so wipes volatile system RAM and GPU VRAM, which destroys the attacker's forensic footprint and leaves the root vulnerability open to re-exploitation.
 </details>
@@ -479,7 +479,7 @@ Consider the three steps a senior SRE takes first.
 </details>
 
 <details>
-<summary>**18. Why does Volume 18 Chapter 12 state that you never clean a compromised server but destroy it instead, and what four eradication steps are required before the node can rejoin the cluster?**</summary>
+<summary>**18. Why should you destroy a compromised server instead of cleaning it, and what four eradication steps are required before the node can rejoin the cluster?**</summary>
 
 If an attacker gained root on a GPU node, they may have installed kernel rootkits or flashed malicious firmware into the GPU or ConnectX NIC silicon. That is why you destroy the node rather than clean it. Four steps must be finished before it can rejoin.
 
@@ -490,7 +490,7 @@ If an attacker gained root on a GPU node, they may have installed kernel rootkit
 </details>
 
 <details>
-<summary>**19. In the Volume 18 Chapter 12 Customer Scenario, trace the exact chain of events from the initial port 22 network scan to the cluster-wide ransomware outage one week later.**</summary>
+<summary>**19. In the customer scenario, trace the exact chain of events from the initial port 22 network scan to the cluster-wide ransomware outage one week later.**</summary>
 
 1. **Initial compromise.** An attacker exploited an unpatched vulnerability in the research notebook pod and began scanning internal port 22.
 2. **Destructive response.** The platform engineer ran `kubectl delete pod`. That stopped the scan but destroyed all volatile memory and process evidence.
@@ -499,7 +499,7 @@ If an attacker gained root on a GPU node, they may have installed kernel rootkit
 </details>
 
 <details>
-<summary>**20. Name the 14 items in the Volume 18 Production Security Checklist.**</summary>
+<summary>**20. Name the 14 items in the Production Security Checklist.**</summary>
 
 1. **Secure Boot.** Enable UEFI Secure Boot on all nodes with audited boot logs.
 2. **Driver signing.** Enforce kernel module signing and ensure GPU drivers are signed.

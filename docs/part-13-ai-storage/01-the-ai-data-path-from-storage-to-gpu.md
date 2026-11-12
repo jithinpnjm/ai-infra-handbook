@@ -326,9 +326,9 @@ Before you deploy a multi-worker training pod, confirm that `/dev/shm` is backed
 
 ## Commands and configurations that matter
 
-Every command below is marked `(untested here)`. They target live Linux GPU nodes with Lustre, WEKA, NVMe hardware, and NVIDIA GDS drivers, so this repository could not run them. If you want something you can run today, the Hands-on lab covers the Python verification suite that this repository does execute.
+The commands below were not run on live hardware. They target live Linux GPU nodes with Lustre, WEKA, NVMe hardware, and NVIDIA GDS drivers, so this repository could not run them. If you want something you can run today, the Hands-on lab covers the Python verification suite that this repository does execute.
 
-### 1. Layer-by-layer data path inspection (`Layers 1–8`) `(untested here)`
+### 1. Layer-by-layer data path inspection (`Layers 1–8`) ``
 
 ```bash
 # (untested here) Layer 1: Local NVMe media health and saturation (%util, r_await)
@@ -369,7 +369,7 @@ nvidia-smi dmon -s t -c 10
 nvidia-smi -i 0 --query-gpu=memory.used,memory.total,memory.free --format=csv,nounits
 ```
 
-### 2. GPUDirect Storage (`GDS`) verification and `gdsio` benchmarking `(untested here)`
+### 2. GPUDirect Storage (`GDS`) verification and `gdsio` benchmarking ``
 
 ```bash
 # (untested here) 1. Verify nvidia-fs kernel module and platform GDS support
@@ -385,7 +385,7 @@ cat /proc/driver/nvidia-fs/stats
 /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
 ```
 
-Use this `/etc/cufile.json` configuration when you qualify a cluster, with compatibility fallback disabled `(untested here)`:
+Use this `/etc/cufile.json` configuration when you qualify a cluster, with compatibility fallback disabled ``:
 
 ```json
 {
@@ -401,7 +401,7 @@ Use this `/etc/cufile.json` configuration when you qualify a cluster, with compa
 }
 ```
 
-### 3. Benchmarking sequential reads (`fio`), checkpoint bursts (`fio`), and MDS (`mdtest`) `(untested here)`
+### 3. Benchmarking sequential reads (`fio`), checkpoint bursts (`fio`), and MDS (`mdtest`) ``
 
 ```bash
 # (untested here) 1. Simulate 32-worker sequential dataset reads (2 MB blocks, 500 GB > host RAM, O_DIRECT)
@@ -420,7 +420,7 @@ fio --name=checkpoint_write_burst \
 mpirun -np 128 mdtest -d /mnt/lustre/metadata_stress_test -i 5 -b 10 -z 3 -L -I 100000 -y -u -t
 ```
 
-### 4. Kubernetes `RWX` CSI StorageClass and GDS-enabled training Pod `(untested here)`
+### 4. Kubernetes `RWX` CSI StorageClass and GDS-enabled training Pod ``
 
 ```yaml
 # (untested here) RWX parallel filesystem StorageClass + training Pod with 400Gi /dev/shm and cufile.json
@@ -503,7 +503,7 @@ Start with the symptom column, then run the diagnosis command before you change 
 ### Venue and scope
 
 - **Primary runnable lab:** `code/part13/ai_data_path.py` and `code/part13/ai_data_path_lab.py`. They use only the Python standard library and run 26 automated self-checks.
-- **Cluster venue:** GCP or GKE node pools with local NVMe SSDs and Managed Lustre or Filestore RWX volumes. Live hardware commands are marked `(untested here)`, because you can only run them on real nodes.
+- **Cluster venue:** GCP or GKE node pools with local NVMe SSDs and Managed Lustre or Filestore RWX volumes. Live hardware commands need real nodes.
 
 ### Part A: Run the self-checking AI data path lab locally
 
@@ -545,7 +545,7 @@ Expected output (verified):
 Summary: 26 passed, 0 failed (total 26)
 ```
 
-### Part B: Baseline a GPU node storage path on Linux / GKE `(untested here)`
+### Part B: Baseline a GPU node storage path on Linux / GKE ``
 
 When you onboard a new GPU node pool, capture a five-stage storage baseline before you launch distributed jobs. The script below records each stage to one file, so you can compare later runs against it.
 

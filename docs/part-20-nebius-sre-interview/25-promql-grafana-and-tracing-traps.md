@@ -16,7 +16,7 @@ lab_venue: "Laptop / Docker"
 
 The interviewer shares a screen. A dashboard shows a flat, healthy p99 while the customer channel is full of complaints. They ask: "Here is the query behind this panel. What is wrong with it?" You have about two minutes to find the bug, say why, and write the fix.
 
-The job posting asks for deep experience with Prometheus and Grafana. The plan for this volume records that wording from the posting. Nebius has not published how its own monitoring is built. So the interviewer cannot test your memory of internals. They test whether you know how the query language fails quietly.
+The job posting asks for deep experience with Prometheus and Grafana. Nebius has not published how its own monitoring is built. So the interviewer cannot test your memory of internals. They test whether you know how the query language fails quietly.
 
 This chapter serves two rounds. In the Linux and incident rounds you read dashboards under pressure. In the system design round you justify how you would alert and trace a streaming request. Chapter 20.19 owns SLO maths and burn-rate alerts. Chapter 20.15 owns pipeline architecture. This chapter owns the query, the alert rule, the dashboard and the trace.
 
@@ -83,7 +83,7 @@ There is also a limit that no query fixes. The docs say the highest bucket must 
 
 A panel shows average KV cache usage at 53 percent. It looks comfortable. One of three pods sits at 100 percent and is rejecting work. The average hides it, and the maximum shows it.
 
-The Systems Performance book, Chapter 2, defines utilization as how busy a resource is and saturation as the degree to which it has queued work it cannot service. The USE method checks errors first, then saturation, because any level of saturation can be an issue. For an inference engine, KV cache usage is utilization. The waiting queue is saturation. The vLLM metrics design page lists both as gauges: `vllm:kv_cache_usage_perc` and `vllm:num_requests_waiting`. Mapping them to utilization and saturation is my reasoning, not a vLLM statement.
+*Systems Performance*, in its chapter on methodologies, defines utilization as how busy a resource is and saturation as the degree to which it has queued work it cannot service. The USE method checks errors first, then saturation, because any level of saturation can be an issue. For an inference engine, KV cache usage is utilization. The waiting queue is saturation. The vLLM metrics design page lists both as gauges: `vllm:kv_cache_usage_perc` and `vllm:num_requests_waiting`. Mapping them to utilization and saturation is my reasoning, not a vLLM statement.
 
 A gauge needs gauge functions. `rate` over a gauge that holds at 7 returns zero and says the queue is empty. Use the value itself, `avg_over_time`, `max_over_time`, or `deriv` when you want the trend.
 
@@ -284,7 +284,7 @@ A subquery runs an instant query repeatedly over a range, and its resolution def
 
 A new label named `request_id` ships on Friday. By Monday Prometheus is out of memory. Every distinct value makes a new series, and a histogram makes many series per value.
 
-The Production Kubernetes book, Chapter 9, warns that overusing labels makes resource use untenable and points to the instrumentation guide. The arithmetic is the lesson. A histogram with 10 finite buckets has 13 series per label set, counting `+Inf`, `_sum` and `_count`. With 20 models and 1,000 tenants that is 260,000 series. Those counts are my assumed inputs, not a Nebius figure. A single request ID label multiplies that by the number of requests.
+*Production Kubernetes*, in its chapter on observability, warns that overusing labels makes resource use untenable and points to the instrumentation guide. The arithmetic is the lesson. A histogram with 10 finite buckets has 13 series per label set, counting `+Inf`, `_sum` and `_count`. With 20 models and 1,000 tenants that is 260,000 series. Those counts are my assumed inputs, not a Nebius figure. A single request ID label multiplies that by the number of requests.
 
 Keep user, request and prompt identifiers out of metric labels. They belong in logs and traces. Chapter 20.15 covers how a pipeline controls cardinality at scale, and chapter 20.19 covers the page-by-model, ticket-by-tenant split.
 
@@ -314,7 +314,7 @@ flowchart LR
 
 Two rules make this work. The gateway span stays open until the stream ends, and its status is set to Error if the stream fails after a 200 was sent. The OTel docs say status takes one of three values, Unset, Error or Ok. Put the first-token moment on the span as an event, because a span event is a structured log message on a span.
 
-vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect-detailed-traces`. I read the v0.32.0 source, the version chapter 20.22 pins. The first flag sets the OTLP target. The second takes `model`, `worker` or `all`, needs the first flag, and the source warns it can be costly or blocking. With tracing on, the output processor emits one span named `llm_request` when a request finishes. It has kind SERVER and takes its parent from the incoming trace headers. Its attributes are time to first token, end-to-end time, time in queue, prefill, decode and inference time, token counts, request ID and some sampling parameters. So the engine hop gives you one span with timing attributes, not child spans for queue, prefill and decode. I read this and did not run a server.
+vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect-detailed-traces`. This comes from the v0.32.0 source, the version chapter 20.22 pins. The first flag sets the OTLP target. The second takes `model`, `worker` or `all`, needs the first flag, and the source warns it can be costly or blocking. With tracing on, the output processor emits one span named `llm_request` when a request finishes. It has kind SERVER and takes its parent from the incoming trace headers. Its attributes are time to first token, end-to-end time, time in queue, prefill, decode and inference time, token counts, request ID and some sampling parameters. So the engine hop gives you one span with timing attributes, not child spans for queue, prefill and decode.
 
 **One span per hop, the gateway span covers the whole stream, and failure after the 200 must set span status.**
 
@@ -372,21 +372,21 @@ Also make the router alert on lost capacity, since the loss shows up as saturati
 
 A node fails. Scrape targets go away, the error ratio rises, KV cache saturates on the survivors and a queue alert fires.
 
-The Alertmanager config groups by cluster and model, so alerts for one model arrive as one notification. The inhibition rule silences symptom alerts while `VllmTargetsMissing` fires in the same cluster. The page rule silences tickets for the same model. The routing script confirms the pages go to the pager. I ran this against Alertmanager 0.35.0 in a throwaway container, as the lab says. The grouping and inhibition behaved as described.
+The Alertmanager config groups by cluster and model, so alerts for one model arrive as one notification. The inhibition rule silences symptom alerts while `VllmTargetsMissing` fires in the same cluster. The page rule silences tickets for the same model. The routing script confirms the pages go to the pager. Run against Alertmanager 0.35.0 in a throwaway container, as the lab describes, the grouping and inhibition behave as described.
 
 ## Hands-on lab
 
-All steps run on a laptop with `promtool`, `amtool` and Python. No Docker is needed. I ran every step on macOS.
+All steps run on a laptop with `promtool`, `amtool` and Python. No Docker is needed. Every step below was run on macOS.
 
 1. Check the rules. `promtool check rules code/part20/c25_trap_rules.yaml` should print `SUCCESS: 11 rules found`.
 2. Run the exercise tests. `promtool test rules code/part20/c25_exercises_test.yaml` should print `SUCCESS`. Change one expected value and see the diff it prints.
 3. Run the alert tests. `promtool test rules code/part20/c25_trap_rules_test.yaml` should print `SUCCESS`.
 4. Check the Alertmanager config. `amtool check-config code/part20/c25_alertmanager.yml` should list 2 inhibit rules and 2 receivers. Run `code/part20/c25_route_check.sh` and expect three `ok` lines.
-4b. Run the real Alertmanager. Start `prom/alertmanager` in Docker with the config, pointing both webhooks at a small receiver on the host. Post three alerts for one model and cluster, one for another model, and one `VllmTargetsMissing`. I ran this. Two ticket alerts for model m1 arrived as one notification listing both. A page alert for model m2 reached the pager, and the ticket alert for the same model was inhibited. In cluster c2, `QueueDeep` with severity page was inhibited while `VllmTargetsMissing` was firing. The API listed the inhibited alerts as suppressed. The timing values were not measured to the second.
+4b. Run the real Alertmanager. Start `prom/alertmanager` in Docker with the config, pointing both webhooks at a small receiver on the host. Post three alerts for one model and cluster, one for another model, and one `VllmTargetsMissing`. Two ticket alerts for model m1 arrived as one notification listing both. A page alert for model m2 reached the pager, and the ticket alert for the same model was inhibited. In cluster c2, `QueueDeep` with severity page was inhibited while `VllmTargetsMissing` was firing. The API listed the inhibited alerts as suppressed. The timing values were not measured to the second.
 5. Lint the good and bad rules. `python3 code/part20/c25_promql_lint.py code/part20/c25_trap_rules.yaml` reports 0 findings. The same command on `c25_bad_rules.yaml` reports 5 warnings and exits 0. Add `--strict` and it exits 1.
 6. Run the pytest suite. `python3 -m pytest code/part20/test_c25_promql_lint.py` should report 38 passed.
-7. Break an offset on purpose. Write `rate(gateway_requests_total[5m]) offset 1h` into a rule file and run `promtool check rules`. Expect the parse error quoted in idea 11. I ran this.
-8. Break a join on purpose. Use two vLLM series for one pod and one `kube_pod_info` series, then query without `group_left`. I ran this and `promtool` printed the many-to-one error quoted in idea 7.
+7. Break an offset on purpose. Write `rate(gateway_requests_total[5m]) offset 1h` into a rule file and run `promtool check rules`. Expect the parse error quoted in idea 11.
+8. Break a join on purpose. Use two vLLM series for one pod and one `kube_pod_info` series, then query without `group_left`. Expect `promtool` to print the many-to-one error quoted in idea 7.
 
 ## The 15 exercises: what is wrong with this query
 

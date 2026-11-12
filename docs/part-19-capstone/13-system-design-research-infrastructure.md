@@ -267,7 +267,7 @@ spec:
     persistentvolumeclaims: "150"
 ```
 
-Culling by activity has a blind spot. A notebook can be busy in the culler's sense and still use no GPU, for example a kernel waiting on an open widget. The hub culler cannot see GPU use. The rule file below watches the GPU itself. It uses the dcgm-exporter metric `DCGM_FI_DEV_GPU_UTIL_RATIO`, a default counter in dcgm-exporter 4.9.0, fetched 2026-11-11. I could not confirm the name on older releases. Check `/metrics` on the version you run. The rule also assumes that pod mapping adds `namespace` and `pod` labels. I did not verify that on a live cluster.
+Culling by activity has a blind spot. A notebook can be busy in the culler's sense and still use no GPU, for example a kernel waiting on an open widget. The hub culler cannot see GPU use. The rule file below watches the GPU itself. It uses the dcgm-exporter metric `DCGM_FI_DEV_GPU_UTIL_RATIO`, a default counter in dcgm-exporter 4.9.0, fetched 2026-11-11. The name is not confirmed on older releases. Check `/metrics` on the version you run. The rule also assumes that pod mapping adds `namespace` and `pod` labels. That is not verified on a live cluster.
 
 ```yaml
 # Prometheus rules: find GPUs that are allocated to a pod but doing nothing.
@@ -289,7 +289,7 @@ groups:
           description: "Notebook culling tracks kernel activity, not GPU use. Ask the owner or reclaim the pod."
 ```
 
-I checked the file with `promtool check rules`, which accepts the syntax. It says nothing about whether the metric exists on your cluster.
+Running `promtool check rules` on the file accepts the syntax. It says nothing about whether the metric exists on your cluster.
 
 **Decision rule:** Cull on activity at the hub, watch GPU use separately, and cap notebook GPUs with one namespace quota.
 
@@ -373,7 +373,7 @@ The Kubernetes manifest, `c13_mlflow.yaml`, has six objects: a Namespace, a Serv
 | S3 endpoint | `MLFLOW_S3_ENDPOINT_URL` | `environment_variables.py` |
 | Probes | `GET /health` | `mlflow/server/__init__.py` |
 
-I ran the image on the laptop with SQLite instead of PostgreSQL and a local artifact path. The probe `/health` answered 200. A request to the search API with a wrong Host header answered 403, and with the allowed host it answered 200. The image imported psycopg2 2.9.13, boto3 1.44.0 and mlflow 3.18.0. Note that `/health` answered 200 even for a wrong host, so a probe never tests the host check. I did not run it against PostgreSQL, S3 or Kubernetes. kubeconform accepts all six objects.
+Run on a laptop with SQLite instead of PostgreSQL and a local artifact path, the image behaves as follows. The probe `/health` answered 200. A request to the search API with a wrong Host header answered 403, and with the allowed host it answered 200. The image imported psycopg2 2.9.13, boto3 1.44.0 and mlflow 3.18.0. Note that `/health` answered 200 even for a wrong host, so a probe never tests the host check. It was not run against PostgreSQL, S3 or Kubernetes. kubeconform accepts all six objects.
 
 Two replicas are safe because the server is stateless. State lives in PostgreSQL and the bucket, so back those up. The server has an optional `--app-name basic-auth` mode. I left it off and assumed authentication at the ingress, which is my design choice.
 

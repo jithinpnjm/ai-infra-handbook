@@ -141,9 +141,9 @@ The X Window System, also called `X11` or `X.Org Server`, does not live in the k
 
 X draws and moves windows, but a window manager frames and places them. The options range from Windows-like and Macintosh-like managers, such as `Kwin` in KDE and `Metacity` in GNOME, to frame-based tiling managers like `Ion`, the minimal `twm` and the full-featured `Enlightenment`. The Single UNIX Specification standardizes `CDE`, and freedesktop.org standardizes interoperability.
 
-The reference `X.Org Server` reads `/etc/X11/xorg.conf`, which takes priority if it exists. It also reads `/etc/X11/xorg.conf.d/`, which holds several files with separate configuration sections. If auto-detection fails, `Xorg -configure` generates `xorg.conf.new`. Chapter 28 of the book, "One-Two-Three Instructions", and `man xorg.conf` cover this. Startup errors go to `/var/log/Xorg.0.log`, where `0` is the display number. From a terminal, `startx` launches the X server and then `~/.xsession` and `/etc/X11/Xsession.d`. When X runs as a service, a screen manager authenticates the user and starts the session. The screen managers are `xdm`, configured under `/etc/X11/xdm/` and running `/etc/X11/xdm/Xsession`, `gdm` in `/etc/gdm/`, `kdm` in `/etc/kde4/kdm/`, and `lightdm`.
+The reference `X.Org Server` reads `/etc/X11/xorg.conf`, which takes priority if it exists. It also reads `/etc/X11/xorg.conf.d/`, which holds several files with separate configuration sections. If auto-detection fails, `Xorg -configure` generates `xorg.conf.new`. The `man xorg.conf` page covers this. Startup errors go to `/var/log/Xorg.0.log`, where `0` is the display number. From a terminal, `startx` launches the X server and then `~/.xsession` and `/etc/X11/Xsession.d`. When X runs as a service, a screen manager authenticates the user and starts the session. The screen managers are `xdm`, configured under `/etc/X11/xdm/` and running `/etc/X11/xdm/Xsession`, `gdm` in `/etc/gdm/`, `kdm` in `/etc/kde4/kdm/`, and `lightdm`.
 
-On Windows workstations, the book points to the open-source `Xming` X server at `http://www.straightrunning.com/XmingNotes/`. It comes in two variants. Standard `xming` is one, and `xming Mesa` is the other, which lets you run OpenGL applications on a remote terminal. The downloads also include backgrounds, some in Cyrillic, and `Xlaunch` manages startup parameters. A typical start command looks like this:
+On Windows workstations, the open-source `Xming` X server is one option, available at `http://www.straightrunning.com/XmingNotes/`. It comes in two variants. Standard `xming` is one, and `xming Mesa` is the other, which lets you run OpenGL applications on a remote terminal. The downloads also include backgrounds, some in Cyrillic, and `Xlaunch` manages startup parameters. A typical start command looks like this:
 
 ```text
 "C:\Program Files\Xming\Xming.exe" :0 -clipboard \
@@ -249,12 +249,11 @@ The book opens with a blunt point: "one of the most important components of any 
 Start with correspondence. Set up a virtual address, which is an alias on the mail server that forwards email to several addresses. Use it instead of a personal or work address, or a shared `IMAP` mailbox on the server. Support assistants can then start answering at once, and user requests stay separate from other mail. On Linux mail servers, add an entry to `/etc/aliases` and rebuild the alias database with `newaliases`:
 
 ```text
-# /etc/aliases (untested here)
+# /etc/aliases
 cluster-support: foo, bar, expert@supermail.org
 ```
 
 ```bash
-# (untested here)
 newaliases
 ```
 
@@ -290,7 +289,7 @@ Finally, keep an incident response runbook. For a compromised key, revoke it in 
 
 ## 7. Lab
 
-Start with the self-checking Python lab, and run it locally. It tests `parse()` and `audit()` in `code/part06/sshd_audit.py` against two configs. The first is a vulnerable `sshd_config`, and the lab catches `4` `ERROR`s: `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes` and `PermitUserEnvironment=yes`. The second is a hardened bastion `sshd_config`, which should produce `0` findings. The lab also confirms that `parse()` enforces OpenSSH's "first occurrence of a keyword wins" rule and stops before `Match` blocks. Finally, it checks the access architecture ports (`22`, `443` and `8888`) and the `5%` inactive-account disk threshold from Chapter 27 of the book.
+Start with the self-checking Python lab, and run it locally. It tests `parse()` and `audit()` in `code/part06/sshd_audit.py` against two configs. The first is a vulnerable `sshd_config`, and the lab catches `4` `ERROR`s: `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes` and `PermitUserEnvironment=yes`. The second is a hardened bastion `sshd_config`, which should produce `0` findings. The lab also confirms that `parse()` enforces OpenSSH's "first occurrence of a keyword wins" rule and stops before `Match` blocks. Finally, it checks the access architecture ports (`22`, `443` and `8888`) and the `5%` inactive-account disk threshold from Chapter 27 of *Supercomputers for Linux Sysadmins*.
 
 ```bash
 python3 code/part06/sshd_audit_lab.py
@@ -332,11 +331,11 @@ Untested: 6) Draft the incident communication template for a storage outage.
 
 3. Configure Open OnDemand for a Slurm GPU cluster. Write `/etc/ood/config/clusters.d/my_cluster.yml` for a Slurm cluster. Then explain the roles of OOD's front-end Apache reverse proxy and the Per-User NGINX (`PUN`). Explain why the YAML filename must match `ClusterName` in `slurm.conf`, and how OOD's `--export=NONE` behaviour affects `sbatch` jobs that invoke `srun`.
 
-4. Compare remote graphical access: `X11`, `Xming`, `TigerVNC`, `x2go` and OOD batch-connect, using Chapter 18 of the book. Explain the role swap in X11, where the X server runs on your workstation and the X client runs on the cluster node. Trace each flag in `"C:\Program Files\Xming\Xming.exe" :0 -clipboard -multiwindow -xkblayout us,ru -xkbvariant winkeys -xkboptions grp:ctrl_shift_toggle`. Explain why `xauth` is strongly preferred over `xhost +` and `X0.hosts`. Then compare `TigerVNC`, `x2go` and Open OnDemand browser desktops over high-latency WAN links.
+4. Compare remote graphical access: `X11`, `Xming`, `TigerVNC`, `x2go` and OOD batch-connect, using Chapter 18 of *Supercomputers for Linux Sysadmins*. Explain the role swap in X11, where the X server runs on your workstation and the X client runs on the cluster node. Trace each flag in `"C:\Program Files\Xming\Xming.exe" :0 -clipboard -multiwindow -xkblayout us,ru -xkbvariant winkeys -xkboptions grp:ctrl_shift_toggle`. Explain why `xauth` is strongly preferred over `xhost +` and `X0.hosts`. Then compare `TigerVNC`, `x2go` and Open OnDemand browser desktops over high-latency WAN links.
 
 5. Prevent dotfile pollution and login-node abuse. Explain why putting `conda activate` or `module load cuda` inside `~/.bashrc` breaks batch reproducibility when `sbatch` runs with `--export=ALL`. Then design a login-node protection policy. Combine `/etc/skel` templates, `systemd` `user-.slice` CPU and RAM caps, `pam_slurm_adopt` on compute nodes, and dedicated Data Transfer Nodes (`DTN`s).
 
-6. Build the user support, ticketing and annual account "actualization" process, using Chapter 27 of the book. Write the `/etc/aliases` entry (`cluster-support: foo, bar, expert@supermail.org`) and the `newaliases` setup. Explain why `Mailman` or `majordomo` announcement lists must use moderated mode. Compare `RT`, `OTRS`, `Trac` and `OpenProject` with `Bugzilla` and `Redmine`. Then design the 3-week annual account re-registration ("actualization") workflow. Inactive "dead soul" accounts should be blocked and archived, and active experiment data must never be deleted.
+6. Build the user support, ticketing and annual account "actualization" process, using Chapter 27 of *Supercomputers for Linux Sysadmins*. Write the `/etc/aliases` entry (`cluster-support: foo, bar, expert@supermail.org`) and the `newaliases` setup. Explain why `Mailman` or `majordomo` announcement lists must use moderated mode. Compare `RT`, `OTRS`, `Trac` and `OpenProject` with `Bugzilla` and `Redmine`. Then design the 3-week annual account re-registration ("actualization") workflow. Inactive "dead soul" accounts should be blocked and archived, and active experiment data must never be deleted.
 
 ## Checkpoint
 

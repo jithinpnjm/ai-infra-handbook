@@ -436,13 +436,13 @@ The 32 GPUs divide in proportion to each group's share, as you can see in the ta
 </details>
 
 <details>
-<summary>**5. What are the three levels of Hierarchical Fair Queuing (HFQ) defined in Volume 24 Project 12?**</summary>
+<summary>**5. What are the three levels of Hierarchical Fair Queuing (HFQ) defined Project 12?**</summary>
 
 Level 1 keeps GPU-hour shares proportional across groups A through E. Level 2 uses round-robin inside each group, so jobs from different researchers in the same group take turns. Level 3 is opportunistic backfill. It fills idle GPUs with waiting jobs from any group, and it preempts a backfilled job only when Level 1 guarantees require it.
 </details>
 
 <details>
-<summary>**6. Why does the 768.0 GPU-hour fair-share table in Volume 24 Project 12 equal only 7.1% utilization on a 32-GPU cluster over 2 weeks, and what does that prove about Level 3 Backfill?**</summary>
+<summary>**6. Why does the 768.0 GPU-hour fair-share table Project 12 equal only 7.1% utilization on a 32-GPU cluster over 2 weeks, and what does that prove about Level 3 Backfill?**</summary>
 
 Over 14 days, 32 GPUs provide 10,752 GPU-hours. Divide the 768.0 GPU-hours in the table by that total, and you get only 7.1 percent. Even the full weekly cadence across all five groups uses only about 2,100 GPU-hours, or 19.5 percent. Strict quota caps alone leave the rest idle, so without Level 3 Backfill the cluster can never reach the 90 percent utilization target.
 </details>
@@ -454,25 +454,25 @@ The Normal Queue charges `$0.20` per GPU-hour. The Priority Queue charges `$0.40
 </details>
 
 <details>
-<summary>**8. What are the five capacity layers defined in Volume 11 Chapter 9, and why is Allocatable Inventory not the same as Sellable Capacity?**</summary>
+<summary>**8. What are the five capacity layers defined, and why is Allocatable Inventory not the same as Sellable Capacity?**</summary>
 
 The five layers are Physical Inventory, Configured Inventory, Allocatable Inventory, Service Capacity, and Sellable Capacity. Allocatable Inventory is not sellable as-is. Selling all of it as tenant quota leaves zero buffer for node failures, maintenance drains, rolling upgrades, or MIG geometry fragmentation. Sellable Capacity removes headroom reserves and fragmentation from Service Capacity, so tenant guarantees hold during maintenance and hardware faults.
 </details>
 
 <details>
-<summary>**9. State the Volume 11 Chapter 9 capacity planning formula N = ceil((D + F) / (A * (1 - H))) and define each variable.**</summary>
+<summary>**9. State the capacity planning formula N = ceil((D + F) / (A * (1 - H))) and define each variable.**</summary>
 
 In `N = ceil((D + F) / (A * (1 - H)))`, `N` is the required number of standardized worker nodes, rounded up to the next whole node. `D` is the concurrent demand, in allocations, for the service class. `F` is the allocation loss you expect from MIG geometry fragmentation or placement constraints. `A` is the number of usable allocations one standardized node provides. `H` is the planned non-sellable headroom fraction.
 </details>
 
 <details>
-<summary>**10. What are the five named operational reserves that make up the headroom fraction H in Volume 11 Chapter 9?**</summary>
+<summary>**10. What are the five named operational reserves that make up the headroom fraction H Chapter 9?**</summary>
 
 The five reserves are the Node-failure reserve, the Maintenance reserve, the Rollout reserve, the Demand-variance reserve, and the Fragmentation reserve. Together they protect tenant quotas against single-node outages, planned driver or MIG drains, staged canary upgrades, burst forecast errors, and unplaceable MIG slice geometries.
 </details>
 
 <details>
-<summary>**11. Why did the platform team in Volume 11 Chapter 9 run out of MIG capacity two weeks after seeing 48% average fleet utilization?**</summary>
+<summary>**11. Why did the platform team run out of MIG capacity two weeks after seeing 48% average fleet utilization?**</summary>
 
 The 48 percent chart averaged compute activity across incompatible MIG layouts. It also counted nodes reserved for maintenance as usable supply, and it ignored the latency headroom that online inference services need. As a result, it hid the fact that no free three-slice MIG partition could actually be placed.
 </details>
@@ -484,13 +484,13 @@ Suppose a tenant reserves a `MIG 3g.40gb` partition. Roughly half of the 80GB GP
 </details>
 
 <details>
-<summary>**13. What is the difference between Showback and Chargeback in Volume 11 Chapter 9, and why should platforms deploy Showback first?**</summary>
+<summary>**13. What is the difference between Showback and Chargeback, and why should platforms deploy Showback first?**</summary>
 
 Showback reports each team's GPU use, idle reservation hours, and hypothetical cost, but it issues no internal bill. Chargeback debits the team's cost center directly. Start with Showback. It lets you find broken namespace-to-cost-center mappings, teaches users what idle reservations cost, and sets up a dispute process before any budget is billed.
 </details>
 
 <details>
-<summary>**14. What are the six observable fairness policy elements in Volume 11 Chapter 8?**</summary>
+<summary>**14. What are the six observable fairness policy elements Chapter 8?**</summary>
 
 The six policy elements, and the metric you can observe for each, are in the table:
 
@@ -505,13 +505,13 @@ The six policy elements, and the metric you can observe for each, are in the tab
 </details>
 
 <details>
-<summary>**15. What are the three time scales of fairness controls in Volume 11 Chapter 8, and what fails if any one of them is missing?**</summary>
+<summary>**15. What are the three time scales of fairness controls, and what fails if any one of them is missing?**</summary>
 
 The three time scales are admission, execution, and lifecycle. Admission-time controls check class eligibility, quota, and approvals. Without them, unauthorized or unbounded jobs start. Execution-time controls enforce concurrency limits, protected pools, and priority preemption. Without them, noisy neighbors degrade running services. Lifecycle-time controls run across weeks and months, covering reservation reviews, showback, and demand forecasting. Without them, idle claims and profile fragmentation harden into permanent hoarding.
 </details>
 
 <details>
-<summary>**16. How do you distinguish useful idle reserved GPU capacity from wasteful hoarding in Volume 11 Chapter 9?**</summary>
+<summary>**16. How do you distinguish useful idle reserved GPU capacity from wasteful hoarding Chapter 9?**</summary>
 
 Picture an idle reserved GPU. It is valid when it serves a documented purpose, and you can tell by checking that purpose. That purpose can be a latency burst buffer, a maintenance or failover spare, or a pre-approved window for an imminent critical launch. The reservation becomes hoarding when nobody can explain it and it keeps blocking queued work from other teams.
 </details>
@@ -529,7 +529,7 @@ Use the first command for the 72-hour normal tier: `sacctmgr add qos normal prio
 </details>
 
 <details>
-<summary>**19. What eight fields belong in a Capacity Decision Record (Volume 11 Chapter 9) when changing a node pool's sharing layout or quota policy?**</summary>
+<summary>**19. What eight fields belong in a Capacity Decision Record when changing a node pool's sharing layout or quota policy?**</summary>
 
 A Capacity Decision Record holds eight fields: Service change, Demand evidence, Compatibility, Capacity model, Tenant impact, Alternatives, Acceptance checks, and Review date. When you record all eight, layout and quota changes stay auditable across budget cycles.
 </details>

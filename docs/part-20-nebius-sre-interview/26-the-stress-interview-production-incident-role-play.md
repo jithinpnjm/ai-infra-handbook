@@ -570,7 +570,7 @@ Ten scripted incidents follow, five for the inference platform and five general 
 
 ## Hands-on lab
 
-All steps run in `code/part20` unless stated. I ran steps 1 to 4 and 8 on macOS with Python 3.12. I ran steps 6, 7 and 8 again on Linux, in disposable containers from `ubuntu:24.04` (Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt`, OpenSSL 3.0.13, lsof from apt). Step 7 used `docker run --tmpfs`, which needs no extra privileges, and the repository mounted read-only. Step 5 is interactive and I did not run it by hand.
+All steps run in `code/part20` unless stated. Steps 1 to 4 and 8 were run on macOS, and steps 6, 7 and 8 again on Linux in disposable containers. Step 5 is interactive and was not run by hand.
 
 1. List the incidents.
 
@@ -703,7 +703,7 @@ The router keeps its own pool, and the three workers never rejoined after livene
 
 </details>
 
-<details><summary>5. How many bytes of KV cache does one token need in the book's Llama-2-7b example, and what does a 28,000-token prompt need?</summary>
+<details><summary>5. How many bytes of KV cache does one token need for Llama-2-7b, and what does a 28,000-token prompt need?</summary>
 
 2 x 32 layers x 32 heads x 128 head dimension x 2 bytes is 524,288 bytes, about 0.5 MB per token. A 28,000-token prompt needs about 14,000 MB, roughly 14 GB for that one request.
 
@@ -775,4 +775,4 @@ Fetched on 2026-11-09.
 
 ### Verification log
 
-Fact-check pass on 2026-11-09. Six claims were checked and all are confirmed: the `kubectl rollout undo` and `rollout status` commands on the Kubernetes Deployments page, the startup probe arithmetic on the probes page, the four incident roles and declare-early conditions in Managing Incidents, the 64 attempts and 60 retries per minute in Addressing Cascading Failures, the etcd fsync figure and defragmentation warning in the etcd documentation, and the eviction defaults used in chapter 20.23. The router registration and every incident number are invented and cannot be checked.
+Lab runs: steps 1 to 4 and 8 on macOS with Python 3.12; steps 6, 7 and 8 again on Linux, in disposable containers from `ubuntu:24.04` (Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt`, OpenSSL 3.0.13, lsof from apt). Step 7 used `docker run --tmpfs`, which needs no extra privileges, and the repository mounted read-only. Fact-check pass on 2026-11-09. Six claims were checked and all are confirmed: the `kubectl rollout undo` and `rollout status` commands on the Kubernetes Deployments page, the startup probe arithmetic on the probes page, the four incident roles and declare-early conditions in Managing Incidents, the 64 attempts and 60 retries per minute in Addressing Cascading Failures, the etcd fsync figure and defragmentation warning in the etcd documentation, and the eviction defaults used in chapter 20.23. The router registration and every incident number are invented and cannot be checked.

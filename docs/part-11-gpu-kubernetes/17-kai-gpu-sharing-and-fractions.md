@@ -26,7 +26,7 @@ lab_venue: "GCP / GKE"
 Picture an AI platform where every data scientist and every small inference service gets an exclusive H100 GPU. The finance team pays top dollar for those flagship servers. Meanwhile, the engineering teams watch most of the silicon sit empty. Now consider three common workloads on a shared platform. Together they need only a tiny fraction of a single H100 card. Yet standard Kubernetes scheduling hands them three separate physical accelerators.
 
 ```text
-Three-Workload Demand vs Single H100 80 GB Capacity (volume-24/chapter-06)
+Three-Workload Demand vs Single H100 80 GB Capacity
 --------------------------------------------------------------------------
 1. Batch CNN (ResNet-50, 25.5M parameters):
    - Memory required: 4 GB VRAM (batch 32 x 3x224x224 = 150 MB input)
@@ -153,7 +153,7 @@ Picture a customer-facing inference endpoint with a strict tail-latency target. 
 The manifest below applies the second rule to the `prod-inference` namespace.
 
 ```yaml
-# Deny best-effort shared GPUs in production namespaces (volume-11/chapter-04, untested here)
+# Deny best-effort shared GPUs in production namespaces
 # Production SLO breach example: p99 < 100 ms endpoint degraded to p99 > 300 ms on shared pool
 apiVersion: v1
 kind: ResourceQuota
@@ -239,7 +239,7 @@ During architecture reviews, platform teams weigh compute boundaries, memory iso
 | **Compute (SM) Allocation** | Whole physical GPU (`100%` of SMs) | Hardware-partitioned SM slice (`1/7` to `7/7` on H100/H200) | Time-multiplexed context switching across shared SMs | Concurrent spatial SM execution via shared `nvidia-cuda-mps-control` server | Virtualized vGPU profile assigned by hypervisor/vGPU manager |
 | **Memory Capacity & Bandwidth** | Full HBM (`80 GB` on A100/H100) and full `3.35 TB/s` bandwidth | Dedicated HBM partition (`10 GB`, `20 GB`, `40 GB`, `80 GB`) + dedicated memory controllers & L2 banks | Shared physical HBM address space (KAI enforces admission `gpu-memory` budget; static time-slicing has no cap) | Shared physical HBM address space inside the MPS server domain | Profile-defined framebuffer allocation managed by hypervisor vGPU driver |
 | **Fault & Error Isolation** | Strong card-level isolation (one tenant per physical GPU) | **Hardware fault isolation:** Xid/memory fault in one GI does not crash sibling GIs | **Shared fault domain:** An unrecoverable GPU context fault or OOM affects co-tenants on that card | **Shared fault domain:** A fatal GPU fault in one MPS client terminates all clients on that server | Strong VM guest-OS boundary plus vGPU profile separation |
-| **Tail-Latency (`p99`) Predictability** | Highest (zero inter-tenant context switch or memory-bus contention) | High (dedicated SMs and memory channels; `p99 = 4.8 ms` embedding and `42.3 ms` CNN in `volume-24/chapter-06`) | Best-effort (latency rises from `8 ms` at `1` replica to `120 ms` at `4` replicas and `500 ms` at `8` replicas in `volume-11/chapter-04`) | Low latency for trusted co-operative inference pipelines, but vulnerable to single-client memory/fault spikes | High within profile limits, subject to hypervisor scheduling policy |
+| **Tail-Latency (`p99`) Predictability** | Highest (zero inter-tenant context switch or memory-bus contention) | High (dedicated SMs and memory channels; `p99 = 4.8 ms` embedding and `42.3 ms` CNN) | Best-effort (latency rises from `8 ms` at `1` replica to `120 ms` at `4` replicas and `500 ms` at `8` replicas) | Low latency for trusted co-operative inference pipelines, but vulnerable to single-client memory/fault spikes | High within profile limits, subject to hypervisor scheduling policy |
 | **Dynamic Reconfiguration Cost** | Immediate at Pod termination | Requires draining active workloads on the card (or MIG slice) before reconfiguring GI layout | **Zero reconfiguration drain with KAI Fractions:** KAI dynamically packs `0.5 + 0.25 + 0.25` and removes the reservation pod when empty | Requires managing MPS control daemon lifecycle per GPU or per MIG slice | Often tied to VM lifecycle, host vGPU driver version, and license server |
 | **Observability & Attribution** | Clean per-GPU and per-Pod DCGM metrics | Per-MIG-instance (`GPU_I_ID`) DCGM metrics for utilization and memory | Device-plugin time-slicing aggregates DCGM metrics at physical GPU level; requires KAI `PodGroup` + `nvidia-smi --query-processes` correlation | Aggregated under MPS server process unless profiled with Nsight Systems (`nsys`) | Requires matching host vGPU manager telemetry with guest OS metrics |
 
@@ -271,7 +271,7 @@ Put a workload behind a hardware wall only when its tenant boundary or its laten
 Developers ask for part of a GPU through ordinary Pod metadata, not through an integer GPU limit. Start by setting the `kai.scheduler/queue` label, and point `schedulerName` at `kai-scheduler`. Next, add either the `gpu-fraction` or the `gpu-memory` annotation. Leave out integer GPU limits from the container specification.
 
 ```yaml
-# kai-fractional-gpu-pods.yaml (untested here)
+# kai-fractional-gpu-pods.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -306,14 +306,14 @@ The manifest asks for a quarter of a GPU for a notebook. The comments explain th
 Administrators run `nvidia-smi` on the worker host to manage MIG partitions. The commands below walk through the whole cycle. They enable MIG mode, list valid profile identifiers, create GPU and Compute Instances, and audit the active sharing mechanism.
 
 ```bash
-# 1. Enable MIG mode on GPU 0 and list available GPU Instance Profiles (untested here)
+# 1. Enable MIG mode on GPU 0 and list available GPU Instance Profiles
 sudo nvidia-smi -i 0 -mig 1
 sudo nvidia-smi mig -lgip
 
-# 2. Create 1x 2g.20gb (profile ID 14) + 2x 1g.10gb (profile ID 19) with compute instances (-C) (untested here)
+# 2. Create 1x 2g.20gb (profile ID 14) + 2x 1g.10gb (profile ID 19) with compute instances (-C)
 sudo nvidia-smi mig -i 0 -cgi 14,19,19 -C
 
-# 3. Verify active MIG instances and check which sharing mechanism is active on a host (untested here)
+# 3. Verify active MIG instances and check which sharing mechanism is active on a host
 nvidia-smi -i 0 --query-gpu=mig.mode.current --format=csv,noheader
 nvidia-smi mig -lgi
 nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv
@@ -327,11 +327,11 @@ Picture an on-call page for a shared GPU node. The node is misbehaving, and the 
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. `8` concurrent time-sliced notebooks hit `p99 = 500 ms` and crash with CUDA OOM (`volume-11/chapter-04`)** | On an `80 GB` A100 with `replicas: 8`, notebooks randomly crash with `CUDA out of memory` and kernel launch `p99` jumps from `8 ms` to `500 ms`. `nvidia-smi` shows combined memory demand (`8 × 12 GB = 96 GB`) exceeding `80 GB`. | **Time-Slicing Memory Over-Subscription:** Time-slicing has zero per-replica memory enforcement; `8` active `12 GB` notebooks exceed `80 GB` by `16 GB`. | Reduce `replicas` to **`4`** (`48 GB` used, `32 GB` headroom, `p99 = 120 ms`) or use KAI Scheduler's `gpu-memory` annotation (`"12000"` MiB) so the scheduler never places more than `80 GB` of cumulative memory claims on one GPU. |
-| **2. Production inference service (`p99 < 100 ms`) degrades to `p99 > 300 ms` after deployment update (`volume-11/chapter-04` Scenario 3)** | All Pods report `1/1 Running`, but `curl http://service:8000/metrics \| grep latency_p99_ms` shows `> 300 ms`. `kubectl exec <pod> -- nvidia-smi` shows multiple neighboring notebook processes on the same GPU. | **Service Misplaced onto Best-Effort Time-Sliced Pool:** The deployment requested generic `nvidia.com/gpu: 1` on a cluster where time-sliced nodes advertised `nvidia.com/gpu` without `renameByDefault: true`. | Enable `renameByDefault: true` (`nvidia.com/gpu.shared`), block `nvidia.com/gpu.shared: "0"` via `ResourceQuota` in production namespaces, and move the endpoint to a dedicated or `MIG` pool. |
-| **3. Embedding model fails to allocate `2 GB` on a `20 GB` (`2g.20gb`) MIG partition (`volume-24/chapter-06` Table)** | Pod on a `2g.20gb` MIG slice throws `CUDA out of memory` when trying to allocate a contiguous `2 GB` tensor despite `nvidia-smi` showing `8 GB` free on the slice. | **VRAM Heap Fragmentation Inside the MIG Slice:** Prior workloads or variable-length sequences left non-coalesced small free blocks across the `20 GB` slice. | Restart the Pod / clear all processes on the MIG partition, or enable PyTorch caching allocator `expandable_segments:True` (`PYTORCH_ALLOC_CONF`). |
-| **4. Online inference latency on `1g.10gb` jumps from `4.8 ms` to `12 ms` when a second process runs on the same MIG slice (`volume-24/chapter-06` Table)** | Two containers were assigned to the *same* `1g.10gb` MIG instance; when batch CNN starts, embedding `p99` jumps from `4.8 ms` to `12 ms`. | **Intra-Slice Kernel Priority Inversion:** Sharing a single MIG slice between two processes re-introduces time-slicing inside that slice; the long batch CNN kernel blocks the short `526K`-FLOP embedding kernel. | Assign `1` Pod per MIG instance (`1g.10gb` #1 for Batch CNN, `1g.10gb` #2 for Online Embedding), and profile kernel execution order with `nsys profile --trace=cuda ./app` and `nsys stats --report cuda_gpu_trace` (never `nvprof`, which is unsupported on Ampere+). |
-| **5. `dcgm-exporter` dashboards cannot identify which container on a time-sliced GPU is causing `100%` SM saturation (`volume-11/chapter-04` Scenario 4)** | Grafana shows physical `GPU 0` at `100%` utilization and `80 GB` memory, but `DCGM_FI_DEV_GPU_UTIL` cannot break usage down among the `4` time-sliced pods sharing `GPU 0`. | **Known Device-Plugin Time-Slicing Telemetry Limitation:** Under standard device-plugin time-slicing, all `4` pods mount the same `/dev/nvidia0` device node, so DCGM sees device-wide counters rather than per-container cgroup counters. | Correlate KAI `PodGroup` / `BindRequest` allocation timestamps, application-level request metrics, and host-level `nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv`. |
+| **1. `8` concurrent time-sliced notebooks hit `p99 = 500 ms` and crash with CUDA OOM** | On an `80 GB` A100 with `replicas: 8`, notebooks randomly crash with `CUDA out of memory` and kernel launch `p99` jumps from `8 ms` to `500 ms`. `nvidia-smi` shows combined memory demand (`8 × 12 GB = 96 GB`) exceeding `80 GB`. | **Time-Slicing Memory Over-Subscription:** Time-slicing has zero per-replica memory enforcement; `8` active `12 GB` notebooks exceed `80 GB` by `16 GB`. | Reduce `replicas` to **`4`** (`48 GB` used, `32 GB` headroom, `p99 = 120 ms`) or use KAI Scheduler's `gpu-memory` annotation (`"12000"` MiB) so the scheduler never places more than `80 GB` of cumulative memory claims on one GPU. |
+| **2. Production inference service (`p99 < 100 ms`) degrades to `p99 > 300 ms` after deployment update** | All Pods report `1/1 Running`, but `curl http://service:8000/metrics \| grep latency_p99_ms` shows `> 300 ms`. `kubectl exec <pod> -- nvidia-smi` shows multiple neighboring notebook processes on the same GPU. | **Service Misplaced onto Best-Effort Time-Sliced Pool:** The deployment requested generic `nvidia.com/gpu: 1` on a cluster where time-sliced nodes advertised `nvidia.com/gpu` without `renameByDefault: true`. | Enable `renameByDefault: true` (`nvidia.com/gpu.shared`), block `nvidia.com/gpu.shared: "0"` via `ResourceQuota` in production namespaces, and move the endpoint to a dedicated or `MIG` pool. |
+| **3. Embedding model fails to allocate `2 GB` on a `20 GB` (`2g.20gb`) MIG partition** | Pod on a `2g.20gb` MIG slice throws `CUDA out of memory` when trying to allocate a contiguous `2 GB` tensor despite `nvidia-smi` showing `8 GB` free on the slice. | **VRAM Heap Fragmentation Inside the MIG Slice:** Prior workloads or variable-length sequences left non-coalesced small free blocks across the `20 GB` slice. | Restart the Pod / clear all processes on the MIG partition, or enable PyTorch caching allocator `expandable_segments:True` (`PYTORCH_ALLOC_CONF`). |
+| **4. Online inference latency on `1g.10gb` jumps from `4.8 ms` to `12 ms` when a second process runs on the same MIG slice** | Two containers were assigned to the *same* `1g.10gb` MIG instance; when batch CNN starts, embedding `p99` jumps from `4.8 ms` to `12 ms`. | **Intra-Slice Kernel Priority Inversion:** Sharing a single MIG slice between two processes re-introduces time-slicing inside that slice; the long batch CNN kernel blocks the short `526K`-FLOP embedding kernel. | Assign `1` Pod per MIG instance (`1g.10gb` #1 for Batch CNN, `1g.10gb` #2 for Online Embedding), and profile kernel execution order with `nsys profile --trace=cuda ./app` and `nsys stats --report cuda_gpu_trace` (never `nvprof`, which is unsupported on Ampere+). |
+| **5. `dcgm-exporter` dashboards cannot identify which container on a time-sliced GPU is causing `100%` SM saturation** | Grafana shows physical `GPU 0` at `100%` utilization and `80 GB` memory, but `DCGM_FI_DEV_GPU_UTIL` cannot break usage down among the `4` time-sliced pods sharing `GPU 0`. | **Known Device-Plugin Time-Slicing Telemetry Limitation:** Under standard device-plugin time-slicing, all `4` pods mount the same `/dev/nvidia0` device node, so DCGM sees device-wide counters rather than per-container cgroup counters. | Correlate KAI `PodGroup` / `BindRequest` allocation timestamps, application-level request metrics, and host-level `nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv`. |
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
@@ -341,7 +341,7 @@ Start with the symptom you see, and find the row that matches it. Each row pairs
 
 ### Venue and scope
 
-This lab runs on your own machine with the Python standard library. The code lives in `code/part11/kai_gpu_sharing_and_fractions.py` and `code/part11/kai_gpu_sharing_and_fractions_lab.py`. It simulates the KAI Scheduler fractional GPU bin-packer and the integer reservation Pod lifecycle in the Binder microservice. It also checks the A100 notebook concurrency envelope and the H100 three-workload MIG geometry solver. The cluster and `nvidia-smi` commands earlier in the chapter are marked untested here, because the lab does not run them.
+This lab runs on your own machine with the Python standard library. The code lives in `code/part11/kai_gpu_sharing_and_fractions.py` and `code/part11/kai_gpu_sharing_and_fractions_lab.py`. It simulates the KAI Scheduler fractional GPU bin-packer and the integer reservation Pod lifecycle in the Binder microservice. It also checks the A100 notebook concurrency envelope and the H100 three-workload MIG geometry solver. The cluster and `nvidia-smi` commands earlier in the chapter were not run on live hardware, because the lab does not run them.
 
 ### Step 1: Run the self-checking KAI GPU sharing and fractions lab (tested here)
 

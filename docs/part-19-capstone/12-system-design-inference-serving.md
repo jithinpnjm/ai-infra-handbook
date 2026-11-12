@@ -29,7 +29,7 @@ A platform team is asked to run the language models for the whole company. The s
 
 That request is the system design question in this chapter. It is not "design a public API", which chapter 20.13 already covers for a vendor with outside customers. Here the customers are internal teams, the traffic is small, the models differ in size, and the pool is shared. The skill being tested is how you turn several unrelated demands into one pool that stays fast, stays cheap and stays safe to change.
 
-As a capstone for the design track, this chapter is the vendor-neutral, platform-engineer's version of that design, written for interview pace. It builds on the Volume 20 chapters by link and does not repeat them. It adds one worked example, and four small tested programs that you can run on a laptop. **Decision rule:** if you can say your sizing, your placement rule, your scaling signal and your rollback trigger as numbers, you have a design. If you can only say product names, you have a diagram.
+As a capstone for the design track, this chapter is the vendor-neutral, platform-engineer's version of that design, written for interview pace. It builds on the chapters in Part 20 by link and does not repeat them. It adds one worked example, and four small tested programs that you can run on a laptop. **Decision rule:** if you can say your sizing, your placement rule, your scaling signal and your rollback trigger as numbers, you have a design. If you can only say product names, you have a diagram.
 
 **In one minute:** the design is a shared pool with priorities. Models are sized one by one with a tested estimator, then placed together so that their peaks do not coincide. Scaling and rollout are written as code with tests, so the rules are checked before they run.
 
@@ -190,7 +190,7 @@ Four tiers follow from this. Each answers a different question about cold starts
 
 Hands-On LLM Serving and Optimization, chapter 3, describes the trade-off between two multi-model designs. A shared design saves money but suffers cold starts and hot-model scaling. A dedicated design per model has no cold start and is simpler, but wastes capacity on models that are used little. My tiers use both. Hot and warm models are dedicated. Cold models share slots.
 
-The cold slots use a least-recently-used rule, the same one the book's `ModelManager` uses. When all slots are taken, the model unused for longest is unloaded. The class `ModelCache` in the code implements it. I assumed a load time of 16.4 GB at 2 GB per second plus 45 seconds of engine start, about 53 seconds. These are my assumptions. The book says a cold start can take several seconds or tens of seconds, and Distributed AI Systems puts loading and warm-up at 30 to 60 seconds for LLMs. Generative AI on Kubernetes says large models can take many minutes.
+The cold slots use a least-recently-used rule, the rule a model manager normally uses. When all slots are taken, the model unused for longest is unloaded. The class `ModelCache` in the code implements it. The load time assumed here is 16.4 GB at 2 GB per second plus 45 seconds of engine start, about 53 seconds. These are assumptions. One source says a cold start can take several seconds or tens of seconds, and Distributed AI Systems puts loading and warm-up at 30 to 60 seconds for LLMs. Generative AI on Kubernetes says large models can take many minutes.
 
 The trace in the code has 16 requests across the three small models. The results show what a slot buys.
 
@@ -226,7 +226,7 @@ I would keep five decisions at the gateway.
 
 Inside one model, the router picks a replica. Distributed AI Systems names three balancers, which are round-robin, least connections and weighted. For LLMs, least in-flight requests is the sensible default, because request cost varies so much. When many requests share a long prefix, route by prefix to the replica that holds the cache. Generative AI on Kubernetes calls this prefix-aware routing, and the 20.21 chapter compares it with load-aware routing. With only four replicas of a model, I would start with least in-flight and add prefix routing only if the cache hit rate is measured and worth it.
 
-Kubernetes offers the pieces. Distributed AI Systems lists Services and Ingress for load balancing, weighted routing for canary, and readiness probes for health. KServe, KubeAI and llm-d are Kubernetes-native stacks the book compares. I would not choose one in an interview. I would say which problem each one solves and ask what the team already runs.
+Kubernetes offers the pieces. Distributed AI Systems lists Services and Ingress for load balancing, weighted routing for canary, and readiness probes for health. KServe, KubeAI and llm-d are Kubernetes-native stacks that *Distributed AI Systems* compares. I would not choose one in an interview. I would say which problem each one solves and ask what the team already runs.
 
 **Decision rule:** put identity, token quotas, aliases and deadlines at the gateway, and keep replica choice in the router.
 
@@ -397,7 +397,7 @@ For this pool I would do five things.
 4. Pin the engine image by version or digest. Generative AI on Kubernetes says never to use a mutable tag such as latest.
 5. Apply input and output guards in the application layer, not in the pool. Machine Learning Platform Engineering, chapter 13, describes guards for personal data and prompt injection around the model.
 
-One caution. Production Kubernetes presents Pod Security Policies. That API was removed from Kubernetes, and the book's text predates the replacement. Use Pod Security Admission instead. I did not fetch its documentation in this session, so treat that line as unverified.
+One caution. Production Kubernetes presents Pod Security Policies. That API was removed from Kubernetes, and *Production Kubernetes* predates the replacement. Use Pod Security Admission instead. Its documentation was not checked here, so treat that line as unverified.
 
 Secrets in the examples are placeholders only. A real gateway key lives in a secret store, readable only by the gateway service account, with a file mode of 0400 if mounted as a file.
 
@@ -434,7 +434,7 @@ The file `c12_design_review.py` is the checklist as code. It takes a design as a
 
 This lab runs on a laptop. It needs Python 3, pytest, PyYAML, kubeconform and a shallow clone of kedacore/keda. It needs no GPU.
 
-**What was run here, and what was not.** I ran every command below on a macOS arm64 laptop on 2026-11-10 and 2026-11-11. I did not run any model, engine, Kubernetes cluster, KEDA operator or Prometheus. Every figure about GPU speed comes from the 20.12 estimator, which gives ceilings. Not run: needs GPUs and a cluster.
+**What was run here, and what was not.** Every command below was run on a macOS arm64 laptop on 2026-11-10 and 2026-11-11. No model, engine, Kubernetes cluster, KEDA operator or Prometheus was run. Every figure about GPU speed comes from the 20.12 estimator, which gives ceilings. Not run: needs GPUs and a cluster.
 
 The script `c12_lab.sh` holds all the commands.
 
@@ -574,7 +574,7 @@ Its BF16 weights are about 145 GB, which does not fit one 80 GB GPU. The script 
 The hot floor and the 72B replicas dominate the count, and two peaks coincide around midday. The larger saving comes from the quiet hours.
 </details>
 
-<details><summary>7. How does the book say to choose an engine?</summary>
+<details><summary>7. How should you choose an engine?</summary>
 Start from SLOs, test real prompts, compare engines under the same settings, and measure operability. The rule is workload first, not hype.
 </details>
 

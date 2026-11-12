@@ -63,7 +63,7 @@ The stage timings and the Programmatic Dependent Launch figures in the table abo
 
 ## 1. Overlapping Kernel Execution and 3-Way Data Transfers with CUDA Streams
 
-### 1.1 Concurrent kernel dispatch and host interleaving (`Figure 11-1`)
+### 1.1 Concurrent kernel dispatch and host interleaving
 
 When a training script launches every kernel into a single queue, small kernels that use only part of the GPU leave the remaining Streaming Multiprocessors idle. Worse, if the host waits for each launch before running CPU bookkeeping, host and device execution serialize completely. A CUDA Stream solves this problem by acting as an independent first-in, first-out queue of device operations.
 
@@ -120,7 +120,7 @@ int main() {
 }
 ```
 
-### 1.2 Three-way `H2D` / `Compute` / `D2H` overlap, hardware limits (`128` grids), and saturation contention (`Figure 11-2`)
+### 1.2 Three-way `H2D` / `Compute` / `D2H` overlap, hardware limits (`128` grids), and saturation contention
 
 In a naive inference or training loop, each micro-batch copies inputs from host to device. Runs the kernel, and copies outputs from device to host one after another. While the PCIe or NVLink bus transfers data, the Streaming Multiprocessors sit idle, and while the Streaming Multiprocessors compute, both directions of the bus sit idle. Over eight batches, this stop-and-go execution nearly doubles wall-clock latency.
 
@@ -232,13 +232,13 @@ void runStreamOrderedPipeline(const float* h_data1, float* h_result1,
 }
 ```
 
-### 2.2 Three LLM workloads that depend on `cudaMallocAsync` (`Figure 11-3`)
+### 2.2 Three LLM workloads that depend on `cudaMallocAsync`
 
 Large language model serving and training engines allocate scratch memory whose size changes from batch to batch and step to step. When a serving engine uses blocking allocations for these buffers, a single sequence-length jump stalls every concurrent stream on the GPU. Figure 11-3 of *AI Systems Performance Engineering* Chapter 11 and `plan_stream_ordered_pool()` in `code/part10/inter_kernel_pipelining.py` show three places where `cudaMallocAsync` preserves full overlap.
 
 | LLM Runtime Pattern | Why Dynamic Allocation Occurs | What Happens with Legacy `cudaMalloc` | What Happens with `cudaMallocAsync` |
 |---|---|---|---|
-| 1. Per-batch attention scratch buffers (`16 MB` workspace, Figure 11-3) | Each Transformer mini-batch requires temporary scratch memory of 16 MB = 16,777,216 bytes for pre-softmax attention scores, layer norm, or intermediate activations. | Calling `cudaMalloc` on `stream1` forces a global barrier across the GPU, stalling `stream0`'s in-flight attention kernel. | `cudaMallocAsync(&scratchPtr, 16 * 1024 * 1024, stream1)` appends a queue item to `stream1`; `stream0` continues executing uninterrupted. |
+| 1. Per-batch attention scratch buffers (`16 MB` workspace) | Each Transformer mini-batch requires temporary scratch memory of 16 MB = 16,777,216 bytes for pre-softmax attention scores, layer norm, or intermediate activations. | Calling `cudaMalloc` on `stream1` forces a global barrier across the GPU, stalling `stream0`'s in-flight attention kernel. | `cudaMallocAsync(&scratchPtr, 16 * 1024 * 1024, stream1)` appends a queue item to `stream1`; `stream0` continues executing uninterrupted. |
 | 2. Variable-length sequence batches (`512` to `1,024` tokens) and growing decode KV caches | When Batch N has 512 tokens per sequence and Batch N + 1 has 1,024 tokens per sequence for a 2.0x growth, or as autoregressive decode appends K/V vectors, the previous buffer is too small. | Reallocating the larger buffer via `cudaMalloc` halts all concurrent H2D prompt staging and D2H token streaming. | `cudaMallocAsync` reserves the 2.0x larger buffer inside the active stream while upstream H2D and downstream D2H streams run in parallel. |
 | 3. Layerwise pipeline parallelism across streams (`layers 0-5` vs `layers 6-11`) | A 12-layer Transformer block is split on one GPU so `stream 0` runs layers 0-5 and `stream 1` runs layers 6-11, handing off intermediate activation buffers between halves. | Allocating the next batch's activation buffer after `stream 0` finishes layers 0-5 pauses `stream 1`'s execution of layers 6-11. | `stream 0` calls `cudaMallocAsync` for the next micro-batch's activations while `stream 1` simultaneously computes layers 6-11 on the prior batch. |
 
@@ -246,7 +246,7 @@ Large language model serving and training engines allocate scratch memory whose 
 
 ## 3. Default vs. Explicit Streams, Per-Thread Default Streams (`PTDS`), Events, and Host Callbacks
 
-### 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams (`Figure 11-4`)
+### 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams
 
 A single stray CUDA call that omits its stream argument can silently destroy multi-stream concurrency across an entire application. By default, omitting the stream argument sends work to the legacy default stream, which acts as a global bidirectional barrier against every blocking stream on the GPU. Engineers debugging Nsight Systems traces recognize this bug immediately when all active streams stop at a vertical wall before and after a tiny helper kernel.
 
@@ -255,7 +255,7 @@ CUDA provides three distinct stream behaviors depending on how streams are creat
 | Stream Type | Creation or Activation Flag | Self-Ordering | Cross-Stream Synchronization Behavior | Production Recommendation |
 |---|---|---|---|---|
 | Legacy Default Stream (`stream 0` / `cudaStreamLegacy`) | Default when PTDS is not enabled and stream is omitted or `0`. | Strictly FIFO within `stream 0`. | Global bidirectional barrier: any command issued to `stream 0` waits for all prior work in every blocking stream across the GPU to finish, and blocks all subsequent work in those streams until `stream 0` finishes. | Never launch performance-critical kernels or copies on `stream 0`; keep `stream 0` completely idle during training and inference loops. |
-| Per-Thread Default Stream (PTDS / `cudaStreamPerThread`, Figure 11-4) | Compile with `nvcc --default-stream per-thread` or `#define CUDA_API_PER_THREAD_DEFAULT_STREAM 1` before CUDA headers. | Strictly FIFO within each CPU thread's private default stream. | Private per host thread: Thread A's default stream never waits on or blocks Thread B's default stream or explicit streams, though it still synchronizes with `cudaStreamLegacy` if mixed. | Enable in multi-threaded C++ runtimes so third-party libraries omitting stream arguments do not serialize across CPU threads. |
+| Per-Thread Default Stream (PTDS / `cudaStreamPerThread`) | Compile with `nvcc --default-stream per-thread` or `#define CUDA_API_PER_THREAD_DEFAULT_STREAM 1` before CUDA headers. | Strictly FIFO within each CPU thread's private default stream. | Private per host thread: Thread A's default stream never waits on or blocks Thread B's default stream or explicit streams, though it still synchronizes with `cudaStreamLegacy` if mixed. | Enable in multi-threaded C++ runtimes so third-party libraries omitting stream arguments do not serialize across CPU threads. |
 | Explicit Non-Blocking Stream (`cudaStreamNonBlocking`) | `cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)` | Strictly FIFO within stream `s`. | Completely independent: never implicitly synchronizes with `stream 0` (`cudaStreamLegacy`) or any other stream; synchronizes only when explicitly instructed via `cudaStreamWaitEvent`. | Create named non-blocking streams for all compute, H2D, D2H, P2P, and NCCL or NIXL queues. |
 
 ### 3.2 Fine-grained cross-stream events (`Figures 11-5 to 11-7`) and the `cudaLaunchHostFunc` deadlock rule
@@ -454,7 +454,7 @@ Once a simpler double-buffered kernel and multi-stream pipeline already saturate
 
 ## 5. Multi-GPU Compute, P2P (`cudaMemcpyPeerAsync`), `NCCL` Ring All-Reduce, `NIXL`, and `CUDA Graph` Stream Capture
 
-### 5.1 Multi-GPU pipeline parallelism (`cudaMemcpyPeerAsync`) and data parallelism (`NCCL` & `NIXL`, `Figure 11-8`)
+### 5.1 Multi-GPU pipeline parallelism (`cudaMemcpyPeerAsync`) and data parallelism (`NCCL` & `NIXL`)
 
 In multi-GPU training and inference, running peer-to-peer activation transfers. Gradient reductions on the same stream as forward and backward compute stalls every GPU at every layer boundary. A pipeline-parallel stage on GPU 0 sits idle while its activations cross NVLink to GPU 1. And data-parallel backward passes wait for ring AllReduce collectives to finish before starting the next layer. Separating compute and communication onto dedicated streams across GPUs lets compute engines and network engines run simultaneously.
 
@@ -513,7 +513,7 @@ cudaStreamEndCapture(streamA, &graph);
 
 ## 6. Programmatic Dependent Launch (`PDL`) and Combining `PDL` + Thread Block Clusters + Warp Specialization
 
-### 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream (`Figure 11-9`)
+### 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream
 
 Normally, two kernels enqueued into the same CUDA Stream execute strictly back-to-back. The hardware scheduler will not start the secondary kernel on any Streaming Multiprocessor until every thread block of the primary kernel has finished its epilogue and exited. During the tail wave of the primary kernel, most Streaming Multiprocessors sit idle while the secondary kernel waits behind the stream boundary.
 
@@ -864,7 +864,7 @@ Passing `cudaStreamCaptureModeGlobal` instructs CUDA to record operations enqueu
 </details>
 
 <details>
-<summary>**19. Explain the three-part API mechanism of Programmatic Dependent Launch (`PDL`, Figure 11-9).**</summary>
+<summary>**19. Explain the three-part API mechanism of Programmatic Dependent Launch (`PDL`).**</summary>
 
 1. The primary kernel calls `cudaTriggerProgrammaticLaunchCompletion()` as soon as all global memory writes needed by the secondary kernel are flushed. Allowing the secondary kernel to start while the primary kernel runs its epilogue.
 2. The secondary kernel calls `cudaGridDependencySynchronize()` to wait for the primary kernel's trigger and memory flush before reading shared data.

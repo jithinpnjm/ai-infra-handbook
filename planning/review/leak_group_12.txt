@@ -1,0 +1,11 @@
+docs/part-20-nebius-sre-interview/23-kubernetes-failure-drills-for-gpu-platforms.md 5
+docs/part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md 41
+docs/part-20-nebius-sre-interview/25-promql-grafana-and-tracing-traps.md 7
+docs/part-20-nebius-sre-interview/26-the-stress-interview-production-incident-role-play.md 5
+docs/part-20-nebius-sre-interview/27-post-mortems-on-call-and-incident-leadership.md 5
+docs/part-20-nebius-sre-interview/28-the-project-deep-dive-and-the-final-round.md 11
+docs/part-20-nebius-sre-interview/31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md 7
+docs/part-20-nebius-sre-interview/34-nebius-hardware-data-centers-and-the-gpu-fleet.md 9
+docs/part-20-nebius-sre-interview/35-the-nebius-api-surface-grpc-cli-sdks-iam-and-terraform.md 9
+docs/part-20-nebius-sre-interview/36-managed-kubernetes-and-soperator-how-nebius-runs-kubernetes-and-slurm.md 7
+docs/part-20-nebius-sre-interview/37-observability-status-and-operations-on-nebius.md 6

@@ -469,7 +469,7 @@ In Base Command Manager 11, NetQ 4.15 or later runs on either one compute node, 
 </details>
 
 <details>
-<summary>**15. What are the four storage tiers in an AI Factory (Volume 06 Chapter 3), and what is the HBM capacity and bandwidth progression from A100 to H100, H200, and B200?**</summary>
+<summary>**15. What are the four storage tiers in an AI Factory, and what is the HBM capacity and bandwidth progression from A100 to H100, H200, and B200?**</summary>
 
 The four tiers are:
 - **Tier 0 (GPU HBM).** It runs from 40 or 80 GB at 1.5 to 2.0 TB/s on A100, to 80 GB at 3.35 TB/s on H100, to 141 GB at 4.8 TB/s on H200, and to 192 GB at 8 TB/s on B200.

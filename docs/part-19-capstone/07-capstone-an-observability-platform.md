@@ -492,7 +492,7 @@ Third, the chart's default image is 0.163.2 and the values file pins 0.164.0. Th
 
 The test extracts the rendered ConfigMap and runs the pinned image's `validate` command on it, mounting only that one file. A broken copy, with the first processor replaced by one that does not exist, must fail. Both outcomes are asserted.
 
-Loki follows the same idea in a smaller file. It runs as a single binary with filesystem storage. That layout suits a lab and a small platform. Chapter 20.15 covers what changes at high volume. The Loki docs say OTLP ingestion needs structured metadata, which is on by default from Loki 3.0, and the values set it explicitly. The default index labels include the Kubernetes namespace, pod and container names. Loki stores the namespace as a label whose dots become underscores, so the dashboard query uses `k8s_namespace_name`. That mapping is my reasoning from the docs and the label list, and I did not run Loki here.
+Loki follows the same idea in a smaller file. It runs as a single binary with filesystem storage. That layout suits a lab and a small platform. Chapter 20.15 covers what changes at high volume. The Loki docs say OTLP ingestion needs structured metadata, which is on by default from Loki 3.0, and the values set it explicitly. The default index labels include the Kubernetes namespace, pod and container names. Loki stores the namespace as a label whose dots become underscores, so the dashboard query uses `k8s_namespace_name`. That mapping is inference from the docs and the label list, not stated by them, and Loki was not run here.
 
 The file is `code/part19/c07_values_loki.yaml`. It sets the deployment mode to single binary, schema version 13 with the TSDB store on the filesystem, structured metadata on, 168 hours of retention, and zero replicas for every other mode. It also turns off MinIO, the caches and the canary, and enables the chart's service monitor. Helm rendered it against the chart schema without error. A non-string deployment mode failed to render, but several other bad values did not, so the schema is a weak guard.
 
@@ -588,7 +588,7 @@ A platform team says that the stack is done. A skeptical engineer asks what woul
 
 The Docker run ties the layers together. It starts Prometheus 3.16.0 with the platform and Part 20 SLO rules, Alertmanager 0.35.0 with the real route tree and webhook receivers, Grafana 13.3.0 with the dashboard, and a synthetic exporter and webhook sink in small Python containers. The containers drop all capabilities, mount only generated config files read-only, and publish ports on the loopback address alone.
 
-An early version ran the exporter and sink as host processes. The containers could not scrape them and I did not find out why, so the final version runs both inside the network.
+An early version ran the exporter and sink as host processes. The containers could not scrape them, for a reason that was not traced, so the final version runs both inside the network.
 
 The run first checks the Watchdog, then waits a minute for healthy traffic, then injects four faults at once and polls for up to 150 seconds. The faults are a GPU Xid, a probe signal, a 100 percent gateway error ratio, and a not-ready alert with GPU alerts posted straight to Alertmanager.
 

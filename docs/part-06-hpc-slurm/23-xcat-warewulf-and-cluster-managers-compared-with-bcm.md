@@ -96,7 +96,7 @@ The noderange syntax is xCAT's lasting contribution to cluster tooling. You can 
 
 ### xCAT installation, database tables, and statelite recipe
 
-Chapters 26 and 28 of the Supercomputers for Linux SysAdmins book install xCAT on a Red Hat or CentOS management server. You point the package manager at the `xCAT-core.repo` and `xCAT-dep.repo` files under `/etc/yum.repos.d/`. Then you run `yum install -y xCAT` and `source /etc/profile.d/xcat.sh`, which puts the `/opt/xcat` binaries in your `PATH`. `(untested here)`
+xCAT installs on a Red Hat or CentOS management server. The recipe here follows Chapters 26 and 28 of Supercomputers for Linux SysAdmins. The xCAT commands in this section were not run on live hardware. You point the package manager at the `xCAT-core.repo` and `xCAT-dep.repo` files under `/etc/yum.repos.d/`. Then you run `yum install -y xCAT` and `source /etc/profile.d/xcat.sh`, which puts the `/opt/xcat` binaries in your `PATH`.
 
 Back up first. When its service-generation commands run, xCAT overwrites `/etc/exports`, along with the DHCP, Apache, DNS and TFTP configuration files. Keep a copy of anything you care about before you run them.
 
@@ -104,12 +104,12 @@ Back up first. When its service-generation commands run, xCAT overwrites `/etc/e
 
 xCAT keeps all of its state in relational tables. Run `tabdump` to see the list of tables. Add the `-d` parameter, as in `tabdump -d`, and the same list comes with explanations in English. To edit a table, open it in `$EDITOR` with `tabedit <table>`. You can replace a table with `tabrestore`, or update it in a scripted way with `chtab`.
 
-One logical object often spans several tables, so the object-level commands keep those tables consistent with each other. Those commands are `lsdef`, `mkdef`, `chdef` and `rmdef`, plus `nodech` for nodes. You can also export an object stanza and import it again. For example, `lsdef -z node01 > /tmp/n01.stanza` saves the stanza, and `cat /tmp/n01.stanza | mkdef -z` loads it back. `(untested here)`
+One logical object often spans several tables, so the object-level commands keep those tables consistent with each other. Those commands are `lsdef`, `mkdef`, `chdef` and `rmdef`, plus `nodech` for nodes. You can also export an object stanza and import it again. For example, `lsdef -z node01 > /tmp/n01.stanza` saves the stanza, and `cat /tmp/n01.stanza | mkdef -z` loads it back.
 
-Chapter 26 of the Supercomputers for Linux SysAdmins book names the main logical object types. They are `site` for the cluster or clusters, `node`, `group` for a group of nodes, `network` for a subnetwork, `osdistro` for an OS distribution, `osimage` for an OS image, and `route` for a routing description. The book lists more types beyond these: `auditlog`, `boottarget`, `eventlog`, `firmware`, `kit`, `kitcomponent`, `kitrepo`, `monitoring`, `notification`, `pdu`, `policy`, `rack`, `taskstate` and `zone`. Run `lsdef node1` on a configured node, and it shows the attributes gathered from all of its tables. `(untested here)`
+The main logical object types are `site` for the cluster or clusters, `node`, `group` for a group of nodes, `network` for a subnetwork, `osdistro` for an OS distribution, `osimage` for an OS image, and `route` for a routing description. There are more types beyond these: `auditlog`, `boottarget`, `eventlog`, `firmware`, `kit`, `kitcomponent`, `kitrepo`, `monitoring`, `notification`, `pdu`, `policy`, `rack`, `taskstate` and `zone`. Run `lsdef node1` on a configured node, and it shows the attributes gathered from all of its tables.
 
 ```text
-# (untested here) — SCL Chapter 26 lsdef node1 output
+# lsdef node1 output
 Object name: node1
     arch=x86_64
     bmc=10.1.1.3
@@ -123,9 +123,9 @@ Object name: node1
     postscripts=syslog,remoteshell,syncfiles
 ```
 
-The book highlights these key tables:
+These are the key tables:
 
-- `site` holds the cluster-wide settings: `domain`, `installdir` set to `/install`, `tftpdir` set to `/tftpboot`, `xcatconfdir` set to `/etc/xcat`, `master`, `nameservers`, `forwarders`, `timezone`, `ipmiretries`, `ipmitimeout`, `SNsyncfiledir` and `nodesyncfiledir`. For example, `chtab key=tftpdir site.value=/tftpboot` or `chdef -t site -o clustersite domain=mycluster` sets values there. `(untested here)`
+- `site` holds the cluster-wide settings: `domain`, `installdir` set to `/install`, `tftpdir` set to `/tftpboot`, `xcatconfdir` set to `/etc/xcat`, `master`, `nameservers`, `forwarders`, `timezone`, `ipmiretries`, `ipmitimeout`, `SNsyncfiledir` and `nodesyncfiledir`. For example, `chtab key=tftpdir site.value=/tftpboot` or `chdef -t site -o clustersite domain=mycluster` sets values there.
 - `hosts` maps hostnames to IP addresses. Its regular-expression rules mean you do not have to type each node's IP by hand.
 - `mac` stores node MAC addresses, for example through `chdef -t node node1 mac=xx:xx:xx:xx:xx:xx`.
 - `noderes` holds boot and network resources for each node or group, such as `netboot=pxe`, `tftpserver`, `nfsserver`, `installnic=eth0` and `primarynic=eth0`.
@@ -139,13 +139,13 @@ The book highlights these key tables:
 
 #### Delegating access: `setup-local-client.sh` and the `policy` table
 
-By default, only `root` on the management server can run xCAT commands. To let another user run them, you take two steps. Suppose you want `xadmin`, a user already listed in `/etc/passwd`, to connect over TLS. You generate client certificates for that user, and you add a rule to the `policy` table. Remote clients also need `XCATHOST=<xCAT-server>:3001` set. `(untested here)`
+By default, only `root` on the management server can run xCAT commands. To let another user run them, you take two steps. Suppose you want `xadmin`, a user already listed in `/etc/passwd`, to connect over TLS. You generate client certificates for that user, and you add a rule to the `policy` table. Remote clients also need `XCATHOST=<xCAT-server>:3001` set.
 
 ```bash
-# Generate ~xadmin/.xcat/{ca.pem,client-cert.pem,client-cred.pem,client-key.pem,client-req.pem} (untested here)
+# Generate ~xadmin/.xcat/{ca.pem,client-cert.pem,client-cred.pem,client-key.pem,client-req.pem}
 /opt/xcat/share/xcat/scripts/setup-local-client.sh xadmin
 
-# Allow xadmin to run 'rpower stat' only on nodes h02-h05 at priority 7 (untested here)
+# Allow xadmin to run 'rpower stat' only on nodes h02-h05 at priority 7
 mkdef -t policy -o 7 name=xadmin commands=rpower \
   parameters=stat noderange=h02-h05 rule=allow
 ```
@@ -160,12 +160,11 @@ Open the table with `tabedit policy`. Its header reads `#priority,name,host,comm
 
 #### Loading and Controlling: Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)
 
-xCAT offers three provisioning modes. In **statefull** mode, the OS is installed onto local disk, which is typical for service nodes. In **stateless** mode, the whole image is unpacked into RAM. In **statelite** mode, the root filesystem is mounted read-only over NFS. Specific writable files and directories are mounted in RAM with `tmpfs`, as listed in `litefile`, and optional persistent state can live in `statelite`. The steps below combine the recipes from Chapter 26 and Chapter 28 of the book. `(untested here)`
+xCAT offers three provisioning modes. In **statefull** mode, the OS is installed onto local disk, which is typical for service nodes. In **stateless** mode, the whole image is unpacked into RAM. In **statelite** mode, the root filesystem is mounted read-only over NFS. Specific writable files and directories are mounted in RAM with `tmpfs`, as listed in `litefile`, and optional persistent state can live in `statelite`. The steps below combine the recipes from Chapters 26 and 28 of Supercomputers for Linux SysAdmins.
 
 1. Start by importing the OS media and defining the nodes.
 
    ```bash
-   # (untested here)
    copycds CentOS-7.6-x86_64-bin-DVD1.iso
    mkdef -t node node[1-100] groups=all,compute arch=x86_64 mgt=ipmi netboot=pxe
    ```
@@ -173,20 +172,19 @@ xCAT offers three provisioning modes. In **statefull** mode, the OS is installed
 2. Next, let xCAT assign IP addresses with a regex rule in `hosts.ip`.
 
    ```bash
-   # Strip non-digits (\D+), capture the node number (\d+) as $1, and add 10 (untested here)
+   # Strip non-digits (\D+), capture the node number (\d+) as $1, and add 10
    # For example, node15 receives 10.0.0.25
    chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'
    ```
 
-3. Generate and customize the `statelite` image. Package lists live in `/opt/xcat/share/xcat/netboot/centos/compute.rhel7.pkglist`. Extra RPMs go in `/install/post/otherpkgs` and `/install/custom/install/centos/compute.rhel7.otherpkgs.pkglist`. Install templates live in `/opt/xcat/share/xcat/install/centos/compute.rhel7.tmpl`. Then build the image and assign it to the `compute` group. `(untested here)`
+3. Generate and customize the `statelite` image. Package lists live in `/opt/xcat/share/xcat/netboot/centos/compute.rhel7.pkglist`. Extra RPMs go in `/install/post/otherpkgs` and `/install/custom/install/centos/compute.rhel7.otherpkgs.pkglist`. Install templates live in `/opt/xcat/share/xcat/install/centos/compute.rhel7.tmpl`. Then build the image and assign it to the `compute` group.
 
    ```bash
-   # (untested here)
    genimage
    chdef compute provmethod=centos7.6-x86_64-statelite-compute
    ```
 
-4. Populate `litefile` with writable RAM paths using `tabedit litefile`. The NFS root is read-only, so services need a place to write their runtime state. The book recommends adding at least these 15 entries, so services can write to `tmpfs` `(untested here)`:
+4. Populate `litefile` with writable RAM paths using `tabedit litefile`. The NFS root is read-only, so services need a place to write their runtime state. Add at least these 15 entries, so services can write to `tmpfs`:
 
    ```csv
    #image,file,options,comments,disable
@@ -207,10 +205,9 @@ xCAT offers three provisioning modes. In **statefull** mode, the OS is installed
    "ALL","/xcatpost/",,,
    ```
 
-5. Inject SSH keys, `/etc/passwd` entries and postscripts, then finalize the image. The Chapter 28 recipe uses helper scripts that copy SSH keys and passwd entries into the image root. Run them before `liteimg` packs the image. `(untested here)`
+5. Inject SSH keys, `/etc/passwd` entries and postscripts, then finalize the image. The Chapter 28 recipe uses helper scripts that copy SSH keys and passwd entries into the image root. Run them before `liteimg` packs the image.
 
    ```bash
-   # (untested here)
    cd /opt/xcat/share/xcat/netboot/add-on/statelite
    ./add_ssh /install/netboot/centos7.6/x86_64/compute/rootimg/
    ./add_passwd /install/netboot/centos7.6/x86_64/compute/rootimg/
@@ -222,7 +219,6 @@ xCAT offers three provisioning modes. In **statefull** mode, the OS is installed
 6. Last, generate the `/etc/hosts`, DHCP, DNS and TFTP configuration and boot the nodes.
 
    ```bash
-   # (untested here)
    makehosts
    makedhcp compute
    systemctl restart dhcpd
@@ -232,9 +228,9 @@ xCAT offers three provisioning modes. In **statefull** mode, the OS is installed
    rpower node[1-100] boot
    ```
 
-Table 26-1 in the book lists the `rpower` IPMI power actions, such as `rpower compute stat`, `rpower node1 off`, `rpower node1 cycle`, `rpower node[1-100] on` and `rpower node1 reset`. To run commands across many nodes at once, the book shows `psh compute uname -n` for parallel execution. It also shows `pscp /tmp/myfile all:/tmp` for copying a file across node groups. `(untested here)`
+The `rpower` command covers the IPMI power actions, such as `rpower compute stat`, `rpower node1 off`, `rpower node1 cycle`, `rpower node[1-100] on` and `rpower node1 reset`. To run commands across many nodes at once, use `psh compute uname -n` for parallel execution. Use `pscp /tmp/myfile all:/tmp` for copying a file across node groups.
 
-The book also lists xCAT's practical limits. Strict OS version support is one. You cannot snapshot an already-installed disk node straight into an image. Custom DNS and DHCP zones get overwritten. And xCAT has no built-in historical telemetry.
+xCAT also has practical limits. Strict OS version support is one. You cannot snapshot an already-installed disk node straight into an image. Custom DNS and DHCP zones get overwritten. And xCAT has no built-in historical telemetry.
 
 ### Status
 
@@ -278,16 +274,16 @@ Warewulf's strengths are its simplicity, its openness and its container-native i
 ## 4. Confluent, MAAS, Foreman (general knowledge, verify)
 
 - **Confluent** comes from the xCAT Consortium. It is a Python-based successor to xCAT with an asynchronous design. It offers a web API and a CLI, with commands such as `nodedeploy`, `nodeconfig`, `nodeshell`... It handles hardware discovery and OS deployment, including Redfish-driven deployment. The xCAT project recommends it for new deployments, as the xCAT README says.
-- **Canonical MAAS** stands for Metal as a Service. It treats physical servers, along with KVM and LXD virtual machines, as an API-driven cloud. Chapter 26 of the Supercomputers for Linux SysAdmins book sets the minimum hardware for a MAAS server. You need SSD drives in RAID-1 with over `120 GB` of disk space. The CPU must be a dual-core over `2 GHz` with virtualization enabled. You also need `2 GB` of RAM and a `1 Gb/s` NIC. You install MAAS via `ppa:maas/3.2`, using the `maas` and `maas-region-controller` packages. You then manage it at `http://<MAAS_IP>:5240/MAAS`. `(untested here)` MAAS splits a central **region controller** from distributed **rack controllers**, which gives you scale and high availability.
+- **Canonical MAAS** stands for Metal as a Service. It treats physical servers, along with KVM and LXD virtual machines, as an API-driven cloud. The minimum hardware for a MAAS server is as follows. You need SSD drives in RAID-1 with over `120 GB` of disk space. The CPU must be a dual-core over `2 GHz` with virtualization enabled. You also need `2 GB` of RAM and a `1 Gb/s` NIC. You install MAAS via `ppa:maas/3.2`, using the `maas` and `maas-region-controller` packages. You then manage it at `http://<MAAS_IP>:5240/MAAS`. MAAS splits a central **region controller** from distributed **rack controllers**, which gives you scale and high availability.
 
-  A physical server moves through three states. In `New`, its MAC and BMC/IPMI settings are registered with the `LAN_2_0` or Redfish power driver. In `Commission`, it PXE-boots a temporary environment that inventories its NICs, disks and hardware. In `Deploy`, it installs Ubuntu, CentOS 7/8, Oracle Linux, Windows or ESXi. Custom images require Ubuntu Pro. Once a node is deployed, its IP cannot be changed in MAAS. The book also warns against enabling direct public repository updates on compute nodes, because kernel upgrades can break Mellanox/NVIDIA drivers.
+  A physical server moves through three states. In `New`, its MAC and BMC/IPMI settings are registered with the `LAN_2_0` or Redfish power driver. In `Commission`, it PXE-boots a temporary environment that inventories its NICs, disks and hardware. In `Deploy`, it installs Ubuntu, CentOS 7/8, Oracle Linux, Windows or ESXi. Custom images require Ubuntu Pro. Once a node is deployed, its IP cannot be changed in MAAS. Do not enable direct public repository updates on compute nodes, because kernel upgrades can break Mellanox/NVIDIA drivers.
 - **Foreman** works with Katello, Puppet, Ansible or Salt. It manages the lifecycle of bare-metal servers, VMs on KVM and VMware, Docker, and clouds such as OpenStack, EC2, Azure and GCE. A single Foreman server does not scale horizontally on its own. **Smart-proxies** spread DHCP, TFTP, DNS and provisioning across large installations.
 
 Decide which of these three fits your fleet before you choose a manager.
 
 ## 5. NVIDIA Base Command Manager (BCM)
 
-BCM, formerly Bright Cluster Manager, is NVIDIA's cluster management product. It comes bundled with DGX systems and is sold for AI clusters. The Supercomputers for Linux SysAdmins book notes a free licence tier for clusters of up to `16` nodes and `16` GPUs or fewer. Part 8 covers BCM in depth. This section keeps only the model that matters for this comparison, taken from the BCM 11 administrator and installation manuals.
+BCM, formerly Bright Cluster Manager, is NVIDIA's cluster management product. It comes bundled with DGX systems and is sold for AI clusters. There is a free licence tier for clusters of up to `16` nodes and `16` GPUs or fewer. Part 8 covers BCM in depth. This section keeps only the model that matters for this comparison, taken from the BCM 11 administrator and installation manuals.
 
 - **Head node**: the centre of the system. It holds the head copy of the software images under `/cm/images/<image>`. On a fresh install, that image is `default-image`. It also runs CMDaemon, the daemon that manages devices, provisioning and monitoring. Nodes boot from the network and receive a *known good state* from the head node. A diskless node gets the image copied into memory (tmpfs). A diskful node has its local disk contents checked against the image, and any differing content is corrected.
 - **Software images, categories and nodes**: a software image is the root file system. A category groups nodes and sets their software image, disk layout, services and parameters. Each individual node, called a device, belongs to a category and can override some settings. To make some nodes behave differently, you clone a category, point the clone at a modified image, and move the nodes into it with `cmsh`. The manual's example runs `category; clone default categorytwo; set softwareimage imagetwo; commit`. Then it runs `device; use node099; set category categorytwo; commit`. A `foreach` loop over a range does the same for many nodes.

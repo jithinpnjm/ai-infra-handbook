@@ -119,7 +119,7 @@ For a dense transformer, the compute of a training run is about six floating-poi
 
 Model FLOPS utilisation, or MFU, says what share of the datasheet peak the run really achieves. The same chapter defines it as model FLOPs per iteration divided by iteration time, divided by peak FLOPS. It says a well-optimised cluster might reach 40 to 60 percent for large models. Its worked example has a 70 billion parameter model at 860 teraFLOP per iteration and 2.0 seconds, on a 989 TFLOPS peak. That gives 430 TFLOPS and an MFU of about 43 percent.
 
-The peak must be the one for the precision you train in. The book says BF16 or FP16 on an H100, not the FP8 figure from a marketing slide. The dense BF16 peak of 989.5 TFLOPS is taken from the chapter 20.12 estimator, which fact-checked it against the NVIDIA H100 page. I did not look it up again.
+The peak must be the one for the precision you train in. Use BF16 or FP16 on an H100, not the FP8 figure from a marketing slide. The dense BF16 peak of 989.5 TFLOPS is taken from the chapter 20.12 estimator, which fact-checked it against the NVIDIA H100 page.
 
 ```text
 FLOPs       = 6 x N x D
@@ -127,7 +127,7 @@ GPU-hours   = FLOPs / (peak FLOPS x MFU) / 3600
 GPUs needed = GPU-hours / deadline hours
 ```
 
-For this estate N is 13 billion and D is 2 trillion. MFU is an assumed 0.40, which is inside the book's range but is my choice for planning. The code prints the result.
+For this estate N is 13 billion and D is 2 trillion. MFU is an assumed 0.40, which is inside the commonly cited range but is a planning choice. The code prints the result.
 
 ```text
 6ND FLOPs            1.560e+23
@@ -151,7 +151,7 @@ A run that takes 44 days will see failures. The same book says a 10,000 GPU clus
 
 The model uses two inputs and one first-order rule. The checkpoint size is the parameter count times bytes per parameter. The book says Adam state is about twice the model size. With bf16 weights that gives 2 plus 4, or 6 bytes per parameter, so 78 GB for 13 billion parameters. Real checkpoint contents differ by framework, so treat 6 as an input. At an assumed 20 GB per second the write takes 3.9 seconds.
 
-The wall-clock multiplier is my own first-order model, not a published formula. It is one, plus the write time divided by the interval, plus the expected lost work per failure divided by the time between failures. Lost work per failure is half an interval plus the restart. The cluster failure interval is the per-GPU interval divided by the GPU count, because failures are assumed independent.
+The wall-clock multiplier is a first-order model of this chapter's own, not a published formula. It is one, plus the write time divided by the interval, plus the expected lost work per failure divided by the time between failures. Lost work per failure is half an interval plus the restart. The cluster failure interval is the per-GPU interval divided by the GPU count, because failures are assumed independent.
 
 Because the GPU count changes the failure interval, and the failure interval changes the multiplier, and the multiplier changes the GPU count, the code iterates until the answer stops moving. With the placeholder inputs the multiplier is 1.0037. That is small, and it should be. A checkpoint that takes 4 seconds once an hour costs almost nothing.
 
@@ -163,7 +163,7 @@ The book *AI Systems Performance Engineering*, chapter 1, adds a warning about h
 
 ### 2.3 Fine-tuning
 
-Fine-tuning is the same arithmetic on a smaller scale and with no deadline pressure. The estate runs ten fine-tunes a month, each on 10 billion tokens. The model turns the monthly GPU-hours into an average GPU count and divides by the batch utilisation target, which section 3 explains. The result is 8.8 GPUs on average. The model treats every fine-tune as full-parameter training with the 6ND rule. If you use adapters, the real cost is lower, and I did not find a source in the gem books for how much lower.
+Fine-tuning is the same arithmetic on a smaller scale and with no deadline pressure. The estate runs ten fine-tunes a month, each on 10 billion tokens. The model turns the monthly GPU-hours into an average GPU count and divides by the batch utilisation target, which section 3 explains. The result is 8.8 GPUs on average. The model treats every fine-tune as full-parameter training with the 6ND rule. If you use adapters, the real cost is lower, and no source here says how much lower.
 
 **Decision rule:** Size training from 6ND and a measured MFU, round up to whole nodes, add the checkpoint and failure multiplier, and check the storage write speed before you blame the GPUs.
 
@@ -197,7 +197,7 @@ Notebook demand follows people. 60 users, with 30 percent active at the peak, sh
 
 Not every workload deserves the same target. Inference runs at 90 percent of its throughput ceiling because a burst or a slow batch otherwise breaks the latency target. Batch work such as training and fine-tuning gets a target of 0.85 in the example. The target pays for the gaps between runs, the queue wait, and the nodes that are down. It is an input, and the sensitivity table in section 6 shows it moves the cost more than any other input.
 
-*Systems Performance*, chapter 2, gives a cautionary view of high utilisation. It says utilisation beyond 60 percent can hide short bursts of 100 percent use, and that queueing delays grow as utilisation rises. That advice comes from CPUs and disks, not from GPUs, and I did not find a book source for a GPU-specific number. For interactive notebooks, where a person waits, the lower end of the range is safer. For batch work that can queue, 0.85 is a placeholder you must check against your own queue times.
+*Systems Performance*, chapter 2, gives a cautionary view of high utilisation. It says utilisation beyond 60 percent can hide short bursts of 100 percent use, and that queueing delays grow as utilisation rises. That advice comes from CPUs and disks, not from GPUs, and no source here gives a GPU-specific number. For interactive notebooks, where a person waits, the lower end of the range is safer. For batch work that can queue, 0.85 is a placeholder you must check against your own queue times.
 
 ### 3.4 Putting the estate together
 
@@ -239,7 +239,7 @@ The pool is sized. Finance asks how to pay for it. A cloud sales rep offers a di
 
 On-demand capacity costs the most per hour and charges only for hours used. Reserved capacity costs less per hour and charges for every hour of the commitment. Owned capacity has a fixed cost for every hour of its life, plus running cost. It is cheaper per hour still, if you can keep it busy. Spot capacity is cheaper but can be taken away. The model covers spot with one formula, and the tests check it. Spot is best for work that checkpoints well.
 
-All prices are inputs. The worked example uses on-demand at 5.00 dollars per GPU-hour, a reserved discount of 35 percent, a hardware cost of 40,000 dollars per GPU amortised over four years, and 1.50 dollars per GPU-hour of running cost. I invented these numbers. They are not prices. Chapter 20.12 cites public list prices fetched on 2026-11-09, and the book *Hands-On LLM Serving and Optimization*, chapter 5, prints a table of GPU costs that it says were current in spring 2026 and may change. Use quotes from your own vendors, with dates.
+All prices are inputs. The worked example uses on-demand at 5.00 dollars per GPU-hour, a reserved discount of 35 percent, a hardware cost of 40,000 dollars per GPU amortised over four years, and 1.50 dollars per GPU-hour of running cost. These numbers are invented. They are not prices. Chapter 20.12 cites public list prices fetched on 2026-11-09, and *Hands-On LLM Serving and Optimization*, Chapter 5, prints a table of GPU costs that it says were current in spring 2026 and may change. Use quotes from your own vendors, with dates.
 
 ### 4.2 The break-even rule
 
@@ -271,7 +271,7 @@ All on-demand costs about 4.17 million dollars a year. A reserved commitment of 
 
 Notice what the best commit is not. It is not the peak and not the average, which is 95.2 GPUs. It sits near the level that the estate needs for most of the year. Capacity above it is the burst tier, and the sensible burst tier is on-demand capacity or spot capacity for the training run.
 
-The book *LLMs in Production*, chapter 3, adds two practical points for the decision. GPUs are rare and limited, and they can be extremely difficult to provision for companies that stay on-premise. Even in the cloud, teams still chase provisioning errors when they ask for a new GPU workspace. A purchase decision is therefore also a supply decision, and section 5 puts a number on it. For inference served through a vendor API, the book *Machine Learning Platform Engineering*, chapter 13, notes that LLM services charge by token consumption. That is the opposite of renting a fixed GPU, and it favours spiky or small workloads.
+*LLMs in Production*, Chapter 3, adds two practical points for the decision. GPUs are rare and limited, and they can be extremely difficult to provision for companies that stay on-premise. Even in the cloud, teams still chase provisioning errors when they ask for a new GPU workspace. A purchase decision is therefore also a supply decision, and section 5 puts a number on it. For inference served through a vendor API, *Machine Learning Platform Engineering*, Chapter 13, notes that LLM services charge by token consumption. That is the opposite of renting a fixed GPU, and it favours spiky or small workloads.
 
 **Decision rule:** Commit only to the level of demand you expect to keep busy for most of the year, compare it with the break-even use, and cover the rest with on-demand or spot capacity.
 
@@ -1030,7 +1030,7 @@ The full output is split across sections 2 to 6 of this chapter. The test `test_
 python3 -m pytest code/part19/test_c09_capacity.py -q
 ```
 
-Result: 20 passed. The tests cover 6ND and MFU against the book example, the checkpoint arithmetic, Young's interval at the minimum of a grid, the fixed point in the sizing, the forecast band on an exact exponential and on noisy data, agreement with chapters 20.12 and 20.16, hand-computed cost formulas, the commit level on flat and spiky demand, seeded Monte Carlo, scenario directions, a failure case where an unknown override path raises `KeyError`, and a check that the base assumptions are never changed by a run.
+Result: 20 passed. The tests cover 6ND and MFU against a worked example, the checkpoint arithmetic, Young's interval at the minimum of a grid, the fixed point in the sizing, the forecast band on an exact exponential and on noisy data, agreement with chapters 20.12 and 20.16, hand-computed cost formulas, the commit level on flat and spiky demand, seeded Monte Carlo, scenario directions, a failure case where an unknown override path raises `KeyError`, and a check that the base assumptions are never changed by a run.
 
 **What to record:** the number of tests that passed.
 
@@ -1071,7 +1071,7 @@ A dense transformer needs about six floating-point operations per parameter per 
 Divide the FLOPs by peak FLOPS times MFU, then by 3,600. For 1.56e23 FLOPs at 989.5 TFLOPS and an MFU of 0.40, the result is 109,483 GPU-hours.
 </details>
 
-<details><summary>4. What does MFU measure and what range does the book give?</summary>
+<details><summary>4. What does MFU measure and what range is typical for large models?</summary>
 It is the share of datasheet peak FLOPS the run achieves. *Distributed AI Systems* says a well-optimised cluster might reach 40 to 60 percent for large models.
 </details>
 

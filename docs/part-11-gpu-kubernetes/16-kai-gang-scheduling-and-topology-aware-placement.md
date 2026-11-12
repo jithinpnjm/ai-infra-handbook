@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | GCP / GKE (plus local Python 3 simulation lab) |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 7); `nvidia-zero-to-hero/volume-02/labs/lab-04-build-a-topology-aware-gpu-placement-plan.md`; `nvidia-zero-to-hero/volume-24/chapter-10-training-cluster-design.md`; Chris Fregly, *AI Systems Performance Engineering* (O'Reilly, 2025, Ch. 19) |
+| Sources used | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026, Ch. 7); Chris Fregly, *AI Systems Performance Engineering* (O'Reilly, 2025, Ch. 19) |
 | Coverage file | `planning/coverage/chapters/11-16.md` |
 
 ## Why this matters for AI infrastructure
@@ -67,8 +67,8 @@ Chapters 11.14 and 11.15 cover the KAI Scheduler `pod-grouper`, PodGroup, and Qu
 - Match each of the four distributed parallelism strategies to the KAI Scheduler Topology domain it requires.
 - Write KAI Scheduler Topology custom resources and workload topology annotations for required and preferred domain levels.
 - Apply sub-group topology constraints to LeaderWorkerSet and JobSet workloads.
-- Carry out the eight-step Host Topology Placement Plan from Volume 02 Lab 04, using `nvidia-smi`, Linux sysfs `numa_node` files, `lspci -Dnn`, `numactl --hardware`, and `nvidia-smi nvlink --status`.
-- Run the Training Cluster Throughput and Topology Sanity Check from Volume 24 Chapter 10 for a 50-billion-parameter LLM, and weigh the trade-offs of node consolidation.
+- Carry out the eight-step host topology placement plan, using `nvidia-smi`, Linux sysfs `numa_node` files, `lspci -Dnn`, `numactl --hardware`, and `nvidia-smi nvlink --status`.
+- Run the Training Cluster Throughput and Topology sanity check for a 50-billion-parameter LLM, and weigh the trade-offs of node consolidation.
 
 ## Concepts: basics to intermediate to advanced
 
@@ -84,7 +84,7 @@ The table below maps each parallelism strategy to its collective pattern and to 
 |---|---|---|---|
 | 1. Tensor Parallelism (`TP`) | Splits weight matrices within every individual transformer layer across `2`, `4`, or `8` GPUs | Synchronous `AllGather` / `ReduceScatter` (or `AllReduce`) of activations on every forward and backward layer | Strict intra-node NVLink / NVSwitch (`600–900 GB/s` to `1.8 TB/s`) or intra-rack `GB200 NVL72` (`130 TB/s`). Impractical over standard Ethernet. |
 | 2. Fully Sharded Data Parallelism (`FSDP` / `ZeRO-3`) | Shards model parameters, gradients, and optimizer states across all GPUs | Just-in-time `AllGather` of parameter shards before every layer + `ReduceScatter` of gradients after backward pass | Co-locate shard groups on NVSwitch nodes within the same InfiniBand (`200–400 Gbps`) or RoCEv2 leaf switch with GPUDirect RDMA (`40%–60%` latency reduction). |
-| 3. Data Parallelism (`DDP`) | Replicates full model on each GPU; splits training batch across workers | Synchronous `AllReduce` of gradients once per training step (e.g., `900 GB` gradients in `~50 ms` ring `AllReduce` alongside `100 ms` compute = `150 ms < 300 ms` step time in `volume-24/chapter-10`) | InfiniBand or RoCEv2 (`100–400 Gbps`) for `8+` nodes; standard `100 Gbps` Ethernet suffices for `2–8` nodes when communication is `< 15%` (`< 20%–25%` ceiling) of step time. |
+| 3. Data Parallelism (`DDP`) | Replicates full model on each GPU; splits training batch across workers | Synchronous `AllReduce` of gradients once per training step (e.g., `900 GB` gradients in `~50 ms` ring `AllReduce` alongside `100 ms` compute = `150 ms < 300 ms` step time) | InfiniBand or RoCEv2 (`100–400 Gbps`) for `8+` nodes; standard `100 Gbps` Ethernet suffices for `2–8` nodes when communication is `< 15%` (`< 20%–25%` ceiling) of step time. |
 | 4. Pipeline Parallelism (`PP`) | Assigns consecutive blocks of transformer layers to different GPUs or nodes | Point-to-point `Send/Recv` of intermediate activations only at stage boundaries | Co-locate adjacent pipeline stages on the same node or adjacent nodes under the same leaf switch (`log2(12) = 3.6` hops on `12` `8`-GPU nodes vs `25` `4`-GPU nodes). |
 | 5. Hybrid Parallelism (`TP + PP + DP/FSDP`) | Combines intra-node `TP`, inter-node `PP`, and cross-replica `DP`/`FSDP` | Hierarchical collectives: microsecond `TP` per layer + `PP` stage handoffs + step-level `DP` `AllReduce` | Two-level topology constraint in KAI Scheduler: require each `TP` sub-group inside `1` NVSwitch node, and prefer or require all `PP`/`DP` nodes inside `1` InfiniBand leaf switch. |
 
@@ -132,7 +132,7 @@ The two annotations use the same tree but behave in opposite ways. One waits for
 
 ### 3. Advanced: Host placement plans and cluster-scale throughput math
 
-Even the best cluster-level topology labels fail when a server's internal PCIe, NUMA, or NVLink paths are wired differently than expected. They can also degrade silently in production. Before you trust a scheduler's node labels, build a verified hardware baseline for each server class. This section works through the eight-step host verification plan from Volume 02 Lab 04. It then works through the cluster-scale throughput sanity check from Volume 24 Chapter 10.
+Even the best cluster-level topology labels fail when a server's internal PCIe, NUMA, or NVLink paths are wired differently than expected. They can also degrade silently in production. Before you trust a scheduler's node labels, build a verified hardware baseline for each server class. This section works through the eight-step host verification plan. It then works through the cluster-scale throughput sanity check.
 
 Take a four-GPU NVIDIA H100 dual-socket server with two Mellanox ConnectX-6 Dx NICs. Its four GPUs do not form one all-to-all NVSwitch mesh. They form two isolated two-GPU NVLink islands, one on each CPU socket. The table below records the hardware inventory collected from `nvidia-smi`, Linux sysfs `numa_node` files, and `numactl --hardware`.
 
@@ -169,12 +169,12 @@ Bandwidth Impact:
 
 Link 2 at zero turns a healthy four-lane pair into a three-lane pair. That is the 25 percent loss you should watch for in the status output.
 
-At cluster scale, node density and hardware budget decide whether a training target can be reached at all. Volume 24 Chapter 10 describes a stakeholder who wants to train a 50-billion-parameter LLM at one hundred trillion tokens per year, under a five-million-dollar budget. Before you write a single YAML manifest, a senior infrastructure architect runs a three-step sanity check. The three steps cover FLOPs, interconnect hop counts, and checkpoint storage bandwidth.
+At cluster scale, node density and hardware budget decide whether a training target can be reached at all. Picture a stakeholder who wants to train a 50-billion-parameter LLM at one hundred trillion tokens per year, under a five-million-dollar budget. Before you write a single YAML manifest, a senior infrastructure architect runs a three-step sanity check. The three steps cover FLOPs, interconnect hop counts, and checkpoint storage bandwidth.
 
-The first step asks you to work out the FLOPs per token and compare them with the GPUs that fit inside the hardware budget. The second asks you to compare four-GPU nodes with eight-GPU NVSwitch nodes, to minimize binary-tree communication hops and keep step latency under the three-hundred-millisecond target. The third asks you to stage checkpoints to local NVMe drives in one second, so synchronous saves never stall the GPUs. The block below shows the exact equations and numbers you will need from Volume 24 Chapter 10.
+The first step asks you to work out the FLOPs per token and compare them with the GPUs that fit inside the hardware budget. The second asks you to compare four-GPU nodes with eight-GPU NVSwitch nodes, to minimize binary-tree communication hops and keep step latency under the three-hundred-millisecond target. The third asks you to stage checkpoints to local NVMe drives in one second, so synchronous saves never stall the GPUs. The block below shows the exact equations and numbers you will need.
 
 ```text
-Cluster-Scale Throughput, Node Density, and Checkpoint Sanity Check (volume-24/chapter-10):
+Cluster-Scale Throughput, Node Density, and Checkpoint Sanity Check:
   Stated Stakeholder Target:
     Model = 50B parameters | batch_size = 256 | seq_length = 2048 -> 524,288 tokens/step (< 300 ms/step)
     Target throughput = 100 trillion (10^14) tokens/year | All-in budget = $5M (CapEx + 3yr OpEx)
@@ -232,18 +232,18 @@ Each row pairs one command with one threshold. The first signal catches GPUs tha
 
 ## Commands and configurations that matter
 
-Run these commands whenever you commission a worker node or finish hardware maintenance on one. They build a verified baseline of GPU, NIC, and NUMA placement, so you have something concrete to compare against later.
+The commands below were not run on live hardware. Run them whenever you commission a worker node or finish hardware maintenance on one. They build a verified baseline of GPU, NIC, and NUMA placement, so you have something concrete to compare against later.
 
 ### 1. Inspecting host GPU, NUMA, PCIe, and NVLink sub-link topology
 
 ```bash
-# 1. Build stable GPU UUID-to-PCI bus ID inventory (untested here)
+# 1. Build stable GPU UUID-to-PCI bus ID inventory
 nvidia-smi --query-gpu=index,name,uuid,pci.bus_id,memory.total --format=csv
 
-# 2. Print full GPU and NIC topology matrix (untested here)
+# 2. Print full GPU and NIC topology matrix
 nvidia-smi topo -m
 
-# 3. Cross-check Linux sysfs NUMA node for every GPU and ConnectX NIC (untested here)
+# 3. Cross-check Linux sysfs NUMA node for every GPU and ConnectX NIC
 for bdf in $(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader | sed 's/^00000000:/0000:/'); do
   printf "%s NUMA=" "$bdf"
   cat "/sys/bus/pci/devices/$bdf/numa_node"
@@ -252,7 +252,7 @@ lspci -Dnn | grep -iE 'ethernet|infiniband|network'
 cat /sys/bus/pci/devices/0000:18:00.0/numa_node
 cat /sys/bus/pci/devices/0000:9d:00.0/numa_node
 
-# 4. Inspect CPU/RAM NUMA layout and verify PCIe link speed and NVLink sub-link bandwidth (untested here)
+# 4. Inspect CPU/RAM NUMA layout and verify PCIe link speed and NVLink sub-link bandwidth
 numactl --hardware
 sudo lspci -s "0000:1b:00.0" -vv | grep -E 'LnkCap:|LnkSta:'
 nvidia-smi nvlink --status
@@ -265,7 +265,7 @@ The first two commands give you the GPU inventory and the topology matrix. The s
 Next, define the topology and attach a job to it. The manifest below creates a three-level `ai-factory-topology` resource under `kai.scheduler/v1alpha1`. It then attaches a four-node PyTorchJob to the team queue. The job must keep all of its pods in the same availability zone, and it prefers to sit under a single InfiniBand leaf switch.
 
 ```yaml
-# kai-topology-and-workload-constraints.yaml (untested here)
+# kai-topology-and-workload-constraints.yaml
 apiVersion: kai.scheduler/v1alpha1
 kind: Topology
 metadata:
@@ -321,18 +321,18 @@ Four problems quietly slow down or stop distributed training runs. A silent NVLi
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| 1. Preferred `NV4` GPU pair runs `25%` slower while `nvidia-smi topo -m` still shows `NV4` | `2`-GPU job on `GPU 0` and `GPU 1` shows `NV4` in `nvidia-smi topo -m`, but step time regresses. `nvidia-smi nvlink --status` shows `Link 0, 1, 3: 26.562 GB/s` and `Link 2: 0.000 GB/s` (`volume-02/labs/lab-04` §14). | Partial NVLink sub-link degradation (`75.0%` bandwidth): one of the `4` bonded NVLink lanes trained down to `0.000 GB/s` (`79.686 / 106.248 GB/s`) after initial topology discovery. | Monitor `nvidia-smi nvlink --status` and DCGM NVLink error counters continuously; cordon the node for GPU reset or replacement when any lane drops to `0.000 GB/s`. |
+| 1. Preferred `NV4` GPU pair runs `25%` slower while `nvidia-smi topo -m` still shows `NV4` | `2`-GPU job on `GPU 0` and `GPU 1` shows `NV4` in `nvidia-smi topo -m`, but step time regresses. `nvidia-smi nvlink --status` shows `Link 0, 1, 3: 26.562 GB/s` and `Link 2: 0.000 GB/s`. | Partial NVLink sub-link degradation (`75.0%` bandwidth): one of the `4` bonded NVLink lanes trained down to `0.000 GB/s` (`79.686 / 106.248 GB/s`) after initial topology discovery. | Monitor `nvidia-smi nvlink --status` and DCGM NVLink error counters continuously; cordon the node for GPU reset or replacement when any lane drops to `0.000 GB/s`. |
 | 2. `8`-GPU job stays Pending even though `8` free GPUs exist across `4` nodes (`2` free GPUs/node) | Cluster has `8` idle GPUs (`2` per node across `4` nodes), yet an `8`-GPU job with `topology-required-placement: kubernetes.io/hostname` stays Pending. | Hard single-node topology or fragmentation constraint (*Generative AI on Kubernetes* Ch. 7): the workload required all `8` GPUs on a single NVSwitch node (`hostname`), and existing `2`-GPU jobs fragmented all `4` nodes. | Enable KAI Scheduler's Consolidate action (or Kubernetes Descheduler `HighNodeUtilization` + `MostAllocated` bin packing) to pack the `2`-GPU jobs onto fewer nodes and free a full `8`-GPU NVSwitch node. |
 | 3. Topology matrix and GPU indices change after a server firmware or riser repair (`Lab 04` §14) | After hardware maintenance, a pinned placement policy routes `GPU 0` + `GPU 1` onto a slow `SYS` path. | PCIe bus enumeration or slot drift: moving risers or updating BIOS renumbered logical GPU indices (`0..3`), invalidating index-based pinning. | Key all topology inventories and CDI or DRA mappings by GPU `UUID` (`GPU-3a1f9e02-...`) and PCI BDF (`0000:1b:00.0`), and re-run the `Lab 04` verification before returning a repaired node to service. |
-| 4. `90`-GPU H100 cluster delivers `15T` tokens/year instead of `22.7T` (`80 ms` vs `50 ms` `AllReduce`) | Training throughput drops `34%` below the `22.7T` achievable baseline; NCCL profiling shows inter-node `AllReduce` taking `80 ms` instead of `50 ms` (`volume-24/chapter-10`). | InfiniBand link speed downshift or cross-leaf placement: either `ibnetdiscover` / `perfquery` shows IB links negotiated below `200 Gbps` HDR, or the gang was scattered across spine switches. | Verify `ibnetdiscover` link speeds, reseat degraded IB cables, and configure KAI `kai.scheduler/topology-preferred-placement: nvidia.com/ib-leaf-switch`. |
-| 5. `8`-GPU node trips rack breaker at `15 kW` (above `10 kW` rack budget) during synchronous `AllReduce` + GEMM peaks | Nodes unexpectedly power off under peak FP8 tensor-core load. `ipmitool dcmi power reading` shows `15 kW` vs `10 kW` rack power budget (`volume-24/chapter-10`). | Uncapped peak GPU power draw: all `8` GPUs hit maximum TDP simultaneously during dense GEMM steps. | Apply an `85%` power cap (`nvidia-smi -pl` via GPU Operator or DCGM policy, reducing `15 kW` to `~12 kW` with minimal throughput loss) or tune micro-batch sizes. |
+| 4. `90`-GPU H100 cluster delivers `15T` tokens/year instead of `22.7T` (`80 ms` vs `50 ms` `AllReduce`) | Training throughput drops `34%` below the `22.7T` achievable baseline; NCCL profiling shows inter-node `AllReduce` taking `80 ms` instead of `50 ms`. | InfiniBand link speed downshift or cross-leaf placement: either `ibnetdiscover` / `perfquery` shows IB links negotiated below `200 Gbps` HDR, or the gang was scattered across spine switches. | Verify `ibnetdiscover` link speeds, reseat degraded IB cables, and configure KAI `kai.scheduler/topology-preferred-placement: nvidia.com/ib-leaf-switch`. |
+| 5. `8`-GPU node trips rack breaker at `15 kW` (above `10 kW` rack budget) during synchronous `AllReduce` + GEMM peaks | Nodes unexpectedly power off under peak FP8 tensor-core load. `ipmitool dcmi power reading` shows `15 kW` vs `10 kW` rack power budget. | Uncapped peak GPU power draw: all `8` GPUs hit maximum TDP simultaneously during dense GEMM steps. | Apply an `85%` power cap (`nvidia-smi -pl` via GPU Operator or DCGM policy, reducing `15 kW` to `~12 kW` with minimal throughput loss) or tune micro-batch sizes. |
 
 Read each row from left to right. The symptom tells you what to look for, the root cause boundary tells you where the problem lives, and the remediation tells you what to change. If a 2-GPU job slows down while its topology still shows `NV4`, start with the first row.
 
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs on your own machine with the Python 3 standard library. It uses `code/part11/kai_gang_and_topology.py` and `code/part11/kai_gang_and_topology_lab.py`. The code simulates the multi-level gang and topology placement engine in KAI Scheduler. It also runs the four-GPU H100 placement and sub-link health verifier from Volume 02 Lab 04, and the 50-billion-parameter LLM throughput calculator from Volume 24 Chapter 10. Commands in the earlier sections are marked `(untested here)`, because this lab does not run them against a live cluster or host.
+This lab runs on your own machine with the Python 3 standard library. It uses `code/part11/kai_gang_and_topology.py` and `code/part11/kai_gang_and_topology_lab.py`. The code simulates the multi-level gang and topology placement engine in KAI Scheduler. It also runs the four-GPU H100 placement and sub-link health verifier, and the 50-billion-parameter LLM throughput calculator. The commands in the earlier sections were not run on live hardware, because this lab does not run them against a live cluster or host.
 
 ### Step 1: Run the self-checking KAI gang scheduling and topology lab (tested here)
 
@@ -420,7 +420,7 @@ A required constraint guarantees that the gang never runs on a degraded intercon
 </details>
 
 <details>
-<summary>**5. On the 4-GPU H100 server in Volume 02 Lab 04, what are the two natural hardware topology groups, and what three Linux/NVIDIA data sources confirm them?**</summary>
+<summary>**5. On a 4-GPU H100 server, what are the two natural hardware topology groups, and what three Linux/NVIDIA data sources confirm them?**</summary>
 
 On this server, the GPUs and NICs split into two natural groups, shown in the table below.
 
@@ -433,7 +433,7 @@ You can confirm the groups with three sources: `nvidia-smi topo -m`, the Linux s
 </details>
 
 <details>
-<summary>**6. In Volume 02 Lab 04, what happens if a 2-GPU + 1-NIC distributed training job is placed on (GPU 1, GPU 2, NIC 1) instead of (GPU 0, GPU 1, NIC 0)?**</summary>
+<summary>**6. In the host placement plan, what happens if a 2-GPU + 1-NIC distributed training job is placed on (GPU 1, GPU 2, NIC 1) instead of (GPU 0, GPU 1, NIC 0)?**</summary>
 
 GPU 1 sits on NUMA 0, while GPU 2 and NIC 1 sit on NUMA 1. Because no NVLink bridge joins those two GPUs, every peer transfer between them crosses the inter-socket link. Every cross-socket RDMA transfer does the same. Both paths run at NUMA distance 21 instead of local distance 10.
 </details>
@@ -445,7 +445,7 @@ Suppose one of the four NVLink lanes in a pair drops to zero bandwidth while the
 </details>
 
 <details>
-<summary>**8. What are the three workload placement profiles defined in Step 7 and Step 8 of Volume 02 Lab 04?**</summary>
+<summary>**8. What are the three workload placement profiles defined in Step 7 and Step 8 of the host placement plan?**</summary>
 
 The three placement profiles are listed in the table below, with the rules each one requires and prefers.
 
@@ -463,25 +463,25 @@ Track the UUID and PCI bus address because logical indices can change. A BIOS up
 </details>
 
 <details>
-<summary>**10. In Volume 24 Project 10, a stakeholder asks for 100 trillion tokens/year of training throughput on a 50B-parameter LLM with a $5M all-in budget. Walk through the per-GPU throughput math that proves a 4.4x shortfall.**</summary>
+<summary>**10. A stakeholder asks for 100 trillion tokens/year of training throughput on a 50B-parameter LLM with a $5M all-in budget. Walk through the per-GPU throughput math that proves a 4.4x shortfall.**</summary>
 
 A 50-billion-parameter model requires 100 GFLOP per token. One H100 sustaining 1,000 TFLOPS processes 36 million tokens per hour. A 5-million-dollar budget buys 90 H100 GPUs. That comes to 4.875 million dollars in hardware CapEx. Counting three-year OpEx instead, the same budget covers 80 GPUs. At 80 percent availability, 90 H100s produce 3.24 billion tokens per hour, or 22.7 trillion tokens per year. That is a 4.4x shortfall against the 100-trillion target, and closing it would take about 396 H100 GPUs.
 </details>
 
 <details>
-<summary>**11. In Volume 24 Project 10 Step 2, compare Option B (25 nodes x 4 GPUs/node) and Option C (12 nodes x 8 GPUs/node) for a ~100-GPU cluster.**</summary>
+<summary>**11. In Step 2 of the cluster sanity check, compare Option B (25 nodes x 4 GPUs/node) and Option C (12 nodes x 8 GPUs/node) for a ~100-GPU cluster.**</summary>
 
 In Option B, you have 25 four-GPU nodes. Intra-node collectives take about 2 milliseconds over NVLink. Inter-node communication across the 25 nodes over InfiniBand HDR takes 20 to 40 milliseconds. Option C uses 12 eight-GPU nodes. Consolidating onto eight-GPU NVSwitch servers reduces binary-tree inter-node hops to 3.6. It also cuts switch port count and congestion in half, and it keeps eight-GPU tensor-parallel groups inside one node.
 </details>
 
 <details>
-<summary>**12. In Volume 24 Project 10 Step 4, how do compute time and ring AllReduce time combine to meet the under-300ms step-time requirement for the 50B model (batch 256)?**</summary>
+<summary>**12. In Step 4 of the cluster sanity check, how do compute time and ring AllReduce time combine to meet the under-300ms step-time requirement for the 50B model (batch 256)?**</summary>
 
 You can add up the step this way. Forward and backward compute at 1,000 TFLOPS takes 100 milliseconds per step. Optimized multi-node ring collective communication of 900 GB of gradients takes about 50 milliseconds. The total step time is 150 milliseconds, which stays well below the 300-millisecond target.
 </details>
 
 <details>
-<summary>**13. How does Volume 24 Project 10 Phase 3 size and stage a 600 GB checkpoint (200 GB weights + 400 GB optimizer state) every 100 steps (~30 seconds) without stalling training?**</summary>
+<summary>**13. How does Phase 3 of the cluster sanity check size and stage a 600 GB checkpoint (200 GB weights + 400 GB optimizer state) every 100 steps (~30 seconds) without stalling training?**</summary>
 
 Each node writes the 600 GB checkpoint to its 1 TB local NVMe drive. That synchronous write takes about 1 second, so training resumes right away. A background process then uploads the checkpoint to remote S3 storage. A full dump over 200 Mbps takes about 50 minutes, or about 15 minutes with incremental diffs.
 </details>
@@ -511,7 +511,7 @@ A `numa_node` value of -1, which is negative one, means the server's ACPI BIOS t
 </details>
 
 <details>
-<summary>**18. In Volume 24 Project 10, if achieved cluster throughput drops from 22.7T tokens/year down to 15T tokens/year and inter-node AllReduce rises from 50ms to 80ms, what two diagnostic tools do you run first?**</summary>
+<summary>**18. If achieved cluster throughput drops from 22.7T tokens/year down to 15T tokens/year and inter-node AllReduce rises from 50ms to 80ms, what two diagnostic tools do you run first?**</summary>
 
 First, you inspect `perfquery` counters and NCCL debug traces. Check for InfiniBand port congestion, and confirm whether NCCL chose Ring or Tree collectives. Second, run `ibnetdiscover` and `ibstat`. Confirm that every InfiniBand link negotiated full 200 Gbps HDR speed, and that no degraded cable forced traffic onto multi-hop paths.
 </details>

@@ -1,0 +1,15 @@
+docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md 56
+docs/part-10-gpu-cuda/22-gpu-troubleshooting-scenarios.md 44
+docs/part-11-gpu-kubernetes/01-why-kubernetes-needs-a-gpu-platform-layer.md 8
+docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md 10
+docs/part-11-gpu-kubernetes/03-node-feature-discovery-and-gpu-feature-discovery.md 8
+docs/part-11-gpu-kubernetes/04-gpu-operator-architecture-and-operands.md 6
+docs/part-11-gpu-kubernetes/05-gpu-operator-installation-configuration-and-upgrades.md 11
+docs/part-11-gpu-kubernetes/06-scheduling-gpus-requests-topology-manager-cpu-and-numa-alignment.md 7
+docs/part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md 5
+docs/part-11-gpu-kubernetes/10-secondary-networks-multus-sr-iov-device-plugin-and-rdma-device-plugin.md 6
+docs/part-11-gpu-kubernetes/11-nvidia-network-operator.md 12
+docs/part-11-gpu-kubernetes/12-dynamic-resource-allocation-dra.md 12
+docs/part-11-gpu-kubernetes/13-kai-scheduler-why-default-scheduling-is-not-enough.md 26
+docs/part-11-gpu-kubernetes/14-kai-scheduler-architecture-and-resources.md 25
+docs/part-11-gpu-kubernetes/15-kai-queues-quotas-and-fair-sharing.md 37

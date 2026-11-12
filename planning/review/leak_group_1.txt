@@ -1,0 +1,15 @@
+docs/part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md 11
+docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md 22
+docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md 16
+docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md 8
+docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md 16
+docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md 17
+docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md 16
+docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md 27
+docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md 16
+docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md 16
+docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md 11
+docs/part-03-python/12-objects-types-and-data-structures-in-depth.md 14
+docs/part-03-python/13-statements-iteration-and-control-flow-in-depth.md 14
+docs/part-03-python/14-functions-scopes-and-arguments-in-depth.md 39
+docs/part-03-python/15-modules-and-packages-in-depth.md 10

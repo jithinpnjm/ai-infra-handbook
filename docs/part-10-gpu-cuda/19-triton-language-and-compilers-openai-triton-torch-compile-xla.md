@@ -251,7 +251,7 @@ def model_cond(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
 Not every graph break is a bug. When you combine `torch.compile` with DistributedDataParallel or FullyShardedDataParallel configured with `use_original_params=True` and wrapped per Transformer block submodule, the explain tool reports graph breaks at collective communication boundaries. Do not try to remove these communication breaks. PyTorch intentionally splits the graph at each gradient bucket or FSDP submodule boundary so asynchronous NCCL collectives overlap with the computation of neighboring compiled subgraphs.
 
-### 2.3 Compiler logging (Table 14-1), `TORCH_COMPILE_DEBUG=1`, `tlparse`, and numerical determinism
+### 2.3 Compiler logging, `TORCH_COMPILE_DEBUG=1`, `tlparse`, and numerical determinism
 
 When a compiled model runs slower than expected or produces slightly different floating-point numbers than eager mode, treating the compiler as a black box makes root-cause analysis impossible. You need visibility into which guards failed, why CUDA Graphs were skipped, what Triton code was generated, and which compiler pass introduced a numerical discrepancy.
 

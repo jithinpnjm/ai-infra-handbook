@@ -84,7 +84,7 @@ By the end of this chapter, you should be able to do five things.
 #### Failure Mode 1: Static ResourceQuota silos vs dynamic fair-share
 Picture a platform team that splits its cluster by department, using fixed node pools or hard ResourceQuota limits. GPUs then sit idle in one namespace while jobs wait in another. Researchers face queue delays even when half the cluster is unallocated, and static partitioning wastes expensive hardware each time team demand shifts.
 
-Take the multi-tenant enterprise cluster from Volume 23, Chapter 7. The platform runs 32 GPUs across 4 nodes, with three competing namespaces. Suppose the research namespace sits behind a hard ResourceQuota ceiling of 16 GPUs. Research can then never use more than half the cluster, even when the other two teams have zero running jobs. Interns, in turn, can never borrow idle research GPUs overnight.
+Take the multi-tenant enterprise cluster. The platform runs 32 GPUs across 4 nodes, with three competing namespaces. Suppose the research namespace sits behind a hard ResourceQuota ceiling of 16 GPUs. Research can then never use more than half the cluster, even when the other two teams have zero running jobs. Interns, in turn, can never borrow idle research GPUs overnight.
 
 In the author's design notes for this cluster, the static split reaches about 60% average utilization. A dynamic fair-share scheduler works differently. Teams borrow idle GPUs above their guaranteed quota, and they give them back after a 30-second grace period when the owner returns. The same notes put utilization at 85% with borrowing. The notes do not state how either figure was measured, so read them as an illustration of the direction of the effect and not as a benchmark.
 
@@ -426,7 +426,7 @@ Exercise 4 compares the two schedulers. Call `compare_default_vs_kai_scheduler` 
 
 Exercise 5 tests the preemption timing. Call `simulate_graceful_preemption_timeline` for an 8-second fast checkpoint and a 45-second slow checkpoint under a 30-second grace period. Compare whether each checkpoint finishes before `SIGKILL`, and how many steps each one loses.
 
-Exercise 6 asks what to do about thrashing. A 72-hour training job gets preempted every 2 hours. List the four operational mitigations from Volume 23 Chapter 12 and Volume 26 Chapter 2.
+Exercise 6 asks what to do about thrashing. A 72-hour training job gets preempted every 2 hours. List the four operational mitigations.
 
 | Exercise | Function in `code/part11/kai_why_default_not_enough.py` | Input Parameters | Expected Output Summary |
 |---|---|---|---|
@@ -454,13 +454,13 @@ If you give research its 16 GPUs, data-eng its 12, and interns its 4 behind hard
 </details>
 
 <details>
-<summary>**3. What is the bimodal workload distribution of a typical multi-tenant research GPU cluster in Volume 23 Chapter 12?**</summary>
+<summary>**3. What is the bimodal workload distribution of a typical multi-tenant research GPU cluster Chapter 12?**</summary>
 
 Picture 50 research teams sharing 200 GPUs on 25 nodes. Their workloads fall into three duration tiers. Roughly 60% are short interactive jobs under one hour, often five minutes long. Another 30% are medium fine-tuning or sweep jobs that run from one to eight hours, with a two-hour median. The last 10% are long training runs that last over 24 hours, up to 72 hours or 3 months.
 </details>
 
 <details>
-<summary>**4. How does a weighted fair-share scheduler compute a team's deficit and job priority score in Volume 23 Chapter 12?**</summary>
+<summary>**4. How does a weighted fair-share scheduler compute a team's deficit and job priority score Chapter 12?**</summary>
 
 The scheduler computes the usage deficit relative to the team's quota with `deficit = (current_usage - quota) / quota`. It then scores each job with `priority = -deficit + (0.1 if job.gpu_count < 4 else 0.0)`. Read the sign carefully: a team below its quota has a negative deficit, which gives its jobs a positive priority boost and moves them toward the front. A team over its quota has a positive deficit, which pushes its next jobs behind under-quota peers.
 </details>
@@ -496,25 +496,25 @@ You can see that the default kube-scheduler only understands whole-integer GPU r
 </details>
 
 <details>
-<summary>**10. Walk through the exact 90-second timeline of a graceful preemption event in Volume 23 Chapter 12.**</summary>
+<summary>**10. Walk through the exact 90-second timeline of a graceful preemption event.**</summary>
 
 At 0 seconds, kubelet sends `SIGTERM` to the preempted pod, which has a 30-second grace period. Between 0 and 30 seconds, the Python signal handler saves model weights, optimizer state, epoch, and step to persistent storage. That takes five to ten seconds, and the process exits 0 before the 30-second `SIGKILL` deadline. At 45 seconds, the higher-priority job starts on the freed GPUs. At 90 seconds, the preempted job resumes on another node with zero lost steps.
 </details>
 
 <details>
-<summary>**11. What are the three job duration preemption rules defined in Volume 23 Chapter 12 Phase 4?**</summary>
+<summary>**11. What are the three job duration preemption rules defined Phase 4?**</summary>
 
 Short jobs under 1 hour are non-preemptible, so interactive notebooks are not disrupted. They are canceled only when more than ten jobs wait in the queue. Medium jobs from 1 to 8 hours can be preempted, but they get a 30-second `SIGTERM` notice to save a checkpoint. Long jobs over 8 hours can be preempted only when the owning team is more than 2x over its quota.
 </details>
 
 <details>
-<summary>**12. What are the four monitoring metrics and three alert thresholds recommended in Volume 23 Chapter 7 for a multi-tenant GPU cluster?**</summary>
+<summary>**12. What are the four monitoring metrics and three alert thresholds recommended for a multi-tenant GPU cluster?**</summary>
 
 Platform teams track four metrics: `gpu_usage_per_namespace`, `gpu_allocation_percent`, `preemption_count_per_day`, and `pod_pending_seconds_p99`. Three alerts go with them. One fires when a namespace exceeds its hard quota limit. Another fires when `preemption_count_per_day` goes above five per day, which signals thrashing. The third fires when `pod_pending_seconds_p99` goes above five minutes, which signals a scheduling bottleneck.
 </details>
 
 <details>
-<summary>**13. How does the three-tier checkpointing strategy in Volume 23 Chapter 12 balance write overhead against recovery time and durability?**</summary>
+<summary>**13. How does the three-tier checkpointing strategy balance write overhead against recovery time and durability?**</summary>
 
 Tier 1 writes to local NVMe every 100 steps or hourly. It adds no network overhead and recovers from process crashes in under five minutes. Tier 2 writes asynchronously to shared NFS every 8 hours and on `SIGTERM`. It adds 1% to 2% overhead and survives a full node failure. Tier 3 archives daily to cold storage or tape, which protects 72-hour runs from a catastrophic failure of the primary storage array.
 </details>

@@ -103,7 +103,7 @@ flowchart TD
 
 The table turns each gate into a lookup. It shows what to ask, what to run, what healthy looks like, what a fault looks like, and what to do about it.
 
-| Layer | Diagnostic Question | Primary Telemetry Command (`untested here`) | Healthy Baseline | Fault Signature | Immediate Remediation |
+| Layer | Diagnostic Question | Primary Telemetry Command | Healthy Baseline | Fault Signature | Immediate Remediation |
 |---|---|---|---|---|---|
 | **1. Accelerator (GPU)** | Is the GPU starving for input data, or busy computing and running NCCL? | `nvidia-smi dmon -s puctem -c 5` | `SM >= 85-92%`, `Mem >= 40%` | `SM < 70%` (`15%` SM, `5%` Mem) or oscillating `0% <-> 95%` | If `SM >= 70%`, stop blaming storage; run `nsys` and the `0.5x`/`2.0x` batch-size test. If `< 70%`, check Layer 2. |
 | **2. Batch Queue (DataLoader)** | Is the host prefetch queue empty when the GPU finishes a step? | `prefetch_queue.qsize()` and per-batch `wait_time` | `qsize >= 2`, `wait_time < 50 ms` | `qsize == 0` for `80%` of steps; `wait_time > 500 ms` (`620 ms`) | If queue is full (`qsize >= 2`) yet GPU waits, check CPU-to-GPU copy (`pin_memory`, GDS). If empty, check Layers 3 and 4. |
@@ -184,7 +184,7 @@ Let the NIC number decide whether you chase the network or the GPUs.
 
 Once the decision tree and the batch-size test show which regime dominates, pick the profiler that watches that exact layer. A kernel-level profiler only produces noise when the process is asleep on disk I/O. The table lists each tool with the question it answers.
 
-| Tool | Scope | Key Command / API (`untested here`) | What It Proves During Storage & Pipeline Triage |
+| Tool | Scope | Key Command / API | What It Proves During Storage & Pipeline Triage |
 |---|---|---|---|
 | **NVIDIA Nsight Systems (`nsys`)** | System-wide timeline (CPU, GPU, OS, GDS, NVTX) | `nsys profile --trace=cuda,gds,nvtx,osrt -o report python train.py` | Correlates NVTX ranges (`"train_step"`, `"forward"`, `"backward"`, `"optimizer_step"`) with OS `read`/`open` stalls (`osrt`), `cuFile` GDS transfers (`gds`), and CUDA stream gaps. |
 | **PyTorch Profiler (`Kineto`)** | Operator-level CPU & CUDA timeline + memory | `torch.profiler.profile(activities=[CPU, CUDA], record_shapes=True, profile_memory=True, with_stack=True, with_flops=True)` | Identifies DataLoader `enumerate(loader)` wait gaps, host-to-device `cudaMemcpyAsync` stalls, and `torch.compile` graph breaks. View JSON traces in Perfetto UI, since TensorBoard trace plugin and `chrome://tracing` are deprecated. |
@@ -223,7 +223,7 @@ flowchart LR
 
 Use the table as a reference when a stage looks wrong. Each red-flag cell names the threshold that should trigger action.
 
-| Storage Path Stage | Baseline Latency Envelope | Healthy Single-Node Throughput / Capacity | Primary Baseline Command (`untested here`) | Red-Flag Threshold Requiring Action |
+| Storage Path Stage | Baseline Latency Envelope | Healthy Single-Node Throughput / Capacity | Primary Baseline Command | Red-Flag Threshold Requiring Action |
 |---|---|---|---|---|
 | **1. Storage Array (OST / MDS)** | `~100 us` media access; `2.0-5.0 ms` metadata `open` | `< 50,000` `open` ops/s per MDS; targets balanced within `±5%` | `lfs df -h` and `lctl get_param llite.*.stats` | Any `OST >= 90-98%` full; `> 10%` target fill spread; `open > 100,000` ops/s or `> 20 ms` latency |
 | **2. Network Fabric (NIC / Switch)** | `10-100 us` (`~300 ns` IB, `~800 ns` RoCEv2 switch hop) | `20-25 Gbps` on `25GbE` (`25,000 Mb/s`, `80-100%` link); `MTU 9000`; RX/TX ring `4096` | `ip -s link`, `ethtool eth0`, `ethtool -g eth0`, `iperf3 -c storage -t 10` | `iperf3 < 50%` of link speed; `MTU 1500` on storage VLAN; RX ring `< 512` (`256`); `rx_errors` or `rx_dropped > 0` |
@@ -256,7 +256,7 @@ The decision tree and the baseline prove their worth under pressure. So let us w
 
 ### 4.1 Incident Alert and Step 1: Comparing Current State Against the Baseline
 
-Imagine you are the on-call engineer. Instead of guessing at Lustre or PyTorch flags, you run `./capture_baseline.sh > current.txt` on a training node. That command is marked `untested here`. Then you compare the output with `healthy.txt` using `diff`. The comparison shows three anomalies at once: one on the GPU, one on the Lustre object targets, and one on the network interface.
+Imagine you are the on-call engineer. Instead of guessing at Lustre or PyTorch flags, you run `./capture_baseline.sh > current.txt` on a training node. That command was not run on live hardware. Then you compare the output with `healthy.txt` using `diff`. The comparison shows three anomalies at once: one on the GPU, one on the Lustre object targets, and one on the network interface.
 
 ```text
 < GPU0    dmon -s puctem shows: sm=92%, mem=40%
@@ -275,7 +275,7 @@ A junior engineer who sees `OST 5-7 at 98% full` may start migrating terabytes o
 
 Gate 1 shows GPU SM utilization has collapsed from 92 percent to 15 percent, well below the 70 percent threshold. That drop tells you the job is I/O-bound. Gate 2 checks `prefetch_queue.qsize()` inside the training loop. The queue is empty 80 percent of the time, and batch wait exceeds 500 ms.
 
-At Gate 3, you profile the job with `python -m cProfile -s cumtime train.py`, which is marked `untested here`. It shows 120,000 calls to `Image.open` taking 45.2 seconds. It also shows `augmentation.apply` taking 12.1 seconds, which totals 57.3 seconds of CPU work.
+At Gate 3, you profile the job with `python -m cProfile -s cumtime train.py`, which was not run on live hardware. It shows 120,000 calls to `Image.open` taking 45.2 seconds. It also shows `augmentation.apply` taking 12.1 seconds, which totals 57.3 seconds of CPU work.
 
 That 57.3 seconds of CPU work is real. It still cannot explain why the prefetch queue sits empty 80 percent of the time. The raw file bytes are stalling in the storage network before they ever reach `Image.open`.
 
@@ -312,7 +312,7 @@ The default configuration makes it easy to miss. `/etc/cufile.json` ships with `
 
 GPUDirect Storage skips the host CPU bounce buffer only when all six requirements hold at the same time. If even one requirement fails, `cuFile` quietly routes reads through host DRAM. The table lists each requirement, the command that verifies it, and the failure that causes the fallback.
 
-| Requirement # | Layer | Technical Requirement | Verification Command (`untested here`) | What Causes Silent Fallback to CPU Bounce |
+| Requirement # | Layer | Technical Requirement | Verification Command | What Causes Silent Fallback to CPU Bounce |
 |---|---|---|---|---|
 | **1. Kernel Driver** | Host OS | `nvidia_fs` kernel module loaded and `/proc/driver/nvidia-fs/stats` active | `lsmod \| grep nvidia_fs` and `cat /proc/driver/nvidia-fs/stats` | `nvidia-fs` DKMS package missing or broken after a Linux kernel upgrade. |
 | **2. GPU Driver** | CUDA Driver | NVIDIA display and compute driver `>= 470` (`535.29`+) and `/usr/local/cuda/include/cufile.h` present | `nvidia-smi \| grep "Driver Version"` | Older driver lacking `cuFile` BAR1 peer-to-peer DMA hooks. |
@@ -352,7 +352,7 @@ Both the 20 percent throughput gain and the 20 percent latency cut come from the
 
 ## 6. Commands and Configurations That Matter
 
-When an alert pages you at 2 a.m., you should not have to recall twenty different CLI flags from memory. The scripts and command blocks below group each check by the storage layer it instruments. Every bare-metal cluster command is marked `untested here`.
+When an alert pages you at 2 a.m., you should not have to recall twenty different CLI flags from memory. The scripts and command blocks below group each check by the storage layer it instruments. The bare-metal cluster commands below were not run on live hardware.
 
 ### 6.1 The 5-Minute Node and Storage Baseline Capture Script
 
@@ -658,13 +658,13 @@ The experiment works because AllReduce byte volume depends only on model paramet
 <details>
 <summary>**7. What is the quantitative impact of switching NCCL from a topology-unaware PCIe path without overlap to a topology-aware NVLink path with compute-communication overlap?**</summary>
 
-According to *AI Systems Performance Engineering* Table 4-2, GPU SM busy utilization rises from 60 percent to 90 percent when NCCL moves from a topology-unaware PCIe path without overlap to a topology-aware NVLink path with compute-communication overlap. Memory-stall warps drop substantially. Total iteration time falls by 30 percent, from 100 ms to 70 ms.
+According to *AI Systems Performance Engineering*, GPU SM busy utilization rises from 60 percent to 90 percent when NCCL moves from a topology-unaware PCIe path without overlap to a topology-aware NVLink path with compute-communication overlap. Memory-stall warps drop substantially. Total iteration time falls by 30 percent, from 100 ms to 70 ms.
 </details>
 
 <details>
 <summary>**8. Which Nsight Systems CLI flags capture CUDA kernels, GPUDirect Storage transfers, NVTX ranges, and OS runtime syscalls in a single timeline?**</summary>
 
-Run `nsys profile --trace=cuda,gds,nvtx,osrt -o report python train.py`, a command marked `untested here`. It lines up NVTX markers such as `"train_step"`, `"forward"`, `"backward"`, and `"optimizer_step"` with OS syscall stalls in `osrt`, direct DMA reads in `gds`, and GPU gaps in `cuda`.
+Run `nsys profile --trace=cuda,gds,nvtx,osrt -o report python train.py`, a command that was not run on live hardware. It lines up NVTX markers such as `"train_step"`, `"forward"`, `"backward"`, and `"optimizer_step"` with OS syscall stalls in `osrt`, direct DMA reads in `gds`, and GPU gaps in `cuda`.
 </details>
 
 <details>
@@ -680,7 +680,7 @@ When you check a healthy 25 Gbps link, it sustains 20 to 25 Gbps in `iperf3` wit
 </details>
 
 <details>
-<summary>**11. In Volume 15 Lab 02, what are the four reference workload throughputs on a healthy local NVMe drive, and when should you cache models on local NVMe?**</summary>
+<summary>**11. In the local NVMe benchmark lab, what are the four reference workload throughputs on a healthy local NVMe drive, and when should you cache models on local NVMe?**</summary>
 
 On a healthy drive, you should see local NVMe reach 3.5 GB/s on sequential model load, 2.8 GB/s on eight-job 64 KB batch streaming, 1.2 GB/s on 4 MB random reads, and 2.1 GB/s on sequential checkpoint writes. Cache model weights and stage checkpoints on local NVMe whenever it is more than 2x faster than shared storage.
 </details>

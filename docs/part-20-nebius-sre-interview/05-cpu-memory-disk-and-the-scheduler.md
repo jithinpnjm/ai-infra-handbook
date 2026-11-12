@@ -51,7 +51,7 @@ Utilisation is how busy a resource is. Saturation is how much work is waiting be
 
 Load average is a count of busy and queued tasks, smoothed over 1, 5 and 15 minutes. Systems Performance explains that Linux changed it in 1993 to include tasks in the uninterruptible state, shown as state D in tools. A task is in state D when it waits for something like disk and cannot be interrupted. So a Linux load average mixes CPU demand and I/O waiting. A host with idle CPUs and thirty tasks stuck on a slow disk shows a load of thirty.
 
-Two more facts keep you honest. The average is exponentially damped. In the book's experiment with one CPU-bound thread, each average had reached about 61 percent of the true load of 1.0 at its own 1, 5 and 15 minute mark. The book also says to spend no more than five minutes on load averages before moving to better metrics.
+Two more facts keep you honest. The average is exponentially damped. In Systems Performance's experiment with one CPU-bound thread, each average had reached about 61 percent of the true load of 1.0 at its own 1, 5 and 15 minute mark. Its advice is to spend no more than five minutes on load averages before moving to better metrics.
 
 The first thing to decide: use load average only to see whether things are getting worse or better, then move to pressure and per-CPU numbers.
 
@@ -101,7 +101,7 @@ Systems Performance also gives a flow chart for container CPU throttling that us
 
 For monitoring, cAdvisor documents `container_cpu_cfs_periods_total` and `container_cpu_cfs_throttled_periods_total`. The ratio of the second to the first is the throttle ratio. Alert on it for latency-sensitive pods, not on CPU usage.
 
-The fix is a trade-off, and the book states both sides. Setting limits equal to requests removes variability, which matters for benchmarks and latency-sensitive services. Otherwise an upper bound is not needed, because shares already divide a contended CPU fairly, and idle cycles are not wasted. The book also records a kernel bug that throttled containers unnecessarily, fixed in Linux 5.4 and backported to 4.14.154, 4.19.84 and 5.3.9. Check the kernel version before you blame the application.
+The fix is a trade-off with two sides. Setting limits equal to requests removes variability, which matters for benchmarks and latency-sensitive services. Otherwise an upper bound is not needed, because shares already divide a contended CPU fairly, and idle cycles are not wasted. There is also a kernel bug that throttled containers unnecessarily, fixed in Linux 5.4 and backported to 4.14.154, 4.19.84 and 5.3.9. Check the kernel version before you blame the application.
 
 The first thing to decide: for a slow container, read `cpu.stat` before you read CPU usage graphs.
 
@@ -131,7 +131,7 @@ Memory has two broad kinds. File pages belong to the page cache and have a copy 
 
 Linux frees memory in an order, shown in Systems Performance figure 7.6. It uses the free list first, then the page cache, then swapping of application pages, then reaping by the kernel. The OOM killer comes last. The `vm.swappiness` setting, 0 to 100 with a default of 60, tilts the choice between paging out applications and dropping cache.
 
-The column to trust is `available` in `free`, which is read from `MemAvailable` in `/proc/meminfo`. The book says it is memory available without swapping, and accounts for memory that cannot be reclaimed. The helper `c05_meminfo_parse.py` reports both. On a fixture built from the book's `free -m` output it printed `healthy: 60.9% available (free is only 8.4%, the rest is reclaimable cache)`.
+The column to trust is `available` in `free`, which is read from `MemAvailable` in `/proc/meminfo`. It is the memory available without swapping, and accounts for memory that cannot be reclaimed. The helper `c05_meminfo_parse.py` reports both. On a fixture built from a typical `free -m` output it printed `healthy: 60.9% available (free is only 8.4%, the rest is reclaimable cache)`.
 
 Swap is a trade-off. Systems Performance notes that with swap a growth bug first appears as slowness, which gives you time to debug live. Without swap the process is killed, and Netflix runs instances that way, preferring a fast kill and redirect over a slow instance. AI Systems Performance Engineering recommends avoiding swap on GPU hosts, because swapped host memory stalls the GPU. For an inference fleet behind a router, kill-and-replace fits better as long as the router notices. That last clause is my reasoning, not a quote.
 
@@ -143,7 +143,7 @@ The first thing to decide: alert on memory PSI and `MemAvailable`, never on `Mem
 
 A process vanishes. No error in the application log. This is how the OOM killer behaves, because it sends SIGKILL, which cannot be caught. The kernel log is the only witness. Read it with `dmesg -T | grep -i -B2 -A25 'invoked oom-killer'` or `journalctl -k`.
 
-There are two kinds of event. A global OOM happens when the whole node runs out. A cgroup OOM happens when one container reaches its own memory limit, even if the node has plenty free. Systems Performance, chapter 7, says a system may have abundant free memory and still hit the OOM killer because a container exhausted its cgroup limit. The log tells you which kind. I read the source of the Linux 6.6 kernel to get the exact line shapes, fetched 2026-11-09.
+There are two kinds of event. A global OOM happens when the whole node runs out. A cgroup OOM happens when one container reaches its own memory limit, even if the node has plenty free. Systems Performance, chapter 7, says a system may have abundant free memory and still hit the OOM killer because a container exhausted its cgroup limit. The log tells you which kind. The exact line shapes come from the Linux 6.6 kernel source.
 
 | Line | What it tells you |
 |---|---|
@@ -154,7 +154,7 @@ There are two kinds of event. A global OOM happens when the whole node runs out.
 
 Read it in four steps. First look at the constraint to learn the scope. Second look at `oom_memcg` to learn which cgroup, which maps to a pod through its path. Third compare the victim's `anon-rss` to the limit. Fourth look at the table for who else was large. The kernel source picks the victim by a score. It starts from resident pages plus swap entries plus page tables, then shifts it by `oom_score_adj` scaled to the total memory. A task whose `oom_score_adj` equals the minimum value is skipped and cannot be chosen.
 
-The helper `c05_oom_parse.py` automates the reading. On a log built from the kernel format strings, with invented numbers, it printed `python (pid 2301) killed for container/cgroup limit; anon-rss 100 MiB, file-rss 2 MiB`. That one is a fixture. Scenario 3 has a real log from kernel 6.18, whose task table has three extra columns, `rss_anon`, `rss_file` and `rss_shmem`, that the 6.6 layout lacks. The parser mis-read that table until I fixed it, so a line layout in a book or a kernel source tree can differ from your kernel.
+The helper `c05_oom_parse.py` automates the reading. On a log built from the kernel format strings, with invented numbers, it printed `python (pid 2301) killed for container/cgroup limit; anon-rss 100 MiB, file-rss 2 MiB`. That one is a fixture. Scenario 3 has a real log from kernel 6.18, whose task table has three extra columns, `rss_anon`, `rss_file` and `rss_shmem`, that the 6.6 layout lacks. The parser mis-read that table until it was fixed, so a line layout in a book or a kernel source tree can differ from your kernel.
 
 In Kubernetes the same event appears as `OOMKilled` in `kubectl describe pod`, under Last State, as Production Kubernetes chapter 12 shows. Kubernetes documentation says memory limits are enforced reactively by the kernel, so a container that over-allocates may not be killed at the instant it crosses the limit. The kubelet can also evict pods under node pressure, first BestEffort, then Burstable pods above their requests. Eviction by the kubelet and a kill by the kernel are different events with different evidence.
 
@@ -186,7 +186,7 @@ A database host feels slow and `iostat` shows 100 percent utilisation. Is the di
 
 Throughput is megabytes per second, IOPS is operations per second, and latency is how long one operation takes. A disk can have high throughput and poor latency for small random reads. The book also notes that on-disk cache hits return in under 100 microseconds while misses take 1 to 8 ms or more, and an average hides that two-mode shape.
 
-The command is `iostat -sxz 1`. Read these columns, defined in the book.
+The command is `iostat -sxz 1`. Read these columns.
 
 | Column | Meaning |
 |---|---|
@@ -198,9 +198,9 @@ The command is `iostat -sxz 1`. Read these columns, defined in the book.
 | `areq-sz` | Average request size in kB after merging. 8 kB or less suggests random I/O |
 | `%util` | Percent of time the device was busy |
 
-Use `-x` without `-s` to split `r_await` from `w_await`. Reads usually matter more to applications, because write-back caching hides writes. The book's rule of thumb is to look for devices over 60 percent busy or with service times over about 10 ms. PSI for io, `/proc/pressure/io`, gives the same idea from the task side. To find who causes the I/O, use `pidstat -d` or `iotop`, which shows threads. How Linux Works chapter 8 covers both. To see latency as a histogram, `biolatency` from BCC shows it in power-of-two buckets.
+Use `-x` without `-s` to split `r_await` from `w_await`. Reads usually matter more to applications, because write-back caching hides writes. A common rule of thumb is to look for devices over 60 percent busy or with service times over about 10 ms. PSI for io, `/proc/pressure/io`, gives the same idea from the task side. To find who causes the I/O, use `pidstat -d` or `iotop`, which shows threads. How Linux Works chapter 8 covers both. To see latency as a histogram, `biolatency` from BCC shows it in power-of-two buckets.
 
-The helper `c05_iostat_parse.py` applies those rules. On the book's NVMe row, 100 percent util with 0.44 ms await, it printed `busy but fast: judge by IOPS and MB/s, not %util`. On an invented row with 38.5 ms await it printed `slow: await 38.50 ms`.
+The helper `c05_iostat_parse.py` applies those rules. On a sample NVMe row, 100 percent util with 0.44 ms await, it printed `busy but fast: judge by IOPS and MB/s, not %util`. On an invented row with 38.5 ms await it printed `slow: await 38.50 ms`.
 
 The first thing to decide: look at `await` and queue size before you look at `%util`.
 
@@ -208,13 +208,13 @@ The first thing to decide: look at `await` and queue size before you look at `%u
 
 Everything above points you at a resource. Sometimes the question left is which code is using it. For CPU the answer is a profile, and `perf` is the standard Linux tool. Systems Performance chapter 13 gives the core command: `perf record -F 99 -a -g -- sleep 10` samples every CPU 99 times per second for ten seconds, with call stacks.
 
-A flame graph turns thousands of stacks into one picture. In `perf` 5.8 and newer, `perf script report flamegraph` makes one directly. For older kernels the book uses `perf script`, then `stackcollapse-perf.pl`, then `flamegraph.pl`. The script `c05_perf_flamegraph.sh` runs either path.
+A flame graph turns thousands of stacks into one picture. In `perf` 5.8 and newer, `perf script report flamegraph` makes one directly. For older kernels use `perf script`, then `stackcollapse-perf.pl`, then `flamegraph.pl`. The script `c05_perf_flamegraph.sh` runs either path.
 
 Reading rules, from Systems Performance section 6.7.3. Each box is a function. The vertical axis is stack depth, and the top box is what was on CPU. The horizontal axis is the share of samples, and the left-to-right order has no meaning, it is alphabetical. Wider means more time. Look at the widest towers first. A wide box could be slow or just called often, since sampling does not show call counts.
 
-Flame graphs are not only for CPU. The book notes they can show context-switch stacks to see why threads leave the CPU, and block I/O creation stacks to see which code issues disk I/O. For a container you can profile by cgroup with `perf record --cgroup=...`.
+Flame graphs are not only for CPU. They can also show context-switch stacks to see why threads leave the CPU, and block I/O creation stacks to see which code issues disk I/O. For a container you can profile by cgroup with `perf record --cgroup=...`.
 
-Be careful on a production host. Sampling at 99 Hz is the book's standard example. Tracing every scheduler event can cost far more, as the `runqlat` note in section 11 shows. Say that you would sample first.
+Be careful on a production host. Sampling at 99 Hz is the standard example. Tracing every scheduler event can cost far more, as the `runqlat` note in section 11 shows. Say that you would sample first.
 
 The first thing to decide: reach for a profile only after a resource is proven short, and sample before you trace.
 
@@ -222,7 +222,7 @@ The first thing to decide: reach for a profile only after a resource is proven s
 
 eBPF lets the kernel run small verified programs at events such as a disk request or a scheduler wakeup. For an SRE the useful point is that it gives you histograms and per-process answers that `iostat` and `top` cannot. Systems Performance chapter 15 splits the tooling in two. BCC has more than 80 ready-made tools and suits complex ones. bpftrace is a short scripting language suited to one-off questions. Netflix, the book says, installs both by default on cloud instances and uses them after dashboards point at a problem.
 
-| Question | Tool | Note from the book |
+| Question | Tool | Note |
 |---|---|---|
 | How long do threads wait for a CPU? | `runqlat` | Instruments every wakeup and switch. Can exceed one million events per second, so use with caution |
 | How long is the run queue? | `runqlen` | Samples at 99 Hz, negligible overhead. A cheaper approximation |
@@ -243,7 +243,7 @@ The model is on the GPU, so why is host memory the problem? Because everything a
 
 Pinned memory, also called page-locked memory, is host memory the operating system will not swap or move. AI Systems Performance Engineering chapter 3 says copying from pinned memory to the GPU can be two to three times faster than from pageable memory. The device can do direct memory access. The handbook chapter 10.12 shows the CUDA side. PyTorch exposes it as `pin_memory=True`.
 
-Pinning has two costs. First, the operating system caps how much an unprivileged process may lock. That cap is `ulimit -l`, the `RLIMIT_MEMLOCK` limit. The man page for `mlock` says a call that exceeds it fails with `ENOMEM`, and the limit is not enforced for a process with the `CAP_IPC_LOCK` capability. The book says to raise the limit or set it to unlimited for large AI jobs, and in containers to use the `--ulimit memlock` setting. Second, pinned pages cannot be swapped. My inference, not the book's wording: that makes them behave like anonymous memory in a limit calculation, because the kernel cannot reclaim them. That is why pinned buffers appear in OOM kills while reclaimable page cache usually does not.
+Pinning has two costs. First, the operating system caps how much an unprivileged process may lock. That cap is `ulimit -l`, the `RLIMIT_MEMLOCK` limit. The man page for `mlock` says a call that exceeds it fails with `ENOMEM`, and the limit is not enforced for a process with the `CAP_IPC_LOCK` capability. For large AI jobs, raise the limit or set it to unlimited, and in containers to use the `--ulimit memlock` setting. Second, pinned pages cannot be swapped. This is inference, not stated by the source. Pinning makes them behave like anonymous memory in a limit calculation, because the kernel cannot reclaim them. That is why pinned buffers appear in OOM kills while reclaimable page cache usually does not.
 
 One more host setting from the same chapter matters here. Transparent hugepages are recommended on for throughput work and off, or `madvise`, for latency-sensitive inference.
 
@@ -276,7 +276,7 @@ List what lives in host memory: runtime per worker, pinned buffers, weights stag
 
 ## Worked scenarios
 
-Each scenario has a script in `code/part20/`. All of them ran except the `perf` script, and the three that start containers ran as separate `docker run` commands. The environment was a throwaway `ubuntu:24.04` container, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs, cgroup v2, no swap and no PSI. Scenarios 1, 4 and 5 ran inside that container. Scenarios 2, 3 and 6 start their own containers, so I ran their `docker run` commands from the Mac against the same Docker daemon, with `alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc` and `python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea` (3.12-slim). Where the output below is marked "real output", it was captured there. Section "What the container run showed" lists corrections.
+Each scenario has a script in `code/part20/`. All of them ran except the `perf` script, and the three that start containers ran as separate `docker run` commands. The environment was a throwaway `ubuntu:24.04` container, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs, cgroup v2, no swap and no PSI. Scenarios 1, 4 and 5 ran inside that container. Scenarios 2, 3 and 6 start their own containers, so their `docker run` commands were run from the Mac against the same Docker daemon, with `alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc` and `python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea` (3.12-slim). Where the output below is marked "real output", it was captured there. Section "What the container run showed" lists corrections.
 
 ### Scenario 1. High load, idle CPUs
 
@@ -329,7 +329,7 @@ Answer. The load is I/O wait. Fix the storage or the process behind it, not the 
 
 A pod with a CPU limit of 0.5 has stalls every few hundred milliseconds. Node CPU is 10 percent.
 
-Reasoning. The quota is 50 ms per 100 ms. With four busy threads the quota is spent in 12.5 ms, so each period has 87.5 ms of forced waiting. That is `burst_throttle_ms(0.5, 4)` in the helper, from the book's formula. Prove it with two reads of `cpu.stat`. The script runs a container with `--cpus=0.5` and four busy loops for five seconds, then runs the helper on the before and after files.
+Reasoning. The quota is 50 ms per 100 ms. With four busy threads the quota is spent in 12.5 ms, so each period has 87.5 ms of forced waiting. That is `burst_throttle_ms(0.5, 4)` in the helper. Prove it with two reads of `cpu.stat`. The script runs a container with `--cpus=0.5` and four busy loops for five seconds, then runs the helper on the before and after files.
 
 ```bash
 # code/part20/c05_s2_cpu_throttle.sh
@@ -439,7 +439,7 @@ rm -f "$FILE"
 show "after deleting the file (its cache pages are freed)"
 ```
 
-Real output with a 512 MiB file: `Cached` went from 2249340 kB to 2773628 kB, `MemFree` from 3240588 to 2698228 kB, `MemAvailable` from 4934840 to 4921872 kB, and `Dirty` from 2448 to 364880 kB. After the delete, `Cached` returned to 2249340 kB and `MemFree` to 3253872 kB. The helper moved from `81.4% available` to `81.2%` and back to `81.6%`. On the book's numbers it reads 8.4 percent free and 60.9 percent available.
+Real output with a 512 MiB file: `Cached` went from 2249340 kB to 2773628 kB, `MemFree` from 3240588 to 2698228 kB, `MemAvailable` from 4934840 to 4921872 kB, and `Dirty` from 2448 to 364880 kB. After the delete, `Cached` returned to 2249340 kB and `MemFree` to 3253872 kB. The helper moved from `81.4% available` to `81.2%` and back to `81.6%`. On the sample `free -m` numbers it reads 8.4 percent free and 60.9 percent available.
 
 Answer. Not a problem. Alert on `MemAvailable`, swap and memory PSI.
 
@@ -516,11 +516,11 @@ Answer. Add up pinned buffers and runtime memory per worker. Raise the memlock l
 
 ## Hands-on lab
 
-Use a Linux VM with root, Docker, `sysstat`, `perf` and Python 3. Do not run on a shared production host. The scripts cap their own size, but they write to disk and start busy loops. What I ran, and where, is in the scenario section. Here is each step with its real result.
+Use a Linux VM with root, Docker, `sysstat`, `perf` and Python 3. Do not run on a shared production host. The scripts cap their own size, but they write to disk and start busy loops. Where the steps ran is described in the scenario section. Here is each step with its real result.
 
 1. Watch pressure for ten seconds with `bash code/part20/c05_psi_watch.sh 10`. Real output on the Docker VM kernel: `no /proc/pressure/cpu (PSI needs Linux 4.20+)`. That kernel has no PSI, so this step could not show columns. On a kernel with PSI, expect three columns near 0 on an idle machine.
 2. Run `bash code/part20/c05_s1_dstate_load.sh`. Result: `D` tasks, `b` of 6 to 8 and `wa` above 95. PSI was absent.
-3. Run the scenario 2 `docker run` with `--cpus=0.5`. Result: 100 percent throttled periods. I did not rerun it with `--cpus=2`.
+3. Run the scenario 2 `docker run` with `--cpus=0.5`. Result: 100 percent throttled periods. It was not rerun with `--cpus=2`.
 4. Run scenario 3. Result: `OOMKilled=true`, a `CONSTRAINT_MEMCG` log and a parsed reading.
 5. Run `bash code/part20/c05_s4_page_cache.sh`. Result: `Cached` up by about 524 MB and back, `MemAvailable` flat.
 6. Run `bash code/part20/c05_s5_disk_latency.sh`. Result: the small run flagged `busy but fast` and the large run printed `no flag` with an `areq-sz` of 1024 kB in the raw output.
@@ -530,13 +530,13 @@ Use a Linux VM with root, Docker, `sysstat`, `perf` and Python 3. Do not run on 
 ## What the container run showed
 
 - **`c05_s1_dstate_load.sh` did not show what it promised.** With 4 writers of 128 MiB it finished in under a second, so there were no `D` tasks and the load average stayed near 0.2. It also aborted at the PSI line, because `set -e` met a missing file. Defaults are now 8 writers of 512 MiB, and a missing PSI file is handled.
-- **PSI is not a given.** The kernel is far newer than 4.20 and still has no `/proc/pressure` and no `cpu.pressure` in the cgroup. The chapter's advice to read pressure first needs the fallback of `vmstat` `b` and `wa`. Section 2 is from the book and the kernel documentation, not from this run.
+- **PSI is not a given.** The kernel is far newer than 4.20 and still has no `/proc/pressure` and no `cpu.pressure` in the cgroup. The chapter's advice to read pressure first needs the fallback of `vmstat` `b` and `wa`. Section 2 comes from the reference text and the kernel documentation, not from this run.
 - **The OOM parser broke on a newer kernel.** See section 7 and scenario 3. Fixed, with a test built from the real log.
 - **The iostat helper treated the since-boot report as live.** Fixed with a skip, and a test.
 - **Load average lagged, as claimed.** Eight blocked `dd` processes gave 0.76 after one second.
 - **Cgroup facts confirmed.** cgroup v2 with `cpu.stat` fields `nr_periods`, `nr_throttled`, `throttled_usec` and also `nr_bursts` and `burst_usec`, `cpu.max` as `50000 100000`, and `memory.events` with `low`, `high`, `max`, `oom`, `oom_kill` and `oom_group_kill`.
-- **Docker defaults confirmed.** The default capability set has no `IPC_LOCK`, and `OOMKilled=true ExitCode=137` matches the docker inspect fields in the script. The book's example exit code of 1 does not match.
-- **Defaults seen.** `vm.swappiness` was 60, matching the book. Transparent hugepages read `[always] madvise never`, which is the opposite of the latency advice in section 12.
+- **Docker defaults confirmed.** The default capability set has no `IPC_LOCK`, and `OOMKilled=true ExitCode=137` matches the docker inspect fields in the script. The exit code of 1 shown in some references does not match.
+- **Defaults seen.** `vm.swappiness` was 60, matching the documented default. Transparent hugepages read `[always] madvise never`, which is the opposite of the latency advice in section 12.
 - **`dmesg` needs a capability.** In a container it is refused unless `--cap-add SYSLOG` is given.
 
 ## Drill questions
