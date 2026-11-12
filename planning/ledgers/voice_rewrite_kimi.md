@@ -489,6 +489,74 @@ Token Factory quota recovers.
   lab 6/6. Code-density WARN 6.8 (was 7.4) accepted per policy.
 - Words: 7,994 -> 10,288 (validator count). `planning/STATUS.md` updated.
 
+## 3.4 Classes, dataclasses, typing (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, working
+  on top of another session's uncommitted edits (preserved, per author approval); Kimi
+  supervised with independent gate runs.
+- Voice treatment: shared tag list mutating every node opens class/instance attributes;
+  the fourth hand-written `__init__` opens dataclasses; `1.9` vs `1.10` sorting opens
+  operator overloading with a "name instead of overload" closer.
+- Supervision verdict: `loss_check` 0 of 67 terms / 0 of 60 numbers / 0 sources lost;
+  `validate_chapter.py 3.4` VERDICT: OK; chain gate 0.1/1000; 20 questions; lab 6/6.
+  Code-density WARN 12.2 (was 12.7) accepted per policy.
+- Words: 9,999 -> 14,661 (validator count). `planning/STATUS.md` updated.
+
+## 3.11 Metaprogramming under the hood (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`; Kimi
+  supervised with independent gate runs.
+- Voice treatment: decorator that silently eats your function's name (`functools.wraps`
+  framed as the fix); descriptor shared-state bug told as a story and flagged twice;
+  `__init_subclass__` as the calmer hook, metaclass as the obvious one.
+- BONUS REPAIR (author-confirmed policy from 1.27): agent restored `ModelMetaclass`
+  (pydantic v1) that the earlier rework had dropped vs baseline `0f258b4`; HEAD count 0,
+  new file count 1.
+- Supervision verdict: `loss_check` 0 of 111 terms / 0 of 54 numbers / 0 sources lost
+  (self-check vs pre-edit: 0 of 211 / 0 of 60); `validate_chapter.py 3.11` VERDICT: OK;
+  chain gate 0.0/1000; 20 questions; lab 6/6. Code-density WARN 11.1 (was 11.6)
+  accepted per policy.
+- Words: 7,884 -> 9,857 (validator count). `planning/STATUS.md` updated.
+
+## 3.10 Data and ML infrastructure (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`; Kimi
+  supervised with independent gate runs.
+- Voice treatment: strides as walk-steps; broadcasting "lined up from the right" with the
+  trap explained; autograd "remembers what you did"; Monday-NaN scene; Arrow as passing
+  one parcel; FSDP study-group image.
+- Supervision verdict: `loss_check` 0 of 82 terms / 0 of 61 numbers / 0 sources lost;
+  `validate_chapter.py 3.10` VERDICT: OK natively on both versions; chain gate 0.0/1000;
+  20 questions; lab 4/4. Code-density WARN 6.2 (was 7.1) accepted per policy.
+- Words: 6,787 -> 9,051 (validator count). `planning/STATUS.md` updated.
+
+## 3.2 Modules, packages and packaging (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, working
+  on top of another session's uncommitted edits (preserved, per author approval); Kimi
+  supervised with independent gate runs.
+- Voice treatment: private-shelf venv analogy carried through; PEP 668 as "the distro's
+  package manager owns it"; wrong-interpreter pip scene; one unsourced "happens so
+  often" phrase removed (honesty rule, same class as the 1.26 fix).
+- Supervision verdict: `loss_check` 0 of 103 terms / 0 of 78 numbers / 0 sources lost;
+  `validate_chapter.py 3.2` VERDICT: OK; chain gate 0.0/1000; 20 questions; lab 8/8.
+  Code-density WARN 10.9 accepted per policy.
+- Words: 11,314 -> 13,403 (validator count). `planning/STATUS.md` updated.
+
+## 3.5 Errors, files and subprocess (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, working
+  on top of another session's uncommitted edits (preserved, per author approval); Kimi
+  supervised with independent gate runs.
+- Voice treatment: bare except that hid a typo for months; exception hierarchy as a
+  family tree; one bad file in ten thousand at 3 a.m. for the bytes section; YAML
+  `region: no` becoming False; atomic rename for the half-written manifest.
+- Supervision verdict: `loss_check` 0 of 134 terms / 0 of 79 numbers / 0 sources lost;
+  `validate_chapter.py 3.5` VERDICT: OK natively on both versions; chain gate 0.0/1000;
+  20 questions; lab 6/6. Code-density WARN 9.7 (was 10.7) accepted per policy.
+- Words: 9,087 -> 16,299 (validator count; the other session's expansion accounts for
+  most of the pre-rewrite growth). `planning/STATUS.md` updated.
+
 ## Model note: Kimi K3 run abandoned
 
 A parallel test of full `Kimi-K3` as a drafting subagent on 1.6 was cancelled by the

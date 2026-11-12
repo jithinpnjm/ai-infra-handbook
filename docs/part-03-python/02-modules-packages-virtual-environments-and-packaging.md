@@ -24,13 +24,13 @@ lab_venue: "Mac"
 
 A training job fails on one node and runs fine on another, even though the code is identical. Most failures like this are packaging failures. A NumPy build may not match the binary interface that other packages expect. A PyTorch wheel built for CUDA 12.1 may land on a node with a 12.4 driver. A transitive dependency may move overnight. A distribution upgrade may change the system Python under a cron job.
 
-Packaging is also a security and compliance question, because you need to know exactly what runs in production. It is a performance question too. Container image size, import time and cold start all depend on how the code is packaged.
+Packaging is a security and compliance question as well, because you need to know exactly what runs in production. It is a performance question too. Container image size, import time and cold start all depend on how the code is packaged.
 
 This chapter starts with how Python finds and runs code, covering modules, packages and the import system. It then shows how to isolate and reproduce environments with venv, pip, uv, pip-tools, Poetry and conda. Finally, it covers how to structure and ship your own tools with pyproject.toml, wheels, entry points and private indexes. It ends with the specific problems of Python on GPU machines and in containers.
 
 ## Prerequisites and outcomes
 
-You should already know the core language covered in chapter 3.1. You should also be comfortable with basic shell use and Git.
+You should already know the core language covered in chapter 3.1. You should also be comfortable with basic shell use and Git. Nothing here assumes that you have packaged software before.
 
 After this chapter, you should be able to do the following.
 
@@ -44,9 +44,11 @@ After this chapter, you should be able to do the following.
 
 ## 1. Modules
 
-Suppose a small ops script grows until it needs a second file. Its helpers now live somewhere else, and you need to know what runs when. A module is a single Python file. It can also be a built-in or extension module. Either way, it provides a namespace of names.
+Suppose a small ops script grows until it needs a second file. The helpers now live somewhere else, and suddenly you need to know what runs when, and which file can see which name. That question is the whole of the import system, and it starts with the module.
 
-Importing a module runs its top-level code once. Python then caches the module object. Modules are the unit of code reuse, and they keep names separate from one another.
+A module is a single Python file. It can also be a built-in or extension module. Either way, it provides a namespace of names. Think of a namespace as a labelled box: every name the module defines goes into that box, and other files reach in by the box's name.
+
+Importing a module runs its top-level code once. Python then caches the module object, so the second import costs almost nothing. Modules are the unit of code reuse, and they keep names separate from one another.
 
 ```python
 # util.py
@@ -66,7 +68,7 @@ import util as u
 import os.path as osp
 ```
 
-The first import runs the module body. Later imports in the same process reuse `sys.modules["X"]`. That makes a module's global state a process-wide singleton, so every importer shares the same state.
+The first import runs the module body. Later imports in the same process reuse the entry in `sys.modules["X"]`, which is the table of modules already loaded. That makes a module's global state a process-wide singleton, so every importer shares the same state.
 
 Avoid `from X import *` in most code. It imports every public name, or everything in `__all__` when that list exists. Its main use is re-exporting names from an `__init__` file. Outside that case, it fills the namespace with names you did not ask for, and it makes linters less useful.
 
@@ -80,7 +82,7 @@ When a program grows past one script, you split it. A top-level script such as `
 
 Module filenames must end in `.py`. Python turns the filename, without `.py`, into a variable name on import. So the name must follow ordinary variable rules: letters, digits and underscores only, with no spaces and no reserved keywords. Writing `import if` raises a `SyntaxError`. Package folder names follow the same rule.
 
-Python also ships with many modules of its own. In Python 3.10 and later, `len(sys.stdlib_module_names)` gives roughly 300 standard-library modules. The `sys.builtin_module_names` list holds the modules built into the interpreter. Counting its public entries, `sum(1 for m in sys.builtin_module_names if m[0] != '_')`, gives 11. Frozen startup modules, such as `os` in Python 3.11 and later, come with the interpreter too.
+Python also ships with many modules of its own, so a fresh interpreter is never empty. In Python 3.10 and later, `len(sys.stdlib_module_names)` gives roughly 300 standard-library modules. The `sys.builtin_module_names` list holds the modules built into the interpreter. Counting its public entries, `sum(1 for m in sys.builtin_module_names if m[0] != '_')`, gives 11. Frozen startup modules, such as `os` in Python 3.11 and later, come with the interpreter too.
 
 Both `import` and `from` are runtime statements. They are not compile-time declarations like C's `#include`. You can put them inside an `if` branch or a `try` block. Python resolves them only when execution reaches them.
 
@@ -90,7 +92,7 @@ A `from module import *` statement is allowed only at the top level of a module 
 
 Because `from` copies object references, it does not create a live link to the source module. This matters in four situations. Rebinding a copied name, mutating a shared object, colliding names and reloading each behave differently.
 
-Rebinding changes only your local name. Assigning `x = 99` after `from mod import x` changes only the importer's variable. The module's `mod.x` stays the same. The same holds for `X = 88` in the book's `nested.py` example, where `printer()` still prints `99`. To change the module's own value, so that other importers see it, go through the module object: `import nested; nested.X = 88`.
+Rebinding changes only your local name. Assigning `x = 99` after `from mod import x` changes only the importer's variable. The module's `mod.x` stays the same. The same holds for `X = 88` in a module `nested.py`, where `printer()` still prints `99`. To change the module's own value, so that other importers see it, go through the module object: `import nested; nested.X = 88`.
 
 Mutation is different. If `y` refers to a list, then `y[0] = 'hack'` changes the one list that both modules share. Both the importer and the source module see the change.
 
@@ -121,7 +123,7 @@ Read the code above as four separate effects. The `from` line copies references.
 
 ### Module namespaces (`__dict__`), lexical scoping, and downward attribute paths
 
-Every top-level assignment in a module creates an attribute. Assignments, `def`, `class` and `import` all do this. The namespace lives on after the import finishes. Python stores it as a dictionary at `module.__dict__`, which `vars(module)` also returns.
+Every top-level assignment in a module creates an attribute, and `def`, `class` and `import` all count. The namespace lives on after the import finishes. Python stores it as a dictionary at `module.__dict__`, which `vars(module)` also returns.
 
 The book's `spaces.py` example makes this concrete. Its body prints `starting to load...`, imports `sys`, sets `var = 23`, defines `func` and `klass`, and prints `done loading.`. After the import, the namespace holds metadata names such as `__name__`, `__doc__`, `__package__`, `__loader__`, `__spec__`, `__file__`, `__cached__` and `__builtins__`. It also holds `'sys'`, `'var'`, `'func'` and `'klass'`.
 
@@ -135,7 +137,7 @@ For any module, `spaces.var` and `spaces.__dict__['var']` return the same value,
 # True
 ```
 
-Two different rules govern name lookup. An unqualified name, such as `X`, is searched through the current file's scopes. Python checks the local, enclosing, global and built-in scopes, in that order. This is the LEGB rule.
+Two different rules govern name lookup. An unqualified name, such as `X`, is searched through the current file's scopes. Python checks the local, enclosing, global and built-in scopes, in that order. This is the LEGB rule, and it never leaves the file that holds the name.
 
 Imports never give upward visibility. An imported module cannot see names in the file that imported it. A function's global scope is always the module file where its `def` was written.
 
@@ -149,15 +151,15 @@ So `nest1` can reach `nest2.nest3.X`, even though `nest3` cannot see `nest2` or 
 
 ### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`
 
-Python has no enforced `private` keyword for modules. Every top-level name is an exported attribute. Instead, the design goals are high cohesion and low coupling. A module should have one clear purpose. It should pass data through function arguments and return values, not change another file's globals.
+Python has no enforced `private` keyword for modules. Every top-level name is an exported attribute. Instead, the design goals are high cohesion and low coupling. High cohesion means the parts of a module belong together. Low coupling means it depends on as little outside itself as possible. A module should have one clear purpose. It should pass data through function arguments and return values, not change another file's globals.
 
 Even the interactive prompt runs inside a module. It is the built-in module `__main__`. So every piece of code you write lives in some module.
 
 Two conventions control what `from module import *` copies. Two special hooks control dynamic lookup. Start with the conventions.
 
-A single leading underscore marks a name as private for star imports. Without `__all__`, `from module import *` skips every top-level name that starts with `_`. In the book's `unders.py` example, `a, b, _c, _d = 1, 2, 3, 4` followed by `from unders import *` copies only `a` and `b`. Explicit imports still reach `_c` and `_d`, as in `from unders import _c` or `import unders; unders._d`.
+A single leading underscore marks a name as private for star imports. Without `__all__`, `from module import *` skips every top-level name that starts with `_`. Take a module `unders.py` in which `a, b, _c, _d = 1, 2, 3, 4` is followed by `from unders import *`. That copies only `a` and `b`. Explicit imports still reach `_c` and `_d`, as in `from unders import _c` or `import unders; unders._d`.
 
-An explicit export list is stronger. Assigning a list of names to `__all__` tells star imports to copy only those names. This rule overrides the underscore rule. In the book's `alls.py` example, `__all__ = ['a', '_c']` means `from alls import *` copies `a` and `_c`, but not `b` or `_d`. Neither rule blocks direct access, such as `import alls; alls.b, alls._d`.
+An explicit export list is stronger. Assigning a list of names to `__all__` tells star imports to copy only those names. This rule overrides the underscore rule. In a module `alls.py`, `__all__ = ['a', '_c']` means `from alls import *` copies `a` and `_c`, but not `b` or `_d`. Neither rule blocks direct access, such as `import alls; alls.b, alls._d`.
 
 Module-level `__getattr__` and `__dir__` add dynamic attributes. These arrived in Python 3.7, through PEP 562. If a module defines `def __getattr__(name):`, Python calls it whenever a client asks for `mod.name` and that name is not in `mod.__dict__`. The call also happens for `from mod import name`. Defining `def __dir__():` changes what `dir(mod)` returns. This replaces an older trick that swapped `sys.modules[__name__]` for a class instance.
 
@@ -211,13 +213,13 @@ Calling `func1()` before `func2` exists fails. Calling it after both definitions
 
 ### Module introspection (`mydir.py`), dynamic string imports, and transitive reloaders (`reloadall.py`)
 
-Python exposes module internals as ordinary attributes and dictionaries. That lets you write code that inspects, imports and reloads other modules. You do not need to know their names in advance. Three techniques follow.
+Everything so far assumed that you know the name of the module you want. Python also exposes module internals as ordinary attributes and dictionaries. That lets you write code that inspects, imports and reloads other modules. You do not need to know their names in advance. Three techniques follow.
 
 The first technique is reaching one attribute by several routes. After `import minmax, sys`, the six expressions below return the same function object. Chaining them with `is` gives `True`.
 
 `minmax.lessthan is minmax.__dict__['lessthan'] is vars(minmax)['lessthan'] is sys.modules['minmax'].lessthan is getattr(minmax, 'lessthan') is sys.modules['minmax'].__dict__['lessthan']`
 
-The book's `mydir.py` (Example 25-6) sets `sepchr = '-'` and `seplen = 60`. It defines `def listing(module, verbose=True, unders=True):`. Its loop, `for (count, attr) in enumerate(sorted(module.__dict__)):`, prints an indexed inventory of any module. You can call `listing(mydir)` or `listing(tkinter, unders=False)`. Tools like `mydir.listing` can also load into interactive sessions through the `PYTHONSTARTUP` environment variable.
+A small inventory module `mydir.py` sets `sepchr = '-'` and `seplen = 60`. It defines `def listing(module, verbose=True, unders=True):`. Its loop, `for (count, attr) in enumerate(sorted(module.__dict__)):`, prints an indexed inventory of any module. You can call `listing(mydir)` or `listing(tkinter, unders=False)`. Tools like `mydir.listing` can also load into interactive sessions through the `PYTHONSTARTUP` environment variable.
 
 The second technique is importing a module by a runtime string. A module name can arrive from a command-line flag, a config file or a plugin registry. A plain string is not a name, so `import 'string'` is a `SyntaxError`. Also, `x = 'string'; import x` looks for `x.py`. It does not look for the module the string names. Use one of three tools instead.
 
@@ -236,6 +238,8 @@ The book compares three versions. `reloadall.py` recurses with a `visited = {}` 
 The book checks that the second and third versions agree, ignoring order. It compares `set(res2) == set(res3)` using output from `os.popen('python3 reloadall.py tkinter').readlines()`.
 
 ### How imports work (3 steps) and the 5-component module search path
+
+Here is the failure that starts most packaging arguments. A script imports a library happily in your terminal and fails under cron, and the only thing that changed is where Python looked. The search path is built from the environment, so the environment quietly decides what your code imports.
 
 When a program imports a module for the first time, Python checks `sys.modules` first. For example, `sys.modules['os'] is os` is `True` once `os` has loaded. If the module is not loaded yet, Python runs three steps.
 
@@ -264,17 +268,19 @@ python3 -m site        # shows sys.path, user site, and whether a venv is active
 PYTHONPATH=/opt/mylib python3 app.py        # extend the path (prefer proper installation)
 ```
 
-Run these commands to see the search path for yourself. The first prints every entry. The second shows which file `json` actually loads. The third shows whether a virtual environment is active.
+Run these commands to see the search path for yourself. The first prints every entry, in order. The second shows which file `json` actually loads. The third shows whether a virtual environment is active.
 
-**Shadowing trap**: a local file named like a standard or installed module shadows the real one. Imagine a project folder that holds `json.py`, `random.py`, `requests.py` or `test.py`. The script's directory comes first on `sys.path`, so Python imports your file instead. The symptoms are baffling `AttributeError`s or circular import errors. Name your files carefully. Never run Python from a folder containing such files when you want the real modules. The same risk applies to untrusted download folders, because Python runs whatever it imports. For isolated mode, use `python -I`.
+**Shadowing trap**: a local file named like a standard or installed module shadows the real one. Imagine a project folder that holds `json.py`, `random.py`, `requests.py` or `test.py`. The script's directory comes first on `sys.path`, so Python imports your file instead. The symptoms are baffling `AttributeError`s or circular import errors, because the traceback names a module you never wrote. Name your files carefully. Never run Python from a folder containing such files when you want the real modules. The same risk applies to untrusted download folders, because Python runs whatever it imports. For isolated mode, use `python -I`.
 
 ### `.pyc` and bytecode caches
 
-Python caches compiled bytecode in `__pycache__/name.cpython-312.pyc`. The cache is invalidated when the source's timestamp or hash changes. On a read-only file system, or in a container, you have three options. You can precompile with `python -m compileall`. You can set `PYTHONDONTWRITEBYTECODE=1` to stop writing caches. Or you can use `PYTHONPYCACHEPREFIX` to move the caches somewhere else. Choose one before you deploy, so the cache behaves the same on every machine.
+Python caches compiled bytecode in `__pycache__/name.cpython-312.pyc`. This is the cache that saves the compile step on a later import. The cache is invalidated when the source's timestamp or hash changes. On a read-only file system, or in a container, you have three options. You can precompile with `python -m compileall`. You can set `PYTHONDONTWRITEBYTECODE=1` to stop writing caches. Or you can use `PYTHONPYCACHEPREFIX` to move the caches somewhere else. Choose one before you deploy, so the cache behaves the same on every machine.
 
 ## 2. Packages
 
-A package is a directory of modules. Python imports it as a hierarchical namespace. Take the dotted path `import dir1.dir2.mod`. The leftmost name, `dir1`, must sit inside a container directory, `dir0`, that is on `sys.path`. The remaining names map to subdirectories. So the code lives in `dir0/dir1/dir2/mod.py` on Unix, or in `dir0\dir1\dir2\mod.py` on Windows.
+A module keeps its names apart from other modules. A package does the same job one level up, for whole folders, so two projects can each keep a `utilities.py` without fighting over the name.
+
+A package is a directory of modules. Python imports it as a hierarchical namespace, which means names that nest, the way folders nest inside folders. Take the dotted path `import dir1.dir2.mod`. The leftmost name, `dir1`, must sit inside a container directory, `dir0`, that is on `sys.path`. The remaining names map to subdirectories. So the code lives in `dir0/dir1/dir2/mod.py` on Unix, or in `dir0\dir1\dir2\mod.py` on Windows.
 
 An `import` statement never takes a file system path. Writing `import C:\dir1` or `import /Users/me/dir1` is invalid. Platform paths belong in `sys.path`, in `PYTHONPATH` or in `.pth` files. Dotted names belong in `import`.
 
@@ -301,17 +307,17 @@ from myops.clients.slurm import submit
 
 ### Why packages exist: resolving `system1/utilities.py` vs `system2/utilities.py`
 
-Name collisions are the reason packages exist. In the book's *A Tale of Two Systems* (*Learning Python*, chapter 24), the folder `system1/` holds `utilities.py`, `main.py` and `other.py`. The folder `system2/` holds its own copies of all three names.
+Name collisions are the reason packages exist. Picture two systems in one project. The folder `system1/` holds `utilities.py`, `main.py` and `other.py`. The folder `system2/` holds its own copies of all three names.
 
-If you run `python3 system1/main.py` or `python3 system2/main.py` on its own, each script works. Its own folder is first on `sys.path`, so `import utilities` finds the right file.
+If you run `python3 system1/main.py` or `python3 system2/main.py` on its own, each script works. Its own folder is first on `sys.path`, so `import utilities` finds the right file. Each script lives in its own small world, and the small world is enough.
 
-The trouble starts with a third script, `mycode/myfile.py`. Suppose it needs functions from both `utilities.py` files. If you add both folders to `PYTHONPATH`, the scan of `sys.path` always takes the first match. The second `utilities.py` becomes unreachable.
+The trouble starts with a third script, `mycode/myfile.py`. Suppose it needs functions from both `utilities.py` files. If you add both folders to `PYTHONPATH`, the scan of `sys.path` always takes the first match. The second `utilities.py` becomes unreachable, because no import name can point at it.
 
 The fix is to put both folders under a common `root/` on `sys.path`. Then each file has its own package path, as in `import system1.utilities; import system2.utilities; system1.utilities.function('hack'); system2.utilities.function('code')`. The standard library works the same way. Imports such as `from email.message import Message`, `from tkinter.filedialog import askopenfilename` and `from http.server import CGIHTTPRequestHandler` each keep their modules inside a package namespace.
 
 ### Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py`
 
-The book's nested package has four files that matter. `dir0/dir1/mod.py` sets `var = 'hack'` and prints `Loading dir1.mod`. `dir0/dir1/dir2/mod.py` sets `var = 'code'` and prints `Loading dir1.dir2.mod`. `dir1/__init__.py` sets `var = 'Python'` and prints `Running dir1.__init__.py`. And `dir1/dir2/__init__.py` sets `var = 3.12` and prints `Running dir1.dir2.__init__.py`.
+The book's nested package gives us a small tree to walk through. Four files matter. `dir0/dir1/mod.py` sets `var = 'hack'` and prints `Loading dir1.mod`. `dir0/dir1/dir2/mod.py` sets `var = 'code'` and prints `Loading dir1.dir2.mod`. `dir1/__init__.py` sets `var = 'Python'` and prints `Running dir1.__init__.py`. And `dir1/dir2/__init__.py` sets `var = 3.12` and prints `Running dir1.dir2.__init__.py`.
 
 Importing a root package does not load its submodules. A folder's module object does not check the file system when you read an attribute. So `import dir1`, followed by `dir1.dir2.mod.var`, raises `AttributeError: module 'dir1' has no attribute 'dir2'`. You need the full dotted import, `import dir1.dir2.mod`. On the first import, that runs `dir1/__init__.py`, then `dir1/dir2/__init__.py`, then `dir1/dir2/mod.py`.
 
@@ -323,17 +329,17 @@ Adding a `__main__.py` lets users run a folder like an application bundle. The b
 
 Run `python3 -m dir1` or `python3 -m dir1.dir2` instead, and Python uses the full package machinery. It runs `dir1/__init__.py`, and then `dir1/dir2/__init__.py`, before it runs `__main__.py`. A `.zip` archive on `sys.path` can be launched the same way.
 
-What `__main__.py` can import depends on how you launch it. Take the book's three versions in turn.
+What `__main__.py` can import depends on how you launch it, and this is the most confusing corner of packages. Take three versions in turn.
 
-If `dir1/__main__.py` contains a plain `import mod`, as in Example 24-7, then `python3 dir1` and `python3 dir1/__main__.py` both succeed. The home directory is `dir1/`, so `mod` is found. But `python3 -m dir1` fails with `ModuleNotFoundError: No module named 'mod'`. Absolute imports skip the enclosing package.
+If `dir1/__main__.py` contains a plain `import mod`, then `python3 dir1` and `python3 dir1/__main__.py` both succeed. The home directory is `dir1/`, so `mod` is found. But `python3 -m dir1` fails with `ModuleNotFoundError: No module named 'mod'`. Absolute imports skip the enclosing package.
 
-If `dir1/__main__.py` uses a relative import, `from . import mod` (Example 24-8), the outcome flips. `python3 -m dir1` and `python3 -m dir1.__main__` succeed. But `python3 dir1` and `python3 dir1/__main__.py` fail with `ImportError: attempted relative import with no known parent package`. Relative forms include `from . import module`, `from .module import name`, `from .. import module` and `from ..module import name`. They work only inside packages. They search only the enclosing package hierarchy. They skip `sys.path` and the built-in and frozen checks, so an outside module cannot shadow a package's internals. They cannot run as direct scripts.
+If `dir1/__main__.py` uses a relative import, `from . import mod`, the outcome flips. `python3 -m dir1` and `python3 -m dir1.__main__` succeed. But `python3 dir1` and `python3 dir1/__main__.py` fail with `ImportError: attempted relative import with no known parent package`. Relative forms include `from . import module`, `from .module import name`, `from .. import module` and `from ..module import name`. They work only inside packages. They search only the enclosing package hierarchy. They skip `sys.path` and the built-in and frozen checks, so an outside module cannot shadow a package's internals. They cannot run as direct scripts.
 
-If `dir1/__main__.py` uses the full package path, `import dir1.mod` or `from dir1 import mod` (Example 24-9), and the container directory is on `sys.path` through `export PYTHONPATH=.`, then all four launch commands work. Those are `python3 dir1`, `python3 dir1/__main__.py`, `python3 -m dir1` and `python3 -m dir1.__main__`.
+If `dir1/__main__.py` uses the full package path, `import dir1.mod` or `from dir1 import mod`, and the container directory is on `sys.path` through `export PYTHONPATH=.`, then all four launch commands work. Those are `python3 dir1`, `python3 dir1/__main__.py`, `python3 -m dir1` and `python3 -m dir1.__main__`.
 
 ### Four import models, PEP 420 namespace packages (`__path__`), and the 4-step search algorithm
 
-Python has four import models, which developed over time. Basic modules use `import module`. Basic, or regular, packages use `import folder.folder.module`, with an `__init__.py` file. Package-relative imports use `from . import module`. Namespace packages, defined by PEP 420, use `import anyfolder.anyfolder.module` with no `__init__.py`, and they can span several directories.
+Python has four import models, which developed over time. Basic modules use `import module`. Basic, or regular, packages use `import folder.folder.module`, with an `__init__.py` file. Package-relative imports use `from . import module`. Namespace packages, defined by PEP 420, use `import anyfolder.anyfolder.module` with no `__init__.py`, and they can span several directories. These four models explain most of the import errors you will meet.
 
 To handle all four, Python runs a four-step search. It checks each candidate directory in turn. At the top level, the candidates come from `sys.path`. For a nested import, they come from the parent package's `__path__`.
 
@@ -361,15 +367,15 @@ The diagram hides one rule that matters most. In step 3, a bare directory withou
 
 This rule has a practical effect. An empty `__init__.py` file makes step 1 succeed for your package. So a module later on `sys.path` cannot override your package, and your package is not merged into a namespace package.
 
-The book's split-directory demo shows the namespace case. The file `ns/part1/sub/mod1.py` prints `Loading ns/part1/sub/mod1`. The file `ns/part2/sub/mod2.py` prints `Loading ns/part2/sub/mod2`. The two sit in separate parent folders, and neither folder has an `__init__.py`. These are Examples 24-10 to 24-12 in the book.
+A split-directory demo shows the namespace case. The file `ns/part1/sub/mod1.py` prints `Loading ns/part1/sub/mod1`. The file `ns/part2/sub/mod2.py` prints `Loading ns/part2/sub/mod2`. The two sit in separate parent folders, and neither folder has an `__init__.py`.
 
 For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod1` and `import sub.mod2`. Python builds one virtual namespace package called `sub`. It is shown as `<module 'sub' (namespace) from ['.../ns/part1/sub', '.../ns/part2/sub']>`. Adding `from . import mod2` inside `ns/part1/sub/mod1.py` reaches across the folder boundary into `ns/part2/sub/mod2.py`.
 
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
-Two modules can import each other without looping forever. Python adds the new module object to `sys.modules` before it runs the file's top-level statements. The problem is that a circular `from` import can catch a module only partly built. The book uses two files to show it.
+Two modules can import each other without looping forever. The trick is the order in which Python builds them. Python adds the new module object to `sys.modules` before it runs the file's top-level statements. The problem is that a circular `from` import can catch a module only partly built. The book uses two files to show it.
 
-`recur1.py` (Example 25-11) sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` (Example 25-12) runs `from recur1 import X` and then `from recur1 import Y`.
+`recur1.py` sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` runs `from recur1 import X` and then `from recur1 import Y`.
 
 Run `import recur1` in the REPL. Python executes `X = 1`, then jumps into `import recur2`. That happens before `Y = 2` has run. Inside `recur2`, the line `from recur1 import X` succeeds. But `from recur1 import Y` raises `ImportError: cannot import name 'Y' from partially initialized module 'recur1' (most likely due to a circular import)`.
 
@@ -383,7 +389,7 @@ For data files inside a package, use `importlib.resources.files("myops") / "temp
 
 ### Typical project layout (src layout)
 
-The project layout below uses the src layout.
+The layout below is the one to copy when you start a new tool. It uses the src layout, which puts your package inside a folder called `src/`.
 
 ```text
 myops/
@@ -405,7 +411,11 @@ The src layout puts the package under `src/`. Tests can import `myops` only afte
 
 ## 3. Virtual environments
 
-Picture two projects on one machine. One needs one version of a library, and the other needs a different version. Without a virtual environment, both share the same installed packages, and one of them breaks. A virtual environment is a directory with its own `site-packages` and its own `python` executable. That executable is a symlink or a copy. The environment keeps each project's dependencies apart from the system and from other projects.
+Picture two projects on one machine. One needs one version of a library, and the other needs a different version. Without a virtual environment, both share the same installed packages, and one of them breaks.
+
+A virtual environment is a directory with its own `site-packages` and its own `python` executable. The `site-packages` folder is where that environment's libraries live. The `python` executable is a symlink or a copy, and it is the interpreter that reads that folder. The environment keeps each project's dependencies apart from the system and from other projects.
+
+Think of it as a private shelf of libraries. Only the interpreter on that shelf can reach them, and nothing outside the shelf can rearrange them.
 
 ```bash
 python3 -m venv .venv                       # create (needs python3-venv package on Debian/Ubuntu)
@@ -416,29 +426,31 @@ python -m pip list ; python -m pip freeze > requirements.txt
 rm -rf .venv                                 # envs are disposable; never commit them
 ```
 
-Run these lines in order to create, use and remove an environment. Notice that `.venv/bin/python` works without activation.
+Run these lines in order to create, use and remove an environment. Notice the fourth line. `.venv/bin/python` works without activation, and that is exactly what a cron job or a service needs.
 
 Several rules keep environments predictable. Use one environment per project or per tool. When one breaks, recreate it rather than repair it. Run `python -m pip`, not bare `pip`, so you know which interpreter receives the install. After you activate an environment, run `which python` to confirm it.
 
-Systemd units, cron jobs and CI should call `/path/to/.venv/bin/python` explicitly. They should not depend on activation.
+Systemd units, cron jobs and CI should call `/path/to/.venv/bin/python` explicitly. They should not depend on activation. Activation only puts `.venv/bin` at the front of the `PATH` of the shell you are sitting in, and a service never gets that shell.
 
-Never run `sudo pip install`, and avoid installing into the distribution's own Python. Modern distributions mark that interpreter **externally managed** under PEP 668. Pip then refuses with `error: externally-managed-environment`. Use a venv for your project instead. Use pipx for command-line tools, because `pipx install ansible-lint` gives each tool its own isolated environment. For system scripts, install the distribution's package, such as `apt install python3-yaml`.
+Never run `sudo pip install`, and avoid installing into the distribution's own Python. Modern distributions mark that interpreter **externally managed** under PEP 668, which means the distribution's package manager owns it and pip should keep its hands off. Pip then refuses with `error: externally-managed-environment`. Use a venv for your project instead. Use pipx for command-line tools, because `pipx install ansible-lint` gives each tool its own isolated environment. For system scripts, install the distribution's package, such as `apt install python3-yaml`.
 
 The `--system-site-packages` option lets a venv see the system packages. Some bindings need that, such as `python3-apt` or GPU vendor packages. The cost is weaker isolation.
 
-An environment is tied to the interpreter that created it. Upgrading the base Python can break it, so rebuild the environment after an upgrade. Activation scripts exist for bash, zsh, fish and PowerShell. direnv or `uv run` can activate an environment automatically for each directory.
+An environment is tied to the interpreter that created it, because it borrows that interpreter rather than copying it. Upgrading the base Python can break it, so rebuild the environment after an upgrade. Activation scripts exist for bash, zsh, fish and PowerShell. direnv or `uv run` can activate an environment automatically for each directory.
 
 ### Managing Python versions
 
-You can get the interpreter you need in several ways. pyenv builds interpreters under `~/.pyenv`. `uv python install 3.12` downloads standalone builds. The deadsnakes PPA serves Debian and Ubuntu, and conda, mamba and container base images also work. Pin the minor version in `pyproject.toml`, as in `requires-python = ">=3.10,<3.13"`. Repeat the pin in your CI matrix and Dockerfiles.
+Sooner or later a dependency will demand an interpreter you do not have. You can get the interpreter you need in several ways. pyenv builds interpreters under `~/.pyenv`. `uv python install 3.12` downloads standalone builds. The deadsnakes PPA serves Debian and Ubuntu, and conda, mamba and container base images also work. Pin the minor version in `pyproject.toml`, as in `requires-python = ">=3.10,<3.13"`. Repeat the pin in your CI matrix and Dockerfiles.
 
 Your support window is set by the oldest Python that your dependencies still support. NumPy and PyTorch drop old versions every year, so check their policies before you choose a version.
 
 ## 4. Installing and managing dependencies
 
+You have an environment, and now something has to go into it. Here is where most of the surprises live. Someone runs `pip install` in a terminal and the package lands in a different Python than the one that runs the job. Or the same command installs a different set of files on two machines, and nobody can say why.
+
 ### pip
 
-Most installs follow a few patterns. The commands below cover the cases you meet most often. Each is one line you can run from a shell or place in a script.
+Most installs follow a few patterns, and once you know them the rest is detail. The commands below cover the cases you meet most often. Each is one line you can run from a shell or place in a script.
 
 ```bash
 python -m pip install requests                  # latest compatible
@@ -455,13 +467,13 @@ python -m pip show -f pkg ; python -m pip download pkg -d wheelhouse/ ; python -
 python -m pip uninstall pkg ; python -m pip cache purge
 ```
 
-Notice that the version specifiers follow PEP 440. The `~=2.31` form means a compatible release. After an install, `python -m pip check` reports any broken requirements, so it is a useful last step.
+Notice that the version specifiers follow PEP 440. The `~=2.31` form means a compatible release. After an install, `python -m pip check` reports any broken requirements, so it makes a useful last step.
 
-The pip resolver has used backtracking since version 20.3. It searches for one set of versions that fit together. When it cannot find one, it prints `ResolutionImpossible` with the conflicting constraints. Two other options shape an install. Extras, such as `pip install "myops[redfish,slurm]"`, add optional dependency groups. A constraints file, passed with `-c constraints.txt`, limits versions without adding any new requirement. Environment markers make a dependency conditional, as in `pywin32; sys_platform == "win32"` or `importlib-metadata; python_version < "3.10"`.
+The pip resolver has used backtracking since version 20.3. It searches for one set of versions that fit together, and backtracking is simply the habit of trying a combination, backing out when it conflicts, and trying another. When it cannot find one, it prints `ResolutionImpossible` with the conflicting constraints. Two other options shape an install. Extras, such as `pip install "myops[redfish,slurm]"`, add optional dependency groups. A constraints file, passed with `-c constraints.txt`, limits versions without adding any new requirement. Environment markers make a dependency conditional, as in `pywin32; sys_platform == "win32"` or `importlib-metadata; python_version < "3.10"`.
 
 ### Declaring dependencies: libraries vs applications
 
-Libraries and applications need different kinds of declarations. A library declares abstract, compatible ranges, such as `requests>=2.28,<3`. A range lets the library sit alongside other packages that also depend on requests. An application or deployment needs a concrete lockfile instead. The lockfile lists exact versions of everything, including transitive dependencies, along with hashes. Every machine then installs the same bits.
+Libraries and applications need different kinds of declarations, and swapping them causes trouble in both directions. A library declares abstract, compatible ranges, such as `requests>=2.28,<3`. A range lets the library sit alongside other packages that also depend on requests. An application or deployment needs a concrete lockfile instead. The lockfile lists exact versions of everything, including transitive dependencies, along with hashes. Every machine then installs the same bits.
 
 ```bash
 # pip-tools: compile abstract requirements into a fully pinned, hashed lock
@@ -479,17 +491,17 @@ poetry init ; poetry add requests ; poetry lock ; poetry install ; poetry run py
 
 The first block uses pip-tools. Its `pip-compile` step turns the abstract list into a hashed lock, and `pip-sync` makes the environment match that lock exactly. The second block uses uv, a faster replacement for pip, pip-tools and venv. The third block shows project managers that keep lockfiles: Poetry, PDM and Hatch.
 
-Locking matters because an unpinned transitive dependency can change between a CI run and a production rollout. A compromised or yanked release can also enter without anyone noticing. Commit your lockfiles, and update them on purpose, through Dependabot or Renovate pull requests that run CI. Use hashes. In production, install from a vetted mirror such as Artifactory, Nexus or devpi. Run pip-audit or safety to find known vulnerabilities, and generate an SBOM with cyclonedx-py or syft. Watch out for dependency confusion, which is covered later in this chapter, and for typosquatting, where a misspelled name catches careless installs.
+Locking matters because an unpinned transitive dependency can change between a CI run and a production rollout. A transitive dependency is one you never asked for, pulled in by a package you did ask for. A compromised or yanked release can also enter without anyone noticing, and a yanked release is one the publisher has withdrawn. Commit your lockfiles, and update them on purpose, through Dependabot or Renovate pull requests that run CI. Use hashes. In production, install from a vetted mirror such as Artifactory, Nexus or devpi. Run pip-audit or safety to find known vulnerabilities, and generate an SBOM with cyclonedx-py or syft. Watch out for dependency confusion, which is covered later in this chapter, and for typosquatting, where a misspelled name catches careless installs.
 
 ### conda / mamba
 
-conda, and the faster mamba and micromamba, manage Python itself and also non-Python libraries. Those include CUDA toolkit pieces, MKL, compilers and ffmpeg. They come from channels such as conda-forge, nvidia and pytorch. This is common in data science and on HPC systems, where compiled stacks matter.
+conda, and the faster mamba and micromamba, manage Python itself and also non-Python libraries. Those include CUDA toolkit pieces, MKL, compilers and ffmpeg. They come from channels such as conda-forge, nvidia and pytorch, and a channel is simply a package server. This is common in data science and on HPC systems, where compiled stacks matter.
 
-Use one tool per environment. Mixing pip and conda installs in the same environment causes subtle breakage. If you must mix them, install the conda packages first, add the pip packages that conda lacks afterwards, and never run pip as root. For reproducibility, export the environment with `conda env export --from-history` or `conda-lock`.
+Use one tool per environment. That is the rule to remember. Mixing pip and conda installs in the same environment causes subtle breakage. If you must mix them, install the conda packages first, add the pip packages that conda lacks afterwards, and never run pip as root. For reproducibility, export the environment with `conda env export --from-history` or `conda-lock`.
 
 ### Choosing
 
-The table maps common situations to a tool.
+The table maps common situations to a tool, so start with your situation rather than with a tool you have heard about.
 
 | Situation | Tool |
 |---|---|
@@ -504,9 +516,11 @@ Notice that a published library gets ranges, while a deployed application gets a
 
 ## 5. Packaging your own code
 
+You have a tool that works on your laptop. Then a colleague wants it, and then a whole cluster wants it, and emailing a folder stops being an option. Packaging is how a folder of code becomes something another machine can install, version and trust.
+
 ### `pyproject.toml`
 
-Every packaged project declares its build in a `pyproject.toml` file. The standard for this file, set by PEP 517, 518 and 621, names the build backend and the project metadata. The example below is a complete tool.
+Every packaged project declares its build in a `pyproject.toml` file. The standard for this file, set by PEP 517, 518 and 621, names the build backend and the project metadata. A build backend is the tool that turns your source folder into a distributable file. The example below is a complete tool.
 
 ```toml
 [build-system]
@@ -560,7 +574,7 @@ python -m pip install dist/myops-0.3.1-py3-none-any.whl
 python -m pip install -e ".[dev]"     # editable + extras for development
 ```
 
-A **wheel** (`.whl`) is a prebuilt zip file. It installs by unzipping, with no build step, so it is fast. Its filename carries tags in the form `name-version-pythontag-abitag-platformtag`. The filename `numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.whl` is a NumPy wheel for CPython 3.11 on x86_64 Linux. A `py3-none-any` wheel is pure Python. A **manylinux** wheel runs on most Linux distributions that carry a compatible glibc. A **musllinux** wheel targets Alpine, which uses musl instead.
+A **wheel** (`.whl`) is a prebuilt zip file. It installs by unzipping, with no build step, so it is fast. Its filename carries tags in the form `name-version-pythontag-abitag-platformtag`. The filename `numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.whl` is a NumPy wheel for CPython 3.11 on x86_64 Linux. A `py3-none-any` wheel is pure Python. A **manylinux** wheel runs on most Linux distributions that carry a compatible glibc, which is the C library nearly every Linux program links against. A **musllinux** wheel targets Alpine, which uses musl instead.
 
 If no compatible wheel exists, pip builds from the **sdist**. The sdist needs compilers and headers, so this is the usual reason an install takes 10 minutes or fails in a slim container. Local version labels (PEP 440), such as `+cu121`, mark CUDA builds. PyTorch uses them on its index wheels.
 
@@ -576,13 +590,13 @@ Signing and provenance cover where a package came from. PyPI trusted publishing 
 
 ### Native extensions
 
-Packages with C, C++, Rust or CUDA code ship compiled `.so` files inside their wheels. NumPy, PyTorch, cryptography and grpcio all do this. Those files bind to the Python ABI, which appears in tags such as `cp311` or the stable ABI `abi3`. They also bind to the CPU architecture, such as x86_64, or aarch64 on Grace and other ARM hosts. They bind to libc too. GPU packages add the CUDA runtime version and the NVIDIA driver. This is where reproducibility gets hard.
+Packages with C, C++, Rust or CUDA code ship compiled `.so` files inside their wheels. NumPy, PyTorch, cryptography and grpcio all do this. Those files bind to the Python ABI, which appears in tags such as `cp311` or the stable ABI `abi3`. The ABI is the binary contract between compiled code and the interpreter. They also bind to the CPU architecture, such as x86_64, or aarch64 on Grace and other ARM hosts. They bind to libc too. GPU packages add the CUDA runtime version and the NVIDIA driver. This is where reproducibility gets hard.
 
 Check the tags of every wheel you plan to ship against the machines that will install it.
 
 ## 6. Plugins and entry points
 
-Suppose your tool needs a new collector, such as one for GPUs. You do not want to edit the core every time. Entry points solve that problem. They let an installed distribution advertise its components to other programs, without any hard-coded imports. pytest plugins, Ansible and Click commands, and Prometheus collectors all work this way.
+Suppose your tool needs a new collector, such as one for GPUs. You do not want to edit the core every time. Entry points solve that problem. They let an installed distribution advertise its components to other programs, without any hard-coded imports. An entry point is a name plus a path to code, recorded in a package's metadata, where other programs can look it up. pytest plugins, Ansible and Click commands, and Prometheus collectors all work this way.
 
 ```python
 from importlib.metadata import entry_points, version, metadata
@@ -598,9 +612,13 @@ The loop discovers each plugin in the `myops.plugins` group, loads it, and regis
 
 A training container can build without error and still fail on the first GPU call, with a message that the driver is too old. The notes below cover the packaging causes, and they show you how to check each one.
 
-PyTorch, TensorFlow and JAX wheels are CUDA-specific. PyTorch publishes a separate wheel for each CUDA minor version, on dedicated indexes such as `https://download.pytorch.org/whl/cu121`. The default PyPI wheel bundles a CUDA runtime through `nvidia-*-cu12` packages, which makes it large. The driver on the host must be new enough for the CUDA runtime in the wheel. A newer driver runs older CUDA runtimes, which is driver forward compatibility. The reverse fails with `CUDA driver version is insufficient`. To verify, check `torch.version.cuda`, `torch.cuda.is_available()` and `nvidia-smi`. The `nvidia-smi` output reports the driver and the maximum supported CUDA version. Run `python -c "import torch; print(torch.__file__)"` to confirm which copy of torch you are using.
+PyTorch, TensorFlow and JAX wheels are CUDA-specific. PyTorch publishes a separate wheel for each CUDA minor version, on dedicated indexes such as `https://download.pytorch.org/whl/cu121`. The default PyPI wheel bundles a CUDA runtime through `nvidia-*-cu12` packages, which makes it large.
 
-You should not mix a system CUDA toolkit with wheel-bundled runtimes by accident. An `LD_LIBRARY_PATH` that points to a different CUDA can load the wrong `libcudart`, `libcublas` or `libnccl`. Prefer the libraries bundled in the wheel, or the consistent stack inside an NGC container.
+The driver on the host must be new enough for the CUDA runtime in the wheel. A newer driver runs older CUDA runtimes, which is driver forward compatibility. The reverse fails with `CUDA driver version is insufficient`.
+
+To verify, check `torch.version.cuda`, `torch.cuda.is_available()` and `nvidia-smi`. The `nvidia-smi` output reports the driver and the maximum supported CUDA version. Run `python -c "import torch; print(torch.__file__)"` to confirm which copy of torch you are using.
+
+You should not mix a system CUDA toolkit with wheel-bundled runtimes by accident. `LD_LIBRARY_PATH` is the list of directories the loader searches for shared libraries, so an `LD_LIBRARY_PATH` that points to a different CUDA can load the wrong `libcudart`, `libcublas` or `libnccl`. Prefer the libraries bundled in the wheel, or the consistent stack inside an NGC container.
 
 NGC containers, such as `nvcr.io/nvidia/pytorch:24.xx-py3`, bundle Python, PyTorch, CUDA, cuDNN, NCCL, Apex, TransformerEngine and tuned builds. Use them as base images. Add your pure-Python dependencies with a constraints file derived from the image, made with `pip freeze` inside it. That keeps pip from replacing the tuned PyTorch with a generic wheel. This is the classic "pip install broke torch" incident.
 
@@ -608,9 +626,9 @@ NumPy 2.x changed the C ABI. Packages compiled against NumPy 1.x fail with `modu
 
 On aarch64 hosts, such as Grace Hopper and Blackwell hosts and Apple silicon, some packages have no wheels. Source builds then take a long time and need toolchains. You can check wheel availability early with `pip download --only-binary=:all: --platform manylinux2014_aarch64 ...`.
 
-Building flash-attn, apex, xformers or a custom CUDA extension needs a matching `nvcc` and a compatible GCC. It also needs the right `TORCH_CUDA_ARCH_LIST`, such as `9.0` for Hopper, and enough RAM for the parallel jobs that `MAX_JOBS` sets. The build takes tens of minutes. Cache the built wheels with `pip wheel`, a `wheelhouse/` directory or an internal index. That way each node does not rebuild them.
+Building flash-attn, apex, xformers or a custom CUDA extension needs a matching `nvcc` and a compatible GCC. `nvcc` is the CUDA compiler, and it must speak the same CUDA version as the rest of the stack. It also needs the right `TORCH_CUDA_ARCH_LIST`, such as `9.0` for Hopper, and enough RAM for the parallel jobs that `MAX_JOBS` sets. The build takes tens of minutes. Cache the built wheels with `pip wheel`, a `wheelhouse/` directory or an internal index. That way each node does not rebuild them.
 
-On HPC systems, load compilers, MPI and CUDA through environment modules (Lmod). Create venvs or conda environments on shared file systems with care. Metadata-heavy import storms on Lustre or NFS slow startup. Copy the environment to node-local NVMe, or use zipimport or container images. Use `python -X importtime` to find slow imports. Set `PYTHONDONTWRITEBYTECODE` on read-only paths, and keep large packages such as torch in a squashfs or container image.
+On HPC systems, load compilers, MPI and CUDA through environment modules (Lmod), which switch toolchains by setting environment variables. Create venvs or conda environments on shared file systems with care. Metadata-heavy import storms on Lustre or NFS slow startup, because every import becomes a round trip over the network. Copy the environment to node-local NVMe, or use zipimport or container images. Use `python -X importtime` to find slow imports. Set `PYTHONDONTWRITEBYTECODE` on read-only paths, and keep large packages such as torch in a squashfs or container image.
 
 On Slurm and Kubernetes, bake environments into images or into shared read-only locations, and pin them by digest. Avoid `pip install` at job start. It adds a network dependency, rate limits and results that differ between runs.
 
@@ -620,7 +638,7 @@ Check the driver and the CUDA runtime first, because a mismatch there breaks the
 
 ## 8. Containers and system integration
 
-A multi-stage Dockerfile is the usual starting point for a Python service. The first stage builds the virtual environment. The second stage copies only that environment into a clean runtime image.
+Your service works on your laptop, and now it has to become an image that a cluster can pull. A multi-stage Dockerfile is the usual starting point for a Python service. Multi-stage means the file has more than one `FROM` line, and only the last one becomes the image you ship. The first stage builds the virtual environment. The second stage copies only that environment into a clean runtime image.
 
 ```dockerfile
 FROM python:3.12-slim AS build
@@ -638,7 +656,7 @@ USER 10001
 ENTRYPOINT ["myops"]
 ```
 
-The multi-stage layout keeps compilers out of the runtime image. Pin base images by digest, and run the process as a non-root user. Set `PYTHONUNBUFFERED=1` so logs appear as soon as they are written. Set `PYTHONFAULTHANDLER=1` to get a traceback after a crash. Copy `requirements.txt` before the sources, so Docker can reuse the dependency layer when only your code changes.
+The multi-stage layout keeps compilers out of the runtime image, so the image you ship is smaller and has less in it that could go wrong. Pin base images by digest, and run the process as a non-root user. Set `PYTHONUNBUFFERED=1` so logs appear as soon as they are written. Set `PYTHONFAULTHANDLER=1` to get a traceback after a crash. Copy `requirements.txt` before the sources, so Docker can reuse the dependency layer when only your code changes.
 
 Choose the base image with care. Alpine uses musl, and it often lacks wheels, which means slow builds and subtle differences. Compare slim images with Alpine before you choose one. Distroless images reduce the attack surface further.
 
@@ -648,7 +666,7 @@ For systemd services, point `ExecStart=/opt/myops/.venv/bin/myops` at the virtua
 
 ## 9. Troubleshooting imports and environments
 
-When your import or install fails, start by matching the error text to a row in the table. Each row tells you the likely cause and the fix.
+When your import or install fails, start by matching the error text to a row in the table. Each row tells you the likely cause and the fix. The error text is the most reliable clue you have, so read it before you change anything.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
@@ -671,13 +689,13 @@ Several commands show what is installed and where it came from. `python -m pip d
 
 ## 10. Lab: environments and a packaged tool
 
-Start with the self-checking Python lab, and run it on your own machine. It covers several ideas from this chapter. It verifies how `import` and `from` copy references, and how `reload()` behaves (*Learning Python*, chapters 23 and 25). It tests the 4-step import search precedence algorithm, where `regular_package`, with `__init__.py`, and `simple_module` beat bare PEP 420 `namespace_package` directories (chapter 24). It checks `_X` against `__all__` for exports (`unders.py` and `alls.py`), and module-level `__getattr__` and `__dir__` (`gamod.py`). It also compares `__import__('email.message')` with `importlib.import_module('email.message')`. Last, it compares the recursive reloader, `reloadall2.py`, with the explicit-stack reloader, `reloadall3.py`.
+Start with the self-checking Python lab, and run it on your own machine. It covers several ideas from this chapter, so it doubles as a self-test. It verifies how `import` and `from` copy references, and how `reload()` behaves (*Learning Python*, chapters 23 and 25). It tests the 4-step import search precedence algorithm, where `regular_package`, with `__init__.py`, and `simple_module` beat bare PEP 420 `namespace_package` directories (chapter 24). It checks `_X` against `__all__` for exports (`unders.py` and `alls.py`), and module-level `__getattr__` and `__dir__` (`gamod.py`). It also compares `__import__('email.message')` with `importlib.import_module('email.message')`. Last, it compares the recursive reloader, `reloadall2.py`, with the explicit-stack reloader, `reloadall3.py`.
 
 ```bash
 python3 code/part03/python_modules_packaging_lab.py
 ```
 
-The lab file lives at `code/part03/python_modules_packaging_lab.py`, and running it takes one command. The exercises below all need Python 3.11 or newer. The interactive shell steps in them are `untested here`, so check each result on your own machine.
+The lab file lives at `code/part03/python_modules_packaging_lab.py`, and running it takes one command. The exercises below all need Python 3.11 or newer. The interactive shell steps in them were not run on live hardware, so check each result on your own machine.
 
 1. Start with the import system. Create `a.py` and `b.py`, which import each other in a cycle, as in `recur1.py` and `recur2.py`. Run them, observe the errors, and then refactor the cycle away. Next, create a local `random.py` and watch it shadow the standard library. Remove it afterward. Then write `mymod.py`, the module from the *Learning Python* Part V exercises. It should export `countLines(name)`, `countChars(name)` and `test(name)`. Include a `file.seek(0)` single-open variant and an `if __name__ == '__main__':` self-test. Import it from `myclient.py`, and package it inside `mypkg/`. Finally, print `sys.path` and the size of `sys.modules`, and use `-X importtime` on a heavy import.
 2. Build the `myops` package skeleton shown earlier, with its subpackages. Use relative and absolute imports, add `__all__`, and add a `__main__.py`. Run it with `python -m myops`. Then reproduce the relative-import-as-script error, and explain why it happens.
@@ -704,7 +722,7 @@ Using `--extra-index-url` with private package names invites dependency confusio
 
 ## 12. Interview angles
 
-Use these questions to test yourself before an interview. Each one touches a part of the chapter you should be able to explain out loud.
+Use these questions to test yourself before an interview. Each one touches a part of the chapter you should be able to explain out loud. Answer them aloud, because the interview will not happen inside your head.
 
 - "What happens when you `import x`? Where does Python look?"
 - "Difference between a module, a package and a namespace package?"
@@ -718,7 +736,7 @@ Use these questions to test yourself before an interview. Each one touches a par
 
 ## Exercises
 
-The exercises below follow the chapter in order, so you can check each answer against the text above.
+The exercises below follow the chapter in order, so you can check each answer against the text above. Work through them in sequence, because each one leans on the section before it.
 
 1. Start with the import pipeline, covered in *Learning Python* chapter 22. (a) Trace the three steps that Python runs on the first `import b`, after it checks `sys.modules`, `sys.builtin_module_names` and the frozen modules. Then list the five components that make up `sys.path`. (b) Explain the three checks Python applies to `__pycache__/codefile.cpython-312.pyc` before it skips compilation. Contrast timestamp-based `.pyc` files with hash-based ones (`compileall` / `--check-hash-based-pycs`). Last, explain why top-level scripts do not write `.pyc` files unless you run `python3 -m compileall -b -l .`.
 2. Next, work through *Learning Python* chapter 23, using `simulate_import_vs_from_and_reload()` in `code/part03/python_modules_packaging.py`. Explain why `from share import x, y; x = 'hack'; y[0] = 'hack'` leaves `share.x == 1`, while it changes `share.y` to `['hack', 2]`. Explain why `importlib.reload(share)` updates `share.x` in place but not `copied_x`. Also explain why `lex1.f()` in `lex2.py` prints `11 99`. Lexical scoping (`lex1.py` and `lex2.py`) and downward qualification (`nest1..3.py`) belong to this exercise too.

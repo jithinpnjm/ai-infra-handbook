@@ -22,15 +22,17 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-Your pager goes off at 3 a.m., and the stack trace leads into a FastAPI route, a pydantic model or a pytest fixture. These look like magic until you see the few language mechanisms underneath them. You will find the same ideas under SQLAlchemy columns, dataclasses, Click commands, Airflow DAGs, PyTorch `nn.Module` parameters, `torch.compile` and Ray's `@ray.remote`.
+Your pager goes off at 3 a.m., and the stack trace leads into a FastAPI route, a pydantic model or a pytest fixture you did not write. Nothing in that trail is magic, but it reads that way until you have seen the few language mechanisms underneath it. The same ideas sit under SQLAlchemy columns, dataclasses, Click commands, Airflow DAGs, PyTorch `nn.Module` parameters, `torch.compile` and Ray's `@ray.remote`.
 
-Functions are objects, closures capture variables, and decorators rewrite callables. Descriptors control attribute access. `__init_subclass__` and metaclasses run code when a class is created, and the import system can be hooked as well.
+The mechanisms repeat, and that is the good news. Functions are objects, closures capture variables, and decorators rewrite callables. Descriptors control attribute access. `__init_subclass__` and metaclasses run code when a class is created, and the import system can be hooked as well.
 
-Knowing these lets you read framework source when a bug lands in your lap. It also lets you write your own small frameworks, such as plugin registries, config schemas and operator wrappers. Senior interviews often ask "how does this actually work?" to separate users from engineers, and these mechanisms are the answer. The chapter also teaches restraint. Most metaprogramming should not exist in application code.
+Knowing these mechanisms changes what you can do on a bad day. You can read framework source when a bug lands in your lap. You can also write your own small frameworks, such as plugin registries, config schemas and operator wrappers. Senior interviews often ask "how does this actually work?" to separate users from engineers, and these mechanisms are the answer.
+
+The chapter also teaches restraint, and it says so more than once. Most metaprogramming should not exist in application code.
 
 ## Prerequisites and outcomes
 
-Start with the prerequisites. You need 3.1 to 3.4 first, which cover functions, classes, the data model and typing. When you finish this chapter, you should be able to do the following.
+Before you start, one practical note. You need 3.1 to 3.4 first, because they cover functions, classes, the data model and typing. This chapter assumes all of it. When you finish, you should be able to do the following.
 
 - Explain closures, `nonlocal`, late binding and how decorators are applied, including decorators with arguments, class-based decorators, stacking and `functools.wraps`.
 - Write decorators for timing, retry, caching, authorisation, registration and instrumentation, handling both sync and async functions.
@@ -39,11 +41,11 @@ Start with the prerequisites. You need 3.1 to 3.4 first, which cover functions, 
 - Inspect and generate code with `inspect`, `typing.get_type_hints`, `ast`, `dis`, and understand import hooks and `sys.modules`.
 - Decide when metaprogramming is appropriate, test it, and keep it debuggable.
 
-Use this list as a checklist. Each later section maps to one or more of these outcomes.
+Treat the list as a checklist. Each later section maps to one or more of these outcomes, so you can always see where you are.
 
 ## 1. Functions are objects; closures
 
-Suppose you want a counter that remembers its count between calls. Functions are first-class objects, so you can assign them, pass them, return them and attach attributes. A **closure** is a function that remembers variables from its enclosing scope, even after that scope has returned.
+Suppose you want a counter that remembers its count between calls, and you do not want a whole class for one number. Functions are first-class objects, so you can assign them, pass them, return them and attach attributes. A **closure** is a function that remembers variables from its enclosing scope, even after that scope has returned.
 
 ```python
 def make_counter():
@@ -58,9 +60,9 @@ c = make_counter(); c(); c()      # 2
 c.__closure__[0].cell_contents    # 2: the captured cell
 ```
 
-The nonlocal line lets the inner function change the captured name. Without it, the assignment would make the name local to the inner function.
+The `nonlocal` line does the quiet work. It lets the inner function change the captured name. Without it, the assignment would make the name local to the inner function.
 
-Python looks up names in the order Local, Enclosing, Global, Built-in. Closures capture variables, not values, which leads to the classic late-binding trap.
+Python looks up names in a fixed order: Local, Enclosing, Global, Built-in. Keep the middle two words in mind. A closure captures variables, not values, and that small distinction leads to the classic late-binding trap.
 
 ```python
 fs = [lambda: i for i in range(3)]
@@ -69,13 +71,15 @@ fs = [lambda i=i: i for i in range(3)]      # bind at definition via default arg
 from functools import partial; fs = [partial(lambda i: i, i) for i in range(3)]    # or partial
 ```
 
-Every lambda in the first line looks up the same name, and by the time you call them, that name holds 2. The default argument and the partial call each copy the value when the lambda is defined.
+All three lambdas in the first line look up the same name. By the time you call them, the loop has finished, so that name holds 2. The default argument and the `partial` call each copy the value when the lambda is defined, which is why both fixes work.
 
-Closures are also a lightweight alternative to single-method classes. A configured callable, such as `make_rate_limiter(100)`, keeps its state in cells. Watch the memory, though. A closure keeps the entire captured object alive, so a captured large tensor is not freed while the closure exists.
+Closures are also a lightweight alternative to a class with a single method. A configured callable, such as `make_rate_limiter(100)`, keeps its state in cells instead of attributes. Watch the memory, though. A closure keeps the entire captured object alive, so a captured large tensor is not freed while the closure exists. That matters for long-lived callbacks.
 
 ## 2. Decorators
 
-Suppose every service in your team needs the same timing code. You do not want to edit each function. A decorator wraps the function once, when Python defines it. `@decorator` above a `def` is exactly `f = decorator(f)`, executed at definition time. A decorator is any callable that takes a callable and returns a replacement, often a wrapper.
+Suppose every service in your team needs the same timing code, and the function bodies keep changing underneath it. You do not want to edit each function, and you do not want to forget one. A decorator wraps the function once, when Python defines it.
+
+`@decorator` above a `def` is exactly `f = decorator(f)`, executed at definition time. In plain words, a decorator is any callable that takes a callable and returns a replacement, often a wrapper. Every later call goes through that replacement.
 
 ```python
 import functools, time, logging
@@ -95,11 +99,11 @@ def timed(fn):
 def drain(node): ...
 ```
 
-Without `functools.wraps`, introspection, documentation generators, FastAPI and pydantic signature inspection, and pytest fixtures see the wrapper's name and signature instead of the original. That is why the `wraps` line matters in this example.
+Look at the `@functools.wraps(fn)` line, because it prevents a specific and common bug. Without it, introspection, documentation generators, FastAPI and pydantic signature inspection, and pytest fixtures see the wrapper's name and signature instead of the original. The function still runs, but it has quietly lost its name. That is why the `wraps` line matters in this example.
 
 ### Decorators with arguments
 
-Sometimes the decorator needs settings of its own, such as how many times to retry. Then you need one more level of nesting. The code below has three levels: a factory that takes the arguments, a decorator that takes the function, and a wrapper that does the work.
+Sometimes the decorator needs settings of its own, such as how many times to retry. Then one level of nesting is not enough. The code below has three levels: a factory that takes the arguments, a decorator that takes the function, and a wrapper that does the work.
 
 ```python
 def retry(times=3, exceptions=(Exception,), delay=0.5):
@@ -119,11 +123,11 @@ def retry(times=3, exceptions=(Exception,), delay=0.5):
 def fetch(): ...
 ```
 
-The outer `retry` receives the settings, `deco` receives the function, and `wrapper` retries the call with a growing delay between attempts.
+Read it from the outside in. The outer `retry` receives the settings, `deco` receives the function, and `wrapper` retries the call with a growing delay between attempts.
 
 ### Sync and async
 
-A wrapper around an `async def` function must itself be `async def`, and it must `await` the call. Otherwise you either return a coroutine that nobody awaits, or you time only the creation of the coroutine. The version below supports both kinds of function, and it picks the right wrapper when the decorator runs.
+Here is a mistake that hides well. A wrapper around an `async def` function must itself be `async def`, and it must `await` the call. Otherwise you get one of two quiet failures: you either return a coroutine that nobody awaits, or you time only the creation of the coroutine. The version below supports both kinds of function, and it picks the right wrapper when the decorator runs.
 
 ```python
 import inspect
@@ -145,17 +149,19 @@ def timed(fn):
 
 ### Class-based decorators, stacking and registries
 
-A class with `__call__` keeps state cleanly, for example a call counter or a cache. It has a trap, though. Suppose you write `class tracer` with an `__init__` that stores `self.calls = 0` and `self.func = func`, plus a `__call__` method. If you apply `@tracer` to a method, such as `@tracer def restart(self, service):` inside a `Host` class, then calling `host.restart("nginx")` fails. The reason is that `tracer` is not a descriptor, so Python passes the `tracer` instance as `self` instead of the `Host` instance.
+A class with `__call__` keeps state cleanly, for example a call counter or a cache, and many people reach for one first. It has a trap, though, and the trap only shows up on methods.
 
-You have two fixes. You can write the decorator as a nested function with `nonlocal calls`, as in `def tracer(func): calls = 0; def onCall(*args, **kwargs): nonlocal calls; calls += 1; return func(*args, **kwargs); return onCall`. Or you can implement `__get__` on the decorator class.
+Suppose you write `class tracer` with an `__init__` that stores `self.calls = 0` and `self.func = func`, plus a `__call__` method. If you apply `@tracer` to a method, such as `@tracer def restart(self, service):` inside a `Host` class, then calling `host.restart("nginx")` fails. The reason is that `tracer` is not a descriptor, so Python passes the `tracer` instance as `self` instead of the `Host` instance.
 
-Three decorator patterns are worth knowing, and `code/part03/python_metaprogramming_internals.py` models them.
+You have two fixes, and both are small. You can write the decorator as a nested function with `nonlocal calls`, as in `def tracer(func): calls = 0; def onCall(*args, **kwargs): nonlocal calls; calls += 1; return func(*args, **kwargs); return onCall`. Or you can implement `__get__` on the decorator class.
+
+Three decorator patterns are worth knowing, because they keep turning up in framework code. `code/part03/python_metaprogramming_internals.py` models them.
 
 1. A parameterised timing decorator, such as `@timer(label='restart', trace=True)`, uses three levels of nesting: `timer(label, trace)` returns `onDecorator(func)`, which returns `onCall(*args, **kargs)`. The wrapper can accumulate elapsed time across calls.
 2. A class decorator can handle singletons and access control. A `@Private('data', 'size')` decorator wraps a class in a proxy that intercepts `__getattr__` and `__setattr__`, so outside reads and writes to private attributes are rejected. Built-in operations such as `+` and `str()` do not go through `__getattr__`, so a proxy needs extra methods to cover them.
 3. A generalised range validator, such as `@rangetest(retries=(0, 10), port=(1, 65535))`, reads `code = func.__code__` and `allargs = code.co_varnames[:code.co_argcount]`. Using those names, it maps positional and keyword arguments to their parameter names. Defaulted arguments are skipped. Under `python -O`, the check short-circuits with `if not __debug__: return func`.
 
-Stacking applies bottom-up. `@a @b def f` means `f = a(b(f))`, so the order matters. Put auth before caching, not the reverse.
+Stacking applies bottom-up, which surprises people the first time. `@a @b def f` means `f = a(b(f))`, so the order matters. Put auth before caching, not the reverse.
 
 A registry decorator returns the function unchanged, but it records the function first. This pattern sits behind Flask and FastAPI routes, Click commands, pytest fixtures and markers, Airflow tasks and plugin systems.
 
@@ -172,13 +178,15 @@ def on_node_down(evt): ...
 def dispatch(evt): return HANDLERS[evt["type"]](evt)
 ```
 
-The decorator stores the handler, and `dispatch` looks it up later by event type. FastAPI's `@app.get("/x")` follows the same pattern. The router stores the path, the method, the function and models derived from the signature, then returns the function.
+The decorator stores the handler at import time, and `dispatch` looks it up later by event type. FastAPI's `@app.get("/x")` follows the same pattern. The router stores the path, the method, the function and models derived from the signature, then returns the function. You never write a separate registration line, which is the whole point.
 
 ### Standard-library decorators worth knowing
 
 Several decorators ship with the standard library, and you will meet them often. `functools.lru_cache` and `cache` memoise results for hashable arguments. An unbounded `cache` leaks memory, and it is not safe on methods that hold `self` forever. `cached_property` caches a property on the instance, and `singledispatch` overloads a function on the type of its first argument. `total_ordering` fills in the missing comparison methods, while `partial` and `wraps` help with wrapping. `contextlib.contextmanager` turns a generator into a context manager. `dataclasses.dataclass`, `typing.overload` and `typing.final` shape classes and type hints. `abc.abstractmethod` marks methods that subclasses must implement. `property`, `classmethod` and `staticmethod` cover the common method kinds, and `atexit.register` runs a function when the interpreter exits.
 
-Decorators fail in a few predictable ways. They run at import time, so side effects and circular imports can appear there. Wrapping can hide tracebacks unless you are careful. Decorating a method differs from decorating a plain function, because `self` must be handled. An `lru_cache` on an instance method keeps instances alive. A module-level decorator that mutates shared state breaks test isolation. Stacking many decorators obscures the control flow and the signature. `typing.ParamSpec` and `Callable[P, R]` keep type checkers informed.
+Decorators fail in a few predictable ways. They run at import time, so side effects and circular imports can appear there. Wrapping can hide tracebacks unless you are careful. Decorating a method differs from decorating a plain function, because `self` must be handled. An `lru_cache` on an instance method keeps instances alive. A module-level decorator that mutates shared state breaks test isolation.
+
+Stacking many decorators obscures the control flow and the signature. `typing.ParamSpec` and `Callable[P, R]` keep type checkers informed.
 
 ```python
 from typing import Callable, ParamSpec, TypeVar
@@ -190,13 +198,15 @@ def logged(fn: Callable[P, R]) -> Callable[P, R]:       # preserves the wrapped 
     return w
 ```
 
-When you write a decorator, add `functools.wraps` and a precise type hint from the start.
+When you write a decorator, add `functools.wraps` and a precise type hint from the start. Adding them later, after a framework has already tripped over the missing signature, is much more work.
 
 ## 3. Attribute access and the descriptor protocol
 
 ### Lookup order
 
-When you write `obj.name`, Python checks several places in a fixed order. The order decides which value you get when two places hold the same name. Roughly, Python does the following inside `object.__getattribute__`:
+Here is a scene that costs people an afternoon. You set an attribute on an object, read it back, and get the class's value instead of yours. Nothing is corrupted. The reason is that `obj.name` checks several places in a fixed order, and the order decides which value you get when two places hold the same name.
+
+Roughly, Python does the following inside `object.__getattribute__`:
 
 1. Find `name` on the **type** (walking the MRO). If it is a **data descriptor** (defines `__set__` or `__delete__`), call its `__get__` and stop.
 2. Else look in the instance `__dict__` (or slots).
@@ -218,15 +228,19 @@ flowchart TD
   H -- no --> J["AttributeError"]
 ```
 
-`__getattribute__` runs on every access, so override it with extreme care. Call `super().__getattribute__` to avoid infinite recursion. `__getattr__` runs only when normal lookup fails, which makes it a good fit for proxies, lazy attributes and forwarding. Setting an attribute uses `__setattr__`, which checks data descriptors on the type first.
+`__getattribute__` runs on every access, so override it with extreme care. If you must, call `super().__getattribute__` to avoid infinite recursion.
+
+`__getattr__` is the gentler hook. It runs only when normal lookup fails, which makes it a good fit for proxies, lazy attributes and forwarding. Setting an attribute uses `__setattr__`, which checks data descriptors on the type first.
 
 ### Methods are descriptors
 
-Why does `obj.method` give you a bound method, while `Class.method` gives you a plain function? Functions are descriptors. Functions on a class are non-data descriptors whose `__get__` returns a bound method, which is the function with `self` pre-filled. That is why `obj.method` is a bound method object and `Class.method` is the plain function. `staticmethod` and `classmethod` are also descriptors, each with a different `__get__`. `functools.partialmethod`, `property`, `cached_property` and ORM columns are descriptors too.
+Why does `obj.method` give you a bound method, while `Class.method` gives you a plain function? The answer is one of the neatest pieces of the language. Functions are descriptors.
+
+Functions on a class are non-data descriptors whose `__get__` returns a bound method, which is the function with `self` pre-filled. That is why `obj.method` is a bound method object and `Class.method` is the plain function. `staticmethod` and `classmethod` are also descriptors, each with a different `__get__`. `functools.partialmethod`, `property`, `cached_property` and ORM columns are descriptors too.
 
 ### Writing a descriptor
 
-Suppose a GPU job must always request a positive number of GPUs. You could check the value in every method. Or you could let a descriptor check it on every assignment, as the code below does.
+Suppose a GPU job must always request a positive number of GPUs, and the check has to hold no matter who sets the field. You could check the value in every method. Or you could let a descriptor check it on every assignment, as the code below does.
 
 ```python
 class Positive:
@@ -249,21 +263,27 @@ class GpuJob:
         self.memory_gb = memory_gb
 ```
 
-One descriptor instance lives on the class and is shared by all instances. So per-instance data must be stored on the instance, here as `_gpus`, or directly in `instance.__dict__[self.storage_name]`. You can also use a `WeakKeyDictionary`. Never store it on the descriptor itself. `__set_name__` (PEP 487) lets the descriptor learn its attribute name automatically.
+Read the next paragraph twice, because it is the whole trick. One descriptor instance lives on the class and is shared by all instances. So per-instance data must be stored on the instance, here as `_gpus`, or directly in `instance.__dict__[self.storage_name]`. You can also use a `WeakKeyDictionary`. Never store it on the descriptor itself. `__set_name__` (PEP 487) lets the descriptor learn its attribute name automatically.
 
-Two worked examples go further. The first is an abstract `Validated(ABC)` descriptor base class. Its `__set_name__(self, owner, name)` sets `self.storage_name = name`. Its `__set__(self, instance, value)` calls `value = self.validate(self.storage_name, value)` and writes `instance.__dict__[self.storage_name] = value`. Two subclasses build on it. `Quantity(Validated)` enforces `value > 0`, and `NonBlank(Validated)` strips whitespace and rejects empty strings. Together they validate `LineItem(description, weight, price)` declaratively. The code is modeled in `code/part03/python_metaprogramming_internals.py`. The second contrasts three descriptor flavors on a `Managed` class:
+Two worked examples go further. The first is an abstract `Validated(ABC)` descriptor base class. Its `__set_name__(self, owner, name)` sets `self.storage_name = name`. Its `__set__(self, instance, value)` calls `value = self.validate(self.storage_name, value)` and writes `instance.__dict__[self.storage_name] = value`. Two subclasses build on it. `Quantity(Validated)` enforces `value > 0`, and `NonBlank(Validated)` strips whitespace and rejects empty strings. Together they validate `LineItem(description, weight, price)` declaratively. The code is modeled in `code/part03/python_metaprogramming_internals.py`.
+
+The second example contrasts three descriptor flavors on a `Managed` class:
 
 1. **Overriding (data) descriptor with `__get__` and `__set__` (`Overriding`):** Always intercepts both reads (`obj.over`) and writes (`obj.over = 7`), even if you manually stuff `obj.__dict__['over'] = 8`.
 2. **Overriding descriptor without `__get__` (`OverridingNoGet`, only `__set__`):** Intercepts writes (`obj.over_no_get = 7`). Reads (`obj.over_no_get`) return the descriptor object itself, unless `'over_no_get'` is present in `obj.__dict__`.
 3. **Non-overriding (non-data) descriptor (`NonOverriding`, only `__get__`, like functions and `@functools.cached_property`):** `obj.non_over` calls `__get__` only when `'non_over'` is not in `obj.__dict__`. Assigning `obj.non_over = 7` writes `'non_over'` into `obj.__dict__`, and from then on that value shadows the descriptor.
 
-Storing state on the descriptor (`self.value`) is a classic bug. Take a `CardHolder(acct, name, age, addr)` record class with an account number masked as `'12345***'`, a name normalised to lowercase with underscores, and the check `0 <= age <= 150`. It can be built four ways: with `@property`, with descriptors, with `__getattr__` and `__setattr__`, and with `__getattribute__` and `__setattr__`. In the first descriptor version, storing `self.name = value` on the descriptor means that creating `bob`, then `sue`, overwrites the one shared `name` descriptor on `CardHolder`, so `bob.name` morphs into `'sue_jones'`. Storing the state on the instance fixes it, because each object then keeps its own value.
+Now the mistake this chapter keeps warning about, told as a story. Storing state on the descriptor (`self.value`) is a classic bug. Take a `CardHolder(acct, name, age, addr)` record class with an account number masked as `'12345***'`, a name normalised to lowercase with underscores, and the check `0 <= age <= 150`. It can be built four ways: with `@property`, with descriptors, with `__getattr__` and `__setattr__`, and with `__getattribute__` and `__setattr__`.
+
+In the first descriptor version, storing `self.name = value` on the descriptor means that creating `bob`, then `sue`, overwrites the one shared `name` descriptor on `CardHolder`, so `bob.name` morphs into `'sue_jones'`. Storing the state on the instance fixes it, because each object then keeps its own value.
 
 When you write a descriptor, keep every piece of per-instance state on the instance. The shared descriptor object is the trap.
 
 ### property, cached_property and slots
 
-Suppose an attribute starts as a plain value today, and next year it needs validation. A `property` lets you add that check without changing any caller. `property` is a data descriptor built from getter, setter and deleter functions. Use it to start with a plain attribute and add validation or computation later. Bertrand Meyer calls this idea the **Uniform Access Principle**.
+Suppose an attribute starts as a plain value today, and next year it needs validation. A `property` lets you add that check without changing any caller. That is the promise, and it holds.
+
+A `property` is a data descriptor built from getter, setter and deleter functions. Use it to start with a plain attribute and add validation or computation later. Bertrand Meyer calls this idea the **Uniform Access Principle**.
 
 `functools.cached_property` computes its value once and stores the result in the instance `__dict__`. It is a non-data descriptor, so the instance value wins from then on. It needs a `__dict__`, so it does not work with `__slots__` unless a `__dict__` slot exists.
 
@@ -273,9 +293,9 @@ Choose `__slots__` when you have millions of small objects and can live without 
 
 ### Dynamic attributes and proxies (`FrozenJSON`)
 
-A JSON feed arrives as nested dictionaries and lists, and you would rather write `feed.Schedule.events[40].name` than a chain of brackets. The class `FrozenJSON` in `code/part03/python_metaprogramming_internals.py` wraps nested JSON documents, so `feed.Schedule.events[40].name` returns the name of the 41st event, and dict methods such as `.keys()` still work side by side.
+A JSON feed arrives as nested dictionaries and lists. You would rather write `feed.Schedule.events[40].name` than a chain of brackets, and there is no good reason you should not.
 
-The wrapper relies on two mechanisms:
+The class `FrozenJSON` in `code/part03/python_metaprogramming_internals.py` wraps nested JSON documents, so `feed.Schedule.events[40].name` returns the name of the 41st event, and dict methods such as `.keys()` still work side by side. The wrapper relies on two mechanisms:
 
 - **`__new__(cls, arg)` for flexible object construction:** `__new__` builds the right kind of object for each input. If `arg` is a mapping, it checks `if isinstance(arg, abc.Mapping): return super().__new__(cls)`. If `arg` is a mutable sequence, it returns `[cls(item) for item in arg]`. Otherwise it returns `arg` unchanged.
 - **Handling Python reserved keywords (`class` -> `class_`) and invalid identifiers:** In `__init__`, the line `if keyword.iskeyword(key): key += '_'` renames a JSON key such as `'class'` to `'class_'`, so you can write `student.class_`. A key such as `'2be'` cannot be read with dot syntax, and `key.isidentifier()` detects that case.
@@ -291,13 +311,19 @@ class Config:
     def __dir__(self): return list(self._data)        # tab-completion and introspection
 ```
 
-Always raise `AttributeError`, not `KeyError`, from `__getattr__`. If you raise the wrong type, the defaults in `hasattr` and `getattr` break, and so do copying and pickling. Guard against recursion when `__getattr__` reads your own attributes, and access `self.__dict__` carefully. `__getattr__` on a module (PEP 562) enables lazy imports and deprecation shims. Many ML libraries expose attributes generated at run time, such as config objects and `torch.ops` namespaces. Tooling support for those attributes requires type stubs.
+A few rules keep a proxy like this from misbehaving. Always raise `AttributeError`, not `KeyError`, from `__getattr__`. If you raise the wrong type, the defaults in `hasattr` and `getattr` break, and so do copying and pickling. Guard against recursion when `__getattr__` reads your own attributes, and access `self.__dict__` carefully.
+
+`__getattr__` on a module (PEP 562) enables lazy imports and deprecation shims. Many ML libraries expose attributes generated at run time, such as config objects and `torch.ops` namespaces. Tooling support for those attributes requires type stubs.
 
 Test the missing-key path of any proxy first, because that is where it usually breaks.
 
 ### How some frameworks use descriptors
 
-You do not need these internals to use Django or pydantic. You do need them to understand what happens when a field is assigned. Django and SQLAlchemy columns and relationships are descriptors, and they turn `obj.field` into tracked state. Pydantic v1 used metaclass magic and fields, while v2 builds a compiled validation core from annotations. `dataclasses` generate `__init__`, `__repr__` and `__eq__` from annotations. `torch.nn.Module.__setattr__` intercepts assignment and registers `nn.Parameter` and submodules in internal dictionaries. That is why assigning layers in `__init__` makes `.parameters()` work. It is also why putting layers in a plain Python list does not register them, so use `nn.ModuleList` instead.
+You do not need these internals to use Django or pydantic, and that is worth saying plainly. You do need them to understand what happens when a field is assigned.
+
+Django and SQLAlchemy columns and relationships are descriptors, and they turn `obj.field` into tracked state. Pydantic v1 used metaclass magic and fields, while v2 builds a compiled validation core from annotations. `dataclasses` generate `__init__`, `__repr__` and `__eq__` from annotations.
+
+`torch.nn.Module.__setattr__` intercepts assignment and registers `nn.Parameter` and submodules in internal dictionaries. That is why assigning layers in `__init__` makes `.parameters()` work. It is also why putting layers in a plain Python list does not register them, so use `nn.ModuleList` instead.
 
 When a framework field behaves strangely, check whether it is a descriptor before you blame the framework.
 
@@ -305,7 +331,9 @@ When a framework field behaves strangely, check whether it is a descriptor befor
 
 ### What class does
 
-Every class statement is a small program that builds an object. Once you see the steps, a framework that seems to change your class after you define it makes more sense. A class statement executes its body in a new namespace. Then it calls `type(name, bases, namespace)`, or the metaclass you name, to build the class object. Classes are objects created at run time, so you can call `type(...)` yourself to make one:
+Every class statement is a small program that builds an object. Once you see the steps, a framework that seems to change your class after you define it makes more sense.
+
+A class statement executes its body in a new namespace. Then it calls `type(name, bases, namespace)`, or the metaclass you name, to build the class object. Classes are objects created at run time, so you can call `type(...)` yourself to make one:
 
 ```python
 Node = type("Node", (object,), {"gpus": 8, "describe": lambda self: f"{self.gpus} GPUs"})
@@ -324,7 +352,9 @@ You can verify this order with `trace_class_creation_order()` in `code/part03/py
 
 ### `__init_subclass__` and class decorators: the first tools to reach for
 
-Suppose you write a plugin base class, and every plugin must register itself the moment someone subclasses it. `__init_subclass__` handles that without a metaclass. It runs whenever a subclass is defined. A `Checked` base class is one example. Its `__init_subclass__` iterates `cls.__annotations__` and attaches a `Field` descriptor for each annotated attribute. A `@checked` class decorator can do the same job.
+Suppose you write a plugin base class, and every plugin must register itself the moment someone subclasses it. The obvious answer is a metaclass. The calmer answer is `__init_subclass__`, which handles the job without one.
+
+`__init_subclass__` runs whenever a subclass is defined. A `Checked` base class is one example. Its `__init_subclass__` iterates `cls.__annotations__` and attaches a `Field` descriptor for each annotated attribute. A `@checked` class decorator can do the same job.
 
 ```python
 class Plugin:
@@ -338,15 +368,21 @@ class NetCheck(Plugin): ...
 Plugin.registry          # {'gpu': GpuCheck, 'netcheck': NetCheck}
 ```
 
-This is how plugin systems self-register. Model and operator registries use the same trick, for example for custom ops or Airflow-like operators. ORM-like base classes do too. A **class decorator** is the other light option. A decorator such as `@register` or `@dataclass` receives the finished class and returns it, possibly modified.
+This is how plugin systems self-register. Model and operator registries use the same trick, for example for custom ops or Airflow-like operators. ORM-like base classes do too.
+
+A **class decorator** is the other light option. A decorator such as `@register` or `@dataclass` receives the finished class and returns it, possibly modified.
 
 ### Helper functions, decorators and metaclasses
 
-Sometimes every class in a set needs the same extra behaviour, but you only learn which classes at run time. When the behaviour is known while the classes are written, a shared superclass does the job. When it is not, you need a tool that changes a class after it is written. There are three, and they differ in how much they automate.
+Sometimes every class in a set needs the same extra behaviour, but you only learn which classes at run time. When the behaviour is known while the classes are written, a shared superclass does the job. When it is not, you need a tool that changes a class after it is written. There are three such tools, and they differ in how much they automate.
 
-A **helper function** takes a class and augments it, and you call it by hand after each class statement. That works, but a client class can forget the call. A **class decorator** automates the call and the rebinding, so `@register` above a class means `Cls = register(Cls)`. A **metaclass** automates it one level deeper. The client class only names the metaclass, and Python calls it at the end of every class statement, now and for every future subclass. A client can still forget to name the metaclass, so the declaration makes the mistake less likely and does not remove it.
+A **helper function** takes a class and augments it, and you call it by hand after each class statement. That works, but a client class can forget the call.
 
-Decorators and metaclasses overlap for adding methods at class creation, and the choice is often arbitrary. Metaclasses have extra hooks that decorators lack, such as methods that the classes inherit. Decorators fit instance management better, because a metaclass is aimed at the class itself.
+A **class decorator** automates the call and the rebinding, so `@register` above a class means `Cls = register(Cls)`.
+
+A **metaclass** automates it one level deeper. The client class only names the metaclass, and Python calls it at the end of every class statement, now and for every future subclass. A client can still forget to name the metaclass, so the declaration makes the mistake less likely and does not remove it.
+
+Here is the part nobody says out loud. Decorators and metaclasses overlap for adding methods at class creation, and the choice is often arbitrary. Metaclasses have extra hooks that decorators lack, such as methods that the classes inherit. Decorators fit instance management better, because a metaclass is aimed at the class itself.
 
 A good worked case is tracing every method of a class. Suppose `tracer` is a function decorator that prints a message on each call. It must be a function with `nonlocal` state, not a class with `__call__`, so it also works on methods. Adding `@tracer` above every method is tedious, and you might miss one. A class decorator and a metaclass can each apply it to all methods at once:
 
@@ -384,7 +420,9 @@ Both versions trace every method call, and you change the decorator by editing o
 
 ### Metaclasses and the two-tree inheritance model
 
-A **metaclass** is the class of a class. By default that class is `type`: `str.__class__ is type`, and `type.__class__ is type`. You subclass `type` to customise class creation, for example to validate or rewrite the namespace, to inject methods, to enforce an interface, to register classes or to provide declarative syntax. Django models, SQLAlchemy declarative, `enum.Enum` and `abc.ABCMeta` all work this way. A metaclass is named in the class header, as in `class C(metaclass=M)`. Its `__new__` and `__init__` run at the end of the class statement, and a plain function that returns a class object can serve as a metaclass too.
+A **metaclass** is the class of a class. The name sounds worse than the idea. By default that class is `type`: `str.__class__ is type`, and `type.__class__ is type`.
+
+You subclass `type` to customise class creation, for example to validate or rewrite the namespace, to inject methods, to enforce an interface, to register classes or to provide declarative syntax. Django models, SQLAlchemy declarative, `enum.Enum`, `abc.ABCMeta` and pydantic v1's `ModelMetaclass` all work this way. A metaclass is named in the class header, as in `class C(metaclass=M)`. Its `__new__` and `__init__` run at the end of the class statement, and a plain function that returns a class object can serve as a metaclass too.
 
 Metaclasses add a second inheritance tree, and the lookup rules differ for instances and for classes.
 
@@ -412,11 +450,13 @@ Prefer the simplest tool that works, in this order: plain functions and composit
 
 ### Abstract base classes, protocols and the data model hooks
 
-`abc.ABC` plus `@abstractmethod` stops you from instantiating incomplete subclasses, through `ABCMeta`. `typing.Protocol` gives you structural subtyping. `__subclasshook__` and `register` customize `isinstance`. `__class_getitem__` supports generics syntax, as in `Foo[int]`. On metaclasses, `__instancecheck__` customizes `isinstance`. `__call__` makes instances callable. `__enter__/__exit__` makes context managers, and `__iter__/__next__` handles iteration. `__get_pydantic_core_schema__` lets custom types integrate with pydantic.
+A few more hooks deserve a line each, so that you recognise them in library code. `abc.ABC` plus `@abstractmethod` stops you from instantiating incomplete subclasses, through `ABCMeta`. `typing.Protocol` gives you structural subtyping. `__subclasshook__` and `register` customize `isinstance`. `__class_getitem__` supports generics syntax, as in `Foo[int]`.
+
+On metaclasses, `__instancecheck__` customizes `isinstance`. `__call__` makes instances callable. `__enter__/__exit__` makes context managers, and `__iter__/__next__` handles iteration. `__get_pydantic_core_schema__` lets custom types integrate with pydantic.
 
 ## 5. Introspection and code generation
 
-A framework often needs to know what your function expects before it calls the function. It gets that information with a handful of standard tools.
+A framework often needs to know what your function expects before it calls the function. That is the source of the "it just knows" feeling. It gets that information with a handful of standard tools.
 
 - The `inspect` module offers `inspect.signature(fn)`, which gives the parameters, defaults and annotations. FastAPI, Click, pytest and dependency-injection frameworks read it to wire arguments. The module also offers `inspect.getsource`, `inspect.iscoroutinefunction`, `inspect.getmembers`, `inspect.stack` (which is costly), and `inspect.unwrap`, which follows the `__wrapped__` attribute that `functools.wraps` sets.
 - `typing.get_type_hints(obj)` resolves string and forward annotations, while `__annotations__` holds the raw values. From Python 3.14, deferred evaluation changes some details, so check the release notes. Pydantic and FastAPI rely on the resolved hints.
@@ -439,7 +479,9 @@ for name, p in sig.parameters.items():
     print(name, hints[name], "required" if p.default is p.empty else f"default={p.default!r}")
 ```
 
-From this information alone, a framework learns each parameter's name, type, required status and default. It then builds a pydantic model to validate request data, decides whether each parameter comes from the path, the query or the body, and generates the OpenAPI schema. `Depends(...)` defaults are discovered the same way and resolved recursively. The route decorator stores the function. At request time, the framework builds the keyword arguments and calls it. This explains why changing a type hint changes API behavior, why `functools.wraps` matters, and why a decorator that hides the signature breaks FastAPI.
+From this information alone, a framework learns each parameter's name, type, required status and default. It then builds a pydantic model to validate request data, decides whether each parameter comes from the path, the query or the body, and generates the OpenAPI schema. `Depends(...)` defaults are discovered the same way and resolved recursively. The route decorator stores the function. At request time, the framework builds the keyword arguments and calls it.
+
+Keep that mechanism in mind, because it explains why changing a type hint changes API behavior, why `functools.wraps` matters, and why a decorator that hides the signature breaks FastAPI.
 
 ### How pydantic validators plug into the same machinery
 
@@ -460,15 +502,19 @@ class NodeSpec(BaseModel):
         return v
 ```
 
-Constructing `NodeSpec(name="gpu01", gpus="4")` validates and converts the input, and `gpus=12` raises a validation error. FastAPI combines the two stories. It reads the handler signature for the request parts, and it uses pydantic models for the body. A `Depends(get_db)` default is resolved by calling `get_db` first and passing its result in, which is dependency injection by signature.
+Constructing `NodeSpec(name="gpu01", gpus="4")` validates and converts the input, and `gpus=12` raises a validation error.
+
+FastAPI combines the two stories. It reads the handler signature for the request parts, and it uses pydantic models for the body. A `Depends(get_db)` default is resolved by calling `get_db` first and passing its result in, which is dependency injection by signature.
 
 ### How pytest finds and injects fixtures
 
-pytest imports test modules and rewrites `assert` statements through the AST at import time. It collects the `test_*` functions and inspects each test's parameter names with `inspect.signature`. It then looks up fixtures with those names, from the registries that the `@pytest.fixture` decorator fills in module files and `conftest.py`. It resolves dependencies between fixtures and runs their setup. A generator fixture runs until its `yield`. Finally, pytest calls the test with those values and runs the teardown in reverse order. The same idea, inspect the signature and inject by name, underlies dependency injection frameworks.
+pytest imports test modules and rewrites `assert` statements through the AST at import time. It collects the `test_*` functions and inspects each test's parameter names with `inspect.signature`. It then looks up fixtures with those names, from the registries that the `@pytest.fixture` decorator fills in module files and `conftest.py`.
+
+It resolves dependencies between fixtures and runs their setup. A generator fixture runs until its `yield`. Finally, pytest calls the test with those values and runs the teardown in reverse order. The same idea, inspect the signature and inject by name, underlies dependency injection frameworks.
 
 ## 6. Imports, modules and hooks
 
-Every `import` statement starts a chain of lookups, and each step in that chain can run code you did not expect.
+Some of the strangest production surprises begin with a single `import` line. Every `import` statement starts a chain of lookups, and each step in that chain can run code you did not expect.
 
 - An `import x` first checks `sys.modules`. If the module is missing, **finders** in `sys.meta_path` locate a **spec**, and a **loader** creates and executes the module. The module object is then cached in `sys.modules`, so a module's top-level code runs only once. Circular imports see partially initialised modules.
 - Import hooks let custom finders and loaders import from databases, encrypted archives or remote stores. They can also transform source during import, which is how pytest rewrites asserts and how some DSLs and notebook imports work. Entry points, read with `importlib.metadata.entry_points(group="myapp.plugins")`, are the standard way to discover plugins that other packages install. pytest plugins, Airflow providers, Kubeflow components and setuptools scripts all use them.
@@ -478,7 +524,7 @@ Every `import` statement starts a chain of lookups, and each step in that chain 
 
 ## 7. Performance and memory implications of dynamism
 
-Dynamic features cost something at run time. A service that calls a wrapper millions of times per second feels that cost. A service that mostly waits on a database hardly notices it.
+Dynamic features cost something at run time, and the honest question is whether your service will feel it. A service that calls a wrapper millions of times per second feels that cost. A service that mostly waits on a database hardly notices it.
 
 - Attribute access through an instance `__dict__` is fast but memory-heavy. Descriptors and `__getattr__` add overhead to each access. `__slots__` saves memory when you have millions of objects.
 - Each wrapper layer adds a Python call, which costs roughly tens to hundreds of nanoseconds. In hot loops, decorators matter. In I/O paths, they usually do not. Profile before you remove an abstraction.
@@ -506,9 +552,9 @@ When you write your next decorator or descriptor, start with the practice that m
 
 ## 9. Lab
 
-Start by running the self-checking lab script on your own machine. It covers the mechanisms from this chapter, so you can see each one work before you change anything.
+Start by running the self-checking lab script on your own machine. It covers the mechanisms from this chapter, so you can see each one work before you change anything. Run it before you read the rest of this section, because the output makes the explanations concrete.
 
-The script checks dynamic attribute navigation with `FrozenJSON` and `keyword.iskeyword` handling,  It also checks `LineItem` with the `Validated`, `Quantity` and `NonBlank` descriptors that use `__set_name__`. Next, it tests `CardHolder` per-instance descriptor isolation and `@rangetest(**argchecks)` validation of positional and keyword arguments. Last, it checks `record_factory` dynamic class creation through `type()`, the class creation hook sequence (`__prepare__ -> body -> __new__ -> __set_name__ -> __init_subclass__ -> __init__`), and the parameter and submodule registration in `ToyModule.__setattr__` (`nn.Module` internals).
+The script checks dynamic attribute navigation with `FrozenJSON` and `keyword.iskeyword` handling. It also checks `LineItem` with the `Validated`, `Quantity` and `NonBlank` descriptors that use `__set_name__`. Next, it tests `CardHolder` per-instance descriptor isolation and `@rangetest(**argchecks)` validation of positional and keyword arguments. Last, it checks `record_factory` dynamic class creation through `type()`, the class creation hook sequence (`__prepare__ -> body -> __new__ -> __set_name__ -> __init_subclass__ -> __init__`), and the parameter and submodule registration in `ToyModule.__setattr__` (`nn.Module` internals).
 
 ```bash
 python3 code/part03/python_metaprogramming_internals_lab.py
@@ -577,7 +623,7 @@ Answer each exercise in your own words before you run the lab code. That way you
 
 ## Checkpoint questions (20)
 
-Suppose a colleague asks you each question below. Each answer gives the mechanism behind the behaviour.
+A colleague stops by your desk and asks the questions below, one at a time. Each answer gives the mechanism behind the behaviour.
 
 <details>
 <summary>1. What is a closure, where are its captured variables stored (`__closure__`), and why does `[lambda: i for i in range(3)]` return `[2, 2, 2]`?</summary>

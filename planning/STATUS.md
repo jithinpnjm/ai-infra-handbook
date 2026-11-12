@@ -275,16 +275,16 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | drafted | 7805 |  |
 | 2.31 | Network monitoring and telemetry | drafted | 7440 |  |
 | 3.1 | Python core: types, control flow, functions | drafted | 15216 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `python_core_fundamentals_lab.py` 9/9 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
-| 3.2 | Modules, packages, virtual environments and packaging | drafted | 11314 |  |
+| 3.2 | Modules, packages, virtual environments and packaging | drafted | 13403 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash` over another session's edits, Kimi supervised); `python_modules_packaging_lab.py` 8/8 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
 | 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 12676 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `python_idiomatic_data_model_lab.py` 8/8 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
-| 3.4 | Classes, dataclasses, typing and protocols | drafted | 9999 |  |
-| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 9087 |  |
+| 3.4 | Classes, dataclasses, typing and protocols | drafted | 14661 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash` over another session's edits, Kimi supervised); `python_classes_typing_protocols_lab.py` 6/6 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 16299 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash` over another session's edits, Kimi supervised); `python_errors_files_subprocess_lab.py` 6/6 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
 | 3.6 | Concurrency: threads, processes and asyncio | drafted | 9351 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `python_concurrency_models_lab.py` 4/4 pass; `validate_chapter.py` VERDICT: OK; agent also restored 1 term HEAD had dropped vs baseline |
 | 3.7 | Building APIs and microservices with FastAPI | drafted | 7936 |  |
 | 3.8 | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients) | drafted | 10288 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `python_clis_agents_exporters_lab.py` 6/6 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
 | 3.9 | Testing, quality and CI for Python tooling | drafted | 8373 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `python_testing_quality_ci_lab.py` 3/3 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
-| 3.10 | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials | drafted | 6787 |  |
-| 3.11 | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work) | drafted | 7884 |  |
+| 3.10 | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials | drafted | 9051 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `python_data_ml_infra_lab.py` 4/4 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 3.11 | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work) | drafted | 9857 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `python_metaprogramming_internals_lab.py` 6/6 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost (agent also restored `ModelMetaclass` dropped by the old rework) |
 | 4.2 | CI/CD pipelines: concepts and design | drafted | 4536 |  |
 | 4.13 | Testing Ansible: ansible-lint, Molecule and CI | drafted | 3460 |  |
 | 4.14 | Ansible at scale: performance, strategies and callbacks | drafted | 3543 |  |
