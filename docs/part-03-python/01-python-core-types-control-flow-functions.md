@@ -22,11 +22,17 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-Python is the connective tissue of AI infrastructure. Training code, data pipelines, Kubernetes operators, Slurm wrappers, Prometheus exporters, Redfish clients, network automation, Ansible modules, benchmark harnesses and inference servers are all written in it. An infrastructure engineer does not need to be a language lawyer, but needs a precise mental model: what an object is, why a "variable" is only a label, why a default argument can leak state between calls for the lifetime of a long-running service, how scoping decides which name you are touching, and how to write small functions whose behaviour you can predict and test. This chapter builds that foundation from first principles and ties each idea to infrastructure code. Chapters 3.2 to 3.11 build on it: packaging, idioms, classes and typing, files and subprocesses, concurrency, APIs, CLIs and exporters, testing, data/ML essentials, and the machinery behind frameworks.
+Picture a small script that checks a queue every hour and has worked quietly for a year. The day the queue comes back empty, the script takes a wrong branch, and nobody can see why. Bugs like that are rarely about the language being strange. They come from a mental model that is slightly off, and this chapter is here to fix exactly that.
+
+Python is the connective tissue of AI infrastructure. Training code, data pipelines, Kubernetes operators, Slurm wrappers, Prometheus exporters, Redfish clients, network automation, Ansible modules, benchmark harnesses and inference servers are all written in it. You will spend part of every week reading one of them.
+
+You do not need to be a language lawyer. You need a precise mental model: what an object is, why a "variable" is only a label, why a default argument can leak state between calls for the lifetime of a long-running service, how scoping decides which name you are touching, and how to write small functions whose behaviour you can predict and test. Those five ideas carry most of the weight in infrastructure code.
+
+This chapter builds that foundation from first principles and ties each idea to infrastructure code. Chapters 3.2 to 3.11 build on it: packaging, idioms, classes and typing, files and subprocesses, concurrency, APIs, CLIs and exporters, testing, data/ML essentials, and the machinery behind frameworks.
 
 ## Prerequisites and outcomes
 
-You should be comfortable at a Unix shell and have written a script in some language. No prior Python is assumed.
+You should be comfortable at a Unix shell and have written a script in some language. No prior Python is assumed. Everything else is built here, one step at a time.
 
 After this chapter you can:
 
@@ -39,15 +45,17 @@ After this chapter you can:
 
 ## 1. How Python runs programs
 
+Every Python story starts the same way: someone types `python3` and something happens. What happens between typing and output is worth knowing, because it explains the errors you will see, the files that appear in `__pycache__`, and why an import runs module code only once. This section walks through that journey, then shows every way you can start it.
+
 ### The execution model
 
-Python is an **interpreted, byte-compiled** language in its reference implementation, **CPython**. When you run `python script.py`:
+**CPython** is the Python you get when you type `python3`, and it is the reference implementation, the one the language is defined against. CPython is an **interpreted, byte-compiled** language: your source is first translated into **bytecode**, a compact instruction list, and a virtual machine then carries the instructions out one by one. When you run `python script.py`:
 
 1. The interpreter reads the source and **compiles** it to **bytecode**, a compact instruction list for a stack-based virtual machine. Bytecode for imported modules is cached in `__pycache__/*.pyc`; for a script run directly it is compiled each time.
 2. The **Python Virtual Machine (PVM)** executes the bytecode in a loop. There is no separate compile-link-run cycle: execution begins immediately, and errors in code that is never executed are not found until it runs.
 3. The **import system** finds, loads and executes module code once and caches it in `sys.modules`.
 
-Other implementations exist (PyPy with a JIT, MicroPython, Jython, GraalPy), and CPython 3.13+ adds an experimental JIT and an optional free-threaded build without the global interpreter lock; for infrastructure you will almost always use CPython and should treat the version as a deployment parameter (pin it).
+Other implementations exist: PyPy with a JIT, MicroPython, Jython, GraalPy. A JIT, short for just-in-time compiler, translates code to faster machine instructions while the program runs. CPython 3.13+ adds an experimental JIT of its own and an optional free-threaded build without the global interpreter lock. For infrastructure work you will almost always use CPython. Treat the version as a deployment parameter and pin it, just as you would pin any other dependency.
 
 ```bash
 python3 --version
@@ -57,6 +65,8 @@ python3 -X importtime -c 'import json'     # where import time goes
 ```
 
 ### Ways to run code
+
+The table lists every way to run code, with the command and its typical use.
 
 | Way | Command | Use |
 |---|---|---|
@@ -69,14 +79,14 @@ python3 -X importtime -c 'import json'     # where import time goes
 | Notebook | Jupyter | Data/ML exploration (chapter 3.10) |
 | Embedded | Frameworks calling your code | Web servers, operators, Airflow |
 
-Passing the `-i` flag (`python3 -i script.py`) executes `script.py` from top to bottom and then opens the interactive `>>>` prompt in that same global namespace, whether the script finishes normally or stops on an unhandled exception. You can immediately inspect variable values, call functions defined in the script, or launch `pdb.pm()` for postmortem debugging without adding temporary `print` calls.
+The `-i` flag is the tool for the moment a script crashes and you want to look inside it. Passing it, as in `python3 -i script.py`, executes `script.py` from top to bottom and then opens the interactive `>>>` prompt in that same global namespace, whether the script finishes normally or stops on an unhandled exception. You land inside the wreckage instead of outside it. You can immediately inspect variable values, call functions defined in the script, or launch `pdb.pm()` for postmortem debugging, and you never have to add temporary `print` calls first.
 
-Inside an interactive session or another script, you can also run a file's code in two very different ways:
+From inside a session or another script, the same file's code can run in two very different ways, and the difference matters more than it first appears:
 
-- **`import` and `importlib.reload(mod)`:** For example, `import script1` finds `script1.py`, compiles it to bytecode, and executes its top-level statements inside a separate module namespace object (`script1`). Because imports run only once per process (`sys.modules` caches the loaded module), repeating `import script1` does nothing; to re-run the file after editing it, call `from importlib import reload; reload(script1)`. Every top-level assignment in `script1.py` stays isolated as an attribute (`script1.x`) unless explicitly copied.
-- **`exec(open('script1.py').read())`:** The built-in `exec()` compiles and runs a string of Python statements unconditionally each time it is called, without importing a module or needing `reload()`. By default, however, `exec(open('script1.py').read())` runs the file's code directly in the caller's current namespace—as if the file's lines were pasted at the call site. For example, if your session has `x = 999` and `script1.py` assigns `x = 'hacked'`, running `exec(open('script1.py').read())` silently overwrites your local `x` with `'hacked'` (unless you pass explicit namespace dictionaries to `exec`).
+- **`import` and `importlib.reload(mod)`:** For example, `import script1` finds `script1.py`, compiles it to bytecode, and executes its top-level statements inside a separate module namespace object (`script1`). Because imports run only once per process, with `sys.modules` caching the loaded module, repeating `import script1` does nothing. To re-run the file after editing it, call `from importlib import reload; reload(script1)`. Every top-level assignment in `script1.py` stays isolated as an attribute (`script1.x`) unless explicitly copied.
+- **`exec(open('script1.py').read())`:** The built-in `exec()` compiles and runs a string of Python statements unconditionally each time it is called, without importing a module or needing `reload()`. By default, however, it runs the file's code directly in the caller's current namespace, as if the file's lines were pasted at the call site. For example, if your session has `x = 999` and `script1.py` assigns `x = 'hacked'`, running `exec(open('script1.py').read())` silently overwrites your local `x` with `'hacked'`. You can prevent that by passing explicit namespace dictionaries to `exec`.
 
-Running a file also sets `__name__ == "__main__"`; importing it sets `__name__` to the module name. The standard guard keeps a file usable as both library and script:
+Running a file also sets `__name__ == "__main__"`, while importing it sets `__name__` to the module name. That difference is the mechanism behind the standard guard below, which keeps a file usable as both library and script:
 
 ```python
 def main() -> int:
@@ -87,11 +97,11 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-Exit codes matter for infrastructure: `0` success, non-zero failure; CI systems, systemd, cron and Kubernetes jobs all key off them. `raise SystemExit(code)` and `sys.exit(code)` are equivalent. Uncaught exceptions exit with status 1 and print a traceback to standard error.
+Exit codes matter for infrastructure, because CI systems, systemd, cron and Kubernetes jobs all key off them. `0` means success and non-zero means failure. `raise SystemExit(code)` and `sys.exit(code)` are equivalent. Uncaught exceptions exit with status 1 and print a traceback to standard error.
 
 ### Starting the REPL
 
-Sometimes you want to see what Python does right now, without saving a file. The interactive prompt is built for that. It is called the REPL, for read, evaluate, print, loop. Type `python3` with no arguments, and use `py` on Windows. Press `Ctrl+D` to leave on Linux and macOS, or `Ctrl+Z` and Enter on Windows. The `$` in listings is your shell prompt and `>>>` is Python's prompt. You never type either one.
+Sometimes you want to see what Python does with an expression right now, without saving a file. The interactive prompt is built for exactly that. It is called the REPL, which stands for read, evaluate, print, loop, and that is a fair description of what it does with every line you type. Type `python3` with no arguments to start it, and use `py` on Windows. Press `Ctrl+D` to leave on Linux and macOS, or `Ctrl+Z` and Enter on Windows. The `$` in listings is your shell prompt and `>>>` is Python's prompt. You never type either one.
 
 ```text
 $ python3
@@ -104,13 +114,13 @@ $ python3
 NameError: name 'missing' is not defined
 ```
 
-The REPL prints the value of any expression, so you do not need `print` there. An error does not harm anything. You get the reason and the line, and you carry on. Plain Python is almost always safe to try. Real damage, such as deleting files or running shell commands, takes a deliberate import and call. A multi-line statement such as a `for` loop shows `...` for its continuation lines and needs a blank line to finish, so do not paste large blocks into the standard REPL.
+The REPL prints the value of any expression, so you do not need `print` there. An error does not harm anything: you get the reason and the line, and you carry on. Plain Python is almost always safe to try in the REPL. Real damage, such as deleting files or running shell commands, takes a deliberate import and call. A multi-line statement such as a `for` loop shows `...` for its continuation lines and needs a blank line to finish, so do not paste large blocks into the standard REPL.
 
 The REPL is also where you test code that lives in files. Import your module and call its functions on the fly, for example `import os; os.getcwd()`. Other REPLs exist. IPython numbers its prompts, and Jupyter runs IPython in a browser (chapter 3.10). Start with the standard one.
 
 ### Writing and running a script
 
-Interactive code disappears when the session ends. To keep it, save it in a file with a `.py` suffix. A file of Python statements is a module. A module you run directly is usually called a script, and one that other code imports is a library module. Save this as `hostinfo.py` in a working folder:
+Interactive code disappears when the session ends. To keep it, save it in a file with a `.py` suffix. A file of Python statements is a module. A module you run directly is usually called a script, and one that other code imports is a library module. Save the example below as `hostinfo.py` in a working folder:
 
 ```python
 import platform
@@ -127,11 +137,11 @@ Run it from the shell, in the folder where you saved it:
 $ python3 hostinfo.py
 ```
 
-Unlike the REPL, a file shows nothing unless you call `print`. Shell redirection, such as `python3 hostinfo.py > hostinfo.txt`, is a feature of the shell and not of Python. It sends the output to a file, so another program can read it. If the script is in another folder, give its path. If Python is not on `PATH`, give the full path to the interpreter. On Linux, a script runs by name when it has a `#!/usr/bin/env python3` first line and execute permission, as the table above showed.
+Unlike the REPL, a file shows nothing unless you call `print`. That silence is normal, and it is why scripts end with `print` statements. Shell redirection, such as `python3 hostinfo.py > hostinfo.txt`, is a feature of the shell and not of Python. It sends the output to a file, so another program can read it. If the script is in another folder, give its path. If Python is not on `PATH`, give the full path to the interpreter. On Linux, a script runs by name when it has a `#!/usr/bin/env python3` first line and execute permission, as the table above showed.
 
 ### Importing modules and module attributes
 
-Any file that ends in `.py` is a module, with no special syntax needed. Another file reaches its contents with an import, which loads the file and runs its top-level code. The names it defines are its attributes. Create `settings.py` with one line:
+Any file that ends in `.py` is a module, with no special syntax needed. Another file reaches its contents with an import. The import loads the file and runs its top-level code, and the names it defines are its attributes. Create `settings.py` with one line:
 
 ```python
 REGION = "eu-north-1"
@@ -149,17 +159,17 @@ $ python3
 'eu-north-1'
 ```
 
-`import` keeps the name inside the module, so you write `settings.REGION`. `from` copies the name into your code, so you use `REGION` directly. A module is mostly a namespace, a set of names, and each file has its own, so names in different files do not collide.
+`import` keeps the name inside the module, so you write `settings.REGION`. `from` copies the name into your code, so you use `REGION` directly. A module is mostly a namespace, which is simply the set of names a module defines. Each file has its own, so names in different files do not collide.
 
-An import runs the file only once per process. Later imports do nothing, even if you edit the file, because Python caches the module in `sys.modules`. To run it again in the same session, call `reload` from `importlib`. Reload has quirks. It updates importers that used `import`, but not those that used `from`. For repeatable runs, start a fresh process. Imports search the current directory and then the folders in `PYTHONPATH`, and chapter 3.2 covers the search path.
+An import runs the file only once per process. Later imports do nothing, even if you edit the file, because Python caches the module in `sys.modules`. To run it again in the same session, call `reload` from `importlib`. Reload has quirks: it updates importers that used `import`, but not those that used `from`. For repeatable runs, start a fresh process. Imports search the current directory and then the folders in `PYTHONPATH`, and chapter 3.2 covers the search path.
 
 ### Launching other programs
 
-Python can start other programs. `os.system('python3 hostinfo.py')` runs a command as if you typed it, and returns `0` when it worked. `subprocess.run` gives much more control over arguments, output and errors, and chapter 3.5 covers it. Be careful with all of these, and with `exec`. They run whatever command line you give them, including one that erases files.
+Python can start other programs, and that is both useful and dangerous. `os.system('python3 hostinfo.py')` runs a command as if you typed it into the shell, and returns `0` when it worked. `subprocess.run` gives much more control over arguments, output and errors, and chapter 3.5 covers it properly. Be careful with all of these, and with `exec`: they run whatever command line you give them, including one that erases files.
 
 ### Debugging your first programs
 
-Python reports errors as a normal part of running code. Read the error message first. It names the file and line, and it may add a "Did you mean" hint. When that is not enough, these tools help.
+Python reports errors as a normal part of running code, not as a sign that something is broken. Read the error message first: it names the file and the line, and it may add a "Did you mean" hint. When that is not enough, these tools help, in rough order of how often you will reach for them.
 
 - **`print` statements.** Add a message or a variable's value and run again. Most Python programmers start here.
 - **The `logging` module.** It gives levelled messages with control over where they go, and it suits services better than quick scripts.
@@ -173,15 +183,17 @@ Choose the simplest way that fits. On a server that means a shell, a text editor
 
 ### Python versions, `python` vs `python3`, and installation
 
-Use the distribution's `python3` for system scripts, but for applications use an isolated, pinned interpreter in a virtual environment (chapter 3.2). Never `pip install` into the system Python; distributions manage it. Check `python3 -m site` and `pip --version` to know which interpreter you are really using.
+Use the distribution's `python3` for system scripts. For applications, use an isolated, pinned interpreter in a virtual environment instead, which chapter 3.2 covers. Never `pip install` into the system Python, because distributions manage it themselves. Check `python3 -m site` and `pip --version` to know which interpreter you are really using.
 
-Before you install anything, check whether Python is already there with `python3 --version`. Linux servers usually have one. If you need a different version, install it from your distribution, or use a version manager, and pin it in a virtual environment. Windows and macOS users can use the installer from python.org.
+Before you install anything, check whether Python is already there with `python3 --version`. Linux servers usually have one. If you need a different version, install it from your distribution or use a version manager, and pin it in a virtual environment. Windows and macOS users can use the installer from python.org.
 
 ## 2. Objects, names and references
 
+Here is the bug that burns colleagues who come to Python from other languages. A function appends an item to a list. Later, a different variable holds the item too, even though nobody touched it. The cause is not bad luck: in Python, a name is a label, not a box. This section pins down exactly what a name does, which objects can change in place, and what happens when the last label comes off an object.
+
 ### Everything is an object
 
-In C, a variable is a named piece of memory. In Python, **objects** live in memory and **names are labels (references) bound to them**. Every object has:
+In C, a variable is a named piece of memory. In Python, the picture is different: **objects** live in memory, and **names are labels bound to them**. People also call these labels **references**, and the label-versus-object picture explains most of what follows. Every object has:
 
 - an **identity** (`id(obj)`; in CPython the memory address, constant for the object's lifetime),
 - a **type** (`type(obj)`; it determines the behaviour and cannot normally change),
@@ -207,9 +219,11 @@ flowchart LR
   x1 -- "after x = x + 1" --> o11
 ```
 
-Assignment never copies objects; it **binds names to objects**. This single fact explains most "mysterious" Python behaviour.
+Assignment never copies objects: it **binds names to objects**. Keep that sentence in mind, because it explains most "mysterious" Python behaviour.
 
 ### Mutability
+
+**Mutability** means whether an object can change in place once it exists. The distinction sorts every type you will use into two families, and the two families behave very differently:
 
 - **Immutable** objects cannot change after creation: `int`, `float`, `complex`, `bool`, `str`, `bytes`, `tuple` (of immutables), `frozenset`, `None`, `range`. Operations produce new objects.
 - **Mutable** objects can change in place: `list`, `dict`, `set`, `bytearray`, most user-defined class instances.
@@ -224,21 +238,31 @@ import copy
 d = copy.deepcopy(a)   # recursively copies nested mutable structures
 ```
 
-**Shallow vs deep copy**: `copy.copy` duplicates the container but shares the elements; with nested structures (a dict of lists) you can still mutate the shared inner lists. Deep copy duplicates everything (and handles cycles) at a cost.
+**Shallow vs deep copy**: `copy.copy` duplicates the container but shares the elements. With nested structures, such as a dict of lists, you can still mutate the shared inner lists, and that is exactly where shallow copies surprise people. Deep copy duplicates everything, cycles included, and the thoroughness costs time.
 
-**Equality vs identity**: `==` compares values (calls `__eq__`); `is` compares identity. Use `is` only for singletons: `x is None`, `x is True` (rarely). Small integers (about -5 to 256) and many short strings are **interned** by CPython, so `is` on them sometimes appears to work; never rely on it.
+**Equality vs identity**: `==` compares values, by calling `__eq__`, and `is` compares identity. Use `is` only for singletons: `x is None`, and rarely `x is True`. Small integers, about -5 to 256, and many short strings are **interned** by CPython, which means the interpreter reuses one object for the same value. So `is` on them sometimes appears to work. Never rely on it.
 
-**Tuples** are immutable containers, but contain references: `t = ([1], 2)` cannot change which objects it holds, yet `t[0].append(5)` mutates the list inside it. A tuple is hashable only if all its elements are.
+**Tuples** are immutable containers, but they contain references. `t = ([1], 2)` cannot change which objects it holds, yet `t[0].append(5)` mutates the list inside it. A tuple is hashable only if all its elements are, and hashable simply means it can serve as a dict key or a set element.
 
 ### Reference counting and garbage collection
 
-CPython frees an object when its **reference count** drops to zero (immediate, deterministic for non-cyclic garbage), and a **cycle collector** (`gc` module) periodically handles reference cycles. `del name` removes a binding, not necessarily the object. Practical consequences: files and sockets should be closed explicitly (use `with`), `__del__` is a poor cleanup mechanism, memory growth in long-running services often comes from references you still hold (caches, globals, closures, exception tracebacks stored somewhere), and weak references (`weakref`) are available for caches. `sys.getrefcount`, `tracemalloc` and `objgraph` help diagnose leaks.
+**Garbage collection** is Python's way of reclaiming memory that no code can reach any more, and it works in two parts. CPython frees an object when its **reference count** drops to zero. The count is the number of labels on the object, so the moment the last one disappears, its memory is freed immediately, which is deterministic for non-cyclic garbage. A **cycle collector**, the `gc` module, periodically handles reference cycles, where objects keep each other's count above zero. `del name` removes a binding, not necessarily the object.
+
+The practical consequences are worth listing. Files and sockets should be closed explicitly, and `with` does that for you. `__del__` is a poor cleanup mechanism. Memory growth in long-running services often comes from references you still hold: caches, globals, closures, and exception tracebacks stored somewhere. Weak references, from `weakref`, are available for caches. To diagnose leaks, use `sys.getrefcount`, `tracemalloc` and `objgraph`.
 
 ### Dynamic typing and duck typing
 
-Names have no type; objects do. A name can be rebound to an object of any type, and type checks happen when an operation is attempted ("duck typing": if it supports the operation, it works). Python is **strongly typed** (`"1" + 1` raises `TypeError`; no silent coercion) and **dynamically typed**. Optional **type hints** (chapter 3.4) document and statically check intent without changing runtime behaviour.
+**Dynamic typing** is the idea that names have no type; objects do. A name can be rebound to an object of any type, so the interpreter learns what you meant only when an operation runs. Type checks happen when an operation is attempted, which is why people say **duck typing**: if it supports the operation, it works.
+
+Dynamically typed does not mean loosely typed. Python is **strongly typed**: `"1" + 1` raises `TypeError`, and there is no silent coercion. If you need a number and you have a string, you convert it explicitly. Optional **type hints** (chapter 3.4) document and statically check intent without changing runtime behaviour.
+
+So a colleague burned by dynamic typing was not burned by the language. The type lived in the object all along, and the code forgot which object it had. Type hints and honest boundaries keep that kind of mistake out of services.
 
 ## 3. Numbers and expressions
+
+Numbers are where infrastructure scripts hide their first quiet bugs. A metric is off by a hair. A percentage flips sign on a negative value. A billing total rounds the wrong way. None of these is a crash: the script runs and simply reports a wrong answer. This section lays out the numeric types Python offers, then the arithmetic rules that decide what you actually get.
+
+The table lists each type with the notes that matter here. `float` and `decimal.Decimal` repay a close look, because they sit at the root of most rounding surprises.
 
 | Type | Notes |
 |---|---|
@@ -253,7 +277,7 @@ Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors t
 
 ### Operator precedence hierarchy
 
-When an expression mixes operators without parentheses, Python groups subexpressions from highest precedence (tightest binding) to lowest precedence. Operators on the same row group from left to right, except `**` (which groups right to left) and comparisons (which chain left to right).
+**Precedence** decides how an expression groups when it mixes several operators without parentheses. Think of it as tightness of binding. The table below lists the operators from the highest precedence, the tightest binding, down to the lowest. Operators on the same row group from left to right, except `**`, which groups right to left, and comparisons, which chain left to right. One case is worth pausing on: `-2 ** 2` is `-(2 ** 2)`, which is -4, because `**` binds tighter than unary `-`.
 
 | Precedence (highest to lowest) | Operators | Description |
 |---|---|---|
@@ -279,7 +303,7 @@ When an expression mixes operators without parentheses, Python groups subexpress
 
 ### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)
 
-The `//` operator is often loosely called truncating division, but it actually performs **floor division**: it rounds the result down toward $-\infty$ (the closest whole number less than or equal to the true quotient). By contrast, **truncation** (`math.trunc()` and `int()`) drops the fractional part and rounds toward zero. For positive numbers, floor and truncation give the same answer; for negative numbers, they differ by 1:
+The `//` operator is often loosely called truncating division, but it actually performs **floor division**: it rounds the result down toward $-\infty$, the closest whole number less than or equal to the true quotient. By contrast, **truncation**, which `math.trunc()` and `int()` perform, drops the fractional part and rounds toward zero. For positive numbers, floor and truncation give the same answer. For negative numbers, they differ by 1:
 
 ```python
 import math
@@ -304,11 +328,13 @@ timeout = base * 2 ** attempt                              # exponential backoff
 pages, rem = divmod(total_items, 100)                      # pagination
 ```
 
-Beware: floating-point rounding for metrics and thresholds (compare with tolerance), integer division for percentages (`//` vs `/`), and `bool` being an `int` (`True + True == 2`). The `ipaddress` module (chapter 3.5) handles IP arithmetic correctly; do not hand-roll it with strings.
+Beware three quiet traps. Floating-point rounding affects metrics and thresholds, so compare with tolerance. Integer division for percentages depends on `//` vs `/`. And `bool` is an `int`, so `True + True == 2`. The `ipaddress` module (chapter 3.5) handles IP arithmetic correctly; do not hand-roll it with strings.
 
 ## 4. Strings and bytes
 
-A `str` is an **immutable sequence of Unicode code points**. `bytes` is an immutable sequence of integers 0 to 255 (raw data); `bytearray` is its mutable form. Text and bytes are different types: you **encode** text to bytes (`s.encode("utf-8")`) and **decode** bytes to text (`b.decode("utf-8")`); mixing them raises `TypeError`. Files, sockets and subprocess pipes deal in bytes unless opened in text mode with an encoding (chapter 3.5 covers this in depth).
+Picture a script that reads a log file and prints a line, and the console shows the text wrapped in `b'...'` with a small `b` in front. The data came back as bytes, not text. Every engineer meets that difference in the first week of parsing files or sockets, and mixing the two raises `TypeError` on the spot. This section draws the line between text and bytes, then works through the string tools.
+
+A `str` is an **immutable sequence of Unicode code points**, where each code point is one character of text. `bytes` is an immutable sequence of integers 0 to 255, which is how raw data looks, and `bytearray` is its mutable form. Text and bytes are different types, and Python does not convert between them silently. You **encode** text to bytes with `s.encode("utf-8")` and **decode** bytes to text with `b.decode("utf-8")`. Mixing them raises `TypeError`. Files, sockets and subprocess pipes deal in bytes unless opened in text mode with an encoding, and chapter 3.5 covers this in depth.
 
 ```python
 s = "GPU-0 temp=71C"
@@ -329,7 +355,7 @@ Key points:
 - **Raw strings** `r"C:\path\n"` avoid escape processing (regexes, Windows paths); **triple-quoted** strings span lines; **bytes literals** `b"\x00\xff"`.
 - **Formatting mini-language** inside f-strings: `:>10`, `:^10`, `:08.3f`, `:,` thousands separators, `:%`, `!r` for repr (`f"{value!r}"` is essential in log messages and error text to show quoting and whitespace).
 - **`str` vs `repr`**: `str(x)` is for humans, `repr(x)` for developers (unambiguous).
-- **`string.Template` for safe, simple `$` substitutions**: Alongside `%`, `str.format`, and f-strings, the standard library's `string` module provides `Template`, which substitutes `$name` or `${name}` placeholders from keyword arguments or a dictionary without supporting arbitrary inline Python expressions (making it safer for user-supplied or file-loaded templates):
+- **`string.Template` for safe, simple `$` substitutions**: Alongside `%`, `str.format`, and f-strings, the standard library's `string` module provides `Template`. It substitutes `$name` or `${name}` placeholders from keyword arguments or a dictionary, and it does not support arbitrary inline Python expressions, which makes it safer for user-supplied or file-loaded templates:
 
 ```python
 import string
@@ -346,7 +372,7 @@ Template('$host has ${gpus} GPUs').substitute(host='node1', gpus=8)
 Template('$host has ${gpus} GPUs').safe_substitute(host='node1')  # 'node1 has ${gpus} GPUs'
 ```
 
-- **Fast multi-character replacement and deletion (`str.maketrans` and `str.translate`)**: While `S.replace(old, new[, count])` replaces one substring at a time, `S.maketrans(x[, y[, z]])` builds a character-code translation mapping for `S.translate(map)`. A one-argument `dict` maps characters (or code points) to replacement strings or `None` (to delete); two equal-length strings `x` and `y` map each character `x[i]` to `y[i]`, and an optional third string `z` lists characters to delete in a single pass:
+- **Fast multi-character replacement and deletion (`str.maketrans` and `str.translate`)**: While `S.replace(old, new[, count])` replaces one substring at a time, `S.maketrans(x[, y[, z]])` builds a character-code translation mapping for `S.translate(map)`. A one-argument `dict` maps characters, or code points, to replacement strings or to `None`, which deletes them. Two equal-length strings `x` and `y` map each character `x[i]` to `y[i]`, and an optional third string `z` lists characters to delete in a single pass:
 
 ```python
 table = str.maketrans(':-', '__', ' ()')   # map ':' and '-' to '_', delete spaces and parens
@@ -366,6 +392,8 @@ if m:
 ```
 
 ## 5. Core collections
+
+Picture a script that checks whether each of a large set of hostnames is in a list, and takes noticeably long. The same check against a set finishes almost instantly. Collections decide that story: the type you pick sets how fast the script runs and which bugs it can carry. This section compares the core types, then lists the behaviours that surprise people.
 
 | Type | Literal | Properties | Typical use | Costs |
 |---|---|---|---|---|
@@ -408,11 +436,13 @@ Important behaviours:
 
 ### Truthiness and `None`
 
-Empty containers, `0`, `0.0`, `""`, `None` and `False` are falsy; everything else is truthy. Prefer `if not items:` to `if len(items) == 0:`; use `is None` / `is not None` when `0` or empty are valid values (`if timeout is None: timeout = 30`, not `if not timeout`). `None` is the single null object, the default return value of functions without `return`.
+**Truthiness** is Python's answer to the question "what counts as false". Empty containers, `0`, `0.0`, `""`, `None` and `False` are falsy; everything else is truthy. Prefer `if not items:` to `if len(items) == 0:`, since both mean the same thing.
+
+The trap fires when `0` or empty are valid values. Use `is None` and `is not None` for that case: `if timeout is None: timeout = 30`, not `if not timeout`, because a timeout of `0` would be treated as missing and replaced. `None` is the single null object, and it is the default return value of functions without `return`.
 
 ## 6. Files (preview)
 
-Files are opened with `open()` and should always be managed by `with` so they close even on errors; text mode needs an explicit encoding on infrastructure systems to avoid locale surprises.
+Files are opened with `open()` and should always be managed by `with`, so they close even when errors happen. Text mode needs an explicit encoding on infrastructure systems, and the reason is that the system's locale, its default text settings, can otherwise surprise you. The preview below shows the pattern.
 
 ```python
 from pathlib import Path
@@ -427,9 +457,11 @@ Chapter 3.5 treats files, paths, text/bytes, `subprocess`, `shutil`, `tempfile`,
 
 ## 7. Statements and syntax
 
+Statement syntax is where Python shows its personality. The section below compares Python with the C-like languages you may already know, and it walks through the indentation rules that decide where every block starts and stops. If you have ever opened a colleague's script and could not tell where a loop ended, these rules are the fix.
+
 ### Structure
 
-Python uses **indentation** (4 spaces, never tabs mixed with spaces) to delimit blocks; a colon introduces a block. Statements end at the newline; continuation with brackets or a backslash. Comments start with `#`. `pass` is a no-op placeholder. Compound statements nest. Use a formatter (`black` or `ruff format`) and linter (`ruff`, `flake8`) so style is never debated (chapter 3.9).
+Python uses **indentation** (4 spaces, never tabs mixed with spaces) to delimit blocks, and a colon introduces each block. Statements end at the newline, and continuation runs through brackets or a backslash. Comments start with `#`. `pass` is a no-op placeholder, which stands in where a statement is required and does nothing. Compound statements nest. Use a formatter (`black` or `ruff format`) and linter (`ruff`, `flake8`) so style is never debated (chapter 3.9).
 
 ### Statement syntax compared with C-like languages
 
@@ -689,6 +721,8 @@ The table leaves out a few fine points. Assignment has many forms, and the next 
 
 ### Assignment forms
 
+The code below collects the assignment forms in one place:
+
 ```python
 x = 1                       # basic
 x = y = 0                   # chained (same object)
@@ -709,7 +743,7 @@ In Python 3, `print` is a built-in function (normally called as an expression st
 print([object, ...][, sep=' '][, end='\n'][, file=sys.stdout][, flush=False])
 ```
 
-It converts each positional `object` to a string using `str()`, joins them with `sep` (default `' '`), appends `end` (default `'\n'`), and writes the result to `file.write()` (default `sys.stdout`), optionally forcing buffered output to flush immediately when `flush=True`. All four configuration options (`sep`, `end`, `file`, `flush`) are keyword-only and may appear in any order after the objects being printed:
+It converts each positional `object` to a string using `str()`, joins them with `sep` (default `' '`), appends `end` (default `'\n'`), and writes the result with `file.write()` (default `sys.stdout`). When `flush=True`, it forces buffered output to flush immediately. All four configuration options (`sep`, `end`, `file`, `flush`) are keyword-only and may appear in any order after the objects being printed:
 
 ```python
 import sys
@@ -737,6 +771,8 @@ Prefer `file=log` (or `file=sys.stderr`) for per-call redirection so you do not 
 
 ### `if` / `elif` / `else` and conditional expressions
 
+The block below shows the conditional forms in one place:
+
 ```python
 if state == "ready":
     ...
@@ -749,11 +785,11 @@ target = os.environ.get("CLUSTER") or "staging"          # or-defaulting (beware
 if 1024 <= port <= 65535 and not is_reserved(port): ...
 ```
 
-`and`/`or` short-circuit and return one of their operands (not necessarily a bool). `not`, `in`, `not in`, `is`, `is not` are the other boolean/comparison operators.
+`and`/`or` short-circuit, which means they stop as soon as the answer is decided, and they return one of their operands, not necessarily a bool. `not`, `in`, `not in`, `is`, `is not` are the other boolean/comparison operators.
 
 ### The `match` statement (3.10+)
 
-Structural pattern matching destructures values; useful for parsing commands, API events and heterogeneous data.
+Structural pattern matching destructures values, which means it takes a value apart and binds the parts to names. That makes it useful for parsing commands, API events and heterogeneous data.
 
 ```python
 def handle(event: dict) -> str:
@@ -774,9 +810,11 @@ match cmd.split():
     case ["status"]: ...
 ```
 
-Patterns: literals, captures, wildcards `_`, sequences, mappings, class patterns `Point(x=0, y=0)`, alternatives `|`, guards `if`. It is not a C-style switch; the first matching case wins and names are bound.
+Patterns: literals, captures, wildcards `_`, sequences, mappings, class patterns `Point(x=0, y=0)`, alternatives `|`, guards `if`. It is not a C-style switch: the first matching case wins, and matched parts are bound to names.
 
 ### `while` and `for` loops
+
+The block below shows the loop patterns in one place, including the retry loop with `else`:
 
 ```python
 while not ready():                    # condition loop
@@ -796,13 +834,15 @@ else:
     raise RuntimeError("gave up")     # else runs only if the loop did NOT break
 ```
 
-`continue` skips to the next iteration; the loop `else` clause is Python's "no break happened" branch, ideal for search and retry loops. Prefer `for` over `while` with indices; use `enumerate`, `zip`, `itertools` for patterns. Avoid infinite `while True` loops without a clear exit path and timeout; add backoff and jitter for retries.
+`continue` skips to the next iteration. The loop `else` clause is Python's "no break happened" branch, which is ideal for search and retry loops. Prefer `for` over `while` with indices, and use `enumerate`, `zip`, `itertools` for patterns. Avoid infinite `while True` loops without a clear exit path and timeout, and add backoff and jitter for retries.
 
 ### The iteration protocol (preview)
 
-`for` calls `iter(obj)` to get an iterator, then repeatedly `next()` until `StopIteration`. Lists, tuples, dicts (keys), sets, strings, files (lines), `range`, generators and many library objects are iterable. Iterators are **single-use**: once exhausted they yield nothing. File objects and generators therefore stream data lazily, which is how a script processes a 50 GB log with constant memory (chapter 3.3 goes deep on iterators, generators and comprehensions).
+Here is the preview of what `for` actually does. It calls `iter(obj)` to get an iterator, then calls `next()` repeatedly until `StopIteration` ends the loop. Lists, tuples, dicts (keys), sets, strings, files (lines), `range`, generators and many library objects are iterable. Iterators are **single-use**: once exhausted they yield nothing. File objects and generators therefore stream data lazily, which is how a script processes a 50 GB log with constant memory. Chapter 3.3 goes deep on iterators, generators and comprehensions.
 
 ### Comprehensions (preview)
+
+The block below shows the four comprehension forms:
 
 ```python
 squares = [n * n for n in range(10) if n % 2 == 0]
@@ -1025,6 +1065,8 @@ Every statement in this example follows the rules from earlier in this section. 
 
 ## 8. Functions
 
+Consider the bug that starts most function stories: the same ten lines pasted into five places, and a fix that lands in four of them. Sooner or later someone calls the wrong copy, and the script misbehaves in a way nobody can reproduce. Functions solve that by keeping the logic in one place. This section covers how to define, call and structure them, then walks through the argument and scope rules that decide what a function can see.
+
 ### Why use functions
 
 Suppose the same ten lines of code are pasted into five places in a script. Then you find a bug in those lines. You now have to find and fix all five copies, and you might miss one. A function removes that risk, because the logic lives in one place and every caller uses it.
@@ -1069,7 +1111,7 @@ gib(3_840_755_982_336)            # positional
 gib(10**12, decimals=2)           # keyword-only argument
 ```
 
-A function is an **object** (first class): it can be assigned, stored in data structures, passed to and returned from other functions. `def` executes at definition time (creates the function object and binds the name). A function without `return` returns `None`; `return a, b` returns a tuple. A function should do one thing, have a clear name (verb phrase), and a docstring describing arguments, return value, side effects and exceptions.
+A function is an **object**, and a first-class one: it can be assigned, stored in data structures, passed to and returned from other functions. `def` executes at definition time, which creates the function object and binds the name. A function without `return` returns `None`, and `return a, b` returns a tuple. A function should do one thing, have a clear name as a verb phrase, and carry a docstring describing arguments, return value, side effects and exceptions.
 
 ### def runs at runtime
 
@@ -1266,7 +1308,7 @@ Numbers do not support the interface, so this is exactly what we want. A type te
 | Keyword-only | `def f(a, *, b)` | Parameters after `*` must be passed by name |
 | Positional-only | `def f(a, b, /, c)` | Parameters before `/` cannot be passed by name (3.8+) |
 
-Calling-side unpacking: `f(*args_list, **kwargs_dict)`; `print(*items, sep=", ")`. Argument matching order: positional, then keyword; duplicates raise `TypeError`. Prefer keyword-only parameters for booleans and options (`deploy(app, *, dry_run=True)`) so calls read clearly.
+Calling-side unpacking takes `f(*args_list, **kwargs_dict)`, and `print(*items, sep=", ")` is the everyday example. Argument matching order is positional first, then keyword, and duplicates raise `TypeError`. Prefer keyword-only parameters for booleans and options, as in `deploy(app, *, dry_run=True)`, so calls read clearly.
 
 #### Formal parameter-ordering rules in `def` and `lambda` headers
 
@@ -1309,7 +1351,9 @@ func(*[1], 2, **dict(c=3), d=4)              # 1 2 3 4
 
 ### The mutable default argument trap
 
-Default values are evaluated **once**, when `def` runs. A mutable default is shared by every call:
+Here is the bug that has bitten almost everyone at least once. A colleague writes a function that appends to a list, and the list is a default argument. On the second call, the first call's items are still in the list, even though the caller passed nothing. Nothing crashed, and no error message names the cause.
+
+The mechanism is small. Default values are evaluated **once**, when `def` runs. A mutable default is shared by every call:
 
 ```python
 def add_node(ip, nodes=[]):            # BUG
@@ -1322,7 +1366,7 @@ def add_node_safe(ip, nodes=None):     # idiom
     nodes.append(ip); return nodes
 ```
 
-In a long-running Kubernetes operator, web service or Lambda container, this leaks state across requests and across tenants: one of the most common production Python bugs. The same applies to defaults like `{}` and `set()`, and to defaults computed at import time (`now=datetime.now()` is evaluated once). Linters (`ruff B006`) flag it.
+In a long-running Kubernetes operator, web service or Lambda container, this leaks state across requests and across tenants, and it is one of the most common production Python bugs. The same applies to defaults like `{}` and `set()`, and to defaults computed at import time, where `now=datetime.now()` is evaluated once. Linters (`ruff B006`) flag it.
 
 ### Local variables
 
@@ -1340,7 +1384,7 @@ Because of this, a function's variables do not clash with names elsewhere in the
 
 ### Scope: LEGB
 
-Name lookup follows **L**ocal, **E**nclosing function, **G**lobal (module), **B**uilt-in. Assignment inside a function makes the name local to that function unless declared `global` or `nonlocal`.
+**Scope** is the set of names Python can see at a given point, and name lookup follows **L**ocal, **E**nclosing function, **G**lobal (module), **B**uilt-in, in that order. Assignment inside a function makes the name local to that function unless declared `global` or `nonlocal`. The code below shows both declarations, and it also shows what a **closure** is: a function that remembers a name from the function that created it.
 
 ```python
 counter = 0
@@ -1357,11 +1401,13 @@ def make_counter():
 c = make_counter(); c(); c()      # 1, 2
 ```
 
-Reading a global needs no declaration; assigning to it without `global` creates a local (and reading it earlier in the same function raises `UnboundLocalError`). Prefer passing values and returning results over mutable globals; module-level constants (UPPER_CASE) are fine.
+Reading a global needs no declaration. Assigning to it without `global` creates a local, and reading that local earlier in the same function raises `UnboundLocalError`. Prefer passing values and returning results over mutable globals. Module-level constants, written UPPER_CASE, are fine.
 
-**Late binding in closures**: `[lambda: i for i in range(3)]` all see the final `i`; bind with a default argument (`lambda i=i: i`) or `functools.partial`.
+**Late binding in closures**: the lambdas in `[lambda: i for i in range(3)]` all see the final `i`. Bind the value at creation time with a default argument, as in `lambda i=i: i`, or with `functools.partial`.
 
 ### Lambdas, higher-order functions
+
+The block below collects the everyday uses:
 
 ```python
 nodes.sort(key=lambda n: (n["rack"], n["name"]))
@@ -1372,19 +1418,19 @@ ping3 = partial(ping, count=3)
 total = reduce(lambda a, b: a + b, values, 0)
 ```
 
-`lambda` is a single-expression anonymous function; for anything longer, write a named `def`. `sorted`, `max`, `min` take `key=`. `functools` offers `partial`, `lru_cache`/`cache` (memoisation), `wraps`, `singledispatch`; `operator` offers `itemgetter`, `attrgetter`, `add`.
+`lambda` is a single-expression anonymous function, and for anything longer you write a named `def`. `sorted`, `max`, `min` take `key=`. A **higher-order function** takes a function as an argument or returns one, and `map`, `filter` and `partial` in the block above are examples. The `functools` module offers `partial`, `lru_cache` and `cache` for memoisation, plus `wraps` and `singledispatch`. The `operator` module offers `itemgetter`, `attrgetter`, `add`.
 
 ### Recursion and limits
 
-Functions can call themselves; CPython has no tail-call optimisation and a recursion limit (default 1000, `sys.getrecursionlimit()`); deep recursion raises `RecursionError`. Use iteration or an explicit stack for tree walks over large structures (directory trees, dependency graphs).
+Functions can call themselves, which is **recursion**. CPython has no tail-call optimisation, and it keeps a recursion limit, 1000 by default, which `sys.getrecursionlimit()` shows. Deep recursion raises `RecursionError`. Use iteration or an explicit stack for tree walks over large structures, such as directory trees and dependency graphs.
 
 ### Docstrings, annotations, introspection
 
-A string literal as the first statement is the **docstring** (`func.__doc__`, shown by `help(func)`); follow a convention (Google or NumPy style; reStructuredText for Sphinx). **Annotations** (`def f(x: int) -> str:`) are stored in `__annotations__` and used by tools (mypy, pyright, FastAPI, pydantic) but not enforced at runtime. Introspection helpers: `type`, `dir`, `vars`, `getattr`, `hasattr`, `callable`, `inspect.signature`.
+A string literal as the first statement is the **docstring**, stored in `func.__doc__` and shown by `help(func)`. Follow a convention, such as Google or NumPy style, or reStructuredText for Sphinx. **Annotations**, as in `def f(x: int) -> str:`, are stored in `__annotations__` and used by tools such as mypy, pyright, FastAPI and pydantic, but they are not enforced at runtime. Introspection helpers: `type`, `dir`, `vars`, `getattr`, `hasattr`, `callable`, `inspect.signature`.
 
 ### Generators (preview)
 
-A function containing `yield` returns a lazy iterator, suspending its state between values:
+A function containing `yield` returns a lazy iterator, suspending its state between values. The word lazy means each value is produced only when asked for, and the function picks up where it left off afterwards:
 
 ```python
 def read_lines(path):
@@ -1395,9 +1441,11 @@ def read_lines(path):
 errors = sum(1 for l in read_lines("/var/log/syslog") if "ERROR" in l)
 ```
 
-Generators let you process arbitrarily large inputs (log files, object listings, paginated APIs) in constant memory; chapter 3.3 covers them thoroughly.
+Generators let you process arbitrarily large inputs, such as log files, object listings and paginated APIs, in constant memory. Chapter 3.3 covers them thoroughly.
 
 ## 9. Documentation, introspection and benchmarking
+
+Reading documentation and measuring code are habits worth building early, because they replace guessing. The tools below are the ones Python gives you: `help`, `pydoc`, `dir` and their friends for reading, and `timeit` and `cProfile` for measuring. Nobody remembers everything, and that is the point: good engineers look things up and measure.
 
 ### Finding help
 
@@ -1411,11 +1459,11 @@ python3 -m pydoc -b                  # local web docs server (3.x)
 pip show requests ; pip list ; python3 -c 'import requests,sys; print(requests.__file__)'
 ```
 
-Official docs (docs.python.org: tutorial, library reference, language reference, HOWTOs), PEP index (PEP 8 style, PEP 20 "Zen of Python" via `import this`, PEP 257 docstrings, PEP 484 typing), and package docs on their sites are the authorities. Learn to read tracebacks bottom-up (the last line is the exception; the frame above it is where it was raised) and to use `breakpoint()` / `pdb` (`python3 -m pdb script.py`, commands `n s c p l bt q`).
+Official docs are the authorities: the tutorial, library reference, language reference and HOWTOs on docs.python.org, the PEP index, where PEP stands for Python Enhancement Proposal, and package docs on their sites. The PEPs worth knowing by name are PEP 8 for style, PEP 20, the "Zen of Python", which `import this` shows, PEP 257 for docstrings, and PEP 484 for typing. Learn to read tracebacks bottom-up: the last line is the exception, and the frame above it is where it was raised. Learn to use `breakpoint()` and `pdb` too, started with `python3 -m pdb script.py`, with commands `n s c p l bt q`.
 
 ### Benchmarking
 
-Measure before optimising. Use `timeit` for micro-benchmarks and `cProfile`/`py-spy` for programs:
+Measure before optimising: that one habit separates a tuned service from a guessed one. Use `timeit` for micro-benchmarks and `cProfile`/`py-spy` for programs:
 
 ```bash
 python3 -m timeit -s 'xs = list(range(10_000))' 'sum(xs)'
@@ -1428,11 +1476,15 @@ import timeit
 timeit.repeat("x in s", setup="s=set(range(10000)); x=9999", number=100_000, repeat=5)    # take the min of several repeats
 ```
 
-Pitfalls: measuring once, warm-up and caching effects, tiny inputs, measuring I/O instead of computation, optimising code that isn't on the hot path. For infrastructure tools the usual real gains come from algorithms and I/O (batching, concurrency, avoiding repeated subprocess calls, using sets/dicts) rather than micro-optimisation.
+The pitfalls are: measuring once, warm-up and caching effects, tiny inputs, measuring I/O instead of computation, and optimising code that is not on the hot path. For infrastructure tools the usual real gains come from algorithms and I/O, such as batching, concurrency, avoiding repeated subprocess calls, and using sets and dicts, rather than micro-optimisation.
 
 ## 10. Infrastructure patterns using the core
 
+This section ties the core ideas to small patterns that appear in infrastructure code again and again. Each one is deliberately short: a few lines, no framework, no magic. Read them as starting points, not finished tools.
+
 ### Safe environment configuration
+
+A small helper turns environment strings into integers with a default, and required secrets are read by direct key access so a missing token fails immediately.
 
 ```python
 import os, sys
@@ -1453,6 +1505,8 @@ TOKEN = os.environ["API_TOKEN"]                 # KeyError if missing: fail fast
 
 ### Retry with backoff and jitter
 
+The wrapper multiplies a base delay by 2 for each attempt, caps the delay, and jitters it with `random.uniform`.
+
 ```python
 import random, time
 
@@ -1470,6 +1524,8 @@ def retry(fn, *, attempts=5, base=0.5, cap=30.0, exceptions=(OSError,)):
 
 ### Parse and aggregate a log without loading it
 
+A `Counter` aggregates the lines of a log while the file streams line by line, so the log is never loaded whole.
+
 ```python
 from collections import Counter
 codes = Counter()
@@ -1483,6 +1539,8 @@ print(codes.most_common(5))
 
 ### Compare desired and actual state (set algebra)
 
+Set subtraction compares desired and actual state: `desired - actual` lists what is missing, and `actual - desired` lists what is unexpected.
+
 ```python
 desired = {"gpu01", "gpu02", "gpu03", "gpu04"}
 actual = {n["name"] for n in api_nodes if n["state"] == "Ready"}
@@ -1490,6 +1548,8 @@ print("missing:", sorted(desired - actual), "unexpected:", sorted(actual - desir
 ```
 
 ### Data shaping
+
+A `setdefault` grouping appends each node name under its rack, and a comprehension then sums the GPUs per rack.
 
 ```python
 nodes = [{"name": "gpu01", "rack": "r1", "gpus": 8}, {"name": "gpu02", "rack": "r1", "gpus": 8}, {"name": "gpu03", "rack": "r2", "gpus": 4}]
@@ -1501,15 +1561,17 @@ gpus_per_rack = {r: sum(n["gpus"] for n in nodes if n["rack"] == r) for r in by_
 
 ## 11. Common mistakes
 
-- Treating names as boxes: mutating a list through an alias, then wondering why "another" variable changed.
-- Mutable default arguments; module-level mutable state in services; default values computed at import time.
-- Comparing with `is` instead of `==` (except `None`); using `==` with floats; relying on `round` or integer interning.
-- Modifying a collection while iterating over it; using `list` for membership tests on large data.
-- Building strings by `+=` in loops; building commands or queries by string interpolation of untrusted input.
-- Catching exceptions too broadly or silently (`except: pass`) so failures become silent data loss (chapter 3.5).
-- Using `from module import *`; shadowing built-ins (`list`, `dict`, `id`, `type`, `input`) with variable names.
-- Mixing tabs and spaces; unversioned global `pip install` into the system Python.
-- Trusting dynamic types without validation at boundaries (API input, config files, environment variables).
+These are the mistakes that show up in infrastructure code again and again. Most of them are the same few stories from this chapter, compressed into one list. Read it once now, and once more before you hand a script to production.
+
+- Treating names as boxes. Mutating a list through an alias and then wondering why "another" variable changed.
+- Mutable default arguments. Module-level mutable state in services. Default values computed at import time.
+- Comparing with `is` instead of `==`, except for `None`. Using `==` with floats. Relying on `round` or integer interning.
+- Modifying a collection while iterating over it. Using `list` for membership tests on large data.
+- Building strings by `+=` in loops. Building commands or queries by string interpolation of untrusted input.
+- Catching exceptions too broadly or silently, as in `except: pass`, so failures become silent data loss (chapter 3.5).
+- Using `from module import *`. Shadowing built-ins (`list`, `dict`, `id`, `type`, `input`) with variable names.
+- Mixing tabs and spaces. Unversioned global `pip install` into the system Python.
+- Trusting dynamic types without validation at boundaries: API input, config files, environment variables.
 - Optimising without measuring.
 
 ## 12. Hands-on lab: Python core on a Linux box

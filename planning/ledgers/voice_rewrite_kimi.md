@@ -416,6 +416,79 @@ candidates after the author approves this voice).
   chain gate 0.1/1000; 20 questions; lab 15/15.
 - Words: 10,953 -> 14,784 (validator count). `planning/STATUS.md` updated.
 
+## Free-model verdict (2026-11-12)
+
+`opencode/deepseek-v4.1-flash-free` is NOT viable as the main drafting model for this
+project: the free usage limit exhausted within five concurrent chapters (all five first
+wave-1 Part 3 agents died with "Free usage limit reached"; their partial edits were
+reverted). Their paid path is OpenCode Go. Policy now: `nebius/zai-org/GLM-5.3-Flash`
+($0.15/$0.50 per MTok) is the default paid drafter, with `deepseek-ai/DeepSeek-V4.1-Flash`
+on nebius ($0.30/$1.20, near-free cache reads) as the quality-preferred option when its
+Token Factory quota recovers.
+
+## 3.6 Concurrency (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/zai-org/GLM-5.3-Flash`; Kimi supervised with
+  independent gate runs INCLUDING a HEAD-vs-baseline inheritance audit.
+- Voice treatment: four-threads-get-slower mistake opens the GIL; 5,000-BMC poll scales
+  asyncio; daemon thread, thundering herd, priority inversion defined at first use.
+- Inheritance audit: the 19 "lost numbers" vs `0f258b4` (`02`, `22`-`40`) are inherited
+  from the reviewed rework pass (it renumbered the 20 checkpoint questions); identical
+  loss list on HEAD pre-edit. Notably the agent RESTORED 1 term HEAD had dropped vs
+  baseline (HEAD loses 1/78, new file loses 0/78) - bonus repair, same class as 1.27.
+- Supervision verdict: `validate_chapter.py 3.6` VERDICT: OK natively; chain gate
+  0.0/1000; 20 questions; lab 4/4. Code-density WARN 6.5 (was 7.1) accepted per policy.
+- Words: 8,154 -> 9,351 (validator count). `planning/STATUS.md` updated.
+
+## 3.9 Testing, quality and CI (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/zai-org/GLM-5.3-Flash`; Kimi supervised with
+  independent gate runs.
+- Voice treatment: hidden drain-script bug opens the chapter; fixture as "named piece
+  of preparation"; Friday merge vs Monday's broken release; mutant defined for mutation
+  testing; one grammar repair inside section 7 ("Those guard" -> "The additions guard").
+- Supervision verdict: `loss_check` 0 of 59 terms / 0 of 65 numbers / 0 sources lost;
+  `validate_chapter.py 3.9` VERDICT: OK natively; chain gate 0.0/1000; 20 questions;
+  lab 3/3. Code-density WARN 7.8 accepted per policy.
+- Words: 7,051 -> 8,373 (validator count). `planning/STATUS.md` updated.
+
+## 3.1 Python core (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/zai-org/GLM-5.3-Flash`; Kimi supervised with
+  independent gate runs.
+- Voice treatment: empty-queue truthiness scene opens the chapter; alias-bug opener for
+  objects/names; precedence taught as tightness of binding on the `-2 ** 2` example;
+  five-places-pasted code opens functions.
+- Supervision verdict: `loss_check` 0 of 47 terms / 0 of 96 numbers / 0 sources lost;
+  `validate_chapter.py 3.1` VERDICT: OK; chain gate 0.0/1000; 20 questions; lab 9/9.
+  WARNs accepted: code terms 8.2 (was 9.3), long sentences 4.7% (was 5.6, still over
+  target but improved; readability is warnings-only).
+- Words: 9,295 -> 15,216 (validator count). `planning/STATUS.md` updated.
+
+## 3.3 Idiomatic Python (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/zai-org/GLM-5.3-Flash`; Kimi supervised with
+  independent gate runs.
+- Voice treatment: OOM-died log streamer and unreadable-comprehension scenes; book and
+  bookmark analogy carried through iterables/iterators (silent re-use bug made
+  memorable); dunder defined plainly; walrus/leak text kept.
+- Supervision verdict: `loss_check` 0 of 107 terms / 0 of 75 numbers / 0 sources lost;
+  `validate_chapter.py 3.3` VERDICT: OK; chain gate 0.1/1000; 20 questions; lab 8/8.
+  Code-density WARN 13.0 (was 14.1) accepted per policy.
+- Words: 10,864 -> 12,676 (validator count). `planning/STATUS.md` updated.
+
+## 3.8 CLIs, agents and exporters (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/zai-org/GLM-5.3-Flash`; Kimi supervised with
+  independent gate runs.
+- Voice treatment: exporter-that-lied scene; circuit breaker as a fuse; front-desk
+  analogy carried into Click `ctx.obj`; silent-truncation pagination story; dead-host
+  side-door (BMC/out-of-band) opener.
+- Supervision verdict: `loss_check` 0 of 97 terms / 0 of 93 numbers / 0 sources lost;
+  `validate_chapter.py 3.8` VERDICT: OK natively; chain gate 0.0/1000; 20 questions;
+  lab 6/6. Code-density WARN 6.8 (was 7.4) accepted per policy.
+- Words: 7,994 -> 10,288 (validator count). `planning/STATUS.md` updated.
+
 ## Model note: Kimi K3 run abandoned
 
 A parallel test of full `Kimi-K3` as a drafting subagent on 1.6 was cancelled by the

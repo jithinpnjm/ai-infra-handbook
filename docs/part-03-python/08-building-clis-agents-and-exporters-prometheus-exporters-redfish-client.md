@@ -22,11 +22,15 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that you must drain before maintenance. An operator runs a small script, and the script either does the job cleanly or leaves the node half-done. Most fleet operations work this way. A CLI drains a node. A script collects `nvidia-smi` or DCGM data from 500 machines. An exporter turns BMC sensors into Prometheus metrics, and a Redfish client sets boot order across a rack. A node agent reports health to a control plane. Humans run these tools at 3 a.m., and automation runs them every minute. That means the tools must be predictable, resilient, observable and easy to distribute. Predictable means clear exit codes, idempotent runs and a dry-run mode. Resilient means timeouts, retries, backoff and pagination. Observable means structured logs and metrics. Distributable means a pinned version that works on every operator's laptop and every jump host. This chapter covers the engineering patterns behind such tools, with a bias toward GPU fleets, BMCs and Prometheus.
+Picture a GPU node you must drain before maintenance. An operator runs a small script, and the script either finishes the job cleanly or leaves the node half-done. That difference is not luck. It is the engineering this chapter teaches.
+
+Most fleet operations are carried out by small programs. A CLI drains a node. A script collects `nvidia-smi` or DCGM data from 500 machines. A BMC is the small management computer built into each server, and an exporter turns its sensors into Prometheus metrics. A Redfish client sets boot order across a rack, and a node agent reports health to a control plane. You will meet all of these tools here.
+
+Now picture the same tools at 3 a.m. A human types the command in a hurry, and automation runs it every minute without anyone watching. So the tools must be predictable, resilient, observable and easy to distribute. Predictable means clear exit codes, idempotent runs and a dry-run mode. Resilient means timeouts, retries, backoff and pagination. Observable means structured logs and metrics. Distributable means a pinned version that works on every operator's laptop and every jump host. The rest of the chapter teaches those four qualities, with a bias toward GPU fleets, BMCs and Prometheus.
 
 ## Prerequisites and outcomes
 
-This chapter assumes you have covered 3.1 to 3.6 (functions, packaging, typing, subprocess and concurrency) and 2.31 (monitoring). It pairs with 3.7 on services and 3.9 on testing. By the end, you should be able to:
+This chapter assumes you have covered chapters 3.1 to 3.6 and 2.31. Those chapters covered functions, packaging, typing, subprocess and concurrency, along with monitoring. It pairs with 3.7 on services and 3.9 on testing. By the end, you should be able to:
 
 - Design a CLI with subcommands, options, config files, environment variables, output formats and meaningful exit codes, using argparse, Click or Typer.
 - Build resilient HTTP clients that handle timeouts, retries with exponential backoff and jitter, circuit breakers, pagination and rate limits.
@@ -38,25 +42,27 @@ This chapter assumes you have covered 3.1 to 3.6 (functions, packaging, typing, 
 
 ## 1. Principles for operational tooling
 
-A script that works on your laptop can still do damage when it runs against a fleet at 3 a.m. The nine principles below are the habits that keep such a tool safe.
+Picture the script that works on your laptop all afternoon. You schedule it against the fleet and go home. At 3 a.m. a host is down, the script hangs on it, prints a wall of mixed output, and leaves nodes half-drained. A script that works on your laptop can still do damage when it runs against a fleet. The nine principles below are the habits that keep such a tool safe.
 
-1. Be safe by default. Read-only commands need no confirmation. Mutating commands support `--dry-run`, print what they will do, and require `--yes` for destructive scope. They also refuse wildcard targets unless you pass an explicit flag.
-2. Make every operation idempotent. Running a command twice should give the same end state, so set the resource to the desired value instead of toggling it. Return "already in desired state" as success.
-3. Use explicit exit codes. `0` means success and `1` means a generic failure. `2` is a usage error, the argparse and Click default. Give "partial failure" (some hosts failed) and "nothing to do" their own codes, so wrappers and CI jobs can react to each one.
-4. Keep output readable for humans and parseable for pipelines. Default to a table, and offer `--output json|yaml|tsv` for scripts. Send data to stdout and send logs and progress to stderr, so a pipe never picks up a log line.
+1. Be safe by default. Read-only commands need no confirmation. Mutating commands support `--dry-run`, print what they will do, and require `--yes` for destructive scope. They also refuse wildcard targets unless you pass an explicit flag, so one typo cannot select half the fleet.
+2. Make every operation idempotent. Idempotent means running it twice gives the same end state as running it once. So set the resource to the desired value instead of toggling it. Then return "already in desired state" as success.
+3. Use explicit exit codes. `0` means success and `1` means a generic failure. `2` is a usage error, the argparse and Click default. Give "partial failure", meaning some hosts failed, and "nothing to do" their own codes, so wrappers and CI jobs can react to each one.
+4. Keep output readable for humans and parseable for pipelines. Default to a table, and offer `--output json|yaml|tsv` for scripts. Send data to stdout, and send logs and progress to stderr. Then a pipe never picks up a log line.
 5. Put a timeout on everything. Every network call and every subprocess needs one, because no operational tool should be able to hang forever.
 6. Isolate each target. One bad host must not abort the batch. Collect results and errors, summarise them at the end, and set the exit code to match.
-7. Log who ran what, against which targets, under which run id. Record mutating actions at INFO level, with the state before and after.
-8. Layer your configuration. Command-line flags win over environment variables, which win over the config file, which wins over the defaults. Never put a secret on the command line, because it appears in `ps` output and in shell history. Read secrets from the environment, from files or from a secret store.
+7. Log who ran what, against which targets, under which run id. Record mutating actions at INFO level, with the state before and after. That record answers the question when you review an incident later.
+8. Layer your configuration. Command-line flags win over environment variables. Environment variables win over the config file, and the config file wins over the defaults. Never put a secret on the command line, because it appears in `ps` output and in shell history. Read secrets from the environment, from files or from a secret store.
 9. Keep the core small and testable. Separate parsing, decision logic and I/O. The CLI layer should be a thin shell over functions you can unit test, as chapter 3.9 shows.
+
+Before you write the first flag, decide what your tool will and will not do on its own. Every later section in this chapter applies one of these principles.
 
 ## 2. Command-line interfaces
 
-Your first fleet tool usually starts as a script with a few flags. It grows into a command with a `status` subcommand, a `drain` subcommand and a dozen options, and then the question is which framework to build it on. Start with the standard library, and move to Click or Typer when the command tree grows.
+Picture your first fleet tool. It began as a script with a few flags, and a colleague asked for `--output json`. Then someone wanted a `status` subcommand and a `drain` subcommand, and a dozen options crept in. At that point the question is which framework to build it on. Start with the standard library, and move to Click or Typer when the command tree grows.
 
 ### 2.1 argparse: the standard library baseline
 
-Here is a small `gpuctl` tool with two subcommands. It needs no extra install.
+You need a fleet helper tonight, with a `status` subcommand and a `drain` subcommand, and it must work without any extra install. The standard library covers that. Here is a small `gpuctl` tool with two subcommands. It needs no extra install.
 
 ```python
 import argparse, sys
@@ -85,11 +91,11 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-argparse handles subcommands, types, choices, mutually exclusive groups and an automatic `--help`. Its cost is verbosity, and it composes less cleanly once the command tree gets large. Take `argv` as a parameter and return an int from `main`. That way a test can call `main([...])` directly, without starting a new process.
+argparse handles subcommands, types, choices, mutually exclusive groups and an automatic `--help`. Its cost is verbosity, and it composes less cleanly once the command tree gets large. Read the argument handling top down. `add_subparsers` creates the two subcommands, `nargs="+"` makes `hosts` a list of one or more hosts, and `--timeout` gets `type=int` with `default=600` as its fallback. Take `argv` as a parameter and return an int from `main`. That way a test can call `main([...])` directly, without starting a new process.
 
 ### 2.2 Click
 
-Click builds a CLI from decorated functions. You get nested command groups, automatic help, type conversion, prompts, colour, shell completion and a test runner, `CliRunner`. The context object carries shared state, such as the config, the client and the output format, down to every subcommand.
+Click builds a CLI from decorated functions. A decorator is a small line you write above a function, and it tells Click what that function is. Decorators then give you nested command groups, automatic help, type conversion, prompts, colour, shell completion and a test runner, `CliRunner`. The context object carries shared state, such as the config, the client and the output format, down to every subcommand.
 
 ```python
 import json, logging, sys
@@ -132,7 +138,7 @@ if __name__ == "__main__":
     cli()
 ```
 
-Read the code from the top. The group callback runs first, sets up logging to stderr, loads the config and stores it on `ctx.obj`. Each subcommand then reads that shared state through `@click.pass_obj`. The diagram below shows the same path from the command line to the exit code.
+Read the code from the top. The group callback runs first: it sets up logging to stderr, loads the config and stores both on `ctx.obj`. Each subcommand then reads that shared state through `@click.pass_obj`. Keep the front-desk picture in mind: whatever the group sets up at the shared context object, every subcommand can ask for it. The diagram below shows the same path from the command line to the exit code.
 
 ```mermaid
 flowchart LR
@@ -147,11 +153,11 @@ Click also covers the options you will reach for next: `envvar=`, `multiple=True
 
 ### Case study from *Practical MLOps* Chapter 11: `csv-linter` and `cloud-translate` CLIs
 
-Chapter 11 of *Practical MLOps*, by Alfredo Deza, is a good picture of why a packaged single-purpose CLI beats a notebook or a shell snippet. The chapter builds two Click tools end to end. This handbook models the chapter's code in `code/part03/python_clis_agents_exporters.py`.
+Chapter 11 of *Practical MLOps*, by Alfredo Deza, is a good picture of why a packaged single-purpose CLI beats a notebook or a shell snippet. A notebook works until someone else has to run it. The chapter builds two Click tools end to end, and together they show how a small tool becomes a real command. This handbook models the chapter's code in `code/part03/python_clis_agents_exporters.py`.
 
-The first tool is `csv-linter`, which the chapter packages as a `console_scripts` entry point. It started from a simple inspection of a 32,770-row `wine.csv` dataset in pandas, using `df.describe()`. That inspection turned up three silent data-quality bugs. The `'grape'` column had a count of `0.0`, which means 100% `NaN` values. Saving with `df.to_csv("wine.csv")` and no `index=False` added a spurious `'Unnamed: 0'` column on every round-trip. Windows carriage returns (`\r\n`, which show up as `^M` in `vim`) inside `'notes'` fields broke downstream parsers, as the sample file `carriage.csv` shows.
+The first tool is `csv-linter`, which the chapter packages as a `console_scripts` entry point. It began as a simple inspection of a 32,770-row `wine.csv` dataset in pandas, using `df.describe()`. That inspection turned up three silent data-quality bugs. The `'grape'` column had a count of `0.0`, which means 100% `NaN` values. Saving with `df.to_csv("wine.csv")` and no `index=False` added a spurious `'Unnamed: 0'` column on every round-trip. Windows carriage returns `\r\n`, which show up as `^M` in `vim`, sat inside `'notes'` fields and broke downstream parsers, as the sample file `carriage.csv` shows.
 
-Deza moves the three checks into `csv_linter/checks.py`. `zero_count_columns(df)` returns the columns where `df[key].count() == 0`. `unnamed_columns(df)` counts keys that contain `"Unnamed"`. `carriage_returns(df)` returns the first `(index, column, field)` that contains `"\r\n"`, and it truncates the field to `field[:50]` when it displays the result. A Click command wraps the checks with `@click.command() @click.argument('filename', type=click.Path(exists=True)) def main(filename):`. The tool is exposed as `csv-linter=csv_linter.main:main` under `entry_points`, which is `[project.scripts]` in `pyproject.toml`, and it is installed with `pip install -e .`. Renaming or moving `csv_linter.py` to `csv_linter/main.py` means you must run `pip install -e .` again, because that regenerates the entry-point wrapper script.
+Deza moves the three checks into `csv_linter/checks.py`, and each check is a small function you can test in isolation. `zero_count_columns(df)` returns the columns where `df[key].count() == 0`. `unnamed_columns(df)` counts keys that contain `"Unnamed"`. `carriage_returns(df)` returns the first `(index, column, field)` that contains `"\r\n"`, and it truncates the field to `field[:50]` when it displays the result. A Click command wraps the checks with `@click.command() @click.argument('filename', type=click.Path(exists=True)) def main(filename):`. The tool is exposed as `csv-linter=csv_linter.main:main` under `entry_points`, which is `[project.scripts]` in `pyproject.toml`, and it is installed with `pip install -e .`. Renaming or moving `csv_linter.py` to `csv_linter/main.py` means you must run `pip install -e .` again, because that regenerates the entry-point wrapper script.
 
 The second tool is `cloud-translate`, and it shows the other side of the same idea. Heavy ML weights do not belong inside every CLI. Instead, `cloud-translate=trigger:main` calls a serverless HTTP Cloud Function that uses `google-cloud-translate==3.0.2`. The function creates a `translate.TranslationServiceClient()` in `us-central1` and translates text to French with `target_language_code="fr"`. The client fetches a short-lived OIDC token with `subprocess.Popen(["gcloud", "auth", "print-identity-token"], stdout=subprocess.PIPE)`, decodes it with `out.decode("utf-8").strip()`, and posts the text with `requests.post(url, json={"message": text}, headers={"Authorization": f"bearer {token()}"})`. The result is a 20-line Click CLI that acts as a secure client for a cloud microservice.
 
@@ -181,7 +187,7 @@ Choose argparse for tiny scripts that must have zero dependencies. Choose Click 
 
 ### 2.4 Configuration and secrets
 
-Settings should come from one place that validates them. This example uses pydantic-settings to read values from the environment, with the `FLEET_` prefix.
+Settings should come from one place that validates them. Scattered settings drift, and drift at 3 a.m. is expensive. This example uses pydantic-settings to read values from the environment, with the `FLEET_` prefix.
 
 ```python
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -196,11 +202,11 @@ Store files as YAML or TOML. The `tomllib` module is in the standard library fro
 
 ### 2.5 Interactive and long-running UX
 
-Long loops need a progress bar, and waits need a spinner. A `--watch` mode polls and redraws the screen, while `--follow` streams new output. Operations that finish asynchronously need `--wait/--timeout` flags. Poll the status endpoint with backoff, the way kubectl does with `rollout status`. When the user presses Ctrl+C, handle `KeyboardInterrupt` by cleaning up, then return exit code 130.
+Now think about the person running your tool at 3 a.m. A long loop with no progress bar looks exactly like a hang. So long loops need a progress bar, and waits need a spinner. A `--watch` mode polls and redraws the screen, while `--follow` streams new output. Operations that finish asynchronously need `--wait/--timeout` flags. Poll the status endpoint with backoff, the way kubectl does with `rollout status`. When the user presses Ctrl+C, handle `KeyboardInterrupt` by cleaning up, then return exit code 130.
 
 ## 3. Resilient API clients
 
-Network calls fail in many ways. DNS can break, a connection can be refused, a TLS handshake can fail, and a server can time out or answer 429 and 503 under load. A response can arrive only partly, and pagination can quietly stop early. A client library for an internal API should handle these cases once, so every tool that uses it inherits the protection.
+A fleet-health CLI that someone must use at 3 a.m. is really a network client in disguise. Network calls fail in many ways. DNS can break, a connection can be refused, a TLS handshake can fail, and a server can time out or answer 429 and 503 under load. A response can arrive only partly, and pagination can quietly stop early. A client library for an internal API should handle these cases once, so every tool that uses it inherits the protection.
 
 ### 3.1 Sessions, timeouts and connection reuse
 
@@ -211,11 +217,11 @@ client = httpx.Client(base_url="https://api.example.com", timeout=httpx.Timeout(
                       limits=httpx.Limits(max_connections=20), verify="/etc/ssl/corp-ca.pem")
 ```
 
-Create one client and reuse it, so connections are pooled and kept alive. Always set all four timeouts. A bare `requests.get(url)` has none, and it can hang forever. Pin the CA bundle when your organisation runs private PKI, and put a version in the User-Agent so the server team can debug requests. requests is everywhere and works fine for synchronous scripts. httpx offers both sync and async APIs and supports HTTP/2. aiohttp is a common choice for high-concurrency async clients.
+Create one client and reuse it, so connections are pooled and kept alive. Always set all four timeouts. A bare `requests.get(url)` has none, and it can hang forever. Read the four limits as answers to four waits. `connect` covers the handshake, `read` covers waiting for the response, `write` covers sending the payload, and `pool` covers getting a free connection. Pin the CA bundle when your organisation runs private PKI, and put a version in the User-Agent so the server team can debug requests. requests is everywhere and works fine for synchronous scripts. httpx offers both sync and async APIs and supports HTTP/2. aiohttp is a common choice for high-concurrency async clients.
 
 ### 3.2 Retries, backoff and jitter
 
-Retry only what is safe to repeat. That means GET, PUT and DELETE, or a POST that carries an idempotency key. Retry only transient failures, such as connection errors, timeouts, 429, 502, 503 and 504. Use exponential backoff with jitter, so many clients that fail at the same moment do not all retry in lockstep and flood the server again. Honour `Retry-After`, and cap both the number of attempts and the total time.
+Retry only what is safe to repeat. That means GET, PUT and DELETE, or a POST that carries an idempotency key. Retry only transient failures, such as connection errors, timeouts, 429, 502, 503 and 504. Use exponential backoff with jitter. Backoff means each retry waits longer than the one before it. Jitter means each client adds some randomness to that wait, so many clients that fail at the same moment do not all retry in lockstep and flood the server again. Honour `Retry-After`, and cap both the number of attempts and the total time.
 
 ```python
 from tenacity import retry, stop_after_attempt, stop_after_delay, wait_exponential_jitter, retry_if_exception, before_sleep_log
@@ -243,13 +249,13 @@ Without a library, the loop looks like `delay = min(cap, base * 2**attempt); sle
 
 ### 3.3 Circuit breakers and bulkheads
 
-When a dependency is down, retries make the problem worse, because every caller keeps adding load. A circuit breaker stops that. It counts consecutive failures and opens after a threshold, so calls fail fast without reaching the dependency. After a cool-down it goes half-open and lets one probe call through. If the probe succeeds, the breaker closes again. You can use pybreaker, the circuitbreaker library, or a class of about 30 lines.
+When a dependency is down, retries make the problem worse, because every caller keeps adding load. A circuit breaker stops that. Think of it like a fuse in a wall: it breaks the circuit while the load is too high, and the house stays protected. It counts consecutive failures and opens after a threshold, so calls fail fast without reaching the dependency. After a cool-down it goes half-open and lets one probe call through. If the probe succeeds, the breaker closes again. You can use pybreaker, the circuitbreaker library, or a class of about 30 lines.
 
-A bulkhead works differently. It limits how many calls can run at once against one dependency, using a semaphore. That way one slow service cannot consume every thread. Combine the layers in this order: timeout, then retry, then breaker, then bulkhead. When the breaker is open, return a clear error, such as "fleet API unavailable, breaker open for 30 s", so the operator knows what happened.
+A bulkhead works differently. It limits how many calls can run at once against one dependency, using a semaphore. A semaphore is a counter that caps how many things may run at the same time. That way one slow service cannot consume every thread. Combine the layers in this order: timeout, then retry, then breaker, then bulkhead. When the breaker is open, return a clear error, such as "fleet API unavailable, breaker open for 30 s", so the operator knows what happened.
 
 ### 3.4 Pagination and completeness
 
-Silent truncation is one of the most common bugs in fleet scripts. Say the API returns 100 items per page. A script that reads only the first page handles those 100 items and never sees the rest. Hide the paging inside a generator, and make the generator fail loudly when something looks wrong.
+Here is the fleet bug that drops data silently. You list the BMCs, and the API returns 100 items per page. Your script reads the first page, handles those 100 items, and exits 0. The other hosts were never read, and nobody notices. Silent truncation is one of the most common bugs in fleet scripts. Hide the paging inside a generator, and make the generator fail loudly when something looks wrong. A generator is a function that yields items one at a time instead of returning one big list.
 
 ```python
 def paginate(path: str, page_size: int = 200):
@@ -266,15 +272,17 @@ def paginate(path: str, page_size: int = 200):
             break
 ```
 
-Prefer cursor or token pagination over offset pagination. Offsets shift when items are added to the list, and that can make a page skip or repeat items. If the API reports a total count, check it against what you fetched, and log how many items you received.
+Prefer cursor or token pagination over offset pagination. Offset pagination asks for items by position, so positions shift when items are added to the list, and that can make a page skip or repeat items. A cursor or token asks for the next batch after the one you just read, and a changing list cannot shift it. If the API reports a total count, check it against what you fetched, and log how many items you received.
 
 ### 3.5 Rate limits, concurrency and file operations
 
-Respect the `X-RateLimit-*` and `Retry-After` headers. For outbound limits, use a token bucket from a library such as aiolimiter or ratelimit. File operations on shared systems raise a different problem, a race between checking a file and using it. Write to a temporary file in the same directory, then call `os.replace`, which is atomic on POSIX. Use `fcntl.flock` or a lock file for mutual exclusion. Open with `O_EXCL` when a file must be created only if it does not exist. Prefer `try: open(...)` over `if exists: open(...)`, because the file can disappear between the two checks.
+Respect the `X-RateLimit-*` and `Retry-After` headers. For outbound limits, use a token bucket from a library such as aiolimiter or ratelimit. A token bucket hands out sending permission at a steady rate, so your tool cannot exceed its allowance. File operations on shared systems raise a different problem, a race between checking a file and using it. Write to a temporary file in the same directory, then call `os.replace`, which is atomic on POSIX. Use `fcntl.flock` or a lock file for mutual exclusion. Open with `O_EXCL` when a file must be created only if it does not exist. Prefer `try: open(...)` over `if exists: open(...)`, because the file can disappear between the two checks.
+
+Before the next outage, make sure your client library carries these defences once, and let every tool that uses it inherit them.
 
 ## 4. Prometheus exporters
 
-Suppose a BMC shows the temperature of a GPU server, but Prometheus cannot read BMCs. An exporter fills that gap. It reads the state of something that does not speak Prometheus, such as a BMC, an InfiniBand fabric, a license server or a vendor CLI, and publishes it as metrics on an HTTP endpoint. Prometheus then scrapes that endpoint on its own schedule.
+Suppose a BMC shows the temperature of a GPU server, but Prometheus cannot read BMCs. Prometheus reads metrics from an HTTP endpoint, in its own format. An exporter fills that gap. It reads the state of something that does not speak Prometheus, such as a BMC, an InfiniBand fabric, a license server or a vendor CLI, and publishes it as metrics. Prometheus then scrapes that endpoint on its own schedule.
 
 ### 4.1 Metric model essentials
 
@@ -282,7 +290,7 @@ Pick the metric type first, because each one answers a different question. A cou
 
 Names follow a few rules. Use `snake_case`, add a unit suffix in base units such as `_seconds`, `_bytes`, `_celsius` or `_watts`, and prefix the name with the application, as in `bmc_temperature_celsius`. Keep label names out of the metric name, and keep timestamps out of it too.
 
-Labels need a bounded set of values, such as a host, a GPU index or a sensor name. Never use user ids, request ids, timestamps or free text. Each unique label combination becomes its own time series. A cardinality explosion, where the series count keeps growing, is the most common way an exporter harms Prometheus. Finally, expose a `*_up` or `scrape_success` metric and a `scrape_duration_seconds` metric. A failed scrape then shows up as data, not as a silent gap.
+Labels need a bounded set of values, such as a host, a GPU index or a sensor name. Never use user ids, request ids, timestamps or free text. Picture a label that takes a user id: every new user creates a new series, and the count grows with the fleet. Each unique label combination becomes its own time series, and cardinality means how many such series your labels create. A cardinality explosion, where the series count keeps growing, is the most common way an exporter harms Prometheus. Finally, expose a `*_up` or `scrape_success` metric and a `scrape_duration_seconds` metric. A failed scrape then shows up as data, not as a silent gap.
 
 ### 4.2 The simple way: instrument and serve
 
@@ -309,7 +317,7 @@ start_http_server(9101)
 poll_forever(["gpu01", "gpu02"])
 ```
 
-This background-polling model separates collection from scraping, which is its appeal. Its weakness is staleness. If polling stalls, the metrics keep showing the last values, and series for removed hosts linger until you call `.remove(...)` or switch to a collector.
+This background-polling model separates collection from scraping, which is its appeal. Its weakness is staleness, and staleness is where an exporter lies. Picture the polling thread stalling in the night. Prometheus keeps scraping, and the dashboards stay calm on hours-old numbers. If polling stalls, the metrics keep showing the last values, and series for removed hosts linger until you call `.remove(...)` or switch to a collector.
 
 ### 4.3 The recommended way: a custom collector
 
@@ -345,9 +353,9 @@ REGISTRY.register(FleetCollector(["gpu01", "gpu02"]))
 start_http_server(9101)
 ```
 
-Collection has to finish well inside the scrape timeout. You can parallelise it with a thread pool and a per-host timeout, or cache the results for a few seconds. Never let one failing target raise out of `collect()`, and do not block on slow hardware, since BMC queries can take seconds. Avoid running expensive commands on every scrape, and cache them with a TTL instead. Protect the endpoint as well. Bind it to an internal interface, use TLS and basic auth through `--web.config`-style proxies, or run it as a sidecar.
+Collection has to finish well inside the scrape timeout. You can parallelise it with a thread pool and a per-host timeout, or cache the results for a few seconds. Never let one failing target raise out of `collect()`, and do not block on slow hardware, since BMC queries can take seconds. Avoid running expensive commands on every scrape, and cache them with a TTL instead. A TTL cache keeps each result only for a short lifetime against the clock. Protect the endpoint as well. Bind it to an internal interface, use TLS and basic auth through `--web.config`-style proxies, or run it as a sidecar.
 
-A multi-target exporter, such as `blackbox_exporter` or `snmp_exporter`, works differently. It takes the target as a URL parameter, `/probe?target=bmc01`. Prometheus relabelling then supplies the targets from service discovery, so the exporter keeps no host list of its own.
+A multi-target exporter, such as `blackbox_exporter` or `snmp_exporter`, works differently. It takes the target as a URL parameter, `/probe?target=bmc01`. Prometheus relabelling then supplies the targets from service discovery, so the exporter keeps no host list of its own. Relabelling is Prometheus rewriting the target address into the query parameter before it scrapes.
 
 ```yaml
 scrape_configs:
@@ -369,13 +377,15 @@ You rarely need to write a GPU exporter from scratch. DCGM exporter publishes ut
 
 To test an exporter, run `curl -s localhost:9101/metrics | head` and check that the output looks right. Then lint it with `promtool check metrics`, and check the series count in Prometheus with `count({__name__=~"gpu_.*"})`.
 
+Before you write an exporter for a new gap, look first for one that already covers it, and write code only for what remains.
+
 ## 5. Talking to hardware: a Redfish client
 
-A DGX or HGX host that will not power on can leave you with no shell to work from. Redfish gives you a second route, through the BMC on the management network. Redfish is the DMTF RESTful API for that out-of-band management, and it replaces IPMI. BMCs on DGX, HGX and OEM servers expose it over HTTPS with JSON. Part 7 covers Redfish and BMCs in depth. Here we build a client skeleton.
+A DGX or HGX host will not power on, and there is no shell to work from. The machine is not entirely out of reach. Every such server carries a BMC, the small management computer on the management network, and out-of-band management means reaching the machine over that separate network instead of over the workload one. Redfish is the DMTF RESTful API for it, and it replaces IPMI. Think of Redfish as a side door to a building whose front door is jammed. BMCs on DGX, HGX and OEM servers expose it over HTTPS with JSON. Part 7 covers Redfish and BMCs in depth. Here we build a client skeleton.
 
 ### 5.1 Resource model
 
-Everything in Redfish hangs off a tree rooted at `/redfish/v1/`, called the service root. The `Systems` collection describes the host computer, including power state, boot settings, BIOS, processors and memory. `Chassis` describes the physical enclosure, with its thermal, power and sensor data and its GPU or PCIe devices. `Managers` describes the BMC itself, including its network settings, logs and virtual media. `UpdateService` holds the firmware inventory and handles updates. `AccountService`, `SessionService`, `EventService` and `TelemetryService` cover the rest.
+Everything in Redfish hangs off a tree rooted at `/redfish/v1/`, called the service root. Read the tree like a filing cabinet: one drawer per collection. The `Systems` collection describes the host computer, including power state, boot settings, BIOS, processors and memory. `Chassis` describes the physical enclosure, with its thermal, power and sensor data and its GPU or PCIe devices. `Managers` describes the BMC itself, including its network settings, logs and virtual media. `UpdateService` holds the firmware inventory and handles updates. `AccountService`, `SessionService`, `EventService` and `TelemetryService` cover the rest.
 
 Resources link to each other with `@odata.id` URIs. Follow those links to discover members, and do not hard-code vendor paths. The same host may appear as `/Systems/1`, `/Systems/System.Embedded.1` or `/Systems/Self`, depending on the vendor. Actions are POST requests sent to `Actions/...` targets. For example, `#ComputerSystem.Reset` accepts a `ResetType` of `On`, `ForceOff`, `GracefulRestart`, `ForceRestart` or `PushPowerButton`.
 
@@ -471,17 +481,19 @@ def run(hosts, workers=16):
     return ok, bad                                                  # CLI exits non-zero if bad is non-empty
 ```
 
-Checking a whole fleet means running the single-host check many times. The `run` function gives every host its own try block through `check`, so one failing BMC lands in `bad` and does not stop the others. The thread pool caps the number of workers at 16, which keeps concurrency bounded for the management network. For thousands of hosts, move to asyncio with a semaphore, as chapter 3.6 describes. Report progress as you go, and write results incrementally, so an interrupted run can resume. End the run with a summary line, such as `412 ok, 3 failed (bmc17: timeout, ...)`.
+Checking a whole fleet means running the single-host check many times. The `run` function gives every host its own try block through `check`, so one failing BMC lands in `bad` and does not stop the others. The thread pool caps the number of workers at 16, which keeps concurrency bounded for the management network. For thousands of hosts, move to asyncio with a semaphore, as chapter 3.6 describes. Report progress as you go, and write results incrementally, so an interrupted run can resume. End the run with a summary line, such as `412 ok, 3 failed (bmc17: timeout, ...)`, so whoever takes over next sees where the fleet stopped.
+
+When you next lose a machine with no shell, the BMC side door is the route to remember.
 
 ## 6. Collecting from GPU hosts
 
-Many facts about a GPU host sit behind command-line tools and kernel files, not behind an API. Read them in a way that survives odd output, slow tools and vanishing files.
+Picture the collector your fleet-health CLI needs at 3 a.m. Many facts about a GPU host sit behind command-line tools and kernel files, not behind an API. Read them in a way that survives odd output, slow tools and vanishing files. Here are those sources, one at a time.
 
 `nvidia-smi` is the usual starting point, and you should ask it for machine-readable output rather than scraping the default table. Run `nvidia-smi --query-gpu=index,name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,ecc.errors.uncorrected.volatile.total --format=csv,noheader,nounits`, which returns one CSV line per GPU. Parse it with the `csv` module, and treat `[N/A]` and `[Not Supported]` as missing values. Use `nvidia-smi -q -x` if you need XML. Avoid hammering it. Each call initialises NVML, and on a busy host one call can take a second. For continuous monitoring, use DCGM or the NVML bindings, `pynvml` and `nvidia-ml-py`.
 
 The NVML and DCGM bindings give you direct calls, such as `pynvml.nvmlDeviceGetTemperature`, `nvmlDeviceGetUtilizationRates`, `nvmlDeviceGetMemoryInfo` and `nvmlDeviceGetPowerUsage`. They also report throttling reasons and XID events. The DCGM Python bindings cover health checks and diagnostics. You can also run `dcgmi diag -r 1|2|3` as a subprocess when you want the command-line report instead.
 
-Follow the subprocess rules from chapter 3.5. Pass arguments as a list, set `timeout=`, and use `check=False` so you handle the return code yourself. Capture stderr, and never use `shell=True` with input you have not controlled. Timeouts need care. `subprocess.run(..., timeout=...)` kills the child but not its descendants. Start the process with `start_new_session=True`, then kill the whole group with `os.killpg`. In a long-running agent, also call `wait()` on children so no zombies build up.
+Follow the subprocess rules from chapter 3.5. Pass arguments as a list, set `timeout=`, and use `check=False` so you handle the return code yourself. Capture stderr, and never use `shell=True` with input you have not controlled. Timeouts need care. `subprocess.run(..., timeout=...)` kills the child but not its descendants. Start the process with `start_new_session=True`, which puts it in its own process group, then kill the whole group with `os.killpg`. In a long-running agent, also call `wait()` on children so no zombies build up.
 
 For cheap, dependency-free metrics, read `/proc` and `/sys` directly. Useful files include `/proc/meminfo`, `/proc/pressure/*`, `/sys/class/infiniband/*/ports/*/counters/*` and `/sys/class/net/*/statistics/*`. Handle files that vanish between listing and reading.
 
@@ -489,7 +501,7 @@ Wrap each source in a function that returns a typed result, such as a dataclass.
 
 ## 7. Node agents and daemons
 
-A node agent runs on every host, as a systemd service or as a DaemonSet. It gathers health data, applies local actions and reports to a control plane. Because it runs everywhere, a small mistake in the agent multiplies across the fleet. The design points below keep it safe to run next to training jobs.
+A node agent runs on every host, as a systemd service or as a Kubernetes DaemonSet, which is how Kubernetes runs one copy of a workload on every node. It gathers health data, applies local actions and reports to a control plane, the central service that agents report to. Because it runs everywhere, a small mistake in the agent multiplies across the fleet. The design points below keep it safe to run next to training jobs.
 
 Start with the lifecycle. The agent should handle `SIGTERM` as a request to stop gracefully. It finishes the current cycle, flushes its state and exits within the grace period. `SIGHUP` should reload the config, and you should ignore `SIGPIPE` issues. Exit with a non-zero code on fatal errors, so systemd restarts the agent. In asyncio, register handlers with `loop.add_signal_handler`. In threaded code, set a `threading.Event` that the loop checks.
 
@@ -532,9 +544,11 @@ WantedBy=multi-user.target
 
 On Kubernetes, use a DaemonSet instead. Add `hostPID` or `hostNetwork` only when you truly need them. Add tolerations for every node, including the tainted GPU nodes. Mount `/sys` and `/dev` read-only where you can, and use the Downward API to get the node name.
 
+Before the agent goes fleet-wide, answer one question: if it goes wrong on every host, who notices and how?
+
 ## 8. Packaging and distribution of tools
 
-How operators receive your tool matters as much as the code inside it. The right channel depends on where the tool will run, so compare the options in the table before you choose.
+Your tool now exists on your machine. Someone still has to receive it on a laptop, on a jump host, or on a host in an air-gapped cluster. How operators receive your tool matters as much as the code inside it. The right channel depends on where the tool will run, so compare the options in the table before you choose.
 
 | Approach | Good for | Notes |
 |---|---|---|
@@ -568,7 +582,7 @@ Releases need the same discipline as the code. Use semantic versioning and keep 
 
 ## 9. Profiling and performance of tools
 
-A slow tool usually has a busy CPU, memory that keeps growing, serial I/O, or heavy startup. Each one has a different tool.
+Now picture the complaint that reaches you weeks later. The fleet-health CLI takes a minute per host, or the node agent's memory climbs steadily. A slow tool usually has a busy CPU, memory that keeps growing, serial I/O, or heavy startup. Each one has a different tool, and each tool answers one question.
 
 For CPU, run `python -m cProfile -o out.prof script.py`, then open the result with `python -m pstats out.prof` and sort by cumulative time. `snakeviz` gives a graphical view of the same data. To profile a running process, attach `py-spy top -p PID`, or record a flame graph with `py-spy record -o flame.svg -p PID`. `py-spy` needs no change to the code, but it needs ptrace permission. `scalene` and `pyinstrument` show line-level and wall-clock time.
 
@@ -582,7 +596,7 @@ A production latency investigation follows a simple pattern. Confirm the symptom
 
 ## 10. Worked capstone: a GPU fleet diagnostics CLI
 
-Picture an operator who needs one command that checks every GPU in a fleet and returns a clear verdict. The capstone builds that command from four layers. `cli.py` is the Click group that handles output formatting and exit codes. `collect.py` is the per-host executor, which talks to each host over SSH, an agent or Redfish. It applies a timeout and bounded concurrency. `parsers.py` turns `nvidia-smi` CSV and `dcgmi` output into dataclasses, using pure functions. Health rules live in `rules.py`. They check for a temperature above a threshold, a non-zero count of uncorrected ECC errors, an XID in a set of known codes, and missing GPUs compared with the expected count. Models are defined in `models.py` as dataclasses or pydantic models.
+Picture an operator who needs one command that checks every GPU in a fleet and returns a clear verdict. The capstone builds that command from four layers. `cli.py` is the Click group that handles output formatting and exit codes. `collect.py` is the per-host executor, which talks to each host over SSH, an agent or Redfish, and it applies a timeout and bounded concurrency. `parsers.py` turns `nvidia-smi` CSV and `dcgmi` output into dataclasses, using pure functions. A pure function is one that answers from its inputs alone, with no network, no clock and no randomness. Health rules live in `rules.py`. They check for a temperature above a threshold, a non-zero count of uncorrected ECC errors, an XID in a set of known codes, and missing GPUs compared with the expected count. Models are defined in `models.py` as dataclasses or pydantic models.
 
 The output is a table or JSON. The exit code tells the caller the outcome: 0 when all GPUs are healthy, 1 for a usage or runtime failure, 3 when any GPU is unhealthy, and 4 for a partial collection failure.
 
@@ -627,7 +641,7 @@ The test strategy in chapter 3.9 feeds canned CSV into `parse_smi_csv` and `eval
 
 ## 11. Lab
 
-Start with the self-checking Python lab. Run it on your machine, and it will verify the pieces this chapter has built. It checks the `csv-linter` checks from *Practical MLOps* Chapter 11, which are `zero_count_columns`, `unnamed_columns` and `carriage_returns`. It also checks the `gpuctl` argparse subcommand parsing, the `CircuitBreaker` state transitions (`CLOSED -> OPEN -> HALF_OPEN -> CLOSED`) and the cursor pagination in `paginate_cursor`. Two more checks cover the Prometheus custom collector output, with `gpu_temperature_celsius` and `fleet_host_up`, and the `RedfishSessionClient` login, discovery and logout. The last check covers the `parse_smi_csv` and `evaluate_gpus` health rules.
+Start with the self-checking Python lab. Run it on your own machine, and it verifies the pieces this chapter has built. It checks the `csv-linter` checks from *Practical MLOps* Chapter 11, which are `zero_count_columns`, `unnamed_columns` and `carriage_returns`. It also checks the `gpuctl` argparse subcommand parsing, the `CircuitBreaker` state transitions (`CLOSED -> OPEN -> HALF_OPEN -> CLOSED`) and the cursor pagination in `paginate_cursor`. Two more checks cover the Prometheus custom collector output, with `gpu_temperature_celsius` and `fleet_host_up`, and the `RedfishSessionClient` login, discovery and logout. The last check covers the `parse_smi_csv` and `evaluate_gpus` health rules.
 
 ```bash
 python3 code/part03/python_clis_agents_exporters_lab.py
@@ -650,6 +664,8 @@ After the lab passes, you can move to a machine with Python 3.11 or later. The i
 
 ## 12. Common mistakes
 
+These are the failures that page someone in the night. Each one comes from the patterns above, so treat the list as a review checklist before you ship a tool.
+
 - An HTTP call or a subprocess with no timeout will eventually hang a script in cron or in CI.
 - If you retry a non-idempotent call, or retry a permanent error, you repeat the damage. Retries without jitter cause thundering herds, and unbounded retry loops never end.
 - Secrets in command-line arguments, logs or exception messages are a leak waiting to happen.
@@ -664,7 +680,7 @@ After the lab passes, you can move to a machine with Python 3.11 or later. The i
 
 ## 13. Interview angles
 
-The prompts below are the kind interviewers use. Each one lists the points a good answer covers.
+The prompts below are the kind interviewers use. Each one lists the points a good answer covers. Rehearse them out loud, and you will hear which points are missing.
 
 - "Design a CLI to drain GPU nodes safely at scale." Cover dry-run, idempotency, concurrency limits, health gating, exit codes and an audit log.
 - "How do you make an API client resilient?" Cover timeouts, retry classification, backoff with jitter, a breaker, pagination and idempotency keys.
