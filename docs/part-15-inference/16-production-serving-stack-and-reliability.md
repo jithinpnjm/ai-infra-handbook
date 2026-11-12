@@ -31,7 +31,7 @@ Getting a model to answer a prompt on a single GPU is only the start of inferenc
 When a serving platform relies on standard microservice defaults instead of AI-native reliability controls, four operational disasters happen regularly.
 - **Silent GPU deaths and traffic blackholes.** An uncorrectable hardware memory fault on one GPU inside an eight-GPU Tensor Parallel group deadlocks the collective ring forever. Meanwhile, the Python HTTP web server on the host CPU stays alive and returns HTTP 200 to naive Kubernetes health checks. The broken pod then drops one-eighth of all cluster traffic into a black hole.
 - **Probe-induced cascading outages.** When an autoscaler launches new replicas that pull seventy-gigabyte weight files over shared storage, transient I/O contention delays responses on existing pods. If a readiness probe checks an inference thread with a one-second timeout, Kubernetes marks every healthy pod unready at once. That single probe mistake takes down the entire cluster.
-- **Token-blind admission and swap thrashing.** Counting only requests per second treats a ten-token greeting the same as a ten-thousand-token document analysis. Admitting unbounded long-context prompts exhausts the PagedAttention block pool and triggers PCIe host-memory swapping. Swapping KV blocks over PCIe inflates inter-token latency by over forty times.
+- **Token-blind admission and swap thrashing.** Counting only requests per second treats a ten-token greeting the same as a ten-thousand-token document analysis. Admitting unbounded long-context prompts exhausts the PagedAttention block pool and forces the scheduler to preempt running requests. On current vLLM a preempted request is recomputed, which burns GPU time. On engines before v0.18 that swapped KV blocks to host memory over PCIe, one reported incident inflated inter-token latency by over forty times.
 - **Uncoordinated rollouts and severed streams.** Terminating a pod or unloading a model without draining active Server-Sent Events streams cuts off long-running generations mid-sentence. Rolling out a quantized model without automated latency and accuracy gates silently degrades production answers.
 
 ```text
@@ -42,7 +42,7 @@ Production Serving Stack and Reliability Reference Numbers (DAI Ch. 9; V12 Ch. 1
 - NeMo Guardrails 5-rail latency budget: 45.0 ms base model + 15.0 ms input PII/length + 30.0 ms intent classifier + 100.0 ms RAG + 50.0 ms output fact-check + 10.0 ms audit log = 250.0 ms total (205.0 ms overhead, 5.56x / 5.5x increase).
 - SSE streaming & draining: 100 tokens at 20 tok/s takes 5.0 s total, but flushing 5-token chunks delivers the first chunk in 0.25 s (20.0x faster perceived response); uncoordinated Triton unload drops 15% of requests with 503 MODEL_UNAVAILABLE vs 0% with 15 s preStop + 120 s terminationGracePeriodSeconds.
 - Kubernetes probes & XID 62 blackhole: startupProbe (30 s initial + 60 x 10 s = 630 s total / 600 s polling window) protects 2–8 min weight loads; 1.2 s NFS stall trips a 1 s readinessProbe (100% 503 outage) but survives a 5 s /health probe; GPU 3 XID 62 PMU halt in TP=8 pegs GPU 3 at 100% and 7 peers at 0%, blackholing 12.5% (1 in 8) of cluster requests.
-- Circuit breaking & swap thrashing: trip Open when KV cache > 95% or queue > 50 for > 5 s and reset to Closed below 80% KV cache; enabling CPU swap (--swap-space 32 on vLLM before v0.18) inflates ITL from 20.0 ms to 850.0 ms (+4,150% / ~4,000% degradation at 4.2 preemptions/s).
+- Overload shedding & swap thrashing: shed load (gateway breaker Open) when KV cache > 95% or queue > 50 for > 5 s and reset below 80% KV cache; these are the chapter's starting thresholds, not vendor defaults. On a pre-v0.18 engine, enabling CPU swap (--swap-space 32) inflated ITL from 20.0 ms to 850.0 ms (+4,150% / ~4,000% degradation at 4.2 preemptions/s).
 - OpenTelemetry triage & SLO budgets: OTel 6-span trace isolates a 3,850.0 ms prefill stall inside a 4,820.0 ms request, fixed by --enable-chunked-prefill (p99 ITL 4,500.0 ms -> 22.8 ms); ProcessPoolExecutor fixes CPU GIL starvation (13.47 -> 104.17 RPS, 7.73x gain; p99 1,410.20 -> 44.80 ms, 31.48x reduction); 30-day (43,200 min) error budgets are 43.20 min (99.9%), 21.60 min (99.95%), 4.32 min / 259.2 s (99.99%), and 0.432 min / 25.92 s (99.999%).
 ```
 
@@ -114,7 +114,7 @@ Every stage outside the GPU can become a silent bottleneck. If the inference ser
 | 1. Ingress & TLS Termination | HTTP/2 or gRPC over TLS 1.3 | 2 to 10 ms | TLS handshake & JSON parsing | Persistent HTTP/2 pools & Envoy edge proxy. |
 | 2. Admission Control & Queueing | Token Bucket + Bounded Queue | 1 to 50 ms | Queue buildup under burst load | Dual RPM/TPM limits & HTTP 429 load shedding. |
 | 3. CPU Tokenization | Rust/C++ tokenizers or tiktoken | 2 to 20 ms | Python GIL single-core lockup | Separate `ProcessPoolExecutor` or Rust router. |
-| 4. Batch Scheduling & KV Alloc | Lock-free queue + Block Table | `< 1 ms` | Physical KV block exhaustion | PagedAttention with recompute-only preemption (`--swap-space 0` on vLLM before v0.18). |
+| 4. Batch Scheduling & KV Alloc | Lock-free queue + Block Table | `< 1 ms` | Physical KV block exhaustion | PagedAttention; vLLM V1 preempts by recomputing, and only engines before v0.18 can swap to host memory. |
 | 5. Host-to-Device Copy (H2D) | PCIe Gen5 DMA (`cudaMemcpyAsync`) | `< 0.5 ms` | Pageable memory staging copy | Pre-allocated pinned RAM (`cudaHostAlloc`). |
 | 6. GPU Prefill & Decode | CUDA Streams + NVLink / RDMA | TTFT 50–300 ms; ITL 15–30 ms | Prefill starving decode batches | `--enable-chunked-prefill` or P/D disaggregation. |
 | 7. GPU Logit Sampling | On-GPU Top-K / Top-P kernels | `< 1 ms` | 128,000-vocab host transfer | Keep logit penalties & sampling on GPU. |
@@ -241,7 +241,7 @@ Semantic Cache, Prompt Compression, and Prefix Caching Math (ASP Ch. 16, HLS Ch.
 
 Third, at the inference engine layer, **Prefix Caching** reuses the physical KV cache tensors of shared system prompts, RAG documents, and multi-turn chat histories. You enable it with `--enable-prefix-caching` in vLLM or RadixAttention in SGLang. Asking 10 separate questions against the same long document processes roughly 10x faster because the document's KV blocks are computed only once. If an application uses a 1,000-token system prompt across one million daily API calls, prefix caching avoids reprocessing one billion input tokens every day.
 
-| Workload Scenario (Anthropic Prompt Caching, AIE Ch. 9 Table 9-3) | TTFT Without Caching | TTFT With Caching | Latency Reduction | Cost Reduction |
+| Workload Scenario (Anthropic Prompt Caching, *AI Engineering* Ch. 9 Table 9-3) | TTFT Without Caching | TTFT With Caching | Latency Reduction | Cost Reduction |
 |---|---|---|---|---|
 | Chat with a book (100,000-token cached prompt) | 11.5 s | 2.4 s | -79% | -90% |
 | Many-shot prompting (10,000-token prompt) | 1.6 s | 1.1 s | -31% | -86% |
@@ -324,7 +324,7 @@ Canary Promotion and Rollback Gate Thresholds (DAI Ch. 9, V14 Ch. 4 & Lab 01):
 Waiting five full seconds for a 100-token answer to finish before displaying a single word makes an application feel broken. Humans read 180 to 300 words per minute, which equals roughly 4 to 7 tokens per second for average readers and up to 13 tokens per second for fast readers. Suppose an inference engine generates 20 tokens per second and flushes batches of 5 tokens over Server-Sent Events. The user sees the first 5-token chunk in just 0.25 seconds instead of waiting 5.0 seconds. That streaming cadence delivers a 20.0x improvement in perceived responsiveness.
 
 Operating SSE streaming reliably at scale requires four transport and flow-control safeguards.
-1. **Disable Nagle's algorithm and proxy buffering.** Interaction between TCP Nagle batching and delayed acknowledgments can stall small token packets by up to 200 ms. Enable `TCP_NODELAY` on the server socket and pass `X-Accel-Buffering: no` so proxies flush SSE chunks immediately.
+1. **Disable Nagle's algorithm and proxy buffering.** Interaction between TCP Nagle batching and delayed acknowledgments can stall small token packets for tens of milliseconds (the Linux delayed-ACK timer is about 40 ms, and some stacks use up to 200 ms). Enable `TCP_NODELAY` on the server socket and pass `X-Accel-Buffering: no` so proxies flush SSE chunks immediately.
 2. **Decouple egress I/O from the GPU loop with bounded buffers.** Slow mobile clients must never block the GPU continuous batching loop. A separate async I/O thread buffers outgoing tokens up to a hard cap of 50 to 100 unacknowledged tokens per client. If a stalled client exceeds 100 buffered tokens or clicks a Stop button, the server aborts that sequence and frees its PagedAttention KV blocks immediately.
 3. **Optional typewriter token pooling.** Speculative decoding can burst 20 tokens in 0.5 seconds. Inserting a configurable 50 ms smoothing delay creates a steady reading cadence for free-tier users while streaming at full speed for paid tiers.
 4. **Hard generation ceilings.** Enforce a maximum output limit of 4,096 tokens and a server-side generation timeout of 30 seconds so runaway loops never monopolize GPU slots.
@@ -358,8 +358,8 @@ Kubernetes continues routing live customer prompts to this **zombie pod**, where
 
 Production LLM containers must strictly decouple initialization, traffic readiness, and process liveness across three distinct Kubernetes probes.
 - **Startup probe.** Protects slow model initialization while 70 to 140 GB of weights load and CUDA Graphs compile, which takes 2 to 8 minutes. Configure `startupProbe` on `/health` with a 30-second initial delay, a 10-second period, and a failure threshold of 60. That grants a 600-second polling window before liveness checks even begin. To shrink cold-start weight loading from minutes to tens of seconds, pair `IfNotPresent` image policies with local NVMe PVC caching. You can also stream weights in parallel using the Run:ai Model Streamer with 16 concurrent threads.
-- **Readiness probe.** Controls whether the pod stays in the Kubernetes Service and Envoy InferencePool endpoints. Point `readinessProbe` to `/health` with a 5-second period, a 5-second timeout, and a failure threshold of 3. Never set a readiness timeout below 3 seconds. The `/health` handler must inspect an internal engine status flag and KV block availability in memory without submitting a dummy inference request into the GPU batch queue.
-- **Liveness probe.** Verifies only that the API server process is not deadlocked by querying `/ping` every 15 seconds with a 3-second timeout and a failure threshold of 5. **Never execute model inference inside a liveness probe.**
+- **Readiness probe.** Controls whether the pod stays in the Kubernetes Service and Envoy InferencePool endpoints. Point `readinessProbe` to `/health` with a 5-second period, a 5-second timeout, and a failure threshold of 3. Never set a readiness timeout below 3 seconds. The handler must not submit a dummy inference request into the GPU batch queue. Be aware that the vLLM `/health` route in v0.32.0 only reports that the engine has not crashed. A hung but live engine still answers 200, so chapter 20.18 section 6 adds a real check: a one-token request, or a watch on the token counter.
+- **Liveness probe.** Verifies only that the API server process is not deadlocked by querying `/ping` every 15 seconds with a 3-second timeout and a failure threshold of 5. **Never execute model inference inside a liveness probe.** Liveness answers whether the process should be killed, readiness answers whether it should receive traffic, and mixing them causes both restart storms and silent pool shrink, as chapter 20.18 section 8 describes. Raise the liveness timeout and failure threshold, move load checks to readiness, and alert when ready replicas fall below desired replicas.
 
 ```text
 Kubernetes Three-Probe Parameters & Startup Optimization Reference (V12 Ch. 11, V14 Ch. 4, DAI Ch. 9, GAK Ch. 4):
@@ -405,274 +405,13 @@ Even when every GPU is healthy, an unexpected traffic surge can push an inferenc
 | Warning Zone (80%–90%) | `80%–90%` | `10–50` waiting (`20–50 ms` wait) | Trigger KEDA or WVA scale-out at 120% target RPS; throttle batch jobs. |
 | Emergency Zone (`> 90%–95%`) | `> 95%` | `> 50` waiting for `>= 5 s` | Trip Circuit Breaker OPEN; shed load (HTTP 429/503) or cascade to 8B / Cloud fallback. |
 
-Why must the circuit breaker trip before KV cache usage hits 100 percent? In Volume 12 Chapter 8, a platform team enabled 32 GB of host CPU swap space via `--swap-space 32` on vLLM before v0.18, hoping to avoid out-of-memory errors during traffic spikes. GPU cache usage reached 99.8 percent and CPU swap usage hit 88.4 percent. The scheduler then preempted 4.2 sequences per second and copied KV blocks back and forth over the 64 GB/s PCIe Gen5 bus. GPU utilization collapsed to 18 percent while Inter-Token Latency exploded by 4,150 percent, jumping from 20.0 ms per token to 850.0 ms per token. Client p99 response time exceeded 45 seconds.
+Why must the gateway start shedding load before KV cache usage hits 100 percent? Once the block pool is full, the scheduler preempts running requests. On current vLLM, which preempts by recompute, each victim is put back in the queue and its prefill is repeated, so extra load turns into repeated work and latency for everyone. Chapter 20.18 section 3 describes this and gives the signals: `vllm:kv_cache_usage_perc` near 1 and `vllm:num_preemptions_total` rising. Any preemption above zero means you are over-admitting, so reduce admission before adding anything else.
 
-In latency-critical production serving, **always set recompute-only preemption (`--swap-space 0` on vLLM before v0.18)** and cap `--gpu-memory-utilization` between 0.85 and 0.92. When GPU KV cache usage exceeds 95 percent or waiting requests exceed 50 for 5 seconds, the gateway circuit breaker trips Open. To prevent rapid flapping between Open and Closed on every completed request, the circuit breaker enforces hysteresis. It stays Open until GPU KV cache usage drops below 80 percent and the waiting queue drops below 20.
+An older incident shows the worst case. On a pre-v0.18 engine, a platform team enabled 32 GB of host swap with `--swap-space 32`. GPU cache usage reached 99.8 percent and swap usage 88.4 percent. The scheduler preempted 4.2 sequences per second and copied KV blocks back and forth over PCIe, GPU utilisation fell to 18 percent and inter-token latency went from 20 ms to 850 ms. That flag no longer exists, so the case is history, not a setting to tune. Cap `--gpu-memory-utilization` between 0.85 and 0.92 and keep headroom instead. Chapter 15.3 explains the swap versus recompute arithmetic.
 
-### 5.2 Tiered Fallback Cascades and Spot / On-Demand Pool Economics
+Two terms need separating. Shedding load at the gateway means refusing new requests when the pool is nearly full: a 429 says this tenant is over its limit, a 503 with a Retry-After header says this server cannot take the request now, as chapter 20.21 explains. A circuit breaker per replica is a different tool. It ejects a replica that is failing. Chapter 20.21 section 7 notes that a hung replica returns nothing, so the breaker should watch time-to-first-token timeouts and zero tokens while work is queued, not only status codes. Retries must also stay inside a retry budget, or clients amplify the overload.
 
-When the primary circuit breaker trips Open or a query is classified as simple, the gateway executes a **Tiered Fallback Cascade** instead of dropping the request.
-- **Model tier fallback.** Under overload, the gateway routes non-critical traffic from a saturated 700B or 70B model to a reserved 70B or 8B tier. Routing 60 percent of straightforward queries to a 10x smaller model cuts average latency from 500 ms to 230 ms and reduces compute cost by up to 5.0x.
-- **Hybrid cloud API fallback.** When on-premises GPU pools saturate during a seasonal peak, the Envoy AI Gateway overflows burst requests to an external managed endpoint such as NVIDIA NIM Cloud APIs or Amazon Bedrock. Meanwhile, sensitive PII workloads remain pinned to local GPUs.
-- **Spot and On-Demand capacity blending.** Cloud Spot GPU instances cost 60 to 90 percent less than On-Demand instances, averaging a 70 percent discount, though providers can reclaim them on short notice. Running 50 percent Spot instances alongside 50 percent On-Demand instances cuts total GPU spend by 35.0 percent while On-Demand capacity absorbs traffic whenever Spot nodes are preempted.
-
----
-
-## 6. Observability: OpenTelemetry Tracing, Prometheus SLOs, and Incident Playbooks
-
-### 6.1 Three Pillars of LLM Observability and OpenTelemetry Tracing
-
-In a distributed serving stack, a single request crosses an API gateway, a guardrails server, a CPU tokenizer pool, and multiple GPU workers. Aggregate averages hide the true root cause of tail-latency spikes across those hops. Production LLM observability combines three pillars: **OpenTelemetry distributed tracing** for per-request waterfall causality, **Prometheus and DCGM metrics** for unsampled SLO alerting, and **structured JSON logging**.
-
-```text
-OpenTelemetry 6-Span Trace Hierarchy & Semantic Conventions (DAI Ch. 9, GAK Ch. 5, V12 Ch. 1 & Lab 04):
-1. Span Tree (propagated via W3C `traceparent` HTTP/gRPC header):
-   gateway.receive -> gateway.route -> tokenizer.encode -> model.inference -> tokenizer.decode -> gateway.respond
-   Span Attributes: model.name, request.tokens, response.tokens, latency.ttft_ms, latency.total_ms
-2. OpenTelemetry GenAI Semantic Conventions vs vLLM Prometheus Metrics:
-   - gen_ai.server.time_to_first_token   <-> vllm:time_to_first_token_seconds (Histogram)
-   - gen_ai.server.time_per_output_token <-> vllm:time_per_output_token_seconds (Histogram)
-   - gen_ai.server.request.duration      <-> vllm:e2e_request_latency_seconds (Histogram)
-3. Worked Trace Triage 1 — Prefill Starving Decode (V12 Ch. 1 Scenario 2):
-   Total Request Duration: 4,820.0 ms
-   = 4.0 ms (tokenize) + 12.0 ms (queue) + 180.0 ms (TTFT prefill) + 240.0 ms (decode tokens 1..10 @ 24 ms/tok)
-     + 3,850.0 ms (DECODE STALL while a 16K-token prompt monopolized GPU Tensor Cores) + 534.0 ms (tokens 11..50).
-   Fix: Enable `--enable-chunked-prefill --max-num-batched-tokens 512` -> p99 ITL drops from 4,500.0 ms to 22.8 ms (mean TTFT = 210.4 ms).
-4. Worked Trace Triage 2 — CPU GIL Tokenization Starvation (V12 Lab 04, 200 reqs @ C = 8):
-   - Unfixed (`ThreadPoolExecutor` + Python GIL): Throughput = 13.47 RPS | Total p99 = 1,410.20 ms
-     (CPU Preprocess p99 = 1,395.80 ms vs Triton GPU Infer p99 = 18.10 ms; GPU SM util < 20%, 1 CPU core @ 100%).
-   - Remediated (`ProcessPoolExecutor` multi-core): Throughput = 104.17 RPS (7.73x gain) | Total p99 = 44.80 ms
-     (CPU Preprocess p99 = 31.00 ms, Triton GPU Infer p99 = 13.50 ms -> 31.48x p99 latency reduction).
-```
-
-To enable native OpenTelemetry tracing inside vLLM on Kubernetes or KServe, pass `--otlp-traces-endpoint` and set `OTEL_SERVICE_NAME`. When KServe runs in Knative mode with sidecar containers, enable the `serving.kserve.io/enable-metric-aggregation` annotation so the `qpext` daemon aggregates container and model metrics onto a single Prometheus port.
-
-### 6.2 SLI, SLO, and SLA Error Budget Math and Quality Drift Monitoring
-
-A Service-Level Indicator is a quantitative measurement of user experience, such as p99 TTFT, p99 TPOT, or error rate. A Service-Level Objective is the internal engineering target for that indicator, such as 99.9 percent monthly availability or p95 latency under 200 ms. A Service-Level Agreement is the external contract with financial remedies, such as a 10 percent billing credit if 30-day availability drops below 99.95 percent.
-
-| Availability Target | Allowed Downtime per 30-Day Month (`43,200 min`) | Typical AI Platform Scope (`LLP` Ch. 2 & `GAK` Ch. 5) |
-|---|---|---|
-| `99.9%` (Three Nines) | `43.20 minutes` | Standard internal enterprise LLM assistant monthly uptime SLO (`< 0.1%` API error rate). |
-| `99.95%` | `21.60 minutes` | External customer SLA commitment over a rolling 30-day window (`< 1.0%` interaction error rate). |
-| `99.99%` (Four Nines) | `4.32 minutes` (`259.2 s`) | High-availability multi-replica production inference cluster target (`< 15 min` DB RTO, `< 30 min` system RTO). |
-| `99.999%` (Five Nines) | `0.432 minutes` (`25.92 s`) | Ultra-strict per-request TPOT compliance target (`TPOT < 300 ms` on `99.999%` of streaming tokens). |
-
-Beyond infrastructure uptime, a mature Level 2 LLMOps platform continuously evaluates output quality and data drift across four anomaly-detection stages.
-1. **Threshold alerts.** Fire immediately when response latency exceeds 2.0 seconds, TPOT exceeds 0.3 seconds over a 5-minute window, or output tokens hit truncation ceilings.
-2. **Statistical anomaly detection.** Track rolling moving averages and z-scores on prompt token lengths, output lengths, and latency distributions to catch subtle prompt regressions.
-3. **RAG retrieval and embedding drift.** Monitor vector similarity distributions alongside Recall, Mean Reciprocal Rank, Mean Average Precision, and F1 Relevance. The F1 harmonic mean rewards a balanced 60 percent precision and 60 percent recall at 60.0 percent over an unbalanced 90 percent precision and 30 percent recall at 45.0 percent.
-4. **Asynchronous LLM-as-a-Judge and user feedback.** Sample 1 to 10 percent of production responses asynchronously using a judge model or ROUGE overlap check so evaluation never blocks the user request path. Correlate those scores with explicit user thumbs-up ratings, Customer Satisfaction above 90 percent, and Net Promoter Score above 30.
-
-```text
-RAG Retrieval Evaluation & LLMOps Quality Formulas (LLP Ch. 2 & Ch. 7, GAK Ch. 5):
-- Query 1 (3 results, positions 1 & 2 relevant): AP_1 = (100% + 100% + 0%) / 3 = 67%.
-- Query 2 (3 results, positions 1 & 3 relevant): AP_2 = (100% + 0% + 67%) / 3 = 56%.
-- Mean Average Precision (MAP): (67% + 56%) / 2 = 61%.
-- F1 Relevance: 2 * P * R / (P + R) -> F1(60%, 60%) = 60.0% vs F1(90%, 30%) = 45.0%.
-- Net Promoter Score (NPS): %Promoters (scores 9–10) - %Detractors (scores 0–6), range [-100, +100], target > +30 (or > 8/10 SLA).
-```
-
----
-
-## Commands and configurations that matter
-
-### 1. Production Kubernetes Deployment with Three-Probe Isolation, `/dev/shm`, and Graceful Drain
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-llama-3-70b
-  namespace: ai-inference
-spec:
-  replicas: 4
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  selector:
-    matchLabels:
-      app: vllm-llama-3-70b
-  template:
-    metadata:
-      labels:
-        app: vllm-llama-3-70b
-    spec:
-      terminationGracePeriodSeconds: 120
-      volumes:
-        - name: model-cache
-          persistentVolumeClaim:
-            claimName: nvme-model-cache-pvc
-        - name: dshm
-          emptyDir:
-            medium: Memory
-            sizeLimit: 16Gi
-      containers:
-        - name: vllm-engine
-          image: vllm/vllm-openai:v0.15.1
-          imagePullPolicy: IfNotPresent
-          command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
-          args:
-            - "--model=/models/Meta-Llama-3-70B-Instruct"
-            - "--tensor-parallel-size=4"
-            - "--gpu-memory-utilization=0.90"
-            - "--max-num-seqs=64"
-            - "--max-num-batched-tokens=512"
-            - "--enable-chunked-prefill"
-            - "--enable-prefix-caching"
-            - "--load-format=runai_streamer"
-            - "--model-loader-extra-config={\"concurrency\":16}"
-            - "--otlp-traces-endpoint=http://otel-collector.monitoring:4317"
-          env:
-            - name: PYTORCH_CUDA_ALLOC_CONF
-              value: "expandable_segments:True"
-            - name: OTEL_SERVICE_NAME
-              value: "vllm-llama-3-70b"
-          ports:
-            - containerPort: 8000
-              name: http
-          resources:
-            limits:
-              nvidia.com/gpu: "4"
-              cpu: "16"
-              memory: "128Gi"
-          volumeMounts:
-            - name: model-cache
-              mountPath: /models
-            - name: dshm
-              mountPath: /dev/shm
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "sleep 15"]
-          startupProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 60
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            periodSeconds: 5
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /ping
-              port: 8000
-            periodSeconds: 15
-            timeoutSeconds: 3
-            failureThreshold: 5
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: vllm-llama-3-70b-pdb
-  namespace: ai-inference
-spec:
-  minAvailable: 3
-  selector:
-    matchLabels:
-      app: vllm-llama-3-70b
-```
-
-### 2. Gateway API Inference Extension (InferencePool, InferenceObjective, and EPP)
-
-```yaml
-apiVersion: inference.networking.k8s.io/v1
-kind: InferencePool
-metadata:
-  name: vllm-llama-3-70b-pool
-  namespace: ai-inference
-spec:
-  targetPorts:
-    - number: 8000
-  selector:
-    matchLabels:
-      app: vllm-llama-3-70b
-  endpointPickerRef:
-    name: vllm-llama-3-70b-epp
-    port:
-      number: 9002
-    failureMode: FailClose
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferenceObjective
-metadata:
-  name: interactive-chat-priority
-  namespace: ai-inference
-spec:
-  priority: 1
-  poolRef:
-    group: inference.networking.k8s.io
-    name: vllm-llama-3-70b-pool
-```
-
-### 3. Prometheus Alerting Rules and Node Problem Detector XID Remediation
-
-```yaml
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: llm-production-reliability-rules
-  namespace: ai-inference
-spec:
-  groups:
-    - name: vllm.reliability.rules
-      rules:
-        - alert: GPUHardwareXIDErrorDetected
-          expr: increase(dcgm_xid_error[1m]) > 0
-          for: 0s
-          labels:
-            severity: critical
-          annotations:
-            summary: "Hardware GPU XID fault on {{ $labels.node }} (GPU {{ $labels.gpu }})"
-            description: "XID {{ $labels.xid }} detected. Node Problem Detector must cordon and drain immediately."
-        - alert: LLMReadinessProbeFailureCascade
-          expr: sum(kube_pod_status_ready{condition="true", pod=~"vllm.*"}) / sum(kube_pod_container_info{pod=~"vllm.*"}) < 0.50
-          for: 1m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Over 50% of vLLM pods unready"
-            description: "Check storage I/O saturation and verify readinessProbe timeoutSeconds >= 5."
-        - alert: LLMKVCacheSaturated
-          expr: vllm:gpu_cache_usage_perc > 0.95
-          for: 2m
-          labels:
-            severity: critical
-          annotations:
-            summary: "vLLM GPU KV cache > 95% on {{ $labels.instance }}"
-        - alert: LLMRequestPreemptionsOccurring
-          expr: rate(vllm:num_preempted_requests_total[2m]) > 0
-          for: 30s
-          labels:
-            severity: critical
-          annotations:
-            summary: "Active KV block preemption detected on {{ $labels.instance }}"
-        - alert: LLMGPUMemoryLeakSuspected
-          expr: increase(vllm:gpu_cache_usage_perc[6h]) > 0.30
-          for: 15m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Baseline GPU cache usage rose > 30% over 6h; check allocator fragmentation"
-        - alert: vLLMTPOTLatencySLOBreach
-          expr: max_over_time(vllm:time_per_output_token_seconds[5m]) >= 0.3
-          for: 2m
-          labels:
-            severity: critical
-          annotations:
-            summary: "TPOT >= 0.3s (300 ms) over 5m window"
-```
-
----
+The gateway rule used here is: when GPU KV cache usage exceeds 95 percent or waiting requests exceed 50 for 5 seconds, start shedding. To prevent rapid flapping between shedding and normal on every completed request, add hysteresis: keep shedding until KV cache usage drops below 80 percent and the waiting queue drops below 20. Treat these thresholds as starting values to tune against your own traffic.
 
 ## How it fails
 
@@ -680,7 +419,7 @@ spec:
 |---|---|---|---|
 | 1. Readiness Probe Cascading Outage (`100% HTTP 503`) | HPA scales 4 to 12 replicas; within 90 s all 4 healthy pods flip to `0/1 Ready` and cluster returns 100% HTTP 503. | 8 new pods saturate shared NFS pulling 70 GB weights; existing pods take 1.2 s on `/v1/models`, tripping a 1 s readiness timeout (`kubectl describe pod`). | Point `readinessProbe` to `/health` with `timeoutSeconds: 5` and `failureThreshold: 3`; cache weights on local NVMe with `runai_streamer`. |
 | 2. Silent GPU Fault (`XID 62`) & TP=8 Blackhole (`12.5%` Timeouts) | 1 in 8 requests (12.5%) hang until timeout across an 8-replica TP=8 cluster; pods show `1/1 Running` with 0 restarts. | `nvidia-smi` shows GPU 3 at 100% and 7 peers at 0%; `dmesg -T` shows `Xid 62` PMU halt, deadlocking `ncclAllReduce` while HTTP server stays up. | Run `kubectl cordon` and `kubectl drain`; deploy DCGM Exporter + Node Problem Detector `CordonAndDrainNode` rule on `Xid 48\|62\|79\|92`. |
-| 3. PCIe Swap Thrashing (`4,000%+` ITL Spike) | Enabling `--swap-space 32` on vLLM before v0.18 causes ITL to jump from 20 ms/tok to 850 ms/tok (+4,150%) and p99 latency to exceed 45 s. | `vllm:gpu_cache_usage_perc` hits 99.8%, `cpu_cache_usage_perc` hits 88.4%, and `rate(vllm:num_preempted_requests_total[5m])` hits 4.2/s over 64 GB/s PCIe. | Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18), enable `--enable-prefix-caching`, and trip gateway circuit breaker Open at `> 95%` KV usage. |
+| 3. PCIe Swap Thrashing, pre-v0.18 only (`4,000%+` ITL Spike) | Enabling `--swap-space 32` on vLLM before v0.18 caused ITL to jump from 20 ms/tok to 850 ms/tok (+4,150%) and p99 latency to exceed 45 s. | `vllm:gpu_cache_usage_perc` hits 99.8%, `cpu_cache_usage_perc` hits 88.4%, and `rate(vllm:num_preempted_requests_total[5m])` hits 4.2/s over 64 GB/s PCIe. | On V1 swap cannot be enabled; on older engines set `--swap-space 0`. Enable `--enable-prefix-caching` and start gateway load shedding at `> 95%` KV usage. |
 | 4. Prefill Starving Decode (`3,850 ms` Freeze) | Streaming chat freezes for 4 s when 16K-token RAG prompts arrive; p99 ITL spikes to 4,500 ms despite 300 ms mean TTFT. | OpenTelemetry trace shows a 3,850 ms decode stall between tokens 10 and 11 while a 16K prompt prefill monopolizes Tensor Cores. | Enable `--enable-chunked-prefill` with `--max-num-batched-tokens 512`, dropping p99 ITL from 4,500 ms to 22.8 ms (mean TTFT 210.4 ms). |
 | 5. CPU Tokenization GIL Starvation (`1,410 ms` p99) | Client p99 reaches 1,410.20 ms at 13.47 RPS (or `> 3,500 ms` under `--cpus="0.5"`), while GPU SM util is `< 20%` and queue `< 2 ms`. | `mpstat -P ALL 1 5` shows 1 core at 100% `%usr` and 7 cores at 99% `%idle`; CPU prep p99 is 1,395.80 ms vs 18.10 ms Triton GPU infer. | Switch to multi-core `ProcessPoolExecutor` or Rust tokenizer (104.17 RPS = 7.73x gain, p99 44.80 ms = 31.48x reduction) and set `cpus >= 4.0`. |
 | 6. GPU Memory Leak & Silent FP8 `NaN` Spikes | Baseline GPU memory rises `> 30%` over 6h until OOM crash, or responses emit `"NaN NaN NaN"` with HTTP 200. | PyTorch caching allocator fragmentation (`memory.used` vs active reqs) or FP8 `scale_inv` underflow/overflow (`> 0.01%` `NaN` token rate). | Set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`; isolate `NaN` replica and pass `--disable-custom-all-reduce` or roll back to BF16. |
@@ -693,9 +432,9 @@ During a scheduled traffic promotion, Horizontal Pod Autoscaler scaled the LLM d
 
 Consider an eight-replica cluster where each replica runs Llama-3-70B with eight-way Tensor Parallelism on an eight-GPU HGX node. During the incident, exactly 12.5 percent of client requests hung until timeout while all pods reported Running. Checking `nvidia-smi` on the suspect node showed GPU 3 pinned at 100 percent utilization while the other seven GPUs sat at 0 percent. Host `dmesg` logs revealed an Xid 62 micro-controller halt on GPU 3 that deadlocked `ncclAllReduce`. That single fault trapped the seven peer GPUs while the CPU HTTP server kept accepting one-eighth of cluster traffic. Deploying DCGM Exporter and Node Problem Detector cordons and drains any node reporting XID 48, 62, 79, or 92 within seconds.
 
-### 3. PCIe Host-Memory Swap Thrashing and Prefill-Starved Decode Stalls
+### 3. PCIe Host-Memory Swap Thrashing (Before v0.18) and Prefill-Starved Decode Stalls
 
-When GPU KV cache blocks fill up, enabling host CPU swapping via `--swap-space 32` on vLLM before v0.18 causes the scheduler to copy KV pages back and forth across PCIe on every step. That thrashing loop drops GPU utilization to 18 percent and inflates Inter-Token Latency from 20 ms to 850 ms per token. Always set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) and shed excess load at the gateway instead. Similarly, when unchunked 16,000-token RAG prompts share a GPU with interactive chat, prefill kernels monopolize Tensor Cores and freeze active streams for 3,850 ms. Enabling `--enable-chunked-prefill` with a 512-token budget restores p99 ITL from 4,500 ms to 22.8 ms.
+On vLLM before v0.18, enabling host CPU swapping via `--swap-space 32` made the scheduler copy KV pages back and forth across PCIe on every step. That loop dropped GPU utilization to 18 percent and inflated Inter-Token Latency from 20 ms to 850 ms per token. vLLM V1 has no swap, so on a current engine the same pressure shows up as a rising preemption rate and repeated prefills. Shed excess load at the gateway and keep preemptions at zero. Similarly, when unchunked 16,000-token RAG prompts share a GPU with interactive chat, prefill kernels monopolize Tensor Cores and freeze active streams for 3,850 ms. Enabling `--enable-chunked-prefill` with a 512-token budget restores p99 ITL from 4,500 ms to 22.8 ms.
 
 ### 4. Single-Threaded CPU Tokenization Starvation and Silent FP8 NaN Spikes
 
@@ -816,7 +555,7 @@ If a multi-turn user is routed randomly on each request, turn one goes to Model 
 <details>
 <summary>11. How does SSE token chunking improve perceived responsiveness, and why are TCP_NODELAY and a bounded 50–100 token client buffer required?</summary>
 
-At 20 tokens per second, a 100-token response takes 5.0 seconds total, but flushing 5-token SSE chunks delivers the first text in 0.25 seconds, which is 20.0x faster perceived responsiveness. Setting `TCP_NODELAY` prevents Nagle's algorithm and delayed ACKs from adding up to 200 ms of packet stall. A bounded 50 to 100 token buffer ensures a slow or disconnected client is aborted cleanly without blocking the GPU decode loop.
+At 20 tokens per second, a 100-token response takes 5.0 seconds total, but flushing 5-token SSE chunks delivers the first text in 0.25 seconds, which is 20.0x faster perceived responsiveness. Setting `TCP_NODELAY` prevents Nagle's algorithm and delayed ACKs from adding tens of milliseconds of packet stall (about 40 ms with the Linux delayed-ACK timer). A bounded 50 to 100 token buffer ensures a slow or disconnected client is aborted cleanly without blocking the GPU decode loop.
 </details>
 
 <details>
@@ -850,9 +589,9 @@ XID 62 is `PMU_HALT_ERROR`, an internal micro-controller halt logged by the NVID
 </details>
 
 <details>
-<summary>17. Why should latency-critical LLM serving always set swap space to zero, and how does a hysteretic circuit breaker protect the cluster instead?</summary>
+<summary>17. Why does current vLLM not swap KV blocks to host memory, and how does gateway load shedding with hysteresis protect the cluster instead?</summary>
 
-When GPU KV cache fills up to 99.8 percent, swapping blocks to host RAM triggers 4.2 preemptions per second over the 64 GB/s PCIe bus. That thrashing drops GPU utilization to 18 percent and inflates ITL by 4,150 percent from 20 ms to 850 ms per token. Setting recompute-only preemption (`--swap-space 0` on vLLM before v0.18) disables PCIe thrashing completely. Instead, when KV usage exceeds 95 percent or waiting requests exceed 50 for 5 seconds, the circuit breaker trips Open and stays Open until KV usage drops below 80 percent.
+On an engine before v0.18, a full GPU cache with host swap enabled triggered 4.2 preemptions per second over the 64 GB/s PCIe bus. GPU utilization fell to 18 percent and inter-token latency rose 4,150 percent, from 20 ms to 850 ms per token. vLLM V1 removed swap and preempts by recompute, so that failure cannot be configured any more, but a full cache still forces repeated prefills. The gateway therefore starts shedding when KV usage exceeds 95 percent or waiting requests exceed 50 for 5 seconds, and keeps shedding until KV usage drops below 80 percent.
 </details>
 
 <details>
@@ -881,7 +620,7 @@ For a three-result query where positions 1 and 2 are relevant, average precision
 2. **Route on LLM state rather than round-robin.** Pair Envoy Proxy with the Kubernetes Gateway API Inference Extension. Route requests by prefix-cache hit ratio, free KV blocks, queue depth, and loaded LoRA adapters.
 3. **Protect multi-tenant capacity with dual Token Buckets and layered caching.** Enforce both RPM and TPM quotas per tenant and mask PII before 768-dimensional semantic caching. Compress chat histories above 75 percent context to save 36.0 percent quadratic prefill work, and budget NeMo Guardrails latency explicitly.
 4. **Never cut over model versions or kill streaming pods abruptly.** Shift canary traffic progressively from 10 to 100 percent with automated error and latency rollback gates. Drain SSE streams using a 15-second `preStop` hook and a 120-second termination grace period.
-5. **Isolate Kubernetes probes and automate XID hardware remediation.** Separate startup, readiness, and liveness probes, and disable PCIe swap thrashing with recompute-only preemption (`--swap-space 0` on vLLM before v0.18). Trip hysteretic circuit breakers Open above 95 percent KV usage, and wire DCGM Exporter to Node Problem Detector to cordon and drain XID 62 zombie nodes automatically.
+5. **Isolate Kubernetes probes and automate XID hardware remediation.** Separate startup, readiness, and liveness probes, and avoid preemption storms by shedding load at the gateway above 95 percent KV usage with hysteresis. vLLM V1 recomputes preempted requests and has no swap, and wire DCGM Exporter to Node Problem Detector to cordon and drain XID 62 zombie nodes automatically.
 
 ---
 

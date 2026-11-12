@@ -49,7 +49,7 @@ Researchers at UC Berkeley built vLLM around a simple operating system insight. 
 
 Yet PagedAttention is only the foundation of a production vLLM deployment. Operating vLLM reliably on GPU clusters requires mastering its full execution stack.
 - **Cross-request and intra-request block sharing:** Use Copy-on-Write reference counting for beam search and parallel sampling. Also configure Automatic Prefix Caching to skip redundant prefill compute across shared system prompts.
-- **Token-level scheduling and preemption:** Tune continuous batching and chunked prefill token budgets so long prompts do not stall active decode streams. Enforce recomputation instead of PCIe host memory swapping when VRAM fills up.
+- **Token-level scheduling and preemption:** Tune continuous batching and chunked prefill token budgets so long prompts do not stall active decode streams. Understand why V1 recomputes preempted sequences instead of swapping them to host memory.
 - **Engine architecture and distributed scaling:** Navigate vLLM V1's asynchronous dual-process architecture and map Tensor, Pipeline, Data, and Expert Parallelism onto NVLink and InfiniBand topologies. Serve dozens of domain adapters on a single base model with Punica and S-LoRA kernels.
 
 **Treat GPU memory blocks, token budgets, and interconnect boundaries as coupled system resources before putting vLLM into production.**
@@ -65,9 +65,9 @@ Yet PagedAttention is only the foundation of a production vLLM deployment. Opera
 After completing this chapter, you will be able to accomplish five core goals.
 1. Calculate exact KV cache footprints across Multi-Head, Grouped-Query, and Multi-Query Attention. Explain how PagedAttention's Block Table eliminates external fragmentation, bounds internal fragmentation below 4%, and removes padding FLOPs.
 2. Trace how vLLM's `BlockSpaceManager` implements Copy-on-Write block sharing for parallel sampling and beam search. Compare vLLM's hash-based Automatic Prefix Caching against SGLang's tree-based RadixAttention and long-context Cache-Augmented Generation.
-3. Configure iteration-level continuous batching, chunked prefill token budgets, and preemption policies. Prove mathematically when GPU prefill recomputation beats PCIe host-memory swapping.
+3. Configure iteration-level continuous batching, chunked prefill token budgets, and preemption policies. Work out the swap versus recompute arithmetic for a GQA model and explain why V1 recomputes.
 4. Deconstruct vLLM's layered architecture, including `LLMEngine`, `EngineCore`, `Scheduler`, `SchedulerOutput`, `MultiProcessExecutor`, `GPUWorker`, `GPUModelRunner`, and vLLM V1's dual-process separation. Compare vLLM against TGI, SGLang, LMDeploy, TensorRT-LLM, and llama.cpp.
-5. Architect multi-GPU and multi-node vLLM deployments using Tensor, Pipeline, Data, and Expert Parallelism alongside Multi-LoRA serving and speculative decoding. Diagnose KV cache OOMs, swap thrashing, and tail-latency spikes using Prometheus telemetry.
+5. Architect multi-GPU and multi-node vLLM deployments using Tensor, Pipeline, Data, and Expert Parallelism alongside Multi-LoRA serving and speculative decoding. Diagnose KV cache OOMs, preemption storms, and tail-latency spikes using Prometheus telemetry.
 
 ---
 
@@ -316,29 +316,36 @@ vLLM Unified Token-Budget Scheduler Logic (HLS Ch. 8; Volume 12 Ch. 7):
 
 In vLLM, the `Scheduler` maintains two primary queues—`RUNNING` and `WAITING`—and prioritizes `RUNNING` requests first because they already hold allocated KV cache blocks and active streaming timelines. Only after all running decode and in-flight chunked-prefill requests receive their token allocations does the scheduler admit new requests from `WAITING` using the remaining token budget.
 
-### 3.3 Request Preemption: Swap vs Recompute Mathematical Trade-Off
+### 3.3 Request Preemption: Swap vs Recompute
 
-Because sequence lengths grow dynamically, concurrent decode streams can exhaust the physical GPU block pool mid-generation. When `BlockSpaceManager` has zero free blocks left to append the next token, the scheduler must **preempt** one or more lower-priority or most-recently-arrived sequences using one of two policies.
-1. **Host-Device Swapping:** Evacuates the preempted sequence's physical KV blocks across the PCIe bus into pinned host CPU RAM configured via `--swap-space` (removed in vLLM v0.18.0) and copies them back to GPU HBM when space frees up.
-2. **Recomputation:** Immediately frees the preempted sequence's physical KV blocks in place. When capacity reopens, the sequence re-enters the prefill path to recompute its KV cache from the original prompt plus generated tokens.
+Picture a busy server where every running sequence needs one more KV block for its next token, and the pool has none left. The scheduler cannot simply refuse. It must preempt one or more lower-priority or most-recently-arrived sequences, which means taking their KV blocks away. There are two ways to give the work back later.
+
+1. **Host-device swapping:** copy the preempted sequence's KV blocks across the PCIe bus into pinned host RAM, then copy them back when space frees up. Older vLLM releases sized that host buffer with `--swap-space`.
+2. **Recomputation:** free the blocks at once. When capacity returns, the sequence goes through prefill again, rebuilding its KV cache from the original prompt plus the tokens generated so far.
+
+vLLM V1 only recomputes. The `--swap-space` flag exists in v0.17.0 and is gone in v0.18.0, and the vLLM optimisation guide says V1 preempts by recompute because recomputation has lower overhead in the V1 architecture (checked 2026-11-12). So this section is about why the choice is less obvious than it looks, not about a setting you can change.
+
+The arithmetic below uses Llama-3-70B with 80 layers, hidden size 8192, 8 KV heads of 128 dimensions, BF16, a 64 GB/s PCIe link and an H100 at 989 TFLOPS dense BF16. Both inputs flatter the hardware: 64 GB/s is the theoretical Gen5 x16 rate, and 989 TFLOPS assumes every Tensor Core cycle is used.
 
 ```text
-Preemption Swap vs Recompute Crossover Math (Volume 12 Ch. 7 & Ch. 8):
-- Round-trip PCIe Swap latency (out to CPU RAM + back to GPU HBM):
-  t_swap = 2 * (2 * L * S * H * Bytes) / B_PCIe
-  One-way 4 GB KV transfer over PCIe Gen4/Gen5 (64 GB/s): 4 GB / 64 GB/s = 0.0625 s = 62.5 ms (~62 ms one-way, 125.0 ms round-trip)
-  Swapping 12 requests (28 GB KV) over PCIe saturates the bus at 99.4%, freezing GPUs for 4–8 s and degrading ITL 4,000% (20 ms -> 850 ms)
-- GPU Prefill Recomputation latency:
+Swap round trip (out to host RAM and back), GQA model:
+  KV bytes = 2 * L * S * kv_heads * head_dim * 2 B
+  t_swap   = 2 * KV bytes / B_PCIe
+
+Recompute (prefill again over S tokens):
   t_recompute = (2 * L * S^2 * H + 12 * L * S * H^2) / T_GPU
-- Worked Llama-3-70B comparison at S = 4,096 tokens (L = 80, H = 8192, BF16 = 2 B, B_PCIe = 64 GB/s, H100 T_GPU = 989 TFLOPS):
-  Full MHA-equivalent state transfer t_swap = 167.77 ms vs t_recompute = 29.01 ms -> Recompute is 5.78x faster!
-- Decision rule:
-  For short-to-medium sequences (S < 8,192 tokens) on Hopper/Blackwell GPUs, t_recompute < t_swap (select RECOMPUTE and --swap-space 0 on vLLM before v0.18).
-  Only at ultra-long contexts (S > 32,000 tokens, e.g., S = 65,536 where O(S^2) prefill reaches 994 ms vs 2,684 ms MHA / 335 ms GQA swap)
-  or when using dedicated LMCache/NIXL async tiered offloading does host offloading beat recomputation.
+
+S = 4,096:   KV = 1.34 GB, t_swap = 41.9 ms,  t_recompute = 289 ms
+S = 65,536:  KV = 21.5 GB, t_swap = 671 ms,   t_recompute = 9,961 ms
+Same S = 4,096 if the model used full multi-head attention (H = 8192 for K and V):
+             KV = 10.7 GB, t_swap = 335.5 ms
 ```
 
-**Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) and use recompute preemption with ingress queue shedding on latency-critical services so PCIe swap storms never stall GPU execution.**
+Read the result carefully. For the grouped-query model the chapter names, the swap round trip is about 7 times shorter than recompute at 4,096 tokens, and the gap grows at longer lengths because prefill cost rises with the square of the length while KV size rises only linearly. On paper swap wins. Only if the model used full multi-head attention does the swap time (335 ms) come close to the recompute time (289 ms).
+
+Why does V1 recompute anyway? The transfer time is not the whole cost. Swapped blocks are scattered across memory and move as many small copies, the host buffer must be pinned, the PCIe link is shared with weights loading and other traffic, and a swap storm stalls kernel launches. In the failure mode below, swapping 28 GB across a PCIe 4.0 box froze the GPUs for seconds. Recomputation needs no host memory, no second code path and no link contention, and the 100 percent utilisation assumption means real recompute is slower than 289 ms, so it is the simpler design, not the faster one on every shape. For tiered offload to host RAM or storage, use LMCache or NIXL-based connectors, which move KV asynchronously instead of inside the preemption path.
+
+**On V1 the lever is not a swap flag but headroom: keep `vllm:num_preemptions_total` flat by lowering `--max-num-seqs` or `--max-model-len`, adding GPUs, or shedding load at the ingress queue.**
 
 ---
 
@@ -448,7 +455,9 @@ Multi-LoRA Footprint, Quantization (W4A16 / W8A8 / FP4), and Speculative Decodin
   Params per LoRA adapter = 32 * 4 * (2 * 4096 * 16) = 16,777,216 params = 32.0 MB (0.2097% < 1% of base model)
   8 active LoRA adapters co-located in HBM = 16.0 GB + 8 * 0.033554432 GB = 16.2684 GB (saves 7 GPUs vs 8 dedicated GPUs)
 - H100 SXM Tensor Core Peak Compute by Precision (HLS Ch. 6 Table 6-2):
-  FP64 = 34 TFLOPS (67 TFLOPS TC) | FP32 = 67 TFLOPS | TF32 = 989 TFLOPS | BF16/FP16 = 1,979 TFLOPS | FP8/INT8 = 3,958 TFLOPS/TOPS
+  FP64 = 34 TFLOPS (67 TFLOPS Tensor Core) | FP32 = 67 TFLOPS (non-tensor)
+  Dense Tensor Core: TF32 = 495 | BF16/FP16 = 989 | FP8/INT8 = 1,979 TFLOPS/TOPS
+  The same datasheet quotes 989 / 1,979 / 3,958 for TF32 / BF16 / FP8 *with 2:4 structured sparsity*; those are sparse peaks, not what dense serving sees.
 - Quantization regime comparison on Qwen2.5-7B-Instruct in vLLM (HLS Ch. 6 Table 6-3 & Figs. 6-17..19):
   * W4A16 (GPTQ / AWQ 4-bit weights, 16-bit activations with Marlin on Ampere / Machete on Hopper):
     75% size reduction (14 GB -> 3.5 GB); +300% latency/throughput gain at low batch/concurrency, but slower TTFT at high batch due to FP16 compute
@@ -493,7 +502,7 @@ docker run --runtime nvidia --gpus all \
   -p 8000:8000 --ipc=host vllm/vllm-openai:latest \
   Qwen/Qwen2.5-0.5B-Instruct --dtype bfloat16 --max-model-len 32768 --gpu-memory-utilization 0.85
 
-# 3. Single-node 4-GPU Tensor Parallel + Chunked Prefill + APC + Zero-Swap production launch (untested here)
+# 3. Single-node 4-GPU Tensor Parallel + Chunked Prefill + APC + production launch (untested here)
 vllm serve meta-llama/Meta-Llama-3-70B-Instruct \
   --tensor-parallel-size 4 \
   --gpu-memory-utilization 0.90 \
@@ -506,8 +515,7 @@ vllm serve meta-llama/Meta-Llama-3-70B-Instruct \
   --port 8000
 
 # 4. Multi-node DeepSeek-R1 (671B) with TP=4 intra-node and PP=8 inter-node (32 GPUs total) (untested here)
-python -m vllm.entrypoints.api_server \
-  --model deepseek-ai/DeepSeek-R1 \
+vllm serve deepseek-ai/DeepSeek-R1 \
   --tensor-parallel-size 4 \
   --pipeline-parallel-size 8 \
   --enable-chunked-prefill \
@@ -526,7 +534,7 @@ vllm serve deepseek-ai/DeepSeek-R1 --headless --data-parallel-size 4 --data-para
 
 # 6. Nsight Systems profiling of vLLM CUDA kernels and NCCL collectives (untested here)
 nsys profile --trace=cuda,nvtx --output=profile.qdrep \
-  python -m vllm.entrypoints.api_server --model meta-llama/Llama-2-70b-hf --tensor-parallel-size 4
+  vllm serve meta-llama/Llama-2-70b-hf --tensor-parallel-size 4
 ```
 
 ### 5.2 Prometheus Metrics, Alerting Thresholds, and Kubernetes HPA / KEDA Autoscaling
@@ -546,7 +554,7 @@ Kubernetes HPA / KEDA Autoscaling, Rolling Updates, and Locust Load Testing Refe
 | Prometheus Metric / CLI Flag | Type / Default | Operational Meaning | Production Target / Alert Rule |
 |---|---|---|---|
 | `vllm:gpu_cache_usage_perc` | Gauge (`0.0–1.0`) | Fraction of physical GPU PagedAttention blocks currently allocated | Nominal `< 0.85`; critical alert `> 0.95` for `2m` (`LLMKVCacheSaturated`) |
-| `vllm:cpu_cache_usage_perc` | Gauge (`0.0–1.0`) | Fraction of host CPU swap blocks currently in use | Must remain `0.00` (recompute-only preemption (`--swap-space 0` on vLLM before v0.18) in latency-critical serving) |
+| `vllm:cpu_cache_usage_perc` | Gauge (`0.0–1.0`) | Fraction of host CPU swap blocks currently in use | Always `0.00` on V1, which has no swap; a non-zero value means a pre-v0.18 engine |
 | `vllm:num_requests_waiting` | Gauge | Requests queued in the `WAITING` admission queue | Nominal `< 10` (`< 5` in low-latency clusters) |
 | `vllm:num_requests_running` | Gauge | Active sequences slotted in the `RUNNING` batch | Scales up to `C_max` / `--max-num-seqs` |
 | `vllm:num_preemptions_total` / `vllm:num_preempted_requests_total` | Counter | Cumulative sequence preemptions triggered by block exhaustion | `rate(...[2m]) > 0` for `30s` fires critical alert (`LLMRequestPreemptionsOccurring`) |
@@ -560,7 +568,7 @@ Kubernetes HPA / KEDA Autoscaling, Rolling Updates, and Locust Load Testing Refe
 
 - **Symptom:** On a two-GPU A100 RAG deployment serving long legal documents, response latency spikes from 1.2 seconds to over 45 seconds. Engine logs warn that free physical blocks are low and requests are swapping to CPU RAM. In a related eight-GPU PCIe deployment with host swap space enabled, GPU utilization drops to zero for several seconds while Inter-Token Latency degrades from 20 ms to 850 ms per token.
 - **Diagnosis:** At a 16-token block size, a 24,000-token prompt consumes 1,500 physical blocks. Ten concurrent requests demand 15,000 blocks and exhaust the GPU pool. Swapping 28 GB of KV cache across PCIe saturates the host bus and stalls kernel launches.
-- **Fix:** Set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) and enforce recompute preemption. Enable `--enable-prefix-caching`, raise `--block-size` to 32, and cap `--max-num-seqs` at 64.
+- **Fix:** On V1 there is no swap to turn off, since preemption always recomputes; on a pre-v0.18 engine set `--swap-space 0`. Enable `--enable-prefix-caching`, raise `--block-size` to 32, and cap `--max-num-seqs` at 64.
 
 ```text
 Failure Mode 1 Quantitative Evidence (Volume 12 Ch. 6, Ch. 7 & Ch. 8):
@@ -568,10 +576,10 @@ Failure Mode 1 Quantitative Evidence (Volume 12 Ch. 6, Ch. 7 & Ch. 8):
   Blocks per prompt = ceil(24000 / 16) = 1,500 physical blocks; 10 concurrent requests = 15,000 blocks -> Latency spiked 1.2 s -> 45 s
   Fix (enable_prefix_caching=True, block_size=32 -> 750 blocks/prompt, max_num_seqs=64, max_num_batched_tokens=32768):
   Matched 68% of shared RAG headers, reduced PCIe swap to 0, stabilized p99 latency at 1.8 s
-- Case B (8x A100-40GB PCIe / Meta-Llama-3-8B TP=2 with --swap-space 32 on vLLM before v0.18):
+- Case B (8x A100-40GB PCIe / Meta-Llama-3-8B TP=2 with --swap-space 32, a pre-v0.18 engine; V1 cannot reproduce this):
   Swapping 12 requests (28 GB KV) saturated PCIe at 64 GB/s (99.4% bus util), froze GPUs for 4–8 s (18% DCGM util),
   degraded ITL by 4,000% (20 ms -> 850 ms/token) at 4.2 preemptions/s (vllm:gpu_cache_usage_perc = 99.8%, vllm:cpu_cache_usage_perc = 88.4%)
-  Fix (--swap-space 0 on vLLM before v0.18, --enable-prefix-caching, --block-size 16, --gpu-memory-utilization 0.92, --max-num-seqs 256):
+  Fix (--swap-space 0 on the pre-v0.18 engine, --enable-prefix-caching, --block-size 16, --gpu-memory-utilization 0.92, --max-num-seqs 256):
   Preemptions dropped to 0, vllm:gpu_cache_usage_perc stabilized at 0.81, and ITL returned to 18 ms/token
 ```
 
@@ -597,11 +605,11 @@ Failure Mode 2 Crash Trace and Post-Fix Telemetry (Volume 12 Ch. 8):
 - **Diagnosis:** Without chunked prefill, a 12,288-token prompt runs a 320 ms monolithic GEMM that blocks all 45 active decode streams. Conversely, a 512-token cap causes 450 scheduler context switches per second.
 - **Fix:** Enable `--enable-chunked-prefill` and tune `--max-num-batched-tokens` to 2,048 or 1,024. That setting cut p99 ITL during 12,000-token bursts from 340 ms down to 21.4 ms.
 
-### Failure Mode 4: Cross-Node Tensor Parallelism (`TP=16`) NCCL Timeout and PP Stage 0 Imbalance
+### Failure Mode 4: Cross-Node Tensor Parallelism (`TP=16`) NCCL Timeout
 
-- **Symptom:** Deploying a 405B model across two eight-GPU H100 nodes with `--tensor-parallel-size 16` hangs at startup and terminates after 30 seconds with an NCCL AllReduce watchdog timeout. Alternatively, running a 70B model across two nodes with `TP=4` and `PP=2` causes Stage 0 KV cache usage to hit 99.2 percent while Stage 1 sits at 38.5 percent, pushing queue delays over 4,500 ms.
-- **Diagnosis:** Inspect `nvidia-smi topo -m` and enable `NCCL_DEBUG=INFO`. Setting `TP=16` forced 160 AllReduces per token across host TCP sockets at 45 ms latency instead of NVLink microseconds. Under `PP=2`, Stage 0 absorbed heavy 8,192-token prefills while Stage 1 processed short 64-token decodes.
-- **Fix:** Keep Tensor Parallelism inside the node at `--tensor-parallel-size 8` and use `--pipeline-parallel-size 2` across nodes with `NCCL_IB_DISABLE=0` and `NCCL_NET_GDR_LEVEL=5`. When the model fits within a single eight-GPU node, run independent `TP=8` Data Parallel replicas on each node to balance KV cache usage at 72 percent and 74 percent.
+- **Symptom:** Deploying a 405B model across two eight-GPU H100 nodes with `--tensor-parallel-size 16` hangs at startup and terminates after 30 seconds with an NCCL AllReduce watchdog timeout.
+- **Diagnosis:** Inspect `nvidia-smi topo -m` and enable `NCCL_DEBUG=INFO`. Setting `TP=16` forced 160 AllReduces per token across host TCP sockets at 45 ms latency instead of NVLink microseconds.
+- **Fix:** Keep Tensor Parallelism inside the node at `--tensor-parallel-size 8` and use `--pipeline-parallel-size 2` across nodes with `NCCL_IB_DISABLE=0` and `NCCL_NET_GDR_LEVEL=5`. When the model fits within a single eight-GPU node, run independent `TP=8` Data Parallel replicas on each node instead.
 
 ### Failure Mode 5: Degraded Prefix Cache Hit Rate and Block Reference Leaks
 
@@ -647,8 +655,8 @@ Expected output (`25 passed, 0 failed`):
   [PASS] 10. Automatic Prefix Caching (APC) matches all 4 shared 16-token system-prompt blocks by SHA-256 hash and increments ref_count to 2
   [PASS] 11. Long-Context CAG caches 100,500 tokens and runs prefill on 500 tokens (vs 5,500 in RAG), cutting TTFT 10x (5.0s -> 0.5s) at $0.013 vs $0.007 per request
   [PASS] 12. Chunked Prefill slices a 12,288-token prompt into 24 chunks of 512 tokens, bounding step tokens to 45 + 512 = 557 <= 2048
-  [PASS] 13. Transferring 4 GB of KV cache over 64 GB/s PCIe takes 62.5 ms one-way (~62 ms), and for S=4096 on H100 (989 TFLOPS) Recompute is faster than PCIe Swap
-  [PASS] 14. At ultra-long sequence length S=65,536, quadratic O(S^2) prefill makes t_recompute > t_swap
+  [PASS] 13. Transferring 4 GB of KV cache over 64 GB/s PCIe takes 62.5 ms one-way; for GQA Llama-3-70B at S=4096 the round-trip swap is ~41.94 ms and recompute is ~289 ms at 989 TFLOPS, so swap is faster on paper
+  [PASS] 14. At S=65,536 quadratic prefill takes ~9.96 s against a ~671 ms GQA round-trip swap, so the swap advantage widens
   [PASS] 15. Llama-3-70B on 4x 80 GB GPUs (TP=4, 320 GB total, 140 GB weights, 140 GB KV pool) supports C_max = 218 (S=2048), 54 (S=8192), and 13 (S=32768) requests
   [PASS] 16. Llama-3-70B on 8x 80 GB GPUs (TP=8, 640 GB total, 428 GB KV pool) supports C_max = 668 (S=2048), 167 (S=8192), and 41 (S=32768) requests with 160 AllReduces/token
   [PASS] 17. Sharding a 140B model across TP=2 on 141 GB H200 GPUs expands free KV cache headroom from ~20 GB on 1 GPU to ~70 GB per GPU
@@ -719,7 +727,7 @@ docker run -d --name vllm_constrained \
    - **(b)** Compare a RAG pipeline with 500 cached system tokens, 5,000 dynamic RAG tokens, and 500 user tokens against Long-Context Cache-Augmented Generation with 500 system tokens, 100,000 cached context tokens, and 500 user tokens. Compute the uncached prefill token count and the expected Time To First Token if RAG takes 5.0 seconds. Also compute the per-request token cost at 1.25 dollars per million regular tokens and 0.125 dollars per million cached tokens.
 3. **Chunked Prefill Token Budgeting and Preemption Policies.**
    - **(a)** A four-GPU H100 vLLM server runs 45 active decode sequences with `--enable-chunked-prefill`, `--max-num-batched-tokens 2048`, and a 512-token prefill chunk threshold. When a 12,288-token prompt arrives, calculate the total tokens scheduled per step and how many iteration steps are required to complete the prompt prefill.
-   - **(b)** Calculate the one-way and round-trip transfer latency of a 4 GB KV cache buffer across a 64 GB/s PCIe bus. Using the swap versus recompute equations for an 80-layer, 8,192-hidden-size model on a 989 TFLOPS H100 GPU, compare swap time and recompute time at 4,096 tokens versus 65,536 tokens. State the optimal preemption policy for each regime.
+   - **(b)** Calculate the one-way and round-trip transfer latency of a 4 GB KV cache buffer across a 64 GB/s PCIe bus. Using the swap versus recompute equations for an 80-layer, 8,192-hidden-size model on a 989 TFLOPS dense BF16 H100 GPU, compare swap time and recompute time at 4,096 tokens versus 65,536 tokens, once with 8 KV heads and once with 64. Then say which policy vLLM V1 uses and why.
 4. **Distributed Parallelism and Cluster Capacity Planning.**
    - **(a)** Use the VRAM budget formula at 0.90 utilization with 140 GB weights and 8 GB workspace. Compute the available KV cache pool and maximum concurrent sequences for Llama-3-70B on four 80 GB GPUs and eight 80 GB GPUs at average sequence lengths of 2,048, 8,192, and 32,768. Also state how many synchronous AllReduce operations execute per generated token on an 80-layer Tensor Parallel model.
    - **(b)** Consider DeepSeek-R1 with 671B parameters, 256 routed experts, and an 8,192 hidden size. Compute the total GPUs, parameters per pipeline stage, and per-token inter-node activation elements transferred per GPU under 4-way Tensor Parallelism and 8-way Pipeline Parallelism. Then compute the Expert Parallel size, complete experts per GPU, and the collective communication pattern under 8-way Tensor Parallelism versus 8-way Data Parallelism with `--enable-expert-parallel`.
@@ -792,9 +800,9 @@ At every step, the `Scheduler` prioritizes running requests before waiting reque
 </details>
 
 <details>
-<summary>**11. When GPU KV blocks run out, why is `Recompute` mathematically faster than PCIe `Swap` for sequences under 8,192 tokens?**</summary>
+<summary>**11. Which is faster for a 4,096-token Llama-3-70B sequence, a PCIe swap round trip or recompute, and what does vLLM V1 do?**</summary>
 
-Swapping a KV cache out and back across a 64 GB/s PCIe bus costs 62.5 ms one-way or 125 ms round-trip for every 4 GB of state. Recomputing prefill on the GPU uses the accelerator's Tensor Cores, which deliver 989 TFLOPS on an H100. Because GPU compute throughput far outstrips PCIe transfer bandwidth, recomputation is much faster than PCIe swapping for sequences under 8,192 tokens.
+With 8 KV heads the sequence holds 1.34 GB of KV cache, so a round trip over 64 GB/s PCIe takes about 42 ms. Recomputing the prefill takes about 289 ms even at 989 TFLOPS dense BF16 and perfect utilisation. Swap is roughly 7 times faster on paper, and the gap widens at longer contexts. vLLM V1 still recomputes, because the swap path was removed in v0.18.0 and the V1 design prefers the lower overhead of recomputation. Only a model with full multi-head attention, at about 335 ms round trip, brings the two close.
 </details>
 
 <details>
@@ -830,7 +838,7 @@ Multi-LoRA serving keeps one frozen base model and multiple active low-rank adap
 <details>
 <summary>**17. How do W4A16 (GPTQ/AWQ), W8A8 (FP8 E4M3), and FP4 (MXFP4/NVFP4) quantization trade off memory footprint, prefill compute, and decode bandwidth in vLLM?**</summary>
 
-W4A16 cuts weight size by 75 percent and uses mixed-precision Marlin or Machete kernels for a 300 percent low-batch decode gain, but it still computes in 16-bit precision so high-batch prefill TTFT lags. W8A8 FP8 cuts weight size by 50 percent and doubles Tensor Core FLOPS to 3,958 TFLOPS on H100, delivering a 150 percent low-batch gain and superior high-batch throughput. FP4 at 0.5 bytes per parameter on Blackwell B200 shrinks the 117B `gpt-oss-120b` model to 58.5 GB for a single 80 GB GPU. It also shrinks the 21B `gpt-oss-20b` model to 10.5 GB for a 16 GB edge GPU.
+W4A16 cuts weight size by 75 percent and uses mixed-precision Marlin or Machete kernels for a 300 percent low-batch decode gain, but it still computes in 16-bit precision so high-batch prefill TTFT lags. W8A8 FP8 cuts weight size by 50 percent and doubles dense Tensor Core FLOPS to 1,979 TFLOPS on H100 (3,958 TFLOPS is the sparse peak), delivering a 150 percent low-batch gain and superior high-batch throughput. FP4 at 0.5 bytes per parameter on Blackwell B200 shrinks the 117B `gpt-oss-120b` model to 58.5 GB for a single 80 GB GPU. It also shrinks the 21B `gpt-oss-20b` model to 10.5 GB for a 16 GB edge GPU.
 </details>
 
 <details>
@@ -842,7 +850,7 @@ vLLM offers the broadest model support, PagedAttention with hash-based prefix ca
 <details>
 <summary>**19. Which five Prometheus metrics must be monitored on every production vLLM deployment, and what are their alert thresholds?**</summary>
 
-First, monitor `vllm:gpu_cache_usage_perc` and keep it below 0.85 nominally while alerting above 0.95 for 2 minutes. Second, monitor `vllm:cpu_cache_usage_perc` and keep it at 0.00 with recompute-only preemption (`--swap-space 0` on vLLM before v0.18). Third, alert whenever `rate(vllm:num_preemptions_total[2m]) > 0` for 30 seconds. Fourth, keep `vllm:num_requests_waiting` below 10 for normal workloads or below 5 for strict TTFT targets. Fifth, track `vllm:num_requests_running` against `C_max` and `--max-num-seqs`.
+First, monitor `vllm:gpu_cache_usage_perc` and keep it below 0.85 nominally while alerting above 0.95 for 2 minutes. Second, monitor `vllm:cpu_cache_usage_perc` and expect 0.00 on V1, which has no host swap. Third, alert whenever `rate(vllm:num_preemptions_total[2m]) > 0` for 30 seconds. Fourth, keep `vllm:num_requests_waiting` below 10 for normal workloads or below 5 for strict TTFT targets. Fifth, track `vllm:num_requests_running` against `C_max` and `--max-num-seqs`.
 </details>
 
 <details>
@@ -870,9 +878,11 @@ Setting `"temperature": 0` enables greedy token selection, but dynamic continuou
 | Note Type | Details |
 |---|---|
 | Run here (deterministic lab verification) | `code/part15/vllm_paged_attention.py` and `code/part15/vllm_paged_attention_lab.py` executed locally (`Summary: 25 passed, 0 failed`), verifying all KV cache equations, PagedAttention fragmentation bounds, padding FLOP savings, Copy-on-Write reference counts, APC SHA-256 block matching, RAG vs CAG costs, chunked prefill budgets, Swap vs Recompute crossover latencies, `TP=4`/`TP=8` concurrency tables, DeepSeek-R1 `TP/PP/EP` sharding, Multi-LoRA HBM footprints, and Lab 03 metrics. |
-| Explicitly labelled inferences | None invented; the worked Multi-LoRA HBM calculation (`16,777,216` params = `32.0 MB` per rank-`16` adapter across `4` projections/layer on a `32`-layer `d=4096` `8B` model, `16.2684 GB` for base + `8` adapters) is computed deterministically by `evaluate_multi_lora_and_lab03()` in `code/part15/vllm_paged_attention.py` from the standard LoRA rank formula (`GAK` Ch. 6 & `HLS` Ch. 10). |
-| Not verified on live hardware (`untested here`) | All `docker run`, `vllm serve`, `python -m vllm.entrypoints.api_server`, `nsys profile`, and `curl http://localhost:8000/...` GPU runtime commands are reference operational patterns from the cited sources and are marked `(untested here)` in this local CPU build environment. |
+| Explicitly labelled inferences | None invented; the worked Multi-LoRA HBM calculation (`16,777,216` params = `32.0 MB` per rank-`16` adapter across `4` projections/layer on a `32`-layer `d=4096` `8B` model, `16.2684 GB` for base + `8` adapters) is computed deterministically by `evaluate_multi_lora_and_lab03()` in `code/part15/vllm_paged_attention.py` from the standard LoRA rank formula (*Generative AI on Kubernetes* Ch. 6 & `HLS` Ch. 10). |
+| Not verified on live hardware (`untested here`) | All `docker run`, `vllm serve`, `nsys profile`, and `curl http://localhost:8000/...` GPU runtime commands are reference operational patterns from the cited sources and are marked `(untested here)` in this local CPU build environment. |
 
 corrected 2026-11-11: `--swap-space` (swap_space) is no longer a vLLM option; vllm/config/cache.py has it at v0.17.0 and not at v0.18.0 or v0.32.0, and the v0.32.0 docs/configuration/optimization.md says V1 preempts by recompute rather than swap. The swap-thrashing figures in this chapter come from the nvidia-devops material and describe vLLM before v0.18. Sources: vllm-project/vllm tags v0.17.0, v0.18.0, v0.32.0.
 
 corrected 2026-11-11: `--max-seq-len-to-capture` does not appear in the vLLM v0.32.0 source (vllm/engine/arg_utils.py, vllm/config/compilation.py); source vllm-project/vllm tag v0.32.0.
+
+corrected 2026-11-12: swap versus recompute recomputed from the chapter's own formula and code/part15/vllm_paged_attention.py. Llama-3-70B at 4,096 tokens: recompute 289 ms (not 29.01 ms), GQA round-trip swap 41.9 ms, so swap is faster on paper and V1 recomputes because swap was removed. At 65,536 tokens recompute is 9,961 ms against a 671 ms swap round trip. H100 989/1,979/3,958 TFLOPS for TF32/BF16/FP8 are sparse peaks, dense are 495/989/1,979 (NVIDIA H100 datasheet). The pipeline-parallel KV imbalance failure mode was removed as unsupported. vLLM source: v0.17.0 vllm/config/cache.py has swap_space, v0.18.0 does not; v0.18.0 docs/configuration/optimization.md states V1 defaults to RECOMPUTE. Checked 2026-11-12.

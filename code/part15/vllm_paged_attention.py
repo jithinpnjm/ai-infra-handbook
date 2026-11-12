@@ -26,7 +26,9 @@ Models:
      num_computed_tokens`, capped by `long_prefill_token_threshold` and `max_num_batched_tokens=2048`).
    - Compares PCIe `Swap` (`t_swap = 2 * KV_bytes / B_PCIe`, `62.5 ms` one-way / `125.0 ms` round-trip for `4 GB`
      over `64 GB/s` PCIe Gen4/Gen5) against GPU `Recompute` (`t_recompute = (2 * L * S^2 * H + 12 * L * S * H^2)
-     / T_GPU` on `989 TFLOPS` H100), verifying `t_recompute < t_swap` for `S < 8192`.
+     / T_GPU` on `989 TFLOPS` dense BF16 H100, an upper bound that assumes 100 percent utilisation). For the GQA
+     Llama-3-70B (8 KV heads) the round-trip swap at `S=4096` is about `42 ms` against about `289 ms` recompute,
+     so on paper swap is faster; vLLM V1 recomputes anyway because it removed swap.
 4. Distributed Parallelism (TP, PP, DP, EP), Concurrency Capacity Planning & Speculative Decoding:
    - Models Llama-3-70B concurrency `C_max` across `4x 80 GB` (`TP=4`, `140 GB` KV pool -> `218, 54, 13`
      requests at `S=2048, 8192, 32768`) and `8x 80 GB` (`TP=8`, `428 GB` KV pool -> `668, 167, 41` requests),
@@ -302,10 +304,13 @@ def evaluate_chunked_prefill_and_preemption(
     num_prefill_chunks = math.ceil(prompt_tokens / chunk_size)
     scheduled_tokens_step = active_decode_seqs + chunk_size
 
-    # Swap vs Recompute for a single sequence of length `seq_len_for_preemption`
-    # Under MHA (`H = 8192`) or when swapping an allocated KV tensor (e.g., 4 GB on PCIe at 64 GB/s -> 62.5 ms one-way, 125 ms round-trip):
-    kv_bytes = 2.0 * num_layers * seq_len_for_preemption * hidden_size * precision_bytes
+    # Swap vs recompute for one sequence. The KV bytes of a GQA model use the KV head count, not the
+    # hidden size: 2 (K and V) * layers * tokens * kv_heads * head_dim * bytes. The MHA figure (hidden_size
+    # in place of kv_heads * head_dim) is kept only as the worst case. Round trip = out to host and back.
+    kv_bytes = 2.0 * num_layers * seq_len_for_preemption * num_kv_heads * head_dim * precision_bytes
+    kv_bytes_mha = 2.0 * num_layers * seq_len_for_preemption * hidden_size * precision_bytes
     t_swap_sec = (2.0 * kv_bytes) / (pcie_bw_gbps * 1e9)
+    t_swap_mha_sec = (2.0 * kv_bytes_mha) / (pcie_bw_gbps * 1e9)
     prefill_flops = (
         2.0 * num_layers * (seq_len_for_preemption ** 2) * hidden_size
         + 12.0 * num_layers * seq_len_for_preemption * (hidden_size ** 2)
@@ -321,7 +326,9 @@ def evaluate_chunked_prefill_and_preemption(
         "scheduled_tokens_step": float(scheduled_tokens_step),
         "within_token_budget": scheduled_tokens_step <= max_num_batched_tokens,
         "kv_size_gb": round(kv_bytes / 1e9, 4),
+        "kv_size_mha_gb": round(kv_bytes_mha / 1e9, 4),
         "t_swap_ms": round(t_swap_sec * 1000.0, 2),
+        "t_swap_mha_ms": round(t_swap_mha_sec * 1000.0, 2),
         "t_recompute_ms": round(t_recompute_sec * 1000.0, 2),
         "recompute_faster_than_swap": t_recompute_sec < t_swap_sec,
         "recommended_policy": "recompute" if t_recompute_sec < t_swap_sec else "swap",

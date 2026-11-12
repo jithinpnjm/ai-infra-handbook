@@ -161,16 +161,21 @@ def run_lab() -> int:
     )
 
     check(
-        "13. Transferring 4 GB of KV cache over 64 GB/s PCIe takes 62.5 ms one-way (~62 ms), and for S=4096 on H100 (989 TFLOPS) Recompute is faster than PCIe Swap",
+        "13. Transferring 4 GB of KV cache over 64 GB/s PCIe takes 62.5 ms one-way; for GQA Llama-3-70B at S=4096 the round-trip swap is ~41.94 ms and recompute is ~289 ms at 989 TFLOPS, so swap is faster on paper",
         cp["four_gb_one_way_swap_ms"] == 62.5
-        and cp["recompute_faster_than_swap"] is True
-        and cp["recommended_policy"] == "recompute",
+        and cp["t_swap_ms"] == 41.94
+        and abs(cp["t_recompute_ms"] - 289.0) < 1.0
+        and cp["t_swap_mha_ms"] == 335.54
+        and cp["recompute_faster_than_swap"] is False
+        and cp["recommended_policy"] == "swap",
     )
 
     cp_long = evaluate_chunked_prefill_and_preemption(seq_len_for_preemption=65536)
     check(
-        "14. At ultra-long sequence length S=65,536, quadratic O(S^2) prefill makes t_recompute > t_swap",
-        cp_long["recompute_faster_than_swap"] is False and cp_long["recommended_policy"] == "swap",
+        "14. At S=65,536 quadratic prefill takes ~9.96 s against a ~671 ms GQA round-trip swap, so the swap advantage widens",
+        cp_long["recompute_faster_than_swap"] is False
+        and cp_long["t_swap_ms"] == 671.09
+        and abs(cp_long["t_recompute_ms"] - 9962.0) < 5.0,
     )
 
     # 7. Distributed Parallelism (TP, PP, DP, EP) & Concurrency Capacity Planning (V12 Ch. 8-9 & DAI Ch. 6)

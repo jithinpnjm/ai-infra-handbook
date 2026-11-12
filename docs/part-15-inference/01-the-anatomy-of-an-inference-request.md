@@ -26,21 +26,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-In today's AI landscape, putting a foundation model into production requires a fundamental shift in how we design, measure, and operate GPU systems. In this chapter, we trace the end-to-end anatomy of a production inference request from the moment an HTTP packet arrives at the gateway to the final streamed output token. We'll explore these mechanics in the context of modern accelerators like the NVIDIA L40S, A100, H100, H200, and B200 / GB200 NVL72. You'll learn how network proxies, CPU tokenizers, PCIe DMA engines, Tensor Cores, and High Bandwidth Memory work together to serve interactive AI applications at scale.
+A user pastes a long contract into a chat window and presses Enter. Nothing visible happens for a second. Then words start to appear, one after another, at a steady pace. The user sees one smooth reply. The platform team sees a request that crossed a gateway, waited in a queue, was cut into tokens by a CPU, was pushed through the GPU in two very different phases, and was streamed back piece by piece.
 
-Suppose an engineering team finishes training a seventy-billion-parameter language model across sixty-four H100 GPUs. During training, the cluster ran offline batch jobs with predictable tensor shapes, continuous Tensor Core saturation, and static memory allocations. When we place that same trained model behind a live chat API, the infrastructure rules flip overnight.
+Most of the time the user waited was not spent in the part the team paid for. In the worked example later in this chapter, a single-threaded Python tokenizer takes 320 ms of a 412 ms response, while the expensive H100 sits idle. After the first token, a 70B model in 16-bit precision on one H100 can produce at most about 24 tokens per second, because every token must stream all 140 GB of weights out of memory. This chapter follows that one request, stage by stage, so you can tell which of those costs belongs to the network, the CPU, the compute units or the memory.
+
+Suppose an engineering team finishes training a seventy-billion-parameter language model across sixty-four H100 GPUs. During training, the cluster ran offline batch jobs with predictable tensor shapes, continuous Tensor Core saturation, and static memory allocations. When the team places that same trained model behind a live chat API, the infrastructure rules flip overnight.
 
 Live user traffic arrives in unpredictable bursts rather than steady batches. Prompt lengths swing wildly from a ten-token question to a large document paste. Users judge service quality in milliseconds as they wait for the first word and read the streaming reply. Meanwhile, GPU memory consumption grows dynamically with every active conversation and every generated token.
 
 ```text
-Production Inference Reality Check (Volume 12 Chapters 1-2, AI Engineering Chapter 9, Hands-On LLM Serving Chapter 5):
+Production inference reality check:
 - Lifetime inference cost share: Inference accounts for up to 90% of deployed machine learning compute costs (Desislavov et al., 2023)
 - Input sequence variance: 10-token chat query vs 32,000-token document prompt
 - Single-stream 70B FP16 decode ceiling on 1x H100 SXM5 (3.35 TB/s HBM3):
   140 GB model weights / 3,350 GB/s = 41.79 ms (~41.7 ms) per token -> ~24 tokens/sec hardware ceiling
 - Llama-3-70B KV cache growth (L=80, N_kv_heads=8, d_head=128, FP16):
   327,680 bytes/token = 1.342 GB (~1.34 GB) per 4,096-token sequence -> 85.76 GB at 64 concurrent sequences
-- Non-GPU latency trap (Volume 12 Chapter 2):
+- Non-GPU latency trap:
   Up to 60% of end-to-end latency occurs outside the GPU; a single-threaded Python tokenizer can consume 320 ms out of 412 ms (77.7%)
 ```
 
@@ -49,7 +51,7 @@ In large-scale serving systems, even the fastest GPUs can be hindered by non-GPU
 - **Unbounded KV cache crashes:** Even when model weights fit comfortably inside GPU memory, concurrent long-context requests expand the Key-Value cache. Eventually the allocator runs out of High Bandwidth Memory. Once the first pod crashes with an out-of-memory error, redirected traffic triggers a cascading outage across every surviving replica.
 - **Non-GPU bottlenecks starving expensive silicon:** Adding more H100 GPUs will not raise throughput if a Python tokenizer thread pool is locked by the Global Interpreter Lock. Similarly, pageable host memory copies or reverse-proxy socket buffers can stall token delivery while the GPUs sit idle.
 
-We explore the two distinct phases of autoregressive inference—compute-bound prefill and memory-bandwidth-bound decode—throughout this chapter. This two-phase split is a foundational pattern that we revisit frequently across Part 15. **Before you tune a serving engine or buy more GPUs, trace the request across all nine host and device stages and separate compute-bound prefill from bandwidth-bound decode**.
+The two phases of autoregressive inference, compute-bound prefill and memory-bandwidth-bound decode, run through this whole chapter. The split is a foundation for the rest of Part 15. **Before you tune a serving engine or buy more GPUs, trace the request across all nine host and device stages and separate compute-bound prefill from bandwidth-bound decode**.
 
 ## Prerequisites and outcomes
 
