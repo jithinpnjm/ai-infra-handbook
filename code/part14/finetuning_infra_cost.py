@@ -430,7 +430,7 @@ def evaluate_cloud_capacity_and_finops() -> Dict[str, object]:
         },
         "h200_mig_profiles": h200_mig_profiles,
         "cluster_1000_gpu_design": cluster_1000_gpu_capex_m,
-        "allreduce_1gb_at_12_5_gbps_ms": allreduce_1gb_bits_ms if False else allreduce_1gb_ms,
+        "allreduce_1gb_at_12_5_gbps_ms": allreduce_1gb_ms,
     }
 
 
