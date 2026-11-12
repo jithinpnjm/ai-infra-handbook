@@ -21,28 +21,19 @@ lab_venue: "none (design / reading)"
 | **Part** | Part 9: NVIDIA systems and reference architectures |
 | **Sources used** | `volume-08/01-architecture-design-masterclass.md`; `volume-08/02-capacity-tco-masterclass.md`; `nvidia-devops` V19 (Ch. 3, Ch. 6); `nvidia-devops` V21 (Ch. 11, Ch. 12, Lab 04); *AI Systems Performance Engineering* Ch. 2 |
 
+
 ## Why this matters for AI infrastructure
 
-When a data science lead walks into a budget meeting claiming that Kubernetes GPU allocation is nearly full, a Senior Solutions Architect does not guess. That lead may ask for five million dollars to buy sixteen more HGX H100 servers immediately. The same rigor applies when a startup CFO asks how many GPUs the company must buy over the next three years and when the cluster will run out of data center power.
+An SRE gets this question in a planning meeting: will the GPU fleet run out of power before it runs out of budget, and when? A data science lead adds a second question. Kubernetes shows 98 percent of the GPUs allocated, so can we have five million dollars for sixteen more HGX H100 servers? You cannot answer either one by guessing. You answer by measuring what the fleet really does, forecasting demand against the physical limits of the room, and only then pricing hardware.
 
-Capacity planning for AI factories is unforgiving for three physical and financial reasons.
+Three facts make AI capacity planning unforgiving.
 
-1. Supply-chain lead times span three to nine months or more, so you cannot treat bare-metal GPUs or liquid-cooled racks like elastic cloud VMs. If you wait until your cluster is almost full to place an order, the business starves for six months waiting on delivery. Conversely, if you panic and buy a full three-year projection on the first day, millions of dollars of silicon sit idle.
-2. The Allocation versus Utilization illusion, often called the Empty Hotel problem, hides massive waste inside Kubernetes clusters. Kubernetes `nvidia.com/gpu` allocation measures how many rooms are booked rather than how many GPUs are executing math. Without MIG partitioning, job bin-packing, and automated FinOps reaper bots driven by `DCGM_FI_PROF_SM_ACTIVE`, clusters routinely report 98% allocation. In reality, they sit at 12% physical silicon utilization.
-3. Facility power ceilings and exponential forecasting traps break naive spreadsheet projections. Extrapolating monthly growth blindly for three years asks for over eleven thousand GPUs while blowing through a 150 kW data center power wall in the tenth month.
+1. Lead times are long. Enterprise GPU and liquid-cooled rack orders take three to nine months to arrive. If you wait until the cluster is almost full to order, the business starves for months. If you buy the whole three-year projection on day one, millions of dollars of silicon sit idle.
+2. Allocation is not utilization. Kubernetes counts how many GPUs are reserved, not how many are doing math. Clusters routinely report 98 percent allocation while the silicon sits at 12 percent busy. This is the Empty Hotel problem: every room is booked and most are empty.
+3. The room has a ceiling. Extrapolating monthly growth blindly for three years asks for over eleven thousand GPUs and runs through a 150 kW power wall in the tenth month.
 
-> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
-
-:::info Corpus scope note
-This chapter synthesizes the architecture methodology, falsifiable PoC design, FinOps reclamation, multi-year TCO, and capacity-planning exercises from the sources listed below. Operational runbooks for Kubernetes upgrades, incident game-days, and multi-region serving are covered in later parts per `planning/MIGRATION_MAP.md`.
-
-```text
-Primary sources used in this chapter:
-- volume-08/01-architecture-design-masterclass.md and volume-08/02-capacity-tco-masterclass.md
-- nvidia-devops Volume 19 Chapter 3 and Chapter 6 (plus routed parts 11, 15, 16, 17)
-- nvidia-devops Volume 21 Chapter 11, Chapter 12, and Lab 04
-- AI Systems Performance Engineering Chapter 2
-```
+:::note dcgm-exporter 4.9.0 version note
+dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 :::
 
 ## Prerequisites and outcomes
@@ -58,92 +49,27 @@ Chapter prerequisites:
 - Chapter 9.11 (Power delivery, thermal design, and liquid cooling)
 ```
 
-**Outcomes:** After completing this chapter, you will be able to complete four core architecture and FinOps tasks.
-1. Apply the Six-Stage Solutions Architecture Methodology, map the six critical system paths, and design falsifiable Proofs of Concept.
-2. Distinguish Kubernetes Allocation from DCGM Silicon Utilization, calculate Effective Capacity and Cost per Million Tokens, and build an automated FinOps Reaper Bot alongside a three-tier capacity strategy.
-3. Execute worked multi-year hardware refresh and TCO exercises across GPU-years, cost per GPU-year, cost per PFLOP-year, and generational H100 to B200 upgrade ROI.
-4. Solve the 36-Month Capacity Planning and Facility-Wall Exercise across a fixed data center power ceiling.
+**Outcomes:** After completing this chapter, you will be able to do four things.
+1. Check whether a fleet is really full, using SM activity instead of Kubernetes allocation, and calculate effective capacity and cost per million tokens.
+2. Forecast demand with seasonality and lead times, and find the month the forecast hits a facility power ceiling.
+3. Work through multi-year refresh and TCO examples across GPU-years, cost per GPU-year, cost per PFLOP-year and generational upgrade return.
+4. Design a falsifiable proof of concept that tests the riskiest claim before a purchase.
 
 ---
 
-## Concepts: basics → intermediate → advanced
+## 1. Is the fleet really full? Allocation versus utilization
 
-## 1. The Solutions Architecture methodology and falsifiable Proof of Concept design
+Imagine a hotel whose reservation system says almost every room is booked, and a department asks for a new wing. Before you sign, you walk the hallway and open the doors. Nearly nine in ten booked rooms are empty, because guests dropped a suitcase and left.
 
-When a stakeholder asks for sixty-four GPUs on Kubernetes in three months, they are handing you a proposed solution disguised as a requirement. Starting a sizing exercise by opening a hardware catalog before uncovering the real workload constraints and testing risky assumptions leads directly to expensive shelfware or production outages.
+### 1.1 Why 98 percent allocation can hide 12 percent utilization
 
-### 1.1 The six-stage architecture framework and five core definitions
-
-Every defensible AI infrastructure design follows six sequential stages from `volume-08/01-architecture-design-masterclass.md`.
-
-| Stage | Core Question | Concrete Deliverable |
-|---|---|---|
-| **1. Discover** | What is the actual workload, and what are the unyielding constraints? | Clarified requirements specification + explicit list of unknowns. |
-| **2. Model** | Which data, control, trust, state, failure, and observability paths matter? | Six-path architecture diagram (`Data/Request`, `Control`, `Trust/Identity`, `Persistent State`, `Failure Domains`, `Observability`). |
-| **3. Compare** | Which feasible options differ on the criteria that matter most? | Quantitative trade-off matrix (e.g., separate Slurm + K8s pools vs unified K8s with Run:ai/Volcano). |
-| **4. Recommend** | Which option best fits the business today, and under what conditions? | Architecture Decision Record (`ADR`) with explicit assumptions. |
-| **5. Validate** | Which uncertain claims must be proved before committing production CAPEX? | **Falsifiable Proof of Concept (`PoC`)** acceptance test plan. |
-| **6. Adopt** | How will teams migrate, operate, monitor, and govern the cluster on Day 2? | Staged rollout schedule, CMDB inventory, and on-call runbooks. |
-
-Keep five terms distinct in every architecture review.
-
-| Term | Definition | Concrete AI Infrastructure Example |
-|---|---|---|
-| Requirement | A measurable outcome the system must achieve | P99 TTFT `<= 500 ms` at `200` concurrent users |
-| Assumption | An unverified belief that must be tested | Existing 100G NAS can absorb `1 TB` checkpoint bursts |
-| Constraint | A hard boundary you cannot negotiate away | Data cannot leave the EU; max rack power in Room B is `150 kW` |
-| Trade-off | Intentionally sacrificing one property to gain another | Accepting lower GPU utilization via physical node isolation to guarantee strict multi-tenant security |
-| Failure Domain | The set of components that go offline together when one dependency fails | All 8 GPUs on an HGX baseboard share one NVSwitch domain; all nodes on PDU-A share one branch breaker |
-
-### 1.2 The Unfalsifiable-PoC Test and the 8 PoC failure modes
-
-A Demo proves that software can turn on. A Proof of Concept is a scientific experiment designed to test a specific, falsifiable hypothesis to unblock a production purchasing decision, as established in `volume-08/02-capacity-tco-masterclass.md`.
-
-The Golden Rule of PoCs is the Unfalsifiable-PoC Test. If you cannot state, in advance, a specific numeric measurement that will cause the PoC to be declared a FAIL, it is not a PoC. It is a demo.
-
-```mermaid
-flowchart LR
-    H["1. Hypothesis<br/>(Trap: 'Let's try it')"] --> E["2. Test Env<br/>(Trap: Unrepresentative lab)"]
-    E --> W["3. Workload Gen<br/>(Trap: Steady synthetic load)"]
-    W --> M["4. Metrics & SLOs<br/>(Trap: Averages instead of P95/P99)"]
-    M --> B["5. Baseline<br/>(Trap: No current comparison)"]
-    B --> X["6. Experiment Matrix<br/>(Trap: 50 shallow features vs 2 deep)"]
-    X --> P["7. Pass/Fail Gate<br/>(Trap: Moving goalposts after test)"]
-    P --> D["8. Decision Record<br/>(Trap: Hiding residual risks)"]
-```
-
-When a customer asks for a two-week PoC of everything that tests distributed training, MIG inference, air-gapped GPU Operator upgrades, and storage all at once, refuse the kitchen-sink scope. Isolate the top one or two technical risks and write strict, separated operational and performance pass and fail gates.
+Kubernetes GPU clusters do this every day.
+1. Kubernetes allocation tracks `nvidia.com/gpu` requests. A pod that requests one GPU locks that GPU exclusively. If the Python process finishes after five minutes, sits idle in a notebook over a weekend, or loops in `CrashLoopBackOff`, Kubernetes still reports the GPU as allocated.
+2. Physical utilization is tracked by `DCGM_FI_PROF_SM_ACTIVE`. It is the fraction of streaming multiprocessors actually executing instructions.
+3. In one customer scenario, a team asked for five million dollars for sixteen HGX H100 servers because a dashboard showed 98 percent allocation. Thirty days of `DCGM_FI_PROF_SM_ACTIVE` in Prometheus showed 12 percent average utilization, because developers were locking whole GPUs for small staging and notebook tasks.
 
 ```text
-Example PoC pass/fail gates:
-1. Hypothesis A (Operational Risk - Air-Gapped GPU Operator Upgrade):
-   - Claim: NVIDIA GPU Operator upgrades drivers across a 20-node pool with zero unplanned downtime inside a 4-hour window.
-   - Pass Gate: Total duration <= 4.0 hours; unplanned pod evictions = 0; rollback to prior driver <= 30 minutes (vs 14-hour manual baseline).
-2. Hypothesis B (Performance Risk - LLM P95 TTFT under Burst Load):
-   - Claim: Model X on Triton / TensorRT-LLM sustains 200 concurrent requests with P95 TTFT < 1.0 second.
-   - Pass Gate: P95 TTFT < 1.0 s at 200 sustained concurrent users (vs 40-user / 2.3 s baseline). Never use average latency, which hides KV-cache tail spikes.
-```
-
-:::tip In one minute
-- Unpack every GPU purchase request with the six-stage methodology from Discover through Adopt, and map all six system paths across Data, Control, Trust, State, Failure Domains, and Observability.
-- Under the Unfalsifiable-PoC Test, every PoC must define a pre-agreed numeric FAIL threshold. Test one or two high-risk hypotheses deeply rather than fifty shallowly, and measure P95 and P99 tail latency under bursty load rather than averages.
-:::
-
----
-
-## 2. The Empty Hotel crisis: Allocation vs Utilization, Effective Capacity, and FinOps Reapers
-
-Imagine managing a luxury hotel where the reservation computer says almost every room is booked, and a department asks you to spend five million dollars building a new wing. Before signing the construction contract, you walk down the hallway and open the doors. You discover that nearly nine out of ten booked rooms are completely empty because guests checked in, dropped a suitcase on the floor, and left for the weekend.
-
-### 2.1 Why 98% Kubernetes Allocation can hide 12% Silicon Utilization
-
-That exact failure happens every day in Kubernetes GPU clusters, as analyzed in Volume 19 Chapter 3.
-1. Kubernetes Allocation tracks `nvidia.com/gpu` requests. When a pod requests `nvidia.com/gpu: 1`, the kubelet locks that physical GPU exclusively for that pod. Even if the Python process inside the pod finishes after five minutes, sits idle in a Jupyter notebook over a weekend, or gets stuck in a `CrashLoopBackOff` loop, Kubernetes reports full GPU allocation.
-2. Physical Silicon Utilization tracks `DCGM_FI_PROF_SM_ACTIVE`. It measures the fraction of Streaming Multiprocessors actually executing instructions on the silicon.
-3. In the Volume 19 customer scenario, an AI team demands five million dollars for sixteen new HGX H100 servers because Datadog shows 98% Kubernetes GPU allocation. Inspecting Prometheus `DCGM_FI_PROF_SM_ACTIVE` over thirty days reveals an average silicon utilization of only 12% because developers are locking full GPUs for small staging and notebook tasks.
-
-```text
-Volume 19 $5M CapEx Rejection & 7x MIG Reclamation Math:
+Rejecting the $5M purchase and reclaiming capacity with MIG:
 - Requested purchase: 16 HGX H100 servers (128 GPUs) for $5M at 98% K8s allocation (88% empty rooms)
 - Actual 30-day silicon activity (DCGM_FI_PROF_SM_ACTIVE): 12% average utilization
 - Root cause: Developers locking whole 80 GB GPUs for 5 GB staging / notebook tasks
@@ -152,15 +78,15 @@ Volume 19 $5M CapEx Rejection & 7x MIG Reclamation Math:
 - CapEx saved over next 12 months: $5M ($0 new hardware CapEx required)
 ```
 
-### 2.2 The Automated FinOps Reaper Bot and Utilization-Based Chargeback
+### 1.2 The FinOps reaper and utilization-based chargeback
 
-To stop GPU hoarding permanently, implement two automated FinOps controls from Volume 19 Chapters 3 and 6.
-1. Deploy the Automated FinOps Reaper Operator, modeled by `evaluate_finops_zombie_reaper()` in `code/part09/capacity_planning.py`. The operator continuously queries Prometheus for pods holding an allocated GPU. Under the reaper eviction rule, if `DCGM_FI_PROF_SM_ACTIVE` stays below 5% continuously for 4 hours or more, the operator automatically deletes the zombie pod. That frees the thirty-thousand-dollar GPU back to the cluster scheduler and sends a Slack notification to the pod owner with a link to their checkpoint directory.
-2. Enforce Utilization-Weighted Chargeback across teams. Tag `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_DEV_MEM_COPY_UTIL` with the Kubernetes `namespace` label in `dcgm-exporter`. Show department leads both their Allocated GPU-hours and their Utilized GPU-hours, and revoke quota from namespaces that hoard GPUs below 20% SM activity.
+Two automated controls stop GPU hoarding.
+1. A reaper operator, modeled by `evaluate_finops_zombie_reaper()` in `code/part09/capacity_planning.py`, queries Prometheus for pods that hold a GPU. If `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 hours or more, it deletes the pod, returns the GPU to the scheduler, and tells the owner on Slack with a link to their checkpoint directory.
+2. Utilization-weighted chargeback shows each team both allocated and utilized GPU hours. Tag `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_DEV_MEM_COPY_UTIL` with the Kubernetes `namespace` label in `dcgm-exporter`, and revoke quota from namespaces that stay below 20 percent SM activity.
 
-### 2.3 The mathematics of Effective Capacity, Batching Economies, and Context-Window Diseconomies
+### 1.3 Effective capacity
 
-When comparing a cheaper on-premises cluster against cloud instances, never assume nominal peak throughput equals delivered work. Compute Effective Capacity as defined in `volume-08/02-capacity-tco-masterclass.md`.
+Nominal peak throughput is not delivered work. When you compare a cheaper on-premises cluster with cloud instances, compute effective capacity first.
 
 ```text
 Effective_Capacity = Nominal_Capacity × Expected_Utilization × Availability_Factor
@@ -173,26 +99,61 @@ Worked example:
 - Effective_Capacity:   100,000 × 0.40 × 0.80 = 32,000 tokens/sec (115.2M tokens/hour)
 ```
 
-Because effective capacity drops to less than a third of the nominal figure, the real cost per million tokens more than triples compared to a naive peak estimate.
+Effective capacity here is under a third of the nominal figure, so the real cost per million tokens is more than triple a naive peak estimate.
 
-Also beware of the Fallacy of Linear Forecasting from Volume 19 Chapter 3.
-- Sub-linear scaling creates Economies of Scale via Dynamic Batching. Doubling inference traffic from 10 QPS to 20 QPS rarely requires twice the GPUs. Continuous and dynamic batching pack the extra requests into existing weight reads, raising GPU utilization from 40% to 55% on the exact same hardware.
-- Super-linear scaling creates Diseconomies of Scale via Context Windows. Suppose user count stays flat at zero growth, but product management increases maximum PDF upload length from one page to a hundred pages. Dynamic KV-cache VRAM scales linearly with sequence length, causing immediate out-of-memory crashes and requiring a massive VRAM expansion to H200 or B200 GPUs despite zero new users.
+Two forecasting traps follow from the same idea.
+- Sub-linear scaling: doubling inference traffic from 10 to 20 QPS rarely needs twice the GPUs. Continuous batching packs the extra requests into existing weight reads and lifts utilization from 40 to 55 percent on the same hardware.
+- Super-linear scaling: user count stays flat, but product management raises the maximum PDF upload from one page to a hundred. KV-cache memory grows linearly with sequence length, so the fleet runs out of memory with zero new users.
 
-:::tip In one minute
-- Never approve GPU purchases from Kubernetes Allocation alone. Audit `DCGM_FI_PROF_SM_ACTIVE` first, slice staging GPUs into up to 7 MIG instances, and run an automated FinOps Reaper Bot that evicts pods below 5% SM activity for 4 hours.
-- Size economics using Effective Capacity rather than nominal peak throughput, and model sequence-length KV-cache jumps separately from user QPS growth.
-:::
+Before you approve any GPU purchase, query `DCGM_FI_PROF_SM_ACTIVE` over thirty days and put sequence length in the forecast next to QPS.
 
----
+## 2. Forecasting demand, lead times and the 36-month power wall
 
-## 3. Workload optimization levers: Bin-Packing, Preemption Tiers, and the Three-Tier Cloud and Spot Model
+When traffic grows 15 percent a month and training runs 20 percent a month, a spreadsheet quickly outruns the breakers of the data hall. Orders take three to nine months, so the reorder trigger and the power ceiling have to be planned together.
 
-Even when individual pods use their assigned GPUs actively, poor scheduler placement and all-on-demand cloud purchasing can waste a third of your hardware budget. Spreading partial-node jobs across a cluster leaves zero full nodes free for distributed training, while paying retail on-demand prices for interruptible batch jobs burns cash unnecessarily.
+### 2.1 Seasonal forecast, the 70 percent reorder trigger and the facility wall
 
-### 3.1 Job bin-packing and P0, P1, and P2 preemption
+The block below combines a seasonal demand model, a lead-time-aware ordering rule, and a facility power check. Read it as the answer to the opening question: in a 150 kW room, the fleet hits the wall at month 9 to 10.
 
-How a scheduler places jobs across eight-GPU nodes directly determines how many whole nodes remain free for large distributed training, as shown in Volume 21 Chapter 12 Part 1.1 and `bin_pack_gpu_jobs()` in `code/part09/capacity_planning.py`.
+```text
+1. Seasonal Month-over-Month Forecasting :
+   QPS[t] = QPS_base * (1 + growth_rate)^(t - t0) * (1 + seasonality * sin(2*pi * (t mod 12) / 12))
+   GPUs_Needed[t] = QPS[t] / 7.6 QPS_per_GPU   (at ~15.2 QPS per 2-GPU Llama-70B replica)
+   Starting from 286 QPS with growth_rate = 10%/mo and seasonality = 0.15:
+   - Month +0:  286 QPS          -> 38 GPUs
+   - Month +6:  507 QPS (+77%)   -> 67 GPUs
+   - Month +11: 755 QPS (+164%)  -> 99 GPUs
+
+2. Upfront vs Incremental vs Hybrid Procurement (400 QPS / 53 GPUs -> 1,000 QPS / 132 GPUs):
+   - Option A (Upfront 132 GPUs = $3.96M): Zero stock-out risk, but 40% Year-1 initial utilization (~$2M idle)
+   - Option B (Incremental +79 GPUs in 4 tranches: +20, +20, +20, +19 = $2.37M): High stock-out risk under 3-9 mo lead times
+   - Recommended Hybrid Strategy: Add +40 GPUs immediately ($1.2M -> 93 GPUs = ~707 QPS capacity), and trigger
+     the next purchase order whenever forecasted demand at (Today + Lead_Time) reaches 70% of installed capacity
+
+3. The 36-Month Capacity Planning & 150 kW Facility-Wall Exercise :
+   Inputs: Inference = 100 QPS (+15%/mo, 7.6 QPS/GPU); Training = 50 jobs/mo (+20%/mo, 8/30 = 0.2667 GPUs/job)
+   Facility ceiling: 150 kW max power / ~1.3 kW per GPU = ~115-117 GPUs physical ceiling
+   - Month 0:  13.2 (inf) + 13.3 (train) = 26.5 (~26) GPUs
+   - Month 6:  30.4 (inf) + 39.8 (train) = 70.3 (~70) GPUs
+   - Month 8:  40.3 (inf) + 57.3 (train) = 97.6 (~98) GPUs
+   - Month 9:  46.3 (inf) + 68.8 (train) = 115.1 (~115) GPUs  [Reaches ~115-117 GPU / 150 kW facility wall]
+   - Month 10: 53.2 (inf) + 82.6 (train) = 135.8 (~136) GPUs  [Exceeds 150 kW facility ceiling]
+   - Month 36: Unconstrained 15%-20% compounding asks for > 11,400 GPUs (15,315 QPS + 35,440 training jobs/mo)
+```
+
+Two lessons follow. The calculation is modeled by `forecast_36month_capacity_exercise()` in `code/part09/capacity_planning.py`.
+1. The facility wall arrives between month 9 and month 10, because you cannot plug a 118th GPU into a 150 kW room. Before month 9, offload interruptible training onto cloud spot instances, move to denser H200 or B200 GPUs, or book a second data hall a year ahead. A single GB200 NVL72 rack draws about 130 kW (chapter 9.5), so a 150 kW room holds one such rack and little else.
+2. Replace the unconstrained exponential tail with a saturating logistic S-curve, modeled by `forecast_saturating_scurve_gpus()` in the same file. The curve is G(t) = K / (1 + ((K - G0) / G0) * exp(-r * t)), where K is the carrying capacity such as the facility limit. Choosing a logistic curve is this chapter's inference, not a vendor method. Real adoption levels off at a market or facility limit.
+
+Order the next tranche when forecast demand at today plus supplier lead time reaches 70 percent of installed capacity, and plot the facility power ceiling as a horizontal line on every forecast chart.
+
+## 3. Using the fleet better before buying: bin-packing, preemption and spot
+
+Even when pods use their GPUs, poor placement and all-on-demand cloud purchasing can waste a third of the budget. Spreading small jobs across nodes leaves no free node for distributed training, and paying retail for interruptible work burns cash.
+
+### 3.1 Bin-packing and P0, P1, P2 preemption
+
+How the scheduler places jobs on eight-GPU nodes decides how many whole nodes stay free. The function `bin_pack_gpu_jobs()` in `code/part09/capacity_planning.py` models this.
 
 ```text
 Job Bin-Packing Comparison for 5 jobs requesting [8, 4, 4, 8, 4] GPUs (28 GPUs total):
@@ -202,14 +163,14 @@ Job Bin-Packing Comparison for 5 jobs requesting [8, 4, 4, 8, 4] GPUs (28 GPUs t
   Uses 4 nodes (32 GPUs total) -> 28 / 32 = 87.5% allocation, saves 1 full 8-GPU server
 ```
 
-Pair bin-packing with Three-Tier Preemption across `P0`, `P1`, and `P2` priority classes.
-- Tier `P0` covers Production Inference at the highest priority and is never preempted.
-- Tier `P1` covers Critical Scheduled Training and can preempt `P2` jobs whenever capacity is needed.
-- Tier `P2` covers Opportunistic Research and Hyperparameter Sweeps. It runs at a discount on otherwise idle GPUs and is automatically preempted whenever `P0` or `P1` demand arrives, resuming later from its last checkpoint.
+Pair packing with three priority classes.
+- Tier `P0` is production inference at the highest priority and is never preempted.
+- Tier `P1` is critical scheduled training and can preempt `P2` jobs.
+- Tier `P2` is research and hyperparameter sweeps. It runs at a discount on idle GPUs, is preempted when `P0` or `P1` needs capacity, and resumes from its last checkpoint.
 
-### 3.2 The Three-Tier Capacity Purchasing Model
+### 3.2 The three-tier purchasing model
 
-To cut a runaway cloud GPU bill in half within thirty days, as detailed in Volume 19 Chapters 3 and 6 and Volume 21 Chapter 12 Part 2, align each workload tier with its matching financial contract.
+To halve a runaway cloud GPU bill in thirty days, match each workload tier to the right contract.
 
 ```mermaid
 flowchart TD
@@ -226,35 +187,26 @@ flowchart TD
 | 3. Scavenger | Batch training and sweeps | Cloud spot instances (about 65% to 70% discount) | Needs 15-minute async S3 checkpoints and a 2-minute IMDS termination handler |
 
 - Tier 1 Baseline uses On-Premises hardware or Reserved Instances to cover steady minimum inference traffic and core R&D, cutting hourly hardware cost by 40% to 70% compared to On-Demand.
-- Tier 2 Burst uses Cloud On-Demand instances strictly for unpredictable daily or seasonal inference peaks above the baseline.
-- Tier 3 Scavenger uses Cloud Spot or Preemptible Instances for interruptible batch training and hyperparameter sweeps.
 
 ```text
-Spot vs On-Demand Cloud GPU Economics (Volume 21 Chapter 12 Part 2.1, 8xH100 p5.48xlarge):
+Spot vs On-Demand cloud GPU economics (8xH100 p5.48xlarge):
 - On-Demand rate ($60/hr instance = $7.50/GPU/hr): $180/GPU/day -> $54,000/GPU/year (over 300 operating days)
 - Spot rate (~65% discount, $21/hr = $2.63/GPU/hr): $63/GPU/day -> $18,936 (~$18.9K)/GPU/year
 - Annual savings per GPU on Spot: ~$35.1K / GPU / year
 ```
 
-How do you survive two-minute Spot evictions without losing days of training progress? Poll the cloud metadata service such as AWS IMDSv2 at `http://169.254.169.254/latest/meta-data/spot/instance-action` every five seconds via a background daemon thread or the AWS Node Termination Handler. Pair that polling with 15-minute asynchronous sharded S3 checkpoints. When the eviction notice arrives, set `interruption_signal = True`, flush an immediate checkpoint at the end of the current step, and exit cleanly with zero corrupted state.
+How do you survive a two-minute spot eviction without losing days of progress? Poll the cloud metadata service, for example AWS IMDSv2 at `http://169.254.169.254/latest/meta-data/spot/instance-action`, every five seconds from a background thread or the AWS Node Termination Handler. Pair that with 15-minute asynchronous sharded checkpoints. When the notice arrives, set an interruption flag, flush a checkpoint at the end of the current step, and exit cleanly.
 
-:::tip In one minute
-- Bin-packing jobs onto fewer nodes raises node allocation to 87.5%, and pairing it with `P0`, `P1`, and `P2` preemption keeps measured SM activity above 80%.
-- Combine Reserved or On-Premises capacity for baseline inference, On-Demand for peaks, and Spot Instances paired with a termination handler and asynchronous checkpoints for training.
-:::
+## 4. Worked cost and refresh examples
 
----
+Rough sticker prices give the wrong answer to what it costs to serve a million tokens. A defensible model amortizes staggered purchases across active GPU-years and counts fixed depreciation and staffing when traffic drops below peak.
 
-## 4. Worked TCO and hardware refresh exercises
+### 4.1 Example 1: cost per million tokens on a 408-GPU inference fleet
 
-When executives ask what it actually costs to serve a million tokens or expand a GPU fleet over three years, rough hardware sticker prices give the wrong answer. A defensible TCO model must amortize staggered server purchases across active GPU-years and account for fixed depreciation and staffing costs when diurnal traffic drops below peak.
-
-### 4.1 Exercise 1: Cost per Million Tokens on a 408-GPU Inference Fleet
-
-From Volume 21 Chapter 12 Part 1.2, calculate the exact daily cost and Cost per Million Tokens for a 408-GPU H100 inference cluster serving a constant 2,000 QPS with a 150-token average response length.
+Calculate the daily cost and cost per million tokens for a 408-GPU H100 cluster serving a constant 2,000 QPS with 150-token responses.
 
 ```text
-Exercise 1: 408-GPU H100 Inference Fleet (2,000 QPS, 150 tokens/response)
+Worked example 1: 408-GPU H100 Inference Fleet (2,000 QPS, 150 tokens/response)
 1. Daily token output:
    - Responses/day: 2,000 QPS * 86,400 s = 172,800,000 (172.8M) responses/day
    - Tokens/day:    172.8M * 150 tokens  = 25,920,000,000 (25.92B or 25,920M tokens/day; 300,000 tok/s)
@@ -268,14 +220,14 @@ Exercise 1: 408-GPU H100 Inference Fleet (2,000 QPS, 150 tokens/response)
    - At 40% average diurnal load (800 QPS average): rises ~2.5x to ~$1.74 per 1M tokens
 ```
 
-Why does the cost per million tokens jump from $0.70 to $1.74 when average diurnal traffic drops to 40% of peak? Hardware amortization and FTE salaries are fixed daily costs that dominate electricity. Because fixed costs do not shrink when traffic dips overnight, a 2.5x drop in average utilization drives the real cost per million tokens up by 2.5x.
+Cost per million tokens jumps from $0.70 to $1.74 at 40 percent load because amortization and salaries are fixed. They do not shrink when traffic dips overnight, so a 2.5 times drop in utilization raises unit cost 2.5 times.
 
-### 4.2 Exercise 2: 3-Year Staged Hardware Refresh
+### 4.2 Example 2: a three-year staged hardware refresh
 
-When a fleet grows each year, how do you amortize CAPEX and OPEX across hardware bought in different years? As shown in Volume 21 Chapter 11 Part 1.2 and `calculate_multiyear_fleet_tco()` in `code/part09/capacity_planning.py`, you count active GPU-years in service.
+When a fleet grows each year, count active GPU-years in service, as `calculate_multiyear_fleet_tco()` in `code/part09/capacity_planning.py` does.
 
 ```text
-Exercise 2: 3-Year Staged Fleet Refresh (464 -> 524 -> 624 GPUs)
+Worked example 2: 3-Year Staged Fleet Refresh (464 -> 524 -> 624 GPUs)
 - Year 1 Fleet (464 H100 GPUs): 50 inference nodes (400 GPUs) + 8 training nodes (64 GPUs)
   464 GPUs * $30K = $13.9M CAPEX; active for 3 years = 464 * 3 = 1,392 GPU-years
 - Year 2 Expansion (+60 H200 GPUs for larger models):
@@ -290,14 +242,14 @@ Exercise 2: 3-Year Staged Fleet Refresh (464 -> 524 -> 624 GPUs)
   Amortized Cost:   $28.8M / 1,612 GPU-yrs = $17,866 (~$17.9K) per GPU-year
 ```
 
-Counting active GPU-years avoids the mistake of dividing three-year total cost by the final year's GPU count. It weights each tranche by how long those GPUs actually generate value in production.
+Counting active GPU-years avoids dividing three-year cost by the final year's GPU count. It weights each tranche by how long it works in production.
 
-### 4.3 Exercise 3: 1,200-GPU AI Factory 3-Year TCO and Generational Upgrade ROI
+### 4.3 Example 3: a 1,200-GPU factory and a generational upgrade
 
-From Volume 21 Chapter 12 Part 3 and *AI Systems Performance Engineering* Chapter 2, we can evaluate a full 1,200-GPU factory alongside a generational H100-to-Blackwell refresh.
+The same method evaluates a full 1,200-GPU factory and an H100-to-Blackwell refresh.
 
 ```text
-Exercise 3A: 1,200-GPU H100 AI Factory 3-Year TCO Breakdown
+Worked example 3A: 1,200-GPU H100 AI Factory 3-Year TCO Breakdown
 1. CAPEX ($44.0M total):
    - 1,200 GPUs * $30K = $36.0M + $1.5M IB/Ethernet + $2.0M Storage
      + $1.5M Cooling/Power + $2.0M Chassis/Rails + $1.0M Labor = $44.0M
@@ -310,74 +262,65 @@ Exercise 3A: 1,200-GPU H100 AI Factory 3-Year TCO Breakdown
    - Cost per 1K QPS (~9,100 QPS at 7.6/GPU): $23.4M / 9.1    = ~$2.6M/year per 1,000 QPS
    - Cost per BF16 PFLOP-yr (1,200 * 0.989 = 1,186.8 PFLOPS): $23.4M / 1,186.8 = ~$19.7K per PFLOP-year
 
-Exercise 3B: Generational Upgrade ROI (100 H100s -> 50 Blackwell B200s)
+Worked example 3B: Generational Upgrade ROI (100 H100s -> 50 Blackwell B200s)
 - Compute parity: 50 B200 GPUs (>2x throughput/GPU) replace 100 H100 GPUs for the same workload
 - Power reduction: Drops from 70 kW (100 * 700W) down to 50 kW (50 * 1,000W), saving 20 kW continuously
 - Infrastructure savings: Halves server chassis, CPU, RAM, and NIC port overhead (1-2 year payback)
 ```
 
-:::tip In one minute
-- On a 408-GPU inference fleet serving 2,000 QPS, Cost per Million Tokens is $0.70 at 100% load and rises to $1.74 at 40% average load because hardware depreciation and staffing are fixed.
-- Amortize staggered fleet growth using active GPU-years, which yields $17.9K per GPU-year on the 624-GPU refresh and $19.5K per GPU-year on the 1,200-GPU deployment.
-:::
+## 5. Proving a risky claim before you buy: the falsifiable proof of concept
 
----
+A stakeholder who asks for sixty-four GPUs on Kubernetes in three months is handing you a solution disguised as a requirement. Opening a hardware catalog first leads to shelfware or production outages. Work through six stages: discover the workload and constraints, model the data, control, trust, state, failure and observability paths, compare options, recommend with an architecture decision record, validate risky claims with a proof of concept, and adopt with a rollout plan and runbooks.
 
-## 5. Demand forecasting, lead times, and the 36-month facility-wall exercise
+Keep five terms distinct in every review.
 
-When a startup grows its user traffic by 15% a month and its training runs by 20% a month, a simple spreadsheet forecast quickly outruns the physical electrical breakers of the data hall. Because enterprise GPU orders take three to nine months to arrive, architects must pair lead-time reorder triggers with hard facility power ceilings.
+| Term | Definition | Concrete AI Infrastructure Example |
+|---|---|---|
+| Requirement | A measurable outcome the system must achieve | P99 TTFT `<= 500 ms` at `200` concurrent users |
+| Assumption | An unverified belief that must be tested | Existing 100G NAS can absorb `1 TB` checkpoint bursts |
+| Constraint | A hard boundary you cannot negotiate away | Data cannot leave the EU; max rack power in Room B is `150 kW` |
+| Trade-off | Intentionally sacrificing one property to gain another | Accepting lower GPU utilization via physical node isolation to guarantee strict multi-tenant security |
+| Failure Domain | The set of components that go offline together when one dependency fails | All 8 GPUs on an HGX baseboard share one NVSwitch domain; all nodes on PDU-A share one branch breaker |
 
-### 5.1 Seasonal demand forecasting, the hybrid 70% reorder trigger, and the 36-month Lab 04 exercise
+A demo proves that software can turn on. A proof of concept, or PoC, is an experiment on one falsifiable hypothesis, built to unblock a purchase. The test: if you cannot state in advance a numeric measurement that would make the PoC fail, it is a demo.
 
-To avoid both stock-outs and idle hardware, combine seasonal demand modeling with a lead-time-aware procurement rule and a facility power wall check.
-
-```text
-1. Seasonal Month-over-Month Forecasting (Volume 21 Chapter 11 Part 1.1):
-   QPS[t] = QPS_base * (1 + growth_rate)^(t - t0) * (1 + seasonality * sin(2*pi * (t mod 12) / 12))
-   GPUs_Needed[t] = QPS[t] / 7.6 QPS_per_GPU   (at ~15.2 QPS per 2-GPU Llama-70B replica)
-   Starting from 286 QPS with growth_rate = 10%/mo and seasonality = 0.15:
-   - Month +0:  286 QPS          -> 38 GPUs
-   - Month +6:  507 QPS (+77%)   -> 67 GPUs
-   - Month +11: 755 QPS (+164%)  -> 99 GPUs
-
-2. Upfront vs Incremental vs Hybrid Procurement (400 QPS / 53 GPUs -> 1,000 QPS / 132 GPUs):
-   - Option A (Upfront 132 GPUs = $3.96M): Zero stock-out risk, but 40% Year-1 initial utilization (~$2M idle)
-   - Option B (Incremental +79 GPUs in 4 tranches: +20, +20, +20, +19 = $2.37M): High stock-out risk under 3-9 mo lead times
-   - Recommended Hybrid Strategy: Add +40 GPUs immediately ($1.2M -> 93 GPUs = ~707 QPS capacity), and trigger
-     the next purchase order whenever forecasted demand at (Today + Lead_Time) reaches 70% of installed capacity
-
-3. The 36-Month Capacity Planning & 150 kW Facility-Wall Exercise (Volume 21 Lab 04):
-   Inputs: Inference = 100 QPS (+15%/mo, 7.6 QPS/GPU); Training = 50 jobs/mo (+20%/mo, 8/30 = 0.2667 GPUs/job)
-   Facility ceiling: 150 kW max power / ~1.3 kW per GPU = ~115-117 GPUs physical ceiling
-   - Month 0:  13.2 (inf) + 13.3 (train) = 26.5 (~26) GPUs
-   - Month 6:  30.4 (inf) + 39.8 (train) = 70.3 (~70) GPUs
-   - Month 8:  40.3 (inf) + 57.3 (train) = 97.6 (~98) GPUs
-   - Month 9:  46.3 (inf) + 68.8 (train) = 115.1 (~115) GPUs  [Reaches ~115-117 GPU / 150 kW facility wall]
-   - Month 10: 53.2 (inf) + 82.6 (train) = 135.8 (~136) GPUs  [Exceeds 150 kW facility ceiling]
-   - Month 36: Unconstrained 15%-20% compounding asks for > 11,400 GPUs (15,315 QPS + 35,440 training jobs/mo)
+```mermaid
+flowchart LR
+    H["1. Hypothesis<br/>(Trap: 'Let's try it')"] --> E["2. Test Env<br/>(Trap: Unrepresentative lab)"]
+    E --> W["3. Workload Gen<br/>(Trap: Steady synthetic load)"]
+    W --> M["4. Metrics & SLOs<br/>(Trap: Averages instead of P95/P99)"]
+    M --> B["5. Baseline<br/>(Trap: No current comparison)"]
+    B --> X["6. Experiment Matrix<br/>(Trap: 50 shallow features vs 2 deep)"]
+    X --> P["7. Pass/Fail Gate<br/>(Trap: Moving goalposts after test)"]
+    P --> D["8. Decision Record<br/>(Trap: Hiding residual risks)"]
 ```
 
-Two architectural takeaways emerge from the Lab 04 exercise, which is modeled by `forecast_36month_capacity_exercise()` in `code/part09/capacity_planning.py`.
-1. You hit a hard facility wall between Month 9 and Month 10 because you cannot plug a 118th GPU into a 150 kW room. Before Month 9 arrives, you must offload interruptible training demand onto Cloud Spot instances, upgrade to denser H200 or B200 GPUs, or procure a second data hall 12 months in advance.
-2. You must replace unconstrained exponential tails with a saturating Logistic S-Curve, modeled by `forecast_saturating_scurve_gpus()` in `code/part09/capacity_planning.py`. Writing the explicit logistic formula `G(t) = K / (1 + ((K - G0)/G0) * e^(-r*t))` to implement the saturating curve recommended in Lab 04 line 10 is **my inference**. Real product adoption follows an S-curve bounded by market saturation or facility carrying capacity `K`.
+If a customer asks for a two-week PoC of everything at once, refuse the kitchen-sink scope. Isolate the top one or two risks and write separate pass and fail gates.
 
-:::tip In one minute
-- Trigger hardware purchase orders using the Hybrid 70% Rule. Order the next tranche when forecasted demand at Today plus Supplier Lead Time reaches 70% of installed capacity.
-- In the 36-month Lab 04 exercise, GPU demand breaches the 150 kW facility wall between Month 9 and Month 10.
-- Never extrapolate monthly compounding for 36 months without a saturating S-curve and Cloud Spot training burst above the on-premises power ceiling.
-:::
+```text
+Example PoC pass/fail gates:
+1. Hypothesis A (Operational Risk - Air-Gapped GPU Operator Upgrade):
+   - Claim: NVIDIA GPU Operator upgrades drivers across a 20-node pool with zero unplanned downtime inside a 4-hour window.
+   - Pass Gate: Total duration <= 4.0 hours; unplanned pod evictions = 0; rollback to prior driver <= 30 minutes (vs 14-hour manual baseline).
+2. Hypothesis B (Performance Risk - LLM P95 TTFT under Burst Load):
+   - Claim: Model X on Triton / TensorRT-LLM sustains 200 concurrent requests with P95 TTFT < 1.0 second.
+   - Pass Gate: P95 TTFT < 1.0 s at 200 sustained concurrent users (vs 40-user / 2.3 s baseline). Never use average latency, which hides KV-cache tail spikes.
+```
+
+Test one or two risks deeply, and measure P95 and P99 under bursty load, not averages.
+
 
 ---
 
 ## Commands and configurations that matter
 
-### 1. Run the 25-check Sizing and Capacity-Planning verification lab
+### 1. Run the 25-check sizing and Capacity-Planning verification lab
 
 ```bash
 python3 -B code/part09/capacity_planning_lab.py
 ```
 
-### 2. Prometheus PromQL queries for the FinOps Zombie Reaper and Utilization Chargeback
+### 2. Prometheus queries for the reaper and chargeback
 
 ```promql
 # 1. Identify Zombie GPU Pods: allocated in K8s but maximum SM activity < 5% (0.05) over the past 4 hours
@@ -447,7 +390,7 @@ Exercise parameter table:
 - Ex 2: First-fit decreasing bin-packing of [8, 8, 4, 2, 2, 4, 8, 1] GPUs onto 8-GPU nodes
 - Ex 3: 30-day audit showing 90% Kubernetes allocation vs 18% SM activity (request for 8 more nodes)
 - Ex 4: Falsifiable PoC for serving a 70B model at 100 concurrent users
-- Ex 5: Lab 04 growth rates in a room capped at 120 kW (~1.3 kW/GPU)
+- Ex 5: the 36-month growth rates in a room capped at 120 kW (~1.3 kW/GPU)
 - Ex 6: GPU-year amortization for 200 GPUs in Year 1 ($6M), +100 in Year 2 ($3.2M), +100 in Year 3 ($3.0M), $1.4M/yr OPEX
 ```
 
@@ -455,7 +398,7 @@ Exercise parameter table:
 - Pack the eight job requests from the parameter table onto eight-GPU nodes by hand with first-fit decreasing, and state how many nodes you need and what the allocation percentage is.
 - Write a one-page reply to a manager who asks for eight more nodes when allocation is high but thirty-day SM activity is low, including the two queries you ran and two changes you propose first.
 - Write a falsifiable PoC for the seventy-billion-parameter serving target in the table, giving the hypothesis, the test, the numeric pass gate, and the numeric fail gate.
-- Use the Lab 04 growth rates and the room power cap in the table to find the first month demand passes the cap, and then describe two ways to avoid the wall.
+- Use the 36-month growth rates and the room power cap in the table to find the first month demand passes the cap, and then describe two ways to avoid the wall.
 - Compute the amortized cost per GPU-year for the three-year fleet expansion schedule in the parameter table.
 
 ## Checkpoint questions (20)
@@ -521,10 +464,10 @@ Because hardware amortization and FTE salaries are fixed daily costs, a drop in 
 </details>
 
 <details>
-<summary>**7. In the 36-month Lab 04 capacity-planning exercise, in which month does demand breach the 150 kW facility power ceiling, and how do you solve it?**</summary>
+<summary>**7. In the 36-month capacity-planning exercise, in which month does demand breach the 150 kW facility power ceiling, and how do you solve it?**</summary>
 
 ```text
-Lab 04 Monthly GPU Demand Trajectory:
+Monthly GPU demand trajectory:
 - Month 0: 26 GPUs | Month 6: 70 GPUs | Month 8: 98 GPUs | Month 9: 115 GPUs | Month 10: 136 GPUs
 - Facility limit: 150 kW / ~1.3 kW per GPU = ~115-117 GPUs (breached between Month 9 and Month 10)
 ```
@@ -626,8 +569,10 @@ Unlimited monthly compounding for 36 months asks for over 11,000 GPUs. Real grow
 ### Run here
 - Running `python3 -B code/part09/capacity_planning_lab.py` passes all 25 checks with 0 failures.
 
-### My own choices and inferences, labelled in the text
-1. Implementing a standard logistic carrying-capacity curve in `forecast_saturating_scurve_gpus` in `code/part09/capacity_planning.py` and Section 5.1 to replace the unconstrained 36-month exponential tail as advised by the note on line 10 of Volume 21 Lab 04 is **my inference**.
+### Choices and inferences made in this chapter
+1. The logistic carrying-capacity curve in `forecast_saturating_scurve_gpus` in `code/part09/capacity_planning.py` and section 2.1 replaces the unconstrained 36-month exponential tail, as the source lab suggests. The exact formula is this chapter's inference.
+2. This revision reframed the chapter as capacity planning for an SRE, opening on the power-wall question. The Solutions Architect framing, the "In one minute" boxes and the numbered Volume and Lab references were removed from the body. All figures are unchanged.
+3. The remark that one GB200 NVL72 rack (about 130 kW) nearly fills a 150 kW room uses the rack power figure sourced in chapter 9.5.
 
 ### Not verified on live hardware
 - Prometheus FinOps Reaper queries (`k8s_gpu_allocated=True`, `896-instance` `1g.10gb` MIG pool, `M10` Month 10 power ceiling, `$0.665`K/day power, `2.50`x cost multiplier at 40% load, `$17.4`K/day, and `25.9`B daily tokens) and AWS IMDSv2 spot-termination polling scripts were not executed against a live cluster in this authoring environment.

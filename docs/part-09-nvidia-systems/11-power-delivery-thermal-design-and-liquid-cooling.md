@@ -30,19 +30,15 @@ First, the rack triggers an electrical brownout or trips its branch breakers. Hi
 Second, the rack suffers a thermal meltdown and severe clock throttling. Every single watt of electrical power entering a GPU turns directly into heat. Standard room air conditioning cannot physically push enough cubic feet per minute through a two-foot-wide column of air to remove that heat. The GPUs quickly hit their thermal slowdown threshold and slash their clock frequencies. That throttling cuts training throughput in half.
 
 ```text
-Legacy Enterprise Racks vs AI Factory Rack Power and Thermal Envelope (V1 Ch 6, V5 Ch 4, SPB200, SPGB300):
+Legacy enterprise racks vs AI factory rack power and thermal envelope:
   - Legacy Enterprise CPU Rack:      5 kW to 15 kW (enterprise data halls average 16 kW to 18 kW per rack)
   - 4-Node Air-Cooled DGX H100 Rack: ~40.8 kW (~41 kW) IT load
   - 4-Node Air-Cooled DGX B200 Rack: 57.2 kW IT load (28.6 kW for 2-node rack)
-  - Single DGX GB200 / GB300 NVL72:  120 kW to 150 kW per rack (60 kW to 150 kW requires Direct Liquid Cooling + CDU)
+  - Single DGX GB200 / GB300 NVL72:  about 130 kW (GB200) and 150 kW (GB300) per rack, direct liquid cooling + CDU
   - Electrical-to-Thermal Physics:   1 kW = 3,412.14 BTU/hr; GPU thermal slowdown triggers around 80°C to 90°C
 ```
 
 Mastering three-phase power distribution, power supply redundancy across generations, and sensible-heat airflow equations is essential for AI infrastructure teams. Understanding the five liquid-cooling technologies keeps a multi-million-dollar AI cluster running at boost clocks around the clock.
-
-:::info Corpus scope note
-Vendor-specific Coolant Distribution Unit installation and water chemistry manuals from Motivair, CoolIT, or Vertiv are not in the local book corpus. The electrical formulas, power supply redundancy schemes, PUE and energy cost models, and airflow direction trade-offs come from the `nvidia-devops` notes and SuperPOD design guides. The liquid-cooling architectures are drawn from the networking books listed in the sources section.
-:::
 
 ## Prerequisites and outcomes
 
@@ -56,20 +52,18 @@ Vendor-specific Coolant Distribution Unit installation and water chemistry manua
 
 ---
 
-## Concepts: basics → intermediate → advanced
-
 ## 1. The facility wall: power density, PUE, and why you cannot stack 8 DGX nodes in one rack
 
 Suppose an executive tells you that the company has an empty row in its corporate data center. They want to buy 32 eight-unit DGX H100 servers, stack them into four tall racks at eight servers per rack to save floor space, and plug them into the existing storage area network.
 
-That proposal hits three physical walls immediately, as documented in Volume 01 Chapter 6. First, it hits the power and weight wall. An eight-node stack of DGX H100 servers demands over 81.6 kilowatts of power and weighs nearly three thousand pounds before counting the rack frame and power distribution units. That load crushes standard raised-floor tiles and trips standard colocation breakers instantly.
+That proposal hits three physical walls immediately,. First, it hits the power and weight wall. An eight-node stack of DGX H100 servers demands over 81.6 kilowatts of power and weighs nearly three thousand pounds before counting the rack frame and power distribution units. That load crushes standard raised-floor tiles and trips standard colocation breakers instantly.
 
 Second, it hits the thermodynamic air-cooling wall. Pushing 85 kilowatts of heat out of the back of an air-cooled rack overwhelms room air-conditioning units. Within minutes, hot exhaust air recirculates into the front intake and the GPUs thermal-throttle. Air-cooled deployments must cap density at two to four DGX nodes per rack, leaving empty rack units sealed with blanking panels to match the rack power and cooling envelope.
 
 Third, it hits the data-path wall. A standard enterprise storage area network cannot feed 32 DGX nodes simultaneously. The cluster requires a dedicated parallel file system supporting GPUDirect Storage.
 
 ```text
-Single DGX H100 vs 8-Node Rack Proposal Breakdown (V1 Ch 6, V5 Ch 4, V21 Ch 5):
+Single DGX H100 vs 8-node rack proposal:
   - Single 8U DGX H100 Power:   10.2 kW max (8 x 700W = 5.6 kW GPUs + 4.6 kW CPUs, 2 TB DDR5, 8 NVMe, 8 CX-7, 2 BF-3, fans, VRM loss)
   - Single 8U DGX H100 Weight:  ~370 lbs (168 kg), requiring a 1,200 mm (48-in) deep rack and mechanical server lift
   - 8-Node Stack Power & Mass:  8 x 10.2 kW = 81.6 kW (~85 kW with switches); 8 x 370 lbs = 2,960 lbs (> 3,200 lbs with rack and PDUs)
@@ -83,7 +77,7 @@ When an AI cluster draws a hundred kilowatts of IT power, the utility meter at t
 Facility efficiency is measured by Power Usage Effectiveness, which divides total facility power consumption by IT equipment power consumption. An ideal PUE is 1.0, meaning every watt from the utility reaches the silicon. Real air-cooled data centers typically achieve 1.2 to 1.5, with 1.35 used as a standard planning baseline. Moving from air cooling to Direct Liquid Cooling reduces cooling-system power consumption by up to 70 percent, driving facility PUE down toward 1.05 to 1.15.
 
 ```text
-Traditional Data Center Power Breakdown and PUE Formula (AIDC Ch 5, V21 Ch 5):
+Traditional data center power breakdown and PUE formula:
   - IT Computing Equipment (servers, storage, switches):  40% to 45% of total facility power
   - Cooling Systems (chillers, CRAC/CRAH, pumps, towers): 35% to 40% of total facility power (second-largest consumer)
   - Power Distribution, UPS Conversion Losses, Lighting:  15% to 25% of total facility power
@@ -93,10 +87,10 @@ Traditional Data Center Power Breakdown and PUE Formula (AIDC Ch 5, V21 Ch 5):
 
 ### 1.2 Worked cluster power and monthly kWh budget (64-GPU H100 pod)
 
-Using the eight-node H100 cluster example from Volume 21 Chapter 5, we can calculate both the peak facility power demand and the monthly electricity bill. The calculation in `calculate_monthly_cluster_energy_and_cost` multiplies the provisioned IT load by the facility PUE and integrates across the daily operating schedule.
+The eight-node H100 cluster below shows how to calculate both the peak facility power demand and the monthly electricity bill. The calculation in `calculate_monthly_cluster_energy_and_cost` multiplies the provisioned IT load by the facility PUE and integrates across the daily operating schedule.
 
 ```text
-Worked 8-Node (64-GPU H100) Cluster Energy and Cost Budget (V21 Ch 5):
+Worked 8-node (64-GPU H100) cluster energy and cost budget:
   - Provisioned IT Load:          8 nodes x 10.2 kW = 81.6 kW
   - Full-Load Facility Power:     81.6 kW x 1.35 PUE = 110.16 kW (~110 kW)
   - Daily 24-Hour Schedule (30-day month):
@@ -110,12 +104,6 @@ Worked 8-Node (64-GPU H100) Cluster Energy and Cost Budget (V21 Ch 5):
 
 Notice the twelve-month facility forecasting rule illustrated by that Month-2 expansion check. Running a second concurrent 64-GPU job doubles facility demand to 220 kilowatts. If your room feed is capped at 144 kilowatts, you cannot launch that second pod no matter how much budget you have for GPUs. Committed utility and cooling megawatts form the binding constraint rather than the monthly electricity bill. Facility power upgrades must be planned twelve months ahead of cluster growth.
 
-:::tip In one minute
-- Legacy enterprise racks draw 5 to 18 kW. AI racks draw 28.6 to 57.2 kW for air-cooled DGX H100 and B200 systems and 120 to 150 kW for liquid-cooled NVL72 racks.
-- PUE divides total facility power by IT equipment power, and Direct Liquid Cooling cuts cooling power consumption by up to 70 percent.
-- An eight-node H100 cluster at 1.35 PUE consumes 60,000 kWh per month on a standard 16-hour training schedule. Doubling cluster scale requires planning utility feeds twelve months ahead.
-:::
-
 ---
 
 ## 2. Three-phase power distribution, breaker derating, and PSU redundancy across generations
@@ -127,7 +115,7 @@ When a four-node DGX rack runs idle or executes a short smoke test, its power dr
 Power travels from the utility substation to the GPU silicon across three facility tiers. Tier 1 consists of the utility or UPS row feed and branch breakers. High-power GPU racks never use single-phase 110V outlets. Instead, they use three-phase 208V, 380V, 400V, or 415V circuits or high-amperage 240V feeds with heavy-gauge C19 and C20 cords or busbars. Electrical codes limit continuous loads to 80 percent of breaker nameplate rating, so every branch circuit is derated by 0.80.
 
 ```text
-Three-Phase Power Equations and Standard Circuit Capacities (V21 Ch 5, SPB200 p. 11):
+Three-phase power equations and standard circuit capacities:
   - Three-Phase Nameplate Power (kW) = sqrt(3) x Voltage (V) x Current (A) x Power_Factor / 1,000
   - Continuous Derated Capacity (kW) = Nameplate Power (kW) x 0.80   (80% electrical code rule)
 
@@ -155,12 +143,7 @@ flowchart LR
 | DGX GB300 NVL72 (about 150 kW rack) | 8 rack power shelves of 33 kW (264 kW total), 6 x 5.5 kW PSUs per shelf (N redundant) | Larger internal energy storage smooths load spikes. Front RJ45 BMC port and rear RJ45 power-brake ports |
 
 :::note Reconciling DGX H100 PSU redundancy descriptions across sources
-In Volume 05 Chapter 4 and Volume 21 Chapter 5, the DGX H100 is rated at 10.2 kW maximum with six 3.3 kW power supplies in 3+3 redundancy. Losing an entire power feed leaves three supplies delivering up to 9.9 kW to sustain the server. By contrast, a passing sentence in *AI Data Center Network Design and Technologies* Chapter 5 describes those six 3.3 kW supplies as 4+2 redundancy consuming 13.2 kW. In practice, always provision DGX H100 racks for the official 10.2 kW maximum system rating and wire its six supplies 3+3 across Feed A and Feed B. On the 14.3 kW DGX B200, however, five of six supplies must stay energized, making 3+3 interleaving a critical mistake.
-:::
-
-:::tip In one minute
-- Always apply 80 percent continuous-load derating to three-phase branch circuits when sizing rack power feeds.
-- Power supply redundancy changes by generation. DGX H100 uses 3+3 redundancy, while DGX B200 requires 5-of-6 supplies energized so 3+3 interleaving is forbidden. DGX GB300 NVL72 uses eight 33 kW rack power shelves with internal energy storage and rear RJ45 power brakes.
+NVIDIA's DGX H100 documentation rates it at 10.2 kW maximum with six 3.3 kW power supplies in 3+3 redundancy. Losing an entire power feed leaves three supplies delivering up to 9.9 kW to sustain the server. By contrast, a passing sentence in *AI Data Center Network Design and Technologies* Chapter 5 describes those six 3.3 kW supplies as 4+2 redundancy consuming 13.2 kW. Always provision DGX H100 racks for the official 10.2 kW maximum system rating and wire its six supplies 3+3 across Feed A and Feed B. On the 14.3 kW DGX B200, however, five of six supplies must stay energized, making 3+3 interleaving a critical mistake.
 :::
 
 ---
@@ -174,7 +157,7 @@ Even when a rack has plenty of electrical power, insufficient airflow or reverse
 When cooling equipment with air, engineers must calculate how many cubic feet per minute of cold air must pass through the servers. That airflow must carry away the heat load for a target air temperature rise between the front intake and rear exhaust. The standard sensible-heat airflow formula implemented in `calculate_sensible_heat_airflow_cfm` relates heat load in watts to airflow volume and temperature rise.
 
 ```text
-Sensible-Heat Airflow Equations and Worked Examples (V21 Ch 5, V5 Ch 4, SPB200):
+Sensible-heat airflow equations and worked examples:
   - Temperature Rise Conversion:  ΔT (°F) = ΔT (°C) x 1.8
   - Required Airflow (CFM):       CFM ≈ (3.16 x Heat_Load_Watts) / ΔT (°F)
   - Heat Load (BTU/hr):           BTU/hr = Heat_Load_Watts x 3.41214
@@ -206,12 +189,6 @@ Second, back-to-front airflow pulls cold air in through the rear power supplies 
 
 Third, bidirectional fans can reverse direction in software based on thermal sensors. While flexible at ordering time, bidirectional fans are prohibitively expensive and aerodynamically less efficient than purpose-built unidirectional fans. Always standardize on front-to-back airflow before ordering hardware.
 
-:::tip In one minute
-- Estimate air-cooling volume using the sensible-heat formula, which requires about 7,163 CFM for an 81.6 kW load at a 36 degree Fahrenheit rise.
-- Account for optical transceiver heat, since 64 OSFP modules at 15 W each add nearly a full kilowatt of heat per switch.
-- Standardize every server and switch in the row on front-to-back airflow so cold intake air cools the front-panel OSFP optics first.
-:::
-
 ---
 
 ## 4. Liquid cooling architectures: RDHx, CLLC, Direct-to-Chip Cold Plates (DLC), Immersion, and Spray
@@ -227,27 +204,27 @@ flowchart TD
   Q1 -->|"specialized ultra-dense pods"| IMM["4 and 5. Immersion<br/>or spray cooling"]
 ```
 
-A rear-door heat exchanger fits 20 to 40 kW racks, but it is not suitable for the DGX B200 because of static pressure limits. Air-cooled DGX B200 racks require 4,290 to 8,580 CFM of high-velocity air, while OEM HGX servers in waterless rooms can use internal closed-loop liquid cooling. For 60 to 150 kW racks such as the GB200 and GB300 NVL72, direct-to-chip cold plates cool the Grace CPUs, Blackwell GPUs, and NVSwitches. Rack manifolds and dripless quick-disconnects carry the coolant to a Coolant Distribution Unit, while hybrid air cooling handles lower-power tray components.
+A rear-door heat exchanger fits 20 to 40 kW racks, but it is not suitable for the DGX B200 because of static pressure limits. Air-cooled DGX B200 racks require 4,290 to 8,580 CFM of high-velocity air, while OEM HGX servers in waterless rooms can use internal closed-loop liquid cooling. For racks of 60 kW and above, such as the GB200 and GB300 NVL72, direct-to-chip cold plates cool the Grace CPUs, Blackwell GPUs, and NVSwitches. Rack manifolds and dripless quick-disconnects carry the coolant to a Coolant Distribution Unit, while hybrid air cooling handles lower-power tray components.
 
 ### 4.1 Comparing all five liquid-cooling technologies
 
 | Cooling Technology | How It Works Physically | Facility Requirements & Modifications | Strengths & Limitations |
 |---|---|---|---|
-| **1. Rear-Door Heat Exchanger (`RDHx` / `AALC`)** | A liquid-filled radiator coil is mounted as the rear door of an air-cooled rack. Servers use standard front-to-back fans; hot exhaust air passes through the water-cooled rear door and re-enters the room cooled. | Requires chilled-water supply/return pipes to the rack door, **zero modification to the servers inside the rack**. | Simplest liquid retrofit for `~20–40 kW` racks, **but less efficient than cold plates, and NOT typically suitable for `DGX B200`** due to extreme `4,290–8,580 CFM` airflow impedance. |
-| **2. Closed-Loop Liquid Cooling (`CLLC` — Internal Chassis Loop)** | Cold plates on the GPUs connect to an internal pump and radiator *inside* the 4U–8U server chassis, cooled by chassis fans. | **Zero facility water plumbing required** (100% self-contained inside the server box). | Eliminates GPU-to-GPU **Airflow Shadowing** in air-only data centers, but still dumps 100% of the heat into the room air. |
-| **3. Cold Plate / Direct-to-Chip Liquid Cooling (`DLC` + `CDU`)** | Copper micro-channel **cold plates** bolt directly onto the high-TDP silicon (**CPUs, GPUs, NVSwitch ASICs**). Coolant circulates through dripless quick-disconnects and rack manifolds to a **Coolant Distribution Unit (`CDU`)**, which exchanges heat with facility water. | Requires rack coolant manifolds, leak detection, redundant pumps, water-quality monitoring, and an in-rack or in-row **CDU** (plus hybrid room air for lower-power NICs/DIMMs/drives). | **The standard for `DGX GB200 NVL72` (`~120–130 kW`) and `DGX GB300 NVL72` (`~150 kW`)** (and Google TPUs / Meta AI racks). Lower cost and far easier servicing than submerging boards in immersion tanks. |
-| **4a. Single-Phase Immersion Cooling** | Entire server boards/racks are submerged in a sealed tank of non-conductive dielectric liquid. Heated liquid stays in liquid phase and is pumped to an external water-cooled heat exchanger. | Requires custom horizontal tank racks, overhead hoists for servicing, and immersion-certified components (no standard fans; special optical sealing). | Uniform cooling of 100% of board components at extreme density, but messy/complex field maintenance and high facility redesign cost. |
-| **4b. Two-Phase Immersion Cooling** | Servers sit in a sealed tank of low-boiling-point fluorochemical fluid. Heat boils the fluid into **vapor gas**, which rises to a cold-water condenser tube at the top of the tank, condenses into droplets, and rains back down. | Sealed vapor-tight tank with top condenser coil (**no external liquid-to-liquid heat exchanger needed**; evaluated in production by Microsoft). | Extremely high latent-heat transfer efficiency without external coolant pumps, but fluid cost, environmental rules, and sealed-tank servicing are challenging. |
-| **5. Sprayed Liquid Cooling** | Nozzles inside a modified chassis **spray dielectric coolant directly onto the heated chip surfaces**, draining back to a heat exchanger. | Requires specialized spray-modified server enclosures and drainage return loops. | Uses less coolant volume than immersion and reduces total data center energy consumption by **~25.8%** compared to air cooling. |
+| 1. Rear-Door Heat Exchanger (`RDHx` / `AALC`) | A liquid-filled radiator coil is mounted as the rear door of an air-cooled rack. Servers use standard front-to-back fans; hot exhaust air passes through the water-cooled rear door and re-enters the room cooled. | Requires chilled-water supply/return pipes to the rack door, zero modification to the servers inside the rack. | Simplest liquid retrofit for `~20–40 kW` racks, but less efficient than cold plates, and NOT typically suitable for `DGX B200` due to extreme `4,290–8,580 CFM` airflow impedance. |
+| 2. Closed-Loop Liquid Cooling (`CLLC` — Internal Chassis Loop) | Cold plates on the GPUs connect to an internal pump and radiator *inside* the 4U–8U server chassis, cooled by chassis fans. | Zero facility water plumbing required (100% self-contained inside the server box). | Eliminates GPU-to-GPU Airflow Shadowing in air-only data centers, but still dumps 100% of the heat into the room air. |
+| 3. Cold Plate / Direct-to-Chip Liquid Cooling (`DLC` + `CDU`) | Copper micro-channel cold plates bolt directly onto the high-TDP silicon (CPUs, GPUs, NVSwitch ASICs). Coolant circulates through dripless quick-disconnects and rack manifolds to a Coolant Distribution Unit (`CDU`), which exchanges heat with facility water. | Requires rack coolant manifolds, leak detection, redundant pumps, water-quality monitoring, and an in-rack or in-row CDU (plus hybrid room air for lower-power NICs/DIMMs/drives). | The standard for `DGX GB200 NVL72` (`~130 kW`) and `DGX GB300 NVL72` (`~150 kW`) (and Google TPUs / Meta AI racks). Lower cost and far easier servicing than submerging boards in immersion tanks. |
+| 4a. Single-Phase Immersion Cooling | Entire server boards/racks are submerged in a sealed tank of non-conductive dielectric liquid. Heated liquid stays in liquid phase and is pumped to an external water-cooled heat exchanger. | Requires custom horizontal tank racks, overhead hoists for servicing, and immersion-certified components (no standard fans; special optical sealing). | Uniform cooling of 100% of board components at extreme density, but messy/complex field maintenance and high facility redesign cost. |
+| 4b. Two-Phase Immersion Cooling | Servers sit in a sealed tank of low-boiling-point fluorochemical fluid. Heat boils the fluid into vapor gas, which rises to a cold-water condenser tube at the top of the tank, condenses into droplets, and rains back down. | Sealed vapor-tight tank with top condenser coil (no external liquid-to-liquid heat exchanger needed; evaluated in production by Microsoft). | Extremely high latent-heat transfer efficiency without external coolant pumps, but fluid cost, environmental rules, and sealed-tank servicing are challenging. |
+| 5. Sprayed Liquid Cooling | Nozzles inside a modified chassis spray dielectric coolant directly onto the heated chip surfaces, draining back to a heat exchanger. | Requires specialized spray-modified server enclosures and drainage return loops. | Uses less coolant volume than immersion and reduces total data center energy consumption by ~25.8% compared to air cooling. |
 
 ### 4.2 Hybrid Direct-to-Chip Liquid + Air Cooling on DGX GB300 NVL72
 
 If a facility team assumes that a liquid-cooled NVL72 rack dumps zero heat into the room air, the data hall will quickly overheat. The DGX GB300 SuperPOD Reference Architecture describes the DGX GB300 NVL72 rack as a hybrid cooling solution because cold plates do not cover every tiny component on the board.
 
-In the liquid-cooled loop, direct-to-chip cold plates capture the massive heat flux from the 36 Grace CPUs, 72 Blackwell Ultra B300 GPUs, and 18 NVSwitch ASICs. Coolant enters and exits through each tray's rear cold water inlet and hot water outlet manifolds. In the air-cooled loop, lower-power components on the front of the trays are cooled by room air. Those air-cooled parts include the ConnectX-8 and BlueField-3 optical transceivers, E1.S and M.2 NVMe drives, and power-shelf fans. Using an 85 percent liquid to 15 percent air heat-capture split in `select_cooling_architecture` is my inference for illustrative sizing of the reference architecture's qualitative hybrid split.
+In the liquid-cooled loop, direct-to-chip cold plates capture the massive heat flux from the 36 Grace CPUs, 72 Blackwell Ultra B300 GPUs, and 18 NVSwitch ASICs. Coolant enters and exits through each tray's rear cold water inlet and hot water outlet manifolds. In the air-cooled loop, lower-power components on the front of the trays are cooled by room air. Those air-cooled parts include the ConnectX-8 and BlueField-3 optical transceivers, E1.S and M.2 NVMe drives, and power-shelf fans. The reference architecture describes the hybrid split only in words and gives no percentage. The 85 percent liquid to 15 percent air split in `select_cooling_architecture` is an illustrative assumption for sizing, not a vendor figure.
 
 ```text
-DGX GB300 NVL72 Hybrid Cooling Loop Breakdown (SPGB300 pp. 5-8):
+DGX GB300 NVL72 hybrid cooling loop (illustrative split):
   - Rack & Scalable Unit Scale:  ~150 kW per NVL72 rack; 1.2 MW TDP per 8-rack Scalable Unit
   - Liquid-Cooled Loop (~80-85% illustrative split = ~127.5 kW):
       Captures heat from 36 Grace CPUs, 72 Blackwell Ultra B300 GPUs, and 18 NVSwitch ASICs via rear manifold inlets/outlets
@@ -263,16 +240,60 @@ Second, verify the required flow rate in liters or gallons per minute across eve
 
 Fifth, require redundant coolant pumps and dual power feeds on the CDU. A single pump failure must never stop coolant flow, because losing coolant flow on a 150 kW rack causes GPUs to hit thermal shutdown in seconds. Sixth, verify that rope or optical leak-detection sensors are installed inside every tray, drip pan, and manifold trench. Those sensors must wire directly to Mission Control and the building management system. Seventh, assign named ownership for water and glycol chemistry, biocide treatment, and 25 to 50 micron filtration maintenance so micro-channel cold plates never clog or corrode.
 
-:::tip In one minute
-- Direct-to-chip cold plate liquid cooling with a CDU is the production standard for 120 to 150 kW GB200 and GB300 NVL72 racks. Room air cooling handles the remaining heat from front-panel optics, drives, and power shelves.
-- Never set CDU supply coolant temperature below the data hall dew point. Always require redundant CDU pumps, leak detection, and micro-channel water chemistry ownership.
-:::
+---
+
+## 5. Rack-scale NVL72 racks: the facility numbers to plan with
+
+Chapter 9.5 describes the NVL72 rack itself. This section holds the facility side in one place, so that the other chapters can link here instead of repeating numbers. A facilities engineer who has to say yes or no to a GB200 or GB300 rack needs six answers: how much power, how many feeds, how the power is converted, how much of the heat goes to water, how heavy it is, and what flow the loop needs.
+
+### 5.1 Power draw and feeds
+
+The sourced figures are different in kind. For the GB200 NVL72, the published description is about 130 kW at maximum load: 18 compute trays at about 6 kW each, plus about 20 kW for switch trays, pumps and fans. For the DGX GB300 NVL72, the DGX SuperPOD reference architecture gives 1.2 MW of thermal design power for each Scalable Unit of 8 racks, which is 150 kW per rack. Plan GB200 rooms at 130 kW and GB300 rooms at 150 kW. The ranges such as 120 to 130 kW that circulate in other material are not used in this handbook.
+
+Data centers commonly provision two independent feeds, each sized to carry the whole rack, so that losing one feed does not trip a breaker. Eight racks at 150 kW is the 1.2 MW Scalable Unit. The reference architecture also asks for a data center that meets Uptime Institute Tier 3 or an equivalent standard, with concurrent maintainability and no single point of failure.
+
+```text
+Rack-scale power figures (sourced)
+GB200 NVL72 maximum draw      about 130 kW   18 trays x about 6 kW + about 20 kW overhead
+GB300 NVL72 allocation        150 kW         1.2 MW per 8-rack Scalable Unit / 8
+Installed power shelf         264 kW         8 shelves x 33 kW (6 x 5.5 kW supplies each, N redundant)
+Facility power at PUE 1.15    about 172 kW   150 kW x 1.15 (arithmetic, not a vendor figure)
+```
+
+### 5.2 Where AC becomes DC
+
+Facility AC feeds the power shelves, which hold the power supply units and convert it to DC. The rear of each compute tray has DC power connectors that blind-mate to the rack. The trays therefore receive DC, and no AC conversion happens inside the compute tray. Some descriptions place the conversion in each compute node. The NVIDIA reference architecture shows the supplies in the shelves, so this handbook follows it. The busbar voltage is not stated in the sources used here.
+
+The DGX GB300 shelf adds larger internal energy storage. NVIDIA states the purpose as reducing the peak load the rack places on the data center power supply. The rear RJ45 ports on the shelf are for power brakes, which throttle the rack quickly when a power fault occurs.
+
+### 5.3 Heat to water, heat to air, and the flow you need
+
+The GB300 reference architecture calls the rack hybrid cooled. GPUs and CPUs, the most power-intensive parts, are liquid cooled. The remainder is air cooled. NVIDIA product pages call the rack fully liquid cooled, and the exact split is not given. Treat the room as still receiving some heat, and ask NVIDIA for the split for your site.
+
+The flow follows from a heat balance. Heat removed equals mass flow times the specific heat of water times the temperature rise.
+
+```text
+Heat balance for the loop (first-pass sizing only)
+Q = m x cp x dT
+130 kW = m x 4.18 kJ/(kg K) x 11 K
+m = about 2.8 kg/s = about 170 liters per minute
+```
+
+That result sits inside the 150 to 200 liters per minute at a 10 to 12 degree rise given as a rough estimate for a 130 kW rack. It is arithmetic on an assumed rise, not a CDU specification, so take the real flow and pressure from the CDU vendor. Facility water is often supplied at 20 to 30 degrees Celsius. Warm-water designs run 30 degrees in and 45 degrees out, so evaporative towers can cool it without refrigeration.
+
+### 5.4 Weight and floor load
+
+A filled NVL72 rack weighs about 3,000 lbs, or 1.3 to 1.4 metric tons, on one footprint. Check the raised-floor point and distributed load ratings before delivery. High-density racks often sit on a reinforced slab, and moving one needs rated rigging.
+
+### 5.5 Where the rest of the facility material lives
+
+Chapter 6.30 is the beginner primer on data center power and cooling. This chapter is the deep dive. Chapters 9.5, 9.7 and 8.15 keep only the numbers that are specific to their systems and link here for the shared ones. The questions to answer at the end of a facility review are short: does the room carry 130 or 150 kW per rack on each feed, does the CDU have margin and redundant pumps, and can the floor carry the weight.
 
 ---
 
 ## Commands and configurations that matter
 
-Use these commands to monitor GPU thermal slowdown thresholds, inspect real-time power draw and power limits, and run the 26-check facility power and thermal verifier. The hardware commands are untested on live DGX hardware in this authoring environment, and all underlying formulas are verified in `code/part09/power_thermal_cooling_lab.py`.
+Use these commands to monitor GPU thermal slowdown thresholds, inspect real-time power draw and power limits, and run the 26-check facility power and thermal verifier. The hardware commands were not run on live DGX hardware. The underlying formulas are checked in `code/part09/power_thermal_cooling_lab.py`.
 
 ### 1. Run the 26-check Power Delivery, Thermal Design & Liquid Cooling lab
 
@@ -423,7 +444,7 @@ A 100G QSFP28 draws up to 3.2 W, a 400G QSFP56-DD draws up to 12.0 W, and a 400G
 <summary>**6. Compare Rear-Door Heat Exchangers, Direct-to-Chip Cold Plate Liquid Cooling, Single-Phase Immersion, Two-Phase Immersion, and Sprayed Liquid Cooling.**</summary>
 
 - **RDHx:** Mounts a water-cooled radiator door on the back of an air-cooled rack for 20 to 40 kW loads with no server changes. It is unsuitable for high-static-pressure DGX B200 racks.
-- **Direct-to-Chip Cold Plate:** Bolts copper cold plates directly to CPUs, GPUs, and NVSwitches and circulates coolant to a CDU. It is the production standard for 120 to 150 kW GB200 and GB300 NVL72 racks.
+- **Direct-to-Chip Cold Plate:** Bolts copper cold plates directly to CPUs, GPUs, and NVSwitches and circulates coolant to a CDU. It is the production standard for GB200 and GB300 NVL72 racks, about 130 kW and 150 kW.
 - **Single-Phase Immersion:** Submerges servers in a sealed tank of dielectric fluid pumped to an external heat exchanger.
 - **Two-Phase Immersion:** Boils low-boiling-point fluid into vapor that condenses on a cold-water tube at the top of the sealed tank. It needs no external liquid-to-liquid heat exchanger.
 - **Sprayed Liquid Cooling:** Sprays dielectric coolant through nozzles onto heated chips inside a modified chassis. It uses less fluid than immersion and cuts energy consumption by 25.8 percent compared to air cooling.
@@ -533,6 +554,7 @@ The `nvidia-smi -pl` command sets a software power cap in watts on each GPU. Adm
 - Vendor-specific Coolant Distribution Unit installation and water chemistry manuals are not in the local book corpus.
 
 ### Corrections to the sources
+- **Rack power, AC to DC and cooling (this revision).** Section 5 uses 130 kW for GB200 (book: 18 x 6 kW + about 20 kW) and 150 kW for GB300 (1.2 MW per 8-rack Scalable Unit, DGX GB300 SuperPOD Reference Architecture p. 5, divided by 8). The earlier 120 to 130 kW range was dropped as unsourced. The AC to DC path follows the reference architecture (power shelves with six 5.5 kW supplies; DC power connectors on the tray rear). Cooling follows the reference architecture's hybrid description; the book and NVIDIA's product page say fully liquid cooled. The 48 to 54 V busbar figure is not stated in any source used here and is not used. The heat-balance flow of about 170 liters per minute is the chapter's arithmetic, matching the book's 150 to 200 liters per minute estimate.
 - *AI Data Center Network Design and Technologies* Chapter 5 mentions 4+2 redundancy consuming 13.2 kW for the six 3.3 kW power supplies of a DGX H100, whereas `nvidia-devops` Volume 05 Chapter 4 and Volume 21 Chapter 5 document the official 10.2 kW maximum system rating and 3+3 power-feed redundancy. Both figures are reconciled in Section 2.1.
 
 ### Run here

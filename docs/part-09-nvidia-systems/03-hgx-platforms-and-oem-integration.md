@@ -23,15 +23,11 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-An enterprise buys a fleet of eight-GPU servers from a reseller at a 15 percent discount compared to an NVIDIA DGX. Once multi-node training starts, the cluster runs 40 to 50 percent slower than expected and rear GPUs throttle in a cold room.
+An enterprise buys a fleet of eight-GPU servers from a reseller at a lower price than an NVIDIA DGX. Once multi-node training starts, the cluster scales worse than expected and the rear GPUs throttle in a cold room. The reseller said the GPU board inside was the same. The difference was in everything around it.
 
-Although the NVIDIA DGX is the golden reference appliance for an AI factory, most data center SXM GPUs do not sit inside NVIDIA-branded servers. Instead, they run inside servers built by enterprise Original Equipment Manufacturers. Common examples include the Dell PowerEdge XE9680, Supermicro SYS-821GE, HPE ProLiant XD, and Lenovo ThinkSystem. They also run inside custom cloud racks engineered by hyperscalers like AWS, Microsoft Azure, and Google Cloud.
+The NVIDIA DGX is NVIDIA's own complete server design, but most data center SXM GPUs do not sit inside NVIDIA-branded servers. Instead, they run inside servers built by enterprise Original Equipment Manufacturers. Common examples include the Dell PowerEdge XE9680, Supermicro SYS-821GE, HPE ProLiant XD, and Lenovo ThinkSystem. They also run inside custom cloud racks engineered by hyperscalers like AWS, Microsoft Azure, and Google Cloud.
 
 None of those companies buy loose SXM GPU chips and solder them onto their own circuit boards. Instead, they purchase the NVIDIA HGX Baseboard. That board is the exact same eight-GPU and four-NVSwitch bottom assembly used inside a DGX. Then they engineer their own top half of the server around it. Two OEM servers containing an HGX H100 baseboard have identical GPU-to-GPU NVLink performance on the bottom half. However, a cost-cut OEM top half can cripple multi-node scaling. Missing PCIe Gen5 switches, under-provisioned network cards, CPU-wired NVMe bays, or poor internal air baffling turn a fast baseboard into a bottlenecked server.
-
-:::info Corpus scope note
-Confidential NVIDIA HGX system design guides for OEMs and vendor-specific service manuals are not in the local book corpus. The HGX baseboard anatomy, 48V to 54V power math, OEM support and firmware rules, and topology patterns in this chapter come from the cited sources. Those sources include `nvidia-devops` Volume 06 Chapters 1 through 7 and Labs 01 and 02, *Distributed AI Systems* Chapter 2, and *AI Systems Performance Engineering* Chapter 2.
-:::
 
 ## Prerequisites and outcomes
 
@@ -46,8 +42,6 @@ Confidential NVIDIA HGX system design guides for OEMs and vendor-specific servic
 4. Audit OEM server proposals for balanced PCIe-switched topologies, one-to-one GPU-to-NIC ratios, isolated storage networks, and E1.S NVMe GPUDirect Storage paths. Run an 18 kW rack readiness and single-feed survival review.
 
 ---
-
-## Concepts: basics → intermediate → advanced
 
 ## 1. Why HGX exists: the merchant silicon strategy
 
@@ -94,18 +88,11 @@ First, hyperscalers like AWS, Azure, and Google Cloud run proprietary hardware c
 
 Second, enterprise data centers standardize on server vendors like Dell, HPE, Lenovo, and Supermicro. Those vendors provide global procurement agreements and four-hour on-site parts replacement SLAs. Enterprises also rely on unified out-of-band management tools such as Dell iDRAC, HPE iLO, and Lenovo XClarity. Buying an OEM HGX server lets operations teams manage eight-GPU nodes through their existing Redfish automation. The same field-technician contract that covers their 10,000 CPU servers also covers the GPU fleet.
 
-### 1.3 Why a 15 percent cheaper OEM HGX quote is never automatically equivalent
+### 1.3 Why a cheaper OEM HGX quote is never automatically equivalent
 
-Suppose a reseller quotes an OEM eight-GPU HGX H100 server at 15 percent less than an NVIDIA DGX H100. The reseller claims that both systems use the exact same NVIDIA HGX H100 baseboard inside, so performance is identical.
+Suppose a reseller quotes an OEM eight-GPU HGX H100 server at a lower price than an NVIDIA DGX H100. The reseller claims that both systems use the exact same NVIDIA HGX H100 baseboard inside, so performance is identical.
 
 That claim holds true only for single-node, in-VRAM math that stays exclusively on the bottom HGX baseboard. The moment your workload reads data from storage or scales out across multiple nodes, performance is governed by the top half of the server. OEMs can cut major corners in the top half to lower the bill of materials. For example, a vendor might quote only two network cards instead of eight, or wire GPUs directly to CPU sockets without PCIe switches.
-
-:::tip In one minute
-- **An HGX baseboard contains four or eight SXM GPUs, soldered NVSwitches, PCIe retimers, HMC and ERoT controllers, and VRMs, but ships with no CPUs, RAM, NICs, storage, PSUs, or chassis.**
-- Hyperscalers use HGX to integrate with custom security control planes like AWS Nitro and Azure Cerberus.
-- Enterprises use OEM HGX servers to keep their existing BMC tools and four-hour on-site RMA contracts.
-- Always audit the top-half PCIe switches, NIC count, NVMe routing, and cooling before purchase.
-:::
 
 Before approving any OEM HGX quote, verify that the top-half PCIe switch, NIC, and storage specifications match your multi-node workload requirements.
 
@@ -160,12 +147,6 @@ By raising internal DC distribution from 12V to the 48V to 54V class, server eng
 
 Inside the server, redundant multi-kilowatt power supplies convert facility three-phase AC into the 48V to 54V DC bus. Heavy copper busbars carry that power onto the HGX baseboard. Point-of-Load voltage regulators sitting millimeters from each SXM socket then step the voltage down to the roughly 1V needed by the GPU silicon. Always confirm the exact input voltage range in the OEM design documentation for your specific server model.
 
-:::tip In one minute
-- **On an HGX baseboard, SXM GPUs are bolted mezzanine FRUs that can be replaced individually, whereas NVSwitch ASICs are permanently soldered and require a full baseboard RMA if they fail.**
-- Four-GPU HGX boards typically use point-to-point NVLink without NVSwitches and cannot be upgraded to eight GPUs.
-- Stepping internal DC power up from 12V to 48V or 54V cuts current by 4.0 to 4.5 times and reduces resistive heat loss by 16 to 20.25 times.
-:::
-
 Always run `nvidia-smi nvlink --status` and `dcgmi diag -r 3` before requesting an RMA so you know whether to ask the OEM for a single SXM GPU FRU or a full HGX baseboard.
 
 ---
@@ -205,13 +186,6 @@ Suppose Node 12 in a 50-node Lenovo HGX H100 cluster halts mid-training with `NV
 An `Xid 79` error means the host CPU lost PCIe link framing with GPU 4. On an OEM server, that signal path crosses the OEM motherboard, OEM PCIe riser card, high-speed internal interconnect cable, HGX PCIe Gen5 retimer, and SXM5 mezzanine socket. A slightly loose PCIe riser cable vibrated by high-RPM chassis fans produces the exact same `Xid 79` error as a dead GPU.
 
 Follow a deterministic escalation runbook on the first call. First, run `sudo nvidia-bug-report.sh` on the host OS to capture kernel, driver, and Xid state. Second, export the OEM BMC hardware diagnostic bundle from Lenovo XClarity, Dell SupportAssist, or HPE Active Health System to inspect PCIe root-port link errors and power rails. Third, open a severity-one hardware ticket with your OEM Premier Support attaching both bundles. Request that the field engineer bring both a replacement OEM PCIe riser cable assembly and a replacement SXM GPU FRU.
-
-:::tip In one minute
-- **Even though NVIDIA manufactures the bottom HGX baseboard, the OEM owns the primary hardware warranty and on-site RMA dispatch for the entire server.**
-- Never flash raw NVIDIA VBIOS or NVSwitch files onto an OEM server.
-- Always apply the OEM certified firmware bundle so BMC fan curves and HMC or ERoT handshakes remain valid.
-- On an `Xid 79` fault, collect `nvidia-bug-report.sh` plus the OEM BMC log bundle and ask the OEM to dispatch both the host-to-HGX PCIe riser cable and an SXM GPU FRU.
-:::
 
 Document the OEM Premier Support escalation path and firmware bundle policy in your operations runbook before putting OEM HGX nodes into production.
 
@@ -258,13 +232,6 @@ Two common mistakes frequently destroy performance on OEM HGX clusters.
 First, never set `NCCL_P2P_DISABLE=1` to work around PCIe errors on an unbalanced OEM server. When junior administrators see PCIe errors on a cost-cut server, they sometimes search forums and export `NCCL_P2P_DISABLE=1`. That variable disables all direct GPU peer-to-peer memory access, including the 900 GB/s NVLink and NVSwitch mesh on the HGX baseboard. Instead, inspect `NCCL_DEBUG=INFO` and constrain interface selection with `NCCL_IB_HCA` and `NCCL_SOCKET_IFNAME`. Align rank-to-NUMA placement and install the missing NICs in the proper PCIe switch slots.
 
 Second, watch out for crossed rails on scattered OEM rear PCIe risers. On an NVIDIA DGX node, the eight compute NIC ports on the rear panel sit in a clean, numbered row from 0 to 7. On many OEM 4U and 8U servers, PCIe risers sit scattered across the rear panel. If a technician plugs NIC 0 into Leaf Switch 1 instead of Leaf Switch 0, the rails of your Rail-Optimized Fat-Tree are crossed. Synchronous `AllReduce` traffic between GPU 0 on Node A and GPU 0 on Node B can no longer complete in a single leaf-switch hop. Instead, traffic climbs up to the spine switches and back down, adding latency and congestion across the entire pod.
-
-:::tip In one minute
-- **Audit every OEM HGX server with `nvidia-smi topo -m` and `gdscheck -p` to confirm `NV18` across all eight GPUs, a one-to-one GPU-to-NIC ratio with `PIX` or `PXB` locality, and NVMe drives wired behind the GPU PCIe switches.**
-- If front NVMe bays wire to the CPU root complex, storage reads bounce through DDR5 RAM and starve the CPU threads driving InfiniBand collectives.
-- Never set `NCCL_P2P_DISABLE=1` on an HGX server because it disables 900 GB/s NVLink peer-to-peer transfers.
-- Always label scattered OEM rear riser ports to prevent crossed network rails.
-:::
 
 Run `nvidia-smi topo -m` and `gdscheck -p` on a single pilot unit before accepting delivery of an OEM server fleet.
 
@@ -322,7 +289,7 @@ Worked 42U / 18.0 kW Rack Elevation and Single-Feed Survival Math (V6 Lab 01 & L
 
 Second, check whether the rack survives a single power feed failure. If Power Feed A trips offline, Power Feed B must carry the entire 16.4 kW rack load by itself. A three-phase 415V, 32A feed has a 23.0 kW nameplate rating and an 18.40 kW continuous limit under the 80 percent derating rule. Because 16.4 kW is less than 18.40 kW, Feed B survives a full Feed A outage with 2.0 kW of continuous margin.
 
-Third, determine the final rack review verdict. In `review_hgx_rack_power` inside `code/part09/hgx_oem_platform.py`, mapping less than 3.0 kW of facility headroom or non-redundant single-port compute NICs to a `Conditional go` verdict is my inference. It formalizes the rack review decision table from Lab 02. Facilities and platform teams must sign off on the 1.6 kW rack headroom and configure link-down alerting for the non-redundant 1:1 compute NICs before energization.
+Third, determine the final rack review verdict. In `review_hgx_rack_power` inside `code/part09/hgx_oem_platform.py`, mapping less than 3.0 kW of facility headroom or non-redundant single-port compute NICs to a `Conditional go` verdict is this chapter's own rule. It formalizes a qualitative rack review decision table. Facilities and platform teams must sign off on the 1.6 kW rack headroom and configure link-down alerting for the non-redundant 1:1 compute NICs before energization.
 
 ### 5.4 Eight mandatory commissioning acceptance tests
 
@@ -339,12 +306,6 @@ Before signing off on a new OEM HGX cluster delivery, require the vendor and acc
 | **7** | Power and thermal soak | 60-minute full-load soak | `0` thermal throttle events; inlet temperature stable within `2°C` |
 | **8** | Firmware rollback drill | OEM BMC update rollback SOP | Rollback to prior OEM-qualified bundle completes in `<= 30 minutes` |
 
-:::tip In one minute
-- **Airflow shadowing occurs when front-row GPUs 0 through 3 pre-heat intake air, causing rear-row GPUs 4 through 7 to thermal-throttle even in an 18°C room.**
-- Always verify single-feed PDU survival at 80 percent continuous derating so a 16.4 kW two-node rack stays safely below the 18.4 kW continuous limit of a 415V 32A feed.
-- Require every OEM HGX delivery to pass all eight commissioning gates before final sign-off.
-:::
-
 Make final vendor payment milestones contingent on passing all eight commissioning acceptance gates on the delivered racks.
 
 ---
@@ -359,18 +320,13 @@ A single circuit board holding 72 GPUs would never fit through a data center doo
 
 Instead of one monolithic eight-GPU HGX board, the NVL72 rack splits the system into 18 1U compute trays and nine 1U NVLink switch trays. Those trays blind-mate into a passive rear copper backplane delivering 130 TB/s of NVLink 5 bandwidth across all 72 GPUs while saving roughly 20 kW of optical transceiver power per rack. OEMs still manufacture traditional eight-GPU HGX B200 servers for standard racks. In the MGX and NVL72 era, however, OEMs can no longer invent custom tray dimensions. Every compute tray, cold-plate manifold, and blind-mate connector must align to the millimeter with the copper backplane. That requirement shifts the OEM role toward rack-scale integration, BMC telemetry, and global field service.
 
-:::tip In one minute
-- **While eight-GPU HGX B200 baseboards continue for node-based servers, the MGX and NVL72 architecture disaggregates 72 GPUs across a blind-mate rear copper backplane to save roughly 20 kW of optical power per rack.**
-- In rack-scale NVL72 systems, OEMs build to strict mechanical tolerances and focus on rack integration, liquid-cooling manifolds, BMC integration, and field service.
-:::
-
 Choose eight-GPU HGX servers when deploying into standard air-cooled or moderate-density racks, and move to MGX NVL72 racks when workloads require a 72-GPU NVLink domain with facility liquid cooling.
 
 ---
 
 ## Commands and configurations that matter
 
-Use this command sequence during OEM HGX server acceptance and troubleshooting. It verifies PCIe and NVLink topology, GPUDirect Storage locality, thermal shadowing, and `Xid 79` fault isolation. These hardware commands are untested on live OEM HGX servers in this authoring environment. Their rules are verified by `code/part09/hgx_oem_platform_lab.py`.
+Use this command sequence during OEM HGX server acceptance and troubleshooting. It verifies PCIe and NVLink topology, GPUDirect Storage locality, thermal shadowing, and `Xid 79` fault isolation. These hardware commands were not run on live OEM HGX servers. Their rules are checked by `code/part09/hgx_oem_platform_lab.py`.
 
 ### 1. Acceptance gate: verify `NV18` NVSwitch mesh, `PIX` NIC locality, and NUMA balance
 
@@ -634,8 +590,9 @@ Four core acceptance tests are verifying `NV18` and `PIX` paths in `nvidia-smi t
 ### Run here
 - Running `python3 -B code/part09/hgx_oem_platform_lab.py` passes all 28 checks with zero failures.
 
-### My own choices and inferences, labelled in the text
-1. Mapping less than 3.0 kW of facility power headroom or non-redundant single-port compute NICs to a `Conditional go` verdict in Section 5.3 and `review_hgx_rack_power` inside `code/part09/hgx_oem_platform.py` is my inference. It formalizes the qualitative decision table in Volume 06 Lab 02 Step 10.
+### Choices and inferences made in this chapter
+1. The earlier opening claimed a 15 percent discount and a 40 to 50 percent slowdown for OEM HGX servers. No source states either number, so both were removed. The qualitative point stays: the top half of an OEM server (PCIe switches, NIC count, NVMe routing, cooling) decides multi-node performance.
+2. Mapping less than 3.0 kW of facility power headroom or non-redundant single-port compute NICs to a `Conditional go` verdict in Section 5.3 and `review_hgx_rack_power` inside `code/part09/hgx_oem_platform.py` is this chapter's own rule. It formalizes the qualitative decision table in Volume 06 Lab 02 Step 10.
 
 ### Not verified on live hardware
 - The `nvidia-smi topo -m`, `gdscheck -p`, and `nvidia-smi -q -d TEMPERATURE,PERFORMANCE` commands were not executed on a live OEM HGX server in this authoring environment.

@@ -107,8 +107,8 @@ NVL72_CATALOG: Dict[str, NVL72RackSpec] = {
         gpus_per_rack=72,
         per_gpu_hbm_gb=288,  # 288 GB HBM3e per B300 GPU (1.5x B200)
         total_hbm_tb=20.7,   # 72 * 288 GB = 20,736 GB (~20.7 TB)
-        total_lpddr5x_tb=18.0,  # 36 * 500 GB = 18,000 GB (18 TB)
-        total_fast_memory_tb=38.7,
+        total_lpddr5x_tb=17.0,  # 36 * 480 GB = 17,280 GB (~17 TB); NVIDIA GB300 NVL72 page lists 17 TB
+        total_fast_memory_tb=37.7,
         switch_trays=9,
         nvswitch_asics_per_tray=2,
         total_nvswitch_asics=18,

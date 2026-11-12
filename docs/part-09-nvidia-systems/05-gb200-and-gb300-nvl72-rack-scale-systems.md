@@ -25,11 +25,9 @@ lab_venue: "none (design / reading)"
 
 An engineer serves a 1.8-trillion-parameter Mixture-of-Experts model on H100 nodes. Inside one eight-GPU server, GPUs exchange data over NVSwitch at full NVLink speed. The model needs more than eight GPUs, so its expert-parallel and tensor-parallel groups spill onto a ninth GPU in the next server. From then on, every collective crosses the network cards. In the benchmark this chapter uses, the first token takes more than five seconds and each GPU decodes about 3.4 tokens per second.
 
-The GB200 NVL72 and DGX GB300 NVL72 change the unit of computing from the server to the rack. The Grace CPUs and Blackwell GPUs sit in 18 compute trays. Nine NVLink switch trays join them over a passive copper backplane in the rear. That backplane carries 130 TB/s of aggregate NVLink 5 bandwidth, so the whole liquid-cooled rack is one NVLink domain. *AI Systems Performance Engineering* reports roughly 30 times more throughput per GPU on that same benchmark, and a first token in about 50 milliseconds. Section 3.3 shows the figures behind that claim.
+The GB200 NVL72 and DGX GB300 NVL72 change the unit of computing from the server to the rack. The Grace CPUs and Blackwell GPUs sit in 18 compute trays. Nine NVLink switch trays join them over a passive copper backplane at the rear. That backplane carries 130 TB/s of aggregate NVLink 5 bandwidth, so the whole rack is one NVLink domain. The same benchmark on one NVL72 rack reports roughly 30 times more throughput per GPU and a first token in about 50 milliseconds. Section 4 shows the figures behind that claim.
 
-:::info Corpus scope note
-The chapter does not draw on the *NVIDIA Mission Control Rack Bring-Up and Installation Guide* or the *NVIDIA GB200 NVL72 Hardware User Guide*. The rack slot map, tray port layouts, crossbar math, power shelf specifications, NVLink SHARP algorithms, and BCM firmware workflows come from the books and volumes listed under Sources.
-:::
+For an SRE the rack is also the new unit of failure, power and cooling. Sections 3 and 7 cover those operational questions.
 
 ## Prerequisites and outcomes
 
@@ -39,13 +37,11 @@ The chapter does not draw on the *NVIDIA Mission Control Rack Bring-Up and Insta
 
 **Outcomes:** After completing this chapter, you will be able to:
 1. Map the physical rack elevation of a DGX GB200 or GB300 NVL72 system across its five vertical zones.
-2. Dissect the front and rear of a Compute Tray, an NVLink Switch Tray, and a DGX Power Shelf.
-3. Prove the 1,296-port 1-stage NVLink 5 crossbar math and explain NVLink SHARP, NCCL Parallel Aggregated Tree, and NMX-M.
-4. Contrast DGX GB200 NVL72 with DGX GB300 NVL72, and execute the BCM dual-protocol firmware workflow across Redfish and the NVOS REST API.
+2. Describe the front and rear of a compute tray, an NVLink switch tray and a power shelf.
+3. Work out the 1,296-port, one-stage NVLink 5 crossbar and explain NVLink SHARP, NCCL Parallel Aggregated Tree and NMX-M.
+4. Contrast GB200 NVL72 with DGX GB300 NVL72, state the power and cooling facts that are sourced, and run the BCM dual-protocol firmware workflow across Redfish and the NVOS REST API.
 
 ---
-
-## Concepts: basics → intermediate → advanced
 
 ## 1. Breaking the 8-GPU wall: why the rack became the computer
 
@@ -53,17 +49,19 @@ A model outgrows an eight-GPU server, so its tensor-parallel or expert-parallel 
 
 An NVL72 rack avoids the drop by keeping all 72 GPUs on one NVLink fabric. Nine separate 8-GPU servers joined by InfiniBand cannot do that.
 
-### 1.1 From DGX GH200 to MGX and GB200 or GB300 NVL72
+### 1.1 From DGX GH200 to GB200 and GB300 NVL72
 
-NVIDIA first proved multi-node NVLink at rack scale with the DGX GH200. That system used a two-tier NVLink Switch System to connect up to 256 Grace Hopper Superchips into a single 144 TB shared memory space. With the arrival of 1,000W to 1,400W Blackwell GPUs, NVIDIA consolidated that multi-rack concept into a single, dense, liquid-cooled 48U MGX rack. That modular rack design produced the GB200 NVL72 and DGX GB300 NVL72.
+NVIDIA first proved multi-node NVLink at rack scale with the DGX GH200. That system used a two-tier NVLink Switch System to connect up to 256 Grace Hopper Superchips into one 144 TB shared memory space. With 1,000 W to 1,400 W Blackwell GPUs, NVIDIA folded that multi-rack idea into a single dense 48U rack built on the modular MGX design. The result is the GB200 NVL72 and the DGX GB300 NVL72.
 
-Why could NVIDIA not connect 72 GPUs across multiple racks using optical fiber cables?
-- **The 20 kW optical power penalty:** Optical transceivers with lasers and DSP retimers for all 72 GPUs would consume roughly 20 kW of extra electrical power per rack just to light the fibers. They would also add transceiver failure points and high hardware cost.
-- **The passive copper backplane solution:** Packing all 18 compute trays and 9 NVLink switch trays vertically into a single rack keeps every GPU within a few feet of the switch bank. That short physical reach allows the trays to blind-mate directly into a rear Copper Backplane cartridge made of passive copper cables. It delivers 130 TB/s of aggregate NVLink 5 bandwidth with zero optical transceiver power penalty.
+Why not connect 72 GPUs across several racks with optical fiber? Two reasons.
 
-### 1.2 The five vertical zones of the 48U NVL72 rack elevation
+The first is reach. A copper link is cheap and needs no power for lasers, but it only works over short distances. If all 18 compute trays and 9 switch trays sit in one rack, every GPU is within a few feet of the switch bank, and plain copper cables are enough. Across racks the distance would force optics.
 
-Why are the 9 NVLink switch trays mounted in the exact middle of the rack between the upper and lower compute tray banks? Placing the switch bank at the vertical midpoint minimizes the maximum copper trace length from the farthest top and bottom compute trays to the middle switch bank.
+The second is power. Optical transceivers with lasers and retimer chips for all 72 GPUs would add roughly 20 kW of electrical load per rack, plus more parts that can fail. The copper backplane carries 130 TB/s with no transceiver power at all.
+
+### 1.2 The five vertical zones of the 48U rack
+
+The nine switch trays sit at the vertical midpoint of the rack, between the lower and upper compute banks. That placement keeps the longest copper run from the farthest top and bottom trays as short as possible.
 
 ```mermaid
 flowchart TD
@@ -77,49 +75,40 @@ flowchart TD
         Z5 --- Z4 --- Z3 --- Z2 --- Z1
     end
     subgraph Rear["Rear Blind-Mate Backplane & Manifolds"]
-        BP["Passive Copper NVLink Cartridge (Copper cables, 130 TB/s)<br/>+ 48V–54V DC Busbars + Liquid Cooling Manifolds"]
+        BP["Passive Copper NVLink Cartridge (Copper cables, 130 TB/s)<br/>+ DC busbars + Liquid Cooling Manifolds"]
     end
     Z4 & Z3 & Z2 <-->|"Blind-Mate Rear Snap"| BP
 ```
 
-Walking the 48U rack from bottom to top in Base Command Manager's `rack display` layout for `a05-p1-dgx-01` reveals five distinct vertical zones.
+Walking the rack from bottom to top in the Base Command Manager `rack display` layout for `a05-p1-dgx-01` shows five zones.
 
 | Rack Unit Range | Zone Name | BCM Device Names | Installed Hardware |
 |---|---|---|---|
-| **RU 01–10** | 1. Bottom Power Shelf Zone | `pwr-01` to `pwr-04` | Four 33 kW DGX Power Shelves feeding the lower busbar section |
-| **RU 11–22** | 2. Lower Compute Tray Bank | `c01` to `c08` | Eight 1U compute trays (16 Grace CPUs + 32 Blackwell GPUs) |
-| **RU 23–31** | 3. Middle NVLink Switch Tray Bank | `nvsw-01` to `nvsw-09` | Nine 1U NVLink Switch Trays (18 NVSwitch ASICs) at the rack midpoint |
-| **RU 32–44** | 4. Upper Compute Tray Bank | `c09` to `c18` | Ten 1U compute trays (20 Grace CPUs + 40 Blackwell GPUs) |
-| **RU 45–48** | 5. Top Power Shelf Zone | `pwr-05` to `pwr-08` | Four additional 33 kW DGX Power Shelves (bringing the rack total to 8 power shelves) |
-
-:::tip In one minute
-- The GB200 and GB300 NVL72 turn a 48U rack into a single 72-GPU computer. The 9 NVLink switch trays sit in the middle of the rack between the lower and upper compute trays, flanked by power shelves at the top and bottom.
-- Keeping all 72 GPUs inside one rack allows a passive rear copper backplane to carry 130 TB/s of NVLink 5 bandwidth while saving ~20 kW of optical transceiver power per rack.
-:::
-
----
+| RU 01–10 | 1. Bottom Power Shelf Zone | `pwr-01` to `pwr-04` | Four 33 kW DGX Power Shelves feeding the lower busbar section |
+| RU 11–22 | 2. Lower Compute Tray Bank | `c01` to `c08` | Eight 1U compute trays (16 Grace CPUs + 32 Blackwell GPUs) |
+| RU 23–31 | 3. Middle NVLink Switch Tray Bank | `nvsw-01` to `nvsw-09` | Nine 1U NVLink Switch Trays (18 NVSwitch ASICs) at the rack midpoint |
+| RU 32–44 | 4. Upper Compute Tray Bank | `c09` to `c18` | Ten 1U compute trays (20 Grace CPUs + 40 Blackwell GPUs) |
+| RU 45–48 | 5. Top Power Shelf Zone | `pwr-05` to `pwr-08` | Four additional 33 kW DGX Power Shelves (bringing the rack total to 8 power shelves) |
 
 ### AI factories: many racks, one plan
 
-An NVL72 is a complete supercomputer on its own, but it is also a building block. Large AI clusters are built by joining many racks together. NVIDIA uses the term AI factory for a large AI data center made of such racks. Think of each rack as one production line in a plant. The plant only works when the lines are connected well.
+An NVL72 is a complete supercomputer on its own, but it is also a building block. NVIDIA uses the term AI factory for a large AI data center made of such racks. Think of each rack as one production line in a plant. The plant only works when the lines are connected well.
 
-Inside a rack, NVLink carries all the GPU-to-GPU traffic. Outside the rack, the traffic moves onto ordinary high-speed networking gear. An 8-rack NVL72 cluster with 576 GPUs is one NVLink 5 domain. InfiniBand or Ethernet then links that domain to other domains or to storage. Cross-rack links are slower than the links inside a rack, so keep the chattiest work inside one rack when you can.
+Inside a rack, NVLink carries all GPU-to-GPU traffic. Outside the rack, traffic moves onto InfiniBand or Ethernet. Cross-rack links are slower than the links inside a rack, so keep the chattiest work inside one rack when you can. The DGX GB300 SuperPOD builds on this: each Scalable Unit holds 8 NVL72 racks, which is 576 GPUs, and the reference architecture scales to 128 racks and 9,216 GPUs.
 
-### Preintegrated rack appliance
+### A preintegrated rack
 
-Because the NVL72 is so complex, NVIDIA delivers it as a preintegrated rack appliance in a single cabinet. The rack arrives with all 18 compute nodes, all 9 NVSwitch units, the internal NVLink cabling, power distribution, and the cooling system already assembled. Nobody has to cable 72 GPUs by hand. The NVIDIA Base Command Manager cluster-management software is included, along with SLURM (Simple Linux Utility for Resource Management) and Kubernetes for job scheduling.
+NVIDIA delivers the NVL72 as a preintegrated rack in a single cabinet. It arrives with all 18 compute trays, all 9 NVSwitch trays, the internal NVLink cabling, power distribution and cooling already assembled. Base Command Manager, Slurm and Kubernetes are the management and scheduling software around it. On site you connect facility power, attach the water cooling interfaces, connect the InfiniBand and Ethernet cables, and power it on.
 
-On site, the work is short. You connect the rack to facility power, attach the water cooling interfaces, connect the InfiniBand cables to your network, and power it on. The rack is built and validated before it ships. That is why an organization can treat it as one unit that is ready when it arrives.
+## 2. Inside the compute tray, switch tray and power shelf
 
-## 2. Dissecting the Compute Tray, Switch Tray, and Power Shelves
+In a traditional air-cooled rack, technicians weave power cords and network cables behind the servers. In an NVL72 the rear of the cabinet is packed with water manifolds, DC power busbars and the blind-mate NVLink copper cartridge. Network ports and drives on the rear panel would be unreachable without draining coolant or unseating the backplane.
 
-In a traditional air-cooled rack, technicians weave power cords, InfiniBand fibers, and Ethernet cables together behind the servers. In a high-density liquid-cooled NVL72 rack, the rear of the cabinet is packed solid with water manifolds, high-current DC busbars, and the blind-mate NVLink copper cartridge. If network ports or NVMe drives lived on the rear panel, technicians could never reach them without draining coolant or unseating the backplane.
+So every tray keeps serviceable parts at the front and blind-mating connections at the rear. Network cables and NVMe drives are serviced from the front aisle. Liquid cooling, DC power and NVLink 5 connect at the rear without any cable work.
 
-For that reason, every tray in an NVL72 rack keeps serviceable parts at the front and blind-mating connections at the rear. All optical or copper network cables and NVMe drives are serviced from the front cold or hot aisle, while liquid cooling, DC power, and NVLink 5 connections blind-mate automatically at the rear.
+### 2.1 The 1U compute tray
 
-### 2.1 Inside a 1U DGX GB200 or GB300 Compute Tray
-
-Each of the 18 compute trays is a self-contained, liquid-cooled 1U Linux compute node.
+Each of the 18 compute trays is a self-contained, liquid-cooled 1U Linux node.
 
 ```mermaid
 flowchart LR
@@ -143,64 +132,80 @@ flowchart LR
 
 | Compute Tray Subsystem | Hardware Components | Capacity and Operational Role |
 |---|---|---|
-| **1. Internal Superchips** | 2x Grace Blackwell Superchips (2 Grace CPUs + 4 Blackwell GPUs) | Bridged by a coherent NVLink-C2C link (900 GB/s) to run as a single SMP unit under one Linux OS instance (144 Arm cores + 4 GPUs per tray) |
-| **2. Front East-West Compute NICs** | 4x ConnectX-8 (800 Gbps Quantum-X800 XDR IB on DGX GB300) or 4x ConnectX-7 (400 Gbps NDR on DGX GB200) | Strict 1:1 GPU-to-NIC ratio (4 GPUs to 4 Compute NICs per tray = 72 Compute NICs per rack) |
-| **3. Front North-South Storage & Mgmt** | 1x dual-port BlueField-3 DPU (2x 400 Gbps Ethernet) + BMC RJ45 port | 400 Gbps line-rate to High-Performance RoCEv2 Storage plus bonded 200 Gbps to In-Band Management |
-| **4. Front Local NVMe Storage** | 1x 1.92 TB M.2 NVMe (OS boot) + 4x 3.84 TB E1.S EDSFF NVMe in RAID 0 | 15.36 TB raw ephemeral scratch per compute tray, or `18 × 15.36 TB = 276.48 TB` across the rack |
-| **5. Rear Blind-Mate & Cooling** | Cold water inlet, hot water outlet, DC busbar clips, and 72 NVLink 5 lanes | Direct-to-chip liquid cold plates, 48V–54V DC busbar mating, and rear copper NVLink cartridge snap-in |
+| 1. Internal Superchips | 2x Grace Blackwell Superchips (2 Grace CPUs + 4 Blackwell GPUs) | Bridged by a coherent NVLink-C2C link (900 GB/s) to run as a single SMP unit under one Linux OS instance (144 Arm cores + 4 GPUs per tray) |
+| 2. Front East-West Compute NICs | 4x ConnectX-8 (800 Gbps Quantum-X800 XDR IB on DGX GB300) or 4x ConnectX-7 (400 Gbps NDR on DGX GB200) | Strict 1:1 GPU-to-NIC ratio (4 GPUs to 4 Compute NICs per tray = 72 Compute NICs per rack) |
+| 3. Front North-South Storage & Mgmt | 1x dual-port BlueField-3 DPU (2x 400 Gbps Ethernet) + BMC RJ45 port | 400 Gbps line-rate to High-Performance RoCEv2 Storage plus bonded 200 Gbps to In-Band Management |
+| 4. Front Local NVMe Storage | 1x 1.92 TB M.2 NVMe (OS boot) + 4x 3.84 TB E1.S EDSFF NVMe in RAID 0 | 15.36 TB raw ephemeral scratch per compute tray, or `18 × 15.36 TB = 276.48 TB` across the rack |
+| 5. Rear Blind-Mate & Cooling | Cold water inlet, hot water outlet, DC busbar clips, and 72 NVLink 5 lanes | Direct-to-chip liquid cold plates, DC busbar mating, and rear copper NVLink cartridge snap-in |
 
-### 2.2 Inside a 1U NVLink Switch Tray
+### 2.2 The 1U NVLink switch tray
 
-Each of the 9 NVLink Switch Trays (`nvsw-01` to `nvsw-09`) is a 1U sled that houses two fifth-generation NVSwitch ASICs. Across the switch bank, all 18 NVSwitch ASICs are liquid-cooled and blind-mated into the rear copper NVLink cartridge.
+Each of the 9 switch trays (`nvsw-01` to `nvsw-09`) is a 1U sled with two fifth-generation NVSwitch ASICs. All 18 ASICs in the rack are liquid cooled and blind-mated into the rear copper cartridge.
 
-On the front panel, each switch tray exposes two RJ45 COMe ports for NVOS. NVOS is the switch operating system managed by NVIDIA Network Manager eXperience (NMX-M) and Base Command Manager. Beside the COMe ports sits one RJ45 BMC module port for out-of-band hardware telemetry.
+The front panel has two RJ45 COMe ports for NVOS and one RJ45 BMC port. NVOS is the switch operating system. NMX-M and Base Command Manager manage it. The BMC port carries out-of-band hardware telemetry. Do not mix the two up: the COMe ports are where NVOS credentials apply, and the BMC port is for hardware telemetry.
 
-### 2.3 Inside a DGX Power Shelf
+### 2.3 The power shelf
 
-When 72 GPUs jump from idle to full load within microseconds, the rack suddenly pulls 130 kW to 150 kW. That can drop the voltage or disturb the facility's supply. The rack therefore carries eight DGX Power Shelves, named `pwr-01` to `pwr-08`.
+When 72 GPUs jump from idle to full load within milliseconds, the rack suddenly pulls tens of kW more. The rack therefore carries eight DGX power shelves, `pwr-01` to `pwr-08`. Each shelf holds six 5.5 kW power supplies in an N-redundant arrangement and delivers up to 33 kW.
 
 | Power Shelf Feature | Specification | Purpose |
 |---|---|---|
-| **Installed PSUs per Shelf** | 6x 5.5 kW Power Supply Units (N redundant) | Delivers up to 33 kW per shelf (`8 shelves × 33 kW = 264 kW` total installed shelf capacity per rack) |
-| **Internal Energy Storage** | Enhanced capacitor banks on the DGX GB300 power shelf | Smooths millisecond-scale GPU load transients so sudden training spikes do not hit the utility grid |
-| **Management & Power Brake Ports** | Front RJ45 BMC port + rear RJ45 hardware power brake ports | Provides out-of-band telemetry and fast hardware throttling if a power fault occurs |
+| Installed PSUs per Shelf | 6x 5.5 kW Power Supply Units (N redundant) | Delivers up to 33 kW per shelf (`8 shelves × 33 kW = 264 kW` total installed shelf capacity per rack) |
+| Internal Energy Storage | Enhanced capacitor banks on the DGX GB300 power shelf | Smooths millisecond-scale GPU load transients so sudden training spikes do not hit the utility grid |
+| Management & Power Brake Ports | Front RJ45 BMC port + rear RJ45 hardware power brake ports | Provides out-of-band telemetry and fast hardware throttling if a power fault occurs |
 
-:::tip In one minute
-- All optical or copper network cables and NVMe drives are serviced from the front aisle. Liquid cooling, DC busbars, and NVLink 5 blind-mate at the rear.
-- Never confuse the two management interfaces on an NVLink Switch Tray. The single BMC RJ45 port provides out-of-band hardware telemetry, while the two COMe RJ45 ports run NVOS managed by NMX-M and BCM firmware updates.
-:::
+## 3. Power and cooling: what the sources support
 
----
+An SRE asked "will this rack fit in our room" needs three numbers: how much power it draws, how that power is delivered, and how the heat leaves. The sources give them in different places, so this section settles each one and says where it comes from.
 
-### Power draw and facility feeds
+### 3.1 Rack power
 
-A fully loaded NVL72 can draw up to about 130 kW under maximum load. That is more than twice the 50–60 kW of NVIDIA's previous generation AI rack. A standard wall feed cannot carry that load. Data centers usually provision two fully independent power feeds, and each one is sized to carry the entire rack. If one feed goes offline, the other one carries the full 130 kW without tripping a breaker.
+Two documents give the rack power figures. For the GB200 NVL72, the published description is up to about 130 kW under maximum load, and decomposes it as 18 compute trays at about 6 kW each, about 110 kW, plus about 20 kW for the switch trays, network switches, pumps and fans. The *NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems* states that each Scalable Unit of 8 racks needs 1.2 MW of thermal design power. Divided by 8, that is 150 kW per DGX GB300 NVL72 rack. This chapter uses 130 kW for GB200 and 150 kW for GB300 and does not quote the intermediate 120 to 130 kW ranges that appear elsewhere in the literature.
 
-Inside the rack, power is distributed to each 1U compute node, where AC is converted to DC for the local electronics. Each node holds two Grace Blackwell Superchips, which together draw on the order of 6 kW. Eighteen nodes draw about 110 kW. The NVSwitch trays, network switches, air cooling, and water cooling pumps add about 20 kW, for a total of 130 kW.
+The two numbers are different kinds of figure. The first is a stated maximum from a published description. The second is a design allocation per rack from the reference architecture. Plan GB300 rooms with the 150 kW allocation.
 
-Power transients need attention too. When 72 GPUs ramp from idle to full power, the rack can pull tens of kW within milliseconds. Good designs add capacitors or sequencing to avoid large voltage drops. A system might also stagger GPU boost clocks by tiny intervals so the surge is smoothed out. Eight racks together, at 576 GPUs, would draw nearly 1 MW.
+The previous generation of NVIDIA AI racks drew 50 to 60 kW, so the NVL72 more than doubles the load. A standard feed cannot carry it. Data centers commonly provision two independent power feeds, each sized to carry the whole rack, so that one feed can fail without tripping a breaker. Eight racks at 130 kW draw nearly 1 MW.
 
-### Liquid cooling loop
+### 3.2 How power reaches the chips: AC to DC
 
-Air cannot cool 130 kW in one rack. Each of the 72 GPUs dissipates about 1,200 W. Moving that much heat with air would need hurricane-like airflow, and the result would be loud, inefficient, and hot. Water carries far more heat per unit of flow, so liquid cooling is the practical choice at this density.
+Facility power arrives as AC, for example 415 V three-phase. It does not go to each compute tray. The AC feeds the power shelves, which hold the power supply units. The shelves convert it to DC. The compute tray rear panels have DC power connectors that blind-mate to the rack, so the trays receive DC. The switch trays and other parts of the rack are powered in the same rack.
 
-The NVL72 is fully liquid cooled. Each Grace Blackwell Superchip module and each NVSwitch chip has a cold plate on it. A cold plate is a metal block with internal tubing, and coolant flows through the tubing to carry heat away. Hoses, manifolds, and pumps link all the cold plates into one loop. Each node usually has quick-disconnect couplings, so you can slide a server out without spilling coolant.
+Some descriptions place the AC to DC conversion inside each compute node. The NVIDIA reference architecture shows the power supplies in the power shelf and DC power connectors on the compute tray, so this chapter follows the NVIDIA documents. The sources do not give the busbar voltage, so the chapter does not state one.
 
-The rack connects to the facility's chilled water system. A Coolant Distribution Unit (CDU) moves heat from the rack's internal loop to the data center's water loop. Facility water is often supplied at 20–30°C. Newer designs can run warm-water cooling, with water entering at 30°C and leaving at 45°C. That water can be cooled by evaporative towers without active refrigeration.
+Each DGX GB300 power shelf also carries larger internal energy storage. NVIDIA states the purpose as reducing the peak load that the rack puts on the data center power supply. The rear RJ45 ports on the shelf are for power brakes and other out-of-band management. A power brake is the hardware path that throttles the rack quickly when a power fault occurs.
 
-Coolant flow has to match the heat load. A rough estimate is 150–200 liters per minute, with a 10–12°C rise in water temperature, to remove about 130 kW. With this design, GPU temperatures stay in the 50–70°C range under load. Cooler chips throttle less and leak less power. The system also watches coolant temperature, pressure, and leaks. If a drip or pressure-loss sensor fires, the system can shut down or isolate that section. Self-sealing connections and a secondary containment tray reduce the risk further.
+Eight shelves of 33 kW give 264 kW of installed capacity per rack. That is well above the 130 to 150 kW draw, which fits the N-redundant design.
 
-### Rack controller and rack weight
+```text
+Rack power picture (sourced figures only)
+GB200 NVL72 maximum draw   ~130 kW  = 18 trays x ~6 kW + ~20 kW overhead
+GB300 NVL72 allocation      150 kW  = 1.2 MW per 8-rack Scalable Unit / 8
+Installed shelf capacity    264 kW  = 8 shelves x 33 kW
+```
 
-NVIDIA adds a rack management controller. It oversees the coolant pumps and valve positions, tracks power use, and monitors the status of every node. Administrators use it to update firmware across all nodes or to shut the system down safely.
+### 3.3 Cooling: hybrid, not fully liquid
 
-The weight matters as much as the cooling. A filled NVL72, with coolant, weighs about 3,000 lbs (1.3–1.4 metric tons). That is roughly the weight of a small car, packed onto a few square feet of floor. Raised floors must be checked against the load rating in pounds per square foot. High-density racks often sit on reinforced slabs or get extra struts. Moving one needs forklifts or similar equipment.
+Air cannot cool a rack at this density. Each of the 72 GPUs can dissipate about 1,000 to 1,200 W, and blowing air over them would take hurricane-like airflow. Water carries far more heat per unit of flow, so the hottest parts are liquid cooled.
 
-## 3. The 1-stage NVLink 5 crossbar math, NVLink SHARP, and MoE scaling
+Most of the rack is liquid cooled, but not all of it. The DGX GB300 reference architecture says each rack uses hybrid cooling with both direct liquid cooling and air cooling, and that the most power-intensive parts such as the GPUs and CPUs are the liquid-cooled ones. NVIDIA marketing pages call the rack fully liquid cooled. For facility planning, trust the reference architecture. Plan for some residual heat into room air and ask NVIDIA for the exact split for your site, because the sources used here do not give one.
 
-If GPUs inside a rack-scale cluster had to route traffic through multiple switch hops, tail latency and congestion would stall tensor-parallel layers. System architects need a mathematical guarantee that any of the 72 GPUs can talk to any other GPU in a single switch hop at full 1.8 TB/s bisection bandwidth.
+Each Grace Blackwell Superchip module and each NVSwitch chip has a cold plate on it. A cold plate is a metal block with internal tubing that carries coolant over the chip. Hoses, manifolds and pumps link all cold plates into one loop. Quick-disconnect couplings let you slide a tray out without spilling coolant.
 
-### 3.1 Proving the 1,296-port 1-stage NVLink 5 crossbar
+The rack connects to the facility's chilled water through a Coolant Distribution Unit, or CDU, which moves heat from the rack's loop into the data center's water loop. Facility water is often supplied at 20 to 30 degrees Celsius. Newer designs run warm-water cooling, with water entering at 30 and leaving at 45 degrees, so evaporative towers can cool it without refrigeration.
+
+A rough first-pass estimate is 150 to 200 liters per minute with a 10 to 12 degree rise to remove about 130 kW. The sources do not give a site-ready flow specification, so use it only for first-pass sizing. GPU temperatures stay in the 50 to 70 degree range under load. The loop watches coolant temperature, pressure and leaks, and can isolate a section if a sensor fires.
+
+### 3.4 Weight and the rack controller
+
+A filled NVL72, with coolant, weighs about 3,000 lbs, or 1.3 to 1.4 metric tons. Check the raised-floor rating in pounds per square foot before delivery. High-density racks often sit on reinforced slabs. A rack management controller oversees pumps, valves, power use and the status of every node, and administrators use it to update firmware across nodes or shut the rack down safely.
+
+Chapter 9.11 is the canonical facility chapter. It covers cooling loops, power delivery and commissioning in depth.
+
+## 4. The one-stage NVLink 5 crossbar, NVLink SHARP and MoE scaling
+
+If GPUs in a rack had to cross several switch hops, tail latency and congestion would stall tensor-parallel layers. The design goal is that any of the 72 GPUs reaches any other in one switch hop at full bandwidth.
+
+### 4.1 Working out the 1,296-port crossbar
 
 The port arithmetic below is checked by `verify_nvl72_crossbar_topology()` in `code/part09/nvl72_rack.py`.
 
@@ -221,7 +226,7 @@ flowchart LR
     G1 & G2 & G72 <-->|"1 Dedicated 100 GB/s Link<br/>per GPU to ASIC 18"| SW18
 ```
 
-Each Blackwell B200 or B300 GPU exposes 18 fifth-generation NVLink ports running at 100 GB/s bidirectional per port. That doubles the 50 GB/s link speed of Hopper NVLink 4. Because the number of NVLink 5 ports per GPU equals the exact number of NVSwitch ASICs in the rack, every GPU wires one dedicated link to each of the 18 NVSwitch ASICs through the rear copper backplane.
+Each Blackwell GPU exposes 18 fifth-generation NVLink ports at 100 GB/s bidirectional per port. That doubles the 50 GB/s per-link speed of Hopper NVLink 4. The rack has exactly 18 NVSwitch ASICs, so every GPU wires one link to each ASIC through the rear copper backplane.
 
 ```text
 NVL72 1-stage non-blocking NVLink 5 crossbar math:
@@ -234,68 +239,65 @@ Total backplane NVLink 5 ports across rack = 9 switch trays × 144 ports = 1,296
 Exact aggregate NVLink 5 bandwidth = 72 GPUs × 1.8 TB/s = 129.6 TB/s (~130 TB/s), with 1 to 2 us latency
 ```
 
-### 3.2 NVLink SHARP, NCCL Parallel Aggregated Tree, and NMX-M
+### 4.2 NVLink SHARP, NCCL PAT and NMX-M
 
-Beyond raw point-to-point bandwidth, the 18 NVSwitch ASICs inside an NVL72 rack include dedicated in-silicon collective engines and a specialized management plane.
+The 18 NVSwitch ASICs include collective engines and a management plane.
 
-1. **NVLink SHARP (NVLS):** Integrates Scalable Hierarchical Aggregation and Reduction Protocol arithmetic units directly inside the NVSwitch ASICs. During an `AllReduce` or `ReduceScatter`, GPUs do not send full gradient buffers to every peer to sum on their SMs. Instead, GPUs stream operands into the NVSwitch fabric, and the NVSwitch ASICs perform the floating-point reductions in-network and multicast the result back. That cuts traffic volume and frees GPU SMs for compute.
-2. **NCCL Parallel Aggregated Tree (PAT) algorithm:** Modern NCCL releases include the PAT collective algorithm tuned for NVLink Switch topologies like NVL72. It exploits full 18-plane parallelism with minimal synchronization latency.
-3. **NVIDIA Network Manager eXperience (NMX-M):** Just as Unified Fabric Manager operates the external InfiniBand fabric, NMX-M is the dedicated management and telemetry control plane for the NVLink domain. It manages the 9 NVLink switch trays running NVOS and configures NVLink partitions across the rack.
+1. NVLink SHARP, or NVLS, puts reduction arithmetic inside the NVSwitch ASICs. During an AllReduce, GPUs stream their data into the switch fabric, the switches perform the floating-point sums, and they multicast the result back. That cuts traffic and frees GPU cores for compute.
+2. The NCCL Parallel Aggregated Tree algorithm, or PAT, is a collective algorithm in modern NCCL releases tuned for NVLink switch topologies like the NVL72.
+3. NVIDIA Network Manager eXperience, or NMX-M, plays the role for NVLink that Unified Fabric Manager plays for InfiniBand. It manages the 9 switch trays running NVOS and the NVLink partitions of the rack.
 
-### 3.3 Why NVL72 transforms 1.8-trillion-parameter MoE inference
+### 4.3 Why the NVL72 changes 1.8-trillion-parameter MoE inference
 
-*AI Systems Performance Engineering* Chapter 2 gives a benchmark for serving a 1.8-trillion-parameter Mixture-of-Experts model. On 8-GPU H100 nodes over InfiniBand, the model and its active experts span several servers. For every token, the expert-parallel `AllToAll` shuffle and the tensor-parallel `AllReduce` cross 50 GB/s InfiniBand links. That latency makes interactive serving unusable. In a single GB200 NVL72 rack, all 72 GPUs share one NVLink 5 domain with microsecond latency and FP4 Tensor Cores. The table compares the two setups.
+A published benchmark covers serving a 1.8-trillion-parameter Mixture-of-Experts model. On 8-GPU H100 nodes over InfiniBand, the model spans several servers. For every token the expert-parallel AllToAll and the tensor-parallel AllReduce cross 50 GB/s links, and interactive serving is unusable. In one NVL72 rack, all 72 GPUs share one NVLink 5 domain.
 
-| Benchmark Metric (1.8T MoE Model) | 8-GPU H100 Nodes over InfiniBand | Single GB200 NVL72 Rack | Improvement Factor |
+| Benchmark metric, 1.8T MoE model | 8-GPU H100 nodes over InfiniBand | Single GB200 NVL72 rack | Improvement |
 |---|---|---|---|
-| **Inter-Node / Inter-GPU Fabric** | 50 GB/s InfiniBand (5–10+ µs latency) | 1.8 TB/s NVLink 5 (1–2 µs latency, 13.4–13.8 TB HBM3e; 20.7 TB on GB300) | 36× higher per-GPU fabric bandwidth |
-| **Per-GPU Decode Throughput** | ~3.4 tokens/second per GPU | ~150 tokens/second per GPU | `150 / 3.4 = 44.12×` from the two stated rates. The book itself summarizes the gain as "roughly 30×". |
-| **Time to First Token (TTFT)** | `> 5,000 ms` (over 5 seconds) | ~50 ms | 100× faster first-token response |
+| Fabric between GPUs | 50 GB/s InfiniBand, 5 to 10 µs or more | 1.8 TB/s NVLink 5, 1 to 2 µs | 36 times per-GPU bandwidth |
+| Decode throughput | about 3.4 tokens per second per GPU | about 150 tokens per second per GPU | roughly 30 times, as the source states |
+| Time to first token | over 5,000 ms | about 50 ms | 100 times |
 
-:::tip In one minute
-- Each of the 72 GPUs wires its 18 NVLink 5 links 1-to-1 to the 18 NVSwitch ASICs across 9 switch trays. That wiring forms a 1-hop non-blocking crossbar with 129.6 TB/s aggregate bandwidth and microsecond latency.
-- NVLink SHARP offloads collective reductions into the 18 NVSwitch ASICs, NCCL PAT optimizes tree reductions on NVSwitch domains, and NMX-M manages the NVLink switch fabric.
-- Keeping a 1.8T MoE model inside one NVL72 rack jumps throughput from 3.4 to 150 tokens/sec/GPU and cuts TTFT from over 5,000 ms to ~50 ms.
-:::
+Dividing the two per-GPU rates gives 44 times, and the lab computes that ratio. The source states roughly 30 times and does not say how the two figures were measured, so quote the 30 times figure and treat the benchmark as a vendor result, not a measurement of your workload.
 
----
+## 5. GB200 NVL72 compared with DGX GB300 NVL72
 
-### Off-rack traffic: NICs, DPUs and optics
+Before sizing floor loading, cooling loops and spine switches, an architect has to choose between the two racks. The GB300 uses Grace CPUs and Blackwell Ultra B300 GPUs. Its tray layout and NVLink 5 backplane match the GB200. It adds HBM3e capacity and FP4 compute, and it doubles the east-west network speed.
 
-Traffic leaving the rack needs a different kind of hardware. Each compute node carries high-speed network interface cards and a Data Processing Unit (DPU). A DPU takes networking, storage, security, and management work off the host CPU. In the NVL72 design, the BlueField-3 DPU handles line-rate packet processing, RDMA, and NVMe over Fabrics (NVMe-oF), which extends NVMe storage across a network.
-
-The DPU matters most when data streams in from storage. It can move data straight from the network into GPU memory, while the Grace CPU keeps doing preprocessing. It also isolates traffic for different jobs and users, so it acts as a firewall and virtual switch on the node. That makes it useful for secure multitenancy.
-
-Looking ahead, co-packaged optics (CPO) is the next step for the network. NVIDIA is adding silicon photonics to its Quantum-X800 InfiniBand and Spectrum-X800 Ethernet platforms, which run at 800 Gb/s. With CPO, the optical transmitters sit right next to the switch silicon. The electrical path becomes much shorter, so links carry more bandwidth and use less power. That is how hundreds or thousands of racks can act as one fabric.
-
-## 4. Comparing DGX GB200 NVL72 versus DGX GB300 NVL72
-
-An architect planning a multi-rack deployment has to choose between GB200 NVL72 and DGX GB300 NVL72 racks before sizing floor loading, cooling loops, and spine switches. The GB300 uses Grace CPUs and Blackwell Ultra B300 GPUs. Its tray layout and NVLink 5 backplane match the GB200. It adds HBM3e capacity and FP4 compute, and it doubles East-West InfiniBand bandwidth.
-
-| Rack Specification | NVIDIA GB200 NVL72 | NVIDIA DGX GB300 NVL72 | Generational Delta (GB300 vs GB200) |
+| Rack specification | GB200 NVL72 | DGX GB300 NVL72 | Change |
 |---|---|---|---|
-| **Compute Trays & Superchips** | 18 Compute Trays (36x GB200 Superchips) | 18 Compute Trays (36x GB300 Superchips) | Identical 18-node, 36-Superchip tray density |
-| **CPUs & GPUs per Rack** | 36x Grace CPUs (2,592 cores) + 72x B200 GPUs | 36x Grace CPUs (2,592 cores) + 72x B300 GPUs | B300 adds 1.5× AI compute (45%–50% higher inference throughput) |
-| **Per-GPU & Total HBM3e** | 180 GB (13.4 TB usable; 192 GB / 13.8 TB raw) @ 576 TB/s | 288 GB per B300 GPU = 20,736 GB (~20.7 TB) @ 576 TB/s | 1.5× HBM3e capacity (+7.3 TB HBM3e per rack) |
-| **Total Grace LPDDR5X** | ~17.0 TB (36 × 480 GB) | ~18.0 TB (36 × 500 GB) | ~38.7 TB (~38 TB) combined fast memory per rack (vs ~30.4 TB) |
-| **NVLink 5 Switch Fabric** | 9 Switch Trays (18 ASICs), 1.8 TB/s per GPU (130 TB/s agg) | 9 Switch Trays (18 ASICs), 1.8 TB/s per GPU (130 TB/s agg) | Same 1-stage NVLink 5 crossbar & switch tray hardware |
-| **East-West Compute NICs** | 4x ConnectX-7 (400 Gbps) per tray = 72 × 400G (28.8 Tbps) | 4x ConnectX-8 (800 Gbps Quantum-X800 XDR IB) per tray = 72 × 800G (57.6 Tbps) | 2× inter-rack network bandwidth (3.2 Tbps per tray) |
-| **Storage & In-Band DPU** | 1x BlueField-3 DPU per tray (2x 200G/400G) | 1x BlueField-3 DPU per tray (2x 400 Gbps; 400G RoCE HPS + 200G bonded In-Band) | 720-port / 64x800G Spectrum-4 SN5600 storage fabric |
-| **Local NVMe per Tray / Rack** | 4x 3.84 TB E1.S RAID 0 + 1x 1.92 TB M.2 OS | 4x 3.84 TB E1.S RAID 0 (15.36 TB/tray = 276.48 TB/rack) + 1x 1.92 TB M.2 OS | Identical per-tray E1.S RAID 0 + M.2 OS layout |
-| **Power, Cooling & Weight** | ~120–130 kW (18 × 6 kW + ~20 kW overhead), DLC, ~3,000 lbs (1.3–1.4 t) | ~150 kW (1.2 MW per 8-rack SU), 8x 33 kW shelves, hybrid liquid+air cooling | Enhanced capacitor energy storage in GB300 power shelves |
+| Compute trays and superchips | 18 trays, 36 GB200 Superchips | 18 trays, 36 GB300 Superchips | same density |
+| CPUs and GPUs per rack | 36 Grace CPUs (2,592 cores), 72 B200 GPUs | 36 Grace CPUs (2,592 cores), 72 B300 GPUs | B300 gives about 1.5 times the AI compute |
+| HBM3e | 180 GB usable per GPU (192 GB raw), 13.4 TB usable, 576 TB/s | 288 GB per GPU, about 20.7 TB, 576 TB/s | 1.5 times capacity |
+| Grace LPDDR5X | about 17 TB (36 x 480 GB) | about 17 TB (36 x 480 GB) | same |
+| Fast memory in total | about 30.4 TB | about 37.7 TB | NVIDIA's page lists 37 TB |
+| NVLink 5 fabric | 9 switch trays, 18 ASICs, 1.8 TB/s per GPU | the same | same crossbar |
+| East-west NICs | 4 x ConnectX-7 at 400 Gbps per tray, 28.8 Tbps per rack | 4 x ConnectX-8 at 800 Gbps per tray, 57.6 Tbps per rack | 2 times |
+| Storage and in-band DPU | 1 BlueField-3 per tray | 1 BlueField-3 per tray, 2 x 400 Gbps | similar |
+| Local NVMe | 4 x 3.84 TB E1.S RAID 0 plus 1.92 TB M.2 OS | 15.36 TB per tray, 276.48 TB per rack, plus M.2 OS | same layout |
+| Rack power | about 130 kW maximum | 150 kW allocation (1.2 MW per 8-rack SU) | about 20 kW more |
+| Cooling and weight | liquid cooled, about 3,000 lbs | hybrid liquid and air cooling | GB300 shelves add energy storage |
 
-:::tip In one minute
-- DGX GB300 NVL72 upgrades each GPU from B200 to B300 HBM3e, raising rack HBM and total fast memory while doubling inter-rack networking with ConnectX-8 NICs.
-- A loaded NVL72 rack weighs ~3,000–3,200 lbs with hardware and coolant and draws 130–150 kW, reaching 1.2 MW across an 8-rack, 576-GPU GB300 Scalable Unit.
-:::
+A note on memory: some descriptions give the GB300 Grace memory as 36 x 500 GB, about 18 TB. NVIDIA's GB300 NVL72 specification lists 17 TB of LPDDR5X, which is 36 x 480 GB, so the chapter and its lab use 17 TB.
 
----
+## 6. Failure domains and NVLink partitions
 
-## 5. Dual-protocol firmware management on GB200 and GB300 NVL72
+An SRE gets paged when something in the rack fails. The question is how far the failure reaches. The sources used in this chapter give the structure, so a part of the answer can be worked out. The rest they do not cover.
 
-An administrator flashes an NVL72 rack the way they flash an x86 server. The switch trays reject the login, and the compute trays are left half updated. The *NVIDIA Base Command Manager 11 Administrator Manual*, Section 14.5, explains why. BCM 11.34.0 introduces `cm-nvfwupd` version 2.1.2, and the two tray types differ in protocol, `firmwaremanagemode` setting, and number of `.fwpkg` bundles.
+**What the structure gives.** The rack has 18 compute trays, each its own Linux instance with 4 GPUs. It has 9 switch trays, each carrying 2 of the 18 NVLink planes. Every GPU has one link into every plane.
 
-### 5.1 Compute Trays versus Switch Trays in Base Command Manager
+- A switch tray that is unseated or powered off removes 2 of the 18 planes from every GPU at once. Each GPU keeps 16 of 18 links, so per-GPU NVLink bandwidth drops from 1.8 to 1.6 TB/s. This follows from the wiring arithmetic in section 4 and is an inference, not a vendor test result.
+- A compute tray failure removes its 4 GPUs and its Linux instance. The other 68 GPUs still have all 18 links to the switches.
+- A rack is the NVLink domain. A job that needs more than 72 GPUs must cross InfiniBand or Ethernet.
+
+**NVLink partitions.** The reference architecture says NMX-M manages the NVLink fabric, and Base Command Manager documents the memory-sharing service for NVLink domains. The Inter-node Memory Exchange service, IMEX, maps GPU memory over NVLink between the GPUs of one NVLink domain. BCM can run IMEX globally or per Slurm job, and it can create a per-rack IMEX configuration. Per-job IMEX has one security advantage: a user's job cannot read memory mappings left by another job.
+
+**Not covered by the sources.** The sources do not say what happens to a running job when a compute tray or switch tray fails, how NMX-M repartitions the domain, or how long recovery takes. Do not assume the job continues. Test failure behaviour on your own rack with your scheduler and NCCL version, and record it in a runbook.
+
+## 7. Dual-protocol firmware management on GB200 and GB300 NVL72
+
+An administrator flashes an NVL72 rack the way they flash an x86 server. The switch trays reject the login, and the compute trays are left half updated. The *NVIDIA Base Command Manager 11 Administrator Manual*, Section 14.5, explains why. BCM 11.34.0 introduces `cm-nvfwupd` version 2.1.2, and the two tray types differ in protocol, `firmwaremanagemode` setting and number of `.fwpkg` bundles.
+
+### 7.1 Compute trays versus switch trays in Base Command Manager
 
 ```mermaid
 flowchart LR
@@ -305,7 +307,7 @@ flowchart LR
   DirS -->|"NVOS REST API<br/>mode gb200sw or gb300sw"| ST["9 switch trays<br/>16 components"]
 ```
 
-Both staging folders sit under `/cm/local/apps/cmd/etc/htdocs/bios/firmware/` and are used for both GB200 and GB300 racks. The package names, management protocols, and component counts are detailed in the table below.
+Both staging folders sit under `/cm/local/apps/cmd/etc/htdocs/bios/firmware/` and are used for both GB200 and GB300 racks.
 
 | Attribute | NVL72 Compute Tray (`c01..c18`) | NVL72 NVLink Switch Tray (`nvsw-01..09`) |
 |---|---|---|
@@ -320,45 +322,41 @@ Both staging folders sit under `/cm/local/apps/cmd/etc/htdocs/bios/firmware/` an
 2. **Same directory and identical switch-tray hardware for GB200 and GB300:** Both GB200 and GB300 store their packages under the `gb200/` and `gb200sw/` subdirectories. The NVLink switch tray hardware and 16-component `firmware status` output are 100% identical between GB200 and GB300 racks. On the compute tray, the only component-name difference is that the BlueField DPU row is reported as `NIC_1` on GB200 and `NIC_0` on GB300.
 :::
 
-:::tip In one minute
-- In BCM 11.34.0, compute trays use `firmwaremanagemode` `gb200` or `gb300` over Redfish and require flashing two `.fwpkg` packages covering 30 components.
-- NVLink switch trays use `firmwaremanagemode` `gb200sw` or `gb300sw` over the NVOS REST API with `accesssettings` credentials and require flashing three `.fwpkg` packages covering 16 components.
-:::
+## 8. Running the rack day to day
 
----
+### 8.1 Off-rack traffic: NICs, DPUs and optics
 
-### Monitoring utilization and power in practice
+Traffic leaving the rack uses different hardware. Each compute tray carries ConnectX network cards and a BlueField-3 Data Processing Unit, or DPU, which takes networking, storage, security and management work off the host CPU. The DPU handles line-rate packet processing, RDMA and NVMe over Fabrics. It can move data from the network straight into GPU memory while the Grace CPU keeps preprocessing. It also isolates traffic between jobs and users, which makes secure multitenancy possible.
 
-A rack this powerful only pays off while it is busy. NVIDIA's Data Center GPU Manager (DCGM) tracks per-GPU metrics such as GPU utilization, memory usage, temperature, and NVLink throughput. During a training run, you want GPUs near 100% utilization most of the time. If they sit at 50%, something is idle half the time. The cause might be a data loading bottleneck or a synchronization problem.
+Co-packaged optics, where the optical transmitters sit next to the switch silicon, is NVIDIA's next step for the network. It is being added to Quantum-X800 InfiniBand and Spectrum-X800 Ethernet. The electrical path gets much shorter, so links carry more bandwidth for less power.
 
-Watch the NVLink counters too. If the links saturate often, communication is probably the limit. The DPUs and NICs expose their own statistics, so you can confirm that storage links are not saturated during data reads. Power needs the same attention. At about 130 kW, a small misconfiguration wastes real money. Administrators can cap power or clocks when a job does not need full speed. Dialing down clocks can save kilowatts over weeks of training while still meeting the throughput target.
+### 8.2 Monitoring utilization and power
 
-### Sharing the rack: scheduling and MIG
+A rack this powerful pays off only while it is busy. NVIDIA's Data Center GPU Manager, DCGM, tracks per-GPU utilization, memory use, temperature and NVLink throughput. During training you want GPUs near full utilization most of the time. If they sit near 50 percent, look for a data-loading or synchronization bottleneck. If the NVLink counters often saturate, communication is the limit. Administrators can cap power or clocks for jobs that do not need full speed, which can save kilowatts over weeks of training.
 
-Rarely does one job need all 72 GPUs. Several teams usually run experiments on different slices of the same rack. A cluster scheduler such as SLURM or Kubernetes, with NVIDIA's plugins, can assign 8 GPUs to one user, 16 to another, and 48 to a third, all inside one rack.
+### 8.3 Sharing the rack: scheduling and MIG
 
-Multi-Instance GPU (MIG) goes one level deeper. It splits a single physical GPU into smaller GPUs, partitioned in hardware. A Blackwell GPU with 180 GB of usable memory can be cut into smaller pieces that each run a small inference job at the same time. Each Blackwell GPU supports up to seven fully isolated MIG instances, each with dedicated memory and SMs. MIG sizes are fixed by product generation.
+Rarely does one job need all 72 GPUs. A scheduler such as Slurm or Kubernetes with NVIDIA's plugins can give 8 GPUs to one user, 16 to another and 48 to a third inside one rack.
 
-MIG suits inference well. Use it to serve many models on one GPU. Combined with the DPU's firewall role, it lets separate departments, or even outside clients, share one system safely. The partitions do not interfere with one another, much like a cloud provider sharing one big server among customers.
+Multi-Instance GPU, or MIG, goes one level deeper. It splits one physical GPU into smaller hardware-isolated GPUs, each with dedicated memory and compute units. Each Blackwell GPU supports up to seven MIG instances. MIG suits inference, where many small models share one GPU, and together with the DPU's isolation role it lets departments share a system safely.
 
-### Utilization, chargeback and ROI
+### 8.4 Utilization, chargeback and return on investment
 
-An NVL72 is a multimillion-dollar asset, and it can use tens of thousands of dollars of electricity per month. The useful measure is goodput, the work that actually gets done. An idle rack wastes both capital and running cost. Track the GPU hours used against the GPU hours available. If the rack is underused, consolidate workloads or offer the spare time to other teams.
+An NVL72 is a multimillion-dollar asset with a large power bill. The useful measure is goodput, the work actually done. Track GPU hours used against GPU hours available, and consolidate workloads or offer spare time to other teams when the rack is underused. Some organizations charge each team per GPU hour to cover electricity and depreciation.
 
-Some organizations use a chargeback model. Each internal team pays per GPU-hour from its own budget. That covers electricity and depreciation, and it makes people value the resource. Transparency of this kind keeps usage honest.
+As an illustration, 100 H100 GPUs drawing about 70 kW might be replaced by 50 Blackwell GPUs drawing about 50 kW for the same work. Whether the upgrade pays for itself depends on prices and utilization, so run your own numbers.
 
-Return on investment usually comes down to performance per dollar. Suppose you run 100 H100 GPUs today. Blackwell GPUs are more than twice as fast, or faster still with FP8 and FP4, so 50 of them might handle the same work. Even if each Blackwell costs more, buying half as many can be cost-neutral or better. The power picture improves too, from about 70 kW for the H100s to about 50 kW for the Blackwells. Over a year, that gap saves tens of thousands of dollars. Fewer servers also means less CPU, RAM, and networking overhead. In some cases the upgrade pays for itself in one to two years, especially if the hardware stays busy around the clock. The exact math depends on prices and usage, so run your own numbers.
+### 8.5 Key takeaways
 
-### Key takeaways for the NVL72
+- The NVL72 puts 72 GPUs in one NVLink domain inside one rack.
+- Plan for about 130 kW (GB200) or 150 kW (GB300), two independent feeds and a CDU loop. Cooling is hybrid on GB300.
+- Keep traffic inside the rack. Use InfiniBand or Ethernet to scale past one rack.
+- Failure behaviour of a running job is not given by the sources, so test it.
 
-- The NVL72 puts 72 GPUs in one rack, joined by NVLink and NVSwitch into one fabric.
-- It needs about 130 kW, two independent feeds, and liquid cooling with a CDU loop.
-- Keep traffic inside the rack. Use InfiniBand or Ethernet only to scale past one rack.
-- Its value depends on keeping GPUs busy, so monitor utilization and power together.
 
 ## Commands and configurations that matter
 
-The `cmsh` and Linux commands below display the NVL72 rack layout, configure NVOS REST API access on the switch trays, inspect the firmware components, and flash all five `.fwpkg` bundles. These commands are **untested** on live GB200 or GB300 NVL72 hardware in this authoring environment. Their rules are verified in `code/part09/nvl72_rack_lab.py`.
+The `cmsh` and Linux commands below display the NVL72 rack layout, configure NVOS REST API access on the switch trays, inspect the firmware components, and flash all five `.fwpkg` bundles. The commands below were not run on live GB200 or GB300 NVL72 hardware. Their rules are checked in `code/part09/nvl72_rack_lab.py`.
 
 ### 1. Inspect the 48U NVL72 rack slot elevation in BCM
 
@@ -426,7 +424,7 @@ This chapter provides a self-checking Python model in `code/part09/nvl72_rack.py
 | Lab Component | Verified Calculations and Rules |
 |---|---|
 | **1. 1-Stage NVLink 5 Crossbar Verifier** | 18 compute trays × 4 GPUs = 72 GPUs, 9 switch trays × 2 ASICs = 18 NVSwitch ASICs, 18 links/GPU @ 100 GB/s = 1.8 TB/s, 72 ports/ASIC, 144 ports/switch tray, 1,296 total backplane ports, and 129.6 TB/s (~130 TB/s) aggregate bandwidth |
-| **2. GB200 vs GB300 NVL72 Rack Catalog** | 13.4 TB vs 20.7 TB HBM3e, 30.4 TB vs 38.7 TB total fast memory, 400G ConnectX-7 vs 800G ConnectX-8 = 57.6 Tbps per rack, 276.48 TB aggregate E1.S RAID 0 scratch, 8 × 33 kW = 264 kW power shelves, 130 kW vs 150 kW rack draw, and 1.2 MW per 8-rack GB300 Scalable Unit |
+| **2. GB200 vs GB300 NVL72 Rack Catalog** | 13.4 TB vs 20.7 TB HBM3e, 30.4 TB vs 37.7 TB total fast memory, 400G ConnectX-7 vs 800G ConnectX-8 = 57.6 Tbps per rack, 276.48 TB aggregate E1.S RAID 0 scratch, 8 × 33 kW = 264 kW power shelves, 130 kW vs 150 kW rack draw, and 1.2 MW per 8-rack GB300 Scalable Unit |
 | **3. 48U NVL72 Rack Elevation Zone Mapper** | RU 01–10 `pwr-01..04`, RU 11–22 `c01..c08`, RU 23–31 `nvsw-01..09`, RU 32–44 `c09..c18`, RU 45–48 `pwr-05..08` |
 | **4. 1.8T MoE Inference Speedup Calculator** | 3.4 vs 150 tokens/sec/GPU = 44.12× exact ratio / ~30× prose summary, and 5,000 ms vs 50 ms TTFT = 100× speedup |
 | **5. BCM 11.34.0 Dual-Protocol Firmware Validator** | 30 compute-tray components over Redfish with 2 `.fwpkg` files vs 16 switch-tray components over the NVOS REST API with 3 `.fwpkg` files and `accesssettings` |
@@ -447,7 +445,7 @@ Expected output verified in this repository:
   [PASS] Per-GPU NVLink 5 bandwidth is 1.8 TB/s and exact 72-GPU aggregate is 129.6 TB/s (~130 TB/s)
   [PASS] Rejects non-positive compute_trays in crossbar verifier
   [PASS] GB200 NVL72 has 36 Grace CPUs, 72 B200 GPUs, 13.4 TB HBM3e + 17.0 TB LPDDR5X = 30.4 TB fast memory
-  [PASS] GB300 NVL72 upgrades to 288 GB/GPU = 20.7 TB HBM3e + 18.0 TB LPDDR5X = 38.7 TB fast memory
+  [PASS] GB300 NVL72 upgrades to 288 GB/GPU = 20.7 TB HBM3e + 17.0 TB LPDDR5X = 37.7 TB fast memory
   ...
   [PASS] ASP Ch2 chunk 9 power decomposition: 18 compute trays * 6 kW + 22 kW NVSwitch/cooling == 130 kW
   [PASS] superpod-gb300-ra p.5: 8x DGX GB300 NVL72 racks per Scalable Unit == 576 GPUs and 1.2 MW (1,200 kW) TDP
@@ -520,7 +518,7 @@ Each DGX GB300 Power Shelf contains six 5.5 kW PSUs with N redundancy, deliverin
 | Metric | GB200 NVL72 | DGX GB300 NVL72 |
 |---|---|---|
 | **HBM3e Capacity** | `72 × 180 GB = 13.4 TB` usable (`13.8 TB` raw at 192 GB/GPU) | `72 × 288 GB = 20.7 TB` HBM3e (1.5× B200) |
-| **Grace LPDDR5X & Total Fast Memory** | ~17.0 TB LPDDR5X (~30.4 TB total fast memory) | ~18.0 TB LPDDR5X (~38.7 TB total fast memory) |
+| **Grace LPDDR5X & Total Fast Memory** | ~17 TB LPDDR5X (~30.4 TB total fast memory) | ~17 TB LPDDR5X (~37.7 TB total fast memory) |
 | **East-West Compute NICs** | 4x 400 Gbps ConnectX-7 per tray (`72 × 400G = 28.8 Tbps`) | 4x 800 Gbps ConnectX-8 per tray (`72 × 800G = 57.6 Tbps`, 2× bandwidth) |
 </details>
 
@@ -552,7 +550,7 @@ Each package requires its own `firmware flash` command. Flashing only a subset l
 <details>
 <summary>**9. Why does NVL72 use passive copper inside one rack instead of optical links between racks?**</summary>
 
-Optical transceivers for 72 GPUs at 1.8 TB/s would use roughly 20 kW of extra power per rack and add more parts that can fail. Inside one rack, the distances are short enough for passive copper.
+Inside one rack the distances are short enough for passive copper. Optical transceivers for 72 GPUs would add roughly 20 kW of power per rack and more parts that can fail.
 </details>
 
 <details>
@@ -594,13 +592,13 @@ NMX-M is the management and telemetry tool for the NVLink switch trays and NVLin
 <details>
 <summary>**16. What is the benchmark behind 3.4 versus 150 tokens per second per GPU, and what should you remember about it?**</summary>
 
-It is a 1.8-trillion-parameter MoE model running on H100 nodes over InfiniBand versus one NVL72 rack, as reported in *AI Systems Performance Engineering*. The book calls the gain "roughly 30×". The 44.12× figure in this chapter is the author's own division, so treat it as an arithmetic ratio of the two stated numbers.
+It is a 1.8-trillion-parameter MoE model running on H100 nodes over InfiniBand versus one NVL72 rack. The reported gain is roughly 30 times. Dividing the two stated rates gives 44 times, which is only arithmetic on the two numbers, so quote the 30 times figure and treat it as a vendor result.
 </details>
 
 <details>
 <summary>**17. What changes between GB200 and GB300 NVL72, and what stays the same?**</summary>
 
-Both systems share the same trays, switch fabric, and NVLink 5 backplane. GB300 raises HBM per GPU from about 180–192 GB to 288 GB, increases FP4 compute by about 1.5×, and doubles network speed per NIC from 400G to 800G at about 150 kW of rack power.
+Both systems share the same trays, switch fabric, and NVLink 5 backplane. GB300 raises HBM per GPU from about 180 to 192 GB to 288 GB, increases AI compute by about 1.5 times, and doubles network speed per NIC from 400G to 800G. The GB300 rack power allocation is 150 kW, against about 130 kW for GB200, and its cooling is described as hybrid liquid and air.
 </details>
 
 <details>
@@ -625,6 +623,9 @@ A loaded rack weighs about 3,000 lbs (1.3–1.4 metric tons) on one footprint. T
 
 ## Sources and review notes
 
+- **Power and cooling corrections (this revision).** The AC to DC path follows the DGX GB300 SuperPOD Reference Architecture (power shelves with six 5.5 kW supplies, DC power connectors on the compute tray rear), not the per-compute-tray conversion described in *AI Systems Performance Engineering* Chapter 2. Cooling follows the same reference architecture ("hybrid cooling with both direct liquid cooling and air cooling", p. 5); the book and NVIDIA's GB300 NVL72 product page say fully liquid cooled, and the exact liquid and air split is not stated in any source used here. Rack power is 130 kW for GB200 (book, 18 x 6 kW + about 20 kW) and 150 kW for GB300 (1.2 MW per 8-rack Scalable Unit, same reference architecture, p. 5, divided by 8). The 120 to 130 kW range was dropped as unsourced. The busbar voltage "48 to 54 V" was removed because no source used here states it.
+- **GB300 Grace memory.** NVIDIA's GB300 NVL72 product page (nvidia.com/en-us/data-center/gb300-nvl72, fetched 2026-11-12) lists 17 TB LPDDR5X, 20 TB GPU memory and 37 TB fast memory. The chapter and lab use 36 x 480 GB, about 17 TB, and 37.7 TB fast memory; the earlier 36 x 500 GB figure from the book is not used. `code/part09/nvl72_rack.py` and the lab were updated to match.
+- **Failure domains and partitions.** The one-plane-per-ASIC arithmetic is derived from the crossbar wiring and is an inference. The IMEX statements come from the Base Command Manager 11 Administrator Manual, chapter on workload management. No source used here describes job behaviour on tray failure or NMX-M partition procedures, so the chapter says so.
 - **Cable count.** The chapter does not give a cable count for the backplane, because no source in the corpus states one. The ~20 kW copper-versus-optics saving comes from `nvidia-devops` Volume 05 Chapter 7.
 
 ### Sources read in full for this chapter
@@ -642,7 +643,7 @@ A loaded rack weighs about 3,000 lbs (1.3–1.4 metric tons) on one footprint. T
 ### Run here
 - `python3 -B code/part09/nvl72_rack_lab.py` passes all 30 checks with 0 failures.
 
-### My own choices and inferences, labelled in the text
+### Choices and inferences made in this chapter
 1. **Exact arithmetic ratio 44.12× for the 1.8T MoE benchmark:** The function `compare_moe_inference_h100_vs_nvl72` in `code/part09/nvl72_rack.py` computes `150.0 / 3.4 = 44.12×`. *AI Systems Performance Engineering* Chapter 2 summarizes the gain as "roughly 30×". The chapter keeps both: the lab verifies the exact ratio of the two stated token rates, and the book's wording stays attributed to the book.
 
 ### Not verified on live hardware

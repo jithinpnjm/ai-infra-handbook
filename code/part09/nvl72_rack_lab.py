@@ -72,11 +72,11 @@ def run_checks() -> int:
         and gb200.total_fast_memory_tb == 30.4,
     )
     check(
-        "GB300 NVL72 upgrades to 288 GB/GPU = 20.7 TB HBM3e + 18.0 TB LPDDR5X = 38.7 TB fast memory",
+        "GB300 NVL72 upgrades to 288 GB/GPU = 20.7 TB HBM3e + 17.0 TB LPDDR5X = 37.7 TB fast memory",
         gb300.per_gpu_hbm_gb == 288
         and gb300.total_hbm_tb == 20.7
-        and gb300.total_lpddr5x_tb == 18.0
-        and gb300.total_fast_memory_tb == 38.7,
+        and gb300.total_lpddr5x_tb == 17.0
+        and gb300.total_fast_memory_tb == 37.7,
     )
     check(
         "GB300 compute tray uses 4x ConnectX-8 (800 Gbps XDR IB) + 1x BlueField-3 (2x400G) at front aisle",
