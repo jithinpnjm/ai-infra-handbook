@@ -26,6 +26,16 @@ Picture a "storage is slow" ticket landing on your desk in the middle of a train
 
 Those strengths come with sharp edges. Striping defaults can cap the bandwidth of a big checkpoint at one disk. A metadata service can be overwhelmed by a data loader. Failures can look like hung nodes. Operators who understand striping, metadata and the management tools can prevent and diagnose most "storage is slow" tickets.
 
+## Lustre in one minute
+
+Imagine eight GPU servers that all need to read the same training dataset. Keeping a separate copy on each server makes updates and capacity harder to manage. Sending every read through one ordinary file server can make that server a bottleneck. Lustre gives the servers one shared directory tree while distributing file data across multiple storage servers.
+
+To a training program, the mounted Lustre path looks like a normal Linux path, such as `/lustre/datasets/train-0001.tar`. This familiar interface is often called POSIX: programs use ordinary operations such as `open`, `read`, and `write`. Behind that path, Lustre separates two jobs. Metadata services keep track of names, permissions, and where a file's data is stored. Storage services hold the file's bytes and can send different pieces to a client in parallel.
+
+For example, when a data loader opens `train-0001.tar`, the client first asks the metadata service where the file lives. It then reads the data from the storage targets named in the file's layout. If the file is striped across several targets, large reads can use them at the same time. A checkpoint follows the same shared-filesystem path in reverse: training processes write checkpoint data to Lustre so that other nodes can access it later.
+
+The Management Server (MGS) supplies configuration when Lustre clients and servers mount the file system. It is not the server that handles every training-data read. The next section introduces the specific names for the metadata and storage roles. The practical distinction to remember is that Lustre is shared storage, not a training framework, a dataset format, or a backup by itself.
+
 ## Prerequisites and outcomes
 
 This chapter builds on earlier material, so check these first. Chapter 6.18 covers parallel storage concepts. Part 2 covers LNet, which runs over IB and Ethernet. Part 1 covers block devices and the ldiskfs and ZFS back ends. When you finish, you should be able to do the following:

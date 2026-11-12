@@ -32,6 +32,14 @@ The second failure comes from default striping. Lustre gives new directories a s
 
 The third failure sits in the client. Untuned RPC queues and cross-socket hardware paths starve fast RDMA links. Even when files are striped across two dozen OSTs over 400 Gbps InfiniBand or RoCEv2, default Object Storage Client queue depths keep throughput below the network bandwidth-delay product. If LNet binds to a NIC on one NUMA socket while the dataloader or GPUDirect Storage buffer runs on the other, single-client throughput drops by fivefold. Missing mount flags add to the damage. They break distributed locks, and they make cluster health probes hang whenever one storage target slows down.
 
+## Lustre in an AI workload: the beginner's mental model
+
+Lustre is shared storage mounted by many compute nodes. A training job can use the same `/lustre` directory from all its GPU nodes instead of keeping a separate dataset copy on each node. The application still uses familiar file operations such as `open`, `read`, and `write`; Lustre coordinates where files live and moves their data across the storage servers.
+
+Follow one training example. A data-loader worker opens a packed dataset shard under `/lustre/datasets`. Lustre's metadata service finds the file and tells the client which storage targets hold its data. The client then reads the file's pieces from those targets. When the shard is large and laid out across several targets, they can deliver pieces in parallel. At checkpoint time, training workers write checkpoint files to the shared filesystem, where the job can retrieve them for a restart. The Lustre architecture in Chapter 6.19 explains these roles in more detail.
+
+Lustre is one tier in a storage design, not the whole design. A node's local NVMe is usually faster for temporary work because it avoids the storage network, but another node cannot automatically see that local disk. Lustre provides the shared workspace; an object store may hold long-term archives. In practice, the workload matters: millions of tiny files can overwhelm metadata services, while a huge file using too few storage targets can leave much of the system idle. This chapter explains how to recognise and address those two problems, along with the AI-specific networking and checkpoint issues.
+
 ```text
 AI Factory Lustre Failure Regime Summary:
 1. Bimodal datasets & metadata storms:
