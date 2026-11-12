@@ -23,7 +23,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture one network rail dropping a single packet in the middle of a training run. That one loss can stall an entire distributed training cluster. In a synchronous collective job, every GPU waits at the barrier until the slowest rank finishes transmitting. When one network card drops a frame and hits a retransmission timeout, thousands of other accelerators sit completely idle. Platform engineers and model teams then watch cluster-wide Model Flops Utilization collapse, while expensive compute hardware keeps burning power and doing nothing.
+A training run slows to a crawl, and the cause turns out to be one network card that dropped a single frame. In a synchronous collective job, every GPU waits at a barrier until the slowest rank finishes sending. The card waits out a retransmission timeout, and thousands of other accelerators sit idle behind it. The team sees Model Flops Utilization fall across the whole cluster while the hardware keeps drawing power.
 
 The summary below shows how the chapter divides the work. It separates the two operators and the three networks that every GPU server uses.
 
@@ -40,7 +40,7 @@ Straggler Amplification and Node Fabric Split:
 
 Notice that each operator owns its own resource, ClusterPolicy or NicClusterPolicy. Earlier chapters drew a clean line on every Kubernetes worker node. The NVIDIA GPU Operator manages only the accelerator stack through ClusterPolicy. The NVIDIA Network Operator manages the high-speed network and storage stack through NicClusterPolicy.
 
-Doing the network half by hand is where things break. Compiling host drivers, loading peer-memory bridge modules, partitioning Virtual Functions and wiring secondary CNI networks across a large fleet is error-prone. A single mismatched kernel module or missing device plugin can quietly drop a job from hardware RDMA back to slow host TCP sockets.
+Doing the network half by hand is where things break. Someone must compile host drivers, load the peer-memory bridge module, split the card into Virtual Functions, and wire secondary networks on every node. One mismatched kernel module or missing device plugin can quietly push a job from hardware RDMA back to slow host TCP sockets.
 
 Every multi-GPU server connects to three separate physical networks at once. The backend compute fabric carries east-west GPU collectives over InfiniBand or RoCEv2, across eight dedicated rails. The frontend storage fabric streams training datasets and absorbs multi-terabyte checkpoint bursts. It moves data between local NVMe drives, parallel filesystems and GPU memory, using GPUDirect Storage. The management fabric handles control-plane traffic, SSH, hardware telemetry and cluster monitoring over standard Ethernet.
 
@@ -67,9 +67,9 @@ Work through Chapter 11.10 first if the Multus and SR-IOV pieces are new to you.
 
 ### 1. Basics: The NVIDIA Network Operator architecture and its five operands
 
-Picture a Linux kernel upgrade on a GPU node. Without automated lifecycle management, that upgrade breaks RDMA networking straight away.
+Suppose a kernel upgrade lands on a GPU node. Without automation, RDMA networking on that node breaks at once.
 
-Host administrators must recompile OpenFabrics drivers by hand, reload peer-memory modules in the exact right order, recreate SR-IOV Virtual Functions and restart CNI plugins. If any step runs out of order, containers lose their InfiniBand device files or fall back to bouncing tensors through host system RAM. The NVIDIA Network Operator removes this operational fragility. It reconciles node state declaratively, through Kubernetes custom resources.
+An administrator must recompile the OpenFabrics drivers, reload the peer-memory module in the right order, recreate the SR-IOV Virtual Functions, and restart the CNI plugins. If a step runs out of order, containers lose their InfiniBand device files or fall back to copying tensors through host RAM. The NVIDIA Network Operator takes over that work. It describes the wanted node state in Kubernetes custom resources and keeps the node matching it.
 
 Just as the GPU Operator watches Node Feature Discovery labels for NVIDIA GPUs, the Network Operator watches the same kind of labels for Mellanox and NVIDIA ConnectX network adapters. When a node advertises PCI vendor ID 15b3 and SR-IOV capability, the controller reconciles the cluster-wide NicClusterPolicy resource into five coordinated node-level DaemonSets. The diagram below traces that chain from the node label to the pod.
 
@@ -105,7 +105,7 @@ After the table, notice that the peer-memory operand sits on top of the OFED ope
 
 Standard TCP/IP expects packet loss. It uses kernel sockets, sliding windows and software retransmissions to recover gently. RDMA takes a different route. It offloads the entire transport state machine onto the ConnectX NIC hardware, using Queue Pairs, Send and Receive Queues, pinned Memory Regions, Work Requests and Completion Queues.
 
-That lightweight hardware transport assumes the underlying network fabric is completely lossless. If a switch buffer overflows and drops an RDMA packet, hardware sequence errors trigger expensive timeouts. Those timeouts stall every GPU in the collective.
+That lightweight hardware transport assumes the network underneath loses no packets. If a switch buffer overflows and drops an RDMA packet, hardware sequence errors trigger expensive timeouts. Those timeouts stall every GPU in the collective.
 
 AI architects pick one of two physical fabrics to get that lossless RDMA transport. Native InfiniBand prevents buffer overflow at the link layer with hardware credit-based flow control. A transmitter never sends data unless the receiver has advertised free buffer credits. Ethernet RoCEv2 takes another route. It wraps RDMA packets inside standard UDP datagrams on port 4791, and it relies on Priority Flow Control pause frames and Explicit Congestion Notification to prevent drops. Modern Ethernet AI fabrics such as NVIDIA Spectrum-X add hardware-assisted adaptive routing and congestion control to RoCEv2, using Spectrum-4 switches paired with BlueField-3 SuperNICs.
 
@@ -141,7 +141,7 @@ Host RDMA Link Verification and Line-Rate Benchmarks:
 
 Notice that the RoCEv2 port reports zero lids, which is normal for IP routing rather than a fault.
 
-Traditional SNMP network monitoring polls switch counters every ten to sixty seconds. That coarse interval is completely blind to synchronized AI incast microbursts. Those bursts fill switch buffers and trigger pause frames inside a few microseconds. In NVIDIA Base Command Manager 11, administrators deploy the NVIDIA NetQ Operator to stream high-resolution fabric telemetry directly into Kubernetes.
+Traditional SNMP monitoring reads switch counters every ten to sixty seconds. A burst that lasts microseconds never shows up in a counter read that rarely. Synchronized AI traffic produces exactly such bursts, called incast microbursts, which fill switch buffers and trigger pause frames within a few microseconds. In NVIDIA Base Command Manager 11, administrators deploy the NVIDIA NetQ Operator to stream high-resolution fabric telemetry directly into Kubernetes.
 
 The NetQ sizing block below lists what that deployment needs in Base Command Manager 11.
 
@@ -354,12 +354,12 @@ Run the self-check first, and then you can work through the exercises.
 
 ### Exercises
 
-1. Look at operand dependency first. Call `reconcile_network_operator_operands()` in `code/part11/nvidia_network_operator.py` with `node_has_mellanox_15b3=True`. Then compare the scheduled operands and GPUDirect RDMA readiness with the host GPU driver not ready, and again with it ready. Explain why the peer-memory DaemonSet depends on both driver stacks.
-2. Compare InfiniBand with RoCEv2 headers and link speed. Call `analyze_ib_vs_roce_port_and_headers()` to get the transport framing byte count and the raw line rate in gigabytes per second. Next, compare a 200 Gbps InfiniBand HDR link inside one subnet with a 400 Gbps InfiniBand NDR link routed across subnets. Finally, explain why the base and Subnet Manager LIDs equal 0 on a 400 Gbps RoCEv2 link.
-3. Work through GPUDirect Storage and WebDataset math. Call `evaluate_gds_and_storage_tiers()` to compute the total raw Tier 1 NVMe capacity on a DGX H100 node. Then convert the pinned GPU memory setting into GiB. Finally, work out how many 1 GB WebDataset tar files replace 14 million raw 20 KB PNG files.
-4. Contrast two RoCEv2 failures. Call `diagnose_fabric_or_storage_incident()` for both cases. Then tell the root cause and the fix apart for two cases. In the first, switch ports show massive PFC pause counts with zero data packets transmitted. In the second, collective steps oscillate between 10 ms and 500 ms with low ECN marks.
-5. Diagnose a cascading storage hang. Four training nodes show a load average above 500, zero percent CPU utilization, and Python processes stuck in uninterruptible sleep inside `rpc_wait_bit_killable`. Explain why `kill -9` cannot terminate those processes. Then identify the physical error counter to inspect in `ibstat`, and say how to recover the nodes.
-6. Move on to NetQ in Base Command Manager 11. State the node count, disk capacity and RAM prerequisites for the NVIDIA NetQ Operator. Then write the command the Base Command Manager head nodes need if port 8081 is still in use.
+1. A node has a ConnectX card, but the host GPU driver is not ready yet. Call `reconcile_network_operator_operands()` in `code/part11/nvidia_network_operator.py` with `node_has_mellanox_15b3=True`, once with the GPU driver not ready and once with it ready. Compare the scheduled operands and the GPUDirect RDMA readiness. Why does the peer-memory DaemonSet depend on both driver stacks?
+2. You must compare InfiniBand with RoCEv2 on the wire. Call `analyze_ib_vs_roce_port_and_headers()` and read the framing byte count and the line rate in gigabytes per second. Do this for a 200 Gbps HDR link inside one subnet and for a 400 Gbps NDR link routed across subnets. Then explain why `ibstat` shows both LIDs as 0 on a RoCEv2 port.
+3. You are sizing storage for a DGX H100 node. Call `evaluate_gds_and_storage_tiers()` and read the raw Tier 1 NVMe capacity. Convert the pinned GPU memory setting into GiB. Then work out how many 1 GB WebDataset tar files replace 14 million raw 20 KB PNG files.
+4. Two RoCEv2 clusters misbehave. In the first, switch ports show huge PFC pause counts and no data packets. In the second, collective steps swing between 10 ms and 500 ms while ECN marks stay low. Call `diagnose_fabric_or_storage_incident()` for both. What are the root cause and the fix in each case?
+5. Four training nodes show a load average above 500 and almost no CPU use. Their Python processes sit in uninterruptible sleep inside `rpc_wait_bit_killable`. Why can `kill -9` not end them? Which error counter do you inspect, and how do you recover the nodes?
+6. You plan to install the NVIDIA NetQ Operator in Base Command Manager 11. State the node count, disk space, and RAM it needs. Then write the command the head nodes need when port 8081 is still in use.
 
 ## Checkpoint questions
 

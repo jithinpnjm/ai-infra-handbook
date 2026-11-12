@@ -653,7 +653,7 @@ The `nvidia-smi mig` commands (`all-1g.10gb` and `all-balanced` from `chapter-03
 Internal NVIDIA silicon fuse masks for SM-to-GPC floorplan binning across yield tiers are outside the corpus. This chapter therefore uses the driver-exposed GPU Instance and Compute Instance profile contracts.
 
 ### Corrections to the author's notes
-The validation pass is clean: `validate_chapter.py` and `check_coverage.py` both pass. The YAML manifests and commands are marked untested, and they were not applied to a cluster.
+The YAML manifests and commands are marked untested, and they were not applied to a cluster.
 
 Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases. Check them against the version you install.
 
@@ -663,4 +663,4 @@ The MIG layouts were verified arithmetically on an `80 GB` H100. Valid placement
 
 This chapter keeps the corrections noted in Volume 11, chapter 3, on the seven MIG compute slices and multi-node HA for `3g.40gb` Chat LLM instances. It also keeps the Volume 4, chapter 3 distinctions for `XID 43`, `XID 79`, `XID 62` and GSP `XID 119`/`120`.
 
-corrected 2026-11-11: the 70 GB for seven 1g.10gb slices is memory-slice geometry (8 memory slices, 7 compute slices), not system or ECC overhead; source NVIDIA MIG User Guide, Concepts and Supported MIG Profiles pages (the guide lists 1g.10gb at 1/8 of memory, max 7 instances, and does not itself name a cause for the leftover slice).
+Seven 1g.10gb instances total 70 GB because of memory-slice geometry: an H100 has 8 memory slices but only 7 compute slices, so one memory slice is left over. It is not system or ECC overhead. The NVIDIA MIG User Guide, on its Concepts and Supported MIG Profiles pages, lists 1g.10gb at one eighth of memory with a maximum of 7 instances. It does not itself name a cause for the leftover slice.

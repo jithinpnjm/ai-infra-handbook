@@ -808,6 +808,6 @@ Internal containerd Go source line numbers for CDI specification parsing are not
 
 ### Corrections to the author's notes
 
-The validation pass on 2026-10-25 passed `validate_chapter.py` and `check_coverage.py`. The YAML manifests and commands are marked untested, and nobody applied them to a cluster. Custom resource API versions change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative, unless the chapter says otherwise.
+The YAML manifests and commands are marked untested, and nobody applied them to a cluster. Custom resource API versions change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative, unless the chapter says otherwise.
 
 In Volume 04, sections 4.1 and 9, the notes show that `--pass-device-specs=true` and CDI (`DEVICE_LIST_STRATEGY=cdi-annotations`) are distinct device-plugin mechanisms. This chapter keeps that distinction explicit, so you do not confuse passing device specs with activating CDI.

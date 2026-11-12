@@ -33,7 +33,7 @@ Why does kube-scheduler fail so predictably on shared GPU infrastructure? It was
 
 First, a shared AI cluster mixes very different jobs. Short interactive notebooks run alongside multi-day distributed training runs. Under a naive first-in-first-out queue or a static ResourceQuota, you can watch a large training job block a five-minute notebook. Static namespace walls, on the other hand, stop training from borrowing idle GPUs overnight.
 
-Second, isolating teams wastes hardware. Dedicated node pools and rigid ResourceQuota ceilings trap unused capacity inside each namespace. Dynamic fair-share borrowing with preemption lifts overall cluster utilization from roughly 60% to 85% or higher.
+Second, isolating teams wastes hardware. Dedicated node pools and rigid ResourceQuota ceilings trap unused capacity inside each namespace. Dynamic fair-share borrowing with preemption lets those idle GPUs do work. The worked example later in this chapter shows the effect with a 60% and an 85% figure.
 
 Third, the default scheduler binds Pods one by one instead of placing a group together. Suppose seven of eight distributed training workers find GPUs and the eighth waits in a queue. The allocated GPUs then sit idle in a rendezvous deadlock, and the hardware you already bought does no work.
 
@@ -86,9 +86,9 @@ Picture a platform team that splits its cluster by department, using fixed node 
 
 Take the multi-tenant enterprise cluster from Volume 23, Chapter 7. The platform runs 32 GPUs across 4 nodes, with three competing namespaces. Suppose the research namespace sits behind a hard ResourceQuota ceiling of 16 GPUs. Research can then never use more than half the cluster, even when the other two teams have zero running jobs. Interns, in turn, can never borrow idle research GPUs overnight.
 
-Static partitioning caps average cluster utilization around 60%. A dynamic fair-share scheduler works differently. Teams borrow idle GPUs above their guaranteed quota, and they give them back after a 30-second grace period when the owner returns. That change lifts utilization to 85%.
+In the author's design notes for this cluster, the static split reaches about 60% average utilization. A dynamic fair-share scheduler works differently. Teams borrow idle GPUs above their guaranteed quota, and they give them back after a 30-second grace period when the owner returns. The same notes put utilization at 85% with borrowing. The notes do not state how either figure was measured, so read them as an illustration of the direction of the effect and not as a benchmark.
 
-The table below lists each namespace's PriorityClass, guaranteed share and quota, so you can see where the 60% and 85% figures come from. Notice that the three guaranteed shares add up to the full 32 GPUs.
+The table below lists each namespace's PriorityClass, guaranteed share and quota, so you can see the setup behind the 60% and 85% figures. Notice that the three guaranteed shares add up to the full 32 GPUs.
 
 | Namespace / Team | PriorityClass Value | Guaranteed GPUs & Share | Memory & Pod Quota | Utilization Target & Mode |
 |---|---|---|---|---|

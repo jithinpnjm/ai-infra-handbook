@@ -23,11 +23,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU server that holds millions of dollars of compute and sensitive model weights for several tenants. Its network edge is the one door between that server and everything else. On a traditional server, virtual switching, firewall enforcement with `iptables`, intrusion detection and encryption all run on the host x86 CPU. That design causes two serious problems in an AI Factory.
+A GPU server holds expensive compute and the model weights of several tenants, and its network edge is the one door to everything else. On a traditional server, virtual switching, the `iptables` firewall, intrusion detection, and encryption all run on the host x86 CPU. That design causes two problems in an AI Factory.
 
-The first problem is called Shared Fate. When the firewall and intrusion detection daemons run on the same x86 Host OS as untrusted tenant workloads, they share that host's fate. In the Volume 18 Chapter 8 customer scenario, an attacker exploited an internet-exposed Jupyter notebook on a bare-metal GPU instance and gained a host root shell. The attacker immediately ran `systemctl stop iptables` to kill the host firewall and IDS daemons. Then the attacker used the high-bandwidth GPU server to launch a massive DDoS attack that took down the availability-zone control plane.
+The first problem is called Shared Fate. When the firewall and intrusion detection daemons run on the same x86 Host OS as untrusted tenant workloads, they share that host's fate. In the Volume 18 Chapter 8 customer scenario, an attacker exploited an internet-exposed Jupyter notebook on a bare-metal GPU instance and gained a host root shell. The attacker immediately ran `systemctl stop iptables` to kill the host firewall and IDS daemons. Then the attacker used the high-bandwidth GPU server to launch a DDoS attack that took down the availability-zone control plane.
 
-The second problem runs the other way. Moving virtual switching and policy enforcement onto an NVIDIA BlueField Data Processing Unit, or DPU, can turn a security boundary into an outage boundary. A BlueField DPU combines a ConnectX network ASIC with an embedded Arm CPU complex, dedicated RAM, and an isolated Linux OS programmed via NVIDIA DOCA. That architecture solves the Shared Fate problem. It also inserts an independently managed third computer between the host and the leaf switch. In the opening incident of Volume 9 Chapter 9, an incomplete DPU policy rollout left the host network interface down after reboot. Meanwhile, the leaf switch showed the physical uplink completely up. Responders who only checked the switch looked in the wrong place.
+The second problem is the price of the fix. An NVIDIA BlueField Data Processing Unit, or DPU, takes over virtual switching and policy enforcement, but a DPU can turn a security boundary into an outage boundary. It combines a ConnectX network ASIC with an embedded Arm CPU complex, dedicated RAM, and an isolated Linux OS programmed through NVIDIA DOCA. That design solves the Shared Fate problem. It also puts a separately managed third computer between the host and the leaf switch. In the opening incident of Volume 9 Chapter 9, an incomplete DPU policy rollout left the host network interface down after reboot. Meanwhile, the leaf switch showed the physical uplink up. Responders who only checked the switch looked in the wrong place.
 
 The rest of this chapter covers BlueField DPU operating modes, DOCA software architecture, Zero-Trust Infrastructure Offload, and the three-layer DPU incident triage and lifecycle model. As you read it, keep those three layers in mind, because you will need them when a node misbehaves.
 
@@ -65,7 +65,7 @@ BlueField DPU SKUs default to DPU mode, also called Embedded CPU Function Owners
 
 BlueField SuperNIC SKUs default to NIC mode. The card behaves like a traditional high-performance ConnectX adapter. The host OS owns it directly unless someone explicitly reconfigures it.
 
-That leaves a question for DPU mode. How does a packet reach the x86 host without bottlenecking on the embedded Arm CPU cores? Figure 9.9.2 in Volume 9 Chapter 9 separates the Arm control path from the hardware fast path, as the diagram below shows.
+That leaves a question for DPU mode. How does a packet reach the x86 host without bottlenecking on the embedded Arm CPU cores? Volume 9 Chapter 9 answers with two paths, an Arm control path and a hardware fast path, as the diagram below shows.
 
 ```mermaid
 flowchart TD
@@ -117,15 +117,15 @@ flowchart LR
     FW <==>|"Rate-Limited, Policy-Verified & Encrypted Traffic"| Fabric["AI Data Center Fabric"]
 ```
 
-As Volume 18 Chapter 8 details, moving infrastructure services from the Untrusted Host Domain to the Trusted DPU Domain delivers three concrete wins.
+Volume 18 Chapter 8 lists three gains from moving infrastructure services from the untrusted host domain to the trusted DPU domain.
 
-The first win is defeating host root escapes. The firewall, OVS bridge, and intrusion detection agents run on the isolated Arm OS of the DPU rather than the x86 Host OS. An attacker who exploits a Jupyter notebook CVE and gains x86 host root cannot stop the firewall. Every packet leaving the x86 host must physically traverse the DPU PCIe interface and embedded switch. There, DOCA Flow hardware rules drop unauthorized port scans or DDoS bursts before they reach the wire.
+The first gain is that a host root compromise cannot switch off the defenses. The firewall, OVS bridge, and intrusion detection agents run on the isolated Arm OS of the DPU rather than the x86 Host OS. An attacker who exploits a Jupyter notebook CVE and gains x86 host root cannot stop the firewall. Every packet leaving the x86 host must physically traverse the DPU PCIe interface and embedded switch. There, DOCA Flow hardware rules drop unauthorized port scans or DDoS bursts before they reach the wire.
 
-The second win is line-rate network encryption offload. Encrypting 400 Gbps of east-west AI traffic in software on the x86 Host CPU pegs the cores at 100% and starves PyTorch dataloaders. Offloading IPSec and TLS to the dedicated hardware cryptography engines on the BlueField DPU achieves line-rate encryption with zero x86 CPU tax.
+The second gain is encryption at line rate. Encrypting 400 Gbps of east-west AI traffic in software on the x86 host CPU pegs the cores at 100% and starves the PyTorch dataloaders. So the DPU encrypts IPSec and TLS traffic in its own hardware cryptography engines, and the host CPU spends no cycles on it.
 
-The third win is storage encryption offload and key isolation. When the x86 Host CPU writes plaintext checkpoint or dataset blocks, the DPU intercepts the I/O and encrypts it in hardware using AES-256. It then forwards ciphertext to the storage fabric. The encryption keys stay inside DPU RAM, out of reach of x86 Host RAM.
+The third gain is storage encryption with keys the host cannot read. When the x86 Host CPU writes plaintext checkpoint or dataset blocks, the DPU intercepts the I/O and encrypts it in hardware using AES-256. It then forwards ciphertext to the storage fabric. The encryption keys stay inside DPU RAM, out of reach of x86 Host RAM.
 
-Moving these duties to the DPU removes the Shared Fate link. For you as an operator, that means a host root attacker cannot disable them.
+Moving these duties to the DPU removes the Shared Fate link. A host root attacker cannot disable them.
 
 #### 2. Integrating DPUs into the Volume 18 Forensic Incident Response Protocol
 When an intrusion detection or DCGM alert flags a breach or an unauthorized crypto miner on a GPU server, the pressure to act is high. Junior admins often panic and reboot the node. As Volume 18 Chapter 12 stresses, rebooting a breached node destroys volatile forensic evidence in RAM and GPU VRAM. A BlueField DPU strengthens both containment and eradication in the six-step forensic playbook.
@@ -313,12 +313,12 @@ The summary line at the bottom reports how many checks passed and how many faile
 
 ### Exercises
 
-1. Using `code/part11/dpus_bluefield_and_doca.py`, explain why `show interface status swp14` on the leaf switch and `ip -br link show` on the host missed the root cause. Then state what `systemctl status openvswitch-policy-load.service` revealed on the DPU Arm subsystem.
-2. Explain how `node09` ended up running `dpu-image-24.07-prod-1` while `node07` and `node08` ran `dpu-image-24.10-prod-3`. State why fabric-wide switch counters did not flag `node09`.
-3. Contrast what happens when an attacker gains x86 host root on a server running host-resident `iptables` with what happens on a server that has a BlueField DPU.
-4. Contrast the default operating mode of BlueField DPU SKUs with that of BlueField SuperNIC SKUs. Then trace how the Arm-side representor path programs the embedded-switch hardware fast path.
+1. A host loses its network after a reboot. The leaf switch shows the uplink up, and the host shows its interface down. Using `code/part11/dpus_bluefield_and_doca.py`, say why `show interface status swp14` and `ip -br link show` missed the root cause. What did `systemctl status openvswitch-policy-load.service` reveal on the DPU Arm subsystem?
+2. `node09` runs `dpu-image-24.07-prod-1` while `node07` and `node08` run `dpu-image-24.10-prod-3`. How did that happen? Why did fabric-wide switch counters not flag `node09`?
+3. An attacker gains root on the x86 host. What can the attacker do if the firewall is host-resident `iptables`, and what can the attacker do if a BlueField DPU runs it?
+4. Which operating mode does a BlueField DPU SKU boot in, and which does a SuperNIC SKU boot in? Then trace how the Arm-side representor path programs the embedded-switch hardware fast path.
 5. Compare a supported DOCA service, a DOCA reference sample, a custom DOCA application, and a host or fabric-native implementation.
-6. List all six steps in the DPU change sequence, and name the minimum telemetry evidence collected across the five observability layers.
+6. List the six steps of the DPU change sequence. Name the minimum telemetry you collect across the five observability layers.
 
 Work through them in order, since the early exercises set up the outage logic that the later ones rely on.
 
@@ -407,7 +407,7 @@ Consider every packet entering or leaving the x86 host. Each one must pass throu
 <details>
 <summary>**12. Why is offloading IPSec and TLS network encryption and storage Data-at-Rest encryption to a BlueField DPU critical for high-bandwidth AI clusters?**</summary>
 
-- Performance: When you encrypt and decrypt high-speed network and storage traffic in software on the x86 Host CPU saturates the cores and starves GPUs of training data. The DPU hardware cryptography engines encrypt at line rate with zero x86 CPU penalty.
+- Performance: Encrypting and decrypting high-speed network and storage traffic in software on the x86 host CPU saturates the cores and starves the GPUs of training data. The DPU hardware cryptography engines encrypt at line rate, so the host CPU pays nothing.
 - Key security: Encryption keys stay inside DPU RAM rather than x86 Host RAM, so a compromised host OS cannot extract them.
 </details>
 

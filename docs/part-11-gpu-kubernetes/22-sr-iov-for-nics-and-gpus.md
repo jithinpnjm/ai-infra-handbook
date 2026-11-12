@@ -30,11 +30,11 @@ Platform teams need both bare-metal passthrough speed and hardware sharing on th
 - **SR-IOV for NICs on ConnectX-6, ConnectX-7, and BlueField-3.** The physical network card acts as a Physical Function and slices itself in silicon into dozens of independent Virtual Functions. Each Virtual Function gets its own PCIe Bus-Device-Function address, hardware transmit and receive queues, and RDMA doorbells. A Pod or virtual machine attaches directly to its own Virtual Function, bypassing the hypervisor and host network stack to reach line-rate GPUDirect RDMA.
 - **SR-IOV for GPUs on Ampere A100, Hopper H100, Ada L40S, and Blackwell B200.** Starting with the Ampere architecture, these NVIDIA data-center GPUs also implement hardware SR-IOV. When you deploy NVIDIA vGPU or pass a MIG instance into a KubeVirt or KVM guest VM, the GPU exposes each slice as a dedicated PCIe SR-IOV Virtual Function.
 
-SR-IOV also brings security, observability, and incident-response problems that often catch operations teams off guard.
+SR-IOV also brings three problems that often catch operations teams off guard.
 
-1. **SR-IOV without an IOMMU is a direct memory access backdoor.** Slicing a network card into Virtual Functions does not restrict which host physical RAM addresses those Virtual Functions can read. The motherboard IOMMU must stay active to enforce per-VF DMA Remapping tables.
-2. **SR-IOV makes guest traffic invisible to standard host monitoring tools.** Because SR-IOV Virtual Functions talk straight to PCIe hardware rings, host OS block and network tools no longer see the traffic.
-3. **Compromised GPU and SR-IOV nodes require forensic containment instead of pod deletion.** Say an attacker compromises a notebook pod or flashes rogue firmware onto a network card or GPU. Deleting the pod or rebooting the host would destroy the volatile RAM and VRAM evidence. That mistake leaves the root vulnerability unpatched and invites a cluster-wide ransomware outage.
+1. **Keep the IOMMU on.** A Virtual Function is a slice of the card. Without an IOMMU, that slice can still reach any address in host memory by direct memory access. The motherboard IOMMU limits each Virtual Function to its own tenant's memory through per-VF DMA remapping tables.
+2. An SRE who runs `iostat` on the host sees almost nothing. Virtual Functions talk straight to PCIe hardware rings, so host block and network tools no longer see the guest traffic.
+3. Suppose an attacker compromises a notebook pod or flashes rogue firmware onto a network card or GPU. Deleting the pod or rebooting the host destroys the evidence held in RAM and VRAM. Without that evidence the team may never find the hole the attacker used, and the attacker can return.
 
 The baseline below gathers the identifiers and kernel setting used throughout this chapter.
 
@@ -179,10 +179,10 @@ Audit each layer on its own, since the design assumes any one of them can be bre
 
 #### 2. Security Incident Response: Isolate, Do Not Terminate
 
-Suppose your intrusion detection system or DCGM telemetry alerts that a notebook pod on a GPU node is scanning internal corporate SSH ports, or running an unauthorized crypto-miner. A sustained flat maximum-TDP power trace on a bursty inference node is a classic sign of unauthorized mining. What you do in the first five minutes decides whether the incident stays a contained investigation or becomes a cluster-wide ransomware outage.
+Suppose your intrusion detection system or DCGM telemetry alerts that a notebook pod on a GPU node is scanning internal corporate SSH ports, or running an unauthorized crypto-miner. A flat power trace at maximum TDP on a node that normally serves bursty inference suggests unauthorized mining. What you do in the first five minutes decides whether you keep the evidence you need to close the hole.
 
-- **The fatal mistake of deleting the pod or rebooting the node.** In a real-world postmortem from the field notes, a platform engineer saw a notebook pod scanning internal port 22 and immediately ran `kubectl delete pod` to stop the alert. Deleting the pod wiped volatile system RAM and GPU VRAM, which destroyed the bash history, active network sockets, and in-memory payload of the attacker. With the forensic evidence gone, the team never found the unpatched Jupyter CVE. One week later, the attacker came back through the same hole and encrypted the cluster with ransomware.
-- **The senior six-step forensic containment and scorched-earth eradication protocol.** The golden rule for security incident response on GPU clusters is to isolate rather than terminate. First you cordon the node and cage the pod with a deny-all network policy. Then you capture volatile RAM and VRAM forensics. After that, patch the root CVE globally and perform a scorched-earth hardware wipe and firmware reflash before you rotate credentials.
+- **Deleting the pod or rebooting the node.** In a postmortem from the author's field notes, a platform engineer saw a notebook pod scanning internal port 22 and immediately ran `kubectl delete pod` to stop the alert. Deleting the pod wiped volatile system RAM and GPU VRAM, which destroyed the bash history, active network sockets, and in-memory payload of the attacker. With the forensic evidence gone, the team never found the unpatched Jupyter CVE. One week later, the attacker came back through the same hole and encrypted the cluster with ransomware.
+- **The six-step containment protocol.** On a GPU cluster, isolate the pod instead of terminating it. First cordon the node and cage the pod with a deny-all network policy. Then capture RAM and VRAM. After that, patch the root CVE across the cluster, wipe the hardware and reflash the firmware, and only then rotate credentials.
 
 | Step | Phase | Exact Action / Command | Why This Ordering Is Mandatory |
 |---|---|---|---|
@@ -351,12 +351,12 @@ The summary line should read `Summary: 25 passed, 0 failed out of 25 checks.` An
 
 Work through the six exercises below. Each one uses the simulation module or the material from this chapter.
 
-1. Using the lab simulation module, state the exact sysfs path or helper script used to activate Virtual Functions on a ConnectX-7 NIC and on an NVIDIA H100 or A100 GPU. Then explain how time-sliced vGPU Virtual Functions differ from MIG-backed vGPU Virtual Functions.
-2. Explain why the allocation helper rejects creating SR-IOV Virtual Functions when IOMMU is disabled or when firmware signatures are unverified. Then describe what happens at the PCIe hardware level when a Virtual Function attempts an unauthorized DMA read while the IOMMU is active.
-3. Explain why host `iostat` visibility is false for SR-IOV devices, and name the four SR-IOV or hardware-virtualized guest drivers cited by Brendan Gregg. Contrast Calico in iptables mode with Cilium eBPF and Hubble, and state which Linux qdisc implements Kubernetes bandwidth annotations.
-4. List the five defense layers in order, and state the specific security controls enforced at each layer. Then explain why BlueField DPUs solve the host firewall shared-fate problem.
-5. Explain why running `kubectl delete pod` after an internal port scan led to a cluster-wide ransomware outage. Then list all six steps of the senior forensic incident response workflow in order.
-6. Group the fourteen checklist items from Volume 18 across hardware and boot, supply chain and models, Kubernetes and network isolation, confidential compute, and audit and incident response.
+1. You must enable Virtual Functions on a ConnectX-7 NIC and on an H100 GPU. Use the lab simulation module to find the sysfs path or helper script for each. Then say how time-sliced vGPU Virtual Functions differ from MIG-backed ones.
+2. The allocation helper refuses to create Virtual Functions when the IOMMU is disabled or the firmware signature is unverified. Why? What happens at the hardware level when a Virtual Function tries an unauthorized DMA read while the IOMMU is active?
+3. Host `iostat` shows no traffic for an SR-IOV device. Why? Name the four guest drivers Brendan Gregg cites. Then say which Linux qdisc implements Kubernetes bandwidth annotations.
+4. List the five defense layers in order and the controls at each. Then explain why a BlueField DPU solves the shared-fate problem of a host firewall.
+5. A platform engineer ran `kubectl delete pod` on a pod that was scanning port 22. Why did that lead to a later ransomware outage? List the six containment steps in order.
+6. Group the fourteen checklist items from Volume 18 under hardware and boot, supply chain and models, Kubernetes and network isolation, confidential compute, and audit and incident response.
 
 ## Checkpoint questions
 

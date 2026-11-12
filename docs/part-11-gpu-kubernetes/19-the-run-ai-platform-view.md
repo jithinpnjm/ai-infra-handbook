@@ -23,13 +23,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A platform team that serves dozens of research groups soon hits problems that no single cluster scheduler can solve. When hundreds of GPUs are shared across several clusters, governance becomes the bottleneck. Administrators struggle to connect corporate identity providers to departmental GPU budgets. Researchers, meanwhile, lose hours writing raw Kubernetes manifests just to launch a short notebook session or a distributed training run. Worse, teams often confuse cluster scheduling software with hardware isolation. That mix-up can expose sensitive model weights and metrics to neighboring tenants.
+A platform team serves dozens of research groups across several clusters. An administrator asks who is allowed to spend which department's GPU budget, and no single cluster scheduler can answer. A researcher spends an hour writing Kubernetes manifests just to start a short notebook. Another team assumes that separate queues also mean separate hardware, and a neighbor can then read its model weights and metrics.
 
-In Chapters 11.13 through 11.18, we examined the open-source NVIDIA KAI Scheduler. NVIDIA released that core scheduling engine under the Apache 2.0 license in early 2025, after acquiring Run:ai. KAI Scheduler handles Pod placement inside one cluster, along with gang scheduling and queue priorities. The commercial NVIDIA Run:ai platform sits above that engine. It adds multi-cluster fleet management, single sign-on, departmental showback, and self-service workload templates.
+Chapters 11.13 through 11.18 covered the open-source NVIDIA KAI Scheduler. NVIDIA released that core scheduling engine under the Apache 2.0 license in early 2025, after acquiring Run:ai. KAI Scheduler handles Pod placement inside one cluster, along with gang scheduling and queue priorities. The commercial NVIDIA Run:ai platform sits above that engine. It adds multi-cluster fleet management, single sign-on, departmental showback, and self-service workload templates.
 
 > **Update, November 2026.** The enterprise control plane described in this chapter is no longer closed. NVIDIA published the Run:ai platform as open source on 2026-10-13 in the `dsx-ai-factory/run-ai` repository, and a separate support-entitled release is the commercial path with enterprise support. The architecture below still holds. Chapter 11.31 covers what is open, what remains commercial, and how Run:ai fits with the other NVIDIA open-source Kubernetes projects. It also records what was not verified, such as a feature comparison between the community and support-entitled releases.
 
-Architecture reviews often make one mistake: they treat Run:ai as a hardware GPU-sharing mechanism. Run:ai is an orchestration, queueing, fairness, and quota layer that sits above Kubernetes. It does not slice silicon, and it does not replace hardware Multi-Instance GPU (MIG) partitions or device-plugin time-slicing. Instead, it schedules workloads across whole GPUs, MIG slices, and fractional reservations, while enforcing multi-tenant fairness and preemption.
+Architecture reviews often make one mistake and treat Run:ai as a way to share a GPU in hardware. Run:ai is a queueing, fairness, and quota layer above Kubernetes. It does not slice silicon, and it does not replace Multi-Instance GPU (MIG) partitions or device-plugin time-slicing. It places workloads on whole GPUs, MIG slices, and fractional reservations, and it applies fairness and preemption rules to them.
 
 ```text
 Enterprise Scale Challenges Addressed by the Platform Layer:
@@ -40,7 +40,7 @@ Enterprise Scale Challenges Addressed by the Platform Layer:
 - Separation of scheduling/fairness/quota policy from MIG and time-slicing hardware sharing (volume-11/chapter-07)
 ```
 
-This chapter connects the open-source KAI Scheduler engine to the full NVIDIA Run:ai enterprise platform view. It walks through the seven-layer multi-tenant security and fairness model, then solves two complete enterprise system designs. Before you evaluate any multi-tenant GPU platform, separate your cluster scheduling policy from your underlying hardware isolation boundaries.
+This chapter connects the open-source KAI Scheduler engine to the NVIDIA Run:ai platform. It covers a seven-layer security model for tenants and two worked designs, one for a research cluster and one for a 1,024-GPU AI Factory. Before you evaluate any multi-tenant GPU platform, separate the scheduling policy from the hardware isolation underneath it.
 
 ## Prerequisites and outcomes
 
@@ -117,7 +117,7 @@ flowchart TD
 
 #### The Golden Rule: Run:ai Is a Scheduler and Fairness Layer, Not a Hardware Sharing Mechanism
 
-You will hear customers and interview candidates regularly confuse Run:ai with the underlying GPU hardware sharing mechanisms. **Run:ai is an orchestration, queueing, fairness, and quota layer above Kubernetes, not a hardware sharing mechanism.**
+Customers and interview candidates often confuse Run:ai with the mechanisms that share a GPU in hardware. **Run:ai is an orchestration, queueing, fairness, and quota layer above Kubernetes, not a hardware sharing mechanism.**
 
 Hardware and driver sharing boundaries come from MIG, device-plugin time-slicing, CUDA Multi-Process Service, or NVIDIA vGPU. The NVIDIA GPU Operator and device plugin expose those resources in the Kubernetes node capacity table. Run:ai and KAI Scheduler sit above the device plugin. They decide which tenant workload receives which published GPU resource. Along the way, they enforce fair-share quotas, over-quota borrowing, and gang scheduling across those allocations. Always choose your hardware isolation primitive first, then layer Run:ai above it for quota governance.
 
@@ -164,7 +164,7 @@ The point of the split is to stop privilege escalation from one plane into anoth
 
 #### 3. Fairness Across Three Time Scales and Six Onboarding Gates
 
-A durable fairness policy works across three time horizons. At admission time, measured in seconds, queue quotas and security policies decide which jobs may start. At execution time, measured in minutes to hours, concurrency caps, MIG partitions, and graceful preemption protect active service-level objectives from noisy neighbors. At lifecycle time, measured in weeks to months, showback reports and reservation expiry reviews keep teams from hoarding idle quota.
+Picture one lab that floods the queue with multi-day training runs. Every other lab, including the students who need a five-minute debugging session, waits behind it. Fairness rules fix this at three time scales. Within seconds, at admission, queue quotas and security policies decide which jobs may start. Within minutes to hours, concurrency caps, MIG partitions, and graceful preemption protect running services from noisy neighbors. Over weeks to months, showback reports and reservation expiry reviews keep teams from hoarding idle quota.
 
 Before a new project gets any GPU quota, the platform team passes it through six sequential onboarding control gates. The gates run one after another, in the order shown.
 
@@ -185,7 +185,7 @@ Audit all seven boundary layers and complete all six onboarding gates before all
 
 ### 3. Advanced: End-to-end system design — Research GPU cluster and the 1,024-GPU AI Factory
 
-Let's apply the Run:ai and KAI platform model to two realistic enterprise architecture designs.
+The two case studies below apply the Run:ai and KAI platform model to a research cluster and to a full AI Factory.
 
 #### Case Study A: Designing a 50-Team, 200-GPU Research Infrastructure
 
@@ -460,12 +460,12 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 Try these six exercises on your own, using the lab output above as a reference.
 
-- Suppose a customer says Run:ai slices the GPU, instead of MIG or time-slicing doing it. Explain why that claim is architecturally wrong. Then describe who does what: the GPU Operator, KAI Scheduler, and the Run:ai control plane.
-- Open `code/part11/run_ai_platform_view.py` and list the seven tenant boundary layers and the four administrative planes. Then name the two commands that verify Team A and Team B cannot see each other's MIG processes or Prometheus metrics.
-- Work out the Month 1 balance, the Month 2 effective quota, and the Month 1 cluster utilization for Professor A and Professor B. Then score the job priority for an under-quota two-GPU job and an over-quota eight-GPU job.
-- Trace the exact events at 0, 30, 45, and 90 seconds when a medium training job is preempted. Then compare recovery time, overhead, and failure domain across Local NVMe, Shared NFS, and Nightly Tape.
-- Calculate the hardware CapEx, total CapEx, annual power OpEx, and total annual OpEx for the 200-GPU L40S cluster. Then work out the delivered GPU-hours per year at 60 percent utilization, the cost per GPU-hour, and the 1,000-GPU scale figures.
-- Walk through all six layers of the 128-node, 1,024-GPU enterprise AI Factory. Cover Redfish and BCM provisioning, InfiniBand NDR versus RoCEv2 Spectrum-X, Lustre with GDS, Slurm versus Kubernetes with Run:ai, and DCGM-Exporter.
+- A customer says Run:ai slices the GPU. Why is that wrong? Say what the GPU Operator, the KAI Scheduler, and the Run:ai control plane each do instead.
+- Open `code/part11/run_ai_platform_view.py` and list the seven tenant boundary layers and the four administrative planes. Then name the two checks that show Team A and Team B cannot see each other's MIG processes or Prometheus metrics.
+- Two professors share the research cluster. Work out each one's Month 1 balance and Month 2 effective quota, and the cluster's Month 1 utilization. Then score the priority of an under-quota two-GPU job and an over-quota eight-GPU job.
+- A medium training job is preempted. Trace what happens at 0, 30, 45, and 90 seconds. Then compare recovery time and failure domain for checkpoints on Local NVMe, Shared NFS, and Nightly Tape.
+- Cost the 200-GPU L40S cluster. Calculate the hardware CapEx, the total CapEx, and the annual power and total OpEx. Then work out the delivered GPU-hours per year at 60 percent utilization and the cost per GPU-hour. Finish with the figures for scaling to 1,000 GPUs.
+- Walk through the six layers of the 128-node, 1,024-GPU AI Factory. Cover provisioning, the InfiniBand and RoCEv2 fabrics, Lustre with GPUDirect Storage, Slurm versus Kubernetes with Run:ai, and monitoring. At each layer, say which choice the design made and why.
 
 ## Checkpoint questions
 

@@ -179,7 +179,7 @@ Count your labeled examples first, then compare that count with the 100 to 1,000
 
 Platform teams should not start a multi-node training job when a lighter customization pattern satisfies the business requirement. Each technique trades training compute against per-request inference latency and KV-cache memory.
 
-Prompt engineering and context engineering guide an aligned foundation model. They change no weights and use no training GPUs. However, system prompts are not a security boundary against prompt injection, so pair them with input validation and output moderation. Stuffing large documents into every prompt also inflates the vLLM KV-cache memory footprint on every inference request.
+The lightest option needs no job at all. Writing a better system prompt changes no weights and uses no training GPUs, so try it before you submit a TrainJob. It has a cost on the serving side, though. Stuffing large documents into every prompt inflates the vLLM KV-cache memory footprint on every inference request.
 
 Retrieval-Augmented Generation embeds documents into a vector database. At request time, it queries approximate nearest neighbors using cosine similarity, then injects only the relevant chunks into the prompt. Teams can refresh rapidly changing domain data within minutes, without running a TrainJob. When a task needs both dynamic retrieval and domain-adapted reasoning, Retrieval-Augmented Fine-Tuning combines both patterns.
 
