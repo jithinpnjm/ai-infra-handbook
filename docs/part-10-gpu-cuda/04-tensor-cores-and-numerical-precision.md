@@ -23,14 +23,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-When two workloads run on the exact same NVIDIA GPU, both can report 91% utilization in `nvidia-smi`, yet one finishes in 10 milliseconds while the other takes 500 milliseconds. The physical GPU is not one generic calculator. Each Streaming Multiprocessor contains multiple distinct execution engines: CUDA Cores, Tensor Cores, Special Function Units, Load/Store Units, and on graphics or universal SKUs, RT Cores. The top-level `nvidia-smi` utilization metric only reports that some engine was active during the sampling interval.
+Two workloads run on the same NVIDIA GPU. Both show 91% utilization in `nvidia-smi`, yet one finishes in 10 milliseconds and the other takes 500. The number cannot tell them apart, because it only says that some engine on the chip was busy during the sampling interval. Each Streaming Multiprocessor holds several different engines: CUDA Cores, Tensor Cores, Special Function Units, Load/Store Units, and on graphics SKUs, RT Cores.
 
-On a modern data center GPU such as Hopper H100 or Blackwell B200, the vast majority of the chip's mathematical horsepower lives inside its Tensor Cores. Unlocking those matrix pipelines requires satisfying a strict joint contract between hardware and software.
-- On a Blackwell B200, standard scalar FP32 compute peaks at a tiny fraction of what dense NVFP4 Tensor Core compute delivers on the exact same silicon.
-- Lowering precision does not just speed up matrix math. It shrinks every weight tensor in HBM and multiplies the number of weights carried inside every cache line.
-- Yet a single unaligned matrix dimension or a missing PyTorch configuration flag (`torch.set_float32_matmul_precision('high')`) can cause the software stack to bypass the Tensor Cores silently. The workload then falls back to general arithmetic pipelines with zero error messages.
+On a data center GPU such as the Hopper H100 or Blackwell B200, most of the arithmetic capacity sits in the Tensor Cores. On a B200, scalar FP32 compute peaks at a small fraction of what dense NVFP4 delivers on the same silicon. Lower precision also shrinks every weight tensor in HBM, so each cache line carries more weights.
 
-This chapter dissects the execution engines inside an SM and maps the exact bit layouts and dynamic-range trade-offs of every AI numerical format. It covers FP64, FP32, TF32, FP16, BF16, FP8, INT8, and NVFP4. It then explains how the Transformer Engine, structured sparsity, Blackwell Tensor Memory with TMA, and NVIDIA CUTLASS keep Tensor Cores running near peak utilization.
+Reaching those matrix pipelines takes care from both hardware and software. One unaligned matrix dimension, or a missing flag such as `torch.set_float32_matmul_precision('high')`, can send the work to the general arithmetic pipelines. The job still runs and prints no error. It is just slow.
+
+The chapter starts with the execution engines inside an SM, then gives the bit layout and dynamic range of each AI number format: FP64, FP32, TF32, FP16, BF16, FP8, INT8, and NVFP4. It then covers the Transformer Engine, structured sparsity, Blackwell Tensor Memory with TMA, and NVIDIA CUTLASS, which together keep Tensor Cores near peak utilization.
 
 ```text
 Key Tensor Core and precision benchmarks:
@@ -47,12 +46,12 @@ Key Tensor Core and precision benchmarks:
 - The SIMT execution hierarchy and four-partition SM warp schedulers from the second chapter of this part.
 - The seven-tier GPU memory hierarchy and cache-line coalescing from the third chapter of this part.
 
-**Outcomes:** After completing this chapter, you will be able to accomplish five primary objectives.
-- First, distinguish the five execution pipelines inside an SM and diagnose whether a busy GPU is actually engaging its Tensor Cores.
-- Second, compare the exact bit layouts, byte footprints, and cache-line densities of FP64, FP32, TF32, FP16, BF16, FP8 E4M3 and E5M2, INT8 DP4A versus MMA, and NVFP4 two-level micro-scaling.
-- Third, explain why BF16 avoids gradient underflow without `GradScaler` whereas FP16 requires loss scaling. You will also configure TF32 and Automatic Mixed Precision (`torch.amp.autocast`) in PyTorch.
-- Fourth, explain how the Transformer Engine, Blackwell TMEM and TMA (`tcgen05.mma`), and Blackwell hardware decompression work together to accelerate multi-trillion-parameter Mixture-of-Experts models.
-- Fifth, validate hardware structured sparsity via `cuSPARSELt` and `to_sparse_semi_structured()`, size tiles for TMEM in CUTLASS, and audit matrix shapes for Tensor Core tile alignment.
+**Outcomes:** After this chapter you will be able to do five things.
+- Distinguish the five execution pipelines inside an SM and diagnose whether a busy GPU is actually engaging its Tensor Cores.
+- Compare the exact bit layouts, byte footprints, and cache-line densities of FP64, FP32, TF32, FP16, BF16, FP8 E4M3 and E5M2, INT8 DP4A versus MMA, and NVFP4 two-level micro-scaling.
+- Explain why BF16 avoids gradient underflow without `GradScaler` whereas FP16 requires loss scaling. You will also configure TF32 and Automatic Mixed Precision (`torch.amp.autocast`) in PyTorch.
+- Explain how the Transformer Engine, Blackwell TMEM and TMA (`tcgen05.mma`), and Blackwell hardware decompression work together to accelerate multi-trillion-parameter Mixture-of-Experts models.
+- Validate hardware structured sparsity via `cuSPARSELt` and `to_sparse_semi_structured()`, size tiles for TMEM in CUTLASS, and audit matrix shapes for Tensor Core tile alignment.
 
 ---
 
@@ -193,7 +192,7 @@ When quantizing a model down to 8-bit FP8 or 4-bit NVFP4, a naive static cast ac
 NVIDIA's Transformer Engine solves low-bit accuracy loss through hardware-software co-design.
 - **Dynamic per-layer precision and scaling:** The Transformer Engine inspects tensor amax histograms and dynamically selects FP16 or BF16 for noise-sensitive layers. It applies FP8 or NVFP4 on tolerant linear and expert layers, accumulating partial sums in higher precision inside the Tensor Cores.
 - **Two-level micro-scaling in NVFP4:** With only four bits per weight, a single tensor-wide scaling factor cannot prevent outlier weights from crushing normal weights to zero. NVFP4 applies two-level scaling by combining a fine-grained per-microblock scale factor shared across a local group of weights with a higher-level tensor scale factor. This preserves model accuracy at half a byte per parameter.
-- **Real-world impact on a giant MoE model:** On a Hopper H100 cluster where inter-node communication crossed InfiniBand and weights used wider formats, serving a multi-trillion-parameter MoE model was too slow for interactive chat. Moving the exact same model to a Blackwell GB200 NVL72 rack combining NVFP4, the second-generation Transformer Engine, HBM3e, and the NVLink domain delivered a massive throughput leap. It also cut first-token latency by two orders of magnitude.
+- **Real-world impact on a giant MoE model:** On a Hopper H100 cluster where inter-node communication crossed InfiniBand and weights used wider formats, serving a multi-trillion-parameter MoE model was too slow for interactive chat. Moving the exact same model to a Blackwell GB200 NVL72 rack combining NVFP4, the second-generation Transformer Engine, HBM3e, and the NVLink domain raised throughput by a large factor. It also cut first-token latency by two orders of magnitude.
 
 | Metric (1.8-trillion-parameter MoE inference benchmark, ASP Ch. 2 pp. 27, 31) | Hopper H100 cluster (FP8/FP16 + InfiniBand) | Blackwell GB200 NVL72 rack (NVFP4 + 8.0 TB/s HBM3e + 1.8 TB/s NVLink 5) | Improvement |
 |---|---|---|---|
@@ -292,7 +291,7 @@ Tensor Core hardware loads and multiplies matrix tiles aligned to sixteen-byte b
 | **FP8 / INT8** | 1.0 Byte | Multiple of **16** (`16 B / 1 B`) | 64 or 128 |
 | **NVFP4** | 0.5 Bytes | Multiple of **32** (`16 B / 0.5 B`) | 64 or 128 |
 
-Combining the element-alignment rule across TF32, FP16, FP8, and NVFP4 with the `dmon` and `ncu` pipeline diagnostic tree from the Volume 02 notes into `check_tensor_core_eligibility` in `code/part10/tensor_cores_precision.py` is my inference.
+The function `check_tensor_core_eligibility` in `code/part10/tensor_cores_precision.py` applies this alignment rule to each format and adds the `dmon` and `ncu` diagnostic tree from the Volume 02 notes. That combination is this handbook's own.
 
 :::info In one minute: Section 3 & 4 takeaways
 - The Transformer Engine dynamically pairs FP8 and two-level micro-scaled NVFP4 with high-precision accumulation in TMEM, dramatically accelerating large MoE models on GB200 NVL72.
@@ -412,12 +411,12 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-- **First exercise:** Run `python3 -B code/part10/tensor_cores_precision_lab.py` and inspect `code/part10/tensor_cores_precision.py`. Use `compare_matrix_precision_footprint` to calculate the byte size and cache-line count of the Llama-3 MLP weight matrix specified below. Compare FP32, BF16, `FP8_E4M3`, and NVFP4.
-- **Second exercise:** Using `NUMERICAL_FORMATS`, explain why TF32 and BF16 both have the exact same dynamic range as FP32. State which of the two has higher mantissa precision.
-- **Third exercise:** Call `validate_2_to_4_structured_sparsity` on the two weight vectors shown in the block below. Explain why the second vector fails hardware validation even though half of its elements are zero.
-- **Fourth exercise:** Using `calc_tmem_tile_fit`, check how many square tiles of the size listed below fit inside Blackwell's per-SM TMEM across FP32, BF16, FP8, and NVFP4.
-- **Fifth exercise:** Call `check_tensor_core_eligibility(m, n, k, precision)` for the two vocabulary projection layer shapes listed below in `FP8_E4M3`. Determine which one is aligned for Tensor Core tiles and what the unaligned vocabulary size should be padded to.
-- **Sixth exercise:** On a Nebius GPU VM, benchmark a square PyTorch matrix multiplication in `float32` with `torch.set_float32_matmul_precision('highest')` versus `'high'` for TF32 and `torch.bfloat16`. Watch `dcgmi dmon -e 1002,1004,1005` during the run.
+1. Run `python3 -B code/part10/tensor_cores_precision_lab.py` and read `code/part10/tensor_cores_precision.py`. Then call `compare_matrix_precision_footprint` on the Llama-3 MLP weight matrix listed below. How many bytes and cache lines does it need in FP32, BF16, FP8, and NVFP4?
+2. Look at `NUMERICAL_FORMATS`. TF32 and BF16 both have the exponent range of FP32. Which of the two keeps more mantissa bits?
+3. Run `validate_2_to_4_structured_sparsity` on the two vectors listed below. The second has half its elements at zero. Why does it still fail?
+4. Call `calc_tmem_tile_fit` with the tile size listed below. How many tiles fit in one SM's TMEM in each of the four precisions?
+5. Call `check_tensor_core_eligibility` for the two vocabulary projection shapes listed below, in FP8. Which one is aligned, and what should the other be padded to?
+6. On a Nebius GPU VM, time a square matrix multiplication three ways: float32 with `'highest'`, float32 with `'high'`, and bfloat16. Watch `dcgmi dmon -e 1002,1004,1005` during each run.
 
 ```text
 Exercise input parameters for code/part10/tensor_cores_precision.py:
@@ -629,8 +628,8 @@ These files are assigned to this chapter in `planning/MIGRATION_MAP.md`. The sta
 ### Run here
 - Running `python3 -B code/part10/tensor_cores_precision_lab.py` passes all 25 checks with 0 failures.
 
-### My own choices and inferences, labelled in the text
-- **Tensor Core alignment and SM pipeline routing validator:** Combining the tile alignment multiples across TF32, FP16, BF16, FP8, INT8, and NVFP4 with the misalignment example and `dmon` plus `ncu` decision tree from the Volume 02 notes into a deterministic Python validator is my inference. That validator is `check_tensor_core_eligibility` in `code/part10/tensor_cores_precision.py`.
+### The handbook's own synthesis
+- **Tensor Core alignment and SM pipeline routing validator:** The tile alignment multiples for TF32, FP16, BF16, FP8, INT8, and NVFP4, the misalignment example, and the `dmon` plus `ncu` decision tree from the Volume 02 notes are combined into one deterministic Python validator. That validator is `check_tensor_core_eligibility` in `code/part10/tensor_cores_precision.py`. No source presents it as one rule.
 
 ### Not verified on live hardware
 - The commands `dcgmi dmon -e 1002,1004,1005` and `ncu --metrics sm__pipe_tensor_cycles_active...` (`Shared/L1`, `134.2` GB/s, `22` registers, cross-referenced with Chapter `10.1`) were not executed on a live GPU VM in this authoring environment.

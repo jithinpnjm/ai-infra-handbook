@@ -24,11 +24,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Writing every operator in hand-tuned CUDA C++ or PTX across evolving GPU architectures takes months of engineering effort. A kernel tuned for Ampere often needs complete rewriting to use Hopper and Blackwell hardware features. Meanwhile, standard eager PyTorch launches a separate GPU kernel for every minor addition or activation. Those repeated round-trips to high-bandwidth memory leave expensive Tensor Cores sitting idle.
+A team ports a model from Ampere to Hopper. Its hand-tuned CUDA kernels, written for the older chip, need rewriting to use the new hardware features. The same model in plain eager PyTorch avoids that work but launches a separate GPU kernel for every small addition or activation. Each kernel reads from and writes to high-bandwidth memory, so the Tensor Cores spend much of their time idle.
 
-Modern AI infrastructure solves this bottleneck with compiler stacks and Python domain-specific languages. The PyTorch compiler captures whole subgraphs of Python code and fuses elementwise operations automatically. Under the hood, it lowers those subgraphs into OpenAI Triton kernels or routes large matrix multiplications to vendor libraries. When automatic compiler heuristics fall short, engineers can write custom OpenAI Triton kernels directly in Python while still targeting hardware features like Tensor Memory Accelerator descriptors and fifth-generation Tensor Cores.
+Compiler stacks and Python-based kernel languages address both problems. The PyTorch compiler captures whole subgraphs and fuses elementwise operations automatically. It lowers them to OpenAI Triton kernels, or sends large matrix multiplications to vendor libraries. When the compiler's choices fall short, an engineer can write a Triton kernel directly in Python and still use hardware features such as Tensor Memory Accelerator descriptors and fifth-generation Tensor Cores.
 
-*AI Systems Performance Engineering* Chapter 14 dissects the three layers of this compilation ecosystem. The table below summarizes the core pipeline stages, OpenAI Triton runtime metrics, and OpenXLA backend behavior.
+Some terms in the table below need a definition first. An intermediate representation, or IR, is the form a compiler uses between the source program and machine code. An FX graph is PyTorch's graph of Python operations. AOTAutograd is the stage that builds the backward pass ahead of time. *AI Systems Performance Engineering* Chapter 14 covers all three layers of this ecosystem, and the table summarizes the pipeline stages, the OpenAI Triton runtime metrics, and the OpenXLA backend.
 
 | Compiler Layer | Core Mechanism | Key Quantitative Facts |
 |---|---|---|
@@ -48,7 +48,7 @@ The Proton figures come from the book, which notes that numeric values in its me
 **Prerequisites:**
 - Chapters 10.13 through 10.18 covering memory coalescing, shared-memory tiling, Blackwell Tensor Memory and Tensor Memory Accelerator hardware, asynchronous pipeline double buffering, warp specialization, and CUDA Graphs.
 
-**Outcomes — after completing this chapter you will be able to:**
+**Outcomes:** After this chapter you will be able to:
 1. Trace a PyTorch model through TorchDynamo, AOTAutograd, PrimTorch IR, and TorchInductor, and choose between compilation modes and AOTInductor.
 2. Handle variable-length language model sequences using SymPy symbolic shapes, `torch._dynamo.mark_dynamic`, and fixed bucket padding.
 3. Diagnose and eliminate graph breaks using `torch._dynamo.explain`, `torch.where`, and `torch.cond`, while preserving intentional distributed communication breaks.
@@ -121,7 +121,7 @@ Because both passes live in one static dataflow graph, downstream compiler passe
 
 PyTorch exposes more than two thousand operators in its full ATen C++ library. Many of these operators overlap in functionality or mutate input tensors in place. Implementing and maintaining code generators for thousands of operators across every hardware backend is practically impossible. Furthermore, hidden in-place tensor mutations create aliasing hazards that prevent a compiler from safely reordering or fusing loops.
 
-PrimTorch IR solves both problems by canonicalizing the joint graph into a compact, purely functional operator set. As modeled in our companion module, PrimTorch decomposes PyTorch's operator surface down to roughly two hundred fifty core primitive operations. Crucially, PrimTorch performs functionalization to eliminate all in-place mutations and view aliasing hazards inside the graph.
+PrimTorch IR solves both problems by canonicalizing the joint graph into a compact, purely functional operator set. As modeled in the companion module, PrimTorch decomposes PyTorch's operator surface down to roughly two hundred fifty core primitive operations. Crucially, PrimTorch performs functionalization to eliminate all in-place mutations and view aliasing hazards inside the graph.
 
 For example, an in-place addition mutation is decomposed into a pure functional addition followed by an explicit storage copy node at the graph boundary.
 
@@ -204,7 +204,7 @@ Understanding why `dynamic=True` disables CUDA Graphs is critical for low-latenc
 
 A single stray print statement or a Python conditional check on a tensor value inside the forward pass silently shatters a compiled graph into multiple fragments. Each graph break forces the GPU stream to synchronize or return control to the Python interpreter, runs the offending line in eager mode, and launches a separate subgraph afterward. Because the compiler falls back to eager mode without crashing by default, engineers often think their model is fully compiled when it is actually fragmented into slow pieces.
 
-Use `torch._dynamo.explain` to inspect the exact subgraph count, break count, and offending source lines. In our companion module, running `analyze_dynamo_graph_breaks` on the book's toy function reveals two breaks caused by a Python print call and a data-dependent branch. Guarding debug prints with `torch._dynamo.is_compiling` and rewriting tensor branches with `torch.where` or `torch.cond` eliminates both breaks.
+Use `torch._dynamo.explain` to inspect the exact subgraph count, break count, and offending source lines. In the companion module, running `analyze_dynamo_graph_breaks` on the book's toy function reveals two breaks caused by a Python print call and a data-dependent branch. Guarding debug prints with `torch._dynamo.is_compiling` and rewriting tensor branches with `torch.where` or `torch.cond` eliminates both breaks.
 
 | Function Variant | Graph Count | Graph Break Count | Op Count | Root Cause or Refactoring Mechanism |
 |---|---:|---:|---:|---|
@@ -542,12 +542,19 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Tracing the four-stage compiler pipeline:** State the CPython PEP number used by TorchDynamo, how many total PyTorch ATen operators PrimTorch IR decomposes into how many core primitives, how in-place addition is functionalized, and how TorchInductor lowers its Python loop-level IR to NVIDIA PTX without calling nvcc.
-2. **Eliminating graph breaks in `toy_example`:** State the graph count, graph break count, op count, and two break reasons returned by `dynamo.explain` on `toy_example`. Write both refactored versions (`model_where` and `model_cond`) that reduce the graph count to one with zero breaks.
-3. **Dynamic shapes, CUDA Graph compatibility, and compiler logs:** Explain why combining `mode="reduce-overhead"` with `dynamic=True` disables CUDA Graphs, and state the sequence-length padding rule of thumb. Name the exact `TORCH_LOGS`, reproducer, and deterministic cuBLAS workspace flags used to catch missed CUDA Graphs, isolate post-AOT numerical bugs, and enforce deterministic matmuls.
-4. **Triton SPMD launch math and PyTorch registration:** For `vector_add_kernel` on ten thousand elements, calculate the number of program instances launched at a block size of one thousand twenty-four, the number of CUDA threads per block and elements per thread at four warps, and the recommended warp counts at larger block sizes. Explain how `@triton_op`, `wrap_triton`, and `register_autograd` expose the kernel to the PyTorch compiler.
-5. **Triton TMA descriptors, Blackwell TMEM, and the pipelining rule:** State the two alignment and layout requirements of `tl.make_tensor_descriptor` to map to hardware TMA, what hardware instruction and memory space `tl.dot` lowers to on Blackwell, and why overwriting the current tile variable before `tl.dot` in a pipelined loop collapses overlap.
-6. **Persistent Triton GEMM, Proton profiling, and OpenXLA:** For the `[M=8192, N=8192, K=512]` benchmark with `128x128x64` tiles, calculate the tile grid counts and loop iterations. Compare the four Proton benchmark runtimes across cuBLAS, PyTorch, standard Triton, and `matmul_kernel_persistent`, and explain why OpenXLA requires static shape bucketing for inference.
+1. Which CPython PEP does TorchDynamo use to capture bytecode?
+2. PrimTorch decomposes how many ATen operators into how many core primitives? How does it functionalize an in-place add?
+3. How does TorchInductor lower its Python loop-level IR to NVIDIA PTX without calling `nvcc`?
+4. `dynamo.explain` runs on `toy_example`. State the graph count, graph break count, op count, and the two break reasons.
+5. Write the two refactored versions, `model_where` and `model_cond`, that reduce the graph count to one with no breaks.
+6. Why does `mode="reduce-overhead"` combined with `dynamic=True` disable CUDA Graphs? State the sequence-length padding rule of thumb.
+7. Name the `TORCH_LOGS` setting that catches missed CUDA Graphs. Name the reproducer setting that isolates post-AOT numerical bugs. Name the cuBLAS workspace flag that makes matmuls deterministic.
+8. `vector_add_kernel` runs on ten thousand elements at a block size of 1,024. How many program instances launch? At four warps, how many CUDA threads does a block use, and how many elements does each thread handle?
+9. Which warp counts does the chapter recommend at larger block sizes? How do `@triton_op`, `wrap_triton`, and `register_autograd` expose the kernel to the PyTorch compiler?
+10. State the two alignment and layout requirements that let `tl.make_tensor_descriptor` map to hardware TMA. To which instruction and memory space does `tl.dot` lower on Blackwell?
+11. Why does overwriting the current tile variable before `tl.dot` in a pipelined loop collapse overlap?
+12. The benchmark is `[M=8192, N=8192, K=512]` with `128x128x64` tiles. Compute the tile grid counts and loop iterations.
+13. Compare the four Proton runtimes for cuBLAS, PyTorch, standard Triton, and `matmul_kernel_persistent`. Why does OpenXLA need static shape bucketing for inference?
 
 ---
 
@@ -699,6 +706,6 @@ PyTorch XLA targets Google Cloud TPUs, Meta MTIA, and AWS Trainium and Inferenti
 
 ### Verification and review notes
 - **Run here:** `python3 -B code/part10/triton_and_compilers_lab.py` (25 passed, 0 failed; read via `tools/study_rag/bookch.py` and `MIGRATION_MAP.md`, expanding Chapter `10.9` in `2026`, with `174.920 / 159.352 = 1.098` ~ `1.10x`).
-- **Explicitly labelled inferences:** PrimTorch operator reduction ratio (`2,000 / 250 = 8.0x`), elements-per-thread ratio in `vector_add_kernel` (`1,024 / 128 = 8.0`), tile counts for `8,192 x 8,192 x 512`, and Proton persistent GEMM speedup (`174.920 / 159.352 = 1.10x`, saving `15.568 ms = 8.90%`) in `code/part10/triton_and_compilers.py` are **my inference** from *AI Systems Performance Engineering* Chapter 14.
-- **Not verified on live hardware:** All `torch.compile`, `TORCH_LOGS`, `tlparse`, `@triton.jit`, and `proton` commands in Sections 2, 3, and 5 are marked `(untested here)` because this verification environment does not have an attached CUDA GPU.
+- **Arithmetic computed by the handbook:** The PrimTorch operator reduction ratio (`2,000 / 250 = 8.0x`), the elements-per-thread ratio in `vector_add_kernel` (`1,024 / 128 = 8.0`), the tile counts for `8,192 x 8,192 x 512`, and the Proton persistent GEMM speedup (`174.920 / 159.352 = 1.10x`, saving `15.568 ms = 8.90%`) are derived in `code/part10/triton_and_compilers.py` from figures in *AI Systems Performance Engineering* Chapter 14.
+- **Not verified on live hardware:** All `torch.compile`, `TORCH_LOGS`, `tlparse`, `@triton.jit`, and `proton` commands in Sections 2, 3, and 5 are marked `(untested here)` because no CUDA GPU was available for this chapter.
 

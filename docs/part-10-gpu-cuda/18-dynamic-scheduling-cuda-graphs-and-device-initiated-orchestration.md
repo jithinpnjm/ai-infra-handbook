@@ -24,13 +24,15 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Hiding memory latency inside a kernel and overlapping copies across streams solves static pipeline bottlenecks. However, modern multi-GPU systems such as NVIDIA's DGX GB200 NVL72 still suffer from severe orchestration stalls when workloads are irregular or composed of thousands of micro-kernels. When thread work varies dynamically, when host CPU driver dispatch takes longer than GPU execution. Or when control flow requires a CPU round-trip, Streaming Multiprocessors sit idle across the entire rack.
+A language-model server decodes one token at a time. Each token needs about eighty layers, and each layer launches a few tiny kernels. The GPU finishes each kernel in about 3 microseconds. The CPU needs about 15 microseconds to submit it. The GPU spends most of its time waiting for the next launch, and nothing in the profile looks broken.
 
-Chapter 12 of *AI Systems Performance Engineering* and Volume 03 of nvidia-devops target three distinct orchestration bottlenecks.
+Hiding memory latency inside a kernel and overlapping copies across streams fixes static pipeline stalls. It does not fix three other problems that appear when work is irregular or made of thousands of micro-kernels. Streaming Multiprocessors then sit idle even on a rack-scale system such as the DGX GB200 NVL72. Chapter 12 of *AI Systems Performance Engineering* and Volume 03 of the nvidia-devops notes address these three bottlenecks.
 
-1. Intra-kernel load imbalance across Streaming Multiprocessors stalls the tail of a grid whenever threads run variable-trip-count loops such as uneven_static.cu. Early blocks exit while slow blocks hold Streaming Multiprocessors hostage. Moving to a warp-batched L2-cache atomic work queue in computeKernelDynamicBatch inside uneven_dynamic.cu elects one warp leader to claim batches via atomicAdd. Broadcast indices via __shfl_sync, cutting runtime in half.
-2. Host CPU launch overhead dominates autoregressive large language model decode when tiny kernels finish faster than the CPU can enqueue them. Launching tens of thousands of individual decode kernels per response pins CPU cores inside the CUDA driver while GPU utilization languishes. Capturing the multi-layer forward pass into a CUDA Graph replaces individual kernel launches with a single replay call per token and removes inter-kernel launch bubbles.
-3. Host round-trips for data-dependent branching. Multi-GPU coordination stall every Streaming Multiprocessor whenever the GPU must copy a flag to the CPU to decide what to run next. Device-initiated CUDA Graph launches via cudaGraphInstantiateFlagDeviceLaunch. Conditional Graph Nodes, Dynamic Parallelism compiled with `-rdc=true`, and NVSHMEM Partitioned Global Address Space one-sided puts keep scheduling and branching entirely on the device.
+The first is load imbalance inside a kernel. When threads run loops with different trip counts, as in `uneven_static.cu`, early blocks exit while slow blocks keep their SMs busy. In `uneven_dynamic.cu`, the kernel `computeKernelDynamicBatch` uses a work queue in the L2 cache instead. One warp leader claims a batch of items with `atomicAdd` and broadcasts the indices with `__shfl_sync`. The book's illustrative run halves the runtime.
+
+The second is host launch overhead. When tiny decode kernels finish faster than the CPU can enqueue them, tens of thousands of launches per response pin CPU cores inside the CUDA driver while the GPU waits. Capturing the multi-layer forward pass into a CUDA Graph replaces them with one replay call per token.
+
+The third is the round trip for data-dependent decisions. If the GPU must copy a flag to the CPU to learn what to run next, every SM waits. Device-initiated graph launches through `cudaGraphInstantiateFlagDeviceLaunch`, conditional graph nodes, Dynamic Parallelism compiled with `-rdc=true`, and NVSHMEM one-sided puts keep scheduling and branching on the device.
 
 | Bottleneck or System | Mechanism and Configuration | Key Source Metrics | Reported Impact |
 |---|---|---|---|
@@ -51,14 +53,15 @@ Chapter 12 of *AI Systems Performance Engineering* and Volume 03 of nvidia-devop
 
 - Chapters 10.11 through 10.17 covering CUDA kernels, streams, events, pinned memory, cudaMallocAsync, Nsight profiling metrics, and `<cuda/pipeline>`.
 
-**Outcomes — after completing this chapter you will be able to:**
+**Outcomes:** After this chapter you will be able to:
 
-1. Diagnose L2 atomic contention using Nsight Compute counters atomic_transactions and atomic_transactions_per_request and implement a warp-leader batched atomic work queue using `__activemask()`, `__ffs()`, atomicAdd, and __shfl_sync.
-2. Capture, instantiate, warm up, and replay CUDA Graphs in C++ and PyTorch using cudaStreamBeginCapture, cudaGraphInstantiate, cudaGraphLaunch, torch.cuda.CUDAGraph, `torch.cuda.graph_pool_handle()`, and cudaGraphExecUpdate.
-3. Launch CUDA Graphs directly from device kernels using cudaGraphInstantiateFlagDeviceLaunch and cudaGraphUpload across cudaStreamGraphFireAndForget, cudaStreamGraphTailLaunch, and cudaStreamGraphFireAndForgetAsSibling, and build Conditional Graph Nodes.
-4. Implement Dynamic Parallelism with `-rdc=true` where a parent kernel spawns child kernels on the device, and configure cudaLimitDevRuntimePendingLaunchCount and cudaLimitStackSize.
-5. Orchestrate multi-GPU pipelines with NVSHMEM one-sided puts nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, nvshmem_int_wait_until, atomic work stealing nvshmem_int_atomic_inc, nvshmemx_collective_launch, and graph-captured NCCL AllReduce.
-6. Apply the Roofline-guided orchestration framework and the Volume 03 three-level production profiling funnel and Lab 04 diagnostics using nsys, ncu, nvidia-smi, and compute-sanitizer.
+1. Diagnose L2 atomic contention with the Nsight Compute counter `atomic_transactions_per_request`, and build a warp-leader work queue that claims items in batches.
+2. Capture, instantiate, warm up, and replay CUDA Graphs in C++ with `cudaStreamBeginCapture` and `cudaGraphLaunch`, and in PyTorch with `torch.cuda.CUDAGraph`.
+3. Update a captured graph in place with `cudaGraphExecUpdate`.
+4. Launch a graph from a device kernel in fire-and-forget, tail, or sibling mode, and build conditional graph nodes.
+5. Use Dynamic Parallelism with `-rdc=true`, where a parent kernel starts child kernels, and set the pending-launch and stack limits.
+6. Coordinate GPUs with NVSHMEM one-sided puts and with NCCL all-reduces captured in a graph.
+7. Choose among these tools with the roofline, and diagnose regressions with the Volume 03 profiling funnel using `nsys`, `ncu`, `nvidia-smi`, and `compute-sanitizer`.
 
 ---
 
@@ -66,16 +69,16 @@ Chapter 12 of *AI Systems Performance Engineering* and Volume 03 of nvidia-devop
 
 ### 1.1 L2-cache atomics, `atomic_transactions_per_request`, and batching (`batchSize = 8, 16, 32`)
 
-When different threads or thread blocks execute input-dependent work such as sparse attention blocks. Variable-length token sequences, or graph traversals, static `idx = blockIdx.x * blockDim.x + threadIdx.x` assignment leaves fast-finishing Streaming Multiprocessors idle while slow ones finish the tail. In Nsight Systems, this imbalance appears as ragged stream tails. In Nsight Compute, it shows up as a low ratio of SM Active Cycles to Elapsed Cycles or low achieved occupancy.
+Some work depends on its input, such as sparse attention blocks, variable-length token sequences, or graph traversals. With such work, static `idx = blockIdx.x * blockDim.x + threadIdx.x` assignment leaves fast-finishing Streaming Multiprocessors idle while slow ones finish the tail. In Nsight Systems, this imbalance appears as ragged stream tails. In Nsight Compute, it shows up as a low ratio of SM Active Cycles to Elapsed Cycles or low achieved occupancy.
 
-Replacing static indexing with a naive global atomic counter where every thread calls `atomicAdd(&queue_head, 1)` creates a second bottleneck. Modern NVIDIA GPUs service global atomicAdd instructions inside the on-chip L2 cache. Round-tripping to HBM DRAM, as shown in Figure 12-1 of *AI Systems Performance Engineering* Chapter 12. Uncontended L2 atomics are fast, but when thousands of threads hammer the same counter address simultaneously, the L2 cache serializes and replays conflicting requests.
+Replacing static indexing with a naive global atomic counter where every thread calls `atomicAdd(&queue_head, 1)` creates a second bottleneck. Modern NVIDIA GPUs service global atomicAdd instructions inside the on-chip L2 cache. They do not round-trip to HBM DRAM, as Figure 12-1 of *AI Systems Performance Engineering* Chapter 12 shows. Uncontended L2 atomics are fast, but when thousands of threads hammer the same counter address simultaneously, the L2 cache serializes and replays conflicting requests.
 
 In Nsight Compute's Memory Workload Analysis section, two hardware counters diagnose this contention directly.
 
-- atomic_transactions counts the total number of L2-cache atomic transactions executed, including contention replays.
-- atomic_transactions_per_request measures the contention ratio, defined as the average number of L2 transactions generated per atomicAdd instruction. A value near 1.0 is ideal because every atomicAdd completes in a single L2 transaction with zero retries. Whereas a value well above 1.0 indicates threads are stalling on serialized cache-line updates.
+- `atomic_transactions` counts the total number of L2-cache atomic transactions executed, including contention replays.
+- `atomic_transactions_per_request` measures the contention ratio, defined as the average number of L2 transactions generated per atomicAdd instruction. A value near 1.0 is ideal because every atomicAdd completes in a single L2 transaction with zero retries. A value well above 1.0 means threads are stalling on serialized cache-line updates.
 
-To drive atomic_transactions_per_request back toward 1.0, threads claim work in batches rather than one element at a time.
+To drive `atomic_transactions_per_request` back toward 1.0, threads claim work in batches rather than one element at a time.
 
 | Queue Strategy (`N = 1 << 20 = 1,048,576` elements) | Batch Size | Total L2 `atomicAdd` Calls | Atomic Reduction Factor | Typical Throughput Impact |
 |---|---|---|---|---|
@@ -800,20 +803,19 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-```text
-1. Warp-batched L2 atomic work queues in `uneven_static.cu` versus `uneven_dynamic.cu`. For `N = 1,048,576` elements, calculate the total number of `atomicAdd` operations executed when every thread increments by 1 versus when a warp leader increments by `batchSize` of 8, 16, or 32. State the target value of Nsight Compute's `atomic_transactions_per_request` metric and the speedup of `computeKernelDynamicBatch` at 100 ms over `computeKernel` at 200 ms on `work = idx % 256`.
-```
-```text
-2. LLM decode CPU launch overhead and CUDA Graph Table 12-1. Calculate the percentage of wall-clock time spent in CPU launch overhead when 3 decode kernels each run in 3 µs on the GPU with 15 µs of CPU launch overhead per kernel. State how many kernel launches CUDA Graphs eliminate when generating 500 tokens on an 80-layer LLM in Triton, and summarize the four before-and-after metrics from Table 12-1 across 100 iterations.
-```
-3. Device-initiated CUDA Graph launch modes and Conditional Graph Nodes. Contrast cudaStreamGraphFireAndForget, cudaStreamGraphTailLaunch, and cudaStreamGraphFireAndForgetAsSibling, and state their hardware concurrency limits of 120, 255, and 1. List the host and device API calls needed to build an IF conditional node cudaGraphCondTypeIf that runs bodyKernel when `reduce_sum(data, N) > 123456`.
-```text
-4. Dynamic Parallelism in Table 12-2 and `-rdc=true`. Using Table 12-2 for 1 parent plus 2 children on `N = 1,048,576` at `threadsPerBlock = 256`, state the before and after values for host launches, per-launch overhead, GPU idle cycles, and overall runtime. Name the two `cudaDeviceSetLimit` flags that control pending child launches at the 2,048 default and stack size.
-```
-5. NVSHMEM one-sided PGAS communication and Graph-Captured NCCL. Trace the exact sequence of nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, and nvshmem_int_wait_until between sender_kernel on Processing Element 0 and receiver_kernel on Processing Element 1. Explain when `nvshmemx_collective_launch()` is required and state the three rules for capturing multi-GPU ncclAllReduce inside a CUDA Graph.
-```text
-6. Volume 03 Production Profiling Funnel and Lab 04 Failure Diagnostics. Given the Lab 04 67,108,864-element pipeline with an 812.4 ms baseline, calculate the slowdown factor and root cause for Regressions A, B, and C from Section 5.3. Explain why a 512 MiB allocation fails when `nvidia-smi` reports 1,895 MiB free with 1,240 MiB fragmented across 340 blocks, and compute the faulting global index reported by `compute-sanitizer` for block 3906 and thread 287 at `blockDim = 256`.
-```
+1. A kernel processes `N = 1,048,576` elements. How many `atomicAdd` calls does it make when every thread adds 1? How many does it make when a warp leader adds a `batchSize` of 8, 16, or 32?
+2. What value of `atomic_transactions_per_request` do you aim for? What speedup does `computeKernelDynamicBatch` at 100 ms show over `computeKernel` at 200 ms on `work = idx % 256`?
+3. Three decode kernels each run 3 µs on the GPU and cost 15 µs of CPU launch time. What share of wall-clock time is CPU launch overhead?
+4. A model with 80 layers generates 500 tokens. How many kernel launches do CUDA Graphs remove? Summarize the four before-and-after metrics in Table 12-1 over 100 iterations.
+5. Contrast `cudaStreamGraphFireAndForget`, `cudaStreamGraphTailLaunch`, and `cudaStreamGraphFireAndForgetAsSibling`. State their limits of 120, 255, and 1.
+6. List the host and device calls that build an IF conditional node, `cudaGraphCondTypeIf`, which runs `bodyKernel` when `reduce_sum(data, N) > 123456`.
+7. Table 12-2 covers one parent and two children on `N = 1,048,576` at `threadsPerBlock = 256`. State the before and after values for host launches, per-launch overhead, GPU idle cycles, and runtime.
+8. Which two `cudaDeviceSetLimit` flags control pending child launches, whose default is 2,048, and the stack size?
+9. Trace the calls `nvshmem_float_p`, `nvshmem_quiet`, `nvshmem_int_p`, and `nvshmem_int_wait_until` between `sender_kernel` on Processing Element 0 and `receiver_kernel` on Processing Element 1. When is `nvshmemx_collective_launch()` required?
+10. State the three rules for capturing a multi-GPU `ncclAllReduce` inside a CUDA Graph.
+11. The Lab 04 pipeline has 67,108,864 elements and an 812.4 ms baseline. For Regressions A, B, and C in Section 5.3, give the slowdown factor and root cause.
+12. A 512 MiB allocation fails although `nvidia-smi` reports 1,895 MiB free, with 1,240 MiB fragmented across 340 blocks. Explain why.
+13. `compute-sanitizer` reports block 3906 and thread 287 at `blockDim = 256`. What is the faulting global index?
 
 ---
 
@@ -988,6 +990,6 @@ In Volume 03 Chapter 12, `nvidia-smi` reports 1,895 MiB free out of 40,960 MiB t
 
 ### Verification and review notes
 - **Run here:** `python3 -B code/part10/dynamic_scheduling_graphs_lab.py` (25 passed, 0 failed).
-- **Explicitly labelled inferences:** The atomic call counts (`1,048,576 / 32 = 32,768`, `1,048,576 / 16 = 65,536`, `1,048,576 / 8 = 131,072`), the CPU launch share `45.0 / (45.0 + 9.0) = 83.3%`, and the Lab 04 slowdown ratios (`1,928.3 / 812.4 = 2.37x`, `3,140.9 / 812.4 = 3.87x`, `2,214.8 / 812.4 = 2.73x`) are exact arithmetic ratios computed in `code/part10/dynamic_scheduling_graphs.py` from the source figures.
-- **Not verified on live hardware:** All `nvcc -rdc=true`, `ncu`, `nsys`, `compute-sanitizer`, and `nvshmem` commands in Section 6 are marked `(untested here)` because this verification environment does not have an attached CUDA GPU.
+- **Arithmetic computed by the handbook:** The atomic call counts (`1,048,576 / 32 = 32,768`, `1,048,576 / 16 = 65,536`, `1,048,576 / 8 = 131,072`), the CPU launch share `45.0 / (45.0 + 9.0) = 83.3%`, and the Lab 04 slowdown ratios (`1,928.3 / 812.4 = 2.37x`, `3,140.9 / 812.4 = 3.87x`, `2,214.8 / 812.4 = 2.73x`) are exact arithmetic ratios computed in `code/part10/dynamic_scheduling_graphs.py` from the source figures.
+- **Not verified on live hardware:** All `nvcc -rdc=true`, `ncu`, `nsys`, `compute-sanitizer`, and `nvshmem` commands in Section 6 are marked `(untested here)` because no CUDA GPU was available for this chapter.
 

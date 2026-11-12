@@ -24,11 +24,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Even after coalescing global memory loads, tuning occupancy, and staging tiles in Shared Memory and Tensor Memory, a classical tiled kernel still runs in a stop-and-go cycle. Every warp in the thread block issues a global load into Shared Memory and stalls at a block-wide `__syncthreads()` barrier waiting for DRAM. It then computes on the tile and stalls at another barrier before loading the next tile. During the load phase, the Tensor Cores sit idle. During the compute phase, the memory subsystem sits idle.
+Suppose a tiled matrix kernel already has coalesced loads, sensible occupancy, and tiles staged in Shared Memory. Profiling still shows the Tensor Cores idle for long stretches. The reason is the loop itself. Every warp issues a global load into Shared Memory and stops at a block-wide `__syncthreads()` barrier until the data arrives. It then computes on the tile and stops at another barrier before the next load. While the loads run, the Tensor Cores wait. While the math runs, the memory system waits.
 
-*AI Systems Performance Engineering* Chapter 10 shows how Hopper and Blackwell kernels eliminate those intra-kernel execution bubbles. Engineers combine asynchronous ring buffers, warp specialization across independent warp schedulers, persistent megakernels, and Thread Block Clusters connected over Distributed Shared Memory. Together, those patterns keep memory pipelines and Tensor Cores running in phase simultaneously.
+*AI Systems Performance Engineering* Chapter 10 describes how Hopper and Blackwell kernels remove these gaps inside a kernel. They use four tools: asynchronous ring buffers, warp specialization across the warp schedulers, persistent megakernels, and Thread Block Clusters linked by Distributed Shared Memory. Together they keep the memory pipeline and the Tensor Cores busy at the same time.
 
-| Pattern (ASP Chapter 10) | Baseline | Optimized Result | Mechanism & Hardware Units |
+| Pattern (*AI Systems Performance Engineering* Chapter 10) | Baseline | Optimized Result | Mechanism & Hardware Units |
 |---|---|---|---|
 | Asynchronous double/triple buffering (`<cuda/pipeline>`, Table 10-2) | `41.3 ms` runtime, `68%` SM Active (`__syncthreads()` tiling) | `20.5 ms` (`2.01x` faster), `92%` SM Active (`+24%`) | `cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES>` (`STAGES = 2` or `3`) + `cuda::memcpy_async` (`cp.async`) into ring-buffer slot `s = tile % STAGES`. |
 | Warp specialization & ping-pong MMA (Table 10-3) | `20.5 ms` double-buffered (`~6` warps/SM limit) | `18.4 ms` (`+10.2%` faster), `96%` efficiency, `165 GB/s` L2, scales to `64` warps/SM | Assigns loader (`warp_id 0`), compute (`warp_id 1`), and storer (`warp_id 2`) or CUTLASS `gemm_tma_warpspecialized_pingpong` across `4` SM warp schedulers. |
@@ -91,9 +91,9 @@ flowchart LR
 
 ### 1.2 Full cooperative double/triple-buffered GEMM and Table 10-2
 
-In a two-stage pipeline, one ring-buffer slot prefetches the next tile from DRAM while the arithmetic units compute on the previously loaded slot. On Blackwell GPUs where Tensor Core compute throughput is massive relative to HBM latency, a single prefetch in flight may not hide the full memory delay. Adding a third stage creates a triple-buffered ring that keeps two asynchronous prefetches in flight while computing on the third slot.
+In a two-stage pipeline, one ring-buffer slot prefetches the next tile from DRAM while the arithmetic units compute on the previously loaded slot. On Blackwell GPUs the Tensor Cores are fast enough, relative to HBM latency, that a single prefetch in flight may not hide the full memory delay. Adding a third stage creates a triple-buffered ring that keeps two asynchronous prefetches in flight while computing on the third slot.
 
-Even the most heavily tuned attention pipelines face physical overlap limits when data movement and online softmax rescaling compete for resources. In practice, FlashAttention-3 achieves roughly seventy-five percent of peak FP16 FLOPS using multi-stage asynchronous pipelining. In the `gemm_tiled_pipeline` kernel below, priming the ring buffer in a prologue loop and stepping through ring-buffer slots in steady state cuts execution time in half compared to naive tiling.
+Even heavily tuned attention kernels cannot overlap everything, because data movement and online softmax rescaling compete for the same resources. The book reports that FlashAttention-3 reaches about 75 percent of peak FP16 FLOPS with warp-specialized overlap. The `gemm_tiled_pipeline` kernel below primes the ring buffer in a prologue loop and then steps through the slots in steady state. In the book's illustrative Table 10-2 run, that halves the runtime of naive tiling, from 41.3 ms to 20.5 ms.
 
 ```cpp
 // Cooperative multi-stage (double/triple-buffered) tiled GEMM using <cuda/pipeline>
@@ -377,7 +377,7 @@ context = torch.nn.functional.scaled_dot_product_attention(queries, keys, values
 
 ### 3.1 Persistent kernels: eliminating launch overhead and uneven tail waves
 
-When an inference server or graph-processing stage executes a thousand tiny independent tasks, launching a separate CUDA kernel for every task wastes massive wall-clock time. Each kernel launch incurs roughly twenty microseconds of host-to-device launch overhead. That adds twenty milliseconds of pure overhead on top of a hundred milliseconds of actual GPU work. Worse, because each tiny grid occupies only a few SMs and drains between launches, average GPU utilization hovers around thirty-five percent.
+When an inference server or graph-processing stage executes a thousand tiny independent tasks, launching a separate CUDA kernel for every task wastes a large share of wall-clock time. Each kernel launch incurs roughly twenty microseconds of host-to-device launch overhead. That adds twenty milliseconds of pure overhead on top of a hundred milliseconds of actual GPU work. Worse, because each tiny grid occupies only a few SMs and drains between launches, average GPU utilization hovers around thirty-five percent.
 
 A persistent kernel eliminates both launch overhead and tail-wave draining by launching a single long-lived grid that stays resident across all SMs until the entire work queue is empty. On a GPU with 132 SMs, launching one block of 256 threads per SM creates 33,792 persistent worker threads that pull tasks continuously from a device-side atomic counter `atomicAdd(&g_index, 1)`. The host pays the twenty-microsecond launch cost only once, and irregular task durations balance automatically across SMs.
 
@@ -584,7 +584,7 @@ void launchClusterExample(void* args[]) {
 
 ### 4.4 Thread Block Pairs, TMA multicast versus DSMEM, and Table 10-4
 
-A single thread block often lacks the register file, Shared Memory, or Tensor Memory capacity to compute a massive 256 by 256 output tile by itself. Pairing two thread blocks into a Thread Block Pair coschedules them onto adjacent SMs inside a GPC so they operate as one double-sized logical unit. Each CTA loads half of the input subtile into its local Shared Memory and holds half of the accumulator in its per-SM Tensor Memory.
+A single thread block often lacks the register file, Shared Memory, or Tensor Memory capacity to compute a 256 by 256 output tile by itself. Pairing two thread blocks into a Thread Block Pair coschedules them onto adjacent SMs inside a GPC so they operate as one double-sized logical unit. Each CTA loads half of the input subtile into its local Shared Memory and holds half of the accumulator in its per-SM Tensor Memory.
 
 In CUTLASS, this hardware capability is exposed as a 2-SM Unified MMA GEMM using `tcgen05.mma` with `cta_group::2`. As shown in Table 10-4, pairing two CTAs over DSMEM cuts global load transactions in half, boosts L2 cache hit rate by thirty-five percentage points, halves DRAM bandwidth per CTA, and yields a forty percent execution speedup.
 
@@ -820,12 +820,17 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Sizing `<cuda/pipeline>` ring buffers and 3-role warp-specialized SMEM:** Calculate the exact dynamic Shared Memory footprint in bytes for `gemm_tiled_pipeline` with a tile size of 32 at two stages versus three stages. Next, calculate the dynamic Shared Memory required by `warp_specialized_pipeline_kernel` at tile size 112 versus tile size 160 against Blackwell's per-block limit. Finally, compute the Shared Memory footprint of `warp_specialized_cluster_pipeline` at tile size 128 and the number of rows processed per CTA in a two-block versus four-block cluster.
-2. **Tracing the 4-stage GEMM progression in Tables 10-2, 10-3, and 10-5:** Compare kernel execution time, warp execution efficiency, L2 load throughput, dynamic instruction count, and maximum scalable warps per SM across the four progression stages. Include naive tiling, double buffering, single-block warp specialization, and the Thread Block Cluster pipeline.
-3. **Persistent kernel launch math and occupancy paradox:** Given 1,000 tasks that each run in 0.1 ms with a per-launch overhead of 0.02 ms on a 132-SM GPU, calculate the total launch overhead and wall-clock time for 1,000 separate launches. Compare that against a single persistent launch of 132 blocks of 256 threads. State the total number of persistent threads and explain why 100 percent of SMs remain active even though per-SM thread occupancy is only 12.5 percent.
-4. **Sizing and clamping a Cooperative Grid:** A two-phase iterative algorithm runs for 1,000 iterations over 1,000,000 elements with 256 threads per block on a 132-SM GPU. Assume `cudaOccupancyMaxActiveBlocksPerMultiprocessor` reports four active blocks per SM. Calculate how many kernel launches `combinedKernel` eliminates, compare the unclamped block count against `maxCoopGrid`, and state what happens if `gridSize` is not clamped.
-5. **Evaluating CTA Pair DSMEM gains and TMA multicast versus DSMEM `map_shared_rank`:** State the global load reduction, L2 hit rate improvement, DRAM bandwidth per CTA reduction, and relative kernel execution time speedup from Table 10-4 when pairing two CTAs with DSMEM. Then state the decision rule for choosing TMA multicast to `shared::cluster` versus DSMEM `map_shared_rank`.
-6. **Fixing two broken pipeline synchronization snippets:** Explain why placing `pipe.producer_acquire()` inside `if (warp_id == 0)` on a unified CTA pipeline hangs. Also explain why having follower blocks call `pipe.consumer_wait()` on the leader block's `cuda::pipeline` without `cluster.sync()` reads stale data in `warp_specialized_cluster_pipeline`.
+1. How many bytes of dynamic Shared Memory does `gemm_tiled_pipeline` need with a tile size of 32? Give the answer for two stages and for three stages.
+2. `warp_specialized_pipeline_kernel` runs at tile size 112, then at tile size 160. Compare each footprint with Blackwell's per-block limit.
+3. `warp_specialized_cluster_pipeline` runs at tile size 128. What is its Shared Memory footprint? How many rows does each CTA process in a two-block cluster, and in a four-block cluster?
+4. Compare the four stages in Tables 10-2, 10-3, and 10-5: naive tiling, double buffering, single-block warp specialization, and the cluster pipeline. For each, list the runtime and the warp execution efficiency.
+5. A job has 1,000 tasks of 0.1 ms each, and every launch costs 0.02 ms on a 132-SM GPU. What are the launch overhead and the total time for 1,000 separate launches? Compare that with one persistent launch of 132 blocks of 256 threads.
+6. That persistent launch uses how many threads? Why do 100 percent of the SMs stay active when per-SM thread occupancy is only 12.5 percent?
+7. A two-phase algorithm runs 1,000 iterations over 1,000,000 elements, with 256 threads per block on a 132-SM GPU. `cudaOccupancyMaxActiveBlocksPerMultiprocessor` reports four active blocks per SM. How many launches does `combinedKernel` remove?
+8. For the same grid, compare the unclamped block count with `maxCoopGrid`. What happens if `gridSize` is not clamped?
+9. Table 10-4 pairs two CTAs over DSMEM. State the change in global loads, L2 hit rate, DRAM bandwidth per CTA, and kernel time. Then state when to choose TMA multicast to `shared::cluster` instead of DSMEM `map_shared_rank`.
+10. Why does `pipe.producer_acquire()` inside `if (warp_id == 0)` hang on a unified CTA pipeline?
+11. Why do follower blocks read stale data in `warp_specialized_cluster_pipeline` if they call `pipe.consumer_wait()` on the leader's pipeline without `cluster.sync()`?
 
 ---
 
@@ -902,7 +907,7 @@ warp_specialized_pipeline: 18.4 ms (+10.2%), 96% eff (+4%), 165 GB/s L2 (+6.45%)
 <details>
 <summary>**10. How do torch.compile, F.scaled_dot_product_attention, and FlashAttention-3 use warp specialization under the hood, and what fraction of peak FP16 FLOPS does FlashAttention-3 achieve?**</summary>
 
-Calling `F.scaled_dot_product_attention` or `torch.compile` via TorchInductor, Triton, and FlashAttention-3 fuses attention into a single kernel. Producer warps prefetch key and value tiles via TMA while consumer warps overlap GEMM and online softmax on Tensor Cores. In practice, FlashAttention-3 reaches roughly seventy-five percent (`~75%`) of peak FP16 FLOPS.
+Calling `F.scaled_dot_product_attention` or `torch.compile` via TorchInductor, Triton, and FlashAttention-3 fuses attention into a single kernel. Producer warps prefetch key and value tiles via TMA while consumer warps overlap GEMM and online softmax on Tensor Cores. The book reports that FlashAttention-3 reaches roughly seventy-five percent (`~75%`) of peak FP16 FLOPS.
 </details>
 
 <details>
@@ -997,10 +1002,10 @@ The primary source for this chapter is *AI Systems Performance Engineering* by C
 | PyTorch, Persistent Kernels, Megakernels & Cooperative Grids | `torch.compile`, `F.scaled_dot_product_attention`, `persistentKernel` (`1,000` tasks × `0.1 ms` + `0.02 ms` launch = `20 ms` saved, `132 × 256 = 33,792` threads at `12.5%` thread occ / `100%` active SMs), Fig. 10-8 megakernels (`1.2x–6.7x` decode latency reduction vs `vLLM`/`SGLang`), Fig. 10-9 Cooperative Groups, `cudaLaunchCooperativeKernel`, `132 × 4 = 528` max blocks, `combinedKernel` (`2,000` launches → `1` launch with `grid.sync()`) | `model_persistent_kernel()` & `evaluate_cooperative_grid()` |
 | Thread Block Clusters, DSMEM, Scratch Memory & Table 10-5 | Figs. 10-10 to 10-18, `GPC` coscheduling, `10 TB/s` `NV-HBI` logical `GPC`, Cluster Launch Control (`CLC`), Thread Block Swizzling, `DSMEM`, Scratch Memory, `cudaLaunchKernelEx`, `MyClusterKernel`, `2-SM UMMA` (`128 × 16` SMEM + `128 × 256` TMEM), TMA Multicast (`shared::cluster`) vs DSMEM `map_shared_rank`, Table 10-4 (`2x → 1x` loads, `50% → 85%` L2, `300 → 150 GB/s` BW/CTA, `1.0x → 0.6x` = `40%` speedup), `warp_specialized_cluster_pipeline` (`TILE_SIZE = 128`, `196,608 B` SMEM), Table 10-5 (`17.2 ms`, `97%` eff, `170 GB/s` L2, `~0.98 B` insts) | `evaluate_cluster_dsmem()`, `TABLE_10_4_DSMEM_CTA_PAIR`, & `TABLE_10_5_PIPELINE_PROGRESSION` |
 
-### Explicitly labelled inferences and verification notes
+### Calculations and verification notes
 
 - Dynamic shared-memory utilization ratios (`150,528 / 227,328 = 66.22%` and `196,608 / 227,328 = 86.49%`) and the overall speedup ratio `41.3 ms / 17.2 ms = 2.40x` across Table 10-5 are exact arithmetic ratios computed in `code/part10/intra_kernel_pipelining.py` from the book's byte counts and timings.
-- All `nvcc`, `ncu`, `cudaLaunchCooperativeKernel`, and `cudaLaunchKernelEx` commands in Section 5 (`GPCs`, `ILP` vs TLP, `cp.async.bulk.tensor`, `232,448` B total SMEM carveout, cross-referenced with Chapter `10.13` in `2026`) are marked untested here because this verification environment does not have an attached Hopper or Blackwell GPU.
+- All `nvcc`, `ncu`, `cudaLaunchCooperativeKernel`, and `cudaLaunchKernelEx` commands in Section 5 (`GPCs`, `ILP` vs TLP, `cp.async.bulk.tensor`, `232,448` B total SMEM carveout, cross-referenced with Chapter `10.13` in `2026`) are marked untested here because no Hopper or Blackwell GPU was available for this chapter.
 - Low-level PTX barrier arrival count encodings for `mbarrier.init` and `mbarrier.arrive.expect_tx` inside `<cuda/pipeline>` implementation headers are not in the corpus. They are omitted in favor of the C++ `<cuda/pipeline>` and Cooperative Groups APIs covered in Chapter 10.
 - Validation notes: Table 10-4 reports `0.6x` relative time and calls it a forty percent speedup, which corresponds to forty percent less time (`1.67x` faster). All lab checks in `code/part10/intra_kernel_pipelining_lab.py` pass (`25 passed, 0 failed`).
 

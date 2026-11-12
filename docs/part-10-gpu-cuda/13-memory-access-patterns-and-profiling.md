@@ -24,21 +24,21 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An engineering team buys modern GPUs with massive high-bandwidth memory. Yet their custom CUDA and PyTorch kernels run at a small fraction of peak speed. Tensor Cores sit idle while warps wait hundreds of clock cycles for data from off-chip memory. The hardware has plenty of raw bandwidth, but the software wastes most of every memory transaction.
+A team buys GPUs with very fast high-bandwidth memory. Their custom CUDA and PyTorch kernels still run at a small fraction of peak speed. Tensor Cores sit idle while warps wait hundreds of clock cycles for data from off-chip memory. The hardware has the bandwidth, but the kernels waste most of every memory transaction.
 
-A single NVIDIA Blackwell B200 GPU delivers massive HBM3e bandwidth, and a dual-GPU Grace Blackwell Superchip doubles that capacity. Yet a kernel that reads memory with a small element stride wastes three-quarters of that bandwidth. It achieves only a quarter of peak DRAM throughput because the hardware must fetch whole cache sectors. Threads only use a few bytes from each fetched sector and discard the rest.
+A single NVIDIA Blackwell B200 GPU has about 8 TB/s of HBM3e bandwidth. A kernel that reads with a small element stride reaches only a quarter of that. The hardware must fetch whole cache sectors, and each thread uses only a few bytes of every sector it fetches.
 
-Even when global memory reads are contiguous, five other memory-access flaws routinely starve Streaming Multiprocessors and stall AI workloads.
+Stride is one of six ways a kernel can starve the Streaming Multiprocessors, and each has its own fix.
 
-First, threads often issue narrow scalar loads instead of wide vector loads. Narrow loads multiply instruction counts by four or eight times and leave memory request queues congested. Packing contiguous values into wider vector loads cuts instruction pressure and raises global load efficiency.
+Narrow scalar loads multiply the instruction count by four or eight. Packing contiguous values into wider vector loads cuts that pressure and raises global load efficiency.
 
-Second, naive matrix and attention kernels repeatedly read the same inputs directly from off-chip HBM. Staging reusable tiles in fast on-chip shared memory cuts off-chip sector traffic by more than eightfold. Arithmetic intensity rises and compute throughput jumps by more than an order of magnitude.
+Naive matrix and attention kernels read the same inputs from off-chip HBM again and again. Staging reusable tiles in shared memory cuts off-chip sector traffic by more than eightfold, and compute throughput rises by more than an order of magnitude.
 
-Third, threads reading down a column of a shared-memory tile can collide on the exact same memory bank. When all threads in a warp hit different addresses in the same bank, the hardware replays the access in series. Adding a single padding column or swizzling indices eliminates those bank conflicts and triples kernel speed.
+Threads that read down a column of a shared-memory tile can collide on one memory bank. When the lanes of a warp hit different addresses in the same bank, the hardware replays the access one after another. One padding column, or a swizzled index, removes the conflicts and triples kernel speed in the book's example.
 
-Fourth, using shared memory to sum values inside a single warp wastes on-chip capacity and requires explicit synchronization barriers. Warp shuffle instructions let lanes read each other's registers directly in a few butterfly steps. This register exchange uses zero shared memory and causes zero bank conflicts.
+Summing values inside a warp through shared memory costs capacity and needs barriers. Warp shuffle instructions let lanes read each other's registers directly, in a few butterfly steps, with no shared memory and no bank conflicts.
 
-Fifth, omitting read-only pointer qualifiers and waiting synchronously on long HBM loads leave Streaming Multiprocessors stalled. Qualifying immutable lookup tables routes reads through the L1 read-only cache. Double-buffering tiles with the Tensor Memory Accelerator overlaps off-chip transfers with on-chip computation.
+Finally, a kernel that waits synchronously on long HBM loads leaves the SM stalled. Marking immutable lookup tables read-only routes them through the L1 read-only cache. Double-buffering tiles with the Tensor Memory Accelerator overlaps off-chip transfers with computation.
 
 ```text
 Memory Access Optimization Summary (AI Systems Performance Engineering Ch 7, pp. 215-252):
@@ -52,9 +52,9 @@ Memory Access Optimization Summary (AI Systems Performance Engineering Ch 7, pp.
   - 7. TMA Prefetch (Table 7-7):   cuda::memcpy_async + cuda::pipeline hides ~800-cycle DRAM latency, lifting Load Eff 23% -> 99%, SM Active 62% -> 100%, 18 ms -> 7 ms (~2.6x)
 ```
 
-A caution about the source book's metric tables is needed before we dive in. The book states that the numeric values in its Nsight Compute tables are illustrative examples designed to explain the concepts. None of these tables were rerun on live hardware for this handbook. The same DRAM throughput shift appears in three different tables, and the scalar baseline in the vectorization table shows scattered sectors. Treat these tables as representative examples that show direction and rough magnitude rather than exact hardware benchmarks.
+Read the Nsight Compute tables in this chapter with care. The source book says its numeric values are illustrative examples meant to explain the concepts, and none of them was rerun on live hardware for this handbook. The same DRAM throughput shift appears in three different tables. The scalar baseline in the vectorization table also shows scattered sectors. Use the tables for direction and rough size, not as hardware benchmarks.
 
-In this chapter, we examine all seven memory-access optimization and Nsight Compute profiling techniques. Each section includes CUDA C++ and PyTorch patterns, hardware counter tables, and a deterministic verification lab.
+The chapter covers all seven memory-access techniques in turn. Each section gives CUDA C++ and PyTorch patterns, the Nsight Compute counters that show the problem, and a check in the deterministic lab.
 
 :::tip In one minute
 - **Global memory coalescing:** A modern NVIDIA GPU services global memory in 128-byte cache lines divided into four 32-byte sectors. When all threads in a warp read contiguous floats from an aligned address, hardware merges all reads into one cache line. Strided access touches many more sectors per request and wastes most of the fetched bytes.
@@ -69,11 +69,11 @@ In this chapter, we examine all seven memory-access optimization and Nsight Comp
 
 **Prerequisites:** Review SIMT warps, the GPU memory hierarchy, Tensor Cores, and Roofline arithmetic intensity in earlier Part 10 chapters. You should also be comfortable with CUDA kernel indexing and asynchronous streams.
 
-**Outcomes:** After completing this chapter, you will be able to perform four core optimization tasks.
-1. Calculate the exact cache lines and sectors touched by aligned, misaligned, strided, and scattered warp loads. You will also convert Array of Structures layouts into Structure of Arrays layouts and interpret Nsight Compute load efficiency counters.
+**Outcomes:** After this chapter you will be able to do four things.
+1. Calculate the cache lines and sectors touched by aligned, misaligned, strided, and scattered warp loads, convert Array of Structures layouts into Structure of Arrays, and read the Nsight Compute load efficiency counters.
 2. Implement 16-byte `float4` and Blackwell 32-byte `float8` vectorized loads while preserving pointer alignment across element offsets.
-3. Design shared-memory tiled kernels and budget per-block registers against Streaming Multiprocessor hardware limits. You will also eliminate bank conflicts using column padding or XOR index swizzling.
-4. Replace shared-memory intra-warp reductions with `__shfl_down_sync` register butterfly reductions and route immutable lookup tables through the read-only data cache. Finally, you will hide DRAM latency with Tensor Memory Accelerator double buffering.
+3. Design shared-memory tiled kernels, budget per-block registers against the SM limits, and remove bank conflicts with column padding or XOR index swizzling.
+4. Replace shared-memory intra-warp reductions with `__shfl_down_sync`, route immutable lookup tables through the read-only data cache, and hide DRAM latency with Tensor Memory Accelerator double buffering.
 
 ---
 
@@ -1042,7 +1042,7 @@ ncu --metrics \
 
 ## 6. How It Fails: Six Production Memory-Access and Profiling Failure Modes
 
-When a production kernel misses its latency or throughput target, Nsight Compute counters immediately reveal which of the six memory-access failure modes is responsible.
+When a production kernel misses its latency or throughput target, the Nsight Compute counters usually point to one of six memory-access failure modes.
 
 | # | Failure Mode | Nsight Compute Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -1104,12 +1104,15 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Warp sector and cache-line math across strides:** Using `analyze_warp_global_memory_access()`, calculate how many cache lines and sectors a warp touches when reading floats under four patterns. Evaluate an aligned contiguous read, a contiguous read offset by four bytes, a stride of two, and a stride of eight. Report the theoretical Global Memory Load Efficiency for each case.
-2. **Vectorized `float4` vs. Blackwell `float8` warp transactions:** For a single warp, calculate the total bytes moved per instruction, the number of cache lines, the number of sectors, and the PTX instruction emitted when using `float4` on Hopper versus `alignas(32) float8` on Blackwell. Then explain why casting an unaligned interior pointer offset fails even though `cudaMalloc` returned a 256-byte-aligned base pointer.
-3. **Shared-memory tiling and register residency:** Using the numbers from *AI Systems Performance Engineering* Chapter 7, state the global load sector reduction, arithmetic intensity shift, and GFLOPS speedup achieved by 32 by 32 shared-memory tiling. Next, calculate the shared-memory footprint and total registers per block for a 64 by 64 tile using minimal registers versus double-buffered registers on a Blackwell SM.
-4. **Shared-memory bank conflict math:** Prove mathematically using modulo arithmetic why reading down column zero across all lanes causes every thread to hit the first bank when the row stride is 32 floats. Then prove why adding one padding column maps all lanes to distinct banks with about three percent memory overhead.
-5. **Warp shuffle vs. shared-memory reduction:** Trace the five butterfly iterations of `__shfl_down_sync` for a warp where each lane starts with its one-based lane number and verify the final sum in the first lane. Explain why this pattern cannot reduce across two different warps without shared memory or cluster barriers.
-6. **Read-only cache and TMA double-buffering:** Compare the Nsight Compute metrics from the read-only cache and TMA tables in *AI Systems Performance Engineering* Chapter 7. Then write the four-method `cuda::pipeline` stage sequence (`producer_acquire`, `producer_commit`, `consumer_wait`, `consumer_release`) that overlaps TMA tile prefetching with tile computation.
+1. A warp reads floats from an aligned address. Use `analyze_warp_global_memory_access()` to count the cache lines and sectors it touches. What load efficiency does it reach?
+2. Repeat the count for a read shifted by four bytes, then for a stride of two, then for a stride of eight.
+3. One warp loads with `float4` on Hopper, and another loads with `alignas(32) float8` on Blackwell. How many bytes, cache lines, and sectors does each warp move per instruction?
+4. `cudaMalloc` returned a 256-byte-aligned base pointer, yet casting an interior offset to `float4` fails. Explain why.
+5. Chapter 7 of *AI Systems Performance Engineering* reports a 32 by 32 shared-memory tile. State the drop in global load sectors, the change in arithmetic intensity, and the GFLOPS speedup.
+6. For a 64 by 64 tile on a Blackwell SM, compute the shared-memory footprint. Then compute registers per block with minimal registers and with double-buffered registers.
+7. The row stride of a shared tile is 32 floats. Use modulo arithmetic to show why a column read puts every lane on the first bank. Show why one padding column spreads the lanes across distinct banks.
+8. Trace the five butterfly steps of `__shfl_down_sync` for a warp where each lane starts with its one-based lane number. What is the sum in lane zero? Why can this pattern not reduce across two warps without shared memory or cluster barriers?
+9. Compare the Nsight Compute metrics in the read-only cache table and the TMA table of Chapter 7. Then write the four-method `cuda::pipeline` sequence that overlaps TMA prefetch with computation: `producer_acquire`, `producer_commit`, `consumer_wait`, `consumer_release`.
 
 ---
 
@@ -1283,11 +1286,11 @@ Source Breakdown — AI Systems Performance Engineering Ch 7 (pp. 215-252):
 ### Run here
 - `code/part10/memory_access_patterns_lab.py` passes all 25 verification checks with zero failures.
 
-### Explicitly labelled inferences
-- The warp sector simulator `analyze_warp_global_memory_access()`, the vectorized load validator `calc_vectorized_warp_load()`, the bank-conflict analyzer `analyze_shared_memory_bank_conflicts()`, and the residency calculator `calc_tile_residency_and_register_budget()` in `code/part10/memory_access_patterns.py` are **my inference** encoding the hardware formulas and benchmark tables of *AI Systems Performance Engineering* Chapter 7.
+### The handbook's own synthesis
+- The warp sector simulator `analyze_warp_global_memory_access()`, the vectorized load validator `calc_vectorized_warp_load()`, the bank-conflict analyzer `analyze_shared_memory_bank_conflicts()`, and the residency calculator `calc_tile_residency_and_register_budget()` in `code/part10/memory_access_patterns.py` are this handbook's own code. They encode the hardware formulas and benchmark tables of *AI Systems Performance Engineering* Chapter 7.
 
 ### Not verified on live hardware
-- A physical Blackwell or Hopper GPU was not attached during this build, so `nvcc` and `ncu` commands in Section 5 (`64K` constant memory, `tile0` and `tile1` ping-pong staging, `30` / `217` cycle latencies, Volume `02` notes, cross-referenced with Chapters `10.2`, `10.5`, `10.11`, `10.12`, and `10.16` in `2026`) are marked `(untested here)`.
+- No physical Blackwell or Hopper GPU was available for this chapter, so `nvcc` and `ncu` commands in Section 5 (`64K` constant memory, `tile0` and `tile1` ping-pong staging, `30` / `217` cycle latencies, Volume `02` notes, cross-referenced with Chapters `10.2`, `10.5`, `10.11`, `10.12`, and `10.16` in `2026`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Low-level CUTLASS CuTe layout swizzling algebra beyond the conceptual XOR swizzling overview in *AI Systems Performance Engineering* Chapter 7.

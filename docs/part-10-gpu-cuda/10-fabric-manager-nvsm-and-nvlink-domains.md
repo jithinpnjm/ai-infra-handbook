@@ -24,7 +24,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-In Chapter 10.6, we traced the physical wires of NVLink and NVSwitch across two-way PCIe bridges, eight-GPU HGX baseboards, and seventy-two-GPU NVL72 racks. Yet physical NVSwitch silicon does not forward a single packet by itself. Unlike a two-GPU NVLink bridge that the GPU kernel driver initializes directly, an NVSwitch crossbar is a switched fabric. It requires an active control-plane daemon to discover switch ASICs, train NVLink ports, program unicast and NVLink SHARP multicast routing tables, and fence faulted links.
+A node comes back from a maintenance window. `nvidia-smi` lists all eight GPUs as healthy, yet a collective test reaches about 90 GB/s where it used to reach about 800 GB/s. Nothing has failed in the usual sense. The NVSwitch chips are present but nobody has told them how to route.
+
+Chapter 10.6 described the wires of NVLink and NVSwitch in two-GPU PCIe bridges, eight-GPU HGX baseboards, and seventy-two-GPU NVL72 racks. The wires alone move nothing. A two-GPU bridge is initialized directly by the GPU kernel driver. An NVSwitch crossbar is a switched fabric, so a control-plane daemon must find the switch chips (application-specific integrated circuits, or ASICs), train the NVLink ports, program the unicast and NVLink SHARP multicast routing tables, and fence faulted links.
 
 On an eight-GPU HGX or DGX server, that control plane is the NVIDIA Fabric Manager daemon `nvidia-fabricmanager.service`. On a multi-node NVL72 rack, it expands into NVOS on the switch trays coordinated by NMX-M. When Fabric Manager is stopped, version-mismatched, or beaten in a boot race by `kubelet`, workloads either fail peer-to-peer initialization or silently fall back onto the host PCIe bus.
 
@@ -34,13 +36,13 @@ On an eight-GPU HGX or DGX server, that control plane is the NVIDIA Fabric Manag
 | 2. The 5th-pod / 8th-pod `TopologyAffinityError` (`nvidia-devops` V7 Ch 8 Customer Scenario) | Dual-socket `128`-core, `8`-GPU node (`64` cores and `4` GPUs per NUMA socket) runs `single-numa-node`, and OS daemonsets reserve `2` CPU cores on NUMA 1 (`62` free cores). | Pods requesting `16` integer cores + `1` GPU fit 4 pods on NUMA 0 (`64` cores) and 3 pods on NUMA 1 (`48` cores), stranding `14` free cores and `1` idle GPU (`14 < 16`). |
 | 3. 40% slowdown or `~50 Gbps` cap on a 400G InfiniBand fabric (`nvidia-devops` V7 Ch 5 & Ch 10) | Missing `nvidia-peermem` / BIOS Large BAR forces a Host Bounce Buffer, PCIe downtrains to x8 (`25–30 GB/s`), IB port sticks in `State: Initializing`, or DDP sends tiny `256 KB` messages. | Throughput drops from `~390 Gbps` to `~50 Gbps` (`6.25 GB/s`), or PyTorch runs 40% slow until DDP `bucket_cap_mb` is raised from `25 MB` to `50 MB`. |
 
-This chapter covers NVIDIA Fabric Manager, NVLink domain architectures, and in-band hardware health management with NVSM and NVDebug. We also trace the end-to-end GPU-to-NIC-to-Fabric data path across GPUDirect RDMA, GPUDirect Storage, ConnectX adapters, Kubernetes Topology Manager, and the three-step benchmark hierarchy.
+The chapter explains what Fabric Manager does and how the three NVLink domain sizes differ. It then shows how NVSM and NVDebug collect health data from inside the operating system. The last sections follow the path from GPU to network adapter to fabric, and finish with a three-step benchmark ladder for finding which layer is slow.
 
 :::tip In one minute
-- Three NVLink domain scales use different control planes. Two-GPU PCIe bridges need no Fabric Manager. Eight-GPU HGX baseboards require host Fabric Manager locked to the exact driver version, while seventy-two-GPU NVL72 racks use NVOS on switch trays managed by NMX-M.
-- Systemd boot ordering prevents silent PCIe fallback. Always configure `containerd.service` and `kubelet.service` with `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service` so pods cannot start before NVSwitch routing completes.
-- NVSM and NVDebug provide in-band DGX and HGX telemetry. Operators run `nvsm` on the host, or use `cmsh` in Base Command Manager to collect support archives under `/cm/shared/nvsm/` and `/cm/shared/nvdebug/`.
-- Never debug a slow multi-node training job inside Python first. Run the three-step C++ benchmark ladder in order: `nvbandwidth` for intra-node PCIe and NVLink, `ib_write_bw` for raw wire RDMA, and `nccl-tests` for GPUDirect RDMA and collective rings.
+- The three NVLink domain sizes use different control planes. Two-GPU PCIe bridges need no Fabric Manager. Eight-GPU HGX baseboards need the host Fabric Manager, locked to the exact driver version. Seventy-two-GPU NVL72 racks use NVOS on the switch trays, managed by NMX-M.
+- **Pods must not start before Fabric Manager finishes.** Give `containerd.service` and `kubelet.service` both `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service`, or the node falls back to PCIe without any error.
+- Operators run `nvsm` on the host for in-band DGX and HGX telemetry. In Base Command Manager they use `cmsh` to collect support archives under `/cm/shared/nvsm/` and `/cm/shared/nvdebug/`.
+- Do not start with Python when a multi-node job is slow. Run the benchmark ladder in order: `nvbandwidth` for PCIe and NVLink inside a node, `ib_write_bw` for the raw RDMA wire, and `nccl-tests` for GPUDirect RDMA and collective rings.
 :::
 
 ---
@@ -49,11 +51,12 @@ This chapter covers NVIDIA Fabric Manager, NVLink domain architectures, and in-b
 
 **Prerequisites:** Complete Chapters 10.6 through 10.9 on GPU interconnects, PCIe versus SXM form factors, `nvidia-smi` operations, and the NVIDIA driver and container stack. You should also review Chapters 9.2 through 9.5 on DGX, HGX, and NVL72 rack architectures.
 
-**Outcomes:** After completing this chapter, you will be able to:
-- Contrast two-GPU PCIe bridge domains, eight-GPU HGX baseboard domains, and seventy-two-GPU NVL72 rack domains. You will also configure Fabric Manager and enforce systemd boot ordering before `containerd` and `kubelet`.
-- Operate NVSM and NVDebug both directly on a DGX or HGX host and across a cluster via Base Command Manager `cmsh`.
-- Trace the zero-copy scale-out data path across DMA, RDMA, GPUDirect RDMA, GPUDirect Storage, and ConnectX-6, ConnectX-7, and ConnectX-8 adapters.
-- Configure the Kubernetes Topology Manager single-NUMA policy without triggering CPU starvation. You will also execute the three-step benchmark hierarchy to isolate PCIe, optics, Subnet Manager, GPUDirect, and PyTorch DDP bucket bottlenecks.
+**Outcomes:** After this chapter you will be able to:
+- Contrast two-GPU PCIe bridge domains, eight-GPU HGX baseboard domains, and seventy-two-GPU NVL72 rack domains.
+- Configure Fabric Manager and enforce systemd boot ordering before `containerd` and `kubelet`.
+- Operate NVSM and NVDebug on a DGX or HGX host and across a cluster through Base Command Manager `cmsh`.
+- Trace the zero-copy scale-out data path through DMA, RDMA, GPUDirect RDMA, GPUDirect Storage, and the ConnectX-6, ConnectX-7, and ConnectX-8 adapters.
+- Configure the Kubernetes Topology Manager single-NUMA policy without starving pods of CPU, and run the benchmark ladder to separate PCIe, optics, Subnet Manager, GPUDirect, and PyTorch DDP bucket problems.
 
 ---
 
@@ -71,7 +74,7 @@ As modeled in `code/part10/fabric_manager_nvlink.py`, NVIDIA platforms form thre
 | 2. 8-GPU HGX / DGX Baseboard (H100/H200 or B200) | `8` | `4` (soldered on HGX PCB) | `900 GB/s` (H100)<br/>`1,800 GB/s` (B200) | `7.2 TB/s` (H100)<br/>`14.4 TB/s` (B200) | Host daemon `nvidia-fabricmanager.service` (`/usr/bin/nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg`) (`nvidia-devops` V7 Ch 3). | Yes (3rd/4th-gen NVSwitch) |
 | 3. 72-GPU GB200 / GB300 NVL72 Rack (`18` compute trays) | `72` | `18` (`9` switch trays x `2` ASICs) | `1,800 GB/s` (`1.8 TB/s`) | `129.6 TB/s` (`~130 TB/s`) | NVOS on switch trays + NMX-M (Network Manager eXperience) & cluster Fabric Manager (*AI Systems Performance Engineering* Ch 2; `superpod-gb300-ra`). | Yes (NVLS in-switch reduction engines) |
 
-As documented in *AI Data Center Network Design and Technologies* Chapter 13, switched scale-up fabrics achieve sub-microsecond GPU-to-GPU latency compared to PCIe Gen5. That performance gap has also inspired open scale-up specifications such as UALink and SUE-T, which we cover in Part 12.
+As documented in *AI Data Center Network Design and Technologies* Chapter 13, switched scale-up fabrics achieve sub-microsecond GPU-to-GPU latency compared to PCIe Gen5. That gap has also led to open scale-up specifications such as UALink and SUE-T, covered in Part 12.
 
 | Scale-up interconnect or standard (*AI Data Center Network Design and Technologies* Ch 13) | Latency & link architecture | Key protocol & framing parameters |
 |---|---|---|
@@ -100,9 +103,13 @@ flowchart TB
 
 ### 1.2 `nvidia-fabricmanager.service` lifecycle, version locking, and the `kubelet` boot race
 
-On an eight-GPU HGX server, three operational mistakes routinely break the NVLink mesh after maintenance windows: version drift between the driver and Fabric Manager, systemd boot races against `kubelet`, and misdiagnosing a soldered NVSwitch failure as a GPU failure. Our auditor in `code/part10/fabric_manager_nvlink.py` checks all three rules automatically.
+On an eight-GPU HGX server, three operational mistakes routinely break the NVLink mesh after maintenance windows: version drift between the driver and Fabric Manager, systemd boot races against `kubelet`, and misdiagnosing a soldered NVSwitch failure as a GPU failure. The auditor in `code/part10/fabric_manager_nvlink.py` checks all three rules.
 
-First, the Fabric Manager package communicates with the kernel NVSwitch driver over a private internal ABI, so its package version must match the NVIDIA driver version exactly. Second, Fabric Manager takes roughly 15 seconds at boot to train 144 NVLink sub-links and program four NVSwitch ASICs, whereas `containerd` and `kubelet` start faster. In systemd, `Wants=` or `Requires=` declares a dependency without enforcing startup order. You must therefore pair `Wants=` with `After=nvidia-fabricmanager.service` on both `containerd` and `kubelet`. Third, when `dmesg` logs Xid 74 for an NVLink error, remember from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit. The four NVSwitch ASICs, however, are soldered directly onto the HGX baseboard and require a full baseboard RMA if a switch ASIC fails.
+The first rule is about versions. Fabric Manager talks to the kernel NVSwitch driver through a private interface between compiled programs, called an application binary interface. The two must therefore come from the same release, so the Fabric Manager package version must equal the driver version.
+
+The second rule is about order. In the `systemd-analyze blame` example below, Fabric Manager needs 15.234 seconds to start, while `containerd` needs 10.123 and `kubelet` 5.234. The source example attributes that time to training 144 NVLink sub-links and programming four NVSwitch ASICs. In systemd, `Wants=` or `Requires=` declares a dependency but does not set startup order. Pair `Wants=` with `After=nvidia-fabricmanager.service` on both `containerd` and `kubelet`.
+
+The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink error, recall from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit. The four NVSwitch ASICs are soldered onto the HGX baseboard, so a failed switch ASIC means returning the whole baseboard to the vendor under a return merchandise authorization, or RMA.
 
 | Operational rule (`bcm11-admin` §10.13; `nvidia-devops` Legacy V1 Ch 4, V4 Ch 3, V10 Ch 4, V13 Ch 8) | Exact versions, timings, or error codes | Consequence of violation & remediation |
 |---|---|---|
@@ -230,7 +237,7 @@ As detailed in `nvidia-devops` Volume 07 Chapter 11 and Chapters 9.6 through 9.9
 
 On a dual-socket GPU server, if Kubernetes assigns a pod a GPU on NUMA node 0 but allocates CPU cores or an SR-IOV NIC on NUMA node 1, every host-to-device transfer and network call must cross the inter-socket UPI or Infinity Fabric link. Conversely, enabling strict single-NUMA enforcement without accounting for OS and DaemonSet CPU overhead causes pods to fail admission with a topology affinity error while GPUs sit idle.
 
-The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. Our simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces the Volume 07 Chapter 8 incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
+The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. The simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces the Volume 07 Chapter 8 incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
 
 | Policy or scenario (`nvidia-devops` V7 Ch 8) | Kubelet admission rule & NUMA math | Result on a `128`-core (`64`/NUMA), `8`-GPU (`4`/NUMA) server |
 |---|---|---|
@@ -275,7 +282,7 @@ flowchart TB
 
 ## 5. Commands and Configurations That Matter
 
-All commands below are drawn from the BCM 11 Administrator Manual Sections 10.13 and 10.14 and `nvidia-devops` Volume 01 Chapter 4, Volume 05 Chapter 3, Volume 07 Labs 01–04, and Volume 13 Chapter 8. Because multi-node HGX and InfiniBand hardware is not attached during this build, shell commands below are marked **(untested here)**.
+All commands below are drawn from the BCM 11 Administrator Manual Sections 10.13 and 10.14 and `nvidia-devops` Volume 01 Chapter 4, Volume 05 Chapter 3, Volume 07 Labs 01–04, and Volume 13 Chapter 8. No multi-node HGX or InfiniBand hardware was available for this chapter, so the shell commands below are marked **(untested here)**.
 
 ### 5.1 Verify `nvidia-fabricmanager.service` and enforce systemd ordering before `containerd`/`kubelet` (untested here)
 
@@ -423,12 +430,17 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Systemd ordering for Fabric Manager.** On an eight-GPU HGX H100 server, Table 1.2 shows that Fabric Manager takes roughly 15 seconds at boot while `containerd` and `kubelet` start faster. Explain what happens to the first training pod scheduled after a reboot if `kubelet` starts before Fabric Manager completes. Then write the exact systemd drop-in file for `containerd.service` and `kubelet.service` that prevents the race.
-2. **BCM `nvsm` and `nvdebug` incident workflow.** A DGX node logs an NVLink error. Write the BCM `cmsh` device mode commands to inspect active NVSM alerts and verify that the driver and Fabric Manager versions match. Then write the commands to trigger a full health dump and collect an `nvdebug` bundle for the health-check log group.
-3. **Kubernetes single-NUMA admission math.** Using Table 4.1, a dual-socket HGX server has 128 CPU cores and 8 GPUs split evenly across two NUMA nodes, with 2 cores reserved by system daemons on NUMA 1. Calculate how many pods requesting 16 integer CPUs and 1 GPU are admitted under the single-NUMA policy. Then state how many free CPU cores and GPUs remain stranded on NUMA 1 and why reducing the pod request to 12 CPUs admits all 8 pods.
-4. **Isolating a slow cluster with the 3-step benchmark hierarchy.** Using Table 4.2, diagnose four separate tickets. First, `nvbandwidth` reports half of normal PCIe Gen5 bandwidth. Second, `ibstat` shows physical link up but logical state initializing. Third, `ib_write_bw` reports full line rate while `nccl-tests` prints InfiniBand transport without GPUDirect RDMA at 50 Gbps. Fourth, all three C++ benchmarks pass at full speed while a PyTorch DDP model with tiny layers runs 40% slow. State the root cause and fix for each.
-5. **Why ConnectX-7 requires PCIe Gen5 x16.** Using Table 3.3, convert a 400 Gbps ConnectX-7 port and an 800 Gbps ConnectX-8 port into Gigabytes per second. Compare them against the unidirectional bandwidth of PCIe Gen4, Gen5, and Gen6 x16 slots, and explain why pairing each H100 with two 200 Gbps ConnectX-6 cards fails to match a single ConnectX-7 card.
-6. **Designing a 128-node non-blocking fat-tree.** Using Table 3.4, given 128 DGX H100 servers and 64-port Quantum-2 NDR switches, calculate how many servers fit in one rail-optimized Leaf Group. Then calculate how many Leaf Groups, total Leaf switches, and 64-port Spine switches are required for a 1:1 non-blocking fabric.
+1. An eight-GPU HGX H100 server reboots. In the boot timings in Section 1.2, Fabric Manager finishes after `kubelet`. What happens to the first training pod? Write the systemd drop-in that prevents this for `containerd.service` and `kubelet.service`.
+2. A DGX node logs an NVLink error. Write the `cmsh` device-mode commands that show active NVSM alerts and the driver and Fabric Manager versions.
+3. For the same node, write the commands that start a full health dump. Then write the command that collects an `nvdebug` bundle for the health-check log group.
+4. A dual-socket HGX server has 128 CPU cores and 8 GPUs, split evenly across two NUMA nodes. System daemons reserve 2 cores on NUMA 1. Using Table 4.1, how many pods that each request 16 CPUs and 1 GPU does the single-NUMA policy admit?
+5. In that same server, how many CPU cores and GPUs stay stranded on NUMA 1? Why does a request of 12 CPUs per pod admit all 8 pods?
+6. Use Table 4.2 on four tickets. In the first, `nvbandwidth` reports half the normal PCIe Gen5 bandwidth. In the second, `ibstat` shows the physical link up but the logical state as initializing. Give the root cause and fix for each.
+7. In the third ticket, `ib_write_bw` runs at full line rate, but `nccl-tests` shows InfiniBand transport without GPUDirect RDMA at 50 Gbps. In the fourth, all three benchmarks pass and a PyTorch DDP model with tiny layers runs 40% slow. Give the root cause and fix for each.
+8. Use Table 3.3 to convert a 400 Gbps ConnectX-7 port and an 800 Gbps ConnectX-8 port into gigabytes per second. Compare each with the one-way bandwidth of the matching PCIe x16 slot.
+9. Why does pairing each H100 with two 200 Gbps ConnectX-6 cards fail to match one ConnectX-7 card?
+10. Use Table 3.4 for 128 DGX H100 servers and 64-port Quantum-2 NDR switches. How many servers fit in one rail-optimized Leaf Group?
+11. For the same cluster, how many Leaf Groups, Leaf switches, and Spine switches does a 1:1 non-blocking fabric need?
 
 ---
 
@@ -616,11 +628,11 @@ Each NUMA node has 64 CPU cores and 4 GPUs, and four pods filled NUMA 0. On NUMA
 ### Run here
 - The chapter lab `code/part10/fabric_manager_nvlink_lab.py` passes all 25 checks with zero failures.
 
-### Explicitly labelled inferences
-- Unifying the NVLink domain table, the Fabric Manager version and ordering auditor, the Kubernetes single-NUMA pod admission simulator, and the four-stage benchmark decision tree into `code/part10/fabric_manager_nvlink.py` is **my inference**.
+### The handbook's own synthesis
+- The module `code/part10/fabric_manager_nvlink.py` joins four pieces: the NVLink domain table, the Fabric Manager version and ordering auditor, the single-NUMA pod admission simulator, and the four-stage benchmark decision tree. No source presents them as one tool.
 
 ### Not verified on live hardware
-- Multi-node HGX and InfiniBand hardware was not attached during this build. All shell commands in Section 5 (`--topology-manager-policy=single-numa-node`, `sriov-network-device-plugin`, `ConnectX-6/7/8` / `CONNECTX_GENERATIONS`, `NVLINK_DOMAINS`, `MN-NVL`, `NVSHMEM` / `PGAS`, `cudaMemcpyPeerAsync`, `DataLoaders`, `AVG` bandwidth, `nvsm_show_health.json`, `nvsm_resources.json`, `result.json`, `.zip` bundles, `26` / `102` / `108` / `111` / `150` / `596` / `606` metrics, cross-referenced with Chapters `2.3` and `9.1` and `planning/STRUCTURE.md`) are marked `(untested here)`.
+- No multi-node HGX or InfiniBand hardware was available for this chapter. All shell commands in Section 5 (`--topology-manager-policy=single-numa-node`, `sriov-network-device-plugin`, `ConnectX-6/7/8` / `CONNECTX_GENERATIONS`, `NVLINK_DOMAINS`, `MN-NVL`, `NVSHMEM` / `PGAS`, `cudaMemcpyPeerAsync`, `DataLoaders`, `AVG` bandwidth, `nvsm_show_health.json`, `nvsm_resources.json`, `result.json`, `.zip` bundles, `26` / `102` / `108` / `111` / `150` / `596` / `606` metrics, cross-referenced with Chapters `2.3` and `9.1` and `planning/STRUCTURE.md`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Standalone NVIDIA Fabric Manager User Guide and NVIDIA NVSM User Guide PDFs are external public references. All Fabric Manager and NVSM commands, paths, and outputs in this chapter are verified against the BCM 11 Administrator Manual Sections 10.13 and 10.14 and the `nvidia-devops` masterclasses.
