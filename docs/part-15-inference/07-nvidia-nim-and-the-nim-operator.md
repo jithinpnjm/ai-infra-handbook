@@ -21,19 +21,17 @@ lab_venue: "GCP / GKE"
 | Primary sources | NVIDIA Zero-to-Hero Volume 14 (`chapter-03-nvidia-nim-architecture.md`, `chapter-04-deploying-and-operating-nim-services.md`, `chapter-01-why-nvidia-ai-enterprise-exists.md`, `chapter-02-platform-architecture-and-support-boundary.md`, `chapter-05-nemo-framework-and-model-customization.md`, `chapter-06-nemo-guardrails-and-enterprise-controls.md`, `chapter-07-ngc-catalog-containers-and-artifacts.md`, `chapter-08-licensing-and-entitlement-operations.md`, `chapter-09-lifecycle-compatibility-and-upgrades.md`, `labs/lab-01..04`); Volume 12 (`chapter-03-triton-inference-server-architecture.md`, `chapter-05-tensorrt-llm-and-llm-execution.md`); *Generative AI on Kubernetes* Chapters 1, 3, 4; *Hands-On LLM Serving and Optimization* Chapters 3, 8 |
 | Cross-references | Chapter 11.4 (NVIDIA GPU Operator); Chapter 15.3 (vLLM in depth); Chapter 15.5 (TensorRT and TensorRT-LLM); Chapter 15.6 (Triton Inference Server); Chapter 15.10 (Kubernetes inference with KServe) |
 | Code | `code/part15/nvidia_nim_operator.py`, `code/part15/nvidia_nim_operator_lab.py` |
-| Coverage file | `planning/coverage/chapters/15-07.md` |
-| Claim & number ledger | `planning/ledgers/15-07.md` |
 
 ## Why this matters for AI infrastructure
 
-Building a high-performance model serving stack from raw open-source components takes weeks of fragile engineering. Before standardized inference containers existed, deploying a foundation model like Llama-3 required six manual steps. Engineers had to download raw weights from Hugging Face, compile hardware-specific TensorRT-LLM engines, and write a custom FastAPI web wrapper. They also had to wire that wrapper into Triton Inference Server or vLLM, design Kubernetes health probes, and maintain custom Docker build pipelines. Whenever a new model version or CUDA security patch arrived, the platform team had to rebuild and re-test the entire stack.
+Imagine a platform team asked to put Llama-3 into production by next week. Before standardized inference containers existed, that job meant six manual steps and weeks of fragile engineering. Engineers had to download raw weights from Hugging Face, compile hardware-specific TensorRT-LLM engines, and write a custom FastAPI web wrapper. They also had to wire that wrapper into Triton Inference Server or vLLM, design Kubernetes health probes, and maintain custom Docker build pipelines. Whenever a new model version or CUDA security patch arrived, the platform team had to rebuild and re-test the entire stack.
 
-Even worse, self-assembled stacks suffer from two operational failure modes in production.
+A self-assembled stack also fails in production in two ways.
 
-- **Cross-vendor support deadlocks:** In Volume 14 Chapter 1, a routine Kubernetes upgrade caused model inference latency to jump by 40 percent. For 6 hours, the Kubernetes team, the runtime team, and the framework maintainers blamed one another's layers. Finally, engineers discovered an auto-upgraded CUDA toolkit had altered kernel scheduling outside any tested compatibility matrix.
-- **Twenty-minute cold-start outages:** While a lightweight web server image is 20 MB and starts in 2 seconds, Llama-3-70B weights occupy 140 GB. Pulling those weights from an external registry on every pod restart forces each new replica to spend 20 minutes downloading data before serving a single token. That delay renders Kubernetes horizontal autoscalers useless during traffic spikes.
+- **Cross-vendor support deadlocks:** In Volume 14 Chapter 1, a routine Kubernetes upgrade caused model inference latency to jump by 40 percent. For 6 hours, the Kubernetes team, the runtime team, and the framework maintainers blamed one another's layers. In the end, engineers found that an auto-upgraded CUDA toolkit had altered kernel scheduling outside any tested compatibility matrix.
+- **Twenty-minute cold-start outages:** While a lightweight web server image is 20 MB and starts in 2 seconds, Llama-3-70B weights occupy 140 GB. Pulling those weights from an external registry on every pod restart forces each new replica to spend 20 minutes downloading data before serving a single token. A horizontal autoscaler cannot help during a traffic spike if every new replica needs 20 minutes before it can answer.
 
-NVIDIA NIM, short for NVIDIA Inference Microservices, and the Kubernetes NIM Operator solve both problems. **A NIM packages an OpenAI-compatible API server, Triton Inference Server, pre-optimized TensorRT-LLM and vLLM engines, and a hardware-aware model profile selector into one immutable, SLA-backed container**. On Kubernetes, the NIM Operator automates shared model caching, multi-node deployment, and autoscaling through declarative custom resources.
+NVIDIA NIM, short for NVIDIA Inference Microservices, and the Kubernetes NIM Operator address both problems. **A NIM packages an OpenAI-compatible API server, Triton Inference Server, pre-optimized TensorRT-LLM and vLLM engines, and a hardware-aware model profile selector into one immutable, SLA-backed container**. On Kubernetes, the NIM Operator automates shared model caching, multi-node deployment, and autoscaling through declarative custom resources.
 
 ```text
 Production Reference Numbers (Volume 14 Chapters 1, 3, 4, 5, 6, 8 and Labs 01-04; Volume 12 Chapter 5):
@@ -63,7 +61,7 @@ Before you build another bespoke model-serving container, standardize your infer
 - Understand Kubernetes PersistentVolumeClaims, Custom Resource Definitions, and Horizontal Pod Autoscalers.
 
 ### Outcomes
-After completing this chapter, you will be able to.
+After this chapter, you will be able to do five things.
 1. Explain the internal layered architecture of an NVIDIA NIM container and how it fits within the NVIDIA AI Enterprise support boundary.
 2. Predict how NIM's startup hardware discovery selects between pre-built TensorRT-LLM engines, buildable engines, and vLLM or SGLang fallback profiles.
 3. Architect persistent model caches using NIM_CACHE_PATH and stage air-gapped model artifacts using download-to-cache and internal Harbor registries.
@@ -76,9 +74,9 @@ After completing this chapter, you will be able to.
 
 ### 1.1 Inside the NIM Container: Unifying API, Triton, and Execution Engines
 
-When an engineering team builds a custom serving container, they must manually glue together a web framework, a request scheduler, an execution engine, and low-level CUDA libraries. As noted in Volume 09 and Volume 12, teams often treat Triton Inference Server, TensorRT-LLM, and vLLM as mutually exclusive competitors. In reality, they operate at different layers of the stack. Triton is the enterprise protocol and multi-model serving wrapper. TensorRT-LLM is a hardware-specific graph compiler and C++ execution runtime. And vLLM is a memory-optimized execution engine powered by PagedAttention.
+A team that builds its own serving container has to glue together a web framework, a request scheduler, an execution engine, and low-level CUDA libraries. Teams often treat Triton Inference Server, TensorRT-LLM, and vLLM as competitors, a point Volume 09 and Volume 12 both make. They actually sit at different layers. Triton is the protocol and multi-model serving wrapper. TensorRT-LLM is a graph compiler and C++ execution runtime tied to one GPU architecture. vLLM is an execution engine built around PagedAttention.
 
-An NVIDIA NIM container packages all of these layers into a single, pre-integrated Open Container Initiative image distributed through the NVIDIA NGC catalog. When you pull an image such as `nvcr.io/nim/meta/llama3-8b-instruct:1.0.5`, five internal subsystems work together inside the container.
+An NVIDIA NIM container packages all of these layers into one pre-integrated Open Container Initiative image, distributed through the NVIDIA NGC catalog. Pull `nvcr.io/nim/meta/llama3-8b-instruct:1.0.5` and you get five cooperating parts.
 
 1. **OpenAI-Compatible API Frontend:** At the top layer, a high-concurrency HTTP and gRPC API server listens on port 8000 for HTTP/REST and port 8001 for gRPC. Clients send standard requests to `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, or `/v1/models` without knowing which GPU architecture or inference engine sits underneath.
 2. **Hardware Discovery and Profile Orchestrator:** At container boot, the NIM entrypoint inspects the host's physical GPUs, available HBM capacity, NVLink topology, and environment variables. It queries an embedded manifest to select the optimal model profile for that exact hardware.
@@ -135,9 +133,9 @@ flowchart TB
 
 ### 1.2 The NVIDIA AI Enterprise Qualification Matrix and Support Boundary
 
-Running an open-source serving container in a research lab is very different from operating a regulated banking or healthcare platform. When a production failure spans the Linux kernel, the GPU driver, the container runtime, and the inference engine, unvalidated combinations create multi-hour finger-pointing.
+A research lab can run any open-source serving container it likes. A bank or hospital cannot. When a failure spans the Linux kernel, the GPU driver, the container runtime, and the inference engine, an untested combination of versions leads to hours of finger-pointing.
 
-Volume 14 Chapters 1 and 2 explain that NVIDIA AI Enterprise solves this integration risk by publishing a strict **Qualified Compatibility Matrix**. Rather than chasing the latest daily commit of each library, platform engineers deploy a frozen, tested snapshot across the entire cluster.
+NVIDIA AI Enterprise reduces this risk by publishing a qualified compatibility matrix, as Volume 14 Chapters 1 and 2 explain. Instead of chasing the latest commit of each library, platform engineers deploy one frozen, tested snapshot across the whole cluster.
 
 | Stack Layer | Primary Owner | Qualified Baseline Example (V14 Lab 01 & Ch. 9) | Verification Command | Escalation Boundary |
 |---|---|---|---|---|
@@ -157,15 +155,15 @@ Before you escalate a NIM production incident, verify that your driver, CUDA, Ku
 
 ### 2.1 How `model_manifest.yaml` Resolves GPU Profiles at Startup
 
-In Chapter 15.5, we saw that a compiled TensorRT-LLM .engine plan is locked to the exact GPU Streaming Multiprocessor architecture, TensorRT version. Tensor Parallelism world size on which it was built. An engine compiled for a single H100 GPU cannot execute on an A100 or L40S GPU. Historically, that hardware lock-in forced platform engineers to maintain separate compilation pipelines for every GPU SKU in their cluster.
+Chapter 15.5 showed that a compiled TensorRT-LLM engine file is locked to the GPU architecture, the TensorRT version, and the tensor-parallel world size it was built for. An engine compiled for one H100 cannot run on an A100 or an L40S. Platform engineers therefore used to keep a separate compilation pipeline for every GPU model in the cluster.
 
-NIM eliminates manual engine compilation through **Hardware-Aware Model Profile Selection**. Every NIM container embeds a manifest file, model_manifest.yaml, that catalogs all verified execution profiles for that model family. When the container starts, the NIM orchestrator queries NVML to detect the GPU architecture, total HBM per device, and the number of visible GPUs assigned to the pod.
+NIM removes the manual compilation step. Every NIM container carries a manifest file, model_manifest.yaml, that lists the verified execution profiles for its model family. At startup, the orchestrator asks NVML, the NVIDIA management library, for the GPU architecture, the memory per device, and the number of GPUs the pod can see. It then picks a profile for that hardware.
 
-As documented in *Generative AI on Kubernetes* Chapter 1, NIM evaluates compatible profiles using a strict backend preference order: **TensorRT-LLM first, vLLM second, and SGLang third**.
+*Generative AI on Kubernetes* Chapter 1 describes the order in which NIM tries backends. **TensorRT-LLM comes first, vLLM second, and SGLang third.**
 
-1. **Tier 1 — Pre-built TensorRT-LLM Engine Profile:** If NGC hosts a pre-compiled TensorRT-LLM .engine matching the exact GPU model, precision, and GPU count, NIM selects it automatically. For example, on two H100 GPUs, NIM selects an FP8 TensorRT-LLM profile such as tensorrt_llm-h100-fp8-tp2-throughput. The container downloads the pre-compiled engine plan directly into the cache and loads it into GPU HBM with zero local compilation delay.
-2. **Tier 2 — Buildable TensorRT-LLM Profile:** If the hardware supports TensorRT-LLM optimizations for that model precision but a pre-compiled binary is not cached for the exact topology, NIM can invoke the TensorRT-LLM builder on first startup and persist the resulting .engine to the shared cache volume.
-3. **Tier 3 — vLLM or SGLang Fallback Profile:** If the pod lands on a GPU SKU without a matching pre-built TensorRT-LLM engine. If the user requests a feature only available in a generic profile, NIM automatically falls back to its embedded vLLM PagedAttention backend. SGLang if configured, using standard BF16 or FP16 Safetensors weights.
+1. **Tier 1, pre-built TensorRT-LLM engine.** If NGC hosts a pre-compiled TensorRT-LLM .engine matching the exact GPU model, precision, and GPU count, NIM selects it automatically. For example, on two H100 GPUs, NIM selects an FP8 TensorRT-LLM profile such as tensorrt_llm-h100-fp8-tp2-throughput. The container downloads the pre-compiled engine plan directly into the cache and loads it into GPU HBM with zero local compilation delay.
+2. Tier 2, buildable TensorRT-LLM profile. If the hardware supports TensorRT-LLM optimizations for that model precision but a pre-compiled binary is not cached for the exact topology, NIM can invoke the TensorRT-LLM builder on first startup and persist the resulting .engine to the shared cache volume.
+3. Tier 3, vLLM or SGLang fallback. If the pod lands on a GPU model with no matching pre-built engine, or the user asks for a feature that only a generic profile offers, NIM falls back to its embedded vLLM PagedAttention backend, or to SGLang if configured. These profiles use standard BF16 or FP16 Safetensors weights.
 
 ```mermaid
 flowchart TD
@@ -195,7 +193,7 @@ flowchart TD
 
 ### 2.2 Inspecting Profiles and Sizing GPU Memory
 
-You can inspect every profile bundled inside a NIM image before deploying it by running the container with the list-model-profiles command. You can also override automatic selection by setting the NIM_MODEL_PROFILE environment variable.
+Before deploying, you can list every profile inside a NIM image by running the container with the `list-model-profiles` command. To override automatic selection, set the `NIM_MODEL_PROFILE` environment variable.
 
 ```bash
 # List all hardware profiles supported by the Llama-3-8B-Instruct NIM image
@@ -212,11 +210,9 @@ docker run --rm --gpus all \
 | `vllm-generic-bf16-tp1-lora` | vLLM (Fallback) | Any (`A100`, `L40S`, `H100`) | BF16 | 1 | `20 GB` | Automatic fallback when GPU SKU or LoRA config lacks pre-built engine |
 | `sglang-generic-bf16-tp1` | SGLang (Fallback) | Any (`sm_80+`) | BF16 | 1 | `20 GB` | Third-tier fallback or structured prefix-heavy agent workloads |
 
-```text
-Why does NIM prioritize pre-built TensorRT-LLM engines whenever possible? As shown in Volume 12 Chapter 5, running Llama-3-70B. Eight H100 GPUs at 150 concurrent sessions with a compiled TensorRT-LLM engine cuts inter-token latency from 115.0 ms per token down to 18.4 ms per token. That represents a **6.25x latency speedup** while doubling overall token throughput. Furthermore, enabling FP8 KV cache cuts Llama-3-70B KV memory per token in half from 320 KB to 160 KB. Reducing a 4,096-token session's KV footprint from 1.31 GB to 0.65 GB.
-```
+Why does NIM prefer pre-built TensorRT-LLM engines? Volume 12 Chapter 5 measured Llama-3-70B on eight H100 GPUs at 150 concurrent sessions. A compiled TensorRT-LLM engine cut inter-token latency from 115.0 ms per token to 18.4 ms per token, a **6.25x speedup**, and doubled token throughput. An FP8 KV cache also halves the KV memory per token, from 320 KB to 160 KB. For a 4,096-token session, that shrinks the KV footprint from 1.31 GB to 0.65 GB.
 
-Before scheduling a NIM pod, always verify that the target GPU node meets the profile's memory and throughput requirements using the sizing model from Volume 14 Lab 01.
+Before scheduling a NIM pod, check the target GPU node against the profile's memory and throughput needs with the sizing model from Volume 14 Lab 01.
 
 ```text
 GPU Memory and Replica Sizing Model (Volume 14 Lab 01 & Lab 02 — 7B/8B BF16 Model on A100 40GB):
@@ -234,7 +230,7 @@ GPU Memory and Replica Sizing Model (Volume 14 Lab 01 & Lab 02 — 7B/8B BF16 Mo
   Required NIM replicas (total GPUs):  ceil(100.0 / 50.0) = 2 replicas (1 node x 2 GPUs)
 ```
 
-Always run list-model-profiles during capacity planning so you know whether your target GPU nodes will execute a pre-built TensorRT-LLM engine or fall back to vLLM.
+During capacity planning, run `list-model-profiles` so you know whether your target GPU nodes will execute a pre-built TensorRT-LLM engine or fall back to vLLM.
 
 ---
 
@@ -242,9 +238,9 @@ Always run list-model-profiles during capacity planning so you know whether your
 
 ### 3.1 Solving the 20-Minute Cold Start with `NIM_CACHE_PATH`
 
-A NIM container image does not bake 140 GB of neural network weights directly into the Docker layers. Baking weights into every container image would create unmanageable 150 GB image pulls and duplicate terabytes of identical weights across minor software patches. Instead, the NIM container image stays lightweight and fetches the selected profile's model weights or pre-built TensorRT-LLM engine from NGC at startup.
+A NIM image does not carry 140 GB of weights in its Docker layers. Baking them in would force 150 GB image pulls and copy terabytes of identical weights across every minor software patch. Instead, the image stays small and fetches the chosen profile's weights, or its pre-built TensorRT-LLM engine, from NGC at startup.
 
-As Volume 14 Chapter 4 highlights, that design introduces the **Cold-Start Problem** if you deploy NIM on an ephemeral container filesystem. Every time a pod restarts, reschedules onto a new node. Scales out from 1 to 10 replicas, the container must download the entire model from NGC over the network.
+Volume 14 Chapter 4 points out the cost of that design when NIM runs on an ephemeral container filesystem. Every time a pod restarts, moves to a new node, or scales from one replica to ten, the container must download the whole model from NGC over the network. This is the cold-start problem.
 
 ```text
 Cold-Start vs Persistent Volume Cache Math (Volume 14 Chapter 4 & Python Verification Model):
@@ -266,27 +262,23 @@ Cold-Start vs Persistent Volume Cache Math (Volume 14 Chapter 4 & Python Verific
 
 To eliminate 20-minute cold starts, production NIM deployments mount a high-speed PersistentVolume at the directory specified by NIM_CACHE_PATH, such as `/model_cache` or `/opt/nim/.cache`. The first pod downloads the model artifacts once and writes them to the persistent volume. When Kubernetes scales the deployment from 1 to 10 replicas, all new pods detect the cached weights on disk and load them directly into GPU HBM in 45 seconds.
 
-When choosing a storage backend for NIM_CACHE_PATH, follow two strict rules from Volume 14 Chapters 4 and 7.
-- **Use ReadWriteMany, RWX, NVMe-backed storage for multi-node fleets:** If replicas spread. Multiple Kubernetes worker nodes, bind NIM_CACHE_PATH to a shared ReadWriteMany volume backed by fast NVMe storage or a high-throughput parallel filesystem rather than slow legacy NFS. If only ReadWriteOnce, RWO, local NVMe block volumes are available, each node must maintain its own local cache volume.
-- **Size the cache for multiple retained versions:** Provision at least 50Gi for 7B or 8B models and 250Gi to 500Gi for 70B models so the cache holds the active profile plus previous versions for instant rollback.
+Volume 14 Chapters 4 and 7 give two rules for choosing the storage behind `NIM_CACHE_PATH`.
+- If replicas spread across several Kubernetes worker nodes, use a shared ReadWriteMany (RWX) volume backed by fast NVMe storage or a high-throughput parallel filesystem, not slow legacy NFS. If only ReadWriteOnce (RWO) local NVMe volumes are available, each node must keep its own cache.
+- Size the cache for more than one version. Provision at least 50Gi for 7B or 8B models and 250Gi to 500Gi for 70B models so the cache holds the active profile and earlier versions for instant rollback.
 
 ### 3.2 NGC Entitlements, `NGC_API_KEY` Rotation, and Air-Gapped `download-to-cache`
 
-Pulling NIM container images and downloading model profiles require two distinct Kubernetes secrets backed by your NVIDIA AI Enterprise entitlement.
-1. **Container Registry Pull Secret, imagePullSecrets,:** Authenticates kubelet against nvcr.io using the literal username $oauthtoken and your NGC token as the password.
-2. **Pod Runtime Entitlement Secret, NGC_API_KEY,:** Injected into the NIM container environment so the startup orchestrator can authenticate against `https://api.ngc.nvidia.com/v2/models` when fetching model weights or engines.
+Pulling a NIM image and downloading its model profiles need two separate Kubernetes secrets, both backed by your NVIDIA AI Enterprise entitlement.
+1. The container registry pull secret, referenced as imagePullSecrets, lets kubelet sign in to nvcr.io. The username is the literal text $oauthtoken and the password is your NGC token.
+2. The pod runtime entitlement secret, NGC_API_KEY, is injected into the NIM container environment so the startup orchestrator can authenticate against `https://api.ngc.nvidia.com/v2/models` when fetching model weights or engines.
 
-```text
-In regulated enterprises, production Kubernetes clusters sit behind strict firewalls with zero outbound internet access. Furthermore, as Volume 14 Chapters 7 and 8 emphasize, relying on mutable tags like :latest or live internet downloads exposes your platform to supply-chain drift. NGC rate limits, HTTP 429, or expired credentials, HTTP 401. In *BCM 11 Containerization* Appendix B, air-gapped staging downloads all container images, 8.1 GB out of an 8.6 GB base bundle. Taking 15x longer than charts and CRDs, in a bastion session before moving artifacts into the isolated cluster.
-```
+In regulated enterprises, production clusters often sit behind firewalls with no outbound internet access. Volume 14 Chapters 7 and 8 add that mutable tags such as :latest, or live downloads at runtime, expose the platform to supply-chain drift. A live download can also fail on an NGC rate limit (HTTP 429) or an expired credential (HTTP 401). *BCM 11 Containerization* Appendix B shows the alternative. Air-gapped staging downloads all container images in a bastion session before the artifacts move into the isolated cluster. Of an 8.6 GB base bundle, 8.1 GB is container images, which take about 15 times longer to fetch than the charts and CRDs.
 
-For NVIDIA NIM, platform teams implement a three-stage **Air-Gapped Supply Chain and Pre-Caching Pipeline**.
+For NVIDIA NIM, platform teams build a three-stage air-gapped supply chain.
 
-```text
-1. **Digest Pinning and Security Scanning in the DMZ:** On an internet-connected staging host in the enterprise DMZ. Pull the NIM image by tag, resolve its immutable sha256 digest, and scan it with Trivy. Volume 14 Chapter 7 enforces a strict gate of 0 critical, 0 high. 0 medium CVEs before re-tagging and pushing the image to an internal registry such as Harbor, harbor-internal.company.com.
-```
-2. **Pre-Populating the Model Cache with download-to-cache:** Before deploying to production, run the NIM container's built-in download-to-cache command in the DMZ or via a staging job. This command downloads either a specific profile or all compatible profiles into your shared storage volume without requiring a live GPU to serve traffic.
-3. **Zero-Egress Production Execution:** Mount the pre-populated cache volume into your air-gapped production pods and apply a Kubernetes NetworkPolicy that blocks external internet egress.
+1. Pin the digest and scan the image in the DMZ. On an internet-connected staging host, pull the NIM image by tag, resolve its immutable sha256 digest, and scan it with Trivy. Volume 14 Chapter 7 sets the gate at 0 critical, 0 high, and 0 medium CVEs. Only then re-tag the image and push it to an internal registry such as Harbor, harbor-internal.company.com.
+2. Pre-populate the model cache. Before deploying to production, run the container's built-in `download-to-cache` command in the DMZ or in a staging job. It downloads one profile, or all compatible profiles, into your shared storage volume. No live GPU is needed.
+3. Run with zero egress. Mount the pre-populated cache volume into your air-gapped production pods and apply a Kubernetes NetworkPolicy that blocks external internet egress.
 
 ```bash
 # 1. Authenticate to NGC and pull the NIM image by immutable SHA256 digest in the DMZ
@@ -316,7 +308,7 @@ docker run --rm \
 | **Proactive Expiry Alerting** | Run daily Kubernetes `CronJob` checking NGC API; alert at `< 30` days before expiry | Pod scale-out fails with `401 Unauthorized` (`~15 min` manual recovery outage) |
 | **Internal Mirror & Cache** | Mirror images to Harbor (`99.9%` uptime) and pre-stage `/model_cache` via `download-to-cache` | External NGC outage or `429 Too Many Requests` halts all new pod startups |
 
-Never allow production NIM pods to pull unverified :latest tags or download 140 GB model weights over the public internet at runtime.
+Do not let production NIM pods pull an unverified :latest tag or download 140 GB of weights over the public internet at runtime.
 
 ---
 
@@ -324,7 +316,7 @@ Never allow production NIM pods to pull unverified :latest tags or download 140 
 
 ### 4.1 Standardized OpenAI Endpoints and Decoupled Health Probes
 
-One of NIM's biggest operational advantages is that application developers never need to learn a proprietary inference SDK. Every LLM NIM exposes a drop-in OpenAI-compatible REST API on port 8000 alongside gRPC on port 8001. Whether the container runs Llama-3-8B on an L40S GPU or Llama-3-70B across eight H100 GPUs, client code interacts with the exact same HTTP contract.
+Application developers do not need to learn a proprietary inference SDK to call a NIM. Every LLM NIM exposes an OpenAI-compatible REST API on port 8000 and gRPC on port 8001. Whether the container runs Llama-3-8B on an L40S or Llama-3-70B across eight H100 GPUs, client code sees the same HTTP contract.
 
 | HTTP Endpoint | Method | Purpose | Operational Usage |
 |---|---|---|---|
@@ -336,7 +328,7 @@ One of NIM's biggest operational advantages is that application developers never
 | `/v1/health/ready` | `GET` | Returns `HTTP 200` only after model weights finish loading into GPU HBM | Bound to Kubernetes `readinessProbe` and `startupProbe` |
 | `/v1/metrics` or `:9090/metrics` | `GET` | Exports Prometheus histograms for TTFT, ITL, queue depth, and KV cache | Scraped every `15 s` by Prometheus `ServiceMonitor` and KEDA/HPA |
 
-As Volume 14 Chapters 3 and 4 emphasize, **separating liveness, readiness, and startup probes is mandatory for production NIM deployments**. While a container process starts in 5 seconds, loading a 70B model into GPU memory or warming a cache takes several minutes. If you bind livenessProbe to readiness without a startupProbe, kubelet will assume the container is deadlocked, kill the pod mid-load, and trap the deployment in an infinite CrashLoopBackOff cycle.
+A NIM process starts in 5 seconds, but loading a 70B model into GPU memory or warming a cache takes several minutes. Suppose the liveness probe watches readiness and there is no startup probe. Kubelet then decides the container is deadlocked, kills the pod mid-load, and the deployment falls into an endless CrashLoopBackOff. Volume 14 Chapters 3 and 4 therefore treat **separate liveness, readiness, and startup probes as mandatory for production NIM**.
 
 ```text
 Production Kubernetes Probe Timing Contract (Volume 14 Chapter 4 & Lab 01):
@@ -355,11 +347,11 @@ Production Kubernetes Probe Timing Contract (Volume 14 Chapter 4 & Lab 01):
 
 ### 4.2 Multi-LoRA Dynamic Adapter Loading (`NIM_PEFT_SOURCE`)
 
-Enterprises rarely deploy a single generic model for every department. A financial institution might fine-tune separate Low-Rank Adaptation adapters—produced via NVIDIA NeMo Framework or NeMo Customizer as shown in Volume 14 Chapter 5 and Lab 03—for retail banking, legal contract review, cybersecurity triage, and SQL code generation.
+A bank rarely runs one generic model for every department. It might fine-tune separate Low-Rank Adaptation (LoRA) adapters for retail banking, contract review, security triage, and SQL generation. Volume 14 Chapter 5 and Lab 03 produce such adapters with NVIDIA NeMo Framework or NeMo Customizer.
 
-If you deploy each fine-tuned model as a standalone full-weight NIM deployment, GPU memory costs explode. Ten separate 8B model deployments require ten dedicated GPUs holding ten copies of the 16 GB base weights.
+If each fine-tuned model gets its own full-weight NIM deployment, GPU memory cost grows fast. Ten 8B deployments need ten GPUs holding ten copies of the 16 GB base weights.
 
-NIM solves this multi-tenancy bottleneck with **Dynamic Multi-LoRA Serving**. Because a LoRA adapter freezes the base model weights and trains only low-rank update matrices. A and B of rank `r = 16` or `r = 32`, each domain adapter occupies only 32 MB to 64 MB on disk. A single NIM container loads the shared 16 GB base model into GPU HBM once and dynamically loads dozens of lightweight LoRA adapters from a local PVC, S3 bucket. NGC registry specified by NIM_PEFT_SOURCE.
+NIM avoids this with dynamic Multi-LoRA serving. A LoRA adapter freezes the base weights and trains only two small low-rank matrices, A and B, of rank 16 or 32. Each domain adapter is therefore only 32 MB to 64 MB on disk. One NIM container loads the shared 16 GB base model into GPU memory once. It then loads dozens of adapters on demand from a local PVC, an S3 bucket, or an NGC registry, whichever `NIM_PEFT_SOURCE` names.
 
 ```text
 Dedicated Full-Model Pods vs Single Multi-LoRA NIM Instance (10 Domain-Specific 8B Models):
@@ -376,7 +368,7 @@ Dedicated Full-Model Pods vs Single Multi-LoRA NIM Instance (10 Domain-Specific 
     GPU VRAM Saved: 180.0 GB - 18.512 GB = 161.488 GB saved (89.72% VRAM reduction)
 ```
 
-As detailed in *Hands-On LLM Serving and Optimization* Chapter 8, the underlying scheduler tracks which LoRA adapter is requested by each incoming prompt inside the current continuous batch. During the forward pass, all requests in the batch share the heavy base-weight matrix multiplication, and the execution engine applies the lightweight adapter projections per request.
+*Hands-On LLM Serving and Optimization* Chapter 8 explains how this works. The scheduler tracks which adapter each prompt in the current continuous batch asks for. During the forward pass, every request shares the heavy base-weight matrix multiplication, and the engine applies the small adapter projection per request.
 
 ```bash
 # Launch a NIM container with dynamic Multi-LoRA adapter discovery enabled
@@ -404,7 +396,7 @@ curl -s http://localhost:8000/v1/chat/completions \
   }'
 ```
 
-When you serve multiple fine-tuned variants of the same base foundation model, consolidate them into a single Multi-LoRA NIM deployment using NIM_PEFT_SOURCE to cut GPU footprint by nearly 90 percent.
+If several fine-tuned variants share one base model, serve them from a single Multi-LoRA NIM deployment with `NIM_PEFT_SOURCE`. In this example that cuts the GPU footprint by nearly 90 percent.
 
 ---
 
@@ -412,9 +404,9 @@ When you serve multiple fine-tuned variants of the same base foundation model, c
 
 ### 5.1 Declarative Orchestration with `NIMCache`, `NIMService`, and `NIMPipeline`
 
-Deploying a single NIM container with docker run or a static Helm chart works for initial staging tests, such as Volume 14 Lab 02. At cluster scale, however, platform teams must coordinate model pre-caching jobs, ReadWriteMany PVCs, multi-node Tensor Parallelism LeaderWorkerSet pods, Prometheus ServiceMonitor objects, KServe InferenceService resources, and Horizontal Pod Autoscalers.
+Running one NIM container with docker run or a static Helm chart is fine for a staging test such as Volume 14 Lab 02. At cluster scale, a platform team must also coordinate model pre-caching jobs, ReadWriteMany PVCs, multi-node tensor-parallel pods, Prometheus monitoring objects, and autoscalers.
 
-To automate this entire lifecycle using Kubernetes-native controllers, *BCM 11 Containerization* Chapter 6 and *Generative AI on Kubernetes* Chapter 1. NVIDIA provides the **NVIDIA NIM Operator** under the `apps.nvidia.com/v1alpha1` API group. The NIM Operator reconciles three core Custom Resource Definitions alongside three **NeMo Microservices CRDs**.
+The NVIDIA NIM Operator automates that lifecycle with Kubernetes controllers, as *BCM 11 Containerization* Chapter 6 and *Generative AI on Kubernetes* Chapter 1 describe. It lives in the `apps.nvidia.com/v1alpha1` API group and reconciles three core Custom Resource Definitions (CRDs) and three NeMo Microservices CRDs.
 
 ```mermaid
 flowchart TB
@@ -459,7 +451,7 @@ flowchart TB
 
 ### 5.2 Production Manifests: `NIMCache` and `NIMService` with HPA
 
-With the NIM Operator installed, you never launch GPU serving pods against an empty cache. First, you declare a NIMCache resource. The operator creates a ReadWriteMany PVC and launches a temporary CPU or GPU Kubernetes Job that runs download-to-cache. Only after NIMCache reaches status.state: Ready does the NIMService controller schedule the GPU serving replicas.
+With the operator installed, GPU serving pods never start against an empty cache. You first declare a NIMCache resource. The operator creates a ReadWriteMany PVC and runs a temporary Kubernetes Job that executes `download-to-cache`. Only when NIMCache reaches `status.state: Ready` does the NIMService controller schedule the GPU replicas.
 
 ```yaml
 # 1. Declarative NIMCache CR: Pre-stage Llama-3-8B profiles onto a shared 50Gi RWX NVMe PVC
@@ -535,15 +527,13 @@ spec:
               averageValue: "10"
 ```
 
-When a platform team already standardizes on CNCF KServe, *Generative AI on Kubernetes* Chapter 1. NIM containers also plug directly into KServe's ServingRuntime and InferenceService, using `serving.kserve.io/deploymentMode: Standard` or Knative, or KServe 0.16's LLMInferenceService by mounting the NIMCache PVC via `storageUri: pvc://meta-llama3-8b-cache/`.
+If a platform team already standardizes on CNCF KServe, *Generative AI on Kubernetes* Chapter 1 shows that NIM containers also plug into KServe's ServingRuntime and InferenceService. Use `serving.kserve.io/deploymentMode: Standard` or Knative, or KServe 0.16's LLMInferenceService, and mount the NIMCache PVC with `storageUri: pvc://meta-llama3-8b-cache/`.
 
 ### 5.3 Queue-Depth Autoscaling, Canary Rollout Gates, and NeMo Controls
 
-```text
-Why does the NIMService manifest above scale on num_requests_waiting rather than GPU compute utilization? Volume 14 Chapter 4 explains that **scaling LLM services on GPU utilization alone is an operational anti-pattern**. Under continuous batching, a single GPU reaches 70 to 95 percent SM utilization even with a small active batch. Furthermore, because a new NIM replica takes 45 seconds to load weights from the PVC. Reactive scaling triggered after GPU utilization crosses 70 percent arrives too late—the request queue has already backed up and violated your p99 latency SLO.
-```
+Why does the NIMService manifest above scale on `num_requests_waiting` and not on GPU utilization? Under continuous batching, one GPU reaches 70 to 95 percent streaming-multiprocessor utilization even with a small active batch. A new NIM replica also needs 45 seconds to load weights from the PVC. If scaling waits until utilization crosses 70 percent, it arrives too late, because the request queue has already backed up and broken the p99 latency target. Volume 14 Chapter 4 calls **scaling LLM services on GPU utilization alone an anti-pattern**.
 
-Instead, production NIM fleets combine pre-cached NIMCache volumes with **Queue-Depth and Latency SLO Autoscaling**, supplemented by automated **Canary Rollout Circuit Breakers**.
+Production NIM fleets instead combine pre-cached NIMCache volumes with queue-depth and latency autoscaling, plus automated canary circuit breakers.
 
 ```text
 Autoscaling, Canary Rollout, and NeMo Microservices Thresholds (Volume 14 Chapters 4, 5, 6 & Labs 01-03):
@@ -574,13 +564,13 @@ Autoscaling, Canary Rollout, and NeMo Microservices Thresholds (Volume 14 Chapte
      = 250.0 ms total guarded latency (5.56x / ~5.5x increase over 45 ms unguarded model)
 ```
 
-Always gate NIM version upgrades behind an automated canary latency check and account for the 205 ms overhead of input, retrieval, and output guardrails when budgeting end-to-end application SLOs.
+Gate every NIM version upgrade behind an automated canary latency check, and budget the 205 ms that input, retrieval, and output guardrails add when you set end-to-end latency targets.
 
 ---
 
 ## 6. How It Fails: Six Production Failure Modes
 
-When a NIM deployment fails to start or violates latency targets, Volume 14 Lab 04 teaches **ordered bottom-up diagnosis**. Verify artifact existence, entitlement scope, network egress, Kubernetes secrets, and GPU hardware before debugging application prompts.
+When a NIM deployment will not start or misses its latency target, Volume 14 Lab 04 teaches a bottom-up order of diagnosis. Check that the artifact exists, then the entitlement scope, network egress, Kubernetes secrets, and GPU hardware. Debug application prompts last.
 
 | Failure Mode | Symptom & Telemetry Signal | Root Cause | Exact Diagnostic Command | Remediation |
 |---|---|---|---|---|
@@ -591,7 +581,7 @@ When a NIM deployment fails to start or violates latency targets, Volume 14 Lab 
 | **5. Air-Gapped Firewall or Proxy TLS Failure** | `NIMCache` job or pod hangs on `Attempting model download from NGC...` or logs `x509: certificate signed by unknown authority` | Cluster `NetworkPolicy` blocks egress to `nvcr.io` / `api.ngc.nvidia.com`, or corporate proxy intercepts TLS without CA cert | `kubectl exec <pod> -- nslookup nvcr.io` and `curl -v https://nvcr.io/v2/` | Mirror verified digests (`sha256:...`) to internal Harbor (`harbor-internal.company.com`) and pre-populate `/model_cache` via `download-to-cache` in the DMZ. |
 | **6. Reactive GPU-Utilization Autoscaling Thrash** | HPA scales out too late during traffic bursts; `queue_depth` exceeds `25` and client requests time out | HPA configured on GPU SM utilization (`70%`) instead of request queue depth, combined with uncached pod boot delay | `kubectl get hpa` and `curl -s http://localhost:8000/v1/metrics \| grep requests_waiting` | Scale on `num_requests_waiting > 10` (or `requests_waiting_total > 20`) paired with `p95 > 200 ms` and a warm `NIMCache` PVC (`45 s` boot). |
 
-Always inspect kubectl logs `<pod>` for Readiness check passed and verify `/model_cache` disk space before escalating a NIM readiness failure.
+Before you escalate a NIM readiness failure, read the pod logs for the readiness-check message and check the free space on `/model_cache`.
 
 ---
 
@@ -599,14 +589,12 @@ Always inspect kubectl logs `<pod>` for Readiness check passed and verify `/mode
 
 ### 7.1 Lab Venue and Environment Note
 
-- **Primary venue:** Google Cloud Platform, GCP / GKE, GPU cluster equipped with NVIDIA A100, L40S. H100 GPUs, NVIDIA GPU Operator 24.3.0+, and the Kubernetes NIM Operator, paired with our local deterministic Python verification suite.
-```text
-- **Verification status:** All 25 deterministic self-checks in `code/part15/nvidia_nim_operator_lab.py` were executed and verified locally, Summary: 25 passed, 0 failed. The GKE Helm and kubectl deployment commands in Section 7.3 are adapted from Volume 14 Labs 01, 02, and 04. Those live cluster commands have not been executed on a live GPU cluster in this local build environment, untested on live hardware.
-```
+- Primary venue: a Google Cloud GKE cluster with NVIDIA A100, L40S, or H100 GPUs, NVIDIA GPU Operator 24.3.0 or later, and the Kubernetes NIM Operator. A local Python verification suite accompanies it.
+- Verification status: all 25 deterministic self-checks in `code/part15/nvidia_nim_operator_lab.py` ran locally and passed. The kubectl commands in Section 7.3 are adapted from Volume 14 Labs 01, 02, and 04. They have not been run on a live GPU cluster.
 
 ### 7.2 Part A: Run the Local Deterministic Python Verification Suite
 
-Run the self-checking verification lab to test hardware-aware profile selection, TensorRT-LLM > vLLM > SGLang. GPU VRAM and replica sizing, 140 GB cold-start versus NVMe PVC caching math, Multi-LoRA memory savings, NIM Operator reconciliation, NeMo Microservices metrics, and canary rollback gates.
+The self-checking lab tests profile selection with the order TensorRT-LLM, vLLM, SGLang. It also checks GPU memory and replica sizing, the cold-start and cache arithmetic, Multi-LoRA savings, NIM Operator reconciliation, NeMo metrics, and canary rollback gates.
 
 ```bash
 python3 -B code/part15/nvidia_nim_operator_lab.py
@@ -642,9 +630,9 @@ python3 -B code/part15/nvidia_nim_operator_lab.py
 Summary: 25 passed, 0 failed
 ```
 
-### 7.3 Part B: Deploy and Validate a NIM Service on Kubernetes (`untested` on live hardware)
+### 7.3 Part B: Deploy and Validate a NIM Service on Kubernetes (not run on live hardware)
 
-Follow the workflow below from Volume 14 Lab 02 to create an isolated nim-staging namespace. Configure NGC pull and runtime secrets, deploy NIMCache and NIMService, run deterministic inference validation, and test readiness protection under failure injection.
+The workflow below follows Volume 14 Lab 02. It creates an isolated nim-staging namespace, adds the NGC pull and runtime secrets, deploys NIMCache and NIMService, and checks one deterministic completion.
 
 ```bash
 # 1. Create isolated staging namespace and NGC registry + API secrets
@@ -678,19 +666,19 @@ curl -s http://localhost:8000/v1/completions \
 <details>
 <summary>1. Which six manual integration steps does an NVIDIA NIM container eliminate compared to building a DIY LLM serving stack?</summary>
 
-A DIY stack requires manually downloading raw Hugging Face weights, compiling hardware-specific TensorRT-LLM engines. Writing a FastAPI wrapper, integrating Triton or vLLM, writing Kubernetes readiness logic, and maintaining custom Docker images. NIM pre-integrates all six into one validated container.
+A DIY stack means downloading raw Hugging Face weights, compiling hardware-specific TensorRT-LLM engines, writing a FastAPI wrapper, integrating Triton or vLLM, writing Kubernetes readiness logic, and maintaining custom Docker images. NIM pre-integrates all six into one validated container.
 </details>
 
 <details>
 <summary>2. How do Triton Inference Server, TensorRT-LLM, and vLLM relate to one another inside an NVIDIA NIM container?</summary>
 
-They operate at complementary layers rather than competing. Triton provides the C++ network protocol server, request router. Scheduler; TensorRT-LLM provides the pre-compiled hardware-specific C++ execution engine; and vLLM provides the PagedAttention fallback and dynamic runtime engine when a pre-built TensorRT-LLM engine is not used.
+They operate at complementary layers rather than competing. Triton provides the C++ network protocol server, the request router, and the scheduler. TensorRT-LLM provides the pre-compiled, hardware-specific C++ execution engine. vLLM provides the PagedAttention fallback and dynamic runtime engine when a pre-built TensorRT-LLM engine is not used.
 </details>
 
 <details>
 <summary>3. In what order of preference does NIM select an inference backend at startup when multiple profiles exist in model_manifest.yaml?</summary>
 
-NIM evaluates compatible hardware profiles using the strict preference order of TensorRT-LLM first, vLLM second, and SGLang third. Within TensorRT-LLM, it prefers a pre-built .engine matching the exact GPU architecture and Tensor Parallelism count before falling back to a buildable engine or vLLM.
+NIM tries TensorRT-LLM first, vLLM second, and SGLang third. Within TensorRT-LLM, it prefers a pre-built .engine matching the exact GPU architecture and Tensor Parallelism count before falling back to a buildable engine or vLLM.
 </details>
 
 <details>
@@ -702,15 +690,13 @@ Run the container with the list-model-profiles command, such as `docker run --rm
 <details>
 <summary>5. In Volume 12 Chapter 5, how much faster is a pre-built TensorRT-LLM engine on 8x H100 GPUs (TP = 8) compared to a naive PyTorch deployment for Llama-3-70B?</summary>
 
-The compiled TensorRT-LLM engine reduces inter-token latency from 115.0 ms per token down to 18.4 ms per token, delivering a 6.25x latency speedup while doubling token throughput.
+The compiled TensorRT-LLM engine reduces inter-token latency from 115.0 ms per token to 18.4 ms per token, a 6.25x speedup, and doubles token throughput.
 </details>
 
 <details>
 <summary>6. Using the GPU sizing model from Volume 14 Lab 01, how much GPU memory is required to deploy a 7B or 8B BF16 model on a 40 GB A100 GPU, and how many replicas are needed for 100 requests per second?</summary>
 
-```text
-The deployment requires 14 GB for weights, 2 GB for framework overhead, 4 GB for activations. 2 GB for safety headroom, totaling 22 GB and leaving an 18 GB margin on a 40 GB A100. At 50 requests per second per GPU, meeting a 100 requests per second target requires 2 replicas across 2 GPUs.
-```
+The deployment needs 14 GB for weights, 2 GB for framework overhead, 4 GB for activations, and 2 GB for safety headroom. That totals 22 GB and leaves an 18 GB margin on a 40 GB A100. At 50 requests per second per GPU, a target of 100 requests per second needs 2 replicas on 2 GPUs.
 </details>
 
 <details>
@@ -722,27 +708,25 @@ Llama-3-70B weights occupy 140 GB. Without a persistent volume mounted at NIM_CA
 <details>
 <summary>8. How much faster does a Llama-3-70B NIM pod start when loading 140 GB of weights from a shared NVMe PersistentVolume at 3.5 GB/s plus 5 seconds of initialization compared to a 1,205-second uncached download?</summary>
 
-```text
-Reading 140 GB from the NVMe cache at 3.5 GB/s takes 40 seconds plus 5 seconds of engine initialization, totaling 45 seconds. That reduces startup time from 1,205 seconds to 45 seconds, a 26.78x speedup.
-```
+Reading 140 GB from the NVMe cache at 3.5 GB/s takes 40 seconds. Engine initialization adds 5 seconds, so the pod starts in 45 seconds instead of 1,205 seconds, a 26.78x speedup.
 </details>
 
 <details>
 <summary>9. Why must a multi-node NIM deployment use a ReadWriteMany (RWX) NVMe-backed PersistentVolumeClaim rather than ReadWriteOnce (RWO) or slow network NFS?</summary>
 
-ReadWriteOnce volumes can only be mounted by a single Kubernetes node, preventing pods scheduled on other GPU nodes from sharing the pre-populated model cache. Slow legacy NFS introduces severe throughput bottlenecks during multi-gigabyte weight reads compared to NVMe-backed ReadWriteMany storage.
+A ReadWriteOnce volume can be mounted by only one Kubernetes node, so pods on other GPU nodes cannot share the pre-populated cache. Slow legacy NFS limits throughput during multi-gigabyte weight reads, which NVMe-backed ReadWriteMany storage avoids.
 </details>
 
 <details>
 <summary>10. How do you pre-stage model weights and TensorRT-LLM engines for an air-gapped Kubernetes cluster that has no internet egress?</summary>
 
-In a DMZ staging environment with NGC access, run the NIM container with the download-to-cache command. Mounting the shared storage volume to NIM_CACHE_PATH, and mirror the SHA256-pinned container image into an internal registry such as Harbor.
+In a DMZ staging environment with NGC access, run the NIM container with the download-to-cache command and mount the shared storage volume at NIM_CACHE_PATH. Then mirror the SHA256-pinned container image into an internal registry such as Harbor.
 </details>
 
 <details>
 <summary>11. What are the two distinct Kubernetes secrets required by a production NIM deployment, and what username must the docker-registry secret use?</summary>
 
-A NIM deployment requires a `kubernetes.io/dockerconfigjson` secret referenced in imagePullSecrets to pull the container image from nvcr.io. Using the literal username $oauthtoken, plus an opaque secret injecting NGC_API_KEY into the pod environment to authorize model artifact downloads.
+A NIM deployment requires a `kubernetes.io/dockerconfigjson` secret referenced in imagePullSecrets to pull the container image from nvcr.io. The username is the literal text $oauthtoken. The second secret is an opaque secret that injects NGC_API_KEY into the pod environment to authorize model artifact downloads.
 </details>
 
 <details>
@@ -754,15 +738,13 @@ Production NGC tokens should be rotated at least every 90 days, and a daily Kube
 <details>
 <summary>13. Why must Kubernetes startupProbe, readinessProbe, and livenessProbe be configured with distinct timing windows for NIM pods?</summary>
 
-A 600-second startupProbe, failureThreshold: 60, periodSeconds: 10, protects the pod during initial weight downloads or HBM loading. The readinessProbe, `/v1/health/ready`, withholds traffic. The engine is loaded in GPU memory, while the livenessProbe, `/v1/health/live`, 90 s window, restarts the container only if the server process genuinely hangs or crashes.
+A 600-second startupProbe, with failureThreshold 60 and periodSeconds 10, protects the pod during the first weight download or HBM load. The readinessProbe on `/v1/health/ready` withholds traffic until the engine is loaded in GPU memory. The livenessProbe on `/v1/health/live` has a 90-second window and restarts the container only if the server process really hangs or crashes.
 </details>
 
 <details>
 <summary>14. How does NIM's Multi-LoRA serving work, and how much GPU VRAM does it save across 10 fine-tuned 8B domain models?</summary>
 
-```text
-Multi-LoRA loads the 16 GB base model into GPU HBM once and dynamically caches lightweight 64 MB LoRA adapters from NIM_PEFT_SOURCE, `NIM_MAX_GPU_LORAS=8`, 0.512 GB. Compared to 10 separate pods consuming 180.0 GB. 10 GPUs, a single Multi-LoRA NIM pod uses 18.512 GB on 1 GPU, saving 161.488 GB or 89.72 percent of VRAM.
-```
+Multi-LoRA loads the 16 GB base model into GPU HBM once. It caches the lightweight 64 MB adapters from NIM_PEFT_SOURCE, and with `NIM_MAX_GPU_LORAS=8` the GPU adapter cache is 0.512 GB. Ten separate pods would use 180.0 GB across 10 GPUs. One Multi-LoRA pod uses 18.512 GB on one GPU, which saves 161.488 GB, or 89.72 percent.
 </details>
 
 <details>
@@ -786,63 +768,44 @@ NemoCustomizer runs distributed fine-tuning jobs to produce domain-specific LoRA
 <details>
 <summary>18. In Volume 14 Chapter 6, how much latency does a full NeMo Guardrails pipeline add to a 45 ms base LLM inference call?</summary>
 
-```text
-Adding 15 ms for input validation, 30 ms for intent classification, 100 ms for RAG retrieval, 50 ms for output fact-checking. 10 ms for audit logging increases total response time from 45 ms to 250 ms, a 5.56x latency increase.
-```
+Input validation adds 15 ms, intent classification 30 ms, RAG retrieval 100 ms, output fact-checking 50 ms, and audit logging 10 ms. Total response time rises from 45 ms to 250 ms, a 5.56x increase.
 </details>
 
 <details>
 <summary>19. Why should NIM horizontal autoscalers trigger on queue depth and p95 latency rather than GPU compute utilization?</summary>
 
-Continuous batching saturates GPU compute utilization even at moderate concurrency, and new pods require 45 seconds or more to load weights into HBM. Scaling when queue depth exceeds 10, or requests_waiting_total > 20, and p95 latency crosses 200 ms adds capacity before the queue overflows.
+Continuous batching drives GPU utilization high even at moderate concurrency, and a new pod needs 45 seconds or more to load weights into HBM. Scaling when queue depth exceeds 10, or requests_waiting_total exceeds 20, and p95 latency crosses 200 ms adds capacity before the queue overflows.
 </details>
 
 <details>
 <summary>20. During a canary rollout with a 180 ms p95 baseline, what happens if the new NIM revision reports all pods Ready but p95 latency rises to 252 ms or 305 ms?</summary>
 
-```text
-Even though the pods pass health probes, a rise to 252 ms, +40 percent, trips the 250 ms warning circuit breaker to pause the rollout. A rise to 305 ms, +67 percent, trips the 300 ms critical gate to trigger an automatic helm rollback within 5 minutes.
-```
+The pods pass their health probes, but a rise to 252 ms, which is 40 percent slower, trips the 250 ms warning breaker and pauses the rollout. A rise to 305 ms, which is 67 percent slower, trips the 300 ms critical gate and triggers an automatic helm rollback within 5 minutes.
 </details>
 
 ---
 
 ## Key takeaways
 
-1. **Standardize inference packaging with NVIDIA NIM**. A single NIM container integrates an OpenAI-compatible API server, Triton Inference Server, TensorRT-LLM and vLLM backends, and certified CUDA libraries under a clear enterprise support boundary.
-2. **Let hardware discovery pick pre-built TensorRT-LLM engines first**. At startup, NIM inspects GPU architecture, VRAM. GPU count against model_manifest.yaml using the strict preference order TensorRT-LLM > vLLM > SGLang, delivering up to a 6.25x ITL speedup when a pre-built engine matches.
-```text
-3. **Eliminate 20-minute cold starts with NIMCache and ReadWriteMany NVMe storage**. Pre-staging 140 GB model weights onto a persistent volume with download-to-cache cuts pod startup from over 20 minutes down to 45 seconds, a 26.78x speedup. Enables zero-egress air-gapped operation.
-```
-```text
-4. **Consolidate fine-tuned domain models with Multi-LoRA, NIM_PEFT_SOURCE**. Serving 10 domain-adapted 8B models from a single base NIM instance with dynamic GPU and CPU LoRA caches reduces GPU VRAM consumption from 180.0 GB. 10 GPUs to 18.512 GB on 1 GPU, saving 89.72 percent of VRAM.
-```
-5. **Automate Day-2 operations with the NIM Operator, queue-depth HPA, and canary gates**. Use NIMCache, NIMService, NIMPipeline, and the NeMo Microservices CRDs, NemoCustomizer, NemoEvaluator, NemoGuardrails, alongside queue-depth autoscaling, queue_depth > 10, p95 > 200 ms, and automated latency rollback gates.
+1. **One NIM container replaces a hand-built serving stack.** It integrates an OpenAI-compatible API server, Triton Inference Server, TensorRT-LLM and vLLM backends, and certified CUDA libraries under a clear enterprise support boundary.
+2. At startup, NIM checks the GPU architecture, memory, and GPU count against model_manifest.yaml. It prefers TensorRT-LLM, then vLLM, then SGLang. A matching pre-built engine gave a 6.25x inter-token latency speedup.
+3. Pre-staging 140 GB of weights on a persistent volume with download-to-cache cuts pod startup from over 20 minutes to 45 seconds, a 26.78x speedup. It also allows zero-egress, air-gapped operation.
+4. Serving ten domain-adapted 8B models from one base NIM instance with Multi-LoRA cuts GPU memory from 180.0 GB across 10 GPUs to 18.512 GB on one GPU, saving 89.72 percent.
+5. The NIM Operator handles day-two operations with NIMCache, NIMService, NIMPipeline, and the NeMo Microservices CRDs. Pair it with queue-depth autoscaling, where queue depth above 10 or p95 above 200 ms scales out, and with automated latency rollback gates.
 
 ---
 
 ## Exercises
 
-1. **Hardware-Aware Profile Selection and GPU Memory Sizing**.
-   - **, a,** Using the profile selection rules in Section 2, state which profile and backend NIM selects from the manifest table. Deployed on, i, 2x H100 80GB GPUs in throughput mode, ii, 1x L40S 48GB GPU. No pre-built L40S TensorRT-LLM engine exists, and, iii, 1x A100 40GB GPU when NIM_MODEL_PROFILE is erroneously pinned to tensorrt_llm-h100-fp8-tp2-throughput.
-```text
-- **, b,** Using the Volume 14 Lab 01 sizing model, 14 GB weights. 2 GB framework overhead, 4 GB activations, 2 GB safety headroom on a 40 GB A100 at `50 req/sec/GPU`, calculate the required GPU memory, free VRAM margin. Number of replicas needed to serve `100 req/sec`.
-```
-2. **Cold-Start Latency vs Persistent Volume Caching, NIM_CACHE_PATH**.
-```text
-- **, a,** Calculate the uncached startup time in seconds and minutes for a 140.0 GB. 140,000 MB, Llama-3-70B NIM pod downloading weights over a `116.67 MB/s` link with 5.0 s of engine initialization. Compare it to a 20.0 MB Nginx container starting in 2.0 s.
-```
-   - **, b,** Calculate the warm startup time and speedup factor. Those 140.0 GB weights are loaded from a pre-populated ReadWriteMany NVMe PVC, `NIM_CACHE_PATH=/model_cache`, at `3.5 GB/s` plus 5.0 s of engine initialization.
-3. **Multi-LoRA Memory Consolidation, NIM_PEFT_SOURCE**.
-   - **, a,** Calculate the total GPU VRAM and GPU count required to host 10 separate fine-tuned 8B NIM deployments where each pod consumes 16.0 GB for base weights and 2.0 GB for runtime overhead.
-   - **, b,** Calculate the total GPU VRAM and percentage VRAM reduction. All 10 adapters, 64.0 MB each, are served by a single Multi-LoRA NIM pod configured with `NIM_MAX_GPU_LORAS=8` and `NIM_MAX_CPU_LORAS=32`.
-4. **NeMo Microservices Pipeline, Guardrails Latency Budget, and Canary Rollback Gates**.
-```text
-- **, a,** Sum the six stage latencies from Volume 14 Chapter 6, 45 ms base model. 15 ms input check, 30 ms intent classifier, 100 ms RAG retrieval, 50 ms output validator. 10 ms audit logging, and compute the latency multiplier relative to the unguarded base model. Also state the perplexity reduction, ROUGE-1 gain, and BLEU gain achieved by the fine-tuned model in Volume 14 Lab 03, 18.7 -> 15.2, 0.31 -> 0.35, 0.24 -> 0.28.
-```
-```text
-- **, b,** Given a baseline p95 latency of 180.0 ms and the Volume 14 Chapter 4 canary circuit-breaker thresholds. 200.0 ms pass gate, 250.0 ms warning, 300.0 ms critical rollback, determine the automated rollout action when a canary revision measures 195.0 ms, 252.0 ms, and 305.0 ms.
-```
+1. **Profile selection.** Use the rules in Section 2 and the manifest table. Which profile and backend does NIM choose on two H100 80 GB GPUs in throughput mode? Which does it choose on one L40S 48 GB GPU, where no pre-built engine exists? What happens on one A100 40 GB GPU when `NIM_MODEL_PROFILE` is pinned to `tensorrt_llm-h100-fp8-tp2-throughput`?
+2. **GPU memory sizing.** A 7B model on a 40 GB A100 needs 14 GB for weights, 2 GB for the framework, 4 GB for activations, and 2 GB of safety headroom. How much memory is required, and how much is left free? Each GPU sustains 50 requests per second. How many replicas serve 100 requests per second?
+3. **Uncached startup.** A Llama-3-70B NIM pod downloads 140 GB of weights over a link that delivers 116.67 MB per second. Engine initialization adds 5 seconds. How long does the pod take to start, in seconds and in minutes? How does that compare with a 20 MB Nginx container that starts in 2 seconds?
+4. **Cached startup.** The same weights now sit on a pre-populated ReadWriteMany NVMe volume mounted at `/model_cache` and read at 3.5 GB per second. How long does the warm start take, and how many times faster is it than the uncached start?
+5. **Memory without Multi-LoRA.** Ten fine-tuned 8B models each run in their own pod. Each pod needs 16 GB for base weights and 2 GB for runtime overhead. How much GPU memory is used in total, and across how many GPUs?
+6. **Memory with Multi-LoRA.** One Multi-LoRA pod serves all ten adapters of 64 MB each, with `NIM_MAX_GPU_LORAS=8`. How much GPU memory does it use, and what percentage does that save against exercise 5?
+7. **Guardrails latency.** The base model takes 45 ms. Input check, intent classifier, retrieval, output validator, and audit logging add 15, 30, 100, 50, and 10 ms. What is the total, and by what factor does it exceed the unguarded model?
+8. **Fine-tune gain.** Volume 14 Lab 03 reports perplexity falling from 18.7 to 15.2, ROUGE-1 rising from 0.31 to 0.35, and BLEU rising from 0.24 to 0.28. State each change as a percentage.
+9. **Canary gates.** The stable revision has a p95 latency of 180 ms. The pass gate is 200 ms, the warning gate is 250 ms, and the critical gate is 300 ms. What automated action follows when a canary measures 195 ms, 252 ms, and 305 ms?
 
 ---
 
@@ -884,4 +847,4 @@ Even though the pods pass health probes, a rise to 252 ms, +40 percent, trips th
 
 - All mathematical models, profile selection algorithms, cold-start and Multi-LoRA calculations, NIM Operator reconciliation checks, and NeMo Microservices metrics in `code/part15/nvidia_nim_operator.py` and `code/part15/nvidia_nim_operator_lab.py`, `25/25` checks passing, are verified locally.
 - The Kubernetes and Docker GPU deployment commands in Section 7.3 represent production reference patterns adapted from Volume 14 Labs 01, 02, and 04. They are marked untested on live GPU cluster hardware in this local build environment.
-
+- Provenance files for this chapter: `planning/coverage/chapters/15-07.md` (coverage) and `planning/ledgers/15-07.md` (claim and number ledger).

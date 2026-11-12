@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop (harness); GPU cluster for the real suite |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. **Run**: `code/part06/bench_stats.py` (HPL-style LU solve and a triad, with repetitions and confidence intervals) on an Apple M3 with OpenBLAS in NumPy (results below, including a surprising 4x slowdown at 8 threads). **Read from source**: NVIDIA/nccl-tests `doc/PERFORMANCE.md` and README (commit `afd59ab`, 2026-10-05), IOR/mdtest repository README (hpc/ior commit `e4e4578`, 2026-10-23), HPCG repository (commit `114602d`, 2023-09-23). HPL, OSU micro-benchmarks, STREAM proper, MLPerf and all multi-node/GPU numbers were **not run**. Labs on a cluster are **untested** |
+| Status | Drafted. **Run**: `code/part06/bench_stats.py` (HPL-style LU solve and a triad, with repetitions and confidence intervals) on an Apple M3 with OpenBLAS in NumPy (results below, including a surprising 4x slowdown at 8 threads). **Read from source**: NVIDIA/nccl-tests `doc/PERFORMANCE.md` and README (commit `afd59ab`, 2026-10-05), IOR/mdtest repository README (hpc/ior commit `e4e4578`, 2026-10-23), HPCG repository (commit `114602d`, 2023-09-23). HPL, OSU micro-benchmarks, STREAM proper, MLPerf and all multi-node/GPU numbers were **not run**. No lab step was run on a cluster. |
 
 ## Why this matters for AI infrastructure
 
@@ -53,7 +53,7 @@ The chapter's structure, adapted to clusters, is the five-step flow above. Each 
 
 Gregg lists the reasons to benchmark. They include system design and purchase decisions, proofs of concept, tuning tunable parameters, development, capacity planning, troubleshooting, and marketing, which he calls benchmarketing. For a purchase, the price/performance ratio is measured over the five-year capital cost of the equipment `[Anon 85]`. The ratio can also be flipped to performance/price, so that bigger is better. On-premises proofs of concept can take weeks or months, because hardware has to ship, be racked, cabled and installed. Cloud instances can be started in minutes, benchmarked, or tested directly with fault-tolerant production traffic. Netflix, for example, runs automated micro-benchmarking and CPU profiling on new cloud instance types.
 
-The key references come from the References in section 12.6 of the book, and several appear throughout this section: `[Joy 81]`, `[Anon 85]`, `[Jain 91]`, `[Gunther 97]`, `[Shanley 98]`, `[Coker 01]`, `[Smaalders 06]`, `[Gunther 07]`, `[Bourbonnais 08]`, `[DeWitt 08]`, `[Traeger 08]`, and `[Gregg 09b]`, `[Gregg 09c]`, `[Gregg 14c]`, `[Gregg 14d]`, `[Gregg 18d]`.
+The chapter leans on two sources in particular. Joy's 1981 study of BSD networking `[Joy 81]` shows how a benchmark exposes a bottleneck. Traeger's survey of storage benchmarks `[Traeger 08]` shows how often benchmarks mislead. The full list from section 12.6 of the book is in the Sources section at the end of this chapter.
 
 A nine-year study of file system and storage benchmarking `[Traeger 08]` surveyed 415 file system and storage benchmarks across 106 research papers. Most popular benchmarks, it found, are flawed and fail to explain true system behavior. Good benchmarks are repeatable, observable, portable, easily presented, realistic and runnable `[Smaalders 06]`. Above all, engage performance engineers while the benchmark is running, rather than handing them numbers afterward.
 
@@ -185,7 +185,7 @@ For storage tests (6.18, 6.19), follow a method. Defeat the client caches with r
 
 ### Benchmarking GPUDirect Storage with `gdsio`
 
-To benchmark the storage-to-GPU DMA paths, GPUDirect Storage (GDS, Part 13), NVIDIA ships `/usr/local/cuda/gds/tools/gdsio`. Compare the CPU-staged path, `-x 2`, which uses pinned host memory with async copies, against the direct GDS path, `-x 0`, which moves data from storage straight into GPU HBM through `cuFile` and `nvidia-fs`. Both run in read mode (`-I 0`), with 4 workers (`-w 4`), a 10 GiB file (`-s 10G`), a 1 MiB I/O size (`-i 1M`) and GPU 0 (`-d 0`). These commands are untested here.
+To benchmark the storage-to-GPU DMA paths, GPUDirect Storage (GDS, Part 13), NVIDIA ships `/usr/local/cuda/gds/tools/gdsio`. Compare the CPU-staged path, `-x 2`, which uses pinned host memory with async copies, against the direct GDS path, `-x 0`, which moves data from storage straight into GPU HBM through `cuFile` and `nvidia-fs`. Both run in read mode (`-I 0`), with 4 workers (`-w 4`), a 10 GiB file (`-s 10G`), a 1 MiB I/O size (`-i 1M`) and GPU 0 (`-d 0`). They have not been run on a live system.
 
 ```bash
 # Before: Storage -> CPU Memory -> GPU (CPU-staged path, -x 2) (untested here)
@@ -226,7 +226,7 @@ Each size prints the time in microseconds, then `algbw` (algorithm bandwidth, si
 | Broadcast, Reduce | 1 |
 | Send/Recv | 1 |
 
-The first six rows are the document's own summary list. The Send/Recv factor of 1 is my inference, since a point-to-point transfer moves exactly its size over one link. The AllReduce factor comes from the best-case time, t = (S/B) x 2(n-1)/n. Each of the n links carries 2(n-1)/n times the data.
+The first six rows come from the `nccl-tests` summary list. The Send/Recv factor of 1 is not in that list. It follows from the fact that a point-to-point transfer moves exactly its size over one link. The AllReduce factor comes from the best-case time, t = (S/B) x 2(n-1)/n. Each of the n links carries 2(n-1)/n times the data.
 
 Here is a worked example. Take 64 ranks, an 8 GiB message and a measured time of 0.60 s. The algbw is 8.59 GB divided by 0.60 s, which gives 14.3 GB/s. The busbw is 14.3 x 2 x 63/64, which gives 28.2 GB/s. If each GPU has a 400 Gb/s (50 GB/s) NIC, then 28.2 GB/s is 56 percent of the NIC rate. That is worth investigating for NIC mapping, routing and congestion. A healthy 8-GPU NVSwitch node runs far higher within the node, in the hundreds of GB/s, so compare intra-node and inter-node results separately.
 
@@ -294,7 +294,7 @@ The tested tasks run on your laptop. Work through these four.
 3. Compare the triad with a compiled STREAM, built with the 6.5 toolchain.
 4. Compute busbw for 8 sample measurements by hand, using the formulas above.
 
-The next seven tasks need a cluster, so they are untested here.
+The next seven tasks need a cluster, and none of them was run for this handbook.
 
 5. Run STREAM on every node, and list the outliers.
 6. Run single-node and 2-node HPL, or the NVIDIA HPL container, and compute the efficiency.
@@ -322,12 +322,22 @@ Start with the tested tasks. They show whether your harness behaves before you s
 
 Try each one on paper before you run any code.
 
-1. Run `python3 code/part06/bench_stats_lab.py`, which uses `code/part06/bench_stats.py`, then explain three things. First, why `hpl_like()` runs a throwaway warm-up solve before its timed repetitions. Second, how the scaled residual $\frac{\|Ax - b\|_\infty}{\epsilon (\|A\|_\infty \|x\|_\infty + \|b\|_\infty) n} < 16$ validates numerical correctness. Third, why `OPENBLAS_NUM_THREADS=8` on a 4P+4E Apple M3 dropped throughput from `90.8 GFLOP/s` (`CV = 4.8%`) to `22.9 GFLOP/s` (`CV = 13.0%`).
-2. Use `nccl_busbw()` in `code/part06/bench_stats_lab.py`, which follows the `nccl-tests` formulas, to work out `algbw` and `busbw` for an `8 GiB` (`8,589,934,592` B) collective across `64` ranks that finishes in `0.60 s`. You should get `14.3 GB/s` for `algbw`, and `28.2 GB/s` for `AllReduce`. For `AllGather`, `ReduceScatter` and `AlltoAll`, you should get `14.1 GB/s`. Compare `28.2 GB/s` with a `400 Gb/s` (`50 GB/s`) NDR InfiniBand rail, and list the four checks you would run to diagnose the `56%` efficiency gap.
-3. Trace how Brendan Gregg used `iostat -sxz 1`, `bpftrace` (`tracepoint:block:*` and `kprobe:vfs_*`), `cachestat 1` and `strace` to show that `bonnie++`'s `739 KB/s` `Per Chr` disk test actually issued `1`-byte `vfs_write()` calls into the page cache, with zero block I/O. Then run the sanity check from Chapter 12 on a vendor claim of `50,000 IOPS` of `8 KB` reads over a `1 Gbit/s` Ethernet link. The arithmetic is `400,000 KB/s = 3.2 Gbps > 1 Gbps`.
-4. Size HPL (`HPL.dat`) for an 8-GPU node with `640 GiB` of total HBM, or `2,048 GiB` of host RAM. Calculate the problem size $N$, where the matrix takes `8 * N^2` bytes, so that it fills `85%` of memory. Then choose a near-square process grid $P \times Q$ across 64 ranks, with $P=8, Q=8$. Finally, contrast what HPL (`Rmax/Rpeak` $\approx 60\text{–}90\%$), HPCG (sparse multigrid, a few percent of `Rpeak`) and STREAM Triad each measure.
-5. This exercise follows chapter 5 of AI Systems Performance Engineering. Write the `IOR` and `mdtest` flags that defeat client page caching on a parallel file system. Your answer should cover `-C` for rank reordering, a file size more than twice the aggregate client RAM, and separate write and read phases. Then compare the two `gdsio` commands. The first is `-x 2`, CPU-staged, at `8.0 GB/s` and `1.25 ms`, with `85%` CPU use. The second is `-x 0`, GPUDirect Storage, at `9.6 GB/s` and `1.00 ms`, with `25%` CPU use.
-6. A multi-node DDP training run reaches `60 GB/s` during the gradient `all_reduce` over `100 GB/s` NICs. Explain how halving and doubling the micro-batch size, together with `nsys` timeline gaps and `ncu` SM occupancy, shows whether the job is network-bound or compute-bound. A network-bound job holds at `60 GB/s` when the batch size changes. A compute-bound job drops to `40 GB/s`.
+1. Run `python3 code/part06/bench_stats_lab.py`. Why does `hpl_like()` run a throwaway solve before its timed repetitions?
+2. The check in `hpl_like()` is a scaled residual that must stay below 16. What does it prove about the answer?
+3. On a 4P+4E Apple M3, setting `OPENBLAS_NUM_THREADS=8` dropped throughput from 90.8 to 22.9 GFLOP/s. The coefficient of variation rose from 4.8 to 13.0 percent. Why?
+4. Use `nccl_busbw()` for an 8 GiB collective across 64 ranks that finishes in 0.60 s. What are `algbw` and the AllReduce `busbw`? The answers are 14.3 and 28.2 GB/s.
+5. What `busbw` do AllGather, ReduceScatter, and AlltoAll give for the same run? You should get 14.1 GB/s.
+6. The NIC is a 400 Gb/s NDR InfiniBand rail, which is 50 GB/s. The AllReduce reaches 28.2 GB/s, which is 56 percent. Name four checks you would run to explain the gap.
+7. Brendan Gregg found that a `bonnie++` result of 739 KB/s was really 1-byte `vfs_write()` calls into the page cache. Which tools showed this: `iostat -sxz 1`, `bpftrace`, `cachestat 1`, and `strace`? What did each one show?
+8. A vendor claims 50,000 IOPS of 8 KB reads over a 1 Gbit/s Ethernet link. Show why that cannot be true. The arithmetic is 400,000 KB/s, which is 3.2 Gbps.
+9. An 8-GPU node has 640 GiB of HBM, or 2,048 GiB of host RAM. HPL stores an N by N matrix of 8-byte numbers. What N fills 85 percent of the HBM?
+10. For 64 ranks, choose a near-square process grid. A grid of P = 8 by Q = 8 is the usual answer.
+11. What do HPL, HPCG, and STREAM Triad each measure? HPL usually reaches 60 to 90 percent of peak. HPCG reaches a few percent.
+12. Write the `IOR` and `mdtest` flags that defeat client page caching. Cover `-C` for rank reordering, a file size over twice the aggregate client RAM, and separate write and read phases. Chapter 5 of *AI Systems Performance Engineering* is the guide.
+13. Compare two `gdsio` runs. With `-x 2`, the CPU-staged path reaches 8.0 GB/s at 1.25 ms and 85 percent CPU. With `-x 0`, GPUDirect Storage reaches 9.6 GB/s at 1.00 ms and 25 percent CPU. What does the difference tell you?
+14. A multi-node DDP run reaches 60 GB/s during the gradient AllReduce over 100 GB/s NICs. You halve and double the micro-batch size. A network-bound job stays at 60 GB/s, and a compute-bound job drops to 40 GB/s. How do `nsys` timeline gaps and `ncu` SM occupancy support the diagnosis?
+
+---
 
 ## Checkpoint
 
@@ -488,9 +498,10 @@ In DDP, the gradient `all_reduce` volume depends only on the parameter count, wh
 ## Sources and review notes
 
 - Methodology, reasons to benchmark, `[Traeger 08]` (415 benchmarks in 106 papers), `[Smaalders 06]`, Bill Joy's 1981 VAX-11/750 to 11/780 4 MB TCP/IP analysis `[Joy 81]`, the 16 benchmarking failures (including the Benchmark Paradox `0.5^3 = 12.5%` `[Gregg 14c]` and 1993 TPC-A Standish Group vs Oracle `discrete transactions` Benchmark Specials `[Shanley 98]` / TPC `2%` pricing rule `[TPC 19a]`), micro-benchmarking (`Table 12.1` 5 file system tests, Solaris `128 Kbyte` slab cache, sunny/cloudy/rainy day testing), simulation (`Whetstone` 1972, `Dhrystone` 1984, `wrk`, `siege`, `hey`, Markov models), trace replay (`10 K rpm` vs `7,200 rpm` + `16x` cache), industry standards (Jim Gray 1985 `Sort, Scan, DebitCredit` / `TPS` `[Anon 85]`, `TPC-C..TPCx-V`, `SPEC`), active benchmarking (`bonnie++` 739 KB/s `Per Chr` analyzed with `iostat`, `bpftrace`, `cachestat`, `strace`, and `putc(3)`/`setbuffer(3)` `[Bourbonnais 08]`), CPU profiling (`zfs_zone_io_throttle()` `62.17%`), ramping load (`randread.pl` `$IOSIZE = 8192` `sysread()` on Sun ZFS Storage Appliance `[Gregg 09b]` and `990,000 IOPS` at `5 ms` vs `1,000,000 IOPS` at `50 ms`), sanity checks (`50,000 IOPS * 8 KB = 400,000 KB/s = 3.2 Gbps` over `1 Gbps` Ethernet `[Gregg 09c]`), statistical analysis, the 6-question Benchmarking Checklist `[Gregg 18d]`, and Section 12.4 Benchmark Questions: read in full from Brendan Gregg, *Systems Performance*, 2nd ed. (`systems-performance-2nd-edition`, `SP`), Chapter 12 ("Chapter 12. Benchmarking").
-- MPI/HPC performance context: *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`, `PHPC`).
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering* (`ASP`), "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): benchmarking GPUDirect Storage with `gdsio` (`-I 0 -w 4 -s 10G -i 1M -x 0` for GDS vs `-x 2` for CPU-staged; Table 5-1 example: `8.0 GB/s` at `1.25 ms` average latency and `85%` CPU util vs `9.6 GB/s` at `1.00 ms` average latency and `25%` CPU util, a `+20%` throughput gain; VAST Data GDS showing `+20%` on A100 and `+30%+` on H100), Nsight Systems GDS tracing (`nsys profile --trace=cuda,gds,nvtx,osrt` and `/etc/cufile.json`), and the batch-size halving/doubling test to distinguish communication-bound (`60 GB/s` on a `100 GB/s` NIC stays at `60 GB/s` when batch size is halved) from compute-bound (`60 GB/s` drops to `40 GB/s`).
+- MPI/HPC performance context: *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`).
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): benchmarking GPUDirect Storage with `gdsio` (`-I 0 -w 4 -s 10G -i 1M -x 0` for GDS vs `-x 2` for CPU-staged; Table 5-1 example: `8.0 GB/s` at `1.25 ms` average latency and `85%` CPU util vs `9.6 GB/s` at `1.00 ms` average latency and `25%` CPU util, a `+20%` throughput gain; VAST Data GDS showing `+20%` on A100 and `+30%+` on H100), Nsight Systems GDS tracing (`nsys profile --trace=cuda,gds,nvtx,osrt` and `/etc/cufile.json`), and the batch-size halving/doubling test to distinguish communication-bound (`60 GB/s` on a `100 GB/s` NIC stays at `60 GB/s` when batch size is halved) from compute-bound (`60 GB/s` drops to `40 GB/s`).
 - `nccl-tests` usage and bus-bandwidth formulas: `NVIDIA/nccl-tests` `README.md` and `doc/PERFORMANCE.md` (commit `afd59ab`). `IOR`/`mdtest`: `hpc/ior` README (commit `e4e4578`). `HPCG`: `hpcg-benchmark/hpcg` README (commit `114602d`).
 - Run here: `code/part06/bench_stats.py` and `python3 code/part06/bench_stats_lab.py` (3 passed, 0 failed).
 - Explicitly labelled inferences: The Send/Recv `busbw` factor of `1.0` in `nccl_busbw()` is a direct point-to-point identity; the `8 GiB`, `64`-rank, `0.60 s` calculation (`algbw = 14.3 GB/s`, `busbw = 28.2 GB/s`) is a worked application of `doc/PERFORMANCE.md`.
-- Not verified on live hardware: multi-node HPL, HPCG, OSU, `nccl-tests`, `IOR`/`mdtest`, and `gdsio` runs on a live GPU cluster (`untested here`).
+- Not verified on live hardware: multi-node HPL, HPCG, OSU, `nccl-tests`, `IOR`/`mdtest`, and `gdsio` runs on a live GPU cluster (not run).
+- References listed in section 12.6 of the book and cited in this chapter: `[Joy 81]`, `[Anon 85]`, `[Jain 91]`, `[Gunther 97]`, `[Shanley 98]`, `[Coker 01]`, `[Smaalders 06]`, `[Gunther 07]`, `[Bourbonnais 08]`, `[DeWitt 08]`, `[Traeger 08]`, `[Gregg 09b]`, `[Gregg 09c]`, `[Gregg 14c]`, `[Gregg 14d]`, and `[Gregg 18d]`.

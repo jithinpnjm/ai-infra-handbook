@@ -22,11 +22,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Across Chapters 6.1 through 6.30, you have studied each part of an AI supercomputer on its own. You learned MPI collectives and NUMA topology. You learned `slurmctld` and `slurmdbd` scheduling policy, and `gres.conf` and `cgroup.conf` v2 device isolation. You also covered Pyxis and Enroot rootless containers, NHC prolog/epilog gates, Lustre and WekaFS parallel storage, and PXE/iPXE and Warewulf/BCM provisioning. Then came LDAP/SSSD identity with `sacctmgr` TRES quotas, Prometheus exporters with Restic backup pipelines, HPL/IOR/NCCL acceptance benchmarks, and 130 kW liquid-cooled racks.
+Across Chapters 6.1 through 6.30, you studied each part of an AI supercomputer on its own. You met MPI and NUMA, the Slurm scheduler and its GPU isolation, rootless containers, node health checks, parallel storage, and network provisioning. You also met identity and accounting, monitoring and backup, acceptance benchmarks, and the power and cooling of a 130 kW liquid-cooled rack.
 
-In production, and in a senior infrastructure architect interview, none of those layers live in separate chapters. Suppose a new pallet of GPU servers arrives on the loading dock. Or an interviewer hands you a marker and asks you to design a 128-node training factory, from bare metal to a running `torchrun` job. The skill that matters is **dependency order and single-source-of-truth automation**. Install the scheduler before identity or shared storage is ready, and jobs launch only to crash immediately with UID mismatches or missing checkpoints. Hand-edit `slurm.conf`, `dnsmasq.conf` and `/etc/passwd` independently on each node, and configuration drift quietly strands GPUs within weeks.
+In production, and in a senior infrastructure architect interview, none of those layers live in separate chapters. Suppose a new pallet of GPU servers arrives on the loading dock. Or an interviewer hands you a marker and asks you to design a 128-node training factory, from bare metal to a running `torchrun` job. The skill that matters is **dependency order and single-source-of-truth automation**. Suppose you start the scheduler before identity and shared storage are ready. Jobs launch and then crash at once, with user ID mismatches or missing checkpoints. Suppose instead that people edit `slurm.conf`, `dnsmasq.conf`, and `/etc/passwd` by hand on each node. Within weeks, the configurations drift apart and GPUs sit stranded.
 
-This capstone joins every tool built in Part 6 into one deterministic pipeline. The pipeline runs from four CSV and batch files in `code/part06/capstone_inputs/`. You will verify the generated artifacts with `code/part06/capstone_demo_lab.py`. Then you will work through the ten-gate acceptance and burn-in protocol that every cluster must pass before it goes to researchers. The chapter ends with three realistic senior whiteboard scenarios, which it walks through line by line.
+This capstone joins the tools from Part 6 into one deterministic pipeline. It starts from four CSV and batch files in `code/part06/capstone_inputs/`. You check the generated files with `code/part06/capstone_demo_lab.py`. You then work through the ten-gate acceptance and burn-in protocol that every cluster must pass before researchers use it. The chapter ends with three senior whiteboard scenarios, worked step by step.
 
 ## Prerequisites and outcomes
 
@@ -37,16 +37,16 @@ You need Chapters 6.1 through 6.30 before you start. Some of them matter more th
 - Produce `slurm.conf`, `gres.conf` and `cgroup.conf` from that same inventory. The pipeline also yields Prometheus metrics and rack thermal and electrical budgets.
 - Execute a ten-layer cluster acceptance and burn-in test suite. It sets quantitative Day-1 baselines before you onboard users.
 - Lead operations drills for dropped GPUs, silent collective hangs, controller failovers, storage exhaustion, corrupt checkpoints and bare-metal node rebuilds.
-- Give evidence-backed whiteboard answers on DGX SuperPOD H100 architecture. Cover the `32`-node SUs, the `127`- vs `128`-node UFM detail, the four fabrics and the `10.2 kW` power envelopes.
+- Answer whiteboard questions on the DGX SuperPOD H100 architecture, with evidence. The details include the 32-node Scalable Units, the 127-versus-128-node question, the four fabrics, and the 10.2 kW power envelope.
 - Triage a 64-node hang with `ncclras`, and explain how BCM Auto Scaler (`cm-scale`) lets Slurm and Kubernetes coexist.
 
-Keep the ten-stage pipeline in mind as you read the rest of the chapter. Section 3 walks through each of its stages.
+Section 3 walks through the ten pipeline stages one by one.
 
 ---
 
 ## 1. The whole cluster from bare metal to job
 
-Whether you are building a six-node lab rack or a 2,048-GPU DGX SuperPOD, the cluster is made of the same pieces. It has six stacked technical planes and a four-phase operational lifecycle: Plan, Build, Prove and Run. Figure 1 shows the lifecycle loop that turns a hardware spreadsheet into a self-monitoring cluster.
+A six-node lab rack and a 2,048-GPU DGX SuperPOD are built from the same pieces. Both have six stacked technical planes and a four-phase lifecycle of plan, build, prove, and run. The figure shows the loop that turns a hardware spreadsheet into a cluster that monitors itself.
 
 ```mermaid
 flowchart TB
@@ -418,12 +418,19 @@ Use the senior column as a model for the shape of your answer. Lead with the che
 
 ## Exercises
 
-1. **Watch the hostlist fold back together when `gpu004` returns from RMA.** You will work on a copy, so the real inventory stays untouched. Copy `code/part06/capstone_inputs/hardware.csv` and `nodes.csv` into a temporary directory. Add `gpu004` with `2` sockets, `56` cores per socket, `2` threads per core, `2063000 MB` of RAM, `8x h100`, and the partition `gpu`. Then run `gen_slurm_conf.py`. You should see `NodeName=gpu[001-003,005]` fold into `NodeName=gpu[001-005]` with `RealMemory=2001110`, which matches the third self-check in `code/part06/capstone_demo_lab.py`.
-2. **Catch a `RealMemory` over-declaration.** Edit `slurm/slurm.conf` so that `RealMemory=2100000` on `gpu[001-003,005]`. That is higher than the `2063000 MB` of physical RAM. Run `slurmconf_lint.py` and explain why it still passes with `no findings`. The command that reports the memory the OS can actually use on a live compute node is `slurmd -C`. Then work out what `slurmctld` does to the node when `RealMemory` is larger than what `slurmd -C` reports. Its state becomes `DRAIN` or `INVAL`.
-3. **Onboard a new research group from start to finish.** Add a fourth user to `capstone_inputs/users.csv`: `dave`, with `uid=2004`, group `ml-rl`, account `ml-rl`, QOS `normal`, and `max_gpus=24`. Re-run `identity_gen.py`. Then inspect `users.ldif`, `sacctmgr.sh` and `mkhomes.sh`, and work through them in that order as you go. Trace the exact order in which those three scripts must be applied across the LDAP server, the parallel filesystem and `slurmdbd`.
-4. **Automate Gate 7, the parallel storage baseline.** Write a bash wrapper around `code/part06/iomix_lab.py`, or around `ior`. It should record sequential write bandwidth (`MB/s`), sequential read bandwidth (`MB/s`), and small-file metadata ops per second (`IOPS`) into a timestamped JSON file. If any metric drops more than `15%` below a saved Day-1 baseline JSON file, the wrapper should exit non-zero.
-5. **Work the rack power arithmetic under facility limits.** A customer wants `32` DGX H100 nodes, which is one full SU at `10.2 kW` maximum per node. The SU also needs `2` `MQM9700` compute switches, `1` `MQM9700` storage switch, `1` `SN4600C` in-band switch and `1` `SN2201` OOB switch. Those switches add about `2.5 kW` in total. The racks are capped at `25 kW` each. Calculate the maximum number of DGX H100 nodes per rack and the minimum number of racks for the `32`-node SU. Then run `code/part06/facility_calc.py` to find the chilled-water flow rate in `L/min`, at `80%` liquid heat capture and a `10 °C` $\Delta T$.
-6. **Turn Redfish SEL paging and the 64-node hang into one runbook.** Write a snippet of about 15 lines, in shell or Python. It queries `https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries` and follows `Members@odata.nextLink` across the `75`-entry pages. It filters for critical thermal or power events. Then combine that output with `ncclras` and `dmesg | grep Xid` into a one-page incident runbook for Drill 2.
+1. Copy `code/part06/capstone_inputs/hardware.csv` and `nodes.csv` into a temporary directory, so the real inventory stays untouched. Add a node `gpu004` with 2 sockets, 56 cores per socket, 2 threads per core, 2063000 MB of RAM, 8 `h100` GPUs, and the partition `gpu`. Run `gen_slurm_conf.py`.
+2. In the output of exercise 1, `NodeName=gpu[001-003,005]` should fold into `NodeName=gpu[001-005]` with `RealMemory=2001110`. Which self-check in `code/part06/capstone_demo_lab.py` tests this?
+3. Edit `slurm/slurm.conf` so that `RealMemory=2100000` on `gpu[001-003,005]`. That is more than the 2063000 MB of physical RAM. Run `slurmconf_lint.py`. Why does it still report no findings?
+4. On a live node, which command reports the memory that the OS can really use? What does `slurmctld` do to a node whose `RealMemory` is larger than that figure?
+5. Add a fourth user to `capstone_inputs/users.csv`: `dave`, uid 2004, group `ml-rl`, account `ml-rl`, QOS `normal`, and `max_gpus=24`. Re-run `identity_gen.py`. Which files does it produce?
+6. In what order must `users.ldif`, `sacctmgr.sh`, and `mkhomes.sh` be applied? Name the system each one touches: the LDAP server, `slurmdbd`, or the parallel file system.
+7. Write a bash wrapper around `code/part06/iomix_lab.py`, or around `ior`, for Gate 7. It records sequential write bandwidth, sequential read bandwidth, and small-file metadata operations per second in a timestamped JSON file.
+8. Make the wrapper in exercise 7 exit non-zero when any metric falls more than 15 percent below a saved Day-1 baseline.
+9. A customer wants 32 DGX H100 nodes, one full Scalable Unit, at 10.2 kW maximum per node. The racks are capped at 25 kW each. How many DGX nodes fit in one rack, and how many racks does the unit need?
+10. The same unit needs 2 `MQM9700` compute switches, 1 `MQM9700` storage switch, 1 `SN4600C` switch, and 1 `SN2201` switch. They add about 2.5 kW in total. Does that change your answer to exercise 9?
+11. Run `code/part06/facility_calc.py` for the 32-node unit. What chilled-water flow in litres per minute does it give at 80 percent liquid heat capture and a 10 degree temperature rise?
+12. Write about 15 lines of shell or Python that query `https://<bmc-ip>/redfish/v1/Managers/BMC/LogServices/SEL/Entries`. Follow `Members@odata.nextLink` across the 75-entry pages, and keep only critical thermal or power events.
+13. Combine the output of exercise 12 with `ncclras` and `dmesg | grep Xid` into a one-page incident runbook for Drill 2, the 64-node hang.
 
 ---
 
@@ -557,8 +564,16 @@ BCM 11 Administrator Manual §8.1.1–8.1.2 describes how `cm-scale` polls pendi
 ## Sources and review notes
 
 1. **Senior SA Interview Lab (`volume-10/00c-slurm-bcm-interview-lab.md`):** Primary source for the six-plane AI factory stack, the three whiteboard scenarios (128-node AI factory design, 64-node hang triage with `ncclras`, and Slurm vs Kubernetes coexistence), and the vendor-verified correction tables.
-2. **NVIDIA DGX SuperPOD with DGX H100 Reference Architecture:** [docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-h100](https://docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-h100/latest/index.html) — specifies the four fabrics (`MQM9700-NS2F` storage IB at `> 40 GB/s`/node with `1:1` storage and `4:3` compute oversubscription, `SN4600C` in-band Ethernet, `SN2201` OOB Ethernet), `32`-node Scalable Units (`4` SUs = `128` nominal nodes / `1,024` GPUs; `127` nodes / `1,016` GPUs and `31` nodes / `1` SU when `1` DGX node is removed for UFM connectivity), rail alignment, and `> 40 kW` reference rack density.
-3. **NVIDIA DGX H100/H200 User Guide and Firmware Update Guide:** [docs.nvidia.com/dgx/dgxh100-user-guide](https://docs.nvidia.com/dgx/dgxh100-user-guide/redfish-api-supp.html) and [docs.nvidia.com/dgx/dgxh100-fw-update-guide](https://docs.nvidia.com/dgx/dgxh100-fw-update-guide/index.html) — specifies `10.2 kW` max system power, `6 x 3.3 kW` PSUs, Redfish URIs (`/redfish/v1/Systems/DGX/Actions/ComputerSystem.Reset`, `/Chassis/DGX/Sensors`, `/UpdateService/FirmwareInventory`, `/Managers/BMC/LogServices/SEL/Entries` with `75` members/page and `Members@odata.nextLink`), `13–20` character BMC password rules, `nvfwupd` firmware management, and `ipmitool mc reset cold`.
+2. **NVIDIA DGX SuperPOD with DGX H100 Reference Architecture:** [docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-h100](https://docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-h100/latest/index.html). It describes four fabrics, the 32-node Scalable Units, rail alignment, and a reference rack density above 40 kW. The next table lists the figures this chapter uses.
+
+   | Item | Figure from the reference architecture |
+   |---|---|
+   | Storage InfiniBand fabric | `MQM9700-NS2F` switches, more than 40 GB/s per node, 1:1 storage oversubscription and 4:3 compute oversubscription |
+   | In-band Ethernet | `SN4600C` |
+   | Out-of-band Ethernet | `SN2201` |
+   | Full SuperPOD | 4 Scalable Units, 128 nominal nodes, 1,024 GPUs |
+   | With one node given up for UFM connectivity | 127 nodes and 1,016 GPUs, or 31 nodes in one Scalable Unit |
+3. **NVIDIA DGX H100/H200 User Guide and Firmware Update Guide:** [docs.nvidia.com/dgx/dgxh100-user-guide](https://docs.nvidia.com/dgx/dgxh100-user-guide/redfish-api-supp.html) and [docs.nvidia.com/dgx/dgxh100-fw-update-guide](https://docs.nvidia.com/dgx/dgxh100-fw-update-guide/index.html). They give the 10.2 kW maximum system power, six 3.3 kW power supplies, the 13 to 20 character BMC password rule, `nvfwupd` firmware management, and `ipmitool mc reset cold`. They also list the Redfish paths used in exercise 12: `/redfish/v1/Systems/DGX/Actions/ComputerSystem.Reset`, `/Chassis/DGX/Sensors`, `/UpdateService/FirmwareInventory`, and `/Managers/BMC/LogServices/SEL/Entries`, which returns 75 members per page with `Members@odata.nextLink`.
 4. **NVIDIA Base Command Manager 11 Administrator Manual:** [docs.nvidia.com/base-command-manager/manuals/11/admin-manual.pdf](https://docs.nvidia.com/base-command-manager/manuals/11/admin-manual.pdf) — §5.1.7 and §5.2 (boot role vs provisioning role), §5.6 (`imageupdate` in-place updates on running nodes), §8.1.1–8.1.2 (BCM Auto Scaler `cm-scale` dynamic node repurposing between Slurm and Kubernetes configuration overlays), and §15 (`cmha-setup` HA head nodes with BMC fencing, quorum, and shared NAS).
 5. **NVIDIA NCCL User Guide & Kubernetes Gang Scheduling Documentation:** [docs.nvidia.com/deeplearning/nccl/user-guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/index.html) (`ncclras` RAS client `MISMATCH` and `INCOMPLETE` diagnostics, automatic RoCE GID selection) and [kubernetes.io/docs/concepts/scheduling-eviction/gang-scheduling](https://kubernetes.io/docs/concepts/scheduling-eviction/gang-scheduling/) (`PodGroup` API feature-gate and alpha hierarchical group status).
 6. **Part 6 Toolchain Verification (`code/part06/capstone_demo.sh` & `code/part06/capstone_demo_lab.py`):** Executed locally (`3/3` checks passed), exercising `gen_provision.py` (6.22), `identity_gen.py` (6.24), `gen_slurm_conf.py` and `slurmconf_lint.py` (6.8, 6.10), `sbatch_lint.py` (6.11), `slurm_exporter.py` and `check_alert_rules.py` (6.26), `node_health_lab.py` (6.14), `ckpt_atomic.py` (6.21), and `facility_calc.py` (6.30).

@@ -105,7 +105,7 @@ Table 9-1 in the book lists the main `/etc/exports` options.
 
 The `sync` row is the one to read twice. It confirms a write when the `write` system call completes, and that does not guarantee the data has reached the physical disk.
 
-After you edit `/etc/exports`, apply the change with `exportfs -r` or `exportfs -ra` (`(untested here)`). To inspect active client mounts, use `showmount -d` for directories in use, `showmount -a` for `host:directory` pairs, or `showmount -e` for the exported list (`(untested here)`). On the client, the book's `/etc/fstab` recipe mounts `/home` like this:
+After you edit `/etc/exports`, apply the change with `exportfs -r` or `exportfs -ra`. To inspect active client mounts, use `showmount -d` for directories in use, `showmount -a` for `host:directory` pairs, or `showmount -e` for the exported list. On the client, the book's `/etc/fstab` recipe mounts `/home` like this:
 
 ```text
 # (untested here)
@@ -165,7 +165,7 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
 1. `ntpd` or `openntpd`, configured in `/etc/ntpd.conf`. On the service node that acts as the cluster NTP server, you set four things. You set the upstream servers. You set the internal interface to listen on, which is `listen on` in `openntpd`, or `interface listen eth0` in chapter 28's `ntpd.conf`. You set a `driftfile` if you use standard `ntpd`. And you set the client restriction flags. The book's example in chapter 9 looks like this:
 
    ```text
-   # (untested here) — Chapter 9 /etc/ntpd.conf example
+   # — Chapter 9 /etc/ntpd.conf example
    server 1.ru.pool.ntp.org
    server 2.centos.pool.ntp.org
    listen on 10.1.2.251
@@ -177,7 +177,7 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
    NTP daemons adjust large clock offsets gradually by default. A 1-hour offset at boot can take many minutes to converge, and during that time parallel file systems may refuse to mount. So run a forced step synchronisation before you start the daemon on a client node. The `ntpdate` tool cannot run while `ntpd` is already running.
 
    ```bash
-   # (untested here)
+   #
    ntpdate server_ntp_server_address
    ```
 
@@ -186,7 +186,7 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
 3. `systemd-timesyncd`, a lightweight client-only daemon that cannot act as an NTP server. You configure it in `/etc/systemd/timesyncd.conf`. It also reads drop-in directories: `/etc/systemd/timesyncd.conf.d/*.conf`, `/run/systemd/timesyncd.conf.d/*.conf` and `/usr/lib/systemd/timesyncd.conf.d/*.conf`.
 
    ```ini
-   # (untested here) — /etc/systemd/timesyncd.conf
+   # — /etc/systemd/timesyncd.conf
    [Time]
    NTP=0.ubuntu.pool.ntp.org 2.ubuntu.pool.ntp.org
    FallbackNTP=0.pool.ntp.org 1.pool.ntp.org
@@ -195,7 +195,7 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
    To turn the service on and check its state, use `timedatectl`:
 
    ```bash
-   # (untested here)
+   #
    systemctl enable --now systemd-timesyncd
    timedatectl show-timesync --all
    ```
@@ -306,7 +306,9 @@ Before you choose, gather the inputs that decide the answer. They are peak aggre
 
 ## 9. Lab
 
-The self-checking lab runs on your own machine first. It is `code/part06/iomix_lab.py`. It verifies `ckpt_math.py` for two models. The `70B` model gives `0.98 TB`, `16 GB/s`, and `98 s`, which is `2.7%` hourly loss at `10 GB/s`. The `405B` model gives `5.67 TB`, `94 GB/s`, and `567 s`, which is `15.8%` hourly loss. The lab also checks the dataset read bandwidth equations, `49 MB/s` for pre-tokenized text against `150 GB/s` for raw image streaming. Finally, it runs `code/part06/iomix.py --mb 4 --files 100`, which measures sequential write and read, random 4 KiB IOPS, and small-file `create`, `stat` and `unlink` rates. Start it with this command:
+The self-checking lab runs on your own machine first. It is `code/part06/iomix_lab.py`, and it checks `ckpt_math.py` for two models. A 70B model writes a checkpoint of 0.98 TB. A 60-second write needs 16 GB/s, and on a 10 GB/s server the job loses 98 seconds, or 2.7 percent of every hour. A 405B model writes 5.67 TB. It needs 94 GB/s, and on the same server it loses 567 seconds, or 15.8 percent of every hour.
+
+The lab also checks the dataset read arithmetic. Pre-tokenized text needs about 49 MB/s for the whole cluster, while raw image streaming needs about 150 GB/s. Finally, it runs `code/part06/iomix.py --mb 4 --files 100`. That script measures sequential write and read, random 4 KiB IOPS, and the rates for creating, reading metadata of, and deleting small files. Start it with this command:
 
 ```bash
 python3 code/part06/iomix_lab.py
@@ -336,12 +338,23 @@ The first two tasks run on one machine. The last five need two or three VMs, and
 
 ## Exercises
 
-1. Run `python3 code/part06/iomix_lab.py`. Then use `ckpt_bytes(params, 14)`, `need_gbs(size, 60)` and `overhead(size, 10, 3600)`, which come from `code/part06/ckpt_math.py`, to check two results that you can verify yourself. First, a `70B` mixed-precision Adam checkpoint of `0.98 TB` needs `16 GB/s` to write in 60 seconds. On a `10 GB/s` NFS server it wastes `98 s`, which is `2.7%` of an hour. Second, a `405B` checkpoint of `5.67 TB` needs `94 GB/s`. At `10 GB/s` it wastes `567 s`, or `15.8%` of every hour.
-2. Run `python3 code/part06/iomix.py --mb 64 --files 2000`. Explain why sequential read bandwidth (`11,562 MB/s` in the laptop run) exceeds physical SSD write bandwidth (`633 MB/s` `fsync`'d). Explain why `create` (`4,585 files/s`) is roughly $80\times$ slower than cached `stat` (`378,127/s`). Then describe how you would defeat OS page-cache inflation during storage benchmarks.
-3. Using chapters 9 and 28 of *Supercomputers for Linux SysAdmins* as your guide, configure an NFS server and its client mounts. Write the `/etc/exports` entries `/export/dir host1,host2,host3(rw,root_squash)` and `/home 10.0.0.0/8(rw,no_subtree_check)`. Write the `exportfs -ra` command and the `showmount -e/-d/-a` commands. Write the client `/etc/fstab` mount line with `rw,noatime,nodiratime,vers=4.2,rsize=1048576,wsize=1048576,nconnect=8,hard`. Then explain the trade-offs of `root_squash` against `no_root_squash`, `sync` against `async`, and `hard` against `soft`.
-4. Harden cluster time synchronisation with `ntpd`, `chrony` and `systemd-timesyncd`, following chapter 9 of *Supercomputers for Linux SysAdmins*. Write `/etc/ntpd.conf` for a cluster service node, with `listen on 10.1.2.251` and `restrict default kod nomodify notrap nopeer noquery`. Explain each of the five `restrict` flags. State why `ntpdate` (or `chronyd` with `iburst`) is needed before mounting parallel filesystems after a cold boot with a large clock offset. Finally, write the `timedatectl show-timesync --all` verification command.
-5. Compare dataset streaming bandwidth for pre-tokenized LLM text and for raw computer vision data. Using `iomix_lab.py`, calculate the aggregate cluster read bandwidth for two cases. In case (a), 4,096 GPUs train on pre-tokenized text at `3,000 tokens/s/GPU` and `4 bytes/token`, which is `49 MB/s`. In case (b), 500 nodes train a vision model at `2,000 images/s/node` and `150 KB/image`, which is `150 GB/s`. Explain why converting millions of small JPEG files into WebDataset `.tar` shards solves both the metadata and the bandwidth bottlenecks.
-6. Design a four-tier storage architecture for a 2,048-GPU AI cluster. Specify the storage technology, the capacity and bandwidth targets, and the data lifecycle policies that you would use for four tiers: (a) `/home` and `/opt` software trees, (b) `/scratch` and active training datasets, (c) a node-local NVMe burst tier for asynchronous checkpointing and Enroot `ENROOT_DATA_PATH`, and (d) a cold S3 object archive.
+1. A 70B-parameter mixed-precision Adam checkpoint is 0.98 TB. Use `ckpt_bytes(params, 14)` and `need_gbs(size, 60)` from `code/part06/ckpt_math.py`. What write speed does a 60-second checkpoint need?
+2. The same checkpoint goes to a 10 GB/s NFS server. Use `overhead(size, 10, 3600)` to find the time wasted per hour, as seconds and as a percentage.
+3. Repeat exercises 1 and 2 for a 405B-parameter checkpoint of 5.67 TB. The answers you should reach are 94 GB/s, 567 seconds, and 15.8 percent.
+4. Run `python3 code/part06/iomix.py --mb 64 --files 2000`. In the laptop run, sequential reads reach 11,562 MB/s but `fsync`'d writes reach only 633 MB/s. Why is the read so much faster?
+5. In the same run, creating a file runs at 4,585 files per second and a cached `stat` at 378,127 per second. How many times slower is the create? Why?
+6. How would you defeat the OS page cache when you benchmark storage?
+7. Write the `/etc/exports` lines for `/export/dir` to host1, host2, and host3 with `rw,root_squash`, and for `/home` to `10.0.0.0/8` with `rw,no_subtree_check`. Then write the command that applies them and the `showmount` commands that inspect them. Chapters 9 and 28 of *Supercomputers for Linux SysAdmins* show the pattern.
+8. Write the client `/etc/fstab` line for NFS version 4.2 with 1 MiB read and write sizes, `nconnect=8`, `noatime`, `nodiratime`, and a `hard` mount.
+9. Compare `root_squash` with `no_root_squash`, `sync` with `async`, and `hard` with `soft`. When is each choice right?
+10. Write `/etc/ntpd.conf` for a cluster service node. It should listen on 10.1.2.251 and use `restrict default kod nomodify notrap nopeer noquery`. What does each of the five restrict flags do?
+11. After a cold boot with a large clock offset, why must `ntpdate`, or `chronyd` with `iburst`, run before you mount a parallel file system? Which command verifies `systemd-timesyncd`?
+12. 4,096 GPUs train on pre-tokenized text at 3,000 tokens per second per GPU and 4 bytes per token. What read bandwidth does the whole cluster need? The answer is about 49 MB/s.
+13. 500 nodes train a vision model at 2,000 images per second per node and 150 KB per image. What read bandwidth does the cluster need? The answer is about 150 GB/s.
+14. Why does converting millions of small JPEG files into WebDataset `.tar` shards fix both the metadata and the bandwidth problem?
+15. A 2,048-GPU cluster needs four storage tiers: `/home` and `/opt`, `/scratch` for active datasets, node-local NVMe for asynchronous checkpoints, and a cold S3 archive. Name a technology, a capacity, a bandwidth target, and a lifecycle policy for each.
+
+---
 
 ## Checkpoint
 

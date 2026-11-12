@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | A cluster or VM stack with Prometheus; GPU node for DCGM |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. **Run**: `code/part06/slurm_exporter.py --selftest` (parser and metric rendering against canned `sinfo`/`squeue` output, `prometheus-client` library; output shown) and `check_alert_rules.py` on `alerts_gpu_cluster.yml` (9 rules, DCGM metric names cross-checked against `etc/default-counters.csv` from NVIDIA/dcgm-exporter commit `fafd151`, 2026-09-18; a deliberately broken copy was caught). **Not run**: Prometheus itself (`promtool` unavailable), Slurm, DCGM, Grafana, any real cluster. The `sinfo -O` fixed-width field format and `squeue -o` specifiers were checked against the Slurm man pages; the real command output was not captured. Labs **untested** |
+| Status | Drafted. **Run**: `code/part06/slurm_exporter.py --selftest` (parser and metric rendering against canned `sinfo`/`squeue` output, `prometheus-client` library; output shown) and `check_alert_rules.py` on `alerts_gpu_cluster.yml` (9 rules, DCGM metric names cross-checked against `etc/default-counters.csv` from NVIDIA/dcgm-exporter commit `fafd151`, 2026-09-18; a deliberately broken copy was caught). **Not run**: Prometheus itself (`promtool` unavailable), Slurm, DCGM, Grafana, any real cluster. The `sinfo -O` fixed-width field format and `squeue -o` specifiers were checked against the Slurm man pages; the real command output was not captured. No lab step was run on a real cluster. |
 
 ## Why this matters for AI infrastructure
 
@@ -60,7 +60,7 @@ flowchart LR
   Prom --> XDMoD
 ```
 
-The book (chapter 19, "Cluster Status Monitoring Systems") surveys the generations of these tools. Read the table from top to bottom. Each row shows what a tool does and whether you still meet it today.
+*Supercomputers for Linux SysAdmins* surveys the generations of these tools in chapter 19, "Cluster Status Monitoring Systems". Read the table from top to bottom. Each row shows what a tool does and whether you still meet it today.
 
 | Tool | Idea | Today |
 |---|---|---|
@@ -73,15 +73,15 @@ The book (chapter 19, "Cluster Status Monitoring Systems") surveys the generatio
 | **DCGM / dcgm-exporter** | NVIDIA's data-centre GPU manager and its Prometheus exporter | GPU-specific telemetry and diagnostics |
 | **Commercial/vendor** | BCM monitoring, Datadog, Splunk, NVIDIA UFM (fabric), Mission Control | Integrated stacks |
 
-The "Healthchecks" and "Security Scans" sections of the book complete the picture below. The sensor and UPS topics, "lm_sensors/hwmon", "IPMI" and "APCUPS/NUT", cover in-band and out-of-band hardware readings and power monitoring.
+The same chapter adds sections on health checks and security scans, which come later in this chapter. Its sensor and UPS sections cover in-band and out-of-band hardware readings and power monitoring.
 
 ### SNMP, `snmpconf`, and `snmptrapd` handlers
 
 SNMP is how you talk to many network and power devices. The monitored device runs an **agent**, which listens on UDP port `161`. For v3 over TLS the port is `10161`, described in RFC `6353`. The monitoring server runs a **manager** that receives asynchronous **Trap** notifications on UDP port `162`. For v3 over TLS that port is `10162`.
 
-The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable in a device's Management Information Base (MIB) has a numeric sequence of numbers called an Object Identifier (OID), such as `1.3.6.1.2.1.1.1.3`. Its human-readable MIB name is `iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`, which is the time the device has been running since it was last powered on. Most OID branches are standardized by IETF, ISO, and IANA. Enterprise sub-branches belong to manufacturers such as Cisco and APC.
+The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable in a device's Management Information Base (MIB) has a numeric address called an Object Identifier (OID). The uptime counter, `sysUpTime`, has the OID `1.3.6.1.2.1.1.3`. Its readable name is `iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`, and it counts the time since the device's management software last restarted. The standards bodies IETF, ISO, and IANA define most OID branches. Manufacturers such as Cisco and APC own the enterprise branches.
 
-From the `net-snmp` (or `snmp`) package, the book highlights these client utilities and their outputs (untested here):
+The `net-snmp` package, also called `snmp`, provides the client utilities that the book highlights. The three commands below show them with the book's sample output. They were not run against a live device for this handbook.
 
 ```bash
 # 1. Read a single OID (omitting default prefix iso.org.dod.internet.mgmt.mib-2.system) (untested here)
@@ -108,13 +108,13 @@ snmpwalk -v 2c -c demopublic test.net-snmp.org system
 
 Two more tools cover other jobs. `snmpbulkget` and `snmpbulkwalk` perform bulk reads, and `snmpset` writes variables.
 
-To configure the local SNMP agent, start by backing up `/etc/snmp/snmpd.conf` with `cp /etc/snmp/snmpd.conf{,.bak}`. Then run the interactive `snmpconf` utility (untested here). Pick `snmpd.conf`, then section `6` (`Access Control Setup`), then option `3` (`a SNMPv1/SNMPv2c read-only access community name`). Enter the community `public` and the network `192.168.0.0`. The utility then writes this directive:
+To configure the local SNMP agent, start by backing up `/etc/snmp/snmpd.conf` with `cp /etc/snmp/snmpd.conf{,.bak}`. Then run the interactive `snmpconf` utility. Pick `snmpd.conf`, then section `6` (`Access Control Setup`), then option `3` (`a SNMPv1/SNMPv2c read-only access community name`). Enter the community `public` and the network `192.168.0.0`. The utility then writes this directive:
 
 ```text
 rocommunity public 192.168.0.0
 ```
 
-Traps from switches, PDUs, cooling units or UPSs need a receiver. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The book's example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives (untested here):
+Traps from switches, PDUs, cooling units or UPSs need a receiver. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The book's example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives:
 
 ```text
 # /etc/snmp/snmptrapd.conf (untested here)
@@ -122,7 +122,7 @@ authCommunity log,execute,net public
 traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification /tmp/demo demo-trap
 ```
 
-The handler script reads its input from standard input. Line 1 is the sender hostname, and line 2 is the sender IP and transport. Every later line is an `oid val` pair (untested here):
+The handler script reads its input from standard input. Line 1 is the sender hostname, and line 2 is the sender IP and transport. Every later line is an `oid val` pair:
 
 ```sh
 #!/bin/sh
@@ -142,7 +142,7 @@ done
 echo -e "trap: $1 $host $ip $vars" > /tmp/demo.log
 ```
 
-To test the whole trap pipeline without a real device, send a trap from the command line with `snmptrap` (untested here):
+To test the whole trap pipeline without a real device, send a trap from the command line with `snmptrap`:
 
 ```bash
 # (untested here)
@@ -153,9 +153,9 @@ snmptrap -v 2c -c public localhost "" \
 
 ### Ganglia multicast routing, Zabbix proxies, VictoriaMetrics, and XDMoD
 
-- **Ganglia**: Ganglia was built for computing clusters by scientists at the University of California, Berkeley (`http://ganglia.sourceforge.net/`). Each machine runs the `gmond` daemon. It collects CPU speed, memory usage and custom C++/Python or XDR metrics, and sends them in either `multicast` mode or `unicast` mode. Multicast is the default, and every subscriber to the multicast stream receives the packet. Unicast sends to one specific server instead. The collector server runs `gmetad`, compiled with `./configure --with-gmetad && make && make install` (untested here). `gmetad` processes and aggregates the metrics, using max or sum. It stores Round-Robin Database (RRD) files in `/var/lib/ganglia/rrds`, owned by `nobody:nobody`. It also serves the web interface, copied to `/var/www/html/ganglia/`. You can generate a default agent config with `gmond -t | tee /etc/ganglia/gmond.conf` (untested here). Because `gmond` sends multicast on `239.2.11.71` by default, you must add a multicast route on the interface that faces the compute nodes. The book uses `eth0`, so packets reach `gmetad` (untested here):
+- **Ganglia**: Ganglia was built for computing clusters by scientists at the University of California, Berkeley (`http://ganglia.sourceforge.net/`). Each machine runs the `gmond` daemon. It collects CPU speed, memory usage and custom C++/Python or XDR metrics, and sends them in either `multicast` mode or `unicast` mode. Multicast is the default, and every subscriber to the multicast stream receives the packet. Unicast sends to one specific server instead. The collector server runs `gmetad`, compiled with `./configure --with-gmetad && make && make install`. `gmetad` processes and aggregates the metrics, using max or sum. It stores Round-Robin Database (RRD) files in `/var/lib/ganglia/rrds`, owned by `nobody:nobody`. It also serves the web interface, copied to `/var/www/html/ganglia/`. You can generate a default agent config with `gmond -t | tee /etc/ganglia/gmond.conf`. Because `gmond` sends multicast on `239.2.11.71` by default, you must add a multicast route on the interface that faces the compute nodes. The book uses `eth0`, so packets reach `gmetad`:
   ```bash
-  # (untested here)
+  #
   ip route add 239.2.11.71/4 dev eth0
   ```
 - **Nagios and Zabbix at cluster scale**: In Nagios (`http://www.nagios.org/`, and its fork Icinga `https://icinga.com/`), each plug-in is a separate program or script. That is both a strength and a weakness. It is very easy to write your own plug-in to monitor SMTP, HTTP, SNMP, Cisco or Brocade gear. But collecting many metrics means running many separate programs, through SSH or a local NRPE. That creates high load on compute nodes and limits polling to every few minutes. Zabbix uses a **Server → Proxy → Agent** hierarchy, backed by MySQL, PostgreSQL, SQLite or Oracle. With proxies aggregating traffic, it scales to roughly `1000` nodes. It also includes automatic SNMP device discovery. Polling hundreds of nodes directly on one flat LAN without proxies can still cause network spikes.
@@ -164,9 +164,9 @@ snmptrap -v 2c -c public localhost "" \
 
 ### In-band hardware sensors: `lm_sensors` and `/etc/sensors3.conf`
 
-The `lm_sensors` package reads hardware sensors in-band, which means from inside the running system. It works with the kernel's `/sys/class/hwmon` interface and `libsensors`. It reads over `150` sensor types across ISA, I2C, SMBus, SPI, Super-I/O, south bridge, CPU die (`coretemp`) and DIMM thermal sensors. Run `sensors-detect` (untested here) to probe the controllers. It writes the required kernel module list to `/etc/sysconfig/lm_sensors`.
+The `lm_sensors` package reads hardware sensors in-band, which means from inside the running system. It works with the kernel's `/sys/class/hwmon` interface and `libsensors`. It reads over `150` sensor types across ISA, I2C, SMBus, SPI, Super-I/O, south bridge, CPU die (`coretemp`) and DIMM thermal sensors. Run `sensors-detect` to probe the controllers. It writes the required kernel module list to `/etc/sysconfig/lm_sensors`.
 
-Sensor formatting, scaling formulas and hardware threshold limits live in `/etc/sensors3.conf`, or in `/etc/sensors.conf` on older releases. Each stanza starts with a `chip` selector in the form `type-bus-hexaddress`. For example, `lm78-i2c-2d` names an LM78 chip at address `0x2d` on the I2C bus, and `lm78-*` uses a wildcard instead. Standard input names are `in0, in1, ...` for voltages, with parameters such as `in0_input`, `in0_min`, `in0_max` and `in0_alarm`. `fan1, fan2, ...` are fans, and `temp1, temp2, ...` are temperatures. Inside a `chip` block, four directives control behaviour (untested here):
+Sensor formatting, scaling formulas and hardware threshold limits live in `/etc/sensors3.conf`, or in `/etc/sensors.conf` on older releases. Each stanza starts with a `chip` selector in the form `type-bus-hexaddress`. For example, `lm78-i2c-2d` names an LM78 chip at address `0x2d` on the I2C bus, and `lm78-*` uses a wildcard instead. Standard input names are `in0, in1, ...` for voltages, with parameters such as `in0_input`, `in0_min`, `in0_max` and `in0_alarm`. `fan1, fan2, ...` are fans, and `temp1, temp2, ...` are temperatures. Inside a `chip` block, four directives control behaviour:
 
 - `label`: sets the human-readable name shown by `sensors`:
   ```text
@@ -187,7 +187,7 @@ Sensor formatting, scaling formulas and hardware threshold limits live in `/etc/
   ```
   Or, as in the book's example, `set in3_max 5 * 1.05`.
 
-After you edit `/etc/sensors3.conf`, write the configured `set` thresholds into the hardware registers. Then read the current values (untested here):
+After you edit `/etc/sensors3.conf`, write the configured `set` thresholds into the hardware registers. Then read the current values:
 
 ```bash
 # Program min/max limits into sensor chips (untested here)
@@ -197,19 +197,19 @@ sensors -s
 sensors
 ```
 
-Chapter 19 of the same book shows a server's `sensors` output. The chip `fschds-i2c-5-73` appears on `Adapter: SMBus I801 adapter at 1c20`, and `coretemp-isa-0000` appears on `Adapter: ISA adapter`. The output includes `+12V: +12.00 V`, `+5V: +5.15 V`, `Vbat: +3.14 V`, `PSU Fan: 1440 RPM (div = 4)`, `CPU Fan: 720 RPM (div = 4)`, `System FAN3: 720 RPM`, `System FAN4: 720 RPM`, `CPU Temp: +36.0°C (high = +69.0°C)`, `Super I/O Temp: +38.0°C (high = +52.0°C)`, `System Temp: +41.0°C (high = +56.0°C)`, and `Core 0..3: +51.0°C / +49.0°C (high = +82.0°C, crit = +100.0°C)`. One line stands out: **`System FAN2: FAULT (div = 4)`**. It flags a failed chassis fan immediately.
+Chapter 19 of *Supercomputers for Linux SysAdmins* shows a server's `sensors` output. The chip `fschds-i2c-5-73` appears on `Adapter: SMBus I801 adapter at 1c20`, and `coretemp-isa-0000` appears on `Adapter: ISA adapter`. The output includes `+12V: +12.00 V`, `+5V: +5.15 V`, `Vbat: +3.14 V`, `PSU Fan: 1440 RPM (div = 4)`, `CPU Fan: 720 RPM (div = 4)`, `System FAN3: 720 RPM`, `System FAN4: 720 RPM`, `CPU Temp: +36.0°C (high = +69.0°C)`, `Super I/O Temp: +38.0°C (high = +52.0°C)`, `System Temp: +41.0°C (high = +56.0°C)`, and `Core 0..3: +51.0°C / +49.0°C (high = +82.0°C, crit = +100.0°C)`. One line stands out: **`System FAN2: FAULT (div = 4)`**. It flags a failed chassis fan immediately.
 
 For out-of-band readings through IPMI (`ipmitool`), the book cautions that polling BMCs remotely at high frequency can overload the BMC controllers. Read IPMI sensors locally on each node instead, through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
 
 ### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`
 
-Computing clusters solve large, resource-intensive tasks, so they need reliable, uninterrupted power. That takes an uninterruptible power supply (`UPS`), which means both UPS hardware and the software that manages the link between the UPS and the equipment it protects. Chapter 19 of the same book covers *APCUPS* and *NUT*.
+Computing clusters solve large, resource-intensive tasks, so they need reliable, uninterrupted power. That takes an uninterruptible power supply (`UPS`), which means both UPS hardware and the software that manages the link between the UPS and the equipment it protects. Chapter 19 of *Supercomputers for Linux SysAdmins* covers *APCUPS* and *NUT*.
 
 Cluster UPS systems are typically designed to provide power for at least `10–30 minutes` during a grid outage. If utility power is not restored within `5 minutes`, they must start a controlled cluster shutdown. That shutdown prohibits new jobs and stops the compute nodes first, to relieve the energy load. The network file systems and monitoring servers shut down last.
 
-For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install` (untested here). Then `apcaccess` queries UPS status. In the book's example it reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. The package also runs `/etc/apcupsd/onbattery` and `offbattery`. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
+For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install`. Then `apcaccess` queries UPS status. In the book's example it reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. The package also runs `/etc/apcupsd/onbattery` and `offbattery`. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
 
-For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work across three pieces: hardware drivers, a network server called `upsd`, and a reaction client called `upsmon`. The setup is spread across four files in `/etc/nut` (untested here):
+For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work across three pieces: hardware drivers, a network server called `upsd`, and a reaction client called `upsmon`. The setup is spread across four files in `/etc/nut`:
 
 1. **`/etc/nut/ups.conf`**, for driver settings. It names each UPS section and selects the driver from `/usr/share/nut/driver.list`:
    ```ini
@@ -241,14 +241,14 @@ For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work acros
    MONITOR ups1@localhost 1 monmaster 123qweasd master
    ```
 
-After the `nut` / `upsd` service starts, query the live UPS state with `upsc` (untested here):
+After the `nut` / `upsd` service starts, query the live UPS state with `upsc`:
 
 ```bash
 # (untested here)
 upsc ups1@localhost
 ```
 
-Run `upsc` after any change to these four files, so you can confirm they work together.
+After any change to these four files, run `upsc` to confirm that they work together.
 
 ## 2. What to monitor, by layer
 
@@ -269,7 +269,17 @@ Notice that each row names both what to measure and where the number comes from,
 
 ## 3. GPU metrics with DCGM
 
-Suppose a job runs for two hours, its GPUs look busy, and the results still arrive slower than last week. Before you blame the code, you need the right GPU counters on screen. `dcgm-exporter` exposes DCGM fields on `:9400/metrics`. A CSV of counters decides which fields it publishes. The default CSV, `etc/default-counters.csv` in NVIDIA/dcgm-exporter, includes, as read from the repository: `DCGM_FI_DEV_SM_CLOCK`, `DCGM_FI_DEV_MEM_CLOCK`, `DCGM_FI_DEV_GPU_TEMP`, `DCGM_FI_DEV_MEMORY_TEMP`, `DCGM_FI_DEV_POWER_USAGE`, `DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION` (counter, mJ), `DCGM_FI_DEV_PCIE_REPLAY_COUNTER`, `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_MEM_COPY_UTIL`, `DCGM_FI_DEV_ENC_UTIL`/`DEC_UTIL`, `DCGM_FI_DEV_XID_ERRORS` ("value of the last XID error encountered"), `DCGM_FI_DEV_FB_FREE`/`FB_USED`/`FB_RESERVED` (MiB), `DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL`, `DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS`, `DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS`, `DCGM_FI_DEV_ROW_REMAP_FAILURE`, `DCGM_FI_DRIVER_VERSION` (label), and profiling fields `DCGM_FI_PROF_GR_ENGINE_ACTIVE`, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `DCGM_FI_PROF_DRAM_ACTIVE`, `DCGM_FI_PROF_PCIE_TX_BYTES`/`RX_BYTES`. A larger set is in `dcp-metrics-included.csv`.
+Suppose a job runs for two hours, its GPUs look busy, and the results still arrive slower than last week. Before you blame the code, you need the right GPU counters on screen. `dcgm-exporter` serves the DCGM fields at `:9400/metrics`. A CSV file of counters decides which fields it publishes. The default file is `etc/default-counters.csv` in the NVIDIA/dcgm-exporter repository, and a larger set is in `dcp-metrics-included.csv`.
+
+Four fields explain most slow-job questions. `DCGM_FI_DEV_GPU_UTIL` says whether a kernel was running. `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` says whether the tensor cores were busy. `DCGM_FI_DEV_XID_ERRORS` shows the last GPU error. `DCGM_FI_DEV_POWER_USAGE` and the clock fields show throttling. The table lists the rest of the default fields by what they answer.
+
+| Question | Fields in the default CSV |
+|---|---|
+| Is the GPU throttled or hot? | `DCGM_FI_DEV_SM_CLOCK`, `DCGM_FI_DEV_MEM_CLOCK`, `DCGM_FI_DEV_GPU_TEMP`, `DCGM_FI_DEV_MEMORY_TEMP`, `DCGM_FI_DEV_POWER_USAGE`, `DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION` (counter, mJ) |
+| Is it busy, and doing what? | `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_MEM_COPY_UTIL`, `DCGM_FI_DEV_ENC_UTIL`, `DCGM_FI_DEV_DEC_UTIL`, and the profiling fields `DCGM_FI_PROF_GR_ENGINE_ACTIVE`, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `DCGM_FI_PROF_DRAM_ACTIVE` |
+| Is it failing? | `DCGM_FI_DEV_XID_ERRORS` (value of the last XID error), `DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS`, `DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS`, `DCGM_FI_DEV_ROW_REMAP_FAILURE`, `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` |
+| How much memory and bandwidth? | `DCGM_FI_DEV_FB_FREE`, `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_RESERVED` (MiB), `DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL`, `DCGM_FI_PROF_PCIE_TX_BYTES`, `DCGM_FI_PROF_PCIE_RX_BYTES` |
+| Which driver? | `DCGM_FI_DRIVER_VERSION` (a label) |
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
@@ -279,7 +289,7 @@ Reading these fields takes care. **`GPU_UTIL`** is the fraction of time any kern
 
 Always include the job-to-GPU mapping labels. DCGM can map GPUs to Kubernetes pods. For Slurm, map them via `SLURM_JOB_GPUS`, a cgroup, or a prolog-written file that the textfile collector reads. With those labels in place, you can attribute usage to users and projects.
 
-Metrics are passive. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3` (from knowledge): level 1 is quick, and higher levels stress memory, PCIe and compute. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14).
+Metrics are passive. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3`. Level 1 is quick, and higher levels stress memory, PCIe and compute. The levels are described from general knowledge of DCGM, not from the book. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14).
 
 ## 4. A Slurm exporter (tested)
 
@@ -371,15 +381,15 @@ Exporters need hygiene. Pin versions, run as non-root, bind to the management ne
 
 ## 9. Lab
 
-Start with the self-checking Python lab, `code/part06/slurm_exporter_lab.py`, and run it locally. You get a pass or fail for the parser, the alert linter and the sensor math before you touch a cluster. The script calls `slurm_exporter.selftest()`. That confirms `gpu002`, which appears in two partitions, is deduplicated. It reports `40.0` total GPUs and `11.0` allocated GPUs, along with the `gpu` and `unresponsive` drain reasons and `slurm_exporter_scrape_ok 1.0`. It then runs `check_alert_rules.py` on `code/part06/alerts_gpu_cluster.yml`, which should show `9` rules in `3` groups and `0` problems. It also runs the checker on a mutated copy, catching unbalanced brackets and unknown `DCGM_FI_*` metric names. Last, it verifies the voltage-divider `compute in3` math in `/etc/sensors3.conf` from chapter 19 of the book (`1.68 * 2.9762 V = 5.00 V`):
+Start with the self-checking Python lab, `code/part06/slurm_exporter_lab.py`, and run it locally. You get a pass or fail for the parser, the alert linter and the sensor math before you touch a cluster. The script calls `slurm_exporter.selftest()`. That confirms `gpu002`, which appears in two partitions, is deduplicated. It reports `40.0` total GPUs and `11.0` allocated GPUs, along with the `gpu` and `unresponsive` drain reasons and `slurm_exporter_scrape_ok 1.0`. It then runs `check_alert_rules.py` on `code/part06/alerts_gpu_cluster.yml`, which should show `9` rules in `3` groups and `0` problems. It also runs the checker on a mutated copy, catching unbalanced brackets and unknown `DCGM_FI_*` metric names. Last, it verifies the voltage-divider `compute in3` math in `/etc/sensors3.conf` from *Supercomputers for Linux SysAdmins* chapter 19 (`1.68 * 2.9762 V = 5.00 V`):
 
 ```bash
 python3 code/part06/slurm_exporter_lab.py
 ```
 
-The tested steps come first. Step 1 is to install `prometheus-client` and run `slurm_exporter.py --selftest`. Then add a drain reason class and a test, and extend the parser to a second `sinfo` layout. Step 2 runs `check_alert_rules.py` on the rules file and on copies with deliberate mistakes. Add rules for NVLink bandwidth and PCIe replay counters, and look up the names in `dcp-metrics-included.csv`. Step 3 writes a recording rule for per-partition GPU utilisation efficiency, as a sketch.
+The first three steps run locally. Step 1 is to install `prometheus-client` and run `slurm_exporter.py --selftest`. Then add a drain reason class and a test, and extend the parser to a second `sinfo` layout. Step 2 runs `check_alert_rules.py` on the rules file and on copies with deliberate mistakes. Add rules for NVLink bandwidth and PCIe replay counters, and look up the names in `dcp-metrics-included.csv`. Step 3 writes a recording rule for per-partition GPU utilisation efficiency, as a sketch.
 
-The untested steps need a real cluster. Step 4 deploys `node_exporter` and `dcgm-exporter` on a GPU node, scrapes them with Prometheus, and builds a Grafana dashboard covering utilisation, tensor activity, power, temperature and Xid. Step 5 runs `promtool check rules` and `promtool test rules` on the file. Step 6 configures Alertmanager routes (page, warn, ticket) and an inhibition rule for rack power loss. Step 7 wires a webhook that drains a node on `GpuXidError`, and runs it in dry-run mode first. Step 8 builds an efficiency report from `sacct` and DCGM job stats. Step 9 runs a fabric congestion test and watches the counters.
+The remaining steps need a real cluster, and none of them was run for this handbook. Step 4 deploys `node_exporter` and `dcgm-exporter` on a GPU node, scrapes them with Prometheus, and builds a Grafana dashboard covering utilisation, tensor activity, power, temperature and Xid. Step 5 runs `promtool check rules` and `promtool test rules` on the file. Step 6 configures Alertmanager routes (page, warn, ticket) and an inhibition rule for rack power loss. Step 7 wires a webhook that drains a node on `GpuXidError`, and runs it in dry-run mode first. Step 8 builds an efficiency report from `sacct` and DCGM job stats. Step 9 runs a fabric congestion test and watches the counters.
 
 ## 10. Interview angles
 
@@ -397,14 +407,24 @@ Interviewers use these questions to see whether you can reason about monitoring,
 
 ## Exercises
 
-Each exercise below asks you to run something, explain what you see, or write a config. Work through them in order, since the later ones build on the lab.
+Work through these in order. The later ones build on the lab.
 
-1. Trace how the exporter handles multi-partition Slurm nodes. Work through `code/part06/slurm_exporter.py` and `slurm_exporter_lab.py`, running `python3 code/part06/slurm_exporter_lab.py` first. Follow how `slurm_exporter.parse()` reads fixed-width `sinfo -h -N -O "NodeList:32,StateLong:20,Gres:40,GresUsed:60,Reason:80,Partition:24"` output. Explain why `seen.add(name)` is required, so that `gpu002` (listed in both `gpu` and `debug` partitions) is not double-counted. Then explain why scraping `sinfo`/`squeue` every 1 second is an operational anti-pattern.
-2. Lint the GPU alert rules against `dcgm-exporter`. Run `python3 code/part06/check_alert_rules.py code/part06/alerts_gpu_cluster.yml`. Explain the 9 alert rules across the `gpu-health`, `slurm`, and `node` groups. Explain why `GpuRowRemapFailure` pages immediately without a `for:` delay, while `GpuHot` waits `10m` and `SlurmNodesDrainedHigh` waits `15m`. Then explain how `check_alert_rules.py` validates `DCGM_FI_*` metric names against `default-counters.csv`.
-3. Configure an SNMP agent and a `snmptrapd` handler, using chapter 19 of the book as the source. Write the `snmpget`, `snmptranslate -Td -Ib`, and `snmpwalk` commands that inspect `sysUpTime`. Describe the `/etc/snmp/snmpd.conf` `rocommunity public 192.168.0.0` directive that `snmpconf` generates. Write the `/etc/snmp/snmptrapd.conf` `authCommunity` and `traphandle` configuration. Finally, write the `/bin/sh` trap handler that reads `host`, `ip`, and `oid val` pairs from standard input.
-4. Work through the `lm_sensors` formulas and thresholds. Take a sensor chip `lm78-i2c-2d` where `+5V` is measured through a voltage divider on `in3`, and write the `/etc/sensors3.conf` stanza. Use `label in3 "+5V"`, `ignore fan1`, `compute in3 ((6.8/10)+1)*@, @/((6.8/10)+1)`, `set in3_min 5 * 0.95`, and `set in3_max 5 * 1.05`. Then verify with `sensors_compute_in3(2.9762)` in `code/part06/slurm_exporter_lab.py` that a raw reading of `2.9762 V` displays as `5.00 V` (`sensors -s`).
-5. Set up multi-vendor UPS monitoring with `NUT` and `apcupsd`, using chapter 19 of the book. Write the four `/etc/nut/` files: `ups.conf` with `driver = usbhid-ups`, `upsd.conf`, `upsd.users` with `admin`, `tester` and `monmaster`, and `upsmon.conf` with `MONITOR ups1@localhost 1 monmaster 123qweasd master`. Then run `upsc ups1@localhost`. Explain why `slave` monitors (compute nodes) must shut down before the `master` monitor (storage/management server).
-6. Tell `DCGM_FI_DEV_GPU_UTIL` apart from real tensor efficiency, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`. Suppose a researcher's 64-GPU job shows `DCGM_FI_DEV_GPU_UTIL = 99%`, yet `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE = 4%`, `DCGM_FI_PROF_DRAM_ACTIVE = 82%`, and `DCGM_FI_DEV_POWER_USAGE = 260 W` (on 700 W H100 GPUs). Diagnose what the GPUs are actually doing. Then explain how Open XDMoD and `SUPReMM` surface inefficient jobs across accounts.
+1. A Slurm node, gpu002, is listed in two partitions. Run `python3 code/part06/slurm_exporter_lab.py`, then read `slurm_exporter.parse()`. Why does the code need `seen.add(name)`?
+2. A teammate proposes scraping `sinfo` and `squeue` every second. Why is that a bad idea?
+3. Run `python3 code/part06/check_alert_rules.py code/part06/alerts_gpu_cluster.yml`. The file has nine rules in three groups. Name the groups.
+4. `GpuRowRemapFailure` pages at once. `GpuHot` waits ten minutes and `SlurmNodesDrainedHigh` waits fifteen. Why do they differ?
+5. How does `check_alert_rules.py` catch a misspelled `DCGM_FI_*` name?
+6. Write the `snmpget` and `snmpwalk` commands that read `sysUpTime`. Then write the `snmptranslate -Td -Ib` command that prints its numeric path. What OID does it print?
+7. Write the `rocommunity` line that `snmpconf` generates for the network 192.168.0.0. Then write the `snmptrapd.conf` lines with `authCommunity` and `traphandle`.
+8. Write a `/bin/sh` trap handler. It must read the host, the IP, and the `oid val` pairs from standard input.
+9. Chip `lm78-i2c-2d` measures +5V through a divider on `in3`. Write its `/etc/sensors3.conf` stanza with a label, a `compute` line, and limits at 95 and 105 percent of 5 V.
+10. Check the stanza from exercise 9 with `sensors_compute_in3(2.9762)` in `code/part06/slurm_exporter_lab.py`. What voltage does a raw reading of 2.9762 V display?
+11. Write the four files in `/etc/nut/` for one USB UPS named `ups1`. Then run `upsc ups1@localhost`.
+12. Why must `slave` monitors shut down before the `master` monitor?
+13. A 64-GPU job shows `DCGM_FI_DEV_GPU_UTIL` at 99 percent, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` at 4 percent, and `DCGM_FI_PROF_DRAM_ACTIVE` at 82 percent. Its H100 GPUs draw 260 W of a possible 700 W. What are the GPUs actually doing?
+14. How do Open XDMoD and its SUPReMM module help you find jobs like the one in exercise 13 across many accounts?
+
+---
 
 ## Checkpoint
 
@@ -418,7 +438,7 @@ Each exercise below asks you to run something, explain what you see, or write a 
 </details>
 
 <details>
-<summary>2. Compare **SNMP v1**, **v2c**, and **v3**, and state which UDP ports the SNMP agent and trap receiver use (chapter 19 of the book).</summary>
+<summary>2. Compare **SNMP v1**, **v2c**, and **v3**, and state which UDP ports the SNMP agent and trap receiver use (*Supercomputers for Linux SysAdmins* chapter 19).</summary>
 
 - **SNMP v1 (1988):** It has 32-bit counters, a plaintext community string, and no encryption.
 - **SNMP v2c:** It adds 64-bit counters and `GetBulkRequest`. It still uses plaintext community strings, and it is the most common choice on internal management LANs.
@@ -427,22 +447,22 @@ Each exercise below asks you to run something, explain what you see, or write a 
 </details>
 
 <details>
-<summary>3. What are the six core SNMP protocol operations, and what do `snmpget`, `snmptranslate -Td -Ib`, and `snmpwalk` do (chapter 19 of the book)?</summary>
+<summary>3. What are the six core SNMP protocol operations, and what do `snmpget`, `snmptranslate -Td -Ib`, and `snmpwalk` do (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 - **The six operations:** `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`.
 - **`snmpget`:** It reads a single OID value from a remote agent.
-- **`snmptranslate -Td -Ib 'sysUptime'`:** This is an offline lookup. It prints the MIB object's `SYNTAX`, `MAX-ACCESS`, `DESCRIPTION` and full numeric OID path (`1.3.6.1.2.1.1.1.3`), without contacting a server.
+- **`snmptranslate -Td -Ib 'sysUptime'`:** This is an offline lookup. It prints the MIB object's `SYNTAX`, `MAX-ACCESS`, `DESCRIPTION` and full numeric OID path (`1.3.6.1.2.1.1.3`), without contacting a server.
 - **`snmpwalk`:** It walks an entire OID subtree step by step. It defaults to `iso.org.dod.internet.mgmt.mib-2`.
 </details>
 
 <details>
-<summary>4. How do you configure `snmptrapd` (`/etc/snmp/snmptrapd.conf`) to execute a custom script when a trap arrives, and what does `snmptrapd` pass to the script's `stdin` (chapter 19 of the book)?</summary>
+<summary>4. How do you configure `snmptrapd` (`/etc/snmp/snmptrapd.conf`) to execute a custom script when a trap arrives, and what does `snmptrapd` pass to the script's `stdin` (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 Add `authCommunity log,execute,net public` and `traphandle <OID> /path/to/handler arg1` to `/etc/snmp/snmptrapd.conf`. If TCP wrappers are used, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. When a trap arrives, `snmptrapd` runs `/path/to/handler`. It writes the **sender hostname on line 1**, the **sender IP and transport on line 2**, and **`<oid> <value>` pairs on the lines after that** to standard input.
 </details>
 
 <details>
-<summary>5. Compare **Ganglia**, **Nagios**, and **Zabbix** on a compute cluster, and what multicast route does Ganglia require by default (chapter 19 of the book)?</summary>
+<summary>5. Compare **Ganglia**, **Nagios**, and **Zabbix** on a compute cluster, and what multicast route does Ganglia require by default (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 - **Ganglia (`gmond` + `gmetad`):** It is a lightweight cluster metric collector that stores RRD files in `/var/lib/ganglia/rrds`. It defaults to multicast on `239.2.11.71`, so the `gmetad` server needs `ip route add 239.2.11.71/4 dev eth0`. It has no built-in alerting.
 - **Nagios (and Icinga):** It starts a separate OS process for each check plugin, through NRPE or SSH. That suits service and switch checks well. The process-spawn overhead makes frequent compute-node metric polling too heavy.
@@ -450,7 +470,7 @@ Add `authCommunity log,execute,net public` and `traphandle <OID> /path/to/handle
 </details>
 
 <details>
-<summary>6. What are the four layers of the "Modern Approach" monitoring stack in chapter 19 of the book, and what is the one data-type constraint of **VictoriaMetrics**?</summary>
+<summary>6. What are the four layers of the "Modern Approach" monitoring stack in *Supercomputers for Linux SysAdmins* chapter 19, and what is the one data-type constraint of **VictoriaMetrics**?</summary>
 
 1. **Collectors:** `Prometheus` exporters, `Telegraf` or `collectd`.
 2. **Time-series database (TSDB):** `Prometheus TSDB`, `InfluxDB`, or **`VictoriaMetrics`**. VictoriaMetrics is faster and uses less disk space than InfluxDB. Its constraint is that **VictoriaMetrics stores only numeric data and cannot store string metrics**.
@@ -459,13 +479,13 @@ Add `authCommunity log,execute,net public` and `traphandle <OID> /path/to/handle
 </details>
 
 <details>
-<summary>7. What is **Open XDMoD**, and what does its **SUPReMM** module add (chapter 19 of the book)?</summary>
+<summary>7. What is **Open XDMoD**, and what does its **SUPReMM** module add (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 **Open XDMoD (XD Metrics on Demand)** ingests Slurm and PBS accounting logs. It can analyze resource utilization, wait times and allocation fairness by user, group and project. The **SUPReMM** module correlates those job accounting records with node-level hardware performance metrics. Those metrics come from **Prometheus**, **Performance Co-Pilot (`PCP`)** or **`TACC_Stats`**. With SUPReMM, you can see per-job GPU efficiency, memory bandwidth, and CPU or I/O bottlenecks.
 </details>
 
 <details>
-<summary>8. What are the four directives inside a `chip` stanza in `/etc/sensors3.conf` (`lm_sensors`), and what command writes threshold limits into the sensor hardware (chapter 19 of the book)?</summary>
+<summary>8. What are the four directives inside a `chip` stanza in `/etc/sensors3.conf` (`lm_sensors`), and what command writes threshold limits into the sensor hardware (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 Inside a `chip` stanza, such as `chip "lm78-i2c-2d"`, you use four directives.
 1. **`label <sensor> "<name>"`** sets the display name, for example `label in3 "+5V"`.
@@ -477,13 +497,13 @@ Run **`sensors -s`** to program the `set` limits into the chip registers. Run **
 </details>
 
 <details>
-<summary>9. Why does chapter 19 of the book advise against polling compute-node IPMI sensors remotely over the network at high frequency?</summary>
+<summary>9. Why does *Supercomputers for Linux SysAdmins* chapter 19 advise against polling compute-node IPMI sensors remotely over the network at high frequency?</summary>
 
 Frequent remote `ipmitool sensor` queries over the LAN can overwhelm slow, embedded BMC microcontrollers. The result can be BMC lockups, or false `Slurmd` and Redfish timeouts. Read the sensors locally on each node instead, through `/sys/class/hwmon` (`node_exporter`), or through a local `ipmi_exporter` scraped at a reasonable interval.
 </details>
 
 <details>
-<summary>10. What are the four configuration files in `/etc/nut/` for **Network UPS Tools (`NUT`)**, and what is the difference between `upsmon master` and `upsmon slave` (chapter 19 of the book)?</summary>
+<summary>10. What are the four configuration files in `/etc/nut/` for **Network UPS Tools (`NUT`)**, and what is the difference between `upsmon master` and `upsmon slave` (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 1. **`/etc/nut/ups.conf`** defines the hardware drivers, such as `driver = usbhid-ups` and `port = auto`.
 2. **`/etc/nut/upsd.conf`** holds the network server settings: `MAXAGE`, `LISTEN` and `MAXCONN`.
@@ -540,14 +560,14 @@ Every scrape calls `sinfo` or `squeue` (or `slurmrestd`) over RPC against `slurm
 </details>
 
 <details>
-<summary>17. How do **passive monitoring** and **active healthchecks** (`NHC` / `node_health.sh` / `dcgmi diag`) complement each other (chapter 19 of the book)?</summary>
+<summary>17. How do **passive monitoring** and **active healthchecks** (`NHC` / `node_health.sh` / `dcgmi diag`) complement each other (*Supercomputers for Linux SysAdmins* chapter 19)?</summary>
 
 - **Passive monitoring (`Prometheus`, `DCGM`, `node_exporter`)** watches live metrics and logs while nodes sit idle or run jobs. It catches faults that show up under workload.
 - **Active healthchecks (`NHC`, `node_health.sh`, `dcgmi diag -r 2|3`)** exercise GPUs, PCIe and NVLink bandwidth, mounts and `/tmp` space on purpose. They run at boot, in Slurm `Prolog` and `Epilog`, and on idle nodes. They catch latent faults and drain broken nodes before a 512-GPU job lands on them.
 </details>
 
 <details>
-<summary>18. What five cybersecurity and vulnerability scanning practices does chapter 19 of the book recommend as part of cluster monitoring?</summary>
+<summary>18. What five cybersecurity and vulnerability scanning practices does *Supercomputers for Linux SysAdmins* chapter 19 recommend as part of cluster monitoring?</summary>
 
 1. Apply tested system software updates **2 to 4 times a year**, after backups and canary node testing.
 2. Run **daily automated security scans** with open-source tools (**`chkrootkit`**, **`rkhunter`**, **`Nessus`**, **`Lynis`**, **`Maltrail`**), and read the reports.
@@ -573,9 +593,9 @@ If Prometheus, Alertmanager and `snmptrapd` run over the InfiniBand or RoCE data
 
 ## Sources and review notes
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`):
   - Chapter 19 ("19. Cluster Status Monitoring Systems", read in full): SNMP operations and commands (`snmpget`, `snmptranslate -Td -Ib`, `snmpwalk`, `snmpset`, `snmpconf`, `/etc/snmp/snmptrapd.conf` `authCommunity` and `traphandle` script, `snmptrap`, RFC `6353` ports `161`/`162`/`10161`/`10162`), Ganglia (UC Berkeley origin, `gmond`, `gmetad`, multicast route `239.2.11.71/4` via `ip route add 239.2.11.71/4 dev eth0`), Nagios/Icinga separate-process plugin trade-off and Zabbix proxy hierarchy (up to `1000` nodes), TSDBs (`Prometheus`, `InfluxDB`, `VictoriaMetrics` numeric-only constraint), Open XDMoD + `SUPReMM` (`PCP`, `TACC_Stats`, NSF grant `2137603`), `lm_sensors` (`sensors-detect`, `/etc/sensors3.conf` directives `chip`, `label`, `ignore`, `compute`, `set`, `sensors -s`, and `sensors` output showing `System FAN2: FAULT`), IPMI local vs remote BMC polling, APCUPS (`apcupsd`, `apcaccess`, `multimon.cgi`, `/etc/apcupsd/hosts.conf`) and NUT (`ups.conf`, `upsd.conf`, `upsd.users`, `upsmon.conf`, `upsc`), LBNL Node Health Check (`NHC`, `https://github.com/mej/nhc`), and security scanning (`chkrootkit`, `rkhunter`, `Nessus`, `Lynis`, `Maltrail`).
 - DCGM exporter metrics: `NVIDIA/dcgm-exporter` `etc/default-counters.csv` (commit `fafd151`). Slurm CLI formats: `sinfo(1)`, `squeue(1)` man pages (SchedMD/slurm commit `521370b`).
 - Run here: `code/part06/slurm_exporter.py --selftest`, `code/part06/alerts_gpu_cluster.yml`, `code/part06/check_alert_rules.py`, and `python3 code/part06/slurm_exporter_lab.py` (3 passed, 0 failed).
-- Explicitly labelled inferences: `sensors_compute_in3` in `code/part06/slurm_exporter_lab.py` is a deterministic check of `SCL` Chapter 19's `/etc/sensors3.conf` voltage divider formula.
-- Not verified on live hardware: `node_exporter` metric names used in the sample rules (`node_infiniband_port_state_id`, filesystem metrics), live DCGM diag levels, SNMP/Ganglia/lm_sensors/NUT daemon execution on hardware, and live `sinfo` output across Slurm versions (`untested here`).
+- Explicitly labelled inferences: `sensors_compute_in3` in `code/part06/slurm_exporter_lab.py` is a deterministic check of chapter 19 of *Supercomputers for Linux SysAdmins*'s `/etc/sensors3.conf` voltage divider formula.
+- Not verified on live hardware: `node_exporter` metric names used in the sample rules (`node_infiniband_port_state_id`, filesystem metrics), live DCGM diag levels, SNMP/Ganglia/lm_sensors/NUT daemon execution on hardware, and live `sinfo` output across Slurm versions (not run).
