@@ -646,7 +646,7 @@ Sources, by book and chapter. Book text was read from the local corpus on 2026-1
 
 Cross-references: [20.12](../part-20-nebius-sre-interview/12-estimation-toolkit-for-inference-capacity.md), [20.13](../part-20-nebius-sre-interview/13-design-a-multi-tenant-llm-inference-api.md), [20.14](../part-20-nebius-sre-interview/14-design-dedicated-endpoints-and-safe-model-rollout.md), [20.18](../part-20-nebius-sre-interview/18-how-llm-serving-fails.md), [20.19](../part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md), [20.20](../part-20-nebius-sre-interview/20-autoscaling-gpu-inference.md), [20.21](../part-20-nebius-sre-interview/21-request-routing-retries-and-overload-control.md), [20.22](../part-20-nebius-sre-interview/22-operating-vllm-triton-ray-and-tensorrt-llm.md), and chapters 19.3 and 19.9.
 
-Migrated from `nvidia-devops`: the earlier draft cited Volume 23 `chapter-11-system-design-inference-serving.md` and Volume 8 `chapter-XX-system-design.md`. I did not re-read those files this session. The earlier draft's sizing figures (a 70B model at 5,000 tokens per second per GPU, 320 KB of KV cache per token) were removed because they were unsourced, and the KV figure was inconsistent with the estimator.
+Migrated from `nvidia-devops`: no passage from Volume 23 or Volume 8 is used. I did not re-read those files this session. Sizing figures such as a 70B model at 5,000 tokens per second per GPU, and 320 KB of KV cache per token, are not used because they are unsourced and the KV figure is inconsistent with the estimator.
 
 Explicitly labelled inferences:
 
@@ -670,8 +670,8 @@ Not verified or not run:
 - Claims checked: 40, listed in `planning/ledgers/19-12.md`.
 - Confirmed: 31, by running code, reading book text, or reading upstream files.
 - Labelled inference: 5.
-- Corrected: 2. The old draft's KV-cache size and its GPU counts and throughput figure were replaced by estimator output.
-- Removed: the old draft's multi-region failover and unsourced cost statements.
+- Corrected: 2. KV-cache size, GPU counts and the throughput figure come from estimator output.
+- Removed: multi-region failover and unsourced cost statements.
 - Still unverified: 4, listed above.
 - Gates run on 2026-11-11: pytest for `code/part19`, `check_code_files.py`, `chain_gate.py`, `check_mermaid.mjs`, `validate_chapter.py 19.12` and `check_provenance.py 19.12`. Results are in the final report.
 

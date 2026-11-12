@@ -591,7 +591,7 @@ Say what you do know, name the nearest mechanism and say how you would check. Ne
 
 ### Migrated from `nvidia-devops`
 
-The earlier draft cited Volume 26, `chapter-XX-interview-cheat-sheet.md`. No such file was found, and none of its wording is kept. The material used from the corpus is the gem-book chapter `nvidia-devops-core-interview` (Chapter 01, "Consolidated Core Interview Questions") in `~/Desktop/books-toon-rag`, used as a cross-check as described above.
+No text is taken from `nvidia-devops` Volume 26. The material used from the corpus is the gem-book chapter `nvidia-devops-core-interview` (Chapter 01, "Consolidated Core Interview Questions") in `~/Desktop/books-toon-rag`, used as a cross-check as described above.
 
 ### Explicitly labelled inferences
 
@@ -603,7 +603,7 @@ The earlier draft cited Volume 26, `chapter-XX-interview-cheat-sheet.md`. No suc
 ### Not verified or not run
 
 - No GPU, NCCL, MIG or Kubernetes step was run. Every hardware figure comes from a cited chapter.
-- The anchors prove presence in a chapter, not truth. Part 5 to 15 chapters were drafted earlier and not re-audited here, and 19 rows rest on them. I checked the PCIe, HBM and NVLink 5 figures against *AI Systems Performance Engineering* ch. 2. The Hopper NVLink figure of 900 GB/s, the DGX memory totals and the 989 TFLOPS figure rest on chapters 9.1 and 9.2 alone.
+- The anchors prove presence in a chapter, not truth. Part 5 to 15 chapters were not re-audited here, and 19 rows rest on them. I checked the PCIe, HBM and NVLink 5 figures against *AI Systems Performance Engineering* ch. 2. The Hopper NVLink figure of 900 GB/s, the DGX memory totals and the 989 TFLOPS figure rest on chapters 9.1 and 9.2 alone.
 - The simulator was run only with scripted answers. No typed timed session was run.
 - The 19.14 question bank did not exist when this chapter was built, so its JSON shape was handled by a tolerant loader and was not tested against the real file.
 
@@ -615,4 +615,4 @@ The earlier draft cited Volume 26, `chapter-XX-interview-cheat-sheet.md`. No suc
 | Rows whose figure I also checked against a gem book, the NVIDIA MIG JSON, or recomputed by script | 23 |
 | Corrected during the build (anchor or wording did not match the chapter) | 14 |
 | Rows removed because no cited chapter supported them | 3 |
-| Rows resting only on a drafted chapter from Parts 5 to 15 | 19 |
+| Rows resting only on a chapter from Parts 5 to 15 | 19 |

@@ -660,7 +660,7 @@ No web page was fetched. No upstream version-specific fact is used.
 
 ### Migrated from `nvidia-devops`
 
-The earlier draft cited NVIDIA Zero-to-Hero Volumes 8, 10 and 22 with placeholder file names such as `chapter-XX-customer-workshops.md`. Those files were never given real paths in the draft. I did not re-read that corpus for this rewrite, and no passage from it survives. I claim no exact `nvidia-devops` path.
+This chapter takes no passage from NVIDIA Zero-to-Hero Volumes 8, 10 and 22, and I claim no exact `nvidia-devops` path.
 
 ### Explicitly labelled inferences
 
@@ -680,4 +680,4 @@ The earlier draft cited NVIDIA Zero-to-Hero Volumes 8, 10 and 22 with placeholde
 
 ### Verification log
 
-Claims checked: 41. Confirmed in the book chapters named above: 24. Corrected: 3 from the earlier draft, which invented a half-day agenda as fact, a 1 to 5 maturity score as standard and a "three perspectives" story. Removed: 9 earlier statements with no source, including the claims that a field engineering team runs this method as its playbook and the unsupported statements about sales and customer engineer roles. Still unverified and labelled: 5, listed under inferences above. Code: 37 tests pass in `test_c10_consulting.py`.
+Claims checked: 41. Confirmed in the book chapters named above: 24. Corrected: 3, namely the half-day agenda is an example and not a fact, the 1 to 5 maturity score is an example and not a standard, and the "three perspectives" story is removed. Removed: 9 statements with no source, including the claims that a field engineering team runs this method as its playbook and the unsupported statements about sales and customer engineer roles. Still unverified and labelled: 5, listed under inferences above. Code: 37 tests pass in `test_c10_consulting.py`.

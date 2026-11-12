@@ -243,7 +243,7 @@ The 3 percent budget is a policy default, not a standard. The reading is simple:
 
 Operations matter here too. AI Systems Performance Engineering ch. 3 warns that checkpoint bursts can fill the OS page cache and cause stalls, and it describes tuning the dirty-page settings. Treat that as a reason to test a real write at full node count before launch, which is what [13.7](../part-13-ai-storage/07-checkpoint-architecture-and-recovery.md) teaches.
 
-Tiering follows from the arithmetic. A parallel file system with RDMA serves the training reads and the shared checkpoints. The GB300 document requires file storage with RDMA support, linear scaling and non-disruptive upgrades. A second tier of object storage holds older checkpoints and the raw dataset. Local NVMe on each node, four 3.84 TB drives in the GB300 compute tray, is useful for scratch and a fast first checkpoint copy. The old draft of this chapter, and NVIDIA Zero-to-Hero volume 23, describe a two-step checkpoint to local NVMe and then to remote storage. That is not verified against a vendor source, so it is presented as reasoning and not as a standard.
+Tiering follows from the arithmetic. A parallel file system with RDMA serves the training reads and the shared checkpoints. The GB300 document requires file storage with RDMA support, linear scaling and non-disruptive upgrades. A second tier of object storage holds older checkpoints and the raw dataset. Local NVMe on each node, four 3.84 TB drives in the GB300 compute tray, is useful for scratch and a fast first checkpoint copy. A two-step checkpoint to local NVMe and then to remote storage is a common pattern, but it is not verified against a vendor source, so it is presented as reasoning and not as a standard.
 
 User storage is separate. The GB300 document puts home directories and logs on NFS over the in-band network with at least 100 GbE. Do not put them on the training file system.
 
@@ -603,4 +603,4 @@ A design that cannot answer a question has not passed it. The runner reports FAI
 | Removed as unsourced | 9 |
 | Still unverified and labelled | 8 |
 
-The old draft's H100 16-GPU sizing, 250 samples per GPU, dragonfly+ and RAID-6 claims were removed. Its cited files `choose_scheduler.py`, `design_review.py`, `design_storage.py`, `select_topology.py` and `size_gpu_pool.py` did not exist and now exist with the `c11_` prefix.
+The scripts `choose_scheduler.py`, `design_review.py`, `design_storage.py`, `select_topology.py` and `size_gpu_pool.py` exist with the `c11_` prefix. No H100 16-GPU sizing, per-GPU sample rate, dragonfly+ or RAID-6 claim is made, because none is sourced.

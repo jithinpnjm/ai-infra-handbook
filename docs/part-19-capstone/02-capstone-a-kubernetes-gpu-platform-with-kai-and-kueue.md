@@ -119,7 +119,7 @@ NVIDIA's GKE page gives two supported ways to use the Operator on GKE. With the 
 
 The capstone uses the hybrid with the Google driver installer. Google's DaemonSet owns the driver on Container-Optimized OS. The Operator owns the toolkit, device plugin, feature discovery and DCGM exporter. The boundary sits in the Helm values file and is reviewed in the same pull request as the pool definition.
 
-An earlier draft of this chapter used `gpu-driver-version=latest` together with the Operator's device plugin. NVIDIA's page says to disable the GKE device plugin and the automatic driver. It lists these as GKE features the Operator does not support. The script below follows NVIDIA's page.
+NVIDIA's page says to disable the GKE device plugin and the automatic driver. It lists these as GKE features the Operator does not support. The script below follows NVIDIA's page, so it does not use `gpu-driver-version=latest` together with the Operator's device plugin.
 
 ```bash
 #!/usr/bin/env bash
@@ -308,7 +308,7 @@ description: "Best effort for research jobs"
 
 Serving sits at 1000, training at 50 and research at 0. When a pending pod cannot fit, the default scheduler looks for lower-priority pods to evict. Victims get their graceful termination period, which defaults to 30 seconds in the Kubernetes pod lifecycle docs. A training job that cannot checkpoint inside that window loses progress, so checkpoint intervals must be shorter than the window.
 
-Training is 50 on purpose. An earlier draft used 100, and KAI treats a priority of 100 or more as non-preemptible. Such workloads may use only in-quota resources. A training class at 100 would never borrow idle GPUs and could never be preempted by KAI. KAI also ships `train` at 50 and `inference` at 125. Our class names are ours, so check that the number lands on the right side of 100.
+Training is 50 on purpose. KAI treats a priority of 100 or more as non-preemptible. Such workloads may use only in-quota resources. A training class at 100 would never borrow idle GPUs and could never be preempted by KAI. KAI also ships `train` at 50 and `inference` at 125. Our class names are ours, so check that the number lands on the right side of 100.
 
 Priority alone does not create free GPUs. The serving class needs capacity it can always reach. The capstone sets aside four of the 16 GPUs through a separate Kueue ClusterQueue in Section 5. Four is a policy choice, not a source-mandated value. Fairness then comes from quota and reclaim rules, not from hope.
 
@@ -324,7 +324,7 @@ A team complains the queue is unfair. Their large jobs run while others wait, ye
 
 Kueue has three objects. A ResourceFlavor names a hardware tier through node labels. A ClusterQueue is cluster-scoped and carries quota, cohort, queueing strategy and preemption rules. A LocalQueue lives in a namespace and points a team at a ClusterQueue. A ClusterQueue tries its flavors in order and uses the first with room.
 
-An earlier draft used `kueue.x-k8s.io/v1beta1`. In Kueue v0.20.5 that version is no longer served, and `v1beta2` renames the cohort field to `cohortName`. The same draft set `withinClusterQueue: Any`. The CRD allows only `Never`, `LowerPriority` and `LowerOrNewerEqualPriority`, so the schema check rejected it.
+Use `kueue.x-k8s.io/v1beta2`. In Kueue v0.20.5 `v1beta1` is no longer served, and `v1beta2` names the cohort field `cohortName`. For `withinClusterQueue` the CRD allows only `Never`, `LowerPriority` and `LowerOrNewerEqualPriority`, so a value such as `Any` fails the schema check.
 
 ```yaml
 # Kueue v1beta2 (v1beta1 is no longer served in Kueue v0.20.5). 16 GPUs in the pool: 12 training + 4 serving.
@@ -399,7 +399,7 @@ spec:
   clusterQueue: cq-serving
 ```
 
-The nominal quotas now sum to the hardware: 12 for training and 4 for serving, 16 in total. A draft gave training 16 and serving 4. Kueue allows quotas above the hardware, but then the serving reserve is a hope, not a guarantee. Only GPUs are covered. By default Kueue does not account for resources that no ClusterQueue declares. The config key `resources.quotaCheckStrategy: BlockUndeclared` changes that.
+The nominal quotas now sum to the hardware: 12 for training and 4 for serving, 16 in total. Kueue allows quotas above the hardware, but then the serving reserve is a hope, not a guarantee. Only GPUs are covered. By default Kueue does not account for resources that no ClusterQueue declares. The config key `resources.quotaCheckStrategy: BlockUndeclared` changes that.
 
 Borrowing works inside a cohort. Kueue's docs say a workload is admitted if it fits unused nominal quota. Otherwise it may borrow unused quota from other queues in the cohort, up to its `borrowingLimit`, and only what each lender allows through `lendingLimit`. A 16-GPU gang from training therefore fits only by borrowing the four serving GPUs. `c02_queue_math.py` computes this, and also shows that `lendingLimit: 0` on serving would block it.
 
@@ -491,7 +491,7 @@ Scale the picture up. In a 12-node cluster, two teams each submit an eight-node 
 
 Gang scheduling holds the whole group pending until the minimum fits. The KAI Scheduler, which NVIDIA open-sourced from Run:ai, does this with a PodGroup. Its README requires the GPU Operator for GPU workloads and installs into `kai-scheduler` with Helm from an OCI registry. Workloads opt in by setting `schedulerName: kai-scheduler`. Its docs say to submit workloads from another namespace.
 
-KAI keeps a hierarchy of Queue objects. Only leaf queues run jobs. The Queue API is `scheduling.run.ai/v2`, and units differ from Kubernetes: GPU in devices, CPU in millicores and memory in megabytes. A draft wrote `1Ti` for memory, which the CRD rejects because the field is a number.
+KAI keeps a hierarchy of Queue objects. Only leaf queues run jobs. The Queue API is `scheduling.run.ai/v2`, and units differ from Kubernetes: GPU in devices, CPU in millicores and memory in megabytes. Write memory as a number, not as `1Ti`, because the CRD rejects a quantity string.
 
 ```yaml
 # KAI Queue (scheduling.run.ai/v2). Units: gpu in devices, cpu in millicores, memory in MB.

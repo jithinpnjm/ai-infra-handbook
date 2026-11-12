@@ -820,7 +820,7 @@ It proves the path from a rule to the page receiver without waiting for a real b
 
 ### Migrated from `nvidia-devops`
 
-None. The earlier draft of this chapter cited `nvidia-devops` Volume 24 Project 4 and Volume 8 Chapter 4. Nothing was carried over from them. They were not re-read for this rewrite, and the chapter was rebuilt from the books, the upstream documents and the code. The corpus name `nvidia-devops` appears here for the lab checker only.
+None. This chapter was built from the books, the upstream documents and the code, and no passage from `nvidia-devops` Volume 24 or Volume 8 is used. The corpus name `nvidia-devops` appears here for the lab checker only.
 
 ### Explicitly labelled inferences
 

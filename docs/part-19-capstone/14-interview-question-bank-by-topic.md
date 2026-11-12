@@ -125,11 +125,11 @@ Topic weights should follow the job description. `planning/JD_MAPPING.md` states
 
 Some topics point outward. Linux triage, network debugging, estimation, serving failure, SLO design, autoscaling, request routing, Terraform and incident drills already exist as company-specific questions in Volume 20. Do those drills there. This bank links to them and does not copy them: chapters 20.3 to 20.28.
 
-Some topic chapters are still drafts. Parts 16, 17, 18 and the earlier drafts of Part 19 have not yet been through the same source check as the other parts. Entries linked to them carry a note in the `basis` field, and their thresholds should be read as chapter examples.
+Some topic chapters have not yet been through the same source check as the other parts. Parts 16, 17 and 18 and some chapters of Part 19 are in that group. Entries linked to them carry a note in the `basis` field, and their thresholds should be read as chapter examples.
 
 **Decision rule:** Weight your practice by the job description, and do company-specific drills in Volume 20.
 
-**In one minute:** There are 176 questions linked to 90 chapters. Topics map to parts of the handbook, and the weight you give each topic should follow the role. Volume 20 holds the Nebius drills, and entries linked to draft chapters are marked.
+**In one minute:** There are 176 questions linked to 90 chapters. Topics map to parts of the handbook, and the weight you give each topic should follow the role. Volume 20 holds the Nebius drills.
 
 ## 4. Sample questions with answers
 
@@ -778,7 +778,6 @@ A factual timeline, the impact, the contributing factors and the detection gap. 
 ### Migrated from `nvidia-devops`
 
 - `~/Desktop/books-toon-rag`: book `nvidia-devops-core-interview`, chapter "Consolidated Core Interview Questions" (the consolidated core interview corpus, used as a topic checklist).
-- The previous draft of this chapter cited `nvidia-zero-to-hero` volumes 26, 23, 9 and 8. Those files were not found in this repository, and no claim from them was kept.
 
 ### Explicitly labelled inferences
 
@@ -790,7 +789,7 @@ A factual timeline, the impact, the contributing factors and the detection gap. 
 ### Not verified or not run
 
 - Nothing here needs hardware. What is not verified is whether any given answer satisfies a particular interviewer.
-- Answers linked to Parts 16, 17, 18 and the 19.x drafts rely on chapters that have not yet been through the source check. Thresholds in them, such as the drift index values, are chapter examples and not universal.
+- Answers linked to Parts 16, 17, 18 and some chapters of Part 19 rely on chapters that have not yet been through the source check. Thresholds in them, such as the drift index values, are chapter examples and not universal.
 - No company is claimed to ask any question in the bank. A question of this kind may be asked.
 
 ### Verification log
@@ -803,5 +802,5 @@ A factual timeline, the impact, the contributing factors and the detection gap. 
 | Claims in the chapter prose checked against the chapters or code | 18, all confirmed |
 | Corrected | 2 (a THP policy wording and the level mix) |
 | Removed | the old unsourced text, the two missing code files |
-| Still unverified | answers linked to unremediated draft chapters, listed above |
+| Still unverified | answers linked to chapters that have not been source-checked, listed above |
 | Tests | 36 for the bank tools, all passing, plus the full Part 19 suite |

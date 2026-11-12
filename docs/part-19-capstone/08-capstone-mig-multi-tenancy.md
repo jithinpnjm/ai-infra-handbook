@@ -966,7 +966,6 @@ Chapters 11.4, 11.5, 11.8, 11.24, 11.25, 11.26, 11.29, 16.14, 17.4, 18.5, 19.1, 
 ### Migrated from `nvidia-devops`
 
 - `docs/nvidia-zero-to-hero/volume-24/chapter-06-mig-configuration-multi-tenant.md`: the H100 profile names and the "slices sum to at most 7" rule, which section 3 shows is necessary and not sufficient. Numbers were re-derived from the NVIDIA guide, and its TFLOPS estimates were not reused.
-- The earlier draft cited files `finops_mig_dashboard.json`, `kueue_mig_queue.yaml` and `mig_workload.yaml` that never existed. They are replaced by the `c08_` files in `code/part19/`.
 
 ### Explicitly labelled inferences
 
@@ -991,8 +990,6 @@ Chapters 11.4, 11.5, 11.8, 11.24, 11.25, 11.26, 11.29, 16.14, 17.4, 18.5, 19.1, 
 | Claims checked against a source or a tool | 56 |
 | Confirmed | 49 |
 | Labelled as inference | 7 |
-| Corrected from the earlier draft | 8 |
-| Removed from the earlier draft as unsourced | 9 groups |
 | Still unverified, listed above | 6 |
 
-The corrections were these. The draft's Kueue YAML used a field that does not exist and an old cohort field, and the CRD checker found both. It cited 11.25 and 11.17 for MIG and time-slicing, where the chapters are 11.24 and 11.25. It listed a 5g.40gb profile that NVIDIA does not publish, and `nvidia.com/mig-1g.5gb` on an H100, where the name is 1g.10gb. It passed profile IDs `0,1,2,3,4,5,6` to `-cgi`, and IDs are GPU-specific. It claimed layouts change while serving continues, which contradicts the drain in section 4. It claimed a hardware root of trust and a 2 to 4 times cost drop with no source. The removed groups are in the ledger.
+The corrections were these. The Kueue YAML uses `cohortName` and only fields the CRD defines, and the CRD checker confirms that. MIG and time-slicing are in chapters 11.24 and 11.25. NVIDIA publishes no 5g.40gb profile, and the H100 resource name is `nvidia.com/mig-1g.10gb`. Profile IDs passed to `-cgi` are GPU-specific. A layout change needs the drain in section 4, so serving does not continue through it. The chapter makes no claim about a hardware root of trust or a cost drop with no source. The removed groups are in the ledger.

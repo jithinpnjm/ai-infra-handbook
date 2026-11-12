@@ -18,7 +18,7 @@ lab_venue: "On-prem"
 | Priority tier | 1 |
 | Lab venue | On-prem |
 | Part | Part 19: Capstones, design and interview readiness |
-| Primary sources | SCL Ch. 15 (Slurm); Slurm official documentation; nvidia-devops Zero-to-Hero Volume 19 (production operations), Volume 24 (capstone projects 4–6), Volume 16 and Volume 20 (observability and troubleshooting); handbook Part 6 (6.7–6.15) and Part 17 |
+| Primary sources | *Supercomputers for Linux Sysadmins* Ch. 15 (Slurm); Slurm official documentation; nvidia-devops Zero-to-Hero Volume 19 (production operations), Volume 24 (capstone projects 4–6), Volume 16 and Volume 20 (observability and troubleshooting); handbook Part 6 (6.7–6.15) and Part 17 |
 | Cross-references | Chapter 6.7 (architecture); 6.8 (configuration); 6.9 (QoS and fairshare); 6.10 (GPU scheduling); 6.11 (job submission); 6.14 (operations); 6.15 (HA and upgrades); 6.31 (local capstone); 17.4 (DCGM exporter); 17.11 (incident response) |
 | Coverage file | `planning/coverage/chapters/19-01.md` |
 | Claim & number ledger | `planning/ledgers/19-01.md` |
@@ -653,7 +653,7 @@ A DCGM exporter on port 9400 and a node exporter on 9100 per node, Prometheus sc
 
 ## Sources and review notes
 
-- *Supercomputers for Linux Sysadmins* (SCL), Chapter 15 "Slurm": installation and Munge/time discipline, accounting setup with the MariaDB schema, partition states, QoS and limits, priorities and fairshare, reservations, and the job-submission experience. Corpus folder: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`.
+- *Supercomputers for Linux Sysadmins* (), Chapter 15 "Slurm": installation and Munge/time discipline, accounting setup with the MariaDB schema, partition states, QoS and limits, priorities and fairshare, reservations, and the job-submission experience. Corpus folder: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`.
 - Slurm official documentation (mirrored under the author's corpus): `slurm.conf` reference, `slurmdbd.conf` reference, cgroup reference, and job-array reference, for parameter names, defaults, ports, and the array concurrency cap.
 - nvidia-devops Zero-to-Hero Volume 19, production operations: incident response and game-day execution, capacity planning and the zombie-GPU metric, monitoring and observability at scale, and on-call handoff with the runbook anatomy.
 - nvidia-devops Zero-to-Hero Volume 24, capstone projects 4, 5, 6, and 9: observability system design, troubleshooting incident response, MIG configuration for multi-tenant workloads, and capacity planning forecast. The specific figures taken from each are listed in the ledger.

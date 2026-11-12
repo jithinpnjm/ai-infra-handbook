@@ -576,7 +576,6 @@ The module supports only a homogeneous local world size, so every node must run 
 
 - Surviving workers are killed on every membership change. The documentation says to checkpoint your progress, and says the frequency depends on your tolerance for lost work.
 - Restarts are capped. After `--max-restarts` failures the launcher exits non-zero and hands the decision back to the scheduler.
-- The agent's own default for the monitor interval is 0.1 seconds, not the 30 seconds that appeared in an earlier draft of this chapter.
 - Elastic restarts re-run the rendezvous, create new communicators and reload the checkpoint. A restart on a large job takes minutes, so the restart time R in section 2 is real.
 
 ### What ran
@@ -595,7 +594,7 @@ The smoke test starts two workers with `--max-restarts=6`, raises an error at st
 
 All 32 ranks show zero GPU utilisation. No process has exited. The job has been "running" for 40 minutes. The scheduler considers it healthy because the pods are up. Nothing will ever happen unless something kills it.
 
-PyTorch's NCCL backend has two layers that do. The watchdog is a background thread in each process that watches the collectives it launched. The monitor thread watches the watchdog. Both come from PyTorch's `ProcessGroupNCCL`, not from NCCL itself, so searching the NCCL documentation for a watchdog variable finds nothing. The earlier draft of this chapter named an `NCCL_TIMEOUT` variable. The NCCL environment variable documentation for version 2.32.3 has no such variable, and that item was removed.
+PyTorch's NCCL backend has two layers that do. The watchdog is a background thread in each process that watches the collectives it launched. The monitor thread watches the watchdog. Both come from PyTorch's `ProcessGroupNCCL`, not from NCCL itself, so searching the NCCL documentation for a watchdog variable finds nothing. The NCCL environment variable documentation for version 2.32.3 has no `NCCL_TIMEOUT` variable.
 
 ### The collective timeout
 
@@ -1230,7 +1229,6 @@ All upstream pages were fetched on 2026-11-10.
 ### Migrated from `nvidia-devops`
 
 - `nvidia-zero-to-hero/volume-24/chapter-03-distributed-training-fault-tolerance.md`: the capstone framing, the atomic-write advice and the failure-mode table. Its claim that the elastic launcher waits 30 seconds before restarting, and its picture of a replacement GPU being spun up, are not in the PyTorch documentation and were not carried over.
-- The previous draft of this chapter, which cited `code/part19/checkpoint.py`, `checkpoint_recovery.py` and `fsdp_config.py` as files that did not exist. Those names are replaced by the tested `c04_*` files.
 
 ### Explicitly labelled inferences
 

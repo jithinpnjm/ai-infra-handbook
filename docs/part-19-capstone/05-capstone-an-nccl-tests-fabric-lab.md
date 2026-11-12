@@ -164,9 +164,9 @@ A node came back from a firmware reboot on Monday, and its first single-node swe
 
 On an 8-GPU node with NVSwitch, the GPUs talk to each other over NVLink and not over PCIe. In `nvidia-smi topo -m` that shows as entries such as `NV18`. *Distributed AI Systems* (ch. 2) gives per-GPU NVLink bandwidth as 900 GB/s on Hopper, up to 1.8 TB/s on Blackwell B200, aggregate bidirectional. Those are link ratings. They are not targets for busbw.
 
-There is no honest sourced busbw target for a single node in this chapter. Earlier drafts quoted a "750 to 800 GB/s" range for H100 nodes, and that figure is not in any source this chapter uses, so it is removed. NVLS can also change the data path. The single-node gate is therefore your own commissioning baseline, plus two integrity conditions: `#wrong` is zero and the link entries show NVLink.
+There is no sourced busbw target for a single node in this chapter, because no source this chapter uses gives one for an H100 node. NVLS can also change the data path. The single-node gate is therefore your own commissioning baseline, plus two integrity conditions: `#wrong` is zero and the link entries show NVLink.
 
-The PCIe side is separate. A host-to-device copy leaves the node through PCIe, and a Gen5 x16 slot gives roughly 64 GB/s per direction. If `nvbandwidth` reads about half of what the slot should give, suspect a link that trained at x8, and confirm the negotiated width with `lspci -vv`. The exact `nvbandwidth` thresholds in earlier drafts were from memory and are removed. Compare with the same node's baseline.
+The PCIe side is separate. A host-to-device copy leaves the node through PCIe, and a Gen5 x16 slot gives roughly 64 GB/s per direction. If `nvbandwidth` reads about half of what the slot should give, suspect a link that trained at x8, and confirm the negotiated width with `lspci -vv`. Compare with the same node's baseline.
 
 The run itself is one script.
 
@@ -744,7 +744,6 @@ Chapters 12.15, 12.16, 12.17, 12.18, 12.19, 12.23, 10.6, 10.8 and 14.10, linked 
 - `nvidia-zero-to-hero/volume-07/labs/lab-03-benchmark-rdma-and-gpudirect-paths.md`
 - Mirrored vendor docs: `tools/nvidia-ingest/data/md/nccl/` and `tools/nvidia-ingest/data/md/bcm11-admin/doc.md`
 
-The earlier draft took wording from these volumes. Facts from them that could not be confirmed against a source are removed or labelled below.
 
 ### Explicitly labelled inferences
 
@@ -761,7 +760,6 @@ The earlier draft took wording from these volumes. Facts from them that could no
 - The sysfs counter names are the usual ones and were not verified on hardware.
 - The ACS and BIOS causes of a GPUDirect collapse come from nvidia-devops Volume 07 and were not independently confirmed.
 - The synthetic fixture `c05_fixture_synth_healthy.txt` and every synthetic table in the tests are invented. The real table is old (NCCL 2.11.4 on V100), so the exact header of current nccl-tests output with `root` and `#wrong` is not confirmed by a source. The parser relies on row shape for that reason.
-- Removed from the earlier draft because no source supports them: the H100 busbw range, the "hybrid PCIe 95.18 GB/s" row, the "5,850 microseconds at 361.36 GB/s" cluster row and its per-rail percentage, the ConnectX generation table, NVLink generations before Hopper, the Kubernetes Topology Manager paragraph, the 54 and 81 percent AllReduce project figures, the 100 MB within 5 ms gate, and the 64 percent GPU-fault statistic.
 - Possible problem in neighbouring chapter 12.17: it quotes a 361.36 GB/s multi-node row on 64 GPUs as a reference with per-rail 90 percent. A 361 GB/s busbw is far above one 50 GB/s NIC, so the row looks like arithmetic practice and not a measurement.
 
 ### Verification log

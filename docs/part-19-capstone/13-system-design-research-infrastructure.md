@@ -133,7 +133,7 @@ Designing Machine Learning Systems separates schedulers, which decide when a job
 
 On Monday morning twenty researchers log in within ten minutes. Three of the notebooks ask for a GPU. By Tuesday, six notebooks hold GPUs that their owners are not using. The first problem is spawning. The second is idle holding.
 
-Zero to JupyterHub for Kubernetes, the Helm chart `jupyterhub`, is the standard way to run JupyterHub on Kubernetes. This chapter uses chart 4.4.5, which packages JupyterHub 5.5.5, fetched 2026-11-10. The chart already wires the hub, proxy and user scheduler together, so I did not write a Deployment by hand as the old draft did.
+Zero to JupyterHub for Kubernetes, the Helm chart `jupyterhub`, is the standard way to run JupyterHub on Kubernetes. This chapter uses chart 4.4.5, which packages JupyterHub 5.5.5, fetched 2026-11-10. The chart already wires the hub, proxy and user scheduler together, so there is no hand-written Deployment.
 
 The values file below is the whole configuration. Read it in four parts.
 
@@ -348,7 +348,7 @@ A model beats the baseline by two points. A reviewer asks which dataset version 
 
 Machine Learning Platform Engineering explains why a tracking server beats committing parameters to git. It keeps parameters, metrics, data references and artifacts for every run in one place. Chapter 16.2 teaches MLflow and DVC and 16.6 covers registries, so this section covers only infrastructure decisions.
 
-MLflow needs two stores. The backend store holds run metadata and should be PostgreSQL for a shared team. The artifact store holds files and should be object storage. The recommended shape is the tracking server as a proxy: with `--serve-artifacts` the server forwards uploads to the bucket named by `--artifacts-destination`. Researchers then need no bucket credentials. I read the `mlflow server` options in `mlflow/cli/__init__.py` at v3.18.0. The old draft used environment variables named `BACKEND_STORE_URI` and `DEFAULT_ARTIFACT_ROOT`, which do not match the CLI. The real names are `MLFLOW_BACKEND_STORE_URI` and `MLFLOW_DEFAULT_ARTIFACT_ROOT`.
+MLflow needs two stores. The backend store holds run metadata and should be PostgreSQL for a shared team. The artifact store holds files and should be object storage. The recommended shape is the tracking server as a proxy: with `--serve-artifacts` the server forwards uploads to the bucket named by `--artifacts-destination`. Researchers then need no bucket credentials. I read the `mlflow server` options in `mlflow/cli/__init__.py` at v3.18.0. The environment variable names are `MLFLOW_BACKEND_STORE_URI` and `MLFLOW_DEFAULT_ARTIFACT_ROOT`, not `BACKEND_STORE_URI` and `DEFAULT_ARTIFACT_ROOT`.
 
 The upstream image at that version runs only `pip install mlflow==$VERSION`. It has no PostgreSQL driver and no S3 client. So the platform builds a thin image of its own.
 
@@ -732,7 +732,7 @@ Books were read through `tools/study_rag/bookch.py` on 2026-11-10 and 2026-11-11
 
 ### Migrated from `nvidia-devops`
 
-The old draft cited NVIDIA Zero-to-Hero Volume 23 `chapter-12-system-design-research-infrastructure.md` and Volume 8. I did not open those files in this rewrite, and no text was migrated from `nvidia-devops`. The structure and every claim here come from the books and upstream sources above.
+No text was migrated from `nvidia-devops` Volume 23 `chapter-12-system-design-research-infrastructure.md` or Volume 8, and I did not open those files in this chapter. The structure and every claim here come from the books and upstream sources above.
 
 ### Explicitly labelled inferences
 
@@ -757,7 +757,6 @@ The old draft cited NVIDIA Zero-to-Hero Volume 23 `chapter-12-system-design-rese
 |---|---|
 | Claims checked against a source or a run | 62 |
 | Confirmed | 54 |
-| Corrected from the old draft | 6 (MLflow env var names, missing DB and S3 drivers in the image, `latest` notebook image, hand-written JupyterHub Deployment, missing values for the helm install, files that did not exist) |
 | Removed as unsourced | 9 (for example image signing and KMS claims, availability metric claim, Weka option, FAIR table as stated) |
 | Still unverified, labelled in the chapter | 8 |
 

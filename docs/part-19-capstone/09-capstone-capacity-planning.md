@@ -1172,7 +1172,7 @@ No web page was fetched for this chapter. No upstream version-specific fact is u
 
 ### Migrated from `nvidia-devops`
 
-The earlier draft cited NVIDIA Zero-to-Hero Volume 24 (capacity planning capstone). I did not re-read that corpus for this rewrite, and no passage from it survives in the text. The earlier draft named Volume 24 without a file path, so I cannot give an exact `nvidia-devops` path and I claim none.
+This chapter takes no passage from NVIDIA Zero-to-Hero Volume 24 (capacity planning capstone), and I claim no exact `nvidia-devops` path.
 
 ### Explicitly labelled inferences
 
@@ -1193,4 +1193,4 @@ The earlier draft cited NVIDIA Zero-to-Hero Volume 24 (capacity planning capston
 
 ### Verification log
 
-Claims checked: 22. Confirmed: 20, of which 14 were re-read in the book chapters named above and 6 were checked by tests against the chapter 20.12 and 20.16 code. Corrected: 2 errors from the earlier draft. It divided a daily GPU-hours figure by utilisation and called the result a GPU count, and it ran `capacity_plan.py` with flags that the script does not accept. Removed: 7 items that could not be sourced or run here, namely the multi-region failover section, the discount table, the reservation command, the Kubecost and Prometheus queries, the 80 percent accuracy alert, the `quarterly_review.py` command that does not exist, and the 300 thousand dollar waste figure. Still unverified: 6, listed under the inferences above. The code was run: 20 tests passed, and the worked example and both tables were regenerated from the files shown in the chapter.
+Claims checked: 22. Confirmed: 20, of which 14 were re-read in the book chapters named above and 6 were checked by tests against the chapter 20.12 and 20.16 code. Corrected: 2 errors. A daily GPU-hours figure must not be divided by utilisation and called a GPU count, and `capacity_plan.py` must be run only with flags it accepts. Removed: 7 items that could not be sourced or run here, namely the multi-region failover section, the discount table, the reservation command, the Kubecost and Prometheus queries, the 80 percent accuracy alert, the `quarterly_review.py` command that does not exist, and the 300 thousand dollar waste figure. Still unverified: 6, listed under the inferences above. The code was run: 20 tests passed, and the worked example and both tables were regenerated from the files shown in the chapter.

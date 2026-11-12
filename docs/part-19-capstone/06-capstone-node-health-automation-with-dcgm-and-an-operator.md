@@ -66,7 +66,7 @@ DCGM, the Data Center GPU Manager, reads GPU state through the driver. The DCGM 
 
 The exporter does not export every field. It reads a collector file with three columns: the DCGM field, the Prometheus type and a help text. The default file in release 4.9.0 turns on a short list of fields. It lists many others as comments. Release 4.9.0 was published on 2026-11-06, and I read its `etc/default-counters.csv` on 2026-11-10.
 
-This matters because the names changed. Older material, including some of this handbook, uses names such as `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_XID_ERRORS` and `DCGM_FI_DEV_FB_USED`. None of them appear in the 4.9.0 default file. The same file uses `DCGM_FI_DEV_GPU_UTIL_RATIO`, `DCGM_FI_DEV_XID_ERROR` and `DCGM_FI_DEV_FB_USED_BYTES`. The earlier draft of this chapter used eight names that the 4.9.0 file does not contain. This version uses only names that the file contains, and a test checks that.
+This matters because the names changed. Older material, including some of this handbook, uses names such as `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_XID_ERRORS` and `DCGM_FI_DEV_FB_USED`. None of them appear in the 4.9.0 default file. The same file uses `DCGM_FI_DEV_GPU_UTIL_RATIO`, `DCGM_FI_DEV_XID_ERROR` and `DCGM_FI_DEV_FB_USED_BYTES`. This chapter uses only names that the file contains, and a test checks that.
 
 The table lists the signals this capstone alerts on. The last column says whether the field is on in the default file. A field marked "off" must be enabled in your own collector file before the alert can ever fire.
 
@@ -136,7 +136,7 @@ The default file also lists exporter-owned metrics as comments. They include `DC
 
 If the exporter dies, you lose GPU visibility with no GPU symptom at all. The fleet looks healthy because it is silent. Two rules cover this. The first uses the standard `up` metric for the exporter job. The second counts GPU series per node and fires when the count drops below the expected eight. A GPU that falls off the bus is removed from DCGM's groups, so it produces no series. A count check catches that. Both rules appear in Section 2.
 
-The earlier draft also promised a freshness alert for series that stop updating while the target still answers. I removed it. Prometheus stamps each sample with the scrape time, so the timestamp cannot show that the exporter served a cached value. I have no tested rule that detects that failure, and I will not ship one I cannot test.
+There is no freshness alert for series that stop updating while the target still answers. Prometheus stamps each sample with the scrape time, so the timestamp cannot show that the exporter served a cached value. I have no tested rule that detects that failure, and I will not ship one I cannot test.
 
 The `health` side of DCGM is a second source worth knowing. The DCGM documentation describes background health checks that you set with `dcgmi health` and read with `dcgmi health -c`. The watch flags are p for PCIe, m for memory, i for InfoROM, t for thermal and power, n for NVLink, d for driver, x for ConnectX and a for all. These checks run while jobs run and, per the documentation, have no effect on application behaviour. A warning means the work can finish but the issue needs a look. An error means the work is likely compromised.
 
@@ -150,7 +150,7 @@ The `health` side of DCGM is a second source worth knowing. The DCGM documentati
 
 An early cluster paged on every Xid. Within a week the on-call engineer knew exactly which pages to ignore. Then the page that mattered arrived during a night when that engineer had already muted the channel. The lesson is not better thresholds. The lesson is to decide which events deserve a page at all.
 
-The NVIDIA Xid catalog gives each code an immediate action. This chapter groups codes by that action. The grouping is the chapter's policy, not NVIDIA's. The earlier draft called the groups "tiers" and implied that the catalog defines them. It does not. The table shows the rows this chapter handles. I fetched the catalog on 2026-11-10, and its footer says it was last updated on 2026-11-04.
+The NVIDIA Xid catalog gives each code an immediate action. This chapter groups codes by that action. The grouping is the chapter's policy, not NVIDIA's, and the catalog does not define the groups. The table shows the rows this chapter handles. I fetched the catalog on 2026-11-10, and its footer says it was last updated on 2026-11-04.
 
 | Xid | Catalog description | Catalog immediate action | Class in this policy |
 |---|---|---|---|
@@ -172,7 +172,7 @@ The NVIDIA Xid catalog gives each code an immediate action. This chapter groups 
 | 119 | GSP RPC Timeout | RESET_GPU | unrecoverable |
 | 120 | GSP Error | RESET_GPU | unrecoverable |
 
-Three corrections come from this table. Xid 61 is listed as unused, so the earlier draft's "micro-controller breakpoint" has no support. Xid 62 is the micro-controller halt. And Xid 92 has an immediate action of IGNORE, which is why it is a trend to review and never a real-time page. The investigatory column for 92 says to contact support, so a rising rate still deserves a ticket.
+Three points come from this table. Xid 61 is listed as unused, so it has no alert rule. Xid 62 is the micro-controller halt. And Xid 92 has an immediate action of IGNORE, which is why it is a trend to review and never a real-time page. The investigatory column for 92 says to contact support, so a rising rate still deserves a ticket.
 
 Xid 94 needs a note. The catalog says to restart the application, and it also recommends a GPU reset when convenient. I class it as an application event and keep it out of the page rules. Treat a repeat on the same GPU as a reason to look at hardware. That escalation is my reasoning, not catalog text.
 
@@ -398,7 +398,7 @@ First, the thresholds marked "start value" are mine. They are 100 corrected ECC 
 
 Second, the temperature rule watches the rate of rise and not a level. Data-centre GPUs run warm by design. A level alert fires on healthy clusters every day. A fast rise means something changed.
 
-Third, the memory-pressure alert from the earlier draft is gone. A training process that reserves nearly all GPU memory is normal, so the alert would fire constantly and say nothing about the node's health. That is a workload signal and belongs on a workload dashboard.
+Third, there is no memory-pressure alert. A training process that reserves nearly all GPU memory is normal, so the alert would fire constantly and say nothing about the node's health. That is a workload signal and belongs on a workload dashboard.
 
 Fourth, `FleetWideXid` pages when three or more GPUs report reset-class Xids at once. Three simultaneous hardware failures are rarer than one shared cause, such as a driver rollout or a power event. Section 4 shows the circuit breaker that matches this alert.
 
@@ -437,7 +437,7 @@ receivers:
 
 All of this was run here. `promtool check rules` found 14 rules. `promtool test rules` passed 11 test groups, including the failure cases: Xid 63 and Xid 13 do not fire the reset rule, two nodes with Xid 79 do not fire the fleet rule, and a node with eight GPUs does not fire the count rule. `amtool check-config` passed, and `amtool config routes test` sent a fleet-class alert and a critical alert to PagerDuty, a thermal warning to Slack and an unlabelled alert to the default receiver.
 
-An alert needs an objective behind it. The arithmetic below is computed by a tested script. Three results matter. A 99 percent availability target allows 438 minutes, which is 7.3 hours a month. A 99.9 percent target allows 43.8 minutes. And a 98 percent GPU-health target allows 2 failing GPUs out of 100, but allows none out of 32. The earlier draft said 99 percent was about 43 minutes. That figure belongs to 99.9 percent, so I corrected it.
+An alert needs an objective behind it. The arithmetic below is computed by a tested script. Three results matter. A 99 percent availability target allows 438 minutes, which is 7.3 hours a month. A 99.9 percent target allows 43.8 minutes. And a 98 percent GPU-health target allows 2 failing GPUs out of 100, but allows none out of 32.
 
 ```python
 """Worked arithmetic for chapter 19.6: error budgets, pool fractions and loop latency.
@@ -525,7 +525,7 @@ Four limits keep safe actions from becoming a meltdown. They match the fields of
 - A budget, `maxUnavailableNodes`, caps how many matched nodes may be unschedulable. A percentage rounds up.
 - A dry-run flag reports what would happen and changes nothing.
 
-The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. The earlier draft said 10 percent of the 32-GPU pool was 3 nodes. The pool has four nodes, and the rounding gives 1, so I corrected it. I checked both numbers by running the operator's own `Budget` function.
+The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. I checked both numbers by running the operator's own `Budget` function.
 
 The Go operator enforces the rule that an unlimited drain cannot exist. Its custom resource definition carries a validation rule. I created a policy with `action: CordonAndDrain` and no budget against a real kube-apiserver, version 1.31.0, started by the operator's envtest suite. The server answered with this text.
 
@@ -700,7 +700,7 @@ This is the runbook the operator automates and the human follows when it may not
 
 The catalog's investigatory column adds that for Xid 48 a solo event should run the field diagnostic, and an SRAM error that exceeds its threshold follows the RMA flow. I did not try to restate that flow. Read the catalog entry for your driver.
 
-The earlier draft described a PCIe rescan for Xid 79, with steps to remove the device from the bus and reload the driver. The catalog does not give that procedure, and the nvidia-devops DCGM chapter says to collect a bug report and hand it to the hardware owner. I removed the rescan procedure and kept the catalog's action.
+The catalog does not give a PCIe rescan procedure for Xid 79, and the nvidia-devops DCGM chapter says to collect a bug report and hand it to the hardware owner. So this chapter keeps only the catalog's action.
 
 This script collects the bundle. It was syntax-checked here and not run, because it needs an NVIDIA driver and DCGM. It runs the diagnostic last, since that test is invasive and must only run on a drained node.
 
@@ -735,7 +735,7 @@ echo "wrote ${OUT}.tar.gz"
 
 ### The diagnostic gate
 
-The DCGM diagnostic has four run levels. The table gives the durations from the DCGM documentation. A level 3 run on an 8-GPU system is documented as under 35 minutes. The earlier draft said about 15 minutes, which the table does not support.
+The DCGM diagnostic has four run levels. The table gives the durations from the DCGM documentation. A level 3 run on an 8-GPU system is documented as under 35 minutes.
 
 | Level | Command | Duration in the documentation |
 |---|---|---|
@@ -744,17 +744,16 @@ The DCGM diagnostic has four run levels. The table gives the durations from the 
 | 3 | `dcgmi diag -r 3` | Under 10 minutes on 4 GPUs, under 35 on 8 |
 | 4 | `dcgmi diag -r 4` | Under 45 minutes on 4 GPUs, under 2.25 hours on 8 |
 
-Add `-j` for JSON output. An exit code of 0 means success, and 226 means the diagnostic ran and reported an error. The documentation also warns that these are online diagnostics. They run in the current environment, and full offline diagnostics from a different NVIDIA tool are required for an RMA. So a passed level 3 run is my gate for returning a node to the pool. It is not proof that the part is good enough to skip the vendor's own process. This distinction is easy to miss, and the earlier draft did.
+Add `-j` for JSON output. An exit code of 0 means success, and 226 means the diagnostic ran and reported an error. The documentation also warns that these are online diagnostics. They run in the current environment, and full offline diagnostics from a different NVIDIA tool are required for an RMA. So a passed level 3 run is my gate for returning a node to the pool. It is not proof that the part is good enough to skip the vendor's own process.
 
 ### Application and self-healing codes
 
-For application codes such as 13, 31 and 32, restart the process and watch the count. One restart followed by stability points at the application. Repeats on one GPU across unrelated applications point at hardware, and that is my escalation rule, not catalog text. For self-healing codes such as 63 and 92, take no action in real time. Review the rate weekly. The earlier draft said to escalate at a 3x week-over-week rise. I have no source for that number, so I treat it as a starting idea and not as a rule.
+For application codes such as 13, 31 and 32, restart the process and watch the count. One restart followed by stability points at the application. Repeats on one GPU across unrelated applications point at hardware, and that is my escalation rule, not catalog text. For self-healing codes such as 63 and 92, take no action in real time. Review the rate weekly. A threshold such as a 3x week-over-week rise is a starting idea, not a sourced rule.
 
 ### Xid 74, NVLink
 
 The catalog says Xid 74 means the GPU detected a problem on a connection to another GPU or an NVSwitch. It also says that a GPU reset or node reboot is needed to clear it, and that the fault may be in the link or in the device at the other end. A failed GPU can cause a neighbour to report Xid 74 only because the link went down. So look at both ends. The catalog mentions `nvidia-smi nvlink` for more detail and gives a decoding procedure for the error registers. The path is my reading of it. Look at both ends of the link, then reset, then drain, then open a ticket, and keep mesh-critical jobs off the node until it is fixed.
 
-The earlier draft included a worked example of a very large CRC count on one GPU against zero on its neighbour, and a claim about MIG mode disabling NVLink peer-to-peer. I found no source for either, so I removed both.
 
 ### Failures that are not Xids
 
@@ -770,7 +769,7 @@ Several failures never produce an Xid. The nvidia-devops fan-failure chapter lis
 
 A team spent a quarter building node-health automation and never ran it against a fault. The first real incident was also the first time the paging key had been rotated, the first time a drain met a disruption budget, and the first time the runbook link pointed to a retired channel. This story is a composite that I wrote. The fix it argues for is real: break something on purpose, on a quiet afternoon, and find the gaps before 3 a.m. does.
 
-A game day is a hypothesis with a clock. The earlier draft said its targets came from the incident-response project in nvidia-devops volume 24. I checked. That project's success criteria are about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem. The targets here are my own, and I derive them from the loop's settings so each one is checkable.
+A game day is a hypothesis with a clock. The targets here are my own, and I derive them from the loop's settings so each one is checkable. The incident-response project in nvidia-devops volume 24 has success criteria about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem.
 
 | Clause | Target | Why this number |
 |---|---|---|
@@ -780,7 +779,7 @@ A game day is a hypothesis with a clock. The earlier draft said its targets came
 | Verify | A smoke job completes on the healthy nodes | The pool still has three of four nodes |
 | Review | A written post-mortem within 48 hours | My choice |
 
-The earlier draft asked for a cordon within 2 minutes of the condition. That cannot be met when `unhealthyFor` is 2 minutes, so I changed the target to 3.
+The target is a cordon within 3 minutes of the condition. A 2-minute target cannot be met when `unhealthyFor` is 2 minutes.
 
 ```mermaid
 flowchart TD
@@ -948,7 +947,7 @@ RESTART_BM for Xid 79, which means restart the bare-metal node. IGNORE for Xid 9
 
 <details><summary>7. Why is Xid 61 not in the alert rules?</summary>
 
-The catalog lists Xid 61 as unused. The earlier draft's description of it had no support in the catalog.
+The catalog lists Xid 61 as unused, so there is nothing to alert on.
 </details>
 
 <details><summary>8. Why should a reset-class Xid alert use for: 0m?</summary>
@@ -1003,7 +1002,7 @@ The DCGM documentation says these are online diagnostics and that full offline d
 
 <details><summary>18. How long is a level 3 run on an 8-GPU system?</summary>
 
-The documentation gives under 35 minutes for 8 GPUs and under 10 minutes for 4. The earlier draft's 15 minutes was not supported.
+The documentation gives under 35 minutes for 8 GPUs and under 10 minutes for 4.
 </details>
 
 <details><summary>19. Why is the worst-case cordon latency 121 seconds and not 120?</summary>
@@ -1013,7 +1012,7 @@ The window is 120 seconds, and the Go operator requeues one second after it. Tha
 
 <details><summary>20. Why does 99 percent availability allow 7.3 hours a month and not 43 minutes?</summary>
 
-One percent of 730 hours is 7.3 hours, which is 438 minutes. The 43.8 minute figure belongs to 99.9 percent. The earlier draft mixed them up.
+One percent of 730 hours is 7.3 hours, which is 438 minutes. The 43.8 minute figure belongs to 99.9 percent.
 </details>
 
 ---
@@ -1042,7 +1041,7 @@ One percent of 730 hours is 7.3 hours, which is 438 minutes. The 43.8 minute fig
 
 ### Migrated from `nvidia-devops`
 
-- `docs/nvidia-zero-to-hero/volume-24/chapter-05-troubleshooting-incident-response.md`: the incident-response project and its success criteria, which I checked and found different from the targets the earlier draft attributed to it.
+- `docs/nvidia-zero-to-hero/volume-24/chapter-05-troubleshooting-incident-response.md`: the incident-response project and its success criteria, which are different from this chapter's game-day targets.
 - `docs/nvidia-zero-to-hero/volume-16/chapter-04-dcgm-the-gpu-metrics-foundation.md`: the advice to collect `nvidia-bug-report.sh` output for Xid 79 and to read the kernel log for Xid lines.
 - `docs/nvidia-zero-to-hero/volume-20/chapter-08-fan-failure-and-cooling-system-degradation.md`: fan-failure symptoms, including a rise of 2 to 3 degrees per minute.
 
