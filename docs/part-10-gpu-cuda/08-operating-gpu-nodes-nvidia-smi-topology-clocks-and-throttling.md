@@ -24,43 +24,39 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Every Linux administrator knows how to read a standard CPU server. When `htop` or Prometheus shows 95% CPU utilization, the processor is doing heavy work. When host RAM reaches 99%, an out-of-memory crash is seconds away. Applying that same mental model to an AI server leaves an operator completely blind.
+A training engineer writes to the on-call channel: the job has been running at 100 percent GPU utilization for six hours, and the loss has not moved. On the host, `top` shows a calm CPU, the disks are quiet and the network links are idle. Every Linux metric says the server is healthy. The GPUs say something else, and you only hear it if you know where to listen.
 
-To standard Linux kernel tools, an NVIDIA GPU is just an opaque device sitting on the PCIe bus. The host kernel does not schedule GPU warps, track High-Bandwidth Memory allocations, or read silicon die temperatures. When a machine learning engineer reports that a distributed training job is crawling, an administrator checking `top` sees the CPU idling at 5%, disks quiet, and network links calm. Traditional host metrics declare the server healthy while the accelerators are silently failing (`nvidia-devops` V16 Ch 1).
+To the host kernel, an NVIDIA GPU is a device on the PCIe bus. Linux does not schedule its warps, track its memory or read its die temperature. Those facts live inside the GPU and its driver, and you reach them through `nvidia-smi` and the NVIDIA Data Center GPU Manager, called DCGM from here on.
 
-Inside the GPU, three hidden failures routinely stall production clusters. First, the silicon may reach its 85°C thermal limit and cut core clock speeds to prevent physical damage. Second, the GPU may suffer an uncorrectable ECC memory fault and log an Xid error while dropping work. Third, the Streaming Multiprocessors may report 85% to 100% utilization while doing zero math because a deadlocked kernel is spinning in an empty wait loop.
-
-Operating GPU nodes requires a dedicated observability stack built around `nvidia-smi` and NVIDIA Data Center GPU Manager. Operators must look past superficial dashboard percentages and correlate clock frequencies, power caps, thermal throttle bitmasks, caching allocator reservations, and physical interconnect topology.
+Three dashboard numbers mislead people more than any others. The utilization percentage can read 100 while no useful math happens. The memory figure can read 95 percent on a healthy job. The clock speed can fall by a fifth while utilization stays the same. This chapter explains each of the three, then shows how to read the throttle reasons, the topology and the Xid error codes that tell you what the hardware is really doing.
 
 :::tip In one minute
-- Three GPU metrics routinely deceive operators. First, the Utilization Lie happens because `nvidia-smi` measures the share of time at least one warp is active on any SM, so a single spinning thread reports high utilization with zero throughput. Second, the Memory Lie happens because the PyTorch caching allocator reserves 75% to 95% of VRAM upfront, making healthy cache pooling look like an imminent out-of-memory crash. Third, the Clock Speed Lie happens when thermal or power throttling cuts SM frequencies while utilization still reads 100%.
-- Persistence mode must be enabled on every GPU server using `nvidia-smi -pm 1` or `nvidia-persistenced`. Keeping the kernel driver initialized prevents a driver teardown and reload stall at the start of every CUDA job.
-- Hardware slowdown causes are exposed in the `clocks_throttle_reasons.active` bitmask. Operators decode this register to separate harmless idle clock gating from software power caps, thermal slowdowns, and external hardware power brakes.
-- Clock locking via `nvidia-smi -lgc` fixes SM frequencies at a deterministic rate to eliminate dynamic frequency scaling jitter during latency benchmarks, while `nvidia-smi -rgc` restores automatic scaling.
-- High-frequency streaming with `nvidia-smi dmon` and `nvidia-smi pmon` samples device and process telemetry every second, catching micro-throttling bursts that 15-second Prometheus scrapes average away.
+- GPU utilization means a kernel was running during the sample window. It does not say how many SMs were busy or whether they did useful work. For an honest figure use `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`.
+- `nvidia-smi` memory used includes everything the framework has reserved, such as the PyTorch caching pool. High reserved memory is normal. Compare allocated with reserved before you worry.
+- The throttle bitmask in `clocks_throttle_reasons.active` records why clocks dropped. Read it first when a job is slow and the GPU looks busy.
+- Enable persistence mode with `nvidia-persistenced`, so the driver keeps the GPU initialized between jobs and the first CUDA call is not slow.
+- An NCCL hang often shows every rank near 100 percent utilization, because the NCCL kernels spin while they wait for a peer that never arrives.
 :::
 
 ---
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Complete the earlier chapters in Part 10 covering CPU versus GPU architecture, GPU memory hierarchy, PCIe and NVLink interconnects, and GPU product generations.
+**Prerequisites:** the earlier chapters in Part 10 on GPU architecture, the memory hierarchy, PCIe and NVLink, and the GPU product line.
 
-**Outcomes:** After completing this chapter, you will be able to accomplish the following goals.
-1. Separate the three signal categories of execution, memory, and thermal/power across metrics, logs, and traces.
-2. Deconstruct the Utilization Lie, the Memory Lie, and the Clock Speed Lie to tell whether a busy GPU is compute-bound, memory-bound, or spinning.
-3. Compare active PyTorch tensor allocations against caching allocator reservations and free driver memory.
-4. Decode the `clocks_throttle_reasons.active` bitmask into actionable thermal, power, and hardware fault states.
-5. Configure node baselines including persistence mode, locked SM clocks, power limits, and high-frequency `dmon` telemetry.
-6. Triage Xid error tiers in `dmesg` and run a structured slowdown checklist across six production failure modes.
+**Outcomes:** after this chapter you can do the following.
+1. Sort GPU telemetry into metrics, logs and traces, and into execution, memory and thermal or power signals.
+2. Explain why utilization, memory used and clock speed each mislead, and name the counters that do not.
+3. Compare PyTorch allocated memory, reserved memory and free driver memory.
+4. Decode the throttle reason bitmask into thermal, power and hardware causes.
+5. Set a node baseline: persistence mode, power limit, clock lock and `dmon` streaming.
+6. Triage Xid codes by tier and walk an ordered checklist for a slow GPU job.
 
 ---
 
-## 1. The GPU Observability Architecture
+## 1. The GPU observability architecture
 
-Collecting every counter on a GPU server without a clear mental model overwhelms operators during an outage. If a dashboard only plots one-minute averages, a sub-second thermal spike or a brief PCIe stall vanishes into the average, leaving the team guessing why latency jumped.
-
-Observability means collecting the specific signals needed to tell operational states apart (`nvidia-devops` V16 Ch 2; *Systems Performance* Ch 2 & 4). We organize GPU telemetry across three observability pillars and three hardware signal categories.
+If you plot only one-minute averages, a half-second thermal spike vanishes into the average and nobody can say why latency jumped. Observability means collecting the specific signals that let you tell one failure from another. The standard split is three kinds of evidence, collected for three kinds of hardware signal.
 
 ```mermaid
 flowchart TD
@@ -72,29 +68,29 @@ flowchart TD
   S --> S3["Thermal and power"]
 ```
 
-| Pillar | Sampling Cadence | Primary Tools | Operational Question Answered & Limitation |
+| Pillar | Sampling cadence | Primary tools | Question answered and limitation |
 |---|---|---|---|
-| 1. Metrics | 1 to 10 Hz up to 15 to 30 s intervals | `nvidia-smi`, DCGM, Prometheus, Grafana | Answers *"What is happening on average?"* Limitation: a 60-second average can read a healthy 72°C even if the die spiked to 85°C for 500 ms and throttled (`nvidia-devops` V16 Ch 2). |
-| 2. Logs | Event-driven on state changes | `dmesg`, `journalctl`, Xid events | Answers *"What broke and why?"* Limitation: silent when fan filters clog or memory bandwidth saturates until a hard fault fires. |
-| 3. Traces | Per kernel launch and memory copy | Nsight Systems, Nsight Compute, PyTorch Profiler | Answers *"Where did the execution time go?"* Limitation: generates gigabytes per second per GPU and cannot run continuously across a cluster. |
+| Metrics | 1 to 10 Hz up to 15 to 30 s intervals | `nvidia-smi`, DCGM, Prometheus, Grafana | What is happening on average? A 60-second average can read a healthy 72°C while the die spiked to 85°C for 500 ms and throttled. |
+| Logs | Event-driven on state changes | `dmesg`, `journalctl`, Xid events | What broke and why? Silent while filters clog or memory bandwidth saturates, until a hard fault fires. |
+| Traces | Per kernel launch and memory copy | Nsight Systems, Nsight Compute, PyTorch Profiler | Where did the time go? Produces gigabytes per second per GPU, so it cannot run cluster-wide all the time. |
 
-| Signal Category | Hardware Counters & Telemetry Examples |
+| Signal category | Examples |
 |---|---|
-| 1. Execution signals | SM utilization percentage, active warp counts, Tensor Core pipeline activity, instruction issue rates, and SM clock rates. |
-| 2. Memory signals | Actively allocated tensor VRAM, caching allocator reserved pool, HBM bandwidth utilization percentage, L2 hit rates, and PCIe/NVLink throughput. |
-| 3. Thermal and power signals | Silicon die temperature, instantaneous power draw versus TDP ceiling, and hardware throttle reason bitmasks. |
+| Execution | SM activity, active warps, Tensor Core pipeline activity, instruction issue rate, SM clock |
+| Memory | Allocated tensor memory, the framework cache, HBM bandwidth activity, L2 hit rate, PCIe and NVLink throughput |
+| Thermal and power | Die temperature, power draw against the limit, throttle reason bitmask |
 
-### 1.1 Why CPU utilization and saturation models fail on accelerators
+### 1.1 Why host queue models fail on a GPU
 
-In Linux performance engineering, Brendan Gregg's Utilization, Saturation, and Errors method checks three properties for every resource. Utilization measures busy time, saturation measures queued work waiting for service, and errors count hardware or software faults. On a CPU, measuring saturation is easy because `/proc/loadavg` and `vmstat` expose the OS scheduler run-queue length directly.
+Brendan Gregg's USE method checks three things for every resource: utilization, saturation and errors. On a CPU, saturation is easy to see because `/proc/loadavg` and `vmstat` show the run queue.
 
-On a GPU, host operating system queues cannot see hardware saturation. The GPU schedules tens of thousands of threads internally across hardware warp schedulers inside each SM. Meanwhile, CUDA streams push commands into hardware rings managed by GPU firmware. When a host thread submits kernels faster than the GPU can finish them, the CPU thread blocks inside `cudaStreamSynchronize()` or driver calls. That thread then shows up on the host in an asleep `S` state or uninterruptible `D` state. Conversely, if the host launches tiny kernels one by one, the GPU empties its command ring between launches and drops into clock-gated `GPU_IDLE` states. Diagnosing GPU performance therefore requires inspecting internal hardware counters rather than host run queues.
+A GPU hides its queues. Thousands of threads are scheduled inside each SM by hardware warp schedulers, and CUDA streams feed hardware rings that the GPU firmware manages. If the host submits work faster than the GPU finishes it, the host thread simply blocks inside a call such as `cudaStreamSynchronize()` and shows up as sleeping. If the host submits tiny kernels one at a time, the GPU drains its ring between launches and drops its clocks. Neither state appears in the host run queue, so you have to read counters from the GPU itself.
 
 ---
 
-## 2. Deconstructing the Three Deceptive GPU Metrics
+## 2. The three misleading metrics
 
-When an on-call engineer treats GPU dashboard percentages like CPU metrics, every diagnosis goes wrong. A job that is completely deadlocked can report 100% GPU utilization, and a healthy training run can report 95% memory usage from the first batch. Similarly, a thermally throttled card can look fully utilized while running at reduced speed (`nvidia-devops` V16 Ch 3).
+An on-call engineer who reads GPU percentages like CPU percentages gets every diagnosis wrong. A deadlocked job can show 100 percent utilization, a healthy job can show 95 percent memory from the first batch, and a throttled card can look fully busy while running slowly.
 
 ```mermaid
 flowchart TD
@@ -115,82 +111,97 @@ flowchart TD
     end
 ```
 
-### 2.1 The Utilization Lie: SM active time versus actual math
+### 2.1 The utilization lie
 
-In `nvidia-smi`, the `GPU-Util` column and the underlying `DCGM_FI_DEV_GPU_UTIL` metric have a strict hardware definition. They measure the percentage of time during the sampling window in which at least one Streaming Multiprocessor had at least one warp actively resident.
+In `nvidia-smi`, the `GPU-Util` column and the metric `DCGM_FI_DEV_GPU_UTIL` have a narrow definition. They report the share of the sample window in which at least one kernel was executing on the GPU.
+
+That definition ignores how many SMs the kernel used and what its warps were doing. Picture an H100 SXM5 with 132 SMs. A kernel launched as one block occupies one SM and spins in a `while (flag == 0)` loop. The other 131 SMs are idle, and `nvidia-smi` still reports 100 percent. A memory-bound kernel whose math units wait on HBM reads also reports high utilization, because the kernel is running.
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-This definition ignores how many SMs are busy and whether those warps are doing useful work. Consider an H100 SXM5 with 132 SMs where a single thread on SM 0 spins inside a `while(flag == 0)` wait loop. Even if the other 131 SMs sit completely idle, `nvidia-smi` still reports 100% GPU utilization. Likewise, a memory-bound kernel whose execution units spend 90% of their cycles stalled waiting for HBM reads still reports high utilization because warps remain resident on the SMs.
+The table shows two A100-PCIE-40GB nodes with the same 85 percent utilization and very different outcomes. The function `evaluate_utilization_regime()` in `code/part10/gpu_node_ops.py` encodes the rule.
 
-The table below shows the production incident from `nvidia-devops` Volume 16 Chapters 1 and 3 on a node with two A100-PCIE-40GB GPUs (`evaluate_utilization_regime()` in `code/part10/gpu_node_ops.py`).
-
-| Device or Scenario | SM Utilization | Memory Used & Temp | Memory Bandwidth Util | Application Throughput | Operational Diagnosis |
+| Scenario | SM utilization | Memory used, temperature | Memory bandwidth activity | Throughput | Diagnosis |
 |---|---|---|---|---|---|
-| V16 Ch 1 Compute-Bound Run | 85% | 32 GB / 40 GB, 65°C | Low to moderate | 2,000 samples/second | Healthy compute-bound execution. |
-| V16 Ch 1 Memory-Starved Run | 85% | 32 GB / 40 GB, 65°C | Starved / stalled | 150 samples/second (>13x slower) | Severe starvation despite identical 85% `GPU-Util`. |
-| V16 Ch 3 GPU 0 (`dmon -s um`) | 85% | 32 GB / 40 GB, 65°C | 82% | 2,048 samples/second | Healthy memory-bound training run. |
-| V16 Ch 3 GPU 1 (`dmon -s um`) | 85% | 32 GB / 40 GB, 65°C | 12% | 180 samples/second (>13x slower) | Trapped in a software synchronization barrier wait loop. |
+| Compute-bound run | 85% | 32 GB of 40 GB, 65°C | Low to moderate | 2,000 samples/s | Healthy compute-bound execution. |
+| Memory-starved run | 85% | 32 GB of 40 GB, 65°C | Starved | 150 samples/s | More than 13 times slower at identical `GPU-Util`. |
+| GPU 0 in a two-GPU job | 85% | 32 GB of 40 GB, 65°C | 82% | 2,048 samples/s | Healthy memory-bound training. |
+| GPU 1 in the same job | 85% | 32 GB of 40 GB, 65°C | 12% | 180 samples/s | Stuck in a synchronization wait loop. |
 
-### 2.2 The Memory Lie: Allocated tensor memory versus the PyTorch caching allocator
+### 2.2 Utilization you can trust
 
-When an operator sees in `nvidia-smi` that a 40 GB GPU has 30.2 GB used, the natural reaction is to fear an imminent out-of-memory crash. In reality, that number reflects framework caching rather than active tensor consumption (`nvidia-devops` V16 Ch 3).
+If the headline number lies, which one do you alert on? DCGM exposes profiling counters that measure what the hardware actually did. They need the profiling module of DCGM and cost a small amount of overhead, which is why they are not the default.
 
-Calling the CUDA driver via `cudaMalloc` is an expensive operation that updates page tables and synchronizes the device. To avoid paying that cost on every training step, PyTorch uses a user-space caching allocator that claims large contiguous blocks from the driver upfront. This pool often reserves 75% to 95% of total VRAM. When a Python tensor is deleted, PyTorch keeps the freed blocks inside its private cache pool for future batches instead of returning them to the driver.
+| Metric | What it measures | How to read it |
+|---|---|---|
+| `DCGM_FI_PROF_SM_ACTIVE` | Fraction of time an SM has at least one warp resident, averaged over all SMs | Near 1.0 on a busy job; a single spinning block gives about 1 in 132 |
+| `DCGM_FI_PROF_SM_OCCUPANCY` | Resident warps as a fraction of the maximum an SM can hold | Low values with high SM activity point to a launch or kernel shape problem |
+| `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` | Fraction of cycles the Tensor Core pipe is active | The best single indicator that matrix math is happening |
+| `DCGM_FI_PROF_DRAM_ACTIVE` | Fraction of cycles the HBM interface is transferring data | High value with low Tensor activity means memory-bound |
+
+A healthy dense training step on a large model shows high Tensor activity. A dataloader stall shows low SM activity and low Tensor activity together, even when `GPU-Util` still looks reasonable because short kernels keep arriving.
+
+### 2.3 The memory lie
+
+When `nvidia-smi` shows 30.2 GB used on a 40 GB GPU, the natural reaction is to fear an out-of-memory crash. Usually that number includes memory the framework is holding for reuse.
+
+Calling `cudaMalloc` is slow because it updates page tables and can synchronize the device. PyTorch avoids paying that cost every step with a caching allocator. It requests memory from the driver on demand, in blocks, and when a tensor is freed it keeps the block in its own pool for the next batch instead of handing it back. The pool therefore grows to match the job's peak needs and stays there. Do not confuse this with a fixed upfront grab. PyTorch does not claim a large share of the card when it starts. JAX does: its default preallocates 75 percent of GPU memory at startup. vLLM also preallocates, by design, up to the fraction set by `gpu_memory_utilization`, and chapter 15.3 explains why.
 
 ```text
-PyTorch Memory Breakdown on a 40.0 GB GPU (nvidia-devops V16 Ch 3):
-  Total GPU VRAM:                                  40.0 GB
-  Memory Allocated (torch.cuda.memory_allocated):  28.4 GB  (active weights, activations, optimizer states)
-  Memory Reserved  (torch.cuda.memory_reserved):   30.2 GB  (claimed by PyTorch, shown in nvidia-smi; 75.5% of 40.0 GB)
-  Active Usage Ratio (28.4 GB / 30.2 GB):          94.0%
-  Free Memory from Driver (40.0 GB - 30.2 GB):      9.8 GB
-  Reusable Memory in PyTorch Cache (30.2 - 28.4):   1.8 GB
-  True Available Headroom (9.8 GB + 1.8 GB):       11.6 GB  (refinement over the note's 9.8 GB; see Corrections)
+Example on a 40.0 GB GPU:
+  Total GPU memory:                                 40.0 GB
+  Allocated (torch.cuda.memory_allocated):          28.4 GB   live tensors
+  Reserved  (torch.cuda.memory_reserved):           30.2 GB   shown by nvidia-smi, 75.5% of 40.0 GB
+  Active share of the pool (28.4 / 30.2):           94.0%
+  Free at driver level (40.0 - 30.2):                9.8 GB
+  Reusable inside the PyTorch pool (30.2 - 28.4):    1.8 GB
+  Headroom for a new tensor (9.8 + 1.8):            11.6 GB
 ```
 
-As verified in `analyze_pytorch_memory_state()` (`code/part10/gpu_node_ops.py`), alerting whenever `nvidia-smi` memory usage crosses 80% creates constant false alarms. Production alerts should trigger only when true available headroom drops below 1.0 GB or when memory fragmentation forces PyTorch into slow compaction stalls.
+The headroom figure is an upper bound. The 1.8 GB inside the pool can be split into pieces too small for one large tensor, which is the fragmentation case in section 5.4. The function `analyze_pytorch_memory_state()` in `code/part10/gpu_node_ops.py` computes these numbers.
 
-### 2.3 The Clock Speed Lie: Full utilization at reduced frequency
+Alerting when `nvidia-smi` memory crosses 80 percent produces constant false alarms. Alert on true headroom, or on a falling trend in free driver memory across a deployment, and use `torch.cuda.memory_summary()` to see fragmentation.
 
-A third trap occurs when a dashboard shows 100% GPU utilization, but training step times suddenly increase. The operator blames the model code, when in fact hardware thermal or power throttling has cut the GPU clock speed (`nvidia-devops` V16 Ch 3).
+### 2.4 The clock speed lie
 
-Modern data center GPUs adjust clocks dynamically using Dynamic Voltage and Frequency Scaling. When a fan fails, a dust filter clogs, or cold-aisle temperatures rise, the GPU silicon hits its 85°C thermal threshold. The internal microcontroller then lowers SM frequencies to keep the chip safe. The GPU stays 100% busy, but every instruction takes longer to finish, so operators must always plot `clocks.current.sm` alongside utilization.
+A third trap appears when utilization reads 100 percent and step times grow. The cause is often that a fan failed, a filter clogged or the cold aisle warmed up, and the GPU lowered its clocks to protect itself. Each instruction now takes longer, and the GPU is still busy. Always plot `clocks.current.sm` beside utilization.
 
-| Clock Regime | Volume 16 Ch 3 Example | General Range in Volume 16 Notes | Operational Meaning |
-|---|---|---|---|
-| Peak SM clock | 1410 MHz (on A100) | 1500–2000 MHz on modern GPUs | Full unthrottled execution; check `clocks.max.sm` on your device. |
-| Idle gated clock | 300 MHz (`dmon` sample at 50W) | 300–500 MHz under clock gating | Normal energy saving when no kernels are resident (`GPU_IDLE`). |
-| Throttled SM clock | 1200 MHz at 85°C (210W; ~15% drop, 1200 / 1410 = 0.85) | 800–1200 MHz when throttled (20W when backed off) | Thermal or power limit active; inspect throttle reason bitmask immediately. |
+The table gives A100 examples. Your own device reports its limits through `nvidia-smi -q -d CLOCK`.
+
+| Clock regime | Example on A100 | Meaning |
+|---|---|---|
+| Peak SM clock | 1410 MHz | Full speed. Compare with `clocks.max.sm` on your device. |
+| Idle clock | About 300 MHz at low power | Normal clock gating when no kernels run. A clock alert must not fire on idle nodes. |
+| Throttled clock | 1200 MHz at 85°C, about 15 percent lower | A thermal or power limit is active. Read the throttle reason next. |
 
 ---
 
-## 3. Clocks, Power Capping, and Active Throttling Reasons
+## 3. Clocks, power caps and throttle reasons
 
-When a GPU slows down, guessing whether the culprit is a hot room, a power cap, or an idle workload wastes valuable recovery time. Fortunately, the GPU hardware records the exact cause of every clock reduction inside a bitmask register (`nvidia-devops` V2 Lab 02 & V16 Ch 3).
+When a GPU slows down, guessing between a hot room, a power cap and an idle workload wastes recovery time. The GPU records the cause of every clock reduction in a bitmask register that you can read.
 
-### 3.1 Decoding the `clocks_throttle_reasons.active` bitmask
+### 3.1 Decoding the throttle bitmask
 
-You can read the active throttle bitmask with `nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv` or view the decoded text with `nvidia-smi -q -d PERFORMANCE`. When multiple conditions happen at once, NVML bitwise-ORs the hex flags together. For example, `0x0000000000000024` combines `SW_POWER_CAP` (`0x04`) and `SW_THERMAL_SLOWDOWN` (`0x20`).
+Read the mask with `nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv`, or see the decoded text with `nvidia-smi -q -d PERFORMANCE`. When several reasons apply, NVML ORs the flags together. For example `0x0000000000000024` is `SW_POWER_CAP` (`0x04`) plus `SW_THERMAL_SLOWDOWN` (`0x20`). The bit values below follow the NVML header `nvml.h`.
 
-| Bitmask Hex | Throttle Reason Name | Operational Meaning | Severity & Action |
+| Bitmask | Reason | Meaning | Severity and action |
 |---|---|---|---|
-| `0x0000000000000000` | `NOT_THROTTLED` | GPU is running at its designed frequency without restriction. | Normal / Healthy. |
-| `0x0000000000000001` | `GPU_IDLE` | Clocks are reduced because no kernels are resident on the SMs. | Normal between batches or during data stalls. |
-| `0x0000000000000002` | `APPLICATIONS_CLOCKS_SETTING` | Clocks are locked by operator policy via `nvidia-smi -lgc`. | Expected during intentional benchmark locks. |
-| `0x0000000000000004` | `SW_POWER_CAP` | Power draw hit the configured ceiling, such as 698W against 700W on H100 SXM. | Expected under dense GEMM load; check power cap. |
-| `0x0000000000000008` | `HW_SLOWDOWN` | Hardware slowdown from extreme board temperature or power drop alert. | Severe: inspect chassis cooling, fans, and PSUs. |
-| `0x0000000000000010` | `SYNC_BOOST` | Frequency adjusted to synchronize across a multi-GPU group. | Normal in multi-GPU configurations. |
-| `0x0000000000000020` | `SW_THERMAL_SLOWDOWN` | Driver lowers clocks because core temp reached the 82°C–85°C thermal limit. | Severe: clean filters, check fans and cold aisle. |
-| `0x0000000000000040` | `HW_THERMAL_SLOWDOWN` | Hardware protection cut clocks after a board or die sensor crossed its limit. | Severe: inspect fans, airflow, and heatsinks. |
-| `0x0000000000000080` | `HW_POWER_BRAKE_SLOWDOWN` | External hardware power brake engaged from a PSU fault or facility signal. | Critical: check BMC power shelf and PSU logs. |
-| `0x0000000000000100` | `DISPLAY_CLOCK_SETTING` | Clocks adjusted for display output timing. | Rare on headless data center nodes. |
+| `0x0000000000000000` | `NOT_THROTTLED` | Running at the designed frequency. | Healthy. |
+| `0x0000000000000001` | `GPU_IDLE` | No kernels are running, so clocks are lowered. | Normal between batches or during data stalls. |
+| `0x0000000000000002` | `APPLICATIONS_CLOCKS_SETTING` | Clocks are held by the applications clocks setting, which `nvidia-smi -ac` configures. | Expected during an intentional benchmark setting. |
+| `0x0000000000000004` | `SW_POWER_CAP` | Power draw reached the configured limit. | Expected under dense matrix load; check who set the limit. |
+| `0x0000000000000008` | `HW_SLOWDOWN` | The hardware slowed itself from a thermal or power signal. | Severe: check cooling and power supplies. |
+| `0x0000000000000010` | `SYNC_BOOST` | Clocks were matched across a group of GPUs. | Normal in multi-GPU setups. |
+| `0x0000000000000020` | `SW_THERMAL_SLOWDOWN` | The driver lowered clocks because the GPU reached its slowdown temperature. | Severe: clean filters, check fans and cold aisle. |
+| `0x0000000000000040` | `HW_THERMAL_SLOWDOWN` | Hardware protection cut clocks after a sensor crossed its limit. | Severe: inspect fans, airflow and heatsinks. |
+| `0x0000000000000080` | `HW_POWER_BRAKE_SLOWDOWN` | An external power brake signal is active. | Critical: check the BMC power shelf and PSU logs. |
+| `0x0000000000000100` | `DISPLAY_CLOCK_SETTING` | Clocks adjusted for display output. | Rare on headless data center nodes. |
 
-The source notes use `clocks_throttle_reasons.*` in some places and `clocks_event_reasons.*` in others, such as `clocks_event_reasons.hw_slowdown` in the legacy v10 note. Newer drivers prefer the `event` spelling, so run `nvidia-smi --help-query-gpu | grep -i reasons` to check your installed driver. Furthermore, the exact hex bit values in the table above come from NVML's `nvml.h` header as known to the author. They are not in the book corpus or the Volume 02 and Volume 16 notes, and have not been run on a live GPU here. Always confirm reason names with `nvidia-smi -q -d PERFORMANCE` on your driver.
+Newer drivers spell the query fields `clocks_event_reasons.*` and keep the older `clocks_throttle_reasons.*` spelling for compatibility. Run `nvidia-smi --help-query-gpu | grep -i reasons` on your driver to see which names it accepts. A clock lock left by `nvidia-smi -lgc` is easiest to catch by noticing clocks that stay low on a cool, lightly loaded GPU, not by waiting for a specific bit.
 
-### 3.2 Temperature headroom bands
+### 3.2 Temperature headroom
 
-Modern NVIDIA data center GPUs are rated for continuous operation between 80°C and 85°C (`nvidia-devops` V16 Ch 3). We group operating temperatures into five bands (`classify_temperature_headroom()` in `code/part10/gpu_node_ops.py`).
+Data center GPUs are built to run hot under load, and the limits differ by model. Ask your own device: `nvidia-smi -q -d TEMPERATURE` prints the slowdown and shutdown temperatures. The function `classify_temperature_headroom()` in `code/part10/gpu_node_ops.py` uses these illustrative bands.
 
 ```mermaid
 flowchart LR
@@ -200,97 +211,101 @@ flowchart LR
     B4 --> B5["> 85°C<br/>CRITICAL<br/>Throttling active"]
 ```
 
-The Volume 16 note illustrates thermal headroom using a simple cooling capacity ratio measured in Watts dissipated per degree Celsius (`W/°C`). In a chassis providing `3 W/°C` of heat rejection, a GPU drawing 240W runs at 82°C with healthy airflow. Meanwhile, a neighboring GPU drawing 220W with obstructed airflow reaches 85°C and throttles. Alert rules should fire whenever core temperature stays above 82°C for more than two minutes.
+Why does one GPU in a rack run hotter than its neighbour? Think of the die as a heater inside a duct. The die temperature is roughly the temperature of the air or coolant reaching it, plus the power it draws multiplied by the thermal resistance between die and coolant. Thermal resistance is measured in degrees Celsius per watt, and it grows when airflow is blocked or a heatsink is poorly seated. The same 700 W of draw therefore gives a few degrees more on a GPU behind a clogged filter than on its neighbour, even though both have identical workloads.
+
+This model gives two practical rules. Compare a hot GPU with its neighbours at the same power, because a single outlier points to that GPU's airflow or seating. If every GPU in the rack runs warm together, look at inlet temperature and facility cooling instead. Set a temperature alert a few degrees under the slowdown temperature your device reports, sustained for a couple of minutes, so it fires before throttling starts.
 
 ### 3.3 Power capping and clock locking
 
-When a rack runs close to its circuit breaker limit or an engineer needs jitter-free latency numbers, leaving GPU clocks and power on automatic settings causes problems. Power spikes can trip rack breakers during dense matrix bursts, and automatic frequency scaling adds noise to P99 inference benchmarks.
+When a rack runs close to its breaker limit, or an engineer needs jitter-free latency numbers, automatic settings cause trouble. Power spikes during dense matrix bursts can trip breakers, and automatic frequency scaling adds noise to P99 inference benchmarks.
 
-Operators use two `nvidia-smi` controls to govern these behaviors (`nvidia-devops` V2 Lab 02). First, power capping via `nvidia-smi -pl` sets a ceiling below the factory default, such as capping a 700W H100 SXM5 or a 350W L40S within its configurable range of 200W to 700W. When power draw nears the cap, the internal regulator lowers SM clocks so the server never trips facility breakers. Second, clock locking via `nvidia-smi -lgc` pins the SM frequency to a fixed value to remove Dynamic Voltage and Frequency Scaling jitter during latency tests. Running `nvidia-smi -rgc` restores dynamic scaling afterward.
+Two `nvidia-smi` controls help. A power cap with `-pl` sets a ceiling below the factory default, within the range the device allows. When draw nears the cap, the GPU lowers SM clocks. A clock lock with `-lgc` pins the SM frequency range to remove frequency scaling jitter, and `-rgc` restores automatic scaling.
 
 ```bash
-# Enforce a 500-Watt power cap on GPU 0 (untested here)
+# Cap GPU 0 at 500 W
 sudo nvidia-smi -i 0 -pl 500
 
-# Lock GPU 0 SM clock at exactly 1410 MHz for reproducible benchmarks (untested here)
+# Lock GPU 0 SM clock at 1410 MHz for reproducible benchmarks
 sudo nvidia-smi -i 0 -lgc 1410,1410
 
-# Reset GPU 0 back to automatic dynamic clock scaling (untested here)
+# Return GPU 0 to automatic clock scaling
 sudo nvidia-smi -i 0 -rgc
 ```
 
-### 3.4 The NVML architecture beneath nvidia-smi and DCGM
+A power cap that someone set for a benchmark and forgot is a classic slow-node cause. Compare `power.limit` with `power.default_limit` across the fleet.
 
-Writing a custom monitoring script that shells out to `nvidia-smi` in a tight loop wastes CPU cycles and churns driver handles. Both `nvidia-smi` and NVIDIA Data Center GPU Manager are user-space tools built on top of the NVIDIA Management Library in `libnvidia-ml.so`.
+### 3.4 NVML under nvidia-smi and DCGM
 
-Custom monitoring agents should call NVML directly and follow three rules. Initialize the library once at startup and shut it down on exit rather than re-initializing inside the polling loop. Bind device handles using immutable UUIDs instead of logical indices that can shift across reboots. Finally, query specific C structs for utilization, memory, temperature, power, and throttle bitmasks.
+A monitoring script that shells out to `nvidia-smi` in a tight loop wastes CPU and churns driver handles. Both `nvidia-smi` and DCGM sit on the NVIDIA Management Library, NVML, in `libnvidia-ml.so`. Custom agents should call NVML directly, initialise it once at startup, and bind devices by UUID because logical indices can shift across reboots.
 
-| NVML Function | Returned Data or Action | Operational Usage Note |
+| NVML function | Returns | Note |
 |---|---|---|
-| `nvmlInit_v2()` / `nvmlShutdown()` | Library initialization and teardown | Call once per daemon lifecycle to avoid descriptor churn. |
-| `nvmlDeviceGetHandleByUUID()` / `nvmlDeviceGetHandleByIndex_v2()` | Opaque `nvmlDevice_t` handle | Prefer UUID binding over index binding in production scripts. |
-| `nvmlDeviceGetUtilizationRates()` | `nvmlUtilization_t` with `gpu` and `memory` percentages | Reads SM active time alongside memory controller bandwidth active time. |
-| `nvmlDeviceGetMemoryInfo()` | `nvmlMemory_t` with `total`, `free`, and `used` bytes | Reports physical VRAM reserved at the driver level. |
-| `nvmlDeviceGetTemperature()` | Core temperature in Celsius via `NVML_TEMPERATURE_GPU` | Compare against the 82°C–85°C slowdown band. |
-| `nvmlDeviceGetPowerUsage()` | Instantaneous power draw in milliwatts | Divide by 1,000 to compare against the Watt power cap. |
-| `nvmlDeviceGetCurrentClocksThrottleReasons()` | 64-bit integer bitmask (`THROTTLE_REASONS_MAP`) | Bitwise-AND against reason flags to detect active throttling. |
-| `nvmlDeviceSetGpuLockedClocks()` / `nvmlDeviceResetGpuLockedClocks()` | Locks or resets SM clock frequency range | Programmatic equivalent of `nvidia-smi -lgc` and `-rgc`. |
+| `nvmlInit_v2()` and `nvmlShutdown()` | Library setup and teardown | Once per daemon, not per poll. |
+| `nvmlDeviceGetHandleByUUID()` | Device handle | Prefer UUID over index. |
+| `nvmlDeviceGetUtilizationRates()` | GPU and memory percentages | Same coarse definition as section 2.1. |
+| `nvmlDeviceGetMemoryInfo()` | Total, free and used bytes | Driver-level, so it includes framework caches. |
+| `nvmlDeviceGetTemperature()` | Core temperature in Celsius | Compare with the slowdown temperature. |
+| `nvmlDeviceGetPowerUsage()` | Power in milliwatts | Divide by 1,000 for watts. |
+| `nvmlDeviceGetCurrentClocksThrottleReasons()` | 64-bit bitmask | AND it with the reason flags. |
+| `nvmlDeviceSetGpuLockedClocks()` and `nvmlDeviceResetGpuLockedClocks()` | Lock or reset SM clocks | Same effect as `-lgc` and `-rgc`. |
 
-### 3.5 Prefill versus Decode DVFS dynamics during LLM inference
+### 3.5 Prefill and decode on an inference node
 
-In production large language model servers like vLLM or TensorRT-LLM, watching clocks and power draw exposes the difference between prompt prefill and token decode. Without locked clocks, the GPU frequency governor constantly hunts up and down between the two phases, adding tail-latency jitter to Time-To-First-Token and Inter-Token Latency.
+On an LLM server such as vLLM or TensorRT-LLM, clocks and power show the two phases of a request. Prefill processes all prompt tokens at once and is compute-bound, so power rises toward the limit and clocks boost. Decode produces one token at a time, reads the model weights for each token, and is memory-bandwidth bound, so power falls and clocks can drift down.
 
-| Inference Phase | Bottleneck & Math Profile | Power Draw on H100 SXM | SM Clock Behavior | Operational Effect |
-|---|---|---|---|---|
-| 1. Prefill phase | Compute-bound parallel GEMM across all prompt tokens. | Near maximum, approaching the 700W ceiling. | Boosts to maximum frequency (1800–1980 MHz). | High Tensor Core activity. |
-| 2. Decode phase | Memory-bandwidth bound; single-digit FLOPs/byte streaming weights per token. | Drops sharply to 350W–450W while waiting on HBM reads. | DVFS drops clocks during memory stalls, then re-boosts on prefill. | Causes TTFT and ITL jitter unless clocks are locked with `nvidia-smi -lgc`. |
+| Phase | Bottleneck | Power on H100 SXM | SM clock behaviour |
+|---|---|---|---|
+| Prefill | Compute-bound matrix math across the prompt | Near the 700 W ceiling | Boosts toward 1800 to 1980 MHz |
+| Decode | HBM bandwidth, a few operations per byte | Roughly 350 to 450 W | Frequency scaling lowers clocks during stalls, then boosts again on prefill |
+
+Without a clock lock, this swing adds jitter to time to first token and inter-token latency. Lock clocks for benchmarks. In production, decide deliberately, because a lock also gives up boost headroom.
 
 ---
 
-## 4. Commands and Configurations That Matter
+## 4. Commands and configuration that matter
 
-When a GPU node boots without baseline tuning or an operator parses human-readable `nvidia-smi` tables with brittle regexes, automation breaks in production. Disabling persistence mode adds a driver reload stall to every job launch, and slow 15-second metric scrapes miss one-second thermal throttling bursts.
+When a node boots with no baseline tuning, or an operator scrapes the `nvidia-smi` table with a regular expression, automation breaks in production. The workflows below set persistence mode, query structured fields, stream device counters at 1 Hz and verify PCIe negotiation.
 
-The workflows below configure persistence mode, query structured CSV telemetry, stream 1 Hz `dmon` counters, and verify PCIe link negotiation (`nvidia-devops` V2 Labs 01–02; V16 Ch 1–3). All live commands are marked `(untested here)` as reference templates when physical hardware is not attached.
+### 4.1 Persistence mode
 
-### 4.1 Enforce Persistence Mode across the fleet
+Why does the first CUDA call on an idle node sometimes take seconds? When no process holds a GPU open and persistence is off, the driver deinitialises the GPU's state. The kernel modules stay loaded. The next process to open the device pays for GPU initialisation again, and on an eight-GPU node that delay is noticeable. Container device plugins and health probes that touch the GPU can time out during it.
 
-When Persistence Mode is disabled, the Linux kernel unloads the `/dev/nvidia*` character devices whenever no CUDA processes are active. Starting a new job forces the kernel to re-enumerate the PCIe bus, reload driver modules, and initialize GPU firmware. That reload stalls the first CUDA call and can cause container device plugins to time out (`nvidia-devops` V2 Lab 02 Step 2; *AI Systems Performance Engineering* Ch 3). The only trade-off of enabling persistence mode is a few extra watts of idle power, and clusters that unload drivers between jobs force every subsequent job to pay the reload penalty.
+Persistence mode keeps the GPU initialised even when no client is attached. The cost is a few extra watts of idle power. NVIDIA recommends the `nvidia-persistenced` daemon over the legacy `nvidia-smi -pm 1` setting, which is not preserved across reboots and is being phased out.
 
 ```bash
-# Enable Persistence Mode on all installed GPUs (untested here)
-sudo nvidia-smi -pm 1
-
-# Verify Persistence Mode is enabled across all devices (untested here)
+# Check the current state on all GPUs
 nvidia-smi --query-gpu=index,name,persistence_mode --format=csv
 
-# Enable the persistent background daemon across reboots on Ubuntu/RHEL (untested here)
+# Run the persistence daemon now and at every boot
 sudo systemctl enable --now nvidia-persistenced
+
+# Legacy per-boot switch, if you cannot run the daemon
+sudo nvidia-smi -pm 1
 ```
 
-### 4.2 Scripted inventory and one-shot health inspection
+### 4.2 Scripted inventory
 
-Always query structured CSV fields rather than scraping the default ASCII table.
+Query structured CSV fields rather than scraping the default table.
 
 ```bash
-# Query durable identity, driver version, memory, power, temperature, and clocks (untested here)
 nvidia-smi --query-gpu=index,uuid,pci.bus_id,driver_version,memory.total,memory.used,memory.free,temperature.gpu,power.draw,power.limit,clocks.current.sm,clocks.max.sm,clocks_throttle_reasons.active \
   --format=csv
 ```
 
-### 4.3 High-frequency streaming telemetry with `dmon` and `pmon`
+### 4.3 High-frequency streaming with dmon and pmon
 
-Prometheus scrapers typically poll every 15 to 30 seconds, hiding short-lived bursts and micro-throttling. Use `nvidia-smi dmon` and `nvidia-smi pmon` to stream metrics at 1 to 10 Hz (`nvidia-devops` V2 Lab 02 Step 4).
+Prometheus usually polls every 15 to 30 seconds, which averages away short bursts of throttling. `nvidia-smi dmon` and `nvidia-smi pmon` stream at 1 to 10 Hz.
 
 ```bash
-# Stream device metrics every 1 second: power, SM util, clocks, video, memory util, ECC, temp (untested here)
+# Device metrics each second: power, SM util, clocks, video, memory util, ECC, temperature
 nvidia-smi dmon -s pucvmet -d 1
 
-# Stream per-process PID metrics every 1 second: SM util and memory bandwidth per process (untested here)
+# Per-process SM and memory utilization each second
 nvidia-smi pmon -s um -d 1
 ```
 
-Sample output of `nvidia-smi dmon` during a healthy dual-GPU training run (`nvidia-devops` V16 Ch 3).
+A healthy dual-GPU training run looks like this.
+
 ```text
 # gpu   pwr  gpu  mem   enc   dec  mclk  pclk    fb  bar1 sbecc dbecc temp
 # Idx     W    %    %     %     %   MHz   MHz    MB    MB  errs  errs    C
@@ -298,71 +313,71 @@ Sample output of `nvidia-smi dmon` during a healthy dual-GPU training run (`nvid
     1  195   84   81     0     0  1410  1410 28400     0     0     0   72
 ```
 
-Here `gpu` SM utilization is 85% and 84%, while `mem` bandwidth utilization is 82% and 81%. Processor clocks (`pclk`) hold steady at 1410 MHz, temperatures sit at 68°C and 72°C, and double-bit ECC errors (`dbecc`) read zero.
+SM utilization is 85 and 84 percent, memory activity is 82 and 81 percent, processor clocks hold at 1410 MHz, and the double-bit ECC counters read zero. Each of those is a thing you check before you suspect the job.
 
-### 4.4 Inspect physical topology and PCIe link negotiation
+### 4.4 Topology and PCIe link negotiation
 
 ```bash
-# 1. Print full topology matrix and peer-to-peer read/write capability (untested here)
+# Topology matrix and peer-to-peer read and write capability
 nvidia-smi topo -m
 nvidia-smi topo -p2p r
 nvidia-smi topo -p2p w
 
-# 2. Verify PCIe link capability (LnkCap, e.g. 32GT/s Gen5) vs negotiated status (LnkSta) (untested here)
+# PCIe capability (LnkCap, for example 32GT/s Gen5) against the negotiated state (LnkSta)
 for bdf in $(lspci -D | grep -Ei 'NVIDIA' | awk '{print $1}'); do
   echo "=== GPU $bdf ==="
   sudo lspci -s "$bdf" -vv | grep -E 'LnkCap:|LnkSta:'
 done
 
-# 3. Verify NUMA socket mapping in Linux sysfs, where -1 means unknown (untested here)
+# NUMA node of each GPU; -1 means unknown
 for bdf in $(lspci -D | grep -Ei 'NVIDIA' | awk '{print $1}'); do
   printf "%-14s NUMA=%s\n" "$bdf" "$(cat /sys/bus/pci/devices/$bdf/numa_node 2>/dev/null || echo unknown)"
 done
 ```
 
+If `LnkSta` shows a lower speed or width than `LnkCap`, the link has trained down, which is a seating, riser or cable fault. That fault halves host-to-GPU bandwidth without any error message.
+
 ---
 
-## 5. Field Triage: Reading Xid Errors and Telling Slowdown Causes Apart
+## 5. Field triage: Xid errors and slowdown causes
 
-When a node throws kernel errors at 3 AM or a training job slows down without crashing, operators must separate harmless warnings from fatal hardware faults. Guessing wrong either pages the team unnecessarily or leaves a broken GPU active in the cluster.
+When a node logs kernel errors at 3 AM, or a job slows without crashing, you must separate harmless warnings from real hardware faults. Guessing wrong either pages the team for nothing or leaves a bad GPU in the cluster. Chapter 10.21 owns the full health and Xid reference. This section gives the triage rule an on-call needs.
 
-This section synthesizes the triage workflows from `nvidia-devops` Volume 20 Chapters 2, 6, 8, 9, and 10 and Volume 19 Chapter 4. Those source chapters note that their terminal outputs are illustrative examples rather than live captures. Treat their exact clocks, temperatures, and wattages as teaching examples and query your own GPU limits with `nvidia-smi -q -d TEMPERATURE`.
+### 5.1 Xid errors: three tiers
 
-### 5.1 Xid errors: The three tiers
+An Xid is an error code the NVIDIA kernel driver prints to `dmesg` as `NVRM: Xid (PCI:<bus>): <code>, <message>`. Triage by the number, because the message text can change between driver releases. The function `classify_xid()` in `code/part10/gpu_node_ops.py` encodes this table.
 
-An Xid is an error code that the NVIDIA kernel driver prints to `dmesg` in the format `NVRM: Xid (PCI:<bus>): <code>, <message>`. Always triage by the numeric code rather than the message text, which can change across driver releases (`nvidia-devops` V20 Ch 2; `classify_xid()` in `code/part10/gpu_node_ops.py`).
-
-| Xid Code | Meaning (V20 Ch 2) | Tier | Required Operational Action |
+| Xid | Meaning | Tier | Action |
 |---|---|---|---|
-| 45 | Preemptive cleanup due to previous errors | Tier 1 | A symptom rather than a root cause; read the earlier Xid in `dmesg`. |
-| 63 | ECC page retirement or row remapping recorded | Tier 1 | Self-healing worked and the GPU keeps running; track frequency over time. |
-| 92 | High single-bit ECC error rate | Tier 1 | Early warning sign; schedule maintenance if the rate keeps climbing. |
-| 13 | Graphics engine exception | Tier 2 | Usually an application bug; restart the process. |
-| 31 | GPU memory page fault | Tier 2 | Usually an illegal memory access in application code. |
-| 32 | Invalid or corrupted push buffer stream | Tier 2 | Escalate to hardware triage if paired with PCIe bus errors. |
-| 43 | GPU stopped processing | Tier 2 | Often follows an earlier Xid; reset and inspect preceding `dmesg` lines. |
-| 94 | Contained ECC error | Tier 2 | Restart the affected job; other applications on the GPU are unharmed. |
-| 48 | Double-bit uncorrectable ECC error | Tier 3 | Drain the GPU immediately; do not simply restart the job on it. |
-| 61, 62 | Internal micro-controller breakpoint or halt | Tier 3 | Treat as a hardware fault and escalate. |
-| 64 | ECC page retirement or row remapping failure | Tier 3 | Hardware self-healing is exhausted; drain and escalate. |
-| 79 | GPU has fallen off the bus | Tier 3 | Drain node; attempt PCIe remove-and-rescan (V20 Ch 2 & Ch 7), then run `dcgmi diag -r 3`. |
-| 95 | Uncontained ECC error | Tier 3 | Drain and diagnose; treat any output from the running job as corrupted. |
-| 74 | NVLink error | Not tiered | Action depends on the underlying link fault; follow the NVLink diagnostic path. |
+| 45 | Preemptive cleanup after earlier errors | 1 | A symptom, not a cause; read the earlier Xid. |
+| 63 | ECC page retirement or row remapping recorded | 1 | The GPU repaired itself and keeps running; track the rate. |
+| 92 | High single-bit ECC error rate | 1 | Early warning; schedule maintenance if it climbs. |
+| 13 | Graphics engine exception | 2 | Usually an application bug; restart the process. |
+| 31 | GPU memory page fault | 2 | Usually an illegal memory access in application code. |
+| 32 | Invalid or corrupted push buffer stream | 2 | Escalate if paired with PCIe bus errors. |
+| 43 | GPU stopped processing | 2 | Often follows an earlier Xid; check preceding lines. |
+| 94 | Contained ECC error | 2 | Restart the affected job; other work on the GPU is unharmed. |
+| 48 | Double-bit uncorrectable ECC error | 3 | Drain the GPU; do not restart the job on it. |
+| 61, 62 | Internal microcontroller breakpoint or halt | 3 | Treat as a hardware fault and escalate. |
+| 64 | Row remapping or page retirement failed | 3 | Self-repair is exhausted; drain and escalate. |
+| 79 | GPU fell off the bus | 3 | Drain; try a PCIe remove and rescan, then `dcgmi diag -r 3`. |
+| 95 | Uncontained ECC error | 3 | Drain; treat output of the running job as corrupted. |
+| 74 | NVLink error | None | Depends on the link fault; follow the NVLink diagnostic path. |
 
-Three operational rules govern these tiers. For Tier 1, never page an on-call engineer at 3 AM for a single event, but track weekly trends. For Tier 2, only suspect hardware if the same GPU repeats the same Xid across unrelated applications, at which point you promote it to Tier 3. For Tier 3, stop scheduling new work on the GPU immediately, because leaving a bad card in service costs far more than an extra node drain.
+Three rules govern the tiers. For tier 1, do not page anyone for a single event, but trend it weekly. For tier 2, suspect hardware only if the same GPU repeats the same code across unrelated applications, and then treat it as tier 3. For tier 3, stop scheduling on the GPU immediately, because a bad card in service costs more than a drained node.
 
 ```text
-Illustrative dmesg progression (nvidia-devops V20 Ch 2, oldest first):
-  1. Xid 92 fires (high single-bit ECC rate).
-  2. 6 seconds later: Xid 45 fires (preemptive cleanup symptom).
-  3. 5 seconds after that: Xid 79 fires (GPU falls off the PCIe bus).
-  Correctable ECC count per 2-hour window over 6 hours: 12 -> 31 -> 58 -> 94 (with 0 double-bit errors).
-  Weekly trend report: 94 Xid 92 events this week vs 12 last week = +683% ("would have caught this incident 2 days early").
+Illustrative dmesg progression, oldest first:
+  1. Xid 92 (high single-bit ECC rate)
+  2. 6 seconds later: Xid 45 (preemptive cleanup)
+  3. 5 seconds after that: Xid 79 (GPU fell off the PCIe bus)
+  Correctable ECC count per 2-hour window: 12, 31, 58, 94 with zero double-bit errors.
+  A weekly trend of 94 Xid 92 events against 12 the week before would have shown the fault early.
 ```
 
-### 5.2 Which kind of slowdown is it? Read the throttle reasons first
+### 5.2 Which kind of slowdown is it?
 
-When a job is slow and `nvidia-smi` reports high utilization without crashing, follow the ordered checklist below (`nvidia-devops` V20 Ch 6, 9, 10; V19 Ch 4; `triage_slowdown()` and `diagnose_busy_but_slow()` in `code/part10/gpu_node_ops.py`).
+When a job is slow and `nvidia-smi` reports high utilization, follow this ordered checklist. The functions `triage_slowdown()` and `diagnose_busy_but_slow()` in `code/part10/gpu_node_ops.py` implement it.
 
 ```mermaid
 flowchart TD
@@ -377,72 +392,61 @@ flowchart TD
     Tensor -->|"10% to 50%"| Unknown["Inconclusive: profile with Nsight Systems"]
 ```
 
-| Slowdown Cause | How to Recognize It (Illustrative Examples from V19 & V20 Notes) | First Operational Fix |
+| Cause | How to recognise it | First fix |
 |---|---|---|
-| Thermal throttling | Thermal reason active; temp near 85°C limit. If all fans read 100% at 85°C, cooling is saturated. V20 Ch 6 example: clock fell from 1980 MHz to 1833 MHz (~7%). Time-of-day clue: 3–6 PM (V20 Ch 6) or +40% step time at 2:00 PM daily (V19 Ch 4) points to facility cooling; stuck fan climbs 2–3°C/min (V20 Ch 8). | Single hot GPU: inspect fan and airflow. Whole rack or afternoon pattern: escalate to facilities. |
-| Software power cap | `Power Draw` sits at `Power Limit` (V20 Ch 9 example: 198W against 200W), and limit is below `Default Power Limit` (300W). Temporary `-pl 200` on a 250W GPU costs ~15–20% speed. | Compare `power.limit` with `power.default_limit`, search `/etc/` for `nvidia-smi.*-pl`, and check BMC capping. |
-| Power brake or PSU sag | Multiple GPUs drop clocks together; BMC logs PSU events. V20 Ch 9 12V rail spec is 12V ± 0.5V, and ≤ 11.4V indicates sag (check via `ipmitool sensor list` and `ipmitool sel list`, as DCGM does not track voltage sag). PSU sizing rule: `GPUs * Watts * 1.3` (4 x 300W x 1.3 = 1,560W; `minimum_psu_watts()`). | Lower peak draw with a temporary power cap, drain jobs, and replace the failing PSU. |
-| Leftover clock lock | Clocks stay low while GPU is cool and power draw is low because someone left `nvidia-smi -lgc` active. | Clear with `nvidia-smi -rgc` and `-rmc`. |
-| Bursty workload DVFS | No throttle reason, cool GPU (65°C), clocks swinging 1980 -> 1200 -> 800 MHz across 5 ms batch gaps (V20 Ch 10). Stability test (`classify_clock_stability()`): sample every 0.5 s for 5 min; 1 or 2–3 unique values within ±50 MHz is stable, >5 is oscillating, and 4–5 is labelled `BORDERLINE` by this handbook. | Remove idle input gaps using Nsight Systems, or lock clocks (e.g. `nvidia-smi -lgc 1800` for steady 1800 MHz vs 1980 MHz peak). |
+| Thermal throttling | A thermal reason is active and temperature is near the slowdown limit. Fans at 100 percent at that temperature mean cooling is saturated. A slowdown at the same time every afternoon points to facility cooling. | One hot GPU: inspect its airflow. Whole rack or a daily pattern: escalate to facilities. |
+| Software power cap | Power draw sits at the power limit, and the limit is below the default limit. | Compare `power.limit` with `power.default_limit`, search `/etc/` for scripts that call `nvidia-smi -pl`, and check BMC capping. |
+| Power brake or PSU sag | Several GPUs drop clocks together and the BMC logs PSU events. DCGM does not track voltage sag, so read `ipmitool sensor list` and `ipmitool sel list`. | Lower peak draw with a temporary cap, drain jobs and replace the failing supply. |
+| Leftover clock lock | Clocks stay low while the GPU is cool and lightly loaded because someone left `-lgc` active. | Clear it with `nvidia-smi -rgc`, and reset memory clocks with `-rmc`. |
+| Bursty workload | No throttle reason, a cool GPU, and clocks that swing between high and low across short batch gaps. Sampling every 0.5 seconds for five minutes and counting distinct values is a quick test: one value or two to three within about 50 MHz is stable, more than five is oscillating. | Remove idle input gaps found with Nsight Systems, or lock clocks. |
 
-### 5.3 Fans: Many data center GPUs have none
+The PSU sizing rule of thumb used by `minimum_psu_watts()` is GPU count times watts per GPU times 1.3 for headroom. Four 300 W GPUs need at least 1,560 W.
 
-Querying `nvidia-smi --query-gpu=fan.speed` only returns values on workstation or gaming cards that carry an on-board fan. Passively cooled PCIe cards like the H100 PCIe and L40S, as well as SXM modules on HGX baseboards, report `N/A`. Their cooling comes from server chassis fans managed by the Baseboard Management Controller (`nvidia-devops` V20 Ch 6 & Ch 8).
+### 5.3 Fans: many data center GPUs have none
 
-To inspect server fans, query the BMC using `ipmitool sdr type Fan` or Redfish. A single fan reporting 0 RPM beside neighboring fans spinning at 8,400 RPM in the note's illustration confirms a hardware fan failure. Never open a data center GPU shroud to replace thermal paste yourself; cordon the node, capture diagnostic logs, and open a vendor RMA ticket.
+`nvidia-smi --query-gpu=fan.speed` returns a value only on cards with an on-board fan. Passively cooled cards such as the H100 PCIe and the L40S, and SXM modules on HGX baseboards, report N/A. Their cooling comes from chassis fans that the Baseboard Management Controller, BMC, controls. Query the BMC with `ipmitool sdr type Fan` or Redfish. One fan at 0 RPM beside neighbours turning at 8,400 RPM is a failed fan. Do not open a data center GPU to replace thermal paste yourself. Cordon the node, capture logs and open a vendor RMA.
 
-### 5.4 When throttle reasons are clear but utilization still lies
+### 5.4 When throttle reasons are clear and utilization still misleads
 
-If no throttle bit is active and `TENSOR_ACTIVE` is low, the GPU is spending its cycles on software overhead rather than matrix math (`nvidia-devops` V19 Ch 4).
+If no throttle bit is active and Tensor activity is low, the GPU spends its time on overhead instead of matrix math.
 
-| Software Bottleneck | Diagnostic Signal | Remediation |
+| Bottleneck | Signal | Remedy |
 |---|---|---|
-| PCIe copy stall | `DCGM_FI_PROF_PCIE_RX_BYTES` is saturated while compute waits on host transfers. | Enable `pin_memory=True` in PyTorch DataLoaders and overlap asynchronous copies. |
-| Precision stall | High `FP32_ACTIVE` while `DCGM_FI_PROF_PIPE_FP16_ACTIVE` reads zero. | Enable automatic mixed precision (`torch.amp`) so math runs on Tensor Cores instead of scalar CUDA cores. |
-| Memory fragmentation | `CUDA OOM` fires even though `nvidia-smi` shows free VRAM; `torch.cuda.memory_summary()` shows a wide gap between Max Reserved and Max Allocated (V19 Ch 4 example: 80 GB reserved vs 40 GB allocated). | Set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, reduce variable tensor shapes, and use `torch.cuda.empty_cache()` sparingly; note that activation checkpointing lowers peak usage but does not prevent fragmentation. |
-| Missed intermittent spikes | Point-in-time `nvidia-smi` snapshots look normal during sporadic slowdowns. | Stream `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` and `DCGM_FI_DEV_GPU_TEMP` continuously via `dcgm-exporter`. |
+| PCIe copy stall | `DCGM_FI_PROF_PCIE_RX_BYTES` is saturated while compute waits on host transfers. | Use `pin_memory=True` in DataLoaders and overlap asynchronous copies. |
+| Precision stall | High FP32 activity while `DCGM_FI_PROF_PIPE_FP16_ACTIVE` reads zero. | Enable automatic mixed precision so math runs on Tensor Cores. |
+| Fragmentation | CUDA out-of-memory error while `nvidia-smi` shows free memory; `torch.cuda.memory_summary()` shows a wide gap between reserved and allocated. | Set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, reduce shape variety, and use `torch.cuda.empty_cache()` sparingly. |
+| Missed spikes | Point-in-time `nvidia-smi` looks normal during sporadic slowdowns. | Stream `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` and `DCGM_FI_DEV_GPU_TEMP` through dcgm-exporter. |
 
-### 5.5 Source notes comparison on throttle drops
-
-The source volumes use different illustrative clock drops across their examples, and one passage contradicts its own math. Never memorize a single drop percentage as a universal hardware law; measure your own baseline with `nvidia-smi dmon` before an incident.
-
-| Source Note | Illustrative Clock Drop | Review Observation |
-|---|---|---|
-| Volume 16 Ch 3 | 1410 MHz -> 1200 MHz at 85°C | About a 15% frequency reduction under thermal throttling. |
-| Volume 20 Ch 6 | 1980 MHz -> 1833 MHz (~7% drop) | Its prose later claims performance "halves", which does not follow from a 7% clock reduction. |
-| Volume 20 Ch 10 | 1980 -> 1200 -> 800 MHz at 65°C | Driven by DVFS across idle batch gaps rather than thermal throttling. |
-| Volume 19 Ch 4 | 1500 MHz -> 500 MHz at thermal limit | Illustrates severe thermal protection. |
+How large is the clock drop to expect? Examples range from about 7 percent (1980 to 1833 MHz) to 15 percent (1410 to 1200 MHz) to a severe 1500 to 500 MHz. No single number is a law of the hardware. Measure your own baseline with `nvidia-smi dmon` before an incident, so you know what normal looks like on your nodes.
 
 ---
 
-## 6. How It Fails: Six Production GPU Operational Failure Modes
+## 6. How it fails: six production failure modes
 
-The diagnostic engine in `audit_gpu_node_operational_health()` (`code/part10/gpu_node_ops.py`, where combining these six checks into a single automated gate is **my inference**) catches the six classic operational failure modes from `nvidia-devops` Volumes 02 and 16.
+The function `audit_gpu_node_operational_health()` in `code/part10/gpu_node_ops.py` combines these checks into one gate. It is this handbook's own composition, not a vendor tool.
 
-| # | Failure Mode | Production Symptom | Root Cause & Diagnostic Evidence | Fix |
+| # | Failure | Symptom | Evidence | Fix |
 |---|---|---|---|---|
-| 1 | Persistence Mode disabled across fleet | Every container or training launch suffers a startup pause; monitoring scripts time out intermittently. | `nvidia-smi -q \| grep "Persistence Mode"` shows `Disabled`; driver unloads `/dev/nvidia*` on exit (`V2 Lab 02 Step 2`). | Run `sudo nvidia-smi -pm 1` and enable `sudo systemctl enable --now nvidia-persistenced`. |
-| 2 | Silent thermal throttling under load | Training step time rises while `GPU-Util` reads 100%; no crash or error log appears. | Die hit 85°C; `clocks_throttle_reasons.active` returns `0x20` (`SW_THERMAL_SLOWDOWN`) and SM clocks drop from 1410 MHz to 1200 MHz (`V16 Ch 3`). | Check chassis fans via BMC, verify cold-aisle supply, clean air filters, and check rack airflow baffles. |
-| 3 | External hardware power brake engaged | All 8 GPUs on a baseboard suddenly drop clocks sharply; power draw plummets and jobs crawl. | `clocks_throttle_reasons.active` reports `0x80` (`HW_POWER_BRAKE_SLOWDOWN`) from a PSU fault or facility brake signal (`V2 Lab 02 & V16 Ch 3`). | Inspect BMC System Event Log (`ipmitool sel list`) for PSU faults and check rack power shelves. |
-| 4 | Spinning kernel bug (The Utilization Lie) | One rank shows 85%–100% `GPU-Util` with zero progress while other ranks sit at 0% waiting at a barrier. | `nvidia-smi dmon` shows `gpu` = 85% but `mem` = 1%–2% with 0 samples/sec; kernel is stuck in a wait loop (`V16 Ch 1 & Ch 3`). | Attach `cuda-gdb` or Nsight Systems to locate the deadlocked barrier and fix thread synchronization. |
-| 5 | Memory fragmentation `CUDA OOM` | Job crashes with `CUDA Out of Memory` even though `nvidia-smi` showed several GB free before the crash. | PyTorch reserved cache is split into non-contiguous chunks smaller than the requested tensor (`V16 Ch 3`). | Export `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` so virtual address segments expand dynamically. |
-| 6 | Uncorrected volatile ECC memory errors | Training aborts with an unhandled fault or `NaN` loss; `dmesg` logs `Xid 48`, `94`, or `95`. | `ecc.errors.uncorrected.volatile.total` reads `> 0`, indicating multi-bit HBM corruption (`V16 Ch 1`). | Cordon the node (`kubectl cordon <node>`), drain workloads, and run hardware diagnostics for RMA. |
+| 1 | Persistence mode off across the fleet | Each container or training launch pauses at start; probes time out intermittently. | `nvidia-smi -q` shows Persistence Mode Disabled and the first CUDA call is slow after idle. | Run `nvidia-persistenced` on every node. |
+| 2 | Silent thermal throttling | Step time rises while `GPU-Util` reads 100 percent; no error appears. | The throttle mask reads `0x20` and SM clocks fall, for example from 1410 to 1200 MHz. | Check chassis fans through the BMC, cold-aisle supply, filters and baffles. |
+| 3 | Power brake engaged | All eight GPUs on a baseboard drop clocks together and jobs crawl. | The mask reads `0x80`, `HW_POWER_BRAKE_SLOWDOWN`. | Read the BMC system event log with `ipmitool sel list` and check the rack power shelves. |
+| 4 | Spinning kernel or NCCL hang | One or every rank shows 85 to 100 percent `GPU-Util` while the job makes no progress. | With a stuck peer, NCCL kernels spin on every rank, so the whole job reads high while memory bandwidth activity and Tensor activity sit near zero. | Use the Flight Recorder in chapter 12.18 to find the rank that never entered the collective; use Nsight Systems or `cuda-gdb` for a deadlocked kernel. |
+| 5 | Fragmentation out-of-memory | The job crashes with CUDA out of memory although free memory showed before the crash. | The reserved pool is split into pieces smaller than the requested tensor. | Export `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. |
+| 6 | Uncorrected ECC errors | Training aborts or loss turns to NaN; `dmesg` shows Xid 48, 94 or 95. | `ecc.errors.uncorrected.volatile.total` is above zero. | Cordon the node with `kubectl cordon`, drain workloads and run hardware diagnostics for an RMA. |
+
+Row 4 is the case people meet most often. A stuck collective does not look idle, so a dashboard filtered for low utilization never catches it. Pair utilization with job progress, such as steps per second, to catch it.
 
 ---
 
-## Hands-on lab: Verify GPU Node Telemetry, Throttling Bitmasks, and Memory Regimes
+## Hands-on lab: verify throttle bitmasks, memory regimes and Xid triage
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+ (no physical GPU hardware is required to run the diagnostic model; all live operational commands in Section 4 are marked as untested reference templates).
-
-Not verified on live hardware: commands in Section 4 are operational reference templates; all quantitative checks run deterministically in `code/part10/gpu_node_ops_lab.py`.
-
-Run the self-checking lab script `code/part10/gpu_node_ops_lab.py`.
+**Venue:** any Linux machine or Nebius GPU VM with Python 3.10 or later. No GPU is needed, because the lab runs the diagnostic model in `code/part10/gpu_node_ops.py` against fixed inputs.
 
 ```bash
 python3 code/part10/gpu_node_ops_lab.py
 ```
 
-Expected output (`41 passed, 0 failed`).
+Expected output, ending in 41 passed.
 
 ```text
 === Chapter 10.8 Lab: Operating GPU Nodes (nvidia-smi, Clocks & Throttling) ===
@@ -451,63 +455,64 @@ Expected output (`41 passed, 0 failed`).
   [PASS] Bitmask 0x20 decodes to ['SW_THERMAL_SLOWDOWN']
   [PASS] Bitmask 0x8 decodes to ['HW_SLOWDOWN']
   [PASS] Bitmask 0x24 decodes to combined SW_POWER_CAP and SW_THERMAL_SLOWDOWN
-  [PASS] V16 Ch3: 85% SM util + 82% mem BW util identifies healthy MEMORY_BOUND execution
-  [PASS] V16 Ch3: 85% SM util + 15% mem BW util with 2000 samples/sec identifies COMPUTE_BOUND execution
-  [PASS] V16 Ch1 & Ch3: 85% SM util + 2% mem BW util with 0 samples/sec detects SPINNING_OR_STALLED kernel bug
+  [PASS] 85% SM util + 82% mem BW util identifies healthy MEMORY_BOUND execution
+  [PASS] 85% SM util + 15% mem BW util with 2000 samples/sec identifies COMPUTE_BOUND execution
+  [PASS] 85% SM util + 2% mem BW util with 0 samples/sec detects SPINNING_OR_STALLED kernel bug
   [PASS] Low SM util (<10%) evaluates to IDLE
-  [PASS] V16 Ch3: 28.4 GB allocated of 30.2 GB reserved yields 1.8 GB reusable cache and 9.8 GB free from driver
-  [PASS] V16 Ch3: Reserved fraction is 75.5% and active usage ratio is 94.0%
+  [PASS] 28.4 GB allocated of 30.2 GB reserved yields 1.8 GB reusable cache and 9.8 GB free from driver
+  [PASS] Reserved fraction is 75.5% and active usage ratio is 94.0%
   [PASS] Flags is_oom_imminent when total free headroom is less than 1.0 GB
-  [PASS] V16 Ch3: 55C is HEALTHY (30C headroom) and 70C is NORMAL (15C headroom)
-  [PASS] V16 Ch3: 80C is CAUTION (5C headroom), 84C is THROTTLE_THRESHOLD, and 89C is CRITICAL_THROTTLING
+  [PASS] 55C is HEALTHY (30C headroom) and 70C is NORMAL (15C headroom)
+  [PASS] 80C is CAUTION (5C headroom), 84C is THROTTLE_THRESHOLD, and 89C is CRITICAL_THROTTLING
   [PASS] Healthy node with persistence mode enabled, 68C temp, and 1800 MHz clocks passes audit
-  [PASS] V2 Lab 02 Step 2: Flags disabled Persistence Mode (start-up delay per job launch)
-  [PASS] V16 Ch3: Detects 87C temperature and SW_THERMAL_SLOWDOWN bitmask with reduced clocks
+  [PASS] Flags disabled Persistence Mode (start-up delay per job launch)
+  [PASS] Detects 87C temperature and SW_THERMAL_SLOWDOWN bitmask with reduced clocks
   [PASS] Detects external HW_POWER_BRAKE_SLOWDOWN (e.g. facility power brake or PSU failure)
-  [PASS] V2 Lab 02: Detects active SW_POWER_CAP when drawing 698W at 700W ceiling
-  [PASS] V16 Ch1: Detects uncorrected volatile ECC memory errors and recommends node cordoning
-  [PASS] V2 Lab 02 Step 7: Flags clock frequency deviating from configured locked range [1500, 1500] MHz
+  [PASS] Detects active SW_POWER_CAP when drawing 698W at 700W ceiling
+  [PASS] Detects uncorrected volatile ECC memory errors and recommends node cordoning
+  [PASS] Flags clock frequency deviating from configured locked range [1500, 1500] MHz
   [PASS] Rejects negative throttle bitmask
   [PASS] Rejects sm_util_pct > 100
   [PASS] Rejects allocated_gb > reserved_gb
   [PASS] Rejects negative temperature
-  [PASS] V20 Ch2: Xid 79 (fell off the bus) is Tier 3 and says stop scheduling
-  [PASS] V20 Ch2: Xid 92 and 45 are Tier 1 (informational / self-healing)
-  [PASS] V20 Ch2: Xid 13 is Tier 2 but becomes Tier 3 when it recurs on one GPU across unrelated apps
-  [PASS] V20 Ch2: Xid 94 (contained ECC) is Tier 2 and Xid 95 (uncontained ECC) is Tier 3
-  [PASS] V20 Ch2: Xid 74 (NVLink) has no fixed tier and an unknown code is not guessed
-  [PASS] V20 Ch6: SW thermal slowdown reason at 85C triages as thermal
-  [PASS] V20 Ch10: bare HW_SLOWDOWN (0x08) is reported as thermal-or-power, not guessed as one of them
-  [PASS] V20 Ch9: SW power cap with limit 200W below default 300W triages as power_cap and notes who set the limit
-  [PASS] V20 Ch9: HW power brake reason triages as power_brake
-  [PASS] V20 Ch10: applications-clocks setting with a cool GPU triages as a leftover operator clock lock
-  [PASS] V20 Ch10: no throttle reason, 65C and clocks below max triages as workload_or_dvfs
-  [PASS] V20 Ch10: unique-clock test: 1 and 3 values are stable, 4 is borderline, 6 is oscillating
-  [PASS] V20 Ch9: PSU planning rule 4 x 300W x 1.3 == 1,560W
-  [PASS] V19 Ch4: 100% util with TENSOR_ACTIVE 5% and no throttle is a software issue; 60% means check network/dataloader
-  [PASS] V19 Ch4: hardware slowdown reason wins over Tensor activity
+  [PASS] Xid 79 (fell off the bus) is Tier 3 and says stop scheduling
+  [PASS] Xid 92 and 45 are Tier 1 (informational / self-healing)
+  [PASS] Xid 13 is Tier 2 but becomes Tier 3 when it recurs on one GPU across unrelated apps
+  [PASS] Xid 94 (contained ECC) is Tier 2 and Xid 95 (uncontained ECC) is Tier 3
+  [PASS] Xid 74 (NVLink) has no fixed tier and an unknown code is not guessed
+  [PASS] SW thermal slowdown reason at 85C triages as thermal
+  [PASS] bare HW_SLOWDOWN (0x08) is reported as thermal-or-power, not guessed as one of them
+  [PASS] SW power cap with limit 200W below default 300W triages as power_cap and notes who set the limit
+  [PASS] HW power brake reason triages as power_brake
+  [PASS] applications-clocks setting with a cool GPU triages as a leftover operator clock lock
+  [PASS] no throttle reason, 65C and clocks below max triages as workload_or_dvfs
+  [PASS] unique-clock test: 1 and 3 values are stable, 4 is borderline, 6 is oscillating
+  [PASS] PSU planning rule 4 x 300W x 1.3 == 1,560W
+  [PASS] 100% util with TENSOR_ACTIVE 5% and no throttle is a software issue; 60% means check network/dataloader
+  [PASS] hardware slowdown reason wins over Tensor activity
   [PASS] Rejects non-positive gpu_count in PSU rule
 
 Summary: 41 passed, 0 failed (total 41)
 ```
 
+The commands in section 4 need real GPU hardware. The lab does not run them.
+
 ---
 
 ## Exercises
 
-1. **Decoding Throttle Reason Bitmask:** A monitoring alert queries `clocks_throttle_reasons.active` and receives `0x0000000000000028`. Using the table in Section 3.1, decode this hex mask into its component flags and explain the physical condition on the GPU.
-2. **Diagnosing the Utilization Lie:** On a two-GPU server, both cards report 85% SM utilization, but GPU 0 processes 2,048 samples/sec while GPU 1 processes only 180 samples/sec (`nvidia-devops` V16 Ch 3). Write the `nvidia-smi` command to inspect memory bandwidth utilization and explain why GPU 1 is stalling.
-3. **PyTorch Memory Headroom Calculation:** Using the memory values in the block below (`nvidia-devops` V16 Ch 3), calculate the reserved fraction of total VRAM, the true available headroom for new tensors, and whether an 8.0 GB batch allocation will succeed.
-4. **Thermal Headroom and Cooling Budget:** Using the thermal values in the block below (`nvidia-devops` V16 Ch 3), calculate the remaining temperature headroom before hitting the 85°C slowdown limit. Then determine how many extra Watts of heat the GPU can dissipate before throttling.
-5. **Persistence Mode Driver Penalty:** Explain what happens inside the Linux kernel when Persistence Mode is disabled between short container jobs. State why this causes a startup stall and give the command to enable persistence permanently across reboots.
-6. **Clock Locking for Inference Jitter:** Using the clock parameters in the block below, write the `nvidia-smi` command to lock GPU 0 at its rated maximum SM clock during a latency benchmark. Also write the command to restore automatic scaling afterward.
-7. **Triage a `dmesg` Sequence:** Given the three-event Xid sequence in the block below (`nvidia-devops` V20 Ch 2), classify each code into its tier and identify the root cause versus the symptom. Then state your first two node actions and name the report that catches this early.
+1. **Decode a throttle mask:** A monitoring alert reads `clocks_throttle_reasons.active` as `0x0000000000000028`. Use the table in section 3.1 to decode it into its flags and say what is physically happening on the GPU.
+2. **Same utilization, different outcome:** Both GPUs in a two-GPU server report 85 percent SM utilization. GPU 0 trains at 2,048 samples per second and GPU 1 at 180. Write the command that shows memory bandwidth activity, and explain why GPU 1 is stalling.
+3. **PyTorch memory headroom:** A 40.0 GB A100 has 28.4 GB allocated by PyTorch and 30.2 GB reserved. Calculate the reserved fraction, the best-case headroom for new tensors, and whether an 8.0 GB allocation can succeed. Then say what could still make it fail.
+4. **Read a combined throttle mask:** The mask reads `0x0000000000000044`. Name the two reasons, say which one you would investigate first, and name one command and one BMC check that confirm it.
+5. **Persistence mode:** Explain what the driver does when persistence mode is off and no job is running. State why the next job starts slowly and name the daemon that fixes it across reboots.
+6. **Clock locking for inference jitter:** A latency benchmark on an A100 swings between 45 ms and 70 ms at P99. Write the command that locks SM clocks at the 1410 MHz rated maximum and the command that restores automatic scaling.
+7. **Triage a dmesg sequence:** The log shows Xid 92, then Xid 45 six seconds later, then Xid 79 five seconds after that. Classify each code by tier, name the cause and the symptoms, and state your first two actions on the node.
 
 ```text
-Exercise 3 parameters: 40.0 GB A100 GPU, 28.4 GB allocated by PyTorch, 30.2 GB reserved by caching allocator, new batch needs 8.0 GB.
-Exercise 4 parameters: GPU running at 75°C under load, 85°C hardware thermal throttling limit, chassis cooling capacity = 3 W/°C.
-Exercise 6 parameters: A100 GPU with 1410 MHz rated max SM clock, P99 latency fluctuating between 45 ms and 70 ms under DVFS.
-Exercise 7 parameters: dmesg oldest first: Xid 92, then Xid 45 (6 seconds later), then Xid 79 (5 seconds after that).
+Exercise 3: 40.0 GB GPU, 28.4 GB allocated, 30.2 GB reserved, new batch needs 8.0 GB.
+Exercise 6: A100 with 1410 MHz rated maximum SM clock.
+Exercise 7: dmesg, oldest first: Xid 92, Xid 45 six seconds later, Xid 79 five seconds after that.
 ```
 
 ---
@@ -515,187 +520,151 @@ Exercise 7 parameters: dmesg oldest first: Xid 92, then Xid 45 (6 seconds later)
 ## Checkpoint questions (20)
 
 <details>
-<summary>**1. Why is checking standard Linux tools like `top` or `htop` insufficient for diagnosing performance issues on an AI server?**</summary>
+<summary>**1. Why is checking `top` or `htop` insufficient for diagnosing performance on an AI server?**</summary>
 
-To the host Linux kernel, a GPU is an opaque PCIe peripheral. Linux does not schedule GPU warps, track HBM allocations, or read die temperatures. A host whose CPU sits at 5% utilization can have GPUs that are thermally throttling at 85°C, hitting uncorrectable ECC faults, or spinning at a deadlocked barrier.
+To the host kernel, a GPU is an opaque PCIe device. Linux does not schedule GPU warps, track HBM allocations or read die temperatures. A host with the CPU at 5 percent can have GPUs that are throttling, hitting ECC faults or spinning at a barrier.
 </details>
 
 <details>
-<summary>**2. Define the three pillars of GPU observability and identify which tool belongs to each pillar.**</summary>
+<summary>**2. Define the three pillars of GPU observability and name a tool for each.**</summary>
 
-1. Metrics aggregate numbers over time, such as utilization, clocks, temperature, and power in DCGM, Prometheus, and `nvidia-smi`.
-2. Logs record discrete state-change events, such as driver reloads, ECC faults, and Xid codes in `dmesg` and `journalctl`.
-3. Traces capture fine-grained timelines of kernel launches and copies in NVIDIA Nsight Systems and PyTorch Profiler.
+Metrics are numbers over time, such as utilization, clocks and power in DCGM and Prometheus. Logs are discrete events, such as ECC faults and Xid codes in `dmesg`. Traces are fine-grained timelines of kernels and copies in Nsight Systems and PyTorch Profiler.
 </details>
 
 <details>
-<summary>**3. What is the technical definition of GPU Utilization in `nvidia-smi` (`DCGM_FI_DEV_GPU_UTIL`)?**</summary>
+<summary>**3. What does `GPU-Util` in `nvidia-smi` actually measure?**</summary>
 
-It measures the percentage of time during the sampling window in which at least one Streaming Multiprocessor had at least one warp actively resident.
+It measures the share of the sample window in which at least one kernel was executing on the GPU. It says nothing about how many SMs were busy or whether the kernel did useful work.
 </details>
 
 <details>
-<summary>**4. Why can a GPU reporting 100% utilization in `nvidia-smi` be doing zero useful mathematical work?**</summary>
+<summary>**4. Why can a GPU at 100 percent utilization do no useful math?**</summary>
 
-Even if a single thread in one warp spins in a wait loop on one SM while the other SMs sit idle, `nvidia-smi` sees an active warp. It then reports 100% utilization while Tensor Cores do no math.
+A single-block kernel spinning in a wait loop on one SM counts as a running kernel, so the GPU reports 100 percent while the other SMs and the Tensor Cores sit idle.
 </details>
 
 <details>
-<summary>**5. In the Volume 16 Chapter 3 production scenario, why did GPU 1 process 13x fewer samples than GPU 0 despite both reporting 85% SM utilization?**</summary>
+<summary>**5. Two GPUs both read 85 percent utilization, but one trains 13 times slower. What explains it?**</summary>
 
-GPU 0 was executing a healthy memory-bound kernel with 82% memory bandwidth utilization. GPU 1 had only 12% memory bandwidth utilization because it was stuck spinning inside a synchronization barrier wait loop.
+The healthy GPU had 82 percent memory bandwidth activity and was doing real memory-bound work. The slow GPU had 12 percent and was stuck in a synchronization wait loop.
 </details>
 
 <details>
-<summary>**6. Explain the difference between `torch.cuda.memory_allocated()` and `torch.cuda.memory_reserved()`.**</summary>
+<summary>**6. What is the difference between `torch.cuda.memory_allocated()` and `torch.cuda.memory_reserved()`?**</summary>
 
-`memory_allocated()` reports the bytes actively holding live PyTorch tensors. `memory_reserved()` reports the total VRAM pool claimed from the CUDA driver by the PyTorch caching allocator. That reserved pool is the higher number shown in `nvidia-smi` and includes empty reusable blocks.
+`memory_allocated()` counts bytes held by live tensors. `memory_reserved()` counts the memory the caching allocator has taken from the driver, including freed blocks it keeps for reuse. The reserved figure is what `nvidia-smi` shows.
 </details>
 
 <details>
-<summary>**7. Why is setting an alert on `nvidia-smi memory.used > 85%` considered a bad operational practice?**</summary>
+<summary>**7. Does the PyTorch caching allocator reserve most of the GPU at startup? Why is an alert on `memory.used` above 85 percent a poor practice?**</summary>
 
-Frameworks like PyTorch intentionally reserve 75% to 95% of VRAM into a user-space cache pool to avoid slow runtime `cudaMalloc` calls. High reserved memory is normal and does not mean an out-of-memory crash is near.
+No. PyTorch grows its pool on demand, and the pool stays at the job's peak because freed blocks are kept. The 75 percent upfront preallocation is the JAX default. A high reserved figure is normal for a healthy long-running job, so alerting on it produces false alarms. Alert on real headroom or on out-of-memory events.
 </details>
 
 <details>
-<summary>**8. What is the Clock Speed Lie, and how do you detect it?**</summary>
+<summary>**8. What is the clock speed lie, and how do you detect it?**</summary>
 
-A GPU reports 100% utilization while step times rise because thermal or power throttling lowered SM clocks. In the Volume 16 example, clocks dropped from 1410 MHz to 1200 MHz. Detect it by graphing `clocks.current.sm` alongside utilization.
+Utilization stays at 100 percent while step times rise because thermal or power limits lowered SM clocks. Plot `clocks.current.sm` beside utilization, and read the throttle reason mask.
 </details>
 
 <details>
-<summary>**9. What happens inside the operating system when Persistence Mode is disabled on an NVIDIA GPU node?**</summary>
+<summary>**9. What happens when persistence mode is off on an NVIDIA GPU node?**</summary>
 
-Whenever no CUDA process is running, the kernel unloads the `/dev/nvidia*` device nodes. The next job must wait for the kernel to re-enumerate PCIe, reload driver modules, and reinitialize firmware, adding a startup stall to every run.
+The kernel modules stay loaded, but the driver deinitialises the GPU when no client holds it open. The next process pays for GPU initialisation again, so the first CUDA call is slow and probes that touch the GPU can time out. Running `nvidia-persistenced` keeps the GPU initialised.
 </details>
 
 <details>
-<summary>**10. What are the three Xid tiers, and what do you do for each?**</summary>
+<summary>**10. What are the three Xid tiers and the action for each?**</summary>
 
-Tier 1 covers Xid 45, 63, and 92, which are informational or self-healing events that you log and trend. Tier 2 covers Xid 13, 31, 32, 43, and 94, where you restart the application and only suspect hardware if the same GPU repeats the code across unrelated jobs. Tier 3 covers Xid 48, 61, 62, 64, 79, and 95, which require cordoning and draining the GPU immediately (`nvidia-devops` V20 Ch 2).
+Tier 1 (45, 63, 92) is informational or self-healing, so log and trend it. Tier 2 (13, 31, 32, 43, 94) is usually an application problem, so restart the process and suspect hardware only on repeats across unrelated jobs. Tier 3 (48, 61, 62, 64, 79, 95) means stop scheduling on the GPU and drain it.
 </details>
 
 <details>
-<summary>**11. What does throttle reason bitmask `0x0000000000000020` indicate, and what is its operational severity?**</summary>
+<summary>**11. What does mask `0x0000000000000020` mean and how severe is it?**</summary>
 
-It indicates `SW_THERMAL_SLOWDOWN`, meaning the GPU core reached its 82°C to 85°C thermal limit and the driver lowered SM clocks to protect the silicon. Its operational severity is severe.
+It is `SW_THERMAL_SLOWDOWN`. The driver lowered SM clocks because the GPU reached its slowdown temperature. It is severe and points to cooling.
 </details>
 
 <details>
-<summary>**12. What does throttle reason bitmask `0x0000000000000080` (`HW_POWER_BRAKE_SLOWDOWN`) indicate?**</summary>
+<summary>**12. What does mask `0x0000000000000080` mean?**</summary>
 
-An external hardware power brake is active, triggered by a PSU fault, a facility emergency signal, or a rack power brake cable. GPU clocks are forced down immediately, and the bit value comes from NVML's header rather than the book corpus.
+It is `HW_POWER_BRAKE_SLOWDOWN`. An external power brake signal from a PSU fault or a facility signal is active, and clocks are forced down.
 </details>
 
 <details>
-<summary>**13. What temperature range is considered normal operating condition for modern NVIDIA data center GPUs under sustained load?**</summary>
+<summary>**13. What temperature range is normal under sustained load, and where does slowdown begin?**</summary>
 
-Operating between 60°C and 75°C is normal under sustained load. Data center GPUs are rated for continuous operation up to 80°C to 85°C, where thermal slowdown begins around 82°C to 85°C.
+Roughly 60 to 75°C is normal under sustained load. The slowdown temperature differs by model, so read it from `nvidia-smi -q -d TEMPERATURE` on your device.
 </details>
 
 <details>
-<summary>**14. How does system cooling capacity (`W/°C`) affect GPU thermal headroom?**</summary>
+<summary>**14. Why does one GPU run hotter than its neighbour at the same power draw?**</summary>
 
-Cooling capacity sets how many Watts of heat raise the GPU temperature by one degree Celsius. With a `3 W/°C` cooling capacity, dissipating an extra 30 Watts raises the GPU temperature by 10°C.
+Die temperature is about the coolant temperature plus power times thermal resistance. Blocked airflow or a poorly seated heatsink raises the resistance in degrees Celsius per watt, so the same power gives a higher temperature. If the whole rack runs warm, the inlet temperature is the suspect instead.
 </details>
 
 <details>
-<summary>**15. Why do performance engineers lock GPU clocks with `nvidia-smi -lgc` during inference benchmarking?**</summary>
+<summary>**15. Why lock clocks with `nvidia-smi -lgc` during inference benchmarking?**</summary>
 
-Dynamic Voltage and Frequency Scaling shifts clock rates between memory-bound decode stalls and compute-bound prefill bursts, adding jitter to P99 latency measurements. Locking clocks at a fixed frequency makes benchmark results reproducible.
+Frequency scaling moves clocks between compute-bound prefill and memory-bound decode, which adds jitter to P99 latency. A locked clock makes results reproducible.
 </details>
 
 <details>
 <summary>**16. What is the difference between `nvidia-smi dmon` and `nvidia-smi pmon`?**</summary>
 
-`dmon` streams device-wide counters like power, SM utilization, memory bandwidth, clocks, and temperature at 1 to 10 Hz. `pmon` streams per-process counters broken down by Linux PID.
+`dmon` streams device-wide counters such as power, utilization, clocks and temperature. `pmon` streams per-process counters by PID.
 </details>
 
 <details>
-<summary>**17. What does an uncorrectable volatile ECC memory error count greater than zero require an operator to do?**</summary>
+<summary>**17. What must you do when the uncorrected volatile ECC count is above zero?**</summary>
 
-An uncorrectable ECC count above zero means multi-bit memory corruption occurred in HBM. Operators must cordon the node in the scheduler, drain running jobs, and run hardware diagnostics for an RMA replacement.
+It means multi-bit memory corruption occurred in HBM. Cordon the node, drain the jobs and run hardware diagnostics for an RMA.
 </details>
 
 <details>
-<summary>**18. How does setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` mitigate Out-Of-Memory errors?**</summary>
+<summary>**18. How does `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` reduce out-of-memory errors?**</summary>
 
-It tells the PyTorch caching allocator to stitch virtual memory pages into expandable segments. That virtual stitching prevents allocation failures when free physical VRAM is split into non-contiguous fragments.
+It lets the allocator grow segments by mapping more virtual memory into them, so a request does not fail just because free physical memory is split into scattered pieces.
 </details>
 
 <details>
-<summary>**19. A job is slow and `nvidia-smi` shows 100% utilization. In what order do you check the cause?**</summary>
+<summary>**19. A job is slow and shows 100 percent utilization. In what order do you check the cause?**</summary>
 
-Check active throttle reasons via `nvidia-smi -q -d PERFORMANCE` first to rule out thermal slowdown, software power caps, hardware power brakes, or leftover `-lgc` clock locks. If no throttle reason is active, check DCGM `TENSOR_ACTIVE` next. Values above 50% point to network or data-loader stalls, while values below 10% point to software overhead (`nvidia-devops` V20 Ch 6, 9, 10; V19 Ch 4).
+Read the throttle reasons first. If none is active, check Tensor activity. Above 50 percent points to network or dataloader stalls, and below 10 percent points to software overhead.
 </details>
 
 <details>
-<summary>**20. How do you distinguish whether an 85% utilized GPU is compute-bound, memory-bound, or stalled?**</summary>
+<summary>**20. Every rank of a hung training job reads near 100 percent utilization. Why, and what do you do?**</summary>
 
-Compare SM utilization against memory bandwidth utilization and sample throughput. Compute-bound runs show high throughput with moderate memory bandwidth, and memory-bound runs show high throughput with memory bandwidth above 50%. Stalled runs show near-zero throughput with memory bandwidth below 5%.
+The NCCL kernels are resident and spin while they wait for a peer that never arrived, so utilization stays high with no progress. Check job progress and Tensor activity, then use the Flight Recorder dumps to find the rank that never entered the collective.
 </details>
 
 ---
 
 ## Sources and review notes
 
-### Primary sources read in full for this chapter
+### Sources used
 
-| Source | Chapters / Labs Read | Topics & Quantitative Facts Used |
-|---|---|---|
-| `nvidia-devops` Volume 16 (`volume-16`) | Chapters 01–03 | Ch 01: Execution, Memory, Thermal/Power categories; 85% utilization scenario (2,000 samples/sec compute-bound vs 150 samples/sec starved); why Linux CPU tools fail. Ch 02: Metrics, Logs, Traces pillars. Ch 03: Utilization Lie, Memory Lie, Clock Speed Lie; PyTorch memory (28.4 GB allocated, 30.2 GB reserved, 40.0 GB total, 9.8 GB driver free, 1.8 GB reusable); temperature bands (&lt;60°C healthy, 60–75°C normal, 75–82°C caution, 82–85°C threshold, >85°C critical); cooling capacity 3 W/°C; clocks (1410 MHz peak, 300 MHz idle, 1200 MHz throttled); `clocks_throttle_reasons.active`. |
-| `nvidia-devops` Volume 02 (`volume-02`) | Labs 01–02 | Lab 01: `nvidia-smi --query-gpu`, UUID and PCI BDF, sysfs `numa_node`, `nvidia-smi topo -m`, `lspci -vv` `LnkCap` vs `LnkSta` (32GT/s Gen5). Lab 02: Persistence Mode (`nvidia-smi -pm 1` vs `nvidia-persistenced.service`), clock locking (`-lgc` vs `-rgc`), power capping (`-pl`), 1 Hz streaming with `nvidia-smi dmon -s pucvmet -d 1` and `nvidia-smi pmon -s um`. |
-| `nvidia-devops` Volume 20 (`volume-20`) & Volume 19 (`volume-19`) | V20 Ch 2, 6, 8, 9, 10; V19 Ch 4 (cross-referenced with Chapters `1.2` and `10.7`) | V20 Ch 2 (Xid tiers, 92 -> 45 -> 79 sequence, +683% trend), Ch 6 (thermal slowdown 1980 -> 1833 MHz, 3–6 PM clue), Ch 8 (0 RPM vs 8,400 RPM BMC fan, 2–3°C/min climb), Ch 9 (198W/200W/300W power cap, 12V ± 0.5V / 11.4V sag, 4 x 300W x 1.3 = 1,560W PSU rule), Ch 10 (clock stability test: 1 or 2–3 within ±50 MHz vs >5). V19 Ch 4 (`TENSOR_ACTIVE` >50% vs &lt;10%, 80 GB reserved vs 40 GB allocated fragmentation, 1500 -> 500 MHz thermal drop, +40% at 2:00 PM). |
-| *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly) | Chapter 3 | OS, Docker, and Kubernetes Tuning for GPU-Based Environments (clock locking, persistence mode idle power trade-off, driver reload stalls). |
-| *Systems Performance* (`systems-performance-2nd-edition`, Brendan Gregg) | Chapters 2 & 4 | Observability tools, metrics vs logs vs traces, and the Utilization, Saturation, and Errors (`USE`) method. |
+| Source | Used for |
+|---|---|
+| NVIDIA NVML API reference and `nvml.h` | Throttle reason bit values; the definition of the utilization rate as the share of time a kernel was executing |
+| NVIDIA driver documentation on persistence mode and `nvidia-persistenced` | Persistence behaviour: the driver deinitialises the GPU when no client holds it, and the daemon is preferred over legacy `-pm` |
+| NVIDIA DCGM documentation, profiling fields | `SM_ACTIVE`, `SM_OCCUPANCY`, `PIPE_TENSOR_ACTIVE`, `DRAM_ACTIVE` |
+| PyTorch documentation, CUDA semantics and memory management | The caching allocator grows on demand and keeps freed blocks; `expandable_segments` |
+| JAX documentation, GPU memory allocation | The 75 percent default preallocation |
+| NVIDIA Xid catalog | Xid meanings for the table in section 5.1 |
+| *AI Systems Performance Engineering*, chapter 3 | Clock locking and persistence mode in GPU node tuning |
+| *Systems Performance*, second edition, chapters 2 and 4 | The USE method and the split into metrics, logs and traces |
+| Field notes in the `nvidia-devops` repository (volumes 2, 16, 19, 20) | The example numbers in section 2, 3 and 5. Their terminal outputs are illustrative, not live captures. |
 
-### Related source files mapped in MIGRATION_MAP.md to this and subsequent chapters
+### Corrections made in this revision
 
-```text
-Consulted for context and expanded in dedicated chapters:
-- nvidia-zero-to-hero/volume-02/chapter-01-why-gpu-architecture-evolved.md (expanded in 10.1)
-- nvidia-zero-to-hero/volume-02/chapter-02-inside-a-modern-gpu.md (assigned by title to 10.1)
-- nvidia-zero-to-hero/volume-02/chapter-04-cuda-cores-tensor-cores-and-rt-cores.md (assigned by title to 10.4)
-- nvidia-zero-to-hero/volume-02/chapter-05-gpu-memory-hierarchy.md (expanded in 10.3)
-- nvidia-zero-to-hero/volume-02/chapter-06-scheduling-occupancy-and-instruction-dispatch.md (assigned by title to 10.2)
-- nvidia-zero-to-hero/volume-02/chapter-07-registers-shared-memory-and-local-memory.md (assigned by title to 10.3)
-- nvidia-zero-to-hero/volume-02/chapter-08-global-memory-l1-l2-and-hbm.md (expanded in 10.3)
-- nvidia-zero-to-hero/volume-02/chapter-09-divergence-coalescing-and-bottleneck-reasoning.md (expanded in 10.2)
-- nvidia-zero-to-hero/volume-02/chapter-11-building-a-gpu-performance-model.md (expanded in 10.5)
-- nvidia-zero-to-hero/volume-02/chapter-12-volume-02-architecture-summary.md (expanded in 10.5)
-- nvidia-zero-to-hero/volume-02/labs/lab-03-profile-memory-and-warp-efficiency.md (assigned by title to 10.3/10.5)
-- nvidia-zero-to-hero/volume-02/labs/lab-04-topology-aware-multi-gpu-job-placement.md (used in 10.6)
-- nvidia-zero-to-hero/volume-16/chapter-04-dcgm-the-gpu-metrics-foundation.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-05-prometheus-grafana-and-observability-dashboards.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-06-distributed-observability-multi-gpu-and-multi-node.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-07-traces-profiling-and-deep-performance-diagnosis.md (expanded in 10.20)
-- nvidia-zero-to-hero/volume-16/chapter-08-common-gpu-failure-modes-and-detection.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-09-health-checks-and-slos-for-gpu-clusters.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-10-production-troubleshooting-frameworks.md (expanded in 10.22)
-- nvidia-zero-to-hero/volume-16/chapter-11-observability-for-inference-at-scale.md (expanded in 10.21)
-- nvidia-zero-to-hero/volume-16/chapter-12-incident-response-and-postmortems.md (expanded in 10.22)
-- nvidia-zero-to-hero/volume-16/labs/lab-03-profile-and-diagnose-a-slow-training-job.md (assigned by title to 10.21)
-- nvidia-zero-to-hero/volume-16/labs/lab-04-incident-response-simulation.md (expanded in 10.22)
-```
-
-### Run here
-- `code/part10/gpu_node_ops_lab.py`: 41 checks passed.
-
-### Explicitly labelled inferences
-- The unified operational health auditing engine (`audit_gpu_node_operational_health()` in `code/part10/gpu_node_ops.py`) is **my inference**. It synthesizes Volume 16 Chapters 1–3 and Volume 02 Labs 01–02 to decode NVML throttle bitmasks, check persistence mode status, evaluate temperature bands, and audit clock ranges.
+- Persistence mode: earlier text said the kernel unloads the device nodes and reloads driver modules. The modules stay loaded. The driver deinitialises GPU state when no client holds the device.
+- PyTorch memory: earlier text said PyTorch reserves 75 to 95 percent of the card upfront. It grows on demand. The 75 percent preallocation default belongs to JAX.
+- Thermal model: the Watts-per-degree cooling capacity model was removed. The chapter now uses thermal resistance in degrees Celsius per watt.
+- Utilization definition: restated as the share of time a kernel was executing, as NVML defines it, instead of a per-SM warp definition.
+- `APPLICATIONS_CLOCKS_SETTING` is described as the applications clocks setting from `-ac`. Whether `-lgc` also sets this bit is not documented in the sources used, so the chapter does not claim it.
 
 ### Not verified on live hardware
-- Physical multi-GPU nodes were not attached during this session; all command snippets in Section 4 are marked `(untested here)` and provided as operational command reference templates.
 
-### Not in the corpus
-- Specific CPLD firmware register maps for external power brake triggers vary by OEM server vendor.
-
-### Corrections to the author's notes
-- Memory headroom (9.8 GB vs 11.6 GB): the Volume 16 note states that a next batch under 9.8 GB of free driver memory will fit. This chapter also counts the 1.8 GB that PyTorch can reuse inside its own cache pool (`30.2 - 28.4`), giving 11.6 GB as a deliberate refinement.
-- Clock drop: the Volume 16 note's throttled example is 1410 MHz down to 1200 MHz, which this chapter matches directly.
-- Source disagreements: the Volume 16, Volume 19, and Volume 20 notes give different illustrative throttle sizes, and Volume 20 Chapter 6 says performance "halves" after a 7% clock drop. Section 5.5 compares them explicitly.
-- Clock-stability test: Volume 20 Chapter 10 defines stable as 1, or 2 to 3 values within ±50 MHz, and oscillating as more than 5 values. The `BORDERLINE` label for 4 to 5 values is this handbook's own choice.
-- Throttle bitmask table: the Volume 02 and Volume 16 notes do not list numeric hex bit values. The table uses values from NVML's `nvml.h` header as known to the author and is marked unverified here.
-- Persistence-mode delay: the notes give no numeric duration for the driver reload stall, so no duration is stated.
-
+The commands in section 4 were not run on a GPU node for this revision. The throttle bit values follow `nvml.h`. Exact H100 base clock and per-model slowdown temperatures are not stated, because they vary by model and must be read from the device.

@@ -197,19 +197,7 @@ def run_checks() -> int:
     )
 
     add(
-        "14. NVIDIA gdsio benchmark shows GDS (-x 0) raises throughput from 8.0 GB/s (-x 2 CPU path) to 9.6 GB/s (+20.0%) and cuts latency from 1.25 ms to 1.00 ms (-20.0%)",
-        lambda: (
-            (v := evaluate_vast_dase_and_gds())["gds_cpu_path_flag"] == "-x 2"
-            and v["gds_direct_path_flag"] == "-x 0"
-            and v["gds_a100_throughput_uplift_pct"] == 20.0
-            and v["gds_latency_reduction_pct"] == 20.0
-            and v["gds_h100_throughput_uplift_pct"] == 30.0
-        ),
-    )
-
-    # --- Section 4: DeepSeek Fire-Flyer File System (3FS) vs Ceph (AISPE Ch. 5) ---
-    add(
-        "15. DeepSeek 3FS comprises 4 RDMA-connected components (Cluster Manager, Metadata Service, Storage Service, Client) and bypasses the OS page cache via O_DIRECT + io_uring",
+        "14. DeepSeek 3FS comprises 4 RDMA-connected components (Cluster Manager, Metadata Service, Storage Service, Client) and bypasses the OS page cache via O_DIRECT + io_uring",
         lambda: (
             (fs := evaluate_deepseek_3fs_benchmark())["components"]
             == ("Cluster Manager", "Metadata Service", "Storage Service", "Client")
@@ -220,31 +208,29 @@ def run_checks() -> int:
     )
 
     add(
-        "16. DeepSeek 3FS 68-node cluster (680 x 16 TB NVMe = 10,880 TB, dual 100 Gb/s NICs) achieves 6.6 TB/s read (+ 1.4 TB/s background = 8.0 TB/s, up to 7.3 TB/s peak)",
+        "15. DeepSeek 3FS peak benchmark: 180 storage nodes (2,880 x 14 TiB NVMe = 40,320 TiB, dual 200 Gb/s NICs = 9.0 TB/s line rate) reach about 6.6 TiB/s (7.26 TB/s) aggregate read",
         lambda: (
-            (fs := evaluate_deepseek_3fs_benchmark())["total_nvme_drives"] == 680
-            and fs["total_raw_capacity_tb"] == 10880
-            and fs["per_node_network_gbps"] == 200
-            and fs["cluster_line_rate_tb_s"] == 1.7
-            and fs["achieved_read_tb_s"] == 6.6
-            and fs["background_traffic_tb_s"] == 1.4
-            and fs["combined_io_tb_s"] == 8.0
-            and fs["peak_reported_tb_s"] == 7.3
+            (fs := evaluate_deepseek_3fs_benchmark())["total_nvme_drives"] == 2880
+            and fs["total_raw_capacity_tib"] == 40320
+            and fs["per_node_network_gbps"] == 400
+            and fs["cluster_line_rate_tb_s"] == 9.0
+            and fs["achieved_read_tib_s"] == 6.6
+            and fs["achieved_read_tb_s"] == 7.26
         ),
     )
 
     add(
-        "17. DeepSeek 3FS delivers 97.06 GB/s per storage node and outperforms Ceph (1.1 TB/s) by 6.0x at 6.6 TB/s and 6.64x at 7.3 TB/s",
+        "16. Each 3FS storage node serves 37.55 GiB/s (40.32 GB/s) of its 50 GB/s network line rate, about 80.6 percent",
         lambda: (
-            (fs := evaluate_deepseek_3fs_benchmark())["per_node_achieved_gb_s"] == 97.06
-            and fs["speedup_vs_ceph_at_6_6_tb_s"] == 6.0
-            and fs["speedup_vs_ceph_at_peak"] == 6.64
+            (fs := evaluate_deepseek_3fs_benchmark())["per_node_achieved_gib_s"] == 37.55
+            and fs["per_node_achieved_gb_s"] == 40.32
+            and fs["share_of_line_rate_pct"] == 80.6
         ),
     )
 
-    # --- Section 5: Object Storage Prefix Sharding, Multipart Math & Cache Staging (V15 Ch. 07) ---
+    # --- Section 5: Object Storage Prefix Sharding, Multipart Math & Cache Staging ---
     add(
-        "18. Fetching 2,000,000 small 260 KB objects serially from S3 at 150 ms/request wastes 300,000 seconds (83.33 hours) on HTTP/TLS API latency alone",
+        "17. Fetching 2,000,000 small 260 KB objects serially from S3 at 150 ms/request wastes 300,000 seconds (83.33 hours) on HTTP/TLS API latency alone",
         lambda: (
             (s3 := evaluate_s3_small_object_trap_vs_sharded_pipeline())["serial_api_wait_sec"] == 300000.0
             and s3["serial_api_wait_hours"] == 83.33
@@ -252,7 +238,7 @@ def run_checks() -> int:
     )
 
     add(
-        "19. Prefetching 2 x 10 GB shards (20 GB) with 8 workers at 150 MB/s each (1.2 GB/s aggregate) takes 16.67 s transfer + 10.2 s API/TLS = 26.87 s (~27 s) to first batch",
+        "18. Prefetching 2 x 10 GB shards (20 GB) with 8 workers at 150 MB/s each (1.2 GB/s aggregate) takes 16.67 s transfer + 10.2 s API/TLS = 26.87 s (~27 s) to first batch",
         lambda: (
             (s3 := evaluate_s3_small_object_trap_vs_sharded_pipeline())["aggregate_worker_mb_s"] == 1200.0
             and s3["aggregate_worker_gb_s"] == 1.2
@@ -263,7 +249,7 @@ def run_checks() -> int:
     )
 
     add(
-        "20. Doubling S3 download workers from 8 to 16 (2.4 GB/s aggregate) cuts 20 GB transfer time to 8.33 s (18.53 s total with API/TLS)",
+        "19. Doubling S3 download workers from 8 to 16 (2.4 GB/s aggregate) cuts 20 GB transfer time to 8.33 s (18.53 s total with API/TLS)",
         lambda: (
             (s16 := evaluate_s3_small_object_trap_vs_sharded_pipeline(num_download_workers=16))["aggregate_worker_gb_s"]
             == 2.4
@@ -273,7 +259,7 @@ def run_checks() -> int:
     )
 
     add(
-        "21. S3 prefix sharding across 16 prefixes scales request ceilings from 5,500 GET/s and 3,500 PUT/s to 88,000 GET/s and 56,000 PUT/s",
+        "20. S3 prefix sharding across 16 prefixes scales request ceilings from 5,500 GET/s and 3,500 PUT/s to 88,000 GET/s and 56,000 PUT/s",
         lambda: (
             (p := evaluate_s3_prefix_sharding_and_multipart(num_prefixes=16))["aggregate_get_ops_s"] == 88000
             and p["aggregate_put_ops_s"] == 56000
@@ -281,7 +267,7 @@ def run_checks() -> int:
     )
 
     add(
-        "22. Parallel 8 x 1 GB S3 download finishes in 7.5 s (1066.67 MB/s aggregate, 133.33 MB/s per worker) vs 6.2 s single-object (161.29 MB/s) and 49.6 s serial (6.61x speedup)",
+        "21. Parallel 8 x 1 GB S3 download finishes in 7.5 s (1066.67 MB/s aggregate, 133.33 MB/s per worker) vs 6.2 s single-object (161.29 MB/s) and 49.6 s serial (6.61x speedup)",
         lambda: (
             (p := evaluate_s3_prefix_sharding_and_multipart())["single_object_mb_s"] == 161.29
             and p["serial_eight_elapsed_s"] == 49.6
@@ -292,7 +278,7 @@ def run_checks() -> int:
     )
 
     add(
-        "23. Local NVMe staging cache warms from 0.1% hit rate (45.3 min wait) in Epoch 1 to 98.2% (2.1 min wait, 21.57x wait reduction) in Epoch 2",
+        "22. Local NVMe staging cache warms from 0.1% hit rate (45.3 min wait) in Epoch 1 to 98.2% (2.1 min wait, 21.57x wait reduction) in Epoch 2",
         lambda: (
             (c := evaluate_nvme_staging_cache_epochs())["epoch_1_cold_hit_rate_pct"] == 0.1
             and c["epoch_1_download_wait_min"] == 45.3
@@ -303,7 +289,7 @@ def run_checks() -> int:
     )
 
     add(
-        "24. Local NVMe staging cache detects LRU eviction onset in Epoch 3 when cache fill (88.0%) exceeds the 85.0% threshold and hit rate dips to 97.5% (3.5 min wait)",
+        "23. Local NVMe staging cache detects LRU eviction onset in Epoch 3 when cache fill (88.0%) exceeds the 85.0% threshold and hit rate dips to 97.5% (3.5 min wait)",
         lambda: (
             (c := evaluate_nvme_staging_cache_epochs())["epoch_3_eviction_hit_rate_pct"] == 97.5
             and c["epoch_3_download_wait_min"] == 3.5
@@ -312,16 +298,17 @@ def run_checks() -> int:
     )
 
     add(
-        "25. GB200/GB300 NVL72 rack (72 GPUs x 200 MB/s per GPU) requires 14.4 GB/s (14-20 GB/s envelope) of sustained storage ingestion bandwidth",
+        "24. GB200/GB300 NVL72 rack (72 GPUs x 200 MB/s per GPU) requires 14.4 GB/s (14-20 GB/s envelope) of sustained storage ingestion bandwidth",
         lambda: (72 * 200) / 1000.0 == 14.4 and 14.0 <= (72 * 200) / 1000.0 <= 20.0,
     )
 
     add(
-        "26. Reducing GPU I/O wait time from 30% to 5% lowers the I/O stall fraction by 6.0x and recovers 25 percentage points of active GPU compute time",
+        "25. Reducing GPU I/O wait time from 30% to 5% lowers the I/O stall fraction by 6.0x and recovers 25 percentage points of active GPU compute time",
         lambda: (30.0 / 5.0) == 6.0 and (30.0 - 5.0) == 25.0,
     )
 
     print("=== Chapter 13.5 Lab: BeeGFS, Weka, VAST and Object Storage ===")
+
     passed = 0
     failed = 0
     for desc, fn in checks:

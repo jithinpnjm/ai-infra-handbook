@@ -33,15 +33,14 @@ Pure Python 3 standard-library reference models for:
    - GPUDirect Storage (`GDS` / `cuFile` / `gdsio`): CPU bounce-buffer path (`-x 2`, `8.0 GB/s`,
      `1.25 ms`) vs direct `GDS` DMA path (`-x 0`, `9.6 GB/s`, `1.00 ms`, `+20%` throughput and `-20%`
      latency on A100, and `+30%+` on H100).
-4. DeepSeek Fire-Flyer File System (`3FS`) vs Ceph (AISPE Ch. 5):
+4. DeepSeek Fire-Flyer File System (`3FS`) peak read benchmark:
    - Four RDMA-connected components: Cluster Manager, Metadata Service (sharded/replicated), Storage
      Service, and Client using Linux `O_DIRECT` + `io_uring` + RDMA (avoiding kernel page-cache
      thrashing on random LLM training/KVCache reads).
    - Why user-space FUSE filesystems cannot support true `GDS` zero-copy DMA (unless paired with
      explicit RDMA/USRBIOS or kernel `nvidia-fs` `O_DIRECT` integration).
-   - Benchmark math on a 68-node cluster (`10 x 16 TB` NVMe SSDs and dual `100 Gb/s` NICs per node):
-     `6.6 TB/s` sustained aggregate read throughput (`+ 1.4 TB/s` concurrent background traffic, up to
-     `7.3 TB/s` peak) vs Ceph `1.1 TB/s` (`6.0x` to `6.64x` speedup).
+   - Benchmark math on the published 180-node cluster (`16 x 14 TiB` NVMe SSDs and dual `200 Gb/s` NICs per
+     node): about `6.6 TiB/s` aggregate read throughput with training background traffic.
 5. Object Storage (`S3` / `GCS` / MinIO) Prefix Sharding, Multipart Transfers & Staging Pipelines (V15 Ch. 07, AISPE Ch. 5):
    - Per-request HTTP/TLS latency trap (`50 ms` TLS + `100 ms` API = `150 ms` = `0.150 s` per small object ->
      `2,000,000` objects x `0.150 s` = `300,000 s` = `83.33 hours` serial overhead vs sharded manifests).
@@ -311,44 +310,40 @@ def evaluate_vast_dase_and_gds(
 
 
 # ---------------------------------------------------------------------------
-# 4. DeepSeek Fire-Flyer File System (3FS) vs Ceph (AISPE Ch. 5)
+# 4. DeepSeek Fire-Flyer File System (3FS) peak read benchmark
 # ---------------------------------------------------------------------------
 
 def evaluate_deepseek_3fs_benchmark(
-    num_storage_nodes: int = 68,
-    nvme_drives_per_node: int = 10,
-    nvme_drive_capacity_tb: int = 16,
+    num_storage_nodes: int = 180,
+    nvme_drives_per_node: int = 16,
+    nvme_drive_capacity_tib: int = 14,
     nics_per_node: int = 2,
-    nic_speed_gbps: int = 100,
-    achieved_read_tb_s: float = 6.6,
-    background_traffic_tb_s: float = 1.4,
-    peak_reported_tb_s: float = 7.3,
-    ceph_baseline_tb_s: float = 1.1,
+    nic_speed_gbps: int = 200,
+    achieved_read_tib_s: float = 6.6,
 ) -> Dict[str, float | int | bool | Tuple[str, ...]]:
-    """Model DeepSeek's 68-node Fire-Flyer File System (3FS) benchmark vs Ceph (AISPE Ch. 5)."""
+    """Model the peak read benchmark published in the 3FS README: 180 storage nodes, each with two 200 Gbps
+    InfiniBand NICs and sixteen 14 TiB NVMe SSDs, about 6.6 TiB/s aggregate read with training background traffic."""
     total_nvme_drives = num_storage_nodes * nvme_drives_per_node
-    total_raw_capacity_tb = total_nvme_drives * nvme_drive_capacity_tb
+    total_raw_capacity_tib = total_nvme_drives * nvme_drive_capacity_tib
     per_node_network_gbps = nics_per_node * nic_speed_gbps
     per_node_network_gb_s = per_node_network_gbps / 8.0
     cluster_line_rate_tb_s = (num_storage_nodes * per_node_network_gb_s) / 1000.0
-    per_node_achieved_gb_s = (achieved_read_tb_s * 1000.0) / num_storage_nodes
-    speedup_vs_ceph_6_6 = achieved_read_tb_s / ceph_baseline_tb_s
-    speedup_vs_ceph_peak = peak_reported_tb_s / ceph_baseline_tb_s
+    achieved_read_tb_s = achieved_read_tib_s * (2 ** 40) / 1e12
+    per_node_achieved_gib_s = achieved_read_tib_s * 1024.0 / num_storage_nodes
+    per_node_achieved_gb_s = achieved_read_tb_s * 1000.0 / num_storage_nodes
     return {
         "components": ("Cluster Manager", "Metadata Service", "Storage Service", "Client"),
         "num_storage_nodes": num_storage_nodes,
         "total_nvme_drives": total_nvme_drives,
-        "total_raw_capacity_tb": total_raw_capacity_tb,
+        "total_raw_capacity_tib": total_raw_capacity_tib,
         "per_node_network_gbps": per_node_network_gbps,
-        "cluster_line_rate_tb_s": round(cluster_line_rate_tb_s, 4),
-        "achieved_read_tb_s": achieved_read_tb_s,
-        "background_traffic_tb_s": background_traffic_tb_s,
-        "combined_io_tb_s": round(achieved_read_tb_s + background_traffic_tb_s, 2),
-        "peak_reported_tb_s": peak_reported_tb_s,
+        "per_node_network_gb_s": per_node_network_gb_s,
+        "cluster_line_rate_tb_s": round(cluster_line_rate_tb_s, 2),
+        "achieved_read_tib_s": achieved_read_tib_s,
+        "achieved_read_tb_s": round(achieved_read_tb_s, 2),
+        "per_node_achieved_gib_s": round(per_node_achieved_gib_s, 2),
         "per_node_achieved_gb_s": round(per_node_achieved_gb_s, 2),
-        "ceph_baseline_tb_s": ceph_baseline_tb_s,
-        "speedup_vs_ceph_at_6_6_tb_s": round(speedup_vs_ceph_6_6, 2),
-        "speedup_vs_ceph_at_peak": round(speedup_vs_ceph_peak, 2),
+        "share_of_line_rate_pct": round(100.0 * achieved_read_tb_s / cluster_line_rate_tb_s, 1),
         "bypasses_os_page_cache": True,
         "uses_o_direct_and_io_uring_and_rdma": True,
         "standard_fuse_supports_kernel_gds": False,

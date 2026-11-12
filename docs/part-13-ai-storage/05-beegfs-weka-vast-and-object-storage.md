@@ -47,7 +47,7 @@ The first option is BeeGFS, an open-ecosystem parallel filesystem. It splits its
 
 The second option is WekaFS, a software-defined, NVMe-first parallel filesystem. It spreads both data and metadata in 4 KB chunks across every storage node. Because no single node owns the metadata, there is no dedicated metadata server that can become a bottleneck. Weka pins dedicated polling CPU cores on GPU hosts, which gives low-latency POSIX access over RoCEv2 or InfiniBand with GPUDirect Storage. It also moves cold extents, the data that is rarely read, to S3 object storage on its own, while keeping one namespace.
 
-The third option is VAST Data DASE, along with AI-native RDMA filesystems such as DeepSeek 3FS. Both designs rethink how compute nodes talk to flash. VAST separates stateless protocol containers from NVMe-oF storage enclosures. Those enclosures pair Storage Class Memory write buffers with wide-striped QLC flash. DeepSeek 3FS goes further for random-read AI workloads. It bypasses the Linux page cache completely, using `O_DIRECT`, `io_uring` and RDMA. In production benchmarks, 3FS sustained 6.6 TB/s of aggregate read throughput across 68 storage nodes.
+The third option is VAST Data DASE, along with AI-native RDMA filesystems such as DeepSeek 3FS. Both designs rethink how compute nodes talk to flash. VAST separates stateless protocol containers from NVMe-oF storage enclosures. Those enclosures pair Storage Class Memory write buffers with wide-striped QLC flash. DeepSeek 3FS goes further for random-read AI workloads. It bypasses the Linux page cache completely, using `O_DIRECT`, `io_uring` and RDMA. In DeepSeek's published peak benchmark, 3FS reached about 6.6 TiB/s of aggregate read throughput across 180 storage nodes.
 
 The fourth option is object storage, such as S3, GCS, Azure Blob and MinIO. It gives you durable, exabyte-scale data lakes that act as the source of truth, reached over HTTP and TLS. The catch is latency. At 150 ms per request, two million small files add up to more than 83 hours of serial API wait. Feeding GPUs from object storage therefore needs more machinery: versioned JSON manifests, prefix sharding, parallel download worker pools and local NVMe staging caches.
 
@@ -64,7 +64,7 @@ Start by working out how much bandwidth your GPUs actually need, because that nu
 After completing this chapter, you will be able to:
 1. Lay out and troubleshoot a BeeGFS cluster across its four services. You will work out how round-robin stripe chunks are placed, spot target fill skew, and stop 256-GPU metadata saturation with MDS scale-out and WebDataset sharding.
 2. Compare BeeGFS and Lustre with WekaFS and VAST Data DASE. The comparison covers metadata layout, erasure coding, client core pinning and hybrid S3 namespace tiering.
-3. Measure GPUDirect Storage performance with `gdsio`, and explain how DeepSeek 3FS uses `O_DIRECT`, `io_uring` and RDMA to reach 6.6 to 7.3 TB/s across 68 storage nodes.
+3. Explain how DeepSeek 3FS uses `O_DIRECT`, `io_uring` and RDMA to reach about 6.6 TiB/s across 180 storage nodes.
 4. Build and instrument a production S3 dataset staging pipeline. It removes bucket listings by using JSON manifests, scales request rates through prefix sharding, and tracks the per-epoch local NVMe cache hit rate.
 
 ---
@@ -120,7 +120,7 @@ flowchart TD
 
 Each row of the table below names one service, its job, the envelope that counts as healthy and the command that checks it. Keep the envelope in mind when a checkpoint slows down, because it tells you what normal looks like.
 
-| Service | Daemon / Module | Core Responsibility | Healthy Operational Envelope | Primary CLI Check (`untested here`) |
+| Service | Daemon / Module | Core Responsibility | Healthy Operational Envelope | Primary CLI check |
 |---|---|---|---|---|
 | **Management Service** | `beegfs-mgmtd` | Maintains the authoritative registry of all metadata nodes, storage nodes, targets, and client sessions; never sits on the data path | `< 1%` CPU/network load; queried upon mount and topology changes | `beegfs-ctl --listnodes --nodetype=mgmt` |
 | **Metadata Service (`MDS`)** | `beegfs-meta` | Stores POSIX inodes, directory hierarchies, permissions, and the per-file stripe pattern (`target IDs` + `chunksize`) | **`50,000–100,000` ops/sec** per MDS; average latency **`< 5 ms`** (e.g., `2.0–2.1 ms` at `5.2K–5.4K` ops/sec) | `beegfs-ctl --serverstats --nodetype=meta` |
@@ -192,7 +192,7 @@ WekaFS tackles this in the filesystem design itself. It does not send directory 
 
 Unlike Lustre and BeeGFS, WekaFS has no dedicated metadata servers at all. It cuts both file data and virtual metadata into 4 KB chunks. A deterministic cryptographic hash then decides which node holds each chunk. Because every node handles metadata operations in parallel, small-file `open`, `stat` and `unlink` IOPS grow linearly as you add storage nodes.
 
-For durability, WekaFS skips hardware RAID cards and 3x replication. Triple replication wastes two-thirds of raw NVMe capacity. Instead, WekaFS stripes data across failure domains with cluster-wide $N + K$ erasure coding. Here $N$ counts the data chunks and $K$ counts the parity chunks, and together they never exceed the number of storage nodes.
+For durability, WekaFS skips hardware RAID cards and 3x replication. Triple replication wastes two-thirds of raw NVMe capacity. Instead, WekaFS stripes data across failure domains with cluster-wide N plus K erasure coding. Here N counts the data chunks and K counts the parity chunks, and together they never exceed the number of storage nodes.
 
 The numbers below work through an 8-node cluster first, then an 18-node cluster. Compare the 3x replication line with the 6+2 line. The erasure code keeps 75 percent of raw capacity usable, and it still gives 2.25 times the usable capacity of 3x replication.
 
@@ -280,43 +280,28 @@ The table lists the four DASE components. Read each row as a job the component d
 
 Think of the SCM tier as a landing zone. Every random write lands there first, so the lower-endurance QLC flash only receives full, sequential stripes.
 
-### 4.2 Quantifying GPUDirect Storage with `gdsio`
+### 4.2 GPUDirect Storage on these filesystems
 
-Imagine a parallel filesystem streaming data over RDMA at line rate. Even then, routing those bytes through the legacy Linux CPU path creates a host-memory bottleneck. Data travels from the storage NIC across PCIe into host DRAM. It must then be copied a second time across PCIe into GPU HBM.
+Streaming over RDMA at line rate still wastes time if every byte passes through host memory on its way to the GPU. GPUDirect Storage removes that copy by letting the storage or network card write straight into GPU memory. Chapter 13.3 explains the mechanism and shows the `gdsio` measurement that compares the bounce-buffer path with the direct path, so this chapter does not repeat it.
 
-NVIDIA GPUDirect Storage removes that host memory copy. It uses the CUDA `cuFile` API and the `nvidia-fs` kernel driver to register GPU HBM buffers directly with the storage or RDMA NIC driver. DMA engines then move bytes straight between remote storage and GPU memory. You can measure the gain on a live mount with `/usr/local/cuda/gds/tools/gdsio` by comparing transfer mode `-x 2` against `-x 0`.
+What matters here is which filesystems qualify. GPUDirect Storage needs a kernel client that works with the `nvidia-fs` driver. BeeGFS, WekaFS, VAST over NFS with RDMA, Lustre and GPFS provide one. A user-space FUSE mount does not, and I/O through it falls back to the host-memory path. Run `gdscheck -p` on a client before you assume the direct path is active.
 
-| `gdsio` Transfer Mode | CLI Flag | Measured Read Throughput | Average I/O Latency | Observed Hardware Impact |
-|---|---|---|---|---|
-| **Storage -> CPU Memory -> GPU (`Before GDS`)** | `-x 2` | **`8.0 GB/s`** | **`1.25 ms`** | Host CPU cores saturated executing `memcpy` through host pinned bounce buffers |
-| **Storage -> GPU HBM Direct (`With GDS`)** | `-x 0` | **`9.6 GB/s` (`+20.0%`)** | **`1.00 ms` (`-20.0%`)** | Zero host `DRAM` bounce copy; VAST benchmarks show **`+20%`** read throughput on `A100` (`100 Gb/s` NIC) and **`+30%+`** on `H100` (`200/400 Gb/s` NICs) |
+### 4.3 DeepSeek Fire-Flyer File System
 
-As you read the table, treat it as a before-and-after pair. The first row is the bounce-buffer path, and the second row is the direct path. The throughput rises from 8.0 GB/s to 9.6 GB/s, which is the 20 percent gain, and latency drops from 1.25 ms to 1.00 ms.
+Picture a large pretraining job, a multi-modal shuffle or a fleet of workers doing distributed KV cache lookups. Thousands of workers issue random reads that rarely repeat across petabytes of data. On a conventional filesystem backed by the Linux page cache, those reads get almost no cache hits. They also burn CPU cycles on page-table locks and memory allocations.
 
-### 4.3 DeepSeek Fire-Flyer File System vs Ceph on 68 Nodes
-
-Picture a large LLM pretraining job, a multi-modal shuffle, or a fleet of workers doing distributed KVCache lookups. Thousands of workers issue random reads that never repeat across petabytes of data. On a conventional filesystem backed by the Linux page cache, those reads get almost no cache hits. They also burn CPU cycles on page-table locks and memory allocations.
-
-Many modern user-space filesystems rely on FUSE, and standard FUSE cannot use kernel GPUDirect Storage. The reason is that `nvidia-fs` requires kernel-level `O_DIRECT` DMA integration. DeepSeek solved both problems in its open-source Fire-Flyer File System, or 3FS. It combines strict `O_DIRECT`, asynchronous `io_uring` with pre-registered buffers, and native RDMA reads. Four decoupled services make up the design: Cluster Manager, Metadata Service, Storage Service and Client.
+DeepSeek's open-source Fire-Flyer File System, 3FS, is built for this pattern. It reads with `O_DIRECT`, submits I/O through `io_uring` and moves data over RDMA, so the page cache is out of the path. Four services make up the design: Cluster Manager, Metadata Service, Storage Service and Client. It also offers a FUSE mount for compatibility, but the fast path is the native client.
 
 ```text
-DeepSeek 3FS 68-Node Benchmark vs Ceph:
-  - Cluster hardware per storage node (68 nodes total): 10 x 16 TB NVMe SSDs (680 SSDs = 10,880 TB raw) + dual 100 Gb/s NICs (200 Gb/s = 25.0 GB/s network/node)
-  - Sustained aggregate random read throughput:          6.6 TB/s (97.06 GB/s per storage node across internal/fabric paths)
-  - Concurrent background workload traffic:             +1.4 TB/s (8.0 TB/s combined I/O; up to 7.3 TB/s peak read in larger runs)
-  - Ceph baseline on comparable hardware:               ~1.1 TB/s (3FS achieves 6.0x speedup at 6.6 TB/s and 6.64x speedup at 7.3 TB/s)
+DeepSeek 3FS peak read benchmark, as published in the project README:
+  Storage cluster:   180 nodes, each with two 200 Gbps InfiniBand NICs (50 GB/s) and sixteen 14 TiB NVMe SSDs
+  Clients:           more than 500 nodes, each with one 200 Gbps InfiniBand NIC
+  Aggregate read:    about 6.6 TiB/s (7.26 TB/s) with background traffic from training jobs
+  Network line rate: 180 x 50 GB/s = 9.0 TB/s, so the cluster served about 80 percent of it
+  Per storage node:  6.6 x 1024 / 180 = 37.6 GiB/s of the 50 GB/s its NICs can carry
 ```
 
-The benchmark block gives the headline numbers. Sustained aggregate reads reach 6.6 TB/s across the 68 nodes, against a Ceph baseline of about 1.1 TB/s. Use the table below to see how the five filesystems compare on metadata, small-file fit, operational load and ideal scale.
-
-| Parallel Filesystem Comparison | BeeGFS | Lustre | WekaFS (`WEKA`) | VAST Data (`DASE`) | DeepSeek `3FS` |
-|---|---|---|---|---|---|
-| **Metadata Model** | Multiple `beegfs-meta` (`50–100K` ops/s each); manual directory distribution | Multiple `MDT`s with `DNE` (`500K+` ops/s); rich namespace tooling | Fully distributed `4 KB` virtual metadata across all NVMe nodes | Global metadata in `DNode` `SCM`/`Optane` accessed by stateless `CNodes` | Sharded, replicated transactional metadata over `RDMA` |
-| **Small-File / Random Read Fit** | Moderate (requires `WebDataset` sharding above `~100` GPUs) | High with `DNE` + `DoM` (Data-on-MDT), complex to tune | Very high (no single `MDS` bottleneck) | Very high (`SCM` metadata + multipath `RDMA`) | Extreme for random reads (`O_DIRECT` + `io_uring`, zero page cache) |
-| **Operational Complexity** | Low (standard Linux packages on `XFS`/`EXT4`) | High (patched kernel, `MDT`/`OST` failover, `DNE` balancing) | Low-to-moderate (commercial SDS, requires pinned client cores) | Low (turnkey disaggregated appliance, `NFS-over-RDMA` + `S3`) | High (custom `RDMA` + `io_uring` stack for ultra-scale AI factories) |
-| **Primary Ideal Scale** | `100–500` GPUs, sequential shards & checkpoints | `1,000+` GPUs, classic HPC & large AI supercomputers | `100–10,000+` GPUs needing mixed small/large I/O + `S3` tiering | Multi-tenant enterprise AI data platforms needing unified `NFS` + `S3` | Ultra-scale LLM training & KVCache (`6.6–7.3 TB/s` across `68+` nodes) |
-
-Pick the filesystem whose ideal scale matches your cluster, and then check the operational complexity row against the team that will run it.
+The result shows what random-read AI storage can reach when the software stays out of the kernel's way. It is also a custom RDMA and `io_uring` stack, so it suits very large AI factories with a team to run it, not a 100-GPU cluster.
 
 ---
 
@@ -367,7 +352,7 @@ The table walks through the five stages in order. For each stage, it names the b
 | Pipeline Stage | Operational Bottleneck Addressed | Target Metric / Sizing Rule |
 |---|---|---|
 | **1. Versioned JSON Manifest** | Eliminates repeated `ListObjectsV2` bucket listings, which are slow, paginated at `1,000` keys, and exposed to eventual-consistency and data-drift bugs | Pre-compute `imagenet-manifest.json` (`1,099,511,627,776` bytes = `1 TiB` across `1,073,741,824`-byte `1 GiB` `.tar` shards, `1,281,167` samples) with pinned `sha256` checksums |
-| **2. S3 Prefix Sharding** | Standard S3 partitions enforce **`3,500` `PUT/COPY/POST/DELETE`** and **`5,500` `GET/HEAD` requests/sec per prefix**; dumping all shards under one prefix triggers `503 Slow Down` throttling at cluster scale | Shard object keys across $P = 16$ hex/hash prefixes (`s3://bucket/00/..` to `s3://bucket/0f/..`) to scale aggregate request ceilings to **`88,000` `GET`/s** and **`56,000` `PUT`/s** |
+| **2. S3 Prefix Sharding** | Standard S3 partitions enforce **`3,500` `PUT/COPY/POST/DELETE`** and **`5,500` `GET/HEAD` requests/sec per prefix**; dumping all shards under one prefix triggers `503 Slow Down` throttling at cluster scale | Shard object keys across 16 hex or hash prefixes (`s3://bucket/00/..` to `s3://bucket/0f/..`) to scale aggregate request ceilings to **`88,000` `GET`/s** and **`56,000` `PUT`/s** |
 | **3. Parallel Worker Pool (`8–16` Workers / `s5cmd`)** | Single-stream TCP/TLS downloads cannot saturate `10–100 Gb/s` host NICs (`1 GB` single object takes `6.2 s` = **`161.29 MB/s`**: `50 ms` TLS + `80 ms` API + `6,000 ms` transfer) | Fetching `8 x 1 GB` objects in parallel completes in **`7.5 s`** instead of `8 x 6.2 = 49.6 s` (**`6.61x` speedup**), delivering **`1,066.67 MB/s`** (`~1,067 MB/s`) aggregate (**`133.33 MB/s`** per worker) |
 | **4. Time-to-First-Batch Startup** | Prevents GPU starvation at job launch when staging a `500 GB` dataset (`50 x 10 GB` shards) | With `8` workers at `150 MB/s` (`1.2 GB/s` aggregate), prefetching the first `2` shards (`20 GB`) takes `20 / 1.2 = 16.67 s` (`~17 s`) + `2 x 5.0 s` API + `2 x 0.1 s` TLS = **`26.87 s` (`~27 s`)** (`18.53 s` with `16` workers) |
 | **5. Local NVMe Cache & LRU Eviction** | Absorbs S3 latency jitter and serves Epochs `2..N` at local NVMe speed (`100 GB–2 TB` scratch) | **Epoch 1 (cold):** `0.1%` hit rate (`45.3 min` wait); **Epoch 2 (warm):** `98.2%` hit rate (`2.1 min` wait, **`21.57x` wait reduction**); **Epoch 3 (`> 85%` fill):** `97.5%` hit rate (`3.5 min` wait as LRU eviction begins) |
@@ -378,18 +363,34 @@ Watch the cache hit rate in every epoch, and resize the scratch budget before th
 
 ---
 
+## 6. Choosing between them: metadata rate, small files and failure modes
+
+The four options differ most in three places: how fast they answer metadata calls, how they treat small files, and how they fail. Capacity and price matter too, but these three decide whether your GPUs wait. The rates below are the figures quoted earlier in this chapter. Treat them as starting points, because your own result depends on hardware and layout. Measure your metadata rate with `mdtest` before you size anything.
+
+| | BeeGFS | WekaFS | VAST Data | Object storage |
+|---|---|---|---|---|
+| Metadata rate | About 50,000 to 100,000 operations per second per metadata server; more servers spread directories | Metadata is spread over all nodes in 4 KB pieces, so it grows with node count | Global metadata held in the storage-class-memory tier, reached by stateless protocol servers | Each request is an HTTP call of about 150 ms; per-prefix limits of 5,500 GET and 3,500 PUT per second |
+| Small-file behaviour | Needs repackaging into shards above about 100 GPUs; one directory stays on one metadata server | Handles many small files well because no single server owns the namespace | Handles many small files well | Poor: 2,000,000 objects of 260 KB take 83 hours to fetch one by one |
+| Typical failure mode | Metadata server saturation at epoch start; a narrow stripe on a checkpoint directory; targets filling unevenly | The client pins dedicated CPU cores, so a host short of cores slows down; the erasure stripe must fit the node count | Depends on the protocol servers and the internal fabric; write-buffer capacity sets burst behaviour | 503 Slow Down above the prefix limit; a cold local cache in epoch 1; a bucket listing run on every rank |
+| Fix | Shard files, add metadata servers, set stripe before writing, rebalance targets | Reserve client cores, keep hot data on flash and tier the rest | Size the write buffer to your checkpoint burst | Manifests, prefix sharding, parallel workers and a local NVMe cache |
+| Operational load | Low to moderate | Low to moderate | Low | Lowest, but the data pipeline is yours |
+
+How do you pick? If you run 100 to 500 GPUs, can repackage datasets and want a simple open stack, BeeGFS fits. If many teams share the cluster and small-file work is mixed with large checkpoints, WekaFS or VAST remove the metadata tuning. If the source of truth is a data lake, keep it in object storage and stage it, as section 5 shows. Choose one parallel filesystem for the hot tier and one object store for the lake, and do not try to make one system do both jobs.
+
+---
+
 ## Commands and configurations that matter
 
-Every command below that queries or modifies cluster storage services (`beegfs-ctl`, `gdsio`, `aws`, `s5cmd`, `mount`, `blockdev`, `dd`, `nsys`) is marked `untested here`. Multi-node parallel filesystem daemons and cloud S3 buckets are not attached to this build container.
+The commands below need a live BeeGFS cluster, GPU hosts or an S3 bucket, and none of them was run for this edit. Treat the sample outputs as illustrations.
 
 ### 1. BeeGFS Health, Metadata Rate, and Target Fill Inspection
 
 ```bash
-# 1. Inspect Metadata Service (MDS) nodes, active sessions, ops/sec, and latency (untested here)
+# 1. Inspect Metadata Service (MDS) nodes, active sessions, ops/sec, and latency
 beegfs-ctl --listnodes --nodetype=meta --details
 beegfs-ctl --serverstats --nodetype=meta
 
-# Illustrative healthy output (untested here):
+# Illustrative healthy output:
 # Metadata Service ID 1 (meta1.example.com):
 #   Used capacity: 45 GB / 500 GB (9%)
 #   Sessions: 24 active
@@ -401,11 +402,11 @@ beegfs-ctl --serverstats --nodetype=meta
 #   Operations: 5,410 ops/sec (healthy)
 #   Latency (avg): 2.0 ms
 
-# 2. Inspect Storage Targets and detect fill-level skew across storage nodes (untested here)
+# 2. Inspect Storage Targets and detect fill-level skew across storage nodes
 beegfs-ctl --listtargets --nodetype=storage --spaceinfo
 beegfs-ctl --serverstats --nodetype=storage
 
-# Illustrative skewed output requiring rebalancing (untested here):
+# Illustrative skewed output requiring rebalancing:
 # NodeID: 101 (storage1) Paths:
 #  TargetID: 1001 Capacity: 10.0 TB Used: 4.5 TB (45%) Path: /data/target1
 #  TargetID: 1002 Capacity: 10.0 TB Used: 4.4 TB (44%) Path: /data/target2
@@ -417,7 +418,7 @@ beegfs-ctl --serverstats --nodetype=storage
 ### 2. BeeGFS Client RDMA Config and Stripe Tuning
 
 ```ini
-# /etc/beegfs/beegfs-client.conf — AI training & checkpoint optimization (untested here)
+# /etc/beegfs/beegfs-client.conf — AI training & checkpoint optimization
 sysMgmtdHost = mgmt.example.com
 connUseRDMA = true               # Use InfiniBand / RoCEv2 RDMA instead of TCP
 tuneUseGDTLSConnPool = true      # Connection pooling reduces per-I/O setup latency
@@ -427,52 +428,47 @@ connMaxInactiveTime = 900000     # Keep connections alive across long GPU comput
 ```
 
 ```bash
-# Verify client mount, RDMA connectivity, and file stripe layout (untested here)
+# Verify client mount, RDMA connectivity, and file stripe layout
 mount | grep beegfs
 grep -E "sysMgmtdHost|connUseRDMA|tuneUseGDTLSConnPool|tunePrefetchType" /etc/beegfs/beegfs-client.conf
 beegfs-ctl --clientinfo
 
-# Set directory stripe pattern BEFORE writing training shards or checkpoints (untested here)
+# Set directory stripe pattern BEFORE writing training shards or checkpoints
 # Training data: 4 MiB chunks across 12 targets for large sequential batch reads
 beegfs-ctl --setpattern --chunksize=4M --numtargets=12 /beegfs/training-data/
 
 # Checkpoints: 2 MiB chunks across 12 targets for maximum parallel write fan-out
 beegfs-ctl --setpattern --chunksize=2M --numtargets=12 /beegfs/checkpoints/
 
-# Verify stripe pattern on a specific 500 GB shard (untested here)
+# Verify stripe pattern on a specific 500 GB shard
 beegfs-ctl --getentryinfo /beegfs/dataset/train.tar.gz
 
-# Benchmark single-client direct read throughput (expect 4-5 GB/s across 8-12 targets) (untested here)
+# Benchmark single-client direct read throughput (expect 4-5 GB/s across 8-12 targets)
 time dd if=/beegfs/training-data/large-file bs=4M count=25000 of=/dev/null iflag=direct
 ```
 
-### 3. Benchmarking GPUDirect Storage with `gdsio` and Linux NVMe Tuning
+### 3. Linux read-ahead and a high-throughput NFS mount
+
+For the `gdsio` benchmark and the GPUDirect Storage setup, see chapter 13.3.
 
 ```bash
-# 1. Verify NVMe multiqueue scheduler ('none' or 'mq-deadline') and raise read-ahead to 4 MiB (untested here)
+# Check the NVMe scheduler and raise read-ahead to 4 MiB
 cat /sys/block/nvme0n1/queue/scheduler
 cat /sys/block/nvme0n1/queue/read_ahead_kb
-blockdev --setra 8192 /dev/nvme0n1   # 8192 x 512B sectors = 4 MiB read-ahead
+blockdev --setra 8192 /dev/nvme0n1   # 8192 x 512 B sectors = 4 MiB
 
-# 2. High-throughput NFS client mount options (when using VAST NFS-over-RDMA or enterprise NAS) (untested here)
+# NFS client mount options for VAST NFS over RDMA or an enterprise NAS
 mount -t nfs -o rdma,port=20049,nconnect=16,rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos \
   10.30.0.10:/ai-datasets /mnt/data
 
-# 3. Benchmark CPU bounce-buffer path (-x 2) vs GPUDirect Storage direct GPU DMA path (-x 0) (untested here)
-# Before (Storage -> CPU Pinned Memory -> GPU, -x 2): 8.0 GB/s, 1.25 ms avg latency
-/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 2
-
-# After (Storage -> GPU HBM directly via GDS cuFile/nvidia-fs, -x 0): 9.6 GB/s (+20%), 1.00 ms (-20%)
-/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
-
-# 4. Trace cuFile GDS timeline alongside GPU compute kernels in Nsight Systems (untested here)
-nsys profile --trace=cuda,nvtx,gds -o gds_training_profile python3 train.py
+# Check that the client can use GPUDirect Storage at all
+/usr/local/cuda/gds/tools/gdscheck -p
 ```
 
 ### 4. Production S3 Manifest Validation and Exponential Backoff Prefetch
 
 ```python
-# Production S3 manifest verification + asynchronous 8-worker prefetch with exponential backoff (untested here)
+# Production S3 manifest verification + asynchronous 8-worker prefetch with exponential backoff
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
@@ -520,7 +516,7 @@ def verify_and_stage_manifest(manifest_path: str, cache_dir: str = "/local-cache
 
 Suppose a parallel filesystem or S3 staging pipeline is misconfigured. The failure rarely shows up as a clear storage error. You are more likely to see idle GPUs, epoch-boundary hangs or sudden checkpoint timeouts. Use the symptoms and verification checks below to find the broken layer quickly.
 
-| Failure Mode | Observable Symptom | Root Cause Diagnosis | Verification Check (`untested here`) | Remediation |
+| Failure Mode | Observable Symptom | Root Cause Diagnosis | Verification Check | Remediation |
 |---|---|---|---|---|
 | **1. BeeGFS `MDS` Saturation at Epoch Start** | Training hangs or crawls at the start of every epoch; metadata latency spikes to **`30 ms+`** (vs `< 5 ms` healthy) | `100–256+` GPUs concurrently `open()`/`stat()` millions of small individual files (`200K+` ops/sec), overwhelming `beegfs-meta` (`50K–100K` ops/sec per server) | `beegfs-ctl --serverstats --nodetype=meta` and `time ls -la /beegfs/dataset/ \| wc -l` | Repackage small files into `100 MB–10 GB` `WebDataset` `.tar` or `TFRecord` shards (`100x` fewer metadata ops, `< 5K` ops/s); scale out `beegfs-meta` servers |
 | **2. Narrow Directory Stripe Width (`numtargets = 1` or `2`)** | A `500 GB` checkpoint stalls the cluster for `312.5 s` (`1.6 GB/s`), or a client reads at `800 MB/s` instead of `4–5 GB/s` | Directory was created with default `numtargets=1` or `2`; existing files keep their narrow stripe layout even after `--setpattern` is run later | `beegfs-ctl --getentryinfo /beegfs/checkpoints/ckpt.pt` (inspect `NumTargets` and `ChunkSize`) | Set `beegfs-ctl --setpattern --chunksize=2M --numtargets=12` on the directory *before* creating files; restripe/copy existing files |
@@ -533,11 +529,9 @@ Suppose a parallel filesystem or S3 staging pipeline is misconfigured. The failu
 
 ## Hands-on lab
 
-### Venue and Scope
+### Venue and scope
 
-The lab runs in the local Python verification script `code/part13/beegfs_weka_vast_object_lab.py`. You can run it here, and it is tested in this environment. Commands that need live BeeGFS, S3 or GPU hardware are marked `untested here`, because this build container has no cluster attached.
-
-The script checks all 26 quantitative models in `code/part13/beegfs_weka_vast_object.py` with deterministic results. Those checks cover BeeGFS round-robin chunk placement, checkpoint stall durations, metadata saturation, storage target fill skew, WekaFS erasure coding, VAST DASE wide stripes, `gdsio` throughput uplift, DeepSeek 3FS benchmarks, and S3 staging cache progressions.
+The lab runs the Python script `code/part13/beegfs_weka_vast_object_lab.py` against the models in `code/part13/beegfs_weka_vast_object.py`. It needs no cluster. It checks BeeGFS chunk placement and checkpoint stall times, metadata saturation, target fill skew, WekaFS and VAST erasure coding, the 3FS benchmark arithmetic and the S3 staging cache progression.
 
 ### Step 1: Run the Self-Contained Verification Lab
 
@@ -549,6 +543,7 @@ python3 -B code/part13/beegfs_weka_vast_object_lab.py
 
 **Expected output:**
 ```text
+=== Chapter 13.5 Lab: BeeGFS, Weka, VAST and Object Storage ===
 === Chapter 13.5 Lab: BeeGFS, Weka, VAST and Object Storage ===
   [PASS] 1. BeeGFS defines four decoupled services: beegfs-mgmtd, beegfs-meta, beegfs-storage, and beegfs-client
   [PASS] 2. BeeGFS storage node capacity ranges from 500 MB/s to 2000 MB/s (2 GB/s) with a +/-5% healthy target fill band
@@ -563,21 +558,20 @@ python3 -B code/part13/beegfs_weka_vast_object_lab.py
   [PASS] 11. WekaFS rejects N+K stripe widths that exceed the number of failure-domain storage nodes
   [PASS] 12. VAST DASE decouples stateless CNodes from NVMe-oF DNodes (SCM/Optane write buffer + QLC flash) with zero east-west CNode lock traffic
   [PASS] 13. VAST DASE wide 146+4 erasure stripe achieves 97.33% net capacity efficiency (only 2.67% parity overhead across DNodes)
-  [PASS] 14. NVIDIA gdsio benchmark shows GDS (-x 0) raises throughput from 8.0 GB/s (-x 2 CPU path) to 9.6 GB/s (+20.0%) and cuts latency from 1.25 ms to 1.00 ms (-20.0%)
-  [PASS] 15. DeepSeek 3FS comprises 4 RDMA-connected components (Cluster Manager, Metadata Service, Storage Service, Client) and bypasses the OS page cache via O_DIRECT + io_uring
-  [PASS] 16. DeepSeek 3FS 68-node cluster (680 x 16 TB NVMe = 10,880 TB, dual 100 Gb/s NICs) achieves 6.6 TB/s read (+ 1.4 TB/s background = 8.0 TB/s, up to 7.3 TB/s peak)
-  [PASS] 17. DeepSeek 3FS delivers 97.06 GB/s per storage node and outperforms Ceph (1.1 TB/s) by 6.0x at 6.6 TB/s and 6.64x at 7.3 TB/s
-  [PASS] 18. Fetching 2,000,000 small 260 KB objects serially from S3 at 150 ms/request wastes 300,000 seconds (83.33 hours) on HTTP/TLS API latency alone
-  [PASS] 19. Prefetching 2 x 10 GB shards (20 GB) with 8 workers at 150 MB/s each (1.2 GB/s aggregate) takes 16.67 s transfer + 10.2 s API/TLS = 26.87 s (~27 s) to first batch
-  [PASS] 20. Doubling S3 download workers from 8 to 16 (2.4 GB/s aggregate) cuts 20 GB transfer time to 8.33 s (18.53 s total with API/TLS)
-  [PASS] 21. S3 prefix sharding across 16 prefixes scales request ceilings from 5,500 GET/s and 3,500 PUT/s to 88,000 GET/s and 56,000 PUT/s
-  [PASS] 22. Parallel 8 x 1 GB S3 download finishes in 7.5 s (1066.67 MB/s aggregate, 133.33 MB/s per worker) vs 6.2 s single-object (161.29 MB/s) and 49.6 s serial (6.61x speedup)
-  [PASS] 23. Local NVMe staging cache warms from 0.1% hit rate (45.3 min wait) in Epoch 1 to 98.2% (2.1 min wait, 21.57x wait reduction) in Epoch 2
-  [PASS] 24. Local NVMe staging cache detects LRU eviction onset in Epoch 3 when cache fill (88.0%) exceeds the 85.0% threshold and hit rate dips to 97.5% (3.5 min wait)
-  [PASS] 25. GB200/GB300 NVL72 rack (72 GPUs x 200 MB/s per GPU) requires 14.4 GB/s (14-20 GB/s envelope) of sustained storage ingestion bandwidth
-  [PASS] 26. Reducing GPU I/O wait time from 30% to 5% lowers the I/O stall fraction by 6.0x and recovers 25 percentage points of active GPU compute time
+  [PASS] 14. DeepSeek 3FS comprises 4 RDMA-connected components (Cluster Manager, Metadata Service, Storage Service, Client) and bypasses the OS page cache via O_DIRECT + io_uring
+  [PASS] 15. DeepSeek 3FS peak benchmark: 180 storage nodes (2,880 x 14 TiB NVMe = 40,320 TiB, dual 200 Gb/s NICs = 9.0 TB/s line rate) reach about 6.6 TiB/s (7.26 TB/s) aggregate read
+  [PASS] 16. Each 3FS storage node serves 37.55 GiB/s (40.32 GB/s) of its 50 GB/s network line rate, about 80.6 percent
+  [PASS] 17. Fetching 2,000,000 small 260 KB objects serially from S3 at 150 ms/request wastes 300,000 seconds (83.33 hours) on HTTP/TLS API latency alone
+  [PASS] 18. Prefetching 2 x 10 GB shards (20 GB) with 8 workers at 150 MB/s each (1.2 GB/s aggregate) takes 16.67 s transfer + 10.2 s API/TLS = 26.87 s (~27 s) to first batch
+  [PASS] 19. Doubling S3 download workers from 8 to 16 (2.4 GB/s aggregate) cuts 20 GB transfer time to 8.33 s (18.53 s total with API/TLS)
+  [PASS] 20. S3 prefix sharding across 16 prefixes scales request ceilings from 5,500 GET/s and 3,500 PUT/s to 88,000 GET/s and 56,000 PUT/s
+  [PASS] 21. Parallel 8 x 1 GB S3 download finishes in 7.5 s (1066.67 MB/s aggregate, 133.33 MB/s per worker) vs 6.2 s single-object (161.29 MB/s) and 49.6 s serial (6.61x speedup)
+  [PASS] 22. Local NVMe staging cache warms from 0.1% hit rate (45.3 min wait) in Epoch 1 to 98.2% (2.1 min wait, 21.57x wait reduction) in Epoch 2
+  [PASS] 23. Local NVMe staging cache detects LRU eviction onset in Epoch 3 when cache fill (88.0%) exceeds the 85.0% threshold and hit rate dips to 97.5% (3.5 min wait)
+  [PASS] 24. GB200/GB300 NVL72 rack (72 GPUs x 200 MB/s per GPU) requires 14.4 GB/s (14-20 GB/s envelope) of sustained storage ingestion bandwidth
+  [PASS] 25. Reducing GPU I/O wait time from 30% to 5% lowers the I/O stall fraction by 6.0x and recovers 25 percentage points of active GPU compute time
 
-Summary: 26 passed, 0 failed
+Summary: 25 passed, 0 failed
 ```
 
 ---
@@ -612,11 +606,10 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/beegfs_we
   - Ex 3 (WekaFS Erasure Coding & Tiering):
       (a) 8 nodes x 8 x 15.36 TB = 983.04 TB raw; 6+2 stripe = 737.28 TB usable (75.0%) vs 3x replication = 327.68 TB (33.33%), a 2.25x gain; + 2,000 TB Tier 2 S3 = 2,737.28 TB namespace.
       (b) 18 nodes with 16+2 stripe = 88.89% efficiency; 4 pinned ll_core threads on 128-core host = 3.125% CPU tax.
-  - Ex 4 (VAST DASE & gdsio):
-      (a) 146+4 wide stripe on 1,500 TB raw QLC (24 TB SCM buffer): parity overhead = 2.67% (4/150), net efficiency = 97.33% (146/150), physical usable = 1,460.0 TB, logical at 2.0x reduction = 2,920.0 TB.
-      (b) gdsio (-d 0 -w 4 -s 10G -i 1M -I 0): -x 2 CPU = 8.0 GB/s at 1.25 ms vs -x 0 GDS = 9.6 GB/s at 1.00 ms (+20.0% throughput, -20.0% latency; +30%+ on H100 with 200/400 Gb/s NICs).
-  - Ex 5 (DeepSeek 3FS vs Ceph):
-      (a) 68 nodes x 10 x 16 TB NVMe = 680 SSDs (10,880 TB raw), dual 100 Gb/s NICs (25.0 GB/s/node); 6.6 TB/s read = 97.06 GB/s/node; + 1.4 TB/s background = 8.0 TB/s combined; 6.0x vs Ceph (1.1 TB/s) at 6.6 TB/s and 6.64x at 7.3 TB/s peak.
+  - Ex 4 (VAST DASE):
+      146+4 wide stripe on 1,500 TB raw QLC (24 TB SCM buffer): parity overhead = 2.67% (4/150), net efficiency = 97.33% (146/150), physical usable = 1,460.0 TB, logical at 2.0x reduction = 2,920.0 TB.
+  - Ex 5 (DeepSeek 3FS):
+      180 nodes x 16 x 14 TiB NVMe = 2,880 SSDs (40,320 TiB raw), dual 200 Gb/s NICs = 50 GB/s per node, 9.0 TB/s line rate; 6.6 TiB/s = 7.26 TB/s = 40.32 GB/s per node = 80.6% of line rate.
   - Ex 6 (S3 Staging Pipeline):
       (a) 2,000,000 x 260 KB at 150 ms = 300,000 s (83.33 hours); 20 GB (2 x 10 GB shards) across 8 workers (1.2 GB/s) = 16.67 s + 10.0 s API + 0.2 s TLS = 26.87 s (~27 s); 16 workers (2.4 GB/s) = 8.33 s + 10.2 s = 18.53 s.
       (b) 16 prefixes x (5,500 GET/s, 3,500 PUT/s) = 88,000 GET/s and 56,000 PUT/s; 8 x 1 GB in 7.5 s (1,066.67 MB/s agg, 133.33 MB/s/worker) vs 6.2 s single (161.29 MB/s) and 49.6 s serial = 6.61x speedup; Epoch 1 (0.1%, 45.3 min) -> Epoch 2 (98.2%, 2.1 min) = 21.57x wait reduction; Epoch 3 rises to 3.5 min (97.5% hit) because 88.0% fill exceeds 85.0% LRU eviction threshold.
@@ -625,8 +618,8 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/beegfs_we
 1. Start with the byte offset in Ex 1. Work out the chunk index, stripe row, target slot, TargetID and intra-chunk offset for it. Then compute the theoretical write bandwidth, the checkpoint stall, and the seconds saved when you stripe the checkpoint across two, eight and twelve targets.
 2. Using Ex 2, find the peak metadata ops/sec for the cluster and the minimum number of `beegfs-meta` nodes you need. Then work out the rate after WebDataset sharding. Finally, measure the fill spread between `storage1` and `storage2`, and say which targets need migration.
 3. For the cluster in Ex 3, compute the raw NVMe capacity, the usable Tier 1 capacity, the replication baseline, the usable capacity gain and the total unified POSIX namespace. Then find the net erasure efficiency on the larger cluster, along with the CPU core tax of pinning polling client cores.
-4. For the wide stripe in Ex 4, calculate the parity overhead percentage, the net efficiency, the usable physical QLC capacity and the effective logical capacity. Then measure the throughput uplift and latency reduction between `gdsio` modes `-x 2` and `-x 0`.
-5. Using Ex 5, calculate the total SSD count, the raw flash capacity, the per-node read throughput, the combined throughput with background traffic and the speedup over Ceph. Then explain why 3FS bypasses the OS page cache with `O_DIRECT` and `io_uring`, and why standard FUSE cannot use kernel GPUDirect Storage.
+4. For the wide stripe in Ex 4, calculate the parity overhead percentage, the net efficiency, the usable physical QLC capacity and the effective logical capacity at 2.0 times data reduction.
+5. Using Ex 5, calculate the total SSD count, the raw flash capacity, the network line rate of the cluster, the per-node read rate and the share of line rate that the benchmark reached. Then explain why 3FS bypasses the page cache.
 6. For Ex 6, compare the serial API wait for two million small S3 requests with prefetching two large shards across eight or sixteen workers. Then compute the prefix sharding ceilings, the parallel download speedup and the wait reduction from epoch 1 to epoch 2. Last, explain why wait time rises in epoch 3.
 
 ---
@@ -639,8 +632,8 @@ Interviewers use these questions to see whether you can reason about trade-offs.
    Metadata saturation on `beegfs-meta` is the top risk. Picture 256 GPUs starting an epoch over millions of small files. Metadata demand spikes past 200,000 ops/sec, which is four times a single server's 50,000 ops/sec safe ceiling, and latency climbs past 30 ms. Start by scaling out to four or five metadata servers and spreading directory subtrees across them. Then repackage the small files into large WebDataset `.tar`, TFRecord, or `.bin` and `.idx` shards. That repackaging cuts metadata operations a hundredfold, down to 2,048 ops/sec, and keeps latency around 2.1 ms even on a single server.
 2. **"How do WekaFS and VAST Data solve the metadata and small-file problem differently than Lustre and BeeGFS?"**
    Lustre and BeeGFS rely on dedicated metadata servers that partition the directory namespace. WekaFS removes dedicated metadata servers altogether. It slices both file data and virtual metadata into 4 KB chunks across every NVMe node in the cluster, and it drives RDMA from pinned polling client cores. VAST Data DASE separates stateless protocol containers from NVMe-oF drive enclosures. It keeps all global metadata and coalesces random writes inside Storage Class Memory. Then it destages wide 146+4 erasure stripes to QLC flash, with zero east-west lock traffic.
-3. **"Why did DeepSeek build Fire-Flyer File System instead of using Ceph, and why did they bypass the OS page cache?"**
-   LLM pretraining and KVCache workloads generate massive random reads across petabytes of data. On a conventional OS page cache, those random reads almost never hit, and they waste CPU and memory bandwidth thrashing page tables. DeepSeek 3FS combines strict `O_DIRECT`, Linux `io_uring` for batched, syscall-free submission, and native RDMA across 68 storage nodes. That design sustained 6.6 TB/s of read throughput and peaked at 7.3 TB/s, more than six times Ceph's 1.1 TB/s.
+3. **"Why does a filesystem like 3FS bypass the OS page cache?"**
+   LLM pretraining and KV cache workloads read randomly across petabytes of data. On a conventional page cache those reads almost never hit, and they waste CPU on page-table work. 3FS combines `O_DIRECT`, `io_uring` for batched submission and RDMA. The project reports about 6.6 TiB/s of aggregate read on 180 storage nodes. It is a custom stack that needs a team to run it.
 4. **"Epoch 1 on an S3-backed dataset takes 3 hours, while Epoch 2 takes 30 minutes. Explain the exact mechanics and whether you should fix it."**
    The first epoch starts with a cold cache at a 0.1 percent hit rate. Workers pull shards over HTTP and TLS into the local NVMe staging cache, which leaves 45.3 minutes or more of download wait. The second epoch is warm, at a 98.2 percent hit rate and 2.1 minutes of wait, because it reads straight from local NVMe. Over a 100-epoch run, the extra 2.5 hours on the first epoch is under 5 percent of total runtime, so it amortizes. Over a one-epoch fine-tuning run, the same wait is 100 percent wasted GPU time. So fix it by pre-warming the local NVMe cache from the version-pinned JSON manifest before you launch GPU workers.
 
@@ -727,21 +720,21 @@ Every incoming random write and metadata update lands first in high-endurance St
 </details>
 
 <details>
-<summary>**14. In NVIDIA's `gdsio` benchmark tool, what do `-x 2` and `-x 0` measure, and what throughput and latency numbers demonstrate a healthy GDS uplift?**</summary>
+<summary>**14. Which filesystems can use kernel GPUDirect Storage, and how do you check a client?**</summary>
 
-Flag `-x 2` measures the CPU bounce-buffer path through host DRAM, at 8.0 GB/s and 1.25 ms average latency. Flag `-x 0` measures the direct GPUDirect Storage DMA path into GPU HBM, at 9.6 GB/s and 1.00 ms latency. That switch delivers a 20 percent throughput gain and a 20 percent latency reduction on A100, and more than 30 percent on H100.
+Filesystems with a kernel client that works with `nvidia-fs`, such as BeeGFS, WekaFS, VAST over NFS with RDMA, Lustre and GPFS. A user-space FUSE mount cannot. Run `gdscheck -p` on the client, and see chapter 13.3 for the measurement.
 </details>
 
 <details>
-<summary>**15. What are the four components of DeepSeek's Fire-Flyer File System, and what throughput did it achieve across 68 storage nodes compared to Ceph?**</summary>
+<summary>**15. What are the four services of DeepSeek's Fire-Flyer File System, and what did its published benchmark reach?**</summary>
 
-The four RDMA-connected services are Cluster Manager, Metadata Service, Storage Service and Client. Across 68 storage nodes, each with 680 NVMe SSDs in total and dual 100 Gb/s NICs, 3FS sustained 6.6 TB/s of aggregate read throughput, plus 1.4 TB/s of background traffic. It peaked at 7.3 TB/s, which is more than six times Ceph's 1.1 TB/s.
+Cluster Manager, Metadata Service, Storage Service and Client. On 180 storage nodes with two 200 Gbps NICs and sixteen 14 TiB NVMe SSDs each, the project reports about 6.6 TiB/s of aggregate read throughput with background training traffic, roughly 80 percent of the 9.0 TB/s network line rate.
 </details>
 
 <details>
-<summary>**16. Why cannot a standard user-space FUSE filesystem use kernel GPUDirect Storage, and how does DeepSeek 3FS work around this?**</summary>
+<summary>**16. Why does 3FS bypass the page cache, and why can a plain FUSE mount not use kernel GPUDirect Storage?**</summary>
 
-Kernel GPUDirect Storage needs a kernel filesystem driver integrated with `nvidia-fs` for `O_DIRECT` DMA registration. Standard user-space FUSE lacks that integration. DeepSeek 3FS bypasses the OS page cache instead. It uses `O_DIRECT` with Linux `io_uring` pre-registered buffers and native user-space RDMA reads, straight into GPU-accessible memory.
+Random reads over petabytes rarely hit the page cache and cost CPU in page-table work, so 3FS reads with `O_DIRECT`, `io_uring` and RDMA. Kernel GPUDirect Storage needs a kernel client that works with `nvidia-fs`, which a user-space FUSE daemon does not provide.
 </details>
 
 <details>
@@ -772,18 +765,24 @@ Think about what your cache does across three epochs. The first epoch starts wit
 
 ## Sources and review notes
 
-### Primary Sources (Read in Full and Migrated)
+### Sources used
 
-```text
-Source Map & Key Migrated Facts:
-  1. Migrated from nvidia-devops Volume 15 (AI Storage, Checkpointing, and Data Pipelines):
-     - nvidia-zero-to-hero/volume-15/chapter-06-beegfs-for-gpu-clusters.md (BeeGFS decoupled architecture across beegfs-mgmtd, beegfs-meta [50K-100K ops/sec, < 5 ms latency, meta1 5,230 ops/s at 2.1 ms and 45/500 GB 9%, meta2 5,410 ops/s at 2.0 ms and 44/500 GB 8%], beegfs-storage [500 MB/s-2 GB/s per node, +/-5% target balance, storage1 1001/1002 at 45%/44% vs storage2 2001/2002 at 72%/71%], and beegfs-client [connUseRDMA = true, tuneUseGDTLSConnPool = true, tunePrefetchType = buffered, connMaxInactiveTime = 900000]; round-robin striping with beegfs-ctl --setpattern --chunksize=1M --numtargets=8 [6.4 GB/s theoretical, ~5 GB/s sustained at 70-80% efficiency], --chunksize=4M --numtargets=12 for training, --chunksize=2M --numtargets=12 for checkpoints; 500 GB checkpoint across 2 targets [1.6 GB/s, 312 s / 312.5 s] vs 8 targets [6.4 GB/s, 78 s / 78.125 s]; 256-GPU 200K+ ops/sec metadata saturation vs 100x WebDataset sharding; and comparison of BeeGFS, Lustre, IBM Storage Scale/GPFS, WEKA, and VAST Data).
-     - nvidia-zero-to-hero/volume-15/chapter-07-object-storage-and-dataset-pipelines.md (Why direct S3 training stalls: 100 MB model load in 250 ms [50 ms TCP/TLS + 100 ms API + 100 ms transfer] vs 500 GB dataset with 2,000,000 objects of 260 KB at 150 ms/req = 300,000 s = 83 / 83.33 hours; single 1 GB S3 download in 6.2 s [161 MB/s / 161.29 MB/s, 50 ms TLS + 80 ms API + 6,000 ms data] vs 8 x 1 GB parallel download in 7.5 s vs 49.6 s serial [1,067 MB/s / 1,066.67 MB/s aggregate, 133 MB/s / 133.33 MB/s per object]; local NVMe cache hit rates across Epoch 1 [0.1%, 45.3 min wait], Epoch 2 [98.2%, 2.1 min wait], and Epoch 3 [97.5%, 3.5 min wait with > 85% fill eviction]; imagenet-2024-v1 JSON manifest [1,073,741,824 B shards, 1,099,511,627,776 B total, 1,281,167 samples]; exponential backoff 2 ** attempt; and 500 GB 50 x 10 GB shard startup math [8 x 150 MB/s = 1.2 GB/s, 20 GB / 1.2 GB/s = 17 s / 16.67 s + 10 s API + 0.2 s TLS = ~27 s / 26.87 s to first batch]).
-  2. Book Corpus Sources:
-     - AI Systems Performance Engineering (ai-systems-performance-engineering, Chapter 5: GPU-Based Storage I/O Optimizations — 8 GPUs x 200 MB/s = 1.6 GB/s and GB200/GB300 NVL72 72 GPUs x 200 MB/s = 14-20 GB/s [14.4 GB/s]; blk-mq none/mq-deadline and read_ahead_kb 128 KB -> multi-MB via blockdev --setra; GPUDirect Storage [GDS] with cuFile and nvidia-fs; VAST Data GDS uplift of +20% on A100 and +30%+ on H100; gdsio benchmark -x 2 CPU path [8.0 GB/s, 1.25 ms] vs -x 0 GDS path [9.6 GB/s +20%, 1.00 ms -20%]; DeepSeek's Fire-Flyer File System [3FS] across 4 components [Cluster Manager, Metadata Service, Storage Service, Client] using O_DIRECT, io_uring, and RDMA, achieving 6.6 TB/s read + 1.4 TB/s background [7.3 TB/s peak] on a 68-node cluster with 10 x 16 TB NVMe SSDs and dual 100 Gb/s NICs vs Ceph ~1.1 TB/s, and why FUSE cannot deliver kernel GDS; NFS tuning rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos; s5cmd parallel S3 transfers; and reducing GPU I/O wait from 30% to 5% [6x stall reduction]).
-     - AI Data Center Network Design and Technologies (ai-data-center-network-design-and-technologies, Chapter 9: Storage Network Design and Technologies — Table 9-1 Comparison of Object, Block, and File Storage Systems; PCIe Gen5 ~100 ns vs InfiniBand ~300 ns vs Ethernet ~700-900 ns [800 ns]; High-Performance File Systems section detailing WekaFS distributed data and metadata chunks across NVMe servers, POSIX over RoCEv2/IB RDMA on 100/200/400/800 Gbps fabrics, Tier 1 local NVMe flash + Tier 2 cloud S3 over HTTPS/TLS for .pt, .npy, .ckpt, .h5, .bin files, and VAST Data NFS-over-RDMA + GDS).
-```
+| Source | Used for |
+|---|---|
+| BeeGFS documentation | Services, stripe patterns, `beegfs-ctl` |
+| WEKA documentation and *AI Data Center Network Design and Technologies*, chapter 9 | Distributed 4 KB metadata, erasure coding, client core pinning, object tiering, the PCIe, InfiniBand and Ethernet latency comparison |
+| VAST Data documentation | Disaggregated shared-everything design, storage-class-memory write buffer, wide erasure stripes |
+| DeepSeek 3FS project README (github.com/deepseek-ai/3FS, read 2026-11-12) | Four services, `O_DIRECT`, `io_uring` and RDMA, and the peak benchmark: 180 storage nodes, two 200 Gbps NICs and sixteen 14 TiB SSDs each, about 6.6 TiB/s read |
+| Amazon S3 documentation, request rates and prefixes | 5,500 GET and 3,500 PUT per second per prefix |
+| *AI Systems Performance Engineering*, chapter 5 | Per-GPU bandwidth arithmetic, NVMe read-ahead, GPUDirect Storage context |
+| NVIDIA storage field notes (volume 15 of the `nvidia-devops` repository) | BeeGFS and S3 worked examples. The figures are illustrative. |
 
-### Inferences and Unverified Claims Note
-- All cluster CLI commands (`beegfs-ctl`, `gdsio`, `gdscheck`, `blockdev`, `mount` on `ZFS` or XFS, `cuFileBufRegister`, `cuFileReadAsync`, `cuFileWrite`, `cuFileWriteAsync` into GPU `BAR1`, `aws` / `s5cmd` `GET/HEAD/LIST` calls, `1/4` stripe shares, `0.15`s / `0.8` GB/s / `1200` / `2100` metrics, cross-referenced with Chapters `13.1`, `13.3`, and `13.4`, `dd`, `nsys`) are illustrative operational patterns from the cited sources and have **not been executed on live multi-node storage hardware in this build environment** (`untested here`).
-- The Python stripe-mapping, metadata-scaling, erasure-coding, `gdsio`, DeepSeek 3FS, and S3 staging cache models in `code/part13/beegfs_weka_vast_object.py` and `code/part13/beegfs_weka_vast_object_lab.py` are deterministic reference implementations verified locally (`26 passed, 0 failed`).
+### Corrections made in this revision
+
+- The 3FS benchmark was described as 68 nodes with 100 Gb/s NICs and a Ceph comparison. The project README reports 180 storage nodes with two 200 Gbps NICs and about 6.6 TiB/s, and it makes no Ceph comparison. The numbers and the lab were corrected.
+- The `gdsio` comparison table duplicated chapter 13.3 and was removed. This chapter now links there.
+- A comparison of BeeGFS, WekaFS, VAST and object storage on metadata rate, small-file behaviour and failure modes was added as section 6.
+
+### Not verified here
+
+The cluster commands were not run. The BeeGFS metadata ceiling of 50,000 to 100,000 operations per second, the 4 KB WekaFS chunk size and the VAST 146 plus 4 stripe come from the vendor-oriented notes above and were not measured. Measure your own metadata rate with `mdtest`.
