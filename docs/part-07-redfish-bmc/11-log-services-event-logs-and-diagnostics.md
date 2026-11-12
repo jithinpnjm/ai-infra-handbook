@@ -326,10 +326,10 @@ If your fleet mixes newer OpenBMC and DGX platforms with older enterprise OEM se
 
 | Hardware Fault Domain | Legacy `EntryType: "SEL"` (`SensorType` & `EntryCode`) | Modern `EntryType: "Event"` (`MessageId` & `OriginOfCondition`) |
 |---|---|---|
-| **Host Memory (DDR5 ECC)** | `SensorType: "Memory"`, `EntryCode: "Uncorrectable ECC"` | `MessageId` in `Base`/`Memory`/`Platform` registry, `OriginOfCondition` $\rightarrow$ `/Systems/{id}/Memory/DIMM_A1` |
-| **Processor Fault (MCE / IERR)** | `SensorType: "Processor"`, `EntryCode: "IERR"` or `"Thermal Trip"` | `OriginOfCondition` $\rightarrow$ `/Systems/{id}/Processors/CPU_0`, `Severity: "Critical"` |
-| **Cooling & Fans** | `SensorType: "Fan"` or `"Temperature"`, `EntryCode: "Lower Critical - going low"` | `MessageId` in `Environmental` / `SensorEvent`, `OriginOfCondition` $\rightarrow$ `/Chassis/{id}/Sensors/Fan_1` |
-| **Power Supply Drop** | `SensorType: "Power Supply / Converter"`, `EntryCode: "Power Supply input lost"` | `OriginOfCondition` $\rightarrow$ `/Chassis/{id}/PowerSubsystem/PowerSupplies/PSU_1` |
+| **Host Memory (DDR5 ECC)** | `SensorType: "Memory"`, `EntryCode: "Uncorrectable ECC"` | `MessageId` in `Base`/`Memory`/`Platform` registry, `OriginOfCondition` → `/Systems/{id}/Memory/DIMM_A1` |
+| **Processor Fault (MCE / IERR)** | `SensorType: "Processor"`, `EntryCode: "IERR"` or `"Thermal Trip"` | `OriginOfCondition` → `/Systems/{id}/Processors/CPU_0`, `Severity: "Critical"` |
+| **Cooling & Fans** | `SensorType: "Fan"` or `"Temperature"`, `EntryCode: "Lower Critical - going low"` | `MessageId` in `Environmental` / `SensorEvent`, `OriginOfCondition` → `/Chassis/{id}/Sensors/Fan_1` |
+| **Power Supply Drop** | `SensorType: "Power Supply / Converter"`, `EntryCode: "Power Supply input lost"` | `OriginOfCondition` → `/Chassis/{id}/PowerSubsystem/PowerSupplies/PSU_1` |
 | **OS Watchdog Timeout** | `SensorType: "Watchdog 2"`, `EntryCode: "Hard Reset"` or `"Timer expired"` | `ResourceEvent` / `Platform` watchdog message on `/Systems/{id}` |
 
 The same fault shows up with different keys in each format. Match on the fault domain rather than on the raw code.

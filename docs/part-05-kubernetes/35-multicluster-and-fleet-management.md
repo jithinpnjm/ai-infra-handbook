@@ -536,7 +536,7 @@ If all 20 clusters in your fleet share a single Terraform state file, three thin
 <summary>9. Compare `MultiKueue`'s three dispatcher modes: `AllAtOnce` (default), `Incremental`, and `External`.</summary>
 
 - **`AllAtOnce` (default):** It sends remote `Workload` copies to **all** worker clusters listed in `MultiKueueConfig.spec.clusters` as soon as the manager reserves quota. Admission is fastest this way, but **multiple worker clusters may briefly reserve quota for the same job** before the losing clusters' copies are deleted.
-- **`Incremental` (Kueue v0.13+, ordered since v0.19):** It nominates worker clusters in **rounds of 3 clusters**, following the **exact priority order listed in `MultiKueueConfig.spec.clusters`**. It waits **5 minutes** per round before it adds the next batch of 3 clusters, if none in the current batch admits the job. It suits **"on-prem DGX first $\rightarrow$ reserved cloud second $\rightarrow$ expensive on-demand/neocloud burst third"** spill-over policies.
+- **`Incremental` (Kueue v0.13+, ordered since v0.19):** It nominates worker clusters in **rounds of 3 clusters**, following the **exact priority order listed in `MultiKueueConfig.spec.clusters`**. It waits **5 minutes** per round before it adds the next batch of 3 clusters, if none in the current batch admits the job. It suits **"on-prem DGX first → reserved cloud second → expensive on-demand/neocloud burst third"** spill-over policies.
 - **`External`:** It delegates cluster selection to an external placement controller that sets `Workload.status.nominatedClusterNames`.
 </details>
 

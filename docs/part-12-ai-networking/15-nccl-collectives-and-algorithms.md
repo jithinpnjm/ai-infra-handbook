@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 12: Complete AI networking |
-| Sources to use | ASP 4; V7 ch9; DAI 2; VL6 ch2 |
+| Sources to use | *AI Systems Performance Engineering* 4; V7 ch9; *Distributed AI Systems* 2; VL6 ch2 |
 | Coverage file | `planning/coverage/chapters/12-15.md` |
 | Companion code | `code/part12/nccl_collectives_algorithms.py` · `code/part12/nccl_collectives_algorithms_lab.py` |
 
@@ -352,7 +352,7 @@ Hiding network time behind Tensor Core work is one of the biggest software wins 
 
 PyTorch `DistributedDataParallel` avoids much of this with Wait-Free Backpropagation. Autograd hooks group parameters in reverse layer order into 25 MiB gradient buckets. As soon as a bucket fills on the compute stream, DDP launches an asynchronous NCCL AllReduce on a dedicated communication stream. The compute stream keeps calculating gradients for earlier layers while that transfer runs.
 
-| Optimization / Anti-Pattern | Baseline Execution Behavior | Optimized Execution Behavior (`ASP` Ch. 4 Tables 4-1..4-3) |
+| Optimization / Anti-Pattern | Baseline Execution Behavior | Optimized Execution Behavior (*AI Systems Performance Engineering* Ch. 4 Tables 4-1..4-3) |
 |---|---|---|
 | **1. NVIDIA Magnum IO 4 Pillars** | Uncoordinated I/O subsystems | **(1) Storage I/O** (`GPUDirect Storage` / `BlueField SNAP`), **(2) Network I/O** (`GPUDirect RDMA`, `NCCL`, `NVSHMEM`, `UCX`, `HPC-X`), **(3) In-Network Compute** (`SHARP`), **(4) I/O Management** (`NetQ`, `UFM`). |
 | **2. Serial vs Overlapped `DDP` (`WFBP`)** | Serial `loss.backward()` (`fc1, fc2, fc3` = `10.0 ms`) then `dist.all_reduce` (`12.0 ms`) = **`22.0 ms`** (`0%` overlap). Broad baseline: `100.0 ms` (`60%` SM busy). | Reverse-order `25 MiB` gradient buckets (`bucket_cap_mb = 25`, `fc3 -> fc2 -> fc1`) overlap `AllReduce` on a secondary CUDA stream: $\max(10.0, 12.0) = \mathbf{12.0\text{ ms}}$ (**`45.45%` reduction**). Broad iteration drops from `100.0 ms` to **`70.0 ms`** (**`30.0%` faster**, **`90%` SM busy**). |
@@ -392,8 +392,8 @@ The NVIDIA Inference Xfer Library, or NIXL, provides a unified, non-blocking poi
 | Dimension | `NCCL` (Collective Communication Library) | `NIXL` (NVIDIA Inference Xfer Library, `0.5.x`) |
 |---|---|---|
 | **Primary Pattern** | Many-to-many synchronized collectives (`AllReduce`, `AllGather`, `ReduceScatter`, `AllToAll`) | One-to-one or one-to-few asynchronous point-to-point transfers (`NIXL_WRITE` / `NIXL_READ`) |
-| **Synchronization Semantics** | Collective barrier semantics (all ranks in communicator must invoke the call in lockstep) | Non-blocking initiator/target agents (`agentSrc` $\rightarrow$ `agentDst`) polled via `checkXfer(reqHandle)` |
-| **Core C++ Lifecycle API** | `ncclCommInitRank` $\rightarrow$ `ncclCommRegister` $\rightarrow$ `ncclAllReduce(..., stream)` $\rightarrow$ `ncclCommDestroy` | `nixlAgent` $\rightarrow$ `registerMem` $\rightarrow$ `trim` $\rightarrow$ `prepXfer` $\rightarrow$ `postXfer` $\rightarrow$ `checkXfer` $\rightarrow$ `releaseReqH` $\rightarrow$ `deregisterMem` |
+| **Synchronization Semantics** | Collective barrier semantics (all ranks in communicator must invoke the call in lockstep) | Non-blocking initiator/target agents (`agentSrc` → `agentDst`) polled via `checkXfer(reqHandle)` |
+| **Core C++ Lifecycle API** | `ncclCommInitRank` → `ncclCommRegister` → `ncclAllReduce(..., stream)` → `ncclCommDestroy` | `nixlAgent` → `registerMem` → `trim` → `prepXfer` → `postXfer` → `checkXfer` → `releaseReqH` → `deregisterMem` |
 | **Memory Tiers and Transports** | GPU HBM (and NVLink-C2C symmetric memory) over `NVLink`, `NVSwitch`, `PCIe`, `IB`/`RoCE`, TCP | Unified across GPU `VRAM_SEG` (`1 GB` to `100 GB` KV caches), CPU DRAM (`512 GB` LPDDR5X on `GH200`), NVMe SSD (`GDS`/POSIX), and `S3` via `UCX`, `GPUDirect RDMA`, and `IBGDA` |
 | **Measured Speedup Benchmarks** | `100.0 GB/s` (`4.0 ms` for `400 MB`) on `800G` IB vs `2.0 GB/s` (`200 ms`) on `Gloo`; `2x-5x` with `SHARP` | **`14x` TTFT speedup** on x86 `H100` KV offload vs recompute; **`2x` faster TTFT** on `GH200` (`900 GB/s` `NVLink-C2C`) vs x86 `H100`; **`30x` higher throughput** in `Dynamo` on a `~680B` LLM across a `72`-GPU `NVL72` rack |
 
@@ -726,12 +726,12 @@ An explicit Reduce followed by Broadcast funnels all $N$ tensors onto one root r
 Given $\text{algbw} = S / t$, AllReduce uses $\text{busbw} = \text{algbw} \times \frac{2(N - 1)}{N}$, which gives 1.0x at $N=2$, 1.5x at $N=4$, 1.75x at $N=8$, and 1.9722x at $N=72$. ReduceScatter, AllGather, and AllToAll use $\text{busbw} = \text{algbw} \times \frac{N - 1}{N}$, which gives 0.5x at $N=2$, 0.75x at $N=4$, and 0.875x at $N=8$. Broadcast and Reduce use $\text{busbw} = \text{algbw} \times 1.0$.
 </details>
 
-<details><summary>**5. In `DAI` Ch 2's `allreduce_microbench.py` (`2` GPUs, `100 MiB` per GPU, `50` iterations in `0.248 s`), why do `algbw` and `busbw` both equal `40,322.58 MB/s` (`39.38 GB/s`)?**</summary>
+<details><summary>**5. In *Distributed AI Systems* Ch 2's `allreduce_microbench.py` (`2` GPUs, `100 MiB` per GPU, `50` iterations in `0.248 s`), why do `algbw` and `busbw` both equal `40,322.58 MB/s` (`39.38 GB/s`)?**</summary>
 
 At $N = 2$ GPUs, the ring factor $\frac{2(N - 1)}{N}$ equals 1.0. So `alg_bytes` and `bus_bytes` are the same. Their total is $100\text{ MiB} \times 2 \times 50 = 10,000\text{ MiB} = 9.765625\text{ GiB}$. Dividing by 0.248 s gives 40,322.58 MB/s (39.38 GB/s) for both metrics. At $N = 4$ GPUs, bus bandwidth becomes 1.5x algorithm bandwidth.
 </details>
 
-<details><summary>**6. How is Model FLOPS Utilization (`MFU`) calculated for a `70B` transformer training on `H100` GPUs (`DAI` Ch 2)?**</summary>
+<details><summary>**6. How is Model FLOPS Utilization (`MFU`) calculated for a `70B` transformer training on `H100` GPUs (*Distributed AI Systems* Ch 2)?**</summary>
 
 The dense transformer rule counts about $6 \times N_{\text{params}}$ FLOPs per token across the forward and backward passes. A 70B model that runs 860 TFLOP per step in 2.0 seconds reaches $860 / 2.0 = 430\text{ TFLOPS}$. Divide that by the H100 dense BF16 peak of 989 TFLOPS, and you get $\text{MFU} = 430 / 989 \approx 43.48\%$, or roughly 43%. That falls inside the 40% to 60% target band for well-tuned clusters.
 </details>
@@ -766,7 +766,7 @@ LL sends an 8-byte atomic unit, made of 4 bytes of payload and a 4-byte flag, fo
 Registering device buffers allocated with `ncclMemAlloc` through `ncclCommRegister` lets NCCL read and write your tensors directly. It skips the internal `NCCL_BUFFSIZE` bounce buffers. Active channels fall from 16 SM blocks to 4, which frees 12 SMs for compute. Two rules must hold. If any rank registers its buffer, every rank in the communicator must register one. For symmetric algorithms, the byte offset from the buffer head must match across all ranks.
 </details>
 
-<details><summary>**13. Why does `PyTorch` `DistributedDataParallel` (`DDP`) outperform `nn.DataParallel` (`DP`) by `33.33%` (`30.0 ms` vs `45.0 ms` in `ASP` Ch 4), and how does `bucket_cap_mb` work?**</summary>
+<details><summary>**13. Why does `PyTorch` `DistributedDataParallel` (`DDP`) outperform `nn.DataParallel` (`DP`) by `33.33%` (`30.0 ms` vs `45.0 ms` in *AI Systems Performance Engineering* Ch 4), and how does `bucket_cap_mb` work?**</summary>
 
 nn.DataParallel is single-process and multi-threaded. It runs into Python GIL serialization, gathers outputs and gradients onto GPU 0, and cannot overlap communication with backward compute, so a step takes 45.0 ms. DDP runs one process per GPU, so there is no GIL contention. It groups gradients into 25 MiB buckets, set by `bucket_cap_mb = 25`. Autograd hooks launch asynchronous NCCL AllReduce calls on a background stream as each bucket fills. That brings the step to 30.0 ms, which is 33.33% faster.
 </details>

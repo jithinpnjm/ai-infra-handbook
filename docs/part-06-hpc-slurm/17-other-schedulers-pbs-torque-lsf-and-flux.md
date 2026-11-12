@@ -366,7 +366,7 @@ Work through these exercises in order. Each one asks you to explain or write som
 <details>
 <summary>2. Name the four core daemons of **OpenPBS / PBS Professional** and their Slurm equivalents.</summary>
 
-- `pbs_server` is the central job and queue server and state manager, backed by PostgreSQL. Its Slurm equivalent is `slurmctld` plus `slurmdbd`. $\leftrightarrow$
+- `pbs_server` is the central job and queue server and state manager, backed by PostgreSQL. Its Slurm equivalent is `slurmctld` plus `slurmdbd`. ↔
 - `pbs_sched` is the policy scheduler daemon that decides which job runs next. Its Slurm equivalent is the `sched/backfill` scheduling plugin in `slurmctld`.
 - `pbs_mom`, the "Machine Oriented Mini-server", is the compute-node execution agent. Its Slurm equivalent is `slurmd` plus `slurmstepd`.
 - `pbs_comm` is the inter-node communication relay. Its Slurm equivalent is hierarchical `TreeWidth` communication.

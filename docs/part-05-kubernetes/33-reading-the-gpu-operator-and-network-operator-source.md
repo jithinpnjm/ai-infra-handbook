@@ -457,7 +457,7 @@ Setting `updateStrategy.type: OnDelete` stops `kube-controller-manager` from res
 4. `pod-deletion` or `drain`: remaining GPU pods are evicted, and operator operand pods that hold `/dev/nvidia*` are stopped.
 5. `pod-restart`: the `OnDelete` driver pod is deleted, so the new driver pod starts.
 6. `validation`: the validator pod must pass on the new driver.
-7. `uncordon-required` $\rightarrow$ `upgrade-done` (or `upgrade-failed` if validation fails).
+7. `uncordon-required` → `upgrade-done` (or `upgrade-failed` if validation fails).
 </details>
 
 <details>
@@ -467,7 +467,7 @@ The custom `Node` predicate in `clusterpolicy_controller.go` triggers a reconcil
 1. A new Node that already carries the GPU label is created.
 2. `nvidia.com/gpu.present` is added or removed.
 3. `nvidia.com/gpu.deploy.operands` flips between `"true"` and `"false"`.
-4. `nvidia.com/gpu.workload.config` changes (`container` $\leftrightarrow$ `vm-passthrough` $\leftrightarrow$ `vm-vgpu`).
+4. `nvidia.com/gpu.workload.config` changes (`container` ↔ `vm-passthrough` ↔ `vm-vgpu`).
 5. An OS or kernel NFD label (`feature.node.kubernetes.io/system-os_release.*` or `ostree`) changes.
 6. `nvidia.com/gpu-driver-upgrade-state` changes.
 7. An RHCOS or precompiled-driver GPU node is deleted, so that unused per-kernel driver DaemonSets can be garbage-collected.
@@ -520,7 +520,7 @@ Both mechanisms make a downstream component wait for its driver on the same node
 | Dimension | GPU Operator (`/run/nvidia/validations`) | Network Operator (`mofed.wait` Node Label) |
 |---|---|---|
 | **When downstream DaemonSet Pods are scheduled** | Scheduled **immediately** onto the node; held in **`Init:0/1` (`PodInitializing`)** by `driver-validation` / `toolkit-validation` init containers polling `/run/nvidia/validations/` | **Not scheduled at all** until `NicClusterPolicyReconciler` sees the OFED pod Ready and flips `network.nvidia.com/operator.mofed.wait` from `"true"` to `"false"` |
-| **Control-plane involvement** | Zero control-plane round-trips required to advance from driver $\rightarrow$ toolkit $\rightarrow$ device plugin on a node | Requires the central operator to watch the OFED Pod status and PATCH the `Node` label |
+| **Control-plane involvement** | Zero control-plane round-trips required to advance from driver → toolkit → device plugin on a node | Requires the central operator to watch the OFED Pod status and PATCH the `Node` label |
 | **How it looks in `kubectl get pods`** | Downstream pods appear immediately in `Init:0/1` on the node | Downstream pods do not appear on the node until `mofed.wait=false` |
 
 The biggest difference is where the waiting happens. The GPU Operator waits inside the node, so its Pods show up early in `Init:0/1`. The Network Operator waits at the scheduler, so its Pods do not appear on the node until the label flips.

@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Nebius GPU |
 | Part | Part 12: Complete AI networking |
-| Sources to use | ASP 4; V7 ch8; V7 ch9; VL6 ch2; V2 ch10; V13 ch8 |
+| Sources to use | *AI Systems Performance Engineering* 4; V7 ch8; V7 ch9; VL6 ch2; V2 ch10; V13 ch8 |
 | Coverage file | `planning/coverage/chapters/12-16.md` |
 | Companion code | `code/part12/nccl_topology_channels_env.py` · `code/part12/nccl_topology_channels_env_lab.py` |
 
@@ -370,7 +370,7 @@ Picture this table as your checklist before a launch. It lists the variables tha
 | `NCCL_COLLNET_ENABLE` / `NCCL_NVLS_ENABLE` | `0` or `1` | `1` when Quantum SHARP / NVSwitch NVLS active | Enables in-network switch reduction (CollNet) and NVSwitch NVLink SHARP (NVLS) |
 | `NCCL_SHARP_DISABLE` | `0` or `1` | `0` (set `1` for A/B testing or switch buffer triage) | Explicitly disables InfiniBand SHARP offload even when CollNet is present |
 | `NCCL_SOCKET_IFNAME` | `[=\|^\|^=]ib0,eth0,...` | **`ib0`** (or high-speed bond, e.g., `^docker,lo`) | Selects OS network interface for NCCL bootstrap TCP handshakes and `NET/Socket` |
-| `NCCL_SOCKET_NTHREADS` & `NCCL_NSOCKS_PERTHREAD` | Integers with product **`<= 64`** | Product **`<= 64`** (e.g., `2` threads $\times$ `2` sockets = `4`) | Tunes CPU proxy threads and TCP sockets per thread when `NET/Socket` is active |
+| `NCCL_SOCKET_NTHREADS` & `NCCL_NSOCKS_PERTHREAD` | Integers with product **`<= 64`** | Product **`<= 64`** (e.g., `2` threads × `2` sockets = `4`) | Tunes CPU proxy threads and TCP sockets per thread when `NET/Socket` is active |
 | `NCCL_IGNORE_CPU_AFFINITY` | `0` or `1` | **`1`** (paired with NUMA-level `numactl`) | Ignores inherited narrow CPU core affinity masks so NCCL spreads threads across the local NUMA node |
 | `TORCH_NCCL_ASYNC_ERROR_HANDLING` / `NCCL_ASYNC_ERROR_HANDLING` | `0` none, `1` abort and tear down, `2` abort only, `3` tear down only | **`3`** in PyTorch 2.15 | Controls the asynchronous watchdog action on rank crash or collective stall; the default already avoids an infinite hang |
 | `NCCL_PROFILER_PLUGIN` | Shared library name / path | Unset (or Kineto / custom profiler `.so`) | Loads the 5-callback (`init`, `startEvent`, `stopEvent`, `recordEventState`, `finalize`) profiler plugin |

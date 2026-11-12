@@ -262,7 +262,7 @@ Redfish gives you an agentless, out-of-band view of every `PCIeDevice`, `Network
 
 | Subsystem & Check | Out-of-Band Redfish Property (`rf_hardware.py`) | In-Band Linux Command & Equivalent Field |
 |---|---|---|
-| **PCIe Link Speed & Width** | `PCIeDevice.PCIeInterface`: `PCIeType` vs `MaxPCIeType` (`Gen5`), `LanesInUse` vs `MaxLanes` (`16`) | `sudo lspci -vvv -s <bdf>` $\rightarrow$ `LnkSta: Speed 32GT/s, Width x16` vs `LnkCap: Speed 32GT/s, Width x16` |
+| **PCIe Link Speed & Width** | `PCIeDevice.PCIeInterface`: `PCIeType` vs `MaxPCIeType` (`Gen5`), `LanesInUse` vs `MaxLanes` (`16`) | `sudo lspci -vvv -s <bdf>` → `LnkSta: Speed 32GT/s, Width x16` vs `LnkCap: Speed 32GT/s, Width x16` |
 | **PCIe Bus Errors** | `Status.Health` (`Warning`/`Critical`) and BMC `LogServices` AER entries | `dmesg -T \| grep -iE "aer\|pcieport"` and `/sys/bus/pci/devices/<bdf>/aer_dev_*` |
 | **Network Port State & Speed** | `Port`: `LinkState` (`Enabled`), `LinkStatus` (`LinkUp`), `CurrentSpeedGbps` vs `MaxSpeedGbps` (`400`) | `ibstat` (`State: Active`, `Physical state: LinkUp`, `Rate: 400`) or `ethtool <iface>` (`Speed: 400000Mb/s`, `Link detected: yes`) |
 | **Optical Lane Width & Power** | `Port`: `ActiveWidth` vs `Width` (`4`), `PortMetrics` RX/TX optical power (`mW`) | `mlxlink -d mlx5_0 -m` or `ethtool -m <iface>` (per-lane RX/TX dBm and bias current) |

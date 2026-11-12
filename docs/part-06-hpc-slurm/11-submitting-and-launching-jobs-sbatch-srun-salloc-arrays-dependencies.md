@@ -67,7 +67,7 @@ In a multi-node batch script, a command without `srun` runs once, on the first n
 
 You can even launch multiple `srun` steps in parallel inside a single allocation. For example, inside a 4-CPU allocation, you can run `srun -n 1 ... &` alongside `srun -n 3 ... &`.
 
-### The 6-stage Slurm job life cycle (`SCL` Chapter 15)
+### The 6-stage Slurm job life cycle (*Supercomputers for Linux Sysadmins* Chapter 15)
 
 Slurm carries out a sequence of steps behind the scenes for every job. Knowing that sequence explains why jobs get rejected at submit time, why a broken node drains on launch, and how stray processes are reaped. The sequence below comes from *Supercomputers for Linux SysAdmins*, Chapter 15, *Job Life Cycle*.
 
@@ -83,7 +83,7 @@ Stage 5 is preemption, and it happens only when triggered. Higher-priority jobs 
 
 Stage 6 is the end of the job. The batch script may exit, be cancelled, or hit its `--time` limit. In every case, Slurm sends `SIGTERM` to all job processes across the allocated nodes. After `KillWait`, it follows with `SIGKILL`. Then it runs the `Epilog` script as `root` on every allocated node, to verify cleanup.
 
-### Simulating a multi-node GPU cluster on a single physical machine (`DAI` Chapter 8)
+### Simulating a multi-node GPU cluster on a single physical machine (*Distributed AI Systems* Chapter 8)
 
 Before you submit a complex multi-node script to a shared production queue, you can test it on one multi-GPU workstation. Run several `slurmd` daemons, each on its own TCP port, so that they act as separate nodes. This technique is covered in *Distributed AI Systems*, Chapter 8, under *Simulating a Multi-Node cluster*. It requires Slurm built with `--enable-multiple-slurmd`. The configuration below creates two virtual nodes on one 8-GPU host.
 
@@ -141,7 +141,7 @@ The default for `--export` is `ALL`, which copies the submitter's environment in
 
 Use `--wrap="command"` to submit a one-line command without a script file. Use `--test-only` to check a request, which reports when and where the job would start without submitting it. Use `--parsable` in scripts, because it prints only the job ID. Set `--mail-type=END,FAIL --mail-user=...` for notifications, but only if the site runs mail. The options `--begin=now+1hour`, `--deadline=...`, `--hold`, `--nice`, `--reservation`, `--qos` and `--account` control scheduling, and Chapter 6.9 covers them.
 
-### Summary of primary `sbatch` / `srun` keys (`SCL` Chapter 15 `Table 15-1`)
+### Summary of primary `sbatch` / `srun` keys (*Supercomputers for Linux Sysadmins* Chapter 15 `Table 15-1`)
 
 The table below lists the primary `sbatch` and `srun` keys and what each one means.
 
@@ -165,7 +165,7 @@ The table below lists the primary `sbatch` and `srun` keys and what each one mea
 
 Read the table as a quick reference. Options such as `--dependency` and `--requeue` are the ones this chapter returns to in later sections.
 
-### Rank-specific logging vs interleaved stdout (`DAI` Chapter 8)
+### Rank-specific logging vs interleaved stdout (*Distributed AI Systems* Chapter 8)
 
 In multi-node distributed training, every rank writes to the same `slurm-%j.out` file by default. Stack traces and progress bars end up interleaved in that one file. *Distributed AI Systems*, Chapter 8, under *Logging and output*, covers this. You have three clean layers of control.
 
@@ -260,7 +260,7 @@ Each task reads its own line of `configs.txt`, selected by its index plus one.
 
 Always throttle with `%N`, because the throttle protects shared storage and fair-share scheduling. Keep tasks reasonably long. Arrays of 5-second tasks overload the controller, so batch them instead. Write the results for each task into a separate directory. For very large sweeps, use a workflow tool, or run `srun --multi-prog` or GNU parallel inside one allocation.
 
-### 2D hyperparameter grid search with job arrays (`DAI` Chapter 8)
+### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)
 
 Instead of keeping an external config file, you can map `SLURM_ARRAY_TASK_ID` straight onto a 2D grid. In bash, integer modulo (`%`) selects the learning rate, and integer division (`/`) selects the batch size. The method comes from *Distributed AI Systems*, Chapter 8, under *Job arrays for hyperparameter tuning* and *Implement job array for hyperparameter search*.
 
@@ -459,7 +459,7 @@ Run through this list before you submit a new script, since these are the mistak
 
 The self-checking linter lab was tested here. The cluster steps were not, so run them on a real cluster or on a single-host virtual cluster, and check the results yourself.
 
-Start with the self-checking Python lab, `code/part06/sbatch_lint_lab.py`, which you run locally. It verifies `code/part06/sbatch_lint.py` against a clean multi-node GPU script, which should give `0` findings. It also checks a broken script, which should give `4` `ERROR`s and `8` warnings or infos. The lab tests the 12-task 2D hyperparameter job-array mapping, where `SLURM_ARRAY_TASK_ID` runs from `0..11` across 4 learning rates $\times$ 3 batch sizes. Finally, it verifies `SLURMCheckpointer` signal handling for `SIGUSR1` and `SIGTERM`, from *Distributed AI Systems*, Chapter 8.
+Start with the self-checking Python lab, `code/part06/sbatch_lint_lab.py`, which you run locally. It verifies `code/part06/sbatch_lint.py` against a clean multi-node GPU script, which should give `0` findings. It also checks a broken script, which should give `4` `ERROR`s and `8` warnings or infos. The lab tests the 12-task 2D hyperparameter job-array mapping, where `SLURM_ARRAY_TASK_ID` runs from `0..11` across 4 learning rates × 3 batch sizes. Finally, it verifies `SLURMCheckpointer` signal handling for `SIGUSR1` and `SIGTERM`, from *Distributed AI Systems*, Chapter 8.
 
 ```bash
 python3 code/part06/sbatch_lint_lab.py
@@ -641,9 +641,9 @@ The linter rejects four hard errors.
 
 ## Sources and review notes
 
-- User-level behaviour, `Table 15-1` primary `sbatch`/`srun` keys, `Table 15-2` `squeue` format symbols, and the 6-stage allocation/step/job life cycle (`Prolog`, `slurmstepd`, `HealthCheckProgram`, `Epilog`): read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 15 ("15. Slurm": User Experience, Job Life Cycle, `scontrol`, Accounting and Statistics).
-- Virtual multi-node cluster simulation on a single host (`node6`/`node7` on ports `17016`/`17017`), batch submission, environment variables (`MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE`, `RANK`, `LOCAL_RANK`), rank-specific logging (`srun --label`, `train_rank_{rank}.log`), 2D hyperparameter job arrays (`0-11` over 4 LRs $\times$ 3 batch sizes + `collect_hp_results`), interactive `salloc` jobs, job dependencies, and `SLURMCheckpointer` (`SIGUSR1@90` + `SIGTERM`): read in full from *Distributed AI Systems* (`distributed-ai-systems`, `DAI`) Chapter 8 ("Chapter 8: Running Distributed Training with SLURM").
+- User-level behaviour, `Table 15-1` primary `sbatch`/`srun` keys, `Table 15-2` `squeue` format symbols, and the 6-stage allocation/step/job life cycle (`Prolog`, `slurmstepd`, `HealthCheckProgram`, `Epilog`): read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, *Supercomputers for Linux Sysadmins*) Chapter 15 ("15. Slurm": User Experience, Job Life Cycle, `scontrol`, Accounting and Statistics).
+- Virtual multi-node cluster simulation on a single host (`node6`/`node7` on ports `17016`/`17017`), batch submission, environment variables (`MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE`, `RANK`, `LOCAL_RANK`), rank-specific logging (`srun --label`, `train_rank_{rank}.log`), 2D hyperparameter job arrays (`0-11` over 4 LRs × 3 batch sizes + `collect_hp_results`), interactive `salloc` jobs, job dependencies, and `SLURMCheckpointer` (`SIGUSR1@90` + `SIGTERM`): read in full from *Distributed AI Systems* Chapter 8 ("Chapter 8: Running Distributed Training with SLURM").
 - Options and semantics: man pages `sbatch(1)`, `srun(1)`, `salloc(1)` (via the shared option text), `scontrol(1)`, `slurm.conf(5)` from SchedMD/slurm commit `521370b`.
 - Run here: `python3 code/part06/sbatch_lint.py` and `python3 code/part06/sbatch_lint_lab.py` (3 passed, 0 failed).
-- Explicitly labelled inferences: `map_array_task_to_hp` and `SLURMCheckpointerSim` in `code/part06/sbatch_lint_lab.py` are deterministic teaching models based on `DAI` Chapter 8.
+- Explicitly labelled inferences: `map_array_task_to_hp` and `SLURMCheckpointerSim` in `code/part06/sbatch_lint_lab.py` are deterministic teaching models based on *Distributed AI Systems* Chapter 8.
 - Not verified on live hardware: exact behaviour of `--export=NONE` with `sbatch` on your site, whether `--exact` is the default for your release, the signal-forwarding plumbing in the requeue example, and all live cluster behaviour (`untested here`).

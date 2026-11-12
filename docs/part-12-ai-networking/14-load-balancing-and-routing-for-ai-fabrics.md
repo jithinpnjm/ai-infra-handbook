@@ -449,7 +449,7 @@ At the network layer, EVPN Route Type 5 IP-VRFs and MAC-VRFs split a 512-GPU rai
 
 | Multi-Tenancy Tier | Hardware and Protocol Architecture (`ADC` Ch. 8 Figs. 8-21..8-24) | Capacity and Isolation Numbers |
 |---|---|---|
-| **1. Bare-Metal (`BMSaaS`) Rail Multi-Tenancy** | `8` leaf switches $\times$ `8` spine switches built with `64 × 800 Gbps` radix switches. Each leaf allocates `32 × 800 Gbps` ports to spines (`4 × 800G` per spine = `25.6 Tbps`/leaf) and breaks out `32 × 800 Gbps` ports into `64 × 400 Gbps` server ports (`2 × 400G` breakout $\times 32$). | `8 × 64 = 512` GPUs per rail (`64` servers of `8` GPUs, `204.8 Tbps` `1:1` rail bisection). Partitioned into `4` bare-metal tenants of `128` GPUs/tenant using `EVPN RT5` (`RT5 IPVRF1..7`) + `MAC-VRF` (`RT2` symmetric IRB), reusing `8` IP subnets per tenant. |
+| **1. Bare-Metal (`BMSaaS`) Rail Multi-Tenancy** | `8` leaf switches × `8` spine switches built with `64 × 800 Gbps` radix switches. Each leaf allocates `32 × 800 Gbps` ports to spines (`4 × 800G` per spine = `25.6 Tbps`/leaf) and breaks out `32 × 800 Gbps` ports into `64 × 400 Gbps` server ports (`2 × 400G` breakout $\times 32$). | `8 × 64 = 512` GPUs per rail (`64` servers of `8` GPUs, `204.8 Tbps` `1:1` rail bisection). Partitioned into `4` bare-metal tenants of `128` GPUs/tenant using `EVPN RT5` (`RT5 IPVRF1..7`) + `MAC-VRF` (`RT2` symmetric IRB), reusing `8` IP subnets per tenant. |
 | **2. Server + Network `H100 MIG` Multi-Tenancy** | NVIDIA `H100 MIG` partitions each GPU into `7` isolated instances (`GPU Instance 1..7`). Server-to-leaf links trunk `7` IEEE `802.1Q` tags (`VLAN 1..7`) into ToR leaves. | Each leaf maps `VLAN 1..7` `1:1` into `7` `MAC-VRF` instances (`MAC-VRF 1..7`) and `7` `EVPN Type-5 IP-VRFs` (`RT5 IPVRF 1..7`) for `Tenant 1..Tenant 7` without dynamic RADIUS `TCAM` exhaustion. |
 | **3. Intra-Subnet Microsegmentation (`VXLAN-GBP`)** | Stamps a `16`-bit Group Policy ID (`GBP tag`) inside the VXLAN header on ingress when tenants or tiers share a subnet and `VNI`. | Egress ToR enforces microsegmentation rules in hardware without requiring additional `VRFs`. |
 
@@ -518,7 +518,7 @@ Stages 2 and 3 are the contrast to study. The read stays on one flowlet path, wh
 
 Suppose a cloud provider commissions a 512-GPU rail. It must serve large bare-metal training tenants and smaller fractional-GPU inference tenants, both on the same physical switches. Combining EVPN Route Type 5 overlays with NVIDIA H100 MIG and BGP DPF underlay coloring meets both needs cleanly.
 
-| Tenant Layer | Configuration on the `512`-GPU Rail (`8` Leaves $\times$ `8` Spines of `64 × 800G` Switches = `204.8 Tbps`) | Isolation Result |
+| Tenant Layer | Configuration on the `512`-GPU Rail (`8` Leaves × `8` Spines of `64 × 800G` Switches = `204.8 Tbps`) | Isolation Result |
 |---|---|---|
 | **1. Bare-Metal (`BMSaaS`) Tenants** | `4` bare-metal tenants each lease `128` GPUs (`16` servers $\times 8$ GPUs) across `64 × 400G` server breakout ports and `32 × 800G` spine uplinks per leaf. | Segmented via `EVPN RT5` IP-VRFs (`RT5 IPVRF1..4`) or combined `MAC-VRF` (`RT2`) + `RT5`, reusing `8` rail subnets per tenant. |
 | **2. Shared `H100 MIG` Tenants** | Shared nodes partitioned into `7` `MIG` instances (`MIG 1..7`) trunk `7` VLANs (`VLAN 1..7`) into ToR leaves. | Mapped `1:1` into `7` `MAC-VRF` instances (`MAC-VRF 1..7`) and `7` `EVPN RT5` IP-VRFs (`RT5 IPVRF 1..7`). |

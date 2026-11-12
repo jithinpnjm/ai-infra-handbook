@@ -366,7 +366,7 @@ A **Privilege** is one atomic permission: `Login`, `ConfigureManager`, `Configur
 <details>
 <summary>14. In the Privilege Registry (`DSP0266` §13.4.3.4), what are the three override types and their precedence order, and how do they explain why a user can change their own password or why an Operator can edit a host NIC but not the BMC NIC?</summary>
 
-The precedence order is **`PropertyOverrides` $\rightarrow$ `ResourceURIOverrides` $\rightarrow$ `SubordinateOverrides`**. A `PropertyOverride` on `ManagerAccount` lets `ConfigureUsers` or `ConfigureSelf` PATCH the `Password` property. That is how any user can change their own password without holding `ConfigureUsers`. A `SubordinateOverride` on `EthernetInterface` needs `ConfigureManager` when the NIC sits under `Manager`, which is the BMC's OOB port. Under `ComputerSystem`, the same NIC needs `ConfigureComponents`. That is why an Operator can edit a host NIC but not the BMC NIC.
+The precedence order is **`PropertyOverrides` → `ResourceURIOverrides` → `SubordinateOverrides`**. A `PropertyOverride` on `ManagerAccount` lets `ConfigureUsers` or `ConfigureSelf` PATCH the `Password` property. That is how any user can change their own password without holding `ConfigureUsers`. A `SubordinateOverride` on `EthernetInterface` needs `ConfigureManager` when the NIC sits under `Manager`, which is the BMC's OOB port. Under `ComputerSystem`, the same NIC needs `ConfigureComponents`. That is why an Operator can edit a host NIC but not the BMC NIC.
 </details>
 
 <details>

@@ -410,9 +410,9 @@ The unversioned file (`Chassis.json`) defines no properties. It lists every publ
 <details>
 <summary>6. In Redfish schema versioning (`vMajor_Minor_Errata`), what is the difference between a Major, Minor, and Errata increment (DSP0266 §9.14)?</summary>
 
-- **Major (`v1` $\rightarrow$ `v2`):** introduces breaking changes that are not backward compatible, or removes deprecated properties. This is extremely rare.
-- **Minor (`v1_16_0` $\rightarrow$ `v1_17_0`):** strictly additive and backward compatible. It adds new optional properties, actions or enumeration values, and removes or breaks nothing.
-- **Errata (`v1_17_0` $\rightarrow$ `v1_17_1`):** clarifies descriptions or documentation, or fixes typos without breaking anything in an existing minor version.
+- **Major (`v1` → `v2`):** introduces breaking changes that are not backward compatible, or removes deprecated properties. This is extremely rare.
+- **Minor (`v1_16_0` → `v1_17_0`):** strictly additive and backward compatible. It adds new optional properties, actions or enumeration values, and removes or breaks nothing.
+- **Errata (`v1_17_0` → `v1_17_1`):** clarifies descriptions or documentation, or fixes typos without breaking anything in an existing minor version.
 </details>
 
 <details>

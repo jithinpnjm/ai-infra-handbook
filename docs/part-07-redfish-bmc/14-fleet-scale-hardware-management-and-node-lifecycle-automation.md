@@ -246,7 +246,7 @@ Before a benchmark, check each of these four rows on every server.
 
 ### 6.2 Designing an idempotent, resumable state machine for node bring-up
 
-Look at how `code/part07/node_lifecycle.py` moves a node through six stages, from racked hardware to scheduler readiness: `inventory` $\rightarrow$ `health` $\rightarrow$ `firmware` $\rightarrow$ `bios` $\rightarrow$ `boot` $\rightarrow$ `ready`. Why is a persisted state machine so much safer than a linear shell script? The answer shows up when things go wrong.
+Look at how `code/part07/node_lifecycle.py` moves a node through six stages, from racked hardware to scheduler readiness: `inventory` → `health` → `firmware` → `bios` → `boot` → `ready`. Why is a persisted state machine so much safer than a linear shell script? The answer shows up when things go wrong.
 
 Take a 128-node bring-up. At least five to ten percent of newly racked servers will hit a physical or configuration snag on Day 0. In the example, one server has a loose DAC cable, so the `health` gate fails. Two servers shipped from a different manufacturing batch with older BMC firmware, so the `firmware` gate fails. Another server times out during its reboot, so the `bios` gate stays `pending`.
 

@@ -269,7 +269,7 @@ When you control host power with `ipmitool power`, the six actions below do very
 | `power on` | Turns on main host power rails | Boots a powered-off server |
 | `power off` | Immediately drops main host power rails (equivalent to yanking AC cords from host PSUs) | **Hard power cut.** Does not sync filesystems; use only after `power soft` / SSH fails and the node is drained in Slurm |
 | `power cycle` | Powers off main rails, waits briefly, and powers back on | Supercomputers for Linux Sysadmins, chapter 10 warns that `power cycle` is **not always reliable across all BMC firmwares**; in scripts, prefer an explicit `power off`, a `10–15 s` pause while polling `power status` for `off`, and then `power on` |
-| `power reset` | Pulses the motherboard warm-reset pin without dropping PSU rails | Equivalent to pressing the front-panel reset button; note that PCIe switches/FPGA retimers keep standby/main power and only reload on a full `power off` $\rightarrow$ `power on` or AC cycle |
+| `power reset` | Pulses the motherboard warm-reset pin without dropping PSU rails | Equivalent to pressing the front-panel reset button; note that PCIe switches/FPGA retimers keep standby/main power and only reload on a full `power off` → `power on` or AC cycle |
 
 The gap between `power soft` and `power off` is the one that matters most. A soft power pulse lets the OS shut down cleanly. A hard power cut does not sync filesystems. Reserve `power off` for the case where `power soft` and SSH have both failed and the node is already drained in Slurm. For scripts, write the three steps out explicitly rather than trusting `power cycle`.
 

@@ -202,7 +202,7 @@ BCM separates software images (`/cm/images/<name>`), categories and drain-action
 2. **Pattern B — Zero-downtime rolling category switch for kernel, driver, and OFED upgrades:**
    Use this pattern when the change touches the Linux kernel (`set kernelversion` with `createramdisk`), the NVIDIA GPU kernel driver (`nvidia.ko`), or the `MLNX_OFED` / `DOCA-Host` RDMA stack. Syncing files onto a running node with `imageupdate -w` is risky here. The running kernel and the loaded `.ko` modules in RAM no longer match the files on disk. Any new job step or `nvidia-smi` call on that node can then fail with a driver or library version mismatch.
    Use a rolling category or image switch with chained drain actions instead.
-   - Clone the production image (`dgx-prod-v1` $\rightarrow$ `dgx-prod-v2`). Make all the kernel, driver and `createramdisk` updates inside `dgx-prod-v2`, while production nodes keep running on `dgx-prod-v1`.
+   - Clone the production image (`dgx-prod-v1` → `dgx-prod-v2`). Make all the kernel, driver and `createramdisk` updates inside `dgx-prod-v2`, while production nodes keep running on `dgx-prod-v1`.
    - Create a canary category, `dgx-canary`, that points to `dgx-prod-v2`. Move one idle test node into it, reboot it, and validate GPUDirect RDMA and GDS with `gdscheck.py -p` and `all_reduce_perf`.
    - After validation, point the production category at `dgx-prod-v2`, or move racks into the new category. Then schedule a rolling reboot across busy nodes with chained drain actions:
      ```bash

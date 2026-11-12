@@ -279,9 +279,9 @@ The second is `EthernetInterfaces` and `NetworkProtocol`. Under `Managers/{id}/E
 
 Why did we build `code/part07/rf_model.py` to check reciprocal links? Each link has a partner that must point back to it. The pairs are these.
 
-- `Links.Chassis` $\leftrightarrow$ `Links.ComputerSystems`
-- `Links.ManagedBy` $\leftrightarrow$ `Links.ManagerForServers` or `Links.ManagerForChassis`
-- `Links.Contains` $\leftrightarrow$ `Links.ContainedBy`
+- `Links.Chassis` ↔ `Links.ComputerSystems`
+- `Links.ManagedBy` ↔ `Links.ManagerForServers` or `Links.ManagerForChassis`
+- `Links.Contains` ↔ `Links.ContainedBy`
 
 Your tools will start from different points in the resource graph, depending on the task. Suppose an inventory script starts at `Systems`. It follows `Links.Chassis` to find the physical rack slot that holds the system. It follows `Links.ManagedBy` to record the BMC firmware version. Now suppose a thermal alert fires on a fan sensor inside `Chassis/Blade3/Sensors`. The responder starts at `Chassis/Blade3` and follows `Links.ComputerSystems` to find which Slurm compute node must be drained before the blade overheats.
 
@@ -293,7 +293,7 @@ In practice, running `rf_model.py` and `rf_inventory.py` together gives your pla
 
 Each exercise uses either the mock services or the DMTF example trees from this chapter. Work through them in order, and keep the output of each one, because later exercises refer back to it.
 
-1. Start with the link checker, `code/part07/model_inventory_lab.py`. Run `python3 code/part07/model_inventory_lab.py`, and you should see `3/3` checks pass. Then start `redfish_mock.py` with `--profile dgx`. Run `python3 code/part07/rf_model.py http://127.0.0.1:18441 admin adminpass --mermaid` to print the complete `System` $\leftrightarrow$ `Chassis` $\leftrightarrow$ `Manager` graph.
+1. Start with the link checker, `code/part07/model_inventory_lab.py`. Run `python3 code/part07/model_inventory_lab.py`, and you should see `3/3` checks pass. Then start `redfish_mock.py` with `--profile dgx`. Run `python3 code/part07/rf_model.py http://127.0.0.1:18441 admin adminpass --mermaid` to print the complete `System` ↔ `Chassis` ↔ `Manager` graph.
 2. Serve the DMTF multi-blade enclosure mockup, `$REDFISH_PUBLICATIONS/mockups/public-bladed-system`, with `redfish_mock.py --mockup`. Then run `rf_inventory.py --csv` from `code/part07/rf_inventory.py`. Explain why the enclosure exposes `4` `ComputerSystem` instances (`Blade1` to `Blade4`) alongside `5` `Manager` instances. The five managers are `4` blade BMCs and `1` `MultiBladeBMC` with `ManagerType: "EnclosureManager"`.
 3. Serve the DMTF SmartNIC mockup, `$REDFISH_PUBLICATIONS/mockups/public-smartnic`, and inspect `/redfish/v1/Systems/Card1-SoC`. Note its `SystemType` (`"DPU"`) and its CPU and memory counts (`1` CPU and `8 GiB` of RAM). Then find which `Manager` controls both the host system (`437XR1138R2`) and the DPU, by reading `Links.ManagedBy`.
 4. Write a 12-line Python function, `find_all_gpus(client)`. It starts at `/redfish/v1/`, walks every member of `Systems`, and looks through each system's `Processors` collection. It returns every processor where `ProcessorType == "GPU"`. Do not hard-code `"HGX_Baseboard_0"`, because the function must work on any generation.
@@ -426,10 +426,10 @@ An empty slot is a resource whose `Status.State` is `"Absent"`, and its unknown 
 <details>
 <summary>19. Which four pairs of reciprocal `Links` does `code/part07/rf_model.py` verify across `Systems`, `Chassis`, and `Managers`?</summary>
 
-1. `ComputerSystem.Links.Chassis` $\leftrightarrow$ `Chassis.Links.ComputerSystems`
-2. `ComputerSystem.Links.ManagedBy` $\leftrightarrow$ `Manager.Links.ManagerForServers`
-3. `Chassis.Links.ManagedBy` $\leftrightarrow$ `Manager.Links.ManagerForChassis`
-4. `Chassis.Links.Contains` $\leftrightarrow$ `Chassis.Links.ContainedBy`
+1. `ComputerSystem.Links.Chassis` ↔ `Chassis.Links.ComputerSystems`
+2. `ComputerSystem.Links.ManagedBy` ↔ `Manager.Links.ManagerForServers`
+3. `Chassis.Links.ManagedBy` ↔ `Manager.Links.ManagerForChassis`
+4. `Chassis.Links.Contains` ↔ `Chassis.Links.ContainedBy`
 </details>
 
 <details>

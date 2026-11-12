@@ -550,7 +550,7 @@ Every scrape calls `sinfo` or `squeue` (or `slurmrestd`) over RPC against `slurm
 <details>
 <summary>16. What checks does `code/part06/check_alert_rules.py` perform on a Prometheus alert rules YAML file?</summary>
 
-1. The file must be valid YAML, with `groups` $\to$ `rules`.
+1. The file must be valid YAML, with `groups` → `rules`.
 2. No two `alert` or `record` rules may share a name.
 3. Parentheses `()`, brackets `[]` and braces `{}` must balance in every `expr`.
 4. Every alert needs a valid `severity` label: `page`, `warn` or `ticket`.

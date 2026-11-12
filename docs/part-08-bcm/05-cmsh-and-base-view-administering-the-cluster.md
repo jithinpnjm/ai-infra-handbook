@@ -255,7 +255,7 @@ Most first mistakes in `cmsh` come from habits you have not built yet. The list 
 
 ### 12.1 Mastering `cmsh` for zero-mistake fleet operations
 
-Picture a `cmsh` session on a live production cluster. One `foreach` or `range` command can modify or reboot five hundred GPU servers at once. The gap between a junior administrator and a senior systems engineer shows up in the first thirty seconds of that session. Disciplined operators follow the same four-step rhythm on every interactive change: **Scope $\rightarrow$ Mutate $\rightarrow$ Audit (`modified`) $\rightarrow$ Commit**.
+Picture a `cmsh` session on a live production cluster. One `foreach` or `range` command can modify or reboot five hundred GPU servers at once. The gap between a junior administrator and a senior systems engineer shows up in the first thirty seconds of that session. Disciplined operators follow the same four-step rhythm on every interactive change: **Scope → Mutate → Audit (`modified`) → Commit**.
 
 Here is how each step protects the cluster from fat-finger outages.
 
@@ -303,11 +303,11 @@ Even if you do ninety percent of your daily engineering work in `cmsh`, you shou
 | **Check overall cluster & rack health** | `device; status` / `rackoverview` / `healthoverview` | **Cluster > Overview** (or **Devices > Racks**) |
 | **Inspect or edit global cluster settings** | `partition use base; show` | **Cluster > Settings** |
 | **Create or clone a node category** | `category; clone default gpu-h100; commit` | **Grouping > Categories > `+` (or Clone)** |
-| **Move a rack of nodes into a category** | `device; foreach -r rack03 (set category gpu-h100); commit` | **Devices > Nodes** (multi-select rows $\rightarrow$ Edit $\rightarrow$ Category) |
+| **Move a rack of nodes into a category** | `device; foreach -r rack03 (set category gpu-h100); commit` | **Devices > Nodes** (multi-select rows → Edit → Category) |
 | **Inspect role priorities on a node** | `device use node001; roles; list -p` | **Devices > All Devices > `node001` > Settings > Roles** |
 | **Check or stage BIOS attributes** | `device use node001; biossettings; status` / `bios apply` | **Devices > All Devices > `node001` > BIOS** |
-| **Watch live metrics and health graphs** | `monitoring; samplenow node001` / `latesthealthdata` | Top-right **Monitoring** icon $\rightarrow$ **Critical Services** |
-| **Hold, release, or inspect a WLM job** | `wlm; jobs; list` / `info <id>` / `hold <id>` | Top-right **HPC** icon $\rightarrow$ **Jobs** (`..` action menu) |
+| **Watch live metrics and health graphs** | `monitoring; samplenow node001` / `latesthealthdata` | Top-right **Monitoring** icon → **Critical Services** |
+| **Hold, release, or inspect a WLM job** | `wlm; jobs; list` / `info <id>` / `hold <id>` | Top-right **HPC** icon → **Jobs** (`..` action menu) |
 
 Notice why experienced teams avoid editing the same object in Base View and `cmsh` at the same time. Whichever session commits second overwrites the properties the first one committed. Use Base View for visual awareness, time-series metric exploration and one-off inspection. Use `cmsh`, with `modified` and `set revision "<ticket>"`, whenever you change cluster state.
 

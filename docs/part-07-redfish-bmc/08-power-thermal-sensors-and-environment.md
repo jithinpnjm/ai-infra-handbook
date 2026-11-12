@@ -422,7 +422,7 @@ The BMC sees chassis inlet and exhaust temperatures, fan RPMs and redundancy, PS
 <details>
 <summary>18. What is the 4-step discovery fallback order for reading a GPU's temperature on an unfamiliar server via Redfish?</summary>
 
-1. Walk from `Systems` to `Processors` where `ProcessorType == "GPU"`, then to `EnvironmentMetrics` and its `TemperatureCelsius` $\rightarrow$ value.
+1. Walk from `Systems` to `Processors` where `ProcessorType == "GPU"`, then to `EnvironmentMetrics` and its `TemperatureCelsius` → value.
 2. Search `Chassis/{id}/Sensors` for `ReadingType == "Temperature"` and `PhysicalContext == "GPU"`.
 3. Fall back to the deprecated `Chassis/{id}/Thermal` `Temperatures[]` entries that match `PhysicalContext == "GPU"`.
 4. If none exist, report `"no GPU temperature sensor exposed"` plainly, rather than guessing.

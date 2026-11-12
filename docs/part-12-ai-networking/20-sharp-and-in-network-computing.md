@@ -80,29 +80,29 @@ The outcomes below build on each other, so read them in order. After completing 
 
 Picture training a large model across $N$ GPUs or $N$ compute nodes. Every rank holds a local gradient tensor of $B$ bytes. Those tensors must be summed across all ranks before the optimizer step can proceed. If the network switches only forward packets from port to port, the GPUs have to pass slices of that tensor among themselves. Each extra hop adds serialization latency, and it uses link bandwidth that other collectives could have used.
 
-In a standard Ring ReduceScatter, the tensor of size $B$ is cut into $N$ equal chunks of size $\frac\{B\}\{N\}$. Over $N - 1$ pipelined steps, every rank sends one chunk to its downstream neighbor and receives one chunk from its upstream neighbor. Each rank adds the incoming data into its local accumulator. For ReduceScatter alone, every GPU sends and receives this byte volume:
+In a standard Ring ReduceScatter, the tensor of size $B$ is cut into $N$ equal chunks of size $\frac{B}{N}$. Over $N - 1$ pipelined steps, every rank sends one chunk to its downstream neighbor and receives one chunk from its upstream neighbor. Each rank adds the incoming data into its local accumulator. For ReduceScatter alone, every GPU sends and receives this byte volume:
 
-$$V_\{\text\{Ring, RS\}} = (N - 1) \times \frac\{B\}\{N\} = B\frac\{N - 1\}\{N\}\text\{ bytes\}$$
+$$V_{\text{Ring, RS}} = (N - 1) \times \frac{B}{N} = B\frac{N - 1}{N}\text{ bytes}$$
 
-Ring AllGather starts from a different place. Each GPU begins with its reduced $\frac\{B\}\{N\}$ shard, and the shards circulate around the ring for another $N - 1$ steps. No arithmetic happens in this phase. Put the two phases together and you get a Ring AllReduce. It needs $2(N - 1)$ sequential steps, and it forces every rank to transmit and receive almost $2B$ bytes per direction:
+Ring AllGather starts from a different place. Each GPU begins with its reduced $\frac{B}{N}$ shard, and the shards circulate around the ring for another $N - 1$ steps. No arithmetic happens in this phase. Put the two phases together and you get a Ring AllReduce. It needs $2(N - 1)$ sequential steps, and it forces every rank to transmit and receive almost $2B$ bytes per direction:
 
-$$V_\{\text\{Ring, AR (unidirectional per rank)\}} = 2\frac\{N - 1\}\{N\}B\text\{ bytes\}, \qquad \text\{Steps\}_\{\text\{Ring, AR\}} = 2(N - 1)$$
+$$V_{\text{Ring, AR (unidirectional per rank)}} = 2\frac{N - 1}{N}B\text{ bytes}, \qquad \text{Steps}_{\text{Ring, AR}} = 2(N - 1)$$
 
-Watch what happens as the cluster grows from 8 to 1,024 ranks. The factor $\frac\{N - 1\}\{N\}$ climbs toward 1. Each GPU then transmits nearly $2B$ bytes and receives nearly $2B$ bytes, which is $4B$ bytes of bidirectional traffic. Meanwhile, every rank waits through $2(N - 1)$ serial hop latencies.
+Watch what happens as the cluster grows from 8 to 1,024 ranks. The factor $\frac{N - 1}{N}$ climbs toward 1. Each GPU then transmits nearly $2B$ bytes and receives nearly $2B$ bytes, which is $4B$ bytes of bidirectional traffic. Meanwhile, every rank waits through $2(N - 1)$ serial hop latencies.
 
 ### 1.2 In-Network Reduction (NVLS and SHARP) and the 1 / (N - 1) Traffic Collapse
 
 Now move the arithmetic into the switch. When the switch ASIC has arithmetic reduction units, called Aggregation Nodes, and hardware multicast engines, partial sums stop bouncing from GPU to GPU. The switch does the additions as packets pass through the fabric, and it delivers only the final result to each endpoint. That removes redundant endpoint traffic in four collective patterns:
 
-1. **In-Network ReduceScatter:** With NVLink SHARP or InfiniBand SHARP, the switch adds the contributions from all $N$ endpoints inside switch silicon. It writes only the final reduced $\frac\{B\}\{N\}$ shard to each target GPU. A GPU no longer has to receive $B\frac\{N - 1\}\{N\}$ bytes over $N - 1$ hops. It receives only $\frac\{B\}\{N\}$ bytes:
+1. **In-Network ReduceScatter:** With NVLink SHARP or InfiniBand SHARP, the switch adds the contributions from all $N$ endpoints inside switch silicon. It writes only the final reduced $\frac{B}{N}$ shard to each target GPU. A GPU no longer has to receive $B\frac{N - 1}{N}$ bytes over $N - 1$ hops. It receives only $\frac{B}{N}$ bytes:
 
-$$\frac\{V_\{\text\{SHARP/NVLS, RS (rx)\}}\}\{V_\{\text\{Ring, RS (rx)\}}\} = \frac\{B / N\}\{B(N - 1) / N\} = \frac\{1\}\{N - 1\}$$
+$$\frac{V_{\text{SHARP/NVLS, RS (rx)}}}{V_{\text{Ring, RS (rx)}}} = \frac{B / N}{B(N - 1) / N} = \frac{1}{N - 1}$$
 
-2. **Hardware Multicast AllGather:** AllGather does no arithmetic, so NVLS speeds it up in another way, with hardware multicast inside the NVSwitch fabric. Each GPU sends its $\frac\{B\}\{N\}$ shard into the switch once. The switch copies that shard to all $N - 1$ peers in one hop. Each sender transmits only $\frac\{B\}\{N\}$ bytes, so its volume falls to $\frac\{1\}\{N - 1\}$ of the ring volume.
-3. **Inter-Node SHARP AllReduce:** Take an inter-node InfiniBand SHARP AllReduce on a tensor of size $B$. Each node streams $1 \times B$ bytes up into its leaf switch. The switch hierarchy reduces all the tensors in flight as packets climb toward the root switch. The root switch then multicasts the $1 \times B$ reduced result back down. Each node sees only 2 fabric traversals, instead of the $2\frac\{N - 1\}\{N\}B$ bytes per direction that a Ring AllReduce needs.
-4. **Overlapping Multicast AllGather with In-Network ReduceScatter:** Consider Fully Sharded Data Parallelism or ZeRO-3 training. The parameter AllGather and the gradient ReduceScatter compete for endpoint bandwidth when they run one after the other in a ring. With NVLS, hardware multicast replication and in-network arithmetic reduction run at the same time inside the switch fabric. Overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, and the combined phase wall time shrinks:
+2. **Hardware Multicast AllGather:** AllGather does no arithmetic, so NVLS speeds it up in another way, with hardware multicast inside the NVSwitch fabric. Each GPU sends its $\frac{B}{N}$ shard into the switch once. The switch copies that shard to all $N - 1$ peers in one hop. Each sender transmits only $\frac{B}{N}$ bytes, so its volume falls to $\frac{1}{N - 1}$ of the ring volume.
+3. **Inter-Node SHARP AllReduce:** Take an inter-node InfiniBand SHARP AllReduce on a tensor of size $B$. Each node streams $1 \times B$ bytes up into its leaf switch. The switch hierarchy reduces all the tensors in flight as packets climb toward the root switch. The root switch then multicasts the $1 \times B$ reduced result back down. Each node sees only 2 fabric traversals, instead of the $2\frac{N - 1}{N}B$ bytes per direction that a Ring AllReduce needs.
+4. **Overlapping Multicast AllGather with In-Network ReduceScatter:** Consider Fully Sharded Data Parallelism or ZeRO-3 training. The parameter AllGather and the gradient ReduceScatter compete for endpoint bandwidth when they run one after the other in a ring. With NVLS, hardware multicast replication and in-network arithmetic reduction run at the same time inside the switch fabric. Overlap a multicast AllGather of duration $T_{\text{AG}}$ with an in-network ReduceScatter of duration $T_{\text{RS}}$, and the combined phase wall time shrinks:
 
-$$T_\{\text\{overlapped, NVLS\}} = \max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$$
+$$T_{\text{overlapped, NVLS}} = \max(T_{\text{AG}}, T_{\text{RS}})$$
 
 The breakdown below applies these formulas to three systems. Each line gives the Ring figure first and the switch figure second, and the ratio after the arrow is the saving.
 
@@ -147,12 +147,12 @@ The table compares the three paths on the metrics that matter for planning. Use 
 
 | Collective Metric | Host-Driven Ring (`NCCL_ALGO=Ring`) | Host-Driven Tree (`NCCL_ALGO=Tree`) | In-Network NVLS / CollNet (SHARP) |
 |---|---|---|---|
-| ReduceScatter per-rank receive volume | $B\frac\{N - 1\}\{N\}$ (700 MB on 8 GPUs; 710 MB on 72 GPUs) | N/A; Tree executes Reduce + Broadcast | **$B / N$** (100 MB on 8 GPUs; 10 MB on 72 GPUs = **1 / (N - 1)** of Ring) |
-| AllGather per-rank send volume | $B\frac\{N - 1\}\{N\}$ (700 MB on 8 GPUs; 710 MB on 72 GPUs) | N/A | **$B / N$** via NVLS hardware multicast (**1 / (N - 1)** of Ring) |
-| AllReduce unidirectional bytes per rank | $2\frac\{N - 1\}\{N\}B$ (1,984 MB for 1,024 MB on 32 nodes) | $\approx 2B$ split 50/50 across dual complementary trees | **1.0 * B** up + **1.0 * B** down (2 * B total tx+rx; **~2x less wire traffic**) |
-| Step / latency complexity | $2(N - 1)$ steps (62 on 32 nodes; 142 on 72 GPUs) | $2\lceil\log_2 N\rceil$ steps (10 on 32 nodes; 14 on 72 GPUs) | **1–2 switch hops (NVLS)** or **$2\lceil\log_k N_\{\text\{nodes\}}\rceil$ (SHARP)** |
+| ReduceScatter per-rank receive volume | $B\frac{N - 1}{N}$ (700 MB on 8 GPUs; 710 MB on 72 GPUs) | N/A; Tree executes Reduce + Broadcast | **$B / N$** (100 MB on 8 GPUs; 10 MB on 72 GPUs = **1 / (N - 1)** of Ring) |
+| AllGather per-rank send volume | $B\frac{N - 1}{N}$ (700 MB on 8 GPUs; 710 MB on 72 GPUs) | N/A | **$B / N$** via NVLS hardware multicast (**1 / (N - 1)** of Ring) |
+| AllReduce unidirectional bytes per rank | $2\frac{N - 1}{N}B$ (1,984 MB for 1,024 MB on 32 nodes) | $\approx 2B$ split 50/50 across dual complementary trees | **1.0 * B** up + **1.0 * B** down (2 * B total tx+rx; **~2x less wire traffic**) |
+| Step / latency complexity | $2(N - 1)$ steps (62 on 32 nodes; 142 on 72 GPUs) | $2\lceil\log_2 N\rceil$ steps (10 on 32 nodes; 14 on 72 GPUs) | **1–2 switch hops (NVLS)** or **$2\lceil\log_k N_{\text{nodes}}\rceil$ (SHARP)** |
 | Where arithmetic reduction executes | GPU SMs (16–32 CUDA channel blocks) | GPU SMs on interior tree nodes | **Switch ASIC silicon** (NVSwitch NVLS ALU or Quantum SHARP AN) |
-| Overlapped AllGather + ReduceScatter time | $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ (16.0 ms serial bandwidth contention) | $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ | **$\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$** (8.0 ms, **~1/2 wall time**) |
+| Overlapped AllGather + ReduceScatter time | $T_{\text{AG}} + T_{\text{RS}}$ (16.0 ms serial bandwidth contention) | $T_{\text{AG}} + T_{\text{RS}}$ | **$\max(T_{\text{AG}}, T_{\text{RS}})$** (8.0 ms, **~1/2 wall time**) |
 
 Notice the last row, because it is the one you will feel in your job. The wall-time saving comes from overlapping the two phases, so the volume figures alone do not show it. When you estimate collective traffic, first decide which path it takes, because the two paths differ by roughly a factor of $N - 1$.
 
@@ -211,9 +211,9 @@ Know which of the two your topology matches before you read the NCCL logs.
 
 Turn on both `NCCL_NVLS_ENABLE=1` and `NCCL_COLLNET_ENABLE=1` on a multi-node HGX cluster or multi-rack NVL72 SuperPOD, and NCCL builds a hierarchy. A flat collective across all GPUs would overwhelm the scale-out NICs. So NCCL runs three stages across $D$ domains. Each domain holds $G$ GPUs, so the job has $N = D \times G$ GPUs in total:
 
-1. **Stage 1 — Intra-Domain NVLS ReduceScatter:** Inside each node or rack, the NVSwitch ASICs add up the local tensors of size $S$ from all $G$ GPUs. Each rail-aligned GPU leader receives a reduced $\frac\{S\}\{G\}$ shard over NVLink.
-2. **Stage 2 — Inter-Domain InfiniBand SHARP AllReduce:** Each rail leader sends its $\frac\{S\}\{G\}$ shard through GPUDirect RDMA into its rail's Quantum leaf switch. Across all rails, each domain pushes a total of $1.0 \times S$ bytes up the InfiniBand SHARP tree. A hierarchical Ring would send $2\frac\{D - 1\}\{D\}S$ bytes instead. The Quantum leaf and spine switches add the shards from all $D$ domains in silicon, then multicast the reduced $\frac\{S\}\{G\}$ shard back down each rail.
-3. **Stage 3 — Intra-Domain NVLS Hardware Multicast AllGather:** Each rail leader writes its globally reduced $\frac\{S\}\{G\}$ shard into the local NVSwitch multicast address. The fabric then copies the full reduced tensor $S$ to all $G$ GPUs in a single hop.
+1. **Stage 1 — Intra-Domain NVLS ReduceScatter:** Inside each node or rack, the NVSwitch ASICs add up the local tensors of size $S$ from all $G$ GPUs. Each rail-aligned GPU leader receives a reduced $\frac{S}{G}$ shard over NVLink.
+2. **Stage 2 — Inter-Domain InfiniBand SHARP AllReduce:** Each rail leader sends its $\frac{S}{G}$ shard through GPUDirect RDMA into its rail's Quantum leaf switch. Across all rails, each domain pushes a total of $1.0 \times S$ bytes up the InfiniBand SHARP tree. A hierarchical Ring would send $2\frac{D - 1}{D}S$ bytes instead. The Quantum leaf and spine switches add the shards from all $D$ domains in silicon, then multicast the reduced $\frac{S}{G}$ shard back down each rail.
+3. **Stage 3 — Intra-Domain NVLS Hardware Multicast AllGather:** Each rail leader writes its globally reduced $\frac{S}{G}$ shard into the local NVSwitch multicast address. The fabric then copies the full reduced tensor $S$ to all $G$ GPUs in a single hop.
 
 Two worked examples show the arithmetic. The first is a 256-GPU HGX cluster, and the second is a 1,152-GPU SuperPOD.
 
@@ -326,10 +326,10 @@ Each SU holds 8 racks, which is 576 GPUs. Scale the fabric with the table. The l
 
 | DGX GB300 SuperPOD Scale (# SUs) | # Compute Racks (NVL72) | # GPUs (B300) | IB Leaf Switches per SU (Q3400-RD) | Total IB Leaf Switches (Q3400-RD) | Total IB Spine Switches (Q3400-RD) | Storage & In-Band SN5600D Spines / Compute Leaves / Storage Leaves |
 |---|---|---|---|---|---|---|
-| **2 SUs** | 16 racks | **1,152 GPUs** | 8 (4 rails $\times$ 2) | **16** | **8** | 4 spines / 8 compute leaves / 2 storage leaves (64x400GbE) |
-| **4 SUs** | 32 racks | **2,304 GPUs** | 8 (4 rails $\times$ 2) | **32** | **18** | 8 spines / 16 compute leaves / 2 storage leaves (128x400GbE) |
-| **8 SUs** | 64 racks | **4,608 GPUs** | 8 (4 rails $\times$ 2) | **64** | **36** | 12 spines / 32 compute leaves / 4 storage leaves (256x400GbE) |
-| **16 SUs** | 128 racks | **9,216 GPUs** | 8 (4 rails $\times$ 2) | **128** | **72** | 24 spines / 64 compute leaves / 8 storage leaves (1024x400GbE) |
+| **2 SUs** | 16 racks | **1,152 GPUs** | 8 (4 rails × 2) | **16** | **8** | 4 spines / 8 compute leaves / 2 storage leaves (64x400GbE) |
+| **4 SUs** | 32 racks | **2,304 GPUs** | 8 (4 rails × 2) | **32** | **18** | 8 spines / 16 compute leaves / 2 storage leaves (128x400GbE) |
+| **8 SUs** | 64 racks | **4,608 GPUs** | 8 (4 rails × 2) | **64** | **36** | 12 spines / 32 compute leaves / 4 storage leaves (256x400GbE) |
+| **16 SUs** | 128 racks | **9,216 GPUs** | 8 (4 rails × 2) | **128** | **72** | 24 spines / 64 compute leaves / 8 storage leaves (1024x400GbE) |
 
 Pick the row that matches your planned SU count before you order switches. You will save yourself a re-order that way.
 
@@ -593,7 +593,7 @@ A clean run ends with `Summary: 26 passed, 0 failed`. If any line shows `[FAIL]`
 1. **Confusing NVLS with InfiniBand SHARP:** Many engineers think `NCCL_NVLS_ENABLE=1` pushes reductions into Quantum InfiniBand switches across nodes. Others think `NCCL_COLLNET_ENABLE=1` is needed for reductions inside one NVSwitch node. Both are wrong. `NCCL_NVLS_ENABLE=1` controls the in-network reduction inside NVSwitch. `NCCL_COLLNET_ENABLE=1`, together with the SHARP plugin, `sharp_am`, and `sharp_daemons`, controls inter-node Quantum InfiniBand SHARP.
 2. **Expecting Spectrum-X Ethernet Switches to Execute SHARP Reductions Today:** Setting `NCCL_COLLNET_ENABLE=1` on a Spectrum-X SN5600 RoCEv2 fabric will not trigger switch-resident floating-point reduction. Spectrum-X speeds up AllReduce with adaptive packet spraying and congestion telemetry instead. Switch-resident reduction units are still a capability of InfiniBand Quantum, NVSwitch, and future UEC INC sFEP hardware.
 3. **Leaving `NCCL_COLLNET_ENABLE=1` Global Across Every Sub-Communicator:** If every process group can request a hardware SHARP tree, switch resources run out quickly. That includes the Tensor Parallel, Pipeline Parallel, and Data Parallel groups. A Quantum switch fabric supports a bounded pool of 64 concurrent SHARP trees. So reserve InfiniBand SHARP for the cross-node Data Parallel or FSDP communicator.
-4. **Assuming AllGather Uses Arithmetic Reduction in SHARP or NVLS:** AllGather performs zero arithmetic additions. NVLS speeds it up with hardware multicast. Each GPU sends its $\frac\{B\}\{N\}$ shard once, and the NVSwitch copies it to all $N - 1$ peers. On its own, that gives a smaller speedup than AllReduce. The bigger win comes when you overlap the AllGather with an in-network ReduceScatter, which cuts phase wall time in half.
+4. **Assuming AllGather Uses Arithmetic Reduction in SHARP or NVLS:** AllGather performs zero arithmetic additions. NVLS speeds it up with hardware multicast. Each GPU sends its $\frac{B}{N}$ shard once, and the NVSwitch copies it to all $N - 1$ peers. On its own, that gives a smaller speedup than AllReduce. The bigger win comes when you overlap the AllGather with an in-network ReduceScatter, which cuts phase wall time in half.
 5. **Forgetting to Re-Enable SHARP or P2P After Debugging:** Engineers often set `NCCL_SHARP_DISABLE=1` or `NCCL_P2P_DISABLE=1` during a triage session. The override then gets baked into the production container image. That quietly gives up the 2x to 5x inter-node collective speedups, and it forces intra-node NVLink traffic through host CPU memory.
 
 Before you ship a container, remove every override you set while debugging.
@@ -630,7 +630,7 @@ Work each exercise on paper first, then check the arithmetic a second time befor
 Interviewers listen for two things: the mechanism, and the trade-off you can name. Each answer below gives both. Say your answer in your own words first, then check it against the target answer. Keep it short and direct, and name the trade-off before you stop talking.
 
 1. **"Walk me through the exact math of why SHARP and NVLS reduce endpoint traffic by (N - 1) in ReduceScatter and AllGather, and by ~2x in inter-node AllReduce."**
-   - *Target answer:* Start with the Ring. In a ReduceScatter of $B$ bytes across $N$ ranks, each rank receives $N - 1$ chunks of size $\frac\{B\}\{N\}$, which totals $B\frac\{N - 1\}\{N\}$ bytes. With NVLS or InfiniBand SHARP, the switch silicon adds the incoming operands and writes only the final reduced $\frac\{B\}\{N\}$ shard to each GPU. That cuts the receive volume by $\frac\{1\}\{N - 1\}$. AllGather works differently. NVLS uses hardware multicast, so each GPU sends its $\frac\{B\}\{N\}$ shard once. Overlapping a multicast AllGather with an in-network ReduceScatter cuts the phase wall time from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$. For an inter-node AllReduce of size $S$, a host-driven Ring sends $2\frac\{N - 1\}\{N\}S$ bytes per direction across $2(N - 1)$ steps. An InfiniBand SHARP tree sends $1.0 \times S$ bytes up and receives $1.0 \times S$ bytes down in $O(\log N)$ switch hops. That yields 2x to 5x speedups on large clusters.
+   - *Target answer:* Start with the Ring. In a ReduceScatter of $B$ bytes across $N$ ranks, each rank receives $N - 1$ chunks of size $\frac{B}{N}$, which totals $B\frac{N - 1}{N}$ bytes. With NVLS or InfiniBand SHARP, the switch silicon adds the incoming operands and writes only the final reduced $\frac{B}{N}$ shard to each GPU. That cuts the receive volume by $\frac{1}{N - 1}$. AllGather works differently. NVLS uses hardware multicast, so each GPU sends its $\frac{B}{N}$ shard once. Overlapping a multicast AllGather with an in-network ReduceScatter cuts the phase wall time from $T_{\text{AG}} + T_{\text{RS}}$ to $\max(T_{\text{AG}}, T_{\text{RS}})$. For an inter-node AllReduce of size $S$, a host-driven Ring sends $2\frac{N - 1}{N}S$ bytes per direction across $2(N - 1)$ steps. An InfiniBand SHARP tree sends $1.0 \times S$ bytes up and receives $1.0 \times S$ bytes down in $O(\log N)$ switch hops. That yields 2x to 5x speedups on large clusters.
 2. **"What is the difference between NVLS and InfiniBand SHARP, and how do they work together on a DGX GB200 / GB300 SuperPOD?"**
    - *Target answer:* NVLS (`NCCL_NVLS_ENABLE=1`) runs inside the 18 NVSwitch ASICs across 9 switch trays in a 72-GPU NVL72 rack. It provides 1.8 TB/s bidirectional NVLink 5 per GPU and 130 TB/s of rack bisection, managed by NMX-M. InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`) runs inside Quantum-X800 Q3400-RD 144-port 800 Gbps switches. It scales to 16 SUs, or 9,216 GPUs, in a 2-layer fat-tree. `sharp_am` on UFM or OpenSM, plus `sharp_daemons` on the compute trays, orchestrates it. In a multi-rack AllReduce, NCCL runs a three-stage hierarchy. Stage 1 is an intra-rack NVLS ReduceScatter across the 72 GPUs. Stage 2 is an inter-rack InfiniBand SHARP AllReduce across the 4 ConnectX-8 rails. Stage 3 is an intra-rack NVLS hardware multicast AllGather.
 3. **"A user sets `NCCL_COLLNET_ENABLE=1` on a 64-node InfiniBand cluster, or their job suddenly slows down by 3x mid-week without code changes. How do you triage whether SHARP is actually running?"**
@@ -653,20 +653,20 @@ SHARP stands for Scalable Hierarchical Aggregation and Reduction Protocol. Norma
 <details>
 <summary>**2. In a Ring ReduceScatter of a tensor of size B across N GPUs, how many bytes does each GPU receive, and how does in-network reduction (NVLS or SHARP) change that volume?**</summary>
 
-In a Ring ReduceScatter, each GPU receives $B\frac\{N - 1\}\{N\}$ bytes over $N - 1$ sequential hops. With in-network reduction through NVLS or SHARP, the switch adds all $N$ contributions in hardware and sends back only $\frac\{B\}\{N\}$ bytes to each GPU. That cuts the per-GPU receive traffic to $\frac\{1\}\{N - 1\}$ of the ring volume.
+In a Ring ReduceScatter, each GPU receives $B\frac{N - 1}{N}$ bytes over $N - 1$ sequential hops. With in-network reduction through NVLS or SHARP, the switch adds all $N$ contributions in hardware and sends back only $\frac{B}{N}$ bytes to each GPU. That cuts the per-GPU receive traffic to $\frac{1}{N - 1}$ of the ring volume.
 </details>
 
 <details>
 <summary>**3. Since AllGather performs no arithmetic addition, how does NVLink SHARP (NVLS) accelerate AllGather, and what happens when you overlap an NVLS AllGather with an NVLS ReduceScatter?**</summary>
 
-AllGather has no addition step, so NVLS speeds it up with hardware multicast inside the NVSwitch ASIC. Each GPU sends its $\frac\{B\}\{N\}$ shard into the switch once. The switch copies it to all $N - 1$ peers in one hop, which cuts the sender volume by $\frac\{1\}\{N - 1\}$. When you overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, both run at the same time. The phase wall time falls from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$, which cuts the phase time in half in the chapter's example.
+AllGather has no addition step, so NVLS speeds it up with hardware multicast inside the NVSwitch ASIC. Each GPU sends its $\frac{B}{N}$ shard into the switch once. The switch copies it to all $N - 1$ peers in one hop, which cuts the sender volume by $\frac{1}{N - 1}$. When you overlap a multicast AllGather of duration $T_{\text{AG}}$ with an in-network ReduceScatter of duration $T_{\text{RS}}$, both run at the same time. The phase wall time falls from $T_{\text{AG}} + T_{\text{RS}}$ to $\max(T_{\text{AG}}, T_{\text{RS}})$, which cuts the phase time in half in the chapter's example.
 </details>
 
 <details>
 <summary>**4. Compare the unidirectional per-node network traffic and step count of a host-driven Ring AllReduce versus an InfiniBand SHARP AllReduce across N = 32 nodes for a 1,024 MB tensor.**</summary>
 
-- **Host-driven Ring AllReduce:** Each node sends and receives $1,984.0\text\{ MB\}$ per direction across 62 sequential steps.
-- **InfiniBand SHARP AllReduce:** Each node sends $1,024.0\text\{ MB\}$ up into its leaf switch once, and receives $1,024.0\text\{ MB\}$ of globally reduced data back down once, across 10 tree steps.
+- **Host-driven Ring AllReduce:** Each node sends and receives $1,984.0\text{ MB}$ per direction across 62 sequential steps.
+- **InfiniBand SHARP AllReduce:** Each node sends $1,024.0\text{ MB}$ up into its leaf switch once, and receives $1,024.0\text{ MB}$ of globally reduced data back down once, across 10 tree steps.
 </details>
 
 <details>

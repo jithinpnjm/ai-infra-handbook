@@ -411,7 +411,7 @@ It installs the `enroot` package into the client software images. It compiles th
 </details>
 
 <details>
-<summary>19. List the required steps to upgrade Slurm from one major version to the next (e.g., `25.05` $\rightarrow$ `25.11`) in BCM.</summary>
+<summary>19. List the required steps to upgrade Slurm from one major version to the next (e.g., `25.05` → `25.11`) in BCM.</summary>
 
 1. Upgrade **one major version at a time**, and never skip a major release.
 2. Drain the compute nodes and wait for running jobs to finish. Then stop `slurmctld` and `slurmdbd`.
