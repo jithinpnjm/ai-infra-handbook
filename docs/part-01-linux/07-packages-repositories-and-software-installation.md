@@ -22,17 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that worked on Friday. After an automatic upgrade and a reboot on Monday, its GPUs have disappeared. Almost everything you will operate arrives on a node as software somebody else built. The NVIDIA driver, the CUDA toolkit, the container runtime, `nvidia-container-toolkit`, the Slurm daemons, the InfiniBand stack (OFED or the distribution's inbox drivers) and the monitoring agents all arrive this way. Getting this layer wrong produces three kinds of incident in GPU fleets.
+Picture a demo day. On Friday afternoon the GPUs worked and the job finished clean. Over the weekend an automatic upgrade ran, the node rebooted on Monday, and now `nvidia-smi` cannot find a driver. Nobody has touched that node by hand. Something underneath the software you installed has moved.
 
-1. **Version drift.** One node is auto-upgraded and ends up with a kernel that the installed driver does not support, so the GPUs vanish after the next reboot. Another node has a different CUDA minor version, and a job that worked on the first fails on the second.
+That something is the package layer. Almost everything you will operate arrives on a node as software somebody else built. The NVIDIA driver, the CUDA toolkit, the container runtime, `nvidia-container-toolkit`, the Slurm daemons, the InfiniBand stack, whether OFED or the distribution's inbox drivers, and the monitoring agents all arrive this way. A package manager put each one in place, and a package manager can quietly change each one. Getting this layer wrong produces three kinds of incident in GPU fleets.
+
+1. **Version drift.** One node gets auto-upgraded and picks up a kernel the installed driver does not support, so its GPUs vanish after the next reboot. Another node quietly ends up on a different CUDA minor version, and a job that worked on the first fails on the second.
 2. **Unknown provenance.** A library copied into `/usr/local/lib` years ago shadows the one the package manager installed, and nobody can say where it came from.
 3. **Broken dependency resolution.** An engineer forces an install with `--nodeps` or `--force` to get past an error, and the node's package database no longer describes what is on disk.
 
-The rest of this chapter gives you the vocabulary and the mechanics to avoid all three. You will learn what a package is and how the two package families, deb and rpm, work. You will see how repositories and signatures protect you, and how to inspect, verify and hold versions. Software built from source is covered too, including how to do it without damaging the system. You will also learn how shared libraries are found at run time, which causes many "works on my machine" bugs. Finally, you will see how a whole cluster node is assembled in practice, and you will meet `make`, because you will constantly read other people's build instructions, Dockerfiles and driver installers that call it.
+The rest of this chapter gives you the vocabulary and the mechanics to avoid all three. You will learn what a package is and how the two package families, deb and rpm, work. You will see how repositories and signatures protect you, and how to inspect, verify and hold versions. Building software from source is covered too, including how to do it without damaging the system. You will also learn how shared libraries are found at run time, which is behind many "works on my machine" bugs. Finally, you will see how a whole cluster node is assembled in practice, and you will meet `make`, because you will constantly read other people's build instructions, Dockerfiles and driver installers that call it.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with the shell (1.2), the directory layout (1.3) and users and `sudo` (1.6). This chapter builds on those habits and does not repeat them.
+Before you start, you need three habits from earlier chapters: the shell from 1.2, the directory layout from 1.3, and users and `sudo` from 1.6. This chapter builds on those habits and does not repeat them.
 
 After this chapter you can:
 
@@ -49,7 +51,9 @@ If one of these outcomes feels unfamiliar, read the matching section before you 
 
 ## 1. What a package is
 
-Suppose a node needs a new encryption module. You could copy the files over by hand, but then nobody would know what they are, what they depend on or how to remove them. A **package** solves that problem. It is one file, usually a compressed archive, that holds a tree of files belonging to one piece of software. It also carries **metadata**, which describes the software. A web server, a single encryption module and a documentation set are each a package. The files are what gets copied to disk. The metadata is what lets a tool reason about them.
+Picture a node that needs a new encryption module the day before a demo. You could copy the files over by hand. But then nobody would know what they are, what they depend on, or how to remove them safely. A **package** solves that problem.
+
+A package is one file, usually a compressed archive, that holds a tree of files belonging to one piece of software. It also carries **metadata**, which describes the software. A web server, a single encryption module and a documentation set are each a package. The files are what gets copied to disk. The metadata is what lets a tool reason about them.
 
 The most useful metadata fields are listed in the table below. Each one exists to answer a question you will ask later.
 
@@ -62,7 +66,7 @@ The most useful metadata fields are listed in the table below. Each one exists t
 | Maintainer scripts (pre/post install and remove) | Creating a system user, enabling a service, rebuilding a cache |
 | Signature | Proof that the package came from the repository owner |
 
-Package systems differ in their fields and in what they can do. The common families are in the next table. Find the one your nodes use before you read anything else.
+Package systems differ in their fields and in what they can do. The next table lists the common families. Find the one your nodes use before you read anything else.
 
 | Family | Package file | Used by | Low-level tool | High-level manager |
 |---|---|---|---|---|
@@ -74,11 +78,13 @@ For AI infrastructure, you will meet deb on Ubuntu, which is the default for mos
 
 ### Two layers, and why they exist
 
-Every package system splits into two layers. Keeping them apart in your head clears up most of the confusion.
+Every package system splits into two layers, and keeping them apart in your head clears up most of the confusion. The split has a simple shape: one tool decides what to fetch, and another puts files on disk. Once you can name the two jobs, most package-manager error messages stop looking mysterious.
 
 The **low-level tool**, `dpkg` or `rpm`, works on one package file. It unpacks files, runs maintainer scripts and records the result in a local database. It does not fetch anything. With a few exceptions, it does not solve dependencies either, so if a dependency is missing, it complains.
 
 The **high-level manager**, `apt` or `dnf`, talks to repositories. It works out the full set of packages that must be installed, removed or upgraded. Then it downloads them and calls the low-level tool to do the unpacking.
+
+Think of the pair as a shop and its storeroom. The manager is the shopper who works out the list and brings the goods. The tool is the unpacker who puts them on the shelf and updates the inventory.
 
 ```mermaid
 flowchart LR
@@ -102,15 +108,15 @@ flowchart LR
 
 ### The package database is precious
 
-The low-level tool records every installed package, its files and its checksums in a local database. If that database is damaged, the system no longer knows what is installed, and repairing it is hard. One concrete cause is installing or removing packages on a **filesystem that is 100% full**. The tool can fail halfway through writing its own records. So before a big install on a node, check `df -h /` and `df -i /`. Chapter 1.3 explains inodes. A full `/var` is just as bad as a full `/`.
+The low-level tool records every installed package, its files and its checksums in a local database. That database is the storeroom's inventory from the analogy above, and it is the system's only memory of what is installed. If it is damaged, the system no longer knows what it has, and repairing it is hard. One concrete cause is installing or removing packages on a **filesystem that is 100% full**. The tool can fail halfway through writing its own records. So before a big install on a node, check `df -h /` and `df -i /`. Chapter 1.3 explains inodes. A full `/var` is just as bad as a full `/`.
 
-Two habits protect the database. The first is to avoid the "force" switches. Never use `--force`, `--nodeps` or `dpkg --force-all` as a way to get unblocked, because they produce a system whose database disagrees with the disk. The second is to avoid mixing installation methods. If the distribution already ships `foo`, installing a second copy into `/usr/local` or from a tarball gives you two copies. Which one runs then depends on `$PATH` order (chapter 1.2).
+Two habits protect the database. The first is to avoid the "force" switches. Never use `--force`, `--nodeps` or `dpkg --force-all` as a way to get unblocked, because they produce a system whose database disagrees with the disk. The second habit is to avoid mixing installation methods. If the distribution already ships `foo`, installing a second copy into `/usr/local` or from a tarball gives you two copies. Which one runs then depends on `$PATH` order, covered in chapter 1.2.
 
 ### Configuration files and upgrades
 
 Packages mark certain files as **configuration**. When you upgrade, the manager must neither discard your edits nor ignore the packager's improvements. The two families handle this differently.
 
-On **rpm**, if you changed a config file and the new package also changed it, your file is kept. The new default is written next to it with the suffix `.rpmnew`. If the packager decided the old file must be replaced, your version is saved as `.rpmsave` instead.
+On **rpm**, suppose you changed a config file and the new package also changed it. Your file is kept, and the new default is written next to it with the suffix `.rpmnew`. If the packager decided the old file must be replaced, your version is saved as `.rpmsave` instead.
 
 On **deb**, `dpkg` asks you interactively whether to keep your version or take the package's, and it can show you the difference. In scripts and automation, you set an option so the choice is made without a prompt. For example, `-o Dpkg::Options::="--force-confold"` keeps your files.
 
@@ -124,15 +130,15 @@ sudo find /etc -name '*.rpmnew' -o -name '*.rpmsave' -o -name '*.dpkg-dist' -o -
 
 ### Dependencies, and how the two families express them
 
-A dependency says "package A needs package B, possibly at a given version, to work". The managers read these statements and compute the full closure. That closure is what turns "install this driver" into a list of forty packages.
+A dependency is one package declaring that it needs another, possibly at a given version, to work. One package needs another, that package needs more, and the chain runs downward. The managers read these statements and compute the full closure. That closure is what turns "install this driver" into a list of forty packages.
 
-The deb format has a richer vocabulary than rpm. A deb package can mark a dependency as **required** (`Depends`), **strongly recommended** (`Recommends`, which `apt` installs by default), **merely suggested** (`Suggests`, typically documentation or examples), or **in conflict** (`Conflicts`, `Breaks`). A smart interactive manager can choose the optional packages that fit what you want. On the rpm side, installing one package has sometimes pulled in a dozen more that are not strictly needed, because rpm has fewer gradations. Modern `dnf` offers `--setopt=install_weak_deps=False` to skip weak dependencies. That is useful for small compute node images.
+The deb format has a richer vocabulary than rpm, and the words matter in practice. A deb package can mark a dependency as **required** (`Depends`), **strongly recommended** (`Recommends`, which `apt` installs by default), **merely suggested** (`Suggests`, typically documentation or examples), or **in conflict** (`Conflicts`, `Breaks`). A smart interactive manager can choose the optional packages that fit what you want. On the rpm side, installing one package has sometimes pulled in a dozen more that are not strictly needed, because rpm has fewer gradations. Modern `dnf` offers `--setopt=install_weak_deps=False` to skip weak dependencies. That is useful for small compute node images.
 
-A dependency can also name a **capability** instead of a package. For example, it can ask for any package that provides an `smtp-server`, or a library providing `libcuda.so.1`. This is why you can ask the manager which package provides a file you are missing (section 5).
+A dependency can also name a **capability** instead of a package. For example, it can ask for any package that provides an `smtp-server`, or a library providing `libcuda.so.1`. This is why you can ask the manager which package provides a file you are missing; section 5 covers that.
 
 ### Integrity: checksums
 
-The package system stores a checksum for every file it installs. That means you can later ask whether anything the package installed has changed. This is a cheap integrity check. It is useful after a suspected compromise, after a disk problem, or when one node behaves differently from its siblings.
+Suppose one node starts behaving differently from its siblings, and you suspect the software itself. Before you reinstall anything, you can ask whether the packages' files have been altered. The package system stores a checksum for every file it installs, which is a short number computed from the file's bytes and works like a fingerprint. That makes this a cheap integrity check. It is useful after a suspected compromise, after a disk problem, or when one node behaves differently from its siblings.
 
 ```bash
 # rpm: verify one package, or everything
@@ -147,35 +153,39 @@ dpkg --verify openssh-server
 
 An `rpm -V` line looks like `S.5....T.  c /etc/ssh/sshd_config`. Each letter flags one thing that differs. For example, S means size, 5 means digest, and T means modification time. The trailing `c` marks a config file. Differences in config files are normal. Differences in `/usr/bin` or `/usr/lib` binaries deserve an explanation. Only files that belong to packages are checked, so a file that someone dropped in by hand stays invisible to this method.
 
-Run the verifier on a suspicious node before you reinstall anything. It shows you what changed, which tells you where to look.
+Run the verifier on a suspicious node before you reinstall anything. It shows you what changed, and that tells you where to look.
 
 ## 2. Repositories: where packages come from
 
-Every package on your node came from somewhere. A **repository** is an indexed directory of packages. You can reach it over HTTP(S), read it from local disk, or read it from an optical medium. The index lets the manager find a package and its dependencies without downloading anything first. When you install an operating system, a repository (the installation medium or a network mirror) is set up for you. After installation, the main network repositories are added. These normally include separate channels for the base release, bug-fix updates and security updates.
+Repositories are the other half of the story, and they are where mixed clusters go wrong. Picture an Ubuntu login node and a set of Rocky compute nodes, each pulling packages from a different place. Before long the same library exists in two incompatible versions on the same network. To understand that day, start with where packages actually come from.
 
-Beyond the distribution's own repositories, you will configure three more kinds. Third-party repositories come first. The standard Red Hat repositories, for example, omit many packages, so people enable **EPEL** (Extra Packages for Enterprise Linux), a trusted community repository for the RHEL family. NVIDIA, Docker, Kubernetes and others publish their own repositories for their own software. Vendor mini-repositories are small repositories that a project publishes just for its own software. The InfiniBand OFED distribution is one example.
+Every package on your node came from somewhere. A **repository** is an indexed directory of packages. You can reach it over HTTP(S), read it from local disk, or read it from an optical medium. The index lets the manager find a package and its dependencies without downloading anything first. When you install an operating system, the installation medium or a network mirror sets up a repository for you. After installation, the main network repositories are added. These normally include separate channels for the base release, bug-fix updates and security updates.
+
+Beyond the distribution's own repositories, you will configure three more kinds. Third-party repositories come first. The standard Red Hat repositories, for example, omit many packages, so people enable **EPEL**, which stands for Extra Packages for Enterprise Linux, a trusted community repository for the RHEL family. NVIDIA, Docker, Kubernetes and others publish their own repositories for their own software.
+
+Vendor mini-repositories are the second kind. They are small repositories that a project publishes just for its own software, and the InfiniBand OFED distribution is one example.
 
 Local mirrors and internal repositories make up the third kind. Machines without Internet access need them, which is typical for HPC clusters on a private network. Teams that want reproducibility use them too. You copy the packages you need to a server on your network and point nodes at it. That also lets you freeze a known-good set of versions and roll the whole fleet forward on your schedule.
 
 ### Signatures and trust
 
-A repository signs its metadata, and for rpm usually each package as well. The manager checks each signature against a key you have **explicitly trusted**. This check is what stops someone who can intercept your download from substituting a malicious package. Two consequences follow.
+Trust is something you grant, and signatures are how you grant it. A repository signs its metadata, and for rpm usually each package as well. The manager checks each signature against a key you have **explicitly trusted**. This check is what stops someone who can intercept your download from substituting a malicious package. Two consequences follow.
 
-Adding a repository is a trust decision. Its packages run as root during installation, through maintainer scripts, and then run on your node. Only add repositories from the real owner, over HTTPS, and verify the key fingerprint against the vendor's documentation.
+Adding a repository is a trust decision, not a convenience. Its packages run as root during installation, through maintainer scripts, and then run on your node. Only add repositories from the real owner, over HTTPS, and verify the key fingerprint against the vendor's documentation.
 
 Switches that disable the check are for emergencies and for your own internal test repositories. They include `dnf --nogpgcheck`, `gpgcheck=0` in a repo file, and apt's `--allow-unauthenticated` or `[trusted=yes]`. Do not leave them in configuration.
 
 ### Debian-family configuration
 
-Sources live in `/etc/apt/sources.list` and in files inside `/etc/apt/sources.list.d/`. Older entries take one line each, such as `deb [signed-by=/etc/apt/keyrings/vendor.gpg] https://repo.example.com/apt stable main`. Newer Ubuntu and Debian releases are moving to a multi-line "deb822" format in files ending in .sources. Both formats work, so check which one your release uses. *(Review note: confirm the default format on the release you run.)*
+On the Debian family, sources live in `/etc/apt/sources.list` and in files inside `/etc/apt/sources.list.d/`. Older entries take one line each, such as `deb [signed-by=/etc/apt/keyrings/vendor.gpg] https://repo.example.com/apt stable main`. Newer Ubuntu and Debian releases are moving to a multi-line "deb822" format in files ending in .sources. Both formats work, so check which one your release uses. *(Review note: confirm the default format on the release you run.)*
 
-Keys belong in a file under `/etc/apt/keyrings/` (or `/usr/share/keyrings/`), and the entry points at it with `signed-by=`. That way each repository's key is trusted for that repository only. The old global keyring managed by apt-key is deprecated. If a guide tells you to run `apt-key add`, it is out of date.
+Keys belong in a file under `/etc/apt/keyrings/` (or `/usr/share/keyrings/`), and the entry points at it with `signed-by=`. That way each repository's key is trusted for that repository only. The old global keyring managed by apt-key is deprecated. If a guide tells you to run `apt-key add`, the guide is out of date.
 
-Update the index before you install anything. `sudo apt update` downloads the package lists, but it installs nothing. Forgetting this step, or running it on a node whose repository has moved, is the usual reason for "Unable to locate package" or "404 Not Found".
+Update the index before you install anything, because a manager can only offer packages from a list it has actually fetched. `sudo apt update` downloads the package lists, but it installs nothing. Forgetting this step, or running it on a node whose repository has moved, is the usual reason for "Unable to locate package" or "404 Not Found".
 
 ### Red Hat-family configuration
 
-Repository definitions are files ending in .repo in `/etc/yum.repos.d/`. Each section names a baseurl or a mirrorlist or metalink, and sets enabled=1, gpgcheck=1 and a `gpgkey=` URL. You import a key once with `sudo rpm --import <key-url-or-file>`. Alternatively, the key is fetched the first time you install from a repository that provides `gpgkey=`, and you are asked to accept it.
+On the Red Hat family, repository definitions are files ending in .repo in `/etc/yum.repos.d/`. Each section names a baseurl or a mirrorlist or metalink, and sets enabled=1, gpgcheck=1 and a `gpgkey=` URL. You import a key once with `sudo rpm --import <key-url-or-file>`. Alternatively, the key is fetched the first time you install from a repository that provides `gpgkey=`, and you are asked to accept it.
 
 To control repositories for one command, without editing files, use `--enablerepo=NAME`, `--disablerepo=NAME` or `--disablerepo='*' --enablerepo=NAME` on the command line.
 
@@ -205,7 +215,7 @@ Most day-to-day tasks have a matching command in each family. The table below li
 
 Read the table as a translation guide. Learn the one family you use daily, then check the other when you move between machines.
 
-A few details surprise people. `yum` is the older name. On current RHEL-family releases, `yum` is a compatibility alias for `dnf`, so the option tables in older books and on forums still work. `apt` is the friendly front end, with progress bars and sensible defaults for people at a terminal. For scripts, Dockerfiles and automation, use `apt-get` and `apt-cache` instead, because their output and behaviour are stable. The `apt` tool itself warns that its interface is not stable for scripting.
+A few details still surprise people. `yum` is the older name. On current RHEL-family releases, `yum` is a compatibility alias for `dnf`, so the option tables in older books and on forums still work. `apt` is the friendly front end, with progress bars and sensible defaults for people at a terminal. For scripts, Dockerfiles and automation, use `apt-get` and `apt-cache` instead, because their output and behaviour are stable. The `apt` tool itself warns that its interface is not stable for scripting.
 
 In automation, add `-y` to assume yes, and set `DEBIAN_FRONTEND=noninteractive` so debconf does not stop to ask questions. The `--skip-broken` switch on dnf and yum installs what it can and skips what has dependency problems. Use it only when you are certain you understand what is being skipped.
 
@@ -213,11 +223,11 @@ Before you change a repository, confirm which one a package would come from. Run
 
 ## 3. The low-level tools
 
-Sometimes the high-level manager is not enough. When a package problem lands on your desk, you drop below it and use `dpkg` or `rpm` directly. You do this for three jobs: installing a single package file, interrogating the database, and verifying what is on disk.
+Most installs go through the high-level manager, and that is enough. Sometimes a package problem lands on your desk, though, and you drop below the manager to use `dpkg` or `rpm` directly. You do this for three jobs: installing a single package file, interrogating the database, and verifying what is on disk.
 
 ### `rpm`: modes and selectors
 
-Every `rpm` command has a **mode**, which says what to do, and a **selector**, which says which packages to act on. The table lists the options on both sides.
+An `rpm` command has two parts. The **mode** says what to do, and the **selector** says which packages to act on. The table lists the options on both sides.
 
 | Mode | Meaning | Selector | Meaning |
 |---|---|---|---|
@@ -244,7 +254,7 @@ Use `rpm -i` and `-U` only when the dependencies of the package file are already
 
 ### `dpkg`: the equivalents
 
-On Debian-family systems, the same questions go to `dpkg`.
+On Debian-family systems, the same questions go to `dpkg`, and the command names change but the questions do not.
 
 ```bash
 dpkg -l | grep -i cuda          # installed packages (name, version, status)
@@ -257,11 +267,11 @@ sudo dpkg -i pkg.deb            # install (does not fetch dependencies)
 sudo apt -f install             # then let apt fix up missing dependencies
 ```
 
-In `dpkg -l` output, the first two columns are a state code. `ii` means installed and correctly configured. `rc` means removed, but the configuration remains. `iU` or `iF` mean half-installed or failed configuration, and you usually fix those with `sudo dpkg --configure -a`.
+In `dpkg -l` output, the first two columns are a state code. `ii` means installed and correctly configured. `rc` means removed, but the configuration remains. `iU` or `iF` mean half-installed or failed configuration, and you usually fix those with `sudo dpkg --configure -a`. Read that state code before you panic about a package that looks broken.
 
 ### Translation table
 
-If you know one family, the table below gives you the matching command in the other. Use these commands to answer questions before you change anything.
+Section 2 lined up the day-to-day tasks. This table lines up the low-level questions instead. If you know one family, it gives you the matching command in the other. Use these commands to answer questions before you change anything.
 
 | Question | rpm | dpkg |
 |---|---|---|
@@ -275,9 +285,9 @@ If you know one family, the table below gives you the matching command in the ot
 
 ## 4. Holding, pinning and reproducibility
 
-On a GPU node, the goal of package management is not "always newest". The goal is "exactly the versions we validated". Picture a training cluster where every node runs the same driver. If one node quietly moves to a newer driver, its jobs may behave differently from the rest of the fleet. You need tools that keep versions fixed until you choose to change them.
+Picture a training cluster where every node runs the same driver, and one node quietly moves to a newer driver. Its jobs may behave differently from the rest of the fleet, and you will spend an afternoon chasing the difference. On a GPU node, the goal of package management is not "always newest". The goal is "exactly the versions we validated". You need tools that keep versions fixed until you choose to change them.
 
-The simplest tool is a hold. `sudo apt-mark hold nvidia-driver-XXX linux-image-generic` tells routine upgrades to skip those packages, and `unhold` releases them. On RHEL-family systems, install the `dnf versionlock` plugin with `sudo dnf install python3-dnf-plugin-versionlock`, then add a package to the lock with `sudo dnf versionlock add pkg`. *(Review note: package names for the plugin differ by release.)*
+The simplest tool is a hold, which tells routine upgrades to leave a package alone. `sudo apt-mark hold nvidia-driver-XXX linux-image-generic` does exactly that, and `unhold` releases them. On RHEL-family systems, install the `dnf versionlock` plugin with `sudo dnf install python3-dnf-plugin-versionlock`, then add a package to the lock with `sudo dnf versionlock add pkg`. *(Review note: package names for the plugin differ by release.)*
 
 You can also install an exact version. Use `sudo apt install pkg=1.2.3-1` on Debian-family systems, or `sudo dnf install pkg-1.2.3-1.el9` on Red Hat-family systems. Before you pick a version, run `apt policy pkg` or `dnf list --showduplicates pkg` to see what your repositories offer.
 
@@ -287,7 +297,7 @@ For a whole fleet, the strongest approach is to freeze the repositories themselv
 
 Unattended upgrades are valuable for security patches on servers. They run as `unattended-upgrades` on Ubuntu and as `dnf-automatic` on RHEL-family systems. On a GPU node, though, they can replace the kernel without rebuilding the driver. Restrict them to security updates for packages outside the driver and kernel set. Alternatively, disable them on compute nodes and patch through a controlled process.
 
-The failure these rules prevent is concrete and common. The diagram below shows how a routine upgrade can leave a node without a working driver.
+The failure these rules prevent is concrete and common, and it starts with an upgrade you did not plan. The diagram below shows how a routine upgrade can leave a node without a working driver.
 
 ```mermaid
 sequenceDiagram
@@ -312,11 +322,11 @@ Chapter 1.22 develops DKMS and kernel modules in detail. The fix at the package 
 
 ## 5. Finding the package you need
 
-Three questions come up almost every day. The first is "which package does this file belong to?" On Red Hat-family systems, use `rpm -qf`. On Debian-family systems, use `dpkg -S`.
+Picture the end of a build: `fatal error: foo.h: No such file or directory`, and nobody in the room remembers which package supplies `foo.h`. Questions like that are what this section answers. Three questions come up almost every day, and each one has a matching command in both families. The first is "which package does this file belong to?" On Red Hat-family systems, use `rpm -qf`. On Debian-family systems, use `dpkg -S`.
 
 The second question is harder. You need a file you do not have, such as a header, a library or a command. Which package provides it? On deb, search with `apt-file search pkg.h`. On rpm, use `dnf provides '*/pkg.h'`, where the older spelling `yum provides` also works. Two cases come up often.
 
-The first case is a compiler error such as `fatal error: foo.h: No such file or directory`. It means the development package for the library is missing. Libraries come in two flavours. The runtime package, such as `libfoo1` on Debian or `foo` on Red Hat, holds the shared library. The development package, such as `libfoo-dev` or `foo-devel`, holds the headers and `.pc` files. The same split explains why `openssl.pc` is absent until you install `libssl-dev` or `openssl-devel`.
+The first case is a compiler error such as `fatal error: foo.h: No such file or directory`. It means the development package for the library is missing. Libraries come in two flavours, and beginners mix them up. The runtime package, such as `libfoo1` on Debian or `foo` on Red Hat, holds the shared library, the file programs need when they run. The development package, such as `libfoo-dev` or `foo-devel`, holds the headers and `.pc` files, the extra material you need to compile against the library. The same split explains why `openssl.pc` is absent until you install `libssl-dev` or `openssl-devel`.
 
 The second case is a runtime error such as `error while loading shared libraries: libfoo.so.1: cannot open shared object file`. It means one of two things. Either the runtime package is missing, or the library sits in a location the dynamic linker does not search. Section 8 covers that second case.
 
@@ -326,7 +336,9 @@ Before you run any install on a production node, simulate it and read the remova
 
 ## 6. Installing from source
 
-Sometimes the package you need does not exist, or it is the wrong build. You then install from source. Most open-source software is distributed as **source code**, because Unix and Linux come in so many flavours and architectures that shipping a binary for every combination would be impractical. Source distribution also lets users fix bugs and add features, which is the point of open source. Nearly everything on a Linux system, from the kernel to the libraries, can be obtained as source.
+Picture a tool you need for tomorrow's run, and the packaged version is three releases too old. Nothing in the repositories will do. That is the day you build from source, and on clusters it happens more often than newcomers expect.
+
+Sometimes the package you need does not exist, or it is the wrong build. You then install from source. Most open-source software is distributed as **source code**, which is the human-readable text the authors wrote, because Unix and Linux come in so many flavours and architectures that shipping a binary for every combination would be impractical. Source distribution also lets users fix bugs and add features, which is the point of open source. Nearly everything on a Linux system, from the kernel to the libraries, can be obtained as source.
 
 You should not replace your distribution's packages with source builds wholesale. Distributions fix security problems quickly, keep dependencies consistent, and let you upgrade with one command. There are good reasons to build from source yourself, though. You may need control over the options, such as building an MPI library with exactly the network backends your cluster has, or a Slurm with specific plugins. You may need control over the version, because the distribution's copy is too old or too new, which is common for add-ons such as language libraries. You may need control over the install location, including keeping several versions of the same software side by side. And you may simply want to understand how the software works and what it depends on.
 
@@ -334,7 +346,7 @@ The costs are real. Building takes time. Custom installs **do not update themsel
 
 ### The standard sequence
 
-Most C and C++ projects built with the GNU autotools follow four steps. The pattern transfers to other build systems, such as CMake, Meson and SCons. The diagram below shows the steps and where each one can fail.
+Most C and C++ projects built with the GNU autotools follow four steps, and the pattern transfers to other build systems, such as CMake, Meson and SCons. The diagram below shows the steps and where each one can fail.
 
 ```mermaid
 flowchart LR
@@ -347,13 +359,13 @@ flowchart LR
   C -.->|"fails?"| M["find the first real error,\nnot the make[N] cascade"]
 ```
 
-**Unpack carefully.** Source archives come as .tar.gz, .tar.bz2 or .tar.xz files. Chapter 1.3 covered `tar`. Before you extract, list the contents with `tar tvf` or `tar ztvf`, for two reasons. The first is that a well-formed archive has everything under one top directory, such as `package-1.23/...`. Some archives instead spill their files straight into the current directory. Picture an engineer who unpacks an archive into a shared home directory and then cannot tell which files came from it. If the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
+**Unpack carefully.** Source archives come as .tar.gz, .tar.bz2 or .tar.xz files. Chapter 1.3 covered `tar`. Before you extract, list the contents with `tar tvf` or `tar ztvf`, for two reasons. The first is tidiness. A well-formed archive has everything under one top directory, such as `package-1.23/...`. Some archives instead spill their files straight into the current directory. Picture an engineer who unpacks an archive into a shared home directory and then cannot tell which files came from it. If the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
 
 The second reason is safety. Never unpack an archive that contains **absolute paths** such as `/etc/passwd` or `/etc/inetd.conf`. That is almost certainly a booby trap, and extracting it as root would overwrite system files. Delete such an archive. Modern `tar` strips leading slashes by default, but do not rely on that.
 
 **Read the documentation in the tree first.** Open `README`, then `INSTALL` if there is one, before you do anything else. They often state special options, prerequisites and supported platforms. Then get a feel for the files by their role. Build-system files include `Makefile`, `Makefile.in`, `configure`, `CMakeLists.txt` and `meson.build`. Very old packages ship a plain `Makefile` that you edit by hand. Most packages use a configuration script or file that generates the `Makefile` for your system. Source files are .c and .h for C, and .cc, .cxx or .C for C++. Object files (.o) and binaries should not be in a source archive. If you find them, run `make clean` so you get a fresh compile.
 
-**Configure.** GNU autoconf-based packages ship a `configure` script and template files that end in .in, such as Makefile.in and config.h.in. Running `./configure` probes your system. It checks which compiler you have, which headers and libraries exist, and which functions are available. It then substitutes the results into the templates to produce the real `Makefile` and a `config.h` header. It also writes config.cache and a detailed log, `config.log`. The output is long and tells you what is being checked. A successful configure does not guarantee a successful build, but the odds are good.
+**Configure.** GNU autoconf-based packages ship a `configure` script and template files that end in .in, such as Makefile.in and config.h.in. Autoconf is the GNU machinery that lets one source tree adapt itself to many systems. Running `./configure` probes your system. It checks which compiler you have, which headers and libraries exist, and which functions are available. It then substitutes the results into the templates to produce the real `Makefile` and a `config.h` header. It also writes config.cache and a detailed log, `config.log`. The output is long and tells you what is being checked. A successful configure does not guarantee a successful build, but the odds are good.
 
 You need the build tools installed first. On Debian and Ubuntu, the quick way is `sudo apt install build-essential`. On RHEL-family systems, use `sudo dnf group install "Development Tools"`. If a tool is absent, search for `gcc` or "C compiler".
 
@@ -404,7 +416,7 @@ Use `CPPFLAGS`, not `CFLAGS`, for include directories, because `configure` often
 
 ### `pkg-config`: how builds find libraries
 
-When libraries are scattered across prefixes, a build must be told where each library's headers and libraries are, and which link flags it needs. Most libraries solve this with a small text file that ends in .pc. The `pkg-config` program reads those files:
+When libraries are scattered across prefixes, a build needs two things from each one: where its headers and libraries live, and which link flags it needs. Most libraries answer that question with a small text file that ends in .pc. The `pkg-config` program reads those files:
 
 ```bash
 pkg-config --cflags --libs zlib      # prints e.g. "-lz" (flags vary by system)
@@ -412,11 +424,15 @@ pkg-config --modversion openssl      # installed version
 pkg-config --list-all | less         # everything it knows
 ```
 
-A `.pc` file holds variables, such as `prefix`, `libdir` and `includedir`. It also holds the name, the version, the dependencies (`Requires`), and the flags to compile and link (`Cflags` and `Libs`). By default, `pkg-config` looks only in the `lib/pkgconfig` directory of its **own** installation prefix, plus `share/pkgconfig`. Files stored elsewhere are invisible to it. An example is `/opt/openssl/lib/pkgconfig/openssl.pc`, or any `/opt/foo/lib/pkgconfig` directory. Two methods make them visible. You can make symbolic links, or copies, from the actual `.pc` files into the central `pkgconfig` directory. Or you can set the `PKG_CONFIG_PATH` environment variable to include the extra `pkgconfig` directories. The second method works well for one build, but it does not work well system-wide. You will also find that most `.pc` files do not appear until you install the matching development packages, such as `libssl-dev` or `openssl-devel`.
+A `.pc` file holds variables, such as `prefix`, `libdir` and `includedir`. It also holds the name, the version, the dependencies (`Requires`), and the flags to compile and link (`Cflags` and `Libs`).
+
+By default, `pkg-config` looks only in the `lib/pkgconfig` directory of its **own** installation prefix, plus `share/pkgconfig`. Files stored elsewhere are invisible to it. An example is `/opt/openssl/lib/pkgconfig/openssl.pc`, or any `/opt/foo/lib/pkgconfig` directory. Two methods make them visible. You can make symbolic links, or copies, from the actual `.pc` files into the central `pkgconfig` directory. Or you can set the `PKG_CONFIG_PATH` environment variable to include the extra `pkgconfig` directories. The second method works well for one build, but it does not work well system-wide.
+
+You will also find that most `.pc` files do not appear until you install the matching development packages, such as `libssl-dev` or `openssl-devel`.
 
 ### Turning a source build into a package
 
-Plain `make install` leaves files with no record in any package database. You cannot cleanly remove, upgrade or inventory them afterwards. If you plan to install the build on more than one machine, make a real package instead.
+Plain `make install` leaves files with no record in any package database. You cannot cleanly remove, upgrade or inventory them afterwards. If you plan to install the build on more than one machine, make a real package instead. On one machine, the prefix directory is usually enough.
 
 On the Debian family, **`checkinstall`** wraps `make install`, tracks the files it installs, and produces a `.deb` that you then install and remove with `dpkg`.
 
@@ -434,7 +450,7 @@ For large numbers of nodes, a better answer is usually one of two. You can put t
 
 ### Applying a patch
 
-A **patch** is a text file, produced by `diff -u`, that describes changes to source files. Developers also distribute fixes this way. The header of each file section looks like this:
+A **patch** is a small text file that describes changes to source files, and developers distribute fixes this way. It is produced by `diff -u`, which compares two versions of a file and prints the differences. The header of each file section looks like this:
 
 ```text
 --- src/file.c.orig   2015-07-17 14:29:12 +0100
@@ -454,7 +470,7 @@ If a path in the patch begins with a directory such as `package-3.42/src/file.c`
 
 ### Where to go next with builds
 
-Once the autotools routine feels comfortable, three directions are worth knowing. The first is other build systems, such as **CMake**, **Meson**, **SCons**, and language-specific ones such as `cargo` or `go build`. Each has its own configure-then-build-then-install shape. The second is the **Linux kernel build**. It has its own configuration system, with `make menuconfig` and `make modules_install`. Attempt it only while the previous kernel stays bootable as a fallback (chapters 1.14 and 1.22). The third is **distribution source packages**. They carry the distribution's own patches and build recipes, so you can rebuild or patch a packaged program the supported way. Use `debuild` or `dpkg-buildpackage` on the Debian family, and `rpmbuild` and `mock` on the RPM family. Rebuilding a distribution source package, instead of compiling a tarball by hand, usually gives you a proper package at the end.
+Once the autotools routine feels comfortable, three directions are worth knowing. The first is other build systems, such as **CMake**, **Meson**, **SCons**, and language-specific ones such as `cargo` or `go build`. Each has its own configure-then-build-then-install shape. The second is the **Linux kernel build**. It has its own configuration system, with `make menuconfig` and `make modules_install`. Attempt it only while the previous kernel stays bootable as a fallback. See chapters 1.14 and 1.22. The third is **distribution source packages**. They carry the distribution's own patches and build recipes, so you can rebuild or patch a packaged program the supported way. Use `debuild` or `dpkg-buildpackage` on the Debian family, and `rpmbuild` and `mock` on the RPM family. Rebuilding a distribution source package, instead of compiling a tarball by hand, usually gives you a proper package at the end.
 
 ### Troubleshooting builds
 
@@ -477,7 +493,7 @@ When a build fails, read the first error, not the last one. Fix that line, then 
 
 ## 7. The build toolchain: compiler, linker, headers and `make`
 
-You do not need to write C to run a cluster. You will still read build logs, edit `Makefile` variables and chase library errors. Each of those tasks goes faster once you have a clear picture of how a program gets built.
+Picture the end of a long build day: hundreds of lines of compiler output, and one person asking what actually failed. You do not need to write C to run a cluster. You will still read build logs, edit `Makefile` variables and chase library errors. Each of those tasks goes faster once you have a clear picture of how a program gets built.
 
 ### From source to executable
 
@@ -549,7 +565,7 @@ The default library directories are `/lib`, `/usr/lib` and, on modern multiarch 
 
 ### Static and shared libraries
 
-The table compares the two kinds. The difference matters most at run time and during updates.
+Here are the two words in plain terms. A shared library is one that stays on disk while many programs use it. A static library is one whose code is copied into each program at build time. The table compares the two kinds. The difference matters most at run time and during updates.
 
 | | Static library (`libfoo.a`) | Shared library (`libfoo.so.N`) |
 |---|---|---|
@@ -707,7 +723,11 @@ The `-Wl,-rpath=...` part passes `-rpath` to the linker, which embeds the direct
 
 LD_LIBRARY_PATH is a colon-separated list of directories that the loader searches before the normal places. It causes more shared-library trouble than anything else. It is tempting because it is a cheap way to make a program run when you do not have the source and cannot use patchelf. But you pay for that convenience in three ways.
 
-The first cost is performance. The loader may scan each listed directory for every library of every program started with the variable set. The second cost is wrong libraries. If you export the variable in your shell startup files, every program you run, including system tools, searches those directories first. Any of them can pick up an incompatible library. The result is baffling crashes and "symbol lookup error" messages far from the real cause. The third cost is invisible state. Two users with different values see different behaviour from the same binary.
+The first cost is performance. The loader may scan each listed directory for every library of every program started with the variable set.
+
+The second cost is wrong libraries. If you export the variable in your shell startup files, every program you run, including system tools, searches those directories first. Any of them can pick up an incompatible library. The result is baffling crashes and "symbol lookup error" messages far from the real cause.
+
+The third cost is invisible state. Two users with different values see different behaviour from the same binary.
 
 So never set LD_LIBRARY_PATH in global shell startup files, and never compile software with it set. If you must use it for one program, use a wrapper script that sets it only for that command.
 
@@ -756,13 +776,17 @@ Avoid relying on more than one argument on the shebang line, such as `#!/usr/bin
 
 The languages below are the ones you are likely to meet on a Linux system. Each one has a different job, so you only need to recognise them when you see them.
 
-Python (`python` or `python3`) is a scripting language with a strong following. It has powerful features for text processing, database access, networking, multithreading, data analysis, web applications and AI/ML. David M. Beazley's *Python Distilled* (Addison-Wesley, 2021) is a classic concise reference. Part 3 of this handbook covers Python for infrastructure in depth. Treat the system Python as part of the operating system. Many distribution tools depend on it, so do not `pip install` into it as root. Instead, you should use a virtual environment for your own packages, for example `python3 -m venv .venv` followed by `.venv/bin/pip install ...`. You can also use `uv`, or a container (chapter 7).
+Python (`python` or `python3`) is a scripting language with a strong following. It has powerful features for text processing, database access, networking, multithreading, data analysis, web applications and AI/ML. David M. Beazley's *Python Distilled* (Addison-Wesley, 2021) is a classic concise reference. Part 3 of this handbook covers Python for infrastructure in depth.
+
+Treat the system Python as part of the operating system. Many distribution tools depend on it, so do not `pip install` into it as root. Instead, you should use a virtual environment for your own packages, for example `python3 -m venv .venv` followed by `.venv/bin/pip install ...`. You can also use `uv`, or a container (chapter 7).
 
 Perl (`perl`) is one of the older third-party Unix scripting languages. It is the original "Swiss army chainsaw" of programming tools. Perl has lost ground to Python in recent years. It still excels at text processing, conversion and file manipulation, and many legacy system and InfiniBand tools are written in it. Classic references are *Learning Perl*, 7th edition, by Randal L. Schwartz, brian d foy and Tom Phoenix (O'Reilly, 2016), and *Modern Perl*, 4th edition, by chromatic (Onyx Neon Press, 2016).
 
 Other scripting languages come next (*How Linux Works* 15.4.3). If you find one of these in a script, you will know what it is for. PHP (http://www.php.net/) is a hypertext-processing language for dynamic web scripts and standalone CLI scripts. Ruby (http://www.ruby-lang.org/) is favored by object-oriented and web developers. JavaScript is ubiquitous in web browsers, and it also runs on the server through Node.js, whose executable is `node`. Emacs Lisp is the Lisp dialect used by the Emacs text editor. MATLAB is a commercial matrix and mathematical language, and Octave is its free software counterpart. R (http://www.r-project.org/) is a statistical analysis language. See Norman Matloff's *The Art of R Programming* (No Starch Press, 2011). Mathematica is a commercial mathematical language. m4 is a macro-processing language used inside GNU autotools. Tcl (*Tool Command Language*, http://www.tcl.tk/) pairs with the Tk GUI toolkit, the Expect automation utility and the classic Tcl-based Environment Modules.
 
-Java (`.class`, `.jar`, JRE vs JDK, *How Linux Works* 15.5) is a compiled object-oriented language. The compiler turns `.java` source files into `.class` bytecode files. A bytecode interpreter runs them. That interpreter is the Java Virtual Machine, and it lives inside the Java Runtime Environment, or JRE. Run a compiled class with `java file.class`. Run an archived collection of classes, called a `.jar`, with `java -jar file.jar`. Some Java services need `JAVA_HOME` set to the installation prefix, or `CLASSPATH` set. `CLASSPATH` is a colon-delimited list of class directories, much like `PATH`. To compile `.java` files or bundle `.jar` archives, install the Java Development Kit, or JDK. Then you use `javac file.java`, and `jar`, which works like `tar`. You will rarely need more than that.
+Java (`.class`, `.jar`, JRE vs JDK, *How Linux Works* 15.5) is a compiled object-oriented language. The compiler turns `.java` source files into `.class` bytecode files. A bytecode interpreter runs them. That interpreter is the Java Virtual Machine, and it lives inside the Java Runtime Environment, or JRE. Run a compiled class with `java file.class`. Run an archived collection of classes, called a `.jar`, with `java -jar file.jar`.
+
+Some Java services need `JAVA_HOME` set to the installation prefix, or `CLASSPATH` set. `CLASSPATH` is a colon-delimited list of class directories, much like `PATH`. To compile `.java` files or bundle `.jar` archives, install the Java Development Kit, or JDK. Then you use `javac file.java`, and `jar`, which works like `tar`. You will rarely need more than that.
 
 Modern compiled systems languages and LLVM come last (*How Linux Works* 15.6). Go (`golang`) and Rust (`cargo`) dominate modern cloud-native and Kubernetes infrastructure. The LLVM compiler infrastructure, at http://llvm.org/, underpins `clang` and many GPU and ML compiler backends. For deeper study of compiler design, Brian Ward recommends *Compilers: Principles, Techniques, and Tools*, 2nd edition, by Alfred V. Aho and others (Addison-Wesley, 2006). He also recommends *Modern Compiler Design*, 2nd edition, by Dick Grune and others (Springer, 2012).
 
@@ -772,7 +796,7 @@ Before you install a language package on a node, decide which environment you wa
 
 ## 10. Software installation on a cluster
 
-A cluster is a different problem from one machine. The same software must be present, identical and quickly reachable on hundreds of nodes. This section follows the practical order in which a small cluster is built, and it explains what each service is for along the way.
+Picture the day your cluster grows from one node to twenty. Copy-pasted installs stop working at about that size. A cluster turns the package problem into a fleet problem: the same software must be present, identical and quickly reachable on hundreds of nodes. This section follows the practical order in which a small cluster is built, and it explains what each service is for along the way.
 
 ### Drivers, InfiniBand and RAID
 
@@ -908,6 +932,8 @@ For a single node, you can install from a USB drive. Write the installer image t
 You can also load the OS into a RAM disk. That works, but it reduces the memory left for user jobs.
 
 ## 11. AI-infrastructure patterns
+
+Everything in this chapter now meets the machine you actually run. On a GPU node the parts are not independent: each layer constrains the layers next to it.
 
 **The GPU stack is a chain of version constraints.** The kernel, the driver, the CUDA toolkit, the user-space libraries (cuDNN, NCCL), the container runtime and the framework must all match. A package manager is the tool that expresses these constraints and holds them steady. The table shows how each layer is usually sourced and pinned.
 
@@ -1138,7 +1164,7 @@ If `apt upgrade` or `dnf-automatic` installs a newer kernel, such as a `6.x` ker
 <details>
 <summary>8. List the six steps of building an autotools package from source into a private prefix.</summary>
 
-The six steps are these. (1) Inspect and unpack. Run `tar tzf` to check for a top-level directory and for absolute paths, then run `tar xzf`. (2) Read `README` and `INSTALL`. (3) Configure with `./configure --prefix=$HOME/mycoreutils`. (4) Build with `make -j"$(nproc)"`. (5) Test with `make check`. (6) Dry-run, then install. Run `make -n install` to confirm that nothing writes outside the prefix, and then run `make install`.
+Work through six steps, in this order. (1) Inspect and unpack. Run `tar tzf` to check for a top-level directory and for absolute paths, then run `tar xzf`. (2) Read `README` and `INSTALL`. (3) Configure with `./configure --prefix=$HOME/mycoreutils`. (4) Build with `make -j"$(nproc)"`. (5) Test with `make check`. (6) Dry-run, then install. Run `make -n install` to confirm that nothing writes outside the prefix, and then run `make install`.
 </details>
 
 <details>
@@ -1204,7 +1230,7 @@ The recursive `make[N]` lines at the bottom are only the parent `make` processes
 <details>
 <summary>19. Summarize the 10-step mini-cluster build order from *Supercomputers for Linux Sysadmins* Chapter 24 and why you test a 2-compute-node mini-cluster before cloning.</summary>
 
-The 10 steps are these. (1) Control server. (2) NFS. (3) First compute node. (4) OFED communication stack. (5) Second compute node, forming a mini-cluster. (6) Compilers and tests. (7) Fabric bandwidth and latency, checked against vendor specs. (8) Slurm scheduler. (9) End-to-end job test. (10) Cloning and scaling to the remaining nodes. Testing the mini-cluster catches configuration and performance defects once. Otherwise you would copy those defects across hundreds of nodes.
+The ten steps run in this order. (1) Control server. (2) NFS. (3) First compute node. (4) OFED communication stack. (5) Second compute node, forming a mini-cluster. (6) Compilers and tests. (7) Fabric bandwidth and latency, checked against vendor specs. (8) Slurm scheduler. (9) End-to-end job test. (10) Cloning and scaling to the remaining nodes. Testing the mini-cluster catches configuration and performance defects once. Otherwise you would copy those defects across hundreds of nodes.
 </details>
 
 <details>

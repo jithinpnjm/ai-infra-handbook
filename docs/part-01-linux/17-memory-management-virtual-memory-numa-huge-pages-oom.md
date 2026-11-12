@@ -22,11 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU server can look fine from the GPU side and still misbehave. The cause is often host memory, the resource that gets the least attention. The GPUs hold the model, but the host's RAM holds the dataset cache, the data-loader workers, pinned staging buffers, the framework's own heap, the page cache of everything read, the container images, and the CUDA driver's mappings.
+Picture a GPU server near the end of a long training run. `nvidia-smi` looks healthy and the GPUs are cool, yet the job dies with exit code `137`. Nothing in the application log explains it. The cause is usually host memory, the resource that gets the least attention on a GPU node.
+
+The GPUs hold the model, but the host's RAM holds almost everything around it. That includes the dataset cache, the data-loader workers, pinned staging buffers, the framework's own heap, the page cache of everything read, the container images, and the CUDA driver's mappings.
 
 Most "mysterious" problems on GPU nodes turn out to be memory problems. Six symptoms come up again and again, and each one points to a different part of this chapter:
 
-- A training job is **OOM-killed** (exit code 137) even though `nvidia-smi` shows free GPU memory. The host or the job's cgroup ran out of RAM, so the fix lies on the host, not on the GPU.
+- A training job is **OOM-killed** with exit code `137` even though `nvidia-smi` shows free GPU memory. The host or the job's cgroup ran out of RAM, so the fix lies on the host, not on the GPU.
 - A data loader is slow because its memory lives on the **wrong NUMA node**. Every batch then crosses the inter-socket link on the way to the GPU.
 - Throughput wobbles every few minutes because **direct reclaim** or **transparent huge page compaction** stalls threads.
 - A process cannot register RDMA or pinned memory because of the **`memlock`** limit. Or the node starts to swap, and the job slows by orders of magnitude.
@@ -37,11 +39,11 @@ This chapter builds the whole picture, one layer at a time. You will start with 
 
 The last parts cover NUMA policy and placement, memory limits in cgroups and containers, and the observability tools: `free`, `vmstat`, PSI, `/proc/meminfo`, `smaps`, `numastat`, `pmap`, `slabtop`, `perf` and the BPF tools. The chapter closes with a method for diagnosing leaks, growth, saturation and locality, and then applies it to GPUs. That GPU section covers pinned memory, `memlock`, NUMA binding for loaders, THP policy for training versus inference, and swap policy. Chapter 1.8 introduced page faults and `vmstat`. Chapter 1.18 covers CPU scheduling and cgroups, and chapter 1.28 assembles the tuning.
 
-Start from the symptom you are seeing, and let the rest of the chapter explain why it happens.
+Start from the symptom you are seeing, and let the rest of the chapter explain why it happens. If a section ever feels abstract, come back to these six symptoms. One of them is almost certainly the reason you are reading.
 
 ## Prerequisites and outcomes
 
-Before you start, make sure you know processes and the address space from chapters 1.8 and 1.11, filesystem caching from chapter 1.12, sysctl from chapter 1.10, and systemd resource control from chapter 1.15. This chapter uses all of them, and it will be hard to follow without them.
+Before you start, make sure you know processes and the address space from chapters 1.8 and 1.11, filesystem caching from chapter 1.12, sysctl from chapter 1.10, and systemd resource control from chapter 1.15. This chapter uses all of them, and it will be hard to follow without them. Memory problems punish gaps in the basics more than most topics do.
 
 When you finish, you should be able to do the following:
 
@@ -59,7 +61,7 @@ If one of these items feels out of reach, go back to the chapter it depends on b
 
 ## 1. Memory at a glance
 
-Before the details, follow one process's memory to where it actually lives. A process sees one large, private block of addresses, but those addresses land in several places. The diagram shows the paths a page can take.
+Before the details, follow one process's memory to where it actually lives. A process sees one large, private block of addresses, but those addresses land in several places. Some sit in RAM, some wait on disk, and some are only promises. The diagram shows the paths a page can take.
 
 ```mermaid
 flowchart TB
@@ -82,31 +84,31 @@ Four ideas carry the chapter. Keep them in mind as you read, because most later 
 3. **Locality matters twice.** It matters at the CPU-cache level, through temporal and spatial locality, and at the socket level, through NUMA locality. Where a page lives decides how fast every access is.
 4. **Limits are enforced per cgroup**, not only per machine. A container can be OOM-killed while the host still has lots of RAM free.
 
-When a process is slow or killed, ask which of these four ideas explains it before you touch any setting.
+When a process is slow or killed, ask which of these four ideas explains it before you touch any setting. In practice, the answer is usually the second or the fourth.
 
 ## 2. Virtual memory and paging
 
-A program can ask for far more memory than the machine has free, and the request still succeeds. To see why, you need two ideas. Main memory is the physical RAM, also called DRAM. Virtual memory is something else: an abstraction that each process and the kernel see as their own address space.
+A program can ask for far more memory than the machine has free, and the request still succeeds. To see why, you need two ideas. Main memory is the physical RAM in the machine, also called DRAM. Virtual memory is something else: an abstraction that each process and the kernel see as their own address space.
 
-Most of that address space is not populated. Resident memory is the part of it that currently sits in RAM. The rest is only a promise that the kernel can fill in later.
+Most of that address space is not populated. Resident memory is the part of it that currently sits in RAM. The rest is only a promise that the kernel can fill in later, and the promise costs nothing until a program touches it.
 
-Memory also comes in two kinds. Anonymous memory has no file behind it. It holds the heap, the stacks, and `mmap` regions created with `MAP_ANONYMOUS`. File-backed memory maps a file, such as program text, libraries, `mmap`ed data, or the page cache.
+Memory also comes in two kinds, and the names say where the bytes come from. Anonymous memory has no file behind it. It holds the heap, the stacks, and `mmap` regions created with `MAP_ANONYMOUS`. File-backed memory maps a file, such as program text, libraries, `mmap`ed data, or the page cache.
 
-A page is the unit the hardware maps, and it is normally 4 KiB. Huge pages are larger units, at 2 MiB and 1 GiB. A page fault happens when a program touches a virtual page that is not yet mapped to a physical page. It is a normal event, and it is often cheap.
+The hardware moves memory in fixed units. A page is the unit the hardware maps, and it is normally 4 KiB. Huge pages are larger units, at 2 MiB and 1 GiB. A page fault happens when a program touches a virtual page that is not yet mapped to a physical page. It is a normal event, and it is often cheap.
 
-Paging means moving pages between RAM and storage. In Linux, swapping means paging anonymous memory out to a swap device or file. Linux does not swap whole processes. Each process has its own address space, and the kernel has one too. Segments are the areas inside an address space with a purpose: text, data, heap, stacks and mappings.
+Paging means moving pages between RAM and storage. In Linux, swapping means paging anonymous memory out to a swap device or file. Linux does not swap whole processes; it moves individual pages. Each process has its own address space, and the kernel has one too. Segments are the areas inside an address space with a purpose: text, data, heap, stacks and mappings.
 
 ### Why virtual memory
 
-Virtual memory gives you several benefits at once. Each process gets private memory no matter what the others do, which is called isolation. Programs can be larger than RAM, or only partly resident, which is called oversubscription. The system can keep one physical copy of library code and share it among many processes, which is called sharing. Files can be read and written as memory through `mmap`, and programmers get contiguous addresses that are simple to use. The cost is address translation, and the hardware handles that.
+Virtual memory gives you several benefits at once, and each one is worth naming. Each process gets private memory no matter what the others do, which is called isolation. Programs can be larger than RAM, or only partly resident, which is called oversubscription. The system can keep one physical copy of library code and share it among many processes, which is called sharing. Files can be read and written as memory through `mmap`, and programmers get contiguous addresses that are simple to use. The cost is address translation, and the hardware handles that.
 
 ### Translation: page tables, MMU and TLB
 
-The CPU's MMU translates virtual addresses into physical addresses. It relies on page tables that the kernel keeps in RAM. The tables form a multi-level tree, with four or five levels on x86-64: PGD, P4D, PUD, PMD and PTE. A 64-bit virtual address is split into an index for each level, plus a page offset.
+The CPU cannot use a virtual address directly. Its MMU translates each virtual address into a physical address, and it relies on page tables that the kernel keeps in RAM. The tables form a multi-level tree, with four or five levels on x86-64: PGD, P4D, PUD, PMD and PTE. A 64-bit virtual address is split into an index for each level, plus a page offset.
 
 Walking that tree costs time. The walk reads one entry per level from RAM, so a naive translation would add four or five extra memory accesses to every access. The TLB exists to avoid most of that cost. It is a small, very fast cache of recent translations inside the CPU, and its full name is translation lookaside buffer.
 
-A TLB hit costs almost nothing. A TLB miss triggers a hardware page-table walk, which takes tens to hundreds of cycles. If the table entries themselves miss the CPU caches, the walk can take a hundred nanoseconds. The TLB holds only a limited number of entries, for example 64 for 4 KiB data pages. Its reach is the entry count times the page size, so with 4 KiB pages the reach stays small. A program with a multi-gigabyte working set therefore misses constantly.
+A TLB hit costs almost nothing. A TLB miss triggers a hardware page-table walk, which takes tens to hundreds of cycles. If the table entries themselves miss the CPU caches, the walk can take a hundred nanoseconds. The TLB holds only a limited number of entries, for example 64 for 4 KiB data pages. Its reach is the entry count times the page size, so with 4 KiB pages the reach stays small. A program with a multi-gigabyte working set therefore misses constantly, and every miss sends it back to the tables in RAM.
 
 Huge pages, at 2 MiB and 1 GiB, multiply the reach and also shorten the walk. That is why they matter for AI workloads with tens or hundreds of gigabytes of host memory. Section 8 returns to this.
 
@@ -132,7 +134,7 @@ Faults come in two kinds, and the difference is cost:
 - **Minor fault**: The kernel satisfies it without any I/O. Examples are a new zero page for the heap, or mapping a file page or shared library page that is already cached. These are cheap and frequent.
 - **Major fault**: The kernel must read from storage. Examples are the first touch of an uncached file-backed page, or swapping an anonymous page back in. This is slow, taking milliseconds on spinning disks and tens to hundreds of microseconds on flash, and the thread blocks while it waits.
 
-Two sizes help you read process memory. Virtual size, shown as VSZ or VIRT, counts everything allocated. Resident set size, or RSS, counts only the part in RAM. Shared memory makes RSS tricky. Shared libraries, `shmget` or shared `mmap`, and tmpfs are counted in the RSS of every process that maps them. Summing RSS over processes therefore overstates real use.
+Two sizes help you read process memory, and people mix them up constantly. Virtual size, shown as VSZ or VIRT, counts everything allocated. Resident set size, or RSS, counts only the part in RAM. Shared memory makes RSS tricky. Shared libraries, `shmget` or shared `mmap`, and tmpfs are counted in the RSS of every process that maps them. Summing RSS over processes therefore overstates real use.
 
 PSS, or proportional set size, fixes that problem. It divides shared pages among their users, so the sum comes out right. You can read it from `/proc/PID/smaps_rollup`, `smem`, or `pmap -X`. USS, or unique set size, counts only private memory.
 
@@ -140,7 +142,7 @@ The working set size, or WSS, is the memory a process actively uses. Performance
 
 ### Overcommit
 
-Linux can grant more virtual memory than RAM plus swap. Programs rarely use everything they allocate, so the kernel makes that bet. The setting `vm.overcommit_memory` controls the policy.
+Linux can grant more virtual memory than RAM plus swap. That sounds reckless until you remember how programs behave: they reserve far more address space than they ever touch. Programs rarely use everything they allocate, so the kernel makes that bet. The setting `vm.overcommit_memory` controls the policy.
 
 | Value | Policy |
 |---|---|
@@ -150,13 +152,13 @@ Linux can grant more virtual memory than RAM plus swap. Programs rarely use ever
 
 Only the value `2` enforces a hard limit. The other two values accept requests that the machine may not be able to back later.
 
-Overcommit defers the failure. Instead of `malloc` returning `NULL`, memory runs out later, at first touch. Then the OOM killer, covered in section 5, picks a victim. With `2`, allocation errors show up early and predictably. Many programs misbehave under strict limits, though. That includes programs that reserve large address spaces, such as JVMs, some CUDA and GPU runtimes, and `fork` of big processes. Strict mode is rare in practice, but learn the knob anyway. Check `grep -E 'Commit' /proc/meminfo`, which shows `CommitLimit` and `Committed_AS`.
+Overcommit defers the failure, and that is the part to remember. Instead of `malloc` returning `NULL`, memory runs out later, at first touch. Then the OOM killer, covered in section 5, picks a victim. With `2`, allocation errors show up early and predictably. Many programs misbehave under strict limits, though. That includes programs that reserve large address spaces, such as JVMs, some CUDA and GPU runtimes, and `fork` of big processes. Strict mode is rare in practice, but learn the knob anyway. Check `grep -E 'Commit' /proc/meminfo`, which shows `CommitLimit` and `Committed_AS`.
 
 ### Utilisation and saturation
 
-Utilisation is used memory compared with total memory, where file cache counts as available, because the kernel can reclaim it. Saturation is demand that exceeds available RAM. You see it in page scanning, paging and swapping, direct reclaim, and OOM kills. PSI, covered in section 6, measures it directly.
+Two words from performance work will keep you honest when you look at memory. Utilisation is used memory compared with total memory, where file cache counts as available, because the kernel can reclaim it. Saturation is demand that exceeds available RAM. You see it in page scanning, paging and swapping, direct reclaim, and OOM kills. PSI, covered in section 6, measures it directly.
 
-Errors are allocation failures, OOM kills, and hardware errors such as ECC problems. Check the hardware side with `edac-util`, `ipmitool sel`, or `dmesg | grep -i -E 'mce|edac'`.
+Errors form the third part of the picture. These are allocation failures, OOM kills, and hardware errors such as ECC problems. Check the hardware side with `edac-util`, `ipmitool sel`, or `dmesg | grep -i -E 'mce|edac'`.
 
 ### Swap
 
@@ -170,7 +172,7 @@ Useful commands are `swapon --show`, `free -h`, `cat /proc/swaps`, `swapoff -a` 
 
 ## 3. Memory hardware that affects performance
 
-Before you tune anything, know how far each kind of memory sits from the CPU. The gap between a cache hit and a trip to DRAM explains much of the behaviour you will see.
+Before you tune anything, know how far each kind of memory sits from the CPU. A value in a cache arrives almost immediately. The same value fetched from DRAM takes a noticeable journey through the memory controller and the interconnect. The size of that gap explains much of the behaviour you will see later in this chapter.
 
 DRAM is dense, volatile memory. DDR4 and DDR5 channels set its bandwidth. DDR5-4800 delivers 38.4 GB/s per channel. Servers have 8 to 12 channels per socket, which adds up to hundreds of GB/s.
 
@@ -184,7 +186,7 @@ GPUs have their own memory, HBM, which is much faster and sits next to the GPU. 
 
 ### UMA versus NUMA
 
-On a UMA or SMP machine, every CPU reaches all memory with the same latency over a shared bus. Modern servers are NUMA, which stands for non-uniform memory access. Each socket has its own memory controllers and attached DRAM, and that group is called a node. Sockets are joined by an interconnect, which is UPI on Intel and Infinity Fabric or xGMI on AMD.
+You will meet the NUMA trap the first time a job slows down after the scheduler moves it to the other socket. To understand why, start with the simpler design. On a UMA or SMP machine, every CPU reaches all memory with the same latency over a shared bus. Modern servers are NUMA, which stands for non-uniform memory access. Each socket has its own memory controllers and attached DRAM, and that group is called a node. Sockets are joined by an interconnect, which is UPI on Intel and Infinity Fabric or xGMI on AMD.
 
 A CPU reaches local memory directly. It reaches remote memory through the other CPU, which is slower. Remote access commonly costs 1.3x to 2x the latency, with reduced bandwidth, and it uses interconnect bandwidth too. Many CPUs also present several NUMA nodes per socket, through sub-NUMA clustering or NPS modes. So a 2-socket server can show 2, 4 or 8 nodes.
 
@@ -209,13 +211,13 @@ flowchart LR
   C0 <-->|"UPI / xGMI interconnect (slower, shared)"| C1
 ```
 
-The NUMA trap is common on AI hosts. A data-loading process runs on node 0 and allocates its buffers there. The GPU it feeds, though, is attached to node 1. Every host-to-device copy then crosses the interconnect, because the memory sits on node 0 while the GPU hangs off node 1's PCIe root. The fix is to bind the loader's CPUs and memory to the GPU's node, which section 7 covers. Before you start a loader, check which node the GPU lives on, and bind to that node.
+The NUMA trap is common on AI hosts, and it is easy to miss. A data-loading process runs on node 0 and allocates its buffers there. The GPU it feeds, though, is attached to node 1. Every host-to-device copy then crosses the interconnect, because the memory sits on node 0 while the GPU hangs off node 1's PCIe root. Picture a warehouse on the wrong side of town: the goods are correct, but every delivery pays the cross-town drive. The fix is to bind the loader's CPUs and memory to the GPU's node, which section 7 covers. Before you start a loader, check which node the GPU lives on, and bind to that node.
 
 ## 4. How Linux frees memory
 
-A node raises an alarm because `free` shows very little memory. The alarm is often false, and this section explains why. Linux keeps RAM busy on purpose, and it gives memory back when something else needs it.
+A node raises an alarm because `free` shows very little memory. The alarm is often false, and this section explains why. Linux keeps RAM busy on purpose, and it gives memory back when something else needs it. Once you can see the machinery, an empty-looking free column stops being frightening.
 
-Memory comes from the kernel's page allocator. It keeps free lists for each NUMA node and each memory zone, which are DMA, DMA32 and Normal. The buddy allocator organises those lists. Free blocks come in power-of-two sizes, where order 0 is one page and order 9 is 2 MiB. Neighbouring free blocks, called buddies, merge back together.
+Memory comes from the kernel's page allocator. It keeps free lists for each NUMA node and each memory zone, which are DMA, DMA32 and Normal. The buddy allocator organises those lists. Free blocks come in power-of-two sizes, where order 0 is one page and order 9 is 2 MiB. Neighbouring free blocks, called buddies, merge back together. Think of adjacent parking spaces opening up until a bus can park.
 
 The kernel's own small objects, such as inodes, dentries and task structs, come from the slab or SLUB allocator. It keeps per-type caches of pre-allocated objects, which `slabtop` shows. User-space `malloc` gets pages from the kernel and subdivides them, which section 9 covers.
 
@@ -235,7 +237,7 @@ The steps run roughly in order as pressure rises, and the last step is the OOM k
 
 Watermarks are the `min`, `low` and `high` marks for each zone. They derive from `vm.min_free_kbytes`, and the `low` and `high` marks scale up from `min`. The setting `vm.watermark_scale_factor` controls the gap, and its default of 10 means 0.1% of memory. `vm.watermark_boost_factor` lets kswapd reclaim extra after fragmentation events. kswapd is the per-node background page-out daemon, and it scans the active and inactive LRU lists. Hysteresis keeps it from flapping.
 
-Direct reclaim happens when an allocation cannot wait. The application thread does the reclaim work itself. You notice it as unexplained latency spikes and high `sys` time. Raising `vm.min_free_kbytes` moderately, and `watermark_scale_factor` too, makes kswapd start earlier. On large-memory machines, that can remove direct-reclaim stalls. Test it on a canary first, because very large values waste RAM and can cause other trouble.
+Direct reclaim happens when an allocation cannot wait. The application thread does the reclaim work itself, which is why you notice it as unexplained latency spikes and high `sys` time. Raising `vm.min_free_kbytes` moderately, and `watermark_scale_factor` too, makes kswapd start earlier. On large-memory machines, that can remove direct-reclaim stalls. Test it on a canary first, because very large values waste RAM and can cause other trouble.
 
 `vm.swappiness` decides how reclaim splits between dropping page cache and swapping anonymous pages. Its range is 0 to 100, with a default of 60, and up to 200 on cgroup v2 and newer kernels. Setting it very low keeps application memory resident, at the expense of cache. On GPU nodes, the common settings are 0 to 10, and the documentation often says 1. Even at 0, the kernel still swaps when it must.
 
@@ -243,21 +245,21 @@ Direct reclaim happens when an allocation cannot wait. The application thread do
 
 Dirty pages are modified file data waiting for write-back. Their limits come from `vm.dirty_ratio` and `dirty_background_ratio`, or from their `_bytes` forms, which chapter 1.12 covers. A flood of dirty data can cause stalls of its own.
 
-Dropping caches with `echo 3 > /proc/sys/vm/drop_caches` is a test tool, not a tuning knob. The kernel refills the cache right away.
+Dropping caches with `echo 3 > /proc/sys/vm/drop_caches` is a test tool, not a tuning knob. The kernel refills the cache right away, so you gain nothing lasting.
 
 Compaction defragments physical memory, so that large contiguous blocks for huge pages and high-order allocations can be found. It costs CPU and can stall, which section 8 covers. Look at `cat /proc/buddyinfo`, `/proc/pagetypeinfo` and `/proc/vmstat`. The counters to watch in `/proc/vmstat` are `compact_*`, `thp_*`, `pgscan_*`, `pgsteal_*`, `allocstall_*` and `oom_kill`.
 
-When a node reports low free memory, check the page cache and reclaim counters before you assume a leak.
+When a node reports low free memory, check the page cache and reclaim counters before you assume a leak. Most of the time, the memory is doing exactly what it was designed to do.
 
 ## 5. The OOM killer
 
-A training job disappears in the middle of the night, and the application logs show nothing useful. The reason is often the OOM killer. It is the kernel's last resort when memory runs out, and it leaves its trace in the kernel log rather than the application log.
+A training job disappears in the middle of the night, and the application logs show nothing useful. There is no traceback, no error, no goodbye. The reason is often the OOM killer. It is the kernel's last resort when memory runs out, and it leaves its trace in the kernel log rather than the application log. That is why the first place to look is `dmesg`, not your Python output.
 
-When reclaim fails, the kernel invokes the **out-of-memory (OOM) killer**. It selects a process using a "badness" score and kills it with `SIGKILL`. The event goes to the kernel ring buffer, which you can read with `dmesg` or `journalctl -k`. The key line looks like `Out of memory: Killed process 1234 (python) total-vm:... anon-rss:...`. The log also shows `oom-kill:constraint=...` and a dump of all candidate processes.
+When reclaim fails, the kernel invokes the **out-of-memory (OOM) killer**. Reclaim has already tried the gentler options: dropping cache, swapping, shrinking slab. When none of them frees enough, something has to give, and the kernel chooses a process to end. It selects that process using a "badness" score and kills it with `SIGKILL`. The event goes to the kernel ring buffer, which you can read with `dmesg` or `journalctl -k`. The key line looks like `Out of memory: Killed process 1234 (python) total-vm:... anon-rss:...`. The log also shows `oom-kill:constraint=...` and a dump of all candidate processes.
 
-The victim gets no chance to clean up, because it receives `SIGKILL` rather than `SIGTERM`. Partial checkpoints and GPU state may be left behind. A parent process, or Kubernetes, sees the exit status `137`, which is 128 + 9.
+The victim gets no chance to clean up, because it receives `SIGKILL` rather than `SIGTERM`. There is no exception handler, no final checkpoint, no flush. Partial checkpoints and GPU state may be left behind. A parent process, or Kubernetes, sees the exit status `137`, which is 128 + 9.
 
-Scoring decides who dies. `/proc/PID/oom_score` is a number from 0 to 1000. It roughly tracks the share of RAM, and swap, that the process uses. In some versions it also counts the process's children. You can shift the score with `/proc/PID/oom_score_adj`, which ranges from -1000 to +1000 and is added to the score. A value of `-1000` makes a process immune to the OOM killer. A value of `+1000` makes it the first choice. Older root-user bonuses no longer exist on current kernels.
+Scoring decides who dies, and the scoring is simpler than it looks. `/proc/PID/oom_score` is a number from 0 to 1000. It roughly tracks the share of RAM, and swap, that the process uses. In some versions it also counts the process's children. You can shift the score with `/proc/PID/oom_score_adj`, which ranges from -1000 to +1000 and is added to the score. A value of `-1000` makes a process immune to the OOM killer. A value of `+1000` makes it the first choice. Older root-user bonuses no longer exist on current kernels.
 
 Protect critical daemons, and let batch workers be preferred victims if you want that. You can run `echo -1000 > /proc/$(pidof sshd)/oom_score_adj`, or set `OOMScoreAdjust=-900` in the systemd unit, which chapter 1.15 covers. Batch workers can take `+500`.
 
@@ -277,9 +279,11 @@ Each part points to a different consumer. If `shmem` or `tmpfs` is huge, an in-m
 
 ## 6. Observing memory
 
+When a node feels slow, memory is one of the first places to look. The tools in this section answer three different questions, and it helps to keep them apart. How much memory is there? Is anything waiting for it? And which process or cache is using it? Work from the summary down to the suspect, and do not start with a guess about a leak.
+
 ### The summary view: `free` and `/proc/meminfo`
 
-Start with the summary. `free` and `/proc/meminfo` tell you how much memory the machine has and how much of it is really available. Run both before you draw any conclusion about a node.
+Start with the summary, the way you would look at a fuel gauge before checking the engine. `free` and `/proc/meminfo` tell you how much memory the machine has and how much of it is really available. Run both before you draw any conclusion about a node.
 
 ```bash
 free -h
@@ -292,11 +296,11 @@ grep -E 'MemTotal|MemFree|MemAvailable|Buffers|^Cached|SwapTotal|SwapFree|Dirty|
 
 The key number is `available`, which appears as `MemAvailable`. It estimates how much memory you can use to start new applications without swapping. It counts reclaimable page cache and slab. `free` is idle memory, and it is deliberately small. `buff/cache` is mostly reclaimable, but shared and tmpfs pages, and `mlock`ed pages, are not.
 
-Remember this breakdown. `AnonPages` is process private heap and stack. `Cached` is page cache, including mapped files and tmpfs through `Shmem`. `Slab` splits into `SReclaimable`, which can be freed, and `SUnreclaim`, which cannot. `PageTables` and `KernelStack` are kernel overhead. `HugePages_*` counts memory explicitly reserved, which ordinary allocation cannot use. `Mlocked` and `Unevictable` are pages that reclaim cannot touch.
+Remember this breakdown, because it answers most "where did my RAM go" questions. `AnonPages` is process private heap and stack. `Cached` is page cache, including mapped files and tmpfs through `Shmem`. `Slab` splits into `SReclaimable`, which can be freed, and `SUnreclaim`, which cannot. `PageTables` and `KernelStack` are kernel overhead. `HugePages_*` counts memory explicitly reserved, which ordinary allocation cannot use. `Mlocked` and `Unevictable` are pages that reclaim cannot touch.
 
 ### Pressure and activity: `vmstat`, PSI, `sar`
 
-The summary tells you how much memory is in use. Pressure tells you whether anything is waiting for it.
+The summary tells you how much memory is in use. Pressure tells you whether anything is waiting for it. A machine can have plenty of memory and still be saturated, so check both views.
 
 ```bash
 vmstat 1 5                    # si/so = swap in/out per second; free/buff/cache; b = blocked; wa = I/O wait
@@ -306,13 +310,13 @@ sar -r 1 5; sar -S 1 5        # memory utilisation; swap
 grep -E 'pgscan|pgsteal|allocstall|oom_kill|thp_|compact_stall|numa_' /proc/vmstat
 ```
 
-PSI, or pressure stall information, appeared in Linux 4.20 and later. `some` is the percentage of time at least one task stalled while waiting for memory. `full` is the time when all non-idle tasks stalled. Both come as averages over 10, 60 and 300 seconds. Any sustained non-zero `some` value, and any `full` value, signals saturation more directly than free-memory numbers do. Per-cgroup pressure lives in `memory.pressure`.
+PSI, or pressure stall information, appeared in Linux 4.20 and later. It answers a simple question: are tasks actually waiting for memory? `some` is the percentage of time at least one task stalled while waiting for memory. `full` is the time when all non-idle tasks stalled. Both come as averages over 10, 60 and 300 seconds. Any sustained non-zero `some` value, and any `full` value, signals saturation more directly than free-memory numbers do. Per-cgroup pressure lives in `memory.pressure`.
 
-In `sar -B`, a steady `pgscand/s` means allocating threads are reclaiming memory for themselves. Each of those reclaim passes is a stall.
+In `sar -B`, a steady `pgscand/s` means allocating threads are reclaiming memory for themselves. Each of those reclaim passes is a stall, which is why the number matters more than the amount of free memory.
 
 ### Per process
 
-When one process is the suspect, look at it directly. Each command below shows a different slice of its memory.
+When one process is the suspect, look at it directly. Each command below shows a different slice of its memory, so read them together rather than picking one.
 
 ```bash
 ps -eo pid,ppid,user,rss,vsz,pmem,comm --sort=-rss | head       # RSS in KiB, VSZ; %MEM
@@ -324,7 +328,7 @@ smem -rk | head                # PSS, USS per process (install smem)
 numastat -p PID                # which NUMA nodes hold this process's pages
 ```
 
-In `top`, `VIRT` covers everything allocated and mapped. `RES` is resident memory, and `SHR` is the shared part of `RES`. A large `VIRT` is not a problem by itself. GPU processes often show terabytes of `VIRT`, because the CUDA driver reserves large address ranges. Look at `RES` and its anonymous part instead.
+In `top`, `VIRT` covers everything allocated and mapped. `RES` is resident memory, and `SHR` is the shared part of `RES`. A large `VIRT` is not a problem by itself. GPU processes often show terabytes of `VIRT`, because the CUDA driver reserves large address ranges. Look at `RES` and its anonymous part instead, and compare the process against its own history rather than against a neighbour.
 
 ### Kernel memory and caches: `slabtop`, `/proc/slabinfo`
 
@@ -338,7 +342,7 @@ BCC and bpftrace tools, covered in chapter 1.24, answer narrower questions. `drs
 
 ### The method for memory problems
 
-Work through these steps in order, and change one thing at a time.
+Work through these steps in order, and change one thing at a time. A memory investigation goes wrong when someone changes three settings and then cannot tell which one helped.
 
 1. Run the USE check. Utilisation means `available` and per-cgroup usage. Saturation means PSI, `si/so`, `pgscand` and OOM kills. Errors are allocation failures, OOM kills, and ECC or EDAC events.
 2. Characterise the system. Look at system-wide usage, kernel versus user memory, cache versus anonymous memory, the biggest processes by RSS and PSS, cgroup limits and usage, NUMA distribution, huge page use, and swap.
@@ -346,13 +350,15 @@ Work through these steps in order, and change one thing at a time.
 4. Check the static setup: total RAM and DIMM population, with all channels filled, memory speed, NUMA mode, BIOS settings, huge pages, overcommit, limits and the allocator.
 5. Tune last, one change at a time, as section 10 describes.
 
-Plan capacity for a training node by adding up its needs. Each data-loader worker may hold a copy of the dataset indexes and decoded batches. Add the pinned staging buffers, the framework overhead, the page cache you want to keep for the dataset, and a margin. Compare that total with `MemAvailable` and the cgroup limits. Then test with the real job and watch `RssAnon` and PSI.
+Plan capacity for a training node by adding up its needs. Each data-loader worker may hold a copy of the dataset indexes and decoded batches. Add the pinned staging buffers, the framework overhead, the page cache you want to keep for the dataset, and a margin. Compare that total with `MemAvailable` and the cgroup limits. Then test with the real job and watch `RssAnon` and PSI. A budget on paper is a starting point, not a promise.
 
 ## 7. NUMA in practice
 
-NUMA settings only help once you know the layout of your machine. Start by discovering the topology, and read the distance matrix before you bind anything.
+NUMA settings only help once you know the layout of your machine. Start by discovering the topology, and read the distance matrix before you bind anything. Binding to the wrong node is worse than not binding at all, because it looks deliberate.
 
 ### Discover the topology
+
+Four commands together tell you almost everything: `lscpu` for the summary, `numactl --hardware` for the memory map, `lstopo` for the device tree, and `nvidia-smi topo -m` for the GPUs. Run them on every new platform before you trust a habit.
 
 ```bash
 lscpu | grep -E 'Model name|Socket|NUMA|Thread|Core|L3'
@@ -370,7 +376,7 @@ The `numa_hit` counter means an allocation landed on the node it was meant for. 
 
 ### Policies and binding
 
-The default policy is local allocation with first touch. A page lands on the node of the CPU that first writes it. If one thread initialises a huge buffer and other threads on a different node use it, that buffer is entirely remote for them. The other policies are bind, which uses only the named nodes; preferred, which tries a node and falls back; interleave, which spreads pages round-robin across nodes and suits data that every CPU reads; and local, which is the default.
+The default policy is local allocation with first touch. A page lands on the node of the CPU that first writes it. That rule is sensible until a buffer is shared. If one thread initialises a huge buffer and other threads on a different node use it, that buffer is entirely remote for them. The other policies are bind, which uses only the named nodes; preferred, which tries a node and falls back; interleave, which spreads pages round-robin across nodes and suits data that every CPU reads; and local, which is the default.
 
 ```bash
 numactl --cpunodebind=1 --membind=1 python train.py --gpu 4        # run on node 1's CPUs with node 1's memory
@@ -380,7 +386,7 @@ taskset -c 16-31 ./prog; taskset -cp 16-31 PID                     # CPU affinit
 numactl --show                                                      # current policy of this shell
 ```
 
-Here is a per-GPU launch on an 8-GPU, 2-socket machine. It is illustrative, so derive the nodes from your own topology rather than hard-coding them.
+Here is a per-GPU launch on an 8-GPU, 2-socket machine. Read it as a pattern rather than a recipe. It is illustrative, so derive the nodes from your own topology rather than hard-coding them.
 
 ```bash
 for g in 0 1 2 3 4 5 6 7; do
@@ -389,23 +395,23 @@ for g in 0 1 2 3 4 5 6 7; do
 done; wait
 ```
 
-Inside frameworks, pin each data-loader worker to the GPU's node. In PyTorch, that means a `DataLoader(worker_init_fn=...)` that calls `os.sched_setaffinity` and `libnuma`. Use persistent workers so the affinity survives epochs. Create pinned host buffers from threads on the right node, and re-apply the binding inside worker processes too. A spawn start method or `exec` does not inherit the `numactl` memory policy, but `fork` does. Slurm provides `--cpu-bind`, `--mem-bind` and `--gpu-bind=closest`. Kubernetes offers the Topology Manager and the CPU and Memory Managers, covered in Part 6 and the Kubernetes chapters. For containers, use `docker run --cpuset-cpus --cpuset-mems`.
+Inside frameworks, pin each data-loader worker to the GPU's node. In PyTorch, that means a `DataLoader(worker_init_fn=...)` that calls `os.sched_setaffinity` and `libnuma`. Use persistent workers so the affinity survives epochs. Create pinned host buffers from threads on the right node, and re-apply the binding inside worker processes too. One detail catches people out: a spawn start method or `exec` does not inherit the `numactl` memory policy, but `fork` does. Slurm provides `--cpu-bind`, `--mem-bind` and `--gpu-bind=closest`. Kubernetes offers the Topology Manager and the CPU and Memory Managers, covered in Part 6 and the Kubernetes chapters. For containers, use `docker run --cpuset-cpus --cpuset-mems`.
 
 Automatic NUMA balancing, set with `kernel.numa_balancing=1`, samples page accesses and migrates pages or threads toward each other. That helps general workloads. Its scanning and page-migration faults add overhead and jitter, though, and the kernel's guesses are worse than explicit binding for GPU feeding. Many AI sites disable it with `sysctl kernel.numa_balancing=0` on nodes where processes are explicitly bound. If you keep it on, tune `kernel.numa_balancing_scan_size_mb` instead. The setting `zone_reclaim_mode` is 0 by default on modern kernels. When it is set, allocation reclaims the local node before it uses a remote one. Leave it at 0, except for specific database or NUMA-isolation reasons.
 
 Grace-based systems, such as GH200 and GB200, expose CPU memory as NUMA nodes. Depending on configuration, GPU memory can appear as NUMA nodes too, and the distances differ a lot. The unified, coherent address space removes the need to copy data, but it does not remove the need to place data well. Always read `numactl -H` and the platform guide.
 
-Bind by topology rather than by habit, and check `numactl -H` on every new platform.
+Bind by topology rather than by habit, and check `numactl -H` on every new platform. The machine will tell you where its memory and its GPUs live; the mistake is assuming they live in the same place.
 
 ## 8. Huge pages and transparent huge pages
 
-Here is the problem a huge page solves. A 256 GiB dataset mapped with 4 KiB pages needs 67 million page-table entries. The TLB can cache only a few dozen of them, so the program misses constantly and pays for a page walk on most accesses.
+A database team once asked for huge pages on every node, and the reason was simple. Their working set was large and their TLB was thrashing. Here is the problem a huge page solves. A 256 GiB dataset mapped with 4 KiB pages needs 67 million page-table entries. The TLB can cache only a few dozen of them, so the program misses constantly and pays for a page walk on most accesses.
 
 Huge pages, at 2 MiB and 1 GiB on x86-64, address that problem. They shrink the page table, shorten the walk, and raise TLB reach by 512x or more. The gain is typically 3% to 10%, and it can be larger on memory-heavy workloads. You also see fewer page faults during initial population.
 
 ### Explicit huge pages (hugetlb)
 
-Explicit huge pages are reserved at boot or at runtime, in a dedicated pool. That memory is not swappable, and it does not count as normal available memory. Only applications that ask for huge pages use them.
+Explicit huge pages are reserved at boot or at runtime, in a dedicated pool. That memory is not swappable, and it does not count as normal available memory. Only applications that ask for huge pages use them. The pool is a reservation, like a block of rooms held for a conference.
 
 ```bash
 grep -i huge /proc/meminfo                                  # HugePages_Total/Free/Rsvd/Surp, Hugepagesize
@@ -421,7 +427,7 @@ Use explicit huge pages for VM guests and hypervisors, DPDK and RDMA data planes
 
 ### Transparent huge pages (THP)
 
-Transparent huge pages, or THP, work differently. The kernel backs large aligned anonymous regions with 2 MiB pages on its own, and it splits or merges them as needed. Applications need no changes.
+Transparent huge pages, or THP, work differently. The kernel backs large aligned anonymous regions with 2 MiB pages on its own, and it splits or merges them as needed. Applications need no changes, which is why the word transparent appears in the name.
 
 ```bash
 cat /sys/kernel/mm/transparent_hugepage/enabled      # [always] madvise never
@@ -440,7 +446,7 @@ When you use large pinned host buffers, see section 11 for `memlock`.
 
 ## 9. Allocators and heap behaviour
 
-Here is a surprise that catches many engineers. You free a large block, and RSS stays high anyway. That alone does not mean a leak.
+Here is a surprise that catches many engineers. You free a large block, and RSS stays high anyway. That alone does not mean a leak. The allocator is holding the memory on purpose, the way a warehouse keeps shelving after a delivery leaves.
 
 `malloc` is library code in user space, not a system call. It obtains big chunks from the kernel, using `brk` for the main heap and `mmap` for large requests and per-thread arenas, and then it hands out pieces. When you `free` memory, the allocator usually keeps it, so the memory returns to the allocator rather than to the operating system. RSS therefore stays high. This is normal heap growth.
 
@@ -448,7 +454,7 @@ glibc's `malloc_trim()` and `M_TRIM_THRESHOLD` can release memory at the top of 
 
 Multithreaded programs can create up to 8x CPU-count arenas, and that multiplies fragmentation. Tune glibc with `MALLOC_ARENA_MAX=2..4`, `MALLOC_TRIM_THRESHOLD_` and `MALLOC_MMAP_THRESHOLD_`, or with `GLIBC_TUNABLES=glibc.malloc.arena_max=4`.
 
-Several allocators compete with glibc, and each one trades speed, memory overhead and fragmentation differently. The table lists the main options.
+Several allocators compete with glibc, and each one trades speed, memory overhead and fragmentation differently. None of them is simply better than the others. The table lists the main options.
 
 | Allocator | Notes |
 |---|---|
@@ -460,7 +466,7 @@ Several allocators compete with glibc, and each one trades speed, memory overhea
 
 Measure before you switch, because the table describes what each allocator is built for, not what it will do to your workload. You can switch without recompiling, using `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python train.py`. Check `/proc/PID/maps` to confirm the library loaded. Then measure RSS and throughput before and after, because the effect can be negative.
 
-Python has its own quirks. CPython's `pymalloc` allocates 256 KiB arenas from the OS. A single surviving small object keeps an entire arena resident. That means deleting a big list and calling `gc.collect()` may not bring RSS back to its old value. Reference cycles need the cyclic collector. Native extension memory, such as NumPy or PyTorch host tensors, is allocated outside `pymalloc`.
+Python has its own quirks. CPython's `pymalloc` allocates 256 KiB arenas from the OS. A single surviving small object keeps an entire arena resident, which is why one small reference can hold a large block of memory. That means deleting a big list and calling `gc.collect()` may not bring RSS back to its old value. Reference cycles need the cyclic collector. Native extension memory, such as NumPy or PyTorch host tensors, is allocated outside `pymalloc`.
 
 Several fixes help. Recycle worker processes with `maxtasksperchild`. Use `jemalloc`. Avoid holding giant collections of Python objects, and use NumPy, Arrow or memory-mapped files instead. Also note that `del` plus `torch.cuda.empty_cache()` acts on GPU memory only, not on host RAM.
 
@@ -468,11 +474,11 @@ Data loaders with many workers have one more trap. `fork` shares pages copy-on-w
 
 To detect a leak, first confirm that `RssAnon` grows steadily over a long period under steady load. Then ask whether the growth is a cache or a pool. Next, use allocator profiling, such as the jemalloc `prof` option, the tcmalloc heap profiler, or `valgrind massif` for small tests. In production, `memleak` works, and so does this `bpftrace` one-liner, though you should watch its overhead: `bpftrace -e 'uprobe:/lib/x86_64-linux-gnu/libc.so.6:malloc /pid == 4840/ { @[ustack] = hist(arg0); }'`. Python `tracemalloc` and `memray` cover the Python side. Read `/proc/PID/smaps` to see which mapping grows, whether heap, anonymous mmap or shared, and run `pmap -x` over time. Kernel-side leaks show as growing `Slab`, `SUnreclaim` or `PageTables`.
 
-When RSS climbs, decide whether the growth is a leak or a cache before you touch the allocator.
+When RSS climbs, decide whether the growth is a leak or a cache before you touch the allocator. The allocator is usually doing its job; the question is whether the program asked it to.
 
 ## 10. Tuning parameters
 
-Defaults are usually sensible, so change a setting only when you have evidence. The table lists representative `vm.*` and `kernel.*` settings. The kernel documentation for them lives in `Documentation/admin-guide/sysctl/vm.rst`.
+Defaults are usually sensible, so change a setting only when you have evidence. A default is the vendor's best guess for a typical machine, and a GPU node is not a typical machine, but that is a reason to measure, not a reason to guess. The table lists representative `vm.*` and `kernel.*` settings. The kernel documentation for them lives in `Documentation/admin-guide/sysctl/vm.rst`.
 
 | Parameter | Default | Meaning and GPU-node practice |
 |---|---|---|
@@ -491,7 +497,7 @@ Defaults are usually sensible, so change a setting only when you have evidence. 
 | `kernel.pid_max` / `kernel.threads-max` | 32768+ / varies | Raise for dense containers and many threads |
 | `vm.compact_unevictable_allowed`, `vm.compaction_proactiveness` | | Compaction behaviour (THP stalls) |
 
-The file below is an illustrative starting point for a GPU node. Validate it on a canary node before you roll it out.
+The file below is an illustrative starting point for a GPU node. It is a worked example, not a standard. Validate it on a canary node before you roll it out.
 
 ```ini
 # /etc/sysctl.d/90-gpu-node-memory.conf   (illustrative; validate on a canary node)
@@ -510,7 +516,7 @@ Kernel command line settings, covered in chapter 1.14, include `transparent_huge
 
 ### cgroup v2 memory controller
 
-A container gets its memory from a cgroup, and the cgroup decides when that container is out of memory. Read these files to see what a container is allowed to use and what it actually uses.
+A container gets its memory from a cgroup, and the cgroup decides when that container is out of memory. That is the key idea of this section: the limit that matters may belong to the group, not to the machine. Read these files to see what a container is allowed to use and what it actually uses.
 
 ```bash
 cat /sys/fs/cgroup/<path>/memory.max          # hard limit ("max" = none)
@@ -524,9 +530,9 @@ cat /sys/fs/cgroup/<path>/memory.swap.max / memory.swap.current
 echo 1 > /sys/fs/cgroup/<path>/memory.oom.group     # kill the whole group on OOM
 ```
 
-Two points matter most. `memory.current` includes page cache charged to the cgroup. When usage nears `memory.max`, the kernel reclaims the cgroup's own cache first, so high usage is not necessarily a problem. The working set is the real concern, and you find it in `memory.stat` under `anon` and active file. A container whose `anon` approaches `memory.max` will be OOM-killed.
+Two points matter most, and together they explain most container OOM surprises. `memory.current` includes page cache charged to the cgroup. When usage nears `memory.max`, the kernel reclaims the cgroup's own cache first, so high usage is not necessarily a problem. The working set is the real concern, and you find it in `memory.stat` under `anon` and active file. A container whose `anon` approaches `memory.max` will be OOM-killed.
 
-`memory.high` slows the group down before it is killed, through throttling and reclaim. That makes it a good soft limit for batch jobs.
+`memory.high` slows the group down before it is killed, through throttling and reclaim. That makes it a good soft limit for batch jobs, because it turns a sudden death into a slowdown you can observe.
 
 In Kubernetes, `resources.limits.memory` sets `memory.max`. `requests.memory` influences scheduling, and it drives `memory.min/low` protection through QoS classes: Guaranteed, Burstable and BestEffort. The same classes set OOM score adjustments, and BestEffort pods are killed first. A memory-backed `emptyDir`, which is tmpfs, counts toward the pod's memory.
 
@@ -534,7 +540,7 @@ Slurm's `--mem`, `--mem-per-cpu` and `--mem-per-gpu` become cgroup limits, throu
 
 ### Pinned (page-locked) memory, `memlock`, and DMA
 
-GPUs and NICs move data by DMA, which needs physical addresses that do not move. Pinned, or page-locked, memory is excluded from swapping and migration, so the device can read and write it directly. Host-to-device copies from pinned memory are typically 2x to 3x faster than copies from pageable memory, because no staging copy is needed. Pinned memory also allows asynchronous overlap with compute, through `cudaMemcpyAsync`, PyTorch `pin_memory=True`, `tensor.pin_memory()` and `non_blocking=True`. GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too. Pinning has five consequences.
+A job that runs fine on one node can fail on another while registering memory, even though the GPU has room. The difference is often the `memlock` limit. GPUs and NICs move data by DMA, which needs physical addresses that do not move. Pinned, or page-locked, memory is excluded from swapping and migration, so the device can read and write it directly. Host-to-device copies from pinned memory are typically 2x to 3x faster than copies from pageable memory, because no staging copy is needed. Pinned memory also allows asynchronous overlap with compute, through `cudaMemcpyAsync`, PyTorch `pin_memory=True`, `tensor.pin_memory()` and `non_blocking=True`. GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too. Pinning has five consequences.
 
 - Pinned memory is limited by `RLIMIT_MEMLOCK`, which you read with `ulimit -l`. A low limit makes registrations fail. Symptoms include `ibv_reg_mr` errors, CUDA "out of memory" errors while pinning host memory, and NCCL `ibv_reg_mr` failures. Set `memlock` to `unlimited` for HPC and AI users and services. Use `/etc/security/limits.d/*.conf` for logins, `LimitMEMLOCK=infinity` for systemd units, `--ulimit memlock=-1:-1` for Docker, Slurm `PropagateResourceLimits`, and runtime configuration for Kubernetes. Chapters 1.8 and 1.15 cover the details.
 - Pinned pages are unevictable. They reduce what the kernel can reclaim, they count in `Mlocked` and `Unevictable`, and they count in cgroup accounting. Pinning most of RAM invites OOM, so keep staging buffers sized to need and reuse them.
@@ -544,13 +550,13 @@ GPUs and NICs move data by DMA, which needs physical addresses that do not move.
 
 ### Host memory budget for a training node
 
-Budget host memory for each node in pieces. Start with the operating system and daemons, which take a few GB. Add the data-loader workers. Each worker carries process overhead, decoded batches and a prefetch queue, so multiply that cost by the number of workers and GPUs. Then add the pinned staging buffers, the framework host allocations (CUDA context host memory, NCCL buffers, and NCCL proxy threads), the page cache you want to keep for the dataset, headroom for checkpoint staging in tmpfs or page cache, and a margin.
+Budget host memory for each node in pieces, the way you would budget a household. Start with the operating system and daemons, which take a few GB. Add the data-loader workers. Each worker carries process overhead, decoded batches and a prefetch queue, so multiply that cost by the number of workers and GPUs. Then add the pinned staging buffers, the framework host allocations (CUDA context host memory, NCCL buffers, and NCCL proxy threads), the page cache you want to keep for the dataset, headroom for checkpoint staging in tmpfs or page cache, and a margin.
 
 A common mistake is multiplying workers across GPUs: 8 GPUs x 16 workers x 2 GB can exceed RAM before you notice. Another is putting checkpoints in `/dev/shm` without a size cap. Monitor `MemAvailable`, PSI, per-cgroup `memory.stat` and the OOM counters.
 
 ### Swap and memory policy summary
 
-The table brings the settings together by node type, so you can compare them side by side.
+The table brings the settings together by node type, so you can compare them side by side. Read it as a set of starting positions, not as law.
 
 | Node type | Swap | Swappiness | THP | NUMA balancing | Limits |
 |---|---|---|---|---|---|
@@ -563,38 +569,38 @@ Start from the row that matches your node type, and change it only after you mea
 
 ## How it fails
 
-Use this list as a map from symptom to likely cause. Check the named counters before you change a setting.
+Use this list as a map from symptom to likely cause. Each entry names the check to run first, so start there. Check the named counters before you change a setting.
 
 1. **Exit code 137 / "Killed".** This is an OOM kill. Check `dmesg -T | grep -i -E 'oom|killed process'` and `memory.events oom_kill`. Then decide whether it was a cgroup OOM, which points to a limit that is too low or a leak, or a global one.
-2. **"Free memory is 0" panic.** Someone misread `free`. Look at `available` and PSI instead.
+2. **"Free memory is 0" panic.** Someone misread `free`. Look at `available` and PSI instead. The memory is probably cache, and the kernel will hand it back when asked.
 3. **System slow, high load, `kswapd` busy or `sys` time high.** Memory pressure is the likely cause, through direct reclaim or THP compaction. Check PSI, `sar -B` and `/proc/vmstat`.
-4. **Swapping a GPU job.** Swap is enabled and swappiness is at its default. Lower swappiness or disable swap, and find the oversized consumer.
-5. **Cross-socket slowdown.** The loader sits on the wrong NUMA node. Check `numastat -p`, bind with `numactl`, and compare against `nvidia-smi topo -m`.
-6. **THP stalls, which show up as periodic latency spikes.** Read the `compact_stall` and `thp_*` counters, then set `madvise` and `defrag=defer`.
-7. **Huge pages unavailable at runtime, with `nr_hugepages` lower than requested.** Fragmentation is the cause, so reserve them at boot.
-8. **`ibv_reg_mr` or pinned allocation fails.** Check the `memlock` limit with `ulimit -l`, the unit limits, and the container ulimits.
+4. **Swapping a GPU job.** The node has swap enabled and swappiness is at its default, so pages from the job are going to disk. Lower swappiness or disable swap, and find the oversized consumer.
+5. **Cross-socket slowdown.** One rank is fine and another is slow, and `numastat` shows remote traffic. The loader sits on the wrong NUMA node. Check `numastat -p`, bind with `numactl`, and compare against `nvidia-smi topo -m`.
+6. **THP stalls, which show up as periodic latency spikes.** Latency is smooth for a while, then spikes, then recovers. Read the `compact_stall` and `thp_*` counters, then set `madvise` and `defrag=defer`.
+7. **Huge pages unavailable at runtime, with `nr_hugepages` lower than requested.** The request looks right, yet the pool is smaller than asked for. Fragmentation is the cause, so reserve them at boot.
+8. **`ibv_reg_mr` or pinned allocation fails.** The GPU has room, yet registration returns an error. Check the `memlock` limit with `ulimit -l`, the unit limits, and the container ulimits.
 9. **"Cannot allocate memory" with free RAM.** Several limits can cause this. `vm.max_map_count` may be exhausted, or `overcommit_memory=2` may be limiting you. The address-space limit (`ulimit -v`) may be hit, or a cgroup limit may apply. A NUMA bind may point at a full node. A `fork` of a large process may also fail under strict overcommit.
-10. **RSS never shrinks after freeing.** Allocator behaviour or Python arenas cause this, and it is not necessarily a leak. Recycle workers or change the allocator.
-11. **Dataloader workers each hold a full copy.** Reference counts break copy-on-write. Use shared or mmap formats.
-12. **`/dev/shm` or tmpfs fills memory.** Set size limits, and remember that a Memory `emptyDir` works the same way.
+10. **RSS never shrinks after freeing.** The program released the memory in its own accounting, but RSS stays high. Allocator behaviour or Python arenas cause this, and it is not necessarily a leak. Recycle workers or change the allocator.
+11. **Dataloader workers each hold a full copy.** Memory grows with every worker you add, instead of staying flat. Reference counts break copy-on-write. Use shared or mmap formats.
+12. **`/dev/shm` or tmpfs fills memory.** A job writes temporary files and the node runs out of memory while the files look disposable. Set size limits, and remember that a Memory `emptyDir` works the same way.
 13. **Kernel slab leak, with `SUnreclaim` growing.** That points to a driver or kernel bug. Schedule a reboot window, and report it with `slabtop` evidence.
-14. **ECC errors accumulate, then the node crashes.** Watch the EDAC counters, and replace DIMMs before they fail.
+14. **ECC errors accumulate, then the node crashes.** Correctable errors climb in the logs before the failure. Watch the EDAC counters, and replace DIMMs before they fail.
 15. **Kubernetes pod OOMKilled below node capacity.** The limit may be set too low, or page cache may be counted. Look at the working set in `memory.stat`. For training pods, set `requests` equal to `limits` to get Guaranteed QoS.
-16. **OOM killer picks `sshd` or `kubelet`.** `OOMScoreAdjust` is missing, or the slices have no protection.
+16. **OOM killer picks `sshd` or `kubelet`.** A login or a node daemon dies instead of the job. `OOMScoreAdjust` is missing, or the slices have no protection.
 
-Start with the first symptom that matches, and confirm it with the counters before you change a setting.
+Start with the first symptom that matches, and confirm it with the counters before you change a setting. A symptom is a clue, not a diagnosis.
 
 ## Hands-on lab: virtual memory, NUMA, huge pages, OOM, and VM drills
 
-Start with the self-checking Python lab. Run it on your own machine first. It verifies TLB reach with `4 KiB`, `2 MiB` and `1 GiB` huge pages. It checks `USS`, `PSS` and `RSS` shared-memory accounting, and zone reclaim watermarks (`min`, `low` and `high`, derived from `min_free_kbytes` and `watermark_scale_factor`). It also checks OOM badness scoring with `oom_score_adj`, and 8-GPU host RAM budgeting.
+Time to see these ideas move. Start with the self-checking Python lab, and run it on your own machine first. It verifies TLB reach with `4 KiB`, `2 MiB` and `1 GiB` huge pages. It checks `USS`, `PSS` and `RSS` shared-memory accounting, and zone reclaim watermarks (`min`, `low` and `high`, derived from `min_free_kbytes` and `watermark_scale_factor`). It also checks OOM badness scoring with `oom_score_adj`, and 8-GPU host RAM budgeting.
 
 ```bash
 python3 code/part01/memory_numa_oom_lab.py
 ```
 
-Next, use a disposable GCP Ubuntu VM with at least 4 GiB RAM and `sudo`, and work through the steps below. All interactive VM commands in this section are `untested here`. Never run memory-exhaustion drills on a shared or production machine.
+Next, use a disposable GCP Ubuntu VM with at least 4 GiB RAM and `sudo`, and work through the steps below. All interactive VM commands in this section are `untested here`. Never run memory-exhaustion drills on a shared or production machine. Take a snapshot first, then enjoy watching a VM misbehave on purpose.
 
-**A. Read memory.** Begin with the counters you already know, and see what they show on a quiet machine.
+**A. Read memory.** Begin with the counters you already know, and see what they show on a quiet machine. This is your baseline, and every later change is easier to read against it.
 
 ```bash
 free -h; grep -E 'MemAvailable|Cached|AnonPages|Slab|SReclaimable|SUnreclaim|PageTables|Mlocked|Huge|Committed_AS|CommitLimit' /proc/meminfo # (untested here)
@@ -604,7 +610,7 @@ cat /proc/$$/smaps_rollup; pmap -x $$ | tail -5 # (untested here)
 sudo slabtop -o -s c | head -10         # (untested here)
 ```
 
-**B. Demand paging.** Map one gigabyte, touch none of it, and watch RSS and the minor fault count. Then touch every page and watch them change.
+**B. Demand paging.** Map one gigabyte, touch none of it, and watch RSS and the minor fault count. Then touch every page and watch them change. This is the clearest demonstration in the chapter of the gap between promised and real memory.
 
 ```bash
 python3 - <<'EOF' # (untested here)
@@ -618,7 +624,7 @@ print("after touch: RSS MiB", rss(), "minflt", resource.getrusage(resource.RUSAG
 EOF
 ```
 
-**C. Page cache and `available`.** Write a file, then compare `buff/cache` with `available`. Dropping the cache is a test step, and the file is removed at the end.
+**C. Page cache and `available`.** Write a file, then compare `buff/cache` with `available`. Watch how much the cache grows and how little `available` moves. Dropping the cache is a test step, and the file is removed at the end.
 
 ```bash
 free -h; dd if=/dev/zero of=/tmp/big bs=1M count=2048 status=none; sync # (untested here)
@@ -627,7 +633,7 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; free -h # (untested here)
 rm /tmp/big                             # (untested here)
 ```
 
-**D. cgroup memory limit and OOM.** Run a process that allocates past a `MemoryMax` limit, then read the kernel log. The second run shows `MemoryHigh` throttling before the hard limit.
+**D. cgroup memory limit and OOM.** Run a process that allocates past a `MemoryMax` limit, then read the kernel log. You are watching the cgroup version of the OOM killer, which is the one a container usually meets. The second run shows `MemoryHigh` throttling before the hard limit.
 
 ```bash
 sudo systemd-run --scope -p MemoryMax=300M -p MemorySwapMax=0 --unit=oomlab python3 -c 'x=[bytearray(10*1024*1024) for _ in range(100)]'; echo "exit $?" # (untested here)
@@ -639,14 +645,14 @@ time.sleep(5)' # (untested here)
 # inspect while running in another shell: systemctl show highlab.scope -p MemoryCurrent; cat /sys/fs/cgroup/system.slice/highlab.scope/memory.events
 ```
 
-**E. oom_score_adj.** Start a sleeping process, read its score, then raise its `oom_score_adj` and read the score again.
+**E. oom_score_adj.** Start a sleeping process, read its score, then raise its `oom_score_adj` and read the score again. The number is the kernel's ranking, and you are moving your process up the list on purpose.
 
 ```bash
 sleep 600 & P=$!; cat /proc/$P/oom_score /proc/$P/oom_score_adj # (untested here)
 echo 500 | sudo tee /proc/$P/oom_score_adj; cat /proc/$P/oom_score; sudo kill $P # (untested here)
 ```
 
-**F. NUMA (on a multi-node machine, or `numactl --hardware` on any).** Read the topology, then see where a process's pages land.
+**F. NUMA (on a multi-node machine, or `numactl --hardware` on any).** Read the topology, then see where a process's pages land. A single-node VM is still useful, because the commands and the output shape are the same.
 
 ```bash
 sudo apt install -y numactl hwloc       # (untested here)
@@ -655,7 +661,7 @@ numactl --cpunodebind=0 --membind=0 python3 -c 'import os; print(open("/proc/sel
 numastat -p $$                          # (untested here)
 ```
 
-**G. Huge pages and THP.** Read the THP settings, reserve a small pool of explicit huge pages, then test THP with `always` and return it to `madvise`.
+**G. Huge pages and THP.** Read the THP settings, reserve a small pool of explicit huge pages, then test THP with `always` and return it to `madvise`. Put the setting back when you finish, so the VM is not left in an unusual state.
 
 ```bash
 cat /sys/kernel/mm/transparent_hugepage/{enabled,defrag}; grep -E 'AnonHugePages|HugePages_|Hugepagesize' /proc/meminfo # (untested here)
@@ -666,7 +672,7 @@ sudo sh -c 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled' # (untes
 grep -E 'thp_fault_alloc|thp_collapse_alloc|compact_stall' /proc/vmstat # (untested here)
 ```
 
-**H. Allocator behaviour.** Build a large list of strings, free it, and watch whether RSS comes back. Then repeat the run with jemalloc and with a single glibc arena.
+**H. Allocator behaviour.** Build a large list of strings, free it, and watch whether RSS comes back. Then repeat the run with jemalloc and with a single glibc arena. The three runs answer the allocator question with evidence rather than opinion.
 
 ```bash
 cat > /tmp/alloc.py <<'EOF'
@@ -681,13 +687,13 @@ sudo apt install -y libjemalloc2; LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemall
 MALLOC_ARENA_MAX=1 python3 /tmp/alloc.py # (untested here)
 ```
 
-**I. memlock.** Lower the soft `memlock` limit, then try to lock one megabyte and read the error code.
+**I. memlock.** Lower the soft `memlock` limit, then try to lock one megabyte and read the error code. This is the failure that stops RDMA and pinned allocations on an otherwise healthy node.
 
 ```bash
 ulimit -l; ulimit -Sl 64; python3 -c 'import mmap,ctypes; libc=ctypes.CDLL("libc.so.6",use_errno=True); b=ctypes.create_string_buffer(1<<20); print(libc.mlock(b,ctypes.c_size_t(1<<20)), ctypes.get_errno())' # (untested here)
 ```
 
-**J. (GPU VM, optional) pinned versus pageable.** Copy the same buffer to the GPU from pageable and pinned memory, then compare the bandwidth.
+**J. (GPU VM, optional) pinned versus pageable.** Copy the same buffer to the GPU from pageable and pinned memory, then compare the bandwidth. The gap is why serious data loaders pin their staging buffers.
 
 ```bash
 python3 - <<'EOF' # (untested here)
@@ -701,6 +707,8 @@ EOF
 ```
 
 ## Exercises
+
+Work these on paper before you run anything. Each one is designed to make a number or a mechanism concrete, and the answers are easier to remember when you have made a wrong guess first.
 
 1. **Page tables, TLB reach, and huge pages (4 KiB vs 2 MiB vs 1 GiB).** (a) How many 4 KiB page-table entries (`PTE`s) does a 256 GiB host dataset need? And how many memory reads can a 5-level page walk (`CR3 -> PGD -> P4D -> PUD -> PMD -> PTE`) require on a TLB miss? (b) Using `compute_tlb_reach_bytes()` in `code/part01/memory_numa_oom.py`, compute the TLB reach in MiB of a 64-entry data TLB with 4 KiB, 2 MiB, and 1 GiB pages.
 

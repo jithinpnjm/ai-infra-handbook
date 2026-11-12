@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-It is the middle of the night, and a training run that was fast yesterday now crawls. Or a pod refuses to terminate. Or a node shows a load average of 90 while its CPUs sit idle. Each of these problems is a process problem, so you need a clear model of processes before you can fix them.
+It is the middle of the night, and a training run that was fast yesterday now crawls. Or a pod refuses to terminate. Or a node shows a load average of 90 while its CPUs sit idle. Each of these problems is a process problem, and each one looks impossible until you can picture what the process itself is doing. That picture is what this chapter builds.
 
 Everything an AI platform runs is a process. A training script and its data-loader workers are processes. So are the NCCL communication threads, `slurmd` and `slurmstepd`, `containerd`, the NVIDIA persistence daemon and a vLLM server. When something goes wrong, the questions you ask are process questions:
 
@@ -33,7 +33,9 @@ Everything an AI platform runs is a process. A training script and its data-load
 - "Which process is holding this GPU or this file?" (`lsof`, `fuser`, `nvidia-smi`)
 - "The scheduler asked my job to stop and it lost its checkpoint." (signals delivered to batch jobs)
 
-Each question points to a different part of the process model, so this chapter builds that model first. Start at the bottom. The first sections explain what the kernel does for a process and how a program becomes one. Then you will see the life cycle and the states a process can be in, and how to look at a process from the outside with `ps`, `top`, `/proc`, `lsof` and `strace`. Signals come next, followed by job control, priority and limits. The chapter then covers load, the first resource-monitoring tools, and how control groups cap what a group of processes may consume. It ends with the AI-infrastructure consequences: signals in containers and schedulers, hung training jobs and graceful shutdown.
+Each question points to a different part of the same model, so this chapter builds that model first and then uses it. Start at the bottom. The first sections explain what the kernel does for a process, and how a program becomes one. Then you will see the life cycle and the states a process can be in, and how to look at a process from the outside with `ps`, `top`, `/proc`, `lsof` and `strace`.
+
+Signals come next, followed by job control, priority and limits. The chapter then covers load, the first resource-monitoring tools, and how control groups cap what a group of processes may consume. It ends with the AI-infrastructure consequences: signals in containers and schedulers, hung training jobs and graceful shutdown.
 
 Later chapters go deeper. Memory is in 1.17, CPU scheduling and cgroups in 1.18, namespaces in 1.19, the performance method in 1.23 and observability tools in 1.24.
 
@@ -58,7 +60,11 @@ When you finish this chapter, you should be able to do the following:
 
 ### The operating system in one picture
 
-The kernel is the program that is always running. It manages the hardware and shares it among processes. Linux uses a **monolithic kernel**, which means scheduling, memory management, filesystems, network protocols and device drivers all run together in one privileged program. Other designs exist. Microkernels keep very little inside the kernel, and unikernels compile the application and the kernel together. Linux's kernel is still extensible, through loadable modules (chapter 1.22). Around the kernel sit **system libraries**. The C library, `libc`, is one of them, and it wraps system calls in a friendlier interface. Applications sit above the libraries. Programs normally reach the kernel through libraries, but they can also invoke system calls directly, as some language runtimes, such as Go's, do.
+Picture the machine underneath your training job. Several things are happening at once: the GPU driver is servicing an interrupt, the network stack is draining a socket, the filesystem is writing a checkpoint, and your Python code is running on two cores. One program has to keep order over all of it, and that program is the kernel.
+
+The kernel is the program that is always running. It manages the hardware and shares it among processes. Linux uses a **monolithic kernel**, which means scheduling, memory management, filesystems, network protocols and device drivers all run together in one privileged program. Other designs exist. Microkernels keep very little inside the kernel, and unikernels compile the application and the kernel together. Linux's kernel is still extensible, through loadable modules (chapter 1.22).
+
+Around the kernel sit **system libraries**. The C library, `libc`, is one of them, and it wraps system calls in a friendlier interface. Applications sit above the libraries. Programs normally reach the kernel through libraries, but they can also invoke system calls directly, as some language runtimes, such as Go's, do.
 
 ```mermaid
 flowchart TB
@@ -88,11 +94,17 @@ flowchart TB
 
 ### Kernel mode and user mode
 
-Imagine what a stray instruction could do if every program could run any instruction. The CPU avoids that with two modes. In **privileged mode** (kernel mode), every instruction and all the hardware are accessible. In **unprivileged mode** (user mode), a privileged instruction raises an exception. The kernel turns that exception into an error, typically "permission denied" or a crash. On x86 this is implemented with protection **rings**. Ring 0 is the kernel and ring 3 is user code.
+Imagine what a stray instruction could do if every program could run any instruction. One bad pointer could reach into another job's memory, or stop the disk controller halfway through a write. The CPU avoids that with two modes.
 
-Processes run in user mode, so you rarely see the kernel at work. You see only its results. When a process needs privileged work, mainly I/O, it asks the kernel with a **system call**. Switching between the two modes is a **mode switch**. Switching from one thread to another is a **context switch**, in which the CPU registers are swapped. Every system call causes a mode switch. Calls that block, such as waiting for disk or network, also cause a context switch. That lets another thread use the CPU while the first one waits.
+In **privileged mode** (kernel mode), every instruction and all the hardware are accessible. In **unprivileged mode** (user mode), a privileged instruction raises an exception. The kernel turns that exception into an error, typically "permission denied" or a crash. On x86 this is implemented with protection **rings**. Ring 0 is the kernel and ring 3 is user code.
 
-Each switch costs a little time, so the kernel offers ways to avoid them on the hot paths you care about. Some "system calls", such as reading the clock, are served entirely in user space through a kernel-supplied page called the **vDSO**. Memory-mapped files let a program read file data without one call per access. **Kernel bypass** technologies let user space talk to a device directly. DPDK does this for networking, RDMA verbs for InfiniBand, and GPUDirect. That matters on GPU clusters (chapters on RDMA and NCCL). The Meltdown mitigation, kernel page-table isolation (KPTI), made mode switches more expensive on affected CPUs. How much that costs depends on how often a workload makes system calls.
+Processes run in user mode, so you rarely see the kernel at work. You see only its results. When a process needs privileged work, mainly I/O, it asks the kernel with a **system call**. Switching between the two modes is a **mode switch**. Switching from one thread to another is a **context switch**, in which the CPU registers are swapped.
+
+Every system call causes a mode switch. Calls that block, such as waiting for disk or network, also cause a context switch. That lets another thread use the CPU while the first one waits.
+
+Each switch costs a little time, so the kernel offers ways to avoid them on the hot paths you care about. Some "system calls", such as reading the clock, are served entirely in user space through a kernel-supplied page called the **vDSO**. Memory-mapped files let a program read file data without one call per access. **Kernel bypass** technologies let user space talk to a device directly.
+
+DPDK does this for networking, RDMA verbs for InfiniBand, and GPUDirect. That matters on GPU clusters (chapters on RDMA and NCCL). The Meltdown mitigation, kernel page-table isolation (KPTI), made mode switches more expensive on affected CPUs. How much that costs depends on how often a workload makes system calls.
 
 ### System calls
 
@@ -119,7 +131,11 @@ If you trace a program, you will see system calls one after another. A system ca
 
 A **hardware interrupt** is a signal from a device, such as "disk request complete", "packet arrived" or "key pressed". It makes the CPU stop what it is doing, enter the kernel and run an **interrupt service routine**. Interrupts are asynchronous, so you cannot predict when one arrives. By the time a disk finishes, the process that asked for the data may no longer be running on that CPU.
 
-Driver work is split so that interrupts stay disabled for as short a time as possible. The **top half** acknowledges the device quickly. The **bottom half**, made of softirqs, tasklets and work queues, does the real processing later, and it can be scheduled like threads. Software also causes events of its own. A **trap** is a deliberate entry to the kernel, such as a system call. An **exception** is something like a divide by zero. A **fault** is a page fault, covered in section 8. A few interrupts cannot be masked. These are the non-maskable interrupts, such as a hardware watchdog that reboots a hung machine. The time between an interrupt arriving and its handler running is the **interrupt latency**. It is a key concept for real-time systems, and for pinning GPU and NIC interrupts to the right cores (chapter 1.28).
+Driver work is split so that interrupts stay disabled for as short a time as possible. The **top half** acknowledges the device quickly. The **bottom half**, made of softirqs, tasklets and work queues, does the real processing later, and it can be scheduled like threads.
+
+Software also causes events of its own. A **trap** is a deliberate entry to the kernel, such as a system call. An **exception** is something like a divide by zero. A **fault** is a page fault, covered in section 8. A few interrupts cannot be masked. These are the non-maskable interrupts, such as a hardware watchdog that reboots a hung machine.
+
+The time between an interrupt arriving and its handler running is the **interrupt latency**. It is a key concept for real-time systems, and for pinning GPU and NIC interrupts to the right cores (chapter 1.28).
 
 The kernel also keeps a **clock tick**. This is a periodic timer interrupt, commonly 250 times per second on Linux, set by `CONFIG_HZ`. Each tick updates the time, expires timers, accounts CPU usage and lets the scheduler preempt a running thread. Ticks wake idle CPUs and disturb applications slightly. That disturbance is called "OS jitter". Modern kernels are therefore **tickless** when idle (`NO_HZ`). They can also omit the tick for a CPU that runs a single task (`nohz_full`), a setting used when tuning latency-sensitive nodes. When there is nothing to run, a CPU executes an **idle thread**. It halts the core until the next interrupt arrives, which saves power.
 
@@ -130,6 +146,8 @@ When you see high latency on a GPU node, interrupt latency is one place to look.
 Before you tune for latency, find out which preemption model the kernel was built with.
 
 ## 2. What a process is
+
+Suppose a colleague asks you to look at "the thing that is eating the node". You run `ps`, and you get a wall of numbers with one line per something. Before any of those numbers can mean anything, you need a clear idea of what one of those somethings is.
 
 A **program** is a file on disk. A **process** is what the kernel makes when it runs that program. The kernel builds an environment around the program so it can execute. A process consists of:
 
@@ -145,15 +163,21 @@ Think of a process as a small virtual computer that runs one program, with its o
 
 ### Threads
 
-A **thread** is the unit the scheduler actually runs. Every process starts with one thread, the **main thread**, and it can create more. Threads inside a process share the address space and the file descriptors. Each thread still has its own stack and registers. Threads start faster than separate processes, and they can communicate by reading and writing shared memory. A multithreaded program can therefore use several cores without copying data between processes. The price is that you must protect shared memory with careful locking.
+A **thread** is the unit the scheduler actually runs. Every process starts with one thread, the **main thread**, and it can create more. Threads inside a process share the address space and the file descriptors. Each thread still has its own stack and registers.
+
+Threads start faster than separate processes, and they can communicate by reading and writing shared memory. A multithreaded program can therefore use several cores without copying data between processes. The price is that you must protect shared memory with careful locking.
 
 On Linux, threads and processes are both **tasks**. The kernel treats a thread as a process that shares resources with its siblings. It is created with clone() and sharing flags. If you start a multithreaded program, `ps -eLf` shows you its threads. Each thread has a **TID** (thread ID). The main thread's TID equals the process's PID.
 
-A PyTorch training job shows all three. The launcher starts one **process per GPU**. Each process has a **main thread** that runs the Python interpreter, plus extra **threads** for CUDA callbacks, NCCL and autograd. Each `DataLoader` with `num_workers=N` forks **N more processes** for data loading. It uses processes rather than threads because Python's global interpreter lock limits CPU parallelism in threads.
+A PyTorch training job shows all three at once. The launcher starts one **process per GPU**. Each process has a **main thread** that runs the Python interpreter, plus extra **threads** for CUDA callbacks, NCCL and autograd. Each `DataLoader` with `num_workers=N` forks **N more processes** for data loading. It uses processes rather than threads because Python's global interpreter lock limits CPU parallelism in threads.
 
 ### Where processes come from: `fork` and `exec`
 
-On Unix, a new process starts with **fork()**, which on Linux is a wrapper around `clone()`. `fork()` makes a near-exact **copy** of the caller. The copy has the same program, the same memory contents and the same open files, but a new PID. The copy is cheap because Linux uses **copy-on-write**. Both processes first point at the same physical memory pages. A page is copied only when one of them writes to it. The original is the **parent**, and the copy is the **child**. To run a different program, the child calls **exec** (the kernel call is `execve`). That replaces its memory with the new program and starts it. The PID stays the same. When a shell runs `ls`, it forks a child, the child execs `ls`, and the shell waits.
+Every process on a Unix system begins the same way, and it is worth slowing down for, because the pattern explains a great deal of later behaviour. On Unix, a new process starts with **fork()**, which on Linux is a wrapper around `clone()`. `fork()` makes a near-exact **copy** of the caller. The copy has the same program, the same memory contents and the same open files, but a new PID.
+
+The copy is cheap because Linux uses **copy-on-write**. Both processes first point at the same physical memory pages. A page is copied only when one of them writes to it. The original is the **parent**, and the copy is the **child**.
+
+To run a different program, the child calls **exec** (the kernel call is `execve`). That replaces its memory with the new program and starts it. The PID stays the same. When a shell runs `ls`, it forks a child, the child execs `ls`, and the shell waits.
 
 ```mermaid
 sequenceDiagram
@@ -171,7 +195,7 @@ sequenceDiagram
   K-->>Sh: exit status 0 (child reaped)
 ```
 
-Several practical results follow.
+Three practical consequences follow, and you will meet all of them.
 
 - **Children inherit almost everything.** A child gets the parent's environment variables, open file descriptors, working directory, `umask`, resource limits and signal dispositions. That is why `ulimit` in a shell affects every program started from it. It is also why a leaked file descriptor in a parent shows up in every child.
 - **Every process has a parent**, shown as `PPID`. Run `pstree -p` or `ps fax` to draw the tree. Its root is **PID 1**, the first process the kernel starts. Today that is usually `systemd` (chapter 1.15). Inside a container, PID 1 is whatever the container's entrypoint is.
@@ -179,13 +203,17 @@ Several practical results follow.
 
 ### Zombies and orphans
 
-When a process exits, it releases its memory and files. The kernel keeps a small **process-table entry**, though, and that entry holds the exit status until the **parent** collects it with `wait()`. Until then the process is a **zombie** (state `Z`, shown as `<defunct>`). For example, a zombie consumes **no CPU and no memory**. It holds only a PID slot, and you can see it in `ps` if you look. You **cannot kill it**, because it is already dead. The fix is to make the parent call `wait()`. You can also restart or terminate the parent. The zombie is then adopted by PID 1, which reaps it. A few zombies are harmless. Thousands of them can exhaust the PID table.
+When a process exits, it releases its memory and files. The kernel keeps a small **process-table entry**, though, and that entry holds the exit status until the **parent** collects it with `wait()`. Until then the process is a **zombie** (state `Z`, shown as `<defunct>`).
 
-Suppose, for example, a parent exits before its children do. Those children become **orphans**. The kernel re-parents them to PID 1, or to the nearest "subreaper", and that process must `wait()` for them. This is why **PID 1 in a container matters**. If your container's PID 1 is a Python script that never reaps children, every orphaned subprocess becomes a permanent zombie. The standard fixes are to run a tiny init as PID 1, such as `tini`, `docker run --init`, or Kubernetes `shareProcessNamespace` with a proper init. The init forwards signals and reaps children (section 10).
+A zombie consumes **no CPU and no memory**. It holds only a PID slot, and you can see it in `ps` if you look. You **cannot kill it**, because it is already dead. The fix is to make the parent call `wait()`. You can also restart or terminate the parent. The zombie is then adopted by PID 1, which reaps it. A few zombies are harmless. Thousands of them can exhaust the PID table.
+
+Suppose, for example, a parent exits before its children do. Those children become **orphans**. The kernel re-parents them to PID 1, or to the nearest "subreaper", and that process must `wait()` for them.
+
+This is why **PID 1 in a container matters**. If your container's PID 1 is a Python script that never reaps children, every orphaned subprocess becomes a permanent zombie. The standard fixes are to run a tiny init as PID 1, such as `tini`, `docker run --init`, or Kubernetes `shareProcessNamespace` with a proper init. The init forwards signals and reaps children (section 10).
 
 ### Process states
 
-The kernel records what each task is doing. These are the letters you see in `ps` and `top`:
+Every task is in exactly one state at any moment, and the kernel writes that state down as a single letter. `ps` and `top` simply report the letter. In practice you only ever need a handful of them, but the ones you do need, you need badly.
 
 | State | Letter | Meaning |
 |---|---|---|
@@ -213,11 +241,17 @@ stateDiagram-v2
   Zombie --> [*]: parent calls wait()
 ```
 
-**The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus. You cannot kill it. `kill -9` is ignored until the I/O completes, and the process still counts in the load average. Fix the underlying cause first. Restore the server, fix the mount, reset the GPU or reboot. To see what the process is waiting for, read `cat /proc/<pid>/stack` (as root) or `/proc/<pid>/wchan`.
+**The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus.
+
+You cannot kill it. `kill -9` is ignored until the I/O completes, and the process still counts in the load average. Fix the underlying cause first. Restore the server, fix the mount, reset the GPU or reboot. To see what the process is waiting for, read `cat /proc/<pid>/stack` (as root) or `/proc/<pid>/wchan`.
 
 ### The run queue and the load average
 
-The scheduler keeps runnable tasks in **run queues** and gives each one a time slice. With more runnable tasks than cores, the extra tasks wait their turn. The **load average** is an exponentially smoothed count of tasks that are running or runnable. On Linux it also counts tasks in uninterruptible sleep (`D`). The kernel samples it over 1, 5 and 15 minutes, which are the three numbers in `uptime`. Most desktop systems show a load average of about `0` (`0.00` to `0.15`) when you do anything except compile a program or play a game. A load near `0` is a good sign. It means the processor is not being challenged and the system is saving power. Modern background indexing and browser processes often push an idle desktop's load to `0.1` or `0.2`, though.
+Here is a scene that confuses almost everyone the first time. A node reports a load average of 90, dashboards turn red, and the CPUs sit idle. Nothing is computing, yet the machine looks busy. To understand how that is possible, you need to know what the number actually counts.
+
+The scheduler keeps runnable tasks in **run queues** and gives each one a time slice. With more runnable tasks than cores, the extra tasks wait their turn. The **load average** is an exponentially smoothed count of tasks that are running or runnable. On Linux it also counts tasks in uninterruptible sleep (`D`). The kernel samples it over 1, 5 and 15 minutes, which are the three numbers in `uptime`.
+
+Most desktop systems show a load average of about `0` (`0.00` to `0.15`) when you do anything except compile a program or play a game. A load near `0` is a good sign. It means the processor is not being challenged and the system is saving power. Modern background indexing and browser processes often push an idle desktop's load to `0.1` or `0.2`, though.
 
 When you read the load on a server, a few checks help:
 
@@ -229,6 +263,8 @@ When you read the load on a server, a few checks help:
 Before you blame the CPU for a slow node, check whether the load comes from tasks that are waiting. If you see a high load with idle CPUs, look at I/O first.
 
 ## 3. Looking at processes from outside
+
+You now have the model. The next skill is observation: given a real machine and a real complaint, how do you see what is actually happening instead of guessing? Every tool in this section reads the same kernel bookkeeping, and each one reads it from a different angle.
 
 ### `ps`
 
@@ -248,7 +284,9 @@ ps axo stat,pid,comm | awk '$1 ~ /^D/'   # find processes in uninterruptible sle
 ps axo stat,ppid,pid,comm | awk '$1 ~ /^Z/'   # find zombies and their parents
 ```
 
-Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference. To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See *How Linux Works* Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
+Add `w` (up to three times) to widen the command column. `VSZ` is the virtual size, and `RSS` is the resident set, which is the physical RAM the process holds right now. Chapter 1.17 explains the difference.
+
+To list threads inside a multithreaded process, such as `Xorg` or a multi-worker Python process, pass `ps m` (BSD style) or `ps m -o pid,tid,command`. See *How Linux Works* Listings 8-1 and 8-2. Lines with a dash (`-`) in the `PID` column are individual threads of the process above them. The `tid` column shows each thread's kernel Thread ID (`TID`).
 
 ### What the default `ps` columns mean
 
@@ -272,11 +310,13 @@ PID TTY STAT TIME COMMAND
 | `TIME` | The CPU time the process has used so far. This is not the wall-clock time since it started, because processes do not run constantly. |
 | `COMMAND` | The command that started the program. A process can change this field, and the shell's glob expansion appears here instead of what you typed. |
 
-The `ps` command accepts Unix, BSD and GNU option styles. Many people find the BSD style the most comfortable, so this book uses it. `ps x` shows all of your running processes, and `ps ax` shows every process on the system. `ps u` adds detail, and `ps w` shows full command names instead of cutting them to fit one line. Options combine, as in `ps aux` and `ps auxw`. To inspect one process, give its PID, or use `ps u $$`, because `$$` expands to the PID of the current shell.
+The `ps` command accepts Unix, BSD and GNU option styles. Many people find the BSD style the most comfortable, so this book uses it. `ps x` shows all of your running processes, and `ps ax` shows every process on the system. `ps u` adds detail, and `ps w` shows full command names instead of cutting them to fit one line.
+
+Options combine, as in `ps aux` and `ps auxw`. To inspect one process, give its PID, or use `ps u $$`, because `$$` expands to the PID of the current shell.
 
 ### Viewing threads with `ps m`
 
-Most of the time, `ps` and `top` show only processes. A process starts with one thread, called the main thread. A process with one thread is single-threaded. A process with more than one thread is multithreaded, and the main thread can start the others. Add the `m` option to see every thread on its own line.
+Most of the time, `ps` and `top` show only processes, and that is usually enough. A process starts with one thread, called the main thread. A process with one thread is single-threaded. A process with more than one thread is multithreaded, and the main thread can start the others. When you need to see inside, add the `m` option to see every thread on its own line.
 
 ```text
 $ ps m -o pid,tid,command
@@ -298,7 +338,9 @@ Threads make resource monitoring harder. Individual threads of one process can u
 
 ### `top`, `htop`, `atop`
 
-`top` is the interactive display. Its summary header shows a task line such as `Tasks: 244 total, 2 running, 242 sleeping, 0 stopped, 0 zombie`. It shows a CPU line such as `%Cpu(s): 31.7%us, 2.8%sy, 0.0%ni, 65.4%id, 0.2%wa, 0.0%hi, 0.0%si, 0.0%st`. It also shows `Mem:` (total, used, free, buffers) and `Swap:` (total, used, free, cached). Below the header, a live table of processes refreshes every few seconds. Keys are case-sensitive, so you must type them exactly. For example, a key that works in one case may do nothing in the other:
+`top` is the interactive display. Where `ps` gives you one snapshot, `top` keeps refreshing, so you can watch a machine change while you look at it. Its summary header shows a task line such as `Tasks: 244 total, 2 running, 242 sleeping, 0 stopped, 0 zombie`. It shows a CPU line such as `%Cpu(s): 31.7%us, 2.8%sy, 0.0%ni, 65.4%id, 0.2%wa, 0.0%hi, 0.0%si, 0.0%st`. It also shows `Mem:` (total, used, free, buffers) and `Swap:` (total, used, free, cached).
+
+Below the header, a live table of processes refreshes every few seconds. Keys are case-sensitive, so you must type them exactly. For example, a key that works in one case may do nothing in the other:
 
 | Key | Action |
 |---|---|
@@ -313,7 +355,9 @@ Threads make resource monitoring harder. Individual threads of one process can u
 | `Space` | Refresh immediately |
 | `q` | Quit |
 
-`top -p PID1 -p PID2` follows specific processes. `top -b -n 1` is the batch form, which suits scripts. **`htop`** is friendlier. It adds colour, a tree view (`F5`), mouse support, and tagging many processes with Space. On the selected process it offers `s` (trace system calls), `l` (open files), `w` (full command line) and `x` (locks). `atop` records history to disk. Keep in mind that `top` and the tools below show CPU use as a percentage of **one core**. A multi-threaded process can therefore show 800%.
+`top -p PID1 -p PID2` follows specific processes. `top -b -n 1` is the batch form, which suits scripts. **`htop`** is friendlier. It adds colour, a tree view (`F5`), mouse support, and tagging many processes with Space. On the selected process it offers `s` (trace system calls), `l` (open files), `w` (full command line) and `x` (locks). `atop` records history to disk.
+
+Keep in mind that `top` and the tools below show CPU use as a percentage of **one core**. A multi-threaded process can therefore show 800%.
 
 ### `pgrep`, `pidof`, `pstree`, `fuser`
 
@@ -359,7 +403,9 @@ cat /proc/$$/limits
 
 ### `lsof`: who has what open?
 
-Unix treats files, devices, pipes and sockets alike. So "open files" covers a lot, and **`lsof`** (list open files) is one of the most useful diagnostic tools you have. Each line of its output has several columns. `COMMAND`, `PID` and `USER` say who holds the file. `FD` is a descriptor number with a mode, such as `3u` for read-write, or a role such as `cwd`, `rtd` for root, `txt` for program text, or `mem` for a memory-mapped library. `TYPE` says what kind of object it is, such as `REG` for a regular file, `DIR`, `CHR` for a character device, `IPv4` or `unix`. The last columns are `DEVICE`, `SIZE/OFF`, `NODE` (the inode number) and `NAME`.
+Unix treats files, devices, pipes and sockets alike. So "open files" covers a lot, and **`lsof`** (list open files) is one of the most useful diagnostic tools you have.
+
+Each line of its output has several columns. `COMMAND`, `PID` and `USER` say who holds the file. `FD` is a descriptor number with a mode, such as `3u` for read-write, or a role such as `cwd`, `rtd` for root, `txt` for program text, or `mem` for a memory-mapped library. `TYPE` says what kind of object it is, such as `REG` for a regular file, `DIR`, `CHR` for a character device, `IPv4` or `unix`. The last columns are `DEVICE`, `SIZE/OFF`, `NODE` (the inode number) and `NAME`.
 
 ```bash
 sudo lsof -p 1234                 # everything one process has open
@@ -371,11 +417,15 @@ sudo lsof -u alice                # files opened by a user
 sudo lsof +L1                     # files that are deleted but still open (space not freed)
 ```
 
-Suppose `df` reports a full disk, but `du` cannot find the files that fill it. Two classic cases come up again and again. The first is "**`df` shows the disk full but `du` cannot find the files**". A process still holds a deleted log open. `lsof +L1` finds it, and restarting that process frees the space. The second is "**cannot unmount, device is busy**". Here `lsof` or `fuser -vm /mountpoint` shows who is inside. Run as root for complete output. `lsof` depends on kernel interfaces, so after a kernel and `lsof` update it may misbehave until you reboot into the new kernel.
+Suppose `df` reports a full disk, but `du` cannot find the files that fill it. Two classic cases come up again and again.
+
+The first is "**`df` shows the disk full but `du` cannot find the files**". A process still holds a deleted log open. `lsof +L1` finds it, and restarting that process frees the space.
+
+The second is "**cannot unmount, device is busy**". Here `lsof` or `fuser -vm /mountpoint` shows who is inside. Run as root for complete output. `lsof` depends on kernel interfaces, so after a kernel and `lsof` update it may misbehave until you reboot into the new kernel.
 
 ### Reading `lsof` output
 
-Unix puts a lot of weight on files, so `lsof` is one of the most useful tools for finding trouble spots. It does not stop at regular files. It also reports network sockets, dynamic libraries, pipes and similar objects.
+Unix puts a lot of weight on files, so a tool that lists them is a good place to start an investigation. `lsof` does not stop at regular files. It also reports network sockets, dynamic libraries, pipes and similar objects.
 
 `lsof` prints a lot of lines, so learning its columns matters more than reading every row. The excerpt below comes from the `systemd` init process and a running `vi` editor.
 
@@ -423,7 +473,11 @@ strace -c -p 1234                             # summary table of calls and time 
 strace -tt -T -p 1234                         # timestamps and time spent in each call
 ```
 
-Here is how to read the output. A successful `open` returns a **file descriptor**, a small integer. Descriptors 0, 1 and 2 are standard input, output and error, so the first new descriptor you see is usually 3. A failure returns `-1`, followed by the error name and text, for example `openat(AT_FDCWD, "not_a_file", O_RDONLY) = -1 ENOENT (No such file or directory)`. Missing files and wrong permissions (`EACCES`) are the most common reasons programs misbehave. So grepping a trace for `ENOENT` and `EACCES` solves a large share of mysteries, even for daemons. A hung process shows which call it is stuck in, such as a `read` on a socket, a `futex` wait or a `connect`. That is half the diagnosis. `strace -p` on a hung training process quickly tells you whether it waits on the network or on a lock. `strace` slows the target considerably, so use it on production processes with care. It needs permission to trace the target, which means being the owner or root, subject to `ptrace_scope`.
+Here is how to read the output. A successful `open` returns a **file descriptor**, a small integer. Descriptors 0, 1 and 2 are standard input, output and error, so the first new descriptor you see is usually 3. A failure returns `-1`, followed by the error name and text, for example `openat(AT_FDCWD, "not_a_file", O_RDONLY) = -1 ENOENT (No such file or directory)`.
+
+Missing files and wrong permissions (`EACCES`) are the most common reasons programs misbehave. So grepping a trace for `ENOENT` and `EACCES` solves a large share of mysteries, even for daemons.
+
+A hung process shows which call it is stuck in, such as a `read` on a socket, a `futex` wait or a `connect`. That is half the diagnosis. `strace -p` on a hung training process quickly tells you whether it waits on the network or on a lock. `strace` slows the target considerably, so use it on production processes with care. It needs permission to trace the target, which means being the owner or root, subject to `ptrace_scope`.
 
 `ltrace` does the same job for **shared-library calls** rather than kernel calls. There are many more of those, so you should filter the output, or you will drown in it. It does not work on statically linked programs. Chapter 1.11 goes deeper into both tools.
 
@@ -431,9 +485,15 @@ When a program fails silently, trace it before you guess.
 
 ## 4. Signals
 
-A **signal** is a small, asynchronous notification sent to a process. It says that something happened and asks the process to react. Signals are the simplest form of inter-process communication. They carry almost no information, only which event occurred. The kernel sends some of them, for example after a bad memory access, when a child exits, or on Ctrl-C from the terminal. Other processes send signals with `kill`, and a process can send one to itself. If you need to stop a runaway job, you send it a signal. A process may signal another process only if both have the same owner. Root may signal anyone.
+Picture a moment every Linux user meets eventually. A long job is running in your terminal, and you press Ctrl-C. Sometimes the program stops at once, and sometimes it ignores you completely. Another time you press Ctrl-Z by accident, and the shell reports `Stopped` instead of ending the job. Both keys did the same kind of thing: each sent the program a short message, and the program decided how to respond. That message is a signal.
 
-Each signal has a **disposition** in each process. The process can take the **default action**, which is usually to terminate, and sometimes to write a core dump, ignore, stop or continue. It can also **ignore** the signal, or **catch** it by running a **handler** function. Two signals can never be caught, ignored or blocked. They are **`SIGKILL`** and **`SIGSTOP`**, and the kernel acts on them directly. Every other signal can be handled. The table lists the ones you will meet most often.
+A **signal** is a small, asynchronous notification sent to a process. It says that something happened and asks the process to react. Signals are the simplest form of inter-process communication. They carry almost no information, only which event occurred.
+
+The kernel sends some of them, for example after a bad memory access, when a child exits, or on Ctrl-C from the terminal. Other processes send signals with `kill`, and a process can send one to itself. If you need to stop a runaway job, you send it a signal. A process may signal another process only if both have the same owner. Root may signal anyone.
+
+Each signal has a **disposition** in each process. The process can take the **default action**, which is usually to terminate, and sometimes to write a core dump, ignore, stop or continue. It can also **ignore** the signal, or **catch** it by running a **handler** function.
+
+Two signals can never be caught, ignored or blocked. They are **`SIGKILL`** and **`SIGSTOP`**, and the kernel acts on them directly. Every other signal can be handled. The table lists the ones you will meet most often.
 
 | # | Name | Default action | Typical meaning and use |
 |---|---|---|---|
@@ -476,15 +536,19 @@ killall python3         # all processes with that exact name (careful on non-Lin
 kill -- -1234           # signal the whole PROCESS GROUP 1234 (note the minus)
 ```
 
-**Escalate in order.** When you are tempted to reach for `kill -9`, try `SIGTERM` first, and give the program time to shut down. It can flush buffers, save a checkpoint, close files and remove lock files. Use `SIGKILL` only when the program does not respond. A killed process gets no chance to clean up. That can leave lock files, half-written files and orphaned children. For GPU jobs it can also leave GPU memory that the driver must reclaim. A signal handled by a process in `D` state takes effect only when the process leaves that state.
+**Escalate in order.** When you are tempted to reach for `kill -9`, try `SIGTERM` first, and give the program time to shut down. It can flush buffers, save a checkpoint, close files and remove lock files. Use `SIGKILL` only when the program does not respond.
+
+A killed process gets no chance to clean up. That can leave lock files, half-written files and orphaned children. For GPU jobs it can also leave GPU memory that the driver must reclaim. A signal handled by a process in `D` state takes effect only when the process leaves that state.
 
 ### Stopping, continuing and processes that resist
 
 Stopping a process does not end it. `kill -STOP` freezes a process, which stays in memory and waits. `kill -CONT` lets it pick up where it left off. Pressing Ctrl-C in a terminal sends the INT (interrupt) signal, which is the same as ending the process with `kill -INT`.
 
-Most processes get a chance to clean up. The kernel lets a process install a signal handler, a function that runs when a signal arrives. Some processes choose a non-terminating response, get wedged while handling the signal, or simply ignore it. A plain `kill` can therefore leave a process running. KILL is the most brutal option, and it cannot be ignored, because the operating system does not give the process any chance to respond. The kernel ends it and removes it from memory by force, so use it only as a last resort.
+Most processes get a chance to clean up. The kernel lets a process install a signal handler, a function that runs when a signal arrives. Some processes choose a non-terminating response, get wedged while handling the signal, or simply ignore it. A plain `kill` can therefore leave a process running.
 
-Do not kill processes indiscriminately, especially ones you do not understand. You may be shooting yourself in the foot. Other users type `kill -9` instead of `kill -KILL`, because the kernel numbers its signals. Run `kill -l` to see the mapping from each number to its name.
+KILL is the most brutal option, and it cannot be ignored, because the operating system does not give the process any chance to respond. The kernel ends it and removes it from memory by force, so use it only as a last resort.
+
+Do not kill processes indiscriminately, especially ones you do not understand. You may be shooting yourself in the foot. Signals have both names and numbers, so `kill -9` and `kill -KILL` mean the same thing. Run `kill -l` to see the mapping from each number to its name.
 
 ### Catching signals in shell scripts
 
@@ -503,15 +567,25 @@ child=$!
 wait "$child"
 ```
 
-A few details matter here. The `EXIT` pseudo-signal covers normal exits and error exits. `trap '' SIGHUP` ignores a signal, and `trap - SIGINT` restores the default. There is one catch. A shell waiting on a foreground command defers its trap until that command finishes. So if you want the script to react promptly, start long-running children in the background and wait for them, as the script above does. `exec` replaces the shell with the command, so signals go straight to it. Use `exec` as the last line of a container entrypoint script, so the real program receives `SIGTERM`. Section 10 has the details.
+A few details matter here. The `EXIT` pseudo-signal covers normal exits and error exits. `trap '' SIGHUP` ignores a signal, and `trap - SIGINT` restores the default.
+
+There is one catch. A shell waiting on a foreground command defers its trap until that command finishes. So if you want the script to react promptly, start long-running children in the background and wait for them, as the script above does.
+
+`exec` replaces the shell with the command, so signals go straight to it. Use `exec` as the last line of a container entrypoint script, so the real program receives `SIGTERM`. Section 10 has the details.
 
 ### Core dumps
 
-When a program dies from a signal marked "core" (`SIGSEGV`, `SIGABRT` and so on), the kernel can write its memory image to a **core file**. You analyse that file later with a debugger such as `gdb`. Two settings control this. `ulimit -c` sets the core size limit, where 0 disables dumps. `/proc/sys/kernel/core_pattern` sets the path, or a pipe to a handler such as `systemd-coredump`. In that case you use `coredumpctl`. If you hit a crash and want to debug it, you can ask for a core file. Core files from large training processes can run to many gigabytes. For that reason clusters usually keep the limit at 0 and enable dumps on purpose.
+When a program dies from a signal marked "core" (`SIGSEGV`, `SIGABRT` and so on), the kernel can write its memory image to a **core file**. You analyse that file later with a debugger such as `gdb`.
+
+Two settings control this. `ulimit -c` sets the core size limit, where 0 disables dumps. `/proc/sys/kernel/core_pattern` sets the path, or a pipe to a handler such as `systemd-coredump`. In that case you use `coredumpctl`.
+
+If you hit a crash and want to debug it, you can ask for a core file. Core files from large training processes can run to many gigabytes. For that reason clusters usually keep the limit at 0 and enable dumps on purpose.
 
 On a shared cluster, keep core dumps off by default, and turn them on only when you are debugging a specific crash.
 
 ## 5. Shell job control
+
+You have seen this happen, or you will. You start a long command over SSH, the VPN hiccups, the session drops, and the job dies with the terminal. Or you press Ctrl-Z in front of a long task, and the shell says `Stopped`. Both events come from the same small mechanism, and once you can see it, you can also outwit it.
 
 An interactive shell lets you manage several commands from one terminal. A **job** is a pipeline that the shell started. The shell puts the job's processes into a **process group**, and groups belong to a **session** tied to the controlling terminal. Exactly one process group is in the **foreground**. It receives keyboard signals such as Ctrl-C and Ctrl-Z, and it may read from the terminal. The others run in the **background**. The table lists the commands you use to move jobs between these states.
 
@@ -556,6 +630,8 @@ When stray output clutters the screen, press Ctrl-L to redraw it. Many full-scre
 
 ## 6. Priority: `nice`, `ionice`, CPU affinity
 
+Picture a shared login node on a Friday afternoon. One user starts a compile with many parallel jobs, and every other shell on the machine turns sluggish. Nobody has done anything wrong, and the scheduler is working exactly as designed. The lever you have for this situation is priority, and it is gentler than it sounds.
+
 When more tasks are runnable than there are cores, the scheduler decides who runs. Every task has a **priority**, but you cannot set it directly. You influence it through the **nice value**, a number from **-20 to +19** (default 0). A higher nice value makes the process nicer to others, so its priority drops. A normal user may only increase niceness. Only root can lower it below 0.
 
 ```bash
@@ -566,7 +642,9 @@ renice -n 19 -u alice              # all of one user's processes
 ps -o pid,ni,pri,stat,comm -p 3322 # see NI (nice) and PRI (kernel priority)
 ```
 
-`top` shows two numbers. `PR` is the kernel's current priority, where lower means more important in the display's scale. `NI` is your hint. The kernel combines nice with recent CPU use. Nice values matter little on a lightly loaded machine, and a lot when a login node is shared. A user who runs a compile at nice 19 barely disturbs interactive users. Recent kernels apply nice per autogroup or cgroup, so the effect between sessions can be subtler than between processes in one session (chapter 1.18).
+`top` shows two numbers. `PR` is the kernel's current priority, where lower means more important in the display's scale. `NI` is your hint. The kernel combines nice with recent CPU use.
+
+Nice values matter little on a lightly loaded machine, and a lot when a login node is shared. A user who runs a compile at nice 19 barely disturbs interactive users. Recent kernels apply nice per autogroup or cgroup, so the effect between sessions can be subtler than between processes in one session (chapter 1.18).
 
 **I/O priority** is separate. Processes also queue for the disk, and `ionice` sets their class. **Idle** (`-c 3`) runs only when no one else needs the disk. **Best-effort** (`-c 2`) is the default. It has levels 0 to 7, and a lower number is more important. **Real-time** (`-c 1`) is served first and needs root. The setting takes effect only with I/O schedulers that honour priorities, such as BFQ. On NVMe, the `none` or `mq-deadline` schedulers may ignore it.
 
@@ -611,6 +689,8 @@ To make a background job yield, raise its nice value with `renice`. Use a positi
 
 ## 7. Limits: `ulimit` and `prlimit`
 
+Two error messages account for a surprising number of GPU cluster tickets. One says "Too many open files", and the other says "Cannot allocate memory". Both appear while the machine has plenty of RAM and disk free. Neither is really about the machine. Both are about a per-process ceiling that was set long before the job started.
+
 Each process has **resource limits**, called rlimits. Each limit has a *soft* value, which the kernel enforces, and a *hard* value, the ceiling the process may raise the soft limit to. Children inherit them. The table lists the limits you are most likely to hit.
 
 | Limit | `ulimit` flag | Meaning |
@@ -632,7 +712,11 @@ cat /proc/1234/limits           # limits of a running process
 sudo prlimit --pid 1234 --nofile=65536:65536   # change a running process
 ```
 
-**Where limits are set persistently.** For login sessions, PAM reads `/etc/security/limits.conf` and `/etc/security/limits.d/*.conf`. Each line has the form `user_or_@group  soft|hard  item  value`, for example `* soft memlock unlimited`. For **systemd services**, `limits.conf` does *not* apply. You set `LimitNOFILE=`, `LimitMEMLOCK=infinity` and so on in the unit (chapter 1.15). For **containers**, the runtime sets the limits. You can pass them with `docker run --ulimit memlock=-1:-1`, and Kubernetes inherits them from the container runtime and node configuration. For **Slurm jobs**, the limits propagate from the submitting environment unless `PropagateResourceLimits` says otherwise (chapter 6). A frequent bug looks like this. You raised `limits.conf`, but the job runs under a daemon, or under `sshd` with `UsePAM no`, that never reads it.
+**Where limits are set persistently.** For login sessions, PAM reads `/etc/security/limits.conf` and `/etc/security/limits.d/*.conf`. Each line has the form `user_or_@group  soft|hard  item  value`, for example `* soft memlock unlimited`.
+
+For **systemd services**, `limits.conf` does *not* apply. You set `LimitNOFILE=`, `LimitMEMLOCK=infinity` and so on in the unit (chapter 1.15). For **containers**, the runtime sets the limits. You can pass them with `docker run --ulimit memlock=-1:-1`, and Kubernetes inherits them from the container runtime and node configuration.
+
+For **Slurm jobs**, the limits propagate from the submitting environment unless `PropagateResourceLimits` says otherwise (chapter 6). A frequent bug looks like this. You raised `limits.conf`, but the job runs under a daemon, or under `sshd` with `UsePAM no`, that never reads it.
 
 Limits apply per process, so they do not stop a user who runs many processes. For group-wide caps, use cgroups (section 9). Disk **quotas** are a separate, per-user filesystem mechanism (chapter 1.12).
 
@@ -640,7 +724,9 @@ Before you raise a limit, check which layer actually sets it for the job.
 
 ## 8. First resource monitoring: CPU time, memory, I/O
 
-Three basic hardware resources compete for processes: **CPU, memory and I/O**. The kernel is a resource too, since it creates processes and talks to other processes. Resist the urge to tune a system that already works. The default settings are sensible. Use these tools to understand what the kernel is doing, and tune only when a measurement shows a real problem. The method is covered in chapter 1.23.
+A job that should take minutes takes most of the morning, and you have no idea where the time went. Guessing rarely helps. The tools in this section each answer one narrow question about where the time went, and together they cover the three resources that processes compete for.
+
+Those resources are **CPU, memory and I/O**. The kernel is a resource too, since it creates processes and talks to other processes. Resist the urge to tune a system that already works. The default settings are sensible. Use these tools to understand what the kernel is doing, and tune only when a measurement shows a real problem. The method is covered in chapter 1.23.
 
 ### Measuring CPU time: `time`
 
@@ -651,7 +737,9 @@ time ls /usr/lib
 # sys   0m0.091s   CPU time the kernel spent on its behalf (system calls)
 ```
 
-When you run `time`, read `real` first. `real - (user + sys)` is the time a job spends **not on a CPU**. That is time waiting for disk, network, locks or the scheduler. So when `real` is much larger than `user+sys`, the job is waiting. When `user+sys` is larger than `real`, the job used several cores. Most shells have a built-in `time`. The external `/usr/bin/time -v command` prints much more, including peak resident memory, page faults, context switches and exit status.
+When you run `time`, read `real` first. `real - (user + sys)` is the time a job spends **not on a CPU**. That is time waiting for disk, network, locks or the scheduler. So when `real` is much larger than `user+sys`, the job is waiting. When `user+sys` is larger than `real`, the job used several cores.
+
+Most shells have a built-in `time`. The external `/usr/bin/time -v command` prints much more, including peak resident memory, page faults, context switches and exit status.
 
 ```bash
 /usr/bin/time -v python3 -c 'print(sum(range(10**7)))' 2>&1 | grep -E 'Elapsed|Maximum resident|faults|Voluntary|Involuntary|Exit'
@@ -678,7 +766,9 @@ If the load is high and the system drags, check memory. When memory runs short, 
 
 ### Memory in brief, and page faults
 
-Chapter 1.17 is the full treatment. For now, know that the CPU's **memory management unit (MMU)** translates **virtual addresses**, which processes use, into **physical addresses**. It does this with page tables that the kernel maintains, in units called **pages**. A page is 4 KiB normally, and `getconf PAGE_SIZE` reports the size on your system. The kernel loads and allocates pages **on demand**, which is called demand paging. A program that starts up has only its first pages in memory. When it touches an address that is not mapped yet, the CPU raises a **page fault**, and the kernel fixes things up.
+Chapter 1.17 is the full treatment. For now, hold one idea: the CPU's **memory management unit (MMU)** translates **virtual addresses**, which processes use, into **physical addresses**. It does this with page tables that the kernel maintains, in units called **pages**. A page is 4 KiB normally, and `getconf PAGE_SIZE` reports the size on your system.
+
+The kernel loads and allocates pages **on demand**, which is called demand paging. A program that starts up has only its first pages in memory. When it touches an address that is not mapped yet, the CPU raises a **page fault**, and the kernel fixes things up.
 
 - A **minor page fault** happens when the page is already in RAM. Examples are shared library code that another process already loaded, or a newly allocated page. The kernel only has to update the mapping. This is cheap, and thousands per second are normal.
 - A **major page fault** means the page must be read from **disk**. That covers program code on first execution, or memory that was swapped out. It is slow. A burst when a program first runs is normal. A continuous stream means memory pressure, when the kernel spends its time moving pages to and from swap (thrashing).
@@ -690,11 +780,15 @@ ps -o pid,min_flt,maj_flt,rss,comm -p 1234 # (untested here)
 /usr/bin/time cal >/dev/null        # (untested here) e.g. 0.00user 0.00system 0:00.06elapsed ... (2major+254minor)pagefaults 0swaps
 ```
 
-When `/usr/bin/time cal > /dev/null` runs (*How Linux Works* Section 8.5.4), it prints a summary line such as `0.00user 0.00system 0:00.06elapsed 0%CPU (0avgtext+0avgdata 3328maxresident)k 648inputs+0outputs (2major+254minor)pagefaults 0swaps`. That line shows `2` major page faults, which read from disk, and `254` minor page faults, which map pages already in RAM. When you run `free`, read the **available** figure, not **free**. Linux deliberately uses spare RAM for the page cache and gives it back on demand, so a small "free" is normal. A system is short of memory when *available* is small **and** it is swapping (`vmstat` `si`/`so`) or taking many major faults.
+When `/usr/bin/time cal > /dev/null` runs (*How Linux Works* Section 8.5.4), it prints a summary line such as `0.00user 0.00system 0:00.06elapsed 0%CPU (0avgtext+0avgdata 3328maxresident)k 648inputs+0outputs (2major+254minor)pagefaults 0swaps`. That line shows `2` major page faults, which read from disk, and `254` minor page faults, which map pages already in RAM.
+
+When you run `free`, read the **available** figure, not **free**. Linux deliberately uses spare RAM for the page cache and gives it back on demand, so a small "free" is normal. A system is short of memory when *available* is small **and** it is swapping (`vmstat` `si`/`so`) or taking many major faults.
 
 ### `vmstat`: the whole machine in one line per interval
 
-The trick to unlocking the power of `vmstat` is to understand its output columns. Running `vmstat 2` reports statistics every two seconds. **You should always start looking at the second line of output—the first line is an average for the entire uptime of the system since boot.**
+The first time you run `vmstat`, it looks like a wall of columns with no story. Learn what one or two of them count, and the story appears. Running `vmstat 2` reports statistics every two seconds.
+
+One rule matters more than the rest. **You should always start looking at the second line of output—the first line is an average for the entire uptime of the system since boot.**
 
 ```text
 $ vmstat 2
@@ -704,7 +798,9 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
  2  0 320416 3027288 198636 1072564   0    0     0  1182  407  636  2  1 97  0  0
 ```
 
-This quiet-system output comes from *How Linux Works* (Section 8.5.4). The system has `320,416 KB` of memory swapped out (`swpd`) from some earlier pressure, and `3,027,696 KB` free. The `si` and `so` columns are both `0`, so the kernel is not swapping anything in or out right now. When a large program starts up (Listing 8-3), `free` drops to `2861252` KB. `bi` jumps as code pages are faulted in from disk, and `us` rises from `25%` to `27%`. The `si` and `so` columns stay at `0` as long as RAM is sufficient.
+This quiet-system output comes from *How Linux Works* (Section 8.5.4). The system has `320,416 KB` of memory swapped out (`swpd`) from some earlier pressure, and `3,027,696 KB` free. The `si` and `so` columns are both `0`, so the kernel is not swapping anything in or out right now.
+
+When a large program starts up (Listing 8-3), `free` drops to `2861252` KB. `bi` jumps as code pages are faulted in from disk, and `us` rises from `25%` to `27%`. The `si` and `so` columns stay at `0` as long as RAM is sufficient.
 
 | Column | Meaning |
 |---|---|
@@ -716,7 +812,9 @@ This quiet-system output comes from *How Linux Works* (Section 8.5.4). The syste
 | `in`, `cs` | Interrupts and context switches per second |
 | `us`, `sy`, `id`, `wa`, `st` | CPU percent in user code, kernel, idle, **waiting for I/O**, stolen by the hypervisor (VMs) |
 
-Here is how you should read the patterns. All idle (`id` about 99, with no `si` or `so`) means the system is healthy. High `us` with low `wa` is CPU-bound compute. High `wa` and `b` mean I/O-bound work, so look at `iostat`. Growing `so` with falling `free` or `cache` means memory is exhausted and the kernel is paging out. High `r` with high `us` plus `sy` means CPU contention. High `sy` and `cs` mean many system calls or lock contention. High `st` points to noisy neighbours on a shared VM.
+Here is how you should read the patterns. All idle (`id` about 99, with no `si` or `so`) means the system is healthy. High `us` with low `wa` is CPU-bound compute. High `wa` and `b` mean I/O-bound work, so look at `iostat`.
+
+Growing `so` with falling `free` or `cache` means memory is exhausted and the kernel is paging out. High `r` with high `us` plus `sy` means CPU contention. High `sy` and `cs` mean many system calls or lock contention. High `st` points to noisy neighbours on a shared VM.
 
 ### Watching memory run out in `vmstat`
 
@@ -735,7 +833,9 @@ Running out of memory looks different. Buffer and cache sizes shrink because the
 
 ### I/O: `iostat`, `iotop`, `pidstat`, `sar`
 
-Many of these I/O tools are not installed by default. You get `iostat`, `pidstat`, `sar` and `mpstat` from the `sysstat` package, and `iotop` from its own package. If you run `iostat` without options, it shows averages since boot. It prints an `avg-cpu:` block with `%user`, `%nice`, `%system`, `%iowait`, `%steal` and `%idle`. Then it prints a `Device` block with `tps`, `kB_read/s`, `kB_wrtn/s`, `kB_read` and `kB_wrtn`. By default, `iostat` leaves out partition information. Pass `-p ALL` to show partitions such as `sda1` alongside whole devices such as `sda`.
+Many of these I/O tools are not installed by default. You get `iostat`, `pidstat`, `sar` and `mpstat` from the `sysstat` package, and `iotop` from its own package.
+
+If you run `iostat` without options, it shows averages since boot. It prints an `avg-cpu:` block with `%user`, `%nice`, `%system`, `%iowait`, `%steal` and `%idle`. Then it prints a `Device` block with `tps`, `kB_read/s`, `kB_wrtn/s`, `kB_read` and `kB_wrtn`. By default, `iostat` leaves out partition information. Pass `-p ALL` to show partitions such as `sda1` alongside whole devices such as `sda`.
 
 ```bash
 iostat                    # (untested here) uptime average CPU and block device tps, kB_read/s, kB_wrtn/s
@@ -753,7 +853,9 @@ When you open `iostat -x`, you will see that `r/s` and `w/s` are requests per se
 
 To see the I/O used by individual processes, use `iotop`. It gives a continuously updating, `top`-like display. The top lines show total and current disk read and write bandwidth. Each row is a thread (`TID`) with its `PRIO` (`be/4` is best-effort level 4, `rt` is real-time, and `idle` is idle), plus `USER`, `DISK READ`, `DISK WRITE`, `SWAPIN`, `IO>` and `COMMAND`.
 
-`pidstat` prints a scrolling trace over time, such as `pidstat -p 1329 1` (*How Linux Works* Section 8.5.6). Its columns are `UID`, `PID`, `%usr`, `%system`, `%guest`, `%CPU`, `CPU` and `Command`. It does not overwrite the screen the way `top` does. So you can watch a process move between CPU cores, for example from `CPU 1` to `CPU 3`, second by second. The book's further topics (*How Linux Works* Section 8.7) cover **`sar`**. It comes from `sysstat`, and a collector cron job or systemd timer feeds it. Because `sar` records statistics, you can look back. Ask what the CPU was doing at 03:10 last night with `sar -u -f /var/log/sa/sa23`, or use `sar -r` for memory. Related tools are `acct` and `psacct`, which record every process that ran and its resource use, and quotas.
+`pidstat` prints a scrolling trace over time, such as `pidstat -p 1329 1` (*How Linux Works* Section 8.5.6). Its columns are `UID`, `PID`, `%usr`, `%system`, `%guest`, `%CPU`, `CPU` and `Command`. It does not overwrite the screen the way `top` does. So you can watch a process move between CPU cores, for example from `CPU 1` to `CPU 3`, second by second.
+
+The book's further topics (*How Linux Works* Section 8.7) cover **`sar`**. It comes from `sysstat`, and a collector cron job or systemd timer feeds it. Because `sar` records statistics, you can look back. Ask what the CPU was doing at 03:10 last night with `sar -u -f /var/log/sa/sa23`, or use `sar -r` for memory. Related tools are `acct` and `psacct`, which record every process that ran and its resource use, and quotas.
 
 ### Partitions, per-process I/O and `pidstat` in detail
 
@@ -808,7 +910,11 @@ Before you tune anything, measure which resource is short.
 
 ## 9. Control groups (cgroups)
 
-`nice` and `ulimit` work per process. If you want to limit what a **set of processes** may consume **in total**, Linux offers **control groups**, or cgroups. A cgroup is a group of processes. **Controllers** apply limits and accounting to that group. The main controllers are cpu (CPU time share or quota), memory (RAM and swap cap), `io` (block I/O bandwidth and IOPS), pids (number of tasks), cpuset (which cores and memory nodes), hugetlb, rdma, and more. cgroups sit behind systemd's resource control, container limits in Docker and Kubernetes, and Slurm's job confinement. They are part of the kernel and do not depend on systemd, although systemd manages most of them on modern systems.
+Here is a limit that `nice` and `ulimit` cannot express. One user starts a data loader that forks several workers, and each worker looks harmless on its own: small memory, modest CPU, a few files open. Together they saturate the node. Per-process limits never see the problem, because the problem only exists in aggregate.
+
+`nice` and `ulimit` work per process. If you want to limit what a **set of processes** may consume **in total**, Linux offers **control groups**, or cgroups. A cgroup is a group of processes. **Controllers** apply limits and accounting to that group. The main controllers are cpu (CPU time share or quota), memory (RAM and swap cap), `io` (block I/O bandwidth and IOPS), pids (number of tasks), cpuset (which cores and memory nodes), hugetlb, rdma, and more.
+
+cgroups sit behind systemd's resource control, container limits in Docker and Kubernetes, and Slurm's job confinement. They are part of the kernel and do not depend on systemd, although systemd manages most of them on modern systems.
 
 ### v1 versus v2
 
@@ -863,20 +969,26 @@ echo $$ | sudo tee /sys/fs/cgroup/demo/cgroup.procs    # move this shell into th
 sudo rmdir /sys/fs/cgroup/demo                         # removable when it has no processes
 ```
 
-Three rules trip people up. Processes can live only in **leaf** cgroups, which have no child cgroups. The root cgroup is the exception. A child can use only the controllers that its **parent** has enabled in `cgroup.subtree_control`. And you must enable controllers explicitly. Editing `/sys/fs/cgroup` by hand on a systemd machine can conflict with systemd's own management. For anything beyond experiments, let **systemd** create the cgroup. It then gets a unit name and persists.
+Three rules trip people up. Processes can live only in **leaf** cgroups, which have no child cgroups. The root cgroup is the exception. A child can use only the controllers that its **parent** has enabled in `cgroup.subtree_control`. And you must enable controllers explicitly.
+
+Editing `/sys/fs/cgroup` by hand on a systemd machine can conflict with systemd's own management. For anything beyond experiments, let **systemd** create the cgroup. It then gets a unit name and persists.
 
 ```bash
 sudo systemd-run --scope -p MemoryMax=500M -p CPUQuota=50% -p TasksMax=200 stress-ng --vm 1 --vm-bytes 1G --timeout 30s
 systemd-run --user --scope -p MemoryMax=1G python3 big.py        # as an ordinary user (needs delegation)
 ```
 
-When a cgroup exceeds `memory.max` and cannot reclaim memory, the kernel's **OOM killer** kills a process inside that cgroup. The `memory.events` file shows `oom_kill` counts. This is exactly the "Exit code 137" you see for a container that hit its memory limit. CPU limits work differently. A group over its `cpu.max` quota is **throttled**. It is paused until the next period, which shows up as `nr_throttled` and `throttled_usec` in `cpu.stat`. That causes puzzling latency in containers with small CPU limits.
+When a cgroup exceeds `memory.max` and cannot reclaim memory, the kernel's **OOM killer** kills a process inside that cgroup. The `memory.events` file shows `oom_kill` counts. This is exactly the "Exit code 137" you see for a container that hit its memory limit.
+
+CPU limits work differently. A group over its `cpu.max` quota is **throttled**. It is paused until the next period, which shows up as `nr_throttled` and `throttled_usec` in `cpu.stat`. That causes puzzling latency in containers with small CPU limits.
 
 Why this matters: cgroups give a Slurm job, a systemd service and a Kubernetes pod each **their own box**. They implement `--mem`, `--cpus-per-task` and Kubernetes `resources.limits`. Chapter 1.18 and the container chapters build on this section. Chapter 1.19 adds namespaces, the other half of a container.
 
 Before you cap a workload, check which cgroup it actually runs in.
 
 ## 10. AI-infrastructure patterns
+
+Everything so far was about one process on one machine. On a cluster, the same rules apply inside containers and batch jobs, where you do not control the parent process and cannot press Ctrl-C. These are the patterns you will meet most often.
 
 **Signals in containers and Kubernetes.** When you delete a pod, Kubernetes sends **`SIGTERM`** to PID 1 of each container. It waits `terminationGracePeriodSeconds` (default 30 s), then sends **`SIGKILL`**. If your training job does not handle `SIGTERM`, it is killed hard after 30 s and loses unsaved state. Watch for these common problems.
 
@@ -885,7 +997,9 @@ Before you cap a workload, check which cgroup it actually runs in.
 - Zombies accumulate because PID 1 never reaps them (see section 2). Use an init.
 - Exit code 137 equals 128 plus 9. It means `SIGKILL`, usually from the OOM killer or a grace-period timeout. Exit code 143 means `SIGTERM`.
 
-**Signals in batch schedulers.** Slurm stops a job with `SIGTERM`. After `KillWait` (default 30 s), it sends `SIGKILL`. `scancel --signal=USR1 JOBID` delivers a signal you choose. `sbatch --signal=B:USR1@120` asks Slurm to send `SIGUSR1` to the batch shell 120 seconds before the time limit. This is how you checkpoint before a time-limit kill. Trap `USR1` in the script, signal the training process, and wait for it to write the checkpoint (chapter 6). Preempted jobs are signalled in a similar way.
+**Signals in batch schedulers.** Slurm stops a job with `SIGTERM`. After `KillWait` (default 30 s), it sends `SIGKILL`. `scancel --signal=USR1 JOBID` delivers a signal you choose. `sbatch --signal=B:USR1@120` asks Slurm to send `SIGUSR1` to the batch shell 120 seconds before the time limit.
+
+This is how you checkpoint before a time-limit kill. Trap `USR1` in the script, signal the training process, and wait for it to write the checkpoint (chapter 6). Preempted jobs are signalled in a similar way.
 
 ```bash
 #!/bin/bash
@@ -896,9 +1010,15 @@ pid=$!
 wait "$pid"
 ```
 
-**Hung training jobs.** When your distributed job stops making progress, with GPUs at 100% or 0% utilisation, it is usually waiting on a **collective operation**. One rank died or stalled, and the others wait in NCCL. Triage from the process side. Check the `ps` states and `wchan`. Use `strace -p` to see whether all the ranks sit in the same `futex` or `poll`. Use `py-spy dump --pid PID` for Python stacks without stopping the process (a separate tool you install). Use `gdb -p PID -batch -ex 'thread apply all bt'` for native stacks. Run `nvidia-smi` to see which processes hold GPUs, and `dmesg | grep -i -E 'xid|nvrm'` for GPU errors. Also check the NCCL debug variables (`NCCL_DEBUG=INFO`) and the watchdog timeout in PyTorch. The fix is rarely on the hung rank. Find the first rank that failed (chapters on NCCL and Slurm).
+**Hung training jobs.** When your distributed job stops making progress, with GPUs at 100% or 0% utilisation, it is usually waiting on a **collective operation**. One rank died or stalled, and the others wait in NCCL.
 
-**Processes holding a GPU.** `nvidia-smi` shows compute processes by PID. A process inside a container appears with its **host PID**. The command `nvidia-smi --query-compute-apps=pid,used_memory --format=csv` is scriptable. `fuser -v /dev/nvidia*` finds everything with a GPU device open, including zombies and processes that other users started. A "ghost" GPU memory allocation with no visible process usually means a defunct process is still being torn down by the driver (often a `D`-state process). It can also mean a process in another PID namespace.
+Triage from the process side. Check the `ps` states and `wchan`. Use `strace -p` to see whether all the ranks sit in the same `futex` or `poll`. Use `py-spy dump --pid PID` for Python stacks without stopping the process (a separate tool you install). Use `gdb -p PID -batch -ex 'thread apply all bt'` for native stacks. Run `nvidia-smi` to see which processes hold GPUs, and `dmesg | grep -i -E 'xid|nvrm'` for GPU errors. Also check the NCCL debug variables (`NCCL_DEBUG=INFO`) and the watchdog timeout in PyTorch.
+
+The fix is rarely on the hung rank. Find the first rank that failed (chapters on NCCL and Slurm).
+
+**Processes holding a GPU.** `nvidia-smi` shows compute processes by PID. A process inside a container appears with its **host PID**. The command `nvidia-smi --query-compute-apps=pid,used_memory --format=csv` is scriptable. `fuser -v /dev/nvidia*` finds everything with a GPU device open, including zombies and processes that other users started.
+
+A "ghost" GPU memory allocation with no visible process usually means a defunct process is still being torn down by the driver (often a `D`-state process). It can also mean a process in another PID namespace.
 
 **`D`-state diagnosis on shared storage.** A login or compute node with a hung NFS or Lustre mount has many processes in `D`. Load climbs, `ls` on the mount hangs, and `kill -9` does nothing. Find the mount with `cat /proc/<pid>/stack` or `wchan`. Look for functions such as `nfs_*` or `ll_*`. Then check `mount | grep nfs` and the server's reachability. Options include a lazy unmount (`umount -l`) once the clients are stopped, or restoring the server. Mount options such as `soft`, `timeo` and `intr` trade hangs for I/O errors (chapter 5 and the storage chapters).
 
@@ -1101,7 +1221,7 @@ If you see `R` in `ps`, it means running on a CPU or waiting in the run queue. `
 <details>
 <summary>5. Why does `kill -9` (`SIGKILL`) fail to remove a process in state `D` or state `Z`, and how do you resolve each?</summary>
 
-If you find a process in `D`, know that it sits inside a kernel wait that has not returned, such as a hung NFS or Lustre mount or a dead disk or GPU. It does not act on pending signals until the call returns. Fix the storage or device, or reboot. A process in `Z` is already dead and holds only a PID-table slot. Make its parent call `wait()`, or kill or restart the parent so that `PID 1` adopts and reaps it.
+A process in `D` sits inside a kernel wait that has not returned, such as a hung NFS or Lustre mount or a dead disk or GPU. It does not act on pending signals until the call returns. Fix the storage or device, or reboot. A process in `Z` is already dead and holds only a PID-table slot. Make its parent call `wait()`, or kill or restart the parent so that `PID 1` adopts and reaps it.
 </details>
 
 <details>
@@ -1125,7 +1245,7 @@ In `ps`, run `ps -eLf`, `ps m`, or `ps m -o pid,tid,command` (*How Linux Works* 
 <details>
 <summary>9. Name three production problems solved immediately by `lsof` (`lsof +L1`, `lsof /dev/nvidia0`, `lsof -i :8080`).</summary>
 
-Suppose a full disk that `du` cannot explain. `sudo lsof +L1` finds deleted files that a running process still holds open. This explains a full disk that `df` reports but `du` does not. `sudo lsof /dev/nvidia0`, or `fuser -v /dev/nvidia0`, identifies every process that holds a GPU open. `sudo lsof -i :8080` shows which process owns TCP or UDP port `8080`.
+Suppose the disk is full and `du` cannot explain it. `sudo lsof +L1` finds deleted files that a running process still holds open. This explains a full disk that `df` reports but `du` does not. `sudo lsof /dev/nvidia0`, or `fuser -v /dev/nvidia0`, identifies every process that holds a GPU open. `sudo lsof -i :8080` shows which process owns TCP or UDP port `8080`.
 </details>
 
 <details>

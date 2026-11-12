@@ -22,15 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job that will not start. The log says a shared library is missing, or that a version is too old. Many of the failures you will debug on a GPU platform look like this: the program could not start, or could not load something it needs. You will see messages such as `libcuda.so.1: cannot open shared object file`, `version 'GLIBC_2.34' not found`, `version 'GLIBCXX_3.4.30' not found`, `CUDA error: no kernel image is available`, and `error while loading shared libraries: libnccl.so.2`. A Python import that hangs, or a container that cannot find the NVIDIA driver files, belongs in the same group. So does a binary that "works on the build machine but not here". The other failures are slow or stuck programs. A training job may spin in `futex`. A data loader may make millions of tiny `read` calls. A process may block in `ioctl` on `/dev/nvidia0`. In every case, the real question is what the program asks the kernel to do.
+Picture a training job that will not start. The log says a shared library is missing, or that a version is too old. Many of the failures you will debug on a GPU platform look like this: the program could not start, or could not load something it needs.
 
-To debug both kinds, you need a working mental model of four things. The first is what happens between typing a command and the first line of `main()`. The second is how a program talks to the kernel through system calls. The third is how a program finds and loads code it does not contain, which is the job of shared libraries and the dynamic linker. The fourth is the ELF file, the format that holds the program in the first place. This chapter covers all four. It shows you how to watch them with `ldd`, `readelf`, `nm`, `strace`, `ltrace`, `LD_DEBUG`, and the profilers `perf` and the BPF tools.
+The messages arrive in a handful of shapes. You will see `libcuda.so.1: cannot open shared object file`, `version 'GLIBC_2.34' not found`, `version 'GLIBCXX_3.4.30' not found`, `CUDA error: no kernel image is available`, and `error while loading shared libraries: libnccl.so.2`. A Python import that hangs, or a container that cannot find the NVIDIA driver files, belongs in the same group. So does a binary that "works on the build machine but not here".
+
+The other failures are slow or stuck programs. A training job may spin in `futex`. A data loader may make millions of tiny `read` calls. A process may block in `ioctl` on `/dev/nvidia0`. In every case, the real question is what the program asks the kernel to do.
+
+To debug both kinds, you need a working mental model of four things. The first is what happens between typing a command and the first line of `main()`. The second is how a program talks to the kernel through system calls.
+
+The third is how a program finds and loads code it does not contain, which is the job of shared libraries and the dynamic linker. The fourth is the ELF file, the format that holds the program in the first place. This chapter covers all four. It shows you how to watch them with `ldd`, `readelf`, `nm`, `strace`, `ltrace`, `LD_DEBUG`, and the profilers `perf` and the BPF tools.
 
 The chapter also gives a short introduction to the application-performance method that sits on top of these tools. That covers on-CPU and off-CPU profiling, syscall analysis, thread states and locks. The full performance method, the observability tools and benchmarking come later, in chapters 1.23 to 1.25.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with processes, signals and the basics of `strace` from chapter 1.8. You should also know the build toolchain and the shared-library search order from chapter 1.7. This chapter builds on that material rather than repeating it. The kernel and user-space model from chapter 1.1 is the last piece you need.
+Before you start, you should be comfortable with processes, signals and the basics of `strace` from chapter 1.8. You should also know the build toolchain and the shared-library search order from chapter 1.7. This chapter builds on that material rather than repeating it. The last piece you need is the kernel and user-space model from chapter 1.1.
 
 By the end of this chapter, you should be able to:
 
@@ -47,7 +53,7 @@ Check your own skills against this list before you start. If a line is unfamilia
 
 ## 1. From keystroke to `main()`
 
-Suppose a program fails before its first log line appears. To find the step that broke, you need the whole sequence in order. It starts when you type `./train` in a shell. The diagram below shows every hand-off, from the shell to the kernel, then to the dynamic linker, and finally to your program.
+Suppose a program fails before it prints its first log line. None of your own code has run yet, so the fault must sit in the machinery that starts it. To find the broken step, you need the whole sequence in order. It starts when you type `./train` in a shell. The diagram below shows every hand-off, from the shell to the kernel, then to the dynamic linker, and finally to your program.
 
 ```mermaid
 sequenceDiagram
@@ -72,7 +78,7 @@ sequenceDiagram
   K->>Sh: SIGCHLD, shell wait4() collects the status
 ```
 
-Read the diagram from top to bottom. Each arrow is one hand-off, and each hand-off is a place where a failure can start.
+Read the diagram from top to bottom. Each arrow is one hand-off, and each hand-off is a place where a failure can start. A useful picture is a stage crew. The kernel, the ELF loader and `ld.so` set the stage, and only then does `main` walk on.
 
 1. **The shell forks.** The child process calls **`execve(path, argv, envp)`** (chapter 1.8). On success, `execve` never returns, because the process image has been replaced by the new program.
 
@@ -82,7 +88,7 @@ Read the diagram from top to bottom. Each arrow is one hand-off, and each hand-o
 
    The loader then builds an initial **stack**. The stack holds `argc`, `argv`, `envp` and an **auxiliary vector**. That vector carries system values such as the page size, the location of the vDSO, the entry point, and random bytes for ASLR. Last, the loader picks a starting point for the **heap**.
 
-4. **A dynamically linked program names its interpreter.** Its ELF headers contain a `PT_INTERP` entry. On x86-64 glibc systems, that entry is `/lib64/ld-linux-x86-64.so.2`. The kernel maps the interpreter too, and execution starts **in the dynamic linker**, not in your program.
+4. **A dynamically linked program names its interpreter.** Its ELF headers contain a `PT_INTERP` entry. On x86-64 glibc systems, that entry is `/lib64/ld-linux-x86-64.so.2`. The kernel maps the interpreter too, and execution starts **in the dynamic linker**, not in your program. This is the first surprise for most people: your program is not the first code to run.
 
 5. **The dynamic linker (`ld.so`) loads and wires the libraries.** It reads the `DT_NEEDED` list of libraries. It finds each one with the search order from chapter 1.7: `RPATH` or `RUNPATH`, then `LD_LIBRARY_PATH`, then `/etc/ld.so.cache`, then the default directories. It maps each library with `mmap`.
 
@@ -102,7 +108,9 @@ Before you blame your code for a startup failure, find out which of these seven 
 
 ## 2. The ELF file format
 
-Every program you run, and every shared library it loads, is stored in the same format. That format is ELF, which stands for Executable and Linkable Format. It covers executables, shared libraries, object files and core dumps on Linux and most Unix systems. Windows uses a different format called PE, and macOS uses Mach-O. When a binary misbehaves, its ELF headers are the first place to look.
+The first time a binary from a colleague's laptop dies on a Grace node, the message is short: "Exec format error". Nothing in the program's own logic explains it, because the problem sits in the file's headers. Behind those headers sits the file format itself, and the format has a name. It is ELF, which stands for Executable and Linkable Format, and it covers executables, shared libraries, object files and core dumps on Linux and most Unix systems.
+
+Every program you run, and every shared library it loads, is stored in that same format. Windows uses a different format called PE, and macOS uses Mach-O. One file format for so many jobs is a gift to anyone debugging. When a binary misbehaves, its ELF headers are the first place to look, because they answer the questions you would otherwise guess at.
 
 One ELF file can be read in two ways. The first view belongs to the **linker**, and tools such as `objdump` use it. In this view, the file is a set of **sections**. `.text` holds the machine code, and `.rodata` holds constants. `.data` holds initialised variables. `.bss` holds uninitialised variables, and it takes no space in the file. `.symtab` and `.strtab` hold the full symbol table, while `.dynsym` and `.dynstr` hold the dynamic symbols. `.dynamic` holds the dynamic-linking information. `.plt` and `.got` are the lazy-binding tables. `.eh_frame` holds unwinding information, and `.debug_*` holds debug info when it is present.
 
@@ -158,11 +166,11 @@ A **symbol** is a name, for a function or a variable, together with an address. 
 
 **Debug info** maps addresses back to source lines and variables. It is written in the DWARF format when you compile with `-g`. Often it ships separately, in `-dbg` or `-debuginfo` packages, or through `debuginfod`. Profilers and debuggers need symbols to show function names. Without them, you see hexadecimal addresses or `[unknown]` (section 8).
 
-When you build software for production, compile with `-g` and keep the debug info, even if you ship stripped binaries. That keeps a profile readable later, when something goes wrong in the field.
+When you build software for production, compile with `-g` and keep the debug info, even if you ship stripped binaries. That keeps a profile readable later, when something goes wrong in the field. A stripped binary and a lost debug package turn a five-minute question into a long afternoon.
 
 ## 3. The process address space
 
-Every process sees its own flat virtual address space. The loader and the allocator organise that space, and you need to know its layout when a process uses too much memory. On x86-64 Linux, the regions run from low addresses to high, as the table shows.
+Every process sees its own flat virtual address space. A process can report a huge virtual size while using very little RAM, and that gap confuses people until they know the layout. The loader and the allocator organise that space, and you need to know its layout when a process uses too much memory. On x86-64 Linux, the regions run from low addresses to high, as the table shows.
 
 | Region | What lives there | Notes |
 |---|---|---|
@@ -176,7 +184,7 @@ Every process sees its own flat virtual address space. The loader and the alloca
 
 Notice which regions grow and in which direction. The heap moves its end up through `brk`. The stack grows down, and each thread gets its own. The mmap area holds the big allocations, and freeing a mapping returns that memory to the kernel at once.
 
-You can see this layout for any running process. `cat /proc/PID/maps` lists each address range with its permissions, such as `r-xp`, and also its offset, device, inode and path. `pmap -x PID` adds the resident size. `[heap]`, `[stack]`, `[vdso]` and every library appear in the output.
+You can see this layout for any running process, with no special tool. `cat /proc/PID/maps` lists each address range with its permissions, such as `r-xp`, and also its offset, device, inode and path. `pmap -x PID` adds the resident size. `[heap]`, `[stack]`, `[vdso]` and every library appear in the output.
 
 The process tools show two different sizes. Virtual size (VSZ or VIRT) is the sum of all the mappings. Resident size (RSS) is the part that is actually in RAM. The two differ because the kernel allocates memory lazily. Reserving address space costs nothing, and a physical page is assigned only on first touch. This behaviour is **demand paging**, covered in chapter 1.8 section 8 and in chapter 1.17.
 
@@ -202,11 +210,11 @@ int main(void) {
 }
 ```
 
-Compile it with `cc -O0 -o mapdemo mapdemo.c` and run it. In a second terminal, watch `top` or `ps -o pid,vsz,rss -p PID`. `VIRT` jumps by 1 GiB straight away, but `RES` stays near zero until you touch the pages. Then `strace ./mapdemo` shows the `mmap` call, and `/usr/bin/time -v` reports roughly 262,144 minor page faults. That is the whole idea of demand paging. It is also why a memory leak is judged by RSS and by cgroup memory accounting, not by virtual size.
+Compile it with `cc -O0 -o mapdemo mapdemo.c` and run it. In a second terminal, watch `top` or `ps -o pid,vsz,rss -p PID`. `VIRT` jumps by 1 GiB straight away, but `RES` stays near zero until you touch the pages. Then `strace ./mapdemo` shows the `mmap` call, and `/usr/bin/time -v` reports roughly 262,144 minor page faults. That gap between the promise and the delivery is the whole idea of demand paging. It is also why a memory leak is judged by RSS and by cgroup memory accounting, not by virtual size.
 
-`malloc` is a library function, not a system call. The C allocator, glibc `malloc` or `jemalloc` and `tcmalloc` when they are preloaded, gets large chunks from the kernel with `brk` or `mmap`. It then splits those chunks into smaller pieces. Small objects live in the heap, and large ones get their own `mmap`.
+`malloc` is a library function, not a system call. Think of the C allocator as a wholesaler. It gets large chunks from the kernel with `brk` or `mmap`, either glibc `malloc` or `jemalloc` and `tcmalloc` when they are preloaded. It then splits those chunks into smaller pieces. Small objects live in the heap, and large ones get their own `mmap`.
 
-Freed memory is often not returned to the operating system right away. Fragmentation and arenas keep it inside the process. So RSS can stay high after the objects are freed.
+Freed memory is often not returned to the operating system right away. Fragmentation and arenas keep it inside the process. So RSS can stay high long after the objects are freed.
 
 Python behaves the same way. Its allocator requests large **arenas** from the OS. One surviving small object in an arena keeps the whole arena from being given back. That is why the memory of a long-running data loader does not drop after you `del` a large list or call `gc.collect()`.
 
@@ -216,9 +224,11 @@ Before you call a process a leak, watch its RSS over time. Virtual size on its o
 
 ## 4. System calls
 
+A program that opens a file, sends a packet or asks the GPU to do work crosses the same line every time. That line is the system call boundary. Once you can see it, most questions about what a program is doing become answerable. This section explains the crossing, then shows how to read it in `strace`.
+
 ### The mechanism
 
-Your program never touches the disk, the network or the GPU directly. It asks the kernel to do the work, and it does so through a system call. A **system call** is the controlled entry into the kernel. The C library offers a **wrapper function** for each one, such as `open()`, `read()`, `write()` or `mmap()`. The wrapper places the call **number** and the arguments in specific CPU registers. Then it runs a special instruction: `syscall` on x86-64, or `svc` on ARM64.
+Picture a program that wants one byte written to a file. It cannot touch the disk, the network or the GPU directly. It asks the kernel to do the work, and it does so through a system call. A **system call** is the controlled entry into the kernel. The C library offers a **wrapper function** for each one, such as `open()`, `read()`, `write()` or `mmap()`. The wrapper places the call **number** and the arguments in specific CPU registers. Then it runs a special instruction: `syscall` on x86-64, or `svc` on ARM64.
 
 The CPU switches to kernel mode at a fixed entry point. The kernel looks up the call number in its **system call table**, then checks the arguments and the permissions. It does the work, which may block the task for a while. Last, it puts a result in a register and returns to user mode.
 
@@ -254,11 +264,13 @@ When you run `strace`, the output is a stream of these calls. The table lists th
 
 Start with the failures. A `-1 ENOENT` on an `openat` often explains a mysterious failure, because the program looked for a file that is not there. Then look at the sizes. A `read` with a tiny size argument points to I/O that could be batched. A `futex` line means a thread is waiting for a lock. It does not mean the program is broken.
 
-When a program fails silently, read the last few failing calls in `strace` before you change any code.
+When a program fails silently, read the last few failing calls in `strace` before you change any code. The trace usually names the missing thing in plain sight.
 
 ## 5. Shared libraries in depth
 
-Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. Shared libraries carry their own management costs and a tangled linking procedure. You can still bring them under control if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
+You install a library, and the file sits right there on disk, yet the program still says it cannot open it. That is the kind of puzzle this section prepares you for. A shared library is code that many programs use without each one carrying its own copy. That saving comes with its own management costs and a tangled linking procedure.
+
+Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. This section is about keeping them under control, and you can do that if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
 
 ### Names: soname, real name, linker name
 
@@ -286,13 +298,13 @@ To check what a binary needs, run `objdump -T ./prog | grep -o 'GLIBC_[0-9.]*' |
 
 ### glibc versus musl, and containers
 
-Alpine Linux uses **musl**, not glibc. A glibc-linked binary will not start on Alpine. The error says "not found", even though the file exists. The reason is that the interpreter `/lib64/ld-linux-x86-64.so.2` is missing. Most GPU software, such as the CUDA libraries and PyTorch wheels, is built for glibc. So base images for GPU work are Debian, Ubuntu or UBI based.
+Alpine Linux uses **musl**, not glibc. That difference produces one of the most confusing errors in this chapter. A glibc-linked binary will not start on Alpine, and the error says "not found", even though the file exists. Nothing is wrong with the file itself. The reason is that the interpreter `/lib64/ld-linux-x86-64.so.2` is missing. Most GPU software, such as the CUDA libraries and PyTorch wheels, is built for glibc. So base images for GPU work are Debian, Ubuntu or UBI based.
 
 Inside a container, the libraries come from the **image**, not from the host. The exception is the driver-side libraries that the NVIDIA runtime injects (section 9).
 
 ### Preloading and debugging the loader
 
-- **`LD_PRELOAD=/path/lib.so`** forces a library to load first, so its symbols override the normal ones. People use it to replace the allocator, such as `jemalloc` or `tcmalloc`, without recompiling. They also use it to intercept calls for debugging or profiling, which some GPU tools do, or to work around a library bug. The same mechanism is used by malware, and it is ignored for set-uid programs. It can also break programs in subtle ways.
+- **`LD_PRELOAD=/path/lib.so`** forces a library to load first, so its symbols override the normal ones. People use it to replace the allocator, such as `jemalloc` or `tcmalloc`, without recompiling. They also use it to intercept calls for debugging or profiling, which some GPU tools do, or to work around a library bug. The same mechanism is used by malware, and it is ignored for set-uid programs. It can also break programs in subtle ways, so treat it as a sharp tool.
 
 - **`LD_DEBUG`** makes the loader explain itself. `LD_DEBUG=libs ./prog` shows where it looked and what it loaded. `LD_DEBUG=bindings` shows symbol resolution. `LD_DEBUG=files`, `LD_DEBUG=versions` and `LD_DEBUG=statistics` each cover their own topic, and `LD_DEBUG=help` lists them all.
 
@@ -306,7 +318,7 @@ Inside a container, the libraries come from the **image**, not from the host. Th
 
 ### Python and extension modules
 
-Python itself is a dynamically linked program. Every compiled extension, such as `numpy`, `torch` or `cv2`, is a **shared library**. Its file name carries a Python-specific tag, such as `_C.cpython-311-x86_64-linux-gnu.so`. The interpreter loads it with `dlopen()` at import time. That extension then pulls in its own dependencies. For example, `libtorch_cuda.so` needs `libcudart.so.12`, `libcublas.so.12`, `libcudnn.so.9` and `libnccl.so.2`.
+Python itself is a dynamically linked program. Every compiled extension, such as `numpy`, `torch` or `cv2`, is a **shared library**. Its file name carries a Python-specific tag, such as `_C.cpython-311-x86_64-linux-gnu.so`. The interpreter loads it with `dlopen()` at import time. That extension then pulls in its own dependencies. For example, `libtorch_cuda.so` needs `libcudart.so.12`, `libcublas.so.12`, `libcudnn.so.9` and `libnccl.so.2`. When an import fails, this chain of libraries is what you are debugging.
 
 **Wheels** bundle many of these libraries inside the package directory. They use `RUNPATH` with `$ORIGIN` to find them. That is why `pip install torch` works without a system CUDA toolkit. The wheel brings its own CUDA user-space libraries. Only the **driver** must come from the host, and that means `libcuda.so.1` and the kernel module.
 
@@ -316,7 +328,7 @@ When a library will not load, check the search path before you reinstall anythin
 
 ## 6. Watching a program: `strace` and `ltrace` in practice
 
-When a program fails or hangs and its logs say nothing, `strace` is usually the first tool to reach for. Chapter 1.8 introduced it in section 3. It prints the system calls the program makes, one line per call. Start with a broad trace, then narrow it down to the calls that matter. The commands below follow that routine.
+When a program fails or hangs, and its logs say nothing useful, `strace` is usually the first tool to reach for. You can see the process in `ps`, but you get no error, no stack and no clue why it stopped moving. Chapter 1.8 introduced `strace` in section 3. It prints the system calls the program makes, one line per call, so the kernel boundary where it stopped becomes visible. Start with a broad trace, then narrow it down to the calls that matter. The commands below follow that routine.
 
 ```bash
 strace -f -o /tmp/t.out -tt -T ./prog args        # follow forks/threads, timestamps, time spent in each call
@@ -332,7 +344,7 @@ strace -k -e trace=openat ./prog                  # add a user-space stack trace
 sudo strace -f -p $(pgrep -n python) -e trace=ioctl,futex   # a running training process
 ```
 
-Each line in that block answers a different question. Filters keep the output small, and the summary and timing flags show where the time goes. Once you have a trace, read it with one question in mind. These examples cover the common ones.
+Each line in that block answers a different question. Filters keep the output small, and the summary and timing flags show where the time goes. Once you have a trace, read it with one question in mind. The examples below cover the questions that come up most often.
 
 - **The program cannot find its config.** Search the trace for failures with `grep -n 'ENOENT\|EACCES' /tmp/t.out | tail`. The last failed `openat` before the error message is almost always the culprit.
 
@@ -358,7 +370,7 @@ When a process is hung, capture its stacks before you restart it. A restart remo
 
 ## 7. Application performance: a first method
 
-Everything above is the machinery. This section shows how to use it to answer "why is this program slow?". It is a short version of the application-performance method. The full system-level method is in chapter 1.23, the tools are in chapter 1.24, and benchmarking is in chapter 1.25.
+Everything above is the machinery. This section shows how to use it to answer the question that pays the bills: "why is this program slow?". It is a short version of the application-performance method. The full system-level method is in chapter 1.23, the tools are in chapter 1.24, and benchmarking is in chapter 1.25.
 
 ### Know the application first
 
@@ -455,7 +467,7 @@ Before you trust a flame graph, check that its stacks are complete. A short stac
 
 ## 8. AI-infrastructure patterns
 
-Now apply these ideas to the software that matters most on a GPU node. Start with a practical question: which files does a CUDA program load, and in what order?
+Now apply these ideas to the software that matters most on a GPU node. When a CUDA job fails to start, the useful question is concrete: which files does it load, and in what order? The answer tells you which layer owns the piece that is missing.
 
 **What a CUDA program loads.** Run `strace -f -e trace=openat python -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|nvidia'` on a GPU node, then read the order. You will see Python's extension modules first. Next come the CUDA libraries that the framework bundles, such as `libcudart`, `libcublas`, `libcudnn`, `libnccl` and `libtorch_cuda`. Then the program opens the **driver library** `libcuda.so.1`, which the CUDA runtime loads with `dlopen`. After that you see `openat("/dev/nvidiactl")`, `/dev/nvidia0` and `/dev/nvidia-uvm`, followed by a storm of `ioctl` calls.
 
@@ -483,9 +495,9 @@ Start with the row that matches your error message. Move down the table only if 
 
 **Hung training job: process-side view.** A hung job needs several views. Run `py-spy dump --pid PID` for the Python stack. Run `gdb -p PID -batch -ex 'thread apply all bt'` for the native stacks, where NCCL threads show up in `ncclProxy...` and `futex_wait`. Then run `strace -f -p PID -e trace=futex,ioctl,poll,epoll_wait,read` for a few seconds. It tells you whether threads sit in `ioctl` on `/dev/nvidia*`, in `poll` on a socket, or on a `futex`. Finish with `nvidia-smi` and `dmesg` to look for GPU errors. Because `strace` and `gdb` pause the target, run them on one rank of an already-hung job, not on the healthy ones.
 
-**Data-loader efficiency.** A loader that reads many small files issues many small `openat`, `read` and `close` calls. Run `strace -c -f -p <loader pid>` to measure them. The cures are bigger shards, sequential formats such as WebDataset, Parquet or TFRecord, caching on local NVMe, memory mapping, prefetching and `io_uring`. Each one applies the I/O-size and buffering ideas from section 7.
+**Data-loader efficiency.** A loader that reads many small files issues many small `openat`, `read` and `close` calls. Each one carries the same fixed cost, and the payload is tiny. Run `strace -c -f -p <loader pid>` to measure them. The cures are bigger shards, sequential formats such as WebDataset, Parquet or TFRecord, caching on local NVMe, memory mapping, prefetching and `io_uring`. Each one applies the I/O-size and buffering ideas from section 7.
 
-**Reproducible builds and environments.** To make a binary behave the same everywhere, build it in a pinned container. Link statically whatever must be fixed. Record the `ldd` and `readelf -d` output in your artefact metadata. Bundle libraries with an `$ORIGIN`-relative `RUNPATH`; `auditwheel repair` does this for wheels. Ship the debug info separately.
+**Reproducible builds and environments.** To make a binary behave the same everywhere, build it in a pinned container. Link statically whatever must be fixed. Record the `ldd` and `readelf -d` output in your artefact metadata. Bundle libraries with an `$ORIGIN`-relative `RUNPATH`; `auditwheel repair` does this for wheels. Ship the debug info separately. This is how you retire the "works on the build machine" failure for good.
 
 For custom CUDA code, `nvcc` produces a **fat binary**. It contains architecture-specific code, called cubin, and portable PTX. One build then runs on several GPU generations, and newer GPUs can JIT-compile the PTX. Include the architectures you deploy.
 
@@ -497,7 +509,7 @@ Before you blame the framework for a slow or hung job, check which files it load
 
 ## How it fails
 
-Most of these failures show up with a clear message. Each item below gives you the cause, then the first thing to check.
+Most of these failures show up with a clear message. The message rarely says which layer is at fault, though, so each item below gives you the cause and then the first thing to check.
 
 1. **"cannot open shared object file".** The library is missing, is not in the cache, is not on the search path, or has the wrong architecture. Check it with `ldd` or `readelf -d`, `ldconfig -p`, and `LD_DEBUG=libs`.
 
@@ -531,7 +543,7 @@ Pick the failure that matches your symptom, and run its first check before you c
 
 ## Hands-on lab: ELF, shared libraries, strace, and VM drills
 
-Start with the self-checking Python lab. Run it on your own machine. It verifies the 7-stage ELF startup order (`execve` -> `PT_INTERP` `ld.so` -> `_start` -> `main`), shared library naming (`linker_name`, `soname`, `real_name`), `GLIBC_2.xx` forward-only symbol compatibility, `1 GiB` `mmap` demand paging (`262,144` minor page faults), and USE method software resource metrics.
+Start with the self-checking Python lab, and run it on your own machine before you touch a VM. It verifies the 7-stage ELF startup order (`execve` -> `PT_INTERP` `ld.so` -> `_start` -> `main`), shared library naming (`linker_name`, `soname`, `real_name`), `GLIBC_2.xx` forward-only symbol compatibility, `1 GiB` `mmap` demand paging (`262,144` minor page faults), and USE method software resource metrics.
 
 ```bash
 python3 code/part01/program_execution_elf_lab.py
@@ -684,7 +696,7 @@ When a step fails, write down the exact error message before you change anything
 
 ## Exercises
 
-1. **From `execve()` to `main()` and `PT_INTERP`:** List the 7 ordered stages in `ELF_STARTUP_STAGES` (`code/part01/program_execution_elf.py`) that run between typing `./train` and the parent shell reaping the exit status. Then you should explain why a glibc-linked binary, run inside an Alpine (musl) container, fails with `No such file or directory` even though `./train` exists and is executable.
+1. **From `execve()` to `main()` and `PT_INTERP`:** List the 7 ordered stages in `ELF_STARTUP_STAGES` (`code/part01/program_execution_elf.py`) that run between typing `./train` and the parent shell reaping the exit status. Then explain why a glibc-linked binary, run inside an Alpine (musl) container, fails with `No such file or directory` even though `./train` exists and is executable.
 
 2. **Shared Library Naming (`linker_name`, `soname`, `real_name`) and `GLIBC` Symbol Versioning:** (a) For the file `libfoo.so.1.2.3`, state its `linker_name`, `soname` and `real_name`. Say which of the three is recorded inside an executable's `DT_NEEDED` header. (b) If `./prog` requires `GLIBC_2.34`, will it start on a host with `GLIBC_2.31`, and will it start on one with `GLIBC_2.35`? How do you inspect the highest `GLIBC_` version that `./prog` needs?
 

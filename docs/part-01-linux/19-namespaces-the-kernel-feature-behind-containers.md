@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost every AI workload on a modern cluster runs inside a container. That might be a Kubernetes pod, an Enroot or Pyxis container under Slurm, or a Docker image on a developer's machine. If you do not know what a container is at the kernel level, you will struggle to debug one. Most of the failures below trace back to this chapter:
+Picture your first on-call week on a GPU cluster. Almost every AI workload you meet runs inside a container. It might be a Kubernetes pod, an Enroot or Pyxis container under Slurm, or a Docker image on a developer's laptop. If you cannot say what a container is at the kernel level, you will struggle to debug any of them. The failures below are the ones that trace back to this chapter:
 
 - A training script started with `bash -c` never checkpoints on `SIGTERM`. It runs as PID 1 of a PID namespace, and the kernel gives PID 1 no default signal actions.
 - Inside a pod, `nproc`, `free` and `top` show the **host's** 128 CPUs and 2 TiB of RAM. The cgroup, however, allows only 8 CPUs and 64 GiB.
@@ -32,11 +32,11 @@ Almost every AI workload on a modern cluster runs inside a container. That might
 - A write to a multi-gigabyte file in an image layer fills `/var/lib/containerd`, because of overlayfs copy-up.
 - Security reviews ask whether a container is privileged, shares the host PID namespace, or has a remapped user namespace.
 
-Chapter 1.18 explained how to limit what a process can *use*, with cgroups. This chapter explains how to limit what a process can *see*, with namespaces. Together with a root filesystem, capabilities and seccomp (chapter 1.21), they make up a container. Chapter 1.20 puts them together in a hands-on lab that builds a container by hand.
+Chapter 1.18 showed you how to limit what a process can *use*, with cgroups. This chapter shows you how to limit what a process can *see*, with namespaces. Add a root filesystem, capabilities and seccomp from chapter 1.21, and the pieces make up a container. Chapter 1.20 then puts them together in a hands-on lab that builds a container by hand.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know processes and signals (1.8), the mount and filesystem model (1.12), kernel interfaces (1.10) and cgroups (1.18). The networking details used here, such as bridges, veth and NAT, are covered fully in Part 2. This chapter gives you just enough of them.
+Before you start, four earlier chapters will make this one easier: processes and signals in 1.8, the mount and filesystem model in 1.12, kernel interfaces in 1.10, and cgroups in 1.18. The networking details used here, such as bridges, veth and NAT, are covered fully in Part 2. This chapter gives you just enough of them to follow along.
 
 After this chapter you can:
 
@@ -51,7 +51,7 @@ After this chapter you can:
 
 ## 1. A container is not a kernel object
 
-Ask the kernel for its container objects and you will find none. The Linux kernel has no object called a container. A "container" is user-space tooling, such as Docker, containerd with runc, Podman, LXC or Enroot, that combines several separate kernel features. The table shows the four pieces and the chapter that covers each one.
+Here is a fact that surprises almost everyone: the Linux kernel has no object called a container. Ask the kernel for its container objects and you will find none. A "container" is user-space tooling, such as Docker, containerd with runc, Podman, LXC or Enroot, that combines several separate kernel features. The table shows the four pieces and the chapter that covers each one.
 
 | Feature | What it controls | Chapter |
 |---|---|---|
@@ -60,7 +60,7 @@ Ask the kernel for its container objects and you will find none. The Linux kerne
 | **Root filesystem** | Its own `/` (an image unpacked or overlaid, entered with `pivot_root`) | this one |
 | **Capabilities, seccomp, LSMs** | What it may *do* (privileged operations, system calls, files by label/profile) | 1.21 |
 
-Two of these pieces, namespaces and the root filesystem, are this chapter's subject. The other two are covered in chapters 1.18 and 1.21. The diagram shows how containers sit on one shared kernel.
+Two of those pieces are this chapter's subject: namespaces and the root filesystem. The other two belong to chapters 1.18 and 1.21. The diagram below shows how several containers sit on one shared kernel.
 
 ```mermaid
 flowchart TB
@@ -81,15 +81,15 @@ flowchart TB
   C2 --> K
 ```
 
-Gregg puts it this way: the kernel keeps a pointer, `struct nsproxy`, from each task to its namespaces. That structure is the closest thing the kernel has to a "container". Because the kernel is shared, a container starts in milliseconds. It uses no guest-kernel memory, has no virtualisation overhead on CPU or memory, and calls the GPU driver natively. The price is real, though. All containers contend for the same kernel locks, caches and queues, which is the noisy-neighbour problem. A kernel bug or panic affects every container. Guests cannot load their own kernel modules or run a different kernel. Isolation is also weaker than hardware virtualisation, because the attack surface is the whole system-call interface.
+Gregg puts it this way: the kernel keeps a pointer, `struct nsproxy`, from each task to its namespaces. That structure is the closest thing the kernel has to a "container". Because the kernel is shared, a container starts in milliseconds. It uses no guest-kernel memory, has no virtualisation overhead on CPU or memory, and calls the GPU driver natively. The price is real, though. All containers contend for the same kernel locks, caches and queues, which is the noisy-neighbour problem. A kernel bug or panic affects every container on that node. Guests cannot load their own kernel modules or run a different kernel. Isolation is also weaker than hardware virtualisation, because the attack surface is the whole system-call interface.
 
-Here is the short history. `chroot` (Unix V7, 1979) changed a process's idea of `/`. FreeBSD jails (1998) and Solaris Zones (2005) added whole-system partitioning. Linux added mount namespaces in 2.4.19 (2002), then the other namespace types over many releases. Cgroups arrived in 2.6.24 (2008). LXC (2008) and Docker (2013) packaged these pieces. The OCI specification standardised the image and runtime format, and Kubernetes (2014) became the orchestrator.
+The history is short, and worth knowing. `chroot` from Unix V7 in 1979 changed a process's idea of `/`. FreeBSD jails in 1998 and Solaris Zones in 2005 added whole-system partitioning. Linux added mount namespaces in 2.4.19 in 2002, then the other namespace types over many releases. Cgroups arrived in 2.6.24 in 2008. LXC in 2008 and Docker in 2013 packaged these pieces. The OCI specification standardised the image and runtime format, and Kubernetes in 2014 became the orchestrator.
 
-Before you debug a container, decide which of these four pieces is the likely cause.
+Before you debug a container, decide which of those four pieces is the likely cause.
 
 ## 2. The namespace types
 
-Two containers on one node can both listen on port 80. The network namespace is what makes that possible. A **namespace** wraps a global system resource, so that the processes inside it see their own isolated copy. Changes made inside are visible only to members of that namespace. Every process always belongs to exactly one namespace of each type, starting with the host's initial, or "init", namespaces.
+Two services on one host can both insist on port 80, and neither one notices the other. The network namespace is what makes that possible. A **namespace** wraps a global system resource, so that the processes inside it see their own isolated copy. Changes made inside are visible only to members of that namespace, never to anyone outside it. Every process always belongs to exactly one namespace of each type, starting with the host's initial namespaces, often called the "init" namespaces.
 
 | Namespace | Clone flag | Isolates | Notes |
 |---|---|---|---|
@@ -102,7 +102,11 @@ Two containers on one node can both listen on port 80. The network namespace is 
 | **cgroup** | `CLONE_NEWCGROUP` | The view of the cgroup hierarchy root | Container sees its own cgroup as `/` |
 | **time** | `CLONE_NEWTIME` | `CLOCK_MONOTONIC`/`CLOCK_BOOTTIME` offsets | Added in Linux 5.6; rarely used |
 
-The table lists the eight types. Notice the flag for the mount namespace. `CLONE_NEWNS` looks odd only because it was the first namespace, added in 2002, before the naming pattern settled.
+The table lists all eight types. Notice the flag for the mount namespace: `CLONE_NEWNS` looks odd only because it was the first namespace, added in 2002, before the naming pattern settled.
+
+Read the rows one at a time, because each type answers one practical question. The mount namespace gives a process its own view of the filesystem tree, which is how a container gets its own `/`. The PID namespace gives it its own process numbering, which is how a container's main program becomes PID 1. The network namespace gives it its own devices, addresses, routes and ports, which is how two containers can both use port 80.
+
+The remaining four are just as practical, though you will meet them less often. The UTS namespace gives a process its own hostname and NIS domain name. The IPC namespace gives it its share of System V IPC objects and POSIX message queues. The user namespace gives it its own UID and GID number space, along with its own capabilities. The cgroup namespace gives it its own view of the cgroup hierarchy root, and the time namespace offsets its monotonic and boot clocks.
 
 Three system calls do all the work. Each one creates or joins a namespace in a different way.
 
@@ -110,11 +114,11 @@ Three system calls do all the work. Each one creates or joins a namespace in a d
 - **`unshare(2)`** moves the calling process into new namespaces. For PID namespaces, only its future children enter the new one. The `unshare(1)` command wraps this call.
 - **`setns(2)`** joins an existing namespace through a file descriptor from `/proc/PID/ns/*`. `nsenter(1)` wraps it. In practice, `docker exec` and `kubectl exec` are "setns into the container's namespaces and exec a program".
 
-A namespace stays alive as long as something refers to it. That can be a process inside it, an open file descriptor to `/proc/PID/ns/xxx`, or a bind mount of that file. The last case is how `ip netns` keeps named network namespaces under `/run/netns` alive, with no process running in them.
+A namespace stays alive as long as something still refers to it. That can be a process inside it, an open file descriptor to `/proc/PID/ns/xxx`, or a bind mount of that file. The last case is how `ip netns` keeps named network namespaces under `/run/netns` alive, with no process running in them.
 
 ### Inspecting namespaces
 
-The commands below let you look at namespaces on a running system, and you can run them on any Linux host. Each `ns` symlink carries an inode number, and two processes with the same number share a namespace.
+The commands below let you look at namespaces on a running system, and they work on any Linux host. Each `ns` symlink carries an inode number, and two processes that show the same number share a namespace.
 
 ```bash
 ls -l /proc/$$/ns/                     # symlinks like net:[4026531992]; the number is the namespace inode
@@ -128,13 +132,13 @@ cat /proc/self/uid_map /proc/self/gid_map     # user namespace mappings (see sec
 cat /proc/sys/user/max_user_namespaces        # per-user limits (user.max_*_namespaces)
 ```
 
-Here is a practical debugging recipe for Kubernetes. First find the container's host PID, using `crictl inspect <id> | grep -i pid` or `docker inspect -f '{{.State.Pid}}'`. Then run `nsenter -t PID -n` to use host tools, such as tcpdump, ss and ethtool, inside the pod's network namespace. That works even when the image has none of those tools. It is one of the most useful skills in this chapter.
+Here is a practical debugging recipe for Kubernetes. First, find the container's host PID, using `crictl inspect <id> | grep -i pid` or `docker inspect -f '{{.State.Pid}}'`. Then run `nsenter -t PID -n` to use host tools, such as tcpdump, ss and ethtool, inside the pod's network namespace. That works even when the image has none of those tools. It is one of the most useful skills in this chapter.
 
 Learn to read the `/proc/PID/ns` links before you need them during an incident.
 
 ## 3. PID namespaces
 
-Run `ps` inside a container and the list starts at PID 1. That list is a PID namespace at work. A PID namespace gives its members a private PID numbering. The first process in it is PID 1. Inside, the process sees only itself and its descendants in `/proc`, once `/proc` is mounted from inside that namespace. The same process can have different PIDs in different namespaces. PID 1 in a container may be PID 45982 on the host. PID namespaces nest: a parent namespace sees all descendants, each with its own number, while a child sees nothing above it.
+Run `ps` inside a container and the list starts at PID 1. That surprise is a PID namespace at work. A PID namespace gives its members a private PID numbering, and the first process in it is always PID 1. Inside, the process sees only itself and its descendants in `/proc`, and only once `/proc` is mounted from inside that namespace. The same process can have a different PID in each namespace. PID 1 in a container may be PID 45982 on the host. PID namespaces also nest: a parent namespace sees all descendants, each with its own number, while a child sees nothing above it.
 
 ```mermaid
 flowchart TB
@@ -150,21 +154,23 @@ flowchart TB
   end
 ```
 
-PID 1 is the init of its namespace, and it follows three special rules. The first rule is that PID 1 has no default signal actions. A signal sent from inside the namespace reaches PID 1 only if PID 1 installed a handler for it. `SIGKILL` and `SIGSTOP` from inside are ignored. From the parent namespace they still work, which is how `docker stop`, `kubectl delete pod` and the kubelet's `SIGTERM` followed by `SIGKILL` reach the process. This creates a trap. A shell script as PID 1 with no `SIGTERM` handler ignores the termination request. The runtime then waits out the grace period, 30 seconds in Kubernetes by default, before it sends `SIGKILL`. A training job loses its chance to checkpoint. The fix is to end the script with `exec python train.py`, so the program itself becomes PID 1 and installs its own handler. You can also use a tiny init, such as `tini`, `docker run --init`, `dumb-init` or Kubernetes `shareProcessNamespace`.
+PID 1 is the init of its namespace, and it follows three special rules. The first rule is that PID 1 has no default signal actions. A signal sent from inside the namespace reaches PID 1 only if PID 1 installed a handler for it. `SIGKILL` and `SIGSTOP` from inside are ignored. From the parent namespace they still work, which is how `docker stop`, `kubectl delete pod` and the kubelet's `SIGTERM` followed by `SIGKILL` reach the process.
 
-The second rule is about zombies. Orphaned processes in the namespace are re-parented to PID 1, which must call `wait()` on them. If it does not, zombies accumulate and can eventually exhaust the PID limit from chapter 1.18, `pids.max`. Real init programs reap zombies. Many application PID 1s do not, and chapter 1.8 covers zombies in detail.
+That rule creates a trap. A shell script running as PID 1 with no `SIGTERM` handler ignores the termination request. The runtime then waits out the grace period, 30 seconds in Kubernetes by default, before it sends `SIGKILL`. A training job loses its chance to checkpoint. The fix is to end the script with `exec python train.py`, so the program itself becomes PID 1 and installs its own handler. You can also use a tiny init, such as `tini`, `docker run --init`, `dumb-init` or Kubernetes `shareProcessNamespace`.
 
-The third rule is that when PID 1 exits, the kernel kills every other process in that namespace with `SIGKILL`, and the namespace cannot fork new processes. That is why a container dies when its main process dies.
+The second rule is about zombies. Orphaned processes in the namespace are re-parented to PID 1, and PID 1 must call `wait()` on them. If it does not, zombies accumulate and can eventually exhaust the PID limit from chapter 1.18, `pids.max`. Real init programs reap zombies. Many application PID 1s do not, and chapter 1.8 covers zombies in detail.
 
-`unshare --pid` affects only children, so use `--fork` if you want the shell itself to be PID 1. `/proc` is a mount too. After you create a PID namespace, mount a fresh `proc`, with `mount -t proc proc /proc` or `unshare --mount-proc`. Otherwise tools such as `ps` still show the host's view.
+The third rule follows from the same idea. When PID 1 exits, the kernel kills every other process in that namespace with `SIGKILL`, and the namespace cannot fork new processes. That is why a container dies when its main process dies.
 
-Kubernetes ties these ideas together. Each pod has a `pause` (infra) container that holds the pod's shared namespaces. With `shareProcessNamespace: true`, all containers in the pod share one PID namespace, and `pause` runs as PID 1 and reaps zombies. `hostPID: true` puts the pod in the **host** PID namespace. Some profilers and node agents need that, but it is a strong security exposure.
+`unshare --pid` affects only children, so add `--fork` if you want the shell itself to be PID 1. `/proc` is a mount too. After you create a PID namespace, mount a fresh `proc`, with `mount -t proc proc /proc` or `unshare --mount-proc`. Otherwise tools such as `ps` still show the host's view.
+
+Kubernetes ties these ideas together. Each pod has a `pause` container, also called the infra container, that holds the pod's shared namespaces. With `shareProcessNamespace: true`, all containers in the pod share one PID namespace, and `pause` runs as PID 1 and reaps zombies. `hostPID: true` puts the pod in the **host** PID namespace. Some profilers and node agents need that, but it is a strong security exposure.
 
 Before you give a pod `hostPID: true`, check whether the workload truly needs to see host processes.
 
 ### Seeing a container from the host
 
-Inside a container, a process listing may show only the shell and the `ps` command itself. The shell has PID 1, the number normally reserved for init on a full system. That makes the container look like its own machine, but it is not. Open a second terminal on the host and list processes, and you will find the same shell with a much larger PID.
+Inside a container, a process listing may show only the shell and the `ps` command itself. That shell has PID 1, the number normally reserved for init on a full system. The container therefore looks like a small machine of its own, but it is not one. Open a second terminal on the host and list processes, and you will find the same shell with a much larger PID.
 
 ```
 root 20189 0.2 0.0 2408 2104 pts/0 Ss+ 08:36 0:00 /bin/bash
@@ -176,7 +182,7 @@ This is the PID namespace at work. It gives the container's processes their own 
 
 ### Mount namespaces and propagation
 
-A naive mount inside a new namespace can leak back to the host. To see why, start with how a new mount namespace is built. It begins with a **copy** of its parent's mount table. Later mounts and unmounts inside it do not affect the other namespace. Propagation flags on each mount point decide what does cross between them.
+A naive mount inside a new namespace can leak back to the host, which surprises people the first time they see it. To understand why, start with how a new mount namespace is built. It begins with a **copy** of its parent's mount table. Mounts and unmounts made later inside it do not affect the other namespace. Propagation flags on each mount point decide what may cross between them.
 
 | Flag | Meaning |
 |---|---|
@@ -185,15 +191,17 @@ A naive mount inside a new namespace can leak back to the host. To see why, star
 | `private` | No propagation either way |
 | `unbindable` | Private and cannot be bind-mounted |
 
-Each flag sets one pattern of traffic. A `shared` mount sends and receives events. A `slave` mount only receives them, and a `private` mount does neither. An `unbindable` mount is private and cannot be bind-mounted.
+Each flag sets one pattern of traffic, like a rule at a doorway. A `shared` mount sends and receives events. A `slave` mount only receives them, and a `private` mount does neither. An `unbindable` mount is private and cannot be bind-mounted.
 
-The leak is a real risk. `systemd` makes `/` shared by default, so a naive new mount namespace can leak mounts back to the host. Container runtimes therefore remount the root as `rslave` or `rprivate` first, with `unshare --propagation private` or `mount --make-rprivate /`. Kubernetes exposes the same choice. `mountPropagation: HostToContainer` (rslave) lets a pod see mounts created later on the host, which CSI drivers rely on. `Bidirectional` (rshared) lets the container create mounts that are visible on the host, and it needs privileged mode. To inspect propagation, use `findmnt -o TARGET,PROPAGATION` or `cat /proc/self/mountinfo`, where the optional fields show `shared:N` and `master:N`.
+The leak is a real risk. `systemd` makes `/` shared by default, so a naive new mount namespace can leak mounts back to the host. Container runtimes therefore remount the root as `rslave` or `rprivate` first, with `unshare --propagation private` or `mount --make-rprivate /`. Kubernetes exposes the same choice through `mountPropagation`. `HostToContainer` (rslave) lets a pod see mounts created later on the host, which CSI drivers rely on. `Bidirectional` (rshared) lets the container create mounts that are visible on the host, and it needs privileged mode. To inspect propagation, use `findmnt -o TARGET,PROPAGATION` or `cat /proc/self/mountinfo`, where the optional fields show `shared:N` and `master:N`.
 
 Before you set `mountPropagation` on a pod, decide which direction the mounts need to travel.
 
 ### chroot versus pivot_root
 
-If a process can still reach the old root, `chroot` has not isolated it. `chroot(2)` changes a process's root directory, but the old root can stay reachable through open file descriptors, or through `fchdir` tricks if the process has root privilege. It is a convenience, not a security boundary. Container runtimes take a different approach. They create a mount namespace, set up the new root, and call **`pivot_root(2)`**. That swaps the root mount, so the old root can be unmounted and detached completely.
+Here is why the difference matters. If a process can still reach the old root, `chroot` has not isolated it. `chroot(2)` changes a process's root directory, but the old root can stay reachable through open file descriptors, or through `fchdir` tricks if the process has root privilege. It is a convenience, not a security boundary.
+
+Container runtimes take a different approach. They create a mount namespace, set up the new root, and call **`pivot_root(2)`**. That swaps the root mount, so the old root can be unmounted and detached completely.
 
 For a minimal container, the sequence runs as follows. Create a new mount namespace, then make the mounts private. Bind-mount the new rootfs onto itself, then mount `proc`, `sysfs` (read-only), and a `tmpfs` for `/dev`, along with the device nodes. Next, `pivot_root` into the new root, then unmount the old root. Drop capabilities, and finally exec the program. Sensitive host paths, such as `/proc/kcore`, `/sys/firmware` and parts of `/proc/sys`, are masked or made read-only. The OCI spec calls these the "masked paths".
 
@@ -201,7 +209,7 @@ When you build a container root, rely on `pivot_root`, because `chroot` is not a
 
 ### OverlayFS: images as layers
 
-Write to a big file that came from an image, and the kernel may copy the whole file before your write lands. That behaviour comes from OverlayFS, so it helps to know how the layers fit together. A container image is an ordered stack of **read-only layers**. Each layer is a tar of filesystem changes, named by its hash. To run a container, the runtime mounts those layers with **OverlayFS**, a union filesystem built into the kernel. It uses four settings:
+Write to a big file that came from an image, and the kernel may copy the whole file before your write even lands. That behaviour comes from OverlayFS, so it helps to know how the layers fit together. A container image is an ordered stack of **read-only layers**. Each layer is a tar of filesystem changes, named by its hash. To run a container, the runtime mounts those layers with **OverlayFS**, a union filesystem built into the kernel. It uses four settings:
 
 - `lowerdir=` takes one or more read-only directories, the image layers. Separate them with colons. The leftmost one is the topmost.
 - `upperdir=` is the read-write layer. It starts empty, and all changes land there.
@@ -221,7 +229,7 @@ mount | grep overlay              # compare with a running container's root: doc
 
 Run these commands and watch where each change lands. The file in the top layer hides the one below it. Writing to it copies it up, and the lower layers stay untouched.
 
-Four behaviours matter most in practice. The first is **copy-up**. The first write to a file that lives in a lower layer copies the entire file into the upper layer. Metadata-only changes copy only metadata, on modern kernels with `metacopy`. A training job that appends to a multi-GB file baked into an image triggers a huge copy. A database stored in the image layer does the same. The copy doubles disk use and can fill the node's image storage, at `/var/lib/containerd` or `/var/lib/docker`. The result is evictions and `NodeNotReady`. Mutable and large data belongs in volumes, such as bind mounts, `emptyDir`, hostPath or PVCs, because volumes bypass overlay completely.
+Four behaviours matter most in practice. The first is **copy-up**. The first write to a file that lives in a lower layer copies the entire file into the upper layer. Metadata-only changes copy only metadata, on modern kernels with `metacopy`. A training job that appends to a multi-GB file baked into an image therefore triggers a huge copy. A database stored in the image layer does the same. The copy doubles disk use and can fill the node's image storage, at `/var/lib/containerd` or `/var/lib/docker`. The result is evictions and `NodeNotReady`. Mutable and large data belongs in volumes, such as bind mounts, `emptyDir`, hostPath or PVCs, because volumes bypass overlay completely.
 
 The second is **whiteouts**. Deleting a lower file creates a 0/0 character device, or an opaque-directory xattr for removed directories, in the upper layer. That marker hides the file, but the lower data stay on disk. So deleting a file in a later Dockerfile layer does not shrink the image. The earlier layer still holds the bytes. That is why a secret baked into a layer and "deleted" later can still be extracted.
 
@@ -229,9 +237,9 @@ The third is performance. Metadata-heavy operations, such as `stat` and `readdir
 
 The fourth is sharing. Containers from the same image share lower-layer files and their page cache, which saves memory compared with VMs. Rootless mode uses `fuse-overlayfs` on older kernels, which is slower. Kernel 5.11 and later allow unprivileged overlay mounts inside user namespaces. Other storage drivers exist too, including `btrfs`, `zfs`, `devicemapper`, and containerd snapshotters such as `stargz` lazy-pulling. On Kubernetes nodes, overlayfs through containerd's snapshotter is the norm.
 
-Image builds add their own layers. Each `RUN` or `COPY` step creates one. The *How Linux Works* book, Section 17.2, shows a small example. Its 3-line Dockerfile has `FROM alpine:latest`, `RUN apk update && apk add bash` and `CMD ["/bin/bash"]`. Running `docker build -t hlw_test .` sends a `2.048kB` build context to the Docker daemon. It pulls `alpine:latest`, which is `f70734b6a266` at `5.61MB`. Then it runs `apk add bash` inside an intermediate container, `fb082e6a0728`. Finally it commits the image `hlw_test:latest`, which is `1b64f94e5a54` at `9.19MB`. Inside the running container, `docker run -it hlw_test` followed by `mount` shows the root as `overlay on / type overlay (rw,relatime,lowerdir=/var/lib/docker/overlay2/l/...,upperdir=/var/lib/docker/overlay2/.../diff,workdir=/var/lib/docker/overlay2/.../work)`.
+Image builds add their own layers, one for each `RUN` or `COPY` step. The *How Linux Works* book, Section 17.2, shows a small example. Its 3-line Dockerfile has `FROM alpine:latest`, `RUN apk update && apk add bash` and `CMD ["/bin/bash"]`. Running `docker build -t hlw_test .` sends a `2.048kB` build context to the Docker daemon. It pulls `alpine:latest`, which is `f70734b6a266` at `5.61MB`. Then it runs `apk add bash` inside an intermediate container, `fb082e6a0728`. Finally it commits the image `hlw_test:latest`, which is `1b64f94e5a54` at `9.19MB`. Inside the running container, `docker run -it hlw_test` followed by `mount` shows the root as `overlay on / type overlay (rw,relatime,lowerdir=/var/lib/docker/overlay2/l/...,upperdir=/var/lib/docker/overlay2/.../diff,workdir=/var/lib/docker/overlay2/.../work)`.
 
-Three habits follow from this. Combine Dockerfile steps, and use multi-stage builds to keep build tools out of the final image. Pin base image tags or digests, because `latest` is not reproducible. An image's `ENTRYPOINT` and `CMD` define PID 1. Use the exec form `["python","train.py"]`, not the shell form, so that no `sh` wraps your program. Docker also keeps stopped containers and old images by default. Check them with `docker ps -a`, `docker images` and `docker system df`. Clean up with `docker rmi` or `docker system prune`, and do that with care.
+Three habits follow from all of this. Combine Dockerfile steps, and use multi-stage builds to keep build tools out of the final image. Pin base image tags or digests, because `latest` is not reproducible. An image's `ENTRYPOINT` and `CMD` define PID 1. Use the exec form `["python","train.py"]`, not the shell form, so that no `sh` wraps your program. Docker also keeps stopped containers and old images by default. Check them with `docker ps -a`, `docker images` and `docker system df`. Clean up with `docker rmi` or `docker system prune`, and do that with care.
 
 Before you size a node's disk, check whether your writes land in a volume or in the image layer.
 
@@ -251,9 +259,9 @@ Rootless Podman uses the FUSE version of overlay, so `mount` shows less detail. 
 
 ## 5. Network namespaces
 
-A pod's network problems usually start in its network namespace. The namespace decides which devices, addresses and routes the pod can use. A new network namespace contains only a loopback interface, and that interface is down. It has no devices, routes or firewall rules. Each namespace has its own IP addresses, routing tables, ARP table, `iptables` or `nftables` rules, sockets and port space, plus its own `/proc/net`. That is why two containers can both listen on port 80. Moving a physical or virtual interface into a namespace removes it from the original one.
+When a pod's network misbehaves, start in its network namespace. The namespace decides which devices, addresses and routes the pod can use. A new network namespace contains only a loopback interface, and that interface is down. It has no other devices, no routes and no firewall rules. Each namespace has its own IP addresses, routing tables, ARP table, `iptables` or `nftables` rules, sockets and port space, plus its own `/proc/net`. That is why two containers can both listen on port 80. Moving a physical or virtual interface into a namespace removes it from the original one.
 
-The standard way to connect a namespace is a **veth pair**. Think of it as a virtual Ethernet cable with two ends, each one a separate interface. One end stays in the host namespace and attaches to a **bridge**, such as `docker0` or `cni0`, or it is routed. The other end moves into the container's namespace, is renamed `eth0`, and gets an address. Traffic leaving the host is usually **NAT**ed (masqueraded) by iptables or nftables. Published ports use DNAT rules.
+The standard way to connect a namespace is a **veth pair**. Think of it as a virtual Ethernet cable with two ends, each one a separate interface. One end stays in the host namespace and attaches to a **bridge**, such as `docker0` or `cni0`, or it is routed. The other end moves into the container's namespace, is renamed `eth0`, and gets an address. Traffic leaving the host is usually **NAT**ed, or masqueraded, by iptables or nftables. Published ports use DNAT rules.
 
 ```mermaid
 flowchart LR
@@ -293,7 +301,7 @@ sudo ip netns del demo
 You will meet several variants in practice.
 
 - **Pod networking in Kubernetes**: All containers in a pod share one network namespace, which the pause container creates. A CNI plugin, such as Calico, Cilium or Flannel, creates the veth, assigns the pod IP and installs routes or tunnels. `hostNetwork: true` puts the pod in the *host's* namespace, which gives no isolation. Node agents use it, and so do some performance-sensitive jobs.
-- **Docker modes**: `bridge` is the default. The others are `host`, `none`, `container:<id>` (join another container's namespace), and `macvlan` or `ipvlan`, which give the container an address directly on the physical network.
+- **Docker modes**: `bridge` is the default. The others are `host`, `none`, `container:<id>`, which joins another container's namespace, and `macvlan` or `ipvlan`, which give the container an address directly on the physical network.
 - **Rootless Podman** cannot create veth pairs without privilege. It uses a user-space TCP/IP stack instead, `slirp4netns` or `pasta`. That means lower throughput, and containers cannot reach each other the same way.
 - **High-performance fabrics**: SR-IOV virtual functions or RDMA devices can move into a container's namespace, through Multus, the SR-IOV CNI or `rdma-shared-device-plugin`. RDMA in containers needs the right device files and the host IB stack. In shared mode it also needs the RDMA subsystem's own namespace mode, set with `rdma system set netns exclusive|shared`. `hostNetwork` is often used with NCCL over InfiniBand, to avoid NAT and the CNI path. Parts 2, 8 and 9 cover the details.
 - **Tracing**: `ss`, `tcpdump` and `ethtool` can run from the host with `nsenter -t PID -n` or `ip netns exec`.
@@ -302,9 +310,9 @@ When a pod's traffic misbehaves, first check whether it uses the pod network or 
 
 ## 6. User namespaces, UID mapping and rootless containers
 
-Suppose a container's root process escapes its container. User namespaces are the reason it still lands on the host as an ordinary user. A user namespace has its own UID and GID number space, and its own capability set. The kernel keeps the mapping in `/proc/PID/uid_map` and `gid_map`, as triplets of `inside_start outside_start length`. Process "root", UID 0 inside the namespace, can be UID 100000 on the host. So even if it escapes, it is an unprivileged user outside.
+Imagine that a container's root process somehow escapes the container. User namespaces are the reason it still lands on the host as an ordinary user. A user namespace has its own UID and GID number space, and its own capability set. The kernel keeps the mapping in `/proc/PID/uid_map` and `gid_map`, as triplets of `inside_start outside_start length`. Process "root", UID 0 inside the namespace, can be UID 100000 on the host. So even if it escapes, it is an unprivileged user outside.
 
-Inside the namespace, root has capabilities only over resources that the namespace owns. It can mount inside its own mount namespace and configure its own network namespace. It has no real power over the host. An unprivileged user can therefore create a user namespace and, inside it, other namespaces. This is the basis of **rootless containers**, used by Podman, rootless Docker, Enroot, and Apptainer or Singularity in user-namespace mode.
+Inside the namespace, root has capabilities only over resources that the namespace owns. It can mount inside its own mount namespace and configure its own network namespace, but it has no real power over the host. An unprivileged user can therefore create a user namespace and, inside it, other namespaces. This is the basis of **rootless containers**, used by Podman, rootless Docker, Enroot, and Apptainer or Singularity in user-namespace mode.
 
 ```bash
 unshare --user --map-root-user bash        # become "root" inside, mapped to your UID outside
@@ -314,17 +322,17 @@ exit
 cat /etc/subuid /etc/subgid                # subordinate ID ranges allotted to each user (newuidmap/newgidmap)
 ```
 
-The trade-offs matter on HPC and AI clusters. Files on shared storage, such as NFS, Lustre, GPFS or BeeGFS, are owned by real UIDs. ID-mapped access through a user namespace can break ownership, permissions and quotas. Kernel support for features such as ID-mapped mounts (5.12 and later) varies. That is why many clusters run containers as the real user, through Enroot and Pyxis, or through Apptainer's setuid or fakeroot modes. Others run privileged or root containers with security profiles, such as AppArmor, SELinux and seccomp from chapter 1.21, instead of remapping user namespaces.
+The trade-offs matter on HPC and AI clusters. Files on shared storage, such as NFS, Lustre, GPFS or BeeGFS, are owned by real UIDs. ID-mapped access through a user namespace can break ownership, permissions and quotas, and those breakages are hard to spot from inside the container. Kernel support for features such as ID-mapped mounts (5.12 and later) varies. That is why many clusters run containers as the real user, through Enroot and Pyxis, or through Apptainer's setuid or fakeroot modes. Others run privileged or root containers with security profiles, such as AppArmor, SELinux and seccomp from chapter 1.21, instead of remapping user namespaces.
 
-Kubernetes support for user namespaces, `hostUsers: false`, is newer and sits behind a feature gate, so check its status for your version. User namespaces also enlarge the kernel's attack surface. Some distributions restrict unprivileged creation, through `kernel.unprivileged_userns_clone` or, on recent Ubuntu releases, an AppArmor restriction. Check your distribution's policy.
+Kubernetes support for user namespaces, `hostUsers: false`, is newer and sits behind a feature gate, so check its status for your version. User namespaces also enlarge the kernel's attack surface. Some distributions restrict unprivileged creation, through `kernel.unprivileged_userns_clone` or, on recent Ubuntu releases, an AppArmor restriction. Check your distribution's policy before you depend on them.
 
 Before you move a workload to rootless mode, check who owns its data on shared storage.
 
 ## 7. UTS, IPC, cgroup and time namespaces
 
-A PyTorch job crashes with a bus error, and the logs say nothing about memory. You may suspect the code, but a common cause is the IPC namespace and the size of `/dev/shm`. The four namespaces in this section are smaller than the ones before, but each one still changes what a process sees.
+A PyTorch job crashes with a bus error, and its logs say nothing about memory. You may suspect the code, but a common cause is the IPC namespace and the size of `/dev/shm`. The four namespaces in this section are smaller than the ones before, but each one still changes what a process sees.
 
-- **UTS**: The container has its own hostname, shown by `hostname` or `uname -n`. Kubernetes sets it to the pod name. Changing it inside does not touch the host. Gregg notes that the UTS nodename works as a convenient container identifier for BPF tools.
+- **UTS**: The container has its own hostname, which `hostname` or `uname -n` shows. Kubernetes sets it to the pod name. Change it inside the container and the host never notices. Gregg notes that the UTS nodename works as a convenient container identifier for BPF tools.
 - **IPC**: System V shared memory, semaphores and message queues are namespaced, and so are POSIX message queues. Containers in different IPC namespaces cannot share SysV segments. Within a pod, all containers share the IPC namespace by default, and `hostIPC: true` joins the host's instead. NCCL, MPI and PyTorch data-loader workers use shared memory heavily. PyTorch's `DataLoader` uses `/dev/shm`, which is a tmpfs. Docker defaults it to 64 MiB, a classic cause of "bus error" crashes in containers. Raise the limit with `--shm-size`, with `--ipc=host`, or with an `emptyDir` that has `medium: Memory`. MPI ranks in separate pods on the same node fall back to network paths, because they do not share IPC.
 - **Cgroup namespace**: This makes `/proc/self/cgroup` and `/sys/fs/cgroup` show the container's cgroup as the root (`0::/`), hiding the host's cgroup layout. It changes the *view*, not the limits. Chapter 1.18 covers the limits.
 - **Time namespace**: This holds per-container offsets for the monotonic and boot clocks, not for wall time. Checkpoint and restore migration with CRIU uses it.
@@ -333,7 +341,7 @@ When a PyTorch job crashes on shared memory, check the size of `/dev/shm` before
 
 ## 8. Putting it together: what a runtime does
 
-When you run `docker run` or the kubelet starts a pod, a chain of programs does the work. Knowing the chain tells you which step failed. The sequence below is simplified, but it shows which program makes each kernel call.
+When you run `docker run` or the kubelet starts a pod, a chain of programs does the work. Knowing that chain tells you which step failed. The sequence below is simplified, but it shows which program makes each kernel call.
 
 ```mermaid
 sequenceDiagram
@@ -361,7 +369,7 @@ When a container fails at start, look at the step that failed, not only at the f
 
 ## 9. Containers, VMs and lightweight VMs
 
-Choosing between a container and a VM means trading isolation against start time and GPU access. The table compares four options.
+Every choice here is a trade. Choosing between a container and a VM means trading isolation against start time and GPU access. The table compares four options.
 
 | | Hardware VM (KVM/QEMU) | Container | MicroVM (Firecracker, Kata) | User-space kernel (gVisor) |
 |---|---|---|---|---|
@@ -381,9 +389,9 @@ For a multi-tenant GPU service, decide early whether the isolation needs a hardw
 
 ## 10. Observing containers (and the traps)
 
-Run `top` inside a container and it may show busy CPUs and disks, even though your container is idle. Those numbers belong to the host and to other tenants. Containers hide some information and distort the rest. Five traps come up again and again.
+Run `top` inside a container and it may show busy CPUs and busy disks, even though your container is idle. Those numbers belong to the host and to other tenants. Containers hide some information and distort the rest. Five traps come up again and again.
 
-- **Tools inside a container often show host data.** `top` summary lines, `uptime` and the load average, `mpstat`, `vmstat`, `free` and `iostat` report the host. The reason is that `/proc` and `/sys` statistics are not namespaced, so `/proc/cpuinfo`, `/proc/meminfo` and `/proc/stat` describe the whole machine. Per-process tools, such as `ps` and `pidstat`, are filtered by the PID namespace. For a container's true usage and limits, read its cgroup files: `cpu.stat`, `memory.current`, `memory.events`, `io.stat` and PSI. Chapter 1.18 explains them. `lxcfs` can present cgroup-aware `/proc` files.
+- **Tools inside a container often show host data.** The summary lines of `top`, `uptime` and the load average, `mpstat`, `vmstat`, `free` and `iostat` all report the host. The reason is that `/proc` and `/sys` statistics are not namespaced. So `/proc/cpuinfo`, `/proc/meminfo` and `/proc/stat` describe the whole machine. Per-process tools, such as `ps` and `pidstat`, are filtered by the PID namespace, so they behave differently. For a container's true usage and limits, read its cgroup files: `cpu.stat`, `memory.current`, `memory.events`, `io.stat` and PSI. Chapter 1.18 explains them. `lxcfs` can present cgroup-aware `/proc` files.
 - **Limits are checked first.** Gregg's strategy is that software resource-control limits are hit long before hardware limits. So check cgroup limits and throttling before you blame the hardware. Most traditional tools, such as `top` and `iostat`, are blind to those limits.
 - **From the host, everything is visible.** Container processes appear in the host's `ps` with host PIDs. You can map a PID to its container through `/proc/PID/cgroup`, where the container ID appears in the path. `crictl ps`, `docker ps` and `nsenter` also help. The kernel has no container ID of its own. BPF tools use the cgroup ID or the UTS nodename instead.
 - **Tracing from inside is mostly blocked.** `perf`, `bpftrace` and `strace` (which uses `ptrace`) need capabilities such as `SYS_ADMIN`, `PERFMON`, `BPF` and `SYS_PTRACE`. They also need access to `/sys/kernel/debug`. Container seccomp profiles block `perf_event_open`, `bpf` and `ptrace` by default. Operators trace from the host instead, or they use debug containers or ephemeral containers, through `kubectl debug`, that share the target's PID namespace.
@@ -394,11 +402,11 @@ Before you blame the hardware for a slow container, read its cgroup files and ch
 
 ## 11. GPUs inside containers
 
-A container can start and still fail to see a GPU. Namespaces and cgroups know nothing about GPUs, so the GPU layer has to supply the pieces. A GPU reaches a process in two forms: device nodes, and user-space libraries. The device nodes are `/dev/nvidia0..N`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools` and `/dev/nvidia-modeset`. MIG adds `/dev/nvidia-caps/*`. The libraries, such as `libcuda.so` and NVML, must match the host kernel driver version.
+A container can start cleanly and still fail to see a GPU. Namespaces and cgroups know nothing about GPUs, so the GPU layer has to supply the pieces itself. A GPU reaches a process in two forms: device nodes, and user-space libraries. The device nodes are `/dev/nvidia0..N`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools` and `/dev/nvidia-modeset`. MIG adds `/dev/nvidia-caps/*`. The libraries, such as `libcuda.so` and NVML, must match the host kernel driver version.
 
 To give a container a GPU, a runtime has to do three things. First, it makes the device nodes exist in the container's mount namespace, by bind mount or by `mknod`. Second, it allows those devices in the devices cgroup, which chapter 1.18 covers. Third, it mounts the driver's user-space libraries and binaries, such as `nvidia-smi`, from the host. The CUDA toolkit libraries can live in the image, but the driver library cannot.
 
-The NVIDIA Container Toolkit automates this. It includes `nvidia-container-runtime`, `nvidia-ctk` and `libnvidia-container`. Historically it worked through an OCI prestart hook. It now prefers CDI, the Container Device Interface. CDI is a declarative spec file that lists device nodes, mounts and environment variables, and you create one with `nvidia-ctk cdi generate`. Because the driver lives in the shared kernel, GPU performance inside a container matches bare metal.
+The NVIDIA Container Toolkit automates these three steps. It includes `nvidia-container-runtime`, `nvidia-ctk` and `libnvidia-container`. Historically it worked through an OCI prestart hook. It now prefers CDI, the Container Device Interface. CDI is a declarative spec file that lists device nodes, mounts and environment variables, and you create one with `nvidia-ctk cdi generate`. Because the driver lives in the shared kernel, GPU performance inside a container matches bare metal.
 
 Parts 7 and 8 cover the toolkit, the Kubernetes device plugin, the GPU Operator, MIG and time-slicing in depth. Verify toolkit commands and CDI behaviour against current NVIDIA documentation before you rely on them.
 
@@ -406,7 +414,7 @@ Before you debug a GPU in a container, confirm which layer should supply the dev
 
 ## 12. Other flavours of "virtual"
 
-Not every isolation tool is a container. Some are tools for a shared host, and some are runtimes built for HPC.
+Not every isolation tool is a container. Some are tools for a shared host, and some are runtimes built for HPC. Knowing which one you are looking at saves confusion later.
 
 - **LXC, LXD and Incus** run system containers. Each one runs a whole init and several services. You set up more by hand, including the network and UID mappings, so they feel closer to a lightweight VM. The first Docker versions were built on LXC.
 - **Podman** is daemonless and rootless-first, with a Docker-compatible CLI. Its containers are children of the invoking process tree, or they run as systemd units through Quadlet.
@@ -419,7 +427,7 @@ Before you reach for a tool here, decide which kind of isolation the job needs: 
 
 ## 13. Failure modes and diagnosis
 
-A container misbehaves during an on-call shift, and you need to get from symptom to cause quickly. The table maps common symptoms to their likely causes and fixes. Scan the symptom column first, then check the fix in the right-hand column.
+A container misbehaves during an on-call shift, and you need to get from symptom to cause quickly. This table is built for that moment. It maps common symptoms to their likely causes and fixes. Scan the symptom column first, then read the fix in the right-hand column.
 
 | Symptom | Likely cause | Check / fix |
 |---|---|---|
@@ -475,7 +483,7 @@ Do the lab on a disposable VM, and clean up at the end so that you leave no name
 
 ## 15. Common mistakes
 
-Most container mistakes repeat a few patterns.
+Most container mistakes repeat a few patterns, and those patterns are worth naming.
 
 Some come from a wrong mental model. Do not believe a container has its own kernel, or that it is a security boundary equal to a VM. Do not trust `top`, `free`, `/proc/cpuinfo` or `nproc` inside a container, because they show the host.
 

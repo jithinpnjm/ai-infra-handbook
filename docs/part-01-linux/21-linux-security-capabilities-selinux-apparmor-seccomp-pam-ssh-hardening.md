@@ -22,7 +22,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU cluster that holds model weights, proprietary data, and SSH keys that reach hundreds of nodes. Compute on that cluster can also be stolen and used for crypto-mining. That makes it an expensive, shared, high-value target. Hardening helps, but the same hardening can silently destroy performance or break GPU, InfiniBand and container access. A good AI-infrastructure engineer has to do both jobs: harden the node, and know which controls to relax, which to keep, and why.
+Picture a GPU cluster that holds model weights, proprietary data, and SSH keys that reach hundreds of nodes. The compute on that cluster is worth stealing too, because an intruder can put it to work on crypto-mining. All of that makes the cluster a shared, high-value target.
+
+Hardening such a node helps, but the same hardening can silently destroy performance. It can also break GPU, InfiniBand and container access. So a good AI-infrastructure engineer has to do both jobs at once: harden the node, and know which controls to relax, which to keep, and why.
 
 You will meet situations like these:
 
@@ -34,9 +36,11 @@ You will meet situations like these:
 - Secure Boot is enabled, and the NVIDIA kernel module refuses to load (`Lockdown: unsigned module loading is restricted`).
 - A multi-tenant neocloud customer asks how their containers are isolated from the neighbour's.
 
-This chapter builds the security model from the kernel's point of view. It starts with users and identity, then setuid and discretionary access control, meaning the owner, group and other file permissions. Next come capabilities, which split root's power into pieces, and seccomp, which filters system calls. Mandatory access control follows with SELinux and AppArmor. The chapter then covers PAM and sudo for authentication, SSH hardening, auditing, kernel and system hardening, Secure Boot, and the AI-cluster-specific adjustments. It connects to containers in chapter 1.19, to kernel modules in chapter 1.22, and to Kubernetes admission control, the cluster-side counterpart in section 12.
+We build the security model here from the kernel's point of view, starting where the kernel starts, with users and identity. From there we take setuid and discretionary access control, meaning the owner, group and other file permissions. Next come capabilities, which split root's power into pieces, and seccomp, which filters system calls. Mandatory access control follows with SELinux and AppArmor.
 
-Read the rest of the chapter with one question in mind: which control protects this node, and what does it cost the job running on it?
+The chapter then covers PAM and sudo for authentication, SSH hardening, auditing, kernel and system hardening, Secure Boot, and the AI-cluster-specific adjustments. It connects to containers in chapter 1.19, to kernel modules in chapter 1.22, and to Kubernetes admission control, the cluster-side counterpart in section 12.
+
+Read the rest of the chapter with one question in mind. Which control protects this node, and what does it cost the job running on it?
 
 ## Prerequisites and outcomes
 
@@ -57,7 +61,9 @@ After this chapter you can:
 
 ## 1. The security model in one picture
 
-Security on Linux is layered, and each layer answers a different question. A request from a user or a service passes through them in order. Read the diagram from top to bottom, starting with who is asking and ending with what happened.
+Suppose an engineer logs in and starts a training job. Before a single byte of model data is read, the kernel has already asked several questions about that request. Who is asking? What may this process do? Which files may it touch, and which system calls may it make?
+
+Security on Linux is layered, and each layer answers one of those questions. A request from a user or a service passes through them in order. Read the diagram from top to bottom, starting with who is asking and ending with what happened. The third layer is where two access-control models meet: DAC, the permissions an owner sets, and MAC, a policy the owner cannot override. Section 6 takes them apart.
 
 ```mermaid
 flowchart TB
@@ -68,17 +74,19 @@ flowchart TB
   E --> F["What did happen?\n auditd, journald, IMA, integrity monitoring"]
 ```
 
-Several principles run through every section of this chapter. The most important is **least privilege**: give a process only what it needs. Defence in depth means several independent layers, so that one failure is not fatal. Aim for default deny where practical, and keep separation of duties and auditability in view.
+Several principles run through every section of this chapter. The first and most important is **least privilege**, which asks you to give a process only what it needs. Defence in depth means stacking several independent layers, so that one failure is not fatal. Where practical, aim for default deny. Keep separation of duties and auditability in view as well.
 
-Shared clusters add one more principle. Assume a workload may be compromised, and limit the blast radius. A user's job must not reach another tenant's data or the management network, even if that job goes wrong.
+Shared clusters add one more principle to the list. Assume that a workload may be compromised, and limit the blast radius. A user's job must not reach another tenant's data or the management network, even when that job goes wrong.
 
 ## 2. Users, groups and the superuser
 
-Suppose a service account can read a file it should not touch, or a job seems to have root-like power on a shared node. Both problems start in the same place: how the kernel thinks about users. At the kernel level, users are only numbers. The kernel knows UIDs and GIDs, and user names exist only in user space. The only UID with special meaning to the kernel is **0**. Since Linux 2.2, even that special meaning has been split into capabilities, which section 4 covers.
+Suppose a service account can read a file it should never touch. Suppose, too, that a job seems to have root-like power on a shared node. Both problems start in the same place, in how the kernel thinks about users.
+
+At the kernel level, users are only numbers. The kernel knows UIDs and GIDs, and user names exist only in user space. The only UID with special meaning to the kernel is **0**. Since Linux 2.2, even that special meaning has been split into capabilities, which section 4 covers.
 
 ### The account databases
 
-Each account lives in a few small files. The table shows what each file holds and who can read it, so you know where to look when an account misbehaves.
+Each account lives in a few small files, and each file has one job. The table shows what each file holds and who is allowed to read it, so you know where to look when an account misbehaves.
 
 | File | Content |
 |---|---|
@@ -89,7 +97,9 @@ Each account lives in a few small files. The table shows what each file holds an
 | `/etc/login.defs` | Defaults for account creation (UID ranges, password aging) used by `useradd` |
 | `/etc/subuid`, `/etc/subgid` | Subordinate ID ranges for user namespaces (rootless containers, chapter 1.19) |
 
-Pseudo-users are accounts for services, such as `daemon`, `nobody`, `www-data`, `slurm` and `munge`. They have no login shell, either `/usr/sbin/nologin` or `/bin/false`. That lets a service run unprivileged without anyone logging in as it. UID 0 is root. UIDs 1 to 99 or 999 are system accounts, and 1000 and above are humans. Clusters assign stable numeric UIDs through LDAP or SSSD, so file ownership matches on every node (chapter 6.24).
+Pseudo-users are accounts for services, such as `daemon`, `nobody`, `www-data`, `slurm` and `munge`. They carry no login shell, either `/usr/sbin/nologin` or `/bin/false`. That lets a service run unprivileged without anyone ever logging in as it.
+
+The numbering has meaning too. UID 0 is root. UIDs 1 to 99 or 999 are system accounts, and 1000 and above are humans. Clusters assign stable numeric UIDs through LDAP or SSSD, so file ownership matches on every node (chapter 6.24).
 
 The block below shows the commands for inspecting and managing accounts.
 
@@ -103,9 +113,11 @@ sudo vipw ; sudo vipw -s             # safe editors with locking; never edit /et
 last ; lastb ; lastlog ; who ; w     # login history, failed logins (btmp), current sessions
 ```
 
-Notice the warning on the `usermod` line. Adding a user to the `docker` group gives that user root-equivalent power on the host, so treat that step as a privileged decision.
+Notice the warning on the `usermod` line, because it matters. Adding a user to the `docker` group gives that user root-equivalent power on the host. Treat that one step as a privileged decision.
 
-Never share accounts. Give each person a personal account, and give each service its own unprivileged account. Automate creation with a tool such as the Ansible `user` module or your identity provider. Remove or lock accounts when people leave. Two quick checks catch common mistakes. Look for a second UID 0 account with `awk -F: '$3==0' /etc/passwd`. Look for empty passwords with `sudo awk -F: '$2==""' /etc/shadow`.
+Never share accounts. Give each person a personal account, and give each service its own unprivileged account. Automate that creation with a tool such as the Ansible `user` module or your identity provider, and remove or lock accounts when people leave.
+
+Two quick checks catch the common mistakes. Look for a second UID 0 account with `awk -F: '$3==0' /etc/passwd`. Look for empty passwords with `sudo awk -F: '$2==""' /etc/shadow`.
 
 ### Process credentials: real, effective, saved, filesystem UIDs
 
@@ -116,26 +128,36 @@ A running process carries several IDs at once, and each one answers a different 
 - The saved set-user-ID (suid) lets a process drop privilege temporarily and regain it later.
 - The filesystem UID is used for filesystem checks, and it rarely differs from the effective UID.
 
-The kernel has clear rules for changing identity. A process may run a setuid executable if it can execute the file. A process with euid 0, or with `CAP_SETUID`, may become any user through `setuid()` and friends. Unprivileged processes can only swap among their own real, effective and saved IDs. `su` and `sudo` are setuid-root programs. They authenticate through PAM, then call `setuid()`. Run `ps -eo pid,euser,ruser,comm` to see both the effective and the real user of each process.
+The kernel has clear rules for changing identity. A process may run a setuid executable if it can execute the file. A process with euid 0, or with `CAP_SETUID`, may become any user through `setuid()` and friends. An unprivileged process can only swap among its own real, effective and saved IDs.
+
+`su` and `sudo` are setuid-root programs. They authenticate through PAM, then call `setuid()`. Run `ps -eo pid,euser,ruser,comm` to see both the effective and the real user of each process.
 
 ### Setuid, setgid and sticky bits
 
-A setuid executable runs with the euid of its owner. Examples include `passwd`, `sudo`, `su`, `mount` and, on older systems, `ping`. These programs cross a privilege boundary, so a bug in one is a prime route for privilege escalation. A root-owned setuid copy of a shell is a root backdoor. Run the two checks below to list setuid files and to see which mounts already carry the `nosuid` or `noexec` flags.
+A setuid executable runs with the euid of its owner. Examples include `passwd`, `sudo`, `su`, `mount` and, on older systems, `ping`. These programs cross a privilege boundary, so a bug in one is a prime route for privilege escalation. A root-owned setuid copy of a shell is simply a root backdoor.
+
+Run the two checks below to list setuid files and to see which mounts already carry the `nosuid` or `noexec` flags.
 
 ```bash
 sudo find / -xdev -perm -4000 -type f -ls 2>/dev/null     # setuid files;  -perm -2000 for setgid
 mount | grep -E 'nosuid|noexec'                           # data filesystems (/tmp, /scratch, /home) should usually be nosuid,nodev
 ```
 
-Mount user-writable and data filesystems with `nosuid,nodev`. Add `noexec` where your workloads allow it. Many HPC sites cannot use `noexec` on scratch, because users run their own binaries there. A sticky bit on a directory, such as `/tmp` with mode `1777`, lets only a file's owner delete it. Capabilities, covered in the next sections, let many programs drop setuid entirely. For example, `ping` now commonly uses `cap_net_raw`.
+Mount user-writable and data filesystems with `nosuid,nodev`. Add `noexec` where your workloads allow it, though many HPC sites cannot use `noexec` on scratch, because users run their own binaries there.
+
+A sticky bit on a directory, such as `/tmp` with mode `1777`, lets only a file's owner delete it. Capabilities, covered in the next sections, let many programs drop setuid entirely. For example, `ping` now commonly uses `cap_net_raw`.
 
 Audit setuid files on a schedule, and treat any file you did not expect as a finding.
 
 ## 3. Authentication: PAM, sudo, passwords
 
+Before a user reaches a shell, the node has to answer a simple question. Who is this, and how do they prove it? The answer is assembled from several pieces, and PAM is the part most engineers meet first.
+
 ### PAM: Pluggable Authentication Modules
 
-Suppose `sshd` rejects one user while another user gets in with the same password. The answer lies in the PAM stack, which decides who gets in. Applications such as `login`, `sshd`, `sudo`, `su`, `passwd`, `cron` and `gdm` do not implement authentication themselves. They call **libpam**, and an administrator-written stack of **modules** makes the decision. Each application has its own file under `/etc/pam.d/<service>`, where the service name is the application's name. The file `/etc/pam.d/other` is the fallback, and it should deny. Each line has three parts: a type, a control flag, and a module with its arguments.
+Suppose `sshd` rejects one user while another user gets in with the same password. The answer usually lies in PAM, the shared login desk that decides who gets in.
+
+PAM stands for Pluggable Authentication Modules. Applications such as `login`, `sshd`, `sudo`, `su`, `passwd`, `cron` and `gdm` do not implement authentication themselves. They call **libpam**, and an administrator-written stack of **modules** makes the decision. Each application has its own file under `/etc/pam.d/<service>`, where the service name is the application's name. The file `/etc/pam.d/other` is the fallback, and it should deny. Each line has three parts: a type, a control flag, and a module with its arguments.
 
 The type says which question the line answers.
 
@@ -146,7 +168,7 @@ The type says which question the line answers.
 | `session` | Setup/teardown around a session (limits, home directory creation, logging, systemd session registration, `pam_limits`) |
 | `password` | Changing credentials (complexity, hash algorithm, history) |
 
-The control flag decides what happens when a module succeeds or fails. That is how the rules stack. A `required` failure lets the stack continue, which the table describes as keeping timing from leaking, but the final result is still a failure. A `requisite` failure stops the stack at once.
+The control flag decides what happens when a module succeeds or fails. That small decision is how the rules stack. When a `required` module fails, the stack keeps going, which the table describes as keeping timing from leaking, but the final result is still a failure. A `requisite` failure stops the stack at once.
 
 | Flag | Success | Failure |
 |---|---|---|
@@ -157,11 +179,13 @@ The control flag decides what happens when a module succeeds or fails. That is h
 | `include` / `substack` | Pull in another file's stack for that type | |
 | `[value=action ...]` | Advanced syntax mapping specific return codes to actions (`success=2 default=ignore`, etc.) | |
 
-A classic stack comes from the chsh example. The line `auth sufficient pam_rootok.so` lets root pass straight through. `auth requisite pam_shells.so` requires the shell to be listed in `/etc/shells`. `auth sufficient pam_unix.so` checks the password, and `auth required pam_deny.so` denies by default. Trace it in order. If root passes, the stack is done. If root does not pass and the shell check fails, the stack stops with failure. If the password is correct, the stack succeeds. Otherwise, the deny line gives failure.
+A classic stack comes from the chsh example, and it is worth tracing line by line. The line `auth sufficient pam_rootok.so` lets root pass straight through. `auth requisite pam_shells.so` requires the shell to be listed in `/etc/shells`. `auth sufficient pam_unix.so` checks the password, and `auth required pam_deny.so` denies by default.
 
-Several modules do the everyday work. Some check the password itself. `pam_unix` handles traditional passwords and `/etc/shadow`, and its `nullok` option allows empty passwords, which should never be set. `pam_sss` connects to SSSD, LDAP or Kerberos, and `pam_pwquality` checks password strength.
+Follow the order. If root passes, the stack is done. If root does not pass and the shell check fails, the stack stops with failure. If the password is correct, the stack succeeds. Otherwise, the deny line gives failure.
 
-Other modules control access. `pam_faillock` and `pam_tally2` lock an account after repeated failures. `pam_limits` applies `/etc/security/limits.conf` and `limits.d`, and `pam_access` uses `/etc/security/access.conf` as a host and user allow list. `pam_time` and `pam_nologin` restrict when logins happen. `pam_nologin` reads `/etc/nologin` to block non-root logins during maintenance, and `pam_wheel` restricts `su` to a group.
+Several modules do the everyday work, and the first group checks the password itself. `pam_unix` handles traditional passwords and `/etc/shadow`, and its `nullok` option allows empty passwords, which should never be set. `pam_sss` connects to SSSD, LDAP or Kerberos, and `pam_pwquality` checks password strength.
+
+A second group controls access. `pam_faillock` and `pam_tally2` lock an account after repeated failures. `pam_limits` applies `/etc/security/limits.conf` and `limits.d`, and `pam_access` uses `/etc/security/access.conf` as a host and user allow list. `pam_time` and `pam_nologin` restrict when logins happen. `pam_nologin` reads `/etc/nologin` to block non-root logins during maintenance, and `pam_wheel` restricts `su` to a group.
 
 Multi-factor modules include `pam_google_authenticator`, `pam_oath` and `pam_u2f`. `pam_systemd` registers the session with logind. On HPC nodes, `pam_slurm_adopt` lets only users with a running job on the node log in, and moves their SSH session into the job's cgroup. Others include `pam_namespace`, `pam_env` and `pam_exec`.
 
@@ -175,11 +199,13 @@ grep password.*unix /etc/pam.d/*         # which hash algorithm is used when SET
 faillock --user alice ; faillock --user alice --reset
 ```
 
-**A broken PAM stack can lock everyone out, including root.** Keep a root console session open while you edit, and keep BMC console access ready too. Test in a second session, and keep a copy of the original file. Prefer the distribution tools, `authselect` and `pam-auth-update`, over hand edits of generated files. Password checks use whatever hash the stored value indicates, because libcrypt detects it automatically. The algorithm used when setting a password, however, is configured on the `password` line. `/etc/login.defs` matters mostly for tools that bypass PAM.
+**A broken PAM stack can lock everyone out, including root.** Keep a root console session open while you edit, and keep BMC console access ready too. Test in a second session, and keep a copy of the original file. Where you can, prefer the distribution tools, `authselect` and `pam-auth-update`, over hand edits of generated files.
+
+One small detail explains a common puzzle. Password checks use whatever hash the stored value indicates, because libcrypt detects it automatically. The algorithm used when setting a password, however, is configured on the `password` line. `/etc/login.defs` matters mostly for tools that bypass PAM.
 
 ### sudo and su
 
-`sudo` runs a command as another user, by default root. It follows the rules in `/etc/sudoers` and `/etc/sudoers.d/*`. Always edit those files with `visudo`, which checks the syntax first. The file below gives one group a few GPU commands, and nothing more.
+`sudo` runs a command as another user, by default root. It follows the rules in `/etc/sudoers` and `/etc/sudoers.d/*`. Always edit those files with `visudo`, because it checks the syntax before saving. The file below gives one group a few GPU commands, and nothing more.
 
 ```sudoers
 # /etc/sudoers.d/gpu-ops   (mode 0440)
@@ -189,17 +215,25 @@ Defaults:%gpuops log_output, !visiblepw, use_pty
 Defaults timestamp_timeout=5, logfile="/var/log/sudo.log"
 ```
 
-Grant specific commands rather than `ALL` wherever you can. Many programs, including editors, pagers, `find`, `awk`, `tar`, `less` and `vim`, provide shell escapes, so `sudo vim` gives full root. Use `sudoedit` or `NOEXEC` to close that route. Use group membership to decide who gets sudo. The group is `wheel` on RHEL and `sudo` on Debian. Log invocations through `sudo -l`, journald or I/O logging, and keep the `Defaults use_pty` and `requiretty` policies deliberate.
+Grant specific commands rather than `ALL` wherever you can. Many programs, including editors, pagers, `find`, `awk`, `tar`, `less` and `vim`, provide shell escapes, so `sudo vim` gives full root. Use `sudoedit` or `NOEXEC` to close that route.
 
-`su -` starts a login shell as root and needs root's password. Prefer `sudo -i` instead, because it keeps individual accountability. Disable direct root SSH login as well. `NOPASSWD` is common for automation accounts, but it must be limited to specific commands and protected by good SSH key security. `Defaults stay_setuid` keeps the real UID as root for programs that dislike a non-root ruid. Understand the side effects before you use it.
+Decide who gets sudo through group membership. The group is `wheel` on RHEL and `sudo` on Debian. Log invocations through `sudo -l`, journald or I/O logging, and keep the `Defaults use_pty` and `requiretty` policies deliberate.
+
+`su -` starts a login shell as root and needs root's password. Prefer `sudo -i` instead, because it keeps individual accountability. Disable direct root SSH login as well.
+
+`NOPASSWD` is common for automation accounts, but it must be limited to specific commands and protected by good SSH key security. `Defaults stay_setuid` keeps the real UID as root for programs that dislike a non-root ruid. Understand the side effects before you use it.
 
 ### Passwords and authentication factors
 
-A sound password policy favours long passphrases over complexity rules. It forbids reuse, rate-limits failures with `pam_faillock`, and sets password aging only where policy demands it. Interactive access to bastions needs MFA. Machines should use **keys, not passwords**. Use SSH keys or certificates (section 7), keep service credentials in a secret manager, and issue short-lived tokens. Centralise accounts with LDAP/SSSD or FreeIPA, so that locking or disabling an account happens in one place. Protect backups of `/etc/shadow`, and treat any exposed hash as compromised.
+A sound password policy favours long passphrases over complexity rules. It forbids reuse, rate-limits failures with `pam_faillock`, and sets password aging only where policy demands it. Interactive access to bastions needs MFA.
+
+Machines should use **keys, not passwords**. Use SSH keys or certificates (section 7), keep service credentials in a secret manager, and issue short-lived tokens. Centralise accounts with LDAP/SSSD or FreeIPA, so that locking or disabling an account happens in one place. Protect backups of `/etc/shadow`, and treat any exposed hash as compromised.
 
 ## 4. Capabilities: splitting root into pieces
 
-Suppose a server must bind a port below 1024, but it should never be able to load a kernel module. Traditional Unix offers only two kinds of process: root, which is all-powerful, and everyone else. Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
+Suppose a server must bind a port below 1024, but it should never be able to load a kernel module. Traditional Unix offers only two kinds of process: root, which is all-powerful, and everyone else.
+
+Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, one key rather than the whole ring, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
 
 Some capabilities matter most in infrastructure work. The table lists them.
 
@@ -231,9 +265,9 @@ Each thread has five capability sets. They work together, and each one has its o
 | **Bounding** | A limit on what can ever be gained through `execve`; dropping from it is irreversible for the process tree |
 | **Ambient** | Capabilities kept across `execve` of non-privileged programs (lets unprivileged programs inherit selected capabilities safely) |
 
-The effective set is what the kernel checks at any given moment. The bounding set caps what can ever be gained through `execve`, and dropping from it cannot be undone for that process tree.
+The effective set is what the kernel checks at any given moment. The bounding set caps what can ever be gained through `execve`. Once you drop a capability from that set, you cannot undo it for that process tree.
 
-**File capabilities** can be attached to executables through the extended attribute `security.capability`, replacing setuid-root. Set one with `sudo setcap cap_net_bind_service=+ep /usr/local/bin/myserver`, and list them across the system with `getcap -r / 2>/dev/null`. They interact with `no_new_privs`. Filesystem mount options matter too, because `nosuid` ignores them.
+**File capabilities** can be attached to executables through the extended attribute `security.capability`, replacing setuid-root. Set one with `sudo setcap cap_net_bind_service=+ep /usr/local/bin/myserver`, and list them across the system with `getcap -r / 2>/dev/null`. They interact with `no_new_privs`. Filesystem mount options matter too, because `nosuid` makes the kernel ignore them.
 
 The commands below read the sets of a running process, decode a mask, and drop capabilities from a shell. The systemd lines at the bottom are unit settings, not commands, and they lock a service down the same way.
 
@@ -250,17 +284,25 @@ systemd-analyze security sshd.service          # exposure score of a unit, incl.
 #   SystemCallFilter=@system-service   RestrictAddressFamilies=AF_INET AF_INET6   MemoryDenyWriteExecute=yes
 ```
 
-Containers start with a reduced bounding set. Docker's default drops `SYS_ADMIN`, `NET_ADMIN`, `SYS_MODULE`, `SYS_PTRACE`, `SYS_TIME` and more. Kubernetes `securityContext.capabilities.drop: ["ALL"]` drops everything first, and then `add` grants only what is needed. `--privileged` (Docker) or `privileged: true` (Kubernetes) is a different story. It gives all capabilities, all devices, and disables seccomp and LSM confinement. That makes the container effectively root on the host, so it must never be a casual fix.
+Containers start with a reduced bounding set. Docker's default drops `SYS_ADMIN`, `NET_ADMIN`, `SYS_MODULE`, `SYS_PTRACE`, `SYS_TIME` and more. Kubernetes `securityContext.capabilities.drop: ["ALL"]` drops everything first, and then `add` grants only what is needed.
+
+`--privileged` (Docker) or `privileged: true` (Kubernetes) is a different story. It gives all capabilities, all devices, and disables seccomp and LSM confinement. That makes the container effectively root on the host, so it must never be a casual fix.
 
 GPU work needs less than you might think. Access needs device nodes and device-cgroup permission, **not** privilege. RDMA applications need `IPC_LOCK`, and possibly `SYS_RESOURCE`. Profilers need `SYS_ADMIN` or `PERFMON`. NVIDIA tools that change GPU clocks or persistence mode need the host. Note that `CAP_SYS_ADMIN` inside a user namespace is scoped to that namespace, unlike on the host (chapter 1.19).
 
+Before you grant a capability, ask which single operation the process needs. Then grant that one, and drop everything else.
+
 ## 5. seccomp: filtering system calls
+
+In a container-escape demo, the attacker's next move is a system call the service never needed, such as `mount` or `ptrace`. seccomp is the layer that refuses that call.
 
 A program asks the kernel for something through a system call every time it does real work. seccomp lets you decide, call by call, which of those requests get through. **seccomp** stands for secure computing mode. A process installs a filter, and for each system call the filter decides what happens. The options are to allow the call, return an error, kill the process or thread, send a signal, log it, or notify a supervisor. **seccomp-bpf** writes the filter as a classic BPF program. The program inspects the system call number and its arguments, but not the contents of pointers.
 
-Filters are inherited by children, and they cannot be removed. When several filters stack, the most restrictive result wins. An unprivileged process must first set **`no_new_privs`** (`prctl(PR_SET_NO_NEW_PRIVS)`) before it can install a filter. That flag also makes `execve` ignore setuid bits and file capabilities. So a filtered process cannot regain privilege through a setuid binary.
+Filters are inherited by children, and they cannot be removed. When several filters stack, the most restrictive result wins.
 
-Check the mode of a process, and the default profile of a container, with these commands.
+An unprivileged process must first set **`no_new_privs`** (`prctl(PR_SET_NO_NEW_PRIVS)`) before it can install a filter. That flag also makes `execve` ignore setuid bits and file capabilities. So a filtered process cannot regain privilege through a setuid binary.
+
+Use these commands to check the mode of a process, and the default profile of a container.
 
 ```bash
 grep -E 'Seccomp|NoNewPrivs' /proc/self/status        # Seccomp: 0 none, 1 strict, 2 filter
@@ -268,19 +310,27 @@ docker run --rm alpine grep Seccomp /proc/self/status # 2 = default profile acti
 docker run --rm --security-opt seccomp=unconfined alpine grep Seccomp /proc/self/status   # 0
 ```
 
-The `Seccomp` field in the output tells you which mode is in force. Docker and containerd ship a **default profile**. It allows most system calls and blocks dangerous ones, such as `mount`, `kexec_load`, `init_module`, `reboot`, `ptrace` on older kernels, `bpf`, `perf_event_open` and `keyctl`. Kubernetes accepts `securityContext.seccompProfile.type: RuntimeDefault`, which is recommended for all pods, or `Localhost`. Systemd uses `SystemCallFilter=`. Tools such as `strace -c`, `oci-seccomp-bpf-hook` or `inspektor-gadget` help you generate allow-lists.
+The `Seccomp` field in the output tells you which mode is in force. Docker and containerd ship a **default profile**. It allows most system calls and blocks dangerous ones, such as `mount`, `kexec_load`, `init_module`, `reboot`, `ptrace` on older kernels, `bpf`, `perf_event_open` and `keyctl`.
+
+Kubernetes accepts `securityContext.seccompProfile.type: RuntimeDefault`, which is recommended for all pods, or `Localhost`. Systemd uses `SystemCallFilter=`. Tools such as `strace -c`, `oci-seccomp-bpf-hook` or `inspektor-gadget` help you generate allow-lists.
 
 Gregg's observability caveat applies here. Default profiles are why `perf`, `strace` and `bpftrace` fail inside containers. Writing tight custom profiles for AI workloads is often impractical, because frameworks and drivers use many calls. `RuntimeDefault` is the sensible baseline, and `unconfined` is reserved for trusted debug pods.
 
 ## 6. Mandatory access control: SELinux and AppArmor
 
-Here is a question to keep in mind. A service runs as root and touches a file that its owner never meant it to see. What stops it? The answer depends on which access control layers are active. **Discretionary access control (DAC)** is the owner, group and other permission model. The owner decides who gets access, and root bypasses the check. **Mandatory access control (MAC)** adds a system-wide policy that the owner cannot override. MAC is implemented as a **Linux Security Module (LSM)**. Even root, or a compromised service running as root, can touch only what that policy allows.
+Here is a question to keep in mind. A service runs as root and touches a file that its owner never meant it to see. What stops it? The answer depends on which access control layers are active.
+
+**Discretionary access control (DAC)** is the owner, group and other permission model you already know. The owner decides who gets access, and root bypasses the check. **Mandatory access control (MAC)** adds a system-wide policy that the owner cannot override. MAC is implemented as a **Linux Security Module (LSM)**. Even root, or a compromised service running as root, can touch only what that policy allows.
+
+A useful picture is a parcel with two labels. The owner writes one label and decides who may open it. The shipping company writes the other, and the owner cannot change that one.
 
 DAC and MAC are *both* checked. MAC can only deny more. Run `cat /sys/kernel/security/lsm` to see which LSMs are active on your node.
 
 ### SELinux (RHEL, Rocky, Fedora, Amazon Linux; also used by Android)
 
-SELinux labels every process and object with a **security context** in the form `user:role:type:level`. In the standard targeted policy, the type matters most. A type-enforcement rule says, for example, that domain `httpd_t` may read files of type `httpd_sys_content_t`. Everything not explicitly allowed is denied, and each denial is logged as an AVC message.
+Suppose a service worked before a reboot and now cannot read its own data directory. SELinux is one of the first places to look.
+
+SELinux labels every process and object with a **security context** in the form `user:role:type:level`. Think of the context as a sticker that the policy reads before it allows anything. In the standard targeted policy, the type matters most. A type-enforcement rule says, for example, that domain `httpd_t` may read files of type `httpd_sys_content_t`. Everything not explicitly allowed is denied, and each denial is logged as an AVC message.
 
 These commands cover the daily SELinux work: checking the mode, reading denials, and fixing labels.
 
@@ -302,11 +352,15 @@ The three modes behave differently. Enforcing denies and logs. Permissive only l
 
 When something is denied, follow a fixed order. (1) Reproduce the problem. (2) Read the AVC with `ausearch` or `sealert`. (3) Check whether a boolean, a file label (`semanage fcontext` with `restorecon`), or a port label fixes it. (4) Only then consider a custom module with `audit2allow`, reviewed for over-breadth. Do not run `setenforce 0` or disable SELinux as the fix.
 
-Typical causes are these. Files that are moved, rather than copied, keep their old label. Data in a non-standard directory needs a label. Containers need `container_file_t` on bind mounts, and the `:z` and `:Z` flags in Docker or Podman relabel them. GPU and RDMA device nodes need a type that the container domain may access, through `container_use_devices`, `container-selinux` and NVIDIA Container Toolkit policies. The exact mechanism varies by distribution and toolkit version, so verify it against current documentation.
+Typical causes are these. Files that are moved, rather than copied, keep their old label. Data in a non-standard directory needs a label. Containers need `container_file_t` on bind mounts, and the `:z` and `:Z` flags in Docker or Podman relabel them.
+
+GPU and RDMA device nodes need a type that the container domain may access, through `container_use_devices`, `container-selinux` and NVIDIA Container Toolkit policies. The exact mechanism varies by distribution and toolkit version, so verify it against current documentation.
 
 ### AppArmor (Ubuntu, Debian, SUSE)
 
-AppArmor confines programs with path-based profiles instead of labels. Each profile lists the files, capabilities, network and mount rules that a program may use. Profiles are simpler to write and reason about than SELinux policy. They are less granular for complex systems, though. Use the commands below to see which profiles are loaded and to switch one between modes.
+AppArmor confines programs with path-based profiles instead of labels. Think of a profile as a list of what one program may touch, written in terms of paths. Each profile lists the files, capabilities, network and mount rules that a program may use.
+
+Profiles are simpler to write and reason about than SELinux policy. They are less granular for complex systems, though. Use the commands below to see which profiles are loaded and to switch one between modes.
 
 ```bash
 sudo aa-status                              # loaded profiles; enforce vs complain; confined processes
@@ -318,7 +372,9 @@ sudo apparmor_parser -r /etc/apparmor.d/profile ; journalctl -k | grep -i 'appar
 
 Docker applies `docker-default` to containers. Kubernetes can set a profile per container, through annotations on older versions or `securityContext.appArmorProfile` on newer ones. Verify the version you run. `--security-opt apparmor=unconfined` turns the profile off. Recent Ubuntu releases also use AppArmor to restrict unprivileged user namespaces (chapter 1.19).
 
-Use whatever your distribution ships and supports. That means SELinux on the RHEL family, and AppArmor on Ubuntu, Debian or SUSE. Running both is not the norm. In an AI cluster, keep MAC **on**. Handle GPU, InfiniBand, NFS, Lustre and scratch paths with labels or profiles. Fleets that disable MAC "for performance" are usually disabling it for convenience, since the overhead is small. Keep MAC on, and fix the labels or profiles instead.
+Use whatever your distribution ships and supports. That means SELinux on the RHEL family, and AppArmor on Ubuntu, Debian or SUSE. Running both is not the norm.
+
+In an AI cluster, keep MAC **on**. Handle GPU, InfiniBand, NFS, Lustre and scratch paths with labels or profiles. Fleets that disable MAC "for performance" are usually disabling it for convenience, since the overhead is small. Keep MAC on, and fix the labels or profiles instead.
 
 ## 7. SSH hardening
 
@@ -326,7 +382,7 @@ SSH is the front door to every node, and it is also the path an attacker uses to
 
 Use **public-key** or certificate authentication, and disable passwords. Forbid root login, or restrict it to `prohibit-password` for break-glass access. Use modern algorithms such as Ed25519. Protect private keys with passphrases and an agent such as `ssh-agent`, or use hardware keys such as FIDO2 `ed25519-sk`.
 
-**SSH certificates** scale far better than copying `authorized_keys` to thousands of nodes. A certificate authority (CA) signs user and host keys, with principals and an expiry. Set `TrustedUserCAKeys` and `AuthorizedPrincipalsFile`, keep validity short, measured in hours, and use HostCertificate to remove trust-on-first-use prompts. Tools include `ssh-keygen -s`, HashiCorp Vault SSH CA, step-ca and Teleport.
+**SSH certificates** scale far better than copying `authorized_keys` to thousands of nodes. A certificate authority (CA) signs user and host keys, with principals and an expiry. Set `TrustedUserCAKeys` and `AuthorizedPrincipalsFile`, and keep validity short, measured in hours. Use HostCertificate to remove trust-on-first-use prompts. Tools include `ssh-keygen -s`, HashiCorp Vault SSH CA, step-ca and Teleport.
 
 Put cluster nodes behind a bastion or jump host, reached with `ProxyJump`. Restrict inbound SSH with a network ACL or firewall, and log everything.
 
@@ -369,11 +425,13 @@ journalctl -u ssh -u sshd -f ; sudo grep 'Failed password' /var/log/auth.log
 fail2ban-client status sshd                           # ban repeated failures (or pam_faillock)
 ```
 
-Use `sudo sshd -T` to see the effective configuration. Cluster work adds its own requirements. MPI launchers, such as `mpirun` with the rsh or ssh launcher, `pdsh`, and Horovod or `torchrun` multi-node helpers, often need non-interactive node-to-node SSH. Slurm's `srun` does not, because it uses `slurmd` and MUNGE instead. Restrict node-to-node SSH to the private management network. Use per-user keys or host-based certificates limited to compute nodes. Add `pam_slurm_adopt`, so that only users with a running job can log in. Consider disabling SSH to compute nodes for users entirely, and offer `srun --pty` instead. Keep SSH host keys unique per node, because golden images must regenerate them (chapter 1.28).
+Use `sudo sshd -T` to see the effective configuration. Cluster work adds its own requirements. MPI launchers, such as `mpirun` with the rsh or ssh launcher, `pdsh`, and Horovod or `torchrun` multi-node helpers, often need non-interactive node-to-node SSH. Slurm's `srun` does not, because it uses `slurmd` and MUNGE instead.
+
+Restrict node-to-node SSH to the private management network. Use per-user keys or host-based certificates limited to compute nodes. Add `pam_slurm_adopt`, so that only users with a running job can log in. Consider disabling SSH to compute nodes for users entirely, and offer `srun --pty` instead. Keep SSH host keys unique per node, because golden images must regenerate them (chapter 1.28).
 
 ## 8. Auditing, logging and integrity
 
-Logs answer the question of what happened on a node, but only if you set them up in advance. Start with the audit subsystem. **auditd** records security-relevant events from the kernel audit subsystem, including syscalls, file watches, logins, privilege use and SELinux denials. Its rules live in `/etc/audit/rules.d/*.rules`. For example, `-w /etc/passwd -p wa -k identity` watches the password file, and `-w /etc/sudoers -p wa -k scope` watches the sudo rules.
+A login happens at three in the morning, and nobody can say who it was. Logs answer that question, but only if you set them up in advance. Start with the audit subsystem. **auditd** records security-relevant events from the kernel audit subsystem: syscalls, file watches, logins, privilege use and SELinux denials. Its rules live in `/etc/audit/rules.d/*.rules`. For example, `-w /etc/passwd -p wa -k identity` watches the password file, and `-w /etc/sudoers -p wa -k scope` watches the sudo rules.
 
 Some rules cost more than others. The rule `-a always,exit -F arch=b64 -S execve -k exec` records every program execution, but it creates a lot of volume, so expect a warning. Query events with `ausearch -k identity`, summarise them with `aureport`, and ship them to a central log system. Boot with `audit=1` to cover early processes.
 
@@ -389,7 +447,7 @@ Decide now where these logs go and who reads them.
 
 ## 9. Kernel and system hardening
 
-The table lists kernel and system settings that harden a node. Each row gives the effect and a note on the cost. Read the notes before you apply a row, because some settings break GPU or MPI work.
+Suppose you apply every sysctl in a CIS checklist, and then a profiler or an MPI job stops working. The table below lists kernel and system settings that harden a node. Each row gives the effect and a note on the cost. Read the notes before you apply a row, because some settings break GPU or MPI work.
 
 | Setting | Effect | Notes |
 |---|---|---|
@@ -412,13 +470,15 @@ Measure your hardening rather than guessing at it. Tools such as `lynis audit sy
 
 ### Secure Boot and module signing (links to 1.14, 1.22)
 
-With UEFI Secure Boot, the firmware runs only signed boot loaders. The signed kernel then enforces **lockdown**, and it loads only kernel modules signed by a key in the kernel's trusted keyrings. The NVIDIA driver, open or proprietary, is out-of-tree. So on a Secure Boot node you must **sign it** with a key enrolled in the firmware `db` or the Machine Owner Key (MOK) list. Generate a key pair first. Then run `mokutil --import` on the public key, which is confirmed at the next boot on the console. Sign `nvidia*.ko` with the kernel's `sign-file` tool. DKMS can do this automatically once you configure the key paths. Finally, verify with `modinfo nvidia | grep sig`.
+With UEFI Secure Boot, the firmware runs only signed boot loaders. The signed kernel then enforces **lockdown**, and it loads only kernel modules signed by a key in the kernel's trusted keyrings. The NVIDIA driver, open or proprietary, is out-of-tree. So on a Secure Boot node you must **sign it** with a key enrolled in the firmware `db` or the Machine Owner Key (MOK) list.
+
+Generate a key pair first. Then run `mokutil --import` on the public key, which is confirmed at the next boot on the console. Sign `nvidia*.ko` with the kernel's `sign-file` tool. DKMS can do this automatically once you configure the key paths. Finally, verify with `modinfo nvidia | grep sig`.
 
 A failed load shows `Lockdown: ... unsigned module loading is restricted` or "Required key not available" in `dmesg`. Disabling Secure Boot is simpler, but it weakens the boot chain, and many compliance regimes forbid it. Fleets therefore sign modules in the image pipeline.
 
 ## 10. Hardening AI/HPC nodes without breaking them
 
-The project's operations notes (Volume 10, chapter 3, rewritten and checked for consistency) make the point plainly. Enterprise baselines were written for web servers, so GPU clusters need documented, deliberate exceptions. The table sets out each common rule, why it hurts AI nodes, and a better stance.
+Apply an enterprise baseline to a GPU node unchanged, and something may stop working. The project's operations notes (Volume 10, chapter 3, rewritten and checked for consistency) make the point plainly. Enterprise baselines were written for web servers, so GPU clusters need documented, deliberate exceptions. The table sets out each common rule, why it hurts AI nodes, and a better stance.
 
 | Typical baseline rule | Why it hurts AI nodes | Better stance |
 |---|---|---|
@@ -432,7 +492,9 @@ The project's operations notes (Volume 10, chapter 3, rewritten and checked for 
 | `mitigations` always on | Some CPU-bound loops pay a visible cost | Keep defaults unless benchmarked and risk-accepted; multi-tenant systems should keep them |
 | Passwordless `sudo` for the automation account | Needed for Ansible/BCM | Scope to specific commands, limit source IPs, key in a vault |
 
-Physical and platform controls matter as much as operating-system controls. Platform controls include BMC/Redfish network isolation and credential rotation (chapters 6.x and Part 1b), firmware signing, out-of-band management on a separate VLAN, and IB partition keys with Subnet Manager protection. Tenant isolation adds secure erase of NVMe scratch between tenants, GPU memory scrubbing or reset between jobs, MIG for hardware-level partitioning, and confidential-computing modes where tenants demand them (H100 and later; verify support and performance cost).
+Physical and platform controls matter as much as operating-system controls. Platform controls include BMC/Redfish network isolation and credential rotation (chapters 6.x and Part 1b), firmware signing, out-of-band management on a separate VLAN, and IB partition keys with Subnet Manager protection.
+
+Tenant isolation adds secure erase of NVMe scratch between tenants, GPU memory scrubbing or reset between jobs, MIG for hardware-level partitioning, and confidential-computing modes where tenants demand them (H100 and later; verify support and performance cost).
 
 Container workloads on shared nodes need a tight baseline. Run as non-root with `runAsNonRoot`, and set `allowPrivilegeEscalation: false`. Use `readOnlyRootFilesystem: true` where possible, drop all capabilities, and set `seccompProfile: RuntimeDefault`. Avoid `hostPath` to sensitive directories. Do not use `hostPID/hostIPC/hostNetwork` unless you can justify them. Set resource limits, use signed and scanned images from trusted registries, and write network policies. Finally, remember that the Docker socket mounted into a container is root on the host.
 
@@ -448,7 +510,9 @@ Finally, list every listening service with `lsof` or `ss -tlnp`. Each open port 
 
 ## 12. Kubernetes admission control and Pod Security (cluster-side)
 
-On a node, the kernel enforces the rules covered so far. In Kubernetes, the **API server** can stop a dangerous workload before it is ever scheduled. The notes from *Production Kubernetes* (chapter 8) describe the flow. Every request is authenticated and authorised with RBAC. Then it passes **mutating** admission, which may change the object. The ServiceAccount controller adds a default service account and token volume, and sidecar injectors add containers. Schema validation comes next, followed by **validating** admission, which may only accept or reject. For example, `NamespaceLifecycle` refuses to create objects in a terminating namespace.
+Suppose a platform team wants to ban privileged pods across a whole cluster. No single kernel can enforce that rule, because the pods do not exist yet. In Kubernetes, the **API server** can stop a dangerous workload before it is ever scheduled. The notes from *Production Kubernetes* (chapter 8) describe the flow.
+
+Every request is authenticated and authorised with RBAC. Then it passes **mutating** admission, which may change the object. The ServiceAccount controller adds a default service account and token volume, and sidecar injectors add containers. Schema validation comes next, followed by **validating** admission, which may only accept or reject. For example, `NamespaceLifecycle` refuses to create objects in a terminating namespace.
 
 Only if all validating controllers admit the object does it reach etcd. One rejection is enough to deny it. Admission controllers sit on the **critical path** of every matching request. Webhooks add latency, and they can take the cluster down if they are unavailable.
 

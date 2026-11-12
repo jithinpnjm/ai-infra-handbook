@@ -22,40 +22,42 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-An AI platform engineer is asked for numbers almost every week. Is this new node healthy? Did the driver upgrade slow training? Which instance type should we buy? Does this vendor's 400 Gb/s fabric really deliver? What tokens/s can one H100 serve at a 200 ms TTFT? What will 1,024 GPUs cost per run? Each answer is a benchmark.
+An AI platform engineer is asked for numbers almost every week, and the questions sound like small talk. Is this new node healthy? Did the driver upgrade slow training? Which instance type should we buy? Does this vendor's 400 Gb/s fabric really deliver? What tokens/s can one H100 serve at a 200 ms TTFT? What will 1,024 GPUs cost per run? Each of those answers is a benchmark, whether or not anyone uses the word.
 
-Done well, benchmarks catch bad hardware before a customer job runs on it. They validate a cluster acceptance test, size capacity, justify a purchase, and gate regressions in CI. Done badly, they cost millions. You might buy the wrong instance family, accept a cluster with a flaky link, or chase a "regression" that was only thermal throttling. A vendor claim you repeat in a design review may also fail to survive contact with your workload.
+A benchmark done well catches bad hardware before a customer job runs on it. It validates a cluster acceptance test, it sizes capacity, it justifies a purchase, and it gates a regression in CI. A benchmark done badly costs millions. You buy the wrong instance family. You accept a cluster with a flaky link. You spend a week chasing a "regression" that was only thermal throttling. Or you repeat a vendor claim in a design review, and it fails to survive contact with your workload.
 
-Typical failures look like these:
+The failures are usually small and ordinary:
 
-- A storage benchmark reports 40 GB/s per node because it measured the page cache, not the NVMe devices.
+- A storage benchmark reports 40 GB/s per node, because it measured the page cache and not the NVMe devices.
 - An `all_reduce` test shows 90% of line rate between two nodes on one switch, and everyone assumes the 1,024-GPU job will do the same.
-- A single run on a freshly booted, cold GPU is compared with a heat-soaked run an hour later, and the gap is called a regression.
-- An inference benchmark uses a closed-loop client at a fixed concurrency. It hides queueing and reports a latency your users never see.
+- A single run on a freshly booted, cold GPU gets compared with a heat-soaked run an hour later, and the gap is called a regression.
+- An inference benchmark uses a closed-loop client at a fixed concurrency, so it hides queueing and reports a latency your users never see.
 - A marketing benchmark with a single, optimal prompt length becomes the input to capacity planning.
 - A benchmark's own client is single-threaded and caps at 700 requests/s, while the server sits idle.
 
-This chapter teaches how to benchmark correctly. It covers what a benchmark is for, the failure modes and fallacies, and the difference between micro, macro, replay and industry benchmarks. Next come the methodologies: active benchmarking, sanity checks, ramping load, statistical analysis and the checklist. You will also learn the questions to ask about any number you did not generate. Last, the **AI-infrastructure benchmark toolkit** walks through CPU, memory, storage, network, GPU, NCCL, training and inference, with the specific traps for each.
+This chapter teaches how to benchmark correctly. It covers what a benchmark is for, the failure modes and the fallacies, and the difference between micro, macro, replay and industry benchmarks. Then come the methodologies: active benchmarking, sanity checks, ramping load, statistical analysis and the checklist. You will also learn the questions to ask about any number you did not generate. Last, the **AI-infrastructure benchmark toolkit** walks through CPU, memory, storage, network, GPU, NCCL, training and inference, with the specific traps for each.
 
 Until you have checked a number, treat it as a claim, not as a fact.
 
 ## Prerequisites and outcomes
 
-Before you read on, make sure you know the methodology chapter (1.23), the observability chapter (1.24), and the CPU, memory, disk and network basics from earlier chapters. Details of GPU, NCCL and fabric benchmarking come later, in Parts 7 to 10.
+Before you read on, make sure you know the methodology chapter (1.23), the observability chapter (1.24), and the CPU, memory, disk and network basics from earlier chapters. GPU, NCCL and fabric benchmarking get their full detail later, in Parts 7 to 10.
 
-When you finish this chapter, you can:
+By the end of this chapter, you will be able to do the following:
 
-- State the legitimate reasons for benchmarking and the properties of a good benchmark. Explain "casual benchmarking", where you benchmark A, measure B and conclude C.
+- State the legitimate reasons for benchmarking, and the properties of a good benchmark. Explain "casual benchmarking", where you benchmark A, measure B and conclude C.
 - Recognise and avoid the 16 classic failures in section 2. Some come from carelessness, such as casual benchmarking, blind faith, numbers without analysis, and ignoring errors. Others come from the setup, such as testing the wrong thing, ignoring the environment, and changing several factors at once. The rest are about the people involved, such as benchmarking the competition, misleading benchmarks, benchmark specials, and cheating.
 - Choose between micro-benchmarks, simulations (macro), replay and industry-standard benchmarks, and explain the risks of each. Design a micro-benchmark matrix with sunny-day and rainy-day cases.
 - Apply active benchmarking, which means watching the system with observability tools while the test runs. Profile both the benchmark and the target, apply the USE method, and characterise the workload. Ramp the load, check the result with bandwidth arithmetic, and analyse the numbers statistically.
 - Use the six-question checklist (why not double? did it break limits? did it error? does it reproduce? does it matter? did it even happen?) and the longer vendor-result questions.
-- Run correct benchmarks for CPU, memory, storage, network, GPU, NCCL, training and inference. Section 6 names the tools for each, and each tool has its own traps. Along the way you will control clocks, warm-up, steady state, thermals, caches, NUMA and variance.
+- Run correct benchmarks for CPU, memory, storage, network, GPU, NCCL, training and inference. Section 6 names the tools for each, and every tool has its own traps. Along the way you will control clocks, warm-up, steady state, thermals, caches, NUMA and variance.
 - Write a reproducible benchmark report with environment metadata, raw data, distributions and stated limits.
 
 ## 1. Why benchmark, and what makes a good benchmark
 
-You can run a benchmark for many reasons, and each reason sets a different bar for rigour. A purchase decision needs more care than a quick tuning experiment. The table lists the eight reasons, with an AI-infrastructure example for each.
+Two engineers test the same new node on the same afternoon and walk away with different numbers. Neither is lying, and neither ran a careless test. They simply started from different questions, and a different question sets a different bar for how careful you have to be.
+
+You can run a benchmark for many reasons. A purchase decision needs more care than a quick tuning experiment, because somebody will sign a contract on the strength of it. The table lists the eight reasons, with an AI-infrastructure example for each.
 
 | Reason | Example in AI infrastructure |
 |---|---|
@@ -68,21 +70,21 @@ You can run a benchmark for many reasons, and each reason sets a different bar f
 | Acceptance / burn-in | Prove each new node meets spec before it enters the pool |
 | Marketing ("benchmarketing") | Maximum numbers: treat others' as upper bounds only |
 
-Notice the last row. Vendor numbers are maximums, so treat them as upper bounds only.
+Notice the last row. Vendor numbers are maximums by construction, so treat them as upper bounds only, never as a target you can expect to reach.
 
-Cloud and rented GPUs make benchmarking cheap to run. A large environment can be created, tested and destroyed in a short time, and that is a reason to benchmark more, not less. The same cloud also adds hidden variance. Hosts differ, neighbours change, the silicon varies from one chip to the next, and thermal state shifts. So you need multiple instances and distributions, not one lucky or unlucky run.
+Cloud and rented GPUs make a benchmark cheap to run. You can create a large environment, test it and destroy it again in a short time, and that is a reason to benchmark more often, not less. The same cloud also adds hidden variance. Hosts differ, neighbours change, the silicon varies from one chip to the next, and the thermal state shifts. So you need several instances and a distribution of results, not one lucky or unlucky run.
 
-A good benchmark is repeatable, so comparisons are valid. It is observable, so you can analyse it. It is portable across systems and releases, and it is easy to present. It is realistic, which means it reflects what users experience. It is also runnable, quick enough that developers actually use it. For purchases, add the five-year cost.
+A good benchmark has six qualities. It is repeatable, so comparisons are valid. It is observable, so you can analyse it. It is portable across systems and releases, and it is easy to present. It is realistic, which means it reflects what users experience. It is also runnable, quick enough that developers actually reach for it. For a purchase, add the five-year cost to the list.
 
-Effective benchmarking is also about analysis. You must understand what is tested, what limits the result, which perturbations exist, and what conclusions follow. That requires analysing the system *while* the benchmark runs. Do not hand a tool to juniors and call the experts afterwards to explain the numbers.
+Effective benchmarking is also about analysis. You must understand what is tested, what limits the result, which perturbations exist, and what conclusions follow. That understanding comes from analysing the system *while* the benchmark runs. Do not hand a tool to juniors and call the experts afterwards to explain the numbers.
 
-A famous example from 1981 already shows the active method. The test sent 4 MB between two machines. One machine was CPU-saturated, while the other sat 30% idle. The analysis then broke down where the kernel time went: Ethernet 20%, IP 10%, TCP 30%, checksumming 25%, and syscalls 15%. Today a flame graph gives the same kind of breakdown in seconds.
+A famous example from 1981 already shows the active method at work. The test sent 4 MB between two machines. One machine was CPU-saturated, while the other sat 30% idle. The analysis then broke down where the kernel time went: Ethernet 20%, IP 10%, TCP 30%, checksumming 25%, and syscalls 15%. Today a flame graph gives you the same kind of breakdown in seconds.
 
-Before you trust a number, decide which reason you ran the test for. That reason sets how much rigour the result needs.
+Before you trust a number, decide which reason you ran the test for. The reason tells you how much rigour the result needs.
 
 ## 2. The failures (and the cures)
 
-Most bad benchmark results come from one of sixteen familiar failures. The table names each failure, says what goes wrong, and gives the cure. Read it before you trust a number, because a result from any of these failures can end up in a purchase decision.
+Picture a benchmark that produces a good number for a bad reason. Nobody in the room is lying, and the tool is not broken. The result simply landed in one of sixteen familiar failure patterns, and a result that carries one of them looks exactly like a result that does not. The table names each failure, says what goes wrong, and gives the cure. Read it before you trust a number, because a result from any of these failures can end up in a purchase decision.
 
 | # | Failure | What goes wrong | Cure |
 |---|---|---|---|
@@ -103,11 +105,11 @@ Most bad benchmark results come from one of sixteen familiar failures. The table
 | 15 | **Benchmark specials** | Product engineered to score on a known benchmark but not for customers (TPC prohibits them) | Prefer your workload; check for special configuration and pricing |
 | 16 | **Cheating** | Fake numbers (rare) | Reproduce key results |
 
-Notice how many cures ask you to check something before you believe the number: the limiter, the errors, the variance, or the environment.
+Notice how many cures ask you to check something before you believe the number: the limiter, the errors, the variance, or the environment. Each of those checks takes minutes. Each one is the difference between a measurement and a claim.
 
 ## 3. Benchmark types
 
-Benchmarks sit on a spectrum, from one isolated operation to live traffic. The diagram shows that spectrum, with the industry standards alongside the simulation step.
+Benchmarks sit on a spectrum, from one isolated operation to live traffic. Suppose you want to know whether a new filesystem is fast enough for training. You can measure a single system call, or you can replay a real workload, and the two answers will not agree. The diagram shows that spectrum, with the industry standards alongside the simulation step.
 
 ```mermaid
 flowchart LR
@@ -117,22 +119,22 @@ flowchart LR
 
 Read the diagram from left to right. It runs from the simplest test to real traffic.
 
-- **Micro-benchmarking** tests one operation, such as a syscall, one type of filesystem I/O, a CPU loop, a network transfer, a GPU kernel or a collective. It is simple, repeatable, quick to run on many systems, and quick to root-cause. The catch is that you must map its numbers to your real workload, because only one or two of its dimensions may matter. CPU tests use `sysbench` and `stress-ng`. Memory tests use `lmbench` and STREAM. Filesystem tests use `fio`. Disk tests use `hdparm`, `dd` with direct I/O, and `fio`. Network tests use `iperf3`. GPU tests use `nvbandwidth` and kernels. Collective tests use `nccl-tests`.
-- **Simulation (macro-benchmarking)** applies a model of client behaviour, with request mixes derived from workload characterisation. Examples are HTTP load tools (`wrk`, `hey`, `siege`), database benchmark suites, MLPerf scenarios, and LLM serving load generators. A simulation can be stateless, with independent requests drawn from a distribution. Or it can be stateful, with sequences that depend on each other, as in Markov models. The risks are real. Variance gets ignored, real usage drifts over time, and people resist updating a benchmark that already has published history.
-- **Replay** re-issues a captured trace. It sounds ideal, but captured clients do not respond to the new system's changed latency. The level of replay matters too. Replaying *disk* I/O from an old system on a new system with 16x the cache measures the wrong thing, and it could lose a sale. Replay at the level where the new system's behaviour is not baked in, such as application requests, and still analyse the results.
-- **Industry-standard benchmarks** are collections of well-defined micro and macro tests, with rules, disclosure, and sometimes audits and pricing. TPC covers databases. SPEC covers CPU, cloud and storage. For AI, MLPerf covers Training, Inference, Storage and HPC. For HPC, HPL/Top500, HPCG and IO500 apply, and STREAM covers memory. They save time when one resembles your workload. Their metrics are custom, such as TPS, FLOPS, samples/s or time-to-train, and they compare only with themselves. MIPS and FLOPS are simple, but they depend on the instruction mix.
+- **Micro-benchmarking** tests one operation, such as a syscall, one type of filesystem I/O, a CPU loop, a network transfer, a GPU kernel or a collective. It is simple, repeatable, quick to run on many systems, and quick to root-cause. The catch is that you must map its numbers onto your real workload, because only one or two of its dimensions may matter to you. Each layer has its usual tools. CPU tests use `sysbench` and `stress-ng`. Memory tests use `lmbench` and STREAM. Filesystem tests use `fio`. Disk tests use `hdparm`, `dd` with direct I/O, and `fio`. Network tests use `iperf3`. GPU tests use `nvbandwidth` and kernels. Collective tests use `nccl-tests`.
+- **Simulation (macro-benchmarking)** applies a model of client behaviour, with request mixes derived from workload characterisation. HTTP load tools such as `wrk`, `hey` and `siege` are examples, along with database benchmark suites, MLPerf scenarios, and LLM serving load generators. A simulation can be stateless, with independent requests drawn from a distribution. It can also be stateful, with sequences that depend on each other, as in Markov models. The risks are real. Variance gets ignored, real usage drifts over time, and people resist updating a benchmark that already has published history.
+- **Replay** re-issues a captured trace. It sounds ideal, until you notice that captured clients do not respond to the new system's changed latency. The level of replay matters too. Replay *disk* I/O from an old system on a new system with 16x the cache, and you measure the wrong thing; it could even lose a sale. Replay at the level where the new system's behaviour is not baked in, such as application requests, and keep analysing the results.
+- **Industry-standard benchmarks** are collections of well-defined micro and macro tests, with rules, disclosure, and sometimes audits and pricing. TPC covers databases, SPEC covers CPU, cloud and storage, and MLPerf covers Training, Inference, Storage and HPC for AI. For HPC, HPL/Top500, HPCG and IO500 apply, and STREAM covers memory. They save you time when one of them resembles your workload. Their metrics are custom, such as TPS, FLOPS, samples/s or time-to-train, so they compare only with themselves. MIPS and FLOPS are simple, but they depend on the instruction mix.
 
 ### Designing a micro-benchmark matrix
 
-Think in dimensions. For a filesystem or storage test, the dimensions are access pattern (sequential or random), I/O size, direction, working-set size, thread or queue depth, and sync mode. A working set much smaller than RAM tests the cache and the software path. A much larger one tests the device. An example set covers sequential 512 B reads for maximum IOPS, sequential 1 MiB reads for maximum read throughput, sequential 1 MiB writes for write throughput, random 512 B reads for the effect of randomness, and random 512 B writes for the rewrite effect. Run each one at a small and a large working set, with one thread and with many.
+A matrix starts from dimensions. For a filesystem or storage test, the dimensions are access pattern, meaning sequential or random, plus I/O size, direction, working-set size, thread or queue depth, and sync mode. A working set much smaller than RAM tests the cache and the software path. A working set much larger than RAM tests the device. An example set covers sequential 512 B reads for maximum IOPS, sequential 1 MiB reads for maximum read throughput, sequential 1 MiB writes for write throughput, random 512 B reads for the effect of randomness, and random 512 B writes for the rewrite effect. Run each one at a small and a large working set, with one thread and with many.
 
-The matrix grows fast, so use statistical design to cut it down. Change one factor at a time from a known maximum configuration (see chapter 1.23, factor analysis). Include sunny-day tests for peak, ideal conditions. Include cloudy/rainy-day tests as well, with contention, failures, bursts, degraded components and mixed loads, because production lives in the latter.
+The matrix grows fast, so use statistical design to cut it down. Change one factor at a time from a known maximum configuration, which chapter 1.23 covers as factor analysis. Include sunny-day tests for peak, ideal conditions. Include cloudy and rainy-day tests as well, with contention, failures, bursts, degraded components and mixed loads, because production lives in the latter.
 
 For each new micro-benchmark, decide first which dimensions matter for your workload, and test those before the rest.
 
 ## 4. Methodology
 
-Methods differ in how much you learn from them. Passive benchmarking runs a tool and hands over the slides. Active benchmarking watches the system while the test runs. The table lists the methods, and it helps you choose one for each situation.
+Methods differ in how much they teach you. One engineer runs a tool, pastes the output into slides and moves on. Another runs the same tool and watches the system while it works. The table lists the methods, and it helps you choose one for each situation.
 
 | Method | What | Notes |
 |---|---|---|
@@ -146,19 +148,19 @@ Methods differ in how much you learn from them. Passive benchmarking runs a tool
 | **Sanity check** | Does any number exceed a physical limit? | E.g. 50,000 NFS IOPS of 8 KiB over 1 GbE needs 400,000 KB/s (3.2 Gbit/s) > 1 Gbit/s, so the client cache was measured |
 | **Statistical analysis** | Collect large datasets, variances, distributions, error margins; analyse after the fact | Used when access to the system is scarce and expensive; collect everything (copy `/proc` counters before/after, `sar`, DCGM, `nsys`) |
 
-Passive benchmarking is the anti-method. Its results may be buggy, limited by the tool or by an unrelated component such as a congested network or a single thread, mis-configured, perturbed, or irrelevant.
+Passive benchmarking is the anti-method, and the name is not a compliment. Its results may be buggy. They may be limited by the tool itself, or by an unrelated component such as a congested network or a single thread. They may be mis-configured, perturbed, or simply irrelevant to the question you asked.
 
 ### Active benchmarking: a worked example
 
-Here is the story of a well-known disk benchmark. Its man page says it will "test hard drive performance". Its first test, "sequential output, per character", scores about 739 KB/s. Before you believe that number, run a sanity check. If the test really did I/O one character at a time at that rate, the system would perform 739,000 I/Os per second. One drive cannot do that.
+Here is the story of a well-known disk benchmark, and it is worth following step by step. Its man page says it will "test hard drive performance". Its first test, "sequential output, per character", scores about 739 KB/s. Before you believe that number, run a sanity check. If the test really did I/O one character at a time at that rate, the system would perform 739,000 I/Os per second. One drive cannot do that.
 
-Now watch the system while the test runs. `iostat -sxz 1` shows *no disk I/O*. `bpftrace -e 'tracepoint:block:* { @[probe] = count(); }'` shows *no* block requests issued or completed, only dirtied buffers. `cachestat 1` shows hits and "dirties" in the page cache. `kprobe:vfs_*` counts about 1.18 million `vfs_write` calls. A histogram of the third argument to `vfs_write` shows that almost every write was **1 byte**.
+So watch the system while the test runs. `iostat -sxz 1` shows *no disk I/O*. `bpftrace -e 'tracepoint:block:* { @[probe] = count(); }'` shows *no* block requests issued or completed, only dirtied buffers. `cachestat 1` shows hits and "dirties" in the page cache, and `kprobe:vfs_*` counts about 1.18 million `vfs_write` calls. A histogram of the third argument to `vfs_write` shows that almost every write was **1 byte**.
 
-The conclusion is that the first test measures 1-byte *buffered filesystem writes*, not the drive. The flag that should force synchronous writes (`-b`) did not call `fsync` after each write when checked with `strace`. Note that `strace` adds overhead, so its benchmark result under `strace` must be discarded. Direct I/O also failed on that system. The tool is not unusually bad. This kind of finding is common, which is exactly why blind faith fails. The lesson is the method. Run a sanity check, look for the resource you think is being exercised, trace the layer above it, and then measure the actual operation attributes.
+The conclusion is that the first test measures 1-byte *buffered filesystem writes*, not the drive. The flag that should force synchronous writes, `-b`, did not call `fsync` after each write when checked with `strace`. Note that `strace` adds overhead, so its benchmark result under `strace` must be discarded. Direct I/O also failed on that system. The tool is not unusually bad; this kind of finding is common, which is exactly why blind faith fails. The lesson is the method. Run a sanity check, look for the resource you think is being exercised, trace the layer above it, and then measure the actual operation attributes.
 
 ### Ramping load and acceptable latency
 
-Add clients, threads or QPS in increments, and hold each level long enough to be steady. Plot throughput and latency percentiles against load, and mark the **knee**. Report the highest load whose latency is acceptable to a customer. Going from 990,000 IOPS at 5 ms to 1,000,000+ IOPS at 50 ms is not an achievement. The right number to publish is 990,000. Then verify with the USE method that some resource really reached its limit, or you are measuring the generator. Always record **latency distributions**, not just means.
+Add clients, threads or QPS in increments, and hold each level long enough for the system to settle. Plot throughput and latency percentiles against load, and mark the **knee**, the point where the curve bends. Report the highest load whose latency is acceptable to a customer. Going from 990,000 IOPS at 5 ms to 1,000,000+ IOPS at 50 ms is not an achievement, and no user is better off for it. The right number to publish is 990,000. Then verify with the USE method that some resource really reached its limit, or you are only measuring the generator. Always record **latency distributions**, not just means.
 
 ### The checklist
 
@@ -173,34 +175,38 @@ Put every result through six questions before you accept it. Each one catches a 
 
 ### Questions to ask about a result you did not generate
 
-When a result came from someone else, ask questions before you rely on it. Start with the general ones. Does it relate to my workload? What was the system configuration and cost? Was it one system or a cluster? What did the benchmark clients look like? How long did it run, and how many results came out? Was the number an average or a peak, and what is the average? What were the percentiles and the variance? What was the limiting factor? What was the success and failure ratio? Which operation attributes were used, and how were they chosen? Is it measuring variance or an average workload? Was it confirmed with other tools? What is the error margin? Can it be reproduced?
+When a result came from someone else, slow down and ask questions before you rely on it. Start with the general ones. Does it relate to my workload? What was the system configuration and cost? Was it one system or a cluster? What did the benchmark clients look like? How long did it run, and how many results came out? Was the number an average or a peak, and what is the average? What were the percentiles and the variance? What was the limiting factor? What was the success and failure ratio? Which operation attributes were used, and how were they chosen? Is it measuring variance or an average workload? Was it confirmed with other tools? What is the error margin? Can it be reproduced?
 
-Then check the component details. For CPU and memory, ask whether the processors were overclocked or cooled specially. Ask about DIMM count and socket attachment, disabled CPUs, and system-wide utilisation, since lightly loaded chips turbo higher. Also ask about cores versus hyperthreads, memory type and size, and BIOS settings. For storage, ask about device types, counts, protocol and RAID, and the cache policy (write-back or write-through). Ask about the filesystem and its tuning, the working-set size and how much of it is cached where, and the number of files. For network, ask about interfaces, topology, protocols, socket options and tunables. For GPUs, add the model and SKU, power limit and clock settings, and interconnect topology (NVLink domain, PCIe generation). Ask about driver, CUDA and library versions, precision and sparsity assumptions, batch size and sequence length. Check whether the numbers are per GPU or aggregate, whether data loading is included, whether warm-up and steady state were respected, and what the cost was.
+Then check the component details. For CPU and memory, ask whether the processors were overclocked or cooled specially. Ask about DIMM count and socket attachment, disabled CPUs, and system-wide utilisation, since lightly loaded chips turbo higher. Also ask about cores versus hyperthreads, memory type and size, and BIOS settings.
+
+For storage, ask about device types, counts, protocol and RAID, and the cache policy, meaning write-back or write-through. Ask about the filesystem and its tuning, the working-set size and how much of it is cached where, and the number of files.
+
+For network, ask about interfaces, topology, protocols, socket options and tunables. For GPUs, add the model and SKU, power limit and clock settings, and interconnect topology, meaning the NVLink domain and the PCIe generation. Ask about driver, CUDA and library versions, precision and sparsity assumptions, batch size and sequence length. Check whether the numbers are per GPU or aggregate, whether data loading is included, whether warm-up and steady state were respected, and what the cost was.
 
 A number you cannot answer these questions about is a hypothesis, not a result.
 
 ## 5. A reproducible benchmarking procedure
 
-Before you pick a tool, fix the procedure. Most bad AI benchmarks fail at the procedure, not at the tool.
+Picture a team that spends a week choosing between two load generators, then runs the winner on a node that is still running a nightly backup. The tool was never the problem. Before you pick a tool, fix the procedure. Most bad AI benchmarks fail at the procedure, not at the tool, and no amount of tooling repairs a procedure that was never written down.
 
 1. **Question and success criterion.** Write down the question and what counts as a pass. For example, does node X deliver at least 95% of the fleet median on a reference step? Or can this fabric sustain at least 90% of line rate for a 1 GiB all-reduce across 16 nodes? Without a criterion, the result can never pass or fail.
-2. **Record the environment** automatically. Capture the hardware: CPU model, microcode, BIOS version and settings, DIMMs, GPU model, SKU and VBIOS, NIC model and firmware, PCIe link width and speed, and topology. Capture the OS: kernel, boot parameters, sysctls, governor, and THP. Capture drivers and libraries: the NVIDIA driver, CUDA, cuDNN, NCCL, MOFED/DOCA, PyTorch or the framework, and the container image digest. Also capture the cluster settings, such as scheduler, cgroup limits, and CPU, memory and GPU binding. Finally, capture clocks, power limits, and the software versions of the benchmark tool. Keep a script that dumps all of it next to your results.
-3. **Control the controllable.** Drain the node so no other work runs on it, and stop any services that interfere. When you compare hardware, fix the GPU clocks and persistence mode. Use `nvidia-smi -pm 1` for persistence mode, `-lgc` to lock graphics clocks, and `-pl` for power limits. The policies and permitted ranges vary by SKU, so the allowed values depend on the card. Set the CPU governor to performance. Pin processes with the topology in mind, covering NUMA and GPU-NIC affinity. Fix random seeds and datasets, and use the same container image digest every time.
-4. **Warm up, then measure steady state.** The first iterations include one-time costs: CUDA context creation, cuDNN autotune, JIT compilation, cold caches, memory allocation, NCCL channel setup, and the power ramp. Discard them. Measure only after clocks and temperatures stabilise. For thermal comparisons, run long enough to **heat-soak**, which takes minutes to an hour, and record clocks, temperature and power over time.
-5. **Run long enough, and repeat.** A single run is an anecdote. Use at least 5 to 10 repetitions where you can. Report the median and the spread: min and max, standard deviation or coefficient of variation, and percentiles. Randomise the order of A/B runs, so that drift from thermal state, time of day or neighbours does not favour one side. Test several instances or nodes too, since the "silicon lottery" and host differences are real.
-6. **Observe while running.** This is active benchmarking. Collect `dmon` or DCGM output, `sar`, `mpstat`, `iostat`, `perf` or flame graph snapshots, network counters, and PSI during the run. Use them to verify the limiter. Heavy tracing adds overhead, so run the tracing in separate runs and keep the measured runs clean.
+2. **Record the environment** automatically. Capture the hardware: CPU model, microcode, BIOS version and settings, DIMMs, GPU model, SKU and VBIOS, NIC model and firmware, PCIe link width and speed, and topology. Capture the OS as well: kernel, boot parameters, sysctls, governor, and THP. Capture drivers and libraries, meaning the NVIDIA driver, CUDA, cuDNN, NCCL, MOFED/DOCA, PyTorch or the framework, and the container image digest. Then capture the cluster settings, such as scheduler, cgroup limits, and CPU, memory and GPU binding. Finally, capture clocks, power limits, and the software versions of the benchmark tool. Keep a script that dumps all of it next to your results.
+3. **Control the controllable.** Drain the node so no other work runs on it, and stop any services that interfere. When you compare hardware, fix the GPU clocks and persistence mode. Use `nvidia-smi -pm 1` for persistence mode, `-lgc` to lock graphics clocks, and `-pl` for power limits. The policies and permitted ranges vary by SKU, so the allowed values depend on the card in front of you. Set the CPU governor to performance. Pin processes with the topology in mind, covering NUMA and GPU-NIC affinity. Fix random seeds and datasets, and use the same container image digest every time.
+4. **Warm up, then measure steady state.** The first iterations carry one-time costs: CUDA context creation, cuDNN autotune, JIT compilation, cold caches, memory allocation, NCCL channel setup, and the power ramp. Discard them, and measure only after clocks and temperatures stabilise. For thermal comparisons, run long enough to **heat-soak**, which takes minutes to an hour, and record clocks, temperature and power over the whole run.
+5. **Run long enough, and repeat.** A single run is an anecdote with a decimal point. Use at least 5 to 10 repetitions where you can. Report the median and the spread: min and max, standard deviation or coefficient of variation, and percentiles. Randomise the order of A/B runs, so that drift from thermal state, time of day or neighbours does not favour one side. Test several instances or nodes too, since the "silicon lottery" and host differences are real.
+6. **Observe while running.** This is active benchmarking. Collect `dmon` or DCGM output, `sar`, `mpstat`, `iostat`, `perf` or flame graph snapshots, network counters, and PSI during the run, and use them to verify the limiter. Heavy tracing adds overhead, so run the tracing in separate runs and keep the measured runs clean.
 7. **Sanity-check and cross-check.** Compare each number with its theoretical limit, such as line rate, HBM bandwidth or PCIe. Treat vendor numbers as an upper bound. Then check the result against a second tool.
 8. **Report** the number together with its limiter, variance, environment and caveats. Keep the raw data and scripts under version control, so that you or someone else can repeat the run.
 
-A minimal result record holds one row per run. The row contains the date, node or ID, tool and version, command line, configuration hash, and duration. It also records whether warm-up was discarded, the primary metric, p50, p90 and p99 if latency matters, the error count, the limiter, notes, and links to the raw logs and the monitoring dashboard. Fill in one row for every run, so that you can check the record later.
+A minimal result record holds one row per run. The row contains the date, node or ID, tool and version, command line, configuration hash, and duration. It also records whether warm-up was discarded, the primary metric, p50, p90 and p99 if latency matters, the error count, the limiter, notes, and links to the raw logs and the monitoring dashboard. Fill in one row for every run, so that the record can be read and trusted later.
 
 ## 6. The AI-infrastructure benchmark toolkit
 
-Every tool in this toolkit gets the same four questions. What does it claim to measure? What does it actually measure? What limits it? What must you control? The sections below follow that pattern.
+A storage vendor says the array is fast, and the array probably is. The question is whether the number in the slide came from the array, from the host, or from the page cache sitting between the two. Every tool in this toolkit gets the same four questions. What does it claim to measure? What does it actually measure? What limits it? What must you control? The sections below follow that pattern.
 
 ### 6.1 CPU
 
-CPU tests look simple, but a tool can easily measure something other than the CPU you care about. The table lists the common tools, what each one is for, and its trap.
+CPU tests look simple, and that is what makes them easy to get wrong. A tool can measure the cache, the compiler or the clock, while you believe you are measuring the core. The table lists the common tools, what each one is for, and its trap.
 
 | Tool | Use | Traps |
 |---|---|---|
@@ -210,17 +216,17 @@ CPU tests look simple, but a tool can easily measure something other than the CP
 | Linpack/HPL (CPU), SPEC CPU | HPC-grade compute | Heavy tuning; SPEC is licensed |
 | `lscpu`, `turbostat` while running | Actual frequency, power, throttling | Benchmarks on lightly loaded chips turbo higher: record frequency |
 
-Control the governor, the turbo or boost state, SMT on or off, NUMA placement (`numactl`), `isolcpus`, and the thermal state. Always compare per-thread results, which represent latency-sensitive launch code, and fully loaded results.
+Control the governor, the turbo or boost state, SMT on or off, NUMA placement with `numactl`, `isolcpus`, and the thermal state. Always compare per-thread results with fully loaded results. Per-thread numbers represent latency-sensitive launch code, and the two tell different stories.
 
 ### 6.2 Memory
 
-Use STREAM to measure sustainable bandwidth per socket. Set `OMP_NUM_THREADS`, make the array at least 4x the largest cache, build with `-O3`, and bind the threads. Use `mlc`, the Intel Memory Latency Checker, for loaded latency and cross-socket bandwidth. `lmbench` is another option. To compare local with remote memory, run NUMA-aware tests with `numactl --cpunodebind=N --membind=M`.
+Use STREAM to measure sustainable bandwidth per socket. Set `OMP_NUM_THREADS`, make the array at least 4x the largest cache, build with `-O3`, and bind the threads. Use `mlc`, the Intel Memory Latency Checker, for loaded latency and cross-socket bandwidth, or `lmbench` as another option. To compare local with remote memory, run NUMA-aware tests with `numactl --cpunodebind=N --membind=M`.
 
-Several traps catch people here. An array that is too small measures the cache. Without thread pinning, threads migrate. Page faults on first touch cost time, so initialise the memory in the same threads that use it. THP effects change the results too. Finally, do not mistake the theoretical peak for what you can achieve. About 70 to 90% of peak is typical for STREAM.
+Several traps catch people here. An array that is too small measures the cache. Without thread pinning, threads migrate across sockets in the middle of a run. Page faults on first touch cost time, so initialise the memory in the same threads that use it, and watch for THP effects that change the results too. Finally, do not mistake the theoretical peak for what you can achieve. About 70 to 90% of peak is typical for STREAM.
 
 ### 6.3 Storage and filesystems (`fio`)
 
-`fio` is the standard micro-benchmark for block devices and filesystems. Its common failures come from five places: caches, queue depth, the I/O engine, the test file size, and mixing devices with filesystems.
+`fio` is the standard micro-benchmark for block devices and filesystems. It is also the tool most likely to measure the page cache, because that is where a careless test quietly ends up. Its common failures come from five places: caches, queue depth, the I/O engine, the test file size, and mixing devices with filesystems.
 
 Each of these four commands aims at a different part of the storage path, so read the comment above each one first.
 
@@ -240,21 +246,21 @@ fio --name=ckpt --directory=/scratch/fio --size=32G --rw=write --bs=4M --numjobs
 
 The raw-device commands write to a device, so run them only on a scratch device. The read tests are safe.
 
-Follow nine rules when you run `fio`. Use `--direct=1` unless you are *deliberately* measuring the page cache. Compare the working-set size with RAM, because a 1 GiB file on a 512 GiB host measures memory. Vary `iodepth` and `numjobs`. An NVMe needs queue depth to reach its IOPS, and a single synchronous thread measures latency, not capacity.
+Follow nine rules when you run `fio`. Use `--direct=1` unless you are *deliberately* measuring the page cache. Compare the working-set size with RAM, because a 1 GiB file on a 512 GiB host measures memory and nothing else. Vary `iodepth` and `numjobs`: an NVMe needs queue depth to reach its IOPS, and a single synchronous thread measures latency, not capacity.
 
-Reach steady state next. SSDs show fresh-out-of-box bursts before they settle into garbage-collection steady state. Precondition the drive by filling it, and use `--ramp_time` and long runs. Report latency percentiles, not just IOPS or MB/s. Know that `clat` and `lat` differ, and understand which one you are reporting. Disable CPU power saving, pin the job to the NVMe's NUMA node, and check that `fio`'s own CPU is not the limiter, using `--cpus_allowed` and multiple jobs.
+Reach steady state next. SSDs show fresh-out-of-box bursts before they settle into garbage-collection steady state. Precondition the drive by filling it, and use `--ramp_time` and long runs. Report latency percentiles, not just IOPS or MB/s, and know that `clat` and `lat` differ so you can say which one you are reporting. Disable CPU power saving, pin the job to the NVMe's NUMA node, and check that `fio`'s own CPU is not the limiter, using `--cpus_allowed` and multiple jobs.
 
-Rule 7 covers the stack. A RAID, LVM or filesystem layer changes everything, so benchmark each layer. Rule 8 covers `iostat` `%util`, which is a poor NVMe metric, so use IOPS and throughput with `await` and `aqu-sz`. Rule 9 covers thermal throttling, which shows up as a mid-run drop, so log with `--write_bw_log` or `--write_lat_log`.
+Rule 7 covers the stack. A RAID, LVM or filesystem layer changes everything, so benchmark each layer and say which one you measured. Rule 8 covers `iostat` `%util`, which is a poor NVMe metric, so use IOPS and throughput with `await` and `aqu-sz` instead. Rule 9 covers thermal throttling, which shows up as a mid-run drop, so log with `--write_bw_log` or `--write_lat_log`.
 
-GPU data paths need their own tests. Run GPUDirect Storage (`gdsio`) and host-memory staging. For dataloader performance, test the real pipeline, including decode, augmentation and shuffling. Storage benchmarks ignore CPU decode cost, so they will not show it.
+GPU data paths need their own tests, because a storage number tells you nothing about them. Run GPUDirect Storage (`gdsio`) and host-memory staging. For dataloader performance, test the real pipeline, including decode, augmentation and shuffling. A storage benchmark ignores CPU decode cost, so it will never show you that cost.
 
-Parallel and distributed filesystems, such as Lustre, GPFS, BeeGFS, WekaFS, VAST and NFS, need a different set of tools. Use `IOR` for bandwidth. Set the file layout with `-F` (file-per-process or shared file). Set `-t` for the transfer size and `-b` for the block size. Add `-C` for task reordering, which defeats the client cache, and `-e` for fsync. Use `-w` and `-r` for the write and read phases. Use `mdtest` for metadata rates, covering create, stat and remove. Use the IO500 suite as a reference. Run with the same number of nodes and processes per node as your real jobs.
+Parallel and distributed filesystems, such as Lustre, GPFS, BeeGFS, WekaFS, VAST and NFS, need a different set of tools. Use `IOR` for bandwidth. Set the file layout with `-F`, choosing file-per-process or a shared file, and set `-t` for the transfer size and `-b` for the block size. Add `-C` for task reordering, which defeats the client cache, and `-e` for fsync. Use `-w` and `-r` for the write and read phases. Use `mdtest` for metadata rates, covering create, stat and remove, and the IO500 suite as a reference. Run with the same number of nodes and processes per node as your real jobs.
 
-Then compare the "easy" pattern, which is large sequential I/O with per-process files, with the "hard" pattern, which is small unaligned I/O to a shared file. Metadata-heavy workloads, with millions of small files, are the usual surprise. For client cache, use `IOR -C` or drop caches between the write and read phases. Check that a read-after-write across different nodes is not served from the writer's cache.
+Then compare the "easy" pattern with the "hard" one. The easy pattern is large sequential I/O with per-process files. The hard pattern is small unaligned I/O to a shared file. Metadata-heavy workloads, with millions of small files, are the usual surprise. For client cache, use `IOR -C` or drop caches between the write and read phases, and check that a read-after-write across different nodes is not served from the writer's cache.
 
 ### 6.4 Network (TCP and RDMA)
 
-Network tests need to cover both the TCP path and the RDMA path. The commands below handle each one. Start the server on the other node before you run the client, as the comments show.
+Network tests need to cover both the TCP path and the RDMA path, and the two fail for different reasons. The commands below handle each one. Start the server on the other node before you run the client, as the comments show.
 
 ```bash
 # TCP throughput, 4 parallel streams, 30 s, with interval stats and server on node B (iperf3 -s)
@@ -267,15 +273,15 @@ ib_send_bw, ib_read_bw, ib_atomic_bw                  # other verbs
 qperf nodeB tcp_bw tcp_lat rc_rdma_write_bw          # quick TCP/RDMA checks
 ```
 
-Several traps catch people here. For example, a single TCP stream rarely fills a link of 100 Gb/s or more, so use `-P`, tune the buffers, and pin the streams to cores local to the NIC. `iperf3` is single-threaded per process, so run multiple processes. Watch for MTU mismatches. Jumbo frames are 9000 on Ethernet fabrics, and the IB MTU is 4096. RoCE needs a lossless configuration with PFC and ECN, and you must validate it. `perftest` selects a device and port with `-d` and `-i`, and a GID index with `-x`. Keep NUMA locality between the NIC, the CPU and memory in mind.
+Several traps catch people here. A single TCP stream rarely fills a link of 100 Gb/s or more, so use `-P`, tune the buffers, and pin the streams to cores local to the NIC. `iperf3` is single-threaded per process, so run multiple processes. Watch for MTU mismatches: jumbo frames are 9000 on Ethernet fabrics, and the IB MTU is 4096. RoCE needs a lossless configuration with PFC and ECN, and you must validate it rather than assume it. `perftest` selects a device and port with `-d` and `-i`, and a GID index with `-x`. Keep NUMA locality between the NIC, the CPU and memory in mind.
 
-An out-of-the-box PCIe link may be x8 or Gen3, so check `lspci -vv`. The reported line rate is not the same as goodput, because headers take a share. Be careful to compare averaged numbers with steady ones.
+An out-of-the-box PCIe link may be x8 or Gen3, so check `lspci -vv` before you blame the network. The reported line rate is not the same as goodput, because headers take a share. Be careful to compare averaged numbers with steady ones.
 
-Check NIC counters, such as `ethtool -S` and `perfquery`, for errors and drops during the run. Test all node pairs and all links for acceptance. A single bad cable or transceiver is the most common cluster defect. To do this, run tools like `ib_write_bw` in a loop over the fabric. `ibdiagnet` and vendor fabric validators are other options, and the tools vary by vendor.
+Check NIC counters, such as `ethtool -S` and `perfquery`, for errors and drops during the run. Test all node pairs and all links for acceptance, because a single bad cable or transceiver is the most common cluster defect. To do this, run tools like `ib_write_bw` in a loop over the fabric. `ibdiagnet` and vendor fabric validators are other options, and the tools vary by vendor.
 
 ### 6.5 GPU
 
-The GPU table covers six kinds of test. Each row names the tool and what it shows, so match the test to the question you are asking.
+The GPU table covers six kinds of test. Each row names the tool and what it shows, so match the test to the question you are actually asking.
 
 | Test | Tool | What it shows |
 |---|---|---|
@@ -286,9 +292,9 @@ The GPU table covers six kinds of test. Each row names the tool and what it show
 | Clocks, power, thermals during load | `nvidia-smi dmon`, `nvidia-smi -q -d PERFORMANCE,CLOCK,POWER,TEMPERATURE` (look at "Clocks Throttle Reasons") | Why a GPU is slow: power cap, thermal slowdown, sync boost, hardware slowdown |
 | Realistic kernels and training steps | Framework microbenchmarks (`torch.utils.benchmark`), model step timing with proper synchronization | Closer to user value; see section 6.7 |
 
-The GPU has its own traps, and each one can make a result look better or worse than it is.
+The GPU has its own traps, and each one can make a result look better or worse than it really is.
 
-- **Asynchrony.** CUDA kernels launch asynchronously. If you time the launch with a wall clock, you measure the launch, not the kernel. Time with CUDA events, or call `torch.cuda.synchronize()` before and after, or use `torch.utils.benchmark.Timer`.
+- **Asynchrony.** CUDA kernels launch asynchronously, so the CPU returns long before the GPU is done. If you time the launch with a wall clock, you measure the launch and not the kernel. Time with CUDA events, or call `torch.cuda.synchronize()` before and after, or use `torch.utils.benchmark.Timer`.
 - **Warm-up.** The first iterations include context creation, kernel module loading, cuBLAS and cuDNN heuristics and autotune, memory allocator growth, and JIT compilation. Exclude them. Several to dozens of iterations is typical.
 - **Clocks and thermals.** Boost clocks move with temperature and power, and a hot GPU runs slower. For hardware comparisons, lock the clocks or report them, and run long enough to heat-soak. A "regression" after a driver upgrade that compares a cold card with a hot one is not a regression.
 - **Precision and sparsity.** Peak numbers for TF32, BF16, FP16, FP8 and FP4 differ by large factors. Vendor peaks often assume sparsity or low precision. State the precision, the matrix sizes, and whether tensor cores were used.
@@ -299,7 +305,7 @@ The GPU has its own traps, and each one can make a result look better or worse t
 
 ### 6.6 Collectives: nccl-tests
 
-`nccl-tests` measures collective communication across GPUs, covering all-reduce, all-gather, reduce-scatter, broadcast, all-to-all, and send/recv. Start with one node, then add nodes. The commands below show the single-node run, the Slurm run, and the MPI run.
+`nccl-tests` measures collective communication across GPUs, covering all-reduce, all-gather, reduce-scatter, broadcast, all-to-all, and send/recv. Start with one node, then add nodes, because the interesting failures only appear once traffic crosses a switch. The commands below show the single-node run, the Slurm run, and the MPI run.
 
 ```bash
 # Single node, 8 GPUs, sweep message sizes from 8 B to 8 GiB, doubling
@@ -312,40 +318,44 @@ mpirun -np 16 --map-by ppr:8:node ./build/all_reduce_perf -b 8 -e 8G -f 2 -g 1
 #   NCCL_NET_GDR_LEVEL, NCCL_P2P_LEVEL, NCCL_TOPO_DUMP_FILE for debugging
 ```
 
-The output has these columns: size, count, type, redop, time (µs), `algbw`, `busbw`, the error count, and the out-of-place and in-place variants. `algbw` is the algorithm bandwidth, which is the size divided by the time. `busbw` is the bus bandwidth. It multiplies `algbw` by a factor that depends on the collective, so the result can be compared with the hardware peak. For all-reduce, the factor is 2(n−1)/n. The error count appears as `#wrong`, and it must be 0.
+The output has these columns: size, count, type, redop, time in µs, `algbw`, `busbw`, the error count, and the out-of-place and in-place variants. `algbw` is the algorithm bandwidth, which is the size divided by the time. `busbw` is the bus bandwidth. It multiplies `algbw` by a factor that depends on the collective, so the result can be compared with the hardware peak. For all-reduce, the factor is 2(n−1)/n. The error count appears as `#wrong`, and it must be 0.
 
-Interpret `busbw` against the hardware limit. Inside a node, the limit is NVLink. Between nodes, the limit is the InfiniBand or Ethernet line rate, per NIC, so note the GPU-per-NIC ratio. Small messages are latency-bound, and large ones are bandwidth-bound. Look for the knee, which is the size where `busbw` saturates, and for the steady plateau. Check how much the results vary between runs. Confirm that `NCCL_DEBUG=INFO` reports the network you intended, not a TCP socket fallback. Confirm that GPUDirect RDMA is in use, which shows as `NET/IB : GPU Direct RDMA Enabled`. Also check the number of channels.
+Interpret `busbw` against the hardware limit that applies. Inside a node, the limit is NVLink. Between nodes, the limit is the InfiniBand or Ethernet line rate, per NIC, so note the GPU-per-NIC ratio. Small messages are latency-bound, and large ones are bandwidth-bound. Look for the knee, the size where `busbw` saturates, and for the steady plateau after it. Check how much the results vary between runs. Confirm that `NCCL_DEBUG=INFO` reports the network you intended, not a TCP socket fallback, and that GPUDirect RDMA is in use, which shows as `NET/IB : GPU Direct RDMA Enabled`. Also check the number of channels.
 
 Then test whether the result scales. Run 1 node, 2 nodes, 4 nodes, 8 nodes, and so on, and note where efficiency drops. That is often the leaf/spine boundary. A non-zero `#wrong` or a hang points to hardware or configuration faults. Use `-c 1` for data validation, `-w` for warm-up iterations, `-n` for the iteration count, and `-d` for the datatype. Also test all-to-all, which MoE models use, and all-gather and reduce-scatter, which FSDP and ZeRO use.
 
 ### 6.7 Training benchmarks
 
-Training benchmarks should measure what users care about. That means throughput in tokens/s or samples/s, per GPU and in total. It also means the step time breakdown, MFU, scaling efficiency, time-to-train to a target quality in the MLPerf style, and cost per unit of work. Follow these rules.
+Training benchmarks should measure what users care about, and users care about time and money. That means throughput in tokens/s or samples/s, per GPU and in total. It also means the step time breakdown, MFU, scaling efficiency, time-to-train to a target quality in the MLPerf style, and cost per unit of work. The rules below turn that list into practice.
 
-- Use the real model, parallelism and data pipeline, or a close proxy such as the MLPerf reference or the NeMo or Megatron benchmark recipes. Synthetic data hides input-pipeline limits, and real data includes them, so report both.
+- Use the real model, parallelism and data pipeline, or a close proxy such as the MLPerf reference or the NeMo or Megatron benchmark recipes. Synthetic data hides input-pipeline limits and real data includes them, so report both.
 - Synchronise properly and discard warm-up steps. Use enough steps, hundreds for example, to get stable statistics. Log per-step time to see jitter and stragglers.
-- Control batch size, sequence length, precision, activation checkpointing, optimizer, parallelism strategy (DP/TP/PP/CP/EP), gradient accumulation, and overlap settings. Changing any one of them makes a different benchmark.
+- Control batch size, sequence length, precision, activation checkpointing, optimizer, the parallelism strategy of DP/TP/PP/CP/EP, gradient accumulation, and overlap settings. Changing any one of them makes it a different benchmark.
 - For strong scaling, compare the same global batch. For weak scaling, scale the batch and state that you did. Compute MFU with a clearly stated FLOPs-per-token formula and the hardware peak, dense and matching the precision.
-- Include the checkpoint cost, which is the periodic stall, in end-to-end runs. For long runs, include failure and restart behaviour, measured as goodput.
+- Include the checkpoint cost, the periodic stall, in end-to-end runs. For long runs, include failure and restart behaviour, measured as goodput.
 - Record cluster conditions, such as fabric load from other jobs and storage contention.
 - For acceptance, run a standard reference workload on each node. The single-node step time should land within a few percent of the fleet median. On each switch group, check that multi-node scaling efficiency is above a threshold.
 
 ### 6.8 Inference benchmarks (LLM serving)
 
-- **Metrics.** Track time to first token (TTFT), time per output token and inter-token latency (TPOT/ITL), end-to-end latency, throughput in output tokens/s per GPU and per dollar, requests/s, queue time, KV-cache utilisation, and batch occupancy. The key number is goodput under SLO. It is the maximum rate at which p95/p99 TTFT and TPOT still meet the targets.
+An inference number is the one a product team will quote to a customer, so it deserves the most suspicion. Each rule below protects a different part of the answer.
+
+- **Metrics.** Track time to first token, or TTFT, time per output token, and inter-token latency, written TPOT and ITL. Add end-to-end latency, throughput in output tokens/s per GPU and per dollar, requests/s, queue time, KV-cache utilisation, and batch occupancy. The key number is goodput under SLO. It is the maximum rate at which p95/p99 TTFT and TPOT still meet the targets.
 - **Workload realism.** Use prompt-length and output-length distributions, not a single length. Include prefix sharing and cache hit rates, the concurrency pattern, streaming versus non-streaming, sampling parameters, quantisation, speculative decoding, and the tensor-parallel degree.
-- **Open-loop versus closed-loop load.** A closed-loop client with N workers waits for each response before it sends the next request. When the server slows down, the client sends fewer requests, and that hides queueing. This under-reports latency, and it is the coordinated omission problem. An open-loop generator sends requests on a schedule, such as Poisson arrivals at a target rate, whatever the responses look like. That exposes queue growth, so use it for latency and SLO tests. Closed-loop is fine for peak throughput at a fixed concurrency, as long as you also report latency.
+- **Open-loop versus closed-loop load.** A closed-loop client with N workers waits for each response before it sends the next request. When the server slows down, the client sends fewer requests, and that hides queueing. This under-reports latency, and it is the coordinated omission problem. An open-loop generator sends requests on a schedule, such as Poisson arrivals at a target rate, whatever the responses look like. That exposes queue growth, so use open-loop for latency and SLO tests. Closed-loop is fine for peak throughput at a fixed concurrency, as long as you also report latency.
 - **Ramp the load.** Sweep the rate, and plot latency percentiles against request rate and tokens/s. The operating point is the knee that meets the SLO. Queueing theory explains why. Do not run at 95% utilisation if you need low tail latency (chapter 1.23).
 - **Tools.** Check the current names and flags first, since these tools change. `genai-perf` comes from NVIDIA and is being phased out in favour of AIPerf. Serving projects ship their own scripts, such as vLLM's `benchmark_serving`, or the TensorRT-LLM and Triton perf tooling. For simple HTTP, use `wrk` or `hey`. For scripted workloads, use `locust` or `k6`. `llmperf`-style harnesses also exist. Pin the client to its own hosts, so the load generator does not share the server GPUs or saturate its own CPU. Check that the client is not the bottleneck, and capture server metrics such as GPU utilisation, batch sizes and KV cache alongside the client results.
 - **Warm-up and steady state.** Exclude model load, CUDA graph capture, and the initial fill. Run for minutes, and include a long tail test for memory growth and fragmentation.
 
 ### 6.9 Cluster acceptance and burn-in
 
-A typical sequence for a new GPU cluster starts with an inventory and firmware audit, which covers static tuning checks. Next come per-node DCGM diagnostics at `-r 3` or `-r 4`, and GPU burn for hours with temperature and power logging. Then run memory tests with host `memtester` or vendor tools, and per-node disk and NIC checks. After that, run per-link RDMA bandwidth and latency tests across the fabric, and `nccl-tests` at 1, 2, 4 and more nodes, across switch tiers. Storage tests at scale come next, with `IOR` and `mdtest`. The sequence ends with an end-to-end reference training run and a soak with failure injection.
+A typical sequence for a new GPU cluster starts with an inventory and firmware audit, which covers static tuning checks. Next come per-node DCGM diagnostics at `-r 3` or `-r 4`, and a GPU burn for hours with temperature and power logging. Then run memory tests with host `memtester` or vendor tools, plus per-node disk and NIC checks. After that, run per-link RDMA bandwidth and latency tests across the fabric, and `nccl-tests` at 1, 2, 4 and more nodes, across switch tiers. Storage tests at scale come next, with `IOR` and `mdtest`. The sequence ends with an end-to-end reference training run and a soak with failure injection.
 
-Automate the whole sequence. Store results per serial number. Define pass and fail thresholds from the vendor spec and the fleet median, and track outliers over time. Re-run a short version after maintenance and as periodic health checks. Many sites run lightweight checks as Slurm prolog or epilog scripts, or as node-health scripts.
+Automate the whole sequence, because a cluster is too large to inspect by hand. Store results per serial number. Define pass and fail thresholds from the vendor spec and the fleet median, and track outliers over time. Re-run a short version after maintenance and as periodic health checks. Many sites run lightweight checks as Slurm prolog or epilog scripts, or as node-health scripts.
 
 ### 6.10 Industry benchmarks to know
+
+The table lists the industry benchmarks worth recognising by name, and the domain each one covers.
 
 | Benchmark | Domain | Notes |
 |---|---|---|
@@ -355,13 +365,13 @@ Automate the whole sequence. Store results per serial number. Define pass and fa
 | **STREAM, SPEC CPU, SPEC Cloud** | CPU/memory/cloud | Licensed (SPEC) or free (STREAM) |
 | **TPC family** | Databases | TPC-C, TPC-H, TPC-DS, TPCx-HS etc. |
 
-Industry results are vendor-tuned. They often use the best configuration, special pricing or special hardware. Use them as **upper bounds** and as a shared vocabulary, and run your own tests.
+Industry results are vendor-tuned, and they often use the best configuration, special pricing or special hardware. Use them as **upper bounds** and as a shared vocabulary, then run your own tests.
 
 ## 7. Statistics, sanity checks and reporting
 
 ### Sanity-check arithmetic you should do instantly
 
-Before you repeat a number, run these checks in your head. Each row shows the arithmetic and the verdict.
+Before you repeat a number to a colleague or a customer, run these checks in your head first. Each row shows the arithmetic and the verdict, and each verdict is one you can reach in seconds.
 
 | Claim | Arithmetic | Verdict |
 |---|---|---|
@@ -377,7 +387,9 @@ Always do the arithmetic with units. Check bits against bytes, GiB against GB, o
 
 ### Statistics for benchmark data
 
-- Report the median and the spread, not a single run. Keep every raw sample. For latency, report percentiles and the full histogram, never only the mean. Look for bimodal distributions, such as cache hits and misses, two code paths, or fast and slow ranks. In those cases, the mean describes nothing.
+Statistics is how you tell a real difference from a noisy afternoon. These habits cover most of what you need.
+
+- Report the median and the spread, not a single run, and keep every raw sample. For latency, report percentiles and the full histogram, never only the mean. Look for bimodal distributions, such as cache hits and misses, two code paths, or fast and slow ranks. In those cases the mean describes nothing.
 - Confidence matters when you compare A and B. The difference should exceed the run-to-run variation, so use enough repetitions to estimate that variation. Bootstrap confidence intervals or a t-test can help when they fit. For many metrics, non-parametric methods such as Mann-Whitney are safer. A 3% difference with 5% noise is not a result.
 - Outliers matter for tails. A slow disk I/O of 1,000 ms among 1 ms ones is one example. Do not discard outliers silently. Find the cause.
 - Order effects and drift are real. Interleave A/B runs, include a cold start, and log temperature and clocks.
@@ -387,29 +399,29 @@ Always do the arithmetic with units. Check bits against bytes, GiB against GB, o
 
 ### Writing the report
 
-A good report answers the questions below. What was the question? What was measured, and how was it verified? On which systems, with what full environment? What were the results, shown as tables of median and spread and graphs of scalability and latency? What limited the result, with evidence from profiles, counters or screenshots? What was not tested or assumed? That list is the to-do list from the "numbers without analysis" failure. How can someone reproduce it, with commands, versions and data? Include the vendor-style disclosure, such as the configuration and cost, so that someone else can judge relevance.
+A good report answers a short list of questions. What was the question? What was measured, and how was it verified? On which systems, with what full environment? What were the results, shown as tables of median and spread and graphs of scalability and latency? What limited the result, with evidence from profiles, counters or screenshots? What was not tested or assumed? That last list is the to-do list from the "numbers without analysis" failure. How can someone reproduce it, with commands, versions and data? Include the vendor-style disclosure, such as the configuration and cost, so that someone else can judge relevance.
 
 End every report with the decision it supports, so the reader knows what the numbers are for.
 
 ## 8. Worked examples
 
-**A. Storage "40 GB/s" per node.** Picture an engineer who runs `fio --rw=read --bs=1M --size=2G --numjobs=8` on a node with 1 TiB RAM. The tool reports 40 GB/s from "the NVMe array". Before you believe that, look at what the node is doing. `iostat -x 1` shows near-zero device reads. `cachestat` shows a hit ratio of about 100%, and `free` shows the files sitting in page cache. The test measured memory, not the drives. When you see a number like this, check the cache before you check the drives. The cache is the first suspect, because it sits between the test and the hardware.
+**A. Storage "40 GB/s" per node.** Picture an engineer who runs `fio --rw=read --bs=1M --size=2G --numjobs=8` on a node with 1 TiB RAM. The tool reports 40 GB/s from "the NVMe array", and the engineer is pleased. Before you believe that number, look at what the node is actually doing. `iostat -x 1` shows near-zero device reads. `cachestat` shows a hit ratio of about 100%, and `free` shows the files sitting in page cache. The test measured memory, not the drives. When you see a number like this, check the cache before you check the drives, because the cache sits between the test and the hardware.
 
-Run it again with `--direct=1`, on files larger than RAM (or with `drop_caches` for read tests), over a long run. Ramp `iodepth` and `numjobs` as well. Now the array delivers 24 GB/s sequential and 3.4 M random 4 KiB IOPS at p99 220 µs. `nvme smart-log` shows no errors. One device reaches 85 °C and throttles after 4 minutes, which you can see in `--write_bw_log`.
+Run it again with `--direct=1`, on files larger than RAM, or with `drop_caches` for read tests, and let it run long. Ramp `iodepth` and `numjobs` as well. Now the array delivers 24 GB/s sequential and 3.4 M random 4 KiB IOPS at p99 220 µs. `nvme smart-log` shows no errors. One device reaches 85 °C and throttles after 4 minutes, which you can see in `--write_bw_log`.
 
-**B. All-reduce across two nodes.** `all_reduce_perf` reports 22 GB/s busbw at 1 GiB across 2 × 8 GPUs, with one 400 Gb/s NIC per GPU. The NIC-limited plateau should be about 45 GB/s per NIC, so 22 GB/s is well below it. Start the analysis with `NCCL_DEBUG=INFO`. It shows `NET/Socket` instead of `NET/IB`, which means NCCL fell back to TCP because the IB HCA name was wrong (`NCCL_IB_HCA`). After you fix the name, busbw rises to 46 GB/s. `ibstat` shows all ports at 400 Gb/s, and the port counters show no errors. A second test pair reaches only 31 GB/s. One cable shows symbol errors, and the link retrained at a lower speed. Asking "why not double?" and running the sanity check found both a config error and a bad link.
+**B. All-reduce across two nodes.** `all_reduce_perf` reports 22 GB/s busbw at 1 GiB across 2 × 8 GPUs, with one 400 Gb/s NIC per GPU. The NIC-limited plateau should be about 45 GB/s per NIC, so 22 GB/s is well below it. Start the analysis with `NCCL_DEBUG=INFO`. It shows `NET/Socket` instead of `NET/IB`, which means NCCL fell back to TCP because the IB HCA name was wrong, set through `NCCL_IB_HCA`. After you fix the name, busbw rises to 46 GB/s. `ibstat` shows all ports at 400 Gb/s, and the port counters show no errors. A second test pair reaches only 31 GB/s, though. One cable shows symbol errors, and the link retrained at a lower speed. Asking "why not double?" and running the sanity check found both a config error and a bad link.
 
-**C. "Driver 560 is 6% slower".** A canary node on the new driver trains 6% slower than a fleet node. The canary's GPUs run at 1,410 MHz, against 1,740 MHz on the fleet node. The throttle reasons show "SW thermal slowdown". The canary sits in a hot rack position with a failing fan. Move the job to a node with normal thermals, and the regression disappears. If you want a fair test, lock the clocks and compare within the same chassis. Add thermal logging to the benchmark harness so that you can see this kind of drift as it happens.
+**C. "Driver 560 is 6% slower".** A canary node on the new driver trains 6% slower than a fleet node, so the driver looks guilty. The canary's GPUs run at 1,410 MHz, against 1,740 MHz on the fleet node. The throttle reasons show "SW thermal slowdown". The canary sits in a hot rack position with a failing fan. Move the job to a node with normal thermals, and the regression disappears. If you want a fair test, lock the clocks and compare within the same chassis. Add thermal logging to the benchmark harness, so that you can see this kind of drift as it happens.
 
-**D. Inference capacity.** A closed-loop benchmark at concurrency 256 shows 4,200 output tokens/s/GPU and a p99 TTFT of 1.1 s, which looked fine. Production p99 TTFT is 6 s at 60% of that load. The benchmark used one prompt length, 256 tokens, with zero prefix sharing. Production prompts average 3,000 tokens, which is about 12 times longer. Arrivals in production are bursty too, and a fixed-rate benchmark does not reproduce that. Re-run the test open-loop, using production's measured length distributions and Poisson arrivals. The SLO-compliant throughput is 1,350 tokens/s/GPU, about a third of the original 4,200. This time, capacity planning used the right number.
+**D. Inference capacity.** A closed-loop benchmark at concurrency 256 shows 4,200 output tokens/s/GPU and a p99 TTFT of 1.1 s, which looked fine. Production p99 TTFT is 6 s at 60% of that load. The benchmark used one prompt length, 256 tokens, with zero prefix sharing. Production prompts average 3,000 tokens, about 12 times longer. Arrivals in production are bursty too, and a fixed-rate benchmark does not reproduce that. So re-run the test open-loop, using production's measured length distributions and Poisson arrivals. The SLO-compliant throughput is 1,350 tokens/s/GPU, about a third of the original 4,200. This time, capacity planning used the right number.
 
-**E. Single-threaded generator.** A load test of the metadata service plateaus at 700 req/s, whatever the server size. When you look at `top`, the generator sits at 100% of one core. The benchmark was limiting itself. Parallelising the generator across hosts revealed the real limit, 3,500 req/s. It also exposed a CPU regression of 50% per request in the new build. The lesson is that a generator can hide the real limit just as a cache can.
+**E. Single-threaded generator.** A load test of the metadata service plateaus at 700 req/s, whatever the server size. When you look at `top`, the generator sits at 100% of one core. The benchmark was limiting itself. Parallelising the generator across hosts revealed the real limit, 3,500 req/s. It also exposed a CPU regression of 50% per request in the new build. The lesson is that a generator can hide the real limit, just as a cache can.
 
-In each case, ask what limited the number before you accept it, the way these cases did. A number with no stated limiter is only a guess.
+In each case, ask what limited the number before you accept it, the way these cases did. A number with no stated limiter is only a guess dressed up as a measurement.
 
 ## 9. Hands-on lab: benchmark carefully
 
-Start with the self-checking Python lab. It runs on your own machine and checks four calculations from this chapter. The first is the bandwidth sanity check, where 50,000 NFS IOPS of 8 KiB each need 3.28 Gbit/s, more than a 1 GbE link can carry. The second is the `nccl-tests` conversion from `algbw` to `busbw`, which is `algbw * 2(n-1)/n`. The third is the benchmark paradox, where three 50 percent wins in a row happen only 12.5 percent of the time. The fourth is the non-regression gate based on `median - 3 * MAD`. The lab also checks the six-question checklist. Run it like this.
+Start with the self-checking Python lab. It runs on your own machine, needs no cluster, and checks four calculations from this chapter. The first is the bandwidth sanity check, where 50,000 NFS IOPS of 8 KiB each need 3.28 Gbit/s, more than a 1 GbE link can carry. The second is the `nccl-tests` conversion from `algbw` to `busbw`, which is `algbw * 2(n-1)/n`. The third is the benchmark paradox, where three 50 percent wins in a row happen only 12.5 percent of the time. The fourth is the non-regression gate based on `median - 3 * MAD`. The lab also checks the six-question checklist. Run it like this.
 
 ```bash
 python3 code/part01/benchmarking_correctly_lab.py
@@ -437,7 +449,7 @@ If time is short, do steps 1 and 2 first. They show whether your environment rec
 
 ## 10. Common mistakes
 
-Watch for these mistakes in your own work and in the results you review.
+Watch for these mistakes in your own work and in the results you review. Most of them take one question to catch.
 
 - Treating a benchmark number as a fact instead of a hypothesis to verify.
 - Measuring caches, buffers or the client instead of the target. This happens when you ignore `--direct` and the working-set size.
@@ -454,7 +466,7 @@ Check your own run against each item before you share the result.
 
 ## 11. Interview angles
 
-These are the questions to be ready for when benchmarking comes up in an interview. Each one draws on a different part of this chapter.
+These are the questions to be ready for when benchmarking comes up in an interview. Each one draws on a different part of this chapter, and the wording is close to what you will hear.
 
 - "How do you know a benchmark number is trustworthy?" Think about active benchmarking, the sanity check, and the six-question checklist.
 - "Walk through benchmarking an NVMe scratch array for dataset reads." Think about direct I/O, working set, queue depth, steady state, latency percentiles, and thermals.

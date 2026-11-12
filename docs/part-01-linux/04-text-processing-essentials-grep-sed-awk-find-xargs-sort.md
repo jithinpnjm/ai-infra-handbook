@@ -21,13 +21,15 @@ lab_venue: "GCP VM"
 
 ## Why this matters for AI infrastructure
 
-Picture a 256-GPU job that misbehaves at 3 a.m. You will not open a dashboard first. You will pull the right ten lines out of ten gigabytes of logs, then count, group and compare them. Infrastructure produces text: logs, `nvidia-smi` tables, `squeue` and `sinfo` listings, `dmesg`, `journalctl`, `kubectl` output, configuration files, CSV exports of metrics, and JSON from every API.
+It is 3 a.m., and a 256-GPU job has started to misbehave. Nobody on the team reaches for a dashboard first. Someone logs into the head node and pulls the right ten lines out of ten gigabytes of logs, then counts them, groups them, and compares them. That skill is what this chapter teaches.
 
-The tools in this chapter are old, small and ubiquitous. They are installed on every node you will ever log into, including the nodes where you cannot install anything. Fluency here turns a half-hour investigation into a one-line pipeline. It is also the foundation for the shell scripts of chapter 1.9, so the time you spend on this chapter pays back later.
+Infrastructure produces text, and it produces a great deal of it. Logs are text, and so are `nvidia-smi` tables, `squeue` and `sinfo` listings, `dmesg`, `journalctl`, `kubectl` output, configuration files, CSV exports of metrics, and JSON from every API. Each of those is lines of characters, and the person who can cut those lines quickly can answer questions that nobody else can answer at all.
+
+The tools in this chapter are old, small, and everywhere. They are installed on every node you will ever log into, including the nodes where you cannot install anything. Fluency here turns a half-hour investigation into a one-line pipeline. It is also the foundation for the shell scripts of chapter 1.9, so the time you spend on this chapter pays back later.
 
 ## Prerequisites and outcomes
 
-Before you start, you need chapter 1.2, which covers pipes, redirection and quoting. Every example here depends on those ideas. After this chapter you will be able to:
+This chapter builds on chapter 1.2, which covers pipes, redirection and quoting. Every example here depends on those ideas, so it is worth a quick review if they are still new. After this chapter you will be able to:
 
 - Explain the "text stream of lines" model and choose the right tool for a task.
 - Read and write regular expressions in both basic and extended dialects, and know when to avoid them.
@@ -40,7 +42,11 @@ Before you start, you need chapter 1.2, which covers pipes, redirection and quot
 
 ## 1. The model: lines of text flowing through small tools
 
-Suppose a training log has a problem and you want the most common error messages in it. No single tool does that alone. Most Unix text tools share one design. Each one reads **lines** from files or standard input, does one small thing to each line, and writes lines to standard output. Because every tool takes and gives the same kind of thing, plain text lines, you can join them with pipes from chapter 1.2. The result is a pipeline that does something none of the tools can do by itself. This is the "Unix philosophy": small, sharp tools, composed.
+Suppose a training log has gone wrong, and you want to know which error message appears most often. No single tool does that on its own, not even a very clever one. Yet the answer is one short line of shell, because these tools were designed to be joined.
+
+Most Unix text tools share one design. Each one reads **lines** from files or from standard input. It does one small thing to each line, and then writes its lines to standard output. Because every tool takes lines and gives back lines, the output of one tool becomes the input of the next, through the pipes you met in chapter 1.2. A pipeline is just that arrangement, and it can do something no single tool in the chain can do by itself.
+
+People call this arrangement the "Unix philosophy": small, sharp tools, composed. Each tool is easy to understand on its own, and the power lives in the combination.
 
 Pick the tool by the job it does. The table maps each task to a tool and a short word to remember it by. Notice that `awk` appears in two rows, because it both slices columns and calculates.
 
@@ -58,7 +64,7 @@ Pick the tool by the job it does. The table maps each task to a tool and a short
 | Run a command once per item or batch | `xargs`, `find -exec` | **fan out** |
 | Query structured JSON | `jq` | **JSON-aware** |
 
-A habit worth building right away is to build pipelines one stage at a time. Run the first command and look at its output. Add the next stage, then look again. A six-stage pipeline written blind is where small mistakes hide, so do not write one that way.
+A habit worth building right away is to build pipelines one stage at a time. Run the first command by itself and look at what it prints. Add the next stage, then look again. A six-stage pipeline written blind is where small mistakes hide, so do not write one that way.
 
 ```mermaid
 flowchart LR
@@ -74,9 +80,11 @@ Before you write any pipeline, run its first stage alone and confirm the output 
 
 ## 2. Regular expressions from scratch
 
-Suppose you want every line that starts with a date, or every line that mentions `ERROR` or `FATAL`. A plain word search cannot describe a pattern like that. A **regular expression**, or regex, is a compact pattern that describes a set of strings. `grep`, `sed`, `awk`, `less`, `vim`, Prometheus, Python and nearly every tool you use understand some dialect of it. Learn the core once, and you will recognise it everywhere.
+Suppose you want every line that begins with a date, or every line that mentions `ERROR` or `FATAL`. A plain word search cannot describe a request like that. You need a way to describe the *shape* of the text rather than one exact piece of text.
 
-Most characters match themselves: letters, digits and spaces. A few characters have a special meaning, and these are called metacharacters. The table lists the ones you will meet most often.
+A **regular expression**, or regex for short, is that description. It is a compact pattern that stands for a whole set of strings, the way a dress pattern stands for a family of dresses rather than one finished dress. `grep`, `sed`, `awk`, `less`, `vim`, Prometheus, Python and nearly every tool you use understand some dialect of it. Learn the core once, and you will recognise it everywhere.
+
+In a regex, most characters simply match themselves. A letter matches that letter, a digit matches that digit, and a space matches a space. A small set of characters carries a special meaning instead, and those are called **metacharacters**. The table lists the ones you will meet most often.
 
 | Pattern | Matches |
 |---|---|
@@ -94,7 +102,11 @@ Most characters match themselves: letters, digits and spaces. A few characters h
 | `\.` | a literal dot (a backslash removes a special meaning) |
 | `[[:digit:]]`, `[[:space:]]`, `[[:alpha:]]` | named character classes (locale-aware) |
 
-Two dialects matter, and the difference trips up many readers. Basic regular expressions, or BRE, are the default in `grep` and `sed`. In BRE, the characters `+ ? | () { }` are literal unless you put a backslash in front of them. Extended regular expressions, or ERE, treat those characters as operators directly. Turn ERE on with `grep -E` or `sed -E`. `awk` already uses ERE. Use `-E` unless you have a reason not to, because the pattern is easier to read. GNU `grep -P` enables Perl-compatible expressions, such as lookaheads and `\d`. That is a GNU extension, so macOS `grep` does not provide it.
+Two dialects matter here, and the difference between them trips up many readers. Basic regular expressions, or BRE, are the default in `grep` and `sed`. In BRE, the characters `+ ? | () { }` are literal text unless you put a backslash in front of them. A bare `+` in a BRE pattern therefore means a plus sign, not a repetition.
+
+Extended regular expressions, or ERE, take the opposite view. There, those same characters are operators straight away, and a literal plus now needs the backslash. Turn ERE on with `grep -E` or `sed -E`. `awk` already uses ERE. Use `-E` unless you have a reason not to, because the pattern is easier to read.
+
+One more dialect appears now and then. GNU `grep -P` enables Perl-compatible expressions, such as lookaheads and `\d`. That is a GNU extension, so macOS `grep` does not provide it.
 
 Here are five patterns, each described in words first and then written out:
 
@@ -104,15 +116,19 @@ Here are five patterns, each described in words first and then written out:
 - A line that is empty or only spaces: `^[[:space:]]*$`.
 - `step=` followed by digits: `step=[0-9]+`.
 
-Two habits prevent most regex bugs. First, quote the regex in single quotes, so the shell does not interpret `*`, `$`, `|` or `(`. Second, remember that `.` matches exactly one arbitrary character. When you mean a literal dot, write `\.` or use `grep -F`, the fixed-string option. Regex quantifiers are also greedy: `.*` takes as much as it can.
+Two habits prevent most regex bugs. First, quote the regex in single quotes, so the shell does not interpret `*`, `$`, `|` or `(` before `grep` ever sees them. Second, remember that `.` matches exactly one arbitrary character, and it will happily match a letter you did not intend.
 
-Try a small practice in your terminal: `echo "step=120 loss=0.43" | grep -oE 'loss=[0-9.]+'` prints just the match. For the full specification, read `man 1 grep` and `man 7 regex`. They are dense, but they are the authoritative reference. To go deeper, Brian Ward's *How Linux Works* recommends *Mastering Regular Expressions*, 3rd edition, by Jeffrey E. F. Friedl (O'Reilly, 2006), and Chapter 20 of *Unix Power Tools*, 3rd edition, by Shelley Powers, Jerry Peek, Tim O'Reilly, and Mike Loukides (O'Reilly, 2002).
+When you mean a literal dot, write `\.` or use `grep -F`, the fixed-string option. One more property surprises beginners. Regex quantifiers, the pieces that say how many times something repeats, are greedy, so `.*` takes as much as it can rather than stopping at the first opportunity.
+
+Try a small practice in your terminal: `echo "step=120 loss=0.43" | grep -oE 'loss=[0-9.]+'` prints just the match, and nothing else from the line comes through. For the full specification, read `man 1 grep` and `man 7 regex`. They are dense, but they are the authoritative reference. To go deeper, Brian Ward's *How Linux Works* recommends *Mastering Regular Expressions*, 3rd edition, by Jeffrey E. F. Friedl (O'Reilly, 2006), and Chapter 20 of *Unix Power Tools*, 3rd edition, by Shelley Powers, Jerry Peek, Tim O'Reilly, and Mike Loukides (O'Reilly, 2002).
 
 Before you trust a pattern, test it on a sample line and check what it matches.
 
 ## 3. `grep`: filter lines
 
-Say a training run has failed, and its log holds many lines. You want only the lines that matter, and that is the job of `grep`. `grep PATTERN [file...]` prints the lines that match. Without a file name, it reads standard input, which is why it fits so naturally into pipelines. The options below are the ones you will use constantly.
+Say a training run has failed, and its log holds hundreds of thousands of lines. You do not want all of them. You want the few lines that matter, and that is the job of `grep`.
+
+`grep PATTERN [file...]` prints every line that matches the pattern. Give it a file name and it reads that file. Leave the file name out and it reads standard input, which is why it fits so naturally into pipelines. The options below are the ones you will use constantly.
 
 | Option | Meaning |
 |---|---|
@@ -143,22 +159,22 @@ grep -v '^#' /etc/slurm/slurm.conf | grep -v '^$'   # a config without comments 
 if grep -q "OOM" job.out; then echo "ran out of memory"; fi
 ```
 
-The fifth example is worth memorising. It reads a config file without its comments and blank lines, so the real settings stand out.
+The fifth example is worth memorising. It reads a config file without its comments and without its blank lines, so the real settings stand out from the noise around them.
 
 Before you use `grep` in a script, test the pattern on a small file and check the exit status with `-q`.
 
 ## 4. Slicing, ordering and counting: `cut`, `tr`, `sort`, `uniq`, `wc`, `head`, `tail`
 
-Suppose each line in a log starts with a host name, and you want to know which host logs the most lines. You need three steps: pull out the column, group the lines, and count them. The tools in this section each do one of those jobs well.
+Suppose each line in a log starts with a host name, and you want to know which host logs the most lines. That question needs three steps. First you pull out the host column. Then you bring identical names together. Then you count each group. The tools in this section each handle one of those three jobs well.
 
-**`cut`** extracts fields by position or by a one-character delimiter.
+**`cut`** extracts fields by position or by a one-character delimiter, which is the character that separates one field from the next.
 
 ```bash
 cut -d: -f1,3 /etc/passwd          # username and UID (fields 1 and 3, colon-separated)
 cut -c1-10 file                    # first ten characters of each line
 ```
 
-`cut` uses a *single* delimiter character, so it fails on text aligned with runs of spaces. Use `awk` for that, as section 6 shows.
+`cut` uses a *single* delimiter character, never a run of them, so it fails on text aligned with runs of spaces. Use `awk` for that, as section 6 shows.
 
 **`tr`** translates or deletes single characters from standard input. Each of its four examples does one character-level job, from upper-casing to splitting the `PATH` variable onto separate lines.
 
@@ -169,7 +185,7 @@ tr -s ' ' < table.txt              # squeeze runs of spaces to one
 tr ':' '\n' <<< "$PATH"            # one PATH entry per line
 ```
 
-**`sort`** orders lines. By default it compares text in the current locale. For real data, such as numbers, sizes or versions, use the options in the table.
+**`sort`** orders lines. By default it compares them as text, under the language rules of the current locale, a word section 9 explains properly. For real data, such as numbers, sizes or versions, plain text order gives the wrong answer, so use the options in the table.
 
 | Option | Meaning |
 |---|---|
@@ -182,7 +198,7 @@ tr ':' '\n' <<< "$PATH"            # one PATH entry per line
 | `-V` | version order (`1.9` before `1.10`) |
 | `-s` | stable sort |
 
-**`uniq`** collapses *adjacent* identical lines. Because "adjacent" is the key word, it almost always follows a `sort`. `uniq -c` prefixes each line with its count. `uniq -d` shows only duplicated lines, and `uniq -u` shows only lines that occur once.
+**`uniq`** collapses *adjacent* identical lines. That word "adjacent" is the whole story, and it is why `uniq` almost always follows a `sort`. `uniq -c` puts a count in front of each line. `uniq -d` shows only duplicated lines, and `uniq -u` shows only lines that occur once.
 
 **`wc -l`** counts lines, and `-w` and `-c` count words and bytes. **`head -n N`** and **`tail -n N`** show the first or last N lines. `tail -f` follows a file as it grows. **`tail -F`** also follows it across log rotation, which replaces the file, so it is the right choice for logs.
 
@@ -196,25 +212,31 @@ cat file | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -10
 du -sh * | sort -rh | head -10
 ```
 
-The first pipeline extracts the key, sorts so that equal keys sit next to each other, counts the adjacent duplicates, sorts by that count, and shows the top ten. Knowing why each stage is there, and why `uniq` needs the first `sort`, is the whole skill.
+Read that first pipeline one stage at a time. It extracts the key, then sorts the lines so that equal keys sit next to each other. Next it counts the adjacent duplicates, sorts again by that count, and shows the top ten. Knowing why each stage is there, and why `uniq` needs the first `sort`, is the whole skill.
 
 ### Reading long output: `less`, and a few one-line improvements
 
-`less` is the pager you will use all day. It shows a file or a stream one screen at a time, and you can move both ways without loading everything first. Press space or `f` to move forward one screen, and `b` to move back one. Type `/word` to search forward or `?word` to search backward. Press `n` for the next match and `N` for the previous one, and `g` or `G` to jump to the first or last line. Press `F` to follow the end of a growing file, as `tail -f` does. Press Ctrl-C to stop following, and `q` to quit.
+`less` is the pager you will use all day. A pager shows a file or a stream one screen at a time, and it lets you move both ways without loading everything first. That last part matters when the input is a log far larger than memory.
 
-Some options make `less` far more useful. `-S` stops long lines from wrapping, which matters for wide tables such as `ps` and `nvidia-smi` output. `-R` passes ANSI colour codes through, so coloured `grep` and `ls` output stays readable. `-F` quits at once if the whole input fits on one screen. `-N` shows line numbers, and `-n` hides them. `-f` force-opens a file that looks binary. Put your favourites in the `LESS` environment variable, such as `export LESS='-FRSX'`, so they apply every time. `less` is the improved descendant of `more`, and on a stripped-down system without `less`, `more` works. The classic use is a pipeline that ends in a pager: `grep ie /usr/share/dict/words | less`.
+Press space or `f` to move forward one screen, and `b` to move back one. Type `/word` to search forward or `?word` to search backward. Press `n` for the next match and `N` for the previous one, and `g` or `G` to jump to the first or last line. Press `F` to follow the end of a growing file, as `tail -f` does. Press Ctrl-C to stop following, and `q` to quit.
 
-Three small improvements are worth adopting right away. First, `sort -u file` does what `sort file | uniq` does, giving unique sorted lines, in one step. Second, `grep -E` lets you write `a+bc|xy?z(qwe){1,4}` instead of the backslash-heavy basic form `a\+bc\|xy\?z\(qwe\)\{1,4\}`. Third, `tail -n +N file` prints from line N to the end. For example, `tail -n +2 data.csv` skips a header line, and `head -5 file` is shorthand for the first five lines. Finally, `diff` has a default human-readable format, but programmers send each other `diff -u`, the unified format, because tools such as `patch` and code-review systems understand it.
+Some options make `less` far more useful. `-S` stops long lines from wrapping, which matters for wide tables such as `ps` and `nvidia-smi` output. `-R` passes ANSI colour codes through, so coloured `grep` and `ls` output stays readable. `-F` quits at once if the whole input fits on one screen. `-N` shows line numbers, and `-n` hides them. `-f` force-opens a file that looks binary.
+
+Put your favourites in the `LESS` environment variable, such as `export LESS='-FRSX'`, so they apply every time. `less` is the improved descendant of `more`, and on a stripped-down system without `less`, `more` works. The classic use is a pipeline that ends in a pager: `grep ie /usr/share/dict/words | less`.
+
+Three small improvements are worth adopting right away. First, `sort -u file` does what `sort file | uniq` does, giving unique sorted lines, in one step. Second, `grep -E` lets you write `a+bc|xy?z(qwe){1,4}` instead of the backslash-heavy basic form `a\+bc\|xy\?z\(qwe\)\{1,4\}`. Third, `tail -n +N file` prints from line N to the end.
+
+Two shortcuts follow from those. For example, `tail -n +2 data.csv` skips a header line, and `head -5 file` is shorthand for the first five lines. Finally, `diff` has a default human-readable format, but programmers send each other `diff -u`, the unified format, because tools such as `patch` and code-review systems understand it.
 
 ### Combining: `paste`, `join`, `column`, `tee`
 
-`paste a b` places files side by side, line by line. `join` merges two sorted files on a common field, like a small database join. `column -t` aligns whitespace-separated text into a readable table, as in `mount | column -t`. And `tee`, covered in chapter 1.2, copies a stream to a file and passes it onward.
+`paste a b` places files side by side, line by line. `join` merges two sorted files on a common field, like a small database join. `column -t` aligns whitespace-separated text into a readable table, as in `mount | column -t`. And `tee`, covered in chapter 1.2, copies a stream to a file and passes it onward to the next stage.
 
 Test each stage of a combined pipeline on a small file before you run it on the real data.
 
 ## 5. `sed`: edit a stream
 
-Suppose a config file has a debug flag set to the wrong value on many lines. You do not want to open an editor and change each one by hand. `sed`, the stream editor, applies editing commands to each input line. Its most used command is substitute.
+Suppose a config file has a debug flag set to the wrong value on many lines. You do not want to open an editor and change each one by hand. `sed`, the stream editor, applies editing commands to each input line as it passes through, and its most used command is substitute.
 
 ```bash
 sed 's/old/new/' file        # replace the first match on each line
@@ -223,7 +245,7 @@ sed -E 's/step=([0-9]+)/STEP:\1/' file     # \1 refers to the first capture grou
 sed 's|/usr/local|/opt|g' file             # use another delimiter when the text contains /
 ```
 
-Besides substitute, `sed` has a few other commands. `d` deletes lines, `p` prints them, `i` and `a` insert and append text, and `y` transliterates characters. An address limits where a command applies, and the examples show how addresses pick out lines.
+Besides substitute, `sed` has a few other commands. `d` deletes lines, `p` prints them, `i` and `a` insert and append text, and `y` transliterates characters, which means it swaps one character for another. An **address** limits where a command applies, and the examples show how addresses pick out lines.
 
 ```bash
 sed -n '10,20p' file          # print only lines 10 to 20 (-n turns off automatic printing)
@@ -232,13 +254,15 @@ sed '/^#/d' file              # delete comment lines
 sed '/\[main\]/,/^\[/ s/debug=1/debug=0/' file    # change inside a section only
 ```
 
-By default, `sed` writes to standard output and does not modify the file. The `-i` option edits the file in place, and that is where the portability trap starts. On GNU/Linux the command is `sed -i 's/a/b/' file`, but on macOS it is `sed -i '' 's/a/b/' file`. That difference is a classic trap, covered in section 9. Use `sed -i.bak` to keep a backup. Test a substitution without `-i` first, and `diff` the result.
+By default, `sed` writes to standard output and does not modify the file. The `-i` option edits the file in place, and that is where the portability trap starts. On GNU/Linux the command is `sed -i 's/a/b/' file`, but on macOS it is `sed -i '' 's/a/b/' file`, because the BSD version insists on a backup suffix even when it is empty. That difference is a classic trap, covered in section 9. Use `sed -i.bak` to keep a backup. Test a substitution without `-i` first, and `diff` the result.
 
 Use `sed` when you need a quick, simple edit. The moment your change has several steps or real logic, switch to `awk` or a script. For structured formats such as JSON and YAML, never use regex; use `jq` or `yq`, as section 8 explains.
 
 ## 6. `awk`: the Swiss army knife for columns
 
-Picture a `ps` or `nvidia-smi` table. Its columns are lined up with runs of spaces, and you want just one of them. `awk` is a small programming language built for data made of lines and fields. Its basic form is `awk 'PATTERN { ACTION }' file`. For every input line, awk splits the text into fields on runs of whitespace by default. Field one is `$1`, field two is `$2`, and so on. The variable `$0` holds the whole line, `NF` holds the number of fields, and `NR` holds the current line number. When the PATTERN is true, the ACTION runs.
+Picture a `ps` or `nvidia-smi` table. Its columns are lined up with runs of spaces, and you want just one of them. `awk` is a small programming language built for data made of lines and fields, and it reads that kind of table correctly.
+
+Its basic form is `awk 'PATTERN { ACTION }' file`. For every input line, awk splits the text into fields on runs of whitespace by default. Field one is `$1`, field two is `$2`, and so on. The variable `$0` holds the whole line, `NF` holds the number of fields, and `NR` holds the current line number. When the PATTERN is true, the ACTION runs.
 
 ```bash
 awk '{ print $1, $3 }' file                  # fields 1 and 3
@@ -249,7 +273,7 @@ awk 'NR==1 || /ERROR/' file                  # header plus error lines
 awk 'BEGIN { OFS="," } { print $1, $2 }' f   # BEGIN runs first; OFS is the output separator
 ```
 
-The real power of `awk` lies in variables and associative arrays. An associative array is a lookup table keyed by text. It lets you aggregate values without `sort | uniq`.
+The real power of `awk` lies in variables and associative arrays. An **associative array** is a lookup table keyed by text rather than by a number, so a name such as a host or a user can be the key. That is what lets you aggregate values without `sort | uniq`.
 
 ```bash
 # sum and average of column 3
@@ -271,7 +295,9 @@ When a field carries units, strip them before you do any arithmetic on it.
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
-Many tasks mean "do X to each of these N things." You might compress every old log, change the owner of every file, or check every node. `find`, covered in chapter 1.3, produces the list. Then **`xargs`** turns each line on its standard input into an argument for another command.
+Many tasks mean "do X to each of these N things." You might compress every old log, change the owner of every file, or check every node in a cluster. `find`, covered in chapter 1.3, produces the list of things. Then **`xargs`** turns each line on its standard input into an argument for another command.
+
+That pattern has a name, fan-out: one list goes in, and many command runs come out. It is also where the sharpest edges of the shell live, because a file name is not always a single tidy word.
 
 ```bash
 find /data -name '*.tmp' -print0 | xargs -0 rm -f        # safe with spaces and newlines in names
@@ -296,7 +322,7 @@ For any fan-out job, start with `-print0` and `-0`, so that odd file names canno
 
 ### `diff`, `comm`, `cmp`
 
-Suppose two config files look almost the same, and one of them broke a service. You need to see the exact difference between them. These commands show it.
+Suppose two config files look almost the same, and one of them broke a service. You need to see the exact difference between them, not a vague impression that they look alike. These commands show it.
 
 ```bash
 diff -u old.conf new.conf          # unified diff: the format used by patches and code review
@@ -311,7 +337,7 @@ sha256sum model.bin                # compare by checksum when files are huge
 
 ### JSON and friends: use a parser, not regex
 
-Modern tools emit JSON. Parsing it with `grep` and `sed` works for a while, then it breaks. `jq` is the tool for the job, and you can think of it as `sed` for JSON.
+Modern tools emit JSON, and a lot of it. Parsing that with `grep` and `sed` works for a while, then it breaks. `jq` is the tool for the job, and you can think of it as `sed` for JSON: it reads the nested structure instead of the raw characters.
 
 ```bash
 echo '{"gpu":[{"id":0,"mem":1200},{"id":1,"mem":81000}]}' | jq '.gpu[] | select(.mem>80000) | .id'
@@ -319,7 +345,9 @@ kubectl get pods -A -o json | jq -r '.items[] | select(.status.phase!="Running")
 curl -s http://prometheus:9090/api/v1/query?query=up | jq -r '.data.result[] | [.metric.instance,.value[1]] | @tsv'
 ```
 
-A handful of `jq` pieces covers most jobs. `.field` reads a field, and `.[]` iterates over an array. `select(condition)` keeps the items that match, and `map(...)` transforms each one. `length` counts items, and `-r` prints raw strings without quotes. `@tsv` or `@csv` produce tables, and `-e` sets the exit status from the result. For YAML, `yq` plays the same role. For simple Kubernetes questions, `kubectl` has built-in extractors, so you can skip `jq` altogether.
+A handful of `jq` pieces covers most jobs. `.field` reads a field, and `.[]` iterates over an array. `select(condition)` keeps the items that match, and `map(...)` transforms each one. `length` counts items, and `-r` prints raw strings without quotes. `@tsv` or `@csv` produce tables, and `-e` sets the exit status from the result.
+
+For YAML, `yq` plays the same role. For simple Kubernetes questions, `kubectl` has built-in extractors, so you can skip `jq` altogether.
 
 ```bash
 kubectl get nodes -o custom-columns=NAME:.metadata.name,GPUS:.status.allocatable.nvidia\\.com/gpu
@@ -347,11 +375,11 @@ Check the man page for a machine-readable mode before you write any parser.
 
 ## 9. Portability, locale and other traps
 
-Your script runs on a Linux server and fails on a Mac. Or two hosts sort the same file in a different order. These surprises come from a small set of well-known traps.
+Your script runs on a Linux server and fails on a Mac. Or two hosts sort the same file in a different order, and nobody touched the file. These surprises come from a small set of well-known traps, and each of them is easy to recognise once you have met it.
 
 GNU versus BSD. Linux servers carry the GNU versions of these tools, and macOS carries the BSD versions. The differences break scripts. `sed -i` needs an empty suffix argument on macOS. `grep -P` and some `-o` behaviours are absent. `sort`, `date`, `xargs -r`, `readlink -f`, and some `awk` features also differ. For this book, use a Linux machine for labs. When a script must run on both systems, you have two options: stick to POSIX options and test on both, or install the GNU tools on the Mac with `brew install gnu-sed grep coreutils findutils gawk`, which provides `gsed`, `ggrep` and so on.
 
-Locale. The language and encoding settings, `LANG` and `LC_ALL` from chapter 1.2, affect sorting order, character classes such as `[a-z]`, and speed. In a UTF-8 locale, `sort` compares using language rules, so `a` and `B` may interleave. Many scripts set `LC_ALL=C` in front of `sort`, `grep`, and `awk`. That gives plain byte order and a large speed-up, as in `LC_ALL=C sort file`. When two machines give different sort orders for the same file, check the locale first.
+Locale. A **locale** is the bundle of language, encoding and sorting rules a program borrows from your environment. The settings `LANG` and `LC_ALL` from chapter 1.2 choose it, and they affect sorting order, character classes such as `[a-z]`, and speed. In a UTF-8 locale, `sort` compares using language rules, so `a` and `B` may interleave. Many scripts set `LC_ALL=C` in front of `sort`, `grep`, and `awk`. That gives plain byte order and a large speed-up, as in `LC_ALL=C sort file`. When two machines give different sort orders for the same file, check the locale first.
 
 Line endings and encodings. Files from Windows end each line with `\r\n`, so strip the carriage returns with `tr -d '\r'`. Files can also use encodings other than UTF-8. Check the encoding with `file -i name`, and convert with `iconv`. `grep` may report `Binary file matches` for files that contain NUL bytes. Add `-a` to treat them as text.
 
@@ -361,7 +389,7 @@ Before you run a pipeline on a large file, filter it with `grep` first.
 
 ## 10. Recipes for AI and HPC work
 
-The ten recipes below are patterns you will adapt to your own cluster. Before you trust any of them, run its first stage alone and look at the data it produces.
+You are on call, and a user asks which GPU is running hot. Then someone asks which node is down, and someone else asks why their job is still queued. Questions like these come up again and again on a GPU cluster, and the ten recipes below are the short answers. They are patterns you will adapt to your own cluster, not commands to paste blindly. Before you trust any of them, run its first stage alone and look at the data it produces.
 
 ```bash
 # 1. GPUs above 90 percent utilisation right now
@@ -403,19 +431,19 @@ Most text-pipeline failures look like the tools are lying to you. They are not. 
 
 ### 1. Different sort order or "wrong" results on two machines: locale
 
-The same pipeline gives a different order, or different matches, on two hosts. Ranges like `[a-z]` behave oddly. The cause is a different `LANG` or `LC_ALL`. To diagnose it, run `locale` and `echo $LC_ALL`. The fix is to set `LC_ALL=C` for byte order in scripts, or to use the same explicit UTF-8 locale everywhere.
+The same pipeline gives a different order, or different matches, on two hosts. Ranges like `[a-z]` behave oddly, and a result you trusted yesterday looks wrong today. The cause is a different `LANG` or `LC_ALL`. To diagnose it, run `locale` and `echo $LC_ALL`. The fix is to set `LC_ALL=C` for byte order in scripts, or to use the same explicit UTF-8 locale everywhere.
 
 ### 2. `uniq -c` shows duplicates: input was not sorted
 
-The same key appears several times, each time with a small count. `uniq` only collapses adjacent lines, so the input was probably not sorted. Add `sort` before `uniq -c`, or count with `awk '{c[$1]++}'`.
+The same key appears several times, each time with a small count, and the totals come out wrong. `uniq` only collapses adjacent lines, so the input was probably not sorted. Add `sort` before `uniq -c`, or count with `awk '{c[$1]++}'`.
 
 ### 3. The `sed -i` that works on the laptop and fails on the server (or the reverse)
 
-On macOS you see `sed: 1: "file": extra characters at the end of d command`. On Linux you find a stray backup file named `file''`. The cause is the GNU versus BSD syntax for `-i`. Use `sed -i.bak`, which works on both systems, and then delete the backup. You can also install GNU sed, or avoid in-place editing in portable scripts by writing to a temporary file and running `mv`.
+You test a one-line edit at home, then run the same line on the server and the tool refuses. On macOS you see `sed: 1: "file": extra characters at the end of d command`. On Linux you find a stray backup file named `file''`. The cause is the GNU versus BSD syntax for `-i`. Use `sed -i.bak`, which works on both systems, and then delete the backup. You can also install GNU sed, or avoid in-place editing in portable scripts by writing to a temporary file and running `mv`.
 
 ### 4. Files with spaces or newlines in names break an `xargs` pipeline
 
-`xargs rm` complains about non-existent half-names. Plain `xargs` splits on whitespace, so a name with a space becomes two names. Fix it with `find ... -print0 | xargs -0 ...`.
+`xargs rm` complains about non-existent half-names, and the error mentions a file you never saw. Plain `xargs` splits on whitespace, so a name with a space becomes two names. Fix it with `find ... -print0 | xargs -0 ...`.
 
 ### 5. A regex that matches too much: unescaped dots, greedy stars
 
@@ -423,23 +451,23 @@ On macOS you see `sed: 1: "file": extra characters at the end of d command`. On 
 
 ### 6. Parsing a pretty table with `cut -d' '`
 
-Columns come out empty or shifted. Aligned tables use runs of spaces, and `cut` takes a single space as its delimiter. Use `awk '{print $2}'`, or better, ask the tool for CSV or JSON.
+Columns come out empty or shifted, and the numbers stop making sense. Aligned tables use runs of spaces, and `cut` takes a single space as its delimiter. Use `awk '{print $2}'`, or better, ask the tool for CSV or JSON.
 
 ### 7. Parsing JSON or YAML with regex
 
-It works for a month, then a change in field order, or a value that contains a quote, breaks it silently. Regex does not understand nesting or escaping. Use `jq` or `yq`.
+It works for a month, then a change in field order, or a value that contains a quote, breaks it silently. Regex does not understand nesting or escaping, so nothing warns you when the structure shifts underneath it. Use `jq` or `yq`.
 
 When a pipeline misbehaves, check the locale, the sort order and the tool's options before you change the logic.
 
 ## Hands-on lab: text pipelines and VM drills
 
-Start with the self-checking Python lab, `code/part01/text_pipeline_lab.py`, and run it locally. You should do this first, so you know your setup works before you touch a VM. The lab checks `uniq -c` against `sort | uniq -c`, and `cut -d' '` against `awk` whitespace splitting. It also checks error log masking and ranking with `sed -E 's/[0-9]+/N/g'`, `xargs -0` NUL-delimited batching, `tail -n +2` header skipping, and `nvidia-smi` CSV aggregation.
+Start with the self-checking Python lab, `code/part01/text_pipeline_lab.py`, and run it locally. Do this first, so you know your setup works before you touch a VM. The lab checks `uniq -c` against `sort | uniq -c`, and `cut -d' '` against `awk` whitespace splitting. It also checks error log masking and ranking with `sed -E 's/[0-9]+/N/g'`, `xargs -0` NUL-delimited batching, `tail -n +2` header skipping, and `nvidia-smi` CSV aggregation.
 
 ```bash
 python3 code/part01/text_pipeline_lab.py
 ```
 
-Next, on a GCP Ubuntu VM, build a synthetic training log and a GPU metrics CSV. All interactive VM commands below are `untested here`.
+Next, on a GCP Ubuntu VM, build a synthetic training log and a GPU metrics CSV. Synthetic data matters here, because you can break it as often as you like while you practice. The interactive VM commands below were not run on live hardware.
 
 ```bash
 mkdir -p ~/lab/text && cd ~/lab/text # (untested here)
@@ -451,19 +479,19 @@ awk 'BEGIN{srand(7); print "index,name,util,mem_used,mem_total,temp"; for(g=0;g<
 wc -l train.log gpus.csv; head -3 train.log; head -3 gpus.csv
 ```
 
-Part B covers `grep`. (1) Count the error lines, the warning lines, and all non-training lines without `step=` (untested here). (2) Show each ERROR with two lines of context. (3) List only the distinct error messages after masking the numbers with `sed` (recipe 7). (4) Use `grep -q` in an `if` statement to print "found OOM" or "no OOM".
+Part B covers `grep`. (1) Count the error lines, the warning lines, and all non-training lines without `step=`. (2) Show each ERROR with two lines of context. (3) List only the distinct error messages after masking the numbers with `sed` (recipe 7). (4) Use `grep -q` in an `if` statement to print "found OOM" or "no OOM".
 
-Part C covers slicing and counting. (5) Extract the `gpu=` value of every training line, and count how many lines each GPU produced with `sort | uniq -c` (untested here). Are the counts equal? (6) Using `cut` and `tr`, extract the `loss` values to a file. (7) Find the line with the smallest loss with `sort -t= -k3 -n`, and then again with `awk`.
+Part C covers slicing and counting. (5) Extract the `gpu=` value of every training line, and count how many lines each GPU produced with `sort | uniq -c`. Are the counts equal? (6) Using `cut` and `tr`, extract the `loss` values to a file. (7) Find the line with the smallest loss with `sort -t= -k3 -n`, and then again with `awk`.
 
-Part D covers awk. (8) Compute the mean and the maximum of `tokens_per_sec` (untested here). (9) Print the mean loss for each block of 500 steps, using `int(step/500)`. (10) From `gpus.csv`, print the GPUs whose utilisation is above 80 and whose temperature is above 60, formatted with `column -t`. (11) Compute total memory used as a percentage of the total.
+Part D covers awk. (8) Compute the mean and the maximum of `tokens_per_sec`. (9) Print the mean loss for each block of 500 steps, using `int(step/500)`. (10) From `gpus.csv`, print the GPUs whose utilisation is above 80 and whose temperature is above 60, formatted with `column -t`. (11) Compute total memory used as a percentage of the total.
 
-Part E covers sed. (12) Replace `loss=` with `L=` in a copy, and show the diff with `diff -u` (untested here). (13) Print lines 100 to 105 only. (14) Remove the header of `gpus.csv` with `sed '1d'`. (15) Make a copy of `/etc/ssh/sshd_config` (do not edit the original), disable a setting with `sed -i.bak`, and show the change with `diff -u`.
+Part E covers sed. (12) Replace `loss=` with `L=` in a copy, and show the diff with `diff -u`. (13) Print lines 100 to 105 only. (14) Remove the header of `gpus.csv` with `sed '1d'`. (15) Make a copy of `/etc/ssh/sshd_config` (do not edit the original), disable a setting with `sed -i.bak`, and show the change with `diff -u`.
 
-Part F covers find and xargs. (16) Create 1000 empty files, some with spaces in their names, in one directory. Remove them first with a naive `ls | xargs rm` and watch it fail. Then do it correctly with `-print0` and `xargs -0` (untested here). (17) Compress them with `xargs -P 4`.
+Part F covers find and xargs. (16) Create 1000 empty files, some with spaces in their names, in one directory. Remove them first with a naive `ls | xargs rm` and watch it fail. Then do it correctly with `-print0` and `xargs -0`. (17) Compress them with `xargs -P 4`.
 
-Part G covers JSON. (18) Install `jq` with `sudo apt-get install -y jq`, then process `ip -j addr` to print each interface name with its first IPv4 address (untested here). (19) Use `jq` to pick two fields out of a JSON file you write by hand.
+Part G covers JSON. (18) Install `jq` with `sudo apt-get install -y jq`, then process `ip -j addr` to print each interface name with its first IPv4 address. (19) Use `jq` to pick two fields out of a JSON file you write by hand.
 
-Part H covers the traps. (20) Make a file with mixed-case words, and show how `sort` and `LC_ALL=C sort` order them differently (untested here). (21) Demonstrate the `uniq` without `sort` pitfall. (22) Create a CRLF file and show that `grep '^ERROR$'` fails on it, then fix it with `tr -d '\r'`.
+Part H covers the traps. (20) Make a file with mixed-case words, and show how `sort` and `LC_ALL=C sort` order them differently. (21) Demonstrate the `uniq` without `sort` pitfall. (22) Create a CRLF file and show that `grep '^ERROR$'` fails on it, then fix it with `tr -d '\r'`.
 
 ## Exercises
 

@@ -14,15 +14,19 @@ lab_venue: "GCP VM"
 
 **Level:** intermediate · **Tier 0 (foundations)** · **Lab venue:** two or three small Ubuntu VMs on GCP · **Status:** drafted, labs untested
 
-Chapter 1.5 teaches you to *work* remotely. This chapter is the **reference and depth companion** you come back to when you configure a cluster. It covers every important SSH option on both sides, and it shows how the protocol proves identity. It also shows how to run one command on hundreds of nodes without flooding your network, and how to reach a machine whose operating system is dead. Read chapter 1.5 first.
+Chapter 1.5 teaches you to *work* remotely: log in, copy files, keep a session alive. This chapter is the **reference and depth companion** you come back to on the day you configure a cluster for real. It covers every important SSH option on both sides of the connection, and it shows how the protocol proves identity before it lets anyone in. It also shows how to run one command on hundreds of nodes without flooding your network, and how to reach a machine whose operating system is dead. Read chapter 1.5 first.
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU cluster with hundreds to thousands of nodes and only a handful of people to run it. The same job, such as a driver check, a mount repair or a process hunt, has to happen on every machine, and quickly. The machines that most need attention are exactly the ones that stop answering SSH. Three skills get you through this. You configure SSH precisely, deciding who may log in, from where and with what. You fan commands out in parallel without overloading the head node or the network. And you reach a console through the baseboard management controller when the OS is gone. The same techniques sit behind every deployment tool in this book, including Ansible, Slurm launch, BCM and Kubernetes node access.
+Picture a GPU cluster with hundreds to thousands of nodes and only a handful of people to run it. A driver check, a mount repair, a process hunt: the same small job has to happen on every machine, and it has to happen quickly. Now picture the machines that need you most. They are exactly the ones that have stopped answering SSH.
+
+It is 2 a.m. when that happens. One node is unreachable, your key is refused, and the only thing still answering is the small controller on the motherboard. Three skills get you through a night like that. You configure SSH precisely, deciding who may log in, from where and with what. You fan commands out in parallel without overloading the head node or the network. And you reach a console through the baseboard management controller when the OS is gone.
+
+The same techniques sit behind every deployment tool in this book, including Ansible, Slurm launch, BCM and Kubernetes node access. Learn them once here, and you will recognise them everywhere else.
 
 ## Prerequisites and outcomes
 
-You need chapters 1.1 to 1.6. Chapter 1.5 matters most, because it covers SSH keys, `~/.ssh/config`, tunnels, rsync and tmux. Chapter 1.6 covers identity and permissions. When you finish this chapter, you should be able to:
+You need chapters 1.1 to 1.6 behind you. Chapter 1.5 matters most, because it covers SSH keys, `~/.ssh/config`, tunnels, rsync and tmux. Chapter 1.6 covers identity and permissions. When you finish this chapter, you should be able to:
 
 - explain in detail how SSH authenticates the server and the user and encrypts the session, and what must be saved when you reinstall a server;
 - generate and deploy keys of the right type and size, and automate first-time host key acceptance responsibly;
@@ -35,36 +39,40 @@ You need chapters 1.1 to 1.6. Chapter 1.5 matters most, because it covers SSH ke
 
 ## 1. First: make out-of-band access possible before you need it
 
-SSH is the everyday way into a node. It needs a working operating system, a working network and a running `sshd`. When any of those is broken, you need another door, and that door must be opened in advance. The management controller (BMC) is reached through **IPMI** or **KVM-over-IP**. Newer interfaces such as Redfish and DCMI are covered in Part 7. These interfaces are usually **disabled for network access by default**. Only local access works until someone configures the network side.
+SSH is the everyday way into a node. It needs three things to be true at once: a working operating system, a working network, and a running `sshd`. When any one of them is broken, you need another door into the machine. That door has to be opened in advance, because the moment you need it is the moment you cannot configure it.
+
+The other door is the management controller, usually shortened to **BMC**, for baseboard management controller. It is a small computer on the motherboard that stays awake when the main system does not. You reach it through **IPMI** or **KVM-over-IP**. Newer interfaces such as Redfish and DCMI are covered in Part 7.
+
+One catch trips up nearly every new cluster. These interfaces are usually **disabled for network access by default**. Only local access works until someone configures the network side.
 
 Before the cluster goes into service:
 
-- Enable IPMI network access. You can do that in the BIOS or firmware setup, if it offers the option. Otherwise, boot each node and use `ipmitool` locally (section 9).
+- Enable IPMI network access. You can do that in the BIOS or firmware setup, if it offers the option. Otherwise, boot each node and use `ipmitool` locally, as section 10 shows.
 - Make sure the vendor has enabled the management network, and that the controllers get addresses by **DHCP**. Keep a list of the controllers' MAC addresses. Otherwise, you must set up every node by hand, which on a large cluster can take weeks.
 - iKVM, which gives you a remote keyboard, video and mouse, normally also needs pre-configuration. On many servers it shares the same controller as IPMI.
 - **Change the default passwords** immediately.
 
-Do this work before the first outage, because the controller helps you only if you configured it beforehand.
+Do this work before the first outage, not during one. The controller helps you only if you configured it beforehand, and a cluster bring-up is far cheaper than a rescue at 2 a.m.
 
 ## 2. How SSH works, in detail
 
-Suppose your laptop connects to a server for the first time. The server hands over a key, and your client has to decide whether to trust it. The rest of the login depends on that decision, so it helps to understand the whole sequence.
+Suppose your laptop connects to a server for the first time. The server hands over a key, and your client has to decide whether to trust it. Everything else about the login depends on that one decision, so it pays to know the whole sequence.
 
-**SSH** was designed in 1995 by the Finnish computer scientist Tatu Ylönen. It was meant as an open, secure protocol for remote access and file transfer. It replaced `telnet` and `rsh`, which sent everything unencrypted. Today the dominant implementation of both client and server is **OpenSSH**, developed by the OpenBSD project, although alternatives exist. The server listens on TCP **port 22** by default. This book uses SSH for the protocol and `ssh` for the client command.
+**SSH** was designed in 1995 by the Finnish computer scientist Tatu Ylönen. He wanted an open, secure protocol for remote access and file transfer, and it replaced `telnet` and `rsh`, which sent everything unencrypted. Today the dominant implementation of both client and server is **OpenSSH**, developed by the OpenBSD project, although alternatives exist. The server listens on TCP **port 22** by default. This book uses SSH for the protocol and `ssh` for the client command.
 
 ### Two kinds of cryptography
 
-**Symmetric encryption** uses one shared secret key to both encrypt and decrypt. It is fast and cheap, so it carries the bulk of the data. The catch is that both parties must somehow already hold the same key.
+**Symmetric encryption** uses one shared secret key to both encrypt and decrypt. It is fast and cheap, so it carries the bulk of the data. The catch is that both parties must somehow already hold the same key. Getting that key to the other side safely is the hard part, and it is the part public-key cryptography solves.
 
 **Asymmetric (public-key) encryption** uses a *pair* of keys. What one key encrypts, only the other can decrypt. In practice, neither key can be derived from the other. Some algorithms let the private key recompute the public key, but not the reverse. OpenSSH stores the public key inside the private key file. You publish the **public key** freely and keep the **private key** secret. Two parties can then establish trust without sending a secret. You prove you hold the private key by signing something the other side can verify. And anyone can send you a message that only you can read.
 
-SSH uses both. Public-key cryptography handles identity and key exchange. Symmetric encryption protects the session itself. During a long connection, the symmetric key is replaced periodically. That limits how much data an eavesdropper could collect for an attack.
+SSH uses both kinds, each for the job it does best. Public-key cryptography handles identity and key exchange. Symmetric encryption protects the session itself. During a long connection, the symmetric key is replaced periodically. That limits how much data an eavesdropper could collect for an attack.
 
 ### Servers have identities too
 
-Every SSH server owns a **host key** pair. On the first connection, the client receives the server's public host key and shows you its **fingerprint**. If you already know the right fingerprint, you can compare the two and refuse a mismatch. If you accept, the client saves the pairing of server address and host key in **`~/.ssh/known_hosts`**. On later connections, a *different* host key makes `ssh` refuse to continue. That defeats **man-in-the-middle** attacks, in which an attacker stands in for the server to read and relay your traffic.
+Every SSH server owns a **host key** pair. On the first connection, the client receives the server's public host key and shows you its **fingerprint**. A fingerprint is a short digest of the key, so two people can compare it by eye. If you already know the right fingerprint, you can compare the two and refuse a mismatch. If you accept, the client saves the pairing of server address and host key in **`~/.ssh/known_hosts`**. On later connections, a *different* host key makes `ssh` refuse to continue. That defeats **man-in-the-middle** attacks, in which an attacker stands in for the server to read and relay your traffic.
 
-When you install the server package, host keys are generated automatically. If you reinstall an SSH server, or reimage a node, **save and restore its host keys** in `/etc/ssh/ssh_host_*`. Otherwise every user will see the "host key changed" alarm. On a cluster, bake the host keys into the node image or manage them centrally.
+When you install the server package, host keys are generated automatically. If you reinstall an SSH server, or reimage a node, **save and restore its host keys** in `/etc/ssh/ssh_host_*`. Otherwise every user will see the "host key changed" alarm. On a cluster, bake the host keys into the node image, or manage them centrally.
 
 ### The sequence of a session
 
@@ -86,20 +94,20 @@ The login runs in seven steps.
 6. If the key is there, the server sends a challenge that only the matching private key can answer. The client answers, and the private key stays on the client.
 7. On success, the server starts the requested command or an interactive shell.
 
-Servers typically also accept passwords, and sometimes Kerberos, when key authentication is unavailable. The data is still encrypted. **Do not allow password authentication for ordinary users.** Passwords can be guessed by brute force, and encryption does not help if the attacker simply tries the right password. A private key is practically impossible to guess. The realistic risk is theft of the key *file*, which is why private keys should always be protected with a **passphrase**. For the same reason, "secure" versions of `telnet` and `ftp` over TLS that still use passwords are not considered secure.
+Servers typically also accept passwords, and sometimes Kerberos, when key authentication is unavailable. The data is still encrypted, but that fact does not save you. **Do not allow password authentication for ordinary users.** Passwords can be guessed by brute force, and encryption does not help if the attacker simply tries the right password. A private key is practically impossible to guess. The realistic risk is theft of the key *file*, which is why private keys should always be protected with a **passphrase**. For the same reason, "secure" versions of `telnet` and `ftp` over TLS that still use passwords are not considered secure.
 
 Turn off password logins for ordinary users, and protect every private key with a passphrase.
 
 ## 3. Keys in practice
 
-Your key pair decides how strong your login is, so make the choices on purpose. The first command below creates the modern default key type. The second creates an RSA key for servers that need compatibility.
+Your key pair decides how strong your login is, so make the choices on purpose rather than by habit. The first command below creates the modern default key type. The second creates an RSA key, for servers that still need compatibility.
 
 ```bash
 ssh-keygen -t ed25519 -C "alice@laptop"        # modern default
 ssh-keygen -t rsa -b 4096                       # RSA, if you need compatibility
 ```
 
-Three choices matter:
+Three choices matter, and each one has its own flag.
 
 - **Type, set with `-t`.** Use `ed25519`, which is preferred. The other choices are `rsa`, `ecdsa`, and the security-key variants `ed25519-sk` and `ecdsa-sk`. The security-key variants keep the private key on a FIDO hardware token. Newer types appear over time, so use whatever your servers accept.
 - **Length, set with `-b`.** Length matters only for RSA and ECDSA. Current OpenSSH defaults RSA to 3072 bits, so use 3072 or more. Elliptic-curve keys support only fixed sizes. ECDSA takes 256, 384 or 521 bits, and Ed25519 has one size. More bits make a key stronger, and also slower.
@@ -114,19 +122,21 @@ cat id_ed25519.pub >> ~foo/.ssh/authorized_keys         # APPEND (do not replace
 chmod 700 ~foo/.ssh ; chmod 600 ~foo/.ssh/authorized_keys ; chown -R foo: ~foo/.ssh
 ```
 
-The directory and the file must belong to `foo`, and nobody else may be able to write to them. Otherwise `sshd` ignores them. This check is controlled by `StrictModes`. A public key sent to you in the multi-line **RFC 4716** format needs conversion. Some Windows tools produce that format. Convert the key to the single-line OpenSSH format before you use it: `ssh-keygen -i -f rfc-key.pub >> ~foo/.ssh/authorized_keys`. Check the exact flags in `man ssh-keygen`, because the direction of conversion is easy to get wrong.
+The directory and the file must belong to `foo`, and nobody else may be able to write to them. Otherwise `sshd` ignores them, often without saying a word, and you spend an hour wondering why a correct key does nothing. This check is controlled by `StrictModes`.
 
-**Passwordless login.** The secure way is a key plus an agent, which chapter 1.5 covers. You type the passphrase once. Some clusters take a shortcut for node-to-node access: a key with an **empty passphrase**. Anyone who copies that file becomes you. If the home directory sits on a shared filesystem, a single `authorized_keys` entry serves every node. Where possible, restrict such keys with a forced command or a source address, as section 7 explains.
+A public key that arrives in the multi-line **RFC 4716** format needs conversion before you can use it. That format wraps a single key across several lines, and `authorized_keys` expects one line per key. Some Windows tools produce it. Convert the key to the single-line OpenSSH format before you use it: `ssh-keygen -i -f rfc-key.pub >> ~foo/.ssh/authorized_keys`. Check the exact flags in `man ssh-keygen`, because the direction of conversion is easy to get wrong.
 
-**Accepting host keys for the first time on many nodes.** Interactive confirmation for hundreds of hosts is impractical. So administrators run a loop that accepts the keys in advance:
+**Passwordless login.** The secure way is a key plus an agent, which chapter 1.5 covers. You type the passphrase once. Some clusters take a shortcut for node-to-node access: a key with an **empty passphrase**. That shortcut has a sharp edge, because anyone who copies that file becomes you. If the home directory sits on a shared filesystem, a single `authorized_keys` entry serves every node. Where possible, restrict such keys with a forced command or a source address, as section 7 explains.
+
+**Accepting host keys for the first time on many nodes.** Interactive confirmation is fine for one machine and impossible for hundreds. So administrators run a loop that accepts the keys in advance:
 
 ```bash
 for h in $(cat nodes.txt); do ssh -o StrictHostKeyChecking=no "$h" true; done
 ```
 
-The remote command `true` does nothing and exits instantly. The loop therefore only records host keys, and it prints errors for unreachable nodes. Understand what you are doing. `StrictHostKeyChecking=no` *trusts whatever answers*, so the very first acceptance is exactly where a man-in-the-middle could hide. On a trusted, isolated management network, that is an accepted trade-off. Elsewhere, collect keys with `ssh-keyscan` and verify them against a trusted list, or distribute known host keys from the image.
+The remote command `true` does nothing and exits instantly. The loop therefore only records host keys, and it prints errors for unreachable nodes. Be honest about what this does. `StrictHostKeyChecking=no` *trusts whatever answers*, so the very first acceptance is exactly where a man-in-the-middle could hide. On a trusted, isolated management network, that is an accepted trade-off. Elsewhere, collect keys with `ssh-keyscan` and verify them against a trusted list, or distribute known host keys from the image.
 
-**Escape sequences.** `ssh` intercepts a special key sequence at the **start of a line**. You press Enter, then `~`, then a command character. `~.` ends the session immediately, which is the way out of a frozen connection. `~Z` suspends the `ssh` process into the background, and `fg` resumes it. `~~` sends a literal `~`, and `~?` lists the rest. Be careful inside a serial-over-LAN session (section 9) that uses the same `~.` to exit.
+**Escape sequences.** Here is the trick that saves you when a session freezes. `ssh` intercepts a special key sequence at the **start of a line**, so you press Enter, then `~`, then a command character. `~.` ends the session immediately, which is the way out of a frozen connection. `~Z` suspends the `ssh` process into the background, and `fg` resumes it. `~~` sends a literal `~`, and `~?` lists the rest. Be careful inside a serial-over-LAN session, described in section 9, which uses the same `~.` to exit.
 
 Protect every private key with a passphrase, and restrict shared automation keys wherever you can.
 
@@ -141,7 +151,7 @@ OpenSSH keeps several host key sets. Each set has a public key, with a `.pub` ex
 | `ssh_host_dsa_key` | Private DSA key |
 | `ssh_host_dsa_key.pub` | Public DSA key |
 
-Creating a key involves a numerical computation that produces both halves of the pair. Your installer normally creates the host keys for you. You need to know how to make them yourself if you plan to use a tool such as `ssh-agent` that handles authentication without a password. Use the `ssh-keygen` program that ships with OpenSSH:
+Creating a key is a numerical computation that produces both halves of the pair at once. Your installer normally creates the host keys for you. You still need to know how to make them yourself if you plan to use a tool such as `ssh-agent` that handles authentication without a password. Use the `ssh-keygen` program that ships with OpenSSH:
 
 ```bash
 # ssh-keygen -t rsa -N '' -f /etc/ssh/ssh_host_rsa_key
@@ -152,7 +162,7 @@ The SSH server and clients also keep a file called `ssh_known_hosts`, which stor
 
 ## 4. The SSH client: options and configuration
 
-You will use a handful of `ssh` options often. The table below lists them all, so use it as a lookup when you need one.
+You can spend a week retyping the same long `ssh` command, or you can learn a handful of `ssh` options and write the command down once. The table below lists them all, so use it as a lookup when you need one.
 
 ### Command-line options
 
@@ -172,7 +182,7 @@ You will use a handful of `ssh` options often. The table below lists them all, s
 | `-X` / `-Y` | forward the X11 graphics connection (untrusted / trusted variants) |
 | `-M` | control master for connection sharing (see below) |
 
-Notice that `-v` can be repeated. `-vvv` or `-vvvv` is usually enough to diagnose a login problem.
+The `-v` flag stacks, which is what makes it useful. One `-v` tells you very little, and `-vvv` or `-vvvv` is usually enough to diagnose a login problem.
 
 ### Configuration files
 
@@ -192,7 +202,7 @@ You can set these options globally or for one host:
 | `StrictHostKeyChecking` | `yes` (refuse unknown hosts), `ask` (prompt), `no` (add silently) |
 | `ControlMaster auto`, `ControlPath ~/.ssh/cm-%r@%h:%p`, `ControlPersist 10m` | reuse one connection for many sessions |
 
-A **`Host`** line starts a block that applies only to matching names. `?` and `*` are wildcards, and a lone `*` matches everything. Inside a block, the most useful options are `HostName`, which gives the real address, `User`, `Port`, `IdentityFile`, `ForwardAgent` and `ForwardX11`. The name after `Host` is just an alias, so it need not be a real hostname:
+A **`Host`** line starts a block, which is simply a group of settings that applies only to matching names. `?` and `*` are wildcards, and a lone `*` matches everything. Inside a block, the most useful options are `HostName`, which gives the real address, `User`, `Port`, `IdentityFile`, `ForwardAgent` and `ForwardX11`. The name after `Host` is just an alias, so it need not be a real hostname:
 
 ```
 Host home
@@ -202,13 +212,13 @@ Host home
     IdentityFile ~/.ssh/home_key
 ```
 
-With that block in place, `ssh home` replaces `ssh -p 2222 -i ~/.ssh/home_key foo@home.my.provider.com`. As chapter 1.5 noted, the first matching value wins. Put specific blocks above general ones.
+With that block in place, `ssh home` replaces `ssh -p 2222 -i ~/.ssh/home_key foo@home.my.provider.com`. As chapter 1.5 noted, the first matching value wins, so put specific blocks above general ones.
 
 Give each machine you visit often its own `Host` block, and keep the general blocks below the specific ones.
 
 ## 5. Forwarding: environment, ports, X11 and agent
 
-Forwarding sends extra traffic through the single encrypted SSH connection. The server opens no extra connections for it. Being able to reach port 22 is enough.
+Suppose the only thing you can reach from your laptop is port 22 on one bastion. Forwarding is the trick that makes that single open port enough, because it sends extra traffic through the single encrypted SSH connection. The server opens no extra connections for it. Being able to reach port 22 is enough.
 
 - **Environment variables.** With `SendEnv LANG LC_*` on the client and `AcceptEnv LANG LC_*` on the server, settings such as the locale follow you into the remote session. Both sides must agree. Some variables could subvert the system, such as `LD_PRELOAD`, so the server refuses them unless it explicitly allows it. That allowance is `PermitUserEnvironment`, which also reads `~/.ssh/environment`. Use it with great care.
 - **Port forwarding.** Think of it as a small, flexible proxy for one connection. Suppose an internal web server at `192.168.0.10` is reachable only from the server's network. Run `ssh -L 8080:192.168.0.10:80 your.server.address`, then browse to `http://localhost:8080`. The web server sees the connection as coming from the SSH server. The reverse direction, `-R`, publishes a port on the server that leads back to a host reachable from your machine. The server can disable both directions with `AllowTcpForwarding no`.
@@ -219,7 +229,9 @@ Before you enable agent forwarding to a shared host, remember that root there ca
 
 ## 6. The SSH server: `sshd_config`
 
-A wrong line in the server configuration can lock you out, so edit it with care. The server is configured in **`/etc/ssh/sshd_config`**, and current distributions also read drop-ins in `sshd_config.d/`. After you edit the file, validate it with `sshd -t`, then reload it with `systemctl reload sshd`. A reload does not affect existing sessions. That helps, because a mistake need not lock you out of the session you are already using. Still, keep a second session open.
+A wrong line in the server configuration can lock you out of the machine you are editing. Everyone who has run a cluster for a while has a version of that story: one hardening change, one reload, and then the admin's own key is refused at the next login.
+
+The server is configured in **`/etc/ssh/sshd_config`**, and current distributions also read drop-ins in `sshd_config.d/`. A drop-in is a small extra file with the same syntax, so a vendor package or an automation role can add settings without rewriting the main file. After you edit the file, validate it with `sshd -t`, then reload it with `systemctl reload sshd`. A reload does not affect existing sessions. That helps, because a mistake need not lock you out of the session you are already using. Still, keep a second session open.
 
 | Option | Meaning |
 |---|---|
@@ -240,7 +252,7 @@ A wrong line in the server configuration can lock you out, so edit it with care.
 | `UseDNS` | resolve client names (can slow logins when DNS is broken; usually `no`) |
 | `XauthLocation` | path of `xauth` if not standard |
 
-Notice that `PermitRootLogin` gives you four choices, and that the table recommends `no` first. You may still see an old option called `UseLogin`. It told OpenSSH to use the system `login` program. That breaks X forwarding, and modern OpenSSH has removed it.
+`PermitRootLogin` gives you four choices, and the table recommends `no` first. You may still meet an old option called `UseLogin` in a legacy file. It told OpenSSH to use the system `login` program. That breaks X forwarding, and modern OpenSSH has removed it.
 
 ### `Match` blocks: conditional configuration
 
@@ -268,7 +280,7 @@ Use `Match` when service accounts, administrators or an internal network need ru
 
 ### Restrict what a key may do
 
-Give your monitoring system a narrow capability instead of a shell. In `authorized_keys`, options placed before the key limit what that key can do:
+Give your monitoring system a narrow capability instead of a shell. A key that can read one status page is worth far less to an attacker than a key that can do anything. In `authorized_keys`, options placed before the key limit what that key can do:
 
 ```
 from="10.0.0.0/8",command="/usr/local/bin/status-only",no-port-forwarding,no-pty ssh-ed25519 AAAA... monitor@mgmt
@@ -278,7 +290,7 @@ This key works only from the management subnet, and it can run only one command.
 
 ### Host-based authentication
 
-Distributing user keys to hundreds of nodes is painful, unless the keys live on a shared filesystem or in the node image. **Host-based authentication** is a much *less secure* but efficient alternative for a trusted cluster network. The server accepts a login if the *client host* is trusted, its host key matches a saved one, and the user is allowed. You set it up in four steps.
+Distributing user keys to hundreds of nodes is painful, unless the keys live on a shared filesystem or in the node image. Host-based authentication is the shortcut some cluster teams take instead. **Host-based authentication** is a much *less secure* but efficient alternative for a trusted cluster network. The server accepts a login if the *client host* is trusted, its host key matches a saved one, and the user is allowed. You set it up in four steps.
 
 ```
 # 1. Server: /etc/ssh/sshd_config
@@ -308,7 +320,7 @@ Suppose you need the uptime of every node on a list. A simple loop works for a f
 for h in $(cat nodes.txt); do ssh -o ConnectTimeout=3 "$h" 'uptime' ; done
 ```
 
-The loop has predictable problems. The output of different nodes is interleaved, so it is hard to tell which line came from which machine. **One hanging `ssh` hangs the whole script.** Ctrl-c can leave stray errors from the hung connections. And running several hundred `ssh` processes at once puts real load on the machine you run it from. Dedicated tools solve all of these.
+The loop has predictable problems, and every one of them gets worse with scale. The output of different nodes is interleaved, so it is hard to tell which line came from which machine. **One hanging `ssh` hangs the whole script.** Ctrl-c can leave stray errors from the hung connections. And running several hundred `ssh` processes at once puts real load on the machine you run it from. Dedicated tools solve all of these.
 
 ### `pdsh` and `pdcp`
 
@@ -320,7 +332,7 @@ pdsh -w node-[01-64] -x node-13 uptime       # exclude a node
 pdsh -g gpu nvidia-smi -L | dshbak -c        # a named group; dshbak -c folds identical output
 ```
 
-The table lists the main options.
+The table lists the main options, so you can skim it now and come back to it when a job needs one.
 
 | Option | Meaning |
 |---|---|
@@ -354,7 +366,7 @@ ClusterShell is a Python package that does the same job and more. You can instal
 | `-q`, `-v`, `-d`, `-N`, `-P` | quiet, verbose, debug, no labels, show progress |
 | `-c`/`--copy`, `--dest PATH`, `--rcopy` | copy local files to nodes (same path by default; `--dest` changes it), or fetch from nodes |
 
-Notice that `-b` gathers nodes with identical output, and `-B` also gathers stderr. Gathering is the quickest way to spot the odd node out.
+`-b` gathers nodes with identical output, and `-B` also gathers stderr. Gathering is the quickest way to spot the odd node out.
 
 Group support is more flexible than in `pdsh`, and groups can be tied to external sources. The most useful source is **Slurm integration**. Rename `/etc/clustershell/groups.conf.d/slurm.conf.example` to `slurm.conf`. The exact path depends on how ClusterShell was installed. After that, you can target nodes by scheduler state:
 
@@ -369,11 +381,15 @@ The companion **`cluset`** manipulates node lists. `cluset -e 'node-[01-03,11-13
 
 ### Cautions for any parallel fan-out
 
-Each node gets its own SSH connection, so set up keys and host keys first. Limit the fan-out. A thousand simultaneous `scp` runs of the same file can cripple the head node's network. Rehearse destructive commands on one node, then on a few, and only then on all. Output arrives in unpredictable order, so use the labelling and gathering features. When the operation must be repeatable and idempotent, use Ansible instead (Part 4).
+Each node gets its own SSH connection, so set up keys and host keys first. Limit the fan-out. A thousand simultaneous `scp` runs of the same file can cripple the head node's network.
+
+Rehearse destructive commands on one node, then on a few, and only then on all. Output arrives in unpredictable order, so use the labelling and gathering features. When the operation must be repeatable and idempotent, meaning you can run it twice and get the same result, use Ansible instead (Part 4).
 
 ## 9. `screen` and `tmux` in detail
 
-Both tools give you several terminals inside one connection. They also keep your session alive when the connection drops. After a reconnect, you attach again and carry on. The programs inside never noticed the disconnect.
+Here is the scene these tools exist for. You start a long `rsync` on a compute node before lunch, then close the laptop and walk away. Your connection drops while you are gone. The copy keeps running, because it lives inside a session that outlived the shell.
+
+Both `screen` and `tmux` give you several terminals inside one connection. They also keep your session alive when the connection drops. After a reconnect, you attach again and carry on. The programs inside never noticed the disconnect.
 
 ### GNU `screen`
 
@@ -387,7 +403,7 @@ The options below control how you create, list and reattach sessions.
 | `-x` | join the latest session in shared mode (you and another user can both see and type) |
 | `-d`, `-D` | detach the session from wherever it is attached (`-D` also works if it was not attached) |
 
-`screen -xRR` or `screen -DRR` is a common start-or-attach idiom. Inside a session, every command starts with a **hotkey**. The default is `Ctrl-a`, and you can change it in `~/.screenrc`. You then press one more key.
+`screen -xRR` or `screen -DRR` is a common start-or-attach idiom: it attaches if the session is there, and creates it if it is not. Inside a session, every command starts with a **hotkey**, which is a prefix you press before the key that does the work. The default is `Ctrl-a`, and you can change it in `~/.screenrc`. You then press one more key.
 
 | Key | Action |
 |---|---|
@@ -411,7 +427,7 @@ Some lines are useful in `~/.screenrc`. `defscrollback 1000` sets the scrollback
 
 ### `tmux`
 
-`tmux` is similar, but it is more flexible. Its most valuable feature is starting a new window directly with a command. The default hotkey is `Ctrl-b`, and you can reconfigure it in `~/.tmux.conf`. To imitate `screen -xRR`, use `tmux new -A -s 0`. That attaches if the session exists, and creates it otherwise.
+`tmux` does the same job, and it is more flexible. Its most valuable feature is starting a new window directly with a command, instead of opening a window and then typing the command into it. The default hotkey is `Ctrl-b`, and you can reconfigure it in `~/.tmux.conf`. To imitate `screen -xRR`, use `tmux new -A -s 0`. That attaches if the session exists, and creates it otherwise.
 
 | Key (after the prefix) | Action |
 |---|---|
@@ -430,7 +446,11 @@ Learn the start-or-attach command for whichever tool you use. That one command g
 
 ## 10. IPMI: managing the machine behind the machine
 
-Suppose a node stops answering SSH, and nobody can reach its operating system. The hardware may still be reachable, and IPMI is the standard way to reach it. **IPMI (Intelligent Platform Management Interface)** is an open standard for remote server management. Inside the server sits a **management controller**, also called MC or BMC. It is a small, independent computer. It monitors the main system through sensors on internal buses, and it can control the power. It often emulates a serial port, so you get a console. You configure it for network access, which gives you information and control even when the main system is hung or powered off. Redfish, covered in Part 7, is the modern replacement. IPMI remains the most widespread.
+Suppose a node stops answering SSH, and nobody can reach its operating system. That is the 2 a.m. case from the start of this chapter, and the hardware may still be reachable. IPMI is the standard way to reach it.
+
+**IPMI (Intelligent Platform Management Interface)** is an open standard for remote server management. Inside the server sits a **management controller**, also called MC or BMC. It is a small, independent computer. It monitors the main system through sensors on internal buses, and it can control the power. It often emulates a serial port, so you get a console.
+
+You configure the controller for network access, which gives you information and control even when the main system is hung or powered off. Redfish, covered in Part 7, is the modern replacement. IPMI remains the most widespread.
 
 For Linux, the common clients are **`ipmitool`** and OpenIPMI. Install `ipmitool` on every node and management host.
 
@@ -443,7 +463,7 @@ sudo modprobe ipmi_devintf ; sudo modprobe ipmi_si ; sudo modprobe ipmi_msghandl
 sudo ipmitool lan print           # local controller: current network settings
 ```
 
-Typical output shows the IP address source (static or DHCP), the address, the mask, the MAC address, the default gateway, the VLAN settings and the authentication types. To set network parameters, you usually use channel 1:
+Typical output shows the IP address source, which is either static or DHCP. It also shows the address, the mask, the MAC address, the default gateway, the VLAN settings and the authentication types. To set network parameters, you usually use channel 1:
 
 ```bash
 sudo ipmitool lan set 1 ipsrc static
@@ -458,7 +478,9 @@ sudo ipmitool lan set 1 defgw ipaddr 10.0.1.1
 ipmitool -I lanplus -H 10.0.1.2 -U admin -f /root/.ipmipass power status
 ```
 
-`-I lan` selects IPMI 1.5, and `-I lanplus` selects IPMI 2.0 and later. The two are not compatible, so you must state the protocol. Never put the password on the command line, where `ps` and shell history can expose it. Use **`-f passfile`**, a file readable only by you. Or use **`-E`**, which takes the password from the `IPMI_PASSWORD` environment variable. The main command classes are below, each with its subcommands.
+`-I lan` selects IPMI 1.5, and `-I lanplus` selects IPMI 2.0 and later. The two are not compatible, so you must state the protocol.
+
+Never put the password on the command line, where `ps` and shell history can expose it. Use **`-f passfile`**, a file readable only by you. Or use **`-E`**, which takes the password from the `IPMI_PASSWORD` environment variable. The main command classes are below, each with its subcommands.
 
 | Class | Purpose |
 |---|---|
@@ -476,7 +498,11 @@ ipmitool -I lanplus -H 10.0.1.2 -U admin -f /root/.ipmipass power status
 
 ### Serial-over-LAN console
 
-With IPMI 2.0, `sol` connects you to a virtual or real serial port. If the node runs a `getty` on that port, such as `mgetty /dev/ttyS0` or a systemd `serial-getty` service on the right device, you get a login prompt even when the network is down. You can also send kernel messages to the serial console, which helps you catch a crash. Run `ipmitool ... sol activate` to connect. Leave with `~.`. Inside an SSH session, use `~~.` instead, so the outer SSH does not interpret it. Sensors give temperatures, fan speeds and voltages. They are often the first clue to a hardware failure.
+With IPMI 2.0, `sol` connects you to a virtual or real serial port. If the node runs a `getty` on that port, such as `mgetty /dev/ttyS0` or a systemd `serial-getty` service on the right device, you get a login prompt even when the network is down. A getty is the small program that watches a terminal and prints that prompt. You can also send kernel messages to the serial console, which helps you catch a crash.
+
+Run `ipmitool ... sol activate` to connect. Leave with `~.`. Inside an SSH session, use `~~.` instead, so the outer SSH does not interpret it.
+
+Sensors give temperatures, fan speeds and voltages. They are often the first clue to a hardware failure.
 
 ### Creating an administrative user and enabling access
 
@@ -497,19 +523,29 @@ The settings partly duplicate each other. On some controllers, the user settings
 
 ### IPMI security
 
-The IPMI network is **not secure by itself**. IPMI 2.0's authentication has well-known weaknesses. For example, a remote attacker can retrieve a password hash for a valid user name and attack it offline. Controllers also run complex firmware. The best practice is to put all controllers on a **dedicated physical management network**. If that is not possible, use at least a **dedicated VLAN** that only management nodes can reach, not user-facing ones. Ask your supplier to configure the VLAN automatically if possible, because setting it per node by hand is painful. Use strong, unique passwords. Disable IPMI-over-LAN where Redfish with proper authentication is available. Keep the firmware updated. And never expose a BMC to the internet.
+The IPMI network is **not secure by itself**. IPMI 2.0's authentication has well-known weaknesses. For example, a remote attacker can retrieve a password hash for a valid user name and attack it offline. Controllers also run complex firmware.
+
+The best practice is to put all controllers on a **dedicated physical management network**. If that is not possible, use at least a **dedicated VLAN** that only management nodes can reach, not user-facing ones. Ask your supplier to configure the VLAN automatically if possible, because setting it per node by hand is painful.
+
+Then come the habits. Use strong, unique passwords. Disable IPMI-over-LAN where Redfish with proper authentication is available. Keep the firmware updated. And never expose a BMC to the internet.
 
 ### Console managers: `conman`, `powerman`
 
-Raw `ipmitool sol` is awkward when you must watch consoles on many servers. **`conman`** is a console manager. It keeps the connection to each local or remote console open and logged. You can attach at any moment and review what happened before you arrived. It can also automate some operations. xCAT includes a similar tool, `rcons`. `conman` does not do power control. For that, use **`powerman`**, which supports IPMI and a wide range of remotely controllable power distribution units. These tools greatly improve efficiency in remote debugging at scale.
+Raw `ipmitool sol` is awkward when you must watch consoles on many servers. One console is easy. Fifty consoles are a job for a manager. **`conman`** is a console manager. It keeps the connection to each local or remote console open and logged. You can attach at any moment and review what happened before you arrived. It can also automate some operations. xCAT includes a similar tool, `rcons`.
+
+`conman` does not do power control. For that, use **`powerman`**, which supports IPMI and a wide range of remotely controllable power distribution units. These tools greatly improve efficiency in remote debugging at scale.
 
 ### iKVM (KVM over IP)
 
-A **KVM** switch lets one keyboard, monitor and mouse control several machines. **iKVM** does the same over the network. It captures the video output and emulates the keyboard and mouse. There is **no single standard**, so features and interfaces differ by vendor. Many implementations use a browser with Java, an older plug-in, or HTML5. The capability is either built into the server's controller, which is preferred because it also gives power management, or provided by an external device that you cable to each server. Because there is no standard protocol, you generally cannot automate iKVM. For example, you cannot use it to change a BIOS setting on every node. It still complements SSH and IPMI in a unique way. It shows you **what is on the screen of a hung node**, including BIOS menus and boot errors.
+A **KVM** switch lets one keyboard, monitor and mouse control several machines. **iKVM** does the same over the network. It captures the video output and emulates the keyboard and mouse.
+
+There is **no single standard**, so features and interfaces differ by vendor. Many implementations use a browser with Java, an older plug-in, or HTML5. The capability is either built into the server's controller, which is preferred because it also gives power management, or provided by an external device that you cable to each server.
+
+Because there is no standard protocol, you generally cannot automate iKVM. For example, you cannot use it to change a BIOS setting on every node. It still complements SSH and IPMI in a unique way. It shows you **what is on the screen of a hung node**, including BIOS menus and boot errors.
 
 ## How it fails
 
-Each failure below has a telltale sign, a cause and a fix. Learn the signs, so you recognise the pattern quickly.
+Each failure below has a telltale sign, a cause and a fix. Learn the signs here, while the cluster is quiet, so you recognise the pattern when it appears for real.
 
 ### 1. A fan-out command hangs forever on one node
 
@@ -543,7 +579,7 @@ Set up timeouts and a second session before you change anything on the cluster, 
 
 ## Hands-on lab: SSH, parallel shells, multiplexers, and IPMI
 
-Start on your own machine. Run the self-checking Python lab, `code/part01/remote_admin_ref_lab.py`. It checks four things. It verifies the `sshd_config` access evaluation order (`DenyUsers` -> `AllowUsers` -> `DenyGroups` -> `AllowGroups`). It checks `pdsh` and ClusterShell node-range expansion (`node-[01-03,11-12]`). It checks the nested SSH and SOL escape sequences (`~.` vs `~~.`). And it checks the `ipmitool` `-I lanplus` and `-f` security rules.
+Start on your own machine. Run the self-checking Python lab, `code/part01/remote_admin_ref_lab.py`. It checks four things, each of them easy to get wrong in practice. It verifies the `sshd_config` access evaluation order (`DenyUsers` -> `AllowUsers` -> `DenyGroups` -> `AllowGroups`). It checks `pdsh` and ClusterShell node-range expansion (`node-[01-03,11-12]`). It checks the nested SSH and SOL escape sequences (`~.` vs `~~.`). And it checks the `ipmitool` `-I lanplus` and `-f` security rules.
 
 ```bash
 python3 code/part01/remote_admin_ref_lab.py
@@ -591,7 +627,7 @@ Next, use two or three disposable GCP VMs. Every interactive VM command below is
 <details>
 <summary>1. Why must out-of-band management (BMC/IPMI/iKVM/Redfish) be configured and tested before a cluster goes into production?</summary>
 
-Out-of-band network access on server BMCs is often disabled, or left at unconfigured factory defaults. Suppose a node's kernel panics, hangs in BIOS/GRUB, or loses its OS network, you cannot run `ipmitool lan set` locally to turn on BMC networking. So DHCP, the MAC-to-node tables, SOL and non-default passwords must be pre-configured during initial rack bring-up.
+Out-of-band network access on server BMCs is often disabled, or left at unconfigured factory defaults. Suppose a node's kernel panics, hangs in BIOS/GRUB, or loses its OS network. You cannot run `ipmitool lan set` locally to turn on BMC networking. So DHCP, the MAC-to-node tables, SOL and non-default passwords must be pre-configured during initial rack bring-up.
 </details>
 
 <details>
@@ -713,6 +749,6 @@ IPMI 2.0's `RMCP+` authentication (`RAKP`) lets a remote attacker request the sa
 - **Sources read in full:**
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 10: Network Applications and Services** (SSH host key files, `ssh-keygen`, and `ssh_known_hosts`).
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 10: Remote Management** (preparing out-of-band BMC/IPMI/iKVM access in advance, 1995 Tatu Ylönen SSH history, symmetric vs asymmetric cryptography, host keys and `~/.ssh/known_hosts` MITM protection, the 7-step SSH session sequence, `ssh-keygen` `-t ed25519`/`rsa`/`ecdsa` and RFC `4716` `ssh-keygen -i -f`, `authorized_keys` append rule, `StrictHostKeyChecking=no` first-login loop, `~.`/`~Z`/`~~` escape sequences, `ssh` CLI and `ssh_config` `Host` blocks, environment/port/X11/agent forwarding, `sshd_config` options and `Match` blocks, `from=`/`command=` key restrictions, host-based authentication `/etc/shosts.equiv` and `EnableSSHKeysign`, `pdsh`/`pdcp` and `dshbak -c`, ClusterShell `clush`/`cluset` and Slurm `@sp:main`/`@st:idle` groups, `screen` and `tmux`, IPMI `ipmitool` local/remote `lan`/`lanplus`/`power`/`sol`/`user`/`channel`, `conman`, `powerman`, and `iKVM`) and **Chapter 7: UNIX and Linux – the Basics** (cluster commands loop; cross-referenced with Chapters 1.5, 1.6, 1.21, 1.30, 4.3, 6.24, 6.25, and Part 7).
-- **Run here:** `python3 code/part01/remote_admin_ref_lab.py` (16 passed, 0 failed).
+- **Run here:** `python3 code/part01/remote_admin_ref_lab.py` (15 passed, 0 failed).
 - **Explicitly labelled inferences:** The 7-step SSH session Mermaid diagram, `DenyUsers -> AllowUsers -> DenyGroups -> AllowGroups` evaluation model, and nested `~~.` SOL escape rule synthesize OpenSSH and IPMI manual pages with Zhumatiy's cluster operations guide.
 - **Not verified on live hardware:** All interactive VM and BMC commands (`ssh`, `sshd`, `ssh-keygen`, `ssh-keyscan`, `pdsh`, `clush`, `cluset`, `screen`, `tmux`, `ipmitool`) are marked (untested here) and must be executed on disposable test VMs or non-production lab nodes.

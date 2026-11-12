@@ -22,17 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this lab
 
-Sooner or later, every engineer who runs containers sees something odd and realizes the only honest answer is "I don't know what Docker is actually doing." This lab removes that moment for you. Chapters 1.18 and 1.19 explained the parts one at a time. Here you pick those parts up and assemble them yourself. The goal is something that behaves like `docker run`.
+Every engineer who runs containers eventually meets a puzzle the documentation cannot explain. A container will not start, a log file is missing, a process disappears, and the only honest answer left is, "I don't know what Docker is actually doing." This lab is built to take that answer away from you. Chapters 1.18 and 1.19 explained the parts of a container one at a time. Here you pick those parts up and assemble them with your own hands.
 
-By the end, you will place your hand-made container next to a real one. Start the real one with `docker run` or `ctr run`. Both show the same namespaces, the same cgroup and the same overlay mount. After that, a container is no longer magic. You will also be ready for the classic interview question, "what happens when a pod starts?"
+By the end you will stand your hand-made container next to a real one. Start the real one with `docker run` or `ctr run`, and look at both side by side. They show the same namespaces, the same cgroup and the same overlay mount. Once you have seen that with your own eyes, a container stops being magic. You will also be ready for the classic interview question, "what happens when a pod starts?"
 
-Here is what you will build. You will create a root filesystem and give a process its own PID, mount, UTS, IPC and network namespaces. You will switch its root with `pivot_root` and stack layers with OverlayFS. A cgroup will confine its CPU, memory and PIDs. A veth pair, a bridge and NAT will wire its network. Then you will drop privileges, and break and fix the setup on purpose.
+Here is the shape of the build. First you create a root filesystem. Then you give a process its own PID, mount, UTS, IPC and network namespaces. You switch its root with `pivot_root` and stack layers with OverlayFS. A cgroup confines its CPU, memory and PIDs. A veth pair, a bridge and NAT wire its network. At the end you drop privileges, then break and fix the setup on purpose.
 
 ## Safety
 
-Use a throwaway VM, one you can rebuild at any time. Everything in this lab needs root, and it changes mounts, networking and cgroups. A single mistake can cut your own SSH session, so keep a second session open as a lifeline. Never run this on a GPU production node. Do all your work under `/lab`, and then cleanup is one command at the end.
+Start on a throwaway VM, one you can rebuild at any time without losing anything you care about. Everything in this lab needs root, and it changes mounts, networking and cgroups on the machine under your hands. A single mistake can cut your own SSH session, so keep a second session open as a lifeline. Never run this on a GPU production node. Do all your work under `/lab`, and cleanup becomes one command at the end.
 
 ## Architecture of what we build
+
+The picture below is the machine you are about to assemble, all in one view. Read it from the host box outward, and notice that each box is something you will create by hand in the steps that follow.
 
 ```mermaid
 flowchart TB
@@ -54,13 +56,15 @@ flowchart TB
 
 ## Step 0. Preconditions and local Python verification
 
-Before you touch a VM, run the self-checking Python lab on your laptop. It is quick, and it shows you what the later steps must get right. The lab lives in `code/part01/build_container_hand_lab.py`. It checks the 6-stage `enter.sh` assembly order. It checks the `pivot_root(2)` preconditions, which fail with `EINVAL` when `/` is shared or `merged` is not a mount point. It checks the 4 minimal `/dev` character device nodes (`null` `1:3`, `zero` `1:5`, `urandom` `1:9`, `tty` `5:0`). It also checks the `lab-ctr` cgroup limits (`0.5` CPU, `128 MiB`, `64` PIDs) and the `veth`, `br-lab` and `MASQUERADE` connectivity.
+Before you touch a VM, run the self-checking Python lab on your laptop. It takes a moment, and it shows you what the later steps must get right. The lab lives in `code/part01/build_container_hand_lab.py`, and it walks the ground you are about to cover.
+
+The script checks the 6-stage `enter.sh` assembly order. It checks the `pivot_root(2)` preconditions, which fail with `EINVAL` when `/` is shared or `merged` is not a mount point. It checks the 4 minimal `/dev` character device nodes: `null` `1:3`, `zero` `1:5`, `urandom` `1:9` and `tty` `5:0`. It also checks the `lab-ctr` cgroup limits of `0.5` CPU, `128 MiB` and `64` PIDs, along with the `veth`, `br-lab` and `MASQUERADE` connectivity.
 
 ```bash
 python3 code/part01/build_container_hand_lab.py
 ```
 
-Then move to your disposable Ubuntu 22.04+ VM. Every interactive command from here on is marked `untested here`, because its output was not captured on live hardware. Run each one yourself, and record what you really see.
+Then move to your disposable Ubuntu 22.04+ VM. Every interactive command from here on carries the marker `untested here`, because its output was not captured on live hardware. Run each one yourself, and write down what you really see. Your own output is the record that matters.
 
 ```bash
 sudo -i                                 # (untested here)
@@ -71,7 +75,7 @@ mkdir -p /lab && cd /lab                # (untested here)
 
 ## Step 1. Root filesystem
 
-Every container needs a filesystem to live in. The smallest useful one is only a few megabytes, and almost any minimal tree will do. Pick whichever of the two options suits you.
+Every container needs a filesystem to live in, the way a house needs a floor. The smallest useful one is only a few megabytes, and almost any minimal tree will do. Pick whichever of the two options suits you.
 
 ```bash
 # Option A: Alpine mini root filesystem (check the current release URL and checksum first)
@@ -83,21 +87,21 @@ tar -xzf alpine-minirootfs-*.tar.gz && cd ..
 docker create --name seed alpine:3.20 && docker export seed | tar -x -C base && docker rm seed
 ```
 
-Verify checksums before you trust any download, and confirm the URL and version first. When the tree is in place, `ls base` should show `bin etc lib usr ...`.
+Verify checksums before you trust any download, and confirm the URL and version first. When the tree is in place, `ls base` should show `bin etc lib usr ...`. That short list is your first sign that you have a real root filesystem and not an empty directory.
 
 ## Step 2. Plain chroot, and why it is not enough
 
-The oldest trick for isolation is `chroot`. Try it first, because it shows you exactly what is still missing.
+The oldest trick for isolation is `chroot`. It changes what one process sees as `/`, so the process looks around and finds a smaller world. Try it first, because it shows you exactly what is still missing.
 
 ```bash
 chroot base /bin/sh -c 'ls /; cat /etc/os-release; ps aux | head -3'
 ```
 
-After the `chroot`, you see a different filesystem. Everything else still belongs to the host, though: the hostname, the network and the processes. `ps` fails because `/proc` is absent, and if you mount `/proc`, you see the whole host. So write down everything that is still shared. Remember, too, that a root process can escape a `chroot`. Treat `chroot` as a convenience, not as isolation.
+After the `chroot`, you look around and see a different filesystem. Everything else still belongs to the host, though: the hostname, the network and the processes. `ps` fails because `/proc` is absent, and if you mount `/proc`, you see the whole host. So write down everything that is still shared. Remember, too, that a root process can escape a `chroot`. Treat `chroot` as a convenience, not as isolation. A different `/` is not the same thing as a container.
 
 ## Step 3. Namespaces with unshare
 
-This one command starts a shell inside its own PID, mount, UTS, IPC and network namespaces. Run it, then look around.
+Now you give the shell a private view of the machine. This one command starts a shell inside its own PID, mount, UTS, IPC and network namespaces. A namespace is a walled-off view of one kind of system resource, and each flag below asks the kernel for one more wall. Run it, then look around.
 
 ```bash
 unshare --pid --fork --mount --uts --ipc --net --mount-proc=/lab/base/proc \
@@ -110,11 +114,11 @@ mount | head
 exit
 ```
 
-Now the container starts to feel real. Before you leave this step, write down answers to four questions. What PID does the shell have? Which network interfaces exist? Can the host see the hostname change? And why did `--mount-proc` need a path under the new root?
+Now the container starts to feel real. The shell has its own process space, its own hostname and its own interfaces. Before you leave this step, write down answers to four questions. What PID does the shell have? Which network interfaces exist? Can the host see the hostname change? And why did `--mount-proc` need a path under the new root?
 
 ## Step 4. Layers with OverlayFS and a proper root switch
 
-Two problems remain. First, every container would write into the same base directory. Second, `chroot` can be escaped. OverlayFS solves the first problem. It gives you a read-only base with a private writable layer on top, so the base stays clean. `pivot_root` solves the second problem, because it swaps the root and lets you detach the old one completely.
+Two problems remain after Step 3. First, every container would write into the same base directory, so one container's changes would show up in the next. Second, `chroot` can be escaped. OverlayFS solves the first problem. It gives you a read-only base with a private writable layer on top, so the base stays clean. `pivot_root` solves the second problem, because it swaps the root and lets you detach the old one completely.
 
 ```bash
 mkdir -p upper work merged
@@ -144,11 +148,11 @@ chmod +x enter.sh
 unshare --pid --fork --mount --uts --ipc --net /lab/enter.sh
 ```
 
-Now poke around inside. Run `cat /proc/1/cmdline`, `mount | head`, `touch /newfile` and `rm /etc/hostname`. Then exit and inspect from the host, where you can run `ls /lab/upper` and `ls -l /lab/upper/etc` to find the whiteout character device. Confirm that `/lab/base` is untouched. Finally, run two containers with separate `upper` and `work` directories on the same `base` to see how the layers are shared. When a container's files look wrong, check the upper layer first, because that is where its writes land.
+Now poke around inside. Run `cat /proc/1/cmdline`, `mount | head`, `touch /newfile` and `rm /etc/hostname`. Then exit and inspect the result from the host, where you can run `ls /lab/upper` and `ls -l /lab/upper/etc` to find the whiteout character device. A whiteout is a small marker that hides a file from the read-only base, so a deleted file looks gone inside the container while the base stays as it was. Confirm that `/lab/base` is untouched. Finally, run two containers with separate `upper` and `work` directories on the same `base` to see how the layers are shared. When a container's files look wrong, check the upper layer first, because that is where its writes land.
 
 ## Step 5. Put it in a cgroup (CPU, memory, PIDs)
 
-So far the container can see very little, but it can still use up the whole machine. Picture a noisy neighbour that runs a fork bomb on a shared GPU node. A cgroup puts a ceiling on that use. The order matters. Create the group first, then move the starting shell into it. Every child then inherits the membership.
+So far the container can see very little, but it can still use up the whole machine. A cgroup is the kernel's tool for putting a ceiling on that use, and you want one in place before a job lands on a shared node. Picture a noisy neighbour that runs a fork bomb on a shared GPU node. Without a limit, it takes the machine down for everyone. The order matters. Create the group first, then move the starting shell into it. Every child then inherits the membership.
 
 ```bash
 echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control
@@ -159,7 +163,7 @@ echo 64              > /sys/fs/cgroup/lab-ctr/pids.max
 sh -c 'echo $$ > /sys/fs/cgroup/lab-ctr/cgroup.procs; exec unshare --pid --fork --mount --uts --ipc --net /lab/enter.sh'
 ```
 
-Next, you run the tests inside the container. If a tool is missing, you can install `stress-ng` with `apk add stress-ng`, but that needs the networking from Step 6. Shell loops work too.
+Next, run the tests inside the container, and keep one eye on the host. If a tool is missing, you can install `stress-ng` with `apk add stress-ng`, but that needs the networking from Step 6. Shell loops work too.
 
 ```bash
 while :; do :; done &            # see ~50% CPU on the host with top
@@ -168,11 +172,11 @@ cat /proc/self/cgroup            # with no cgroup namespace this shows the full 
 head -c 300M /dev/zero | tail -c 1   # memory pressure: watch OOM kill
 ```
 
-Back on the host, you can read `cat /sys/fs/cgroup/lab-ctr/{cpu.stat,memory.events,pids.current}` and check `dmesg | tail`. Then add `--cgroup` to `unshare` and watch how `/proc/self/cgroup` changes.
+Back on the host, you can read `cat /sys/fs/cgroup/lab-ctr/{cpu.stat,memory.events,pids.current}` and check `dmesg | tail`. Then add `--cgroup` to `unshare` and watch how `/proc/self/cgroup` changes. The first run shows the full host path, and the second shows a short one.
 
 ## Step 6. Networking
 
-A container with no network is a sealed box. Set up the host side once, with a bridge and NAT. Then give each container one end of a veth pair. Because `unshare --net` creates the container's network namespace, you reach that namespace through the child's PID.
+A container with no network is a sealed box. It can compute, and that is all. Set up the host side once, with a bridge and NAT. Then give each container one end of a veth pair. A veth pair is two virtual cable ends: one stays on the host, and the other appears inside the container. Because `unshare --net` creates the container's network namespace, you reach that namespace through the child's PID.
 
 ```bash
 ip link add br-lab type bridge && ip addr add 10.77.0.1/24 dev br-lab && ip link set br-lab up
@@ -199,7 +203,7 @@ Two details need your attention. The `ctr.pid` value may be the PID inside the n
 
 ## Step 7. Reduce privilege
 
-Your container still runs as full root inside its namespaces. That is far more power than any real workload needs. Real runtimes drop most capabilities and filter system calls. Try the same ideas yourself with the commands below.
+Your container still runs as full root inside its namespaces. That is far more power than any real workload needs, and it is the gap between a lab toy and something you would trust on a shared node. Real runtimes drop most capabilities and filter system calls. A capability is a single privileged power, such as the right to mount a filesystem or load a kernel module, and it can be taken away on its own. Try the same ideas yourself with the commands below.
 
 ```bash
 capsh --print                                  # current bounding set (install libcap2-bin)
@@ -208,9 +212,11 @@ setpriv --bounding-set=-sys_admin,-net_admin --no-new-privs sh          # altern
 unshare --user --map-root-user ...             # run the whole thing rootless (mounts/overlay need kernel support)
 ```
 
-Here is a concept check. Chapter 1.21 covers each item in full. `no_new_privs`, capability sets, seccomp filters and LSM profiles are the layers Docker adds on top of what you built.
+Here is a concept check before you move on. Chapter 1.21 covers each item in full. `no_new_privs`, capability sets, seccomp filters and LSM profiles are the layers Docker adds on top of what you built.
 
 ## Step 8. Compare with a real container
+
+Time to hold your work up against the real thing. Start a real container with the same limits you set by hand, and then look at the kernel's own records for it.
 
 ```bash
 docker run -d --name real --cpus 0.5 --memory 128m --pids-limit 64 alpine:3.20 sleep 3600
@@ -222,11 +228,11 @@ ip -br link | grep veth ; bridge link
 docker rm -f real
 ```
 
-Now comes the payoff. Use the output above to line the real container up against yours. Make a table with one row for each property. The rows are namespaces, cgroup limits, the rootfs mount, the veth and bridge setup, capabilities from `grep Cap /proc/$P/status`, and seccomp from `grep Seccomp /proc/$P/status`. In each row, record what your hand-built container has and what Docker adds. The typical gaps you will find are masked `/proc` paths, a read-only `/sys`, the default seccomp profile, the capability drop list, a user-defined bridge with DNS, and port publishing rules.
+Now comes the payoff. Use the output above to line the real container up against yours. Make a table with one row for each property. The rows are namespaces, cgroup limits, the rootfs mount, the veth and bridge setup, capabilities from `grep Cap /proc/$P/status`, and seccomp from `grep Seccomp /proc/$P/status`. In each row, record what your hand-built container has and what Docker adds. The typical gaps you will find are masked `/proc` paths, a read-only `/sys`, the default seccomp profile, the capability drop list, a user-defined bridge with DNS, and port publishing rules. Each gap is a feature someone had to build, and now you know where it lives.
 
 ## Step 9. Break it on purpose
 
-Suppose an on-call page reports that a container has eaten the machine's memory. Breaking the setup on purpose teaches you more than a clean run does. Try each of these seven experiments in turn, and note what changes.
+Suppose an on-call page reports that a container has eaten the machine's memory. That page is easier to answer once you have broken the same setup yourself in daylight, with nobody waiting on you. Breaking the setup on purpose teaches you more than a clean run does. Try each of these seven experiments in turn, and note what changes.
 
 1. Remove the `mount --make-rprivate /` line from `enter.sh`, mount something inside, and look for a leak on the host with `findmnt -o TARGET,PROPAGATION`.
 2. Make PID 1 a shell script without `exec`, then send `SIGTERM` from the host (host PID) and from inside.
@@ -236,11 +242,11 @@ Suppose an on-call page reports that a container has eaten the machine's memory.
 6. Create a file in `/lab/merged` while the container runs, and see when the container sees it.
 7. Delete the cgroup directory while processes remain, and note which error you get.
 
-When an experiment surprises you, find the layer that caused it before you change anything.
+When an experiment surprises you, find the layer that caused it before you change anything. That habit is the real lesson of this step, and it is the one you will use at 3 a.m.
 
 ## Step 10. Clean up
 
-When you finish, clean up in one pass. These commands stop the sleeping process, unmount the overlay, remove the network and cgroup, and delete `/lab`.
+When you finish, clean up in one pass. These commands stop the sleeping process, unmount the overlay, remove the network and cgroup, and delete `/lab`. Run them even if a step failed, so your next attempt starts from a known state.
 
 ```bash
 pkill -f 'sleep 3600' ; umount -l /lab/merged 2>/dev/null
@@ -251,7 +257,7 @@ rmdir /sys/fs/cgroup/lab-ctr 2>/dev/null ; rm -rf /lab
 
 ## Troubleshooting
 
-When something breaks, you can look up the symptom in the first column. Then you will find the likely cause and the fix beside it.
+When something breaks, start with the first column and find your symptom. The likely cause and the fix sit beside it in the same row. Read the cause before you type the fix, because the cause is the part you will meet again on another machine.
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -266,7 +272,7 @@ When something breaks, you can look up the symptom in the first column. Then you
 
 ## Exercises
 
-Answer these on paper before you rerun any step. If you get stuck, go back to the step each question names.
+Answer these on paper before you rerun any step. Writing an answer forces you to commit, and a wrong answer is easy to repair once it is visible. If you get stuck, go back to the step each question names.
 
 1. **`chroot` vs. `pivot_root` and `enter.sh` Preconditions:** (a) Why is `chroot base /bin/sh` not a container? Which host resources stay visible or escapable? (b) In Step 4's `enter.sh`, why must you run `mount --make-rprivate /` and `mount --bind /lab/merged /lab/merged` before `pivot_root . oldroot`? Check your answer with `validate_pivot_root_preconditions()` in `code/part01/build_container_hand.py`.
 2. **Minimal `/dev` Character Nodes and Read-Only `/sys`:** For each of the four device nodes created in `enter.sh` (`dev/null`, `dev/zero`, `dev/urandom`, `dev/tty`), state the type (`b` or `c`), the major number, the minor number and the file mode. Then explain why `/dev` is mounted as a `64m` `tmpfs`, and why `/sys` is mounted read-only (`-o ro`).

@@ -21,15 +21,17 @@ lab_venue: "GCP VM"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job that fails overnight. The log is quiet, the script reports success, and nobody can say why. Often the cause is a small shell mistake. You will spend much of your career typing commands into terminals on machines you did not build: a GPU node over SSH, a Slurm login node, the shell inside a container, or a BMC console. Every cluster job script, every Dockerfile `RUN` line, every Ansible `command:` task, every systemd `ExecStart=` and every CI step is a shell command line in disguise.
+Picture a training job that fails overnight. The log is quiet, the script reports success, and nobody can say why. You look again in the morning, and the cause turns out to be a small shell mistake made weeks earlier by someone in a hurry. This happens more often than you would guess.
 
-People who have used a shell for years but never learned *how a line is actually processed* keep getting bitten by the same things. A space in a filename breaks a copy, and an unquoted variable splits into pieces. Errors vanish into the wrong stream, a pipeline reports success while its first stage failed, and an environment variable exists in one shell but disappears in another.
+You will spend much of your career typing commands into terminals on machines you did not build. Those machines might be a GPU node you reach over SSH, a Slurm login node, the shell inside a container, or a BMC console next to a rack. The typing never really stops. Every cluster job script is a shell command line in disguise. So is every Dockerfile `RUN` line, every Ansible `command:` task, every systemd `ExecStart=`, and every step in a CI pipeline.
 
-The chapter teaches the rules once, from the beginning. After that, these problems stop catching you, and you can read other people's scripts with confidence.
+People who have used a shell for years, but never learned *how a line is actually processed*, keep getting bitten by the same handful of things. A space in a filename breaks a copy, and an unquoted variable splits into pieces. Errors vanish into the wrong stream. A pipeline reports success while its first stage failed. An environment variable exists in one shell and disappears in another.
+
+This chapter teaches the rules once, from the beginning. After that, these problems stop catching you, and you can read other people's scripts with confidence.
 
 ## Prerequisites and outcomes
 
-Chapter 1.1 gives you the model of processes, system calls and the kernel, so read it first if you have not. When you finish this chapter, you will be able to.
+Chapter 1.1 gives you the model of processes, system calls and the kernel, so read it first if you have not. When you finish this chapter, you will be able to do the following.
 
 - Explain the difference between a terminal, a shell, and a command, and trace what the shell does between you pressing Enter and a program starting.
 - Use a core set of commands to look around, create, copy, move, and delete files safely.
@@ -42,7 +44,7 @@ Chapter 1.1 gives you the model of processes, system calls and the kernel, so re
 
 ## 1. Terminal, shell, command: three different things
 
-Most people blur three things together when they type a line. Keep them apart, and half of the confusion goes away.
+Here is a confusion you can watch on any team. Someone says "the terminal is broken" when the remote machine is fine, then spends an hour in the wrong place. Most people blur three things together when they type a line. Keep them apart, and half of the confusion goes away.
 
 - A **terminal** (terminal emulator) is the window where text appears and where your keystrokes go. Today it is a program such as Terminal, iTerm, GNOME Terminal, or the SSH client in your window. Historically it was a physical keyboard-and-screen device. That is why the Linux kernel still has "TTY" devices, short for teletype.
 - A **shell** is a program that runs *inside* the terminal. It prints a **prompt**, reads a line you type, interprets it, and runs the programs you ask for. The shell is just a user-space program like any other, and it is not part of the kernel. Common shells include `sh` (the original Bourne shell, and its small modern relatives such as dash), **bash** (the "Bourne-again shell", the default on most Linux distributions), zsh (the default on macOS), tcsh/csh, and fish. Scripts and cluster tooling are overwhelmingly written for bash or plain `sh`. If you want a whole book on bash beyond this chapter and chapter 1.9, Jason Edelman, Scott S. Lowe, and Matt Oswalt recommend *Learning the bash Shell*, 3rd edition, by Cameron Newham and Bill Rosenblatt.
@@ -69,7 +71,7 @@ A leading `$` marks a command to type as a normal user. A leading `#` marks one 
 
 ## 2. Anatomy of a command line
 
-When you type a line, the shell first splits it into **words** at the spaces. The first word is the **command**, and the rest are its **arguments**. An argument that starts with `-` is usually an **option**, also called a flag or switch. Options change what the program does.
+Say you copy a command from a colleague's note and it does something slightly different from what the note described. The answer often sits in the shape of the line itself. When you type a line, the shell first splits it into **words** at the spaces. The first word is the **command**, and the rest are its **arguments**. An argument that starts with `-` is usually an **option**, also called a flag or switch. Options change what the program does.
 
 ```bash
 ls -l -a /var/log
@@ -80,7 +82,7 @@ ls -l -a /var/log
 #  command
 ```
 
-Most Linux tools follow a few conventions, and you can rely on them.
+Most Linux tools follow a few conventions, and you can rely on them once you have seen them once.
 
 - Short options are one dash and one letter (`-l`), and several can be combined (`-la` equals `-l -a`).
 - Long options are two dashes and a word (`--all`, `--human-readable`) and are easier to read in scripts.
@@ -90,7 +92,7 @@ Most Linux tools follow a few conventions, and you can rely on them.
 
 ### What the shell does with a line
 
-Between the moment you press Enter and the moment a program starts, the shell does a lot of work. This order is the most useful thing in this chapter, because once you know it you can predict what a line will do.
+Between the moment you press Enter and the moment a program starts, the shell does a lot of work. It reads, splits, expands, rewires, and only then starts anything. This order is the most useful thing in this chapter, because once you know it you can predict what a line will do before you run it.
 
 ```mermaid
 flowchart TB
@@ -106,7 +108,7 @@ The sequence has a consequence that surprises many people. **The program never s
 
 ### How the shell finds a program: `PATH`
 
-When you type a bare word such as `python3`, the shell first checks for an alias, a function, or a builtin, in that order. If none of them matches, it searches the directories in the environment variable **`PATH`** from left to right and takes the first match. These commands let you inspect that lookup.
+Suppose two versions of `python3` live on the machine and the wrong one keeps starting. That is not a Python problem. When you type a bare word such as `python3`, the shell first checks for an alias, a function, or a builtin, in that order. If none of them matches, it searches the directories in the environment variable **`PATH`** from left to right and takes the first match. These commands let you inspect that lookup.
 
 ```bash
 echo "$PATH" | tr ':' '\n'      # show the search directories one per line
@@ -119,7 +121,7 @@ If you run the wrong version of a tool, look at `PATH` order or an alias first. 
 
 ## 3. A survival kit of commands
 
-Learn these commands first, and learn them well. Each one comes with its reason. The detailed filesystem ideas, such as paths, inodes and links, are in chapter 1.3. The text-processing tools are in chapter 1.4.
+You do not need a hundred commands to survive your first week on a cluster. You need about a dozen, learned well enough that you no longer stop to think about them. Learn these first. Each one in the table comes with its reason, because a command memorised without a reason is a command you will misuse later. The detailed filesystem ideas, such as paths, inodes and links, are in chapter 1.3. The text-processing tools are in chapter 1.4.
 
 | Command | What it does | The options you will really use |
 |---|---|---|
@@ -141,19 +143,19 @@ Learn these commands first, and learn them well. Each one comes with its reason.
 
 ### The forms of the basic commands
 
-The one-line descriptions in the table hide the forms you will use every day.
+The one-line descriptions in the table hide the forms you will use every day. Read the next few paragraphs slowly, because they are where a copy goes right or quietly goes wrong.
 
-- **`cp`**: `cp file1 file2` copies a file to a new name, and `cp file dir` copies it into a directory and keeps its name. With several sources, as in `cp file1 file2 file3 dir`, the **last argument is the destination**, and it must be a directory. Use `cp -r dir1 dir2` to copy an entire directory tree. `cp -p` keeps the original file's attributes, such as permissions and timestamps. Without it, the copy gets the current user's defaults and the current time. Use `cp -i` to ask before overwriting an existing destination. Similarly, `mkdir -p a/b/c` creates parent directories as needed and stays quiet if they already exist, while `mkdir -m 750 dir` sets the permission mode at creation. Typing `cat > notes.txt` is a quick way to create a file from the keyboard (end with Ctrl-D). `cat a b c > all` merges three files into one. The originals are kept and the target is overwritten, so use `>>` if you want to append instead. Text-mode file managers such as **Midnight Commander** (`mc`, with its editor `mcedit`) perform many of these operations without a graphical desktop, which makes them a gentle start for newcomers.
-- **`mv`**: what it does depends on the arguments. `mv file1 file2` renames `file1` to `file2`, and it silently replaces an existing `file2`. Pass `-i` to be asked first, or `-n` to refuse. `mv dir1 dir2` renames the directory if `dir2` does not exist. If `dir2` already exists, the command moves `dir1` *into* `dir2` instead. `mv file dir` moves the file into the directory under the same name. `mv file1 dir/file2` moves and renames in one step, and `mv file* ../dir2` moves a whole list into a directory. In every case the source disappears from its old name or location. Inside one filesystem, a move is only a rename of a directory entry, so it happens instantly, as chapter 1.3 explains. Useful options include `-i` for prompts and `-f` to force the move.
+- **`cp`**: `cp file1 file2` copies a file to a new name, and `cp file dir` copies it into a directory and keeps its name. With several sources, as in `cp file1 file2 file3 dir`, the **last argument is the destination**, and it must be a directory. Get that order wrong and the copy lands somewhere you did not expect. Use `cp -r dir1 dir2` to copy an entire directory tree. `cp -p` keeps the original file's attributes, such as permissions and timestamps. Without it, the copy gets the current user's defaults and the current time. Use `cp -i` to ask before overwriting an existing destination. The same thinking shapes `mkdir`. `mkdir -p a/b/c` creates parent directories as needed and stays quiet if they already exist, while `mkdir -m 750 dir` sets the permission mode at creation. Typing `cat > notes.txt` is a quick way to create a file from the keyboard, and you end the text with Ctrl-D. `cat a b c > all` merges three files into one. The originals are kept and the target is overwritten, so use `>>` if you want to append instead. Text-mode file managers such as **Midnight Commander** (`mc`, with its editor `mcedit`) perform many of these operations without a graphical desktop, which makes them a gentle start for newcomers.
+- **`mv`**: what it does depends on the arguments, and this is the command that quietly surprises people. `mv file1 file2` renames `file1` to `file2`, and it silently replaces an existing `file2`. Pass `-i` to be asked first, or `-n` to refuse. `mv dir1 dir2` renames the directory if `dir2` does not exist. If `dir2` already exists, the command moves `dir1` *into* `dir2` instead. `mv file dir` moves the file into the directory under the same name. `mv file1 dir/file2` moves and renames in one step, and `mv file* ../dir2` moves a whole list into a directory. In every case the source disappears from its old name or location. Inside one filesystem, a move is only a rename of a directory entry, so it happens instantly, as chapter 1.3 explains. Useful options include `-i` for prompts and `-f` to force the move.
 - **`touch`**: creates an empty file if none exists. If the file already exists, `touch` leaves the contents alone and **updates the modification time**. That is how you test build tools that recompile when files change.
 - **`rm`**: deletes files, and it refuses to delete directories unless you pass `-r`. **`rmdir`** removes only *empty* directories and refuses otherwise. By contrast, `rm -r dir` removes a directory and everything inside it. Few commands can do more serious damage, especially as root. Never combine `-r` with a bare `*`, and check the line twice before you press Enter.
-- **`ls`**: `ls -F` appends a character that marks the file type. A slash means a directory, a star means an executable, and an at sign means a symlink. `ls -l` prints a long listing. Its columns show the file type and permissions, the number of hard links, the owner, the group, the byte size, the modification timestamp, and the filename.
+- **`ls`**: `ls -F` appends a character that marks the file type. A slash means a directory, a star means an executable, and an at sign means a symlink. `ls -l` prints a long listing. Its columns show the file type and permissions, the number of hard links, the owner, the group, the byte size, the modification timestamp, and the filename. Learn to read those columns once, and every later chapter becomes easier.
 - **`cd`** is a **builtin**, not a separate program, and the reason is instructive. Every process has its own current working directory, and a child process cannot change its parent's working directory. If `cd` were an external program, it would change *its own* directory and then exit. Your shell would stay right where it started. The same reasoning applies to any command that must change the state of the shell itself, such as `export`, `alias`, `source`, `ulimit`, and `umask`. Those commands cannot simply go in a script and run as a child process. A normal script runs in a child shell, so its directory or variable changes vanish when the child exits. Run `cd` with no argument to return to your home directory. Run `cd -` to toggle between your current directory and your previous one. Say you jump from `/usr/local/bin` to `/media/cdrom`. Typing `cd -` then takes you straight back to `/usr/local/bin`.
-- **Paths:** A path component of two dots (`..`) means the parent of a directory. If you are working in `/usr/lib`, the relative path `..` refers to `/usr`, and `../bin` refers to `/usr/bin`. If you are in `/usr/local` and want to move to `/usr/share`, run `cd ../share`. Run `cd ../..` to climb two levels up to `/`. One dot (`.`) refers to the current directory. For example, `./prog` runs an executable file named `prog` in the current working directory. A path that starts with a forward slash (`/`) is absolute, anchored at the single root directory. Any path without a leading slash is relative to your current working directory. Typing `bin` inside `/home/admin` refers to `/home/admin/bin`, whereas `/bin` refers to the system directory at the root.
+- **Paths:** A path component of two dots (`..`) means the parent of a directory. If you are working in `/usr/lib`, the relative path `..` refers to `/usr`, and `../bin` refers to `/usr/bin`. If you are in `/usr/local` and want to move to `/usr/share`, run `cd ../share`. Run `cd ../..` to climb two levels up to `/`. One dot (`.`) refers to the current directory. For example, `./prog` runs an executable file named `prog` in the current working directory. A path that starts with a forward slash (`/`) is absolute, anchored at the single root directory. Any path without a leading slash is relative to your current working directory. Typing `bin` inside `/home/admin` refers to `/home/admin/bin`, whereas `/bin` refers to the system directory at the root. The leading slash is the whole difference, and it decides whether you are working inside your home directory or at the root of the system.
 
 **`cat` as a window onto standard input.** `cat file1 file2` concatenates files to the screen, which is where its name comes from. Run `cat` with **no arguments** and it seems to hang. It is waiting on standard input, which the kernel connects to your terminal. Type some lines and it echoes each one back. Press **Ctrl-D** on an empty line to send end-of-file (`EOF`), and `cat` exits cleanly. Ctrl-C instead kills the program with an interrupt signal. This small experiment shows the whole idea of standard streams, which section 6 covers. A filter command given no file arguments reads from standard input.
 
-Type this first session line by line on a Linux VM. Each line is marked `untested here`, so check the output yourself.
+Type this first session line by line on a Linux VM. Every line stays inside the scratch directory you create, so nothing outside it changes, and the point is to watch each result appear. These lines were not run on live hardware, so check the output yourself.
 
 ```bash
 pwd                                  # (untested here) where am I?
@@ -171,17 +173,17 @@ rm notes/old.txt                     # (untested here) gone; there is no undo
 
 ### The one habit that prevents most disasters
 
-`rm` does not move anything to a trash folder, so a deleted file is gone. `rm -r` descends into directories, and `rm -f` suppresses all warnings. The combination `rm -rf` has destroyed production data many times. It usually happened when the command was pointed at the wrong path, or at a path built from an empty variable. Build these three habits.
+`rm` does not move anything to a trash folder, so a deleted file is gone. `rm -r` descends into directories, and `rm -f` suppresses all warnings. The combination `rm -rf` has destroyed production data many times. It usually happened when the command was pointed at the wrong path, or at a path built from an empty variable. The person who typed it was not careless; they were moving fast and trusted the line. Build three habits instead.
 
 1. Run `ls` with the exact same pattern first. If it lists what you expect, replace `ls` with `rm`.
 2. Never put an unquoted variable in a destructive command. Use `rm -rf -- "${DIR:?DIR is empty}/build"` so the `:?` operator makes the shell abort with an error if `DIR` is empty or unset.
 3. Prefer `rm -i` in interactive sessions, and keep `-f` out of your muscle memory.
 
-Make the `ls` check a reflex before any `rm`.
+Make the `ls` check a reflex before any `rm`, the way you look before crossing a road.
 
 ## 4. Getting help without leaving the terminal
 
-Linux ships with a lot of built-in documentation, so you do not need to memorise every option. What matters is finding the answer fast. For most basic commands, the manual pages, called *man pages*, tell you what you need. To read the manual page for `ls`, run `man` like this.
+You cannot memorise every option of every command, and nobody expects you to. Linux ships with a lot of built-in documentation, so what matters is finding the answer fast. For most basic commands, the manual pages, called *man pages*, tell you what you need. To read the manual page for `ls`, run `man` like this.
 
 ```bash
 man ls                         # (untested here) read the manual page for ls
@@ -205,15 +207,15 @@ Manual pages are grouped into numbered **sections**. You will see names like `ls
 | 7 | overviews, conventions and encodings | `man 7 signal`, `man 7 cgroups` |
 | 8 | system administration commands | `man 8 mount` |
 
-When one name exists in several sections, pass the section number yourself. `man 5 passwd` opens the format of the `/etc/passwd` file. `man 1 passwd` opens the password-changing command.
+When one name exists in several sections, pass the section number yourself. `man 5 passwd` opens the format of the `/etc/passwd` file. `man 1 passwd` opens the password-changing command. Two pages, one name, and completely different subjects.
 
-Manual pages are **reference material, not tutorials**. They list options systematically, often in alphabetical order, so they do not tell you which options matter first. Expect to scan. As an administrator you will use sections 1, 5, 7 and 8 most. Section 3 is for C programmers. Section 2 becomes readable once you understand system calls from chapter 1.1. When you know what a tool should do but not its name, run `man -k sort` or `apropos sort`. These search manual page names and one-line descriptions. The output shows the page name, the section number and a summary, such as `sort (1) - sort lines of text files` next to `qsort (3)` for the C library function.
+Manual pages are **reference material, not tutorials**. They list options systematically, often in alphabetical order, so they do not tell you which options matter first. Expect to scan, and do not read one like a chapter of a book. As an administrator you will use sections 1, 5, 7 and 8 most. Section 3 is for C programmers. Section 2 becomes readable once you understand system calls from chapter 1.1. When you know what a tool should do but not its name, run `man -k sort` or `apropos sort`. These search manual page names and one-line descriptions. The output shows the page name, the section number and a summary, such as `sort (1) - sort lines of text files` next to `qsort (3)` for the C library function.
 
 The GNU project publishes many manuals in **info** format. Run `info coreutils`, navigate it with its own keys, or pipe it through `less`. Info pages often hold more detail than the man page. Some packages also install README files and examples under `/usr/share/doc`, with no man or info page at all. For a fast option check, `command --help` or `command -h` prints a short usage summary. Inside `man`, press `/word` to search forward, `n` to jump to the next match, and `q` to quit. On a cluster, **the manual of the exact version installed on the machine is authoritative**. Trust `man slurm.conf` on your login node over any blog post.
 
 ### Reading a man page without getting lost
 
-A common first reaction is to type `man ls`, see a wall of text, and give up. The problem is expectation. A manual page is a reference, not a lesson. It lists every option, often in alphabetical order, and it does not say which options matter most. Scan for the option you need instead of reading from the top.
+A common first reaction is to type `man ls`, see a wall of text, and give up. The problem is expectation, not difficulty. A manual page is a reference, not a lesson. It lists every option, often in alphabetical order, and it does not say which options matter most. Scan for the option you need instead of reading from the top.
 
 Help output can be noisy too. Try `command --help` or `command -h` first, because the flag varies from command to command. Some tools print a deluge of text, and `ls --help` is a good example, so pipe long output through `less` and search inside it with `/`.
 
@@ -236,7 +238,7 @@ Each line gives the page name, its section number and a short description. Read 
 
 ## 5. Expansion and quoting: the rules that explain "weird" behaviour
 
-Before it runs a command, the shell expands several kinds of text. These are the ones you will use every day.
+Here is a line that looks harmless and does something strange: `cp $src /backup`. It works on your laptop and fails on the cluster, because the file name has a space in it. Before it runs a command, the shell expands several kinds of text, and this section is about those expansions. These are the ones you will use every day.
 
 | Kind | Example | Becomes |
 |---|---|---|
@@ -247,7 +249,11 @@ Before it runs a command, the shell expands several kinds of text. These are the
 | Brace expansion (bash and zsh) | `file{1..3}.txt`, `{a,b}` | `file1.txt file2.txt file3.txt`, `a b` |
 | Globbing (wildcards) | `*.log`, `data?`, `[abc]*` | the matching file names |
 
-**Globbing.** A glob is a wildcard pattern. `*` matches any run of characters, including none. `?` matches exactly one character. `[abc]` matches one of the listed characters, and `[0-9]` matches one character in a range. Globs match names in the filesystem. The shell expands them, and they never cross a `/`. A `*` does not match hidden files, which start with a dot. When nothing matches, bash passes the pattern through unchanged. So `ls *.xyz` tries to list a file literally named `*.xyz`. zsh stops instead with "no matches found". That difference trips up people who move scripts between a Mac and a Linux server.
+**Globbing.** A glob is a wildcard pattern, and it is the expansion that surprises beginners most. `*` matches any run of characters, including none. `?` matches exactly one character. `[abc]` matches one of the listed characters, and `[0-9]` matches one character in a range.
+
+Globs match names in the filesystem, and the shell does the matching before the program runs. Two details follow from that. They never cross a `/`, so a single `*` stays inside one directory level. And a `*` does not match hidden files, which start with a dot.
+
+When nothing matches, bash passes the pattern through unchanged. So `ls *.xyz` tries to list a file literally named `*.xyz`. zsh stops instead with "no matches found". That difference trips up people who move scripts between a Mac and a Linux server.
 
 Practise with a few patterns. `at*` matches names that start with `at`. `*at` matches names that end with `at`. `*at*` matches names that contain `at`. `b?at` matches `boat` and `brat`. **A trap for anyone coming from Windows:** `*.*` does *not* mean "all files". On Linux it matches only names that contain a dot. Use `*` for everything, because Unix names need not have an extension. To pass a literal `*` to a program, as you must with `grep` and `find` patterns, single-quote it: `echo '*'` prints a star. Remember the rule behind all of this. **The shell expands globs before running the command, and only then.** If a `*` reaches a program unexpanded, the program, not the shell, decides what it means.
 
@@ -257,7 +263,7 @@ The full set of shell patterns includes `*` for any string, `?` for any one char
 
 **Hostile or accidental file names.** Once a glob expands, a name that begins with a dash can be read as an option. A file called `-rf` can turn `rm *` into trouble. The universal remedy is the argument `--`, which means "no more options, only file names". `rm -- -f` removes a file named `-f`, while `rm -f` would read `-f` as an option. Likewise, `rm -- '-rf *.?'` removes a file whose name is full of special characters, once you quote or backslash-escape each one.
 
-**Quoting** decides which expansions happen. Three tools control it.
+**Quoting** decides which expansions happen, and it is the single most useful skill in this section. Three tools control it.
 
 | Form | Effect | Example |
 |---|---|---|
@@ -269,7 +275,7 @@ The most important rule in shell scripting is this: **double-quote your variable
 
 ### Special characters: the names to know
 
-When you talk about Linux with others, the spoken names of special characters help. Many of these characters mean something to the shell. You must quote or escape them when you want them taken literally. If you enjoy the folklore behind Unix terminology, read the *Jargon File* (`http://www.catb.org/jargon/html/`), or its printed companion, *The New Hacker's Dictionary*, edited by Eric S. Raymond.
+When you talk about Linux with others, the spoken names of special characters help. Say "pipe" out loud on a call and everyone knows which key you mean. Many of these characters mean something to the shell. You must quote or escape them when you want them taken literally. If you enjoy the folklore behind Unix terminology, read the *Jargon File* (`http://www.catb.org/jargon/html/`), or its printed companion, *The New Hacker's Dictionary*, edited by Eric S. Raymond.
 
 | Character | Names | Common uses |
 |---|---|---|
@@ -292,7 +298,7 @@ When you talk about Linux with others, the spoken names of special characters he
 
 Some utilities, such as the Perl programming language, use almost all of these special characters. Keep in mind that the names above are the American names for them. Learn the characters by what they do in a command, and the names will follow.
 
-Try this predict-then-check habit. Guess each output before you press Enter.
+Try this predict-then-check habit. Guess each output before you press Enter, then compare. The gap between the two is where the learning happens.
 
 ```bash
 file="my report.txt"
@@ -305,6 +311,8 @@ echo "$(date +%F)-run"         # command substitution inside quotes
 Before you run a line that uses `$` or `*`, predict exactly what the program will receive.
 
 ## 6. Standard streams, redirection and pipes
+
+Picture a command whose output you are logging to a file. The file fills with results, the errors still flash past on your screen, and you wonder why the log is incomplete. The reason is that the shell gives every program three separate channels, and most people only watch one of them.
 
 Every process starts with three open **file descriptors**. A file descriptor is a small integer the kernel uses to refer to an open file, pipe, terminal or socket. By convention, the first three are these.
 
@@ -323,7 +331,7 @@ flowchart LR
   PROG -->|"fd 2 stderr"| ERR["terminal, or file"]
 ```
 
-These are the redirection operators.
+These are the redirection operators. Each one tells the shell where a descriptor should point before the program starts.
 
 | Operator | Meaning | Example |
 |---|---|---|
@@ -338,7 +346,7 @@ These are the redirection operators.
 
 The table leaves out two points. First, **`>` destroys the previous contents of the target file the moment the command starts**, even if the command then fails. A typo such as `sort data.txt > data.txt` empties the file before `sort` reads it. In bash, `set -o noclobber` or `set -C` makes `>` refuse to overwrite an existing file. You can force an overwrite with `>|`, and that is a worthwhile safety net in interactive shells. Second, pipes can chain as many commands as you like, one after another. For example, `head /proc/cpuinfo | tr a-z A-Z` upper-cases the first lines of the CPU description. The `<` operator is rarely needed, because most commands accept file names directly. `head < /proc/cpuinfo` and `head /proc/cpuinfo` do the same thing. A few programs only read standard input, though.
 
-**Order matters.** The shell processes redirections from left to right. In `cmd > out.txt 2>&1`, stdout goes to the file first. Then stderr is pointed at the same place, so both end up in the file. In `cmd 2>&1 > out.txt`, stderr is pointed at the terminal first, because that is where stdout goes at that moment. Only then does stdout move to the file, so errors still appear on the screen. Memorise the first form. It is the one you want almost every time.
+**Order matters.** The shell processes redirections from left to right, and this one rule explains a family of confusing bugs. In `cmd > out.txt 2>&1`, stdout goes to the file first. Then stderr is pointed at the same place, so both end up in the file. In `cmd 2>&1 > out.txt`, stderr is pointed at the terminal first, because that is where stdout goes at that moment. Only then does stdout move to the file, so errors still appear on the screen. Memorise the first form. It is the one you want almost every time.
 
 **Pipes.** The `|` character connects the stdout of one command directly to the stdin of the next. No temporary file is needed. `ps -ef | grep slurmd | wc -l` is a complete example. The kernel keeps a small in-memory buffer between the two processes, and both run *at the same time*. This is the heart of the Unix philosophy. Many small tools each do one job, and you join them into pipelines. A pipe carries only stdout. Stderr still goes to the terminal unless you redirect it, as in `cmd1 2>&1 | cmd2`.
 
@@ -357,20 +365,20 @@ echo "hello from $(hostname)"
 EOF
 ```
 
-Quoting the delimiter (`'EOF'`) stops the shell from expanding `$` and backticks inside the text, so the file is written exactly as typed. Without quotes, `$(hostname)` would be replaced *when the file is created*.
+Quoting the delimiter (`'EOF'`) stops the shell from expanding `$` and backticks inside the text, so the file is written exactly as typed. Without quotes, `$(hostname)` would be replaced *when the file is created*. That single pair of quotes decides whether the job script records a name for later or bakes in a value forever.
 
 Before you pipe a command, decide which stream you need, and redirect the other one.
 
 ## 7. Exit status and combining commands
 
-When a process ends, it hands a small integer back to its parent. That number is the **exit status**, also called the exit code. By convention, **0 means success**, and any other value means failure. The shell stores the status of the last command in `$?`.
+Suppose a job script runs three steps, the middle one fails, and the script still reports success. The culprit is not the script's logic but the way it reads exit statuses. When a process ends, it hands a small integer back to its parent. That number is the **exit status**, also called the exit code. By convention, **0 means success**, and any other value means failure. The shell stores the status of the last command in `$?`.
 
 ```bash
 ls /tmp ; echo "status=$?"       # 0
 ls /nope ; echo "status=$?"      # non-zero (2 for GNU ls)
 ```
 
-You can chain commands based on that status.
+You can chain commands based on that status, which is how a well-written script stops at the first problem instead of pushing on through it.
 
 | Form | Runs the second command when |
 |---|---|
@@ -384,6 +392,8 @@ You can chain commands based on that status.
 A typical use is `mkdir -p build && cd build && cmake ..`. It stops at the first failure. `command || echo "failed" >&2` reports the failure on stderr instead.
 
 ### Exit codes you will meet in AI infrastructure
+
+These are not abstract numbers. Each one will greet you in a cluster log at some point, so it pays to know them before they appear.
 
 | Code | Meaning | Where you see it |
 |---|---|---|
@@ -402,7 +412,7 @@ Check the status of every critical stage, not only the final one.
 
 ## 8. Environment variables, `PATH` and startup files
 
-A shell keeps named values called **variables**. The ones marked with `export` go into the **environment**, which is a block of `NAME=value` strings. Every child process inherits it, because the kernel copies it on `execve` (chapter 1.1). That is how `PATH`, `HOME`, `LANG` and application settings travel from the shell into programs.
+Here is a mystery you will meet in your first month: a command works when you type it, then fails inside the job. The program is the same, the arguments are the same, and the environment is not. A shell keeps named values called **variables**. The ones marked with `export` go into the **environment**, which is a block of `NAME=value` strings. Every child process inherits it, because the kernel copies it on `execve` (chapter 1.1). That is how `PATH`, `HOME`, `LANG` and application settings travel from the shell into programs.
 
 ```bash
 name="alice"                    # shell variable: visible only to this shell
@@ -413,6 +423,8 @@ bash -c 'echo "[$name] [$CUDA_VISIBLE_DEVICES]"'   # child sees only the exporte
 NCCL_DEBUG=INFO python3 train.py     # set a variable for ONE command only
 ```
 
+Notice what the child sees in that block. It prints `[$name] [$CUDA_VISIBLE_DEVICES]` with the first pair empty, because a plain assignment never leaves the shell that made it.
+
 Some variables matter throughout this book. `PATH` drives command lookup. `HOME`, `USER` and `PWD` describe you and your location. `LANG` and `LC_ALL` set the locale and sorting order, and `EDITOR` picks your editor. You will also set AI-specific variables again and again: `CUDA_VISIBLE_DEVICES`, `NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `OMP_NUM_THREADS`, and `LD_LIBRARY_PATH`. Remember this rule. An environment variable set in your terminal does not exist inside a Slurm job, a systemd service, or a container, unless it is passed along explicitly. Many "works interactively, fails in the job" mysteries come down to this rule.
 
 ### Modifying `PATH` safely
@@ -422,7 +434,7 @@ export PATH="$HOME/bin:$PATH"      # prepend: your tools win
 export PATH="$PATH:/opt/tool/bin"  # append: system tools win
 ```
 
-Order is priority. Never add an empty element or `.` (the current directory) to `PATH`. Doing so lets any file in any directory you visit shadow a real command.
+Order is priority. The first directory that holds a matching name wins, so a prepend lets your tools speak first. Never add an empty element or `.` (the current directory) to `PATH`. Doing so lets any file in any directory you visit shadow a real command.
 
 Two practical points about editing `PATH`. First, the assignment has **no spaces around `=`**. Write `PATH=dir:$PATH`. With spaces, the shell tries to run a command called `PATH`. Second, a typo such as `PATH=dir:$PAHT` replaces the whole path with a nearly empty one. Then even `ls` reports "not found". Do not panic. The damage stays inside that shell, so close the window or run `exec bash` or `bash -l` for a fresh one. Permanent damage needs the same typo in a startup file. Even then, you can fix it by running commands with full paths, such as `/usr/bin/vim ~/.bashrc`.
 
@@ -442,9 +454,9 @@ When bash starts, the configuration files it reads depend on *how* the shell was
 | **interactive non-login** (a new terminal window on a desktop, or `bash` typed inside a session) | `~/.bashrc` | aliases, prompt, interactive functions |
 | **non-interactive** (scripts, `ssh host command`, cron, Slurm batch steps) | nothing by default (only what `BASH_ENV` names) | automation and batch jobs |
 
-Pay close attention to how bash handles login shells. It first executes `/etc/profile`. Then it looks in your home directory for `.bash_profile`, `.bash_login` and `.profile`. It **runs only the first one it finds**. If `.bash_profile` exists, bash ignores `.bash_login` and `.profile` completely. It may sound strange, but you can run a non-interactive shell as a login shell, with `bash -l -c 'cmd'`. Most graphical desktop display managers do exactly this. They start your session with one non-interactive login shell, which keeps the login versus non-login environment model intact.
+Pay close attention to how bash handles login shells. It first executes `/etc/profile`. Then it looks in your home directory for `.bash_profile`, `.bash_login` and `.profile`. It **runs only the first one it finds**. If `.bash_profile` exists, bash ignores `.bash_login` and `.profile` completely. This one sentence explains a great many "my alias is missing over SSH" reports. It may sound strange, but you can run a non-interactive shell as a login shell, with `bash -l -c 'cmd'`. Most graphical desktop display managers do exactly this. They start your session with one non-interactive login shell, which keeps the login versus non-login environment model intact.
 
-In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup.
+In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup. One file to edit, one place to look when something is missing.
 
 ```bash
 # Inside ~/.bash_profile (untested here)
@@ -465,7 +477,7 @@ esac
 
 Other shells follow different rules. In tcsh, the enhanced C shell that popularized command-line editing and completion, you do not need to worry about login versus non-login shells. At startup, tcsh looks for `.tcshrc`. If that file is missing, it looks for the csh startup file, `.cshrc`. The order lets you keep tcsh extensions in `.tcshrc`, where they will not break csh. In practice, sticking to traditional `.cshrc` lines works everywhere. Examples are `setenv PATH ...`, `setenv EDITOR vi`, `setenv PAGER less`, `setenv LESS meiX` and `umask 022`. Even so, bash should be the default shell for new users. csh is a notoriously bad scripting tool. bash uses GNU `readline` and gives clean control over I/O redirection and file handles.
 
-Follow six strict rules to avoid startup file pitfalls on any server or cluster.
+Follow six strict rules to avoid startup file pitfalls on any server or cluster. Each one comes from an incident, not a theory.
 
 1. **Keep graphical commands, and the `DISPLAY` and terminal type (`TERM`) variables, out of shell startup files.** Not every shell runs in a graphical environment. Display managers have their own startup files, such as `.xsession` and `.xinitrc` for GNOME or KDE.
 2. **Do not run commands that print to standard output in a startup file.** Output from `.bashrc` corrupts the wire protocol of file-transfer tools such as `scp`, `sftp` and `rsync`, which are non-interactive.
@@ -478,9 +490,9 @@ Before you blame a job failure on the code, check the environment the job actual
 
 ## 9. Working faster: history, completion and editing
 
-Retyping commands wastes time. Once you learn the built-in *readline* keystrokes, you will work much faster.
+You will retype the same long command many times today, and a typo in the middle of it costs you the whole line. The shell has shipped with an editor for decades, and most people never learn to use it. These are the built-in *readline* keystrokes. Once they are in your fingers, you will work much faster.
 
-| Keystroke (*How Linux Works* Table 2-2) | Action |
+| Keystroke | Action |
 |---|---|
 | `Ctrl-B` / `Ctrl-F` | Move the cursor left / right one character |
 | `Alt-B` / `Alt-F` | Move the cursor backward / forward one word |
@@ -493,6 +505,8 @@ Retyping commands wastes time. Once you learn the built-in *readline* keystrokes
 | `Ctrl-R` | Search backward incrementally through command history |
 | `Ctrl-L` | Clear the terminal screen while keeping the current line |
 
+Three of these pay for themselves in a single day. `Ctrl-R` finds a command you ran an hour ago. `Ctrl-A` and `Ctrl-E` jump to either end of a long line so you can fix one word instead of retyping it.
+
 - **Tab completion** finishes command names, file names and options when `bash-completion` is installed. Press Tab twice to list every candidate.
 - **History shortcuts:** `history | tail` lists recent commands. `!!` repeats the previous command, so `sudo !!` re-runs it as root. `!$` expands to the last argument of the previous command.
 - **Terminal control keys:** `Ctrl-C` sends `SIGINT` to interrupt the foreground program. `Ctrl-D` sends end-of-input (`EOF`). `Ctrl-Z` suspends the foreground program with `SIGTSTP`, so you can resume it with `fg` or `bg` (chapter 1.8). `Ctrl-S` and `Ctrl-Q` pause and resume terminal output.
@@ -500,9 +514,9 @@ Retyping commands wastes time. Once you learn the built-in *readline* keystrokes
 
 ### Shell tricks that save hours on clusters
 
-Administering hundreds of nodes means repeating the same operation many times, so small habits add up. The tricks below work in bash and mostly in zsh. A few of them do not work in plain `sh`.
+Administering hundreds of nodes means repeating the same operation many times, so small habits add up. The tricks below work in bash and mostly in zsh. A few of them do not work in plain `sh`, so check before you put one in a script.
 
-- **Brace expansion generates lists and variants.** `cp config{,.bak}` expands to `cp config config.bak`. The empty first alternative gives the plain name. `for n in gpu-{1,2}-{a,b}; do echo $n; done` visits four combinations. Ranges work too, as in `echo {1..15}`. Brace ranges do not keep leading zeros, though. For names such as `node-001` to `node-100`, use `seq` instead: `for i in $(seq -w 1 100); do ssh node-$i true; done`. The `-w` option pads each number to equal width. The remote command `true` prints nothing, so only the nodes that fail to answer show an error.
+- **Brace expansion generates lists and variants.** `cp config{,.bak}` expands to `cp config config.bak`. The empty first alternative gives the plain name. `for n in gpu-{1,2}-{a,b}; do echo $n; done` visits four combinations. Ranges work too, as in `echo {1..15}`. Brace ranges do not keep leading zeros, though. For names such as `node-001` to `node-100`, use `seq` instead: `for i in $(seq -w 1 100); do ssh node-$i true; done`. The `-w` option pads each number to equal width. The remote command `true` prints nothing, so only the nodes that fail to answer show an error. That is a fast way to find the dead node in a rack.
 - **Reuse earlier commands.** `!!` is the previous command. After a "Permission denied", `sudo !!` repeats it as root. `!$` is the last argument of the previous command. So after `chown alice data.txt`, you can run `chmod 600 !$`. `history | grep sudo` finds older commands. Every history entry has a number, so `!123` re-runs entry 123. Always inspect a line before you run it, because history expansion repeats the exact line that was typed. Ctrl-R searches backwards as you type a substring. Press it again to reach the next older match.
 - **Quick arithmetic.** `echo $((123*55+18))` computes with integers. Inside `$(())`, variables need no `$`, as in `$((123*55+offset))`. For fractions, use `bc`.
 - **More command separators.** `&` runs a command in the background, and it also separates that command from the next one. In `job_a & job_b & wait`, both jobs start, and `wait` pauses until they finish. `&&` and `||` are conditional. A common test is `[ -f testfile ] && cat testfile`. Here `[` is **a command**, an old synonym for `test`. That is why it needs spaces around its arguments and around the closing `]`.
@@ -516,7 +530,7 @@ Pick two of these habits and make them automatic, because you will use them ever
 
 ## 10. Understanding error messages
 
-An error message looks cryptic until you see its fixed shape.
+An error message looks cryptic until you see its fixed shape. Once you do, every program on the machine speaks the same small language.
 
 ```
 ls: cannot access '/data/missing': No such file or directory
@@ -543,7 +557,7 @@ The final text after the colon is not written by the program. It is the standard
 
 A few details sit behind the table. **ENOENT** ("No such file or directory") is the commonest of all. It covers files *and* directories, because the Unix file interface does not distinguish them much. You see it when you read a file that is not there, `cd` into a missing directory, or write into a directory that does not exist. The name comes from "error, no entity". "File exists" (`EEXIST`) usually means you tried to create a directory with the same name as an existing file.
 
-"Not a directory" applies to one component of the path. After `touch a`, the command `touch a/b` fails with `a/b: Not a directory`. The message is about `a`, not `b`, so when a long path fails, inspect each component. "Permission denied" also appears when you try to *run* a file that lacks the execute bit, even if you can read it. "Operation not permitted" most often means you tried to signal or change something you do not own. Killing another user's process is one example.
+"Not a directory" applies to one component of the path. After `touch a`, the command `touch a/b` fails with `a/b: Not a directory`. The message is about `a`, not `b`, so when a long path fails, inspect each component. That habit turns a five-minute puzzle into a ten-second answer. "Permission denied" also appears when you try to *run* a file that lacks the execute bit, even if you can read it. "Operation not permitted" most often means you tried to signal or change something you do not own. Killing another user's process is one example.
 
 A **segmentation fault** means the program touched memory it was not allowed to touch, and the kernel killed it. That almost always points to a bug in the program or to unexpected input. A **bus error** is a related invalid-access fault. In rare cases it points at faulty memory hardware. Error codes come straight from system calls. For example, `open()` returns `ENOENT`. The system-call manual pages, such as `man 2 open` in its ERRORS section, list what each failure can mean.
 
@@ -553,7 +567,7 @@ A **segmentation fault** means the program touched memory it was not allowed to 
 
 ## 11. Mac or Linux? The differences that bite
 
-Many readers work on a Mac laptop and also on Linux servers. If you move between a Mac and Linux, you will meet these differences often. Both are Unix-like, yet small differences can silently break a script.
+Many readers work on a Mac laptop and also on Linux servers. The two feel identical for an hour, and then a script that worked at home fails on the login node. If you move between a Mac and Linux, you will meet these differences often. Both are Unix-like, yet small differences can silently break a script.
 
 | Area | Linux (GNU userland) | macOS |
 |---|---|---|
@@ -566,13 +580,13 @@ Many readers work on a Mac laptop and also on Linux servers. If you move between
 | Process tools | procfs (`/proc`), `ss`, `ip` | no `/proc`; `lsof`, `netstat`, `ifconfig` |
 | Containers | native namespaces and cgroups | run inside a hidden Linux VM |
 
-Practical advice comes first. **Do your labs for this book on a Linux machine**, such as a cloud VM, a local VM or a container. Then the output matches the text. Keep scripts POSIX-clean, or name `#!/bin/bash` explicitly, and test them on the target OS. Homebrew can install GNU tools on a Mac (`gsed`, `ggrep`, `gdate`), which helps local development. Never assume those tools exist on the machine that will run your script.
+Practical advice comes first. **Do your labs for this book on a Linux machine**, such as a cloud VM, a local VM or a container. Then the output matches the text, and you are not debugging your laptop at the same time. Keep scripts POSIX-clean, or name `#!/bin/bash` explicitly, and test them on the target OS. Homebrew can install GNU tools on a Mac (`gsed`, `ggrep`, `gdate`), which helps local development. Never assume those tools exist on the machine that will run your script.
 
 Test every script on the system where it will actually run.
 
 ## 12. Daily patterns for AI and HPC work
 
-A few idioms that appear constantly; recognise them now, and chapter 1.9 turns them into robust scripts.
+A few idioms that appear constantly; recognise them now, and chapter 1.9 turns them into robust scripts. Read each one as a small story: what you want, and the line that gets it.
 
 ```bash
 # keep a log and still see the output; capture errors too
@@ -595,9 +609,11 @@ time ./preprocess.sh && echo ok || echo "failed with $?"
 ssh -t gpu01 'nvidia-smi; uptime'
 ```
 
+Read those lines as a set of habits rather than tricks. You keep a log and still watch it. You set per-job variables on the command line, so the job never depends on what your terminal happened to export. You use `time`, so you learn what a step really costs, and you read the status in the same line, so a failure cannot pass silently. None of it is advanced, and all of it saves an evening.
+
 ## How it fails
 
-Each of the eight entries below starts from a symptom you can see, so match your own screen against them. Find the one that matches, then run the diagnose step before you change anything.
+Each of the eight entries below starts from a symptom you can see, so match your own screen against them. Find the one that matches, then run the diagnose step before you change anything. Changing the first thing that looks wrong is how a small failure becomes a long afternoon.
 
 ### 1. A space in a filename, an unquoted variable
 **Symptom:** `cp: cannot stat 'my': No such file or directory`, or a loop acts on half-names. **Cause:** the shell splits an unquoted expansion on spaces. **Diagnose:** `printf '<%s>\n' $var` shows the pieces. **Fix:** quote every expansion, as in `"$var"` or `"$@"`. For file lists, consider NUL separators, such as `find -print0 | xargs -0` (chapter 1.4).
@@ -625,48 +641,50 @@ Each of the eight entries below starts from a symptom you can see, so match your
 
 ## Hands-on lab: shell parsing, redirection, and VM drills
 
-First, run the self-checking Python lab (`code/part01/shell_pipeline_lab.py`) locally. It verifies redirection order (`> file 2>&1` vs `2>&1 > file` and `3>&1 1>&2 2>&3`), exit status decoding, `pipefail`, `bash` startup file selection, `PATH` resolution precedence, and Unix `errno` codes.
+Time to get your hands dirty, and to make the rules yours rather than mine. First, run the self-checking Python lab (`code/part01/shell_pipeline_lab.py`) locally. It verifies redirection order (`> file 2>&1` vs `2>&1 > file` and `3>&1 1>&2 2>&3`), exit status decoding, `pipefail`, `bash` startup file selection, `PATH` resolution precedence, and Unix `errno` codes.
 
 ```bash
 python3 code/part01/shell_pipeline_lab.py
 ```
 
-Next, on a GCP Ubuntu VM (all interactive VM commands below are `untested here`), work through these exercises.
+Next, on a GCP Ubuntu VM (the interactive VM commands below were not run on live hardware), work through these exercises. Keep a scratch directory for each part, and do not worry about breaking it.
 
 **Part A: predict, then check.** For each line, write down the output you expect *before* running it, then compare. Explain every difference.
-1. `touch "a b.txt" c.txt; ls` (untested here).
-2. `printf '<%s>\n' a b.txt` versus `printf '<%s>\n' "a b.txt"` (untested here).
-3. `echo *.txt` and then `echo "*.txt"` and `echo '*.txt'` (untested here).
-4. `X=5; echo $X; bash -c 'echo [$X]'; export X; bash -c 'echo [$X]'` (untested here).
-5. `echo $(echo $(echo hi))`, `echo "a   b"`, `echo a   b` (untested here).
-6. `echo file{1..3}.{c,h}` (untested here).
+1. `touch "a b.txt" c.txt; ls`.
+2. `printf '<%s>\n' a b.txt` versus `printf '<%s>\n' "a b.txt"`.
+3. `echo *.txt` and then `echo "*.txt"` and `echo '*.txt'`.
+4. `X=5; echo $X; bash -c 'echo [$X]'; export X; bash -c 'echo [$X]'`.
+5. `echo $(echo $(echo hi))`, `echo "a   b"`, `echo a   b`.
+6. `echo file{1..3}.{c,h}`.
 
 **Part B: streams and pipes.**
-7. Run `ls /tmp /nope > both.txt` (untested here), then examine `both.txt`. Where did the error go? Fix it three different ways: to a separate file, into the same file, and discarded.
-8. Compare `ls /nope > out.txt 2>&1` and `ls /nope 2>&1 > out.txt` (untested here). Look at what each leaves in `out.txt` and on the screen, and explain using the left-to-right rule.
-9. Build a pipeline that counts the logged-in processes of each user: `ps -eo user= | sort | uniq -c | sort -rn | head` (untested here). Explain each stage and what flows between stages.
-10. Use `tee` to save the output of `ls -l /etc | head` (untested here) to a file and still see it.
+7. Run `ls /tmp /nope > both.txt`, then examine `both.txt`. Where did the error go? Fix it three different ways: to a separate file, into the same file, and discarded.
+8. Compare `ls /nope > out.txt 2>&1` and `ls /nope 2>&1 > out.txt`. Look at what each leaves in `out.txt` and on the screen, and explain using the left-to-right rule.
+9. Build a pipeline that counts the logged-in processes of each user: `ps -eo user= | sort | uniq -c | sort -rn | head`. Explain each stage and what flows between stages.
+10. Use `tee` to save the output of `ls -l /etc | head` to a file and still see it.
 
 **Part C: exit codes.**
-11. Run `true; echo $?`, `false; echo $?`, `ls /nope; echo $?`, `nosuchcmd; echo $?` (127), `touch noexec.sh; ./noexec.sh; echo $?` (126), `bash -c 'kill -9 $$'; echo $?` (137), and `sleep 100` interrupted with Ctrl-C then `echo $?` (130) (untested here). Fill in the table of section 7 from your own results.
-12. Show the pipeline trap: `false | cat; echo $?` then `set -o pipefail; false | cat; echo $?`, then `echo ${PIPESTATUS[@]}` after a pipeline (untested here).
+11. Run `true; echo $?`, `false; echo $?`, `ls /nope; echo $?`, `nosuchcmd; echo $?` (127), `touch noexec.sh; ./noexec.sh; echo $?` (126), `bash -c 'kill -9 $$'; echo $?` (137), and `sleep 100` interrupted with Ctrl-C then `echo $?` (130). Fill in the table of section 7 from your own results.
+12. Show the pipeline trap: `false | cat; echo $?` then `set -o pipefail; false | cat; echo $?`, then `echo ${PIPESTATUS[@]}` after a pipeline.
 
 **Part D: environment.**
-13. Print `PATH` one entry per line. Create `~/bin/hello` (a script that prints "hello", `chmod +x`), run `hello` before and after adding `~/bin` to `PATH`, and explain the difference. Check `type hello` (untested here).
-14. Open a new login shell (`bash -l`), then a non-interactive one (`bash -c 'echo $FOO'`) (untested here). Put `export FOO=bar` in `~/.bashrc` and see which of these start seeing it. Explain with the table in section 8.
+13. Print `PATH` one entry per line. Create `~/bin/hello` (a script that prints "hello", `chmod +x`), run `hello` before and after adding `~/bin` to `PATH`, and explain the difference. Check `type hello`.
+14. Open a new login shell (`bash -l`), then a non-interactive one (`bash -c 'echo $FOO'`). Put `export FOO=bar` in `~/.bashrc` and see which of these start seeing it. Explain with the table in section 8.
 
 **Part E: error messages.**
-15. Reproduce each error in the table of section 10 that you can: ENOENT (`cat /x`), EACCES (`cat /etc/shadow` as a normal user), EEXIST (`mkdir /tmp`), ENOTDIR (`cd /etc/passwd`), and EISDIR (`cat /etc`) (untested here). Also inspect E2BIG via `getconf ARG_MAX`, and trigger a segmentation fault from a tiny C program with a null-pointer write. For two of them, use `strace` to see the failing system call and its errno.
+15. Reproduce each error in the table of section 10 that you can: ENOENT (`cat /x`), EACCES (`cat /etc/shadow` as a normal user), EEXIST (`mkdir /tmp`), ENOTDIR (`cd /etc/passwd`), and EISDIR (`cat /etc`). Also inspect E2BIG via `getconf ARG_MAX`, and trigger a segmentation fault from a tiny C program with a null-pointer write. For two of them, use `strace` to see the failing system call and its errno.
 
 **Part E2: the details from the source chapters.**
-15a. Run `cat` with no arguments, type three lines, end with Ctrl-D, then repeat and end with Ctrl-C (untested here). Explain the difference. Run `echo *.*` in a directory with and without dotted names. Create `.hidden1 .hidden2` and compare `ls`, `ls -a`, `echo *`, `echo .*`, `echo .[!.]*`.
-15b. Run `sort data.txt > data.txt` on a throwaway file and see it emptied; then `set -o noclobber` and repeat (untested here). Compare `ls -l /bin/sh` with the shell you are in; run a script with `[[ ]]` under `sh` and under `bash`.
-15c. Use `man -k sort`, then read the same name in two sections (`man 1 passwd`, `man 5 passwd`), open `info coreutils`, and look in `/usr/share/doc` for one package (untested here). Practise the readline keys of section 9 until they are automatic.
+15a. Run `cat` with no arguments, type three lines, end with Ctrl-D, then repeat and end with Ctrl-C. Explain the difference. Run `echo *.*` in a directory with and without dotted names. Create `.hidden1 .hidden2` and compare `ls`, `ls -a`, `echo *`, `echo .*`, `echo .[!.]*`.
+15b. Run `sort data.txt > data.txt` on a throwaway file and see it emptied; then `set -o noclobber` and repeat. Compare `ls -l /bin/sh` with the shell you are in; run a script with `[[ ]]` under `sh` and under `bash`.
+15c. Use `man -k sort`, then read the same name in two sections (`man 1 passwd`, `man 5 passwd`), open `info coreutils`, and look in `/usr/share/doc` for one package. Practise the readline keys of section 9 until they are automatic.
 
 **Part F: safety drill.**
-16. Make a scratch directory with a few files. Practise the safe-delete routine: `ls` the pattern, then `rm`; try `rm -rf -- "${NOPE:?not set}"/x` and see the abort; try `rm -i` (untested here).
+16. Make a scratch directory with a few files. Practise the safe-delete routine: `ls` the pattern, then `rm`; try `rm -rf -- "${NOPE:?not set}"/x` and see the abort; try `rm -i`.
 
 ## Exercises
+
+Work through these on paper first, and answer before you look; that is where the learning happens.
 
 1. **Redirection Order (`> file 2>&1` vs `2>&1 > file` vs `3>&1 1>&2 2>&3`):** Using the left-to-right file-descriptor binding rule, state where file descriptor 1 (`stdout`) and file descriptor 2 (`stderr`) end up for: (a) `cmd > out.txt 2>&1`, (b) `cmd 2>&1 > out.txt`, and (c) `cmd 3>&1 1>&2 2>&3 | grep -i warning`. Verify with `simulate_redirection_order()` in `code/part01/shell_pipeline.py`.
 2. **Decoding Exit Statuses (0, 126, 127, 130, 137, 143):** Decode each exit status and state the exact signal number and name where applicable. Evaluate `126`, `127`, `130`, `137` on a Kubernetes training container, and `143`.

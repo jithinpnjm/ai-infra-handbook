@@ -21,13 +21,13 @@ lab_venue: "GCP VM"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job that starts fine on a login node, then fails on a compute node because it cannot read its dataset. Or a checkpoint directory that rejects writes from a teammate. On a shared cluster, most of these "it works for me but not for the job" problems come down to identity or permissions. Files owned by root appear in your project after a container run. A Slurm job fails because one user has a different UID on two nodes. A sudo rule locks an administrator out, or a login node freezes under one user's fork bomb.
+Picture your first week on a cluster team, and three small failures in a row. A training job that ran fine on the login node fails on a compute node because it cannot read its dataset. A checkpoint directory refuses writes from a teammate, although you built it for the whole team. Files owned by root appear in your project after a container run, a Slurm job fails because one user has a different UID on two nodes, and a sudo rule locks an administrator out. On a shared cluster, most of these "it works for me but not for the job" moments come down to identity or permissions.
 
-This chapter explains how Linux decides who you are and what you may do. It starts with the numeric IDs the kernel uses and ends with the policy files an administrator edits. It also shows how those ideas stretch across hundreds of cluster nodes. Finally, it covers the user environment and the shell startup files that decide what every new shell and job starts with.
+Linux asks two questions all day long: who are you, and what may you do. This chapter explains how it asks and answers them. It starts with the numeric IDs the kernel actually sees, and it ends with the policy files an administrator edits. It also shows how those ideas stretch across hundreds of cluster nodes. Finally, it covers the user environment and the shell startup files that decide what every new shell and job starts with.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with processes and system calls, the shell, and files and inodes. Chapters 1.1 to 1.3 cover those. When you finish this chapter, you should be able to do the following:
+Before you start, you need three things from earlier chapters: a working picture of processes and system calls, a feel for the shell, and the basics of files and inodes. Chapters 1.1 to 1.3 cover them. By the end of this chapter you should be able to do the following:
 
 - Explain why the kernel knows only numeric user and group IDs. Say where names, passwords and group membership live (`/etc/passwd`, `/etc/shadow`, `/etc/group`) and how programs look them up.
 - Read any `ls -l` mode, set permissions both symbolically and in octal, and say exactly what read, write and execute mean for files and for directories.
@@ -42,11 +42,11 @@ Before you start, you should be comfortable with processes and system calls, the
 
 ## 1. Users and groups: names for numbers
 
-Picture two cluster nodes that disagree about who alice is. Both show her files, but each one lists different owners. To the **kernel**, a user is a number: the **user ID (UID)**. Files record the UID of their owner, and a process carries the UID of the user it runs for. The name alice does not exist in the kernel at all. It is a convenience in user space. A **group** works the same way. It is a number, the **group ID (GID)**, and groups exist mainly to share file access among several users. The only UID with a special meaning to the kernel is 0, the superuser, conventionally called root. Everything else, including the pseudo-users described below, is policy in user space.
+Picture two cluster nodes that disagree about who alice is. On the login node, her files show the owner alice. On the second node, the same files seem to belong to somebody else. The puzzle is not a bug in either machine. It is the first idea of this chapter showing through. To the **kernel**, a user is a number: the **user ID (UID)**. Files record the UID of their owner, and a process carries the UID of the user it runs for. The name alice does not exist in the kernel at all. It is a convenience in user space. A **group** works the same way. It is a number, the **group ID (GID)**, and groups exist mainly to share file access among several users. The only UID with a special meaning to the kernel is 0, the superuser, conventionally called root. Everything else, including the pseudo-users described below, is policy in user space.
 
-This fact comes back in the cluster failures later in the chapter. When two machines disagree about which number belongs to alice, they disagree about who owns every file she created. Names are labels. Numbers are identity.
+This fact returns in the cluster failures later in the chapter. When two machines disagree about which number belongs to alice, they disagree about who owns every file she created. Names are labels. Numbers are identity.
 
-Where do the names come from? They live in a small set of plain-text configuration files inside `/etc`, and programs usually reach them through the C library. Brian Ward's *How Linux Works* (Section 7.2, on the structure of `/etc`) states the basic rule. Settings for a single machine, such as the user account table (`/etc/passwd`) and network details (`/etc/network`), belong in `/etc`. General application assets do not. Over the years, service configurations have moved into subdirectories such as `/etc/systemd` and `/etc/ssh`. Run `ls -F /etc` and you will see a mix of classic top-level files and subdirectories marked with a `/` suffix.
+The names live in a small set of plain-text configuration files inside `/etc`, and programs usually reach them through the C library. Brian Ward's *How Linux Works* (Section 7.2, on the structure of `/etc`) states the rule that keeps this directory sane. Settings for one machine, such as the user account table (`/etc/passwd`) and network details (`/etc/network`), belong in `/etc`. General application assets do not. Over the years, service configurations have drifted into subdirectories such as `/etc/systemd` and `/etc/ssh`. Run `ls -F /etc` and you will see a mix of classic top-level files and subdirectories marked with a `/` suffix.
 
 The diagram below shows the split. The kernel sees only numbers, while the names sit in user space and reach the kernel through the C library.
 
@@ -69,7 +69,7 @@ Read the arrows from top to bottom. The names pass through the C library before 
 
 ### `/etc/passwd`: the user table
 
-Each line describes one user in seven colon-separated fields. Here is a sample line:
+Open `/etc/passwd` on any Linux machine and you will find one short line per user. Each line holds seven fields, separated by colons. Here is a sample line:
 
 ```
 alice:x:1042:1042:Alice Example,Room 12:/home/alice:/bin/bash
@@ -87,19 +87,19 @@ The table below explains each field in that line. Use it as a key when you read 
 | `/home/alice` | the home directory |
 | `/bin/bash` | the login shell (must be listed in `/etc/shells` for `chsh` to accept it) |
 
-The file is plain text with strict syntax. It has no comments and no blank lines. Many people call a passwd entry plus a home directory an "account", but that is only a habit. Programs recognize a user from the passwd entry alone. Users can also come from a network directory service with no local line at all, as section 9 explains. UIDs should be unique. If two entries share a UID, the kernel treats both names as one person, which is confusing at best.
+The file is plain text with strict syntax, and it has no comments and no blank lines. Many people call a passwd entry plus a home directory an "account", but that is only a habit. Programs recognize a user from the passwd entry alone. Users can also come from a network directory service with no local line at all, as section 9 explains. UIDs should be unique. If two entries share a UID, the kernel treats both names as one person, which is confusing at best.
 
-**Special users.** root has UID 0 and GID 0. Several pseudo-users exist so that services can run without root's power. Examples include `daemon`, `www-data`, `postgres`, munge and `slurm`. They normally cannot log in, because their shell is `/usr/sbin/nologin` or `/bin/false`, or their password field is `*`. The system still starts their processes under their UIDs, and that limits what a compromised service can do. The traditional nobody user (UID 65534 on Debian and Ubuntu, with group `nogroup`; the number differs on some distributions) owns nothing. Programs use it for deliberately unprivileged processes. None of these users has special meaning to the kernel. If you made nobody the owner of everything, it would stop being unprivileged. By convention, UIDs below 1000 belong to system accounts and 1000 and above belong to people. The exact minimum is set as `UID_MIN` in `/etc/login.defs`, and some older distributions used 500.
+**Special users.** root has UID 0 and GID 0. Alongside it live several pseudo-users, accounts that exist so a service can run without root's power. Examples include `daemon`, `www-data`, `postgres`, munge and `slurm`. They normally cannot log in, because their shell is `/usr/sbin/nologin` or `/bin/false`, or their password field is `*`. The system still starts their processes under their UIDs, and that limits what a compromised service can do. The traditional nobody user owns nothing. On Debian and Ubuntu it is UID 65534, with group `nogroup`; the number differs on some distributions. Programs use it for deliberately unprivileged processes. None of these users has special meaning to the kernel. If you made nobody the owner of everything, it would stop being unprivileged. By convention, UIDs below 1000 belong to system accounts and 1000 and above belong to people. The exact minimum is set as `UID_MIN` in `/etc/login.defs`, and some older distributions used 500.
 
 ### `/etc/shadow`: passwords and aging
 
-The shadow file holds authentication data, and only root (and the `shadow` group) can read it. That keeps ordinary users from grabbing hashes and cracking them offline. The file has nine fields. They are the name, the **password hash**, and several aging fields that cover the last change, the minimum and maximum age, the warning period, the inactivity period and the account expiry.
+The shadow file holds authentication data, and only root, together with the `shadow` group, can read it. That separation keeps ordinary users from grabbing hashes and cracking them offline. The file has nine fields. They are the name, the **password hash**, and several aging fields that cover the last change, the minimum and maximum age, the warning period, the inactivity period and the account expiry.
 
 ```
 alice:$y$j9T$salt$hash...:20380:0:99999:7:::
 ```
 
-A hash is a one-way transformation of the password, mixed with a random salt. Its prefix names the algorithm. `$6$` is SHA-512 crypt, `$y$` is yescrypt (the default on current Debian and Ubuntu), and `$5$` is SHA-256. A leading `!` or `*` in the field means the password is locked or unset, so password login is impossible, although key-based SSH may still work. Use the tools to change these files, not an editor: `passwd`, `chage`, `usermod` and `useradd`. If you must edit the files by hand, for example to recover from corruption, use `vipw` for `/etc/passwd` and `vipw -s` for `/etc/shadow`. Both lock the file and keep a backup, so a concurrent change cannot corrupt it.
+A hash is a one-way transformation of the password, mixed with a random salt. The prefix names the algorithm that produced it. `$6$` is SHA-512 crypt, `$y$` is yescrypt, the default on current Debian and Ubuntu, and `$5$` is SHA-256. A leading `!` or `*` in the field means the password is locked or unset. Password login is then impossible, although key-based SSH may still work. Change these files with the tools, not an editor: `passwd`, `chage`, `usermod` and `useradd`. If you must edit the files by hand, for example to recover from corruption, use `vipw` for `/etc/passwd` and `vipw -s` for `/etc/shadow`. Both lock the file and keep a backup, so a concurrent change cannot corrupt it.
 
 ### `/etc/group`: the group table
 
@@ -107,7 +107,7 @@ A hash is a one-way transformation of the password, mixed with a random salt. It
 projx:x:2001:alice,bob
 ```
 
-The fields are the group name, a password marker, the GID and a comma-separated list of members. The marker `x` means the entry is in `/etc/gshadow`, and it is nearly always a locked `!` or `*`. A user belongs to a group in two ways. The group can be their primary group, named in their passwd entry by GID. Or they can appear in the group's member list as a **supplementary** group. The `id` command shows both, and `groups` lists the names.
+The fields are the group name, a password marker, the GID and a comma-separated list of members. The marker `x` means the entry is in `/etc/gshadow`, and it is nearly always a locked `!` or `*`. A user belongs to a group in two ways. The group can be their primary group, named in their passwd entry by GID. Or they can appear in the group's member list, which makes it a **supplementary** group. The `id` command shows both, and `groups` lists the names.
 
 ```bash
 id                # uid=1042(alice) gid=1042(alice) groups=1042(alice),2001(projx),27(sudo)
@@ -117,17 +117,17 @@ getent group projx  # query through the C library, including network sources (se
 
 Leave group passwords alone. Unix group passwords are hardly ever used, and you should not set one. In most cases, `sudo` is the better tool for granting access. Groups once mattered most when many users shared one machine or network. As workstations are shared less often now, group-based file sharing matters less than it used to. The GID must be unique within the group file, because that number goes into each user's passwd entry. Any user whose passwd line names that GID belongs to the group, even when the member list leaves them out.
 
-Many distributions create a **user-private group** for each new user, with the same name and number as the user. So alice has primary group alice. That sounds odd, but it makes sharing safe by default. A file is group-owned by a group that contains only you, so a permissive group-write bit does not expose it to anyone else. This is also why the default umask on such systems can be `002` (section 3).
+Many distributions create a **user-private group** for each new user, with the same name and number as the user. So alice's primary group is simply alice. That sounds odd until you see what it buys. A file is group-owned by a group that contains only you, so a permissive group-write bit does not expose it to anyone else. This is also why the default umask on such systems can be `002`, which section 3 explains.
 
 ### Why `/etc` is split into subdirectories
 
 For decades, every program and service dropped its configuration files straight into `/etc`. The directory filled up fast, and two problems followed. Files were hard to find on a running system, and the system was hard to maintain. Suppose you customize the `sudo` rules in `/etc/sudoers`. A distribution upgrade can overwrite that file, and your changes disappear with it.
 
-Over the years, the habit has shifted toward grouping settings into subdirectories under `/etc`. You have already met this with `/etc/systemd`. To avoid overwriting your customizations during an upgrade, keep them in separate files inside those subdirectories, such as the ones in `/etc/grub.d`. Run `ls -F /etc` and most of what you see will be subdirectories. Settings for one machine, such as the user table (`/etc/passwd`) and network details (`/etc/network`), still belong in `/etc`. General application defaults do not. Prepackaged system defaults that you should not customize, such as the systemd unit files in `/usr/lib/systemd`, live elsewhere.
+Over the years, the habit has shifted toward grouping settings into subdirectories under `/etc`. You have already met this with `/etc/systemd`. To keep an upgrade from overwriting your customizations, put them in separate files inside those subdirectories, such as the ones in `/etc/grub.d`. Run `ls -F /etc` and most of what you see will be subdirectories. Settings for one machine, such as the user table `/etc/passwd` and network details `/etc/network`, still belong in `/etc`. General application defaults do not. Prepackaged system defaults that you should not customize, such as the systemd unit files in `/usr/lib/systemd`, live elsewhere.
 
 ## 2. Managing users and groups
 
-Use the tools, not hand edits. They update several files together, create the home directory from a template, and handle locking for you. Here is the set of commands that covers most daily work.
+A new teammate starts on Monday and needs an account before lunch. You could open `/etc/passwd` and type a line by hand, but resist that urge. Use the tools, not hand edits. They update several files together, create the home directory from a template, and handle locking for you. Here is the set of commands that covers most daily work.
 
 ```bash
 sudo useradd -m -s /bin/bash -c "Alice Example" alice      # create user with a home directory (-m)
@@ -149,13 +149,13 @@ Hand editing is a poor default, even for root. A single typo can lock someone ou
 `usermod -G projx alice` **replaces** alice's supplementary groups with only projx, silently removing her from `sudo`, `docker` and the rest. You almost always want **`-aG`**, where `-a` means append. Group membership is also read only at **login**. After you add someone to a group, their existing sessions do not see the change. They must log in again, or run `newgrp projx`, or use `su - alice` in a test.
 :::
 
-Users can make some changes to their own accounts. `passwd` changes your password, `chsh` changes your login shell (the shell must be listed in `/etc/shells`), and `chfn` changes the comment. These programs must write root-owned files, and they can do so because they are **setuid-root** executables (section 5). On passwords, length matters more than cleverness. A long, memorable phrase of 16 or more characters is stronger than a short string full of symbols. On servers, prefer key-based SSH and turn off password login (chapters 1.5 and 1.21).
+Users can make some changes to their own accounts. `passwd` changes your password, `chsh` changes your login shell, and `chfn` changes the comment. The shell you set must be listed in `/etc/shells`. These programs must write root-owned files, and they can do so because they are **setuid-root** executables, a mechanism section 5 explains. On passwords, length matters more than cleverness. A long, memorable phrase of 16 or more characters is stronger than a short string full of symbols. On servers, prefer key-based SSH and turn off password login, as chapters 1.5 and 1.21 explain.
 
 **Locking and restricting accounts.** Blocking someone from a system is an escalation to use sparingly, for example after a serious policy violation or when an employee leaves. Know the options and their limits before you pick one.
 
 - `usermod -L` locks the password, but SSH keys may still work.
-- Setting the shell to `/usr/sbin/nologin` or `/bin/false` (with `chsh -s`, and the shell must be in `/etc/shells`) blocks interactive use. Every command, including `ssh host command`, runs through the shell, so this also blocks remote commands. Some configurations can still bypass it through port forwarding. It also does not stop file transfer when an SFTP server is allowed. A restricted shell called `scponly` allows only `scp` and `sftp`.
-- In `sshd_config`, `DenyUsers user1 user2` blocks named users. `AllowUsers ...` (or `AllowGroups`) permits only the listed ones, which is useful during maintenance when only administrators should get in. Reload `sshd` afterwards. Sessions that are already open continue. `sshd_config(5)` evaluates these directives in the order `DenyUsers`, `AllowUsers`, `DenyGroups`, `AllowGroups`. The simplest policy is a single allow-list (chapter 1.29).
+- Setting the shell to `/usr/sbin/nologin` or `/bin/false` with `chsh -s` blocks interactive use. The shell must be in `/etc/shells` for that to work. Every command, including `ssh host command`, runs through the shell, so this also blocks remote commands. Some configurations can still bypass it through port forwarding. It also does not stop file transfer when an SFTP server is allowed. A restricted shell called `scponly` allows only `scp` and `sftp`.
+- In `sshd_config`, `DenyUsers user1 user2` blocks named users. `AllowUsers ...` or `AllowGroups` permits only the listed ones, which is useful during maintenance when only administrators should get in. Reload `sshd` afterwards. Sessions that are already open continue. `sshd_config(5)` evaluates these directives in the order `DenyUsers`, `AllowUsers`, `DenyGroups`, `AllowGroups`. The simplest policy is a single allow-list, as chapter 1.29 explains.
 - **`pam_access`** works through the PAM chain. Add `account required pam_access.so` to the chain for `sshd`, then write rules in `/etc/security/access.conf` in the form `permission : users-or-groups : origins`. For example, `+:@admins:ALL` followed by `-:ALL:ALL` allows only the admins group. Rules are checked from top to bottom, so put the allow rule for administrators first, or you may lock yourself out.
 - On a cluster, the **scheduler** is the real gate for compute resources. Remove the user's associations or set limits in Slurm (chapter 6.9).
 
@@ -163,7 +163,7 @@ Always keep a second administrator session open when you test a lock-down change
 
 ## 3. File permissions: read, write, execute
 
-Every file and directory has an owner (a UID), a group (a GID) and a **mode**, which is a set of permission bits. `ls -l` shows the mode as ten characters. The diagram below labels each part.
+A teammate messages you in the afternoon: she cannot open a file the whole group needs to edit. You run `ls -l` and see a string of letters and dashes. `ls -l` shows the mode as ten characters. Every file and directory has an owner, which is a UID, a group, which is a GID, and a **mode**, which is a set of permission bits. The diagram below labels each part.
 
 ```
 -rw-r-----  1 alice projx 7041 Oct 23 19:34 endnotes.html
@@ -174,7 +174,7 @@ dr-xr-sr-x  2 root  projx 4096 Oct 23 19:34 shared
  +---------- user (owner)
 ```
 
-The first character is the file type (chapter 1.3). The other nine form three triples, one each for the **user** (`u`), the **group** (`g`) and **other** (`o`). Each triple is some combination of `r` (read), `w` (write), `x` (execute) and `-` (not granted). When the kernel checks access, it goes in a fixed order and stops at the first match. If your effective UID is the file's owner, the user triple applies. If not, and your effective GID or one of your supplementary groups matches the file's group, the group triple applies. Otherwise, the other triple applies. The checks do not add up. If the owner's triple is `---` and the group's is `rwx`, the owner is still denied, because the owner matched first. Also, root (UID 0) gets past nearly all of these checks through capabilities (chapter 1.21).
+The first character is the file type, which chapter 1.3 covers. The other nine form three triples, one each for the **user** (`u`), the **group** (`g`) and **other** (`o`). Each triple is some combination of `r` for read, `w` for write, `x` for execute and `-` for not granted. When the kernel checks access, it goes in a fixed order and stops at the first match. If your effective UID is the file's owner, the user triple applies. If not, and your effective GID or one of your supplementary groups matches the file's group, the group triple applies. Otherwise, the other triple applies. The checks do not add up. If the owner's triple is `---` and the group's is `rwx`, the owner is still denied, because the owner matched first. Also, root, which the kernel knows as UID 0, gets past nearly all of these checks through capabilities, as chapter 1.21 explains.
 
 ### What the bits mean: files versus directories
 
@@ -190,7 +190,7 @@ These directory rules explain many puzzling denials. To read `/data/project/file
 
 ### Changing permissions: `chmod`, `chown`, `chgrp`
 
-Symbolic mode changes specific bits. You choose who (`u`, `g`, `o`, or `a` for all), an operator (`+` to add, `-` to remove, `=` to set exactly), and the permissions.
+Symbolic mode changes specific bits and leaves the rest alone. You choose who: `u`, `g`, `o`, or `a` for all. Then an operator: `+` to add, `-` to remove, `=` to set exactly. Last come the permissions themselves.
 
 ```bash
 chmod u+x script.sh            # make it executable for the owner
@@ -199,7 +199,7 @@ chmod g=rw,o= file             # group read-write, others nothing
 chmod -R u+rwX,go+rX dir       # capital X: add execute only to directories (and files already executable)
 ```
 
-Absolute (octal) mode sets all the bits at once. Each triple becomes a number: read is 4, write is 2 and execute is 1. You add them together, so `rw-` is 6, `r-x` is 5 and `rwx` is 7.
+Absolute mode, which people call octal mode, sets all the bits at once. Each triple becomes a number: read is 4, write is 2 and execute is 1. You add them together, so `rw-` is 6, `r-x` is 5 and `rwx` is 7.
 
 | Mode | Meaning | Typical use |
 |---|---|---|
@@ -211,7 +211,7 @@ Absolute (octal) mode sets all the bits at once. Each triple becomes a number: r
 | `664` / `775` | like 644 / 755 with group write | shared project files / directories |
 | `777` | everyone everything | almost never correct |
 
-Do not try to fix a permission problem with `chmod -R 777`. It removes protection from every file. It usually misses the real cause, which is a wrong owner, a wrong group or a missing directory `x`. It also makes things executable that should not be. To find the actual mismatch, run `namei -l /full/path/to/file`. It prints the owner and mode of every component along the path. Run `id` to confirm your own identity.
+Do not try to fix a permission problem with `chmod -R 777`. It removes protection from every file at once. It usually misses the real cause, which is a wrong owner, a wrong group or a missing directory `x`. It also makes things executable that should not be. To find the actual mismatch, run `namei -l /full/path/to/file`. It prints the owner and mode of every component along the path. Run `id` to confirm your own identity.
 
 **Ownership.** `chown alice file` changes the owner, and only root can do that. `chown alice:projx file` changes both the owner and the group. `chgrp projx file` changes the group, and the owner may move a file to any group they belong to. Add `-R` to recurse. `stat file` shows the owner, group and mode in full.
 
@@ -223,7 +223,7 @@ Be careful with world-writable files. Obviously, you should not make a file writ
 
 ### `umask`: default permissions for new files
 
-New regular files start from 666, which is read-write for everyone. New files are not executable by default. New directories start from 777. The **umask** is a mask of bits to remove from those starting values. With the common `umask 022`, a new file gets `666 - 022 = 644`, and a new directory gets `755`. With `umask 077`, they get `600` and `700`, which is private. With `umask 002`, which allows group write, files get `664` and directories get `775`. The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same.
+Every new file starts life with a default set of permissions, and the umask decides what those are. New regular files start from 666, which is read-write for everyone. New files are not executable by default. New directories start from 777. The **umask** is a mask of bits to remove from those starting values. With the common `umask 022`, a new file gets `666 - 022 = 644`, and a new directory gets `755`. With `umask 077`, they get `600` and `700`, which is private. With `umask 002`, which allows group write, files get `664` and directories get `775`. The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same.
 
 ```bash
 umask                # show the current mask, for example 0022
@@ -231,11 +231,11 @@ umask 077            # make new files private in this shell
 umask -S             # symbolic form
 ```
 
-Choosing a value is a matter of who should see your files. `077` is the most restrictive. It suits a multi-user machine where others should not read your files. The cost is that sharing gets harder, which can tempt inexperienced users to make things world-writable. `022` lets others read what you create. That fits a single-user system, and it also suits daemons that run as pseudo-users and must read your files. `002` is for collaborative group directories on systems that use user-private groups. The mask belongs to each process and is inherited by children. Set it in a startup file (section 6) so it applies to every shell. Some programs, such as mail clients, `ssh-keygen` and key stores, deliberately override it to stay private.
+Choosing a value is a matter of who should see your files. `077` is the most restrictive. It suits a multi-user machine where others should not read your files. The cost is that sharing gets harder, which can tempt inexperienced users to make things world-writable. `022` lets others read what you create. That fits a single-user system, and it also suits daemons that run as pseudo-users and must read your files. `002` is for collaborative group directories on systems that use user-private groups. The mask belongs to each process and is inherited by children. Set it in a startup file, as section 6 explains, so it applies to every shell. Some programs, such as mail clients, `ssh-keygen` and key stores, deliberately override it to stay private.
 
 ### The special bits: setuid, setgid, sticky
 
-Three extra mode bits live in a fourth, leading octal digit: `4000`, `2000` and `1000`. They appear as `s` or `t` in the `ls -l` triples. Their meaning depends on whether the item is a file or a directory.
+Sometimes plain ownership is not enough, and three extra mode bits fill the gap. They live in a fourth, leading octal digit: `4000`, `2000` and `1000`. They appear as `s` or `t` in the `ls -l` triples. Their meaning depends on whether the item is a file or a directory.
 
 | Bit | On an executable file | On a directory |
 |---|---|---|
@@ -243,7 +243,7 @@ Three extra mode bits live in a fourth, leading octal digit: `4000`, `2000` and 
 | **setgid** (`g+s`, 2000) | runs with the file's **group** | **new files and subdirectories inherit the directory's group** instead of the creator's primary group. It shows `s` in the group slot. |
 | **sticky** (`+t`, 1000) | ignored on Linux | **only the owner of a file (or of the directory, or root) may delete or rename entries**, even if others have write permission on the directory. It shows `t` in the other's execute slot. |
 
-Two familiar examples show the bits at work. `/usr/bin/passwd` and `/usr/bin/sudo` are setuid-root, so ordinary users can change `/etc/shadow` through a vetted program. `/tmp` is `1777` (`drwxrwxrwt`), so everyone can create files there, but nobody can delete someone else's. Setuid has no effect on interpreted scripts on Linux. The kernel honors it only for real executables, for security reasons.
+Two familiar examples show the bits at work. `/usr/bin/passwd` and `/usr/bin/sudo` are setuid-root, so ordinary users can change `/etc/shadow` through a vetted program. `/tmp` is `1777`, which reads as `drwxrwxrwt`, so everyone can create files there, but nobody can delete someone else's. Setuid has no effect on interpreted scripts on Linux. The kernel honors it only for real executables, for security reasons.
 
 ### A recipe: a safe shared project directory
 
@@ -258,13 +258,13 @@ sudo chmod 2770 /data/projx          # setgid so new files inherit group projx; 
 # members use umask 002 so files they create are group-writable (set it in their startup file)
 ```
 
-With `2770` and `umask 002`, anything created in the directory belongs to the group projx and is group-writable, and you do not need any extra steps. If you cannot control each user's umask, default ACL entries (the next section) enforce the permissions from the directory side.
+With `2770` and `umask 002`, anything created in the directory belongs to the group projx and is group-writable, and you do not need any extra steps. If you cannot control each user's umask, default ACL entries, which the next section introduces, enforce the permissions from the directory side.
 
 Before you hand a directory to a team, set the setgid bit and check that members' umasks allow group write.
 
 ## 4. Access control lists (ACLs)
 
-Classic permissions give you one owner, one group and "everyone else". Real teams often need a rule like this: alice and bob can read and write, carol can only read, and nobody else gets in. Without ACLs, you would need a special group for every combination. **POSIX ACLs** solve this. They add lists of extra users and groups, each with its own permissions, to a file or directory. Common Linux filesystems support them. ext4 and XFS support them by default, and others need the `acl` mount option. NFSv4 has its own form of ACLs. Not every network or parallel filesystem supports them, so check before you depend on them.
+A teammate from another team needs to read one project directory, and nothing else. Classic permissions give you one owner, one group and "everyone else", so there is nowhere obvious to put her. Real teams often need a rule like this: alice and bob can read and write, carol can only read, and nobody else gets in. Without ACLs, you would need a special group for every combination. **POSIX ACLs** solve the problem. They add lists of extra users and groups, each with its own permissions, to a file or directory. Common Linux filesystems support them. ext4 and XFS support them by default, and others need the `acl` mount option. NFSv4 has its own form of ACLs. Not every network or parallel filesystem supports them, so check before you depend on them.
 
 The commands below cover the whole life of an ACL, from granting access to removing it.
 
@@ -283,13 +283,15 @@ ls -l mydir                                   # (untested here) a '+' sign at th
 
 Read the first three lines as grants for named users, the fourth as a grant for a group, and the rest as tools for viewing, removing and inheriting the rules. The default ACL on the directory is the one that reaches new files, and the recursive form reaches the files that already exist.
 
-When an ACL is set, `ls -l` adds a `+` at the end of the ten-character permission string. Use `getfacl` to read the full rule list. Two ideas matter most when you work with ACLs. The first is the **mask**. It is an entry that caps the effective permission of every named user, every named group and the owning group. If you run `chmod g=...` on a file that has an ACL, you change the mask, not the owning group's bits. So a file can look group-writable in `ls -l` while the mask limits it to `r--`. `getfacl` prints `#effective:` notes whenever the mask reduces an entry's rights.
+When an ACL is set, `ls -l` adds a `+` at the end of the ten-character permission string. Use `getfacl` to read the full rule list. Two ideas matter most when you work with ACLs. The first is the **mask**. It is an entry that caps the effective permission of every named user, every named group and the owning group. However generous an entry looks, it can never grant more than the mask allows. If you run `chmod g=...` on a file that has an ACL, you change the mask, not the owning group's bits. So a file can look group-writable in `ls -l` while the mask limits it to `r--`. `getfacl` prints `#effective:` notes whenever the mask reduces an entry's rights.
 
 The second idea is the **default ACL**. A default entry set with `setfacl -d` on a directory gives every new file and subdirectory created inside it an initial ACL. That enforces the team's sharing rules, whatever each user's umask happens to be.
 
 Check that your filesystem supports ACLs before you rely on them, and run `getfacl` after every `chmod`.
 
 ## 5. Process identity, setuid and `sudo`
+
+How does a machine learn who you are? The answer starts the moment you sit down at a terminal, so this section follows one login from the first prompt to the shell. Then it looks at what a running process carries with it, and at the two mechanisms, setuid and `sudo`, that let a process change its identity on purpose.
 
 ### `getty` and `login`: how a terminal login starts
 
@@ -300,13 +302,13 @@ $ ps ao args | grep getty
 /sbin/agetty -o -p -- \u --noclear tty1 linux
 ```
 
-On many systems you may not see a getty process until you switch to a virtual terminal with something like Ctrl-Alt-F1. The example shows `agetty`, the version many distributions include by default. When you type your login name, getty replaces itself with the `login` program, which asks for your password. A correct password makes `login` replace itself with your shell, using `exec()`. A wrong one gives you a "Login incorrect" message. PAM does much of the real authentication work here (chapter 1.21).
+On many systems you may not see a getty process until you switch to a virtual terminal with something like Ctrl-Alt-F1. The example shows `agetty`, the version many distributions include by default. When you type your login name, getty replaces itself with the `login` program, which asks for your password. A correct password makes `login` replace itself with your shell, using `exec()`. A wrong one gives you a "Login incorrect" message. PAM does much of the real authentication work here, as chapter 1.21 explains.
 
 A baud rate such as "38400" may appear when you investigate getty. Treat that setting as all but obsolete. Virtual terminals ignore the baud rate, and it matters only for real serial lines. You will rarely configure getty or login, because most people log in through a graphical interface such as `gdm`, or remotely with SSH, and neither uses getty or login.
 
 ### How a process gets its identity, and how it changes
 
-Every process runs with a UID and a GID, plus any supplementary groups. Where do those come from? `login`, `sshd` or the display manager first authenticates a user. Then it starts that user's shell with the user's IDs. Every process the shell creates inherits the same IDs (chapter 1.1). Changing identity later means changing these numbers, and the kernel allows that only under strict rules:
+Every process runs with a UID and a GID, plus any supplementary groups. Where do those come from? `login`, `sshd` or the display manager first authenticates a user. Then it starts that user's shell with the user's IDs. Every process the shell creates inherits the same IDs, as chapter 1.1 showed. Changing identity later means changing these numbers, and the kernel allows that only under strict rules:
 
 1. A process may run a **setuid executable** if it has permission to execute the file. The program then starts with the file owner's UID as its effective UID.
 2. A process running as root (UID 0) may call the `setuid()` family of system calls to become *any* user.
@@ -329,19 +331,19 @@ When you run a setuid program, the euid becomes the file owner's. The ruid stays
 
 ### Why setuid is dangerous: security implications
 
-Every setuid-root program is a place where an ordinary user's input crosses into root's authority. That makes the risk severe. Two things need control: how many such programs exist, and what each one does. A copy of a shell with the setuid-root bit set gives any local user a root shell. A bug in a legitimate setuid program becomes a privilege-escalation vulnerability, and attackers exploit those to break into systems. Audit the system from time to time with `find / -xdev -perm -4000 -type f 2>/dev/null`. You can also limit where setuid files can be created. Mount user-writable filesystems, such as home directories, `/tmp` and container volumes, with the `nosuid` option. For the same reason, containers should not run with extra capabilities, and they should drop setuid binaries (chapters 5.1 and 18.3).
+Every setuid-root program is a place where an ordinary user's input crosses into root's authority. That makes the risk severe. Both the number of setuid programs and their quality matter. Two things need control: how many such programs exist, and what each one does. A copy of a shell with the setuid-root bit set gives any local user a root shell. A copy of `bash` made setuid root would give any local user the whole system, and nothing more is needed. Even a special-purpose setuid-root program is risky when it contains a bug, because a bug in a legitimate setuid program becomes a privilege-escalation vulnerability. Attackers get into systems mainly by exploiting weaknesses in programs that run as root, and the list of such exploits is very long.
 
-Both the number of setuid programs and their quality matter, along with what each one does. A copy of `bash` made setuid root would give any local user the whole system, and nothing more is needed. Even a special-purpose setuid-root program is risky when it contains a bug. Attackers get into systems mainly by exploiting weaknesses in programs that run as root, and the list of such exploits is very long. With so many routes into a system, preventing intrusion is a multifaceted affair on any multiuser machine. The most essential way to keep unwanted activity off your system is to enforce user authentication, with usernames and good passwords.
+You can still act on the risk in concrete ways. Audit the system from time to time with `find / -xdev -perm -4000 -type f 2>/dev/null`. You can also limit where setuid files can be created. Mount user-writable filesystems, such as home directories, `/tmp` and container volumes, with the `nosuid` option. For the same reason, containers should not run with extra capabilities, and they should drop setuid binaries, as chapters 5.1 and 18.3 explain. With so many routes into a system, preventing intrusion is a multifaceted affair on any multiuser machine. The most essential way to keep unwanted activity off your system is to enforce user authentication, with usernames and good passwords.
 
 ### Identification, authentication, authorization
 
 Keep three words distinct. **Identification** answers "who are you?" and is ultimately a username, which maps to a UID. **Authentication** answers "prove it" with a password, an SSH key, a token or a smart card. **Authorization** answers "what may you do?" through file permissions, `sudo` rules and scheduler limits. The kernel handles identification by number and authorization for files and processes. It knows nothing about authentication, which is entirely user space.
 
-A program that needs its own username calls `geteuid()` to get the number. Then it asks the C library to map that number to a name with `getpwuid()`. The library decides where to look, and the site can configure that (section 8.5). This extra step is what lets a site move from local files to a network directory without changing any program. The old approach of simply reading `/etc/passwd` had three limits. It used one fixed hashing method, it always prompted for a password, and it had no support for tokens or smart cards. **PAM**, the Pluggable Authentication Modules framework, was created to remove those limits (chapter 1.21).
+A program that needs its own username calls `geteuid()` to get the number. Then it asks the C library to map that number to a name with `getpwuid()`. The library decides where to look, and the site can configure that, as section 8.5 explains. This extra step is what lets a site move from local files to a network directory without changing any program. The old approach of simply reading `/etc/passwd` had three limits. It used one fixed hashing method, it always prompted for a password, and it had no support for tokens or smart cards. **PAM**, the Pluggable Authentication Modules framework, was created to remove those limits, as chapter 1.21 explains.
 
 ### `sudo`: administrative power with a trail
 
-You will need root from time to time. The disciplined way is **`sudo`**. It runs one command as another user (by default root), after you authenticate *as yourself*, and it logs the event. A root shell has real costs. Nothing records which commands were run or by whom. You lose your normal environment. With `su`, you also share a single root password. Use `sudo command` for individual commands. Use `sudo -i` or `sudo -s` for a root shell only when you really need a sequence of commands, and remember that the logging is coarser then.
+You will need root from time to time. The disciplined way is **`sudo`**. It runs one command as another user, root by default, after you authenticate *as yourself*, and it logs the event. A root shell has real costs. Nothing records which commands were run or by whom. You lose your normal environment. With `su`, you also share a single root password. Use `sudo command` for individual commands. Use `sudo -i` or `sudo -s` for a root shell only when you really need a sequence of commands, and remember that the logging is coarser then.
 
 ```bash
 sudo systemctl restart slurmd           # one command as root
@@ -352,7 +354,7 @@ sudoedit /etc/ssh/sshd_config           # edit a root file with YOUR editor (see
 echo "x" | sudo tee /root/file          # NOT: sudo echo x > /root/file (the redirection is done by YOUR shell)
 ```
 
-**Configuration.** `sudo` reads `/etc/sudoers` and every file in `/etc/sudoers.d/`. File names there must not contain a dot or end in `~`, and the mode should be `0440`. Always edit with `visudo` (for example, `visudo -f /etc/sudoers.d/aiteam`). It locks the file and checks the syntax before saving. A syntax error in sudoers can disable `sudo` entirely, so keep a root shell open while you change it. The rule format is:
+**Configuration.** `sudo` reads `/etc/sudoers` and every file in `/etc/sudoers.d/`. File names there must not contain a dot or end in `~`, and the mode should be `0440`. Always edit with `visudo`, for example `visudo -f /etc/sudoers.d/aiteam`. It locks the file and checks the syntax before saving. A syntax error in sudoers can disable `sudo` entirely, so keep a root shell open while you change it. The rule format is:
 
 ```
 who   where = (run-as-user:run-as-group)   [NOPASSWD:]  commands
@@ -372,7 +374,7 @@ Defaults    logfile="/var/log/sudo.log"
 
 Reading the rule: the first `ALL` means "any host", which helps when one file serves many machines. `(root)` names the user you may become. `NOPASSWD:` skips the password prompt. The last field lists the allowed commands, and `ALL` there means everything. A line such as `ADMINS ALL = NOPASSWD: ALL` gives a group unrestricted root without a password. That is convenient, and it is also dangerous. Choose the narrowest command list that works, and require a password or hardware-token confirmation for broad rights. Grant access to a group, such as `%sudo` on Debian and Ubuntu or `%wheel` on the Red Hat family, instead of naming individuals. That way, access follows group membership.
 
-**Logging.** Each `sudo` use goes to syslog under the auth facility. On systemd systems, query it with `journalctl SYSLOG_IDENTIFIER=sudo`. On others, check `/var/log/auth.log` or `/var/log/secure`. Ship these logs to a central place, because they are your audit trail (chapter 17.3). `sudo` resets the environment (`env_reset`) and uses `secure_path`, so a variable or `PATH` you exported will not reach the command unless the policy allows it (`sudo -E`, or `env_keep` or `env VAR=value cmd`). That explains why `CUDA_VISIBLE_DEVICES` set in your shell can vanish under `sudo`.
+**Logging.** Each `sudo` use goes to syslog under the auth facility. On systemd systems, query it with `journalctl SYSLOG_IDENTIFIER=sudo`. On others, check `/var/log/auth.log` or `/var/log/secure`. Ship these logs to a central place, because they are your audit trail, as chapter 17.3 explains. `sudo` resets the environment with `env_reset` and uses `secure_path`, so a variable or `PATH` you exported will not reach the command unless the policy allows it, through `sudo -E`, or `env_keep`, or `env VAR=value cmd`. That explains why `CUDA_VISIBLE_DEVICES` set in your shell can vanish under `sudo`.
 
 ## 6. Shell startup files: the user environment
 
@@ -391,7 +393,7 @@ flowchart TB
   L -->|"no (new terminal window, bash typed in a session)"| NL["/etc/bash.bashrc (Debian family), then ~/.bashrc"]
 ```
 
-Two practical facts govern bash startup. First, login shells do not read `~/.bashrc`, and non-login shells do not read `~/.bash_profile`. The standard fix is to keep your settings in `~/.bashrc` and have `~/.bash_profile` (or `~/.profile`) source it. You can do that with a symlink or a one-liner, `[ -f ~/.bashrc ] && . ~/.bashrc`, and that is what the default files on Ubuntu do. Second, you can test which kind of shell you are in. `echo $0` shows a leading `-` for a login shell. Inside a startup file, `case $- in *i*)` tests for an interactive shell, because `$-` contains `i` only then. That keeps commands that print output or need a terminal away from scripts.
+Two practical facts govern bash startup. First, login shells do not read `~/.bashrc`, and non-login shells do not read `~/.bash_profile`. The standard fix is to keep your settings in `~/.bashrc` and have `~/.bash_profile` or `~/.profile` source it. You can do that with a symlink or a one-liner, `[ -f ~/.bashrc ] && . ~/.bashrc`, and that is what the default files on Ubuntu do. Second, you can test which kind of shell you are in. `echo $0` shows a leading `-` for a login shell. Inside a startup file, `case $- in *i*)` tests for an interactive shell, because `$-` contains `i` only then. That keeps commands that print output or need a terminal away from scripts.
 
 **Why are there two kinds?** The split dates from the days when people logged in on a plain terminal and then started subshells inside a window system or `screen`. Heavy setup, such as the path, environment variables and programs that start agents, ran once in the login shell. Lightweight things, such as aliases, went in `~/.bashrc` for the subshells. That avoided repeating the work. Today most desktop users log in through a graphical display manager, which usually starts one login shell for the session, so the old model still holds. Where it does not, your terminal windows never see the environment set in `~/.bash_profile`, and you must put the whole environment in `~/.bashrc` instead. Console and SSH logins are login shells that skip `~/.bashrc`, so you still need the `~/.bash_profile` that sources it. That pair is the robust arrangement. A mismatch between the two sits behind most reports of "my environment is missing in the terminal" or "in SSH".
 
@@ -413,7 +415,7 @@ set prompt="%m%% "
 
 ### What belongs in a startup file
 
-Start with the command path. Put `/usr/local/bin`, `/usr/bin` and `/bin` in that order, so that local versions override system ones. Administrators also add `/usr/local/sbin`, `/usr/sbin` and `/sbin`. A personal `$HOME/bin` or `$HOME/.local/bin` (a newer convention) goes at the front. Do not change the path for every new installation directory. A symlink in `/usr/local/bin` is cleaner.
+Start with the command path. Put `/usr/local/bin`, `/usr/bin` and `/bin` in that order, so that local versions override system ones. Administrators also add `/usr/local/sbin`, `/usr/sbin` and `/sbin`. A personal `$HOME/bin` or `$HOME/.local/bin`, a newer convention, goes at the front. Do not change the path for every new installation directory. A symlink in `/usr/local/bin` is cleaner.
 
 Never put `.`, the current directory, in `PATH`. At the front, it lets a malicious file named `ls` in any directory you visit run instead of the real command. At the end, it still invites typo attacks, such as `sl` or `ks`. It also makes commands behave differently depending on where you happen to be.
 
@@ -423,7 +425,7 @@ The prompt, `PS1`, should be short and useful. Avoid characters the shell gives 
 
 Aliases are convenient, but they have drawbacks. They are awkward with arguments, hard to trace back to where they were defined, and not inherited by subshells or scripts. The classic mistake is aliasing a standard command with extra options, such as `alias ls='ls -F'`, which changes behavior users do not expect. Prefer a shell function or a small script, and keep aliases for simple shortcuts. To change the *environment* of the current shell, you need a function or a sourced file. A script runs in a subshell and cannot change your variables.
 
-Finally, set the umask (`022` or `077`, section 3), `EDITOR`, `VISUAL`, `PAGER` (`less`) and the `LESS` options. Remember to `export` environment variables.
+Finally, set the umask to `022` or `077`, as section 3 suggests, then set `EDITOR`, `VISUAL` and `PAGER`, which is `less`, along with the `LESS` options. Remember to `export` environment variables.
 
 ### An example `~/.bashrc`
 
@@ -465,17 +467,21 @@ Before you roll out a new startup file, log in as a test user in every way your 
 
 ## 7. Limits and quotas (an introduction)
 
-Permissions decide whether you may do something. Limits decide how much of it you may do. Two mechanisms matter on shared systems, and later chapters cover both in depth.
+A login node slows to a crawl because one user's runaway script has spawned thousands of processes, and everyone's work stops with it. Permissions could not prevent that. The user was allowed to run the script; the problem is how much of the machine it could use. Permissions decide whether you may do something. Limits decide how much of it you may do. Two mechanisms matter on shared systems, and later chapters cover both in depth.
 
-The first is the per-process resource limit, set with `ulimit`. Run `ulimit -a` to see the limits on file size, open files, locked memory, stack size, CPU time, processes and more. Sensible defaults protect shared login nodes. A common step is to limit the number of processes per user to 50 to 100, which stops a **fork bomb**. A fork bomb is a program that spawns copies of itself until the machine stops responding. A CPU-time limit on login nodes is also worth considering, but set it too low and large `scp` or `sftp` transfers fail, because their CPU time counts against the limit. Compute nodes need *higher* limits instead, for two reasons. Each SSH connection or socket uses a file descriptor, so open files need room. RDMA memory registration needs pinned memory, so locked memory (`ulimit -l`) must be large. A small default there causes InfiniBand failures. Limits live in `/etc/security/limits.conf` and in `/etc/security/limits.d/*.conf`, which `pam_limits` applies. Services can set their own limits in systemd unit files (`LimitNOFILE=`, `LimitMEMLOCK=`), and cgroups enforce limits too (chapter 1.18). The kernel also sets ceilings, such as `fs.file-max`. A per-process limit above the kernel ceiling has no effect. The stack-size limit matters for OpenMP programs (chapter 1.8).
+The first is the per-process resource limit, set with `ulimit`. Run `ulimit -a` to see the limits on file size, open files, locked memory, stack size, CPU time, processes and more. Sensible defaults protect shared login nodes. A common step is to limit the number of processes per user to 50 to 100, which stops a **fork bomb**. A fork bomb is a program that spawns copies of itself until the machine stops responding.
 
-The second mechanism is disk quotas. A filesystem can enforce **soft** and **hard** limits on space, counted in blocks, and on the number of files, counted in inodes. You can set them per user or per group. A soft limit may be exceeded for a **grace period**. When the grace period ends, the soft limit acts like a hard one. A hard limit stops allocation at once, so writes fail with an error. To enable quotas, mount the filesystem with `usrquota` and `grpquota`, create the accounting data with `quotacheck`, and switch quotas on with `quotaon`. Manage them with `edquota`, `setquota` and `repquota`. For example, `setquota -p alice -u bob` copies alice's quota template to bob. NFS exports can be quota-enforced on the server through the `rpc.rquotad` service. ZFS, Btrfs, XFS (with project quotas) and Lustre have their own tools (chapters 1.12 and 6.19).
+A CPU-time limit on login nodes is also worth considering, but set it too low and large `scp` or `sftp` transfers fail, because their CPU time counts against the limit. Compute nodes need *higher* limits instead, for two reasons. Each SSH connection or socket uses a file descriptor, so open files need room. RDMA memory registration needs pinned memory, so locked memory (`ulimit -l`) must be large. A small default there causes InfiniBand failures.
+
+Limits live in `/etc/security/limits.conf` and in `/etc/security/limits.d/*.conf`, which `pam_limits` applies. Services can set their own limits in systemd unit files (`LimitNOFILE=`, `LimitMEMLOCK=`), and cgroups enforce limits too, as chapter 1.18 explains. The kernel also sets ceilings, such as `fs.file-max`. A per-process limit above the kernel ceiling has no effect. The stack-size limit matters for OpenMP programs, as chapter 1.8 explains.
+
+The second mechanism is disk quotas. A filesystem can enforce **soft** and **hard** limits on space, counted in blocks, and on the number of files, counted in inodes. You can set them per user or per group. A soft limit may be exceeded for a **grace period**. When the grace period ends, the soft limit acts like a hard one. A hard limit stops allocation at once, so writes fail with an error. To enable quotas, mount the filesystem with `usrquota` and `grpquota`, create the accounting data with `quotacheck`, and switch quotas on with `quotaon`. Manage them with `edquota`, `setquota` and `repquota`. For example, `setquota -p alice -u bob` copies alice's quota template to bob. NFS exports can be quota-enforced on the server through the `rpc.rquotad` service. ZFS, Btrfs, XFS with project quotas, and Lustre have their own tools, as chapters 1.12 and 6.19 explain.
 
 Before you change a login node's limits, test them with a throwaway user, because a limit that is too small will break transfers you never meant to block.
 
 ## 8. Identity in a cluster: keeping the numbers consistent (*Supercomputers for Linux Sysadmins* Chapter 11)
 
-On a single Linux server, the local `/etc/passwd`, `/etc/shadow` and `/etc/group` files are all you need. A supercomputer or GPU cluster is different. Account management becomes an architectural problem right away, because every node must agree on every account. You can meet that need in one of two ways. You can query a single central data source over the network, such as **LDAP** or **NIS+**. Or you can run periodic, or event-driven, synchronization of the static account files.
+Picture a new compute node joining the cluster tomorrow morning. Its local files know nothing about your users, and the first Slurm job that lands on it fails before it starts. On a single Linux server, the local `/etc/passwd`, `/etc/shadow` and `/etc/group` files are all you need. A supercomputer or GPU cluster is different. Account management becomes an architectural problem right away, because every node must agree on every account. You can meet that need in one of two ways. You can query a single central data source over the network, such as **LDAP** or **NIS+**. Or you can run periodic, or event-driven, synchronization of the static account files.
 
 ### 8.1 What must match everywhere and what must differ by node role
 
@@ -537,7 +543,7 @@ In this script, `CT=3` (`-o connecttimeout=3`) limits each SSH connection attemp
 
 ### 8.3 NIS and NIS+: why the commands start with `yp` and why 30 to 40 clients is the ceiling
 
-**NIS**, the *Network Information System*, was created by Sun Microsystems in 1985. It distributes configuration tables that must stay identical across a network, such as `/etc/passwd`, `/etc/group` and `/etc/hosts`. Sun first called it Yellow Pages. British Telecom owned the *Yellow Pages* trademark and sued, so Sun renamed the product NIS. The daemons, commands and configuration files kept the `yp` prefix, though. You will still see `ypserv`, `yppasswdd`, `ypxfrd`, `ypbind`, `/var/yp` and `/etc/yp.conf`.
+Why do all the NIS commands start with `yp`? The answer is a trademark story from 1985. Sun Microsystems created **NIS**, the *Network Information System*, to distribute configuration tables that must stay identical across a network, such as `/etc/passwd`, `/etc/group` and `/etc/hosts`. Sun first called it Yellow Pages. British Telecom owned the *Yellow Pages* trademark and sued, so Sun renamed the product NIS. The daemons, commands and configuration files kept the `yp` prefix, though. You will still see `ypserv`, `yppasswdd`, `ypxfrd`, `ypbind`, `/var/yp` and `/etc/yp.conf`.
 
 The original NIS protocol had serious security flaws, so Sun introduced a replacement called **NIS+**. The two share program names and similar configuration ideas. They are still protocol-incompatible, though. An NIS client cannot talk to an NIS+ server, and an NIS+ client cannot talk to an NIS server.
 
@@ -556,7 +562,7 @@ Setting up NIS+ takes eight steps across the server and the clients.
 
 ### 8.4 LDAP, explosive job-launch storms, and SSSD caching
 
-**LDAP**, the *Lightweight Directory Access Protocol*, is a universal, schema-driven directory database for organizations, users, hosts and access policies. NIS+ only distributes lines from flat text files. LDAP stores structured records that can hold attributes, links between records, binary data and fine-grained access control lists for each record. Common implementations include **OpenLDAP**, Microsoft **Active Directory** (an LDAP server with Kerberos and Microsoft schema extensions), **Fedora Directory Server** (389 Directory Server, also known as FreeIPA), the **Apache Directory Project** and **Mandriva Directory Server**. On Red Hat family distributions, client setup has traditionally been automated with `authconfig`, or `authselect` on newer releases. Administrators often manage directory trees through web interfaces such as `phpLDAPadmin` or `LDAP Account Manager`.
+**LDAP**, the *Lightweight Directory Access Protocol*, is a universal, schema-driven directory database for organizations, users, hosts and access policies. Where NIS+ only distributes lines from flat text files, LDAP stores structured records that can hold attributes, links between records, binary data and fine-grained access control lists for each record. Common implementations include **OpenLDAP**, Microsoft **Active Directory** (an LDAP server with Kerberos and Microsoft schema extensions), **Fedora Directory Server** (389 Directory Server, also known as FreeIPA), the **Apache Directory Project** and **Mandriva Directory Server**. On Red Hat family distributions, client setup has traditionally been automated with `authconfig`, or `authselect` on newer releases. Administrators often manage directory trees through web interfaces such as `phpLDAPadmin` or `LDAP Account Manager`.
 
 Why does a naive LDAP deployment fail on a large supercomputer or GPU cluster? An office network sends steady, uniform LDAP queries as employees log in over a morning. A compute cluster sends **explosive burst access**. The moment Slurm or Kubernetes launches a 500-node job, all 500 nodes query the LDAP server at once for the submitting user's UID, GID and group list. Under that synchronized connection storm, a standalone LDAP server runs out of worker threads and drops requests. Job launch then fails on the nodes whose lookups were discarded.
 
@@ -588,7 +594,7 @@ Before you move a site from local files to a directory service, confirm that `ge
 
 ## 9. AI-infrastructure patterns
 
-A few identity and permission habits matter a great deal on GPU clusters. Each one below connects a Linux rule from this chapter to a problem you will see in practice.
+The rules in this chapter stop being abstract the first time a container run leaves root-owned files in a teammate's project directory. A few identity and permission habits matter a great deal on GPU clusters, and each one below connects a Linux rule from this chapter to a problem you will see in practice.
 
 **Container processes are real users.** A container's root is the host's UID 0, unless user namespaces remap it (chapter 1.19). If a root container writes to a bind-mounted or network directory, the files belong to root on the host, and you cannot write to them. Run training containers as your own user instead. Use `docker run --user "$(id -u):$(id -g)"`, or set `securityContext: runAsUser`, `runAsGroup` and `fsGroup` in Kubernetes. Give datasets and checkpoint directories the group-setgid recipe from section 3.
 

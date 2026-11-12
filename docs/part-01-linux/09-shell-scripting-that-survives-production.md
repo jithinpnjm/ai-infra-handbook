@@ -22,30 +22,36 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Most of an infrastructure engineer's day is glue work, and the glue is mostly shell. You will meet it as the entrypoint of a training container, the `sbatch` script that launches 64 ranks, or the node health check that runs before every job. It also shows up as the `user_data` that bootstraps a cloud VM, the Dockerfile `RUN` lines, the CI step that builds a driver package, and the prolog and epilog scripts that run as root on every compute node. Shell is available everywhere, starts instantly and composes other tools well. It is also unforgiving. A missing quote can delete the wrong directory. An unchecked error can let a job "succeed" with no output. A script that works on your laptop can break when `cron` or `slurmd` runs it with a different environment.
+Most of an infrastructure engineer's day is glue work, and the glue is usually shell. You meet it in small places that carry long consequences. It is the entrypoint of a training container and the `sbatch` script that launches 64 ranks. It is the node health check that runs before every job and the `user_data` that bootstraps a cloud VM. It is a Dockerfile `RUN` line, the CI step that builds a driver package, and the prolog and epilog scripts that run as root on every compute node.
 
-This chapter takes you from the first line of a script to patterns that hold up in production. You will follow two threads. The first is the language itself: quoting, variables, exit codes, tests, loops, functions, expansion and here documents. The second is the discipline that turns a one-off into something a team can run unattended: strict mode and its limits, traps and cleanup, locking, idempotence, logging and linting. The chapter also tells you when to stop and use Python.
+Shell has three things going for it. It is available everywhere, it starts instantly, and it composes other tools without ceremony. That is why it is still the first language of a data centre.
+
+Shell is also unforgiving, in a way that Python is not. A missing quote can delete the wrong directory. An unchecked error can let a job "succeed" with no output at all. A script that works on your laptop can break when `cron` or `slurmd` runs it with a different environment. None of these failures announce themselves. You learn about them later, often from the person whose job just failed.
+
+This chapter takes you from the first line of a script to patterns that hold up in production, and it follows two threads. The first is the language itself: quoting, variables, exit codes, tests, loops, functions, expansion and here documents. The second is the discipline that turns a one-off into something a team can run unattended: strict mode and its limits, traps and cleanup, locking, idempotence, logging and linting. Along the way you will also learn when to stop and hand the job to Python.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with the command line, redirection and pipes (1.2), file permissions (1.3, 1.6) and signals (1.8). This chapter builds directly on those ideas.
+Before you start, you should be comfortable with the command line, with redirection and pipes (1.2), with file permissions (1.3, 1.6) and with signals (1.8). This chapter builds directly on those ideas, and it assumes you have met each of them once.
 
 When you finish, you should be able to do the following.
 
-- Write an executable script with a correct shebang, run it, source it, and explain the difference.
-- Quote correctly (single, double, none) and predict word splitting and globbing.
-- Use positional parameters, `$@`, `shift`, `getopts`, special variables and exit codes.
-- Write conditionals with `if`, `[ ]`, `[[ ]]`, `case`, `&&` and `||`, using file, string and numeric tests.
-- Write loops that handle awkward file names, read files line by line safely, and iterate over command output without breaking.
+- Write an executable script with a correct shebang, run it, source it, and explain the difference between those three acts.
+- Quote correctly, with single quotes, double quotes, or none at all, and predict where word splitting and globbing will bite.
+- Use positional parameters, `$@`, `shift`, `getopts`, the special variables and exit codes.
+- Write conditionals with `if`, `[ ]`, `[[ ]]`, `case`, `&&` and `||`, choosing the right test for files, strings and numbers.
+- Write loops that cope with awkward file names, read a file line by line safely, and iterate over command output without breaking on the first space.
 - Use parameter expansion instead of `sed` or `awk` for simple string work.
-- Write functions with local variables, here documents, temporary files that are cleaned up, and subshells.
-- Make a script fail loudly (`set -euo pipefail`, understand its traps), log, lock and retry.
+- Write functions with local variables, here documents, temporary files that are cleaned up, and subshells you understand.
+- Make a script fail loudly with `set -euo pipefail`, understand where that switch lies to you, and add logging, locking and retries.
 - Lint with ShellCheck and debug with `bash -x`.
-- Recognise when to move the logic to Python.
+- Recognise the moment when the logic should move to Python.
 
 ## 1. The shape of a script
 
-Suppose you need to find which directories are filling a disk on a shared server. You could type the same commands by hand each time, or you could save them in a file. A **shell script** is exactly that: a file of commands that a shell reads and runs as if you typed them. Nothing more. If you can type it at a prompt, you can script it.
+Suppose the disk on a shared server is filling up, and you need to know which directories are to blame. You could type the same three commands by hand every time. Or you could save them in a file, give the file a name, and stop thinking about it.
+
+A **shell script** is exactly that: a file of commands that a shell reads and runs as if you had typed them. Nothing more. If you can type it at a prompt, you can script it.
 
 ```bash
 #!/usr/bin/env bash
@@ -56,12 +62,12 @@ dir=${1:-.}
 du -x -d1 -- "$dir" 2>/dev/null | sort -rn | head -5
 ```
 
-Look at the script line by line. Each point below explains one part of it.
+Read the script line by line, because each line is doing a job. Four details are worth noticing.
 
 - The first line is the **shebang**. It tells the kernel which interpreter to run. Nothing may come before `#!`: no blank line, no space, no byte-order mark. A UTF-8 BOM, which some editors add silently, breaks it.
 - A `#` starts a comment, except for the shebang at the top.
 - The script needs the **execute** bit and the **read** bit, because the interpreter has to read the file too. Run `chmod u+rx disk-report` to set them. Use `700` or `750` to keep others out.
-- You can run it by path, as in `./disk-report /var`, or place it in a directory on `$PATH`. Running `disk-report` without `./` fails when the current directory is not on `$PATH`. That is deliberate. See chapter 1.6.
+- You can run it by path, as in `./disk-report /var`, or place it in a directory on `$PATH`. Running `disk-report` without `./` fails when the current directory is not on `$PATH`. That is deliberate, and chapter 1.6 explains why.
 
 ### Choosing the interpreter
 
@@ -74,7 +80,7 @@ Before you pick a shebang, check which shell your target machines actually provi
 
 ### Run, source, or exec
 
-How you launch a script decides whether its variables survive. The table shows the four common ways.
+There are four common ways to launch a script, and they differ in one question that matters more than the rest: do the variables the script sets survive afterwards? The table answers that question for each way.
 
 | How | What happens | Variables set in the script visible afterwards? |
 |---|---|---|
@@ -83,15 +89,17 @@ How you launch a script decides whether its variables survive. The table shows t
 | `exec ./script.sh` | Replaces the current shell with the script | The shell no longer exists |
 | `bash -x script.sh` | Run with tracing | No |
 
-Notice the third column. Only sourcing leaves the variables in your shell. A sourced file does not need the execute bit and does not need a shebang. Sourcing suits shared function libraries and configuration. A script run as a child returns only its **output** and its **exit code** to the caller.
+Look at the third column, because it is the whole point. Only sourcing leaves the variables in your shell. A sourced file does not need the execute bit and does not need a shebang. That makes sourcing the right tool for shared function libraries and for configuration files. A script that runs as a child process gives the caller two things back: its **output** and its **exit code**.
 
 ### The limits of shell (*How Linux Works* Section 11.1.1)
 
-The Bourne shell handles commands and files with ease. As you saw in Chapter 1.2, it can redirect output and chain pipes effortlessly. But a shell script is only one tool for Unix programming, and it has limits. If you need to pick apart strings, do repeated arithmetic, or access complex databases, reach for a scripting language such as Python, Perl or `awk`. The same advice holds if you want functions or complex control structures. A compiled language such as C or Go is another option. Finally, keep your scripts short: a page or two of glue.
+The Bourne shell handles commands and files with ease. As you saw in chapter 1.2, it can redirect output and chain pipes without effort. But a shell script is only one tool for Unix programming, and it has limits. If you need to pick apart strings, do repeated arithmetic, or reach into a complex database, use a scripting language such as Python, Perl or `awk`. The same advice holds when you want real functions or complex control structures. A compiled language such as C or Go is another option. Whatever you choose, keep your scripts short: a page or two of glue.
 
 Before a script grows past a page, ask whether it should become Python.
 
 ## 2. Quoting and expansion: the heart of shell
+
+Here is how a careful deploy script becomes a bad afternoon. Someone writes a cleanup step that removes an old release directory. It is tested on a laptop, where everything works. Months later a variable arrives empty on a build node, and the same line removes something else entirely. Nobody changed the script. What changed was the value that reached it.
 
 You type a command that looks right, and it misbehaves. The cause is usually expansion, the work the shell does before your command runs. The shell performs a series of **expansions** on each line before it executes anything. The command never sees quotes or `$` signs. It sees only the result. Misunderstanding this is the source of most shell bugs.
 
@@ -110,7 +118,7 @@ Read the diagram from top to bottom. Each box is one step the shell takes before
 
 ### The three kinds of quoting (*How Linux Works* Section 11.2)
 
-Quotation marks and other punctuation are where many people get stuck. Knowing when and why to use each kind is the key to avoiding that.
+Quotation marks, and the backslashes that go with them, are where many people get stuck. There are only three kinds, and knowing when and why to use each one is the key to avoiding that.
 
 | Quoting | Effect | Example |
 |---|---|---|
@@ -122,7 +130,7 @@ Suppose you want to print the string `$100`, so you run `echo $100`. The output 
 
 Only `echo '$100'` or `echo \$100` prints `$100`. If you wanted `$1` followed by `00`, write `"${1}00"`. Now look at a different case. When you run `echo "There is no * in my path: $PATH"`, the shell substitutes `$PATH`. It does not glob-expand the `*`.
 
-If you put large multi-line blocks of text inside double quotes, a here document is usually the better tool. Section 6 covers it. As a rule of thumb, reach for single quotes first when you want a literal, because they guarantee no substitutions. Use double quotes when you need variables expanded but want the result kept as one word.
+If you put large multi-line blocks of text inside double quotes, a here document is usually the better tool, and section 6 covers that. As a rule of thumb, reach for single quotes first when you want a literal, because they guarantee no substitutions. Use double quotes when you need variables expanded but want the result kept as one word.
 
 A single quote cannot sit inside single quotes, so you need a trick. Close the quote, add an escaped quote, and reopen: `'this isn'\''t odd'`. That is three pieces: `'this isn'`, then `\'`, then `'t odd'`. Inside double quotes, a lone `'` is fine, as in `echo "isn't"`.
 
@@ -153,7 +161,9 @@ for a in $@;   do echo "[$a]"; done    # unquoted: [abc] [123] [qwe]  (broken)
 for a in "$*"; do echo "[$a]"; done    # one word: [abc 123 qwe]
 ```
 
-`"$@"` expands to each argument as a separate, correctly quoted word, such as `"$1" "$2" ...`. By contrast, `"$*"` joins all arguments into one string, such as `"$1 $2 ..."`, separated by the first character of `IFS`. When you nest quotes around command substitutions (*Supercomputers for Linux Sysadmins* Ch. 29), old backquotes such as `base="\`basename "$file".bak\`"` become hard to read. Use `$(...)` instead, as in `base="$(basename "$file").bak"`, because it allows clean nested double quotes. To pass your arguments on, use `"$@"`. It is always the right way to forward them, for example `exec python3 train.py "$@"`.
+`"$@"` expands to each argument as a separate, correctly quoted word, such as `"$1" "$2" ...`. By contrast, `"$*"` joins all arguments into one string, such as `"$1 $2 ..."`, separated by the first character of `IFS`. That is the whole difference, and it decides whether a file name with a space arrives as one argument or two.
+
+When you nest quotes around command substitutions (*Supercomputers for Linux Sysadmins* Ch. 29), old backquotes such as `base="\`basename "$file".bak\`"` become hard to read. Use `$(...)` instead, as in `base="$(basename "$file").bak"`, because it allows clean nested double quotes. To pass your arguments on, use `"$@"`. It is always the right way to forward them, for example `exec python3 train.py "$@"`.
 
 ### Even `echo $var` can misbehave
 
@@ -168,6 +178,8 @@ If no file matches, Bash passes the pattern to the command literally. You can ch
 Before you pass a glob or a variable to a command, quote it and add `--`.
 
 ## 3. Variables, parameters and special variables
+
+A backup script can run every night for months, report success every single time, and copy nothing at all. Nothing in it ever looked at what the commands returned. Before we can talk about catching that, we need two smaller pieces of the language: the places a script keeps its values, and the way every command reports how it went.
 
 ### Variables
 
@@ -209,7 +221,9 @@ Long command lines get hard to read. You can split one across several lines by e
 
 ### Exit codes
 
-Every command ends with an **exit code**. Zero means success. Any other value means failure, and the number can say what went wrong. The shell stores the last code in `$?`. Check it right away, because the next command overwrites it. Even `echo $?` resets it to 0. Your script exits with `exit N`. Without an argument, `exit` returns the status of the last command.
+Here is the second piece, and it is the one that separates a script from a wish. Every command ends with an **exit code**. Zero means success. Any other value means failure, and the number can say what went wrong. This is the signal the silent backup script never read.
+
+The shell stores the last code in `$?`. Check it right away, because the next command overwrites it. Even `echo $?` resets it to 0. Your script exits with `exit N`. Without an argument, `exit` returns the status of the last command.
 
 Some codes follow common conventions. The table lists the ones you will meet most often.
 
@@ -227,9 +241,11 @@ Some programs use a non-zero code for normal conditions. `grep` returns 1 when i
 
 ## 4. Conditionals
 
+Every script you write will have branches: if the GPU count matches, if the mount point exists, if the package is already installed. Shell gives you a small set of tools for those decisions, and they do not behave like the conditionals in other languages.
+
 ### `if` runs a command and tests its exit code
 
-This is the point to absorb: **`if` does not test an expression, it runs a command**. Zero means "true", and anything non-zero means "false".
+A conditional is where a script makes a decision, and shell makes that decision in a way that surprises almost everyone the first time. **`if` does not test an expression. It runs a command and looks at the exit code.** Zero means "true", and anything non-zero means "false".
 
 ```bash
 if grep -q '^daemon:' /etc/passwd; then
@@ -316,9 +332,11 @@ Before you write a test, quote every variable it uses. If you keep one habit fro
 
 ## 5. Loops
 
+A cluster is a list of machines, and most scripts you will write need to do something to each machine in turn. A loop is how you say that once, instead of repeating yourself and hoping you did not miss a node.
+
 ### `for`
 
-Loops are how you repeat work across a list of nodes, files or arguments. Each line below is a common form.
+Each line below is a common form, and all of them appear in real cluster scripts.
 
 ```bash
 for node in gpu01 gpu02 gpu03; do ssh "$node" uptime; done      # a list of words
@@ -367,6 +385,8 @@ mapfile -t nodes < <(scontrol show hostnames "$SLURM_JOB_NODELIST")   # bash 4+:
 Before you loop over files, check that the pattern matches what you expect, and never parse `ls`.
 
 ## 6. Command and process substitution, temporary files, here documents
+
+Shell earns its living by gluing programs together, and three features do most of that work: command substitution, temporary files and here documents. Each one has a classic way to go wrong, so each one gets a warning here.
 
 ### Command substitution
 
@@ -420,9 +440,11 @@ The marker can be any word, though it is conventionally uppercase. It must appea
 
 ## 7. Parameter expansion, functions, grouping and subshells
 
+The pieces in this section are what turn a pile of commands into a small program. You get string handling that stays inside bash, functions with their own scope, and two ways to group commands that differ in a way that matters.
+
 ### Parameter expansion: string work without extra processes
 
-Much of what people reach for `sed`, `awk` or `basename` can be done in bash itself. Bash does it in the same process, which is faster and avoids quoting traps. The table lists the forms you will use most.
+Much of what sends people running for `sed`, `awk` or `basename` can be done inside bash itself. Bash does it in the same process, which is faster and avoids a whole family of quoting traps. The table lists the forms you will use most.
 
 | Expression | Result |
 |---|---|
@@ -523,11 +545,15 @@ tar cf - orig | ( cd target && tar xpf - )     # copy a tree preserving ownershi
 
 ### Command search and builtins
 
-Know whether a word is a builtin, a function, an alias or a program. Use `type -a cmd` to see every match. Use `command -v cmd` for a portable existence check. Use `which` only for external programs, since it is less reliable. `exec cmd` replaces the shell with `cmd`, and the shell never returns. Put it on the last line of a wrapper script, so signals go straight to the real program. `source file` includes another file. After you move programs around, run `hash -r` to clear the remembered command locations. `eval` runs a string as code, which makes it a common source of injection bugs. Avoid it, and use arrays instead.
+Before you call a command, it helps to know what kind of thing it is: a builtin, a function, an alias or an external program. Use `type -a cmd` to see every match. Use `command -v cmd` for a portable existence check. Use `which` only for external programs, since it is less reliable.
+
+`exec cmd` replaces the shell with `cmd`, and the shell never returns. Put it on the last line of a wrapper script, so signals go straight to the real program. `source file` includes another file. After you move programs around, run `hash -r` to clear the remembered command locations. `eval` runs a string as code, which makes it a common source of injection bugs. Avoid it, and use arrays instead.
 
 Before you wrap a program, decide whether it should replace the shell with `exec`.
 
 ## 8. Making scripts safe: strict mode, traps, locks, retries
+
+Picture the page at 3 a.m. A nightly job stopped half way through, left a half-written file in place, and still reported success. Nobody noticed until a user asked why a week of results was missing. This section is about the handful of habits that make a script complain at the first sign of trouble, while it still knows which line went wrong.
 
 ### Strict mode, and its traps
 
@@ -547,9 +573,9 @@ Each switch has a trade-off. The table lists what each one does and where it bit
 | `set -o pipefail` | A pipeline fails if **any** stage fails (not just the last) | `cmd \| head -1` can report failure because `cmd` got `SIGPIPE`. |
 | `set -x` (`xtrace`) | Print each command (with expansion) before running it | The debugging switch; set `PS4='+ ${BASH_SOURCE}:${LINENO}: '` to see locations. Beware that secrets in arguments are printed. |
 
-Handle expected failures explicitly. Write `if ! grep -q pattern file; then ...` when a non-match is normal. Use `grep -q x f || true` to ignore a failure you expect. Or write `cmd || { echo "cmd failed" >&2; exit 1; }` when a failure should stop the script with a message. To debug one section only, wrap it in `set -x; ...; set +x`. Many experienced engineers treat `set -e` as a safety net rather than a design, and they check the commands that matter.
+Handle expected failures explicitly, because strict mode cannot know which failures you meant to allow. Write `if ! grep -q pattern file; then ...` when a non-match is normal. Use `grep -q x f || true` to ignore a failure you expect. Or write `cmd || { echo "cmd failed" >&2; exit 1; }` when a failure should stop the script with a message. To debug one section only, wrap it in `set -x; ...; set +x`. Many experienced engineers treat `set -e` as a safety net rather than a design, and they check the commands that matter.
 
-The most important idea here is to **fail loudly and early**. Validate arguments and prerequisites at the top of the script, using `command -v` and `[ -r "$cfg" ]`. Refuse to run when a variable is empty. Then exit non-zero with a message to stderr. A script that returns 0 after silently doing nothing is worse than one that crashes.
+The most important idea here is to **fail loudly and early**. Validate arguments and prerequisites at the top of the script, using `command -v` and `[ -r "$cfg" ]`. Refuse to run when a variable is empty. Then exit non-zero with a message to stderr. A script that returns 0 after silently doing nothing is worse than one that crashes, because nobody goes looking for a problem that reports success.
 
 ### Cleanup with `trap`
 
@@ -584,7 +610,9 @@ You can also wrap a whole command, as in `flock -n /var/lock/mytool.lock mytool`
 
 ### Idempotence
 
-An **idempotent** script can run twice and leave the same result as running it once. That makes it safe to re-run after a partial failure. It is also the foundation of configuration management. Chapter 4 on Ansible exists to give you this at scale. Here are some habits that make a script idempotent. Use `mkdir -p`, `ln -sfn`, and `grep -qxF "$line" file || echo "$line" >> file`. Check before you act, as in `id user >/dev/null 2>&1 || useradd user`. Write to a temporary file, then **`mv` it into place**. A rename is atomic, so readers never see half a file. Finally, make destructive operations opt-in with `--apply`, and make a dry run the default.
+An **idempotent** script can run twice and leave the same result as running it once. That makes it safe to re-run after a partial failure, which is the common case on a busy cluster. It is also the foundation of configuration management, and chapter 4 on Ansible exists to give you this at scale.
+
+Here are some habits that make a script idempotent. Use `mkdir -p`, `ln -sfn`, and `grep -qxF "$line" file || echo "$line" >> file`. Check before you act, as in `id user >/dev/null 2>&1 || useradd user`. Write to a temporary file, then **`mv` it into place**. A rename is atomic, so readers never see half a file. Finally, make destructive operations opt-in with `--apply`, and make a dry run the default.
 
 ### Retries and timeouts
 
@@ -632,7 +660,7 @@ When you pick a tool, use each utility for the job it does best, and move to Pyt
 
 ## 10. Common mistakes, collected
 
-The mistakes below come up again and again. As you read, match each one against a script you have already written. Check your script against this list before you run it in production.
+Every engineer has written most of these at least once, and the list is short enough to read before a release. As you go, match each item against a script you have already written. Then check the next script you plan to run in production, line by line, against the same list.
 
 1. **Unquoted variables**, as in `rm $f`, `[ $x = y ]` or `for i in $list`. Quote them.
 2. **Spaces missing around `[`, `]`, `=`**, as in `[$x = y]` or `x = 1`. `[` is a command, and an assignment takes no spaces.
@@ -659,13 +687,17 @@ Pick the three items that apply to your scripts today, and fix them first.
 
 ## 11. Performance in a few lines
 
-Shell is slow wherever it starts processes. Each external command costs a `fork` and an `exec`. Picture a loop that runs `sed` on each line of a 100,000-line file. That loop starts 100,000 processes. Several faster options exist. Use bash builtins and parameter expansion. Read once with `awk` rather than calling `grep` or `cut` for every line. If you can, feed whole files to one process, and batch with `xargs -n 100` or `find -exec +`. Run independent work in parallel with `&` and `wait`, or with `xargs -P`. Pass data through pipes rather than temp files. To measure the difference, you can `time` the script, and use `strace -c -f` or `bash -x` to count process creations. If it still crawls, the right answer is Python, not more tricks.
+Shell is fast at almost everything except starting processes. Each external command costs a `fork` and an `exec`. Picture a loop that runs `sed` on each line of a 100,000-line file. That loop starts 100,000 processes, and most of the time goes into starting them rather than into the work itself.
+
+Several faster options exist. Use bash builtins and parameter expansion. Read once with `awk` rather than calling `grep` or `cut` for every line. If you can, feed whole files to one process, and batch with `xargs -n 100` or `find -exec +`. Run independent work in parallel with `&` and `wait`, or with `xargs -P`. Pass data through pipes rather than temp files.
+
+To measure the difference, you can `time` the script, and use `strace -c -f` or `bash -x` to count process creations. If it still crawls, the right answer is Python, not more tricks.
 
 ## 12. AI-infrastructure patterns
 
-Now put the pieces together on the systems you will actually run. Each pattern below is a short script. Read it, then adapt it to your site.
+Now let us put the pieces together on the systems you will actually run. Each pattern below is a short script that you adapt rather than copy. Read each one, then make it fit your site.
 
-**Training container entrypoint.** Do the minimum setup, then `exec` the real program. That makes the program PID 1, so it receives signals directly. Chapter 1.8 covers signals.
+**Training container entrypoint.** The entrypoint should do the minimum setup it needs, and then hand over with `exec`. That makes the real program PID 1, so it receives signals directly. Chapter 1.8 covers signals.
 
 ```bash
 #!/usr/bin/env bash
@@ -696,7 +728,7 @@ srun --export=ALL bash -c 'echo "$(hostname): rank $SLURM_PROCID of $SLURM_NTASK
 srun python train.py --master-addr "$head_node" "$@"
 ```
 
-**Node health check.** Run this before each job, from a Slurm `HealthCheckProgram` or a prolog (chapter 6). It must be fast and must never hang. When it fails, it exits non-zero with a reason, and that reason goes into the drain note.
+**Node health check.** Run this before each job, from a Slurm `HealthCheckProgram` or a prolog (chapter 6). The check has one hard rule: it must be fast, and it must never hang. When it fails, it exits non-zero with a reason, and that reason goes into the drain note.
 
 ```bash
 #!/usr/bin/env bash
@@ -715,7 +747,7 @@ exit 0
 
 Notice three things. Every command that could hang on a failing device or mount has a `timeout`. The expected counts are explicit. The tests are simple, so they are cheap enough to run on every job.
 
-**Staged shutdown on power or cooling failure.** This pattern comes from the HPC world, and it is rewritten here for Slurm. When the UPS reports battery low, or the room is overheating, a daemon runs a script. The script shuts down in an order that preserves work. It frees nodes first, drains the scheduler, waits, and then powers off everything. Treat it as an example of loops over nodes with timeouts, logging and graceful stages:
+**Staged shutdown on power or cooling failure.** This pattern comes from the HPC world, and it is rewritten here for Slurm. When the UPS reports battery low, or the room is overheating, a daemon runs a script. The script aims to preserve work, so it shuts down in a deliberate order. It frees nodes first, drains the scheduler, waits, and then powers off everything. Treat it as an example of loops over nodes with timeouts, logging and graceful stages:
 
 ```bash
 #!/usr/bin/env bash
@@ -756,7 +788,7 @@ For anything stateful at scale, move to Ansible (Part 4), which gives you idempo
 
 ## How it fails
 
-Each item below names a symptom you may see, followed by the fix that goes with it.
+Each item below starts with a symptom you may see, and ends with the fix that goes with it.
 
 1. **A script works interactively and fails under cron, systemd or Slurm.** The `PATH` is different, there is no terminal, no `HOME`, a different working directory, and no modules are loaded. Print the environment in the failing context, then set `PATH` and use absolute paths.
 2. **`rm -rf "$dir/"*` removes the wrong thing.** You will see this when `dir` was empty or unset. Use `${dir:?}` and `set -u`, and test before you delete.
@@ -778,13 +810,13 @@ Each item below names a symptom you may see, followed by the fix that goes with 
 
 ## Hands-on lab: shell scripting, strict mode, and VM drills
 
-Start with the self-checking Python lab in `code/part01/shell_scripting_lab.py`. Run it on your own machine first. It checks the bash parameter expansions (`${path##*/}`, `${path%/*}`, `${path%.*}`, `${path##*.}`, `${var:-}`, `${var:?}`). It also checks the `"$@"` vs `$@` vs `"$*"` word splitting. Finally, it covers the `set -e` (`errexit`) suppression contexts, the subshell vs current-shell variable scoping, and the exponential backoff retry timing.
+Start with the self-checking Python lab in `code/part01/shell_scripting_lab.py`, and run it on your own machine before you touch a VM. It checks the bash parameter expansions (`${path##*/}`, `${path%/*}`, `${path%.*}`, `${path##*.}`, `${var:-}`, `${var:?}`). It also checks the `"$@"` vs `$@` vs `"$*"` word splitting. Finally, it covers the `set -e` (`errexit`) suppression contexts, the subshell vs current-shell variable scoping, and the exponential backoff retry timing.
 
 ```bash
 python3 code/part01/shell_scripting_lab.py
 ```
 
-Next, use a scratch directory on a disposable GCP Ubuntu VM. All interactive VM commands below are `untested here`, so you confirm each result yourself as you work through these steps.
+Next, use a scratch directory on a disposable GCP Ubuntu VM. Every interactive VM command below is marked `untested here`, so you are the one who confirms each result as you work through these steps.
 
 **A. Quoting and expansion.**
 

@@ -22,7 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose a GPU node runs fine for a week, then slows down in the middle of a training run. Storage is one of the first places to look. A GPU server is full of fast local flash. M.2 drives hold the operating system, and a bank of U.2 or E1.S NVMe drives holds datasets, caches and checkpoints. Cloud GPU instances add local SSDs and network-attached volumes that you can resize while the machine runs. How you present those drives to the operating system decides whether the node is fast, resilient and easy to operate.
+It is Friday evening, a training run is crawling, and one dataset volume is completely full while another sits half-empty. Nobody wants to restart the job just to move data from one volume to another. On the next rack, a disk has quietly died, and the weekend backup plan depends on it. And somewhere in the back of your mind sits a wish you have almost certainly had: move a filesystem onto faster NVMe without taking the machine down.
+
+Storage is one of the first places to look when a node slows down, and these are exactly the moments where LVM, RAID, and NVMe earn their keep. A GPU server is full of fast local flash. M.2 drives hold the operating system, and a bank of U.2 or E1.S NVMe drives holds datasets, caches and checkpoints. Cloud GPU instances add local SSDs and network-attached volumes that you can resize while the machine runs. How you present those drives to the operating system decides whether the node is fast, resilient and easy to operate.
+
+Five ideas carry the whole chapter, and each one is practical:
 
 - A single NVMe drive is fast, but it is a single point of failure. Put several in a **RAID 0** array and you get one very fast scratch volume. The cost is that losing one drive loses everything in the array. A **RAID 1** pair protects the operating system.
 - **LVM** lets you grow a volume while it is mounted, move data off a failing disk, and take a snapshot before a risky change. It can also split one large disk into several volumes without repartitioning. Cloud disks get resized all the time. LVM turns "the disk got bigger" into "the filesystem got bigger" with a few commands.
@@ -30,11 +34,11 @@ Suppose a GPU node runs fine for a week, then slows down in the middle of a trai
 - **NVMe health** covers wear, media errors, temperature and PCIe link state. It is an early warning. It tells you when a drive is about to fail or throttle in the middle of a training run.
 - Disk performance has its own method. Misreading `iostat` is the most common storage misdiagnosis.
 
-This chapter covers four areas. It starts with logical volumes and the device mapper. Then it moves to software RAID with `md`, and to the other device-mapper layers: encryption, multipath and caching. Next it goes deep on NVMe, including architecture, `nvme-cli`, SMART and NVMe-oF. The last areas are disk performance and the AI-specific storage patterns, such as local NVMe staging and the data path from storage to GPU. The chapter builds on chapter 1.12, which covers partitions, filesystems and caches. Shared and parallel filesystems come later, in Part 6.
+The chapter moves through four areas in order. It starts with logical volumes and the device mapper. Then it moves to software RAID with `md`, and to the other device-mapper layers: encryption, multipath and caching. Next it goes deep on NVMe, including architecture, `nvme-cli`, SMART and NVMe-oF. The last areas are disk performance and the AI-specific storage patterns, such as local NVMe staging and the data path from storage to GPU. The chapter builds on chapter 1.12, which covers partitions, filesystems and caches. Shared and parallel filesystems come later, in Part 6.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know how block devices, partitions and filesystems work (chapter 1.12). You also need device files and sysfs (chapter 1.10), and the basics of processes and monitoring (chapter 1.8).
+Before you start, you should know how block devices, partitions and filesystems work (chapter 1.12). You also need device files and sysfs (chapter 1.10), and the basics of processes and monitoring (chapter 1.8). If those chapters are fresh in your mind, nothing here will surprise you.
 
 When you finish this chapter, you should be able to do the following:
 
@@ -51,9 +55,9 @@ When you finish this chapter, you should be able to do the following:
 
 ### The problem LVM solves
 
-Picture a disk that is nearly full, with a filesystem tied to one fixed place on it. With direct partitioning, every change is expensive. To upgrade a disk, you install it, partition it, create filesystems, copy the data, edit the configuration and reboot. To add capacity, you pick a new mount point and split the data by hand.
+Here is the situation that motivates everything in this section. One volume is nearly full, and the filesystem on it is tied to one fixed place on one fixed disk. With plain partitioning, every change is expensive. To upgrade the disk you install it, partition it, create filesystems, copy the data, edit the configuration and reboot. To add capacity you pick a new mount point and split the data by hand. Each step touches the disk layout the whole machine depends on.
 
-LVM adds a layer between the physical block devices and the filesystems. You pool physical storage into a **volume group**, then carve **logical volumes** out of that pool. A logical volume is an ordinary block device that holds a filesystem or swap. You can grow, shrink (carefully), move, snapshot and remove logical volumes while the system runs. Usually you do not need to unmount anything.
+LVM, the Logical Volume Manager, adds a layer between the physical block devices and the filesystems. The physical devices are called **physical volumes**, and the pooled storage is called a **volume group**. From that pool you carve **logical volumes**, and each one behaves like an ordinary block device that can hold a filesystem or swap. You can grow, shrink (carefully), move, snapshot and remove logical volumes while the system runs. Usually you do not need to unmount anything.
 
 ```mermaid
 flowchart TB
@@ -78,7 +82,7 @@ flowchart TB
   L2 --> FS2["xfs, mounted /scratch"]
 ```
 
-The terms below appear in almost every LVM command, so learn them first.
+The terms below appear in almost every LVM command, so it is worth learning them before you type anything.
 
 | Term | Meaning |
 |---|---|
@@ -89,11 +93,11 @@ The terms below appear in almost every LVM command, so learn them first.
 | **LE** (logical extent) | The LV's corresponding unit mapping onto PEs |
 | **Segments / types** | How an LV's extents map to PEs: **linear** (the default), **striped** (RAID-0-like across PVs), **mirror/raid1/raid5/raid6/raid10** (LVM RAID), **thin** (thin-provisioned from a pool), **snapshot**, **cache** |
 
-LVM2, the current implementation, is a set of **user-space tools**. PVs are plain block devices that user space can read at random. So the work of discovering the structure needs no kernel support. The kernel's part is the **device mapper**, a generic layer that maps ranges of a virtual block device onto other devices (section 2).
+LVM2, the current implementation, is a set of **user-space tools**. A physical volume is just a plain block device, and user space can read it freely, so discovering the structure needs no kernel support. The kernel's part is the **device mapper**, a generic layer that maps ranges of a virtual block device onto other devices (section 2).
 
 ### Looking at an LVM system
 
-These commands show the layout of a running system. Start with the concise listings, and drill down when something looks wrong.
+Start on a system that is already running, so there is something real to look at. These commands show the layout. Begin with the concise listings, and drill down only when something looks wrong.
 
 ```bash
 sudo pvs; sudo vgs; sudo lvs            # concise listings
@@ -105,7 +109,7 @@ sudo vgs -o +pv_count,lv_count,vg_free_count
 
 In `vgs`, the `#PV`, `#LV` and `#SN` columns count physical volumes, logical volumes and snapshots. `VSize` and `VFree` give the size and the free space. The `Attr` column is a short code. For example, `wz--n-` means writable, resizable, with normal allocation.
 
-In `lvs`, the `Attr` column packs several facts into a string such as `-wi-ao----`. That means writable, inherited allocation, active and open. The first character gives the type: `V` is a thin volume, `t` a thin pool, `s` a snapshot and `r` a RAID volume. The last characters show health and state. The other columns are `LV`, `VG`, `LSize`, `Pool`, `Origin`, `Data%` (how full a thin pool or snapshot is) and `Meta%`.
+In `lvs`, the `Attr` column packs several facts into a string such as `-wi-ao----`. That means writable, inherited allocation, active and open. The first character gives the type: `V` is a thin volume, `t` a thin pool, `s` a snapshot and `r` a RAID volume. The last characters show health and state. The other columns are `LV`, `VG`, `LSize`, `Pool`, `Origin`, `Data%` and `Meta%`. `Data%` shows how full a thin pool or snapshot is.
 
 Once LVM finishes its setup on your system (*How Linux Works* Section 4.4.1), logical volumes appear as block devices named `/dev/dm-0`, `/dev/dm-1`, and so on. The kernel can assign these `/dev/dm-N` numbers in any order from one boot to the next. For that reason, `udev` and LVM create two sets of symbolic links that use the volume group and logical volume names. The first set is `/dev/VG/LV`, for example `/dev/myvg/mylv1`. The second is `/dev/mapper/VG-LV`, for example `/dev/mapper/myvg-mylv1`. Any hyphen inside a VG or LV name is **doubled** in the second form. So `ubuntu-vg` and `root` become `/dev/mapper/ubuntu--vg-root`. Always use the stable `/dev/VG/LV` or `/dev/mapper/VG-LV` names in `/etc/fstab`, systemd units and bootloader configurations.
 
@@ -113,7 +117,7 @@ The LVM tools run in user space, but the kernel does the routing. Each read or w
 
 ### How LVM finds its volumes
 
-Before LVM does anything, it must scan the block devices for physical volumes. Its user-space tools take roughly these steps:
+LVM cannot act until it knows what it owns. So before it does anything, it must scan the block devices for physical volumes. Its user-space tools take roughly these steps:
 
 1. Find all the PVs on the system.
 2. Group the PVs into volume groups by UUID, which each PV records.
@@ -121,7 +125,7 @@ Before LVM does anything, it must scan the block devices for physical volumes. I
 4. Find the logical volumes in each group.
 5. Work out how data maps from the PVs to the logical volumes.
 
-Every PV starts with a header. The header names its volume group and the logical volumes inside it. If every required PV is present, LVM passes the layout to the kernel. You can look at the header yourself, although the output is rough:
+Every PV starts with a header. The header names its volume group and the logical volumes inside it. Grouping works because each PV carries a UUID, a unique identifier string. If every required PV is present, LVM passes the layout to the kernel. You can look at the header yourself, although the output is rough:
 
 ```bash
 # dd if=/dev/sdb1 count=1000 | strings | less
@@ -155,7 +159,7 @@ Allocated PE 2550
 PV UUID v2Qb1A-XC2e-2G4l-NdgJ-lnan-rjm5-47eMe5
 ```
 
-A PV has no name beyond its block device. Logical volume names live at the group level and above. The PV does carry a UUID, because a volume group is built from PVs by that UUID. The "not usable" part is a sliver too small to hold a full extent.
+Pause here, because this is where the three layers become real. A physical volume has no name of its own, only its block device. Logical volume names live at the group level and above. The PV does carry a UUID, because a volume group is built from PVs by that UUID. The "not usable" part is a sliver too small to hold a full extent.
 
 The `a` in the `Attr` column means allocatable, so LVM may place new logical volumes on this PV. Nine free extents, about 36 MB, leave little room for new volumes. Here the PE counts match the group's usage, since this is the only PV.
 
@@ -189,7 +193,7 @@ VG UUID 0zs0TV-wnT5-laOy-vJ0h-rUae-YPdv-pPwaAs
 
 `Open LV` counts the logical volumes in use. `Cur PV` counts the physical volumes in the group. The `VG UUID` identifies one group when two groups share a name. Most LVM tools, including `vgrename`, accept the UUID in place of the name.
 
-A physical extent (PE) is a chunk of a PV, like a block on a larger scale. The PE size here is 4 MiB. Most extents being in use is not a warning. It shows the space given to logical volumes, not how full the filesystem is.
+A physical extent is a chunk of a physical volume, like a block on a larger scale. The PE size here is 4 MiB. Most extents being in use is not a warning. It shows the space given to logical volumes, not how full the filesystem is.
 
 The `lvs` command lists logical volumes:
 
@@ -200,11 +204,11 @@ root ubuntu-vg -wi-ao---- <9.01g
 swap_1 ubuntu-vg -wi-ao---- 976.00m
 ```
 
-The `Attr` value `-wi-ao----` means writable, inherited allocation, active and open. `lvdisplay` adds the device path, the major and minor numbers, and the read-ahead setting. The `LV Path` is `/dev/ubuntu-vg/root`, which is a symbolic link to a `/dev/dm-N` device. The kernel uses the `dm-N` device, not the link.
+The `Attr` value `-wi-ao----` means writable, inherited allocation, active and open. `lvdisplay` adds the device path, the major and minor numbers, and the read-ahead setting. The `LV Path` is `/dev/ubuntu-vg/root`, which is a symbolic link to a `/dev/dm-N` device. A symbolic link, remember, is a small pointer the filesystem resolves to another path. The kernel uses the `dm-N` device itself, not the link.
 
 ### Building: the standard sequence
 
-Building a volume takes five steps: prepare the partition, create the group, add the logical volumes, make a filesystem and mount it. The commands follow the order you would use on a new disk.
+Building a volume takes five steps: prepare the partition, create the group, add the logical volumes, make a filesystem and mount it. The commands follow the order you would use on a new disk. Type them one at a time, and check each result before moving on.
 
 ```bash
 # 1. Prepare partitions (optional; a whole disk can be a PV). Use type "Linux LVM" (8e on MBR, 31 on fdisk's GPT list) so tools recognise it.
@@ -222,11 +226,11 @@ sudo mkdir -p /data && sudo mount /dev/myvg/mylv1 /data
 echo '/dev/mapper/myvg-mylv1 /data xfs defaults,nofail 0 2' | sudo tee -a /etc/fstab
 ```
 
-You do not need `pvcreate`, because `vgcreate` initialises a PV when none exists. If a new VG does not appear, run `pvscan` or `vgscan` to read the devices again.
+Notice that you do not need `pvcreate`, because `vgcreate` initialises a PV when none exists. If a new VG does not appear, run `pvscan` or `vgscan` to read the devices again.
 
 ### Resizing: the two-step operation and its order
 
-Growing a volume takes two steps, and the order matters. The logical volume and the filesystem inside it have separate sizes. If you grow only the LV, the filesystem still reports its old size. Add `-r` (`--resizefs`) to do both in one command. That calls `fsadm`, which in turn calls `resize2fs` for ext filesystems or `xfs_growfs` for XFS.
+Growing a volume takes two steps, and the order matters. The logical volume and the filesystem inside it have separate sizes. If you grow only the LV, the filesystem still reports its old size. Add `-r`, short for `--resizefs`, to do both in one command. That calls `fsadm`, which in turn calls `resize2fs` for ext filesystems or `xfs_growfs` for XFS.
 
 ```bash
 sudo lvextend -r -L +20G /dev/myvg/mylv1      # grow by 20 GiB, online, filesystem included
@@ -238,7 +242,7 @@ If you prefer two separate commands, run `lvextend -L +20G ...` and then `xfs_gr
 
 ### A worked two-disk example
 
-Here is a complete example. Two disks, one of 5 GB and one of 15 GB, become one volume group. The group is then split into two logical volumes of 10 GB each. That would be hard to do with partitions alone. The example uses VirtualBox disks, which are small by modern standards, but the steps are the same on real hardware.
+Here is a complete worked example. Two disks, one of 5 GB and one of 15 GB, become one volume group. The group is then split into two logical volumes of 10 GB each. That would be hard to arrange with partitions alone, because a partition belongs to exactly one disk. The example uses VirtualBox disks, which are small by modern standards, but the steps are the same on real hardware.
 
 First, make one partition on each disk and mark it for LVM with type `8e`:
 
@@ -365,7 +369,7 @@ sudo lvextend -r -l +100%FREE /dev/myvg/mylv1
 
 ### Snapshots and thin provisioning
 
-A **snapshot** is a point-in-time view of a logical volume. A classic LVM snapshot uses **copy-on-write**. When the origin changes, LVM copies the old blocks into the snapshot area first. You estimate the snapshot's size up front, with `lvcreate -s -L 5G -n snap /dev/vg/lv`. If the snapshot area fills up, the snapshot becomes invalid. Snapshots also slow down writes to the origin while they exist, so keep them short-lived. Two common uses are backups and undo points before an upgrade. For a backup, mount the snapshot read-only, copy from it, and remove it. For an undo point, `lvconvert --merge` rolls the origin back to the snapshot.
+A **snapshot** is a point-in-time view of a logical volume, like a photograph of the volume at one instant. A classic LVM snapshot uses **copy-on-write**. When the origin changes, LVM copies the old blocks into the snapshot area first. You estimate the snapshot's size up front, with `lvcreate -s -L 5G -n snap /dev/vg/lv`. If the snapshot area fills up, the snapshot becomes invalid. Snapshots also slow down writes to the origin while they exist, so keep them short-lived. Two common uses are backups and undo points before an upgrade. For a backup, mount the snapshot read-only, copy from it, and remove it. For an undo point, `lvconvert --merge` rolls the origin back to the snapshot.
 
 **Thin provisioning** works differently. It allocates from a **thin pool**, so you can create many virtual volumes whose total size is larger than the pool. This is over-provisioning. Space is used only as data is written:
 
@@ -378,11 +382,11 @@ sudo lvs -a -o +data_percent,metadata_percent       # WATCH Data% and Meta%
 
 Be warned: **a thin pool that reaches 100% data or metadata corrupts or blocks the volumes in it.** Monitor the pool and alert early. Set `thin_pool_autoextend_threshold` in `lvm.conf`, and keep monitoring turned on. Do not over-provision beyond what you can add. Container runtimes once used LVM thin pools through devicemapper. Overlayfs on XFS has replaced that.
 
-Other LV types are worth knowing. **Striped** volumes spread data across several PVs for throughput, like RAID 0. For example, `lvcreate -i 4 -I 256k -L 1T -n scratch vg` stripes across 4 PVs. **RAID** types (raid1, raid5, raid6 and raid10) use LVM's wrapper over the `md` RAID code, as in `lvcreate --type raid1 -m1 ...`. A **cache** type puts a fast NVMe in front of a slow volume, using `dm-cache`, with `lvconvert --type cache ...`.
+Other LV types are worth knowing by name. **Striped** volumes spread data across several PVs for throughput, like RAID 0. For example, `lvcreate -i 4 -I 256k -L 1T -n scratch vg` stripes across 4 PVs. **RAID** types such as raid1, raid5, raid6 and raid10 use LVM's wrapper over the `md` RAID code, as in `lvcreate --type raid1 -m1 ...`. A **cache** type puts a fast NVMe in front of a slow volume, using `dm-cache`, with `lvconvert --type cache ...`.
 
 ### Implementation: how it fits together
 
-When the LVM tools run, they work through five steps in order. First, they find all PVs by scanning block devices. The scan is guided by `devices/filter` or by the devices file in `lvm.conf`. Second, they read each PV's header, which holds a label and a text **metadata area**. Third, they group PVs into VGs by UUID and check that every required PV is present. Fourth, they find the LVs. Fifth, they compute the **mapping scheme**.
+Every LVM command you type sets this machinery in motion. When the tools run, they work through five steps in order. First, they find all PVs by scanning block devices. The scan is guided by `devices/filter` or by the devices file in `lvm.conf`. Second, they read each PV's header, which holds a label and a text **metadata area**. Third, they group PVs into VGs by UUID and check that every required PV is present. Fourth, they find the LVs. Fifth, they compute the **mapping scheme**.
 
 LVM saves its metadata under `/etc/lvm/backup` and `/etc/lvm/archive`. If the metadata is damaged, `vgcfgrestore` can restore a VG's layout. To see the header text yourself, run `dd if=/dev/sdb1 count=1000 | strings | less`.
 
@@ -394,7 +398,7 @@ Before you put a system disk under LVM, confirm that the initramfs activates the
 
 ## 2. The device mapper
 
-Suppose you want one logical volume to span two disks, and you want the kernel to route each request to the right disk. That job belongs to the **device mapper** (`dm`). It is a kernel framework that builds virtual block devices out of **tables of targets**. Each line of a table maps a range of sectors on the virtual device onto a range of an underlying device. The line also names a **target type** that says how to do the mapping. LVM, encryption, multipath, thin provisioning, snapshots, caching, integrity checking and many container storage drivers are all built on it. You can think of it as virtual memory's translation, applied to storage.
+Suppose you want one logical volume to span two disks, and you want the kernel to route each request to the right disk. That job belongs to the **device mapper**, usually shortened to `dm`. It is a kernel framework that builds virtual block devices out of **tables of targets**. Each line of a table maps a range of sectors on the virtual device onto a range of an underlying device. The line also names a **target type** that says how to do the mapping. LVM, encryption, multipath, thin provisioning, snapshots, caching, integrity checking and many container storage drivers are all built on it. You can think of it as virtual memory's translation, applied to storage.
 
 ```bash
 sudo dmsetup ls --tree             # tree of mapped devices and what they sit on
@@ -411,7 +415,7 @@ myvg-mylv2: 10960896 10010624 linear 8:33 20973568
 myvg-mylv1: 0 20971520 linear 8:33 2048
 ```
 
-Each field has a job. The first is the start offset in the mapped device. Then comes the length of the segment, the target type (`linear` here), the source device as major:minor, and the offset on that device. LVM places the first LV in one contiguous run where it can. The second LV needs two segments, one on each PV. When `mylv2` is removed and `mylv1` is extended, the table gains the second segment. The kernel only follows the map. Deciding the layout is the job of LVM in user space.
+Each field has a job. The first is the start offset in the mapped device. Then comes the length of the segment, the target type, which is `linear` here, the source device as major:minor, and the offset on that device. LVM places the first LV in one contiguous run where it can. The second LV needs two segments, one on each PV. When `mylv2` is removed and `mylv1` is extended, the table gains the second segment. The kernel only follows the map. Deciding the layout is the job of LVM in user space.
 
 The table can use these target types: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, and `error` (to inject failures for testing).
 
@@ -457,7 +461,7 @@ The original start stayed on `/dev/sdc1`. The new segment added the rest of `/de
 
 ### Encryption: dm-crypt and LUKS
 
-**LUKS** (Linux Unified Key Setup) is the on-disk format that goes with dm-crypt. The commands below set it up. The first one destroys the data on the device, so run it only on a device you can afford to wipe.
+**LUKS**, the Linux Unified Key Setup, is the on-disk format that goes with dm-crypt. The commands below set it up. The first one destroys the data on the device, so run it only on a device you can afford to wipe.
 
 ```bash
 sudo cryptsetup luksFormat /dev/nvme1n1p1           # DESTROYS data; sets a passphrase / key slot
@@ -471,7 +475,7 @@ Encryption costs CPU time for AES. Hardware AES-NI keeps that cost small. On ver
 
 ### Multipath
 
-A SAN, or an NVMe/SCSI target, can be reachable over several physical paths: two HBAs, two switches or two controllers. The operating system then sees one LUN as several block devices, such as `sdb`, `sdc`, `sdd` and `sde`. **`multipathd`** with `dm-multipath` recognises that they share a WWID. It creates **one** device, `/dev/mapper/mpathX` or an alias. It spreads I/O across the active paths, using round-robin or queue length, and fails over when a path dies.
+A SAN, or an NVMe/SCSI target, can be reachable over several physical paths: two HBAs, two switches or two controllers. The operating system then sees one LUN as several block devices, such as `sdb`, `sdc`, `sdd` and `sde`. **`multipathd`** with `dm-multipath` recognises that they share a WWID, a world-wide identifier for the storage. It creates **one** device, `/dev/mapper/mpathX` or an alias. It spreads I/O across the active paths, using round-robin or queue length, and fails over when a path dies.
 
 ```bash
 sudo multipath -ll                  # topology: each mpath device, its paths and states (active/ready, failed/faulty)
@@ -490,9 +494,15 @@ Before you add a caching layer, check whether a hot subset really exists. If the
 
 ## 3. Software RAID with `md`
 
-**RAID** (redundant array of independent disks) combines drives into one virtual device. The goal is capacity, speed or fault tolerance. **Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**. Some storage servers still use hardware RAID, which hides the physical disks, so you need the controller tools to see them (section 6).
+Picture the moment a drive dies in the middle of a training run. What happens next depends on one decision made months earlier: which RAID level the volume uses. **RAID**, short for redundant array of independent disks, combines drives into one virtual device. The goal is capacity, speed or fault tolerance.
+
+**Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**.
+
+Some storage servers still use hardware RAID, which hides the physical disks. When they do, you need the controller tools to see the drives (section 6).
 
 ### RAID levels
+
+The names sound cryptic until you ask one question of each: how does the array survive a dead drive, and what does that survival cost? RAID 0 stripes data across all drives and keeps no copy anywhere, so one dead drive takes the whole array with it. RAID 1 keeps a mirror, usually two copies, so it survives the loss of every drive except one. RAID 10 stripes across mirrored pairs, so one drive can fail per pair. RAID 5 and RAID 6 add parity, extra numbers from which the array can reconstruct a missing drive.
 
 | Level | Layout | Capacity | Fault tolerance | Performance character |
 |---|---|---|---|---|
@@ -512,6 +522,8 @@ A write-back cache with battery or capacitor backup hides the read-modify-write 
 **Rebuilds.** When you replace a drive, the array **rebuilds**, which means it resyncs or "resilvers". It reads all the surviving drives and writes the new one. A rebuild can take hours or days. It uses I/O that your workload also needs, so foreground performance suffers. Drives are growing larger faster than they are getting quicker. So the chance of a second failure, or an unrecoverable read error, during a rebuild keeps rising. That is why big spinning-disk arrays use RAID 6 or RAID 10 instead of RAID 5. It is also why rebuild speed limits exist (`dev.raid.speed_limit_min/max`). If you start a rebuild on a busy node, you will feel it as slow I/O for your jobs. Last, **RAID is not a backup**. It does not protect you from deletion, corruption, ransomware, fire or an application that writes garbage.
 
 ### `mdadm`
+
+The commands below cover the whole life of an array: creating it, inspecting it, persisting it across reboots, failing and replacing a member, and monitoring it.
 
 ```bash
 # Create
@@ -554,11 +566,11 @@ Use the table to match a RAID level to the job the volume does. For scratch spac
 
 ## 4. NVMe in depth
 
-**NVMe** (Non-Volatile Memory Express) is a host-controller interface built for flash. A drive connects straight to **PCIe**. It can come as a U.2 drive, an M.2 stick, an E1.S or E3.S module, or an add-in card. It speaks the NVMe command set directly, instead of going through the SCSI and SATA layers that older drives needed.
+The datasets, caches and checkpoints from the chapter opener sit on the drives this section is about. **NVMe**, Non-Volatile Memory Express, is a host-controller interface built for flash. A drive connects straight to **PCIe**, the high-speed bus that links cards and drives to the CPU. It can come as a U.2 drive, an M.2 stick, an E1.S or E3.S module, or an add-in card. It speaks the NVMe command set directly, instead of going through the SCSI and SATA layers that older drives needed.
 
 ### Architecture
 
-Here is how an NVMe drive is organised. Each controller shows up as `/dev/nvme0`, a character device, with one controller per drive or per fabric connection. The controller manages one or more **namespaces**, such as `/dev/nvme0n1` and `nvme0n2`. These are block devices, and their partitions are named like `nvme0n1p1`. A namespace is a slice of storage with its own LBA format, either 512 B or 4 KiB blocks. Most drives expose one namespace, but **namespace management** can create several.
+Start with how the names map to hardware, because you will see these names in every command. Each controller shows up as `/dev/nvme0`, a character device, with one controller per drive or per fabric connection. The controller manages one or more **namespaces**, such as `/dev/nvme0n1` and `nvme0n2`. These are block devices, and their partitions are named like `nvme0n1p1`. A namespace is a slice of storage with its own LBA format, either 512 B or 4 KiB blocks. Most drives expose one namespace, but **namespace management** can create several.
 
 The data moves through **queues in host memory**. There is one **admin** queue pair, plus many **I/O submission and completion queue pairs**. The limits are up to 64 thousand queues, each up to 64 thousand entries deep. Linux creates **one queue pair per CPU** through blk-mq. So the CPU that issues an I/O also receives its completion interrupt (MSI-X). Nothing is shared, so there is no lock to wait on. This design is why NVMe scales to millions of IOPS with latency in the tens of microseconds. For comparison, the older SATA queue is 32 deep, and SAS is 256.
 
@@ -571,6 +583,8 @@ For the I/O scheduler, `none` is the right choice for fast NVMe, because the dri
 NVMe has several features you will run into. **TRIM** (also called deallocate, through Dataset Management) tells the drive which blocks are free. **Namespaces** and **power states** come next. **APST** (autonomous power-state transitions) moves the drive into low-power states on its own. Aggressive low-power states can add latency, and some drives behave badly with them. The kernel parameter `nvme_core.default_ps_max_latency_us=0` disables the deep states. Other features are **end-to-end protection**, **Zoned Namespaces** (ZNS), **Key Per I/O**, **SR-IOV** virtual functions for cloud and virtualisation, and **namespace sharing** across hosts in fabrics.
 
 ### `nvme-cli`
+
+The `nvme-cli` tool is your window into every drive on the node. The commands below cover listing, identification, health, and the destructive operations.
 
 ```bash
 sudo apt install nvme-cli           # RHEL: sudo dnf install nvme-cli
@@ -598,7 +612,7 @@ Read the commands above as two groups. The first group only reads information, s
 
 ### NVMe over Fabrics (NVMe-oF)
 
-NVMe-oF carries the NVMe protocol across a network. A remote drive then looks like a local `/dev/nvmeXnY`, with little added latency. There are three transports. **RDMA** (InfiniBand, RoCE or iWARP) gives the lowest latency. **TCP** works on any Ethernet network, but it uses more CPU. **Fibre Channel** is the third option. A **target** exports **subsystems**, and each subsystem has an **NQN** (NVMe qualified name). A **host** identifies itself with its own host NQN, stored in `/etc/nvme/hostnqn`. Then the host **discovers** the subsystems and **connects** to one:
+NVMe-oF, NVMe over Fabrics, carries the NVMe protocol across a network. A remote drive then looks like a local `/dev/nvmeXnY`, with little added latency. There are three transports. **RDMA**, which includes InfiniBand, RoCE or iWARP, gives the lowest latency. **TCP** works on any Ethernet network, but it uses more CPU. **Fibre Channel** is the third option. A **target** is the storage side, and it exports **subsystems**, each with an **NQN**, its NVMe qualified name. A **host** identifies itself with its own host NQN, stored in `/etc/nvme/hostnqn`. Then the host **discovers** the subsystems and **connects** to one:
 
 ```bash
 sudo modprobe nvme-rdma    # or nvme-tcp
@@ -616,7 +630,7 @@ The `nvme0n1` names depend on the order in which the kernel probes the devices. 
 
 ## 5. Disk performance: the method
 
-(Chapter 1.12 section 9 covers the filesystem layer. This section covers the block device and everything below it. The time scales and concepts are in 1.12 section 2.)
+Chapter 1.12 section 9 covers the filesystem layer. This section covers the block device and everything below it. The time scales and concepts are in 1.12 section 2.
 
 ### Concepts you need
 
@@ -663,7 +677,7 @@ Read the results as **latency percentiles** (p50, p99 and p99.9) and as IOPS **a
 
 ## 6. Tools for the block layer
 
-When a disk misbehaves, you need the right tool for the question. The table below lists the main tools, with what each one shows. Start with the cheap ones, and move to the heavier tracers only when they are needed.
+When a disk misbehaves, you need the right tool for the question. A training run has slowed, and you suspect storage. The table below lists the main tools, with what each one shows. Start with the cheap ones, and move to the heavier tracers only when they are needed.
 
 | Tool | Shows | Notes |
 |---|---|---|
@@ -699,6 +713,8 @@ If you are unsure where to begin, look at `r_await` and `w_await` first, and com
 Save whatever you choose with udev rules or `tuned` profiles, not with `echo` typed into a shell. Chapter 1.10 covers udev.
 
 ## 7. AI-infrastructure patterns
+
+Everything the chapter teaches so far becomes a design decision here. It is one thing to type the commands on a test VM, and another to plan a node that other people depend on.
 
 ### The full data path, layer by layer
 
@@ -759,7 +775,7 @@ Local NVMe reaches pods in three ways. Local PersistentVolumes can be discovered
 
 GPU and AI platform teams generally avoid hardware RAID on compute nodes. The controller hides the drives, so SMART access needs `-d megaraid,N`. It has its own failure modes and firmware, it caps NVMe performance, and it complicates GPUDirect Storage. Storage servers are a different case. Vendors may still ship RAID controllers there, or they may move to NVMe with software erasure coding in the filesystem. Examples include Lustre OSS with ZFS or ldiskfs on md RAID, Ceph, Weka and GPFS. Part 6 covers those designs.
 
-If you run a compute node, you can follow one rule:  use software RAID, keep the drives visible, and treat scratch volumes as caches.
+If you run a compute node, you can follow one rule: use software RAID, keep the drives visible, and treat scratch volumes as caches.
 
 ## How it fails
 

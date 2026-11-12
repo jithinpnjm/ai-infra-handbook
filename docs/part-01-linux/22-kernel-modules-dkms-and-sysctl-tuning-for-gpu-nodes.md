@@ -22,42 +22,42 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that comes back from maintenance. It boots, but it has no GPUs. The most fragile single dependency on such a node is the pairing **running kernel ↔ NVIDIA kernel modules ↔ user-space driver libraries ↔ CUDA in the container**. A routine `apt upgrade` can install a new kernel, a reboot can follow maintenance, or a driver version can drift. Any one of these breaks the chain. Slurm then drains the node, Kubernetes shows `nvidia.com/gpu: 0`, and `nvidia-smi` reports that it "couldn't communicate with the NVIDIA driver". Fleet operators therefore treat the kernel and the GPU and NIC drivers as one versioned artefact, and so should you.
+Picture a GPU node that comes back from maintenance. It boots, it accepts your login, and it has no GPUs at all. You look twice before you believe it. Nothing on that node is as fragile as the four-way pairing it depends on: **running kernel ↔ NVIDIA kernel modules ↔ user-space driver libraries ↔ CUDA in the container**. Each link must match the others, and each one can move without warning. A routine `apt upgrade` can install a new kernel, a reboot can follow maintenance, or a driver version can drift. Any one of these breaks the chain. Slurm then drains the node, Kubernetes shows `nvidia.com/gpu: 0`, and `nvidia-smi` reports that it "couldn't communicate with the NVIDIA driver". Fleet operators therefore treat the kernel and the GPU and NIC drivers as one versioned artefact, and so should you.
 
-The modules are not the whole story. The node's behaviour is also shaped by a few hundred **kernel parameters** (`sysctl`) and **boot parameters**. Wrong values cause memory allocation stalls, dropped connections, failing `mmap` calls in data loaders, or swap thrashing. Right values are cheap, repeatable and testable, which is why this chapter spends time on them.
+The modules are not the whole story. A node's behaviour is also shaped by a few hundred **kernel parameters**, which you reach through a tool called `sysctl`, and by **boot parameters** handed to the kernel at startup. Wrong values cause memory allocation stalls, dropped connections, failing `mmap` calls in data loaders, or swap thrashing. Right values are cheap, repeatable and testable, which is why this chapter spends time on them.
 
-This chapter prepares you for incidents like these:
+Here are the incidents this chapter prepares you to handle.
 
-- After a kernel update `nvidia-smi` fails: the DKMS build did not run, or failed for the new kernel, or Secure Boot refuses the unsigned module.
+- After a kernel update `nvidia-smi` fails. Either the DKMS build did not run, or it failed for the new kernel, or Secure Boot refuses the unsigned module.
 - A cluster-wide reboot causes a "boot storm" where every node compiles the driver at once, or a subset fails to compile because headers or compilers differ.
-- `modprobe nvidia` fails with "Unknown symbol", "Required key not available", "Operation not permitted", or because `nouveau` owns the device.
-- Driver upgrade fails because processes (DCGM, Fabric Manager, persistence daemon, a container) still hold `/dev/nvidia*`, so modules cannot be unloaded.
-- Data-loader workers crash with `Cannot allocate memory` in `mmap` although RAM is free (`vm.max_map_count`), or with too many open files.
-- Network performance differs between nodes because sysctls were applied by hand on some.
+- `modprobe nvidia` fails with "Unknown symbol", "Required key not available" or "Operation not permitted", or because `nouveau` owns the device.
+- A driver upgrade fails because processes still hold `/dev/nvidia*`, such as DCGM, Fabric Manager, the persistence daemon or a container, so the modules cannot be unloaded.
+- Data-loader workers crash with `Cannot allocate memory` in `mmap` although RAM is free (`vm.max_map_count`), or they crash with too many open files.
+- Network performance differs between nodes because sysctls were applied by hand on some of them.
 
-You should treat the kernel and the drivers as one release, and test any change on a single node before it reaches the fleet.
+Treat the kernel and the drivers as one release, and test any change on a single node before it reaches the fleet.
 
 ## Prerequisites and outcomes
 
-Before you tackle a driver failure, you need some background. You should know the boot sequence and initramfs (1.14), systemd (1.15), memory and NUMA (1.17), `/proc` and `/sys` (1.10), the ELF/dynamic-linking basics (1.11), and the security layer (1.21, especially Secure Boot). Each of these explains one part of what happens when a module loads.
+Before you tackle a driver failure, you need some background. You should know the boot sequence and initramfs (1.14), systemd (1.15), memory and NUMA (1.17), `/proc` and `/sys` (1.10), the ELF and dynamic-linking basics (1.11), and the security layer (1.21, especially Secure Boot). Each of these explains one part of what happens when a module loads.
 
 By the end of this chapter, you should be able to do seven things.
 
 - Explain what a kernel module is, how it is built against a kernel, how symbols and `vermagic` make it version-specific, and where modules live.
-- Use `lsmod`, `modinfo`, `modprobe`, `insmod`, `rmmod`, `depmod`; load modules at boot; pass parameters; blacklist modules; rebuild the initramfs.
-- Explain DKMS, how it hooks kernel installation, how to read its status and logs, and why large fleets prefer pre-built or image-baked modules (kmod/kABI packaging, golden images).
-- Explain the NVIDIA module family (nvidia, nvidia_uvm, nvidia_modeset, nvidia_drm, nvidia_peermem, nvidia-fs), the open versus proprietary kernel modules, the matching user-space libraries, Fabric Manager and persistence daemon, and how to upgrade a driver safely.
+- Use `lsmod`, `modinfo`, `modprobe`, `insmod`, `rmmod` and `depmod`. Load modules at boot, pass parameters to them, blacklist them, and rebuild the initramfs.
+- Explain DKMS, how it hooks kernel installation, how to read its status and logs, and why large fleets prefer pre-built or image-baked modules: kmod and kABI packaging, and golden images.
+- Explain the NVIDIA module family, which is nvidia, nvidia_uvm, nvidia_modeset, nvidia_drm, nvidia_peermem and nvidia-fs. Explain the open versus proprietary kernel modules, the matching user-space libraries, Fabric Manager and the persistence daemon, and how to upgrade a driver safely.
 - Explain Secure Boot and module signing for out-of-tree drivers.
-- Read and set sysctl parameters persistently; name the important ones for network, VM, filesystem and kernel for GPU/HPC nodes and explain when each helps or harms.
-- Build a repeatable procedure: pin kernel, pin driver, canary, validate (`nvidia-smi`, DCGM diagnostics, NCCL tests), roll out.
+- Read and set sysctl parameters persistently. Name the important ones for network, VM, filesystem and kernel on GPU and HPC nodes, and explain when each helps or harms.
+- Build a repeatable procedure: pin kernel, pin driver, canary, validate with `nvidia-smi`, DCGM diagnostics and NCCL tests, then roll out.
 
 Work through these outcomes in order, because each one builds on the one before it.
 
 ## 1. What a kernel module is
 
-Suppose a CUDA job fails at startup because the NVIDIA driver is missing from the running kernel. To find out why, you first need to know what a kernel module is and where it runs.
+Suppose a CUDA job fails at startup because the NVIDIA driver is missing from the running kernel. Before you can chase that down, you need one plain idea: what a kernel module is, and where it runs.
 
-The Linux kernel is **monolithic**. That means it runs as one program with one address space. It can still be **extended at run time** with **loadable kernel modules**, which are files ending in `.ko` (short for "kernel object"). Modules hold drivers for devices, filesystems and network protocols, or any other code that does not need to be compiled in. A module runs in kernel mode with full privilege. A bug in it can crash the machine, and a malicious module can take over the machine. That risk is why each module is tied to the exact kernel it was built for, and why Secure Boot and signing exist.
+The Linux kernel is **monolithic**. That means it runs as one program in one address space, not as a set of small servers that talk to each other. It can still be **extended at run time** with **loadable kernel modules**, which are files ending in `.ko`, short for "kernel object". A module holds drivers for devices, filesystems and network protocols, or any other code that does not need to be compiled in. Picture the kernel as a house whose walls are already built, and a module as a room you slide into the frame while the lights are on. A module runs in kernel mode with full privilege. A bug in it can crash the machine, and a malicious module can take over the machine. That risk is why each module is tied to the exact kernel it was built for, and why Secure Boot and signing exist.
 
 ```mermaid
 flowchart LR
@@ -85,17 +85,17 @@ flowchart LR
 
 The following facts explain how modules fail, and why.
 
-- **Module files live under `/lib/modules/<kernel-release>/`** (`uname -r`). They are organised by subsystem (`kernel/drivers/...`) and by origin (`extra/`, `updates/`, `weak-updates/`, `updates/dkms/`). Each kernel version has its own tree. A new kernel without rebuilt modules therefore has no NVIDIA driver.
-- **`vermagic`** (version magic) is a string embedded in the module. It records the kernel release and the key build options. You can read it with `modinfo nvidia | grep vermagic`. A mismatch gives `insmod: ERROR: could not insert module: Invalid module format`. Some distributions guarantee a stable internal ABI within a major release (RHEL's **kABI** whitelist). Modules built for one minor kernel can then load in later ones, through `weak-updates` symlinks. Debian and Ubuntu make no such promise, so their modules are rebuilt for each kernel.
-- **Symbol resolution.** Modules call functions exported by the kernel or by other modules. `modprobe` resolves **dependencies** from `modules.dep`, which **`depmod`** generates, and loads the prerequisites first. The message "Unknown symbol in module" means a dependency is missing, or the kernel does not export the symbol. This often happens when the kernel changed and the module did not.
-- **Licence taint.** Proprietary modules *taint* the kernel. You can check the flag with `cat /proc/sys/kernel/tainted`. Kernel developers decline to debug tainted kernels. NVIDIA's **open kernel modules** are dual MIT/GPL, so they avoid the proprietary taint for the kernel-side code. The user-space libraries remain proprietary.
-- **Loading mechanisms.** The kernel loads modules in four ways. It loads them on demand when hardware appears, because udev matches the device's `modalias` and runs `modprobe`. It loads them at boot from `/etc/modules-load.d/*.conf` through `systemd-modules-load.service`. It loads storage and boot-critical drivers from the **initramfs**. And you can load them yourself with `modprobe`. `request_module()` is how the kernel asks for a module itself, such as a filesystem type or a network protocol.
+- **Module files live under `/lib/modules/<kernel-release>/`**, where the release comes from `uname -r`. They are organised by subsystem, under `kernel/drivers/...`, and by origin, under `extra/`, `updates/`, `weak-updates/` and `updates/dkms/`. Each kernel version has its own tree, so a new kernel without rebuilt modules has no NVIDIA driver at all.
+- **`vermagic`**, short for version magic, is a string embedded in the module. It records the kernel release and the key build options, and you can read it with `modinfo nvidia | grep vermagic`. A mismatch gives `insmod: ERROR: could not insert module: Invalid module format`. Some distributions guarantee a stable internal ABI within a major release, and RHEL's **kABI** whitelist is the best-known example. Modules built for one minor kernel can then load in later ones, through `weak-updates` symlinks. Debian and Ubuntu make no such promise, so their modules are rebuilt for each kernel.
+- **Symbol resolution.** Modules call functions exported by the kernel or by other modules. `modprobe` resolves **dependencies** from `modules.dep`, which **`depmod`** generates, and it loads the prerequisites first. The message "Unknown symbol in module" means a dependency is missing, or the kernel does not export the symbol. This often happens when the kernel changed and the module did not.
+- **Licence taint.** Proprietary modules *taint* the kernel, and you can check the flag with `cat /proc/sys/kernel/tainted`. Kernel developers decline to debug tainted kernels. NVIDIA's **open kernel modules** are dual MIT/GPL, so they avoid the proprietary taint for the kernel-side code. The user-space libraries remain proprietary.
+- **Loading mechanisms.** The kernel loads modules in four ways. It loads them on demand when hardware appears, because udev matches the device's `modalias` and runs `modprobe`. It loads them at boot from `/etc/modules-load.d/*.conf` through `systemd-modules-load.service`. It loads storage and boot-critical drivers from the **initramfs**. And you can load them yourself with `modprobe`. One more path exists inside the kernel itself: `request_module()` is how the kernel asks for a module, such as a filesystem type or a network protocol.
 
 If a driver seems missing, check first that a module exists for the kernel you are running.
 
 ## 2. Working with modules
 
-When a node misbehaves, the module list is usually the first place to look. The commands below show what is loaded, what a module expects, and what the kernel says about it.
+When a node misbehaves, the module list is usually the first place to look, because it tells you what is actually loaded. The commands below show what is loaded, what a module expects, and what the kernel says about it.
 
 ```bash
 uname -r ; ls /lib/modules/                       # running kernel and kernels with module trees
@@ -117,7 +117,7 @@ cat /proc/sys/kernel/tainted ; cat /proc/modules | head -3
 
 ### Configuring modules persistently
 
-To keep a module loaded at boot and to set its options, you use two kinds of file. The first lists what to load. The second sets how it loads.
+Two kinds of file keep a module loaded at boot and set its options. The first lists what to load. The second sets how it loads.
 
 ```ini
 # /etc/modules-load.d/gpu.conf        -> loaded early at boot by systemd-modules-load
@@ -136,20 +136,24 @@ install nvidia-peermem /sbin/modprobe --ignore-install nvidia-peermem   # 'insta
 alias char-major-195* nvidia
 ```
 
-- **`blacklist`** only stops automatic loading that goes through aliases. An explicit `modprobe nouveau`, or another module that depends on it, can still load it. The stronger form is `install nouveau /bin/false`. For the NVIDIA driver, nouveau must be gone before the NVIDIA module loads. The **initramfs** must also be rebuilt (`update-initramfs -u` or `dracut -f`), so that early boot honours the blacklist.
-- You can also set module parameters on the kernel command line. Parameters such as `nvidia.NVreg_...=1`, `module_blacklist=nouveau` and `modprobe.blacklist=nouveau` take effect before userspace starts. That makes them the most reliable way to enforce early-boot behaviour (chapter 1.14).
+- **`blacklist`** only stops automatic loading that goes through aliases. An explicit `modprobe nouveau`, or another module that depends on it, can still load it. The stronger form is `install nouveau /bin/false`. For the NVIDIA driver, nouveau must be gone before the NVIDIA module loads. The **initramfs** must also be rebuilt, with `update-initramfs -u` or `dracut -f`, so that early boot honours the blacklist.
+- You can also set module parameters on the kernel command line. Parameters such as `nvidia.NVreg_...=1`, `module_blacklist=nouveau` and `modprobe.blacklist=nouveau` take effect before userspace starts. That makes them the most reliable way to enforce early-boot behaviour, as chapter 1.14 explains.
 - To see what actually applies, run `sudo modprobe -c | grep -i nvidia` for the merged effective configuration. Then run `systemd-analyze cat-config modprobe.d` to see where each line came from.
 - Modules needed to mount the root filesystem, or to reach the network during boot, must sit in the **initramfs**. Check them with `lsinitrd` on dracut systems, or with `lsinitramfs /boot/initrd.img-$(uname -r)` on Debian and Ubuntu. A missing module produces "cannot mount root", or a node that never reaches the network on PXE or NFS-root boots.
 
 ### Why unloading fails and what to do
 
-You will see `rmmod: ERROR: Module nvidia is in use` when a driver refuses to unload. That message means references still exist. Some are user-space processes that hold `/dev/nvidia*`, such as training jobs, the DCGM host engine `nv-hostengine`, `nvidia-persistenced`, `nvidia-fabricmanager`, `dcgm-exporter`, `gpu-operator` pods, X or Wayland, and `nvidia-smi dmon`. Others are dependent modules: `nvidia_uvm`, `nvidia_modeset`, `nvidia_drm` and `nvidia_peermem`. To find the holders, run `sudo lsof /dev/nvidia*` and `sudo fuser -v /dev/nvidia*`, then check `/sys/module/nvidia/holders` and `lsmod | grep nvidia`. Stop the services in dependency order: workloads, exporters, DCGM, fabric manager, and the persistence daemon. Unload the dependent modules first with `rmmod nvidia_drm nvidia_modeset nvidia_uvm nvidia`, and then load the new version. In Kubernetes, the GPU Operator's driver container performs this sequence. Cordon and drain the node first, so that you do not kill jobs.
+You will see `rmmod: ERROR: Module nvidia is in use` when a driver refuses to unload. That message means references still exist, and they come from two places. Some are user-space processes that hold `/dev/nvidia*`: training jobs, the DCGM host engine `nv-hostengine`, `nvidia-persistenced`, `nvidia-fabricmanager`, `dcgm-exporter`, `gpu-operator` pods, X or Wayland, and `nvidia-smi dmon`. Others are dependent modules: `nvidia_uvm`, `nvidia_modeset`, `nvidia_drm` and `nvidia_peermem`.
+
+To find the holders, run `sudo lsof /dev/nvidia*` and `sudo fuser -v /dev/nvidia*`, then check `/sys/module/nvidia/holders` and `lsmod | grep nvidia`. Stop the services in dependency order: workloads, exporters, DCGM, fabric manager, and the persistence daemon. Unload the dependent modules first with `rmmod nvidia_drm nvidia_modeset nvidia_uvm nvidia`, and then load the new version. In Kubernetes, the GPU Operator's driver container performs this sequence. Cordon and drain the node first, so that you do not kill jobs.
 
 Drain the node before you unload anything.
 
 ## 3. Out-of-tree modules: DKMS
 
-Distributions ship modules built for their own kernels. Third-party drivers, such as NVIDIA, Mellanox OFED, ZFS, VirtualBox and vendor RAID cards, sit outside that set. They are called **out-of-tree**, and you must build them against the headers of every kernel you run. **DKMS** (Dynamic Kernel Module Support) automates that build. The module source lives under `/usr/src/<name>-<version>/` with a `dkms.conf` file. Hooks run when a kernel is installed, and on some distributions a boot service runs them as well. They compile the module for that kernel and install it into `/lib/modules/<kver>/updates/dkms/`.
+This is the mechanism behind the failure that opens the chapter. A kernel update lands, the node reboots, and the driver no longer matches the kernel that just booted. Distributions ship modules built for their own kernels, and those are the ones the distribution supports. Third-party drivers sit outside that set. NVIDIA is one, and so are Mellanox OFED, ZFS, VirtualBox and vendor RAID cards. Such drivers are called **out-of-tree**, and you must build them against the headers of every kernel you run. Picture a driver as a piece of furniture cut to fit one room. Change the room, and you cut the furniture again.
+
+**DKMS**, which stands for Dynamic Kernel Module Support, automates that rebuild. The module source lives under `/usr/src/<name>-<version>/` with a `dkms.conf` file. Hooks run when a kernel is installed, and on some distributions a boot service runs them as well. The hooks compile the module for that kernel and install it into `/lib/modules/<kver>/updates/dkms/`.
 
 ```bash
 dkms status                                       # nvidia/550.xx, 6.8.0-45-generic, x86_64: installed
@@ -161,22 +165,22 @@ dpkg -l | grep -E 'linux-headers|linux-image'   ;   rpm -q kernel-devel kernel-h
 gcc --version ; cat /proc/version                  # compiler used for kernel vs module
 ```
 
-Run `dkms status` first. If a build failed, the `make.log` file says why. The last two lines check the headers and the compilers, because both must match the kernel.
+Start with `dkms status`. If a build failed, the `make.log` file says why, in the compiler's own words. The last two lines of the block check the headers and the compilers, because both must match the kernel.
 
-One term appears from here on. The **kernel ABI** (application binary interface) is the set of internal functions and data layouts a module is compiled against. Kernel developers may change them in any release. Some distributions, such as RHEL and its relatives, promise a stable subset called **kABI** for the whole life of a major release. A module built against that subset keeps loading after minor kernel updates, and the kernel tooling (weak-updates) links it into each new kernel's tree. Without that promise, every new kernel needs a module build of its own.
+One term appears from here on. The **kernel ABI**, or application binary interface, is the set of internal functions and data layouts a module is compiled against. Kernel developers may change it in any release. Some distributions, such as RHEL and its relatives, promise a stable subset called **kABI** for the whole life of a major release. A module built against that subset keeps loading after minor kernel updates, and the kernel tooling, called weak-updates, links it into each new kernel's tree. Without that promise, every new kernel needs a module build of its own.
 
-Most DKMS failures fall into six groups. They are listed roughly in order of how often they happen, and you should check for them in this order.
+Six groups cover most DKMS failures. They are listed roughly in the order they happen, and you should check for them in that order.
 
 1. **Missing or mismatched headers.** If `linux-headers-$(uname -r)` or `kernel-devel-$(uname -r)` is not installed, or is newer than the installed kernel, the build cannot start.
 2. **Compiler drift.** The kernel was built with GCC *N*, and the module must be compatible with that build, which kernels check for. A different default compiler on the node breaks the build.
 3. **Kernel API change.** A very new kernel can be paired with an old driver that does not support its internal APIs. The compile errors appear in `make.log`. The fix is to choose a supported driver and kernel pair, not to patch the source.
-4. **Secure Boot.** The build succeeds, but the load fails because the module is unsigned, as covered below.
+4. **Secure Boot.** The build succeeds, but the load fails because the module is unsigned. Section 5 takes that case apart.
 5. **Build timing and load.** When thousands of nodes compile at once, the CPU spikes and node readiness slows. Builds also need network access for headers, and disk space in `/usr/src` and `/var/lib/dkms`.
 6. **Partial upgrade.** A new kernel is installed, DKMS fails without a clear error, and the reboot lands in the new kernel with no GPU driver. Always verify `dkms status` for the *target* kernel **before** you reboot.
 
 ### Why large fleets avoid compiling on nodes
 
-Large fleets follow one rule. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
+Large fleets work to a single rule. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
 
 | Approach | How | Pros | Cons |
 |---|---|---|---|
@@ -189,17 +193,17 @@ The GPU Operator driver container needs a closer look. NVIDIA publishes precompi
 
 Each approach trades ease of setup against risk at fleet scale. DKMS on nodes is easy on one machine, but it is fragile at scale. Precompiled packages and golden images give you more control over what each node runs.
 
-Treat the kernel, driver, MOFED/DOCA, Fabric Manager, container toolkit, and NCCL/CUDA minimum versions as **one release train**. Pin the combination and test it as a unit. Let updates in only through the pipeline. Hold kernel packages with `apt-mark hold linux-image-generic` or `dnf versionlock` (chapter 1.7), and stage each change on a canary node first.
+Treat the kernel, driver, MOFED/DOCA, Fabric Manager, container toolkit, and NCCL/CUDA minimum versions as **one release train**. Pin the combination and test it as a unit, and let updates in only through the pipeline. Hold kernel packages with `apt-mark hold linux-image-generic` or `dnf versionlock`, as chapter 1.7 explains, and stage each change on a canary node first.
 
 Before a kernel update reaches the fleet, confirm that `dkms status` shows the driver built for the target kernel.
 
 ## 4. The NVIDIA driver stack
 
-A GPU node runs several NVIDIA pieces, and each one depends on the others. When a job cannot reach a GPU or a network card, the first question is which piece failed. The table in this section shows what each piece does, so you know where to look.
+A GPU node runs several NVIDIA pieces, and each one depends on the others. When a job cannot reach a GPU or a network card, the first question is which piece failed. The table in this section shows what each piece does, so you know where to look first.
 
 ### Kernel modules and device nodes
 
-Read the table as a map from each device file to the component that owns it.
+Read the table as a map that runs from each device file to the component that owns it.
 
 | Module / component | Role |
 |---|---|
@@ -215,40 +219,44 @@ Read the table as a map from each device file to the component that owns it.
 | DCGM / `nv-hostengine` | Health monitoring and diagnostics (`dcgmi diag -r 3`) |
 | Driver user-space | `libcuda.so.1`, `libnvidia-ml.so.1` (NVML), `nvidia-smi`, `nvidia-modprobe` (setuid helper that creates device nodes), GSP firmware under `/lib/firmware/nvidia/<version>/` |
 
-Most rows are kernel modules, but Fabric Manager and the persistence daemon are user-space services. A failed service looks different from a missing module. When you read a row, ask first whether it is a kernel module or a service.
+Most rows are kernel modules. The Fabric Manager and the persistence daemon are the exceptions, because they are user-space services. A failed service looks different from a missing module, so when you read a row, ask first which of the two it is.
 
-**Open versus proprietary kernel modules.** NVIDIA publishes an *open GPU kernel module* flavour. Its kernel-resident code is open source, and the heavy lifting runs in the GPU System Processor firmware. For recent data-centre GPUs, the open modules are the supported and recommended path. They apply to Turing and later GPUs, and they are required for Blackwell-class and Grace-based platforms. Older GPUs need the proprietary flavour. You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu, with `nvidia-open`, or with `--kernel-module-type=open` in the `.run` installer. Check `modinfo nvidia | grep -i license` and NVIDIA's current support matrix, and re-check both against each driver release.
+**Open versus proprietary kernel modules.** NVIDIA publishes an *open GPU kernel module* flavour. Its kernel-resident code is open source, and the heavy lifting runs in the GPU System Processor firmware. For recent data-centre GPUs, the open modules are the supported and recommended path. They apply to Turing and later GPUs, and they are required for Blackwell-class and Grace-based platforms. Older GPUs need the proprietary flavour.
+
+You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu, with `nvidia-open`, or with `--kernel-module-type=open` in the `.run` installer. Check `modinfo nvidia | grep -i license` and NVIDIA's current support matrix, and re-check both against each driver release.
 
 ### Installation methods and pitfalls
 
-- **Distribution packages or the NVIDIA repository** (`apt` or `dnf`, with module streams or meta-packages such as `cuda-drivers`). These integrate with package management, upgrades and DKMS or kmod. They are the preferred choice for fleets.
-- **`.run` installer.** It is convenient for labs, but it bypasses the package manager, which makes it hard to track, remove and upgrade. It also builds against the running kernel. Avoid it on managed nodes, where you want the package manager to track each change.
+- **Distribution packages or the NVIDIA repository**, installed with `apt` or `dnf`, with module streams or meta-packages such as `cuda-drivers`. These integrate with package management, upgrades and DKMS or kmod, and they are the preferred choice for fleets.
+- **The `.run` installer.** It is convenient for labs, but it bypasses the package manager, which makes it hard to track, remove and upgrade. It also builds against the running kernel. Avoid it on managed nodes, where you want the package manager to track each change.
 - **Mixing methods.** A `.run` install over an `apt` install, or two driver branches on one node, produces library and module version mismatches. The error looks like "Failed to initialize NVML: Driver/library version mismatch". After an upgrade, the loaded module is older than the user-space libraries until you reload the modules or reboot the node. Unload and reload the modules (section 2), or reboot.
 - **Blacklist nouveau and rebuild the initramfs** before the first load. Make sure no display manager grabs the GPU on compute nodes, and keep the `nvidia-persistenced` service enabled.
-- **CUDA toolkit versus driver.** The host driver must be at least as recent as the minimum driver the container's CUDA version needs. The CUDA runtime, `libcudart.so`, runs inside the container. It calls the host driver libraries `libcuda.so` and `libnvidia-ml.so`, which are injected from the host. As a typical pairing, CUDA 13.x needs the Linux host driver branch `R580` or newer. CUDA 12.x needs `R525` or newer. A newer CUDA runtime on an older driver fails to initialize CUDA. The exception is the forward-compatibility packages (`cuda-compat`), which cover supported data-centre GPUs across minor and major updates.
+- **CUDA toolkit versus driver.** The host driver must be at least as recent as the minimum driver the container's CUDA version needs. The CUDA runtime, `libcudart.so`, runs inside the container. It calls the host driver libraries `libcuda.so` and `libnvidia-ml.so`, which are injected from the host. As a typical pairing, CUDA 13.x needs the Linux host driver branch `R580` or newer, and CUDA 12.x needs `R525` or newer. A newer CUDA runtime on an older driver fails to initialize CUDA. The exception is the forward-compatibility packages, `cuda-compat`, which cover supported data-centre GPUs across minor and major updates.
 
   Device code is a separate matter. `nvcc` packs compiled GPU code for known architectures, and a portable intermediate form called PTX, into one fatbinary. A newer GPU can compile the PTX when it first runs, which is why old binaries keep working on new hardware. Chapter 10.9 covers this in detail.
-- **Clocks and framework memory settings.** Benchmark comparisons need stable clocks, which `nvidia-smi -lgc` (core clocks) and `nvidia-smi -ac <mem_clock>,<graphics_clock>` (application clocks) provide. In PyTorch, the caching allocator is tuned with `PYTORCH_ALLOC_CONF`, for example `expandable_segments:True`. Current PyTorch documentation names that variable as the main one and keeps `PYTORCH_CUDA_ALLOC_CONF` only as a backward-compatible alias, so older releases may know only the longer name. TensorFlow pre-allocates GPU memory unless `TF_FORCE_GPU_ALLOW_GROWTH=true` is set. Chapters 10.8 and 14.8 cover clocks and PyTorch tuning. They are not driver-install topics.
+- **Clocks and framework memory settings.** Benchmark comparisons need stable clocks, and you get them from `nvidia-smi -lgc` for core clocks and `nvidia-smi -ac <mem_clock>,<graphics_clock>` for application clocks. In PyTorch, the caching allocator is tuned with `PYTORCH_ALLOC_CONF`, for example `expandable_segments:True`. Current PyTorch documentation names that variable as the main one and keeps `PYTORCH_CUDA_ALLOC_CONF` only as a backward-compatible alias, so older releases may know only the longer name. TensorFlow pre-allocates GPU memory unless `TF_FORCE_GPU_ALLOW_GROWTH=true` is set. Chapters 10.8 and 14.8 cover clocks and PyTorch tuning. They are not driver-install topics.
 
 ### Safe driver upgrade procedure (one node)
 
-Run these seven steps on one node before you roll the change across the fleet.
+Run these seven steps on one node first, before the change goes anywhere near the fleet.
 
-1. Cordon and drain the node (Slurm `scontrol update NodeName=n state=drain reason="driver upgrade"`; Kubernetes `kubectl cordon && kubectl drain`).
+1. Cordon and drain the node. Slurm takes `scontrol update NodeName=n state=drain reason="driver upgrade"`, and Kubernetes takes `kubectl cordon && kubectl drain`.
 2. Stop the GPU consumers: DCGM exporter and host engine, Fabric Manager, persistence daemon, MIG and monitoring agents, and container runtimes that use GPUs.
 3. Install the new driver packages, along with matching Fabric Manager, container toolkit, and MOFED/DOCA if they are coupled.
-4. Verify the module build for the target kernel (`dkms status`, the package contents, or `modinfo -F version`).
+4. Verify the module build for the target kernel, with `dkms status`, the package contents, or `modinfo -F version`.
 5. Reboot, which is the most reliable way to guarantee that all old modules are gone. You can also unload and reload the modules.
-6. Validate with `nvidia-smi` (versions, all GPUs, ECC, clocks, persistence), `nvidia-smi topo -m`, `dcgmi diag -r 2` (or 3), `nvidia-smi nvlink -s`, a single-node NCCL test (`all_reduce_perf -b 8 -e 8G -f 2 -g 8`), and then a multi-node test for fabric health.
+6. Validate with `nvidia-smi`, checking versions, all GPUs, ECC, clocks and persistence. Then run `nvidia-smi topo -m`, `dcgmi diag -r 2` or `-r 3`, `nvidia-smi nvlink -s`, a single-node NCCL test with `all_reduce_perf -b 8 -e 8G -f 2 -g 8`, and finally a multi-node test for fabric health.
 7. Uncordon the node. Roll the change across the fleet in waves, with an automatic halt on failures, and keep the previous image or packages for rollback.
 
 Keep the previous image or packages until the new driver passes validation on every wave. If a wave fails, you roll back to the previous image.
 
 ## 5. Module signing, Secure Boot and lockdown
 
-A node with Secure Boot turned on can refuse a driver that loads fine on another node. To see why, you need to know how the firmware and the kernel decide what is trusted. With **Secure Boot**, the firmware starts only signed boot loaders. The signed kernel then restricts what can be loaded. This restriction is called kernel **lockdown**, and it can require **signed modules** (`CONFIG_MODULE_SIG_FORCE` or lockdown "integrity" mode). The kernel's trusted keyrings come from three places: the built-in keys, the firmware `db` (via `shim`), and the **Machine Owner Key (MOK)** list, which you manage with `mokutil`.
+A node with Secure Boot turned on can refuse a driver that loads fine on another node. The driver file is the same one that works next door, and this node still rejects it. To see why, you need to know how the firmware and the kernel decide what is trusted.
 
-The workflow below creates a key, enrolls it, signs the driver, and checks the result for an out-of-tree driver.
+With **Secure Boot**, the firmware starts only signed boot loaders. The signed kernel then restricts what can be loaded. This restriction is called kernel **lockdown**, and it can require **signed modules**, either through `CONFIG_MODULE_SIG_FORCE` or through lockdown "integrity" mode. The kernel's trusted keyrings come from three places. They are the built-in keys, the firmware `db` reached through `shim`, and the **Machine Owner Key (MOK)** list, which you manage with `mokutil`.
+
+The workflow below does the whole job for an out-of-tree driver. It creates a key, enrolls it, signs the driver, and checks the result.
 
 ```bash
 mokutil --sb-state                                          # SecureBoot enabled/disabled
@@ -262,17 +270,19 @@ dmesg | grep -iE 'lockdown|Required key|signature'
 keyctl list %:.platform ; sudo cat /proc/keys | head
 ```
 
-Read the output of `modinfo` and `dmesg` after each step, so you can confirm the module carries a signature the kernel accepts. When signing fails, you see `modprobe: ERROR: could not insert 'nvidia': Key was rejected by service` or `Required key not available`. The kernel can also log `Lockdown: ... unsigned module loading is restricted`.
+Read the output of `modinfo` and `dmesg` after each step, so you can confirm that the module carries a signature the kernel accepts. When signing fails, you see `modprobe: ERROR: could not insert 'nvidia': Key was rejected by service` or `Required key not available`. The kernel can also log `Lockdown: ... unsigned module loading is restricted`.
 
-Fleet operators face three further problems. The private key is a crown jewel, so keep it in an HSM or a CI secret store. Enrolment on bare-metal nodes needs console interaction, or a firmware-level key provisioning process such as BMC or Redfish `db` updates (Redfish is covered in Part 7 and Base Command Manager in Part 8). And the signing step must be part of the image build. Disabling Secure Boot is the shortcut, and sometimes policy forbids it.
+Fleet operators face three further problems. The private key is a crown jewel, so keep it in an HSM or a CI secret store. Enrolment on bare-metal nodes needs console interaction, or a firmware-level key provisioning process such as BMC or Redfish `db` updates. Redfish is covered in Part 7, and Base Command Manager in Part 8. And the signing step must be part of the image build. Disabling Secure Boot is the shortcut, and sometimes policy forbids it.
 
 Distribution-signed modules can remove the enrolment step. Ubuntu, for example, ships prebuilt and signed `linux-modules-nvidia-*` packages whose signature the standard shim already trusts, so no MOK enrolment is needed. That works only for the kernels and driver branches the distribution builds. If you compile your own modules, automate the signing in your image build rather than turning Secure Boot off to get past a load error.
 
 ## 6. sysctl and kernel parameters
 
+Two situations catch people out here. In the first, a node was tuned by hand last month, it behaved perfectly, and after a reboot the tuning is gone. In the second, a setting was written into a file at boot and did nothing at all, because the kernel key it targets only exists once a certain module is loaded. Both are cheap to prevent once you know the mechanism.
+
 ### Mechanics
 
-`sysctl` reads and writes **kernel parameters** exposed under `/proc/sys`. The dotted name maps to a path, so `vm.swappiness` ↔ `/proc/sys/vm/swappiness`. Changes made with `sysctl -w` are **runtime only**. If you want a change to survive a reboot, write it to a file. To keep a change, write it to a file in `/etc/sysctl.d/NN-name.conf`. The files are read in lexical order by `systemd-sysctl.service`, and later files win. `/etc/sysctl.conf` is also read, and the distribution defaults live in `/usr/lib/sysctl.d`.
+`sysctl` reads and writes **kernel parameters** exposed under `/proc/sys`. The dotted name maps to a path, so `vm.swappiness` ↔ `/proc/sys/vm/swappiness`. Changes made with `sysctl -w` are **runtime only**, and that is the trap. The new value works until the next reboot, then it quietly disappears. To keep a change, write it to a file in `/etc/sysctl.d/NN-name.conf`. Those files are read in lexical order by `systemd-sysctl.service`, and later files win. `/etc/sysctl.conf` is also read, and the distribution defaults live in `/usr/lib/sysctl.d`.
 
 ```bash
 sysctl -a | wc -l ; sysctl vm.swappiness ; cat /proc/sys/vm/swappiness
@@ -285,9 +295,11 @@ ls /proc/sys ; sysctl -n kernel.osrelease
 # boot-time parameters are separate: cat /proc/cmdline  (GRUB: chapter 1.14)
 ```
 
-Order matters. Some parameters exist only after a module is loaded. The `net.netfilter.*` and `net.bridge.*` keys need `br_netfilter`. A sysctl file applied before that module loads fails silently. You can fix this by loading the module earlier through `modules-load.d`, or by applying the settings with a service that runs after the module.
+Order matters, and this is where a tuned file can fail without telling you. Some parameters exist only after a module is loaded, and the `net.netfilter.*` and `net.bridge.*` keys need `br_netfilter`. A sysctl file applied before that module loads fails silently. Fix it by loading the module earlier through `modules-load.d`, or by applying the settings with a service that runs after the module.
 
-Many sysctls are **namespaced**. Network keys are per net namespace, and `kernel.shm*` and `fs.mqueue.*` are per IPC namespace. Containers can set only the "safe" namespaced keys. Kubernetes uses `securityContext.sysctls` with `--allowed-unsafe-sysctls` for the rest. Node-level values serve as the defaults that containers inherit. Change one thing at a time, measure the result, and record the reason in the file comments. Configuration management, such as the Ansible `sysctl` module, applies the values consistently.
+Many sysctls are **namespaced**. Network keys are per net namespace, and `kernel.shm*` and `fs.mqueue.*` are per IPC namespace. Containers can set only the "safe" namespaced keys, and Kubernetes uses `securityContext.sysctls` with `--allowed-unsafe-sysctls` for the rest. Node-level values are the defaults that containers inherit.
+
+Change one thing at a time, measure the result, and record the reason in the file comments. Configuration management, such as the Ansible `sysctl` module, applies the values consistently.
 
 ### Parameters that matter on GPU/HPC nodes
 
@@ -324,11 +336,13 @@ The table groups the parameters by area. Each row gives a typical setting and a 
 | | `kernel.perf_event_paranoid`, `kernel.kptr_restrict` | 1 or 2 for profiling users | Profiling needs access (1.24) |
 | | `kernel.watchdog_thresh`, `kernel.panic`, `kernel.panic_on_oops` | `panic=10` etc. | Auto-reboot nodes that panic (fleet health) |
 
-Boot parameters are a separate set, and they often pair with the values above. You put them on the kernel command line. The common ones are `transparent_hugepage=`, `numa_balancing=disable`, and `iommu=pt`. The last one is passthrough. It lowers DMA translation overhead on bare metal, and it keeps the IOMMU for SR-IOV and VFIO. Others are `intel_iommu=on` or `amd_iommu=on`, `processor.max_cstate` or `intel_idle.max_cstate`, `isolcpus`, `nohz_full`, `rcu_nocbs`, `default_hugepagesz=1G hugepagesz=1G hugepages=N`, `pcie_aspm=off` (only on vendor advice), `crashkernel=`, `console=ttyS0,115200n8`, `audit=1`, and `mitigations=`.
+Boot parameters are a separate set, and they often pair with the values above. You put them on the kernel command line. The common ones are `transparent_hugepage=`, `numa_balancing=disable` and `iommu=pt`. The last one is passthrough: it lowers DMA translation overhead on bare metal, and it keeps the IOMMU for SR-IOV and VFIO. Others are `intel_iommu=on` or `amd_iommu=on`, `processor.max_cstate` or `intel_idle.max_cstate`, `isolcpus`, `nohz_full`, `rcu_nocbs`, `default_hugepagesz=1G hugepagesz=1G hugepages=N`, `pcie_aspm=off` on vendor advice only, `crashkernel=`, `console=ttyS0,115200n8`, `audit=1`, and `mitigations=`.
 
 Some GPU-direct paths have their own IOMMU and ACS requirements. PCIe ACS can force peer-to-peer traffic through the root complex. Follow the vendor guidance for GPUDirect RDMA, and verify it on your hardware.
 
-**Notes on contested values.** Sources disagree about THP. Disable it for latency-sensitive inference, or when compaction stalls appear. Leave it on, or set `madvise`, for throughput training. Choose by measurement, using `/proc/vmstat` `thp_*` and `compact_stall`. The same applies to `vm.swappiness=0` with no swap, compared with a small swap plus `memory.swap.max`. It also applies to IOMMU passthrough compared with full translation, which depends on your virtualisation needs.
+**Notes on contested values.** Sources disagree about THP. Disable it for latency-sensitive inference, or when compaction stalls appear. Leave it on, or set `madvise`, for throughput training. Choose by measurement, using `/proc/vmstat` `thp_*` and `compact_stall`.
+
+The same disagreement applies to `vm.swappiness=0` with no swap, compared with a small swap plus `memory.swap.max`. It applies again to IOMMU passthrough compared with full translation, which depends on your virtualisation needs.
 
 ### Applying settings as code
 
@@ -356,13 +370,15 @@ DefaultLimitNOFILE=1048576
 DefaultLimitMEMLOCK=infinity
 ```
 
-Locked memory matters for pinned memory and RDMA, which you can check with `ulimit -l`. A process that pins large buffers needs `memlock unlimited`. Where that limit comes from depends on how the process starts. Login sessions read `/etc/security/limits.d/*.conf`. Services read `LimitMEMLOCK=infinity`. Docker takes `--ulimit memlock=-1`. Pods take the container runtime defaults. Slurm uses `PropagateResourceLimits` and the `slurmd` limits. Check the value inside the job itself, with `ulimit -a` in an `srun` step and in a pod, because limits do not propagate the way people assume.
+Locked memory matters for pinned memory and RDMA, which you can check with `ulimit -l`. A process that pins large buffers needs `memlock unlimited`. Where that limit comes from depends on how the process starts. Login sessions read `/etc/security/limits.d/*.conf`, services read `LimitMEMLOCK=infinity`, Docker takes `--ulimit memlock=-1`, pods take the container runtime defaults, and Slurm uses `PropagateResourceLimits` and the `slurmd` limits.
+
+Check the value inside the job itself, with `ulimit -a` in an `srun` step and in a pod, because limits do not propagate the way people assume.
 
 Record the current value of every parameter before you change it, and write down why you want the new one.
 
 ## 7. Troubleshooting flow: "the node has no GPUs"
 
-Use this flow when `nvidia-smi` fails, or when the GPUs are missing from a node that should have them. Start at the top and answer one question at a time. Each answer points you to the next check. If you already know where the fault is, you can skip ahead.
+Picture the ticket that reads: "Node 17 has no GPUs." Use this flow when `nvidia-smi` fails, or when the GPUs are missing from a node that should have them. Start at the top and answer one question at a time. Each answer points you to the next check. If you already know where the fault is, you can skip ahead.
 
 ```mermaid
 flowchart TD
@@ -397,7 +413,7 @@ Work top-down. Check the hardware first, then the module, then the driver's own 
 
 ## 8. Hands-on lab: modules, DKMS, and sysctl
 
-Start with the self-checking Python lab. You can run it on your own machine, and it checks the logic before you touch a real node. If the lab fails, fix that before you go near a real node. It verifies the NVIDIA kernel module unload dependency order, `vermagic` and Secure Boot MOK signature load eligibility, CUDA `12.x` (`R525`) and `13.x` (`R580`) host driver branch compatibility, `Driver/library version mismatch` detection, and GPU-node `sysctl` auditing.
+Start with the self-checking Python lab. You can run it on your own machine, and it checks the logic before you touch a real node. Fix any failure there first. It verifies the NVIDIA kernel module unload dependency order, `vermagic` and Secure Boot MOK signature load eligibility, CUDA `12.x` (`R525`) and `13.x` (`R580`) host driver branch compatibility, `Driver/library version mismatch` detection, and GPU-node `sysctl` auditing.
 
 ```bash
 python3 code/part01/kernel_modules_sysctl_lab.py
@@ -434,18 +450,18 @@ Run the parts in order, and stop at the first step that surprises you.
 
 ## 9. Common mistakes
 
-These are the mistakes teams make most often on GPU nodes. Check the list before you change a node, and look for the one your team most often skips.
+These are the mistakes teams make most often on GPU nodes. Read the list before you change a node, and look for the one your team most often skips.
 
-- Installing a new kernel and rebooting without checking that the GPU/NIC modules exist for it.
-- Compiling drivers on thousands of nodes at boot; letting unattended upgrades change kernels on GPU nodes.
-- Mixing driver install methods or branches; forgetting Fabric Manager and the container toolkit must match.
+- Installing a new kernel and rebooting without checking that the GPU and NIC modules exist for it.
+- Compiling drivers on thousands of nodes at boot. Letting unattended upgrades change kernels on GPU nodes.
+- Mixing driver install methods or branches, and forgetting that Fabric Manager and the container toolkit must match.
 - `blacklist nouveau` without rebuilding the initramfs.
 - Disabling Secure Boot to "fix" signing instead of automating signing.
-- Setting giant sysctl values (2 GB socket buffers) believing they accelerate RDMA.
+- Setting giant sysctl values, such as 2 GB socket buffers, believing they accelerate RDMA.
 - Persisting sysctls that depend on modules not yet loaded.
 - Assuming `/etc/security/limits.conf` applies to systemd services or containers.
-- Tuning by copy-paste from a blog; no baseline, no measurement, no rollback.
-- Treating one benchmark on one node as proof for the fleet; configuration drift between nodes.
+- Tuning by copy-paste from a blog, with no baseline, no measurement and no rollback.
+- Treating one benchmark on one node as proof for the fleet, and accepting configuration drift between nodes.
 
 Put a check for your team's most-skipped item into the runbook, so that the next change does not skip it.
 

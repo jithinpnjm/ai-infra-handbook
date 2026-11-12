@@ -22,11 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a training run that was fast last week and now crawls. Nothing in the code changed, so the on-call engineer has to look at the machine itself. This chapter is about the work that keeps such a machine fast: making a Linux server with GPUs deliver the hardware's full capability, proving it, and keeping it that way across a fleet.
+Picture a training run that was fast last week and crawls today. The code has not changed, so the on-call engineer has to stop reading logs and start looking at the machine itself. This chapter is about the work that keeps such a machine fast. It is about making a Linux server with GPUs deliver the hardware's full capability, proving that it does, and keeping it that way across a fleet.
 
-This is the capstone of Part 1. Every earlier chapter contributes a piece: processes, memory and NUMA, scheduling and cgroups, namespaces, security, kernel modules and ``sysctl``, methods, tracing, benchmarking and virtualisation. Here they all come together in one practical task, and you will meet that task again and again in your career. **Take a Linux server with GPUs, make it deliver the hardware's capability predictably, prove it, and keep it that way across a fleet.**
+This is the capstone of Part 1, so every earlier chapter contributes a piece of the answer. Processes came first, then memory and NUMA, then scheduling and cgroups, namespaces, security, kernel modules and ``sysctl``. Later chapters added methods, tracing, benchmarking and virtualisation. Here those pieces come together in one practical task, the kind you will meet again and again in your career. **Take a Linux server with GPUs, make it deliver the hardware's capability predictably, prove it, and keep it that way across a fleet.**
 
-The cost logic is blunt. A single DGX/HGX-class node costs hundreds of thousands of dollars and consumes kilowatts of power. In a synchronous distributed training job, the slowest rank sets the speed of every other rank. One node with a throttled GPU, a mispinned data loader, a degraded PCIe link, a too-low `vm.max_map_count`, or a NIC on the wrong NUMA node costs the whole job. Tuning is therefore not about heroics on one machine. It is about making all nodes identical, within a tolerance you can measure, and finding the ones that are not.
+The cost logic behind that task is blunt. A single DGX/HGX-class node costs hundreds of thousands of dollars and consumes kilowatts of power. In a synchronous distributed training job, the slowest rank sets the speed of every other rank. So one node with a throttled GPU, a mispinned data loader, a degraded PCIe link, a too-low `vm.max_map_count`, or a NIC on the wrong NUMA node costs the whole job. Tuning is not about heroics on one machine. It is about making all nodes identical, within a tolerance you can measure, and finding the ones that are not.
 
 Here are some situations you are likely to meet:
 
@@ -36,11 +36,11 @@ Here are some situations you are likely to meet:
 - A container job is OOM-killed three days into training, because a memory limit counted pinned buffers and page cache.
 - Half the fleet trains 8% slower, because GRUB parameters were applied by hand on only some nodes.
 
-This chapter gives you a layered node tuning playbook. It covers BIOS, firmware, boot parameters, the kernel, OS services, memory, CPU and IRQs, storage, network, the GPU driver and runtime, and containers and schedulers. It also gives you a verification suite that runs in minutes, the configuration-as-code pattern that keeps a fleet consistent, and a retold performance case study. The case study shows how the methodology of chapters 1.23 to 1.25 resolves a real mystery. The chapter also has a lab in which you build your own node audit.
+This chapter gives you a layered node tuning playbook. It begins at BIOS and firmware, then moves through boot parameters, the kernel, OS services, memory, CPU and IRQs, storage, network, and the GPU driver and runtime, and ends with containers and schedulers. Alongside the playbook you get a verification suite that runs in minutes, the configuration-as-code pattern that keeps a fleet consistent, and a retold performance case study. The case study shows how the methodology of chapters 1.23 to 1.25 resolves a real mystery. The chapter also has a lab in which you build your own node audit.
 
 ## Prerequisites and outcomes
 
-You should have read the Part 1 chapters. The most important ones are memory and NUMA (1.17), CPU and cgroups (1.18), namespaces (1.19), security (1.21), kernel modules and ``sysctl`` (1.22), the method and tool chapters (1.23 to 1.25), and virtualisation (1.26 and 1.27). Slurm, Kubernetes, NCCL and fabric details come in later parts. In this chapter they appear only as the consumers of a well-tuned node.
+You should have read the Part 1 chapters first, because this one leans on all of them. The most important are memory and NUMA (1.17), CPU and cgroups (1.18), namespaces (1.19), security (1.21), kernel modules and ``sysctl`` (1.22), the method and tool chapters (1.23 to 1.25), and virtualisation (1.26 and 1.27). Details of Slurm, Kubernetes, NCCL and the fabric come in later parts. Here they appear only as the consumers of a well-tuned node.
 
 When you finish this chapter, you should be able to do the following.
 
@@ -54,7 +54,7 @@ When you finish this chapter, you should be able to do the following.
 
 ## 1. The tuning stack, top to bottom
 
-Think of a GPU node as a stack of layers. Your workload sits at the top, and the physical hardware sits at the bottom. The diagram shows each layer and what lives in it.
+A procurement team orders two identical GPU nodes, and the invoices agree down to the part numbers. Months later one of them trains slower than the other, and nobody can say why. The answer usually hides in a layer of the machine that was never set on purpose. It helps to picture a GPU node as a stack of layers, with your workload at the top and the physical hardware at the bottom. The diagram shows each layer and what lives in it.
 
 ```mermaid
 flowchart TB
@@ -67,7 +67,7 @@ flowchart TB
   F --> H["Hardware: CPU sockets, DRAM, PCIe switches, GPUs, NVLink/NVSwitch, NICs, NVMe, power & cooling"]
 ```
 
-The order matters for two reasons. First, lower layers cannot be fixed from above. An OS cannot repair a PCIe link that negotiated at x8, and it cannot undo a BIOS that hides NUMA. Second, each layer must be verified before the next one is tuned, or you will tune around a fault. So build and verify bottom-up, and diagnose symptoms top-down.
+The order matters for two practical reasons. First, lower layers cannot be fixed from above. An OS cannot repair a PCIe link that negotiated at x8, and it cannot undo a BIOS that hides NUMA. Second, each layer must be verified before the next one is tuned, or you will tune around a fault. So build and verify bottom-up, and diagnose symptoms top-down.
 
 ### Guiding principles
 
@@ -81,13 +81,13 @@ The order matters for two reasons. First, lower layers cannot be fixed from abov
 
 ### Tune continuously and reduce bottlenecks across the stack
 
-System tuning is not a one-time job. Workloads change, a new model arrives, and the best CPU affinity or batch size from last quarter may not be the best one now. Monitor the key metrics on a regular schedule. Adjust CPU affinities, batch sizes and prefetch settings as the workload evolves. Small gains add up into a large improvement over time.
+System tuning is not a one-time job, and it never really finishes. Workloads change, a new model arrives, and the CPU affinity or batch size that was best last quarter may not be best now. So monitor the key metrics on a regular schedule. Adjust CPU affinities, batch sizes and prefetch settings as the workload evolves, because small gains add up into a large improvement over time.
 
-The goal is for every layer to work in harmony, from the OS and CPU up to the GPU driver and runtime. A slow memory allocation on the CPU can starve a GPU just as surely as a slow driver start. Find the bottleneck, fix it, and then look for the next one. Each fix reduces data transfer friction and wait time, so the hardware gets closer to its full potential.
+The goal is for every layer to work in harmony, from the OS and CPU up to the GPU driver and runtime. A slow memory allocation on the CPU can starve a GPU just as surely as a slow driver start. Find the bottleneck, fix it, and then look for the next one. Each fix removes some friction from data transfer and some waiting, so the hardware gets closer to its full potential.
 
 ## 2. Know the machine: topology first
 
-Record the topology before you tune anything. A wrong assumption at this step invalidates everything that follows.
+Here is a question worth thirty seconds of looking: which CPU cores can reach GPU 3's memory directly? The answer is not written on the GPU. It belongs to the layout of the machine, and guessing it wrong costs you performance for the life of the node. That layout is the topology, meaning the map of where the CPU cores, memory, PCIe switches, GPUs, NICs and NVMe drives sit, and which of them are close to each other. Record that map before you tune anything, because a wrong assumption at this step invalidates everything that follows.
 
 ```bash
 lscpu | egrep 'Model name|Socket|Core|Thread|NUMA|L3'          # sockets, cores per socket, SMT, NUMA nodes, cache
@@ -102,21 +102,21 @@ ibstat ; ibv_devinfo ; rdma link ; ethtool <if> | egrep 'Speed|Duplex'
 dmidecode -t memory | egrep 'Size|Speed|Locator' | head -40       # populated DIMM channels (missing DIMMs = lost bandwidth)
 ```
 
-Read the output of `nvidia-smi topo -m` with the connection codes in mind. `X` means self. `NV#` means NVLink with # links. `PIX` means the path crosses at most one PCIe bridge. `PXB` means it crosses multiple PCIe bridges. `PHB` means the path goes through a PCIe host bridge, the CPU root complex. `NODE` means the path crosses PCIe host bridges within one NUMA node. `SYS` means the path crosses NUMA nodes, through the inter-socket link.
+Read the output of `nvidia-smi topo -m` with the connection codes in mind, because each code is a short statement about distance. `X` means self. `NV#` means NVLink with # links. `PIX` means the path crosses at most one PCIe bridge. `PXB` means it crosses multiple PCIe bridges. `PHB` means the path goes through a PCIe host bridge, the CPU root complex. `NODE` means the path crosses PCIe host bridges within one NUMA node. `SYS` means the path crosses NUMA nodes, through the inter-socket link.
 
-Aim for GPU and NIC pairs at `PIX` or `PXB`, which is the best path for GPUDirect RDMA. Avoid `SYS` between a worker's CPU, GPU and NIC. Record the whole matrix in the node's baseline.
+Aim for GPU and NIC pairs at `PIX` or `PXB`, which is the best path for GPUDirect RDMA. Avoid `SYS` between a worker's CPU, GPU and NIC. Then record the whole matrix in the node's baseline.
 
-Write down these facts for every node. Note the GPU-to-NUMA map, the NIC-to-NUMA map, the NVMe-to-NUMA map, and the CPU list for each NUMA node, including the SMT siblings. Check the PCIe link speed and width of each device. Every GPU should run at its maximum generation and x16, and every NIC at its maximum. Confirm that all memory channels are populated, because missing DIMMs cost bandwidth. Confirm that all NVLink links are up. Keep this map with the baseline, since every later step depends on it.
+Write these facts down for every node. Note the GPU-to-NUMA map, the NIC-to-NUMA map, the NVMe-to-NUMA map, and the CPU list for each NUMA node, including the SMT siblings. Check the PCIe link speed and width of each device. Every GPU should run at its maximum generation and x16, and every NIC at its maximum. Confirm that all memory channels are populated, because missing DIMMs cost bandwidth. Confirm that all NVLink links are up. Keep this map with the baseline, since every later step depends on it.
 
 ### Superchips such as Grace Blackwell
 
-A superchip places the CPU and GPU in one package. The Grace-based designs, such as GH200 and GB200, join the CPU and GPU with NVLink-C2C. That link gives coherent access between CPU and GPU memory at up to about 900 GB/s. Coherence removes many of the copy steps you would otherwise need.
+A superchip is a single package that holds both the CPU and the GPU. The Grace-based designs, such as GH200 and GB200, join the two with NVLink-C2C. That link gives coherent access between CPU and GPU memory at up to about 900 GB/s, and coherence removes many of the copy steps you would otherwise need.
 
 Linux still treats the CPU DRAM and the GPU HBM as two separate memory pools. So you still bind CPU threads to the local CPU NUMA node and keep the data near the CPU that feeds the GPU. The coherent link lowers the software overhead, but it does not remove the need for locality. Huge pages, prefetching and pinned memory still matter on these systems.
 
 ## 3. Firmware and BIOS
 
-Firmware settings are chosen once per hardware generation, through vendor tooling, Redfish or BCM (Part 1b). The audit then checks them on every node. Always follow the server vendor's reference profile for your model. The table below gives the concept behind each setting.
+A node can boot cleanly, pass every GPU check, and still be throttled by a firmware option that was never set. Firmware sits below the operating system, and it decides what the operating system is even allowed to see. A BIOS that hides NUMA, or leaves deep C-states switched on, costs you performance that no amount of kernel tuning can win back. Firmware settings are chosen once per hardware generation, through vendor tooling, Redfish or BCM (Part 1b), and the audit then checks them on every node. Always follow the server vendor's reference profile for your model. The table below gives the concept behind each setting.
 
 | Setting | Typical for GPU training nodes | Why / caution |
 |---|---|---|
@@ -134,11 +134,11 @@ Firmware settings are chosen once per hardware generation, through vendor toolin
 | Boot mode | UEFI; network boot (PXE/HTTP Boot) enabled in the right order | Chapter 1.14 |
 | Serial console / BMC SOL | On | Debugging and remote management |
 
-Two rows deserve a second look. The PCIe row carries a security trade-off, because ACS is the feature that isolates devices from each other. The firmware row warns that mixed versions cause "identical node" differences, so pin every version and keep them identical across the fleet.
+Two rows deserve a second look. The PCIe row carries a security trade-off, because ACS is the feature that isolates devices from each other. The firmware row warns that mixed versions cause "identical node" differences, so pin every version and keep them identical across the fleet. Read the table once with the vendor's guide open beside you, and let the audit enforce it forever after.
 
 ## 4. Kernel boot parameters
 
-Change boot parameters only through the distribution's supported mechanism. On RHEL-family BLS systems, use `grubby`. On Ubuntu, edit `/etc/default/grub` and run `update-grub`. For image builds, use your image tooling. Then verify the result with `cat /proc/cmdline`, and keep the parameters under version control.
+The kernel command line is one of the quietest places a fleet can drift. Someone edits it by hand on the node in front of them, the node reboots, and the change never reaches the image that built it. So change boot parameters only through the distribution's supported mechanism. On RHEL-family BLS systems, use `grubby`. On Ubuntu, edit `/etc/default/grub` and run `update-grub`. For image builds, use your image tooling. Then verify the result with `cat /proc/cmdline`, and keep the parameters under version control.
 
 ```text
 # Example baseline for a bare-metal HGX-class node (adapt; flags are workload and platform dependent)
@@ -158,7 +158,7 @@ mitigations=...                        # leave default unless risk-accepted and 
 module_blacklist=nouveau               # also blacklist in modprobe.d + rebuild initramfs
 ```
 
-Several of these items are contested. Settle each one with an A/B test on your own workload, as chapter 1.25 describes.
+Several of these items are genuinely contested, and experienced engineers disagree about them. Settle each one with an A/B test on your own workload, as chapter 1.25 describes.
 
 - `iommu=pt`: With a default translation-enabled IOMMU, every device DMA needs IOMMU and IOTLB handling. Passthrough mode keeps the IOMMU available for VFIO and SR-IOV, but it uses identity mapping for host devices. Reports of better stability and bandwidth for RDMA and GPUDirect are common. Some GPUDirect configurations have their own IOMMU and ACS requirements. Do not use this setting where DMA isolation of untrusted devices is required.
 - `numa_balancing=disable`: Automatic NUMA balancing unmaps pages to detect remote access, and then migrates them. With explicit pinning, through `numactl`, Slurm or Kubernetes binding, it only adds page faults and migration jitter. For unpinned workloads, it may help.
@@ -167,11 +167,11 @@ Several of these items are contested. Settle each one with an A/B test on your o
 - `mitigations`: This is a security decision. Measure before you relax it, and keep the mitigations on multi-tenant hosts.
 - Isolation (`isolcpus`, `nohz_full`): This is worth the effort for real-time or jitter-critical designs and for dedicated communication cores. For ordinary training, pinning plus cgroup cpusets, with housekeeping cores left free, is usually enough.
 
-Choose each value by measurement, not by copying it from another machine.
+Choose each value by measurement, not by copying it from another machine. A setting that helped a neighbour's cluster tells you only that it did not hurt theirs.
 
 ## 5. Sysctl, limits and services
 
-Kernel settings, resource limits and services make up the rest of the OS layer. Every line in these files needs a reason and a test. Chapter 1.22 has the full table.
+A node can pass every boot-parameter check and still kill a long job, because a service limit was never raised. Below the boot parameters sits the rest of the OS layer: kernel settings, resource limits and services. These are the files people copy from a blog post and then forget for three years. Every line in them needs a reason and a test. Chapter 1.22 has the full table.
 
 ```ini
 # /etc/sysctl.d/90-gpu-node.conf   (every line needs a reason and a test; see chapter 1.22 for the full table)
@@ -204,11 +204,11 @@ kernel.core_pattern = /var/crash/core.%e.%p.%t
 # systemd: DefaultLimitMEMLOCK=infinity DefaultLimitNOFILE=1048576   (and LimitMEMLOCK/LimitNOFILE in slurmd.service and containerd.service)
 ```
 
-Check limits where the job actually runs. Run `ulimit -a` inside `srun`, inside a pod, or in a systemd service, and you will see what the job gets. Login-session limits do not apply to services or containers, so a value that looks correct in your shell can still be missing from the job.
+Check limits where the job actually runs, not where you happen to be typing. Run `ulimit -a` inside `srun`, inside a pod, or in a systemd service, and you will see what the job gets. Login-session limits do not apply to services or containers, so a value that looks correct in your shell can still be missing from the job.
 
-Services need the same care. Enable and order `nvidia-persistenced`. Enable `nvidia-fabricmanager` as well, and make it start before GPU workloads on NVSwitch systems. Run `dcgm` or `nv-hostengine` with an exporter. Keep `chronyd` running for tight time sync in logs and some protocols. Use `irqbalance` only with a ban mask, or disable it and pin IRQs by hand. Enable `tuned` with a profile, along with `rasdaemon`, `node_exporter`, `sshd`, `slurmd` or `kubelet`, and `containerd`.
+Services need the same care and the same written reason. Enable and order `nvidia-persistenced`. Enable `nvidia-fabricmanager` as well, and make it start before GPU workloads on NVSwitch systems. Run `dcgm` or `nv-hostengine` with an exporter. Keep `chronyd` running for tight time sync in logs and some protocols. Use `irqbalance` only with a ban mask, or disable it and pin IRQs by hand. Enable `tuned` with a profile, along with `rasdaemon`, `node_exporter`, `sshd`, `slurmd` or `kubelet`, and `containerd`.
 
-Disable what you do not need. Examples are a display manager that grabs the GPU, `cups`, `avahi`, mDNS, and unneeded timers such as `apt-daily` on managed images. Decide deliberately about `systemd-oomd`, since it can fight job limits. Then run `swapoff`, or limit swap. Mask services that run periodic `nvidia-smi` calls unless you need them, because those calls contend on driver locks.
+Disable what you do not need, and write down why. Examples are a display manager that grabs the GPU, `cups`, `avahi`, mDNS, and unneeded timers such as `apt-daily` on managed images. Decide deliberately about `systemd-oomd`, since it can fight job limits. Then run `swapoff`, or limit swap. Mask services that run periodic `nvidia-smi` calls unless you need them, because those calls contend on driver locks.
 
 A systemd drop-in file lets you order `slurmd` after the GPU services. The block below is illustrative.
 
@@ -219,15 +219,15 @@ After=nvidia-persistenced.service nvidia-fabricmanager.service
 Requires=nvidia-persistenced.service
 ```
 
-Treat the `sysctl` file and the limits file as code: each change should come with the test that proves it helped.
+Treat the `sysctl` file and the limits file as code. Each change should come with the test that proves it helped, and a note that says what would make you remove it.
 
 ## 6. Memory: pinning, huge pages, allocation policy
 
-Memory problems are quiet. A job runs, but it runs slower than it should, or it fails days later when a limit is reached. The bullets below cover the settings that prevent both problems.
+Memory problems are quiet, which is what makes them expensive. A job still runs, but slower than it should, or it dies days later when a limit is finally reached. Nobody sees the cause at the moment it happens. The settings below prevent both kinds of failure.
 
-- Local allocation. By default, a process allocates memory from the NUMA node of the CPU it runs on. Memory allocated before pinning, or by threads that have migrated, may be remote. Bind at launch with `numactl --cpunodebind=N --membind=N`, or with the Slurm or Kubernetes equivalents.
-- Policy inheritance is not always reliable. `numactl` policy is inherited by `fork`ed children, but not necessarily by `spawn`ed or `exec`ed workers. It is also not guaranteed for threads that some Python frameworks create, or for processes started by container runtimes. Re-assert the binding in every worker, as section 7 shows, and verify it with `numastat -p PID`, `/proc/PID/numa_maps` and `taskset -cp`.
-- Pinned (page-locked) memory. Allocations such as `cudaHostAlloc`, or PyTorch's `pin_memory=True` paired with `non_blocking=True` on host-to-device copies, allow true asynchronous DMA. They reach `2x–3x` higher host-to-device PCIe throughput than pageable memory. You can measure the gap yourself with `bandwidthTest --memory=pinned` and `bandwidthTest --memory=pageable` (untested here). Pinned memory is a limited resource. Raise `RLIMIT_MEMLOCK` with `ulimit -l`. Pinned memory also counts against cgroup memory limits, and it cannot be swapped.
+- Local allocation. By default, a process allocates memory from the NUMA node of the CPU it runs on. Memory allocated before pinning, or by threads that have since migrated, may be remote. Bind at launch with `numactl --cpunodebind=N --membind=N`, or with the Slurm or Kubernetes equivalents.
+- Policy inheritance is not always reliable. A `numactl` policy is inherited by `fork`ed children, but not necessarily by `spawn`ed or `exec`ed workers. It is not guaranteed either for threads that some Python frameworks create, or for processes started by container runtimes. Re-assert the binding in every worker, as section 7 shows, and verify it with `numastat -p PID`, `/proc/PID/numa_maps` and `taskset -cp`.
+- Pinned memory, also called page-locked memory, is memory the operating system promises not to move or swap. Allocations such as `cudaHostAlloc`, or PyTorch's `pin_memory=True` paired with `non_blocking=True` on host-to-device copies, allow true asynchronous DMA. They reach `2x–3x` higher host-to-device PCIe throughput than pageable memory. You can measure the gap yourself with `bandwidthTest --memory=pinned` and `bandwidthTest --memory=pageable`. Pinned memory is a limited resource. Raise `RLIMIT_MEMLOCK` with `ulimit -l`. Pinned memory also counts against cgroup memory limits, and it cannot be swapped.
 - Huge pages. Use the THP policy from section 4, or explicit huge pages for pinned buffers and RDMA registrations. The gain is typically a few percent, from fewer page faults and TLB misses, and it depends on the workload.
 - Allocators. For data-pipeline processes that allocate heavily, tune `jemalloc` with `MALLOC_CONF="narenas:8,background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"`, or tune `tcmalloc` with larger thread caches. This keeps freed memory from being returned to the system and faulted in again and again. Measure the result.
 - Swap. Avoid it. A page that has been swapped out and then sits behind a GPU copy costs orders of magnitude more time. If swap exists for safety, set low swappiness and per-job `memory.swap.max=0`.
@@ -239,13 +239,13 @@ Pick a memory policy for each job, and measure before you keep it.
 
 ### The OOM killer and memory limits
 
-A memory limit protects the host, but it can also end your job. Without limits, one greedy container can take too much host memory. The host then starts to swap, and the Linux OOM killer may step in. The OOM killer picks its victims with heuristics. It may choose your large training job, even when another process caused the pressure.
+A memory limit protects the host, but it can also end your job. Without limits, one greedy container can take too much host memory. The host then starts to swap, and the Linux OOM killer may step in. The OOM killer is the kernel's emergency procedure for freeing memory, and it picks its victims with heuristics. It may choose your large training job, even when another process caused the pressure.
 
-For this reason, many teams leave memory limits off training and inference containers. The job can then use all the memory it needs. If you do set a limit, put it above the peak you expect, and leave headroom. Watch usage with monitoring and alerts. A limit that is too tight can kill a job three days into a long run.
+For this reason, many teams leave memory limits off training and inference containers. The job can then use all the memory it needs. If you do set a limit, put it above the peak you expect, and leave headroom. Watch usage with monitoring and alerts. A limit that is too tight can kill a job three days into a long run, and the log will not tell you why.
 
 ## 7. CPU placement and interrupts
 
-Each training process should run on the CPUs of the NUMA node that holds its GPU. The simplest pattern is one process per GPU, bound to that GPU's NUMA domain. The launcher below reads the GPU's NUMA node from sysfs, which is more robust against odd `nvidia-smi topo` text formats. Then it binds the process with `numactl`.
+Here is the failure this section prevents. A data loader runs on a CPU socket that sits far from the GPU it feeds, so every batch crosses the interconnect before it can reach the card. The GPU waits, the step time wobbles, and nothing in the profiler says "wrong NUMA node". The fix is placement. Each training process should run on the CPUs of the NUMA node that holds its GPU, and the simplest pattern is one process per GPU, bound to that GPU's NUMA domain. The launcher below reads the GPU's NUMA node from sysfs, which is more robust against odd `nvidia-smi topo` text formats. Then it binds the process with `numactl`.
 
 ```bash
 #!/usr/bin/env bash
@@ -283,7 +283,7 @@ The book's full `get_gpu_numa_node(device)` helper finds a GPU's NUMA node throu
 
 1. NVML (`pynvml`, preferred). Normalize the GPU's PCI bus ID, taken from `torch.cuda.get_device_properties(device).pci_bus_id`, to an 8-hex-digit domain (`nvmlDeviceGetHandleByPciBusId_v2`). Then query `nvmlDeviceGetNUMANodeId(handle)` directly, if the driver exposes it. If it does not, read the GPU's CPU-affinity bitmask with `nvmlDeviceGetCpuAffinity(handle, elems)`, and map those CPUs against `/sys/devices/system/node/node*/cpulist`. The majority NUMA node wins.
 2. sysfs fallback. Read `/sys/bus/pci/devices/<bdf>/numa_node`. If the value is negative, return `0`.
-3. CLI or process fallback. In shell scripts, parse `nvidia-smi topo -m -i $GPU | awk '/NUMA Affinity/ {print $NF}'` (untested here). Otherwise, fall back to the preferred node that `numactl --show` reports (untested here).
+3. CLI or process fallback. In shell scripts, parse `nvidia-smi topo -m -i $GPU | awk '/NUMA Affinity/ {print $NF}'`. Otherwise, fall back to the preferred node that `numactl --show` reports.
 
 The `numa_run_on_node` call restricts CPU placement. The `numa_set_preferred` call biases allocations. Stricter memory binding uses `set_mempolicy` or `numa_bind`. Check that libnuma is available on your distribution, and check its version and soname too.
 
@@ -318,7 +318,7 @@ If the thread already has a dedicated core, you often do not need a real-time pr
 
 ### Finding a GPU's NUMA node in Python
 
-The helper below finds a GPU's NUMA node. It tries NVML first, then sysfs, and then the process's current preferred node. Call it once at startup, before the process binds itself to CPUs. The code follows the book's helper, with each fallback step kept in order.
+The helper below finds a GPU's NUMA node. It tries NVML first, then sysfs, and then the process's current preferred node. Call it once at startup, before the process binds itself to CPUs. The code keeps each fallback step in this order.
 
 ```python
 import glob, os, re, subprocess
@@ -420,23 +420,23 @@ The NVML path is the most direct answer. If the driver exposes the NUMA node, th
 
 ## 8. Storage, network and the GPU driver
 
-This section covers three areas: local and network storage, the host side of the network, and the GPU driver and runtime. Each one has settings you must choose on purpose, so the reasons matter as much as the values.
+Three very different things can all present as "the GPU is slow": slow local disks, a slow fabric, or a driver that nobody configured. This section covers local and network storage, the host side of the network, and the GPU driver and runtime. Each one has settings you must choose on purpose, so the reasons matter as much as the values.
 
 ### Local storage and filesystems
 
-- Layout. A typical layout puts the OS on a mirrored pair (RAID1) of small NVMe or SATA devices. Use the remaining NVMe drives as scratch, either striped (md RAID0 or an LVM stripe) or individually. Do not use parity RAID for scratch. Scratch holds the dataset cache, the container layers (`/var/lib/containerd` and the enroot cache) and checkpoint staging. Use the mount options `noatime` and `nodev,nosuid`, as your policy allows. Modern kernels default to `relatime`. Use XFS or ext4, aligned to the stripe, and enable `fstrim.timer`. Put container storage on its own partition, so that it cannot fill the root filesystem (chapters 1.12 and 1.13).
-- Tune only after measuring. Adjust queue depth, the scheduler (`none` for NVMe), `read_ahead_kb` and `nr_requests`. Also check the NUMA locality of each NVMe drive to the workers that read it, and watch for thermal throttling under sustained load. Use the fio recipes from chapter 1.25 for the measurements.
+- Start with the disk layout. A typical layout puts the OS on a mirrored pair (RAID1) of small NVMe or SATA devices. Use the remaining NVMe drives as scratch, either striped (md RAID0 or an LVM stripe) or individually. Do not use parity RAID for scratch. Scratch holds the dataset cache, the container layers (`/var/lib/containerd` and the enroot cache) and checkpoint staging. Use the mount options `noatime` and `nodev,nosuid`, as your policy allows. Modern kernels default to `relatime`. Use XFS or ext4, aligned to the stripe, and enable `fstrim.timer`. Put container storage on its own partition, so that it cannot fill the root filesystem (chapters 1.12 and 1.13).
+- Tune only after you have measured. Adjust queue depth, the scheduler (`none` for NVMe), `read_ahead_kb` and `nr_requests`. Also check the NUMA locality of each NVMe drive to the workers that read it, and watch for thermal throttling under sustained load. Use the fio recipes from chapter 1.25 for the measurements.
 - Never mirror or parity the scratch unless durability requires it. Durability for checkpoints comes from copying them to shared or object storage.
-- Network filesystems. For Lustre, GPFS, NFS and WekaFS, tune the mount options and client settings. These include readahead, RPCs in flight, `nconnect` for NFS, client cache sizes and stripe counts. Metadata-heavy access patterns need attention too. Avoid many small files by packing datasets into shards. Validate the result with IOR and mdtest at job scale.
-- Container storage. Keep image layers and writable layers on fast NVMe. Keep large mutable data on bind-mounted volumes, not in the overlay writable layer (chapter 1.19).
+- Network filesystems such as Lustre, GPFS, NFS and WekaFS need their mount options and client settings tuned as well. These include readahead, RPCs in flight, `nconnect` for NFS, client cache sizes and stripe counts. Metadata-heavy access patterns need attention too. Avoid many small files by packing datasets into shards. Validate the result with IOR and mdtest at job scale.
+- Keep container image layers and writable layers on fast NVMe. Keep large mutable data on bind-mounted volumes, not in the overlay writable layer (chapter 1.19).
 
 ### Network (host side)
 
-- Interfaces. A GPU node usually has three networks. The management network runs at 1/10 GbE, and the BMC sits on a separate out-of-band path. The storage or front-end Ethernet carries storage and control traffic. The compute fabric, InfiniBand or RoCE, often has one NIC per GPU. Check each link's speed and width, and its firmware, with `mlxlink`, `mlxfwmanager` or `flint`, and with `ibstat`. Set the MTU end to end: jumbo frames on Ethernet and RoCE, and an IB MTU of 4096. For RoCE, configure PFC and ECN, with the lossless classes validated on both the NICs and the switches. For InfiniBand, check Subnet Manager health.
-- Software. Pin the MOFED and DOCA versions together with the kernel and driver, as one release train (chapter 1.22). Make sure `nvidia_peermem` is loaded for GPUDirect RDMA, and use `rdma-core`. Verify the path with `ib_write_bw --use_cuda`. Set the NCCL environment with `NCCL_IB_HCA`, `NCCL_SOCKET_IFNAME`, `NCCL_NET_GDR_LEVEL`, and `NCCL_TOPO_FILE` when topology detection is incomplete in VMs.
-- TCP paths. Storage, the control plane and parameter services run over TCP. Apply the buffer and congestion settings from chapter 1.22. Keep the RSS and RPS queues local to the NIC's NUMA node, and set the IRQ affinity to match. Check offloads with `ethtool -k`, ring sizes with `ethtool -g`, and the pause and flow-control policy.
-- Firewall and security. As chapter 1.21 explained, IB traffic bypasses the host firewall, so protect it with fabric partitions. Where you firewall Ethernet fabric interfaces, allow RoCE v2 on UDP 4791.
-- Time. Point chrony at a local source. Use PTP where you need tracing correlation.
+- Start with the interfaces. A GPU node usually has three networks. The management network runs at 1/10 GbE, and the BMC sits on a separate out-of-band path. The storage or front-end Ethernet carries storage and control traffic. The compute fabric, InfiniBand or RoCE, often has one NIC per GPU. Check each link's speed and width, and its firmware, with `mlxlink`, `mlxfwmanager` or `flint`, and with `ibstat`. Set the MTU end to end: jumbo frames on Ethernet and RoCE, and an IB MTU of 4096. For RoCE, configure PFC and ECN, with the lossless classes validated on both the NICs and the switches. For InfiniBand, check Subnet Manager health.
+- On the software side, pin the MOFED and DOCA versions together with the kernel and driver, as one release train (chapter 1.22). Make sure `nvidia_peermem` is loaded for GPUDirect RDMA, and use `rdma-core`. Verify the path with `ib_write_bw --use_cuda`. Set the NCCL environment with `NCCL_IB_HCA`, `NCCL_SOCKET_IFNAME`, `NCCL_NET_GDR_LEVEL`, and `NCCL_TOPO_FILE` when topology detection is incomplete in VMs.
+- TCP still carries storage, the control plane and parameter services. Apply the buffer and congestion settings from chapter 1.22. Keep the RSS and RPS queues local to the NIC's NUMA node, and set the IRQ affinity to match. Check offloads with `ethtool -k`, ring sizes with `ethtool -g`, and the pause and flow-control policy.
+- The firewall needs its own decision. As chapter 1.21 explained, IB traffic bypasses the host firewall, so protect it with fabric partitions. Where you firewall Ethernet fabric interfaces, allow RoCE v2 on UDP 4791.
+- For time, point chrony at a local source. Use PTP where you need tracing correlation.
 
 Multinode training depends on the network as much as on the GPUs. Use an RDMA-enabled fabric, such as InfiniBand or Ethernet with RoCE, for traffic between nodes. Then tune the host side as well. TCP buffers, MTU and interrupt affinity all affect throughput during distributed training and inference. Check them with the fabric tools before you trust a benchmark.
 
@@ -446,23 +446,23 @@ The table below lists the GPU driver and runtime settings. Each row asks you to 
 
 | Setting | How | Guidance |
 |---|---|---|
-| **Persistence mode** | `nvidia-persistenced` service (`systemctl enable nvidia-persistenced`, preferred) or `nvidia-smi -pm 1` (untested here) | Keep the driver initialised; saves `1–2 seconds` of cold driver initialization latency per job; negligible idle power cost; enable on all nodes |
+| **Persistence mode** | `nvidia-persistenced` service (`systemctl enable nvidia-persistenced`, preferred) or `nvidia-smi -pm 1` | Keep the driver initialised; saves `1–2 seconds` of cold driver initialization latency per job; negligible idle power cost; enable on all nodes |
 | **Driver stays loaded** | Do not unload modules between jobs | Reload only for upgrades/troubleshooting |
-| **Application clocks / locked clocks** | `nvidia-smi -lgc min,max` (lock GPU core clocks), `-rgc`, `nvidia-smi -ac <mem_clock>,<graphics_clock>` (application clocks for memory and graphics, untested here); `-lmc` for memory | For benchmarking determinism so thermal throttling in later runs does not skew results; in production leave GPU Boost on unless variance is a problem (then lock to a validated value); record the policy |
-| **Power limit** | `nvidia-smi -pl W` (untested here) | A slightly lower limit below TDP can reduce thermal throttling with minimal loss; or enforce rack power budgets; note the permitted range per SKU |
-| **ECC** | `nvidia-smi -e 1` (needs reset, untested here) | Keep enabled on data-centre GPUs; disabling saves little and removes protection |
-| **Compute mode** | `nvidia-smi -c DEFAULT` / `EXCLUSIVE_PROCESS` (untested here) | Default for typical jobs; exclusive process for MPS or strict isolation |
-| **MIG** | `nvidia-smi -mig 1` (reset needed, untested here), create GPU instances/compute instances; GPU Operator MIG Manager in Kubernetes | Only for multi-tenant small jobs/inference; no cross-GPU MIG P2P, CUDA IPC across GPU instances, or NCCL across MIG instances; plan partitions up front |
-| **MPS** | `nvidia-cuda-mps-control -d` (untested here), `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE` | Overlap kernels from several processes on one GPU (inference packing); no memory isolation; same-user considerations |
+| **Application clocks / locked clocks** | `nvidia-smi -lgc min,max` (lock GPU core clocks), `-rgc`, `nvidia-smi -ac <mem_clock>,<graphics_clock>` (application clocks for memory and graphics); `-lmc` for memory | For benchmarking determinism so thermal throttling in later runs does not skew results; in production leave GPU Boost on unless variance is a problem (then lock to a validated value); record the policy |
+| **Power limit** | `nvidia-smi -pl W` | A slightly lower limit below TDP can reduce thermal throttling with minimal loss; or enforce rack power budgets; note the permitted range per SKU |
+| **ECC** | `nvidia-smi -e 1` (needs reset) | Keep enabled on data-centre GPUs; disabling saves little and removes protection |
+| **Compute mode** | `nvidia-smi -c DEFAULT` / `EXCLUSIVE_PROCESS` | Default for typical jobs; exclusive process for MPS or strict isolation |
+| **MIG** | `nvidia-smi -mig 1` (reset needed), create GPU instances/compute instances; GPU Operator MIG Manager in Kubernetes | Only for multi-tenant small jobs/inference; no cross-GPU MIG P2P, CUDA IPC across GPU instances, or NCCL across MIG instances; plan partitions up front |
+| **MPS** | `nvidia-cuda-mps-control -d`, `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE` | Overlap kernels from several processes on one GPU (inference packing); no memory isolation; same-user considerations |
 | **Kubernetes time-slicing** | Device plugin config | Coarse sharing without overlap |
-| **Fabric Manager** | `nvidia-fabricmanager.service` (versions must match driver) | Mandatory on NVSwitch systems; verify `nvidia-smi nvlink -s` (untested here) |
-| **Retired pages / row remapping, Xid** | `nvidia-smi -q -d PAGE_RETIREMENT,ROW_REMAPPER`, `journalctl -k \| grep Xid` (untested here) | Health checks; replace GPUs per vendor RMA thresholds |
-| **GPUDirect Storage / RDMA** | `nvidia-fs`, `nvidia_peermem`, supported filesystems/NICs | Enable where supported; validate with `gdscheck`, `ib_write_bw --use_cuda` (untested here) |
+| **Fabric Manager** | `nvidia-fabricmanager.service` (versions must match driver) | Mandatory on NVSwitch systems; verify `nvidia-smi nvlink -s` |
+| **Retired pages / row remapping, Xid** | `nvidia-smi -q -d PAGE_RETIREMENT,ROW_REMAPPER`, `journalctl -k \| grep Xid` | Health checks; replace GPUs per vendor RMA thresholds |
+| **GPUDirect Storage / RDMA** | `nvidia-fs`, `nvidia_peermem`, supported filesystems/NICs | Enable where supported; validate with `gdscheck`, `ib_write_bw --use_cuda` |
 | **Memory oversubscription** | CUDA managed memory / UVM page migration (Hopper/Blackwell Page Migration Engine, PME) | Safety net, not a performance feature; avoid for training |
 | **Framework allocator** | `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` (formerly `PYTORCH_CUDA_ALLOC_CONF`), `TF_FORCE_GPU_ALLOW_GROWTH=true` for TensorFlow on-demand VRAM growth instead of pre-allocating all GPU memory, `torch.cuda.empty_cache()` sparingly | Fragmentation vs reuse; diagnose with `torch.cuda.memory_stats()` and `torch.cuda.memory_summary()` |
 | **CUDA / driver compatibility** | Host driver at least as new as the CUDA runtime in the container requires (`R580` or newer for CUDA 13.x; `R525` or newer for CUDA 12.x; `cuda-compat` forward compatibility across minor/major updates; PTX + CUBIN fatbinaries across hardware generations) | Check NVIDIA's compatibility tables; containers carry the CUDA runtime (`libcudart.so`), hosts inject the driver libraries (`libcuda.so`, `libnvidia-ml.so`) |
 
-Read the table one row at a time, and record the choice you make for each row. For the boot order, the sequence matters: load the modules, start `nvidia-persistenced`, start `nvidia-fabricmanager`, set the clocks, power and MIG policies, start DCGM, and run the health check. Only then start `slurmd` or `kubelet`, or mark the node schedulable. A node that fails any step stays **drained**.
+Read the table one row at a time, and record the choice you make for each row. Boot order matters as much as the values. Load the modules, start `nvidia-persistenced`, start `nvidia-fabricmanager`, set the clocks, power and MIG policies, start DCGM, and run the health check. Only then start `slurmd` or `kubelet`, or mark the node schedulable. A node that fails any step stays **drained**.
 
 ### ECC, clocks and power: change them only with a reason
 
@@ -486,7 +486,7 @@ If you hit an OOM, first check for fragmentation or excessive caching. `torch.cu
 
 ## 9. Containers, Slurm and Kubernetes as consumers of the tuned node
 
-A tuned node is only useful if the software on top keeps its settings. This section covers the container runtime, Kubernetes and Slurm.
+You can tune a node perfectly and then lose all of it one layer higher up. A container runtime that injects the wrong libraries, or a scheduler that ignores the binding you set, will quietly undo your work. A tuned node is only useful if the software on top keeps its settings. This section covers the container runtime, Kubernetes and Slurm.
 
 ### Container runtime
 
@@ -498,7 +498,7 @@ A tuned node is only useful if the software on top keeps its settings. This sect
 
 ### Kubernetes
 
-Kubernetes has its own knobs for the same ideas. The table below lists each concern and its mechanism.
+Kubernetes expresses the same ideas through its own knobs, and the names are different. The table below lists each concern and its mechanism.
 
 | Concern | Mechanism |
 |---|---|
@@ -524,7 +524,7 @@ Prolog and epilog scripts, along with node health scripts, clean up the state a 
 
 ## 10. Configuration as code and fleet operations
 
-A fleet stays uniform only when every node is built the same way. The pipeline below takes a change from Git through a canary to the whole fleet, in waves.
+A fleet stays uniform only when every node is built the same way, and that is a pipeline problem rather than a discipline problem. Hand-built consistency lasts until the first busy week. The pipeline below takes a change from Git through a canary to the whole fleet, in waves.
 
 ```mermaid
 flowchart LR
@@ -540,11 +540,11 @@ Notice that a failed canary rejects the image, while drift or a fault sends the 
 
 ### Provisioning pipeline
 
-- Bare-metal provisioning. Nodes can boot over PXE or HTTP, using DHCP options, TFTP or HTTP, and UEFI. Kickstart handles RHEL-family systems, and Autoinstall with cloud-init handles Ubuntu. You can also stream or `dd` a golden image (`.qcow2`, `.raw`, `.squashfs`), or use BCM-managed images (Part 1b). The storage layout is mirrored OS disks and unmirrored scratch. Set hostnames, SSH keys and host keys uniquely for each node. Regenerate the host keys and `machine-id` on first boot.
-- Golden images versus runtime configuration. Put the heavy, version-sensitive components in the image: the kernel, the GPU driver modules, MOFED and the toolkit. Build them once in CI against the pinned kernel, so that no node compiles DKMS modules (chapter 1.22). Apply per-node and site parameters at boot, with cloud-init, Ansible or BCM.
-- Ansible role. A skeleton role has tasks for each part of the node. It sets GRUB args with `grubby`, or with `lineinfile` plus `update-grub`, and a handler rebuilds and reboots. It sets `sysctl` through `ansible.posix.sysctl` with a `sysctl_file`. It also sets limits, services and their ordering, the tuned profile, persistence and the fabric manager, IRQ scripts, node-exporter and DCGM, and the audit script. A final `assert` task runs the audit and fails the play if the audit fails. Run the role with `--check --diff` in CI, and apply it with `serial:` so it rolls through the fleet. Never reboot the whole fleet in one batch.
-- Idempotence and drift. Run the role again on a schedule in check mode, and report any differences. Alert on any change in `/proc/cmdline`, `sysctl -a`, module versions, firmware versions or PCIe link status. Keep the audit result for each node in a database or metrics system.
-- Updates. The kernel, driver, MOFED and firmware move together. Hold their packages with `apt-mark hold` or `dnf versionlock`. Roll out the canary first, then the waves, and keep the previous image bootable for rollback.
+- Start with bare-metal provisioning. Nodes can boot over PXE or HTTP, using DHCP options, TFTP or HTTP, and UEFI. Kickstart handles RHEL-family systems, and Autoinstall with cloud-init handles Ubuntu. You can also stream or `dd` a golden image (`.qcow2`, `.raw`, `.squashfs`), or use BCM-managed images (Part 1b). The storage layout is mirrored OS disks and unmirrored scratch. Set hostnames, SSH keys and host keys uniquely for each node. Regenerate the host keys and `machine-id` on first boot.
+- Then decide what belongs in a golden image and what belongs in runtime configuration. Put the heavy, version-sensitive components in the image: the kernel, the GPU driver modules, MOFED and the toolkit. Build them once in CI against the pinned kernel, so that no node compiles DKMS modules (chapter 1.22). Apply per-node and site parameters at boot, with cloud-init, Ansible or BCM.
+- The Ansible role is where most of this becomes repeatable. A skeleton role has tasks for each part of the node. It sets GRUB args with `grubby`, or with `lineinfile` plus `update-grub`, and a handler rebuilds and reboots. It sets `sysctl` through `ansible.posix.sysctl` with a `sysctl_file`. It also sets limits, services and their ordering, the tuned profile, persistence and the fabric manager, IRQ scripts, node-exporter and DCGM, and the audit script. A final `assert` task runs the audit and fails the play if the audit fails. Run the role with `--check --diff` in CI, and apply it with `serial:` so it rolls through the fleet. Never reboot the whole fleet in one batch.
+- Then watch for idempotence and drift. Run the role again on a schedule in check mode, and report any differences. Alert on any change in `/proc/cmdline`, `sysctl -a`, module versions, firmware versions or PCIe link status. Keep the audit result for each node in a database or metrics system.
+- Then handle updates. The kernel, driver, MOFED and firmware move together. Hold their packages with `apt-mark hold` or `dnf versionlock`. Roll out the canary first, then the waves, and keep the previous image bootable for rollback.
 
 ### Fleet health checks (what to automate)
 
@@ -555,7 +555,7 @@ Notice that a failed canary rejects the image, while drift or a fault sends the 
 
 ## 11. The node audit and baseline (verification suite)
 
-Write one short script that prints PASS or FAIL for each check, and exits non-zero when any check fails. Adapt the expected values to your platform, including the GPU count, link speeds, kernel version string, cmdline tokens and `sysctl` values. Here is an illustrative skeleton (**untested**; adapt it):
+Before a node joins the pool, someone has to say yes to it, and that yes should come from a script rather than a feeling. The audit is also the part of this chapter you will come back to most often, so keep it small. Write one short script that prints PASS or FAIL for each check, and exits non-zero when any check fails. Adapt the expected values to your platform, including the GPU count, link speeds, kernel version string, cmdline tokens and `sysctl` values. Here is an illustrative skeleton (**untested**; adapt it):
 
 ```bash
 #!/usr/bin/env bash
@@ -601,7 +601,7 @@ Later, compare new nodes and later snapshots against this baseline, using `diff`
 
 ## 12. A case study: the unexplained 3 to 4x win
 
-This case is retold from Gregg's *Systems Performance*, chapter 16. It shows the method on a real mystery. The platform is a cloud, but the technique is the one you will use on nodes.
+Sometimes a system gets faster for reasons nobody can explain, and that is exactly when you need a method rather than a hunch. The last few chapters gave you one, so here it is applied to a real mystery, retold from Gregg's *Systems Performance*, chapter 16. The case is a service that moved platforms and suddenly ran several times faster, and nobody on the team trusted the number. The platform is a cloud rather than a GPU node, but the technique is the one you will use on nodes.
 
 Every investigation starts with the problem statement. A microservice that computes recommendations was moved from VM instances to a new container platform. One of its two components took 3 to 4 seconds per request on the VMs, and 1 second on the containers. A 3 to 4x gain "sounded too good to be true". The question was whether the gain was permanent, or an artefact of the test.
 
@@ -627,7 +627,7 @@ The lessons carry over to GPU nodes. State the problem first. Compare two system
 
 ## 13. Troubleshooting map
 
-When a node misbehaves, match the symptom to the likely causes in the table, then run the first checks in the same row.
+When a node misbehaves, you rarely get to choose the question. The symptom chooses it for you. Match the symptom to the likely causes in the table, then run the first checks in the same row.
 
 | Symptom | Likely causes | First checks |
 |---|---|---|
@@ -653,7 +653,7 @@ Begin with the self-checking Python lab, and run it on your own machine. It veri
 python3 code/part01/tune_gpu_node_lab.py
 ```
 
-Next, move to a disposable GPU VM or bare-metal GPU node. All interactive node commands below are `untested here`, so treat the steps as a plan to validate. Work through them in order.
+Next, move to a disposable GPU VM or bare-metal GPU node. The interactive node commands below were not run on live hardware, so treat the steps as a plan to validate. Work through them in order.
 
 1. Build a topology report. Run the commands from section 2, and draw the topology by hand or from `lstopo` output. Fill in a table with the GPU, its PCI BDF, its NUMA node and its NIC. Add the PCIe links (current and max), and the DIMM population.
 2. Capture the baseline before you tune anything. Save the baseline bundle from section 11. Run `dcgmi diag -r 2`, `nvbandwidth` or `bandwidthTest` (both pinned and pageable), and a single-node `all_reduce_perf`. Then run a reference training step: a fixed small model, a fixed seed, 200 steps, discarding the first 20. Record the step-time distribution, and the GPU clocks and temperature over time.

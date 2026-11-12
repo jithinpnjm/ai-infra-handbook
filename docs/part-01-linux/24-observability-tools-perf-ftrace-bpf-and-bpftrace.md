@@ -22,26 +22,26 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The method chapter (1.23) tells you which question to ask. This chapter gives you the instruments to answer it. Picture a training job that runs far slower than its benchmark. On a GPU node, the cause often sits in a CPU or kernel question that no GPU tool can answer. Which threads burn host CPU launching tiny kernels? Why does a data-loader worker block in the kernel? Where does a process spend time off-CPU, waiting on a lock or a filesystem? Which file reads come from the network filesystem? Why do TCP retransmits spike, which function in the NVIDIA driver is slow, and why does a syscall take 400 ms every few minutes?
+The method chapter (1.23) tells you which question to ask. This chapter hands you the instruments that answer it. Picture a training job that runs far slower than its benchmark, while every GPU dashboard looks calm. On a GPU node, the cause often sits in a CPU or kernel question that no GPU tool can answer. Which threads burn host CPU launching tiny kernels? Why does a data-loader worker block in the kernel? Where does a process spend time off-CPU, waiting on a lock or a filesystem? Which file reads come from the network filesystem? Why do TCP retransmits spike, which function in the NVIDIA driver is slow, and why does a syscall take 400 ms every few minutes?
 
-The Linux tracing tools answer these questions on a live production system, usually without restarting anything. They are perf, ftrace, and BPF with BCC and bpftrace. Typical uses on AI infrastructure look like this.
+The Linux tracing tools answer these questions on a live production system, usually without restarting anything. They are perf, ftrace, and BPF with BCC and bpftrace. Here is what that looks like on AI infrastructure.
 
 - Profile the **host side** of a training job with `perf record -g` and flame graphs. That shows the Python interpreter, data decoding, `memcpy`, page faults and lock contention.
-- Find **off-CPU** time with `offcputime` and `perf sched`. That shows data loader workers waiting on NFS or Lustre, threads blocked on `futex`, and `D`-state tasks.
+- Look for **off-CPU** time with `offcputime` and `perf sched`. Off-CPU time is the time a thread spends not running at all. The stacks then show data loader workers waiting on NFS or Lustre, threads blocked on `futex`, and `D`-state tasks.
 - Trace **file and network I/O** with `opensnoop`, `biolatency`, `tcpretrans` and `tcplife`. You learn which files are read, how long each read takes, and which process reads them. You also see retransmits on checkpoint transfers.
 - Explain **scheduler latency**, run-queue length and interrupt cost with `runqlat`, `hardirqs` and `softirqs`. These complement the cgroup throttling analysis from 1.18.
-- Measure **IPC and cache misses** with PMCs using `perf stat`. The numbers tell you whether host code is limited by memory or by compute.
+- Measure **IPC and cache misses** with PMCs using `perf stat`. IPC stands for instructions per cycle, and the numbers tell you whether host code is limited by memory or by compute.
 - Debug production incidents. Use `execsnoop` for short-lived processes, `killsnoop` for unexpected signals, `oomkill` for OOM kills, and `syscount` and `funclatency` for slow syscalls.
 
-This chapter explains the tools and, more importantly, their **data sources** and **costs**. Once you know those, you can choose the cheapest tool that answers the question. You also learn what a tool cannot see, and you can avoid disturbing a production workload while you measure.
+Above all, this chapter is about the **data sources** and the **costs** behind each tool. Once you know both, you can choose the cheapest tool that answers the question. You also learn what a tool cannot see, so you can measure a production workload without disturbing it.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know the method chapter (1.23: USE, drill-down, the 60-second checklist). You should also know processes and system calls (1.8 and 1.11), `/proc` and `/sys` (1.10), memory (1.17) and scheduling (1.18). No programming background beyond the shell is needed.
+Before you start, you should know the method chapter (1.23: USE, drill-down, the 60-second checklist). You should also be comfortable with processes and system calls (1.8 and 1.11), `/proc` and `/sys` (1.10), memory (1.17) and scheduling (1.18). No programming background beyond the shell is needed.
 
 When you finish this chapter, you will be able to do the following.
 
-- Classify observability tools as counters, profilers or tracers, and as system-wide or per-process. Then estimate what each one costs to run.
+- Sort observability tools into counters, profilers or tracers, and into system-wide or per-process tools. Then estimate what each one costs to run.
 - Explain the kernel data sources behind these tools. They include `/proc`, `/sys`, delay accounting, netlink, tracepoints, kprobes, uprobes, USDT, hardware counters (PMCs), software events, and the `perf_event_open` and tracefs interfaces.
 - Configure `sar` (sysstat) to keep history. You will also install a crisis-tool kit on node images and debug containers, with the kernel options and the symbol and stack-walking prerequisites it needs.
 - Use `perf` for counting (`stat`), profiling (`record`, `report`, `script`, `top`), tracing (`trace`, tracepoints, probes), flame graphs, and scheduler and memory analysis, on hosts and in containers.
@@ -54,7 +54,9 @@ Set up a disposable Ubuntu 22.04 or newer VM with root access before you start t
 
 ## 1. Tool coverage: what can each tool see?
 
-Picture the system as a stack. At the top are applications, then system libraries, then the system-call interface. Below those sit the kernel subsystems: VFS and filesystems, the scheduler, the memory manager, TCP/IP and the block layer. Device drivers and devices sit at the bottom. Most tools focus on one resource. A few are **multi-tools** that reach every layer, and those are `perf`, Ftrace, BCC and bpftrace.
+Suppose a training job is slow and you finally have a shell on the node. Before you type anything, picture the machine the way the tools see it. At the top are applications, then system libraries, then the system-call interface. Below those sit the kernel subsystems: VFS and filesystems, the scheduler, the memory manager, TCP/IP and the block layer. Device drivers and devices sit at the bottom.
+
+Most tools focus on one resource. A few are **multi-tools** that reach every layer, and those are `perf`, Ftrace, BCC and bpftrace.
 
 ```mermaid
 flowchart TB
@@ -65,9 +67,11 @@ flowchart TB
   D --> HW["Hardware\nPMCs (perf stat), turbostat, ipmitool, lspci, nvme-cli"]
 ```
 
-**Static performance tools** examine configuration at rest. Examples are `lscpu`, `lspci -vv`, `lsblk`, `dmidecode`, `ip` and `ethtool`, `mount`, `sysctl`, and `nvidia-smi -q`. They support the static-tuning method from 1.23. A static check catches a wrong link speed, a degraded PCIe width, a disabled cache, or a mismatched MTU.
+It helps to think of these four names as three lenses on the same machine. `perf` samples and counts, using hardware events and stacks. Ftrace reads the kernel's own call flow through tracefs. BPF loads small programs that run whenever an event fires. Each lens sees something the other two miss, and each one costs something different to run.
 
-**Crisis tools** are the ones you need when the system is already in trouble. That is the worst time to discover they are missing. Installing packages on a thrashing node may take minutes. A node with a full disk or a broken network may not be able to install anything at all. So bake the crisis tools into node images, or ship a privileged **debug container/image** that you can deploy on a node. Share the target's namespaces when you need to.
+**Static performance tools** examine configuration at rest. Good examples are `lscpu`, `lspci -vv`, `lsblk`, `dmidecode`, `ip` and `ethtool`, `mount`, `sysctl`, and `nvidia-smi -q`. They support the static-tuning method from 1.23. A static check catches a wrong link speed, a degraded PCIe width, a disabled cache, or a mismatched MTU. It is also the calmest work you will do all week.
+
+**Crisis tools** are the ones you need when the system is already in trouble. That is the worst time to discover they are missing. Installing packages on a thrashing node may take minutes. A node with a full disk or a broken network may not be able to install anything at all. So bake the crisis tools into node images, or ship a privileged **debug container/image** that you can deploy on a node. Share the target's namespaces when you need to. Picture the alternative: a panicking node at three in the morning and no `perf` on it.
 
 The table lists the recommended packages, using Debian and Ubuntu names. Other distributions name them differently.
 
@@ -92,13 +96,13 @@ The last row covers the NVIDIA tools, which later sections join to the host tool
 
 Installing the packages is not enough, because tracing tools also need kernel options. The kernel must provide `CONFIG_FTRACE`, `CONFIG_BPF`, `CONFIG_BPF_SYSCALL`, `CONFIG_BPF_EVENTS`, `CONFIG_KPROBES`, `CONFIG_UPROBES` and `CONFIG_PERF_EVENTS`. Modern CO-RE tools also need BTF, which is `CONFIG_DEBUG_INFO_BTF`. Scheduler and delay statistics depend on `CONFIG_SCHEDSTATS`, `CONFIG_PSI` and `CONFIG_TASK_DELAY_ACCT`.
 
-Profilers need stack-walking support. You can use frame pointers, which modern distributions are re-enabling by default. You can also use DWARF or ORC with debug symbols. Python needs perf trampoline or map support, or a Python-aware profiler.
+Profilers need stack-walking support, which is a separate prerequisite from the packages. You can use frame pointers, which modern distributions are re-enabling by default. You can also use DWARF or ORC with debug symbols. Python needs perf trampoline or map support, or a Python-aware profiler.
 
-Finally, validate each tool before the crisis arrives. Run it on a healthy node, and keep a saved example of its normal output.
+Finally, validate each tool before the crisis arrives. Run it on a healthy node, and keep a saved example of its normal output. That saved baseline is worth more than any manual page on the day something breaks.
 
 ## 2. Tool types
 
-Two questions sort the tools. The first asks whether a tool looks at the whole system or at one process. The second asks whether it counts things or reacts to events. The table places common tools on that grid.
+A node is slow, and a dozen tool names are competing for your attention. Two questions sort them faster than any list of names. The first asks whether a tool looks at the whole system or at one process. The second asks whether it counts things or reacts to events. The table places common tools on that grid.
 
 | | System-wide | Per-process |
 |---|---|---|
@@ -108,13 +112,13 @@ Two questions sort the tools. The first asks whether a tool looks at the whole s
 
 ### Fixed counters
 
-The kernel keeps integer counters that go up as events happen, such as packets, I/Os, interrupts, context switches and page faults. A common design is a pair of cumulative counters. One counts the events, and the other sums the total time spent in them. Read both twice, one second apart, and the difference gives you the per-second rate and the average latency. Counters are effectively free because they are always on. The only cost is reading them.
+The kernel keeps integer counters that go up as events happen, such as packets, I/Os, interrupts, context switches and page faults. Think of a car odometer. It only ever goes up, and you learn your speed by reading it twice. A common design here is a pair of cumulative counters. One counts the events, and the other sums the total time spent in them. Read both twice, one second apart, and the difference gives you the per-second rate and the average latency. Counters are effectively free because they are always on. The only cost is reading them.
 
 `vmstat 1` prints deltas, but its first line is a summary since boot. On some versions that line mixes boot values with current values, so you should ignore it or understand it first. Per-process counters come from `/proc/PID/`. System-wide counters come from `/proc` and `/sys`.
 
 ### Profiling
 
-Profiling samples the state of the system at a fixed rate. For example, it can record the instruction pointer, or the whole stack, at 99 Hz on every CPU for 30 seconds. It then studies the set of samples. The typical choice is 99 Hz rather than 100 Hz, so the samples do not fall in step with periodic activity. The overhead follows directly from the sampling rate, which is why timer-based profiling is generally safe in production. The result is a coarse picture of where time goes, not a record of every event.
+Profiling samples the state of the system at a fixed rate. Picture a security camera that takes one photograph per interval. For example, a profiler can record the instruction pointer, or the whole stack, at 99 Hz on every CPU for 30 seconds. It then studies the set of samples. The typical choice is 99 Hz rather than 100 Hz, so the samples do not fall in step with periodic activity. The overhead follows directly from the sampling rate, which is why timer-based profiling is generally safe in production. The result is a coarse picture of where time goes, not a record of every event.
 
 ### Tracing
 
@@ -126,7 +130,7 @@ Monitoring records metrics continuously over time. `sar` does this for a single 
 
 ## 3. Observability sources
 
-Every tool in this chapter reads from one of a few kernel sources. The diagram below groups those sources into counters and events. The tools on the right use them.
+You have three tools that disagree about the same metric. Before you blame the tools, it helps to know where each number was born. Every tool in this chapter reads from one of a few kernel sources, so those sources are the real map of what is knowable. The diagram below groups them into counters and events. The tools on the right use them.
 
 ```mermaid
 flowchart LR
@@ -151,33 +155,35 @@ flowchart LR
 
 ### /proc
 
-`/proc` is a virtual, in-memory filesystem. The kernel creates it on the fly and exposes its data structures as files, so nothing is stored on disk. Each process gets a directory, `/proc/PID/`. It holds `stat` and `status` for the state, CPU times and memory of the process. It also holds `statm`, `maps`, `smaps` and `smaps_rollup` for memory mappings and usage, and `fd` and `fdinfo` for open files. Other entries include `limits`, `io` for bytes read and written, `sched` and `schedstat` for run time, wait time and switches, `cgroup`, `ns/`, `cmdline`, `environ`, `task/` for per-thread data, `wchan`, `stack` for the kernel stack, and `syscall`.
+`/proc` is a virtual, in-memory filesystem. Virtual here means the kernel builds each file as you read it, and exposes its data structures that way, so nothing is stored on disk. Each process gets a directory, `/proc/PID/`. It holds `stat` and `status` for the state, CPU times and memory of the process. It also holds `statm`, `maps`, `smaps` and `smaps_rollup` for memory mappings and usage, and `fd` and `fdinfo` for open files. Other entries include `limits`, `io` for bytes read and written, `sched` and `schedstat` for run time, wait time and switches, `cgroup`, `ns/`, `cmdline`, `environ`, `task/` for per-thread data, `wchan`, `stack` for the kernel stack, and `syscall`.
 
 System-wide files include `cpuinfo`, `meminfo`, `vmstat`, `stat`, `loadavg`, `interrupts`, `softirqs`, `diskstats`, `net/dev`, `net/tcp`, `net/netstat`, `pressure/{cpu,memory,io}` for PSI, `schedstat`, `slabinfo`, `zoneinfo` and `buddyinfo`. The `sys/` directory holds the tunables covered in chapter 1.22.
 
 Many tools simply read these files. For example, running `strace vmstat` shows it opening `/proc/meminfo`, `/proc/stat` and `/proc/vmstat`. `top` repeats `open/read/close` on each process's `stat` file on every refresh. On a host with thousands of processes, that can make `top` itself a heavy consumer. You can read most of these files cheaply, except for files that walk page tables, such as `smaps`. Text formatting costs some CPU compared with binary interfaces such as netlink.
 
-**CPU accounting accuracy.** By default, `/proc/stat` times use clock-tick granularity, which `CONFIG_TICK_CPU_ACCOUNTING` controls. At HZ=250, that means 4 ms per tick. More precise options exist, namely `VIRT_CPU_ACCOUNTING` and `IRQ_TIME_ACCOUNTING`, at a small cost. Some files need kernel options. `schedstat` needs `CONFIG_SCHEDSTATS`, `sched` needs `CONFIG_SCHED_DEBUG`, and `pressure` needs `CONFIG_PSI`. The reference documents are `proc(5)` and the kernel's `Documentation/filesystems/proc`.
+**CPU accounting accuracy.** By default, `/proc/stat` times use clock-tick granularity, which `CONFIG_TICK_CPU_ACCOUNTING` controls. A clock tick is the kernel's periodic timer beat. At HZ=250, that means 4 ms per tick. More precise options exist, namely `VIRT_CPU_ACCOUNTING` and `IRQ_TIME_ACCOUNTING`, at a small cost. Some files need kernel options. `schedstat` needs `CONFIG_SCHEDSTATS`, `sched` needs `CONFIG_SCHED_DEBUG`, and `pressure` needs `CONFIG_PSI`. The reference documents are `proc(5)` and the kernel's `Documentation/filesystems/proc`.
 
 ### /sys
 
-`sysfs` presents device, driver, bus and kernel-subsystem attributes in a regular directory tree. It holds tens of thousands of read-only statistics, along with many writable controls. The controls cover CPU online and offline state, governors, block queue settings, NIC queue parameters, PCI device attributes, and GPU, NVMe and InfiniBand attributes. Cache sizes and levels live under `/sys/devices/system/cpu/cpu0/cache/index*/`, and topology lives under `.../topology/`. Network statistics sit under `class/net/<if>/statistics/*`, block queue settings under `block/<dev>/queue/*`, and PCI link speeds under `bus/pci/devices/*/current_link_speed`. InfiniBand counters sit under `class/infiniband/*/ports/*/counters/*`, and cgroup statistics under `fs/cgroup`. To print each file name with its value, run `grep . path/*`.
+If `/proc` is mostly about processes, `sysfs` is mostly about the hardware and the kernel's knobs. It presents device, driver, bus and kernel-subsystem attributes in a regular directory tree. It holds tens of thousands of read-only statistics, along with many writable controls. The controls cover CPU online and offline state, governors, block queue settings, NIC queue parameters, PCI device attributes, and GPU, NVMe and InfiniBand attributes. Cache sizes and levels live under `/sys/devices/system/cpu/cpu0/cache/index*/`, and topology lives under `.../topology/`.
+
+The paths reward a little memorising. Network statistics sit under `class/net/<if>/statistics/*`, block queue settings under `block/<dev>/queue/*`, and PCI link speeds under `bus/pci/devices/*/current_link_speed`. InfiniBand counters sit under `class/infiniband/*/ports/*/counters/*`, and cgroup statistics under `fs/cgroup`. To print each file name with its value, run `grep . path/*`.
 
 ### Delay accounting
 
-With `CONFIG_TASK_DELAY_ACCT`, the kernel tracks how long each task spends **waiting**. The waits cover CPU (scheduler latency), block I/O, swapping under memory pressure, and memory reclaim. You read this data through the **taskstats** netlink interface. The kernel example `tools/accounting/getdelays.c` shows how, and `iotop` and `atop` use similar data. Delay accounting answers a direct question: is this process slow because it waits for CPU, I/O or memory? If you find it is not on yet, enable it at boot with the `delayacct` parameter.
+With `CONFIG_TASK_DELAY_ACCT`, the kernel tracks how long each task spends **waiting**. The waits cover CPU (scheduler latency), block I/O, swapping under memory pressure, and memory reclaim. You read this data through the **taskstats** netlink interface. The kernel example `tools/accounting/getdelays.c` shows how, and `iotop` and `atop` use similar data. Delay accounting answers a direct question: is this process slow because it waits for CPU, I/O or memory? Follow that question down into the numbers before you blame the code. If you find it is not on yet, enable it at boot with the `delayacct` parameter.
 
 ### netlink
 
-netlink is a socket family, `AF_NETLINK`, for binary and efficient exchange of kernel information and notifications. It carries routes (`NETLINK_ROUTE`, used by `ip`), socket diagnostics (`NETLINK_SOCK_DIAG`, used by `ss`), SELinux events, audit, crypto and SCSI transport. It is more efficient than parsing text from `/proc/net`. `ip`, `ss` and `routel` use it, while the older `ifconfig` and `netstat` read `/proc`.
+netlink is a socket family, `AF_NETLINK`, for binary and efficient exchange of kernel information and notifications. A socket is one endpoint of a conversation, and a socket family is one dialect of that conversation. netlink carries routes (`NETLINK_ROUTE`, used by `ip`), socket diagnostics (`NETLINK_SOCK_DIAG`, used by `ss`), SELinux events, audit, crypto and SCSI transport. It is more efficient than parsing text from `/proc/net`. `ip`, `ss` and `routel` use it, while the older `ifconfig` and `netstat` read `/proc`.
 
 ### Tracepoints
 
-**Static instrumentation** is hard-coded into the kernel at logical places. Examples include system-call entry and exit, scheduler events, block I/O issue and completion, TCP, filesystem operations, memory events, power, and IRQs. Tracepoints were introduced in Linux 2.6.32, in 2009.
+**Static instrumentation** is hard-coded into the kernel at logical places. Somebody decided in advance where to put a marker, and that marker is now part of the code. Examples include system-call entry and exit, scheduler events, block I/O issue and completion, TCP, filesystem operations, memory events, power, and IRQs. Tracepoints were introduced in Linux 2.6.32, in 2009.
 
 Their names look like `block:block_rq_issue`, `sched:sched_switch`, `tcp:tcp_retransmit_skb`, `raw_syscalls:sys_enter` and `syscalls:sys_enter_openat`. Strictly, a *tracepoint* is the hook in kernel source. The thing tools attach to is a *trace event*, defined by the `TRACE_EVENT` macro. A trace event also defines its arguments and its format, and you can see them under tracefs at `events/<subsystem>/<event>/format`.
 
-Tracepoints are a best-effort stable API, which means their name, format and arguments are meant to stay the same. There are only roughly 1,000 to 2,000 of them, depending on the kernel, and many are for syscalls. Each disabled tracepoint costs a no-op instruction. An enabled one costs on the order of 100 ns of CPU per event. Gregg's rule of thumb is that below about 10,000 events per second the cost is negligible, and above about 100,000 events per second it is measurable. Disk events usually stay below 10k/s. For example, scheduler events can exceed 100k/s, which makes them expensive to trace. Raw tracepoints, from Linux 4.7, skip argument construction and cost less.
+Tracepoints are a best-effort stable API, which means their name, format and arguments are meant to stay the same. There are only roughly 1,000 to 2,000 of them, depending on the kernel, and many are for syscalls. Each disabled tracepoint costs a no-op instruction, which is an instruction that does nothing. An enabled one costs on the order of 100 ns of CPU per event. Gregg's rule of thumb is that below about 10,000 events per second the cost is negligible, and above about 100,000 events per second it is measurable. Disk events usually stay below 10k/s. For example, scheduler events can exceed 100k/s, which makes them expensive to trace. Raw tracepoints, from Linux 4.7, skip argument construction and cost less.
 
 ```bash
 sudo perf list tracepoint | head                       # list static events (needs tracefs)
@@ -188,7 +194,9 @@ sudo bpftrace -e 't:block:block_rq_issue { printf("size: %d\n", args->bytes); }'
 
 ### kprobes
 
-**Dynamic instrumentation** lets you probe almost any kernel function or instruction. It has been available since Linux 2.6.9. The kernel patches the running code so that it calls your handler. **kretprobes** trace a function's return, along with its return value, through a trampoline. There are tens of thousands of possible probe points, and none of them has a stability guarantee. Function names and arguments change between kernel versions. A kprobe costs nothing until you enable it. Once enabled, its cost at function entry is similar to a tracepoint, with tens of nanoseconds at minimum. The cost is higher for offsets and kretprobes. Treat kprobes as the last resort before you modify and recompile the kernel. You can use them through `perf probe`, the tracefs `kprobe_events` file, BCC or bpftrace.
+**Dynamic instrumentation** is the opposite idea. Rather than relying on markers the kernel authors left behind, it lets you probe almost any kernel function or instruction. It has been available since Linux 2.6.9. The kernel patches the running code so that it calls your handler. **kretprobes** trace a function's return, along with its return value, through a trampoline, which is a small piece of code that jumps to your handler and back.
+
+The trade is reach for stability. There are tens of thousands of possible probe points, and none of them has a stability guarantee. Function names and arguments change between kernel versions. A kprobe costs nothing until you enable it. Once enabled, its cost at function entry is similar to a tracepoint, with tens of nanoseconds at minimum. The cost is higher for offsets and kretprobes. Treat kprobes as the last resort before you modify and recompile the kernel. You can use them through `perf probe`, the tracefs `kprobe_events` file, BCC or bpftrace.
 
 | | kprobes | tracepoints |
 |---|---|---|
@@ -200,17 +208,17 @@ sudo bpftrace -e 't:block:block_rq_issue { printf("size: %d\n", args->bytes); }'
 
 ### uprobes
 
-Uprobes work like kprobes, but for user-space code. They appeared in Linux 3.5. You can instrument a function in a binary or a shared library while the program runs. Examples include `bash:readline`, `libc:malloc` and `libcuda.so:cuLaunchKernel`. Uprobes are unstable because they depend on the specific binary. They are also expensive. Each hit traps into the kernel, which costs on the order of a microsecond or more, and uretprobes cost more. Tracing a hot function such as `malloc` therefore disturbs the target badly. A mistaken offset can corrupt the target process when you use the raw tracefs interface. Prefer high-level front ends like BCC, bpftrace and `perf probe`, which resolve symbols for you.
+Uprobes work like kprobes, but for user-space code. They appeared in Linux 3.5. You can instrument a function in a binary or a shared library while the program runs. Examples include `bash:readline`, `libc:malloc` and `libcuda.so:cuLaunchKernel`. Uprobes are unstable because they depend on the specific binary. They are also expensive. Each hit traps into the kernel, and a trap is a deliberate switch into kernel mode, which costs on the order of a microsecond or more. uretprobes cost more. Tracing a hot function such as `malloc` therefore disturbs the target badly. A mistaken offset can corrupt the target process when you use the raw tracefs interface. Prefer high-level front ends like BCC, bpftrace and `perf probe`, which resolve symbols for you.
 
 ### USDT
 
-USDT stands for user-level statically defined tracing. These probes are tracepoints for applications and libraries. Examples include libc, the JVM HotSpot, PostgreSQL, Python built with `--with-dtrace`, and Node.js. They are stable and documented. They run on top of uprobes, so each hit costs what a uprobe costs, plus a nop when the probe is off. The probes are compiled in, and many packaged binaries ship with them disabled. To check a binary, run `readelf -n binary` or `bpftrace -l 'usdt:/path/to/lib:*'`. JIT-compiled and interpreted languages need dynamic USDT libraries.
+USDT stands for user-level statically defined tracing. Think of these probes as tracepoints that application and library authors ship inside their own code. Examples include libc, the JVM HotSpot, PostgreSQL, Python built with `--with-dtrace`, and Node.js. They are stable and documented. They run on top of uprobes, so each hit costs what a uprobe costs, plus a nop when the probe is off. The probes are compiled in, and many packaged binaries ship with them disabled. To check a binary, run `readelf -n binary` or `bpftrace -l 'usdt:/path/to/lib:*'`. JIT-compiled and interpreted languages need dynamic USDT libraries.
 
 In AI stacks, Python 3.12 and later can expose perf trampolines, and some builds ship USDT probes. Verify this for your version. On the GPU side, NVIDIA tools such as CUPTI and NVTX ranges play the equivalent role.
 
 ### Hardware counters (PMCs)
 
-Processors expose programmable registers that count low-level events at cycle granularity. The events include cycles, instructions retired, branch misses, L1, L2 and LLC references and misses, TLB misses, stalled cycles, and uncore memory bandwidth. Only PMCs can show instruction efficiency (IPC), cache hit ratios, memory-bus utilisation and stall cycles. The details follow.
+Processors expose programmable registers that count low-level events at cycle granularity. A register here is a small storage slot inside the CPU. The events include cycles, instructions retired, branch misses, L1, L2 and LLC references and misses, TLB misses, stalled cycles, and uncore memory bandwidth. Only PMCs can show instruction efficiency (IPC), cache hit ratios, memory-bus utilisation and stall cycles. They are the closest thing you have to a stopwatch on the silicon itself. The details follow.
 
 - Access goes through `perf_event_open(2)`. `perf stat` uses it for counting, which is essentially free. `perf record` uses it for overflow sampling, which takes one sample per N events or per frequency.
 - Each core has only about 4 to 8 programmable registers, plus fixed counters. If you request more events, `perf` time-multiplexes them in slices and scales the results. It shows the share as a percentage, and the results then become estimates.
@@ -221,17 +229,19 @@ Processors expose programmable registers that count low-level events at cycle gr
 
 ### Other sources
 
-Several other sources exist. Model-specific registers, or MSRs, hold clock rates, temperatures and power. You read them with `rdmsr` or `turbostat`. `ptrace(2)` is what debuggers and `strace` use. It is slow, and it works one process at a time. Function profiling hooks, `__fentry__` or mcount, are patched to nops until Ftrace enables them.
+Several other sources exist, and each answers a narrower question. Model-specific registers, or MSRs, hold clock rates, temperatures and power. You read them with `rdmsr` or `turbostat`. `ptrace(2)` is what debuggers and `strace` use. It is slow, and it works one process at a time. Function profiling hooks, `__fentry__` or mcount, are patched to nops until Ftrace enables them.
 
 Packet capture uses libpcap and tcpdump, or conntrack. Process accounting comes from `atop` and `sa`. Software events include page faults, context switches and CPU migrations, and `perf_event_open` gives you access to them. The list also includes `getrusage(2)`, `blktrace`, `lockstat`, `debugfs`, and hardware-specific tracers such as Intel PT and Arm CoreSight, which record instruction-level traces. On the GPU side, you can use NVML, DCGM and CUPTI.
 
 Solaris-style Kstat is a uniform, hierarchical counter framework. Linux's `/proc` and `/sys` are less uniform, so you need text parsing to read them.
 
-**How to find what a tool uses:** run it under `strace` with `strace -e openat,socket,perf_event_open -f tool`. You will see whether it reads `/proc` files, opens netlink sockets or calls `perf_event_open`. That tells you the tool's overhead class and its data source.
+**How to find what a tool uses:** run it under `strace` with `strace -e openat,socket,perf_event_open -f tool`. You will see whether it reads `/proc` files, opens netlink sockets or calls `perf_event_open`. That tells you the tool's overhead class and its data source, which is exactly what you need before you run it on a busy node.
 
 ## 4. sar: system activity reporter
 
-`sar` is a counter-based monitor from the `sysstat` package. Two parts make it work. The collector, `sadc`, runs from cron or a systemd timer and archives system-wide statistics. The reporter, `sar` with `sadf`, reads those statistics back. The archive covers CPU, memory, paging, swap, I/O and block devices. It also covers network interfaces and protocols such as TCP, UDP, ICMP and IP errors. Interrupts, softirqs, context switches, load, run queue, power, temperature and fan sensors, and filesystems are included too. Add `-S XALL` for more breakdowns.
+A job failed at 02:40 last night. By the time you log in, every counter looks healthy again. `sar` is the counter-based monitor from the `sysstat` package, and it was built for that exact moment, because it keeps history.
+
+Two parts make it work. The collector, `sadc`, runs from cron or a systemd timer and archives system-wide statistics. The reporter, `sar` with `sadf`, reads those statistics back. The archive covers CPU, memory, paging, swap, I/O and block devices. It also covers network interfaces and protocols such as TCP, UDP, ICMP and IP errors. Interrupts, softirqs, context switches, load, run queue, power, temperature and fan sensors, and filesystems are included too. Add `-S XALL` for more breakdowns.
 
 The tool is old, but it is reliable. Its man page names the SNMP equivalent of each statistic. It often solves a problem by itself, because it gives you **history** on a host that has no monitoring. The commands below turn on collection on Ubuntu, read the archive, and print live samples.
 
@@ -251,11 +261,13 @@ Collect at 1 to 5 minute intervals when you want history. Use live mode, `sar 1`
 
 ## 5. Observing the observability
 
-Observability tools and metrics are software, and they can be wrong. Several problems show up in practice. Some tools and kernel counters have bugs. Some man pages have not kept up with the code. Some metrics are incomplete, because developers added them for their own debugging and never designed them from operator needs. Other metrics are confusing or poorly named. Collectors that parse tool output can break. One benchmarking company once stripped units from `fio` results, which produced 1024x errors and dropped decimal points. Scripts and spreadsheets can introduce processing errors. Container views can also show **host** values instead of container values.
+Observability tools and metrics are software, and software can be wrong. You have probably met the moment already: the dashboard says the node is healthy, and the job is still slow. Several problems show up in practice. Some tools and kernel counters have bugs. Some man pages have not kept up with the code. Some metrics are incomplete, because developers added them for their own debugging and never designed them from operator needs. Other metrics are confusing or poorly named.
+
+Collectors that parse tool output can break, and their numbers can be quietly wrong. One benchmarking company once stripped units from `fio` results, which produced 1024x errors and dropped decimal points. Scripts and spreadsheets can introduce processing errors. Container views can also show **host** values instead of container values.
 
 Five defences help you catch these problems.
 
-1. Cross-check overlapping tools that come from different instrumentation frameworks. For example, compare `iostat` against `biolatency`, or `perf` against Ftrace. Use dynamic instrumentation to double-check a doubtful metric.
+1. Cross-check overlapping tools that come from different instrumentation frameworks. For example, compare `iostat` against `biolatency`, or `perf` against Ftrace. Use dynamic instrumentation to double-check a doubtful metric. When two independent frameworks agree, your confidence should rise.
 2. Apply a known workload, such as `fio`, `iperf3`, `stress-ng` or a CUDA kernel benchmark. Then check that the tools agree with what you know you did.
 3. Be skeptical of new statistics. Read the source or the documentation, and write down what you did not verify.
 4. Look for what is missing. The absence of a metric is harder to notice than a bad metric, so the USE table from 1.23 helps you find the gaps.
@@ -263,7 +275,7 @@ Five defences help you catch these problems.
 
 ## 6. perf
 
-`perf` is the official Linux profiler. It is a multi-tool that lives in the kernel source tree, under `tools/perf`, and it front-ends the kernel's `perf_events` subsystem. It began with PMC counting and sampling. It later grew to trace tracepoints, kprobes, uprobes and USDT. It also gained subcommands for the scheduler, locks, memory and cache-line analysis. `perf` is especially good at **CPU profiling**, which samples stack traces. It also handles **PMC analysis** of the microarchitecture, and **scheduler tracing**. Use it to answer four kinds of question. Which code paths use the CPU? Are the CPUs stalled on memory? Why do threads leave the CPU? What does the disk I/O pattern look like?
+Suppose the job is slow and you suspect the CPU side. `perf` is the first lens to reach for. It is the official Linux profiler. It is a multi-tool that lives in the kernel source tree, under `tools/perf`, and it front-ends the kernel's `perf_events` subsystem. It began with PMC counting and sampling. It later grew to trace tracepoints, kprobes, uprobes and USDT. It also gained subcommands for the scheduler, locks, memory and cache-line analysis. `perf` is especially good at **CPU profiling**, which samples stack traces. It also handles **PMC analysis** of the microarchitecture, and **scheduler tracing**. Use it to answer four kinds of question. Which code paths use the CPU? Are the CPUs stalled on memory? Why do threads leave the CPU? What does the disk I/O pattern look like?
 
 Install the `linux-tools-$(uname -r)` package on Ubuntu, or `perf` on RHEL. The package must match the running kernel closely. Unprivileged use is governed by `kernel.perf_event_paranoid`. A value of 2 or higher blocks most access for non-root users, and `-1` allows everything. Capabilities matter too, namely `CAP_PERFMON` and `CAP_SYS_ADMIN`. Containers need these capabilities, plus an unconfined seccomp profile, which chapter 1.21 covers.
 
@@ -287,15 +299,21 @@ The table lists the subcommands you will use most. The last row groups the less 
 
 ### Events
 
-`perf list` shows the event kinds. **Hardware events**, such as `cycles`, `instructions`, `branch-misses`, `cache-misses` and `bus-cycles`, are PMC-based. **Hardware cache events** include `L1-dcache-load-misses` and `LLC-loads`. **Software events** include `cpu-clock`, `task-clock`, `page-faults`, `context-switches` and `cpu-migrations`. **Kernel PMU and vendor events** run to many hundreds, for example `mem_load_l3_hit_retired.*` and `cycle_activity.*`. **Raw** events look like `rNNN` or `cpu/event=0x3c,umask=0x0/`. **Tracepoint events** look like `sched:sched_switch`, `block:block_rq_issue` or `syscalls:sys_enter_*`, and they include initialised kprobes and uprobes. **SDT events** are the USDT probes.
+`perf list` shows the event kinds. **Hardware events** are PMC-based, and the common ones are `cycles`, `instructions`, `branch-misses`, `cache-misses` and `bus-cycles`. **Hardware cache events** include `L1-dcache-load-misses` and `LLC-loads`. **Software events** include `cpu-clock`, `task-clock`, `page-faults`, `context-switches` and `cpu-migrations`.
+
+**Kernel PMU and vendor events** run to many hundreds, for example `mem_load_l3_hit_retired.*` and `cycle_activity.*`. **Raw** events look like `rNNN` or `cpu/event=0x3c,umask=0x0/`. **Tracepoint events** look like `sched:sched_switch`, `block:block_rq_issue` or `syscalls:sys_enter_*`, and they include initialised kprobes and uprobes. **SDT events** are the USDT probes.
 
 Hardware events use human-readable names, which can be wrong or missing on new processors. If a PMC result looks suspicious, try the raw event code.
 
-**Frequency versus period sampling.** On PMC or software events, `perf record` defaults to frequency sampling, at about 4,000 Hz per CPU. It does not capture every event, so the counts in `perf.data` are samples, not totals. At about 4,000 Hz, a 30-second run collects roughly 120,000 samples per CPU. At `-F 99`, the same run collects about 2,970. Tracepoint events default to period 1, which means every event. You can choose `-F 99` for a frequency, `-c N` for one sample per N events (overflow sampling), or `-c 1` for everything. Use `-c 1` with care, especially for context switches. `perf stat` always counts all events. Two kernel limits apply. `kernel.perf_event_max_sample_rate` throttles sampling, and `kernel.perf_cpu_time_max_percent` sets the CPU budget for the sampling interrupt, for example 25%. Check for lost events with `perf report -D | tail`.
+**Frequency versus period sampling.** This distinction surprises people, so it is worth slowing down for. On PMC or software events, `perf record` defaults to frequency sampling, at about 4,000 Hz per CPU. It does not capture every event, so the counts in `perf.data` are samples, not totals. At about 4,000 Hz, a 30-second run collects roughly 120,000 samples per CPU. At `-F 99`, the same run collects about 2,970. Tracepoint events default to period 1, which means every event.
+
+You can choose `-F 99` for a frequency, `-c N` for one sample per N events (overflow sampling), or `-c 1` for everything. Use `-c 1` with care, especially for context switches. `perf stat` always counts all events.
+
+Two kernel limits apply. `kernel.perf_event_max_sample_rate` throttles sampling, and `kernel.perf_cpu_time_max_percent` sets the CPU budget for the sampling interrupt, for example 25%. Check for lost events with `perf report -D | tail`.
 
 ### perf stat: counting
 
-Run `perf stat` first to check an event's rate before you trace or record it. That gives you an overhead estimate. It also gives you IPC. An *insn per cycle* below about 0.5 suggests memory stalls. Above about 1.5 to 2, the CPU is executing efficiently, as chapter 1.18 explains. Filters such as `--filter 'prev_pid == 25467'` apply to tracepoints.
+Run `perf stat` first to check an event's rate before you trace or record it. Counting is cheap, so this is always the first step, and it gives you an overhead estimate. It also gives you IPC. An *insn per cycle* below about 0.5 suggests memory stalls. Above about 1.5 to 2, the CPU is executing efficiently, as chapter 1.18 explains. Filters such as `--filter 'prev_pid == 25467'` apply to tracepoints.
 
 ```bash
 sudo perf stat -a -- sleep 5                       # whole system, default counters (IPC shown as a shadow statistic)
@@ -311,7 +329,7 @@ perf stat -e 'block:*' -a -- sleep 10              # block event rates (check be
 
 ### perf record / report / script: profiling and tracing
 
-With the commands below, you can record, summarise and print profiles.
+The commands below record a profile, summarise it, and print the raw samples.
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30           # system-wide CPU profile with stacks (frame-pointer unwinding)
@@ -335,7 +353,7 @@ Python profiles show interpreter frames, not Python functions, unless you use Py
 
 ### Flame graphs
 
-A flame graph turns thousands of stack samples into one picture. Each box is a function. Its width is proportional to the time, measured in samples, spent in that function and its callees. The y-axis is the stack depth. Look for **wide plateaus**.
+Two engineers are arguing about where the time goes. A flame graph ends that argument in about a minute. It turns thousands of stack samples into one picture. Each box is a function. Its width is proportional to the time, measured in samples, spent in that function and its callees. The y-axis is the stack depth. Look for **wide plateaus**.
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30
@@ -349,7 +367,7 @@ Three variants are common. **Off-CPU flame graphs** weight stacks by the time th
 
 ### perf trace: lightweight tracing
 
-`perf trace` prints events live. It does not write `perf.data`. By default it traces system calls system-wide, with far less overhead than `strace`, which uses `ptrace`.
+`perf trace` prints events live. It does not write `perf.data`. By default it traces system calls system-wide, with far less overhead than `strace`, which uses `ptrace`. Reach for it when a single syscall looks suspicious and you want the whole system's view.
 
 ```bash
 sudo perf trace -p PID                                      # syscalls of a process, low overhead
@@ -360,7 +378,7 @@ sudo perf trace --duration 10 -a                            # syscalls slower th
 
 ### perf probe: dynamic events
 
-Use `perf probe` to create probes on functions that have no tracepoint. Kernel debuginfo, or BTF, lets you name variables. Without it, you must name the registers yourself, according to the ABI.
+Use `perf probe` to create probes on functions that have no tracepoint. Kernel debuginfo, or BTF, lets you name variables. Without it, you must name the registers yourself, according to the ABI, which is the agreement about how a function receives its arguments.
 
 ```bash
 sudo perf probe --add do_nanosleep                          # kprobe;  --add 'tcp_sendmsg%return $retval' for a kretprobe
@@ -402,11 +420,13 @@ Read `man perf`, and run `perf <subcommand> --help` for the man pages named `per
 
 ## 7. Ftrace
 
-Ftrace is the official Linux tracer. Steven Rostedt wrote it, and it arrived in Linux 2.6.27 in 2008. It is a set of **profilers**, which produce counts and histograms, and **tracers**, which show per-event details. You control all of it through a filesystem called **tracefs**, so it needs no user-space tools. A shell with `echo` and `cat` is enough. That makes Ftrace ideal for embedded or minimal systems. It is also valuable for **kernel code-path analysis**. Use it to answer questions such as: how often is a function called? What path led to it? Which child functions does it call, and how long does each one take? What is the longest time that interrupts or preemption stayed disabled?
+The CPU profile says a function is hot, and you still do not know who called it. Ftrace is the official Linux tracer, and it is the second lens. Steven Rostedt wrote it, and it arrived in Linux 2.6.27 in 2008. It is a set of **profilers**, which produce counts and histograms, and **tracers**, which show per-event details. You control all of it through a filesystem called **tracefs**, so it needs no user-space tools. A shell with `echo` and `cat` is enough. That makes Ftrace ideal for embedded or minimal systems, and for the day when nothing else is installed.
+
+Ftrace is also valuable for **kernel code-path analysis**. Use it to answer questions such as: how often is a function called? What path led to it? Which child functions does it call, and how long does each one take? What is the longest time that interrupts or preemption stayed disabled?
 
 ### tracefs
 
-Mount it with `mount -t tracefs tracefs /sys/kernel/tracing`. It also appears as `/sys/kernel/debug/tracing` when debugfs is mounted. If the mount fails, the kernel probably lacks `CONFIG_FTRACE`. The table lists the key files.
+Mount it with `mount -t tracefs tracefs /sys/kernel/tracing`. It also appears as `/sys/kernel/debug/tracing` when debugfs is mounted. If the mount fails, the kernel probably lacks `CONFIG_FTRACE`. Tracefs is the control panel for the tracer: you write a string to a file, and the tracer changes behaviour. The table lists the key files.
 
 | File / directory | Meaning |
 |---|---|
@@ -468,7 +488,7 @@ cat events/block/block_rq_issue/trigger           # lists available triggers: tr
 echo 0 > events/block/block_rq_issue/enable
 ```
 
-For example, a trigger can freeze the buffer the moment a large I/O arrives. Triggers run an action when an event fires. `traceoff` and `snapshot` preserve the buffer around an error condition. `stacktrace` records the call path. `enable_event` chains events together. `hist` builds histograms, which the next subsections cover.
+For example, a trigger can freeze the buffer the moment a large I/O arrives. A filter is a condition, and a trigger is an action that runs when the condition matches. `traceoff` and `snapshot` preserve the buffer around an error condition. `stacktrace` records the call path. `enable_event` chains events together. `hist` builds histograms, which the next subsections cover.
 
 ### kprobe and uprobe events
 
@@ -495,7 +515,7 @@ echo 'vfs_read' > set_graph_function ; echo 3 > max_graph_depth          # limit
 
 ### hwlat and latency tracers
 
-For example, the `hwlat` tracer detects external disturbances that the OS cannot see. These include system management interrupts (SMIs), firmware and BMC activity, and hypervisor steal. It spins in a tight loop with interrupts disabled, and it reports any gap longer than a threshold. The default threshold is 10 µs, set by `tracing_thresh`. The `width` and `window` parameters sit under `hwlat_detector/`.
+For example, the `hwlat` tracer detects external disturbances that the OS cannot see. When the OS loses time it cannot account for, something outside the OS stole it. These disturbances include system management interrupts (SMIs), firmware and BMC activity, and hypervisor steal. The tracer spins in a tight loop with interrupts disabled, and it reports any gap longer than a threshold. The default threshold is 10 µs, set by `tracing_thresh`. The `width` and `window` parameters sit under `hwlat_detector/`.
 
 Keep in mind that `hwlat` is a micro-benchmark, not a passive observer. It keeps one CPU busy for the width. It is very relevant to jitter investigations on HPC and AI nodes, where chapter 1.18 covers isolation and BIOS settings. The `irqsoff`, `preemptoff` and `wakeup` tracers measure the longest periods with interrupts or preemption disabled. They also measure the worst wake-up latency of real-time tasks. They require `CONFIG_PREEMPTIRQ_EVENTS`.
 
@@ -535,9 +555,9 @@ The perf-tools collection predates BPF. Some of its tools remain better or light
 
 ## 8. BPF, BCC and bpftrace
 
-**Extended BPF (eBPF)** is a safe virtual machine inside the kernel. You load small programs, and they run when events fire. Those events can be tracepoints, kprobes, uprobes, USDT, timers, perf events or network hooks. The kernel **verifier** checks that the program cannot crash the kernel, using bounded loops and memory-safe access. Only then does the program get JIT-compiled.
+Suppose you want a histogram of `read()` sizes across the whole machine, updated live. What would you even write that in? **Extended BPF (eBPF)** is a safe virtual machine inside the kernel, and it is the third lens. You load small programs, and they run when events fire. Those events can be tracepoints, kprobes, uprobes, USDT, timers, perf events or network hooks. The kernel **verifier** checks that the program cannot crash the kernel, using bounded loops and memory-safe access. Only then does the program get JIT-compiled.
 
-Unlike older tracers, BPF is programmable. A program can filter events and store state in **maps**, such as hash tables, arrays, per-CPU maps and histograms. It can compute latency too. The program aggregates **in the kernel** and sends only summaries to user space. That makes per-event latency histograms and stack counting affordable on production systems. Copying every event to user space would drown those systems. BPF also powers networking (XDP, tc, Cilium), security (Falco, Tetragon, seccomp-bpf) and observability products. This chapter covers the tracing front ends.
+Unlike older tracers, BPF is programmable. A program can filter events and store state in **maps**, such as hash tables, arrays, per-CPU maps and histograms. A map is a small key-value store that lives in the kernel and survives between events. A program can compute latency too. It aggregates **in the kernel** and sends only summaries to user space. That makes per-event latency histograms and stack counting affordable on production systems. Copying every event to user space would drown those systems. BPF also powers networking (XDP, tc, Cilium), security (Falco, Tetragon, seccomp-bpf) and observability products. This chapter covers the tracing front ends.
 
 ```mermaid
 flowchart LR
@@ -551,7 +571,7 @@ BPF needs Linux 4.9 or later for most tools, and 4.4 or later for basic BCC. The
 
 ### BCC: canned tools and a framework
 
-BCC, the BPF Compiler Collection, offers more than 80 ready-made tools. They are Python front ends with C BPF programs. Each one comes with a man page and example files under `/usr/share/bcc/tools/*` and `*_example.txt`. Start with a tool, not a script. The tool names are the vocabulary of modern Linux performance work. The table groups them by area.
+BCC, the BPF Compiler Collection, is the first of the two BPF front ends, and it offers more than 80 ready-made tools. They are Python front ends with C BPF programs. Each one comes with a man page and example files under `/usr/share/bcc/tools/*` and `*_example.txt`. Start with a tool, not a script. The tool names are the vocabulary of modern Linux performance work. The table groups them by area.
 
 | Area | Tools |
 |---|---|
@@ -587,7 +607,7 @@ Newer distributions package the CO-RE versions as `*-bpfcc`. On Debian and Ubunt
 
 ### bpftrace: a high-level tracing language
 
-bpftrace is "awk for tracing". A program is a set of probes. Each probe has an optional filter and one or more actions.
+bpftrace is "awk for tracing". If you know awk, you already know the shape: a pattern, and an action that runs when the pattern matches. A program is a set of probes. Each probe has an optional filter and one or more actions.
 
 ```text
 probe[,probe...] /filter/ { action; action; }
@@ -656,7 +676,7 @@ Large companies install both on every host. For example, BCC tools are the first
 
 ## 9. Joining the host tools to the GPU tools
 
-Linux tracers see the **host**: the CPU, the kernel, the drivers, the NIC and the storage. GPU-side activity needs GPU-aware profilers. A complete investigation uses both, and it lines them up in time. If you use only one side, you may miss the cause.
+Picture a training step that is slow while the GPUs sit idle for part of every step. The GPU timeline shows the gaps, but it cannot tell you why they are there. Linux tracers see the **host**: the CPU, the kernel, the drivers, the NIC and the storage. GPU-side activity needs GPU-aware profilers. A complete investigation uses both, and it lines them up in time. If you use only one side, you may miss the cause.
 
 The table is organised by question. Each row starts from something you want to know, and it names the tool that answers it.
 
@@ -688,7 +708,7 @@ Workflow for "training throughput dropped":
 
 ## 10. Choosing a tool
 
-Start with the question, and let the flowchart point you to a tool family.
+You have collected three screens of numbers and still have to decide what to run next. Start with the question, and let the flowchart point you to a tool family.
 
 ```mermaid
 flowchart TD
@@ -711,9 +731,13 @@ Four rules of thumb cover most choices. Rule 1 is to start with counters, then p
 
 ## 11. Worked examples
 
-Each example below starts with a symptom and follows the evidence to a cause.
+Each example below starts with a symptom and follows the evidence to a cause. Read them as short detective stories, with the tools as witnesses and the numbers as testimony.
 
-**A. "Data-loader workers are slow".** Your data-loader workers are slow. `pidstat -u -t 1` shows low CPU use, so the workers are waiting rather than computing. `offcputime -p <worker> 20` shows stacks blocked in `read()`, which lead into `nfs_file_read`. The time is therefore off-CPU, spent in NFS reads. `nfsslower 10` lists the reads that take longer than 10 ms, with their file names. `nfsdist` shows a bimodal latency. Fast cache hits sit in one group, and slow misses of about 40 ms sit in another. `tcpretrans` is clean, and `sar -n DEV` shows the NIC far below line rate. `nfsstat -c` shows many `GETATTR` calls. That points to a metadata storm, with `os.stat()` calls running over millions of tiny files. The fix is to pack the files into shards, cache the metadata, raise the attribute-cache timeout, or stage the data on local NVMe, as chapter 1.13 describes.
+**A. "Data-loader workers are slow".** Your data-loader workers are slow. `pidstat -u -t 1` shows low CPU use, so the workers are waiting rather than computing. `offcputime -p <worker> 20` shows stacks blocked in `read()`, which lead into `nfs_file_read`. The time is therefore off-CPU, spent in NFS reads.
+
+`nfsslower 10` lists the reads that take longer than 10 ms, with their file names. `nfsdist` shows a bimodal latency. Fast cache hits sit in one group, and slow misses of about 40 ms sit in another. `tcpretrans` is clean, and `sar -n DEV` shows the NIC far below line rate.
+
+`nfsstat -c` shows many `GETATTR` calls. That points to a metadata storm, with `os.stat()` calls running over millions of tiny files. The fix is to pack the files into shards, cache the metadata, raise the attribute-cache timeout, or stage the data on local NVMe, as chapter 1.13 describes.
 
 **B. "Periodic 3-second freezes on one node".** The freezes come back every few seconds on one node. `runqlat` and PSI show no CPU saturation. `vmstat` shows no swap, and `dmesg` shows nothing. The `hwlat` tracer, however, reports 2 ms gaps every few seconds on all CPUs. Those gaps are **SMI or firmware** interruptions, perhaps from power management or BMC polling. Check the BIOS, disable the SMI-heavy features, and update the firmware, but first check with the vendor. Then compare the behaviour against a healthy node.
 
@@ -762,7 +786,7 @@ Keep the output of each step. You can then compare it with the normal output you
 - Clean up after yourself. Probes, trace sessions and `perf.data` files left behind fill the disk and add ongoing overhead.
 - If you run tracing in a container, do not conclude that the system is untraceable. Trace from the host instead.
 - Read container `top`, `free` or `mpstat` output with care. Those values reflect the host, not the container alone.
-- You should not treat uprobes or kprobes as stable APIs in scripts that will run across kernel versions without testing.
+- Do not treat uprobes or kprobes as stable APIs in scripts that run across kernel versions, not without testing.
 
 ## 14. Interview angles
 
@@ -779,7 +803,7 @@ Keep the output of each step. You can then compare it with the normal output you
 
 ## Exercises
 
-Work through these on paper first, then check your answers. You should answer before you look.
+Work through these on paper first, then check your answers. Answer before you look, because that is where the learning happens.
 
 1. Compare counters, profiling and tracing. Start with the counters, such as `vmstat` and `sar`, then profiling, such as `perf record -F 99`, and then tracing, such as `perf trace`, Ftrace and eBPF. Explain why CPU profiling uses `99 Hz` rather than `100 Hz`. Next, use `classify_event_rate_overhead()` in `code/part01/observability_perf_bpf.py` to compare the CPU cost and safety regime of three workloads. First, tracing 5,000 and 200,000 tracepoints per second. Second, tracing 80,000 uprobes per second on `malloc`. Third, tracing 50,000 syscalls per second under `ptrace`, which is how `strace` works.
 2. Explain why you should run `perf stat` on an event before you run `perf record` or `bpftrace` on it. Then explain the difference between `perf record -F 99` and `perf record -c 1000`. Compare `--call-graph fp`, `--call-graph dwarf` and `--call-graph lbr`. Finally, state how to make Python 3.12 or later functions appear in `perf` flame graphs.

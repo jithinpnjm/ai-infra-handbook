@@ -8,28 +8,28 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 1.1 | The Linux big picture: kernel, userspace, distributions | drafted | 9933 |  |
-| 1.2 | The command line: shells, commands, pipes and redirection | drafted | 12134 |  |
-| 1.3 | Files and the directory hierarchy: paths, links, inodes | drafted | 8328 |  |
-| 1.4 | Text-processing essentials: grep, sed, awk, find, xargs, sort | drafted | 6636 |  |
-| 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 7823 |  |
-| 1.6 | Users, groups, permissions, ACLs, sudo and user environments | drafted | 11924 |  |
-| 1.7 | Packages, repositories and software installation | drafted | 15590 |  |
-| 1.8 | Processes, signals and job control | drafted | 13885 |  |
-| 1.9 | Shell scripting that survives production | drafted | 11237 |  |
-| 1.10 | Devices, udev, sysfs and procfs | drafted | 9935 |  |
-| 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 10549 |  |
-| 1.12 | Disks, partitions and filesystems | drafted | 14589 |  |
-| 1.13 | LVM, RAID and NVMe | drafted | 11253 |  |
-| 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 11008 |  |
-| 1.15 | systemd: units, targets, timers, journald | drafted | 10524 |  |
-| 1.16 | Logging, time synchronisation, cron and batch jobs | drafted | 8141 |  |
-| 1.17 | Memory management: virtual memory, NUMA, huge pages, OOM | drafted | 9936 |  |
-| 1.18 | CPU scheduling and cgroups v1 and v2 | drafted | 9468 |  |
-| 1.19 | Namespaces: the kernel feature behind containers | drafted | 8485 |  |
-| 1.20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | drafted | 3678 |  |
-| 1.29 | Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers | drafted | 8876 |  |
-| 1.30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | drafted | 8639 |  |
+| 1.1 | The Linux big picture: kernel, userspace, distributions | drafted | 10907 | human-teacher voice rewrite 2026-11-12; `linux_layers_lab.py` 26/26 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 terms/numbers lost |
+| 1.2 | The command line: shells, commands, pipes and redirection | drafted | 13305 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `shell_pipeline_lab.py` 26/26 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.3 | Files and the directory hierarchy: paths, links, inodes | drafted | 10080 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `fs_inodes_links_lab.py` 20/20 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.4 | Text-processing essentials: grep, sed, awk, find, xargs, sort | drafted | 7168 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `text_pipeline_lab.py` 25/25 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 8608 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `remote_ssh_rsync_lab.py` 25/25 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.6 | Users, groups, permissions, ACLs, sudo and user environments | drafted | 13613 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `users_permissions_lab.py` 25/25 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.7 | Packages, repositories and software installation | drafted | 17197 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash` after DeepSeek quota death, Kimi supervised); `packages_toolchain_lab.py` 23/23 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.8 | Processes, signals and job control | drafted | 16589 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `processes_signals_lab.py` 24/24 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.9 | Shell scripting that survives production | drafted | 11627 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `shell_scripting_lab.py` 24/24 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.10 | Devices, udev, sysfs and procfs | drafted | 11303 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `devices_udev_sysfs_lab.py` 23/23 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 12459 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `program_execution_elf_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.12 | Disks, partitions and filesystems | drafted | 17691 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash` after DeepSeek quota death, Kimi supervised); `disks_filesystems_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.13 | LVM, RAID and NVMe | drafted | 13279 | human-teacher voice rewrite 2026-11-12 (subagent `GLM-5.3-Flash`, Kimi supervised); `lvm_raid_nvme_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 13820 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `boot_grub_initramfs_lab.py` 23/23 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.15 | systemd: units, targets, timers, journald | drafted | 12941 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `systemd_units_journald_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.16 | Logging, time synchronisation, cron and batch jobs | drafted | 9810 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `logging_time_cron_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.17 | Memory management: virtual memory, NUMA, huge pages, OOM | drafted | 12462 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `memory_numa_oom_lab.py` 21/21 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.18 | CPU scheduling and cgroups v1 and v2 | drafted | 12484 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `cpu_sched_cgroups_lab.py` 20/20 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.19 | Namespaces: the kernel feature behind containers | drafted | 10217 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `namespaces_containers_lab.py` 19/19 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | drafted | 4375 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `build_container_hand_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.29 | Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers | drafted | 10350 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `remote_admin_ref_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | drafted | 11757 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `network_fs_x11_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
 | 2.1 | What happens when you curl a URL: a packet's journey end to end | drafted | 7180 |  |
 | 2.2 | How networks work: layers, encapsulation, the TCP/IP model | drafted | 7845 |  |
 | 2.3 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | drafted | 9045 |  |
@@ -82,8 +82,8 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 7596 |  |
-| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 9701 |  |
+| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 9254 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `kernel_modules_sysctl_lab.py` 19/19 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 12464 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `tune_gpu_node_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
 | 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 7835 |  |
 | 2.30 | Network troubleshooting method and case studies | drafted | 7632 |  |
 | 2.32 | Cloud networking: VPC, peering, load balancers and GCP specifics | drafted | 7790 |  |
@@ -258,12 +258,12 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 0.1 | The AI factory landscape and the roles in it | scaffold |  |  |
 | 0.2 | How to use this book and set up your labs (Mac, GCP/GKE, Nebius) | scaffold |  |  |
 | 0.3 | Learning paths by role: Platform, MLOps, LLM inference, HPC GPU cloud | scaffold |  |  |
-| 1.21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | drafted | 8978 |  |
-| 1.23 | Performance methodology: USE, workload characterisation, drill-down | drafted | 10953 |  |
-| 1.24 | Observability tools: perf, ftrace, BPF and bpftrace | drafted | 11835 |  |
-| 1.25 | Benchmarking correctly | drafted | 9875 |  |
-| 1.26 | KVM, QEMU and libvirt basics | drafted | 8425 |  |
-| 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 8630 |  |
+| 1.21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | drafted | 10680 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `linux_security_hardening_lab.py` 19/19 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.23 | Performance methodology: USE, workload characterisation, drill-down | drafted | 14784 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `perf_methodology_use_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.24 | Observability tools: perf, ftrace, BPF and bpftrace | drafted | 13239 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `observability_perf_bpf_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.25 | Benchmarking correctly | drafted | 12709 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `benchmarking_correctly_lab.py` 15/15 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.26 | KVM, QEMU and libvirt basics | drafted | 11145 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `kvm_qemu_libvirt_lab.py` 16/16 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost |
+| 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 10875 | human-teacher voice rewrite 2026-11-12 (subagent `DeepSeek-V4.1-Flash`, Kimi supervised); `cloud_virt_internals_lab.py` 14/14 pass; `validate_chapter.py` VERDICT: OK; loss_check vs `0f258b4`: 0 lost (agent also restored baseline stage-years 2006/2015/2017/2019 that the previous HEAD had dropped) |
 | 2.15 | BGP fundamentals | drafted | 6650 |  |
 | 2.16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | drafted | 8410 |  |
 | 2.17 | Overlays: VXLAN and EVPN | drafted | 7215 |  |

@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a cluster of thousands of GPUs that suddenly stalls. The dashboards point at compute, but the real cause is often storage. Storage in AI infrastructure has two jobs. It must feed GPUs at their maximum ingestion rate. It must also checkpoint very large model states without stalling training. The questions you will ask every day are all storage questions:
+Picture a cluster of thousands of GPUs that suddenly stalls. The dashboards point at compute, but the real cause is often storage. Storage in AI infrastructure has two jobs, and both are demanding. It must feed GPUs at their maximum ingestion rate. It must also checkpoint very large model states without stalling training. The questions you will ask every day are all storage questions:
 
 - "Which disk is this, what type is it, how is it partitioned, and how will I mount it so it survives a reboot?"
 - "The job says 'No space left on device' but `df` shows free space." (inodes, quotas, reserved blocks, a read-only remount, a deleted-but-open file)
@@ -57,7 +57,7 @@ After this chapter you can:
 
 ## 1. The storage stack in one picture
 
-An application's `read()` or `write()` call passes through many layers. Each layer can cache, reorder, merge, delay or fail the request. That is why "the disk is fine" and "the application is slow" can both be true.
+Suppose a training job reads its dataset slowly, while the same read on another node flies. No error message points anywhere. The place to start is the path between the application and the disk. Every `read()` or `write()` call passes through many layers. Each layer can cache, reorder, merge, delay or fail the request. That is why "the disk is fine" and "the application is slow" can both be true.
 
 ```mermaid
 flowchart TB
@@ -84,9 +84,11 @@ Three principles carry through the rest of the chapter.
 2. **Every layer changes the I/O.** The disk sees *physical* I/O, while the application issued *logical* I/O. The two differ in size, count and timing (section 9).
 3. **The bottleneck is rarely visible from the system call.** A `read()` that takes 400 ms tells you nothing about the cause. It could be an overloaded NVMe drive, a hung NFS server or a cold cache. You must look underneath the VFS.
 
+Before you blame the disk, decide which layer your measurements can actually see.
+
 ## 2. Disks and their behaviour
 
-The type of disk decides how your data behaves under load. Each type has its own strengths and weaknesses, so read both columns of the table below.
+Before you plan anything, look at what kind of disk you have, because the disk type decides how your data behaves under load. An archive you append to once a week and a dataset many jobs read at once ask very different things of storage. Each type has its own strengths and weaknesses, so read both columns of the table below.
 
 ### Disk types
 
@@ -106,9 +108,11 @@ Watch out for the average. A disk returns a mix of cache hits in microseconds an
 
 ### Sectors and block sizes
 
-Disks present **logical blocks**, also called sectors. Traditionally a sector is 512 bytes. Today it is often 4 KiB, the "Advanced Format" size. Many drives emulate 512-byte logical sectors on top of 4 KiB physical sectors (**512e**). That emulation causes a **read-modify-write** whenever a write is smaller than, or not aligned to, 4 KiB. This is why alignment matters (section 3). To see what a drive reports, run `lsblk -t` (columns `LOG-SEC`, `PHY-SEC`, `MIN-IO`, `OPT-IO`, `ROTA`), `cat /sys/block/sda/queue/{logical_block_size,physical_block_size,rotational}`, `fdisk -l`, `smartctl -a`, or `nvme id-ns`.
+Start with the smallest unit, because it decides where writes land. Disks present **logical blocks**, also called sectors. Traditionally a sector is 512 bytes. Today it is often 4 KiB, the "Advanced Format" size. Many drives emulate 512-byte logical sectors on top of 4 KiB physical sectors (**512e**). That emulation causes a **read-modify-write** whenever a write is smaller than, or not aligned to, 4 KiB. This is why alignment matters (section 3). To see what a drive reports, run `lsblk -t` (columns `LOG-SEC`, `PHY-SEC`, `MIN-IO`, `OPT-IO`, `ROTA`), `cat /sys/block/sda/queue/{logical_block_size,physical_block_size,rotational}`, `fdisk -l`, `smartctl -a`, or `nvme id-ns`.
 
 ### Rotational disk mechanics (why old advice exists)
+
+Some of the oldest storage advice still floats around, and it helps to know where it came from. To see which rules survive, you need three words about how a spinning disk is arranged.
 
 A head reads a **track**. The same track on every platter forms a **cylinder**, and a track is divided into **sectors**. Older tools addressed locations by cylinder-head-sector (**CHS**). On modern disks the reported CHS values are fiction. Disks use **logical block addressing (LBA)**, a simple block number, and the firmware maps it onto the physical layout. Sector zoning is part of that mapping: outer tracks hold more sectors and deliver higher throughput. **Short-stroking** uses only the outer tracks to cut seek times. So the old rule that partitions must start on cylinder boundaries is obsolete.
 
@@ -116,7 +120,7 @@ Mechanical disks reorder queued requests to reduce head travel. This is **elevat
 
 ### Interfaces
 
-As you read this table, keep the interface in mind. It is the first clue when a disk behaves oddly. The interface sets how the disk talks to the host, and so how fast it can go. Notice that the SCSI command set is still used on many of these interfaces, including USB storage, SATA via libata, SAS, iSCSI and FC.
+An **interface** is the set of rules a disk uses to talk to the rest of the machine. It is the first clue when a disk behaves oddly, and it decides how fast the disk can go. As you read the table, keep it in mind. Notice that the SCSI command set is still used on many of these interfaces, including USB storage, SATA via libata, SAS, iSCSI and FC.
 
 | Interface | Notes |
 |---|---|
@@ -128,7 +132,7 @@ As you read this table, keep the interface in mind. It is the first clue when a 
 
 ### How storage is attached
 
-How a disk is attached decides what you can see and what you can control. Each option has its own failure modes.
+The same disk can reach your system by several different paths. How it is attached decides what you can see and what you can control. Each option has its own failure modes.
 
 - **Disk devices (JBOD)**: the operating system sees each disk, which makes them the easiest to observe.
 - **RAID**: a controller or software groups disks into one larger or more reliable virtual disk (details and levels in chapter 1.13). A hardware RAID volume appears as one disk and hides the physical disks from the OS, which makes monitoring harder. Its write-back cache is protected by a battery or capacitor. If that protection fails, controllers fall back to write-through mode, and write performance drops suddenly.
@@ -140,7 +144,11 @@ Decide early whether a dataset should stay local or be shared, because the answe
 
 ## 3. Partitioning
 
-A **partition** is a contiguous range of blocks on a disk. Its location is recorded in a **partition table**, also called a *disk label*, at a known place on the disk. The kernel shows each partition as its own block device, such as `/dev/sda1` or `/dev/nvme0n1p2`. Partitions began with old PC boot restrictions. People also use them to reserve space for separate purposes. The operating system, swap and data can each have a partition, so a full data area cannot stop the system.
+You slot a brand-new NVMe drive into a node, and it does not appear where you expected. Before the machine can use the drive, someone must draw boundaries on it. Those boundaries live on the disk itself, not in the kernel's imagination.
+
+A **partition** is a contiguous range of blocks on a disk. Its location is recorded in a **partition table**, also called a *disk label*, at a known place on the disk. The kernel shows each partition as its own block device, such as `/dev/sda1` or `/dev/nvme0n1p2`.
+
+Partitions began with old PC boot restrictions. People also use them to reserve space for separate purposes. The operating system, swap and data can each have a partition, so a full data area cannot stop the system.
 
 Today you often use one partition per disk, or none at all. You can put a whole-disk filesystem on a disk, or use the whole disk as an LVM physical volume or a RAID member. What you must have is a clear picture of what holds what.
 
@@ -172,7 +180,7 @@ Several tools read and change the table. Some only look, and others change the d
 | `partprobe`, `blockdev --rereadpt`, `partx` | Make the kernel re-read a changed table |
 | `wipefs`, `sgdisk --zap-all`, `dd` | Erase signatures and tables (careful) |
 
-Partitioning happens entirely in user space. The tools rewrite the table on the block device, then ask the kernel to re-read it. `fdisk` makes one system call (an `ioctl`, `BLKRRPART`) that re-reads the whole table, and it prints `sdd: sdd1 sdd2` in the kernel log. `parted` informs the kernel partition by partition. If the disk is in use, the re-read can fail with "device or resource busy". In that case use `partprobe` or reboot. To see what changed, use `udevadm monitor --kernel`, `cat /proc/partitions`, and `ls /sys/block/sdd`.
+Surprisingly, partitioning happens entirely in user space. The tools rewrite the table on the block device, then ask the kernel to re-read it. `fdisk` makes one system call (an `ioctl`, `BLKRRPART`) that re-reads the whole table, and it prints `sdd: sdd1 sdd2` in the kernel log. `parted` informs the kernel partition by partition. If the disk is in use, the re-read can fail with "device or resource busy". In that case use `partprobe` or reboot. To see what changed, use `udevadm monitor --kernel`, `cat /proc/partitions`, and `ls /sys/block/sdd`.
 
 ### Reading a partition table with `parted -l`
 
@@ -221,7 +229,7 @@ Number Start End Size Type File system Flags
 1 1049kB 10.7GB 10.7GB primary boot, lvm
 ```
 
-The LVM devices then look like partitions, but the system lists them as disks. The partitions have been separated from the partition table. Section 1.13 explains how this works, so for now just recognize the pattern.
+The LVM devices then look like partitions, but the system lists them as disks. The partitions have been separated from the partition table. Section 1.13 explains how this works, so for now just recognise the pattern.
 
 ### An MBR example with fdisk
 
@@ -347,7 +355,7 @@ sudo fdisk /dev/sdb
 sudo partprobe /dev/sdb && lsblk /dev/sdb
 ```
 
-Always verify the device name twice (`lsblk -o NAME,SIZE,MODEL,SERIAL`), and unmount anything on it. Back up the old table first (`sfdisk -d /dev/sdb > sdb.table`, `sgdisk --backup=sdb.gpt /dev/sdb`). Deleting a partition makes its data very hard to recover, so treat that step with care.
+Always verify the device name twice (`lsblk -o NAME,SIZE,MODEL,SERIAL`), and unmount anything on it. Back up the old table first (`sfdisk -d /dev/sdb > sdb.table`, `sgdisk --backup=sdb.gpt /dev/sdb`). Deleting a partition makes its data very hard to recover, so slow down for that step. If a device name looks unfamiliar, stop and check it before you run anything destructive.
 
 ### Alignment (*How Linux Works* Section 4.1.6)
 
@@ -365,7 +373,11 @@ A typical GPU server has several partitions, and each has a job. An **EFI System
 
 Cloud images differ. They use a tiny BIOS-boot or EFI partition plus one root partition. They also **grow the root partition and filesystem at first boot** (`cloud-init growpart`). That is why the same image fits any disk size.
 
+Before you repartition anything in production, save the current table and check the device name twice.
+
 ## 4. Creating filesystems
+
+Picture the moment after someone ran `mkfs` against the wrong device. The old data's map is gone, and with it the previous contents. That is the step in this chapter you must never rush.
 
 A **filesystem** turns a block device into named files and directories. A partition table only draws boundaries. A filesystem is a **database**. It tracks which blocks belong to which file, who owns the file, its permissions and times. It also keeps this map consistent through crashes. That is why partitioning and filesystem creation are separate tools and separate steps.
 
@@ -387,7 +399,7 @@ Pick the filesystem for the job. The table lists the common types and what each 
 | **NFS, CIFS/SMB, Lustre, GPFS, BeeGFS, CephFS, WekaFS** | Network and parallel filesystems | Shared datasets and checkpoints (Part 6) |
 | **FUSE filesystems** | User-space filesystems via `/dev/fuse` | SSHFS, s3fs/goofys/mountpoint-s3, rclone mount, gcsfuse (convenient, slower, metadata-bound) |
 
-The kernel's **VFS** layer is what lets all of these coexist. It places them under one directory tree and one set of system calls, whatever the implementation. It is also the common point for measuring any filesystem.
+The kernel's **VFS** layer is what lets all of these coexist. It is a single common interface for every filesystem. It places them under one directory tree and one set of system calls, whatever the implementation. It is also the common point for measuring any filesystem.
 
 ### Making one
 
@@ -407,7 +419,7 @@ sudo mkfs.ext4 -T small /dev/sdc1                  # many small files: more inod
 
 These parameters matter:
 
-- **ext4 inode count** is fixed at creation (`-i bytes-per-inode`, `-N count`). A dataset of hundreds of millions of tiny files can exhaust inodes while bytes remain free (`df -i`). Lower `-i` for small-file workloads. XFS does not have this problem.
+- **ext4 inode count** is fixed at creation (`-i bytes-per-inode`, `-N count`). An inode is the filesystem's record for one file, and it is a separate resource from the bytes the file occupies. A dataset of hundreds of millions of tiny files can exhaust inodes while bytes remain free (`df -i`). Lower `-i` for small-file workloads. XFS does not have this problem.
 - **Reserved blocks**: ext4 reserves 5% for root by default. That stops a runaway user process from filling the disk completely and starving system daemons. On a large data disk, set 0 or 1% (`mkfs.ext4 -m 0`, or `tune2fs -m 1`).
 - **XFS geometry** (`su`/`sw`, log size, `-i maxpct`): align these with RAID stripe settings. The defaults are usually right for NVMe.
 - **Labels and UUIDs**: set a `-L` label for human reference. The UUID is generated automatically.
@@ -415,7 +427,7 @@ These parameters matter:
 
 ### Filesystem families and their history
 
-Linux supports native filesystems, foreign ones such as the Windows FAT family, and universal formats such as ISO 9660. Knowing where a type came from tells you what it does well. The Extended series is the longest-running native family. The second Extended filesystem, `ext2`, was modeled on traditional Unix filesystems such as UFS and FFS.
+Linux supports native filesystems, foreign ones such as the Windows FAT family, and universal formats such as ISO 9660. Knowing where a type came from tells you what it does well. The Extended series is the longest-running native family. The second Extended filesystem, `ext2`, was modelled on traditional Unix filesystems such as UFS and FFS.
 
 Its successor, `ext3`, added a journal, which is a small cache outside the normal data structures. The journal improves data integrity and speeds up boot checks. `ext4` is an incremental improvement. It supports larger files than `ext2` or `ext3`, and it allows more subdirectories.
 
@@ -447,6 +459,8 @@ lrwxrwxrwx 1 root root 7 Dec 19 2011 /sbin/mkfs.vfat -> mkdosfs
 
 `mkfs.ext4` is just a symbolic link to `mke2fs`. This matters on a system that lacks a specific `mkfs` command, and when you look up documentation for one filesystem. Each creation tool has its own manual page, such as `mke2fs(8)`. Opening the page for `mkfs.ext4` usually redirects you to `mke2fs`.
 
+Before you format anything, be certain of the device first.
+
 ## 5. Mounting
 
 Picture a node that comes back from a reboot with `/data` missing. The boot log points at a mount, and you need to know how mounts work before you can fix it. **Mounting** attaches a filesystem to a directory, called the **mount point**, in the global tree. Walk into that directory and you reach the filesystem. To mount, you need three things: the **source** (a device, UUID, label, remote path, or a pseudo name for special filesystems), the **type**, and the **mount point**, which must be an existing directory. `/mnt` is a conventional place for temporary mounts. Permanent filesystems get their own directories, such as `/data` or `/scratch`.
@@ -472,7 +486,7 @@ The kernel buffers writes, so a filesystem can have unwritten changes in memory.
 
 ### Identifying filesystems: UUID and labels
 
-Device names depend on probe order (chapter 1.10), so identify filesystems by **UUID** or **label**.
+Device names depend on probe order (chapter 1.10), so identify filesystems by **UUID** or **label**. A UUID is a long identifier that stays with the filesystem wherever the device is attached, and a label is a name you set at creation.
 
 ```bash
 lsblk -f                                  # NAME FSTYPE LABEL UUID MOUNTPOINT
@@ -593,7 +607,7 @@ sudo lsof +L1                            # deleted files still held open (they s
 
 The numbers in `df` surprise people. The columns are `Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity` and `Mounted on` (*How Linux Works* Section 4.2.10). `Used + Available` is always less than `1024-blocks` (`Size`). That is because **5 percent of the total capacity is hidden in reserved blocks** on ext4 by default. Only root can allocate those blocks when the filesystem starts to fill up. This keeps system daemons such as `syslogd`, `sshd` and `journald` running. They can still write logs in `/var` and `/tmp` even when an ordinary user fills the disk to 100%.
 
-`df` reports 1 KiB (`1024-byte`) blocks by default. Use `df -k`, or the POSIX layout with `-P`, or ask for `-h` or `-H` (powers of 1024 or 1000). `du` works differently. It walks the directory tree and sums the blocks of files it can see. So it **cannot see** files that were deleted but are still held open. It also misses mount points hidden under other mounts, and the space used by filesystem metadata and journals. A filesystem near 100% also gets slower. Finding free space takes more CPU and I/O, and free extents become small and scattered. That fragmentation is worse on copy-on-write filesystems.
+`df` reports 1 KiB (`1024-byte`) blocks by default. Use `df -k`, or the POSIX layout with `-P`, or ask for `-h` or `-H` (powers of 1024 or 1000). `du` works differently. It walks the directory tree and sums the blocks of files it can see. So it **cannot see** files that were deleted but are still held open. It also misses mount points hidden under other mounts, and the space used by filesystem metadata and journals. A filesystem near 100% also gets slower. Finding free space takes more CPU and I/O, and free extents, the contiguous runs that modern filesystems allocate, become small and scattered. That fragmentation is worse on copy-on-write filesystems.
 
 **"The disk is full" can mean at least five things.** Each needs its own check. A single `ENOSPC` ("No space left on device") only proves that one write failed.
 
@@ -672,7 +686,7 @@ Running with no swap on a general-purpose machine is risky. When memory and swap
 
 ## 6. Inside a traditional filesystem
 
-Knowing how the structure works explains `df -i`, hard links, `fsck`, and many failure modes. A Unix-style filesystem has two parts. The first is a **pool of data blocks**. The second is a **database** that manages those blocks, and it centres on the **inode**.
+Open any directory on a Linux machine and you see file names. Underneath sits a structure that explains `df -i`, hard links, `fsck`, and many failure modes. It is worth knowing, because it turns up again in every storage incident. A Unix-style filesystem has two parts. The first is a **pool of data blocks**. The second is a **database** that manages those blocks, and it centres on the **inode**.
 
 An **inode** is a record, found by a number in an inode table, that describes one filesystem object. It stores the object's **type** (regular file, directory, symlink, device, socket, FIFO), its **permissions and owner**, its **size**, and its **timestamps** (modify, change, access; ext4 adds creation). It also stores its **link count** and **where its data blocks are**. An inode does *not* contain the file's name. Names live in **directories**. A directory is itself a file, and its data is a list of `(name, inode number)` entries, including `.` (itself) and `..` (its parent).
 
@@ -740,9 +754,11 @@ Some filesystems present system information rather than store data. The idea goe
 - `squashfs` is a read-only filesystem that stores content compressed and extracts it on demand through a loopback device. The snap package system mounts its packages under `/snap`.
 - `overlay` merges directories into one composite view. Containers often use overlay filesystems, as covered in chapters 1.19 and 1.20.
 
+Before you fill any of these paths, ask what backing store sits behind them.
+
 ## 7. Checking and repairing filesystems
 
-The kernel trusts a mounted filesystem to be consistent, and it trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns**, such as power loss or crashes. A crash can leave the in-memory cache out of step with the disk. Journaling makes corruption rare, but you still need checks now and then.
+A power cut in the middle of a write leaves a filesystem in a state nobody planned. The kernel trusts a mounted filesystem to be consistent, and it trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns**, the term for power loss and crashes. A crash can leave the in-memory cache out of step with the disk. Journaling makes corruption rare, but you still need checks now and then.
 
 The checker is **`fsck`**. It is a front end that runs the right tool for each type: `e2fsck` for ext2, ext3 and ext4, `xfs_repair` for XFS, `btrfs check`, and `fsck.vfat`. Follow three rules.
 
@@ -885,6 +901,8 @@ To enable and manage standard Linux disk quotas, install the `quota` package and
 
    **Quotas over NFS**: when you export a quota-enabled partition over NFS, install the `quota` package on the NFS server, enable quotas on the exported partition, and restart the NFS service. If `repquota` on the network client still fails, make sure the **`rpc.rquotad`** service is running on the NFS server.
 
+When a filesystem misbehaves, reach for the read-only check before any repair.
+
 ## 8. Files, file descriptors and the read path
 
 When you see "Too many open files", do not reach for `df` first. A process reaches files, sockets, pipes and many kernel objects through integer **file descriptors**. The VFS offers one interface, and each filesystem implements the semantics underneath. So "Too many open files" is a **resource-limit or descriptor-leak** problem (chapter 1.8), not a disk-capacity problem. Inspect it with these commands:
@@ -935,7 +953,7 @@ sequenceDiagram
 
 ### Latency, caching and the page cache
 
-Your application usually waits on **filesystem latency**, the time from a logical request to its completion. That is the main metric, because application threads block on it. Some work does not wait, though. Non-blocking I/O, prefetch and background flush threads can hide latency. Older operating systems exposed **disk** statistics rather than filesystem latency, so tools such as `iostat` can mislead you. Background write-back looks like bursts of disk I/O that no application is waiting for.
+A job runs slowly, yet the storage numbers look fine. The first place to look is how long the application spends waiting on its files. Your application usually waits on **filesystem latency**, the time from a logical request to its completion. That is the main metric, because application threads block on it. Some work does not wait, though. Non-blocking I/O, prefetch and background flush threads can hide latency. Older operating systems exposed **disk** statistics rather than filesystem latency, so tools such as `iostat` can mislead you. Background write-back looks like bursts of disk I/O that no application is waiting for.
 
 You will see this on every busy host, so do not panic when it happens. Linux caches aggressively, because **free memory is wasted memory**. The **page cache** holds file data. Since Linux 2.4, the block-device buffer cache lives inside it. The **dentry cache** remembers name-to-inode lookups, including failed ones, which speeds up library searches. The **inode cache** holds file metadata. The cache grows until memory is needed, then it shrinks. In `free -h`, `available` includes reclaimable cache. On cloud and GPU hosts this can look alarming, but it is normal. Trouble starts only when the cache is evicted while still needed, or when dirty pages pile up.
 
@@ -1012,7 +1030,7 @@ When a filesystem fills, it slows down. Free blocks become scarce and scattered,
 
 ## 10. Choosing and tuning filesystems
 
-Filesystems differ in their features, and each feature has a cost. The table lists the main ones and which filesystems offer them.
+Every feature below was invented to solve a real problem. Filesystems differ in their features, and each feature has a cost. The table lists the main ones and which filesystems offer them.
 
 | Feature | Meaning | Where |
 |---|---|---|
@@ -1040,6 +1058,8 @@ A short history explains many of these choices. The original Unix filesystem had
 Choose the filesystem by its workload, and keep the distribution default unless you have a measured reason to change it. If you are setting up a new node, check this list against your own workload before you format anything.
 
 **Tuning knobs** apply only to measured problems. For ext4, you can read and change `tune2fs -l`, `-m` (reserved percentage), `-O` (features), and `-E` (stride and stripe-width). Sysfs tunables live under `/sys/fs/ext4/<dev>/`, such as `inode_readahead_blks`. `e2fsck -D` re-indexes directories. For XFS, use `xfs_info`, `xfs_growfs`, and `xfs_fsr` (defragment). The mount options `logbsize` and `allocsize` help streaming writes, and `allocsize=1g` can help large sequential writers. ZFS dataset properties include `recordsize` (match it to the I/O size), `compression=lz4`, `atime=off`, `primarycache`, `logbias` and `sync`. At the application level, use `posix_fadvise`, `madvise`, larger I/O sizes, `fsync` grouping, `O_DIRECT` with aligned buffers, and `fallocate`.
+
+Change one knob at a time, so you know which one helped.
 
 ## 11. Methodology and tools
 
@@ -1091,6 +1111,8 @@ fio --name=seqwrite --filename=/data/fio.test --size=10G --rw=write --bs=1M --io
 Read IOPS, bandwidth and the **latency percentiles** (p99, p99.9), not just the average. If you read only the average, you will miss the slow requests your users feel.
 
 ## 12. AI-infrastructure patterns
+
+Picture your first production decision on a new training node. Somebody asks where the dataset will live, where checkpoints land, and what the container images will fill. The paragraphs below walk through those decisions.
 
 **Where data lives.** *Local* storage is fast to reach, but it belongs to one machine. If an instance is reassigned, its data is lost. *Shared or network* storage survives any single machine and gives every node the same dataset. The cost is a network and server dependency. Reaching a path successfully proves nothing about which kind it is, so check it. Run `findmnt -T /data`, `lsblk -o NAME,ROTA,FSTYPE,MOUNTPOINTS` (`ROTA=0` means flash), and `df -hT`. A training job usually reads its dataset from shared storage. It writes **checkpoints to node-local NVMe first**, then uploads them asynchronously to shared or object storage.
 

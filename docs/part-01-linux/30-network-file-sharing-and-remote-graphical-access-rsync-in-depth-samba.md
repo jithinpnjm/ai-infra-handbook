@@ -14,17 +14,17 @@ lab_venue: "GCP VM"
 
 **Level:** intermediate · **Tier 0 (foundations)** · **Lab venue:** two or three small Ubuntu VMs on GCP · **Status:** drafted, labs untested
 
-Chapter 1.5 introduced `scp`, `rsync` and the idea of shared filesystems. This chapter goes further. Suppose a colleague asks you to send a large dataset to another machine, or you need a graphical program running on a cluster to appear on your desk. You need to know which tool fits, and why none of them works for every case. This chapter covers every way to copy and share files between Linux, Windows and cloud systems. It also covers how users reach a cluster remotely, including graphical programs when a command line is not enough.
+Chapter 1.5 introduced `scp`, `rsync` and the idea of shared filesystems. This chapter goes further. Picture a colleague asking you to move a large dataset to another machine before the weekend, or a researcher who needs a graphical program on a cluster to appear on a desk here. You have to know which tool fits, and why no single tool fits every case. So this chapter walks through every way to copy and share files between Linux, Windows and cloud systems. It also covers how users reach a cluster remotely, including graphical programs for the times when a command line is not enough.
 
 ## Why this matters for AI infrastructure
 
-Data moves all the time in AI work. Code goes out to nodes, datasets come in, checkpoints go out, and results return to a laptop. The tool you pick decides whether a 2 TB transfer takes an hour or a week. It also decides whether a deleted directory can be recovered, and whether a home directory is available on 1,000 nodes.
+Data moves all the time in AI work. Code goes out to nodes, datasets come in, checkpoints go out, and results come back to a laptop. The tool you pick decides whether a 2 TB transfer takes an hour or a week. The same choice decides whether a deleted directory can be recovered at all. It also decides whether a home directory is simply there on 1,000 nodes.
 
-Users bring their own questions. How do they log in, copy files, run a visualisation, or open a notebook on a GPU node without exposing services to the internet? Knowing the options, and the performance and security trade-offs behind them, lets you choose the right one instead of the familiar one. This chapter also explains why the "standard" network filesystems are weaker than people expect. That weakness is why AI clusters rely on parallel filesystems and object storage instead, and Parts 6 and 13 cover those.
+Users bring their own questions, and they bring them every week. How do I log in, copy my files, run a visualisation, or open a notebook on a GPU node without exposing services to the internet? If you know the options, and the performance and security trade-offs behind each one, you can offer the right tool instead of the familiar one. This chapter also explains why the "standard" network filesystems are weaker than people expect. That weakness is the reason AI clusters rely on parallel filesystems and object storage instead, and Parts 6 and 13 cover both.
 
 ## Prerequisites and outcomes
 
-Before you start, you need chapters 1.1 to 1.5 and chapter 1.29. Chapters 1.1 to 1.5 cover SSH, `rsync` basics and the filesystem model. Chapter 1.29 is the SSH reference. When you finish this chapter, you will be able to:
+Before you start, read chapters 1.1 to 1.5 and chapter 1.29. Chapters 1.1 to 1.5 cover SSH, `rsync` basics and the filesystem model. Chapter 1.29 is the SSH reference you will want open in another window. By the end of this chapter you will be able to do the following:
 
 - Choose the right tool from a decision table: quick copy, `rsync`, Samba, CIFS, SSHFS, NFS or cloud storage.
 - Use `rsync` safely in depth, covering exact copies, the trailing slash, excludes and includes, checksums, safeguards, compression and bandwidth limits, in both directions and in dry-run mode.
@@ -38,7 +38,7 @@ Before you start, you need chapters 1.1 to 1.5 and chapter 1.29. Chapters 1.1 to
 
 ## 1. Which tool for which job
 
-Start with the job, not the tool. Many ways exist to distribute and share files, and the table below matches each common situation to the tool that usually fits it.
+Suppose a colleague asks you to "just share this folder" and leaves every detail to you. Which folder, with whom, for how long, and on which network? Start with the job, not the tool. There are many ways to distribute and share files, and most arguments about tools are really arguments about jobs. Find your situation in the left column of the table below, and the right column names the tool that usually fits it.
 
 | You want to... | Use |
 |---|---|
@@ -52,24 +52,30 @@ Start with the job, not the tool. Many ways exist to distribute and share files,
 
 ### The scenarios in three groups
 
-The seven rows fall into three groups. Temporary sharing and regular copying use a simple web server or `rsync`. Sharing with Windows uses Samba on the Linux side and CIFS on the client side. Sharing between Linux machines, or from a NAS on your trusted local network, uses SSHFS or NFS. Cloud storage uses one of several FUSE-based filesystems, or the provider's own tools. Each group asks a different question, so start by naming your group. A short-lived drop of one file or folder for other machines is a job for a simple web server, such as the Python SimpleHTTPServer module run by `python -m SimpleHTTPServer` on older Python 2 systems. Keeping files in step across machines, on a schedule, is a job for `rsync`. Serving your Linux files to Windows desktops is a job for Samba. Reading a Windows share from Linux is a job for the CIFS client. A small share with almost no setup suits SSHFS. Larger storage from a NAS or server on your trusted local network suits NFS. Cloud storage can appear as a directory through various FUSE-based filesystems. Each job has one natural tool, and the rest of this chapter explains each one.
+The seven rows fall into three groups, and naming your group is the first useful step. Temporary sharing and regular copying use a simple web server or `rsync`. Sharing with Windows uses Samba on the Linux side and CIFS on the client side. Sharing between Linux machines, or from a NAS on your trusted local network, uses SSHFS or NFS. Cloud storage uses one of several FUSE-based filesystems, or the provider's own tools.
 
-Notice what the table leaves out: **large-scale sharing between many locations and many users.** That is possible, but it takes a good deal of work. Sections 6 and 7 explain why, and Parts 6 and 13 cover what clusters do instead. Find your job in the left column before you pick a command.
+Each group answers a different question. A short-lived drop of one file or folder for other machines is a job for a simple web server, such as the Python SimpleHTTPServer module run by `python -m SimpleHTTPServer` on older Python 2 systems. Keeping files in step across machines, on a schedule, is a job for `rsync`. Serving your Linux files to Windows desktops is a job for Samba. Reading a Windows share from Linux is a job for the CIFS client. A small share with almost no setup suits SSHFS. Larger storage from a NAS or server on your trusted local network suits NFS. Cloud storage can appear as a directory through various FUSE-based filesystems. Each job has one natural tool, and the rest of this chapter explains each one in turn.
+
+Notice what the table leaves out: **large-scale sharing between many locations and many users.** It is possible, but it takes a good deal of work. Sections 6 and 7 explain why, and Parts 6 and 13 cover what clusters do instead. Find your job in the left column before you pick a command.
 
 ## 2. A quick copy
 
-Say you need to move a file or two to another machine on your own network, and nothing fancy is required. You can start a web server in the directory that holds the file:
+Say you need to move a file or two to another machine on your own network, and nothing fancy is required. No account, no daemon, no configuration file. You can start a web server in the directory that holds the file:
 
 ```bash
 python3 -m http.server 8000        # on the machine with the files (older Python 2: python -m SimpleHTTPServer)
 # then, on the other machine: open http://10.1.2.4:8000 in a browser, or: curl -O http://10.1.2.4:8000/file
 ```
 
-The server shares the current directory with anyone who can reach port 8000. **Only do this on a network you trust**, because the server has no authentication and no encryption. Bind it to a specific interface where you can (`--bind 10.1.2.4`). Stop it with Ctrl-C when you are done.
+The server shares the current directory with anyone who can reach port 8000, and on an open network that includes people you have never met. **Only do this on a network you trust**, because the server has no authentication and no encryption. Bind it to a specific interface where you can (`--bind 10.1.2.4`). Stop it with Ctrl-C when you are done, and do not leave it running overnight.
 
 ## 3. `rsync` in depth
 
-Copying a project tree with `scp -r directory user@host:dest` works, but it has two weaknesses. If the destination already holds extra files, they stay behind, so the result is not an exact copy. It also re-sends everything, including files that did not change. For regular or automated transfers, use **`rsync`**. It is the standard synchroniser on Linux. It compares source and destination, sends only what differs, and can verify, resume and mirror.
+Copying a project tree with `scp -r directory user@host:dest` works, but it has two weaknesses. If the destination already holds extra files, they stay behind, so the result is not an exact copy. It also re-sends everything, including files that did not change.
+
+For regular or automated transfers, use **`rsync`**. It is the standard synchroniser on Linux. It compares source and destination, sends only what differs, and can verify, resume and mirror.
+
+That phrase "sends only what differs" deserves a plain explanation, because it is the whole idea of the tool. `rsync` breaks a changed file into blocks and compares those blocks with the copy at the other end. The destination keeps the blocks it already has and receives only the blocks that differ. This is called **delta transfer**, and it is why a small edit to a large checkpoint costs a small transfer rather than a second copy of the file.
 
 ### Getting started
 
@@ -84,17 +90,17 @@ rsync -nva dir host:dest_dir               # DRY RUN (-n) with verbose (-v): sho
 
 The first two lines copy files and use the same syntax as `scp`. The third line copies a whole tree and keeps its symlinks, permissions, times and devices. The last line is a dry run. It shows what would be sent and sends nothing.
 
-Without `-a` (or `-r`), `rsync` copies only plain files and prints `skipping directory dir`. If the remote shell cannot find `rsync`, you will see `rsync not found ... connection unexpectedly closed (code 12)`. Install it on the remote machine. If it lives outside the remote user's command path, point to it with `--rsync-path=/path/to/rsync`.
+Without `-a` (or `-r`), `rsync` copies only plain files and prints `skipping directory dir`. If the remote shell cannot find `rsync`, you will see `rsync not found ... connection unexpectedly closed (code 12)`, which sounds like a network fault and is not one. Install it on the remote machine. If it lives outside the remote user's command path, point to it with `--rsync-path=/path/to/rsync`.
 
 ### Exact copies, and the dangerous option
 
-By default, `rsync` ignores what already exists at the destination. Copy `d`, which contains `a` and `b`, to a machine that already has `d/c`, and the destination ends up with `d/a`, `d/b` and `d/c`. To make an **exact replica**, tell `rsync` to delete anything the source does not have:
+By default, `rsync` ignores what already exists at the destination. Copy `d`, which contains `a` and `b`, to a machine that already has `d/c`, and the destination ends up with `d/a`, `d/b` and `d/c`. That is usually what you want when you are adding files to a tree. When you want an **exact replica**, tell `rsync` to delete anything the source does not have:
 
 ```bash
 rsync -a --delete dir host:dest_dir
 ```
 
-This is the most dangerous option in the chapter. Inspect the result first with `-nv`, and read exactly which files it would remove. If the source is accidentally empty, for example because a filesystem was not mounted, `--delete` empties the destination. Safer variants exist. `--backup --backup-dir=../old` keeps replaced and deleted files in a directory. A snapshot of the destination also makes mistakes recoverable.
+This is the most dangerous option in the chapter, so slow down before you type it. Inspect the result first with `-nv`, and read exactly which files it would remove. If the source is accidentally empty, for example because a filesystem was not mounted, `--delete` empties the destination. Safer variants exist. `--backup --backup-dir=../old` keeps replaced and deleted files in a directory, so a mistake becomes a short walk back. A snapshot of the destination also makes mistakes recoverable.
 
 ### The trailing slash
 
@@ -103,11 +109,11 @@ A trailing `/` on the source changes what arrives. The two lines below look almo
 - `rsync -a dir host:dest_dir` creates `dest_dir/dir/...`. The directory itself arrives.
 - `rsync -a dir/ host:dest_dir` copies the contents of `dir` into `dest_dir` without creating `dir`. Locally, this behaves like `cp dir/* dest_dir`.
 
-Combined with `--delete`, a stray slash can remove unrelated files at the destination. Watch out for **shell tab-completion**, which adds trailing slashes after directory names automatically.
+Combined with `--delete`, a stray slash can remove unrelated files at the destination. Watch out for **shell tab-completion**, which adds trailing slashes after directory names automatically, and does it without asking.
 
 ### Excluding and including
 
-Excludes keep unwanted files out of a transfer. The examples below show the common patterns.
+Excludes keep unwanted files out of a transfer, and they are how you stop sending the same build leftovers every night. The examples below show the common patterns.
 
 ```bash
 rsync -a --exclude=.git src host:               # excludes every file or directory NAMED .git, anywhere
@@ -118,11 +124,13 @@ rsync -a --exclude='item/' src host:            # a trailing slash matches direc
 rsync -a --include='keep.log' --exclude='*.log' src host:   # include an exception to a broader exclude
 ```
 
-A pattern matches a whole file or directory name, and it may use simple globs. For example, `t*s` matches `this` but not `ethers`. Order matters, because the first match wins. Put an `--include` before the `--exclude` it carves an exception from. Use `--include` when a pattern turns out to be too restrictive.
+A pattern matches a whole file or directory name, and it may use simple globs. For example, `t*s` matches `this` but not `ethers`, because a pattern has to cover the whole name. Order matters, because the first match wins. Put an `--include` before the `--exclude` it carves an exception from, or the exception never gets a chance. Use `--include` when a pattern turns out to be too restrictive.
 
 ### How `rsync` decides, and safeguards
 
-`rsync` needs a fast way to decide what changed. It uses a **quick check**: a file is skipped when its size and modification time match on both sides. The first transfer of a tree sends everything. A second run, `rsync -av ...`, should list nothing, and that empty list is a good sign the copy is consistent. When you need more assurance, or protection from overwriting, the options in the table help.
+`rsync` needs a fast way to decide what changed, because reading every file on both sides would cost as much as copying them. So it uses a **quick check**: a file is skipped when its size and modification time match on both sides. The check is cheap, and it is right most of the time.
+
+The first transfer of a tree sends everything. A second run, `rsync -av ...`, should list nothing, and that empty list is a good sign the copy is consistent. It is not proof, because the quick check trusts two numbers. When you need more assurance, or protection from overwriting, the options in the table help.
 
 | Option | Effect |
 |---|---|
@@ -133,35 +141,43 @@ A pattern matches a whole file or directory name, and it may use simple globs. F
 | `-v`, `-vv` | verbose (the default is silence unless there is a problem); `--stats` prints a summary at the end; `--info=progress2` shows overall progress |
 | `-P` | `--partial --progress`: keep partially transferred files so interrupted copies resume |
 
-The checksum option costs time, so save it for important data. The backup options keep the old copy of a file, so use them when a run might overwrite something you need.
+The checksum option costs time, so save it for data you cannot rebuild. The backup options keep the old copy of a file, so use them when a run might overwrite something you need.
 
 ### Compression and bandwidth
 
-`-z` compresses data in transit. It helps on slow or high-latency links. On a fast LAN, though, the CPU cost of compressing and decompressing can make the transfer *slower*. Skip it for data that is already compressed, such as most checkpoint formats, images and archives.
+`-z` compresses data in transit. It helps on slow or high-latency links, where the wire is the bottleneck. On a fast LAN, though, the CPU cost of compressing and decompressing can make the transfer *slower*, so the flag costs you time instead of saving it. Skip it for data that is already compressed, such as most checkpoint formats, images and archives.
 
-`--bwlimit=RATE` caps the transfer rate. The default unit is kibibytes per second, and newer versions accept suffixes such as `50m`. Check `man rsync` for your version. A cap keeps a large upload from filling your uplink and starving everything else, because ACK and request traffic competes for the same outgoing bandwidth.
+`--bwlimit=RATE` caps the transfer rate. The default unit is kibibytes per second, and newer versions accept suffixes such as `50m`. Check `man rsync` for your version. A cap keeps a large upload from filling your uplink and starving everything else, because ACK and request traffic competes for the same outgoing bandwidth. On a shared link, that one flag can be the difference between a slow copy and an unusable network.
 
 ### Pulling files to your machine, and other uses
 
-`rsync -a host:src_dir dest_dir` pulls files from the remote side. Omit `host:` on both arguments to copy locally. Batch mode can replay the same set of changes to several hosts. Using `rsync --delete` to a mounted cloud or other network storage is a simple, effective backup. Combined with snapshots or `--link-dest`, which makes hard links to unchanged files from the previous backup, it gives space-efficient daily backups. `rsync --help` and `man rsync` list many more options.
+`rsync -a host:src_dir dest_dir` pulls files from the remote side, and the colon is the only thing that tells it which side is which. Omit `host:` on both arguments to copy locally. Batch mode can replay the same set of changes to several hosts. Using `rsync --delete` to a mounted cloud or other network storage is a simple, effective backup. Combined with snapshots or `--link-dest`, which makes hard links to unchanged files from the previous backup, it gives space-efficient daily backups. `rsync --help` and `man rsync` list many more options.
 
-Decide before you run anything whether `--delete` belongs in the job at all, because it changes the destination.
+Decide before you run anything whether `--delete` belongs in the job at all, because it changes the destination, and the destination is where other people's work lives.
 
 ## 4. Why share files over a network at all? Performance and security
 
-Network file sharing is attractive, but it always involves compromises. Before you choose it, you should know what those compromises are and why they exist.
+Suppose a user complains that compiling a project on the cluster takes far longer than on a laptop, and the only difference is that the source tree sits on a shared home directory. Nothing is broken. The user has just met the central trade-off of this section.
+
+Network file sharing is attractive, and it always involves compromises. Before you choose it, know what those compromises are and why they exist. Otherwise you inherit a surprise instead of choosing a trade-off.
 
 People share files over a network for two traditional reasons. The first is convenience: you log in to any machine and see the same home directory. The second is economy: you concentrate storage on a few servers instead of buying disks for every desktop. Clusters still do exactly this for home directories and software.
 
-The one constant disadvantage is that network storage is slow compared with local storage. The gap shows up with some access patterns more than others. Streaming a large file in order works well, because the server can read ahead and buffer when it knows the client will ask for the next block. Complex manipulation is different. If you touch many different files, the client spends most of its time waiting on the network. The culprit is latency. For every new random file access, the server must accept and decode the request, then find and load the data. Those first steps are the slowest, and they happen on almost every new file.
+The one constant disadvantage is that network storage is slow compared with local storage. The gap shows up with some access patterns more than others. Streaming a large file in order works well, because the server can read ahead and buffer when it knows the client will ask for the next block. Complex manipulation is different. If you touch many different files, the client spends most of its time waiting on the network.
+
+The culprit is latency. For every new random file access, the server must accept and decode the request, then find and load the data. Those first steps are the slowest, and they happen on almost every new file.
 
 That gives you a simple rule. For large amounts of data that do not need frequent random access, network storage is fine. For editing video, compiling a large project, or reading millions of small training files, keep a local copy. You can also stage the data to local NVMe, which chapter 13.2 covers.
 
-Security is the other side of the trade-off. Historically, file-sharing protocols gave security a low priority, and the easiest options to configure are typically the least secure. If you cannot trust the networks between the machines, you need two things. The first is authentication and authorisation: only parties with correct credentials get access, and the server is who it claims to be. The second is encryption, so data in transit cannot be read. There are no standardised ways to bolt these on. Instead, you combine tools such as `stunnel`, IPsec or VPNs to protect the layers beneath a basic protocol. Treat any file share as reachable by anyone who can reach its network.
+Security is the other side of the trade-off. Historically, file-sharing protocols gave security a low priority, and the easiest options to configure are typically the least secure. If you cannot trust the networks between the machines, you need two things. The first is authentication and authorisation: only parties with correct credentials get access, and the server is who it claims to be. The second is encryption, so data in transit cannot be read.
+
+There are no standardised ways to bolt these on. Instead, you combine tools such as `stunnel`, IPsec or VPNs to protect the layers beneath a basic protocol. Treat any file share as reachable by anyone who can reach its network.
 
 ### Centralized storage and its one constant cost
 
-Centralized storage made sense for two traditional reasons. One user could log in to any machine on the network and find the same home directory. It was also cheaper to concentrate storage on a few servers than to buy and maintain a large disk for every machine. Those advantages are overshadowed by one disadvantage that has stayed the same for decades. Network storage performance is often poor compared with local storage.
+Centralized storage made sense for two traditional reasons. One user could log in to any machine on the network and find the same home directory. It was also cheaper to concentrate storage on a few servers than to buy and maintain a large disk for every machine. Those advantages still hold today.
+
+They are overshadowed, though, by one disadvantage that has stayed the same for decades. Network storage performance is often poor compared with local storage.
 
 ### Why a streamed file is fast and random access is slow
 
@@ -173,19 +189,23 @@ Keep this difference in mind when you decide where data should live. Sequential 
 
 ## 5. Samba: sharing with Windows (SMB) and CIFS mounts
 
-Suppose your team runs a Linux file server, and the Windows laptops need to open its folders. That is the job SMB does. **SMB (Server Message Block)** is the standard Windows file and printer sharing protocol, and macOS can speak it too. Samba is the standard suite that implements SMB on Unix. It lets Windows machines use files and printers on your Linux system, and it lets you reach Windows shares from Linux. The client filesystem has been called CIFS, which stands for Common Internet File System. On modern systems, SMB 3 is used. Samba is a large topic, so this section covers what you need for a working server and client.
+Suppose your team runs a Linux file server, and the Windows laptops need to open its folders. That is the job SMB does. **SMB (Server Message Block)** is the standard Windows file and printer sharing protocol, and macOS can speak it too. Samba is the standard suite that implements SMB on Unix. It lets Windows machines use files and printers on your Linux system, and it lets you reach Windows shares from Linux.
 
-A Samba server needs two things. The first is a configuration file, `smb.conf`, usually at `/etc/samba/smb.conf`. It has a `[global]` section and one section per share. The second is two daemons. `smbd` handles share requests, and `nmbd` is a NetBIOS name server. A distribution package starts them with sensible defaults, but the package cannot know which directories you want to share.
+The client filesystem has been called CIFS, which stands for Common Internet File System. On modern systems, SMB 3 is used. Samba is a large topic, so this section covers what you need for a working server and a working client, and it stops there.
+
+A Samba server needs two things. The first is a configuration file, `smb.conf`, usually at `/etc/samba/smb.conf`. It has a `[global]` section and one section per share. The second is two daemons. `smbd` handles share requests, and `nmbd` is a NetBIOS name server, which is how a machine is found by name on a small network.
+
+A distribution package starts both daemons with sensible defaults, so you are not writing startup scripts by hand. The package cannot know which directories you want to share, though. That part is yours.
 
 ### Scope of this section
 
-This section is not a comprehensive Samba guide. It gets Windows machines on a single subnet to see a standalone Linux machine in the Windows Network Places browser. It does not try to cover every setting. Samba has countless configurations, because access control and network layout differ from site to site. A large, multi-team server needs a full Samba reference. The Samba project website at `https://samba.org/` is the place to look for the complete documentation. Start with the small setup here, and check it works before you add anything.
+This section is not a comprehensive Samba guide, and it is honest about that. It gets Windows machines on a single subnet to see a standalone Linux machine in the Windows Network Places browser. It does not try to cover every setting. Samba has countless configurations, because access control and network layout differ from site to site. A large, multi-team server needs a full Samba reference. The Samba project website at `https://samba.org/` is the place to look for the complete documentation. Start with the small setup here, and check it works before you add anything.
 
 ### Setting up the server, step by step
 
 A Samba server needs four steps. You create the `smb.conf` file, add a section for each file share, add a section for printer sharing if you need one, and start the `nmbd` and `smbd` daemons. A distribution package does the last steps with sensible defaults. It cannot know which directories you want to offer, so you add the share sections yourself. Most distributions keep `smb.conf` in `/etc/samba`. If you built Samba from source, look under `/usr/local/samba/lib` instead.
 
-The file uses square-bracket sections, much like the systemd configuration format. The `[global]` section holds options for the whole server, and each share gets its own section. The `[global]` section sets the server name, description and workgroup, so fill those in first.
+The file uses square-bracket sections, much like the systemd configuration format, so it will look familiar if you have edited a unit file. The `[global]` section holds options for the whole server, and each share gets its own section. The `[global]` section sets the server name, description and workgroup, so fill those in first.
 
 ### The global section and access control
 
@@ -201,7 +221,7 @@ The file uses square-bracket sections, much like the systemd configuration forma
    obey pam restrictions = yes        # password changes obey PAM rules
 ```
 
-The `[global]` section sets the server's name and decides where it listens. The options below it control who gets in. `interfaces` and `bind interfaces only` limit the networks the server listens on. `valid users` lists the allowed users, for example `valid users = jruser, bill`. `guest ok` allows anonymous access, and you should use it **only on a private network**. `browseable` decides whether the share shows up in network browsing. If you set it to `no`, users must know the exact name of the share.
+The `[global]` section sets the server's name and decides where it listens. The options below it control who gets in, and they are worth reading one at a time. `interfaces` and `bind interfaces only` limit the networks the server listens on. `valid users` lists the allowed users, for example `valid users = jruser, bill`. `guest ok` allows anonymous access, and you should use it **only on a private network**. `browseable` decides whether the share shows up in network browsing. If you set it to `no`, users must know the exact name of the share.
 
 ### Passwords
 
@@ -214,7 +234,9 @@ sudo smbpasswd -d alice        # disable ; -e enables again
 sudo smbpasswd alice           # change a user's password as root (users change their own with plain 'smbpasswd')
 ```
 
-Use `smbpasswd -a` to add a user to Samba, and `smbpasswd -x` to remove one. The user must already exist as a Linux account before you add it. Beware of `unix password sync = yes` in `smb.conf`. It changes the user's normal Linux password along with the Samba one. That confuses users who set a different Samba password and then cannot log in to Linux. Some distributions turn it on by default.
+Use `smbpasswd -a` to add a user to Samba, and `smbpasswd -x` to remove one. The user must already exist as a Linux account before you add it, so create the account first.
+
+One setting here causes more help-desk calls than any other: `unix password sync = yes` in `smb.conf`. It changes the user's normal Linux password along with the Samba one. That confuses users who set a different Samba password and then cannot log in to Linux. Some distributions turn it on by default, so check it before you blame the user.
 
 ### Shares, homes and printers
 
@@ -248,7 +270,9 @@ Never combine `guest ok = yes` with `writable = yes`, because anyone could then 
 
 ### Reloading after configuration changes
 
-You usually do not start Samba by hand. After a package install, check that the daemons run with `systemctl --type=service`. If you built Samba from source, run `nmbd -D -s smb_config_file` and `smbd -D -s smb_config_file`, where `smb_config_file` is the full path to your `smb.conf`. `-D` runs each daemon in daemon mode. If you change `smb.conf` while `smbd` is running, you can send it a HUP signal to load the changes. Still, letting systemd supervise the server is usually the better choice, because `systemctl` can do that work for you.
+You usually do not start Samba by hand. After a package install, check that the daemons run with `systemctl --type=service`. If you built Samba from source, run `nmbd -D -s smb_config_file` and `smbd -D -s smb_config_file`, where `smb_config_file` is the full path to your `smb.conf`. `-D` runs each daemon in daemon mode.
+
+If you change `smb.conf` while `smbd` is running, you can send it a HUP signal to load the changes. Still, letting systemd supervise the server is usually the better choice, because `systemctl` can do that work for you.
 
 ### How `[homes]` finds a directory
 
@@ -256,7 +280,9 @@ The `[homes]` section exports each user's home directory. By default, Samba read
 
 ### Starting, diagnosing and the client
 
-Normally systemd starts the daemons. Check them with `systemctl status smbd nmbd`. On newer distributions the units are called `smb` and `nmb`. After you change the configuration, reload the service. If you start the daemons by hand, use `nmbd -D -s /path/smb.conf` and `smbd -D -s /path/smb.conf`, where `-D` runs them in daemon mode. Startup problems print to the terminal. Runtime diagnostics go to log files in `/var/log/samba`, namely `log.smbd`, `log.nmbd`, and one log per client. Check the configuration file with `testparm`.
+Normally systemd starts the daemons. Check them with `systemctl status smbd nmbd`. On newer distributions the units are called `smb` and `nmb`. After you change the configuration, reload the service. If you start the daemons by hand, use `nmbd -D -s /path/smb.conf` and `smbd -D -s /path/smb.conf`, where `-D` runs them in daemon mode.
+
+Startup problems print to the terminal. Runtime diagnostics go to log files in `/var/log/samba`, namely `log.smbd`, `log.nmbd`, and one log per client. Check the configuration file with `testparm`.
 
 The client tool, `smbclient`, lists shares and accesses them.
 
@@ -313,18 +339,20 @@ fusermount -u /mnt/data                  # unmount as a regular user (fusermount
 
 As a regular user, unmount with `fusermount -u`, or `fusermount3` on newer systems. Root can use `umount`.
 
-It has minimal setup. The remote side only needs SFTP enabled, which most SSH servers already have. It also needs no special network configuration, because it works anywhere you can open an SSH connection, on a trusted network or not. The trade-offs are real. Performance suffers because of the overhead of encryption, translation and transport, though often not as badly as you might expect. Multiuser setups are limited, so mount it as the regular user whose files they are. That also keeps ownership and security consistent. For modest needs, it is well worth trying.
+It has minimal setup. The remote side only needs SFTP enabled, which most SSH servers already have. It also needs no special network configuration, because it works anywhere you can open an SSH connection, on a trusted network or not.
+
+The trade-offs are real. Performance suffers because of the overhead of encryption, translation and transport, though often not as badly as you might expect. Multiuser setups are limited, so mount it as the regular user whose files they are. That also keeps ownership and security consistent. For modest needs, it is well worth trying.
 
 ### NFS (client side)
 
-NFS is the traditional Unix network filesystem. It comes in several versions, and v3 and v4 are common. It can run over TCP or UDP. It offers many authentication and encryption options, but very few of them are enabled by default. To mount an export, use one of these commands:
+Now suppose the same laptop should see a directory that thirty other machines also mount, and it should appear at boot without anyone typing a command. That is the job NFS was built for. NFS is the traditional Unix network filesystem. It comes in several versions, and v3 and v4 are common. It can run over TCP or UDP. It offers many authentication and encryption options, but very few of them are enabled by default. To mount an export, use one of these commands:
 
 ```bash
 sudo mount -t nfs server:/export /mnt/nfs         # the -t is optional; mount normally detects it
 sudo mount -t nfs4 -o sec=krb5p server:/export /mnt/nfs   # with Kerberos authentication and privacy
 ```
 
-The security level is set with the `sec=` option. `sys` trusts the client's user IDs, and it is the default. `krb5`, `krb5i` and `krb5p` use Kerberos for authentication, integrity and encryption. Many administrators on small closed networks use host-based access control on the server instead. Stronger methods such as Kerberos require configuration elsewhere. See `man nfs` for the details.
+The security level is set with the `sec=` option. `sys` trusts the client's user IDs, and it is the default. `krb5`, `krb5i` and `krb5p` use Kerberos for authentication, integrity and encryption. Kerberos is a ticket-based authentication system, and it is the usual way to give NFS real security. Many administrators on small closed networks use host-based access control on the server instead. Stronger methods such as Kerberos require configuration elsewhere. See `man nfs` for the details.
 
 Automounting is the next step once you use network filesystems heavily. You mount a share only when someone uses it, so boot does not depend on the server being up. The traditional tools were autofs and amd. Today much of this is provided by systemd automount units. In `/etc/fstab`, add `x-systemd.automount` to the options, and optionally `x-systemd.idle-timeout=60`.
 
@@ -340,9 +368,11 @@ Cloud storage has no single setup procedure. Each provider has its own client, i
 
 ### Cloud storage
 
-Cloud object stores such as AWS S3 and Google Cloud Storage perform worse than a local network. In return, you never maintain them, and backups are not your problem. Every provider offers web and programmatic interfaces. Most also ship command-line tools, such as `gcloud storage`, `aws s3` and `rclone`.
+Suppose your team's datasets already live in a cloud bucket, and a training job on the cluster needs to read them. Cloud object stores such as AWS S3 and Google Cloud Storage perform worse than a local network. In return, you never maintain them, and backups are not your problem. Every provider offers web and programmatic interfaces. Most also ship command-line tools, such as `gcloud storage`, `aws s3` and `rclone`.
 
-Most of these services can also be mounted on Linux through `FUSE` (Filesystem in Userspace). A user-space daemon sits between the data source and the kernel, so no kernel code is involved. For popular services, several `FUSE` options exist, and the details are provider-specific. The general behaviour is that listing and small-file access are slow. Writes are often whole-object. Consistency and rename semantics differ from a disk. So do not run databases or edit-in-place workloads on them. For AI datasets and checkpoints, use the tools and formats designed for object storage, which chapter 13 covers.
+Most of these services can also be mounted on Linux through `FUSE` (Filesystem in Userspace). A user-space daemon sits between the data source and the kernel, so no kernel code is involved. For popular services, several `FUSE` options exist, and the details are provider-specific.
+
+The general behaviour is that listing and small-file access are slow. Writes are often whole-object. Consistency and rename semantics differ from a disk. So do not run databases or edit-in-place workloads on them. For AI datasets and checkpoints, use the tools and formats designed for object storage, which chapter 13 covers.
 
 ### Why there is no standard answer
 
@@ -362,9 +392,11 @@ Cloud storage changed the picture. Its access methods are built on security mech
 
 Many users arrive at a supercomputer with graphical habits and worry that the command line will slow them down. SSH is the main way users reach a supercomputer today, and a few commands are enough for most of them. Their daily work is queueing jobs and reading job status. Copying and editing can be done with a convenient client on their own machine. To ease the start, install Midnight Commander (`mc`) on the access node. It is a two-panel file manager whose interface resembles Total Commander or Far Manager.
 
-Passwords come first in the policy. The classic mode works by default, but it should not be used for ordinary users. If you must allow it, allow it only from a few administrator workstations, and only for a few accounts, to resolve emergencies.
+Passwords come first in the policy, because they are the weakest link and the easiest thing to get wrong. The classic mode works by default, but it should not be used for ordinary users. If you must allow it, allow it only from a few administrator workstations, and only for a few accounts, to resolve emergencies.
 
-For keys, each user generates a key pair, or uses an existing one, and sends you the public half. You append that half to `~user/.ssh/authorized_keys`, and you always append, never replace. Public keys come in an OpenSSH single-line format and an RFC multi-line format. Convert an RFC key to OpenSSH with `ssh-keygen -i -f rfc-key.pub >> ~user/.ssh/authorized_keys`. A Linux or macOS user then connects with `ssh -i ~/.ssh/cluster-key cluster`.
+For keys, each user generates a key pair, or uses an existing one, and sends you the public half. You append that half to `~user/.ssh/authorized_keys`, and you always append, never replace.
+
+Public keys come in an OpenSSH single-line format and an RFC multi-line format. Convert an RFC key to OpenSSH with `ssh-keygen -i -f rfc-key.pub >> ~user/.ssh/authorized_keys`. A Linux or macOS user then connects with `ssh -i ~/.ssh/cluster-key cluster`.
 
 Windows users need different tools. PuTTY works well. Use `puttygen` to create and convert keys, which are saved in `.ppk` format, and use the `putty` client. Load the `.ppk` key, then enter the cluster address. For file transfer, use WinSCP or its plug-in for FAR. FileZilla also works, but it needs the PuTTY agent loaded with the key, because it does not otherwise support key authentication.
 
@@ -372,7 +404,9 @@ Linux and macOS users have several ways to transfer files. They can use `scp`, `
 
 ### FTP and web access
 
-FTP was once the dominant way to distribute files, and many browsers and file managers still include it. Its big flaw is that it sends the login and password unencrypted. Secure variants exist, but they are not standardised and not universally supported. Even with encryption, a password remains a weak credential. FTP is acceptable in exactly one case: public, anonymous, read-only distribution of files. For everything else, use SFTP or SCP. Both are standardised, supported by every SSH server, and allow key authentication, which largely removes the guessing risk. Their downsides are higher CPU use and often lower speed, because of encryption overhead and the way data moves over encrypted channels. Standard clients and servers also do not offer modes that encrypt only the login.
+FTP was once the dominant way to distribute files, and many browsers and file managers still include it. Its big flaw is that it sends the login and password unencrypted. Secure variants exist, but they are not standardised and not universally supported. Even with encryption, a password remains a weak credential. FTP is acceptable in exactly one case: public, anonymous, read-only distribution of files.
+
+For everything else, use SFTP or SCP. Both are standardised, supported by every SSH server, and allow key authentication, which largely removes the guessing risk. Their downsides are higher CPU use and often lower speed, because of encryption overhead and the way data moves over encrypted channels. Standard clients and servers also do not offer modes that encrypt only the login.
 
 For web access over HTTP, you often do not need a web server on the cluster at all. Put the information on a separate, ordinary server instead. Avoid running a web server on the supercomputer, because any web server becomes vulnerable once it serves dynamic content, such as CGI scripts or application servers. Even static-only servers can be attacked through carelessly enabled modules.
 
@@ -381,6 +415,8 @@ When the cluster must publish something, such as queue status, let the external 
 ## 9. Remote graphical access: X11 and its alternatives
 
 ### The X Window System
+
+Picture a researcher who needs to inspect a simulation result in a 3D viewer that runs only on the cluster, on a desk with a monitor and a mouse. Now think of the opposite complaint, the remote desktop that feels like dial-up. Both stories begin with the same misunderstanding about who serves whom.
 
 Linux graphics is not part of the operating system. The graphical stack is an ordinary set of programs, and a system can run happily with no graphics at all. That is the normal mode for a supercomputer. Graphical programs are still sometimes unavoidable, because some commercial tools can be configured only graphically or through a browser. Visualising scientific data is often best done next to the data. Moving large results to a workstation costs far more than sending screen images.
 
@@ -401,7 +437,9 @@ flowchart LR
   XC <-->|"X11 protocol (or ssh -X tunnel\nwith DISPLAY + xauth cookie)"| XS
 ```
 
-X uses a client/server architecture, but the names run the opposite way from what you might expect. The X server is the program on your machine. It owns the screen, keyboard and mouse. The clients are the graphical applications. They may run on a different machine, and they talk to your server over the X protocol (version 11), through Unix sockets or network sockets. The server consists of drivers for input and output devices, plus the part that talks to applications.
+X uses a client/server architecture, but the names run the opposite way from what you might expect, and this trips up almost everyone the first time. The X server is the program on your machine. It owns the screen, keyboard and mouse. The clients are the graphical applications. They may run on a different machine, and they talk to your server over the X protocol (version 11), through Unix sockets or network sockets. The server consists of drivers for input and output devices, plus the part that talks to applications.
+
+Here is the sentence that makes it stick. The server serves the screen, not the data. Your laptop has the screen attached, so your laptop runs the server. The program that wants to draw a window is a client, even when it runs thousands of kilometres away on the cluster. Once you read "server" as "the machine with the display", the direction stops feeling backwards.
 
 You can inspect X windows, events, input devices and displays with `xwininfo`. Click a window to see its window ID `0x5400024` and its geometry, or run `xlsclients`. `xev` prints `KeyPress` and mouse events in real time. `xinput` takes `xinput --list-props` and `--set-ptr-feedback` for pointer settings. `xrandr` is covered in How Linux Works, section 14.4.
 
@@ -409,7 +447,9 @@ Each X server serves a display with a number, which is `:0` by default. Applicat
 
 The reference implementation is X.Org. Modern versions detect hardware automatically and need no configuration. When they guess wrong, create `/etc/X11/xorg.conf`. You can generate a starting file with `Xorg -configure`, which produces `xorg.conf.new`. Drop-in files in `/etc/X11/xorg.conf.d/` work too. Server problems are logged in `/var/log/Xorg.0.log`, where the 0 is the display number.
 
-Sessions usually start in one of two ways. Rarely, you start one by hand. `startx` starts the server, plus a script that starts the clients. That script lives in `~/.xsession` or `/etc/X11/Xsession.d/`, and the server stops when the script ends. Normally the server runs as a service, with a display manager as its only client. Display managers include `xdm`, `gdm`, `kdm` and `lightdm`. The display manager shows a graphical login, offers a choice of language and window manager or desktop, and starts the session after a successful login. The `xdm` files are in `/etc/X11/xdm/`, and the `gdm` files are in `/etc/gdm/`.
+Sessions usually start in one of two ways. Rarely, you start one by hand. `startx` starts the server, plus a script that starts the clients. That script lives in `~/.xsession` or `/etc/X11/Xsession.d/`, and the server stops when the script ends.
+
+Normally the server runs as a service, with a display manager as its only client. Display managers include `xdm`, `gdm`, `kdm` and `lightdm`. The display manager shows a graphical login, offers a choice of language and window manager or desktop, and starts the session after a successful login. The `xdm` files are in `/etc/X11/xdm/`, and the `gdm` files are in `/etc/gdm/`.
 
 ### Customizing Xorg with `xorg.conf`
 
@@ -528,7 +568,7 @@ Read the notes before you pick one, because the limits differ. For notebooks and
 
 ### 1. `rsync --delete` removes the wrong files
 
-Destination data vanishes. The usual causes are a trailing slash difference, an empty or unmounted source, or the wrong destination path. Always run `-nv` first. Check `df`, and confirm that the source path is populated. Keep `--backup-dir` or snapshots ready, and never put `--delete` in a habit alias.
+Destination data vanishes. In practice the cause is nearly always one of three things: a trailing slash difference, an empty or unmounted source, or the wrong destination path. Always run `-nv` first. Check `df`, and confirm that the source path is populated. Keep `--backup-dir` or snapshots ready, and never put `--delete` in a habit alias.
 
 ### 2. A transfer is "done" but data differs
 

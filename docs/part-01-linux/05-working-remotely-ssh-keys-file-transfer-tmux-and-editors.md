@@ -21,15 +21,17 @@ lab_venue: "GCP VM"
 
 ## Why this matters for AI infrastructure
 
-You will almost never sit at the machines you manage. GPU servers live in data centres and clouds, so you reach them remotely. A typical route runs through a bastion host, then a login node, then a compute node, and along the way you move checkpoints and datasets. Everything rides on **SSH**, the protocol for secure remote logins. It carries interactive shells, file copies, port tunnels to Jupyter and TensorBoard, Ansible, Slurm launch scripts, Git over SSH, and the cluster managers behind them.
+You will almost never sit at the machines you manage. GPU servers live in data centres and clouds, and you reach them over the network. A typical route runs through a bastion host, then a login node, then a compute node, and along the way you move checkpoints and datasets. Three words are worth pinning down now. The bastion host is the one machine exposed to the outside world. The login node is where users land once they are inside the cluster. The compute node is where the work actually runs, and it is usually kept out of reach.
 
-Mistakes here cost you in two directions. A clumsy workflow wastes hours. Dropped sessions can kill a three-day training run, and a careless file sync can delete the wrong directory. The second cost is worse. Weak SSH habits, such as shared keys, forwarded agents and password logins, are how clusters get compromised. Sergey Zhumatiy puts the balance well in *Supercomputers for Linux SysAdmins*: *the less access, the better, yet users should not be clamped in a hedgehog's grip*.
+Everything on that route rides on **SSH**, the protocol for secure remote logins. SSH carries your interactive shells. It also carries file copies, port tunnels to Jupyter and TensorBoard, Ansible runs, Slurm launch scripts, Git over SSH, and the cluster managers behind them. Learn this one protocol and you have learned the road into every machine you will operate.
 
-SSH combined with `scp`, `sftp` and `rsync` covers nearly all normal operation. This chapter teaches SSH from the beginning. It also covers the tools that make remote work reliable: `rsync`, `tmux`, parallel shells, an editor you can survive in, and out-of-band access for when the operating system is down. Learn the SSH core first, because the rest of the chapter builds on it.
+Mistakes here cost you in two directions. A clumsy workflow wastes hours of your day. A dropped session can kill a three-day training run, and a careless file sync can delete the wrong directory. The second cost is worse, because weak SSH habits are how clusters get compromised. Shared keys, forwarded agents and password logins all count as weak habits. Sergey Zhumatiy puts the balance well in *Supercomputers for Linux SysAdmins*: *the less access, the better, yet users should not be clamped in a hedgehog's grip*.
+
+SSH combined with `scp`, `sftp` and `rsync` covers nearly all of your normal operation. So this chapter teaches SSH from the very beginning and assumes nothing. It also covers the tools that make remote work reliable: `rsync`, `tmux`, parallel shells, an editor you can survive in, and out-of-band access for the day the operating system itself is down. Learn the SSH core first, because everything else in the chapter builds on it.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with chapters 1.1 to 1.3, which cover processes, the shell, and files and permissions. When you finish this chapter, you will be able to do the following.
+Before you start, you should be comfortable with chapters 1.1 to 1.3. They cover processes, the shell, and files and permissions, and this chapter leans on all three. When you finish this chapter, you will be able to do the following.
 
 - Explain how SSH works: host keys, authentication, and an encrypted channel. You will also know what the "host key changed" warning really means.
 - Create and manage keys, copy a public key to a server, and set up `~/.ssh/config` with shortcuts, jump hosts, and connection sharing.
@@ -44,9 +46,11 @@ Before you start, you should be comfortable with chapters 1.1 to 1.3, which cove
 
 ## 1. How SSH works
 
-Suppose you connect to a GPU server for the first time, and your client stops to ask you something. That question is there to protect you. **SSH (Secure Shell)** is a protocol and a pair of programs. The **client**, `ssh`, runs on your machine. The **server**, `sshd`, the daemon, runs on the remote machine and listens on TCP port 22 by default. SSH replaced older tools such as `telnet` and `rsh`. Those tools sent everything, passwords included, as plain text.
+Picture your first connection to a GPU server. You type the hostname and press Enter, and instead of a login prompt your terminal stops to ask you a question about a fingerprint. Many newcomers click through it without reading a word. That question is there to protect you, so this section explains what it is really asking.
 
-SSH gives you three guarantees. The traffic is **encrypted**. The server is **authenticated** to you, so you know you reached the right machine. And you are **authenticated** to the server, so it knows who you are.
+**SSH (Secure Shell)** is a protocol and a pair of programs. The **client**, `ssh`, runs on your machine. The **server**, `sshd`, is the daemon that runs on the remote machine, and it listens on TCP port 22 by default. SSH replaced older tools such as `telnet` and `rsh`. Those older tools sent everything, passwords included, as plain text across the network.
+
+SSH gives you three guarantees, and it pays to name them once. The traffic is **encrypted**, so nobody sitting on the path can read it. The server is **authenticated** to you, so you know you reached the right machine. And you are **authenticated** to the server, so the server knows who you are.
 
 A connection goes through four stages, shown in the diagram below.
 
@@ -63,16 +67,16 @@ sequenceDiagram
   C->>S: open a session: shell, a single command, a file transfer, or a tunnel
 ```
 
-Two separate key pairs take part, and it helps to keep them apart in your mind.
+Two separate key pairs take part in that exchange, and it helps to keep them apart in your mind. One belongs to the machine, and the other belongs to you.
 
-- **The server's host key.** Each server has its own long-lived key pair, stored under `/etc/ssh/` as files such as `ssh_host_ed25519_key`. The first time you connect, your client shows the server's fingerprint, a short hash of its public key, and asks whether to trust it. If you say yes, the client saves the key in `~/.ssh/known_hosts`. On later connections it checks that the server presents the same key. That check protects you from an impostor in a man-in-the-middle attack.
-- **Your user key.** You generate a key pair. The private key stays secret on your machine. The public key goes onto the server, into `~/.ssh/authorized_keys` for the account you log in to. To log in, your client proves it holds the private key by signing a challenge. The server checks that signature against the stored public key. No secret crosses the network, and there is nothing to guess or brute-force the way you can with a password.
+- **The server's host key.** Each server has its own long-lived key pair, stored under `/etc/ssh/` in files such as `ssh_host_ed25519_key`. The first time you connect, your client shows the server's fingerprint, a short hash of its public key, and asks whether to trust it. If you say yes, the client saves the key in `~/.ssh/known_hosts`. On later connections it checks that the server presents the same key. That check protects you from an impostor in a man-in-the-middle attack.
+- **Your user key.** You generate a key pair. The private key stays secret on your machine, and the public key goes onto the server, into `~/.ssh/authorized_keys` for the account you log in to. To log in, your client proves it holds the private key by signing a challenge. The server checks that signature against the stored public key. No secret ever crosses the network, and there is nothing to guess or brute-force the way you can with a password.
 
 Now take the warning you will eventually meet: `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED`. It means the server answering to this name is not the one your client remembered. Often the cause is harmless. The machine was rebuilt or reimaged with new host keys, or a cloud VM's IP address was reassigned to a different VM. The dangerous cause is an attack. So verify the new key out of band, through the cloud console serial output or a fingerprint from your platform team, before you remove the old entry with `ssh-keygen -R hostname`. Treat a changed host key as a question to answer, not an error to click past.
 
 ## 2. Keys: create, install, protect
 
-Typing a password on every login gets tedious, and a password can be guessed. A key pair fixes both problems. You generate the pair once, copy the public half to the server, and then log in with the private half.
+Typing a password on every login gets tedious, and a password can be guessed or reused from somewhere else. A key pair fixes both problems at once. You generate the pair once, copy the public half to the server, and from then on you log in with the private half.
 
 ```bash
 ssh-keygen -t ed25519 -C "alice@laptop-2026"       # create a key pair; choose a passphrase when asked
@@ -82,7 +86,7 @@ ssh alice@gpu01                                      # now logs in with the key
 ssh-keygen -lf ~/.ssh/id_ed25519.pub                # show the key's fingerprint
 ```
 
-Keep these notes in mind as you set up keys.
+A few notes now will save you a ticket later.
 
 Choose the algorithm with care. Ed25519 is the modern default: it is small, fast and strong. RSA with at least 3072 bits is still acceptable where Ed25519 is unsupported. Avoid DSA and short RSA keys.
 
@@ -102,7 +106,7 @@ Before you copy a key anywhere, check its permissions and decide who should hold
 
 ### Running commands, with or without a terminal
 
-Often you want one answer from a server, not a full session. The commands below show the common forms.
+Often you want one answer from a server, not a full session. You want the kernel version, or the number of GPUs, and then you want to be back at your own prompt. The commands below show the common forms.
 
 ```bash
 ssh gpu01                               # interactive shell
@@ -112,11 +116,11 @@ ssh -t gpu01 htop                       # -t forces a terminal, needed for inter
 ssh gpu01 'bash -s' < local_script.sh   # run a local script on the remote host
 ```
 
-Two details trip people up. The first is quoting. The line you give `ssh` is expanded by your local shell first. It is then sent as text to the remote shell, which parses it again. Put single quotes around the remote command so your local shell does not expand it by accident. The second is the environment. `ssh host command` starts a non-interactive shell, which does not read `~/.bashrc` in chapter 1.2. A command that works in your interactive session may therefore say "not found" over SSH. Use full paths, or set `PATH` where non-interactive shells read it.
+Two details trip people up. The first is quoting. The line you give `ssh` is expanded by your local shell first. It is then sent as text to the remote shell, which parses it a second time. Put single quotes around the remote command so your local shell does not expand it by accident. The second is the environment. `ssh host command` starts a non-interactive shell, which does not read `~/.bashrc` in chapter 1.2. A command that works in your interactive session may therefore say "not found" over SSH. Use full paths, or set `PATH` where non-interactive shells read it.
 
 ### The config file: `~/.ssh/config`
 
-A configuration file turns long command lines into short names. It also records your access path once, so you do not have to type it again.
+A configuration file turns long command lines into short names. It also records your access path once, so you never have to type it again. The file below is close to what most engineers end up with, and every line earns its place.
 
 ```
 # ~/.ssh/config
@@ -144,11 +148,15 @@ Host *
     ControlPersist 10m
 ```
 
-With this file, `ssh gpu01` means something specific. It connects to the bastion, jumps to `10.20.0.11`, and logs in as `alice` with the right key. `ProxyJump` is the clean way to traverse a bastion, and you can also pass it on the command line as `ssh -J bastion gpu01`. The connection to the final host stays end-to-end encrypted through the bastion, and your agent does not need to be exposed there. `ControlMaster` and ControlPersist share one TCP connection across many ssh, scp and rsync runs. That makes repeated commands, and tools such as Ansible, dramatically faster. The first matching value wins in the file, so put specific hosts before the catch-all `Host *`. When a setting seems ignored, run `ssh -G hostname` to print the effective configuration.
+With this file, `ssh gpu01` means something specific. It connects to the bastion, jumps to `10.20.0.11`, and logs in as `alice` with the right key.
+
+`ProxyJump` is the clean way to traverse a bastion, and you can also pass it on the command line as `ssh -J bastion gpu01`. A jump host is just a machine your connection passes through on the way to the final one. The connection to the final host stays end-to-end encrypted through the bastion, and your agent does not need to be exposed there.
+
+`ControlMaster` and ControlPersist share one TCP connection across many ssh, scp and rsync runs. That makes repeated commands, and tools such as Ansible, dramatically faster. The first matching value wins in the file, so put specific hosts before the catch-all `Host *`. When a setting seems ignored, run `ssh -G hostname` to print the effective configuration.
 
 ### Port forwarding (tunnels)
 
-An SSH connection can carry other TCP connections. That lets you reach a service that is not exposed to the network, without opening a firewall.
+Suppose a Jupyter server is running on a compute node that nothing outside the cluster can reach. An SSH connection can carry other TCP connections for you. That lets you reach a service that is not exposed to the network, without opening a firewall.
 
 | Form | Meaning | Example |
 |---|---|---|
@@ -165,11 +173,11 @@ X11 forwarding is a separate case. When you forward graphical applications with 
 
 ### Debugging a connection
 
-When a login fails, start with verbose output. `ssh -v host`, with up to `-vvv`, prints the negotiation step by step. It shows which keys were offered, which authentication methods the server allows, and where the attempt stopped. It is the single best tool for any login problem. On the server, the authentication log says why the server refused you. On Debian and Ubuntu, that log is `/var/log/auth.log`. On the Red Hat family, it is `/var/log/secure`. You can also use `journalctl -u ssh` or `journalctl -u sshd`. Read the client-side negotiation first, then the server log, before you change any setting.
+A login fails and the server says no. Resist the urge to change settings at random. Start with verbose output instead. `ssh -v host`, with up to `-vvv`, prints the negotiation step by step. It shows which keys were offered, which authentication methods the server allows, and where the attempt stopped. It is the single best tool for any login problem. On the server, the authentication log says why the server refused you. On Debian and Ubuntu, that log is `/var/log/auth.log`. On the Red Hat family, it is `/var/log/secure`. You can also use `journalctl -u ssh` or `journalctl -u sshd`. Read the client-side negotiation first, then the server log, before you change any setting.
 
 ## 4. Copying files: `scp`, `sftp`, `rsync` and cloud tools
 
-When you need to move a directory, which tool should you reach for? The answer depends on whether you copy once or keep two trees in step. SSH includes two built-in file transfer protocols, `scp` and `sftp`. They pair with `rsync`, and with ad-hoc HTTP or FUSE tools. Brian Ward's *How Linux Works* summarizes when to pick each tool.
+You have a directory to move, and a choice to make. Do you want one copy, or two trees kept in step? The answer decides the tool. SSH includes two built-in file transfer protocols, `scp` and `sftp`. They pair with `rsync`, and with ad-hoc HTTP or FUSE tools. Brian Ward's *How Linux Works* summarizes when to pick each tool.
 
 | Goal / Scenario | Tool | Notes |
 |---|---|---|
@@ -193,7 +201,7 @@ scp -r directory user@remote_host:dest_dir   # (untested here)
 
 ### `rsync` properly
 
-`rsync` solves both problems. It compares source and destination, transfers only what changed, and uses SSH as its default transport. Learn this small core first.
+`rsync` solves both problems. It compares source and destination, transfers only what changed, and uses SSH as its default transport. Learn this small core first, and you will use it for the rest of your career.
 
 ```bash
 rsync -avh --progress data/ gpu01:/scratch/data/      # (untested here) archive mode, verbose, human sizes, progress
@@ -204,9 +212,15 @@ rsync -az --bwlimit=10000 ckpt/ gpu01:/ckpt/          # (untested here) limit ba
 rsync -aHAX / /mnt/newroot --exclude=/proc --exclude=/sys --exclude=/dev # (untested here) system-style copy: hard links, ACLs, xattrs
 ```
 
-The `-a` flag stands for archive mode. It copies recursively, keeps symlinks as symlinks, and preserves permissions, modification times, owner and group where allowed, and device nodes. The `-v` flag makes the output verbose, and `-h` prints sizes in human-readable form. Two options deserve the most caution. The first is `-n`, or `--dry-run`, which shows what would happen and changes nothing. The second is `--delete`, which removes files in the destination that are not in the source, so the destination becomes an exact mirror. Other useful flags include `-z` to compress in transit, `-P` for partial resume and progress, and `--exclude` and `--include` for filtering. Use `-c` to compare by checksum instead of by size and time. Use `-e "ssh -p 2222"` to run a custom SSH command.
+The `-a` flag stands for archive mode. It copies recursively, keeps symlinks as symlinks, and preserves permissions, modification times, owner and group where allowed, and device nodes. The `-v` flag makes the output verbose, and `-h` prints sizes in human-readable form.
 
-Limiting bandwidth matters on shared links. As *How Linux Works* explains in Section 12.2.7, it is easy to clog the uplink of an internet or WAN connection when you upload a large dataset or checkpoint to a remote host. You may not be using your downlink at all during an upload. Even so, a saturated uplink delays outgoing TCP `ACK` packets, and the whole connection then feels stalled. Passing `--bwlimit=10000` limits `rsync` to `10,000 KB/s`, about `10 MB/s`. Recent `rsync` versions also accept unit suffixes, such as `--bwlimit=50m`. The cap leaves headroom for interactive traffic.
+Two options deserve the most caution. The first is `-n`, or `--dry-run`, which shows what would happen and changes nothing. The second is `--delete`, which removes files in the destination that are not in the source, so the destination becomes an exact mirror.
+
+Other useful flags include `-z` to compress in transit, `-P` for partial resume and progress, and `--exclude` and `--include` for filtering. Use `-c` to compare by checksum instead of by size and time. Use `-e "ssh -p 2222"` to run a custom SSH command.
+
+Limiting bandwidth matters on shared links. As *How Linux Works* explains in Section 12.2.7, it is easy to clog the uplink of an internet or WAN connection when you upload a large dataset or checkpoint to a remote host. You may not be using your downlink at all during an upload. Even so, a saturated uplink delays outgoing TCP `ACK` packets, and the whole connection then feels stalled.
+
+Passing `--bwlimit=10000` limits `rsync` to `10,000 KB/s`, about `10 MB/s`. Recent `rsync` versions also accept unit suffixes, such as `--bwlimit=50m`. The cap leaves headroom for interactive traffic.
 
 The trailing slash is the single most important `rsync` detail.
 
@@ -217,7 +231,7 @@ Get it wrong and you either nest a duplicate level or, with `--delete`, remove t
 
 ### Network filesystems: an introduction
 
-Instead of copying files, clusters usually share them. A user's home and project directories then look the same on every node. The common technologies work like this.
+Instead of copying files, clusters usually share them. A user's home and project directories then look the same on every node, which saves you from wondering which copy is current. The common technologies work like this.
 
 NFS, short for Network File System, is the standard Unix way to mount a remote directory as if it were local. A server lists its exports in `/etc/exports`, and clients mount them with `mount -t nfs4 server:/export /mnt`. NFS is simple and nearly everywhere. A single server limits scale, though, and metadata-heavy work, such as millions of small files, performs poorly. Its failure behaviour matters too. If the server stops answering, processes that use it can hang in uninterruptible sleep, which shows as state `D`. Chapter 1.1 explains that state.
 
@@ -231,7 +245,9 @@ Security on shared filesystems depends on identities matching across machines. F
 
 ## 5. Sessions that survive: `tmux`
 
-A laptop that goes to sleep can end a long job you started over SSH. The connection drops, and every program started in that terminal receives a hangup signal and ends. Laptop sleep, Wi-Fi trouble and a firewall idle timeout can all cause this. For anything interactive and long, such as a build, a debugging session or a data conversion, run it inside a terminal multiplexer. tmux, or `screen` in older setups, keeps the session alive on the server, independent of your connection. You reconnect and reattach.
+You start a long build over SSH, close the laptop lid, and walk away. When you come back, the connection is gone and so is the build. This happens because every program started in that terminal receives a hangup signal when the connection drops. Laptop sleep, Wi-Fi trouble and a firewall idle timeout can all cause it.
+
+For anything interactive and long, such as a build, a debugging session or a data conversion, run it inside a terminal multiplexer. tmux, or `screen` in older setups, keeps the session alive on the server, independent of your connection. You reconnect and reattach, and the work is still there.
 
 ```bash
 tmux new -s train           # start a named session
@@ -262,7 +278,7 @@ The pdsh and ClusterShell tools accept node-range notation, such as `gpu[01-16]`
 
 ## 7. Editors: enough to survive anywhere
 
-You will often need to edit files on remote machines where you cannot install your favourite editor. Learn one simple editor, and the basics of a powerful one.
+You will often need to edit a file on a remote machine where you cannot install your favourite editor. The machine may be a recovery shell with almost nothing on it. So learn one simple editor well, and the basics of a powerful one.
 
 Which editor should you learn? To work seriously on Unix, you must edit text without damaging it. Nearly everything is configured through plain-text files, and you will edit them constantly. The two long-standing standards are vi, today usually vim, and Emacs. People are fiercely loyal to one or the other. Ignore the arguments and pick the one that matches how you work. Emacs can do almost anything, and it has extensive online help. Its built-in tutorial opens with `Ctrl-h t`. It suits you if you do not mind extra typing. If speed is what you value, try vi or vim. It plays a bit like a video game, and it is installed on virtually every Unix system. It is also the editor you will find on a minimal server or in an emergency recovery shell.
 
@@ -270,7 +286,7 @@ Two classic books cover them in depth. The first is *Learning the vi and Vim Edi
 
 `nano` shows its key commands at the bottom of the screen. The `^O` command writes the file out, `^X` exits, and `^W` searches, where `^` means Ctrl. It needs no explanation and is fine for quick edits.
 
-`vim`, or `vi` on every server, is a modal editor. Keys mean different things in different modes: normal mode, insert mode, visual mode for selecting text, and command-line mode, entered with `:`. That confuses newcomers. The survival kit below comes from *How Linux Works*, chapter 2, and from *Supercomputers for Linux Sysadmins*, Table 7-9.
+`vim`, or `vi` on every server, is a modal editor. Keys mean different things in different modes: normal mode, insert mode, visual mode for selecting text, and command-line mode, entered with `:`. That confuses newcomers, and it is the reason people get stuck in vim the first time. The survival kit below draws on *How Linux Works*, chapter 2, and on *Supercomputers for Linux SysAdmins*, chapter 7, "UNIX and Linux: the Basics".
 
 | Key | Does |
 |---|---|
@@ -296,7 +312,9 @@ Before you edit a production file, copy it, review the change with `diff -u`, an
 
 ## 8. Out-of-band access: when SSH is not available
 
-Sometimes SSH cannot help. The operating system may have crashed, the network configuration may be broken, or a node may refuse to boot. Servers have a separate management computer, the **BMC (baseboard management controller)**. It has its own network port and IP address, and it works even when the main system is powered off. Through it you can power-cycle the server, read hardware sensors and logs, update firmware, and open a virtual keyboard-video-mouse, called iKVM. You can also connect to the machine's serial console over the network, which is called serial-over-LAN, or SOL. The classic interface is IPMI. The modern one is Redfish, covered in Part 7.
+Sometimes SSH cannot help you. The operating system may have crashed, the network configuration may be broken, or a node may refuse to boot. At that point no login, no tunnel and no key will get you in. Servers ship with a second way in for exactly this moment. The name for it is out-of-band access, because the path sits outside the normal login path.
+
+Servers have a separate management computer, the **BMC (baseboard management controller)**. It has its own network port and IP address, and it works even when the main system is powered off. Through it you can power-cycle the server, read hardware sensors and logs, update firmware, and open a virtual keyboard-video-mouse, called iKVM. You can also connect to the machine's serial console over the network, which is called serial-over-LAN, or SOL. The classic interface is IPMI. The modern one is Redfish, covered in Part 7.
 
 ```bash
 ipmitool -I lanplus -H bmc-gpu01 -U admin -E chassis power status        # -E reads the password from IPMI_PASSWORD
@@ -320,8 +338,10 @@ Before you log in to a compute node, check whether Slurm should have placed your
 
 ## How it fails
 
+The failures below are the ones you will meet most often. Read each one as a short pattern: what you see, why it happens, and what to check first.
+
 ### 1. `Permission denied (publickey)`
-The server refuses your key. Check the likely causes in this order. First, the username may be wrong, or the public key is not in the target account's authorized_keys. Next, the permissions on `~/.ssh`, authorized_keys or the home directory may be wrong. The client may also offer the wrong key when many keys are loaded and `IdentitiesOnly` is missing. Finally, the server may disable public-key authentication. A cloud-metadata or OS Login service may overwrite authorized_keys. On Red Hat family systems, the SELinux context on `~/.ssh` may be wrong, and `restorecon -R ~/.ssh` fixes that. To diagnose, run `ssh -vvv user@host`, read the server's auth log, and inspect the modes with `ls -ld ~ ~/.ssh ~/.ssh/authorized_keys`. Then check the server settings with `sshd -T | grep -i -E "authorizedkeys|pubkey|password|permitroot"`. Fix the actual cause. Do not hide it by turning passwords on.
+The server refuses your key, and the message tells you very little. Check the likely causes in this order. First, the username may be wrong, or the public key is not in the target account's authorized_keys. Next, the permissions on `~/.ssh`, authorized_keys or the home directory may be wrong. The client may also offer the wrong key when many keys are loaded and `IdentitiesOnly` is missing. Finally, the server may disable public-key authentication. A cloud-metadata or OS Login service may overwrite authorized_keys. On Red Hat family systems, the SELinux context on `~/.ssh` may be wrong, and `restorecon -R ~/.ssh` fixes that. To diagnose, run `ssh -vvv user@host`, read the server's auth log, and inspect the modes with `ls -ld ~ ~/.ssh ~/.ssh/authorized_keys`. Then check the server settings with `sshd -T | grep -i -E "authorizedkeys|pubkey|password|permitroot"`. Fix the actual cause. Do not hide it by turning passwords on.
 
 ### 2. `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED`
 The client refuses to connect, because the host key differs from the entry in known_hosts. The usual reasons are that the node was reinstalled, the VM was recreated, or an IP address was reused by another machine. Someone intercepting the traffic is the dangerous reason. Confirm the change is legitimate through a trusted channel first. Then run `ssh-keygen -R host`, reconnect, and verify the new fingerprint. For fleets, manage host keys deliberately. Provision the same host key in the image, or publish keys through SSH certificates or DNS. That keeps this warning meaningful, instead of something people click through.
@@ -349,37 +369,39 @@ Start on your own machine. Run the self-checking Python lab, `code/part01/remote
 python3 code/part01/remote_ssh_rsync_lab.py
 ```
 
-Next, you work on two GCP Ubuntu VMs, vm1 and vm2. Every interactive VM command below is marked untested here, so treat each step as a plan to verify on real Linux VMs. The steps build on one another.
+Next, you work on two GCP Ubuntu VMs, vm1 and vm2. The interactive VM commands below were not run on live hardware, so treat each step as a plan to verify on real Linux VMs. The steps build on one another, so work through them in order.
 
 **Part A: keys and config.**
-1. On your laptop or vm1, create an Ed25519 key with a passphrase (untested here). Install the public key on vm2 with `ssh-copy-id`, or paste it into authorized_keys by hand. Then log in with the key.
-2. Add a `Host vm2` block to `~/.ssh/config`, with `HostName`, User, `IdentityFile` and `ServerAliveInterval` (untested here). Check the result with `ssh -G vm2 | head -20`, then run `ssh vm2 hostname`.
-3. Start an agent, run `ssh-add -t 600` on the key, and confirm that you are no longer asked for the passphrase (untested here).
+1. On your laptop or vm1, create an Ed25519 key with a passphrase. Install the public key on vm2 with `ssh-copy-id`, or paste it into authorized_keys by hand. Then log in with the key.
+2. Add a `Host vm2` block to `~/.ssh/config`, with `HostName`, User, `IdentityFile` and `ServerAliveInterval`. Check the result with `ssh -G vm2 | head -20`, then run `ssh vm2 hostname`.
+3. Start an agent, run `ssh-add -t 600` on the key, and confirm that you are no longer asked for the passphrase.
 
 **Part B: break it and fix it.**
-4. On vm2, run `chmod 777 ~/.ssh; chmod 666 ~/.ssh/authorized_keys` (untested here). Try to log in, and record the `ssh -vvv` output and the server log messages. Then fix the modes to `700` and `600`, and log in successfully.
-5. On the client, edit `~/.ssh/known_hosts` so that vm2 has a wrong key, and observe the warning (untested here). Fix it with `ssh-keygen -R`. Then explain in your own words what each of the two failures protects against.
+4. On vm2, run `chmod 777 ~/.ssh; chmod 666 ~/.ssh/authorized_keys`. Try to log in, and record the `ssh -vvv` output and the server log messages. Then fix the modes to `700` and `600`, and log in successfully.
+5. On the client, edit `~/.ssh/known_hosts` so that vm2 has a wrong key, and observe the warning. Fix it with `ssh-keygen -R`. Then explain in your own words what each of the two failures protects against.
 
 **Part C: jump hosts and tunnels.**
-6. Treat vm1 as the bastion and vm2 as the internal host (untested here). Configure ProxyJump in `~/.ssh/config`, and reach vm2 from your laptop through vm1.
-7. On vm2, run `python3 -m http.server 8000 --bind 127.0.0.1` (untested here). From your laptop, run `ssh -N -L 8000:localhost:8000 vm2` and open `http://localhost:8000`. Explain which connection travels where, and confirm it with `ss -ltnp` on both ends.
-8. Run `ssh -v vm2 true` twice, with `ControlMaster` auto and `ControlPersist` set (untested here). Compare the timings with `time ssh vm2 true`. Then check and close the shared connection with `ssh -O check vm2` and `ssh -O exit vm2`.
+6. Treat vm1 as the bastion and vm2 as the internal host. Configure ProxyJump in `~/.ssh/config`, and reach vm2 from your laptop through vm1.
+7. On vm2, run `python3 -m http.server 8000 --bind 127.0.0.1`. From your laptop, run `ssh -N -L 8000:localhost:8000 vm2` and open `http://localhost:8000`. Explain which connection travels where, and confirm it with `ss -ltnp` on both ends.
+8. Run `ssh -v vm2 true` twice, with `ControlMaster` auto and `ControlPersist` set. Compare the timings with `time ssh vm2 true`. Then check and close the shared connection with `ssh -O check vm2` and `ssh -O exit vm2`.
 
 **Part D: file transfer.**
-9. Create a directory with 50 small files and one 200 MB file, using `dd if=/dev/urandom of=big bs=1M count=200` (untested here). Copy it with `scp -r`, then with `rsync -avhP`. Run rsync again and note that it transfers nothing. Change one small file and run rsync again. You should see only that file move.
-10. Compare the trailing-slash rule by running `rsync -avhn src dest/` and `rsync -avhn src/ dest/`, then comparing the listed paths (untested here). Add --delete with -n to see what it would remove. Interrupt a large copy with Ctrl-C, then resume it with `--partial`.
+9. Create a directory with 50 small files and one 200 MB file, using `dd if=/dev/urandom of=big bs=1M count=200`. Copy it with `scp -r`, then with `rsync -avhP`. Run rsync again and note that it transfers nothing. Change one small file and run rsync again. You should see only that file move.
+10. Compare the trailing-slash rule by running `rsync -avhn src dest/` and `rsync -avhn src/ dest/`, then comparing the listed paths. Add --delete with -n to see what it would remove. Interrupt a large copy with Ctrl-C, then resume it with `--partial`.
 
 **Part E: tmux and parallel commands.**
-11. Start `tmux new -s lab`, run `top`, and detach with `Ctrl-b d`. Disconnect your SSH session completely, reconnect, and reattach (untested here). Split the panes, and run `watch -n1 date` in one of them.
-12. Install `pdsh` or `clustershell` with `sudo apt-get install -y clustershell`, and run a command on both VMs in parallel with gathered output (untested here). Run a command that prints a different value on each VM, such as `hostname`, and see how the output is grouped.
+11. Start `tmux new -s lab`, run `top`, and detach with `Ctrl-b d`. Disconnect your SSH session completely, reconnect, and reattach. Split the panes, and run `watch -n1 date` in one of them.
+12. Install `pdsh` or `clustershell` with `sudo apt-get install -y clustershell`, and run a command on both VMs in parallel with gathered output. Run a command that prints a different value on each VM, such as `hostname`, and see how the output is grouped.
 
 **Part F: editors and safe edits.**
-13. Open a file in `vim` without a mouse. Insert text, search, delete a line, undo, save and quit (untested here). Practise `:q!` as well. Then run the safe-edit routine on a copy of `/etc/ssh/sshd_config`. Make a backup, change `PasswordAuthentication no`, review the change with `diff -u`, and validate it with `sudo sshd -t -f yourcopy`.
+13. Open a file in `vim` without a mouse. Insert text, search, delete a line, undo, save and quit. Practise `:q!` as well. Then run the safe-edit routine on a copy of `/etc/ssh/sshd_config`. Make a backup, change `PasswordAuthentication no`, review the change with `diff -u`, and validate it with `sudo sshd -t -f yourcopy`.
 
 **Part G: BMC concepts (read-only).**
-14. In the GCP console, find the serial console for a VM and enable it. Connect and read the boot messages (untested here). Compare them with what IPMI SOL gives on bare metal. Note which problems only a serial console or a BMC can help with.
+14. In the GCP console, find the serial console for a VM and enable it. Connect and read the boot messages. Compare them with what IPMI SOL gives on bare metal. Note which problems only a serial console or a BMC can help with.
 
 ## Exercises
+
+Work through these on paper first, and answer before you look; that is where the learning happens.
 
 1. **OpenSSH `StrictModes` Permission Validation:** Decide whether sshd and ssh accept or reject public-key authentication under each permission set. Start with (a) `~` = 0750, `~/.ssh` = 0700, authorized_keys = 0600, and `id_ed25519` = 0600. Then try (b) `~/.ssh` = 0777 with authorized_keys = 0666, (c) `~` = 0777, a world-writable home directory, and (d) `id_ed25519` = 0644, a world-readable private key. Verify your answers with `validate_ssh_strict_modes()` in `code/part01/remote_ssh_rsync.py`.
 2. **rsync Trailing-Slash Rule versus `scp -r` Nesting:** Suppose the directory `data` contains `["a.pt", "b.pt"]`, and `/scratch/data` already exists on gpu01. Which exact destination file paths are written by (a) `rsync -a data/ gpu01:/scratch/data`, (b) `rsync -a data gpu01:/scratch/data`, and (c) `scp -r data gpu01:/scratch/data`?
