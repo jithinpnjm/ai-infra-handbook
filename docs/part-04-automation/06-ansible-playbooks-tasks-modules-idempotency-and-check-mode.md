@@ -26,17 +26,17 @@ Suppose a driver update has to reach every node in your fleet on the same day. L
 
 A well-written playbook reads like a runbook. It is safe to run twice, it shows you the diff before it changes anything, and it stops at the first sign of trouble. A badly written one is a shell script in YAML. It always reports "changed", it cannot be dry-run, and it breaks differently on every host.
 
-This chapter shows you how to write the good kind. It covers playbook anatomy, the module families you will use constantly, the mechanics of idempotency, and the operational controls that make fleet changes safe: check mode, diff, tags, limits and serial.
+Below you will see how a playbook is laid out and which module families you will reach for most. You will also see how idempotency works in practice. Last come the controls that make a fleet change safe: check mode, diff, tags, limits and serial.
 
 ## Prerequisites and outcomes
 
 This chapter assumes 4.3 to 4.5. When you finish it, you will be able to:
 
-- Write multi-play playbooks, using play keywords such as `hosts`, `become`, `gather_facts`, `vars`, `serial`, `strategy`, `any_errors_fatal` and `max_fail_percentage`, plus task keywords.
-- Pick the right module for packages, services, files, users, kernel parameters, mounts, cron and systemd timers, downloads, archives, Git and system commands, and explain how each one stays idempotent.
-- Make `command` and `shell` tasks safe with `creates`, `removes`, `changed_when`, `failed_when` and guards.
-- Use `--check`, `--diff`, `check_mode:` and `diff:`, and understand where they stop being reliable.
-- Control a run with tags, `--limit`, `--start-at-task`, `--step`, `serial`, `strategy`, `async` and `poll`, `run_once`, `delegate_to` and `throttle`.
+- Write multi-play playbooks, and set play keywords such as `hosts`, `become`, `serial` and `strategy`.
+- Pick the right module for packages, services, files, users, kernel parameters and mounts, and explain how each one stays idempotent.
+- Make `command` and `shell` tasks safe with `creates`, `removes`, `changed_when` and `failed_when`.
+- Use `--check` and `--diff`, and understand where they stop being reliable.
+- Control a run with tags, `--limit`, `serial`, `async` and `poll`, `run_once` and `delegate_to`.
 - Read play recaps and exit codes, and design runs that work well in CI.
 
 ## 1. Playbook anatomy
@@ -104,7 +104,7 @@ In *Ansible: Up and Running* chapter 3, the authors build a complete playbook, `
 
 The first pattern is an executable playbook. Add `#!/usr/bin/env ansible-playbook` as line 1 of `webservers-tls.yml`, then run `chmod +x webservers-tls.yml`. After that you can run `./webservers-tls.yml` directly, as you would a shell script. If `cowsay` is installed on the control node, Ansible draws play headers as ASCII art cows. You can customize that with `cow_selection = random`, or turn it off with `nocows = 1` in `ansible.cfg`.
 
-The second pattern sets play-level `vars:` and uses the `file` module for directories and symlinks. The variables are `tls_dir: /etc/nginx/ssl/`, `key_file: nginx.key`, `cert_file: nginx.crt`, `conf_file: /etc/nginx/sites-available/default` and `server_name: localhost`. The play creates `/etc/nginx/ssl/` with `file: path={{ tls_dir }} state=directory mode='0750'`. It enables the site with a symbolic link, using `file: src={{ conf_file }} dest=/etc/nginx/sites-enabled/default state=link`. The `state: absent` setting removes a symlink or a file.
+The second pattern sets play-level `vars:` and uses the `file` module for directories and symlinks. The variables name the TLS directory, the key and certificate file names, the NGINX config path and the server name. The play creates `/etc/nginx/ssl/` with `file: path={{ tls_dir }} state=directory mode='0750'`. It enables the site with a symbolic link, using `file: src={{ conf_file }} dest=/etc/nginx/sites-enabled/default state=link`. The `state: absent` setting removes a symlink or a file.
 
 The third pattern uploads files in a loop. The playbook first generates a self-signed certificate on the control node with `openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -subj /CN=localhost -keyout files/nginx.key -out files/nginx.crt`. One task then uploads both files with `copy: src={{ item }} dest={{ tls_dir }} mode='0600'` and `loop: ["{{ key_file }}", "{{ cert_file }}"]`. The `copy` module searches the `files/` directory next to the playbook automatically, just as `template` searches `templates/`.
 
@@ -267,7 +267,16 @@ Users, groups and SSH keys have their own modules: `user`, `group`, `authorized_
 
 `service` and `systemd_service` manage a service's state, with `daemon_reload`, `masked`, `enabled` and `state`. `ansible.builtin.reboot` reboots a host and waits for it, using `reboot_timeout` and `test_command`. `wait_for` waits for a port, a file or a regex match, and `wait_for_connection` sits beside it.
 
-Kernel and system settings have modules too. `ansible.posix.sysctl` persists kernel parameters with `sysctl_file` and `reload`, `ansible.posix.mount` handles mounts, and `community.general.modprobe` loads kernel modules. `community.general.kernel_blacklist`, `community.general.timezone`, `ansible.builtin.hostname`, `ansible.builtin.cron`, `ansible.posix.at`, `community.general.alternatives`, `ansible.posix.firewalld`, `community.general.ufw`, `ansible.posix.seboolean` and `ansible.posix.selinux` cover the rest.
+Kernel and system settings have modules too. Use `ansible.posix.sysctl` to persist kernel parameters, `ansible.posix.mount` for mounts and `community.general.modprobe` to load kernel modules. The table below lists the rest.
+
+| Module | What it manages |
+|---|---|
+| `community.general.kernel_blacklist` | Blacklisted kernel modules |
+| `community.general.timezone`, `ansible.builtin.hostname` | Time zone and host name |
+| `ansible.builtin.cron`, `ansible.posix.at` | Scheduled jobs |
+| `community.general.alternatives` | Alternative command links |
+| `ansible.posix.firewalld`, `community.general.ufw` | Firewall rules |
+| `ansible.posix.seboolean`, `ansible.posix.selinux` | SELinux settings |
 
 You set all of these kernel parameters with one loop.
 
@@ -293,11 +302,20 @@ All the settings go to `/etc/sysctl.d/90-ai.conf`, so they persist across reboot
 
 ### Information, control flow and debugging
 
-Some modules gather information, control the flow of a run, or help you debug one. `setup` and `gather_facts` collect facts. `set_fact`, `debug`, `assert`, `fail` and `pause` handle values and checks. `meta` offers `flush_handlers`, `end_play`, `end_host`, `refresh_inventory` and `clear_facts`. The include and import family covers `include_tasks`, `import_tasks`, `include_role`, `import_role` and `include_vars`. Last, `add_host`, `group_by`, `wait_for`, `command`, `shell`, `raw`, `script`, `expect` and `async_status` complete the set.
+Some modules gather information, control the flow of a run, or help you debug one. The table groups them by job.
+
+| Job | Modules |
+|---|---|
+| Collect facts | `setup`, `gather_facts` |
+| Handle values and checks | `set_fact`, `debug`, `assert`, `fail`, `pause` |
+| Steer the run | `meta` (`flush_handlers`, `end_play`, `end_host`, `refresh_inventory`, `clear_facts`) |
+| Reuse tasks | `include_tasks`, `import_tasks`, `include_role`, `import_role`, `include_vars` |
+| Change the inventory or run commands | `add_host`, `group_by`, `command`, `shell`, `raw`, `script`, `expect` |
+| Wait | `wait_for`, `async_status` |
 
 ### Platform and domain modules relevant to this handbook
 
-This handbook leans on collections for platforms and domains. `kubernetes.core` (k8s, helm), `community.docker` and `community.general` (many system and tool modules) cover much of the work. The network modules, `ansible.netcommon`, `cisco.*`, `arista.eos` and `nvidia.nvue`-style modules, appear in 4.16. `community.crypto` handles certificates, and `community.postgresql` and `community.mysql` handle databases. Cloud work uses `amazon.aws`, `google.cloud` and `azure.azcollection`. The list also includes `community.hashi_vault`, `community.general.redfish_*`, which covers BMC power, boot, firmware and inventory (see Part 7), and `ansible.windows`.
+This handbook leans on collections for platforms and domains. `kubernetes.core` covers k8s and Helm, and `community.docker` covers containers. `community.general` holds many system and tool modules. The network modules appear in 4.16. `community.crypto` handles certificates, and the cloud collections are `amazon.aws`, `google.cloud` and `azure.azcollection`. BMC power, boot, firmware and inventory come from `community.general.redfish_*`, which Part 7 covers.
 
 GPU automation covers drivers, Fabric Manager, DCGM and the container toolkit. It is built from package, service, template and command modules, plus NVIDIA roles. See 4.17 for those roles.
 
@@ -472,10 +490,10 @@ Start with the self-checking Python lab. You run it on your own machine before y
 python3 code/part04/ansible_playbook_execution_lab.py
 ```
 
-Next, work through these exercises on a control node with 2–3 Linux targets. Every interactive shell step below is `untested here`.
+Next, work through these exercises on a control node with 2 or 3 Linux targets. The interactive shell steps below have not been run.
 
 1. Build a multi-play playbook. Create `site.yml` with `pre_tasks`, `roles` (empty), `tasks`, `post_tasks` and handlers. Then use `debug` tasks and `--list-tasks` to watch the order of execution.
-2. Take a tour of the modules. Give each of `package`, `service`, `user`, `file`, `copy`, `lineinfile`, `blockinfile`, `template`, `stat`, `get_url` (with checksum), `unarchive`, `sysctl`, `cron` and `wait_for` one task. Run the playbook twice. The second run should confirm `changed=0`.
+2. Take a tour of the modules. Give each of `package`, `service`, `user`, `file`, `copy` and `template` one task. Add `lineinfile`, `get_url` with a checksum, and `sysctl`. Run the playbook twice. The second run should confirm `changed=0`.
 3. Make the playbook idempotent. Start from a naive playbook that uses `shell: echo "x" >> file` and `command: useradd`. Refactor those into `lineinfile` and `user`. For the one command that remains, add `creates`, `changed_when` and `failed_when`.
 4. Check and diff. Run `--check --diff` on a templated file change. Show a `command` task being skipped, and mark a read-only probe with `check_mode: false`. Then demonstrate a dependent task failing in check mode, and fix it with `when: not ansible_check_mode`.
 5. Fall into the idempotency trap on purpose. Put `{{ ansible_date_time.iso8601 }}` into a template, and watch every run report a change and trigger handlers. Then remove it.
@@ -518,12 +536,18 @@ Most playbook failures trace back to a short list of habits. Check each of these
 
 ## Exercises
 
-1. Start with the phase order, `pre_tasks -> roles -> tasks -> post_tasks`, and handler deduplication, as covered in *Ansible: Up and Running*, Chapter 3. Use `simulate_play_execution_and_handlers()` in `code/part04/ansible_playbook_execution.py` to trace the exact order in which `pre_tasks`, `roles`, `tasks`, `post_tasks` and their handler flushes run. Then explain why four tasks that notify `Restart nginx` in `webservers-tls.yml` trigger only a single restart.
-2. Look at the core module families you will use most: `package`, `dpkg_selections`, `file`, `copy`, `template`, `lineinfile`, `get_url`, `sysctl`, `systemd_service` and `uri`. Explain how each one checks the current state before it acts. Then explain why `dpkg_selections` with `selection: hold` on `nvidia-driver-550` and `linux-image-generic`, and `state: present` with pinned versions, beat `state: latest` on GPU nodes. Finish by explaining how `webservers-tls.yml` uses `file: state=link` and `uri: return_content=true` with `failed_when`.
-3. Make your `command` and `shell` tasks idempotent and safe, using `creates`, `removes`, `changed_when` and `failed_when`. Use `evaluate_command_task_guards()` in `code/part04/ansible_playbook_execution.py` to explain two things. First, explain why embedding `{{ ansible_date_time.iso8601 }}` in a config template breaks idempotency and triggers handler storms. Second, explain how `creates:`, `changed_when: false`, `failed_when:` and `set -o pipefail` (with `executable: /bin/bash`) make these tasks safe.
-4. Work through check mode with `--check`, unified diffs with `--diff`, and the per-task `check_mode:` and `diff:` overrides. Explain why `command` and `shell` tasks without `creates` or `removes` are skipped under `--check`. Explain why read-only pre-flight probes, such as `scontrol show node` and `nvidia-smi -L`, must set `check_mode: false` and `changed_when: false`. Then explain how dependent tasks behave in check mode, and why secret tasks must set `diff: false` and `no_log: true`.
-5. Trace how the execution controls work together: tags (`always`, `never`), `serial: [1, '10%', '100%']`, `strategy: linear` versus `free`, `throttle`, `delegate_to`, `run_once` and `async`/`poll`. Using `compute_serial_batches()` in `code/part04/ansible_playbook_execution.py`, trace how `serial: [1, "10%", "100%"]` and `max_fail_percentage: 5` implement a progressive canary rollout. Then contrast `strategy: linear` with `strategy: free` and `throttle: 5`. Finish by explaining for yourself how `delegate_to` and `async: 3600` with `poll: 0` or `poll: 15` work.
-6. Trace the worked example from Section 7 from start to finish, so you can see how each part connects. Follow the `pre_tasks` that check Slurm `DRAIN` through `delegate_to: "{{ groups['slurm_controller'][0] }}"`, the `tasks` that apply `sysctl` and the `nvidia-persistenced` override, the `handlers` that restart `nvidia-persistenced` with `daemon_reload: true`, and the `post_tasks` that verify the `nvidia-smi` GPU count. Then list what the `ansible-playbook` exit codes `0`, `1`, `2`, `3`, `4`, `5` and `99` mean.
+1. Use `simulate_play_execution_and_handlers()` in `code/part04/ansible_playbook_execution.py` to trace the order of `pre_tasks`, `roles`, `tasks` and `post_tasks`. Handler flushes sit between them, as *Ansible: Up and Running*, Chapter 3, describes. Then explain why four tasks that notify `Restart nginx` in `webservers-tls.yml` cause only one restart.
+2. Pick three modules from this chapter, for example `file`, `lineinfile` and `sysctl`. For each one, explain how it checks the current state before it acts.
+3. A GPU node picked up a new driver during a routine run. Explain why `selection: hold` in `dpkg_selections` and a pinned version with `state: present` prevent that, and why `state: latest` does not.
+4. A task puts `{{ ansible_date_time.iso8601 }}` into a config template. Explain why every run then reports `changed`, and why handlers fire each time. Use `evaluate_command_task_guards()` to check your answer.
+5. A `shell` task pipes `nvidia-smi` into `wc`. Explain how `set -o pipefail` with `executable: /bin/bash` stops the pipe from hiding a failure. Then say what `changed_when: false` adds for a read-only probe.
+6. Explain why `command` and `shell` tasks without `creates` or `removes` are skipped under `--check`. Then say why a read-only probe such as `nvidia-smi -L` sets `check_mode: false`.
+7. A task renders a secret into a file. Explain why it needs `diff: false` and `no_log: true`.
+8. Use `compute_serial_batches()` to trace `serial: [1, "10%", "100%"]`. Then explain how `max_fail_percentage: 5` stops the rollout after a bad canary.
+9. Contrast `strategy: linear` with `strategy: free`. Then say what `throttle: 5` caps that `forks` does not.
+10. Explain what `delegate_to` does when a task drains a node on the Slurm controller. Then explain how `async: 3600` with `poll: 0` differs from `poll: 15`.
+11. Trace the worked example in Section 7 from start to finish. Follow the pre-task that checks the Slurm node for `DRAIN`, then the `sysctl` change, then the handler that restarts `nvidia-persistenced`, and last the post-task that checks the GPU count.
+12. List what `ansible-playbook` exit codes 0, 1, 2 and 3 mean, and say how you would use them in CI.
 
 ## Checkpoint questions (20)
 

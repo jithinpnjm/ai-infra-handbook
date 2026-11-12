@@ -33,9 +33,10 @@ This chapter builds on 4.3 to 4.12, networking basics from Part 2, and Kubernete
 - Manage Docker and Podman containers, images, networks, volumes and Compose stacks with `community.docker` and `containers.podman`.
 - Drive Kubernetes with `kubernetes.core`. Apply manifests, run Helm, use wait conditions and facts, and know when GitOps is the better choice.
 - Provision and inventory cloud resources with `amazon.aws`, `google.cloud` and `azure.azcollection`, and decide between Ansible and Terraform.
-- Automate network devices through connection types (`network_cli`, `netconf`, `httpapi`, `ansible.netcommon`), platform collections, resource modules, templates, and `config` modules with backup, diff, rollback, validation and idempotency.
-- Automate NVIDIA switches, including Cumulus Linux/NVUE, Spectrum, and the Quantum and UFM touchpoints, and generate leaf-spine configuration from a data model.
-- Apply safe-change patterns to network automation: dry run, candidate and commit-confirm, canary, and verify.
+- Automate network devices through the connection types `network_cli`, `netconf` and `httpapi`, and know how resource modules differ from config modules.
+- Use backup, diff, rollback, validation and idempotency checks on network configuration.
+- Automate NVIDIA switches with NVUE, and generate leaf-spine configuration from a data model.
+- Apply safe-change patterns to network automation: dry run, commit-confirm, canary and verify.
 
 ## 1. Containers
 
@@ -78,7 +79,15 @@ A container host needs its runtime installed and running before any container ca
 
 Read the play from top to bottom, the way you would read a runbook. The first task installs and starts Docker. The second pulls the image, and the third starts the GPU container with the NVIDIA Container Toolkit in place. Watch the `device_requests` block, because it is what hands the GPUs to the container.
 
-Ansible has a module for most Docker work you will need. The `docker_image` module builds, pulls, pushes and archives images. The `docker_container` module declares the state a container should be in, and it stays idempotent on that configuration. Pay attention to its `recreate` and `comparisons` options. Related modules cover `docker_container_exec`, `docker_network`, `docker_volume`, `docker_login`, `docker_compose_v2`, `docker_prune` and `docker_host_info`.
+Ansible has a module for most Docker work you will need. The `docker_image` module builds, pulls, pushes and archives images. The `docker_container` module declares the state a container should be in, and it stays idempotent on that configuration. Pay attention to its `recreate` and `comparisons` options. Related modules cover networks, volumes, registry login, Compose and host information. The table lists them.
+
+| Module | What it does |
+|---|---|
+| `docker_container_exec` | Runs a command in a running container |
+| `docker_network`, `docker_volume` | Networks and volumes |
+| `docker_login` | Registry login |
+| `docker_compose_v2` | Compose stacks |
+| `docker_prune`, `docker_host_info` | Cleanup and host information |
 
 If you use Podman, `containers.podman` has equivalents. That collection covers rootless containers and Quadlet systemd units.
 
@@ -92,7 +101,9 @@ If you build images, use Ansible only for small tooling. Real image builds belon
 
 The first way manages Docker images, registries, networks and multi-container stacks through the Docker Remote API (Chapter 13, `Examples 13-1` to `13-11`). Ansible's `docker_*` modules talk to the Docker daemon at `DOCKER_HOST`, which defaults to `unix://var/run/docker.sock`. A remote host uses a TLS socket instead, configured with `DOCKER_CERT_PATH` and `DOCKER_TLS_VERIFY`. The book's example shows `docker_image_info` reading image metadata: `ghost.images[0].Config.ExposedPorts.keys()` returns `2368/tcp`, and `ghost.images[0].Config.Volumes.keys()` returns `/var/lib/ghost`. The `docker_image` module builds the image (`build: { path: ./nginx }, source: build, force_source: true`) or pushes it (`push: true`) after `docker_login`. The `docker_network` module creates a bridge network called `ghostnet`, so the `nginx_ghost` frontend can reverse-proxy to `http://ghost:2368` by container name. Finally, `docker_container` starts the `ghost` application container, wired to an external MySQL database host (`PyMySQL`, `mysql_db`, `mysql_user`).
 
-The second way bakes golden VM images and container images with HashiCorp Packer and the Ansible provisioner (Chapter 16, `Examples 16-1` to `16-7`). A `Dockerfile` is fine for a simple container. Golden VM images are much cleaner with Packer, though. Packer's `packer build` drives the hypervisor or cloud builder for Vagrant with VirtualBox (`rhel8.pkr.hcl` with the Kickstart `ks.cfg`), Google Cloud (`gcp.pkr.hcl`), Azure (`azure.pkr.hcl`) and Amazon EC2 (`aws.pkr.hcl`). It can also build multi-role Docker images, such as one that compiles `GCC 11.2.0` (`gcc.pkr.hcl`, which runs `dockpack.base_gcc`, `compile_gcc`, `base_cmake` and `base_boost`). A `provisioner "ansible"` block then applies your existing hardened roles (`common`, `epel`, `ansible-auditd`, `nettime`, `sshd` and `rhel8-stig`) through `playbook_file = "./playbooks/packer-playbook.yml"`.
+The second way bakes golden VM images and container images with HashiCorp Packer and the Ansible provisioner (Chapter 16, `Examples 16-1` to `16-7`). A `Dockerfile` is fine for a simple container. Golden VM images are much cleaner with Packer.
+
+The command `packer build` drives the builder for each target. The book has templates for Vagrant with VirtualBox (`rhel8.pkr.hcl` with the Kickstart `ks.cfg`), Google Cloud (`gcp.pkr.hcl`), Azure (`azure.pkr.hcl`) and Amazon EC2 (`aws.pkr.hcl`). It can also build a multi-role Docker image that compiles `GCC 11.2.0` (`gcc.pkr.hcl`). A `provisioner "ansible"` block then applies your existing hardened roles through `playbook_file = "./playbooks/packer-playbook.yml"`. The book's roles include `common`, `sshd` and `rhel8-stig`.
 
 ### Kubernetes
 
@@ -144,7 +155,7 @@ The `kubernetes.core` collection calls the Kubernetes API with a kubeconfig file
       delay: 20
 ```
 
-The `k8s` module applies or deletes any resource. Options such as `apply: true`, for server-side apply semantics, `validate` and `wait` control how it does so. Around it sit `k8s_info`, `k8s_exec`, `k8s_log`, `k8s_scale`, `k8s_drain` and `k8s_taint`. The Helm modules are `helm`, `helm_info`, `helm_repository`, `helm_template`, and `k8s_cluster_info`. The inventory plugin `kubernetes.core.k8s` builds inventory from pods and nodes. The connection plugin `kubernetes.core.kubectl` runs modules inside pods.
+The `k8s` module applies or deletes any resource. Its options `apply: true`, `validate` and `wait` control how. The first one turns on server-side apply semantics. Companion modules read and act on the cluster: `k8s_info`, `k8s_exec`, `k8s_log`, `k8s_scale`, `k8s_drain` and `k8s_taint`. The Helm modules are `helm`, `helm_info`, `helm_repository` and `helm_template`. The inventory plugin `kubernetes.core.k8s` builds inventory from pods and nodes, and the connection plugin `kubernetes.core.kubectl` runs modules inside pods.
 
 Use the following guidance to choose between Ansible and GitOps.
 
@@ -238,7 +249,7 @@ GPU capacity is often constrained. Make provisioning idempotent and failure-awar
 
 Decide who may run provisioning, and what it may spend, before you automate GPU fleets.
 
-### AWS EC2 provisioning, AMI lookup, VPCs, and Windows hosts (`AUR` Chapters 12 & 17)
+### AWS EC2 provisioning, AMI lookup, VPCs, and Windows hosts (*Ansible: Up and Running*, Chapters 12 and 17)
 
 Two practical patterns from *Ansible: Up and Running*, Chapters 12 and 17, round out host and cloud management.
 
@@ -246,7 +257,9 @@ Two practical patterns from *Ansible: Up and Running*, Chapters 12 and 17, round
    - *Finding the latest Ubuntu AMI (`ec2_ami_info`):* Rather than hardcoding a stale `ami-...` ID, query `amazon.aws.ec2_ami_info`. Set `owners: 099720109477` for Canonical. Set `filters` to the name pattern `ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*`, with `state: available` and `architecture: x86_64`. Then select the newest image with **`{{ ec2_ami_info.images | sort(attribute='creation_date') | last }}`**. This selection is tested in `code/part04/ansible_cloud_network_lab.py`.
    - *Idempotence keys across AWS VPC modules (Table 17-3):* Each `amazon.aws` VPC module checks for an existing resource in its own way. `ec2_vpc_net` checks `(name, cidr_block)`. `ec2_vpc_subnet` checks `(vpc_id, cidr)`, with `10.0.0.0/24` for web and `10.0.1.0/24` for db. `ec2_vpc_igw` checks `vpc_id`, so each VPC gets at most one Internet Gateway. `ec2_vpc_route_table` checks `(vpc_id, tags)` when you set `lookup: tag`. `ec2_group` checks `(name, description, rules)`, such as `from_port: 22, to_port: 22, cidr_ip: 203.0.113.0/24` using `TEST-NET-3`.
    - *Dynamic inventory cache warning:* Enable `cache: true` on `aws_ec2.yml` with `cache_plugin: jsonfile` and `cache_connection: /tmp/ansible_fact_cache`, and the inventory can go stale. Newly launched or terminated EC2 instances do not appear in `ansible-inventory` until the cache expires (`cache_timeout: 300`). You can also delete the cache file, or run `meta: refresh_inventory`. If you have tag groups such as `tag_type_web`, alias them in a static `inventory/hosts` file beside `aws_ec2.yml`, using `[web:children]` followed by `tag_type_web`, so they map to `web`.
-2. Managing Windows hosts over WinRM (*Ansible: Up and Running* Chapter 12). Windows jump hosts, Active Directory controllers and workstation nodes such as `windows2022` need no agent. Ansible connects over WinRM with `ansible_connection: winrm`, using port `5986` for HTTPS or `5985` for HTTP. Install `pywinrm` with `pip3 install pywinrm`. Use Kerberos for Active Directory, or `ansible_winrm_server_cert_validation: ignore` in local labs. The play then runs PowerShell-backed modules from `ansible.windows` and `community.windows`. These include `win_ping`, `win_chocolatey` (installing `chocolatey`, `vscode` and `jdk8`), `win_stat`, `win_environment`, `win_path`, `win_feature` (`name: Web-Server, include_sub_features: true`), `win_reboot` (`when: win_iis_feature.reboot_required`) and `win_updates` (`category_names: [SecurityUpdates, CriticalUpdates, UpdateRollups], reboot: true`).
+2. Managing Windows hosts over WinRM (*Ansible: Up and Running* Chapter 12). Windows jump hosts, Active Directory controllers and workstation nodes such as `windows2022` need no agent. Ansible connects over WinRM with `ansible_connection: winrm`, using port `5986` for HTTPS or `5985` for HTTP. Install `pywinrm` with `pip3 install pywinrm`. Use Kerberos for Active Directory, or `ansible_winrm_server_cert_validation: ignore` in local labs.
+
+    The play then runs PowerShell-backed modules from `ansible.windows` and `community.windows`. The book uses `win_ping`, `win_chocolatey` to install `chocolatey`, `vscode` and `jdk8`, and `win_feature` with `name: Web-Server` and `include_sub_features: true`. It also uses `win_reboot` with `when: win_iis_feature.reboot_required`, and `win_updates` with `category_names: [SecurityUpdates, CriticalUpdates, UpdateRollups]` and `reboot: true`.
 
 Give Terraform the lifecycle of cloud resources, and let Ansible configure and operate them.
 
@@ -388,7 +401,7 @@ Platforms that support NETCONF, such as Junos, IOS-XE, IOS-XR and NX-OS, can be 
 
 Cumulus Linux is a Linux distribution, so you have two ways to automate it. You can treat it as a Linux host with standard modules and files such as `/etc/frr/frr.conf` and `/etc/network/interfaces` through ifupdown2. You can also use NVUE, with `nv set ...` and `nv config apply`. The `nvidia.nvue` collection provides the modules `nvidia.nvue.config` and `nvidia.nvue.command`. They apply declarative NVUE configuration, given as YAML or JSON dictionaries or as `set` commands. They also support `nv config diff`, `apply`, `save`, rollback and confirm timers.
 
-The play below configures a leaf with NVUE. It sets the MTU on `swp1-32` to 9216, and it configures BGP unnumbered neighbours in the RFC 7938 style (2.16).
+The play below configures a leaf with NVUE. It sets the MTU on `swp1-32` to 9216, and it configures BGP unnumbered neighbours. Chapter 2.16 explains the eBGP design that RFC 7938 describes for data centres, and it explains that BGP unnumbered relies on RFC 5549, which RFC 8950 has since replaced.
 
 ```yaml
 - hosts: leaf
@@ -451,7 +464,7 @@ Always keep an out-of-band path, such as a console. A network change can cut the
 
 Test with virtual devices such as containerlab, vendor virtual images, Cumulus VX or FRR, and run those tests in CI. Keep golden configs to diff against (4.13).
 
-### Comparing Ansible with Python Nornir + NAPALM (`NPA` Chapter 12) and Security Automation (`AUR` Chapter 21)
+### Comparing Ansible with Python Nornir + NAPALM (*Network Programmability and Automation*, Chapter 12) and Security Automation (*Ansible: Up and Running*, Chapter 21)
 
 1. Multi-vendor network automation: Ansible compared with Python `Nornir` and `NAPALM` (*Network Programmability and Automation*, Chapter 12).
    - In *Network Programmability and Automation* Chapter 12, *Automation Tools*, the authors automate one multi-vendor topology twice. The devices are `csr1..2` on `cisco.ios.ios`, `nxos-spine1..2` on `cisco.nxos.nxos` using `ansible.netcommon.httpapi` NX-API, `eos-spine1..2` and `eos-leaf1..2` on `arista.eos.eos`, and `vmx1..2` on `junipernetworks.junos.junos` using `ansible.netcommon.netconf`. They first use Ansible, with vendor-specific VLAN and SNMP modules, and with multi-vendor NAPALM and NTC modules such as `napalm_install_config` and `ntc_show_command`. Then they use Nornir.
@@ -500,7 +513,7 @@ Start with the self-checking Python lab, which runs on your own machine: `code/p
 python3 code/part04/ansible_cloud_network_lab.py
 ```
 
-Next, use a control node with `ansible-core`, Docker or Podman, `kind` and `containerlab`. The interactive steps below are `untested here`, so you should check them on your own setup. Work through these exercises in order.
+Next, use a control node with `ansible-core`, Docker or Podman, `kind` and `containerlab`. The interactive steps below have not been run, so check them on your own setup. Work through these exercises in order.
 
 1. Start with Docker. Run a container with `docker_container`, then change an environment variable and watch the container get recreated. Build a Compose-style stack with `docker_compose_v2`, pin an image by digest, and remove the container with `state: absent`.
 2. Create a kind cluster. Apply a namespace, a quota and a deployment with `kubernetes.core.k8s`, and use `wait`. Install a small Helm chart with `kubernetes.core.helm`, and query the cluster with `k8s_info`. Then compare the result with applying the same manifests through Argo CD (4.26).
@@ -517,11 +530,17 @@ Next, use a control node with `ansible-core`, Docker or Podman, `kind` and `cont
 
 ## 6. Common mistakes
 
-Each of these looks small in a playbook, and each one hurts later. Managing cloud lifecycles with imperative Ansible tasks and no state leaves orphaned resources behind. Using Ansible `k8s` applies for application workloads that GitOps should own means no waits and no verification. Mutable image tags and secrets in container env definitions are the next pair to avoid.
+Each of these looks small in a playbook, and each one hurts later.
 
-Network automation without backups, dry runs, commit-confirm or out-of-band access is fragile. Pushing changes to both members of a redundant pair at once, with no canary, is another. Using `*_command` or `*_config` with fragile line matching, where resource modules exist, makes the change brittle. Hand-maintained per-device variables should give way to a source of truth. Not raising command timeouts, and leaving stale persistent connections in place, cause trouble too.
-
-Shared device accounts and passwords in plaintext inventory mix up credentials. Ignoring cost controls when you automate GPU provisioning can run up a bill quickly.
+- Managing cloud lifecycles with imperative Ansible tasks and no state leaves orphaned resources behind.
+- Using Ansible `k8s` applies for application workloads that GitOps should own means no waits and no verification.
+- Mutable image tags, and secrets in container env definitions, are the next pair to avoid.
+- Network automation without backups, dry runs, commit-confirm or out-of-band access is fragile, and so is pushing changes to both members of a redundant pair at once.
+- Using `*_command` or `*_config` with fragile line matching, where resource modules exist, makes the change brittle.
+- Hand-maintained per-device variables should give way to a source of truth.
+- Command timeouts that are too low, and stale persistent connections, cause trouble too.
+- Shared device accounts and plaintext passwords in inventory mix up credentials.
+- Ignoring cost controls when you automate GPU provisioning can run up a bill quickly.
 
 Use this list as a checklist before you ship any network or cloud change.
 
@@ -539,12 +558,20 @@ Interviewers like to ask about trade-offs. Use these questions to practise sayin
 
 ## Exercises
 
-1. Start with containers and images, using `community.docker` and `containers.podman`. (a) Explain how you would use `docker_container` with `device_requests` for GPUs and `comparisons`, and how `docker_image` and `docker_image_info` fit in. Then explain when to use Packer (`rhel8.pkr.hcl`, `gcp.pkr.hcl`, `aws.pkr.hcl`, `gcc.pkr.hcl`) with the `ansible` provisioner. (b) Explain where you draw the line between `kubernetes.core` and GitOps controllers. `k8s`, `helm`, `k8s_info` and `k8s_drain` handle cluster bootstrap and day-2 node maintenance, while Argo CD or Flux handles ongoing workloads. This item draws on *Ansible: Up and Running*, Chapters 13 and 16.
-2. For cloud resources and Windows hosts, which involve `amazon.aws`, `google.cloud` and `azure.azcollection`, use `select_latest_ami()` in `code/part04/ansible_cloud_network.py` to explain two things. (a) Why Terraform is preferred for stateful cloud resource lifecycles, while Ansible excels at dynamic inventory (`aws_ec2`, `gcp_compute`), `ec2_ami_info` discovery, `add_host` post-provisioning and day-2 actions. (b) How Ansible manages Windows hosts over WinRM, using `win_ping`, `win_chocolatey`, `win_feature`, `win_reboot` and `win_updates`. This item draws on *Ansible: Up and Running*, Chapters 12 and 17.
-3. For network devices, use `apply_vlan_resource_module()` in `code/part04/ansible_cloud_network.py`. Explain why network modules run on the control node rather than on the switch. Contrast `network_cli`, `httpapi` (NX-API and eAPI) and `netconf`. Then trace all seven resource-module states: `merged`, `replaced`, `overridden`, `deleted`, `gathered`, `rendered` and `parsed`. This item draws on *Network Programmability and Automation*, Chapter 12.
-4. As you trace the Section 3 `nvidia.nvue.config` play. It sets `mtu: 9216` on `swp1-32` and configures RFC 7938 BGP unnumbered on a leaf switch. Then explain how Ansible works with Quantum InfiniBand switches and UFM through the `uri` REST API, and with BlueField DPUs through standard Linux SSH and `mlxconfig` or DOCA.
-5. Using `verify_lldp_against_cabling_plan()` in `code/part04/ansible_cloud_network.py`, trace the 6-step safe rollout pipeline. The steps are backup, then `--check --diff` or `rendered`, then commit-confirm on 1 canary leaf, then verify the BGP `Established` count and LLDP against the cabling plan, then batch rollout, and finally save config.
-6. Work on multi-vendor automation and security auditing, and check your reasoning. (a) Compare Ansible with pure-Python Nornir and NAPALM (`InitNornir`, `SimpleInventory`, `napalm_get`, `napalm_configure`), using *Network Programmability and Automation*, Chapter 12. (b) Explain why *Ansible: Up and Running*, Chapter 21, pairs `ansible-lockdown` hardening playbooks with independent scanners, OpenSCAP (`oscap xccdf eval --profile ospp`) and `ssh-audit`.
+1. A GPU container must start on a Docker host. Explain how `docker_container` with `device_requests` gives it the GPUs. Then explain what `comparisons` controls.
+2. Explain how `docker_image` and `docker_image_info` fit into the same play. The source is *Ansible: Up and Running*, Chapter 13.
+3. A team bakes golden images. Explain when you would reach for Packer with the `ansible` provisioner instead of a Dockerfile. The source is *Ansible: Up and Running*, Chapter 16.
+4. Explain where you draw the line between `kubernetes.core` and a GitOps controller such as Argo CD or Flux. Say which one handles cluster bootstrap and node maintenance, and which one handles ongoing workloads.
+5. Use `select_latest_ami()` in `code/part04/ansible_cloud_network.py`. Explain why Terraform owns cloud resource lifecycles, and how dynamic AMI discovery helps Ansible after provisioning.
+6. Explain how Ansible manages a Windows host over WinRM. Name one module that checks connectivity and one that installs a package. The source is *Ansible: Up and Running*, Chapter 12.
+7. Use `apply_vlan_resource_module()` in `code/part04/ansible_cloud_network.py`. Explain why network modules run on the control node rather than on the switch, as *Network Programmability and Automation*, Chapter 12, describes.
+8. Contrast `network_cli`, `httpapi` and `netconf`. Say which connection fits Arista eAPI, and which one fits Junos.
+9. Trace the seven resource-module states: `merged`, `replaced`, `overridden`, `deleted`, `gathered`, `rendered` and `parsed`. Say which two work offline.
+10. Trace the `nvidia.nvue.config` play in Section 3. It sets `mtu: 9216` on `swp1-32` and configures BGP unnumbered on a leaf. Say how RFC 7938 and RFC 5549 each relate to that play.
+11. Explain how Ansible works with Quantum InfiniBand switches and UFM through the `uri` REST API. Then explain how it works with BlueField DPUs.
+12. Use `verify_lldp_against_cabling_plan()` in `code/part04/ansible_cloud_network.py`. Trace the safe rollout pipeline step by step: backup, dry run, commit-confirm on one canary leaf, verification, batch rollout and save.
+13. Compare Ansible with the Python tools Nornir and NAPALM for one multi-vendor task. The source is *Network Programmability and Automation*, Chapter 12.
+14. Explain why *Ansible: Up and Running*, Chapter 21, pairs `ansible-lockdown` hardening with independent scanners. Name the two scanners it uses.
 
 ## Checkpoint questions (20)
 
@@ -632,7 +659,7 @@ Linux host modules are uploaded over SFTP and run by the remote host's `/usr/bin
 <summary>11. How do you automate NVIDIA Cumulus Linux / Spectrum-X Ethernet switches with `nvidia.nvue`, and how does it differ from editing `/etc/frr/frr.conf`?</summary>
 
 Cumulus Linux is a full Debian-based Linux OS that runs on Spectrum ASIC switches. You can automate it in two ways.
-1. Declaratively, through NVUE (`nvidia.nvue.config` or `nv set ...`). NVUE gives you one unified object model. It covers `system`, `interface.swp1-32.link.mtu: 9216`, `router.bgp`, `vrf.default.router.bgp.neighbor` for RFC 7938 BGP unnumbered, and RoCEv2 PFC and ECN QoS. It uses atomic candidate revisions, `nv config diff`, `nv config apply --confirm` with auto-rollback timers, and `nv config save`.
+1. Declaratively, through NVUE (`nvidia.nvue.config` or `nv set ...`). NVUE gives you one unified object model. It covers `system`, `interface.swp1-32.link.mtu: 9216`, `router.bgp`, `vrf.default.router.bgp.neighbor` for BGP unnumbered (RFC 5549 neighbour addressing in the RFC 7938 eBGP design), and RoCEv2 PFC and ECN QoS. It uses atomic candidate revisions, `nv config diff`, `nv config apply --confirm` with auto-rollback timers, and `nv config save`.
 2. As a Linux host, by templating `/etc/network/interfaces` and running `ifreload -a`, or by templating `/etc/frr/frr.conf` and running `systemctl reload frr`. NVUE is the recommended choice for new deployments, because it validates the whole switch model atomically.
 </details>
 

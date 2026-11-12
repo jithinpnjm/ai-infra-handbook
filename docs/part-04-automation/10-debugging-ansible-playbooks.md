@@ -29,7 +29,9 @@ Automation failures tend to arrive at the worst moments. A driver rollout stops 
 This chapter builds on 4.3 to 4.9. By the end, you will be able to:
 
 - Read an Ansible error message and tell which layer failed, in seconds.
-- Use verbosity (`-v` to `-vvvv`), `debug`, `assert`, `--step`, `--start-at-task`, `--check --diff`, and the interactive debugger, which you turn on with `strategy: debug` or the `debugger:` keyword.
+- Use verbosity from `-v` to `-vvvv`, and the `debug` and `assert` modules, to see what Ansible sees.
+- Use `--step`, `--start-at-task` and `--check --diff` to run only the part you are investigating.
+- Turn on the interactive debugger with `strategy: debug` or the `debugger:` keyword.
 - Diagnose SSH and connection, privilege, Python interpreter, module argument, variable, template and YAML problems.
 - Reproduce a failing module by hand on the target, keeping its remote files with `ANSIBLE_KEEP_REMOTE_FILES`.
 - Profile slow runs and find the expensive tasks and the fact gathering.
@@ -69,7 +71,19 @@ A task fails, and the default output shows only its name and result. The flags b
 | `-vvvv` | Adds connection plugin internals (SSH debug), plugin loading; very noisy |
 | `-vvvvv` | Everything including WinRM/SSH raw debugging |
 
-A few `ansible.cfg` settings make the output easier to read. `stdout_callback = yaml` shows multi-line values clearly, and newer releases use `result_format = yaml` with the default callback. `callbacks_enabled = timer, profile_tasks, profile_roles` adds timing, and `display_skipped_hosts = false` hides skipped hosts. `log_path = ansible.log` keeps a persistent log, which may hold secrets unless `no_log` is used. Set `ANSIBLE_NOCOLOR=1` in CI logs. For machine-readable output, use `ANSIBLE_STDOUT_CALLBACK=json` or `ansible.posix.json`, which print one JSON document at the end. You can also use `ansible.posix.jsonl`, or send events to a log pipeline.
+A few `ansible.cfg` settings make the output easier to read.
+
+```ini
+[defaults]
+stdout_callback = yaml
+callbacks_enabled = timer, profile_tasks, profile_roles
+display_skipped_hosts = false
+log_path = ansible.log
+```
+
+The `yaml` callback shows multi-line values clearly, and newer releases use `result_format = yaml` with the default callback. The `callbacks_enabled` line adds timing. Hiding skipped hosts shortens the output. The log file keeps a persistent record, which may hold secrets unless `no_log` is used.
+
+Set `ANSIBLE_NOCOLOR=1` in CI logs. For machine-readable output, use `ANSIBLE_STDOUT_CALLBACK=json` or `ansible.posix.json`, which print one JSON document at the end. You can also use `ansible.posix.jsonl`, or send events to a log pipeline.
 
 Use `-vvv` for the SSH command line or module arguments, and `-vvvv` only for connection internals.
 
@@ -103,7 +117,7 @@ Sometimes the quickest fix is to look at what Ansible actually sees. A value tha
 
 The `debug` module prints values after templating. That is why it reveals typing problems, such as a string `"False"` where you expected a boolean. Use `verbosity:` to keep helpful diagnostics in the code permanently, because they stay silent on normal runs. For structured output, pass the value through `to_nice_json` or `to_nice_yaml`. Never leave debug output of secrets in committed code or CI logs.
 
-In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), the authors pair `ansible.builtin.stat` with `ansible.builtin.assert`. You use them to verify filesystem state before or after a task runs. Registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary. It holds **`exists`** (boolean), **`isdir`** (directory), **`isreg`** (regular file), **`islnk`** (symlink), **`isblk`** (block device), **`isfifo`** (named pipe), **`issock`** (Unix socket), **`uid`** and **`gid`**, **`pw_name`** and **`gr_name`** (owner and group names), **`mode`** (octal string like `'0755'`), **`rusr`**, **`wusr`** and **`xusr`**, **`size`**, **`atime`**, **`mtime`** and **`ctime`**, and **`checksum`** (SHA-1) and **`md5`**. You can assert on these fields directly, as in `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
+In *Ansible: Up and Running*, chapter 8 (`Table 8-3`), the authors pair `ansible.builtin.stat` with `ansible.builtin.assert`. You use them to verify filesystem state before or after a task runs. Registering `stat: path=/etc/nginx/conf` into `st` returns a `st.stat` dictionary. The fields you will assert on most are `exists`, `isdir`, `isreg`, `mode`, `pw_name`, `size` and `checksum`, which is a SHA-1. Checkpoint question 5 lists them all. You can assert on them directly, as in `assert: { that: [st.stat.exists, st.stat.isdir, st.stat.pw_name == 'root'] }`.
 
 Put the `stat` and `assert` pair in front of any task that depends on the file, so a bad state fails with a clear message.
 
@@ -259,7 +273,16 @@ pipelining = True
 ssh_args = -o ControlMaster=auto -o ControlPersist=120s
 ```
 
-`profile_tasks` prints the slowest tasks and their cumulative time. The usual culprits are fact gathering, which a subset or cache reduces, and `apt update` on every run, which `cache_valid_time` addresses. Others include per-item loops that should be single calls, a `git clone` on every host, and serial execution such as `serial: 1` over a huge group. Slow SSH setup with no `ControlPersist` and reverse DNS in sshd also add up. A single `forks=5` limits parallelism, and `strategy: linear` waits on stragglers, where `strategy: free` suits independent work. A low-quality network or an overloaded control node adds more delay.
+`profile_tasks` prints the slowest tasks and their cumulative time. Slow runs usually have one of a few causes.
+
+- Fact gathering is slow. A subset or a cache reduces it.
+- `apt update` runs every time. `cache_valid_time` addresses that.
+- Per-item loops should be single calls, or a `git clone` runs on every host.
+- `serial: 1` runs over a huge group, or `forks=5` limits parallelism.
+- SSH setup is slow because there is no `ControlPersist`, or sshd does reverse DNS.
+- `strategy: linear` waits on stragglers, where `strategy: free` suits independent work.
+
+A poor network or an overloaded control node adds more delay.
 
 For very large fleets, consider pull mode with `ansible-pull`, AWX or AAP execution nodes (see 4.14), or splitting the inventory into parallel jobs. Measure before and after each change.
 
@@ -294,13 +317,13 @@ Start with the first habit, because it runs before any host is touched.
 
 Start with the self-checking Python lab, which runs on your own machine. It checks the 5-layer error classifier and a simulated debugger session, so you can confirm the logic before you touch a real host.
 
-Run the lab locally with this command. It verifies the 5-layer Ansible error classifier, `classify_ansible_failure_layer`, which sorts failures into parse and syntax, connection `UNREACHABLE`, data and template, privilege and module, and application command. It also verifies the interactive Task Debugger session simulator, `InteractiveTaskDebuggerSession`. That simulator covers inspecting a failed task, updating `task_vars` with `update_task`, and re-running the task with `redo`. The simulator draws on chapter 8 of *Ansible: Up and Running*.
+Run the lab locally with this command. It checks `classify_ansible_failure_layer`, the classifier that sorts failures into five layers: parse and syntax, connection `UNREACHABLE`, data and template, privilege and module, and application command. It also checks `InteractiveTaskDebuggerSession`, a simulator of the task debugger. The simulator inspects a failed task, updates `task_vars` with `update_task`, and re-runs the task with `redo`. It draws on chapter 8 of *Ansible: Up and Running*.
 
 ```bash
 python3 code/part04/ansible_debugging_toolkit_lab.py
 ```
 
-Next, use a control node with 2–3 Linux targets. Every interactive shell step below is `untested here`, so treat the results as yours to confirm. Work through these exercises in order.
+Next, use a control node with 2 or 3 Linux targets. The interactive shell steps below have not been run, so confirm the results yourself. Work through these exercises in order.
 
 1. Break it on purpose. Create playbooks with an unquoted `{{ var }}`, a tab, an undefined variable, a misspelled module argument and a missing collection. For each one, record the error text and classify its layer.
 2. Climb the verbosity ladder. Run one failing task at `-v`, `-vv`, `-vvv` and `-vvvv`. List what each level adds, such as the SSH command, the remote temp path and the module arguments.
@@ -347,12 +370,19 @@ These questions are worth practising out loud. Each one comes with the key point
 
 Each exercise uses a debugging tool from this chapter. Work through them in order, and run them on a disposable host, so that a mistake costs you nothing. If you get stuck, go back to the section that covers the tool.
 
-1. Classify seven common error messages. Use `classify_ansible_failure_layer()` in `code/part04/ansible_debugging_toolkit.py` to sort each message into its exact layer: Parse/Syntax, Connection `UNREACHABLE`, Data/Template, Privilege/Module, or Application Command. Then state what `-v`, `-vv`, `-vvv` and `-vvvv` each add to the output. This follows the 5-layer method and the verbosity ladder in *Ansible: Up and Running*, chapter 8, through `-vvvvv`.
-2. Write a task pair that runs `ansible.builtin.stat` on `/etc/slurm/slurm.conf`. Then use `ansible.builtin.assert` with `quiet: true` to verify `exists`, `isreg`, `pw_name == 'slurm'`, `mode == '0644'` and a non-zero `size`. Finally, explain how `verbosity: 1` on `debug` and `{{ var | type_debug }}` work. Use Table 8-3 in *Ansible: Up and Running*, chapter 8, as your reference.
-3. Explain the difference between `task.args['name'] = 'chrony'` and `task_vars['ntp_pkg'] = 'chrony'` followed by `update_task` (`u`) and `redo` (`r`). Use `InteractiveTaskDebuggerSession` in `code/part04/ansible_debugging_toolkit.py` to show it. Cover `strategy: debug`, `debugger: on_failed` and `ANSIBLE_ENABLE_TASK_DEBUGGER` as well. Then list the five `debugger:` trigger values.
-4. Work through the SSH failures. First, explain how to resolve `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` safely with `ssh-keygen -R` and `ssh-keyscan`. Then explain how `authorized_key` with `key_options: 'no-port-forwarding,from="..."'` and `exclusive: true` hardens SSH access. Last, explain why a remote `git` task that uses SSH agent forwarding fails with `Permission denied (publickey)` when `become: true` is set on the task.
-5. Reproduce a module run by hand on the target. Walk through the exact commands to keep the temporary `AnsiballZ_*.py` wrapper on a target GPU node, using `ANSIBLE_KEEP_REMOTE_FILES=1`. Then unpack the module source and the `args` JSON file with `explode`, and execute it under `python3` or `pdb` as the target user.
-6. Cover two topics. First, explain how `callbacks_enabled = timer, profile_tasks, profile_roles` identifies playbook bottlenecks, and list the six highest-impact speedups. Second, show the shell pipeline that aggregates and ranks `FAILED` and `UNREACHABLE` reasons across a 200-node run.
+1. Use `classify_ansible_failure_layer()` in `code/part04/ansible_debugging_toolkit.py` on seven common error messages. Sort each one into its layer. The five layers come from *Ansible: Up and Running*, chapter 8.
+2. State what `-v`, `-vv`, `-vvv` and `-vvvv` each add to the output.
+3. Write a task pair that runs `ansible.builtin.stat` on `/etc/slurm/slurm.conf`. Then add an `assert` with `quiet: true` that checks `exists`, `isreg` and `size`.
+4. Extend that assert to check the owner and the mode. Use `pw_name == 'slurm'` and `mode == '0644'`. Table 8-3 in the book is your reference.
+5. Explain what `verbosity: 1` on a `debug` task does, and what `{{ var | type_debug }}` tells you.
+6. In the task debugger, explain the difference between `task.args['name'] = 'chrony'` and `task_vars['ntp_pkg'] = 'chrony'` followed by `u` and `r`. Use `InteractiveTaskDebuggerSession` in `code/part04/ansible_debugging_toolkit.py` to show it.
+7. List the five values the `debugger:` keyword accepts, and say how `ANSIBLE_ENABLE_TASK_DEBUGGER` differs from setting the keyword.
+8. After you re-image a GPU node, SSH says `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED`. Explain how to resolve it safely with `ssh-keygen -R` and `ssh-keyscan`.
+9. Explain how `authorized_key` with `exclusive: true` hardens SSH access. Then explain what `key_options` adds.
+10. A remote `git` task fails with `Permission denied (publickey)` although agent forwarding is on. Explain why `become: true` on the task causes that.
+11. Keep the temporary `AnsiballZ_*.py` wrapper on a GPU node with `ANSIBLE_KEEP_REMOTE_FILES=1`. Then unpack it with `explode` and run it under `python3` as the target user.
+12. Explain how `profile_tasks` finds a slow task, and name two speedups that you would try first.
+13. Show a shell pipeline that counts the `FAILED` and `UNREACHABLE` reasons from a 200-node run and ranks them.
 
 ## Checkpoint questions (20)
 

@@ -145,9 +145,9 @@ locals {
 
 Each line turns one shape into another. The first two keep the shape of the input, and the third filters a map. The `...` in the `grouped` line gathers the values that share a key into a list.
 
-A splat, written `resource.name[*].attr`, is shorthand for a `for` expression over a list of instances. For a map, write `values(resource.name)[*].attr` instead. Functions such as `flatten`, `merge`, `zipmap`, `lookup`, `setunion`, `setproduct`, `distinct`, `compact`, `concat`, `slice`, `range`, `chunklist` and `try`/`can` cover most reshaping needs. Test an expression with `terraform console` before you put it in a configuration.
+A splat, written `resource.name[*].attr`, is shorthand for a `for` expression over a list of instances. For a map, write `values(resource.name)[*].attr` instead. Five functions cover most reshaping needs: `flatten`, `merge`, `zipmap`, `lookup` and `concat`. Others, such as `setunion`, `distinct`, `compact`, `slice`, `range`, `chunklist` and `try`, handle the rest. Test an expression with `terraform console` before you put it in a configuration.
 
-### String Directives (`%{ for ... }` and `%{ if ... }`, `TUR` Chapter 5)
+### String Directives (`%{ for ... }` and `%{ if ... }`, *Terraform: Up and Running*, Chapter 5)
 
 *Terraform: Up and Running*, Chapter 5, by Yevgeniy Brikman, covers a fourth looping construct next to `count`, `for_each` and `for` expressions. These are HCL string directives, written as `%{ ... }`. They let you put a loop or a condition inside a string or a heredoc (`<<-EOF`). The `~` marker strips the newlines and spaces around the directive, so the output stays on one clean line.
 
@@ -317,26 +317,30 @@ Before you choose a rolling pattern, check whether your platform can drain and r
 
 Most Terraform failures you will see come from a short list of traps. Each item below names the trap, what it looks like and how you get out of it.
 
-1. Index shifting with `count` over lists (section 1) moves every later item when one item is removed. Prefer `for_each` with keys.
-2. Unknown values in `count` or `for_each` break the plan, because the arguments must be known at plan time. Derive them from static data, split the configuration into layers so the network applies first, or use a two-phase apply with `-target`, but only as a last resort.
-3. Dependency cycles appear when A references B and B references A, such as security group rules that reference each other. Break the cycle with separate rule resources, `self` references or a different layout.
-4. "Provider produced inconsistent result after apply" usually means a provider bug or eventual consistency. If you see it, rerun the apply, report the bug upstream and pin the provider version.
-5. Eventual consistency bites with IAM. Roles and policies take seconds to propagate, so resources can fail with "invalid principal". Add `depends_on` on the policy attachment, configure retries in the provider, or use a `time_sleep` resource as a last resort.
-6. Perpetual diffs happen when the provider normalises an attribute, such as its case, ordering or defaults, so it differs from your config. Use the normalised form, add `ignore_changes`, or fix the provider version. Watch the ordering of lists versus sets.
-7. Renaming forces replacement, because many `name` attributes are immutable. Check the docs and the plan first, and use `name_prefix` with `create_before_destroy`.
-8. Large plans hit API rate limits. Split the state (4.19), lower `-parallelism`, tune the provider retry settings and avoid refreshing thousands of resources in every pull request.
-9. Secrets appear in plans and state (4.22), and `sensitive` only hides them in the output. It does not protect the state.
-10. `depends_on` on a module defers every data source inside it to apply time, which produces noisy diffs. Pass outputs as inputs instead, so the dependency is implicit.
-11. Provisioners and `local-exec` sit outside the model. A failure taints the resource, so avoid them.
-12. Functions have limits. There are no loops except `for`, and there are no user functions. `timestamp()` and `uuid()` change on every plan, so use `random_*` or `time_static` instead.
-13. Type inference can surprise you. `tolist` on a set sorts it, a list of mixed types becomes a tuple, and an empty list is not the same as null. Declare explicit types.
-14. A large `for_each` over modules or resources can slow planning, so split it by ownership.
-15. Provider configuration for multiple regions or accounts cannot change per `for_each` instance. Repeat the module calls or use separate stacks (4.22).
-16. Provider upgrades can add new defaults, so review the plan after `init -upgrade`.
-17. `prevent_destroy` makes a destroy fail, but the plan fails before any change is made, which is the safe outcome. Some resources, such as buckets with objects, need `force_destroy` deliberately set to false for data stores.
-18. Moving between `count` and `for_each` changes the addresses. Use `moved` blocks, such as `from = x[0]` and `to = x["name"]`.
-19. The order of list elements from a data source can change between runs. Sort the list first, with `sort` or `sort by key`.
-20. Time-based or non-deterministic data, such as the latest AMI, causes unplanned replacements. Pin image IDs or families on purpose, and update them through pull requests.
+Each row below names a trap, what it does, and the way out.
+
+| Trap | What happens | Way out |
+|---|---|---|
+| Index shifting with `count` over lists (section 1) | Removing one item moves every later item | Prefer `for_each` with keys |
+| Unknown values in `count` or `for_each` | The plan breaks, because the arguments must be known at plan time | Derive them from static data, split the configuration into layers so the network applies first, or use a two-phase apply with `-target` as a last resort |
+| Dependency cycles | A references B and B references A, as with security group rules that reference each other | Use separate rule resources, `self` references or a different layout |
+| "Provider produced inconsistent result after apply" | Usually a provider bug or eventual consistency | Rerun the apply, report the bug upstream and pin the provider version |
+| Eventual consistency with IAM | Roles and policies take seconds to propagate, so resources fail with "invalid principal" | Add `depends_on` on the policy attachment, configure provider retries, or use a `time_sleep` resource as a last resort |
+| Perpetual diffs | The provider normalises an attribute, such as its case, ordering or defaults, so it differs from your config | Use the normalised form, add `ignore_changes`, or fix the provider version. Watch the ordering of lists versus sets |
+| Renaming | Many `name` attributes are immutable, so a rename forces replacement | Check the docs and the plan first, and use `name_prefix` with `create_before_destroy` |
+| Large plans | API rate limits | Split the state (4.19), lower `-parallelism`, tune provider retries, and avoid refreshing thousands of resources in every pull request |
+| Secrets in plans and state (4.22) | `sensitive` only hides them in the output and does not protect the state | See 4.22 |
+| `depends_on` on a module | Every data source inside it is deferred to apply time, which produces noisy diffs | Pass outputs as inputs, so the dependency is implicit |
+| Provisioners and `local-exec` | They sit outside the model, and a failure taints the resource | Avoid them |
+| Function limits | There are no loops except `for`, and there are no user functions. `timestamp()` and `uuid()` change on every plan | Use `random_*` or `time_static` instead |
+| Type inference | `tolist` on a set sorts it, a list of mixed types becomes a tuple, and an empty list is not null | Declare explicit types |
+| A large `for_each` over modules or resources | Planning slows down | Split it by ownership |
+| Providers for several regions or accounts | Provider configuration cannot change per `for_each` instance | Repeat the module calls or use separate stacks (4.22) |
+| Provider upgrades | New defaults can appear | Review the plan after `init -upgrade` |
+| `prevent_destroy` | A destroy fails, but the plan fails before any change is made, which is the safe outcome | Set `force_destroy` deliberately to false for data stores, such as buckets with objects |
+| Moving between `count` and `for_each` | The addresses change | Use `moved` blocks, such as `from = x[0]` and `to = x["name"]` |
+| Data source list order | The order of elements can change between runs | Sort the list first, with `sort` or `sort by key` |
+| Non-deterministic data, such as the latest AMI | Unplanned replacements | Pin image IDs or families on purpose, and update them through pull requests |
 
 ## 9. Worked example: GPU capacity by data
 
@@ -390,7 +394,7 @@ Start with the self-checking Python lab. It runs on your own machine and checks 
 python3 code/part04/terraform_loops_lifecycle_lab.py
 ```
 
-Next comes the hands-on part. Use any machine with Terraform or OpenTofu 1.6 or later. Every interactive shell step below is untested here, so treat the results as something to confirm on your own setup.
+Next comes the hands-on part. Use any machine with Terraform or OpenTofu 1.6 or later. The interactive shell steps below have not been run, so confirm the results on your own setup.
 
 1. Compare `count` with `for_each`. Create three `terraform_data` or `random_pet` resources with `count` driven by a list. Remove the middle element and read the plan. Then repeat with `for_each` over a map, and add `moved` blocks to convert one form to the other without recreating anything.
 2. Try unknown keys. Attempt `for_each = toset(random_id.x[*].hex)` and read the error. Then fix it by using static keys.
@@ -434,12 +438,19 @@ Interviewers often start with a question like the ones below. A good answer show
 
 ## Exercises
 
-1. Start with the four HCL looping constructs: `count`, `for_each`, `for` expressions and `%{ for ... }` string directives, from *Terraform: Up and Running*, Chapter 5. Use `simulate_count_vs_for_each_removal()` in `code/part04/terraform_loops_lifecycle.py` so you can trace what happens when `"trinity"` is removed from `["neo", "trinity", "morpheus"]`. Compare `count` with `for_each = toset(var.user_names)`. Then show how you can use `moved` blocks to migrate the existing `count` state indices (`[0]`, `[1]`, `[2]`) to the `for_each` keys (`["neo"]`, `["trinity"]`, `["morpheus"]`) without recreating resources.
-2. Reshape data with `for` expressions, the `...` grouping, `setproduct` and `merge([for ...])` flattening. Use `flatten_team_namespaces()` in `code/part04/terraform_loops_lifecycle.py` to explain how Section 9 flattens a nested `{ team => { gpu_quota, namespaces } }` map into a one-level `"team/ns"` map for `for_each`. Then explain how `{ for p in var.pool_list : p.region => p.name... }` groups items by key.
-3. Work with `dynamic` blocks, using `ingress` and `tag`, and compare them with provider `default_tags`. Show how `dynamic "ingress"`, including `self = true` for EFA and NCCL traffic inside the group, generates nested blocks. Show how `dynamic "tag"`, filtered with `{ for k, v in var.custom_tags : k => upper(v) if k != "Name" }`, does the same for tags. Then explain when `provider "aws" { default_tags { tags = ... } }` is cleaner than `dynamic "tag"`, drawing on *Terraform: Up and Running*, Chapter 5.
-4. Practice conditionals with `count = cond ? 1 : 0`, filtered `for_each`, optional `dynamic` blocks and `one(concat(...))`. Use `evaluate_one_concat_conditional()` in `code/part04/terraform_loops_lifecycle.py` to explain why `[0]` index access fails in an if/else `count` ternary output when one resource has `count = 0`. Then explain how `one(concat(full[*].policy_arn, ro[*].policy_arn))` solves the problem cleanly.
-5. Study the `lifecycle` block, with `create_before_destroy`, `prevent_destroy`, `ignore_changes`, `replace_triggered_by`, `precondition` and `postcondition`, along with zero-downtime rolling patterns. Compare the two zero-downtime ASG deployment patterns in *Terraform: Up and Running*, Chapter 5. The first is `create_before_destroy = true` with `name = "${var.cluster_name}-${aws_launch_configuration.example.name}"` and `min_elb_capacity`. The second is the native `instance_refresh` with `strategy = "Rolling"` and `min_healthy_percentage = 50`, along with the GKE `update_policy`.
-6. Diagnose the Terraform sharp edges: unknown `for_each` keys, dependency cycles, eventual consistency, `depends_on` on modules and perpetual diffs. You should explain why each one happens during `plan` or `apply`, and state the exact architectural fix for each.
+1. Use `simulate_count_vs_for_each_removal()` in `code/part04/terraform_loops_lifecycle.py`. Trace what happens when `"trinity"` is removed from `["neo", "trinity", "morpheus"]` under `count`. The source is *Terraform: Up and Running*, Chapter 5.
+2. Trace the same removal under `for_each = toset(var.user_names)`. Say what the plan shows.
+3. Show how `moved` blocks migrate the `count` indices `[0]`, `[1]` and `[2]` to the `for_each` keys without recreating anything.
+4. Use `flatten_team_namespaces()` in the same file. Explain how Section 9 flattens a nested `{ team => { gpu_quota, namespaces } }` map into a one-level `"team/ns"` map for `for_each`.
+5. Explain what the `...` does in `{ for p in var.pool_list : p.region => p.name... }`.
+6. Show how `dynamic "ingress"` generates nested blocks. Say why `self = true` matters for EFA and NCCL traffic inside the group.
+7. Explain when `default_tags` on the provider is cleaner than `dynamic "tag"`.
+8. Use `evaluate_one_concat_conditional()` in the same file. Explain why the `[0]` index fails in an if/else `count` output when one resource has `count = 0`.
+9. Explain how `one(concat(full[*].policy_arn, ro[*].policy_arn))` fixes that failure.
+10. Pick `create_before_destroy` from the lifecycle block. Say what it does and which three things can go wrong with it.
+11. Pick `prevent_destroy`. Say why it is not a security control.
+12. Compare the two zero-downtime ASG patterns in *Terraform: Up and Running*, Chapter 5. The first is `create_before_destroy` with the launch configuration name in the ASG name. The second is the native `instance_refresh`.
+13. Pick two sharp edges from Section 8, for example unknown `for_each` keys and perpetual diffs. Say why each happens during `plan` or `apply`, and state the fix.
 
 ## Checkpoint questions (20)
 
@@ -568,7 +579,7 @@ Native **`instance_refresh { strategy = "Rolling"; preferences { min_healthy_per
 <details>
 <summary>15. How do `terraform_data` and `replace_triggered_by` replace the legacy `null_resource`?</summary>
 
-Built into `ansible-core` / Terraform 1.4+ without requiring any external provider plugin, **`resource "terraform_data" "ver" { input = var.driver_version }`** stores arbitrary values in state (`output`) and supports `triggers_replace = [...]`. Other resources can reference `lifecycle { replace_triggered_by = [terraform_data.ver] }`, which forces a clean replacement whenever `var.driver_version` changes.
+Built into Terraform 1.4 and later, without any external provider plugin,, **`resource "terraform_data" "ver" { input = var.driver_version }`** stores arbitrary values in state (`output`) and supports `triggers_replace = [...]`. Other resources can reference `lifecycle { replace_triggered_by = [terraform_data.ver] }`, which forces a clean replacement whenever `var.driver_version` changes.
 </details>
 
 <details>
@@ -612,5 +623,5 @@ Cloud IAM systems such as AWS IAM and GCP IAM replicate globally, so they are ev
   - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 5: Terraform Tips and Tricks: Loops, If-Statements, Deployment, and Gotchas** (read in full: loops with `count` on `["neo", "trinity", "morpheus"]` and the middle-element deletion trap; loops with `for_each` over resources, modules, and `dynamic "tag"` blocks plus `provider "aws" { default_tags }`; `for` list and map expressions; string directives `%{~ for i, name in var.names ~}` and `%{ if ... }`; conditionals with `count = cond ? 1 : 0`, if-else with `one(concat(...))`, and filtered `for_each`; zero-downtime deployment with `create_before_destroy` + `min_elb_capacity` vs native ASG `instance_refresh`; and Terraform gotchas including `count`/`for_each` plan-time limitations and failed mid-apply deployments).
   - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): HCL masterclass (`count` vs `for_each`, `dynamic` blocks, `lifecycle` arguments, and common pitfalls).
 - **Run here:** `python3 code/part04/terraform_loops_lifecycle_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `simulate_count_vs_for_each_removal`, `evaluate_one_concat_conditional`, and `flatten_team_namespaces` models in `code/part04/terraform_loops_lifecycle.py` and the GPU node-pool and Kubernetes per-team GPU `ResourceQuota` examples are the author's constructions synthesizing `TUR` Chapter 5 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Explicitly labelled inferences:** The `simulate_count_vs_for_each_removal`, `evaluate_one_concat_conditional`, and `flatten_team_namespaces` models in `code/part04/terraform_loops_lifecycle.py` and the GPU node-pool and Kubernetes per-team GPU `ResourceQuota` examples are the author's constructions synthesizing *Terraform: Up and Running*, Chapter 5, and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
 - **Not verified on live hardware:** Live `terraform` / `tofu` executions (`a2-highgpu-8g`, `a3-highgpu-8g`, `g2-standard-24`, `p5.48xlarge`, `g5.xlarge`, `16` vCPUs, `50%` min_healthy_percentage) are marked (`untested here`) where not executed by `terraform_loops_lifecycle_lab.py`.

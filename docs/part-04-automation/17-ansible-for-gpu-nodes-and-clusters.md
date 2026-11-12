@@ -22,20 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that has just arrived. The GPUs are in place, but nothing on the machine works yet. Someone has to bring up a long stack of software in the right order. The stack starts with BIOS and firmware settings, and a kernel with matching headers. It continues with the RDMA networking drivers (MLNX_OFED/DOCA), the NVIDIA driver, `nvidia-persistenced`, and Fabric Manager on NVSwitch systems. After that come the GPUDirect modules (`nvidia-peermem`), DCGM and its exporters for telemetry, the container toolkit, kernel tuning, filesystem mounts, and the scheduler or Kubernetes agent.
+Picture a GPU node that has just arrived. The GPUs are in place, but nothing on the machine works yet. Someone has to bring up a long stack of software in the right order. It starts with BIOS and firmware settings, and a kernel with matching headers. Next come the RDMA networking drivers (MLNX_OFED or DOCA), the NVIDIA driver, `nvidia-persistenced`, and Fabric Manager on NVSwitch systems. After those come the GPUDirect module `nvidia-peermem`, DCGM and its exporters for telemetry, and the container toolkit. Kernel tuning, filesystem mounts, and the scheduler or Kubernetes agent finish the stack.
 
-Each link in that chain has to be correct, and the links have to work together. Get the order wrong and you spend your time debugging `modprobe` failures. Get the versions wrong and a fleet can silently run at half speed. Skip validation and the first sign of a bad node may be a failed 64-node training job. Ansible's job is to make node bring-up, upgrade and repair **deterministic, ordered, verified and repeatable** across hundreds or thousands of machines.
+Each link in that chain has to be correct, and the links have to work together. Get the order wrong and you spend your time debugging `modprobe` failures. Get the versions wrong and a fleet can silently run at half speed. Skip validation and the first sign of a bad node may be a failed 64-node training job. Ansible's job is to bring nodes up, upgrade them and repair them in the same order every time, with a check after each step, across hundreds or thousands of machines.
 
 ## Prerequisites and outcomes
 
 Before you start, you need chapters 4.3 to 4.16, plus the Linux and GPU basics from Parts 1, 9 and 10. Drivers, CUDA and NVLink are explained in those parts, so this chapter builds on them rather than repeating them. When you finish, you should be able to do the following:
 
 - Describe the dependency order of a GPU node stack, and encode it in roles and playbooks with the right reboot points.
-- Write roles for kernel and OS prerequisites, MLNX_OFED/DOCA, and the NVIDIA driver (package and runfile paths). You will also write roles for Fabric Manager, DCGM, the container toolkit, MIG, persistence mode, clocks and power, hugepages, NUMA and IRQ tuning, and monitoring agents.
+- Write roles for the OS and kernel, MLNX_OFED or DOCA, and the NVIDIA driver in its package and runfile forms.
+- Write roles for Fabric Manager, DCGM, the container toolkit, MIG, GPU tuning, and the monitoring agents.
 - Handle reboots, long installs (`async`), package pinning and holds, DKMS versus precompiled modules, and roll back safely.
 - Validate nodes: check the GPU count, NVLink/NVSwitch state, ECC, PCIe link width and speed, IB link state, DCGM diagnostics, burn-in and NCCL tests. Then gate scheduling on the result.
 - Run drain, patch, validate and resume workflows for Slurm and Kubernetes, with canary rollouts and fleet-wide diagnostics.
-- Recognise and avoid the classic incidents: interactive `dpkg` prompts, "green but dead" services, secrets leaking into logs, precedence surprises, and kernel/driver mismatches.
+- Recognise and avoid the known incidents: interactive `dpkg` prompts, "green but dead" services, secrets leaking into logs, precedence surprises, and kernel and driver mismatches.
 
 ## 1. The node bring-up dependency graph
 
@@ -295,7 +296,17 @@ On HGX and DGX systems, GPUs talk to each other through NVSwitch chips, and Fabr
 
 Fabric Manager's version must exactly match the driver. On NVLink-switch fabrics such as GB200 NVL72, the multi-node NVLink domain uses extra components: IMEX and NVLink management software. Part 9 covers those.
 
-The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute mode and MIG. It enables `nvidia-persistenced`, or sets persistence mode with `nvidia-smi -pm 1`. It sets application or locked clocks with `nvidia-smi -lgc` when policy requires them, and power limits with `-pl`, which is the `gpu_power_limit` module from 4.15. It sets ECC mode and compute mode, such as `EXCLUSIVE_PROCESS` or the default. For MIG, it runs `nvidia-smi -mig 1`, then creates GPU and compute instances with `nvidia-smi mig -cgi ... -C`. Changing MIG mode may need a GPU reset or a reboot, and no processes can be running on the GPU. Finally, the role takes an `nvidia-smi topo -m` snapshot for inventory, installs the GDRCopy kernel module, and loads `nvidia-peermem` at boot through `modules-load.d`. It can also set udev rules under `/etc/udev` for device nodes, if non-root runtimes need them.
+The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute mode and MIG. The table lists each setting with its command and the situation that calls for it.
+
+| Setting | Command | When you need it |
+|---|---|---|
+| Persistence | `nvidia-persistenced`, or `nvidia-smi -pm 1` | When you want the GPU initialised ahead of workloads |
+| Clocks | `nvidia-smi -lgc` | When policy requires locked or application clocks |
+| Power limit | `nvidia-smi -pl`, or the `gpu_power_limit` module from 4.15 | When policy caps power |
+| ECC and compute mode | `nvidia-smi` settings, such as `EXCLUSIVE_PROCESS` | When policy sets them away from the default |
+| MIG | `nvidia-smi -mig 1`, then `nvidia-smi mig -cgi ... -C` | For multi-tenant small workloads |
+
+Changing MIG mode may need a GPU reset or a reboot, and no processes can be running on the GPU. The role also takes an `nvidia-smi topo -m` snapshot for inventory, installs the GDRCopy kernel module, and loads `nvidia-peermem` at boot through `modules-load.d`. If non-root runtimes need device nodes, it can set udev rules under `/etc/udev`.
 
 ```yaml
 - name: Enable persistence daemon
@@ -518,7 +529,7 @@ You can work through much of this chapter without a GPU. Start with the self-che
 python3 code/part04/ansible_gpu_cluster_lab.py
 ```
 
-If you have no physical GPU, rehearse the interactive steps below (`untested here`) with stub `nvidia-smi`, `dcgmi` and `ibstat` scripts on a plain VM. Roles, ordering, handlers, reboots and validation logic still get exercised that way. Save the hardware steps for a real node.
+If you have no physical GPU, rehearse the interactive steps below with stub `nvidia-smi`, `dcgmi` and `ibstat` scripts on a plain VM. Those steps have not been run on hardware. Roles, ordering, handlers, reboots and validation logic still get exercised that way. Save the hardware steps for a real node.
 
 1. Implement `gpu_facts`, and compare the discovered counts with what you expect. Publish `ansible_local.gpu`. Test with stubs first, then on a GPU host.
 2. Write the playbook from the graph, with its reboot points. Run it on a fresh VM or node. Check that `--list-tasks` shows the right order, and that a rerun reports `changed=0`, apart from validation probes.
@@ -540,11 +551,14 @@ Work through the steps in order, because each one builds on the one before it.
 
 Most of these mistakes are shortcuts that seem reasonable at the time, so it helps to see them together.
 
-Installing the NVIDIA driver before the RDMA stack is an ordering mistake, and so is skipping the reboot or module reload between them. Letting packages float with `state: latest` is a version mistake, and so is letting `unattended-upgrades` change kernels and drivers. Mismatched kernel, headers, driver branch, Fabric Manager and DCGM versions belong in the same group.
+Most of these mistakes are shortcuts, and they fall into a few groups.
 
-Treating "service started" as "node healthy" is another trap, and so is skipping burn-in and collectives tests. Rolling out to the whole fleet without a canary, with no `max_fail_percentage`, is risky. So is retrying reboots on nodes that do not return.
-
-Hard-coded package names across distributions cause failures. Roles that fail halfway can leave a node half-configured but visible to the scheduler. Compiling tools from moving branches at test time, or leaving benchmark versions unpinned, gives you results you cannot repeat. Without a record of results, repeat-offender nodes and slow regressions go unnoticed. Secrets in command lines and verbose logs with credentials are a risk of their own. Applying Ansible driver changes underneath the GPU Operator creates two managers for the same component.
+- Ordering: installing the NVIDIA driver before the RDMA stack, or skipping the reboot or module reload between them.
+- Versions: letting packages float with `state: latest`, letting `unattended-upgrades` change kernels and drivers, or mixing kernel, headers, driver branch, Fabric Manager and DCGM versions.
+- Health: treating "service started" as "node healthy", skipping burn-in and collectives tests, or retrying reboots on nodes that do not return.
+- Rollout: going fleet-wide without a canary or `max_fail_percentage`, or leaving a half-configured node visible to the scheduler after a role fails halfway.
+- Reproducibility: hard-coded package names across distributions, benchmark tools built from moving branches, and no record of results, so repeat-offender nodes go unnoticed.
+- Safety: secrets in command lines and verbose logs, and Ansible driver changes underneath the GPU Operator, which gives the same component two managers.
 
 Review your roles against the ordering and version mistakes first, since the rest of the chapter depends on those rules.
 
@@ -565,12 +579,21 @@ Use these questions to test whether you can explain the chapter out loud.
 
 Work through these exercises after you have read the chapter and run the lab. Compare your answers with the lab output, and check the code you read against the lines it names.
 
-1. Start with the bring-up dependency order. Using `validate_bringup_role_order()` in `code/part04/ansible_gpu_cluster.py`, follow the chain `mofed` (or `doca-ofed`), then `nvidia_driver`, `fabric_manager`, `gpu_validate` and `slurm_client`. Explain why the MOFED or DOCA stack and its reboot must complete *before* the NVIDIA driver and `nvidia_peermem` are built or loaded. Explain why `nvidia-fabricmanager` must match the exact driver version on NVSwitch systems, and why `gpu_validate` must gate `slurm_client` or `kubelet` startup.
-2. Trace hardware discovery and host tuning. First, show how `gpu_facts` uses `lspci -d 10de:` and `lspci -d 15b3:` to publish `/etc/ansible/facts.d/gpu.fact` (`count`, `nvswitch`, `rdma_nics`), and halts at once if a GPU has fallen off the PCIe bus. Then explain why *AI Systems Performance Engineering*, Chapter 3, sets the `performance` CPU governor, disables deep C-states, sets `vm.swappiness=1` and `transparent_hugepage=madvise`, tunes `vm.dirty_ratio` for checkpoint write-backs, and enables `--topology-manager-policy=single-numa-node`.
-3. Trace the `mofed` and `nvidia_driver` roles. Explain how `DEBIAN_FRONTEND: noninteractive`, `dpkg_options: "force-confold,force-confdef"`, `lock_timeout: 300`, `dpkg_selections: hold`, and removing `unattended-upgrades` prevent fleet hangs and DKMS kernel mismatches. Then explain why `reboot` uses `reboot_timeout: 1800` and `meta: flush_handlers`.
-4. Explain the purpose of `nvidia-persistenced`, `nvidia_peermem`, ECC (`-e 1`), locked clocks (`-lgc`), and MIG partitioning. Use Table 3-1 in *AI Systems Performance Engineering*, Chapter 3, for the Blackwell B200 profiles `1g.23gb`..`7g.180gb`. Then contrast `dcgmi diag -r 1`, `-r 2`, and `-r 3`.
-5. Trace the 7 validation stages in Section 5, from PCIe and NVLink sanity checks up to `gpu-burn`. The stages include `gpu-burn`, `nvbandwidth`, `perftest` and `nccl-tests`, so you can see where each one belongs. Check `journalctl -k` for XID errors at that stage, and end with the multi-node `mpirun ... all_reduce_perf` bus-bandwidth assertions. Use `parse_and_gate_nccl_busbw()` in `code/part04/ansible_gpu_cluster.py` to follow the last step.
-6. Use `evaluate_gpu_health_sweep()` in `code/part04/ansible_gpu_cluster.py` to show how a read-only fleet sweep across `nvidia-smi --query-gpu=...` pinpoints degraded nodes when distributed training slows down. Look for 7/8 GPUs, a PCIe `Gen4x8` downgrade, uncorrected ECC, and thermal throttling. Then trace the Slurm and Kubernetes (`k8s_drain`) maintenance workflow.
+1. Use `validate_bringup_role_order()` in `code/part04/ansible_gpu_cluster.py` to follow the chain `mofed`, `nvidia_driver`, `fabric_manager`, `gpu_validate` and `slurm_client`. Explain why the MOFED or DOCA stack and its reboot must finish before the NVIDIA driver and `nvidia_peermem` are loaded.
+2. Explain why `nvidia-fabricmanager` must match the exact driver version on NVSwitch systems.
+3. Explain why `gpu_validate` must gate the start of `slurm_client` or `kubelet`.
+4. Show how `gpu_facts` uses `lspci -d 10de:` to count GPUs and publish `/etc/ansible/facts.d/gpu.fact`. Then say what the role does when a GPU has fallen off the PCIe bus.
+5. *AI Systems Performance Engineering*, Chapter 3, sets the `performance` CPU governor and disables deep C-states. Explain how that reduces GPU bubbles.
+6. Explain why the same chapter sets `--topology-manager-policy=single-numa-node` on the kubelet.
+7. Explain how `dpkg_options: "force-confold,force-confdef"` and `DEBIAN_FRONTEND: noninteractive` prevent a fleet-wide hang. Then explain why `dpkg_selections: hold` prevents a DKMS kernel mismatch.
+8. Explain why the `reboot` task sets `reboot_timeout: 1800`, and why `meta: flush_handlers` comes before the next role.
+9. Explain what `nvidia-persistenced` and `nvidia_peermem` each do.
+10. Use Table 3-1 in *AI Systems Performance Engineering*, Chapter 3. Name two Blackwell B200 MIG profiles, and say when a large training job turns MIG off.
+11. Contrast `dcgmi diag -r 1`, `-r 2` and `-r 3` by time and coverage.
+12. Trace the validation stages in Section 5 from PCIe and NVLink checks up to `gpu-burn`. Say where `journalctl -k` fits.
+13. Use `parse_and_gate_nccl_busbw()` to follow the last stage, the multi-node bus-bandwidth assertion.
+14. Use `evaluate_gpu_health_sweep()` to show how a read-only fleet sweep finds degraded nodes. Look for 7 of 8 GPUs, a PCIe `Gen4x8` downgrade, uncorrected ECC and throttling.
+15. Trace the Slurm and Kubernetes maintenance workflow, including `k8s_drain`.
 
 ## Checkpoint questions (20)
 
@@ -715,5 +738,5 @@ If a GPU server does not return within `reboot_timeout: 1800` after a kernel, GR
   - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed. (Ansible role architecture, handlers, `async`/`poll`, `block`/`rescue`, and `dpkg_options` mechanics).
   - `nvidia-devops` (`volume-10/04-ansible-for-infrastructure-automation.md`): MOFED role and reboot flow, Fabric Manager and DCGM roles, non-interactive `apt` troubleshooting, green-but-dead service verification, `gpu-burn` and `nccl-tests` diagnostic playbooks.
 - **Run here:** `python3 code/part04/ansible_gpu_cluster_lab.py` (3 passed, 0 failed).
-- **Explicitly labelled inferences:** The `validate_bringup_role_order`, `evaluate_gpu_health_sweep`, and `parse_and_gate_nccl_busbw` models in `code/part04/ansible_gpu_cluster.py`, the 11-role `gpu_bringup.yml` dependency DAG, and the `fleet_diag.yml` sweep are the author's constructions synthesizing `ASP` Chapter 3, `AUR`, and `volume-10/04` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Explicitly labelled inferences:** The `validate_bringup_role_order`, `evaluate_gpu_health_sweep`, and `parse_and_gate_nccl_busbw` models in `code/part04/ansible_gpu_cluster.py`, the 11-role `gpu_bringup.yml` dependency DAG, and the `fleet_diag.yml` sweep are the author's constructions synthesizing *AI Systems Performance Engineering*, Chapter 3, *Ansible: Up and Running*, and `volume-10/04` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `mlnxofedinstall`, `nvidia-smi`, `nvidia-fabricmanager`, `dcgmi diag`, `gpu_burn`, `mpirun ... all_reduce_perf`, and `scontrol` executions (`10de:`, `15b3:`, `3600`s async, `1800`s reboot timeout, `550`, `9400`, `2100`s burn, `-b 8 -e 8G`, `256` / `1,000` nodes) are marked (`untested here`) where not executed by `ansible_gpu_cluster_lab.py`.

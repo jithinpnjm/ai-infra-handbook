@@ -22,18 +22,18 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The earlier chapters introduced the pieces. Real work means putting them together so that a service deploys the same way every time. The pattern in this chapter has a fixed set of steps: user and directories, virtual environment, application release, configuration from templates, systemd service, reverse proxy with TLS, database, firewall, health checks and rolling update. Those steps stay the same whether the payload is an internal inventory API, a model-serving gateway, an Alertmanager webhook receiver or the Slurm accounting stack. Working through one complete deployment also shows you the operational concerns that matter on a cluster: zero-downtime releases, rollback, secrets, verification and idempotency.
+The earlier chapters introduced the pieces. Real work means putting them together so that a service deploys the same way every time. The pattern in this chapter follows one fixed order: user and directories, virtual environment, application release, configuration from templates, systemd service, reverse proxy with TLS, database, firewall, health checks and rolling update. The order stays the same whether the payload is an internal inventory API, a model-serving gateway, an Alertmanager webhook receiver or the Slurm accounting stack. Working through one complete deployment also shows the concerns that matter on a cluster. Those are zero-downtime releases, rollback, secrets, verification and idempotency.
 
 ## Prerequisites and outcomes
 
 Read 4.3 to 4.8 first. When you finish this chapter, you will be able to do the following:
 
-- Lay out an Ansible project with an inventory, `group_vars`, playbooks, a roles-ready structure, `requirements.yml` and `ansible.cfg`.
-- Build a full deployment playbook that covers the OS baseline, the database, an application release with a virtualenv, a systemd unit, an nginx reverse proxy with TLS, the firewall, log rotation and monitoring hooks.
-- Deploy releases into versioned directories with an atomic `current` symlink swap, keep N releases and roll back.
-- Perform rolling updates with `serial`, drain the load balancer through `delegate_to`, and rely on health checks with an automatic stop.
-- Verify the result with assertions, `uri` and smoke tests, and prove idempotency.
-- Compare a host-based deployment with a container-based one (Docker Compose via Ansible), and know when each one fits.
+- Lay out an Ansible project with an inventory, `group_vars`, playbooks, `requirements.yml` and `ansible.cfg`.
+- Build a full deployment playbook for the OS baseline, the database, the application, an nginx reverse proxy with TLS, and the firewall.
+- Deploy releases into versioned directories with an atomic `current` symlink swap, keep the last few releases and roll back.
+- Perform rolling updates with `serial`, drain the load balancer through `delegate_to`, and stop automatically on a failed health check.
+- Verify the result with assertions and smoke tests, and prove idempotency.
+- Compare a host-based deployment with a container-based one, and know when each one fits.
 
 If any of these outcomes is new to you, go back to 4.3 to 4.8 before you start the build.
 
@@ -55,23 +55,29 @@ Clients reach nginx on `web01` over HTTPS. nginx forwards each request to `app01
 
 The web host runs nginx. `app01` and `app02` run the service, and `db01` runs PostgreSQL. On a small lab, you can place everything on one VM. The playbook is organised by group, so it scales when you add hosts.
 
-### Why production deployment is harder than `runserver` (`AUR` Chapters 6 & 7 `mezzanine.yml`)
+### Why production deployment is harder than `runserver` (*Ansible: Up and Running*, Chapters 6 and 7, `mezzanine.yml`)
 
 In *Ansible: Up and Running*, Chapters 6 and 7, Bas Meijer, Lorin Hochstein and René Moser compare a Python web application on a developer laptop with the same application in production. Their example is Mezzanine 4.3.1 on Django 1.11.29.
 
 On a laptop, `python manage.py runserver 0.0.0.0:8000` runs a single-threaded foreground HTTP server. It uses a local SQLite file (`db.sqlite3`), and it has no TLS, no process supervision and no concurrency.
 
-Production splits the stack into separate components. NGINX sits at the edge, terminates HTTPS on 443, redirects HTTP on 80 and serves `/static` files directly. Behind it, an application server listens on a local Unix socket. Gunicorn 20.1.0 handles WSGI (PEP 3333), and Uvicorn handles ASGI. The socket is `unix:{{ proj_path }}/gunicorn.sock`, with `workers = cpu_count() * 2` set in `gunicorn.conf.py.j2`. A process supervisor, either systemd or Supervisor, manages the process. Supervisor reads `/etc/supervisor/conf.d/mezzanine.conf`, and you apply changes with `supervisorctl reread && supervisorctl update`.
+Production splits the stack into separate components. NGINX sits at the edge, terminates HTTPS on 443, redirects HTTP on 80 and serves `/static` files directly. Behind it, an application server listens on a local Unix socket. Gunicorn 20.1.0 handles WSGI (PEP 3333), and Uvicorn handles ASGI. The socket is `unix:{{ proj_path }}/gunicorn.sock`, and `gunicorn.conf.py.j2` sets `workers = cpu_count() * 2`.
 
-The database is PostgreSQL, accessed through psycopg2. It needs an explicit encoding (`UTF8`) and locale (`LC_CTYPE='en_US.UTF-8'`, `LC_COLLATE='en_US.UTF-8'`), and that requires `template='template0'` on `postgresql_db`. Last, Memcached on `127.0.0.1:11211` handles caching.
+A process supervisor, either systemd or Supervisor, manages the process. Supervisor reads `/etc/supervisor/conf.d/mezzanine.conf`, and you apply changes with `supervisorctl reread && supervisorctl update`.
+
+The database is PostgreSQL, accessed through psycopg2. It needs an explicit encoding, `UTF8`, and an explicit locale. The locale is `LC_CTYPE='en_US.UTF-8'` and `LC_COLLATE='en_US.UTF-8'`, and setting it requires `template='template0'` on `postgresql_db`. Last, Memcached on `127.0.0.1:11211` handles caching.
 
 The key lessons from `mezzanine.yml` come from *Ansible: Up and Running*, Chapter 7, Examples 7-1 to 7-28.
 
 1. Some Python packages, including psycopg2, Pillow and cryptography, are built from source during install. That build fails unless the OS `-dev` or `-devel` libraries (`libpq-dev`, `libjpeg-dev`, `libssl-dev`, `libffi-dev`, `python3-dev`) and `locales` are installed first. Install them with `apt`, and use `apt-cache policy libssl-dev` to look up the package.
 2. Rather than copying your personal SSH private key onto target servers, enable SSH agent forwarding in `ansible.cfg` with `[ssh_connection] ssh_args = -o ForwardAgent=yes`, and run `ssh-add -L`. Then run the git task as the unprivileged user with `become: false`: `git: repo=git@github.com:ansiblebook/mezzanine_example.git dest={{ proj_path }} accept_hostkey=true`.
-3. Keep credentials such as `db_pass`, `secret_key`, `admin_pass` and API tokens in `vars_files: [secrets.yml]`. Commit that file only as an encrypted Ansible Vault file or as a `secrets.yml.example` template. For file modes, you can use quoted octal (`mode: '0750'`, `mode: '0640'`) or symbolic modes (`mode: 'u=rw,g=r,o=r'`). With symbolic modes, remember to include `=` when you set exact permissions.
-4. Use idempotent framework modules for management commands. `django_manage: command=migrate` and `command=collectstatic` are safe to repeat. A raw `createdb` command, however, fails the second time with `CommandError: Database already created`. Pass variables to helper scripts with the task `environment:` keyword, as in `script: scripts/setsite.py` with `environment: { PATH: "{{ venv_path }}/bin", PROJECT_DIR: "{{ proj_path }}", WEBSITE_DOMAIN: "{{ live_hostname }}" }`. Schedule periodic jobs with `ansible.builtin.cron`, for example `name: "poll twitter", minute: "*/5", user: "{{ user }}", job: "{{ manage }} poll_twitter"`.
-5. TLS certificates and Django or FastAPI `Host`-header validation need a domain name rather than a bare IP, so the chapter uses wildcard DNS. `192.168.33.10.nip.io` resolves to `192.168.33.10` with no custom DNS server, and `ALLOWED_HOSTS = ["192.168.33.10.nip.io", "www.192.168.33.10.nip.io"]` accepts the name. If DNS rebinding protection blocks `nip.io`, add `192.168.33.10 192.168.33.10.nip.io` to `/etc/hosts`. If the browser returns `400 Bad Request`, the `Host` header did not match `ALLOWED_HOSTS`.
+3. Keep credentials such as `db_pass`, `secret_key`, `admin_pass` and API tokens in `vars_files: [secrets.yml]`. Commit that file only as an encrypted Ansible Vault file or as a `secrets.yml.example` template. File modes can be quoted octal, such as `mode: '0750'`, or symbolic, such as `mode: 'u=rw,g=r,o=r'`. With symbolic modes, include `=` when you set exact permissions.
+4. Use idempotent framework modules for management commands. `django_manage: command=migrate` and `command=collectstatic` are safe to repeat. A raw `createdb` command fails the second time with `CommandError: Database already created`.
+
+Pass variables to helper scripts with the task `environment:` keyword, as in `script: scripts/setsite.py` with `environment: { PATH: "{{ venv_path }}/bin", PROJECT_DIR: "{{ proj_path }}", WEBSITE_DOMAIN: "{{ live_hostname }}" }`. Schedule periodic jobs with `ansible.builtin.cron`, for example `name: "poll twitter", minute: "*/5", user: "{{ user }}", job: "{{ manage }} poll_twitter"`.
+5. TLS certificates and Django or FastAPI `Host`-header validation need a domain name rather than a bare IP, so the chapter uses wildcard DNS. The name `192.168.33.10.nip.io` resolves to `192.168.33.10` with no custom DNS server. Setting `ALLOWED_HOSTS = ["192.168.33.10.nip.io", "www.192.168.33.10.nip.io"]` makes the application accept it.
+
+If DNS rebinding protection blocks `nip.io`, add `192.168.33.10 192.168.33.10.nip.io` to `/etc/hosts`. If the browser returns `400 Bad Request`, the `Host` header did not match `ALLOWED_HOSTS`.
 
 Choose the hostname first, because TLS and host checks both depend on it.
 
@@ -434,7 +440,9 @@ FLEET_SECRET_KEY={{ vault_secret_key }}
 
 Four release habits follow from this design. Pin each release to a tag or commit SHA. Build the dependencies from a lock file inside the release directory, so the old release's venv stays intact for rollback. Rollback means setting `app_version` back and running the play again, or repointing `current` by hand and restarting. Because old releases stay on disk, no rebuild is needed: `ansible-playbook playbooks/app.yml -e app_version=v1.4.1`.
 
-Database migrations must also stay backward compatible with the previous release during a rolling update. Use the expand/contract pattern: run migrations once, then roll out the code. The systemd hardening settings (`NoNewPrivileges`, `ProtectSystem`, `PrivateTmp`) reduce the blast radius of a compromised process. Adjust them for any write paths your app needs.
+Database migrations must also stay backward compatible with the previous release during a rolling update. Use the expand/contract pattern: run migrations once, then roll out the code.
+
+The systemd unit also limits the damage a compromised process can do. `NoNewPrivileges=yes` stops the process and its children from gaining new privileges, for example through a setuid binary. `ProtectSystem` and `PrivateTmp` restrict where the process can write. Adjust them for any write paths your app needs.
 
 Finally, prefer building artefacts in CI, as a wheel or a container, and let Ansible deploy the artefact. That is more reproducible and faster than cloning source and installing on every host, and it gives you control over the supply chain. You can fetch an artefact with `get_url` from an artefact repository with a checksum, or install with `pip` from an internal index with hashes.
 
@@ -580,7 +588,7 @@ ansible-playbook playbooks/app.yml -e app_version=v1.4.3 --limit app01     # can
 ansible-playbook playbooks/app.yml -e app_version=v1.4.1                  # rollback
 ```
 
-A second run that reports `changed` tasks means something is not idempotent. The usual culprits are `command` tasks without `changed_when`, `lineinfile` regex mismatches, `git` with `force`, templates that contain timestamps, repo clones on moving branches and package updates with `state: latest`. Fix each one before you trust the playbook.
+A second run that reports `changed` tasks means something is not idempotent. Look for `command` tasks without `changed_when`, `lineinfile` regex mismatches, templates that contain timestamps, and package updates with `state: latest`. Repo clones on a moving branch, and `git` with `force`, cause the same symptom. Fix each one before you trust the playbook.
 
 ## 9. A container-based variant
 
@@ -647,7 +655,7 @@ python3 code/part04/ansible_app_deployment_lab.py
 
 The lab checks three things. It verifies that a semantic tag or commit SHA passes version pinning (`validate_pinned_version`). It exercises the versioned release directory manager (`AtomicReleaseDeployer`), which switches the `current` symlink atomically, keeps N releases while pruning older ones, and rolls back instantly. It also checks the Gunicorn multiprocessing configuration rendering (`render_gunicorn_conf`), which is covered in *Ansible: Up and Running*, Chapter 7.
 
-Next, on 1 to 3 Ubuntu VMs, work through these exercises. Every interactive shell step below is `untested here`.
+Next, on 1 to 3 Ubuntu VMs, work through these exercises. The interactive shell steps below have not been run.
 
 1. Scaffold the project with the layout above. Write `ansible.cfg` and `requirements.yml`, and build an inventory of 3 or 4 hosts.
 2. Run `baseline.yml` and `database.yml`. Connect with `psql` from an app host, verify the firewall and `pg_hba` entries, and check that a second run is idempotent.
@@ -687,17 +695,24 @@ Go through this list against your own playbook before the first production rollo
 - "How do you roll back?" Cover retained old releases, the version pin and the symlink.
 - "Where do secrets go and how do you stop them leaking?"
 - "How do you verify a deployment worked beyond module success?"
-- "Ansible-built venv vs containers: trade-offs?"
-- "What would you change to run this on 500 hosts?" Cover artefacts, forks and pipelining, roles, AAP, batches and the LB API.
+- "What are the trade-offs between an Ansible-built venv and containers?"
+- "What would you change to run this on 500 hosts?" Cover artefacts, forks and pipelining, roles, AAP, batches and the load balancer API.
 
 ## Exercises
 
-1. First, compare running `manage.py runserver` or `uvicorn --reload` on a laptop with a production multi-tier deployment: NGINX with TLS and rate limiting, Gunicorn or Uvicorn under systemd or Supervisor, PostgreSQL and Memcached. Then explain why `site.yml` splits the deployment into `baseline.yml`, `database.yml`, `app.yml`, `web.yml` and `verify.yml`, imported with `import_playbook`. This exercise draws on *Ansible: Up and Running*, Chapters 6 and 7.
-2. Trace `database.yml` and explain three things. First, why `become_user: postgres` needs the `acl` package on Ubuntu or Debian. Second, why *Ansible: Up and Running*, Chapter 7, passes `encoding='UTF8'`, `lc_ctype='en_US.UTF-8'`, `lc_collate='en_US.UTF-8'` and `template='template0'` to `postgresql_db`. Third, how `listen_addresses`, `pg_hba.conf` (`scram-sha-256`) and `ufw` (`src: "{{ hostvars[item]['ansible_host'] }}"`) limit database access to the `app` group.
-3. Using `validate_pinned_version()` and `AtomicReleaseDeployer` in `code/part04/ansible_app_deployment.py`, explain three things you would need to know. Why must `app_version` be a tag or commit SHA rather than `main`? How does building each release in `/opt/fleetapp/releases/v1.4.2/{src,venv}` and atomically switching `/opt/fleetapp/current` allow 5-second rollbacks (`-e app_version=v1.4.1`) without a rebuild? And how are old releases pruned while the last `N=5` are kept?
-4. Trace `app.yml`. Explain why `alembic upgrade head` uses `run_once: true`, and why schema migrations must follow the expand/contract pattern during a rolling deploy. Explain why `meta: flush_handlers` must run *before* the `uri` `/readyz` polling loop and the `post_tasks` load-balancer undrain. Then say what `NoNewPrivileges=yes`, `ProtectSystem=strict`, `ProtectHome=yes`, `PrivateTmp=yes` and `ReadWritePaths={{ app_root }}/shared` enforce in `fleetapp.service.j2`.
-5. Explain how `nginx-site.conf.j2` generates the `upstream` block from `groups['app']`, and how the TLS settings, `limit_req_zone` and `proxy_buffering off` fit in. Then explain why `proxy_read_timeout 300s` matters for streaming AI and SSE gateways. Explain how `192.168.33.10.nip.io` and `ALLOWED_HOSTS` work in *Ansible: Up and Running*, Chapter 7. Then explain how `verify.yml` proves behavioral correctness beyond module state.
-6. Compare the host virtualenv deployment in Section 5 that you built (`git`, `pip` and `systemd`) with the containerized deployment in Section 9. The container version uses `community.docker.docker_container` pinned by `@sha256:{{ app_image_digest }}`, with `read_only: true`, `cap_drop: [ALL]`, `security_opts: ["no-new-privileges:true"]` and `memory: 1g`. Then explain when you would move from Ansible-managed containers to Kubernetes.
+1. Compare `manage.py runserver` on a laptop with a production multi-tier deployment. The production side has NGINX, Gunicorn under systemd or Supervisor, PostgreSQL and Memcached. The comparison draws on *Ansible: Up and Running*, Chapters 6 and 7.
+2. Explain why `site.yml` splits the deployment into `baseline.yml`, `database.yml`, `app.yml`, `web.yml` and `verify.yml`. Say what `import_playbook` does for you.
+3. Trace `database.yml`. Explain why `become_user: postgres` needs the `acl` package on Ubuntu or Debian.
+4. Explain why *Ansible: Up and Running*, Chapter 7, passes `template='template0'` to `postgresql_db` when it sets the encoding and locale.
+5. Say how `listen_addresses`, `pg_hba.conf` and `ufw` together limit database access to the `app` group.
+6. Use `validate_pinned_version()` and `AtomicReleaseDeployer` in `code/part04/ansible_app_deployment.py`. Explain why `app_version` must be a tag or commit SHA rather than `main`.
+7. A release lives in `/opt/fleetapp/releases/v1.4.2/` and `/opt/fleetapp/current` points at it. Explain how switching that link allows a rollback with `-e app_version=v1.4.1` and no rebuild. Then explain how old releases are pruned while the last five are kept.
+8. Trace `app.yml`. Explain why `alembic upgrade head` uses `run_once: true`, and why migrations must follow the expand/contract pattern during a rolling deploy.
+9. Explain why `meta: flush_handlers` must run before the `/readyz` polling loop and before the load-balancer undrain.
+10. Pick `ProtectSystem=strict` in `fleetapp.service.j2`. Say what attack it blocks, and what `ReadWritePaths={{ app_root }}/shared` adds back.
+11. Explain how `nginx-site.conf.j2` builds the `upstream` block from `groups['app']`. Then say why `proxy_read_timeout 300s` matters for streaming AI and SSE gateways.
+12. Explain how `192.168.33.10.nip.io` and `ALLOWED_HOSTS` work together, and how `verify.yml` proves behaviour beyond module state.
+13. Compare the virtualenv deployment in Section 5 with the container deployment in Section 9. The container version is pinned by `@sha256:{{ app_image_digest }}` and drops all capabilities. Then say when you would move from Ansible-managed containers to Kubernetes.
 
 ## Checkpoint questions (20)
 

@@ -22,9 +22,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a driver update that must reach every H100 node in rack 3 of cluster B, and nothing else. Your inventory decides whether that is one command or a risky guess. The inventory is the model of your fleet. It records which machines exist and what role each one plays, such as login, compute, storage, BMC or switch. It also records which rack and fabric rail each machine sits on, what hardware it carries (GPU count and model, NIC type), and which environment it belongs to.
+Picture a driver update that must reach every H100 node in rack 3 of cluster B, and nothing else. Your inventory decides whether that is one command or a risky guess. The inventory is the model of your fleet. It records which machines exist and what role each one plays, such as login, compute, storage, BMC or switch. It also records the rack and fabric rail of each machine, the hardware it carries, and the environment it belongs to. Hardware means the GPU count and model and the NIC type.
 
-Every playbook is only as good as that model. A clean inventory lets you roll that driver update out with one `--limit`. A messy one sends the wrong NCCL settings to the wrong hardware. For a large cluster, generate the inventory from a source of truth, such as NetBox, a CMDB, cloud APIs, Terraform state, Slurm or BCM. A generated inventory never drifts from reality.
+Every playbook is only as good as that model. A clean inventory lets you roll that driver update out with one `--limit`. A messy one sends the wrong NCCL settings to the wrong hardware. For a large cluster, generate the inventory from a source of truth such as NetBox, a CMDB, cloud APIs, Terraform state, Slurm or BCM. A generated inventory does not drift from the fleet it describes.
 
 ## Prerequisites and outcomes
 
@@ -116,7 +116,9 @@ Give each VM its own alias to fix this. You can write `vagrant1 ansible_port=222
 
 Ranges come from the pets-versus-cattle idea in *Ansible: Up and Running*, chapter 4. You name pets one at a time, such as `frankfurt.example.com` and `helsinki.example.com`. A scale-out fleet works better with numbered or alphabetic ranges, such as `web[01:20].example.com`, `web-[a:t].example.com` and `gpu[001:032]`. The leading zeros in `[001:032]` are kept automatically, so the range gives you `gpu001` through `gpu032`.
 
-Behavioral connection variables tell Ansible how to reach each host. Table 4-1 in *Ansible: Up and Running*, chapter 4, lists them. They include `ansible_host`, `ansible_port`, `ansible_user`, `ansible_connection` (with the values `ssh`, `local`, `docker`, `winrm`, `network_cli`, `httpapi` and `kubectl`), `ansible_ssh_private_key_file`, `ansible_ssh_common_args` for ProxyJump, `ansible_become`, `ansible_become_method`, `ansible_become_user`, `ansible_python_interpreter` and `ansible_shell_type`. Ansible assumes Bourne shell syntax (`/bin/sh`) by default. If the remote user's login shell is `csh` or `fish`, set `ansible_shell_type=csh` or `ansible_shell_type=fish`. Then Ansible formats environment-variable exports and command wrappers for that shell. Keep passwords in Vault or a secrets lookup, never in plaintext inventory.
+Behavioral connection variables tell Ansible how to reach each host. Table 4-1 in *Ansible: Up and Running*, chapter 4, lists them. The ones you will set most often are `ansible_host`, `ansible_port`, `ansible_user` and `ansible_connection`. The last one takes values such as `ssh`, `local`, `docker`, `winrm`, `network_cli`, `httpapi` and `kubectl`. Others cover the key file (`ansible_ssh_private_key_file`), a jump host (`ansible_ssh_common_args` for ProxyJump), privilege escalation (`ansible_become`, `ansible_become_method`, `ansible_become_user`) and the remote Python (`ansible_python_interpreter`).
+
+Ansible assumes Bourne shell syntax (`/bin/sh`) by default. If the remote user's login shell is `csh` or `fish`, set `ansible_shell_type=csh` or `ansible_shell_type=fish`. Ansible then formats environment-variable exports and command wrappers for that shell. Keep passwords in Vault or a secrets lookup, never in plaintext inventory.
 
 Name groups with letters, digits and underscores, because hyphens produce warnings. Avoid group names that collide with variables or keywords.
 
@@ -287,7 +289,17 @@ compose:
 
 Other plugins you will meet include `kubernetes.core.k8s` for pods and nodes, `community.docker.docker_containers`, and `ansible.builtin.constructed`, which derives groups and variables from the variables of existing hosts. You will also find `ansible.builtin.yaml`, `ansible.builtin.ini`, `ansible.builtin.script`, `ansible.builtin.host_list` and `ansible.builtin.auto`. For NetBox as your source of truth, use `netbox.netbox.nb_inventory`, which reads sites, racks, roles, tags and custom fields. Other plugins cover VMware, Azure, OpenStack, Terraform state (`cloud.terraform.terraform_state`) and Foreman. Run `ansible-doc -t inventory -l` to list what your installation provides.
 
-Five plugin settings matter most. `keyed_groups` builds groups from attributes such as tags, labels, zone or instance type. `groups` builds groups from Jinja conditions. `compose` computes variables, including `ansible_host`. `filters` make the server select fewer items, which keeps large queries fast. `cache` (with `cache: true`, `cache_plugin: jsonfile` and `cache_timeout: 300`) keeps API responses on disk, so repeated commands do not call the API each time.
+Five plugin settings matter most, and the table lists them.
+
+| Setting | What it does |
+|---|---|
+| `keyed_groups` | Builds groups from attributes such as tags, labels, zone or instance type |
+| `groups` | Builds groups from Jinja conditions |
+| `compose` | Computes variables, including `ansible_host` |
+| `filters` | Makes the server return fewer items, which keeps large queries fast |
+| `cache` | Keeps API responses on disk, so repeated commands do not call the API each time |
+
+To turn caching on, set `cache: true`, `cache_plugin: jsonfile` and `cache_timeout: 300`.
 
 You can combine sources. `-i inventories/prod` can point at a directory that mixes static files and plugin configs, and Ansible merges them. A common pattern pairs a static inventory for on-prem hardware with a cloud plugin for burst capacity. A `constructed` plugin can then derive uniform groups, such as `gpu` and `login`, whatever the source. For authentication, use workload identity, instance profiles or environment credentials. Keep plugin configs free of secrets.
 
@@ -388,7 +400,7 @@ Run the lab with this command.
 python3 code/part04/ansible_inventory_model_lab.py
 ```
 
-Next, on a control node with `ansible-core`, work through the exercises below. All interactive shell steps below are `untested here`.
+Next, on a control node with `ansible-core`, work through the exercises below. The interactive shell steps below have not been run.
 
 1. Build a lab inventory in INI and again in YAML, with `login`, `gpu_h100`, `gpu_a100`, `gpu` with its child groups, and `slurm_controller`. Use ranges. Then inspect it with `--graph`, `--list` and `--host`.
 2. Practise union, intersection, exclusion, regex and subscripts with `--list-hosts`. Then create a canary group and show a rolling plan that targets `canary` first.
@@ -404,11 +416,15 @@ Next, on a control node with `ansible-core`, work through the exercises below. A
 
 ## 9. Common mistakes
 
-Most inventory trouble comes from a few habits. A giant flat inventory repeats the same variables on every host, and `host_vars` sprawls as a result. Variables placed in role `vars/` are hard to override, and you may reach for `-e` to "fix" precedence problems. Storing shared secrets in plaintext inventory files is a mistake, and so is putting `ansible_password` in vars.
+Most inventory trouble comes from a few habits. Here is the shortlist.
 
-Using a branch per environment, instead of an inventory directory per environment, is another common mistake. Relying on group order to settle conflicts without noticing is risky, especially when hosts belong to groups that set conflicting values. Static inventories that nobody updates after RMAs and expansions go stale. Dynamic inventory with no cache hammers the API.
+- A giant flat inventory repeats the same variables on every host, so `host_vars` sprawls.
+- Variables placed in role `vars/` are hard to override, and people reach for `-e` to patch precedence problems.
+- Plaintext secrets in inventory files, or `ansible_password` in vars, leak to everyone who can read the repository.
+- A branch per environment, instead of an inventory directory per environment, lets environments drift apart.
+- Static inventories that nobody updates after RMAs and expansions go stale, and a dynamic inventory with no cache hammers the API.
 
-Group names with hyphens or spaces cause trouble, and so do names that collide with variables. Expecting `localhost` in `all` is a mistake, and so is forgetting what `connection: local` means. Forgetting that dictionaries replace rather than merge is a frequent error. Finally, without validation of required host data, playbooks can fail halfway across the fleet.
+A few smaller errors recur as well. Group names with hyphens or spaces cause warnings, and so do names that collide with variables. Some people expect `localhost` to be part of `all`, but it is implicit and is not. Dictionaries replace rather than merge across layers, which surprises almost everyone once. Without validation of required host data, a playbook can fail halfway across the fleet.
 
 Check your inventory against this list before the first fleet-wide change.
 
@@ -417,21 +433,27 @@ Check your inventory against this list before the first fleet-wide change.
 Use these questions to check how well you can explain the chapter out loud.
 
 - "How do you structure inventory for multiple environments and a few thousand GPU nodes?"
-- "Explain Ansible variable precedence; where would you put defaults, environment config, per-host overrides, secrets?"
-- "Static versus dynamic inventory; how would you source it from NetBox or a cloud?"
+- "Explain Ansible variable precedence. Where would you put defaults, environment config, per-host overrides and secrets?"
+- "Static versus dynamic inventory: how would you source it from NetBox or a cloud?"
 - "What are `keyed_groups`, `compose`, `constructed`? When `group_by` versus `add_host`?"
 - "How do you debug which value of a variable is used?"
-- "How would you roll a change out to one rack at a time using inventory?" (rack groups, `serial`, `--limit`.)
+- "How would you roll a change out to one rack at a time using inventory?" The answer uses rack groups, `serial` and `--limit`.
 - "How do you keep secrets out of inventory?"
 
 ## Exercises
 
-1. Use `expand_inventory_range()` in `code/part04/ansible_inventory_model.py` to explain three things from *Ansible: Up and Running*, chapter 4. First, why listing `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` without aliases collapses to a single host (`Example 4-5`). Then show how the `vagrant1..3` aliases with `ansible_host` solve it. Second, how zero-padded numeric ranges such as `gpu[001:032]` and alphabetic ranges such as `web-[a:t]` work. Third, what `ansible_connection`, `ansible_shell_type` and the implicit `localhost` are for.
-2. Explain how `--limit` combines with the `hosts:` pattern you set on a play. Then explain the intersection in `gpu:&rack_r01`, the exclusion in `gpu:!gpu_a100`, the group slice in `gpu[0:2]`, and what `--limit @failed_hosts.txt` does. Finally, decide when `order: sorted` fits a play better than `order: shuffle`.
-3. Use `resolve_variable_precedence()` in `code/part04/ansible_inventory_model.py` to explain three things. First, how splitting `group_vars/prod/` into a directory with `main.yml` and `vault.yml` works, or with `db` and `rabbitmq`, as in *Ansible: Up and Running*, chapter 4. Second, why role `defaults/main.yml` and role `vars/main.yml` behave differently next to inventory `group_vars/`. Third, why overriding a dictionary in `host_vars/` wipes out sibling keys unless you merge it with `combine(recursive=True)`.
-4. Contrast `ansible.builtin.group_by` with `ansible.builtin.add_host`. `group_by` partitions existing hosts into dynamic groups, such as `Ubuntu` or `gpu_model_h100`, based on gathered facts. `add_host` registers a newly provisioned VM IP in an in-memory group during a run. Then explain where `meta: refresh_inventory` fits, in *Ansible: Up and Running*, chapter 4.
-5. Using `parse_vagrant_machine_readable_inventory()`, explain two things. First, how `keyed_groups`, `groups`, `compose`, `filters` and `cache` work in the cloud and NetBox plugins, such as `gcp_compute`, `aws_ec2`, `nb_inventory` and `constructed`. Second, the JSON contract for custom inventory scripts, such as `vagrant.py` and `slurm_inventory.py`, meaning `--list` versus `--host <name>`. Then explain why including `_meta.hostvars` is essential on a 5,000-node cluster.
-6. Suppose you must design an inventory group hierarchy for a 512-GPU cluster. The cluster spans H100 and GB200 nodes across 16 racks, with out-of-band Redfish BMCs. Then write an `assert` task that checks the required per-host metadata (`rack`, `bmc_address`, `gpu_count` and `ib_hcas`) before any disruptive role runs.
+1. Use `expand_inventory_range()` in `code/part04/ansible_inventory_model.py` to show why three Vagrant machines on `127.0.0.1` collapse into one host. They listen on ports `2222`, `2200` and `2201`, and the problem is *Ansible: Up and Running*, chapter 4, `Example 4-5`. Then fix it with aliases and `ansible_host`.
+2. Explain how zero-padded ranges such as `gpu[001:032]` and alphabetic ranges such as `web-[a:t]` expand. Then say what the implicit `localhost` is, and why it is not part of `all`.
+3. A play says `hosts: gpu`, and you run it with `--limit`. Explain how the two patterns combine. Then say what `gpu:&rack_r01` and `gpu:!gpu_a100` select.
+4. A rolling change failed on four hosts. Explain what `--limit @failed_hosts.txt` does, and what you must have enabled beforehand for it to work. Then decide when `order: sorted` suits a play better than `order: shuffle`.
+5. Use `resolve_variable_precedence()` in `code/part04/ansible_inventory_model.py` to explain why role `defaults/main.yml` and role `vars/main.yml` behave differently next to inventory `group_vars/`. Which one can an operator override?
+6. A `host_vars/` file overrides one key of a dictionary, and the sibling keys vanish. Explain why, and fix it with `combine(recursive=True)`.
+7. Split `group_vars/prod/` into a directory with `main.yml` and `vault.yml`, as *Ansible: Up and Running*, chapter 4, does. Say why you would do it, and in what order Ansible merges the files.
+8. Contrast `ansible.builtin.group_by` with `ansible.builtin.add_host`. Say which one fits a VM that provisioning has just created, and where `meta: refresh_inventory` fits.
+9. Take one cloud plugin, such as `gcp_compute` or `aws_ec2`. Explain how `keyed_groups` turns instance labels into groups, and what `cache` saves you.
+10. Using `parse_vagrant_machine_readable_inventory()`, describe the JSON that a custom inventory script prints for `--list` and for `--host <name>`. Then explain why `_meta.hostvars` matters on a 5,000-node cluster.
+11. Design the group hierarchy for a cluster of 512 GPUs. It has H100 and GB200 nodes across 16 racks, with Redfish BMCs. Name the groups for role, hardware and rack.
+12. Write an `assert` task that checks `rack`, `bmc_address`, `gpu_count` and `ib_hcas` on every host. Run it before any disruptive role.
 
 ## Checkpoint questions (20)
 
