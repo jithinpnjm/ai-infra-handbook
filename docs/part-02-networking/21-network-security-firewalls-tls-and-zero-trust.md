@@ -152,7 +152,7 @@ Picture a service that is healthy in every way except one: nobody can reach it. 
 
 Volumetric attacks saturate bandwidth, so you absorb them upstream with scrubbing or anycast, and you stop spoofed sources with BCP38. Protocol attacks exhaust connection state, which SYN cookies and connection limits address. Application-layer attacks go after expensive requests, so rate limiting, a WAF, caching and request cost limits help. Control-plane floods hit the router CPU, so CoPP and routing authentication protect it.
 
-The main techniques are rate limiting and policing, SYN cookies with sensible backlogs (chapter 2.6), and anycast to spread load across sites. Blackhole routing (RTBH) drops traffic bound for an attacked destination. Selective BGP traffic diversion uses the `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links (Computer Networking Problems and Solutions, chapter 21). BCP 38 and uRPF drop packets with spoofed sources, which prevents reflection. Traffic scrubbing services, overprovisioning and autoscaling with budget caps add capacity. Separating critical services, such as putting management on its own network, limits the damage. Finally, rehearse your runbooks before you need them.
+The main techniques are rate limiting and policing, SYN cookies with sensible backlogs (chapter 2.6), and anycast to spread load across sites. Blackhole routing (RTBH) drops traffic bound for an attacked destination. Selective BGP traffic diversion uses the `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links. BCP 38 and uRPF drop packets with spoofed sources, which prevents reflection. Traffic scrubbing services, overprovisioning and autoscaling with budget caps add capacity. Separating critical services, such as putting management on its own network, limits the damage. Finally, rehearse your runbooks before you need them.
 
 Inference APIs are attractive targets, because each request can consume GPU seconds. That makes them a resource-exhaustion target. Use authentication, per-key quotas, token-based rate limits and admission control (chapter 2.20).
 
@@ -176,7 +176,7 @@ Prefer ed25519 keys. Use ECDSA or RSA of at least 3072 bits only where you must.
 
 ### Where SSH falls short
 
-SSH has one weak spot, and it comes at the start. Before you connect, your client needs the server's public host key. You do not always receive that key through a safe channel. You can check it by hand, comparing fingerprints, so that a spoofed server does not fool you. Books such as Jean-Philippe Aumasson's *Serious Cryptography* and Michael W. Lucas's *SSH Mastery* explain the methods in more depth.
+SSH has one weak spot, and it comes at the start. Before you connect, your client needs the server's public host key, and you do not always receive that key through a safe channel. You can compare fingerprints by hand so that a spoofed server does not fool you, or you can use SSH host certificates, which the later sections describe.
 
 ### Client
 
@@ -277,47 +277,26 @@ Add vulnerability scanners such as OpenVAS, Nessus and Trivy for images. Add con
 
 Scan from outside, compare the result with `ss`, and close every port you cannot justify.
 
-## 9. Basic rules and typical vulnerabilities
+## 9. Basic rules and how attacks reach AI clusters
 
-A few habits shrink your exposure. Run as few services as possible. Block everything you do not need with a firewall, both on the host and at the perimeter. Track and patch every service you expose. Subscribe to security advisories, and use LTS releases on servers. Give accounts only to people who need them, because local access makes privilege escalation far easier than a remote attack. Do not install dubious binaries, and verify signatures and hashes on every download.
+Most intrusions into a GPU cluster start with something small and ordinary. A forgotten dashboard, a stolen cloud key or an unpatched service gives the attacker a foothold. The rules below shrink that exposure, and the table shows the paths attackers use in practice.
 
-Attackers pursue a few main outcomes. A full compromise means gaining root, either through a service exploit or through a poorly protected account combined with a privilege-escalation bug. ASLR, stack protections, least privilege, SELinux or AppArmor, and containers with seccomp make that harder. Denial of service is the second outcome. Malware is the third. Linux malware exists, including cryptominers and botnet agents. Exposed Docker, Kubernetes or Jupyter APIs and stolen cloud keys are common entry points. Cleartext password sniffing and credential reuse from breach databases also work, so use MFA and unique secrets.
+Run as few services as possible. Block everything you do not need with a firewall, both on the host and at the perimeter. Track and patch every service you expose, and subscribe to security advisories. Use long-term support releases on servers, because security teams concentrate their work on stable, supported releases. Give accounts only to people who need them, because local access makes privilege escalation far easier than a remote attack. Verify signatures and hashes on every download, and install software only from sources you trust.
 
-For advisories, read the SANS newsletters, CISA and national CERT advisories, and vendor bulletins. For GPU stacks, that means the NVIDIA Security Bulletins for drivers, DCGM, Triton and Container Toolkit. Also follow your distribution's security tracker, the NVD and CVE feeds, and MITRE ATT&CK.
+Attackers pursue three main outcomes. Full compromise means gaining root, through a service exploit or through a weak account combined with a privilege-escalation bug. Denial of service takes the service away, as section 6 describes. Malware is the third outcome, and on GPU clusters it is mostly cryptominers and botnet agents. ASLR, stack protections, least privilege, SELinux or AppArmor, and containers with seccomp make compromise harder.
 
-Track and patch every service you expose, using the advisory sources above.
+| Attack path | What the attacker wants | Main control |
+|---|---|---|
+| Exposed management API (Docker 2375, kubelet 10250, Ray 8265, Jupyter 8888) | Code execution on a GPU node, then cryptomining | Bind to internal addresses, authenticate, firewall by default |
+| BMC reachable from a tenant network | Hardware control below the OS, firmware persistence | Isolated management network, unique credentials, current firmware |
+| Stolen cloud key or registry token | Spin up GPUs, pull private images and model weights | Short-lived credentials, workload identity, audit logs |
+| Compromised container or dependency | Command-and-control callbacks, weight and dataset exfiltration | Default-deny egress, signed images, flow logs and alerts |
+| Shared RDMA fabric without partitions | Reading or disturbing another tenant's traffic | P_Key or VRF isolation, secured Subnet Manager |
+| Cleartext passwords and reused credentials | A valid login that looks normal | MFA, keys instead of passwords, unique secrets |
 
-### Why the rules of thumb work
+For advisories, read the CISA and national CERT advisories, the SANS newsletters and vendor bulletins. For GPU stacks, that means the NVIDIA Security Bulletins for drivers, DCGM, Triton and the Container Toolkit. Also follow your distribution's security tracker, the NVD and CVE feeds, and MITRE ATT&CK.
 
-Patching matters most for the services you expose. If you run an SSH server, Postfix or a similar service, keep its software up to date and watch for its security alerts. Security teams concentrate their work on stable, supported releases. Development and testing releases, such as Debian Unstable and Fedora Rawhide, get much less attention. That is why servers should run long-term support releases.
-
-Local accounts deserve the same care. Gaining superuser access from a local account is much easier than breaking in from outside. A large base of software means bugs and design flaws are common, so a shell prompt alone can offer a path to root. Do not hand out accounts casually. Do not assume that your friends protect their passwords or choose good ones.
-
-Dubious binary packages are a final trap. They can contain Trojan horses, so install software only from sources you trust.
-
-### Why Linux draws attackers
-
-Linux is a popular Unix on the PC, and it runs many web servers. That popularity attracts people who want to break into systems, some for fun and some for money. Firewalls help, but they do not tell the whole story. You do not need deep expertise to stay safe, though. A few rules of thumb cover most of the risk.
-
-There are three basic kinds of network attack. A full compromise gives an intruder superuser access, which means full control of the machine. A denial-of-service attack stops a machine from doing its network work, usually with a flood of requests. It can also exploit a flaw that crashes a server program. Denial-of-service attacks are harder to prevent, but they are easier to respond to.
-
-Malware is the third kind. Linux users are mostly immune to email worms and viruses, because mail clients do not run programs sent as attachments. Linux malware does exist, though. Avoid downloading and installing executable software from places you have never heard of.
-
-### Two basic kinds of vulnerability
-
-There are two main types of vulnerability: direct attacks and cleartext password sniffing. A direct attack tries to take over a machine without subtlety. A common start is an unprotected service, such as an administrator account with no password. Once an intruder controls one service, the intruder can try to compromise the whole system.
-
-Buffer overflows were a classic direct attack. A careless programmer does not check the bounds of a buffer array, so extra data overruns it. Address Space Layout Randomization (ASLR) in the kernel, along with other protections, has mitigated the problem somewhat.
-
-Cleartext sniffing captures passwords sent across the network in plain text. An attacker can also use a password database built from one of many data breaches. Once an attacker has your password, the game is over. The attacker will then try to gain superuser access locally, which is much easier than a remote attack. The attacker may also use your machine to attack other hosts.
-
-### Security resources
-
-Three resources make a good starting point. The SANS Institute offers training, services, sample security policies and a free weekly newsletter that lists the top current vulnerabilities. The CERT Division of Carnegie Mellon University's Software Engineering Institute is a good place to find the most severe problems.
-
-Insecure.org is run by Gordon "Fyodor" Lyon, the creator of Nmap. It points you to Nmap and to many network exploit-testing tools. It is more open and specific about exploits than many other sites.
-
-If you want to understand network security, learn Transport Layer Security (TLS) and its predecessor, Secure Socket Layer (SSL). Both add public-key encryption and certificates to network clients and servers. Davies' *Implementing SSL/TLS Using Cryptography and PKI* is a good guide, as is Aumasson's *Serious Cryptography*.
+**Track and patch every service you expose, and close every port you cannot justify.**
 
 ## 10. Securing routing and the control plane
 
@@ -436,7 +415,7 @@ python3 code/part02/network_security_zerotrust_lab.py
 
 The lab checks four things. It verifies `sshd_config` hardening compliance, meaning `PermitRootLogin no`, `PasswordAuthentication no` and `AllowAgentForwarding no`. It checks InfiniBand 16-bit Partition Key (`P_Key`) isolation between full and limited members, using `0x8042`, `0x0042` and `0x8043`. It evaluates a Kubernetes `NetworkPolicy` with default-deny and label-based ingress. It also simulates fail2ban sliding-window bans.
 
-Next, use two or three disposable VMs or network namespaces in a lab you own. Every interactive VM command below is untested here, so run them only on disposable VMs or namespaces.
+Next, use two or three disposable VMs or network namespaces in a lab you own. The interactive commands below were not run on live hardware, so run them only on disposable VMs or namespaces.
 
 1. **Exposure audit**: On a fresh VM, run `ss -tulpn` and `nmap -p- -sV localhost`, then scan from a second host. List any service you do not need, disable it, and scan again.
 2. **Firewall default-deny**: With nftables, allow SSH only from the management subnet, plus established flows (chapter 2.23). Verify with nmap from inside and outside, and log the drops.
@@ -485,7 +464,7 @@ Each question maps to a section above, so use the section headings to check your
 
 Each exercise below asks you to use one of the chapter's code functions, or to apply an idea from a section. Work through them in order.
 
-1. Start with threat modelling, STRIDE, biometrics and defense in depth. (a) Define threat actor, vulnerability, exploit, attack surface, asset and risk, where risk is likelihood times impact. Then apply STRIDE across an AI training and inference cluster. (b) Explain why fingerprints and biometrics make a poor sole remote credential (Computer Networking Problems and Solutions, chapter 21). Then trace the six defense-in-depth layers in section 2.
+1. Start with threat modelling, STRIDE, biometrics and defense in depth. (a) Define threat actor, vulnerability, exploit, attack surface, asset and risk, where risk is likelihood times impact. Then apply STRIDE across an AI training and inference cluster. (b) Explain why fingerprints and biometrics make a poor sole remote credential. Then trace the six defense-in-depth layers in section 2.
 2. Compare AAA protocols, 802.1X and Layer-2 switch security. (a) Contrast RADIUS (UDP 1812 and 1813) with TACACS+ (TCP 49) across transport, packet encryption and per-command router authorisation. (b) Match the six Layer-2 attacks, which are MAC flooding, rogue DHCP, ARP and ND spoofing, a rogue STP switch, VLAN hopping and link eavesdropping, to their switch controls. The controls are Port Security, DHCP Snooping, DAI with RA Guard, BPDU and Root Guard, native VLAN pruning, 802.1X, and MACsec 802.1AE.
 3. Work through DoS and DDoS mitigation, BGP traffic diversion and control-plane protection. Compare the four DoS classes: volumetric, protocol and state exhaustion, application and GPU exhaustion, and control-plane CPU floods. For each class, name its mitigations: BCP 38 and uRPF, `tcp_syncookies`, RTBH with community `65535:666`, `NO_PEER` and `NO_ADVERTISE` BGP steering, CoPP, GTSM with `TTL 255`, and `TCP-AO` or `HMAC-SHA`.
 4. Study SSH cryptography, host-key verification, `ProxyJump` against agent forwarding, `sshd_config` hardening and SSH certificates. (a) Using `audit_sshd_config()` in `code/part02/network_security_zerotrust.py`, audit a server's `sshd_config`. Then explain why `ProxyJump` (`-J`) must replace `AllowAgentForwarding yes` when you jump through a bastion. (b) Explain what `REMOTE HOST IDENTIFICATION HAS CHANGED` means. Explain how SSH CA certificates (`ssh-keygen -s ca`, `TrustedUserCAKeys`, `@cert-authority`) remove TOFU at scale. Finally, explain how `simulate_fail2ban_window()` models fail2ban.
@@ -505,13 +484,13 @@ Each exercise below asks you to use one of the chapter's code functions, or to a
 </details>
 
 <details>
-<summary>2. Why does Computer Networking Problems and Solutions, chapter 21 warn against using biometrics as a standalone remote authentication credential?</summary>
+<summary>2. Why should biometrics not be the only remote authentication credential?</summary>
 
 Biometrics, such as fingerprints, face scans and iris patterns, break two properties that a cryptographic secret needs. First, they are not secret. You leave fingerprints on surfaces and your face on cameras everywhere. Second, once a biometric is stored in a backend database and stolen, you cannot rotate it or revoke it. So use biometrics only to unlock a local hardware enclave, such as a TPM, a Secure Enclave or a FIDO2 key. That enclave then signs challenges with a private key you can rotate.
 </details>
 
 <details>
-<summary>3. What are the three network security problem areas, and how does Defense in Depth work across them (Computer Networking Problems and Solutions, chapter 21)?</summary>
+<summary>3. What are the three network security problem areas, and how does Defense in Depth work across them?</summary>
 
 The three problem areas are access control (only authorised principals reach data), data confidentiality and integrity (in transit and at rest), and service availability (resisting DoS). Any single layer can be bypassed or misconfigured, and deep inspection at line rate is expensive. So defense in depth places overlapping controls at every boundary. For example, edge ACLs with RPKI and BCP38 come first, then a stateful firewall or WAF, then VRF, VLAN and NetworkPolicy segmentation, then mTLS and RBAC service authentication, and finally encryption at rest with continuous telemetry and exfiltration monitoring. An attacker must cross several independent layers, which gives defenders time to detect and contain the intrusion.
 </details>
@@ -519,7 +498,7 @@ The three problem areas are access control (only authorised principals reach dat
 <details>
 <summary>4. Compare RADIUS and TACACS+ in AAA (Authentication, Authorization, Accounting).</summary>
 
-- **RADIUS (UDP ports 1812 and 1813, RFC 2866)**: built for network access authentication, such as 802.1X switch ports, WPA-Enterprise Wi-Fi and VPNs. It combines authentication and authorisation in one reply. It encrypts only the password attribute, so protect it with RadSec, TLS or IPsec.
+- **RADIUS (UDP ports 1812 and 1813, RFC 2865 and RFC 2866)**: built for network access authentication, such as 802.1X switch ports, WPA-Enterprise Wi-Fi and VPNs. It combines authentication and authorisation in one reply. It encrypts only the password attribute, so protect it with RadSec, TLS or IPsec.
 - **TACACS+ (TCP port 49)**: built for network device administration, such as SSH into switches and routers. It keeps authentication, authorisation and accounting separate. It encrypts the entire packet body and supports per-command authorisation and audit logging. That lets you control exactly which CLI commands an engineer may run.
 </details>
 
@@ -539,7 +518,7 @@ If an attacker compromises a container or a dependency through a supply-chain CV
 </details>
 
 <details>
-<summary>7. Match the four DoS/DDoS classes to their primary mitigations, including BCP 38, RTBH, and NO_PEER / NO_ADVERTISE (Computer Networking Problems and Solutions, chapter 21).</summary>
+<summary>7. Match the four DoS/DDoS classes to their primary mitigations, including BCP 38, RTBH, and NO_PEER / NO_ADVERTISE.</summary>
 
 - **Volumetric floods** (UDP reflection and amplification through DNS or NTP): BCP 38 and uRPF at the network edge, anycast with upstream scrubbing centres, Remote-Triggered Black Hole (`RTBH`, community `65535:666`), and the BGP `NO_PEER` and `NO_ADVERTISE` communities to divert traffic off congested peering links.
 - **Protocol and state exhaustion** (TCP SYN floods and conntrack exhaustion): `tcp_syncookies = 1`, SYN rate limits, and stateless edge ACLs.
@@ -548,7 +527,7 @@ If an attacker compromises a container or a dependency through a supply-chain CV
 </details>
 
 <details>
-<summary>8. How does SSH authenticate both the server and the user, and what does the `REMOTE HOST IDENTIFICATION HAS CHANGED` warning mean (How Linux Works, chapter 10)?</summary>
+<summary>8. How does SSH authenticate both the server and the user, and what does the `REMOTE HOST IDENTIFICATION HAS CHANGED` warning mean?</summary>
 
 First, the server proves its identity with its host key pair, such as `/etc/ssh/ssh_host_ed25519_key`. On the first connection, which is trust on first use (`TOFU`), the client records the server's public key in `~/.ssh/known_hosts`. Next, over an ephemeral Diffie-Hellman encrypted channel, the user proves possession of a private key, such as `~/.ssh/id_ed25519`. The server checks that proof against `~/.ssh/authorized_keys`. If the server's host key ever differs from the one in `~/.ssh/known_hosts`, SSH aborts with `REMOTE HOST IDENTIFICATION HAS CHANGED`. The server may have been reinstalled or re-keyed. An attacker may also be running a man-in-the-middle (MitM) attack. Verify the new fingerprint out of band, for example at the console with `ssh-keygen -lf`, before you run `ssh-keygen -R <host>`.
 </details>
@@ -572,7 +551,7 @@ The eight are as follows. Start with `PermitRootLogin no` (or `prohibit-password
 </details>
 
 <details>
-<summary>12. What does `fail2ban` do, and why is it NOT a substitute for `PasswordAuthentication no` (How Linux Works, chapter 10)?</summary>
+<summary>12. What does `fail2ban` do, and why is it NOT a substitute for `PasswordAuthentication no`?</summary>
 
 fail2ban tails `/var/log/auth.log` or journald. When an IP exceeds `maxretry` failed logins within `findtime`, it adds a temporary nftables or iptables drop rule. fail2ban cuts log spam and brute-force CPU load. It does not stop a distributed botnet, though. A botnet of 50,000 IPs can guess weak passwords at 2 attempts per IP without triggering a single ban. A shared corporate NAT IP can also lock out an entire office. That is why `PasswordAuthentication no` and network allow-listing remain mandatory.
 </details>
@@ -625,7 +604,7 @@ When a tenant has root access on a bare-metal GPU host, that tenant can disable 
 </details>
 
 <details>
-<summary>20. Explain Colonel John Boyd's OODA loop (Observe, Orient, Decide, Act) as a network security operations model (Computer Networking Problems and Solutions, chapter 21).</summary>
+<summary>20. Explain Colonel John Boyd's OODA loop (Observe, Orient, Decide, Act) as a network security operations model.</summary>
 
 Colonel John Boyd of the USAF first developed the OODA loop for air combat. It models security operations as a race of decision cycles against the attacker.
 1. **Observe**: collect high-signal telemetry, such as NetFlow or IPFIX, DNS logs, auditd and Falco alerts for GPU processes, SSH and API auth logs, and BGP and RPKI monitors, without drowning in noise.
@@ -642,4 +621,4 @@ Colonel John Boyd of the USAF first developed the OODA loop for air combat. It m
   - `production-kubernetes` — Josh Rosso et al., *Production Kubernetes*, **Chapters 7 and 8**, and `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapters 4 and 6** (Kubernetes `NetworkPolicy` microsegmentation and secret management).
 - **Run here:** `python3 code/part02/network_security_zerotrust_lab.py` (12 passed, 0 failed).
 - **Explicitly labelled inferences:** The `sshd_config` hardening snippet, SSH CA certificate workflow, Kubernetes `NetworkPolicy` YAML (`default-deny` + `allow-gateway-to-triton`), and AI-cluster security checklist (BMC/Redfish OOB isolation, InfiniBand 16-bit `P_Key` full/limited membership, `safetensors`/`cosign` supply-chain controls, and BlueField DPU host isolation) synthesize NIST SP 800-207 (Zero Trust), RFC 2866, OpenSSH manuals, and NVIDIA security documentation (cross-referenced with Chapters 1.21, 2.6, 2.9, 2.10, 2.15–2.17, 2.20, 2.23, and 2.28–2.29, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All interactive VM and Kubernetes commands (`ssh`, `ssh-keygen`, `sshd -t`, `fail2ban-client`, `nmap`, `hping3`, `kubectl`) are marked (untested here) and must be executed ONLY on disposable lab VMs or networks you own or have written authorization to test.
+- **Not verified on live hardware:** All interactive VM and Kubernetes commands (`ssh`, `ssh-keygen`, `sshd -t`, `fail2ban-client`, `nmap`, `hping3`, `kubectl`) were not run on live hardware and must be executed ONLY on disposable lab VMs or networks you own or have written authorization to test.

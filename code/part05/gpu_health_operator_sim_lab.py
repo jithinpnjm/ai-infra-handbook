@@ -28,7 +28,7 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 def main() -> None:
     # 1. Judge 6 cases: False >=2m (unhealthy), False <2m (pending + wait_for), True >=5m (healthy),
-    #    True <5m (recovering), absent (healthy), Unknown (neither healthy nor unhealthy)
+    #    True <5m (recovering), absent and Unknown (neither healthy nor unhealthy)
     pol = {"name": "h100-pool", "conditionType": "GPUHealthy", "unhealthyForSec": 120.0, "healthyForSec": 300.0}
     v_unhealthy = judge_node(pol, {"name": "n1", "conditions": [{"type": "GPUHealthy", "status": "False", "lastTransitionSec": 0.0}]}, now_sec=150.0)
     v_pending = judge_node(pol, {"name": "n2", "conditions": [{"type": "GPUHealthy", "status": "False", "lastTransitionSec": 100.0}]}, now_sec=150.0)
@@ -36,11 +36,11 @@ def main() -> None:
     v_absent = judge_node(pol, {"name": "n4", "conditions": []}, now_sec=150.0)
     v_unknown = judge_node(pol, {"name": "n5", "conditions": [{"type": "GPUHealthy", "status": "Unknown", "lastTransitionSec": 0.0}]}, now_sec=500.0)
     check(
-        "judge_node classifies stabilized False (unhealthy), recent False (pending, wait=70s), stabilized True & absent (healthy), and Unknown (neither)",
+        "judge_node classifies stabilized False (unhealthy), recent False (pending, wait=70s), stabilized True (healthy), and absent or Unknown (neither)",
         v_unhealthy.unhealthy is True
         and (v_pending.pending is True and v_pending.wait_for_sec == 70.0)
         and v_healthy.healthy is True
-        and v_absent.healthy is True
+        and (v_absent.healthy is False and v_absent.unhealthy is False and v_absent.pending is False)
         and (v_unknown.unhealthy is False and v_unknown.healthy is False),
     )
 

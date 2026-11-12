@@ -184,12 +184,12 @@ The table below lists the cases that matter most. The Why column carries the rea
 | Condition False for less than that | Pending, with `WaitFor` duration | Do not act on a blip; schedule a re-check |
 | Condition True for at least `healthyFor` | Healthy | Recovered |
 | Condition True, but recently | Not yet healthy; report `HealthyWaitFor` | Avoid flapping |
-| Condition absent | Healthy | No signal is not evidence of a fault. A detector outage should not cordon the fleet |
-| Condition Unknown | Neither healthy nor unhealthy | Not proof either way: do not act, do not release |
+| Condition absent | Neither healthy nor unhealthy | No signal is not evidence of a fault, and not evidence of recovery either. Do not act, do not release |
+| Condition Unknown | Neither healthy nor unhealthy | The detector reports it cannot tell. Same handling as absent |
 | Budget missing | No limit | Explicit opt-in to unlimited; CordonAndDrain forbids it |
 | Budget invalid (negative, unparsable) | 0 | Fail safe: do nothing |
 
-The absent condition deserves a closer look. A missing condition counts as healthy, because no signal is not evidence of a fault. If a detector outage cordoned nodes, the whole fleet could go down with it. An Unknown condition is treated differently. It is neither healthy nor unhealthy, so the operator neither acts on it nor releases a node because of it.
+The absent condition deserves a closer look. It is handled exactly like Unknown: no action and no release. A detector outage removes the condition from every node at once. If an absent condition counted as healthy, the next reconcile would uncordon every node the policy had cordoned, just when the signal is gone. If it counted as unhealthy, the same outage would cordon the fleet. Treating it as no evidence either way keeps both mistakes out. The cost is that a node cordoned by the policy stays cordoned if the detector never returns. A human must then remove it, or delete the policy, which releases the policy's own cordons.
 
 `Plan` counts nodes that are already unschedulable against the budget, whatever the reason. A human's maintenance cordon is capacity that is already gone, so it uses up part of the budget. Candidates beyond the remaining room go into `blocked`. Those surface as the `BudgetExhausted` condition and a Warning event.
 
@@ -246,8 +246,7 @@ func Judge(p *v1alpha1.GPUHealthPolicy, n *corev1.Node, now time.Time) NodeVerdi
 		return v
 	}
 	if cond == nil {
-		v.Healthy = true
-		return v
+		return v // absent: no evidence either way, same as Unknown
 	}
 	if cond.Status == corev1.ConditionTrue {
 		age := now.Sub(cond.LastTransitionTime.Time)
@@ -420,14 +419,9 @@ func evictable(pod *corev1.Pod) bool {
 }
 ```
 
-### How this operator fits into the full GPU platform layer (`volume-10`)
+### Where this operator fits
 
-In the `nvidia-devops` GPU platform architecture (`nvidia-zero-to-hero/volume-10/chapter-01-why-kubernetes-needs-a-gpu-platform-layer.md` through `chapter-12-volume-10-summary.md` and `labs/lab-01`..`lab-04`), responsibilities are split across four layers. The operator is the last of them. Read the list below as a map from each layer to the chapters that cover it, so you can check a claim against its source.
-
-1. **Hardware Discovery & Lifecycle (`chapter-02-gpu-software-lifecycle-in-kubernetes.md`, `chapter-05-node-and-gpu-feature-discovery.md`, `chapter-06-gpu-operator-architecture.md`, `chapter-07-driver-containers-and-node-operands.md`, `labs/lab-01-inspect-a-kubernetes-gpu-node.md`, `labs/lab-02-install-and-validate-gpu-operator.md`):** NFD and GFD label PCIe `10de` hardware with `nvidia.com/gpu.present=true` and `nvidia.com/gpu.product`. The GPU Operator then reconciles the driver container, the Container Toolkit (`chapter-03-container-toolkit-runtimeclass-and-cdi.md`), and the Device Plugin (`chapter-04-device-plugin-and-kubernetes-resource-model.md`, `labs/lab-03-diagnose-a-missing-allocatable-gpu.md`).
-2. **Scheduling & Topology (`chapter-08-gpu-scheduling-and-topology.md`):** The Kubelet Topology Manager and scheduler plugins place multi-GPU workloads on healthy, schedulable nodes.
-3. **Telemetry & Fault Detection (`chapter-09-gpu-observability-with-dcgm.md`):** `dcgm-exporter` and Node Problem Detector (or a health agent) watch for XID faults (`Xid 79`, `48`, `63`, `74`), ECC double-bit errors, and NVLink failures. They write the `GPUHealthy=False` node condition.
-4. **Automated, Budgeted Remediation (`GPUHealthPolicy` in this chapter, `chapter-10-production-installation-and-configuration.md`, `chapter-11-upgrades-and-production-troubleshooting.md`, `labs/lab-04-perform-a-controlled-gpu-platform-upgrade.md`):** Our `gpuhealth` operator watches `GPUHealthy` conditions on `nvidia.com/gpu.present=true` nodes. It cordons or drains within `maxUnavailableNodes`, and it preserves manual maintenance cordons during upgrades.
+Three layers sit around the operator. Detection runs on each node: a DCGM exporter with a small agent, or node-problem-detector, watches for Xid faults, ECC errors and NVLink failures and writes the `GPUHealthy` node condition. Part 10 and Part 11 cover that tooling, along with the GPU Operator that installs drivers and the device plugin. Scheduling places multi-GPU workloads on schedulable nodes, which Part 11 also covers. Remediation, the cordon and drain this chapter builds, is the last step, and the operations part of the handbook covers running such remediation across a fleet.
 
 The operator's job is narrow. It acts on the condition that the detection layer writes, and on nothing else.
 
@@ -447,7 +441,7 @@ Dry-run and `Ignore` are first-class modes. You can roll out on a production poo
 
 Cordon comes first, and drain is optional. Cordon is cheap and reversible. Drain kills running work, which can be an expensive training job, so it should be a deliberate opt-in per pool. Checkpointing and PodDisruptionBudgets should be in place first. See Parts 14 and 17.
 
-Uncertain input gets conservative handling. An absent or Unknown condition never triggers action, and an invalid budget means zero.
+Uncertain input gets conservative handling. An absent or Unknown condition neither triggers action nor releases a cordon, and an invalid budget means zero.
 
 Before you enable `Cordon` on a pool, run it in `dryRun` or `Ignore` first, and compare its events and status with what is really happening.
 
@@ -465,7 +459,7 @@ The envtest suite runs the real manager against a real kube-apiserver and etcd. 
 
 If you read the budget row closely, you can see the arithmetic at work. With `maxUnavailableNodes: 1`, the budget leaves room for one cordon. Three nodes are unhealthy, so one is cordoned and the other two are blocked, and `BudgetExhausted=True` appears in status.
 
-Two groups of unit tests sit alongside these scenarios. Table tests cover `Judge` with six cases, and separate tests cover `Budget` and `Plan`. All of them ran with `-race` and `-count=1`, and `go vet` was clean.
+Two groups of unit tests sit alongside these scenarios. Table tests cover `Judge` with the six node rows of the decision table, and separate tests cover the two budget rows and `Plan`. All of them ran with `-race` and `-count=1`, and `go vet` was clean.
 
 Anything outside this table stays untested.
 
@@ -490,7 +484,7 @@ Rehearse these failures before you rely on the operator. Each row says what the 
 | Failure | Expected behaviour |
 |---|---|
 | Detector marks every node unhealthy | Budget caps cordons; `BudgetExhausted` condition and events alert a human |
-| Detector crashes (condition disappears) | Absent condition counts as healthy; no new actions; existing cordons stay until recovery rules say otherwise (decide whether you want a safeguard timeout) |
+| Detector crashes (condition disappears) | Absent condition is neither healthy nor unhealthy: no new actions, and existing cordons stay in place. A node stays cordoned until the detector returns or a human acts, so decide whether you want an alert or a timeout for long outages |
 | Operator restarts mid-reconcile | Re-derives state from Node annotations; idempotent patches |
 | Two operator replicas without election | Both patch the same nodes; patches are idempotent, but turn leader election on |
 | Node deleted | Not found on patch is a no-op on later passes; status shrinks |
@@ -510,7 +504,7 @@ The operator as built is deliberately small. These are directions you could take
 4. Add a node **reboot or reset** action through a separate, more strictly budgeted controller (Part 7/17).
 5. Add a global **circuit breaker**. If more than X percent of matched nodes turn unhealthy within Y minutes, the operator stops acting and pages someone, on the theory that the signal is broken.
 6. Integrate with Slurm or Run:ai-style schedulers, so that draining coordinates with job checkpoints.
-7. Package the operator with Helm or kustomize, sign the image, and attach an SBOM (5.22).
+7. Package the operator with Helm or kustomize, sign the image, and attach an SBOM (5.27).
 
 If you extend the operator only once, start with the circuit breaker. It guards against the failure this chapter began with.
 
@@ -534,7 +528,7 @@ export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
 go vet ./... && go test -race -count=1 -v ./internal/controller/
 ```
 
-The cluster step is untested here (`kind` or GKE, `untested here`). When you run it on your own cluster, follow these steps in order.
+The cluster step was not run on a live cluster, on kind or GKE. When you run it on your own cluster, follow these steps in order.
 
 1. Apply the CRD with `kubectl apply -f config/crd/`, then run the manager locally against your kubeconfig with `go run ./cmd --leader-elect=false`.
 2. Create a policy with `dryRun: true`. To simulate a fault, run `kubectl proxy` and PATCH the node's status subresource to add `GPUHealthy=False` with an old `lastTransitionTime`. A kubelet overwrites the conditions it owns, so use a custom condition type that only you set.
@@ -558,12 +552,12 @@ You can use these questions to check that you can explain the reasoning behind t
 
 Keep the code open while you work through these, because each exercise names the files and functions you will need.
 
-1. Start with the boundary between fault detection (`DCGM` / `NPD`) and budgeted remediation (`GPUHealthPolicy`) across the GPU Platform Layer (`volume-10`). Explain why `GPUHealthPolicy` reacts to a `NodeCondition` (`GPUHealthy=False`) instead of polling `nvidia-smi` or DCGM directly inside the operator. Then trace how NFD/GFD (`nvidia.com/gpu.present: "true"`), DCGM exporter/NPD, and `GPUHealthPolicy` interact.
+1. Start with the boundary between fault detection (`DCGM` / `NPD`) and budgeted remediation (`GPUHealthPolicy`) across the GPU platform layers. Explain why `GPUHealthPolicy` reacts to a `NodeCondition` (`GPUHealthy=False`) instead of polling `nvidia-smi` or DCGM directly inside the operator. Then trace how NFD/GFD (`nvidia.com/gpu.present: "true"`), DCGM exporter/NPD, and `GPUHealthPolicy` interact.
 2. Work with `Judge`, `Budget` and `Plan` in `code/gpuhealth/internal/controller/evaluate.go`. Using `judge_node()`, `compute_budget()` and `plan_remediation()` in `code/part05/gpu_health_operator_sim.py`, trace all 8 rows of the decision table: False `>=` `unhealthyFor`, False `<` `unhealthyFor`, True `>=` `healthyFor`, True `<` `healthyFor`, absent, `Unknown`, missing budget, and invalid budget. Then explain why `Plan` counts already-unschedulable nodes, including human cordons, against `budget`.
 3. Trace how `Reconcile` implements `unhealthyFor: 2m` and `healthyFor: 5m` in a stateless, level-triggered controller. Do it without spawning background `time.Sleep` goroutines. Show how `Judge` computes `WaitFor = unhealthyFor - age` and `HealthyWaitFor = healthyFor - age`, and how the reconciler returns `ctrl.Result{RequeueAfter: minWait + time.Second}`.
 4. Work through provenance annotations (`platform.example.com/cordoned-by`), finalizer release (`releaseAll`), and human maintenance safety. Trace what happens when (a) a human SRE runs `kubectl cordon gpu-01`, (b) `gpu-02` turns unhealthy and is cordoned by `GPUHealthPolicy/h100-pool`, and (c) an admin runs `kubectl delete gpuhealthpolicy h100-pool`. Then prove from `releaseAll` and `uncordon` why `gpu-02` is uncordoned while `gpu-01` remains cordoned.
 5. Trace safe node draining through `drain` and `evictable`, and through the `FieldIndexer` lookup and the PodDisruptionBudget backoff. Using `is_pod_evictable()` in `code/part05/gpu_health_operator_sim.py` and `drain()` in `gpuhealthpolicy_controller.go`, explain which Pods are skipped (`Succeeded`/`Failed`, mirror pods, `DaemonSet` pods). Explain how `r.SubResource("eviction").Create(ctx, pod, ev)` interacts with `PodDisruptionBudget`s (`429 TooManyRequests`), and why `setMin(15 * time.Second)` re-polls until all pods terminate.
-6. Walk through the 5 `envtest` scenarios in `suite_test.go`, verified in `code/gpuhealth/`. Explain why `drain()` and RBAC require a real `kind`/GKE cluster test. Then design an extension that trips a fleet-wide circuit breaker if $> 25\%$ of nodes turn `GPUHealthy=False` within 3 minutes.
+6. Walk through the 5 `envtest` scenarios in `suite_test.go`, verified in `code/gpuhealth/`. Explain why `drain()` and RBAC require a real `kind`/GKE cluster test. Then design an extension that trips a fleet-wide circuit breaker if more than 25 percent of nodes turn `GPUHealthy=False` within 3 minutes.
 
 ## Checkpoint questions (20)
 
@@ -582,9 +576,9 @@ Keep the code open while you work through these, because each exercise names the
 </details>
 
 <details>
-<summary>3. In `Judge()`, why is an **absent** `GPUHealthy` condition treated as `Healthy: true`, whereas `Status: Unknown` is treated as **neither `Healthy` nor `Unhealthy`**?</summary>
+<summary>3. In `Judge()`, why are an **absent** `GPUHealthy` condition and `Status: Unknown` both treated as **neither `Healthy` nor `Unhealthy`**, and what does each case protect against?</summary>
 
-- **Absent condition (`cond == nil` $\rightarrow$ `Healthy: true`):** A new node may join before the health-detector DaemonSet has written the custom `GPUHealthy` condition. The missing condition is not evidence of a hardware fault. If absence cordoned nodes, the whole cluster could be cordoned before the detector DaemonSet even starts.
+- **Absent condition (`cond == nil`, both flags false):** A new node may join before the health-detector DaemonSet has written the `GPUHealthy` condition, and a detector outage can remove the condition from every node. A missing condition is not evidence of a hardware fault, so the operator does not cordon. It is not evidence of recovery either. If it counted as healthy, a detector outage would uncordon every node the policy owns on the next reconcile.
 - **`Status: Unknown` (`Healthy: false, Unhealthy: false`):** Unknown means either the detector lost contact with the GPU/driver, or `kubelet` lost contact with the node. The operator cannot prove the GPU is broken, so it does not cordon healthy, running nodes. It also cannot prove that a broken GPU has recovered, so it does not uncordon nodes that are already cordoned.
 </details>
 
@@ -639,7 +633,7 @@ if v.OwnedByPolicy && v.Healthy && v.Unschedulable {
 ```
 All three conditions must hold at the same time:
 1. **`v.Unschedulable == true`:** The node is cordoned right now.
-2. **`v.Healthy == true`:** The `GPUHealthy` condition has been `True` continuously for at least `spec.healthyFor`, which defaults to `5m`. An absent condition also counts as healthy.
+2. **`v.Healthy == true`:** The `GPUHealthy` condition has been `True` continuously for at least `spec.healthyFor`, which defaults to `5m`. An absent condition does not count as healthy.
 3. **`v.OwnedByPolicy == true`:** The check is `n.Annotations["platform.example.com/cordoned-by"] == policy.Name`. This means this specific `GPUHealthPolicy` placed the cordon, so the operator never uncordons a node that a human or another controller cordoned.
 </details>
 
@@ -719,7 +713,7 @@ The answer is least-privilege RBAC, which contains the blast radius.
 <details>
 <summary>20. How would you add a **Global Fleet Circuit Breaker** to `GPUHealthPolicy` to protect against a buggy detector config that marks 80% of the cluster `GPUHealthy=False` simultaneously?</summary>
 
-Add an optional `circuitBreakerTripPercent` field, for example `25%`, to `GPUHealthPolicySpec`. You would then check it inside `Reconcile()`. In `Reconcile()`, run `Judge()` across all `len(nodes.Items)` matched nodes. Then compute the unhealthy ratio: `unhealthyRatio = float64(unhealthy) / float64(len(nodes.Items))`. If `unhealthyRatio >= 0.25`, which is $\ge 25\%$ of the entire GPU pool reporting `GPUHealthy=False` at once, the breaker trips. When it trips, the operator performs zero new cordons or drains, even if `maxUnavailableNodes` still has 1–2 slots of room. It sets the condition `CircuitBreakerTripped=True` with `Reason: MassUnhealthySignal`, emits a `Warning` event, and increments a page-worthy Prometheus gauge, so an engineer can check whether the detector agent itself is broken.
+Add an optional `circuitBreakerTripPercent` field, for example `25%`, to `GPUHealthPolicySpec`. You would then check it inside `Reconcile()`. In `Reconcile()`, run `Judge()` across all `len(nodes.Items)` matched nodes. Then compute the unhealthy ratio: `unhealthyRatio = float64(unhealthy) / float64(len(nodes.Items))`. If `unhealthyRatio >= 0.25`, which is at least 25 percent of the entire GPU pool reporting `GPUHealthy=False` at once, the breaker trips. When it trips, the operator performs zero new cordons or drains, even if `maxUnavailableNodes` still has 1–2 slots of room. It sets the condition `CircuitBreakerTripped=True` with `Reason: MassUnhealthySignal`, emits a `Warning` event, and increments a page-worthy Prometheus gauge, so an engineer can check whether the detector agent itself is broken.
 </details>
 
 ## Sources and review notes
@@ -729,5 +723,6 @@ Add an optional `circuitBreakerTripPercent` field, for example `25%`, to `GPUHea
   - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes* (CRDs, `controller-runtime`, `Reconcile`, `envtest`, and Kubebuilder patterns).
   - `nvidia-devops` (`nvidia-zero-to-hero/volume-10/chapter-01-why-kubernetes-needs-a-gpu-platform-layer.md`, `nvidia-zero-to-hero/volume-10/chapter-02-gpu-software-lifecycle-in-kubernetes.md`, `nvidia-zero-to-hero/volume-10/chapter-03-container-toolkit-runtimeclass-and-cdi.md`, `nvidia-zero-to-hero/volume-10/chapter-04-device-plugin-and-kubernetes-resource-model.md`, `nvidia-zero-to-hero/volume-10/chapter-05-node-and-gpu-feature-discovery.md`, `nvidia-zero-to-hero/volume-10/chapter-06-gpu-operator-architecture.md`, `nvidia-zero-to-hero/volume-10/chapter-07-driver-containers-and-node-operands.md`, `nvidia-zero-to-hero/volume-10/chapter-08-gpu-scheduling-and-topology.md`, `nvidia-zero-to-hero/volume-10/chapter-09-gpu-observability-with-dcgm.md`, `nvidia-zero-to-hero/volume-10/chapter-10-production-installation-and-configuration.md`, `nvidia-zero-to-hero/volume-10/chapter-11-upgrades-and-production-troubleshooting.md`, `nvidia-zero-to-hero/volume-10/chapter-12-volume-10-summary.md`, `nvidia-zero-to-hero/volume-10/index.md`, `nvidia-zero-to-hero/volume-10/labs/lab-01-inspect-a-kubernetes-gpu-node.md`, `nvidia-zero-to-hero/volume-10/labs/lab-02-install-and-validate-gpu-operator.md`, `nvidia-zero-to-hero/volume-10/labs/lab-03-diagnose-a-missing-allocatable-gpu.md`, and `nvidia-zero-to-hero/volume-10/labs/lab-04-perform-a-controlled-gpu-platform-upgrade.md`).
 - **Run here:** `python3 code/part05/gpu_health_operator_sim_lab.py` (3 passed, 0 failed) and `go test -race ./internal/controller/` in `code/gpuhealth/` (2 unit-test groups + 5 `envtest` scenarios passed).
+- **Correction in the rework:** An absent condition used to count as healthy, which would have released every owned cordon during a detector outage. It is now treated like Unknown in the Go code, the Python simulation, the unit test, the decision table, the failure table and the interview answers. The Go unit test was edited but not re-run in this pass.
 - **Explicitly labelled inferences:** The `judge_node`, `compute_budget`, `plan_remediation`, and `is_pod_evictable` Python models in `code/part05/gpu_health_operator_sim.py` and the Go operator in `code/gpuhealth/` are the author's constructions synthesizing Kubernetes Programming with Go and `volume-10` (plus original study items 21, 22, 23, 24, and 25).
-- **Not verified on live hardware:** Live cluster drain/eviction execution, RBAC against a live ServiceAccount, and 1,000-node scale testing (`unhealthyFor: 2m`, `healthyFor: 5m`, `maxUnavailableNodes: 10%` / `1`, `15` seconds drain retry, `controller-gen v0.16.5`, `setup-envtest release-0.19` / `1.31.0`, `controller-runtime v0.19.4`, `v0.31.4`) are marked (`untested here`) where not executed by `gpu_health_operator_sim_lab.py` or `envtest`.
+- **Not verified on live hardware:** Live cluster drain/eviction execution, RBAC against a live ServiceAccount, and 1,000-node scale testing (`unhealthyFor: 2m`, `healthyFor: 5m`, `maxUnavailableNodes: 10%` / `1`, `15` seconds drain retry, `controller-gen v0.16.5`, `setup-envtest release-0.19` / `1.31.0`, `controller-runtime v0.19.4`, `v0.31.4`) were not run live, apart from what is executed by `gpu_health_operator_sim_lab.py` or `envtest`.

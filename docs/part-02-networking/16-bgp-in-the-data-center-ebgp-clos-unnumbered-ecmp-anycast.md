@@ -94,13 +94,13 @@ Per-rack ASNs add two benefits. Each prefix stays attributable to the rack that 
 
 Start with the AS-path settings. `bgp bestpath as-path multipath-relax` treats paths with equal AS-path length as equal, even when the AS numbers differ. That lets ECMP use all spines, even if each spine has a different ASN history. Then set `maximum-paths` and `maximum-paths ibgp` to the fabric width, for example 64.
 
-Short timers and BFD catch failures quickly. Use a 3-second keepalive and a 9-second hold, or less. Run BFD at 100-300 ms. Set `neighbor X advertisement-interval 0` to turn off the 30-second advertisement interval on eBGP, so withdrawals propagate quickly.
+Short timers and BFD catch failures quickly. Use a 3-second keepalive and a 9-second hold, or less. Run BFD at 100-300 ms. Set `neighbor X advertisement-interval 0` where your implementation defaults to the 30-second eBGP advertisement interval suggested in RFC 4271, so withdrawals propagate quickly. Check your platform default first, because some data-centre profiles already set it to zero.
 
 Keep the AS-PATH length the same at each tier, because ECMP depends on it. Avoid prepending in the fabric. Use `neighbor ... allowas-in` only when you reuse ASNs on purpose, for example when a pod's leaves share an ASN with the global spine layer. Otherwise, avoid it.
 
 At the border, `remove-private-as` or `replace-as` hides the internal plan. The Internet or WAN then sees a public ASN. Disable `bgp ebgp-requires-policy` only with care, and write an explicit policy in its place. That policy should accept the expected prefixes and set communities.
 
-Turn off `bgp bestpath compare-routerid`. Turn on `bgp fast-external-failover`, so an interface going down tears the session down at once.
+Turn on `bgp fast-external-failover`, so an interface going down tears the session down at once.
 
 Decide carefully what each device advertises. Each leaf originates its server subnets and its `/32` loopback, which serves as the router ID and the VTEP/service address. Nothing else is needed. Spines re-advertise. Do not advertise the fabric's point-to-point link subnets at all, whether by using unnumbered links or by filtering them. That keeps the RIB small and removes a source of failure propagation.
 
@@ -251,15 +251,23 @@ Notice where eBGP falls behind: dragonfly topologies, link awareness and automat
 
 If your fabric is a front-end network, such as storage, inference, management or tenancy, use eBGP unnumbered with EVPN where needed. Large AI back-ends start with eBGP. They consider IGP-based or colour-based approaches when scale, a dragonfly topology, or path-determinism requirements demand them. You can run a hybrid, with different protocols on different tiers or networks. Start with eBGP, and move to an IGP only when your scale or topology requires it.
 
-### 5.1 Reading the IS-IS flooding figure and RIFT's history
+### 5.1 Flood reduction in a small example
 
-Picture a leaf that has to tell every spine about a new server. Classic flooding copies that update to every spine, so the same news arrives many times. Figure 8-19 shows a smaller fix. Leaf1 connects to spine1 and spine2, leaf2 connects to both as well, and leaf3 connects only to spine2.
+Picture a leaf that has to tell every spine about a new server. Classic flooding copies that update to every spine, so the same news arrives many times. Flood reduction picks one relay per update instead. The diagram shows a tiny fabric where each leaf sends its update to one chosen spine, and the spines pass it on to each other.
 
-In the figure, leaf1 sends its new server prefix updates toward spine2, and leaf2 sends its updates toward spine1. Leaf3 sends its updates toward spine2, and the two spines coordinate with each other. Leaf1 elected spine2 to send the update, instead of copying it to both spines. In this small topology the saving is minor. With 32 or 64 spines, it speeds up convergence.
+```mermaid
+flowchart LR
+  L1[leaf1] -->|update sent| S2[spine2]
+  L2[leaf2] -->|update sent| S1[spine1]
+  L3[leaf3] -->|update sent| S2
+  L1 -.->|copy suppressed| S1
+  L2 -.->|copy suppressed| S2
+  S1 <-->|spines exchange| S2
+```
 
-The gain grows in dense multilevel fabrics, such as T1, T2, and T3 designs, and sometimes T4. Those designs have many parallel links between each pair of nodes, which is typical of a non-oversubscribed AI cluster. The optimization is described in the draft `draft-white-lsr-distoptflood`, and some open-source networks and vendors already use it.
+In this small topology the saving is minor. With 32 or 64 spines, each leaf sends one copy instead of dozens, and convergence speeds up. The gain grows in dense multilevel fabrics with many parallel links between each pair of nodes, which is typical of a non-oversubscribed AI cluster. The optimisation is described in the draft `draft-white-lsr-distoptflood`, and some open-source networks and vendors already use it.
 
-RIFT has a short history worth knowing. It was first built in the open-source community for routing on servers. Some vendors have since released it as a separate routing package for switches. If your vendor offers it, check its release notes before you plan to use it on the fabric.
+RIFT was first built in the open-source community for routing on servers. Some vendors have since released it as a separate routing package for switches. If your vendor offers it, check its release notes before you plan to use it on the fabric.
 
 ## 6. Dragonfly and sparse topologies (routing view)
 
@@ -271,29 +279,47 @@ Scale-up domains are different. NVLink-class pods act like one big GPU server, a
 
 If your fabric is a dragonfly, choose a protocol that can handle the group links, such as RIFT or extended IS-IS.
 
-### 6.1 Reading the canonical dragonfly figures
+### 6.1 The canonical dragonfly
 
-Figure 8-15 shows one group of switches in the canonical dragonfly. Each group contains eight square nodes, and the nodes inside a group form a full mesh. The figure caption says group 1 connects to all the other groups. Each group has its own internal mesh, and that mesh looks the same in every group.
+In the canonical dragonfly, every group is a full mesh of switches, and every group links to every other group. Seven groups of eight switches each make a good picture. Each group needs several global links to each other group, and the cabling grows quickly. There is a second catch. Only a limited share of traffic can cross between two groups at once, so collective operations should stay mostly inside a group. Otherwise the inter-group links become the bottleneck.
 
-Figure 8-16 adds group 2. Group 1 connects to groups 2 through 7, and group 2 connects to group 1 and to groups 3 through 7. Each group contains eight switch nodes in its mesh, and the same pattern repeats for every pair.
+Cabling is the main reason designers simplify this. Usually only the higher-density spine switches connect to other groups. That simpler version is the sparse dragonfly.
 
-Figure 8-17 connects all seven groups. Each group has eight rectangular switch nodes in a mesh, and each group links to every other group through multiple inter-group links. The number of links from one group is usually more than one. Cabling gets hard quickly, so the fabric must be planned around it.
+### 6.2 The sparse dragonfly
 
-When all seven groups are connected, you can see the catch. Only part of the data can cross from one group to another at a given time. Or, in software, collective operations must stay mostly inside a group. Otherwise the inter-group links become the bottleneck.
+In a sparse dragonfly, each group is a small leaf-spine Clos fabric, and only the top-of-fabric spines show the dragonfly shape. The diagram shows three groups. Leaves stay inside their group, and the spines carry the cross-group links.
 
-Cabling is the main reason designers simplify this. Usually only the higher-density spine switches connect to other groups, in a full mesh or in a canonical pattern. That simpler version is the sparse dragonfly.
+```mermaid
+flowchart TB
+  subgraph A["Group A"]
+    LA1[LA1] --- SA1[SA1]
+    LA1 --- SA2[SA2]
+    LA2[LA2] --- SA1
+    LA2 --- SA2
+  end
+  subgraph B["Group B"]
+    LB1[LB1] --- SB1[SB1]
+    LB2[LB2] --- SB2[SB2]
+  end
+  subgraph C["Group C"]
+    LC1[LC1] --- SC1[SC1]
+    LC1 --- SC2[SC2]
+    LC2[LC2] --- SC1
+    LC2 --- SC2
+  end
+  SA1 --- SB2
+  SA2 --- SB1
+  SA1 --- SC1
+  SA2 --- SC2
+  SB1 --- SC1
+  SB1 --- SC2
+```
 
-### 6.2 The sparse dragonfly in Figure 8-18
+Those cross-group links are the part that the routing protocol must understand. The sparse design gives shorter paths with fewer long cables. Traffic can take several routes between the same two points, and the fabric can be split into partitions. The control plane has to find the inter-group links, know the topology and use adaptive routing with unequal-cost paths.
 
-In the sparse dragonfly, each group is a small leaf-spine Clos fabric. Only the top-of-fabric spines show the dragonfly shape. Group A has leaves LA1 and LA2, and both connect to spines SA1 and SA2. Group B has leaves LB1 and LB2, where LB1 connects to SB1 and LB2 connects to SB2. Group C has leaves LC1 and LC2, and both connect to SC1 and SC2.
+Reducing the diameter matters for AI and HPC, because direct links cut the path length. Cabling and standardising the extra links can cost too much, though. In that case, a traditional IP Clos fabric, with no links between peers at each level, may be the better choice.
 
-Across groups, the spines link to each other. SA1 and SA2 are interconnected, and SA1 connects to SB2 and SC1. SA2 connects to SB2 and SC2. SC1 and SC2 are interconnected, and SC1 connects to SB1. SB1 and SB2 are interconnected, and SB1 connects to SA2, SC1, and SC2. Those cross-group links are the part that the routing protocol must understand.
-
-The sparse design gives you shorter paths with fewer long cables. Each server keeps many connections, and traffic can take several routes between the same two points. The fabric can also be split into partitions. The control plane has to find the inter-group links, know the topology, and use adaptive routing with unequal-cost paths.
-
-Reducing the diameter matters for AI and HPC, because direct links cut the path length. Cabling and standardizing extra links can cost too much, though. In that case, a traditional IP Clos fabric, with no links between peers at each level, may be the better choice.
-
-The top-of-fabric spines in Figure 8-18 are the ones that see the other groups. Normally, a link from a ToR to a ToF spine is not supported, and routing would withdraw it. Here, the group-to-group link is part of the advertisement, carried in K-store values. That also allows forwarding over horizontal links, which the original RIFT definition did not include. The control-plane details, such as partitioning and split-horizon, are covered in the IETF draft `draft-przygienda-rift-dragonfly`.
+A link from a ToR to a top-of-fabric spine is normally not supported, and routing would withdraw it. In the RIFT dragonfly variant, the group-to-group link is part of the advertisement. That also allows forwarding over horizontal links, which the original RIFT definition did not include. The control-plane details, such as partitioning and split-horizon, are in the IETF draft `draft-przygienda-rift-dragonfly`.
 
 ## 7. Multi-tenancy for AI/ML clusters
 
@@ -305,7 +331,7 @@ Level 1 is dedicated ports or hardware. In bare-metal-as-a-service, a tenant own
 
 Level 2 is network-level segmentation with EVPN-VXLAN. Each tenant maps to a VLAN and VNI, which gives a MAC-VRF for L2 and/or an IP-VRF with route-type-5 routes for L3. Spines act as route servers for tenant routes and transit IP.
 
-Here is one illustrative sizing. A rail with 8 leaves and 8 spines runs at 1:1. It uses 64 switches of 800G, with breakout to 2x400G ports toward the servers. That gives 64 server ports per ToR. Multiply 8 leaves by 64 ports, and you get 512 GPUs per rail. Dedicating physical servers can host up to four tenants of 128 GPUs in one rail, which fills the 512 GPUs. You add rails and spines as capacity grows.
+Here is one illustrative sizing. A rail with 8 leaves and 8 spines runs at 1:1. Each switch has 64 ports of 800G, and the server-facing ports break out into 2x400G. That gives 64 server ports per ToR. Multiply 8 leaves by 64 ports, and you get 512 GPUs per rail. Dedicating physical servers can host up to four tenants of 128 GPUs in one rail, which fills the 512 GPUs. You add rails and spines as capacity grows.
 
 Level 3 is server-level partitioning. NVIDIA MIG splits a GPU into up to seven instances. You map each instance to a VLAN, which gives seven tenants per server interface. vGPU, and scheduling with NCCL across servers, extend this. Combined with the network, each leaf runs seven MAC-VRFs and seven IP-VRFs. Tenant traffic then stays isolated across racks and rails.
 
@@ -345,23 +371,27 @@ With a controller that computes congestion-avoiding paths for each GPU pair and 
 
 In practice, most fabrics today run eBGP, ECMP, load balancing and DCQCN. Treat the controller and SRv6 approaches as options you evaluate.
 
-### 9.1 Segment routing terms, the SR domain, and the SRv6 header
+### 9.1 Segment routing terms, the SR domain and the SRv6 header
 
-Segment routing is gaining momentum in service provider networks, mostly to get better path use. It is also worth exploring for AI/ML cluster data centers and lossless fabrics. The condition is that DCQCN and the other RoCEv2 lossless mechanisms still work across SRv6 topologies. Test that before you commit.
+Segment routing is gaining momentum in service provider networks, mostly to get better path use. It is also worth exploring for AI/ML clusters. The condition is that DCQCN and the other RoCEv2 lossless mechanisms must still work across SRv6 topologies. Test that before you commit.
 
-Start with the vocabulary. The SR domain is the set of all networking devices that run segment routing. For AI/ML, the whole cluster can be one SR domain. Each link between two devices is a segment, and each segment gets an identifier called a SID. The whole route, from the leaf on the sending side to the leaf on the receiving side, is called the SR path.
+Start with the vocabulary. The SR domain is the set of all devices that run segment routing, and for AI/ML the whole cluster can be one SR domain. Each link between two devices is a segment, and each segment gets an identifier called a SID. The whole route from the sending leaf to the receiving leaf is the SR path.
 
-Figure 8-28 shows this on a small fabric. Inside the domain, a two-tier design has four leaves at the bottom and two spines above them. Three servers sit outside the domain. Two connect to the leftmost leaf, and one connects to the rightmost leaf. A highlighted path runs from the leftmost leaf up to the rightmost spine and down to the rightmost leaf.
+The diagram shows how forwarding works in a two-tier fabric. The ingress leaf adds two SIDs to the packet, one for the spine and one for the egress leaf. The spine removes its own SID and forwards on the next. The egress leaf removes the last SID and delivers a plain IP packet to the server. Different SID lists produce different paths, which is how SR gives you control over the path.
 
-Figure 8-29 shows how the forwarding works. The ingress leaf adds two SIDs to the packet: SID 5 for the spine, then SID 1 for the egress leaf. The spine removes SID 5, because it points to itself, and forwards on SID 1. The egress leaf removes SID 1 and delivers the plain IP packet to the server. Different SID lists produce different paths, which is how SR gives you control over the path.
+```mermaid
+flowchart LR
+  H1[server] --> IL["ingress leaf: adds SID list spine, egress leaf"]
+  IL -->|SIDs: spine, egress leaf| SP["spine: removes its own SID"]
+  SP -->|SID: egress leaf| EL["egress leaf: removes last SID"]
+  EL --> H2[server]
+```
 
-There are two common identifiers. A Node SID is attached to a node and works like a loopback address for that node. An Adjacency SID is attached to each adjacency between two nodes. The book also mentions the Anycast SID and the SID for Egress Peer Engineering (EPE).
+There are two common identifiers. A Node SID is attached to a node and works like a loopback address for that node. An Adjacency SID is attached to each adjacency between two nodes. Two further types exist, the Anycast SID and the SID for Egress Peer Engineering.
 
-The control plane for SR mostly lives on a controller outside the nodes. The controller learns the topology from an IGP or from BGP Link-State (BGP-LS). The Path Computation Element Protocol (PCEP) then installs the computed path on each node. The data plane is either SR-MPLS, which uses MPLS labels as SIDs, or SRv6, which adds the metadata to the IPv6 header.
+The control plane for SR mostly lives on a controller outside the nodes. The controller learns the topology from an IGP or from BGP Link-State. The Path Computation Element Protocol, PCEP, then installs the computed path on each node. The data plane is either SR-MPLS, which uses MPLS labels as SIDs, or SRv6, which adds the metadata to the IPv6 header.
 
-Figure 8-30 shows the Segment Routing Header (SRH) layout. The first row holds the next header in bits 0 to 7, the header extension length in bits 8 to 15, the routing type in bits 16 to 23, and segments left in bits 24 to 31. The second row holds last entry in bits 0 to 7, flags in bits 8 to 15, and tag in bits 16 to 31. After those rows comes a variable list of 128-bit IPv6 addresses, one per segment. Optional type-length-value objects come last.
-
-The SRH sits between the IPv6 header and the Layer 4 payload, which is RDMA in an AI/ML cluster. IPv6 allows zero or more extension headers, and the SRH is one of them. Each SID in the list has three parts: a locator, a function, and an argument. The locator is the network prefix for the node, the function says what to do there, and the argument carries extra data.
+The Segment Routing Header, or SRH, sits between the IPv6 header and the Layer 4 payload, which is RDMA in an AI/ML cluster. IPv6 allows zero or more extension headers, and the SRH is one of them. Its fixed part holds the next header, the header length, the routing type, the segments-left counter, the last entry, flags and a tag. A variable list of 128-bit IPv6 addresses follows, one per segment, and optional TLVs come last. Each SID has three parts: a locator, which is the network prefix of the node, a function that says what to do there, and an argument that carries extra data.
 
 ## 10. Operations: verifying, converging and failing safely
 
@@ -383,12 +413,12 @@ Start on your own machine by running the self-checking Python lab, `code/part02/
 python3 code/part02/bgp_datacenter_clos_lab.py
 ```
 
-Next, build the fabric on a disposable Linux VM with containerlab. Use 2 spines in `AS 65001` and 4 leaves in `AS 65101..65104`. All interactive VM commands below are `untested here`. Work through these steps in order.
+Next, build the fabric on a disposable Linux VM with containerlab. Use 2 spines in `AS 65001` and 4 leaves in `AS 65101..65104`. The interactive commands below were not run on live hardware. Work through these steps in order.
 
 1. Set up the topology and addressing. Give each loopback an address of 10.255.0.X/32. Put server subnets, 10.10.X.0/24, on the leaves. Leave the fabric links without addresses, with IPv6 link-local only.
 2. Configure unnumbered eBGP with `neighbor swpN interface remote-as external`, `multipath-relax`, `maximum-paths 8` and `redistribute connected` through a route-map. Verify with `show bgp summary`, the ECMP next hops, and `ip route` showing `via inet6 fe80::`. Then capture an OPEN message and find the Extended Next Hop capability.
 3. Test ECMP. Run `iperf3 -P 16` between hosts on different leaves, and confirm that both spines are used. Check the effect of `fib_multipath_hash_policy`. Then engineer a collision of two elephant flows by choosing ports, and observe one link saturate.
-4. Explore the ASN design. Change the spines to different ASNs. Fail links to create the multi-failure valley path. Leaf1 loses its spine2 uplink, and leaf3 loses its spine1 uplink, and then leaf2 has links... Observe the hairpin route. Next, revert to the same ASN and see the path rejected. Record the AS-PATH lengths.
+4. Explore the ASN design. Change the spines to different ASNs. Fail links to create the multi-failure valley path. Remove the leaf1 uplink to spine2 and the leaf3 uplink to spine1, so the only remaining path from leaf1 to leaf3 goes through leaf2. Observe the hairpin route. Next, revert to the same ASN and see the path rejected. Record the AS-PATH lengths.
 5. Reproduce the summarisation black hole. Add `aggregate-address 10.10.0.0/16 summary-only` on the spines toward a border router. Fail a leaf-spine link and show the black hole from the border. Then fix it with conditional advertisement, or by not aggregating below the spine.
 6. Compare failure recovery under three timer settings: the default timers, `timers 3 9`, and BFD at 100 ms × 3.
 7. Test weighted ECMP. Set the link-bandwidth community on advertisements with different values. Enable weighted ECMP in FRR with `neighbor X ... link-bandwidth` or `bgp bestpath bandwidth`, if your build supports it. Then measure the split.
@@ -429,12 +459,12 @@ Use these questions to test whether you can reason about the design, not just re
 
 ## Exercises
 
-1. Start with the RFC 7938 eBGP Clos design, the same-spine-ASN rule that prevents valley paths, and `multipath-relax`. (a) Explain why hyperscale and AI data centres standardised on eBGP, as described in RFC 7938, instead of iBGP or OSPF. State the eight configuration knobs that make eBGP behave like a fast ECMP fabric protocol. (b) Using `check_clos_valley_path_rejection()` in `code/part02/bgp_datacenter_clos.py`, prove why giving all spines in a tier the same ASN (`65001`) prevents suboptimal leaf-hairpin ("valley") paths after multiple link failures.
-2. Work through BGP unnumbered, which uses the Extended Next Hop Encoding from RFC 5549 and RFC 8950. Think about how you would deploy it. Explain how it removes `/31` IPv4 subnet management across 512+ leaf-spine links. Combine IPv6 Neighbour Discovery, with its Router Advertisements (RA) and `fe80::/64` link-local addresses, with BGP Capability Code `5`. What does `ip route show` display for an IPv4 route learned over an unnumbered eBGP session?
-3. Work through failure domains, positive feedback loops and Clos summarisation black holes, using chapter 19 of *Computer Networking Problems and Solutions* as your source. (a) Define a control-plane failure domain. Walk through the cascade in which 10 events per second meets 3 flaps per second, which becomes 6 events per second and then 12. List the six techniques for bounding control-plane scope. (b) Using `evaluate_spine_summary_and_min_peers()`, explain why configuring `aggregate-address 10.10.0.0/16 summary-only` on Spine 2 blackholes traffic to Leaf 3 (`10.10.3.0/24`) when the single link between Spine 2 and Leaf 3 fails. State two fixes.
-4. Explore advanced AI-fabric BGP: ADD-PATH, link-bandwidth weighted ECMP, minimum peers and BGP DPF. (a) Using `compute_weighted_ecmp_shares_pct([400, 800, 100, 400])`, compute the weighted ECMP traffic distribution across four spines. Each advertises a Link-Bandwidth community for 400, 800, 100 and 400 Gb/s of northbound capacity. (b) Using `filter_dpf_colored_route()`, trace how BGP Deterministic Path Forwarding (`DPF`) filters and prunes route colors `{'black', 'grey'}` across coloured eBGP sessions. Then contrast rail-optimised and rail-unified server cabling.
-5. Compare eBGP, IS-IS and RIFT for 32k-GPU fabrics and dragonfly topologies, using AI Data Center Network Design and Technologies, chapter 8, as your source. Use `draft-white-lsr-distoptflood`, Flex Algo (RFC 9350 and RFC 9502) and RIFT (RFC 9692) as references. Cover Clos ECMP, dragonfly topologies, link and queue awareness, and automatic disaggregation on failure.
-6. Work through multi-tenancy at scale, BGP to the server with anycast, and SRv6 uSID traffic engineering, again from AI Data Center Network Design and Technologies, chapter 8. (a) Compare the five AI cluster multi-tenancy models: dedicated rail ports; EVPN-VXLAN with MAC-VRF and RT-5 IP-VRF for 512 GPUs per rail; server-level NVIDIA MIG, with its 7-instance split mapped to 7 VLANs or VRFs per leaf; RADIUS dynamic ACLs; and VXLAN GBP microsegmentation. (b) Explain how BGP to the server enables MLAG-free ECMP and health-checked anycast VIPs. Then explain how SRv6 16-bit micro-SIDs (uSIDs) enable controller-steered deterministic paths.
+1. A new AI cluster needs a routing design. (a) Explain why hyperscale and AI data centres standardised on eBGP, as described in RFC 7938, instead of iBGP or OSPF. State the eight configuration knobs that make eBGP behave like a fast ECMP fabric protocol. (b) Using `check_clos_valley_path_rejection()` in `code/part02/bgp_datacenter_clos.py`, prove why giving all spines in a tier the same ASN (`65001`) prevents suboptimal leaf-hairpin ("valley") paths after multiple link failures.
+2. You are asked to remove `/31` addressing from a 512-link fabric using BGP unnumbered. Explain how it removes `/31` IPv4 subnet management across 512+ leaf-spine links. Combine IPv6 Neighbour Discovery, with its Router Advertisements (RA) and `fe80::/64` link-local addresses, with BGP Capability Code `5`. What does `ip route show` display for an IPv4 route learned over an unnumbered eBGP session?
+3. A flapping link takes down a neighbouring router, and later a summary route black-holes traffic. (a) Define a control-plane failure domain. Walk through the cascade in which 10 events per second meets 3 flaps per second, which becomes 6 events per second and then 12. List the six techniques for bounding control-plane scope. (b) Using `evaluate_spine_summary_and_min_peers()`, explain why configuring `aggregate-address 10.10.0.0/16 summary-only` on Spine 2 blackholes traffic to Leaf 3 (`10.10.3.0/24`) when the single link between Spine 2 and Leaf 3 fails. State two fixes.
+4. Four spines have different northbound capacity, and one tenant needs guaranteed paths. (a) Using `compute_weighted_ecmp_shares_pct([400, 800, 100, 400])`, compute the weighted ECMP traffic distribution across four spines. Each advertises a Link-Bandwidth community for 400, 800, 100 and 400 Gb/s of northbound capacity. (b) Using `filter_dpf_colored_route()`, trace how BGP Deterministic Path Forwarding (`DPF`) filters and prunes route colors `{'black', 'grey'}` across coloured eBGP sessions. Then contrast rail-optimised and rail-unified server cabling.
+5. You must recommend a routing protocol for a 32,000-GPU fabric, and a second one for a dragonfly. Compare eBGP, IS-IS and RIFT, using `draft-white-lsr-distoptflood`, Flex Algo (RFC 9350 and RFC 9502) and RIFT (RFC 9692) as references. Cover Clos ECMP, dragonfly topologies, link and queue awareness, and automatic disaggregation on failure.
+6. A GPU cloud must isolate tenants, run anycast services from servers and steer elephant flows. (a) Compare the five AI cluster multi-tenancy models: dedicated rail ports; EVPN-VXLAN with MAC-VRF and RT-5 IP-VRF for 512 GPUs per rail; server-level NVIDIA MIG, with its 7-instance split mapped to 7 VLANs or VRFs per leaf; RADIUS dynamic ACLs; and VXLAN GBP microsegmentation. (b) Explain how BGP to the server enables MLAG-free ECMP and health-checked anycast VIPs. Then explain how SRv6 16-bit micro-SIDs (uSIDs) enable controller-steered deterministic paths.
 
 ## Checkpoint questions (20)
 
@@ -463,13 +493,13 @@ On a fabric with hundreds or thousands of point-to-point links, allocating and c
 </details>
 
 <details>
-<summary>5. Define a control-plane \"failure domain\" and explain how a Positive Feedback Loop can take down a routing control plane (Computer Networking Problems and Solutions, chapter 19).</summary>
+<summary>5. Define a control-plane \"failure domain\" and explain how a Positive Feedback Loop can take down a routing control plane.</summary>
 
 A failure domain is the set of routers that receive an update and must recompute state when a link or prefix changes. A positive feedback loop happens when control-plane load amplifies itself. Suppose routers can process 10 events per second, and a flapping link generates 3 flaps per second, which is 6 events per second. Intermediate routers multiply and re-flood updates across parallel paths, so a downstream router receives 12 events per second. It runs out of CPU or memory, crashes or drops its BFD sessions, and forces a full adjacency teardown and table resync across its neighbors. The cascade spreads across the network even after the original link stops flapping.
 </details>
 
 <details>
-<summary>6. Name the six techniques for bounding control-plane scope and velocity (Computer Networking Problems and Solutions, chapter 19), along with the cost of each.</summary>
+<summary>6. Name the six techniques for bounding control-plane scope and velocity, along with the cost of each.</summary>
 
 The six techniques, with their costs, are these. Summarising topology hides internal links and nodes behind areas or levels, but it hides the failure of an internal component. Aggregating reachability collapses `/24`s into a `/16`, but it can cause suboptimal paths and black holes on link failure. Filtering reachability drops link subnets or unneeded prefixes, but it causes unreachability if misconfigured. Layering control planes separates underlay loopbacks from an EVPN overlay, but you then operate and correlate two control planes. Caching, or reactive learning of host routes on demand, adds first-packet latency. Slowing down, through SPF and LSA throttling, MRAI and damping, slows convergence.
 </details>
@@ -481,7 +511,7 @@ Spines 1 to 4 all advertise a summary, `10.10.0.0/16`, which covers Leaf 1..4's 
 </details>
 
 <details>
-<summary>8. What is the \"Minimum BGP Peers per Prefix\" rule, and why is it useful in AI fabrics (AI Data Center Network Design and Technologies, chapter 8)?</summary>
+<summary>8. What is the \"Minimum BGP Peers per Prefix\" rule, and why is it useful in AI fabrics?</summary>
 
 For synchronous AI workloads that need full non-blocking bisection bandwidth, a spine or aggregation switch advertises a prefix upward only while at least `N` healthy ECMP next-hop peers exist for it. If a link failure drops the available paths below `N`, for example from 4 to 3, the spine withdraws the prefix. Upstream senders then steer traffic only through spines that still have full downstream capacity.
 </details>
@@ -493,7 +523,7 @@ Suppose you run standard ECMP. It splits flows equally, `1/N`, across all next h
 </details>
 
 <details>
-<summary>10. When is `AS-PATH` Strip and Replace (normalization) used in an AI data center (AI Data Center Network Design and Technologies, chapter 8)?</summary>
+<summary>10. When is `AS-PATH` Strip and Replace (normalization) used in an AI data center?</summary>
 
 Use it when a private-ASN fabric connects to a campus or core network that also uses private ASNs. It also applies when tenant GPU servers run their own BGP daemons and inject prefixes with varying `AS_PATH` lengths. The ToR or border router strips the incoming private ASNs and replaces them with a uniform, fixed-length ASN sequence. That prevents accidental `AS_PATH` loop drops. It also gives all server and external paths the same `AS_PATH` length for ECMP.
 </details>
@@ -505,13 +535,13 @@ BGP DPF tags eBGP sessions and routes with colours, such as `black` and `grey`. 
 </details>
 
 <details>
-<summary>12. Contrast a **Rail-Optimized** GPU fabric with a **Rail-Unified** GPU fabric (AI Data Center Network Design and Technologies, chapter 8).</summary>
+<summary>12. Contrast a **Rail-Optimized** GPU fabric with a **Rail-Unified** GPU fabric.</summary>
 
 In a rail-optimized fabric, each of an 8-GPU server's 8 NICs, `NIC 0..7`, connects to a different leaf switch, `Leaf_Rail_0..Leaf_Rail_7`. Same-rank GPUs across servers communicate in 1 hop through their shared rail leaf. A single leaf failure reduces job bandwidth by only `1/8`, which is `12.5%`. In a rail-unified fabric, all 8 NICs of a server connect to the same ToR leaf switch, or leaf pair. That simplifies rack cabling. But a single ToR failure takes down all 8 GPUs of the server. Intra-rack and inter-rack traffic also share the same leaf uplinks, where logical fabric colouring, such as DPF, helps isolate per-GPU planes.
 </details>
 
 <details>
-<summary>13. Why are `IGP`s (`IS-IS` and `RIFT`) being evaluated alongside `eBGP` for 16,000–32,000 GPU AI back-end fabrics (AI Data Center Network Design and Technologies, chapter 8)?</summary>
+<summary>13. Why are `IGP`s (`IS-IS` and `RIFT`) being evaluated alongside `eBGP` for 16,000–32,000 GPU AI back-end fabrics?</summary>
 
 BGP is a prefix-advertisement protocol. It has no native concept of a topology graph, link utilisation or switch queue depth. It also needs external BFD sessions and more CPU for fast failure detection. Link-state IGPs, such as IS-IS with flood reduction and RIFT, have built-in fast UDP or L2 hellos. They offer full topology visibility, extensible TLVs for link and queue state, and native multi-topology and constrained-path calculation.
 </details>
@@ -529,13 +559,13 @@ RIFT is a hybrid protocol built for Clos and fat-tree topologies. Northbound, to
 </details>
 
 <details>
-<summary>16. What is a **Dragonfly** (and **Sparse Dragonfly**) topology, and why does it require non-shortest-path (Valiant) routing (AI Data Center Network Design and Technologies, chapter 8)?</summary>
+<summary>16. What is a **Dragonfly** (and **Sparse Dragonfly**) topology, and why does it require non-shortest-path (Valiant) routing?</summary>
 
 A dragonfly groups switches into local pods or groups. In a canonical dragonfly, the groups are all-to-all meshed. In a sparse dragonfly, each group is a two-tier leaf-spine Clos. Every group connects directly to every other group through a small number of global inter-group links. When traffic between Group 1 and Group 2 saturates their direct global link, the fabric must route flows indirectly through an intermediate Group 3. That is non-shortest-path, or Valiant, load balancing. It needs link-utilisation awareness and loop-free split-horizon rules for groups. IGPs such as RIFT and extended IS-IS handle this better than standard eBGP.
 </details>
 
 <details>
-<summary>17. Compare Network-Level Multi-Tenancy (`EVPN-VXLAN`), Server-Level Multi-Tenancy (`NVIDIA MIG` + VLANs/VRFs), and `VXLAN GBP` Microsegmentation (AI Data Center Network Design and Technologies, chapter 8).</summary>
+<summary>17. Compare Network-Level Multi-Tenancy (`EVPN-VXLAN`), Server-Level Multi-Tenancy (`NVIDIA MIG` + VLANs/VRFs), and `VXLAN GBP` Microsegmentation.</summary>
 
 Network-level multi-tenancy with EVPN-VXLAN maps whole servers or ports to per-tenant VLANs and VNIs. It uses a MAC-VRF for L2 and a Route Type 5 IP-VRF for L3. For example, an 8-leaf by 8-spine rail with `64x800G` switches provides `512` 400G GPU ports, which hosts `4` isolated tenants of `128` GPUs each. Server-level multi-tenancy with `NVIDIA MIG` and VRFs partitions each physical GPU into up to `7` hardware-isolated MIG instances. Each instance maps to its own `802.1Q` VLAN on the server NIC, and into `7` separate MAC-VRFs or IP-VRFs on the leaf switch. Microsegmentation with `VXLAN GBP`, Group-Based Policy, carries a 16-bit security group tag in the VXLAN header. Two sub-tenants sharing one VNI and subnet can then be blocked from talking to each other at the leaf switch.
 </details>
@@ -549,7 +579,7 @@ If you run unnumbered eBGP on the server or DPU, peering with both ToR leaves, y
 <details>
 <summary>19. How does `Segment Routing over IPv6` (`SRv6`, RFC 8754 / RFC 8986) with `16`-bit Micro-SIDs (`uSID`s) enable deterministic AI traffic engineering?</summary>
 
-In SRv6, the ingress node, a DPU or a ToR, steers a flow along an explicit congestion-free path. A central SDN controller computes that path. The ingress inserts a sequence of IPv6 Segment Identifiers (`SID`s) into the IPv6 header, or into the Segment Routing Header (`SRH`). Each SID contains `Locator : Function : Args`. Transit switches need zero per-flow state. Compressed `16`-bit micro-SIDs (`uSID`s) pack up to six hop instructions inside one standard 128-bit IPv6 destination address, with no header expansion overhead.
+In SRv6, the ingress node, a DPU or a ToR, steers a flow along an explicit congestion-free path. A central SDN controller computes that path. The ingress inserts a sequence of IPv6 Segment Identifiers (`SID`s) into the IPv6 header, or into the Segment Routing Header (`SRH`). Each SID contains `Locator : Function : Args`. Transit switches need zero per-flow state. Compressed 16-bit micro-SIDs (uSIDs) pack several hop instructions inside one standard 128-bit IPv6 destination address, with no header expansion overhead.
 </details>
 
 <details>
@@ -561,9 +591,9 @@ Six checks apply when you bring up a new fabric. First, `show bgp summary` shoul
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `ai-data-center-network-design-and-technologies` — Dinakaran Setty,avinash et al., *AI Data Center Network Design and Technologies*, **Chapter 8: IP Routing for AI/ML Fabrics** (dynamic routing options, eBGP underlay for 3-/5-stage AI fabrics, BGP unnumbered, ASN allocation `4200000000–4294967294`, `ADD-PATH`, `AS-PATH` strip and replace, Link Bandwidth Extended Community weighted ECMP `400`/`800`/`100`/`400` Gb/s, minimum BGP peers per prefix, BGP DPF `draft-wang-idr-dpf` colored sessions and rail-optimized vs rail-unified `3 x 400G = 1.2 Tb/s`, IGPs for AI fabrics `RIFT` RFC `9692` and IS-IS flood reduction `draft-white-lsr-distoptflood` `~2,500` nodes / Flex Algo RFC `9350`/`9502`, dragonfly and sparse dragonfly, multi-tenancy `8` leaves x `8` spines `64 x 800G` -> `512` GPUs/rail = `4 x 128` GPUs and MIG `7` instances/VRFs, extending BGP to the server, and controller/SRv6 `uSID` `16`-bit traffic engineering).
+  - `ai-data-center-network-design-and-technologies` — Dinakaran Setty, Avinash et al., *AI Data Center Network Design and Technologies*, **Chapter 8: IP Routing for AI/ML Fabrics** (dynamic routing options, eBGP underlay for 3-/5-stage AI fabrics, BGP unnumbered, ASN allocation `4200000000–4294967294`, `ADD-PATH`, `AS-PATH` strip and replace, Link Bandwidth Extended Community weighted ECMP `400`/`800`/`100`/`400` Gb/s, minimum BGP peers per prefix, BGP DPF `draft-wang-idr-dpf` colored sessions and rail-optimized vs rail-unified `3 x 400G = 1.2 Tb/s`, IGPs for AI fabrics `RIFT` RFC `9692` and IS-IS flood reduction `draft-white-lsr-distoptflood` `~2,500` nodes / Flex Algo RFC `9350`/`9502`, dragonfly and sparse dragonfly, multi-tenancy `8` leaves x `8` spines `64 x 800G` -> `512` GPUs/rail = `4 x 128` GPUs and MIG `7` instances/VRFs, extending BGP to the server, and controller/SRv6 `uSID` `16`-bit traffic engineering).
   - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 17: Policy in the Control Plane** and **Chapter 19: Failure Domains** (control-plane state scope, positive feedback loops `10` events/s limit vs `3` flaps/s = `6` -> `12` events/s cascade, summarizing topology, aggregating and filtering reachability, layering, caching, slowing down, and the Clos spine summarization black-hole caveat).
 - **Reference list of the same chapter (titles only, as cited by the book):** Premji and Lapukhov, *Use of BGP for Routing in Large-Scale Data Centers* (RFC 7938, 2016); Przygienda et al., *RIFT: Routing in Fat Trees* (RFC 9692, 2025); Rosen and Le Faucheur, *Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop* (RFC 5549); White et al., *IS-IS Distributed Flooding Reduction* (draft-ietf-lsr-distoptflood); Ferguson et al., *OSPF for IPv6* (RFC 5340); Filsfils et al., *IPv6 Segment Routing Header (SRH)* (RFC 8754) and *Segment Routing over IPv6 (SRv6) Network Programming* (RFC 8986); Filsfils et al., *SRv6 for Deterministic Path Placement in AI Backends* (draft-filsfils-srv6ops-srv6-ai-backend); Wang et al., *BGP Deterministic Path Forwarding (DPF)* (draft-wang-idr-dpf).
 - **Run here:** `python3 code/part02/bgp_datacenter_clos_lab.py` (14 passed, 0 failed).
 - **Explicitly labelled inferences:** The FRR unnumbered leaf-spine configuration (`frr defaults datacenter`, `neighbor swp1 interface remote-as external`, `ipv6 nd ra-interval 10`) and 6-item fabric verification checklist synthesize RFCs 5549/8950, 7911, 7938, 9350/9502, and 9692 and the FRR and containerlab documentation (cross-referenced with Chapters 2.12, 2.13, 2.14, 2.15, 2.17–2.19, 2.27–2.29, and Part 11, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** All interactive VM and FRR commands (`vtysh`, `neighbor interface remote-as external`, `show bgp summary`, `ip route show`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.
+- **Not verified on live hardware:** All interactive VM and FRR commands (`vtysh`, `neighbor interface remote-as external`, `show bgp summary`, `ip route show`) were not run on live hardware and must be executed on a disposable Linux VM or containerlab topology.

@@ -26,7 +26,7 @@ Picture an AI cluster where one rack suddenly cannot reach the others. Training 
 
 Kubernetes clusters with Calico or Cilium may speak BGP or OSPF to the fabric. HPC sites run OSPF in management networks. On-prem GPU clouds inherit enterprise networks full of OSPF and EIGRP.
 
-You will be asked to read an OSPF neighbour table. You may need to explain why an adjacency is stuck in EXSTART, which is usually an MTU problem. You will also design areas, explain DR and BDR elections on a shared segment, and compare IS-IS with OSPF for a new fabric. This chapter explains the protocols that implement the algorithms of chapter 2.13, and it prepares you for those tasks. It covers how Spanning Tree, RIP and EIGRP work as the distance-vector family, and how OSPF and IS-IS form neighbours, flood reliably and calculate paths. Configuration and troubleshooting are shown in FRR.
+You will be asked to read an OSPF neighbour table. You may need to explain why an adjacency is stuck in EXSTART, which is usually an MTU problem. You will also design areas, explain DR and BDR elections on a shared segment, and compare IS-IS with OSPF for a new fabric. This chapter explains the protocols that implement the algorithms of chapter 2.13, and it prepares you for those tasks. It spends one short section on the older distance-vector protocols, so you can recognise them, and then goes deep on how OSPF and IS-IS form neighbours, flood reliably and calculate paths. Configuration and troubleshooting are shown in FRR, an open-source routing suite.
 
 ## Prerequisites and outcomes
 
@@ -34,7 +34,7 @@ Before you start, you should be comfortable with the control-plane ideas from ch
 
 When you finish this chapter, you will be able to do the following.
 
-- Explain how STP builds a loop-free tree and learns reachability. Show how RIP and EIGRP implement Bellman-Ford and DUAL.
+- Explain why Spanning Tree, RIP and EIGRP are legacy control planes, and what each one contributes to the story.
 - Explain IS-IS in full: OSI and NSAP addressing, levels, the single LSP with TLVs and fragments, the hello, CSNP and PSNP exchange, SRM flags, flooding, flushing and metrics.
 - Explain OSPF: router IDs, packet types, LSA types, neighbour states from Down to Full, DR and BDR, areas, ABRs and ASBRs, network types, costs, reference bandwidth, timers and authentication.
 - Compare OSPF and IS-IS, and choose between them for a given network.
@@ -44,39 +44,35 @@ When you finish this chapter, you will be able to do the following.
 
 ## 1. Spanning Tree as a control plane
 
-Spanning Tree, from chapter 2.11, is itself a distance-vector-style control plane. It does not compute shortest paths to every destination. It computes a loop-free tree instead.
+Spanning Tree, from chapter 2.11, is itself a small distance-vector-style control plane. It does not compute shortest paths to every destination. It computes one loop-free tree toward a single destination, the root bridge.
 
-Here is how that tree gets built, and you can follow the steps in order. Every switch advertises the best root it knows in its BPDUs. The switches converge on the minimum, so the lowest bridge ID becomes the root. Each switch then picks its root port by the lowest cost to the root. Each segment elects a designated port, and the remaining ports are blocked. This is the Bellman-Ford idea with a single destination, which is the root.
+Every switch advertises the best root it knows in its BPDUs, and the lowest bridge ID wins. Each switch then picks its root port by lowest cost to the root, each segment elects a designated port, and the remaining ports are blocked. Host reachability is not advertised at all. Bridges learn MAC addresses from the source of incoming frames and flood unknown destinations, so learning is reactive and driven by the data plane.
 
-Reachability works differently. Bridges learn host MAC addresses from the source addresses of incoming frames, and they flood frames to unknown destinations. Nothing advertises reachability, so the learning is reactive and driven by the data plane.
+A single tree wastes capacity, converges slowly in its classic form and has no hierarchy. **When your network outgrows one tree, move to a routing protocol.**
 
-The limits matter once a network grows. A single tree wastes capacity, converges slowly in its classic form, and has no hierarchy. Flat L2 domains also grow their broadcast load. That is why routing protocols took over the scale-out job. When your network outgrows one tree, plan on a routing protocol instead.
+## 2. RIP and EIGRP: why distance-vector is legacy
 
-## 2. RIP: the simplest distance-vector protocol
+Imagine a router that only knows what its neighbours tell it. It never sees the whole map, it just trusts each neighbour's distance to each destination. That is distance-vector routing, and it is the family RIP and EIGRP belong to. You will meet both on old equipment, so it helps to know what they do and why new fabrics skip them.
 
-Every RIP router sends its whole routing table to its neighbours on a timer. That is nearly the whole protocol. The Routing Information Protocol is Bellman-Ford made concrete. RIPv2 is defined in RFC 2453, and RIPng carries the same idea to IPv6.
+The Routing Information Protocol sends its whole routing table to its neighbours every 30 seconds, as multicast to 224.0.0.9 on UDP port 520. The metric is hop count, and a metric of 16 means unreachable. A RIP network therefore cannot be wider than 15 hops. A route that is not refreshed for 180 seconds is marked invalid and is flushed after 240 seconds. RIPv2 is defined in RFC 2453, and RIPng carries the same idea to IPv6.
 
-Each router sends its table every 30 seconds. The updates go to multicast address 224.0.0.9 on UDP 520. The metric is hop count. A metric of 16 means unreachable, which RIP calls infinity. That limit caps a RIP network at 15 hops.
+RIP fights count-to-infinity, where a bad route keeps counting upward between two routers, with triggered updates, split horizon with poison reverse and hold-down timers. It still converges in tens of seconds to minutes, wastes bandwidth on full-table updates, ignores link speed and has no hierarchy.
 
-Choosing a route is simple too, and you can check it by hand. For each destination, a router takes the neighbour that advertises the lowest hop count, adds 1, and installs that route. A route that is not refreshed for 180 s times out. It is flushed after 240 s.
+EIGRP, the Enhanced Interior Gateway Routing Protocol, was built by Cisco, and its basic functions were published as RFC 7868. It fixes RIP's main problems. Neighbours are discovered with multicast hellos to 224.0.0.10 over IP protocol 88, and updates travel over a reliable transport, so only changes are sent. It also uses DUAL, the loop-free algorithm described in chapter 2.13.
 
-Several rules fight count-to-infinity, where bad routes keep counting upward. Triggered updates, split horizon with poison reverse and hold-down timers all work against it. RIP is trivial to configure and understand. Its weaknesses are slow convergence, measured in tens of seconds to minutes, and periodic full-table updates that waste bandwidth. Its hop count ignores link speed, and it has no hierarchy. Use RIP only for tiny networks and teaching, and recognise it when you find it on legacy gear.
+Each EIGRP router keeps a successor, the next hop with the lowest metric. It also keeps a feasible successor, a neighbour whose reported distance is below the router's own feasible distance. That neighbour is a backup that is guaranteed loop-free, so the router switches to it at once without sending queries. Without a feasible successor, the route goes active, the router queries its neighbours, and it converges after the replies. A route whose neighbour never answers is called stuck in active.
 
-## 3. EIGRP: DUAL-based distance vector
+The classic composite metric combines the slowest bandwidth on the path and the total delay. The formula below shows how, and the exercises use it.
 
-Imagine a branch link that fails at the worst possible moment. You want traffic on a backup path at once, without waiting for every router to recompute. The Enhanced Interior Gateway Routing Protocol, or EIGRP, was originally built by Cisco, and its basic functions were published as RFC 7868. It keeps the distance-vector habit of exchanging information only with neighbours. It adds DUAL from chapter 2.13, which guarantees loop freedom and instant failover.
+```text
+metric = 256 x (10,000,000 / minimum bandwidth in kb/s + total delay in tens of microseconds)
+```
 
-EIGRP discovers neighbours with multicast hellos to 224.0.0.10, using IP protocol 88. Neighbours must match their K-values and AS number. The hold time is three times the hello interval. By default on fast links, that gives 5 s or 15 s.
+The result is that a slow link dominates the metric. Unequal-cost load balancing with `variance` is unique to EIGRP. FRR does not ship a production EIGRP, so you mostly meet it in Cisco enterprise networks.
 
-Updates travel over RTP, the Reliable Transport Protocol. Updates, queries, replies and acks are sequenced and retransmitted when needed. Because of that, EIGRP sends only the changes, never full tables.
+**Use RIP only for teaching, and prefer OSPF, IS-IS or BGP for anything new.** The rest of this chapter covers the link-state protocols that replaced them.
 
-EIGRP's default metric combines bandwidth and delay, and it can add load and reliability. In classic mode, the metric is `metric = 256 × (10^7/min bandwidth in kb/s + sum of delays / 10)`. For fast links, wide metrics are used instead.
-
-Each router keeps a successor, which is the next hop with the lowest metric. It also keeps any feasible successor, a neighbour whose reported distance is below the router's own feasible distance. A feasible successor is an instantly usable backup. If the successor fails and a feasible successor exists, the router switches at once and sends no queries. Without one, the route goes active. The router queries its neighbours and converges after the replies. If a neighbour never answers, the route is "stuck in active".
-
-Unequal-cost load balancing with `variance` is unique to EIGRP. EIGRP is not production-grade in FRR, and you mostly meet it in Cisco enterprise networks. For new designs, prefer OSPF, IS-IS or BGP.
-
-## 4. Link-state protocols: the shared model
+## 3. Link-state protocols: the shared model
 
 Someone asks whether your fabric runs OSPF or IS-IS. The answer starts with what the two share. OSPF and IS-IS implement the same link-state model. Each router discovers its neighbours and verifies two-way connectivity. It then synchronises a database through reliable flooding, and it runs Dijkstra's SPF. The two protocols differ mainly in packaging. Read the table for those differences, because they show up in configuration and in troubleshooting.
 
@@ -93,7 +89,7 @@ Someone asks whether your fabric runs OSPF or IS-IS. The answer starts with what
 
 You can notice that the shortest-path math is the same in both protocols. Only the wrapping differs for you to learn. The rest of this chapter takes each protocol in turn, starting with IS-IS.
 
-## 5. IS-IS in depth
+## 4. IS-IS in depth
 
 Why does IS-IS look so different from OSPF? IS-IS stands for Intermediate System to Intermediate System, and it came out of the OSI protocol suite. In that suite, a router is an Intermediate System (IS) and a host is an End System (ES). IS-IS runs at the link layer, next to IP rather than on top of it. It does not need IP addressing to bring up adjacencies, and it never forwards IS-IS packets. Its addresses differ from the addresses it routes, which keeps nodes and destinations clearly apart. That also makes the protocol robust to IP misconfiguration.
 
@@ -181,7 +177,7 @@ router isis FABRIC
 vtysh -c 'show isis neighbor' -c 'show isis database detail' -c 'show isis route' -c 'show isis interface detail'
 ```
 
-## 6. OSPF in depth
+## 5. OSPF in depth
 
 OSPF stands for Open Shortest Path First. It is the most widely deployed IGP. OSPFv2 is defined in RFC 2328 for IPv4. OSPFv3 is defined in RFC 5340 for IPv6, and it can carry IPv4 through address families. OSPF runs directly over IP, using protocol 89.
 
@@ -289,7 +285,7 @@ vtysh -c 'show ip ospf neighbor' -c 'show ip ospf interface' -c 'show ip ospf da
 
 For IPv6, use `ipv6 ospf6` and `router ospf6`.
 
-## 7. OSPF versus IS-IS: choosing
+## 6. OSPF versus IS-IS: choosing
 
 Choosing between the two is a question about your team as much as about the protocol. The table compares them on the points that usually decide it.
 
@@ -305,7 +301,7 @@ Choosing between the two is a question about your team as much as about the prot
 
 Both protocols converge in sub-second time with tuning and BFD. In practice, choose the one your organisation can operate. For hyperscale AI fabrics, eBGP (RFC 7938) and link-state variants such as RIFT are common, and chapter 2.16 covers them. OSPF and IS-IS serve as the underlay in smaller or EVPN designs.
 
-## 8. Operations and troubleshooting
+## 7. Operations and troubleshooting
 
 Start with the neighbour state. When an OSPF neighbour will not form, the state shown by `show ip ospf neighbor` tells you where it gets stuck. The table matches each stuck state to its likely causes and the checks that confirm them.
 
@@ -326,7 +322,7 @@ Several generic tools help. `tcpdump -ni swp1 'proto 89'` captures OSPF, and `et
 
 For fabrics, make every link point-to-point. Advertise the loopback /32 as both the router ID and the service address. Keep one area, or run IS-IS as Level 2 only. Run BFD at 100-300 ms, keep the reference bandwidth consistent, and make `passive-interface default` the baseline. Size ECMP to at least the uplink count. Turn on authentication, and protect the control plane with CoPP. Avoid redistributing host routes without a reason, which keeps the routing table small. Finally, stagger maintenance with overload or graceful shutdown, using `max-metric router-lsa on-startup/administrative`, so traffic drains before reloads.
 
-## 9. Hands-on lab: OSPF and IS-IS in FRR
+## 8. Hands-on lab: OSPF and IS-IS in FRR
 
 Start with the self-checking Python lab. You can run it on your own machine. It checks the IS-IS `NET` parsing for `49.0001.1921.6800.1001.00`. It also checks how a loopback IPv4 address becomes a System ID, so `192.168.1.1` turns into `1921.6800.1001`. The OSPF `auto-cost reference-bandwidth` math is verified next, comparing the `100 Mb/s` default with the tuned `400,000 Mb/s`. Last, the lab walks the OSPF neighbour states (`Down`, `Init`, `2-Way`, `ExStart/Exchange`, `Full`) and the classic EIGRP composite metrics.
 
@@ -334,7 +330,7 @@ Start with the self-checking Python lab. You can run it on your own machine. It 
 python3 code/part02/ospf_isis_protocols_lab.py
 ```
 
-The rest of the lab needs a disposable Linux VM with FRR, either in containerlab or in network namespaces. Every interactive VM command below is `untested here`. Work through these steps in order, and keep your own notes as you go.
+The rest of the lab needs a disposable Linux VM with FRR, either in containerlab or in network namespaces. The interactive commands below were not run on live hardware. Work through these steps in order, and keep your own notes as you go.
 
 1. Configure the setup above in Area 0. Watch the state progression with `debug ospf adj` or `watch vtysh -c 'show ip ospf neighbor'`. Then inspect the LSDB. Find the Router LSAs, and compare the `show ip ospf route` output with the SPF you calculated by hand. Note the ECMP between hosts.
 2. Set one interface MTU to 1400 and the other to 1500. Observe ExStart. Then try `mtu-ignore`, and discuss why it is only a workaround.
@@ -349,7 +345,7 @@ The rest of the lab needs a disposable Linux VM with FRR, either in containerlab
 
 Repeat step 2 first, since an MTU mismatch is the usual cause of a stuck ExStart.
 
-## 10. Common mistakes
+## 9. Common mistakes
 
 Watch for these mistakes in your own configs, and in any config you review.
 
@@ -362,7 +358,7 @@ Watch for these mistakes in your own configs, and in any config you review.
 - Setting over-aggressive timers without BFD or CPU protection, and running without authentication.
 - Running large flat domains with unstable links and no SPF or LSA throttling.
 
-## 11. Interview angles
+## 10. Interview angles
 
 Use these questions to test yourself. Try to answer each one out loud, then check the section it points back to.
 
@@ -381,8 +377,8 @@ Use these questions to test yourself. Try to answer each one out loud, then chec
 
 Answer each part in your own words before you run any code. The exercises build from the distance-vector protocols to the link-state ones.
 
-1. Start with Spanning Tree, RIP and EIGRP as distance-vector control planes. This exercise draws on *Computer Networking Problems and Solutions*, chapter 15. In the first part, explain how Spanning Tree's Root Bridge election maps onto Bellman-Ford distance-vector routing with a single destination, and how STP learns host reachability. In the second part, contrast RIP, which uses `UDP 520`, `224.0.0.9`, 30 s full-table updates and a maximum of 15 hops, with EIGRP, which uses `IP proto 88`, `224.0.0.10`, Reliable Transport `RTP` and the DUAL condition `RD < FD`. Then calculate the EIGRP classic composite metric with `compute_eigrp_classic_metric()` in `code/part02/ospf_isis_protocols.py`, for `min_bw = 10,000 kb/s` and `total_delay = 100` tens of microseconds. The result should be `281,600`.
-2. Next, work on IS-IS. This exercise draws on *Computer Networking Problems and Solutions*, chapter 16. Explain why IS-IS runs directly over Layer 2 (`CLNS`) rather than IP. Then use `ipv4_to_isis_system_id()` and `parse_isis_net()` to convert the loopback `192.168.1.1` into a 6-byte System ID, `1921.6800.1001`, and to decode `49.0001.1921.6800.1001.00`. Finally, explain how IS-IS uses padded IIH hellos, CSNP, PSNP and the SRM flag to synchronise its TLV-based LSP fragments. Also explain why `metric-style wide`, with its 24/32-bit metrics, must replace the legacy 6-bit narrow metrics, which top out at 63.
+1. A colleague says Spanning Tree and RIP are the same kind of protocol. In the first part, explain how Spanning Tree's Root Bridge election maps onto Bellman-Ford distance-vector routing with a single destination, and how STP learns host reachability. In the second part, contrast RIP, which uses `UDP 520`, `224.0.0.9`, 30 s full-table updates and a maximum of 15 hops, with EIGRP, which uses `IP proto 88`, `224.0.0.10`, Reliable Transport `RTP` and the DUAL condition `RD < FD`. Then calculate the classic EIGRP metric with `compute_eigrp_classic_metric()` in `code/part02/ospf_isis_protocols.py`, for a 10,000 kb/s minimum bandwidth and a delay of 100 tens of microseconds. The result should be 281,600.
+2. A new fabric will run IS-IS. Explain why IS-IS runs directly over Layer 2 (`CLNS`) rather than IP. Then use `ipv4_to_isis_system_id()` and `parse_isis_net()` to convert the loopback `192.168.1.1` into a 6-byte System ID, `1921.6800.1001`, and to decode `49.0001.1921.6800.1001.00`. Finally, explain how IS-IS uses padded IIH hellos, CSNP, PSNP and the SRM flag to synchronise its TLV-based LSP fragments. Also explain why `metric-style wide`, with its 24/32-bit metrics, must replace the legacy 6-bit narrow metrics, which top out at 63.
 3. Cover the OSPF packet types and LSA types. List the five OSPF packet types. Then state the purpose and flooding scope of LSA types 1, 2, 3, 4, 5 and 7. Use `diagnose_ospf_neighbor_state()` to trace the seven neighbour states, `Down -> Init -> 2-Way -> ExStart -> Exchange -> Loading -> Full`. For an adjacency stuck in `Down`, `Init`, `2-Way` or `ExStart`/`Exchange`, state the exact root cause.
 4. Compare DR and DIS elections with point-to-point links and the reference-bandwidth trap. Explain why OSPF (with its DR and BDR) and IS-IS (with its DIS) elect a pseudo-node on broadcast Ethernet segments. Explain why data-centre leaf-spine links should always set `network point-to-point`. Then use `compute_ospf_interface_cost()` to compare the OSPF costs for 1G, 10G, 100G and 400G links. Run the comparison twice, once with the default 100 Mb/s reference bandwidth and once with `auto-cost reference-bandwidth 400000`.
 5. Compare the two hierarchies, and then drain a switch. Set OSPF's area hierarchy, which has Area 0 as the backbone, ABRs, ASBRs and stub or NSSA areas, against IS-IS's level hierarchy, which has Level 1, Level 2 and L1/L2, with its boundary on links rather than routers. Then explain how the IS-IS overload bit and OSPF `max-metric router-lsa` let you drain transit traffic off a spine or leaf switch before maintenance.
@@ -391,7 +387,7 @@ Answer each part in your own words before you run any code. The exercises build 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. In what sense is Spanning Tree a distance-vector protocol, and how does it learn host reachability (Computer Networking Problems and Solutions, chapter 15)?</summary>
+<summary>1. In what sense is Spanning Tree a distance-vector protocol, and how does it learn host reachability?</summary>
 
 Spanning Tree's Root Bridge and Root Port election is a single-destination Bellman-Ford distance-vector calculation. Switches exchange BPDUs that advertise `{root_id, cost_to_root}`. Each switch picks the port with the lowest cumulative path cost to the Root Bridge. Routing protocols advertise prefixes proactively in the control plane. STP learns host MAC reachability reactively, in the data plane. It reads the source MAC address of arriving data frames, and it floods unknown destinations.
 </details>
@@ -485,9 +481,9 @@ The two multicast addresses are 224.0.0.5 (FF02::5), AllSPFRouters, and 224.0.0.
 </details>
 
 <details>
-<summary>11. What are the six parameters in an OSPF Hello packet that MUST match for two routers to form an adjacency, and what causes an adjacency to stick in ExStart / Exchange?</summary>
+<summary>11. Which parameters must match for two OSPF routers to form an adjacency, and what causes an adjacency to stick in ExStart / Exchange?</summary>
 
-Two routers must match on six parameters: the area ID, the hello and dead intervals, the subnet mask on broadcast or multi-access links, the authentication type and key, the stub or NSSA area flags, and unique router IDs. When two routers reach 2-Way and then stick in ExStart or Exchange, the most common cause is an interface MTU mismatch. The MTU is recorded in the DBD packet, and the router with the smaller MTU rejects the larger DBD. A duplicate router ID is the other cause.
+Two routers must match on the area ID, the hello and dead intervals, the subnet mask on broadcast or multi-access links, the authentication type and key, and the stub or NSSA area flags. Their router IDs must also be different. When two routers reach 2-Way and then stick in ExStart or Exchange, the most common cause is an interface MTU mismatch. The MTU is recorded in the DBD packet, and the router with the smaller MTU rejects the larger DBD. A duplicate router ID is the other cause.
 </details>
 
 <details>
@@ -562,4 +558,4 @@ Use one flat domain, which means Area 0 in OSPF or `is-type level-2-only` in IS-
   - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 15: Distance Vector Control Planes** (Spanning Tree loop-free tree and reactive MAC learning, RIP RFC `1058`/`2453` and its Bellman-Ford mapping, and EIGRP RFC `7868` neighbor discovery, reliable transport protocol RTP, classic composite metric, and DUAL topology-change reaction) and **Chapter 16: Link State and Path Vector Control Planes** (history of OSPF `1989` / OSPFv2 RFC `2328` / OSPFv3 RFC `5340` and IS-IS ISO `10589` / RFC `1195`, IS-IS OSI/NSAP `NET` addressing, TLV marshaling and LSP fragments, IIH/CSNP/PSNP and `SRM` flags, reliable flooding and flushing, OSPF fixed-field marshaling, LSA types `1`–`7`/`9`–`11` and packet types `1`–`5`, neighbor state machine, and multi-access `DR`/`BDR` vs `DIS` pseudo-nodes; BGP sections of Chapter 16 are covered in Chapter 2.15).
 - **Run here:** `python3 code/part02/ospf_isis_protocols_lab.py` (15 passed, 0 failed).
 - **Explicitly labelled inferences:** The FRR `ospfd` and `isisd` Clos underlay configurations, OSPF neighbor stuck-state troubleshooting table (`Down`, `Init`, `2-Way`, `ExStart`/`Exchange` MTU mismatch, `Loading`, `Full`), and graceful maintenance drain (`max-metric router-lsa` / `set-overload-bit`) synthesize RFCs 1195, 2328, 2453, 5303, 5340, 5709, 7868, and 7938 and the FRR user guide (cross-referenced with Chapters 2.7, 2.11, 2.13, 2.15, 2.16, and 2.27, plus original study items 21, 23, 25, 26, 27, 28, 29, 31, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All interactive VM and FRR commands (`vtysh`, `show ip ospf neighbor`, `show ip ospf database`, `show isis neighbor`, `show isis database detail`, `tcpdump proto 89`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.
+- **Not verified on live hardware:** All interactive VM and FRR commands (`vtysh`, `show ip ospf neighbor`, `show ip ospf database`, `show isis neighbor`, `show isis database detail`, `tcpdump proto 89`) were not run on live hardware and must be executed on a disposable Linux VM or containerlab topology.

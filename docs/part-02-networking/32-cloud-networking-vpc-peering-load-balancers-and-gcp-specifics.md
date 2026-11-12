@@ -28,7 +28,7 @@ A typical setup looks like this. Training bursts run on rented H100/H200/B200 no
 
 Network work in the cloud differs from on-prem. You do not choose switches. You do choose address plans, routing, firewalls, peering, NAT, load balancers, private access paths and connectivity to on-premises. Those choices set the cost, and egress charges can dominate that cost. They also set security, latency and availability, and they decide whether an 8-GPU node can actually use its high-bandwidth NICs for collectives.
 
-This chapter covers cloud computing concepts and the technical and business trade-offs a network engineer must understand. Next comes a compact AWS and Azure primer, then GCP networking in depth, since GCP is your lab platform. The chapter closes with hybrid connectivity, Kubernetes networking in the cloud (GKE), and the specifics of building GPU clusters on cloud networks.
+This chapter covers cloud computing concepts and the technical and business trade-offs a network engineer must understand. Next comes a one-table comparison with AWS and Azure, then GCP networking in depth, since GCP is your lab platform. The chapter closes with hybrid connectivity, Kubernetes networking in the cloud (GKE), and the specifics of building GPU clusters on cloud networks.
 
 ## Prerequisites and outcomes
 
@@ -115,33 +115,24 @@ Seven challenges come up again and again in cloud networking. Each one changes h
 
 Decide early which of these seven challenges your workload hits hardest, because that choice shapes the rest of the design.
 
-## 4. AWS and Azure primer (for comparison)
+## 4. AWS and Azure in one table
 
-Even if your platform is GCP, interviews and multicloud work will ask about AWS and Azure. Learn the equivalents now, so you can read a design from either cloud.
+Even if your platform is GCP, interviews and multicloud work will ask about AWS and Azure. The table maps each building block to its equivalent, so you can read a design from any of the three clouds.
 
-### AWS
+| Building block | AWS | Azure | GCP |
+|---|---|---|---|
+| Virtual network | VPC, regional, subnets live in one AZ | VNet, regional | VPC, global, subnets are regional |
+| Instance firewall | Security group: stateful, allow-only, per ENI | Network security group: stateful, priority-ordered allow or deny | VPC firewall rule: stateful, global, by tag or service account |
+| Subnet firewall | Network ACL: stateless, ordered | NSG on a subnet | Hierarchical and network firewall policies |
+| Outbound NAT | NAT gateway, per AZ | NAT Gateway or Azure Firewall | Cloud NAT on a Cloud Router |
+| Private access to services | Gateway and interface endpoints, PrivateLink | Private Link | Private Google Access, Private Service Connect |
+| VPC to VPC | Peering (non-transitive), Transit Gateway | VNet peering, Virtual WAN | VPC Network Peering (non-transitive), Network Connectivity Center |
+| Hybrid links | Site-to-Site VPN, Direct Connect | VPN Gateway, ExpressRoute | HA VPN, Cloud Interconnect |
+| Load balancing | Application, Network and Gateway load balancers | Load Balancer, Application Gateway, Front Door | Application and Network load balancers |
+| Kubernetes | EKS with the VPC CNI, one VPC IP per pod through ENIs | AKS with Azure CNI or an overlay | GKE VPC-native, alias IPs |
+| GPU fabric | EFA, an OS-bypass transport built on the SRD protocol | ND-series VMs with InfiniBand and SR-IOV | GPUDirect-TCPX and TCPXO, then RoCE |
 
-Start with the layout. A region is a geographic area. An Availability Zone (AZ) is an isolated data centre inside a region. A subnet lives in one AZ. A VPC is a regional virtual network with an IPv4 CIDR and an optional IPv6 range. Its subnets are public if they route to an internet gateway, and private otherwise.
-
-Route tables come in main and custom types, and each subnet associates with exactly one. The local route for the VPC CIDR is always the most specific. Other routes can point to an IGW, a NAT gateway, VPC peering, a Transit Gateway, a VPN or a Direct Connect gateway. Gateway route tables handle association at the edge.
-
-An Elastic Network Interface (ENI) is the attachment point for an instance. It holds primary and secondary private IPs, an optional EIP per private IP, security groups, a MAC address and a source/destination check flag. Turn that flag off for NAT and routers. Elastic IPs (EIPs) are static public addresses, subject to soft limits.
-
-Security groups are stateful and allow-only. They attach at the instance or ENI level, and they can reference other security groups. Network ACLs are stateless and work at the subnet level, with ordered allow and deny rules.
-
-A NAT gateway is managed and runs per AZ, handling outbound traffic for private subnets. An internet gateway (IGW) connects the VPC to the Internet. There is also an egress-only IGW for IPv6. VPC endpoints keep traffic private: gateway endpoints cover S3 and DynamoDB, and interface endpoints use PrivateLink for other services.
-
-Elastic Load Balancing offers Application (L7), Network (L4), Gateway (L3 appliances) and Classic load balancers. You build them from listeners, rules, target groups and health checks. Targets can be instances, IPs, Lambda functions or pods.
-
-For connectivity, you have VPC peering, which is non-transitive. You also have Transit Gateway for hub-and-spoke designs, Site-to-Site VPN, Direct Connect and Cloud WAN.
-
-EKS networking uses managed node groups or Fargate. The AWS VPC CNI gives pods VPC IPs through ENIs. The limits per instance type, and prefix delegation, shape how many pods a node can hold. Security groups for pods and the load balancer controller round out the picture. EFA (Elastic Fabric Adapter) provides OS-bypass networking through the SRD protocol, for HPC and for NCCL over libfabric. Cluster placement groups keep the instances close together.
-
-### Azure
-
-Azure uses a VNet, which is regional, with subnets inside it. Network security groups (NSGs) are stateful, and they allow or deny by priority. User-defined routes (UDRs) sit alongside the system routes. Azure Firewall, VNet peering (global peering is available), Virtual WAN, VPN Gateway and ExpressRoute cover connectivity. Load Balancer, Application Gateway and Front Door handle traffic, and Private Link provides private access.
-
-AKS can use Azure CNI, which gives pods IPs from the VNet, or an overlay. GPU HPC VMs in the ND series offer InfiniBand with SR-IOV, placed in the same scale set or placement.
+Three AWS details are worth remembering. The instance attachment point is the Elastic Network Interface, which has a source and destination check flag that you turn off for NAT and routers. The per-instance-type ENI limits, and prefix delegation, set how many pods a node can hold under the VPC CNI. Cluster placement groups keep instances close together for EFA.
 
 When you move a design from one cloud to another, map each building block to its equivalent first.
 
@@ -178,7 +169,7 @@ Routes come from several sources. System-generated subnet routes exist, plus a d
 
 Internal IPs are assigned automatically or reserved. External IPs are ephemeral or static, and they are regional or global. Most VMs should have no external IP.
 
-MTU is the largest packet a link carries. The VPC default is `1460` bytes, and you can raise it to `8896` per network. Every VM, tunnel and peer must agree. The VPN MTU is lower: `1460` for classic, or `1500` on HA VPN? verify. Interconnect supports `1440`, `1460`, `1500` or `8896`, depending on the attachment. A mismatch is the classic cause of "small works, large hangs."
+MTU is the largest packet a link carries. The VPC default is 1460 bytes, and you can set any value from 1300 to 8896 per network. Every VM, tunnel and peer must agree. Cloud VPN does not support jumbo frames, and its payload MTU is lower than the gateway MTU because of the encapsulation, so read the Cloud VPN MTU considerations page for the exact figure. Interconnect VLAN attachments have their own MTU settings. Google recommends one MTU for all attachments on a VPC and the same value on the VPC itself. A mismatch is the classic cause of "small works, large hangs."
 
 Network service tiers come in two kinds. Premium keeps traffic on Google's backbone until it reaches the edge nearest the user, and it supports global load balancing. Standard is regional, and its traffic reaches the Internet by hot-potato routing: it leaves Google's network at the first opportunity. It costs less.
 
@@ -303,15 +294,15 @@ Namespaces are open by default, so close them with default-deny policies (chapte
 
 When the GPUs in a job run collectives, the network path decides how fast the job finishes. A single default NIC can leave expensive hardware idle. This section shows how each provider builds that path.
 
-### GCP GPU VM generations (verify current names and features)
+### GCP GPU VM generations
 
 GCP offers A2 for the A100, A3 for the 8-GPU H100, and newer families such as A3 Mega, A3 Ultra and A4. Each has its own networking design.
 
-A3 uses multiple NICs, including gVNIC, and runs GPUDirect-TCPX. That is a TCP-based GPUDirect path. It lets NCCL move GPU memory to the NIC over Ethernet, without staging it in host memory. It works through an NCCL plugin and receive-data-path offloads. The GPU NICs sit on dedicated VPC networks, commonly four additional VPCs or subnets, one per GPU NIC pair.
+A3 uses multiple NICs, including gVNIC, and runs GPUDirect-TCPX. That is a TCP-based GPUDirect path. It lets NCCL move GPU memory to the NIC over Ethernet, without staging it in host memory. It works through an NCCL plugin and receive-data-path offloads. The GPU NICs sit on dedicated VPC networks, one VPC per GPU NIC. The A3 High machine type has five physical NICs and up to 1,000 Gbps of network bandwidth.
 
-A3 Mega goes further, with up to about 1.8 Tbps. It uses GPUDirect-TCPXO, which adds offload. That needs an NCCL plugin and a `fastrak` receive-data-path manager sidecar. It also uses compact placement policies.
+A3 Mega goes further, with nine physical NICs and up to 1,800 Gbps. It uses GPUDirect-TCPXO, which adds offload. That needs an NCCL plugin and a `fastrak` receive-data-path manager sidecar. It also uses compact placement policies.
 
-Newer generations, such as A3 Ultra and A4, move to RDMA over Converged Ethernet (RoCE). They use dedicated RDMA VPC networks and many 400G NICs per node. Check the current documentation for three things: the exact network profile, which for these is the `RDMA` profile, the MTU requirements, and the NCCL plugin and driver versions you need.
+Newer generations, such as A3 Ultra and A4, move to RDMA over Converged Ethernet (RoCE) on ConnectX-7 NICs. They have ten physical NICs and up to 3,600 Gbps, and they use dedicated RDMA VPC networks. Check the current documentation for three things: the exact network profile, which for these is the `RDMA` profile, the MTU requirements, and the NCCL plugin and driver versions you need.
 
 These generations share a set of requirements. They need multiple VPC networks: a management or primary VPC, plus one or more data VPCs. The GPU NICs need an MTU of `8244`, or the documented jumbo value. Firewall rules must allow all traffic between the GPU NIC subnets. Compact placement policies keep the hosts close together for low latency. Set the NCCL environment correctly, with `NCCL_SOCKET_IFNAME` and the plugin variables. Use drivers and images from the provider's HPC or DL images. Managed offerings do much of this for you: GKE with GPU node pools using the `gpudirect-tcpx/tcpxo/rdma` features, Slurm on GCP through Cluster Toolkit, and Vertex AI.
 
@@ -350,7 +341,7 @@ Start with the Python lab, which you can run for free. It runs on your own machi
 python3 code/part02/cloud_vpc_gke_networking_lab.py
 ```
 
-Next, move to a dedicated GCP lab project with a budget alert. Every interactive `gcloud` command below is `untested here`, and each one is billable. Delete all resources at the end. Work through these steps in order, and you will build the network before you break it.
+Next, move to a dedicated GCP lab project with a budget alert. The interactive `gcloud` commands below were not run against a live project, and each one is billable. Delete all resources at the end. Work through these steps in order, and you will build the network before you break it.
 
 1. Start by creating `lab-vpc` in custom mode, with MTU `1460` and later `8896`. Add two subnets in two regions with secondary ranges. Delete the default network if one is present, and then review the effective routes.
 2. Add firewall rules for internal traffic, IAP SSH and health checks. Test them with VMs in each subnet, using `ping` and `iperf3`. Enable firewall logging and read the entries. Then add a deny rule with higher priority, and confirm the result with Connectivity Tests.
@@ -396,8 +387,8 @@ These questions test whether you can reason about a design, not just recite prod
 
 ## Exercises
 
-1. Your team plans to copy a 500 TB training dataset to a second cloud every week. Explain why this is an architectural anti-pattern, and define data gravity in your answer. Use chapter 28 of *Computer Networking Problems and Solutions*.
-2. A colleague knows AWS and must now build on GCP. List three differences between a GCP global VPC and an AWS VPC that will surprise them. Use chapter 6 of *Networking and Kubernetes*.
+1. Your team plans to copy a 500 TB training dataset to a second cloud every week. Explain why this is an architectural anti-pattern, and define data gravity in your answer.
+2. A colleague knows AWS and must now build on GCP. List three differences between a GCP global VPC and an AWS VPC that will surprise them.
 3. VPC A peers with VPC B, and VPC B peers with VPC C. Use `evaluate_vpc_peering_reachability()` in `code/part02/cloud_vpc_gke_networking.py` to show that A cannot reach C through B. Then name the option you would use instead if A, B and C all need to talk.
 4. Design a hybrid link between an on-prem data centre and GCP that meets a 99.99% availability target. Say which connection type you would choose, and which routing and failure-detection protocols run over it.
 5. Use `plan_gke_vpc_native_capacity("10.100.0.0/20", "10.104.0.0/14", "10.108.0.0/20", 24)` to find the maximum number of nodes and Services. The answer is 1,024 nodes and 4,096 Services. Then explain which of the three ranges sets each limit.
@@ -411,7 +402,7 @@ Start with exercise 5 if you want the arithmetic before the design questions. Wr
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. Compare IaaS, PaaS, FaaS and SaaS, and explain the Cloud Shared Responsibility Model (chapter 28 of *Computer Networking Problems and Solutions*).</summary>
+<summary>1. Compare IaaS, PaaS, FaaS and SaaS, and explain the Cloud Shared Responsibility Model.</summary>
 
 IaaS, such as Compute Engine or EC2, means the provider manages the physical data centres, switches, servers and hypervisors. You manage the guest OS, the runtime, the applications, the data and the virtual network configuration: the VPC, firewall rules, routes and IAM.
 
@@ -425,7 +416,7 @@ Under the Shared Responsibility Model, the provider secures the cloud itself, in
 </details>
 
 <details>
-<summary>2. Why does lift and shift often disappoint financially and operationally, and what are the five operational trade-offs of cloud networking (chapter 28 of *Computer Networking Problems and Solutions*)?</summary>
+<summary>2. Why does lift and shift often disappoint financially and operationally, and what are the five operational trade-offs of cloud networking?</summary>
 
 Lift and shift copies legacy, stateful, monolithic architectures onto rented VMs. It does not adopt autoscaling, ephemeral instances or cloud-native storage. You pay high OPEX rental premiums, and you keep all the old operational pain.
 
@@ -433,7 +424,7 @@ The five operational trade-offs are these. First, infrastructure design is still
 </details>
 
 <details>
-<summary>3. Define data gravity and explain how it dictates AI training and checkpoint architecture in the cloud (chapter 28 of *Computer Networking Problems and Solutions*).</summary>
+<summary>3. Define data gravity and explain how it dictates AI training and checkpoint architecture in the cloud.</summary>
 
 Data gravity is the principle that datasets grow heavy. At hundreds of terabytes or petabytes, they are too slow to move, because WAN bandwidth and TCP BDP limit the speed. They are also too expensive, because cloud egress charges run `$0.02–$0.12/GB`. So compute must move to the data's home region.
 
@@ -441,7 +432,7 @@ For AI, place GPU training pools in the same cloud region and zone as your objec
 </details>
 
 <details>
-<summary>4. How does GCP's VPC scope differ from AWS's VPC and Azure's VNet (chapter 6 of *Networking and Kubernetes*)?</summary>
+<summary>4. How does GCP's VPC scope differ from AWS's VPC and Azure's VNet?</summary>
 
 In AWS and Azure, a VPC or VNet is regional, and each subnet is zonal. A subnet is pinned to a single Availability Zone (AZ), such as `us-east-1a`.
 
@@ -608,4 +599,5 @@ The output is a hop-by-hop trace. It proves whether a packet will be delivered. 
   - `network-programmability-and-automation-2nd-edition` — Jason Edelman, Scott S. Lowe, and Matt Oswalt, *Network Programmability and Automation*, 2nd ed., **Chapter 4: Cloud**.
 - **Run here:** `python3 code/part02/cloud_vpc_gke_networking_lab.py` (8 passed, 0 failed).
 - **Explicitly labelled inferences:** The Section 5 global GCP VPC Mermaid diagram and `gcloud` CLI setup (`ai-vpc`, `train-us-central1`, `35.235.240.0/20` IAP, `nat-config`, `connectivity-tests`) and Section 7 GPU VM comparisons (`GPUDirect-TCPX`/`TCPXO`/`RDMA`, AWS `EFA` `SRD`, Azure `NDv5` InfiniBand) synthesize provider documentation and Chapters 2.4, 2.5, 2.8, 2.9, 2.15, 2.20, 2.21, 2.25, 2.29, and 2.31 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All `gcloud` commands and cloud lab steps are marked (untested here); verify current product names, limits, MTU values, and pricing in official cloud documentation before deploying, and delete all billable lab resources immediately after testing.
+- **Not verified on live hardware:** All `gcloud` commands and cloud lab steps were not run on live hardware; verify current product names, limits, MTU values, and pricing in official cloud documentation before deploying, and delete all billable lab resources immediately after testing.
+- **Verified against vendor documentation (2026-11-12):** Google Cloud VPC MTU page (default 1,460 bytes, range 1,300 to 8,896, Cloud VPN has no jumbo frame support) and the accelerator-optimized machines page (A3 High 1,000 Gbps with 5 NICs, A3 Mega 1,800 Gbps with 9, A3 Ultra and A4 3,600 Gbps with 10 on RoCE).

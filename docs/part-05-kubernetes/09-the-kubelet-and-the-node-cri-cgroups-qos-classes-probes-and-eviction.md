@@ -246,100 +246,61 @@ Readiness probes should pass only when the model is loaded and a tiny inference 
 
 Probe results appear in events, such as `Unhealthy: Readiness probe failed: ...`, and in the `prober_probe_total` metric. **Readiness gates** (`readinessGates`) let external controllers add conditions that must be true, such as load balancer registration for cloud LBs.
 
-### Liveness probes, step by step
+### A startup probe sized for a model load
 
-A process check has a gap. Picture an application that is deadlocked. Its process is still running, so a process check reports it healthy. A liveness probe closes that gap by running application logic, such as loading a web page, to confirm the app works. You define liveness probes per container, so each container in a Pod is checked separately. Example 5-2 adds a liveness probe to the `kuard` container. It sends an HTTP request to `/healthy` on port 8080:
+Picture an inference server that needs about 300 seconds to load its weights. A liveness probe that waits 300 seconds before its first check would cover the load. It would also wait 300 seconds to notice a hang later in the container's life. A startup probe avoids that trade. It guards the start-up period alone, then steps aside.
 
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: kuard
+  name: llm-server
 spec:
   containers:
-    - image: gcr.io/kuar-demo/kuard-amd64:blue
-      name: kuard
-      livenessProbe:
-        httpGet:
-          path: /healthy
-          port: 8080
-        initialDelaySeconds: 5
-        timeoutSeconds: 1
-        periodSeconds: 10
-        failureThreshold: 3
+    - name: server
+      image: registry.example.com/llm-server:1.0
       ports:
         - containerPort: 8080
           name: http
-          protocol: TCP
+      startupProbe:
+        httpGet:
+          path: /healthz
+          port: http
+        periodSeconds: 10
+        failureThreshold: 30
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: http
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: http
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 2
 ```
 
-After all containers in the Pod are created, the probe waits `initialDelaySeconds`, which is 5 seconds, before its first run. The probe must answer within `timeoutSeconds`, which is 1 second. Any status code from 200 up to, but not including, 400 counts as success. Kubernetes calls the probe every 10 seconds. When more than three consecutive probes fail, the container fails and restarts.
+The startup probe may fail 30 times, 10 seconds apart, so the server has up to 300 seconds to come up. Until it succeeds, the kubelet runs neither of the other two probes. If it never succeeds, the kubelet kills the container and the restart policy decides what happens next. Once it succeeds, the liveness probe checks every 10 seconds, and three consecutive failures restart the container.
 
-To see this in action, apply the manifest and port-forward to the Pod:
-
-```
-$ kubectl apply -f kuard-pod-health.yaml
-$ kubectl port-forward kuard 8080:8080
-```
-
-Open http://localhost:8080 in a browser and click the "Liveness Probe" tab. The tab lists every probe this `kuard` instance has received. Click the "Fail" link, and `kuard` starts failing its health checks. Wait long enough and Kubernetes restarts the container, and the display starts over. To see the restart, run `kubectl describe pods kuard`. The "Events" section reads like this:
-
-```
-Killing container with id docker://2ac946...:pod "kuard_default(9ee84...)"
-container "kuard" is unhealthy, it will be killed and re-created.
-```
-
-A failed liveness check restarts the Pod by default, but the real behavior depends on the Pod's `restartPolicy`. `Always` is the default. `OnFailure` restarts only on a liveness failure or a nonzero exit code, and `Never` does not restart.
-
-### Readiness and startup probes
-
-Liveness asks whether an application is running properly. Readiness asks whether a container can serve user requests right now. A container that fails liveness gets restarted. A container that fails readiness is removed from service load balancers instead. You set up readiness probes much like liveness probes, and using both keeps only healthy containers in service. The book covers Kubernetes Services in its Chapter 7.
-
-A startup probe handles slow-starting containers, and the book calls it a recent addition. It runs before any other probe on the Pod. It keeps trying until it either times out, which restarts the Pod, or succeeds. Once it succeeds, the liveness probe takes over. You can poll slowly while the container starts, then respond quickly once it is up.
-
-### Advanced probe settings and other handlers
-
-Probes have more options than the ones above. You can set how long to wait after startup before probing, how many failures count as a real failure, and how many successes reset the failure count. Each option has a default if you leave it out. Set them yourself for applications that are flaky or take a long time to start.
-
-Besides HTTP checks, Kubernetes supports `tcpSocket` probes. A `tcpSocket` probe opens a TCP socket and succeeds if the connection works, which suits databases and other non-HTTP APIs. An `exec` probe runs a script or program inside the container. Exit code zero means success, and any other code means failure. Use `exec` for custom checks that do not fit neatly into an HTTP call.
-
-Set a startup probe for any container that loads a large model, and keep liveness checks local.
-
-### Probe mechanisms and what each one tells Kubernetes
-
-Probes give the platform a view of the app's health. Without them, Kubernetes only knows whether the process is running. A process can be running and still stuck, so that view is not enough.
-
-Every probe type uses one of three mechanisms. The `exec` probe runs a command inside the container. It succeeds when the command returns exit code zero. Any other code marks the container unhealthy. The HTTP probe sends a request to an endpoint in the Pod. Any response code from 200 up to, but not including, 400 counts as success. The `tcpSocket` probe opens a TCP connection to a port you choose. The container counts as healthy if the connection succeeds.
-
-All probes also share tuning settings, such as success and failure thresholds and timeouts. The Kubernetes documentation describes each one, so set them from there when your workload needs it.
+The restart policy matters here. A failed liveness probe kills the container, and the pod's `restartPolicy` decides what follows. The default `Always` restarts it. `OnFailure` restarts it only after a nonzero exit, and `Never` leaves it dead.
 
 ### Designing liveness and readiness endpoints
 
-Liveness and readiness serve different purposes, so they should check different things. A failed liveness probe makes the kubelet restart the Pod. A failed readiness probe only stops traffic from reaching the Pod. Because the two outcomes differ, most apps should use separate endpoints or commands for each.
+Liveness and readiness have different consequences, so give them different endpoints. A failed liveness probe restarts the container. A failed readiness probe only removes the pod from Service endpoints until it passes again.
 
-A liveness probe should fail only when a restart would fix the problem. A deadlock is the typical case. An HTTP server often implements a liveness endpoint that always returns 200, since a server that answers at all does not need a restart. Here is the timing from the book's example. The kubelet probes every 10 seconds. When the last 10 probes have failed, it restarts the container.
+A liveness probe should fail only when a restart would fix the problem, such as a deadlock. Often the endpoint simply returns 200, because a server that can answer at all does not need a restart. Keep it local to the process. A database outage is not repaired by restarting the app, so a database check inside liveness can restart every replica at once. Let the app fail readiness or switch off the feature instead.
 
-The liveness probe should stay local to the workload. Restarting a Pod does not repair a database outage, so a database check inside liveness can cause cascading restarts. A better design is for the app to switch to read-only mode, or to turn off the feature that needs the database. Failing readiness is another option.
+A readiness probe may check conditions that come and go. A server can report not ready until its model is loaded and a tiny test request succeeds. An overloaded server can fail readiness to shed load. Readiness matters for anything that receives requests through a Service, and means little for Jobs.
 
-A readiness probe can check conditions that come and go. An app that warms its caches on startup can report not ready until they are warm. An overloaded app can fail readiness to shed load. In the book's example, the probe has a 5-second initial delay and a 10-second period. The Pod stops receiving traffic after two consecutive failures.
-
-### Startup probes for slow-starting applications
-
-Why not just use a long liveness delay? Imagine an app that takes about 300 seconds to start. A liveness probe could wait 300 seconds before it begins. That works during startup. But if the app later hangs, the platform would still wait 300 seconds before it restarts the container. A startup probe fixes this. It guards the start-up period and then steps aside.
-
-The book's example uses a startup probe with a failure threshold of 30 and a period of 10 seconds. That gives the app up to 300 seconds to come up. Once the startup probe succeeds, the liveness and readiness probes take over. If it fails 30 times in a row, the kubelet restarts the Pod.
-
-The book suggests avoiding startup probes unless you need them. Liveness and readiness probes cover most cases. For a large model load, though, a startup probe is the right tool.
-
-Next, the book's guidance on which probes to use:
-
-- Use readiness probes for any workload that handles requests. Readiness means nothing for controllers or Jobs.
-- Use liveness probes only when a restart would fix the problem.
-- Use startup probes only when you really need them.
+Use a startup probe when the container needs a long time to start, a readiness probe on every serving workload, and a liveness probe only where a restart would help.
 
 ## 6. Node-pressure eviction
 
-Picture a node whose memory use creeps upward. Nothing has crashed yet, but the eviction manager is already watching. It samples node signals from cAdvisor and cgroup stats at `evictionPressureTransitionPeriod` intervals, and it compares them with thresholds. The table lists those signals and what each one measures.
+Picture a node whose memory use creeps upward. Nothing has crashed yet, but the eviction manager is already watching. It reads node signals from cAdvisor and cgroup stats on the kubelet's housekeeping cycle, about every 10 seconds, and compares them with thresholds. The setting `evictionPressureTransitionPeriod`, 5 minutes by default, does not control sampling. It is how long the node waits after a signal recovers before it clears the pressure condition. The table lists those signals and what each one measures.
 
 | Signal | Meaning |
 |---|---|
@@ -363,7 +324,7 @@ Pick the `evictionHard` memory value before a training job fills the node, not a
 
 Memory cannot be throttled the way CPU can. When a container uses more memory than its limit, the kernel has to stop the process. The container then restarts under its restart policy, and the pod records why. You can see that record with `kubectl describe pod`, in the `Last State` section.
 
-The output below comes from a container with a memory limit of 100Mi. Look at `Reason: OOMKilled` and the exit code. The `Restart Count` shows how many times the container has restarted.
+The output below comes from a container with a memory limit of 100Mi. Look at `Reason: OOMKilled` and the exit code. The kernel kills the process with SIGKILL, so containers killed this way normally report exit code 137, which is 128 plus signal 9. The `Restart Count` shows how many times the container has restarted.
 
 ```
 $ kubectl describe pod memory
@@ -376,7 +337,7 @@ Containers:
 ... <snip> ...
     Last State:     Terminated
       Reason:       OOMKilled
-      Exit Code:    1
+      Exit Code:    137
       Started:      Fri, 23 Oct 2020 10:11:51 -0400
       Finished:     Fri, 23 Oct 2020 10:11:56 -0400
     Ready:          True
@@ -405,7 +366,7 @@ Size the disks and set the GC thresholds before you start pulling large ML image
 
 Picture a node that stops answering. The control plane has to decide whether the node is gone, and how long to wait before it moves the node's pods. Leases and status updates answer that question.
 
-The kubelet renews a Lease named `kube-node-lease/<node>` every `nodeLeaseDurationSeconds/4`, which is 10 s. That is cheap. The kubelet also updates `Node.status` when something changes, or every `nodeStatusReportFrequency`, which is 5 min. The node controller waits `--node-monitor-grace-period`, which is 40 s, after the last lease or status update. Then it marks the node `Ready=Unknown`.
+The kubelet renews a Lease named `kube-node-lease/<node>` every `nodeLeaseDurationSeconds/4`, which is 10 s. That is cheap. The kubelet also updates `Node.status` when something changes, or every `nodeStatusReportFrequency`, which is 5 min. The node controller waits for `--node-monitor-grace-period` after the last lease or status update, and then marks the node `Ready=Unknown`. That grace period was 40 s in older releases, and recent kube-controller-manager references list 50 s, so check the default for your Kubernetes version.
 
 Nodes report the conditions `Ready`, `MemoryPressure`, `DiskPressure`, `PIDPressure` and `NetworkUnavailable`. Node-problem-detector adds extra conditions, such as `KernelDeadlock` or `GPUXidError`. Remediation controllers act on those extra conditions, as 5.32 and Part 17 cover.
 
@@ -480,7 +441,7 @@ Start with the self-checking Python lab, which runs on your own machine. The scr
 python3 code/part05/kubelet_node_managers_lab.py
 ```
 
-The steps after that need a Linux Kubernetes worker node. All interactive shell steps below are `untested here`, so treat each one as a first attempt. Work through the exercises in order.
+The steps after that need a Linux Kubernetes worker node. The interactive shell steps below were not run on a live worker, so treat each one as a first attempt. Work through the exercises in order.
 
 1. Print the live kubelet config through `configz`, then compute allocatable from capacity and reservations by hand. Change `kubeReserved` and `systemReserved`, restart the kubelet, and watch what `kubectl describe node` shows.
 2. Use `systemd-cgls` and `systemd-cgtop` to find `kubepods.slice`, the QoS slices, and the pod and container scopes. Read `memory.max` and `cpu.weight` for Guaranteed, Burstable and BestEffort pods, and match those values to the requests and limits.
@@ -708,6 +669,7 @@ Both node types use `static` with `full-pcpus-only`. The settings that differ mo
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 14: Application Considerations** (read in full: liveness, readiness and startup probe design, the probe mechanisms and thresholds, and the Probe guidance summary).
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 5: Pods** (probes, resource requests/limits, volumes, and node behavior).
   - `nvidia-devops` (`volume-03/02-k8s-node-storage-masterclass.md`): node operations masterclass (`KubeletConfiguration` for AI nodes, CPU/Memory/Topology/Device managers, eviction and QoS, CRI and sandbox, and `crictl` debugging).
+- **Corrections in the rework:** Eviction sampling follows the kubelet housekeeping cycle, and `evictionPressureTransitionPeriod` is the wait before clearing a pressure condition (Kubernetes node-pressure eviction documentation). The OOMKilled example now shows exit code 137 for SIGKILL. The node monitor grace period default is stated as version-dependent, 40 s in older releases and 50 s in recent ones, and was not re-checked against a specific release. DRA driver behaviour and MemoryQoS status were not added because they were not sourced.
 - **Run here:** `python3 code/part05/kubelet_node_managers_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `evaluate_cpu_manager_static`, `evaluate_topology_manager`, and `rank_memory_eviction_victims` models in `code/part05/kubelet_node_managers.py` and the production GPU `KubeletConfiguration` (Section 2) are the author's constructions synthesizing Production Kubernetes Chapter 3, Kubernetes: Up and Running Chapter 5, and `volume-03/02` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Live `kubelet`, `systemd-cgls`, `numactl`, and `grpcurl` executions (`169.254.20.10`, `50Mi`, `110` maxPods, `8192` podPidsLimit, `85%`/`70%`/`80%` image GC, `120s`/`30s` shutdownGracePeriod, `reservedSystemCPUs: "0-3"`, `4Gi`/`8Gi` reserved, `2Gi`/`4Gi` eviction, `-997`/`-999`/`1000` oom_score_adj, `:10250`, `10255`) are marked (`untested here`) where not executed by `kubelet_node_managers_lab.py`.
+- **Not verified on live hardware:** Live `kubelet`, `systemd-cgls`, `numactl`, and `grpcurl` executions (`169.254.20.10`, `50Mi`, `110` maxPods, `8192` podPidsLimit, `85%`/`70%`/`80%` image GC, `120s`/`30s` shutdownGracePeriod, `reservedSystemCPUs: "0-3"`, `4Gi`/`8Gi` reserved, `2Gi`/`4Gi` eviction, `-997`/`-999`/`1000` oom_score_adj, `:10250`, `10255`) were not run on a live node. Only the models in `kubelet_node_managers_lab.py` were executed.

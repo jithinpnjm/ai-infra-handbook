@@ -62,7 +62,6 @@ def judge_node(
         return v
 
     if cond is None:
-        v.healthy = True
         return v
 
     if cond["status"] == "True":

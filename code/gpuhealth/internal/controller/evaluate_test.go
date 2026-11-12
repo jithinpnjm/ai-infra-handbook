@@ -41,7 +41,7 @@ func TestJudge(t *testing.T) {
 		{"false for 30s is pending 90s", node("a", corev1.ConditionFalse, now.Add(-30*time.Second)), func(v NodeVerdict) bool { return v.Pending && v.WaitFor == 90*time.Second && !v.Unhealthy }},
 		{"true for 10m is healthy", node("a", corev1.ConditionTrue, now.Add(-10*time.Minute)), func(v NodeVerdict) bool { return v.Healthy }},
 		{"true for 1m is not yet healthy", node("a", corev1.ConditionTrue, now.Add(-1*time.Minute)), func(v NodeVerdict) bool { return !v.Healthy && v.HealthyWaitFor == 4*time.Minute }},
-		{"absent condition is healthy", node("a", "", now), func(v NodeVerdict) bool { return v.Healthy }},
+		{"absent is neither healthy nor unhealthy", node("a", "", now), func(v NodeVerdict) bool { return !v.Healthy && !v.Unhealthy && !v.Pending }},
 		{"unknown is neither healthy nor unhealthy", node("a", corev1.ConditionUnknown, now.Add(-time.Hour)), func(v NodeVerdict) bool { return !v.Healthy && !v.Unhealthy && !v.Pending }},
 	}
 	for _, tc := range tests {

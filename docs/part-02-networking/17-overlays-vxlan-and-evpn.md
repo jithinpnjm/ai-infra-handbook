@@ -38,7 +38,7 @@ Every virtualization solution answers two questions. The first is how traffic is
 
 Next, compare the encapsulations: GRE, IPIP, GENEVE, VXLAN, MPLS, WireGuard and IPsec. Know the overhead of each and how it affects ECMP entropy. VXLAN and EVPN are the core of this chapter. For VXLAN, explain the VNI, the VTEP, and flood-and-learn versus a control plane. For EVPN, explain route types 1 to 5, the RD and RT, IRB, the anycast gateway, ARP suppression and multihoming. You should also configure a VXLAN overlay on Linux and an EVPN fabric in FRR.
 
-Segment routing comes next. Explain node and adjacency SIDs, the SR-MPLS label stack operations PUSH, POP and CONTINUE, SRv6, and how signalling works. Then explain the building blocks of SD-WAN and when it is used. Reason about virtualization complexity too: interaction surfaces, shared risk link groups, overlaid control planes, MTU and observability. Finally, design and troubleshoot overlays for AI clusters and Kubernetes.
+Segment routing and SD-WAN get a short section each. Explain node and adjacency SIDs, the SR-MPLS operations PUSH, POP and CONTINUE, SRv6, and the building blocks of SD-WAN. Reason about virtualization complexity too: interaction surfaces, shared risk link groups, overlaid control planes, MTU and observability. Finally, design and troubleshoot overlays for AI clusters and Kubernetes.
 
 ## 1. What is a virtual network?
 
@@ -69,7 +69,7 @@ Follow one packet from Host A to Host M. Router C's routing table says the best 
 
 VRFs change the picture in a few places. If VRFs are used instead of tunnel interfaces, the first lookup happens in the VRF tied to the ingress link. That result points into a tunnel. After encapsulation, the outer packet is looked up in the base routing table of the underlay. At the tailend, the egress VRF is chosen from the encapsulation, using a VNI or a label.
 
-**Definition used here.** A tunnel is a virtual link. An outer header wraps an inner header, and two conditions hold. The inner header sits at the same layer or a lower one than the outer, for example Ethernet inside IPv6 and UDP. At least some devices on the path forward on the outer header alone. The terms underlay and overlay usually describe a full virtual topology, not a single VPN session. Odd edge cases, sometimes called platypus definitions, can distract. Keep the general case clear and note the exceptions.
+**Definition used here.** A tunnel is a virtual link. An outer header wraps an inner header, and two conditions hold. The inner header sits at the same layer or a lower one than the outer, for example Ethernet inside IPv6 and UDP. At least some devices on the path forward on the outer header alone. The terms underlay and overlay usually describe a full virtual topology, not a single VPN session.
 
 Before you add a tunnel, decide whether you need a separate control plane, a separate table, or both.
 
@@ -101,7 +101,7 @@ Each encapsulation adds a different amount of overhead, and each hides different
 |---|---|---|---|
 | **GRE** | L3 (or L2 as gretap) | 24 bytes (+ key option) | Simple, no built-in security or entropy (IP proto 47) |
 | **IPIP / SIT / ip6tnl** | L3 in L3 | 20 / 40 | Minimal; used by Calico IPIP mode |
-| **VXLAN** (RFC 7348) | L2 over UDP/4789 | 50 bytes (14 inner Ethernet header not counted: outer IP 20 + UDP 8 + VXLAN 8 + outer Ethernet 14) | 24-bit VNI (16M segments); UDP source port is a hash of inner flow → ECMP entropy |
+| **VXLAN** (RFC 7348) | L2 over UDP/4789 | 50 bytes: outer Ethernet 14, IP 20, UDP 8, VXLAN 8 | 24-bit VNI (16M segments); UDP source port is a hash of inner flow → ECMP entropy |
 | **GENEVE** (RFC 8926) | L2/L3 over UDP/6081 | 50+ (options) | Extensible TLV options; used by OVN, Antrea, AWS; successor to VXLAN/NVGRE |
 | **MPLS** | Label stack | 4 per label | Used for L3VPN/EVPN in carriers; SR-MPLS |
 | **SRv6** | IPv6 + SRH | 40 + 8 + 16/SID (less with uSID) | Segment routing over IPv6 |
@@ -247,53 +247,33 @@ Monitor both layers. For the overlay, watch VNI counters, MAC tables and EVPN ro
 
 Before you choose overlay mode for a performance-critical cluster, weigh the MTU and CPU cost against native routing.
 
-## 6. Segment routing
+## 6. Segment routing and SD-WAN in brief
 
-Suppose you want traffic from A to K to take a particular route through B, E, F and H. Normal routing picks the shortest path on its own, and steering it otherwise needs state on every flow. Segment routing lets the ingress node write the path into the packet instead.
+Suppose you want traffic to take a particular route through a chosen list of routers. Normal routing picks the shortest path, and steering it otherwise needs state on every flow. Segment routing, SR, lets the ingress node write the path into the packet instead. Transit nodes keep no per-flow state. This matters mostly in carrier networks, and its role in AI fabrics is still under study, for example controller-driven path pinning, which chapter 2.16 covers.
 
-Segment routing (SR) is source routing with a twist. The ingress node encodes the path as a list of segments. Each segment has a SID, and the network follows those instructions. Transit nodes keep no per-flow state. Whether this counts as a tunnel depends on the implementation, since segments can be MPLS labels or IPv6 headers.
+The path is a list of segments, and each segment has a SID. A node SID is a globally unique label for one router, advertised by the IGP together with the router's loopback. It means go to that router by the shortest path. An adjacency SID is locally significant and names one specific link. You need it when two parallel links join the same pair of routers and you must choose one. Prefix, binding and anycast SIDs exist for prefixes, policies and groups.
 
-A node SID is a globally unique label for each router. The IGP advertises it along with the router's loopback. For example, A is 101, B is 102, and the numbering runs on through K, which is 107. A path is a label stack of node SIDs. The path from A to K via B, E, F and H is [101,104,105,107]. Via B, D, G and H, it is [101,103,106,107]. These numbers are illustrative.
+The diagram shows a diamond of four routers. The ingress router A wants to reach D through C, not through B. It pushes the node SIDs for C and D, and the transit router C removes its own SID.
 
-You can also list fewer labels. The normal shortest path then handles the rest. The stack [103,107] means go to D by the shortest path, then on to H.
+```mermaid
+flowchart LR
+  A["A: ingress, pushes SIDs 103 then 104"] --> B[B]
+  A --> C["C: node SID 103"]
+  B --> D["D: node SID 104"]
+  C --> D
+```
 
-An adjacency SID is locally significant. It names one specific link. You need it when two parallel links join D and H, and you must choose one of them. Prefix, binding and anycast SIDs exist for prefixes, policies and groups.
+SR-MPLS carries segments as MPLS labels. Each MPLS header is 32 bits: a 20-bit label, a 3-bit traffic class, a bottom-of-stack bit and an 8-bit TTL. PUSH adds a label, POP removes the top one, and SWAP replaces it. The ingress imposes the stack with PUSH. Transit routers on the way to a node SID perform CONTINUE, which swaps in the same label, and the owner of the top label pops it. Labels come from the SR Global Block, and the IGP distributes them through IS-IS or OSPF extensions, or through BGP-LS.
 
-### SR-MPLS
+SRv6 uses IPv6 addresses as segments. Each segment is a 128-bit SID placed in a Segment Routing Header, an IPv6 routing extension header. The active segment is copied into the IPv6 destination address, and a segments-left counter counts down. A SID has a locator, which is the routable prefix of the node, a function such as `End`, `End.X` for an adjacency, `End.DT4` and `End.DT6` for VRF decapsulation, and an argument for the rest. A uSID, or micro-segment, packs several 16-bit SIDs into one 128-bit address, for example six with a 32-bit block. That shrinks the headers. SRv6 provides VPN services, such as L3VPN and EVPN, without MPLS.
 
-SR-MPLS uses MPLS labels. Each MPLS header is 32 bits long. It holds a 20-bit label, a 3-bit traffic class, a bottom-of-stack bit and an 8-bit TTL.
+The IGP floods the SIDs and the topology. Paths are computed on the headend, or by a controller called a PCE, which learns the topology through BGP-LS. PCEP or BGP SR-TE installs the policies, and TI-LFA gives sub-50 ms protection, as chapter 2.13 covers.
 
-Three MPLS operations matter here. PUSH adds a label. POP removes the top label. SWAP replaces it. Segment routing uses them in three ways. The ingress imposes the stack with PUSH. Each node removes its own label with POP as the packet passes. CONTINUE swaps in the same label, so processing of the segment goes on until the node SID's owner is reached.
+SD-WAN applies the same overlay ideas to the wide area. Imagine a company whose branch offices connect over MPLS, broadband and LTE at once, and each path performs differently. Each site edge builds encrypted tunnels, using IPsec, WireGuard or vendor protocols, over every transport. A central controller distributes policy and reachability. The edges measure loss, latency and jitter with probes and steer each application by policy, so voice takes the best path and bulk traffic takes the cheap one. Zero-touch provisioning brings the edges up. For this handbook, the relevance is that multi-site GPU clouds, hybrid connectivity and edge inference sites often use SD-WAN or cloud-native equivalents such as cloud routers, transit gateways and Cloud Interconnect.
 
-Labels come from the SR Global Block (SRGB). They are distributed through the IGP, as IS-IS or OSPF extensions, or through BGP-LS. Take the stack [103,104,202,105,106,109,110]. Each hop pops the top label that names it or its adjacency, then forwards the packet. ASICs can recycle packets, which makes multi-label processing possible.
+**Adopt segment routing or SD-WAN only when you need controller-driven paths or managed multi-transport links, because the shortest path and a plain tunnel suffice for most clusters.** Whichever you use, measure throughput per tunnel, the MTU, key management and failure behaviour.
 
-### SRv6
-
-SRv6 uses IPv6 addresses as segments. Each segment is a 128-bit SID. The SIDs sit in a Segment Routing Header, SRH, which is an IPv6 routing extension header. The active segment is copied into the IPv6 destination address, and the segments-left counter counts down.
-
-A SID has three parts: a locator, a function and an argument. The locator is the routable prefix of the node. The function is the action to run, such as `End`, `End.X` for an adjacency, `End.DT4` and `End.DT6` for VRF decapsulation, or `End.DX2` for L2VPN. The argument carries the rest.
-
-A uSID, or micro-segment, packs several 16-bit SIDs into one 128-bit address. That shrinks the headers. SRv6 can carry IPv4 or IPv6, and it provides VPN services, such as L3VPN and EVPN, without MPLS.
-
-### Signalling and control
-
-The IGP floods the SIDs and the topology. Paths are computed on the headend, or by a controller, called a PCE. BGP-LS supplies the topology to the PCE. PCEP or BGP SR-TE installs the policies. TI-LFA gives sub-50 ms protection, as chapter 2.13 covers. Segment routing is common in carrier networks. Its role in AI fabrics is under study, for example controller-driven path pinning, which chapter 2.16 covers.
-
-Before you adopt segment routing, decide whether your topology needs controller-driven paths or whether the shortest path is enough.
-
-## 7. SD-WAN
-
-A company with branch offices on several carriers faces a wide-area problem. Each site connects over more than one transport, and each path performs differently. SD-WAN addresses this with overlays and central control.
-
-Software-Defined WAN applies overlay and central control to the wide area. Sites connect over several underlay transports, such as MPLS, broadband, and LTE or 5G. Each site's edge builds encrypted tunnels over every transport, using IPsec, WireGuard or vendor protocols.
-
-A central controller or orchestrator distributes policy and reachability. Edges measure path quality, meaning loss, latency and jitter, with probes. They then steer applications by policy. Voice might take the best path while bulk traffic takes the cheap one. Zero-touch provisioning brings the edges up, so you do not configure each one by hand.
-
-Underneath, the same ideas apply: encapsulation, a reachability control plane, often an overlay BGP or OMP, and policy-driven path selection. For this chapter, the relevance is that multi-site GPU clouds, hybrid cloud connectivity and edge inference sites often use SD-WAN or its cloud-native equivalents. Those equivalents are cloud routers, transit gateways and Cloud Interconnect.
-
-Before you adopt SD-WAN, measure throughput per tunnel, the MTU, key management and failure behaviour.
-
-## 8. Complexity and virtualization
+## 7. Complexity and virtualization
 
 Virtualization is a trade. You simplify endpoints and policy, and you pay with more state, more layers and more failure modes. Consider what happens when an underlay link fails, and what you would see first. The overlay reacts, and the two control planes must recover together.
 
@@ -315,7 +295,7 @@ Encapsulation and encryption use CPU unless they are offloaded. ECMP entropy can
 
 Rule of thumb: virtualize only where isolation, mobility or policy benefit justifies the added complexity. Prefer simpler options, such as routed hosts, VRF-lite or native routing, where they suffice.
 
-## 9. Hands-on lab: tunnels, VXLAN, and EVPN
+## 8. Hands-on lab: tunnels, VXLAN, and EVPN
 
 The lab has two parts. Start with the self-checking Python lab, `code/part02/overlays_vxlan_evpn_lab.py`, and run it locally. It verifies EVPN route types 1 to 5. It checks per-leaf VNI state under asymmetric and symmetric IRB, which is 200 VNIs versus 6. It walks the SR-MPLS label stack POP progression, `[101, 104, 105, 107]`. It also runs the SRLG overlay fate-sharing checks.
 
@@ -323,7 +303,7 @@ The lab has two parts. Start with the self-checking Python lab, `code/part02/ove
 python3 code/part02/overlays_vxlan_evpn_lab.py
 ```
 
-The second part runs on a disposable Linux VM, using network namespaces and containerlab with FRR. Every interactive VM command below is `untested here`. Work through these steps.
+The second part runs on a disposable Linux VM, using network namespaces and containerlab with FRR. The interactive commands below were not run on live hardware. Work through these steps.
 
 1. GRE and IPIP with namespaces. Build the diamond topology from chapter 2.5, and create a GRE tunnel between the end routers. Observe the recursive lookup with `ip route get`, and capture the outer and inner headers at the transit router. Compute the MTU. Break PMTUD with an ICMP drop, then fix it with MSS clamping.
 2. VXLAN point-to-point. Use two namespaces or VMs, and set up VXLAN with a static remote. Capture UDP/4789, and show how the source port varies across flows. Inspect `bridge fdb`, change the MTU, and test with large pings.
@@ -337,7 +317,7 @@ The second part runs on a disposable Linux VM, using network namespaces and cont
 10. Troubleshooting drill. Introduce faults: a wrong RT, an underlay MTU of 1500, a missing VTEP route, and a duplicate gateway MAC. Diagnose each one with the layered method.
 11. Clean up.
 
-## 10. Common mistakes
+## 9. Common mistakes
 
 The most common trap is forgetting the MTU tax. Tunnels look fine for small pings, then hang on real traffic. Non-UDP encapsulations give you no ECMP entropy if you hash only on the outer addresses. Do not treat the overlay as independent of the underlay. Monitor both.
 
@@ -349,7 +329,7 @@ Ignoring shared risk groups breaks any claim of path redundancy. Running RoCE th
 
 Before you go live, check the route targets, the MTU and the shared risk groups.
 
-## 11. Interview angles
+## 10. Interview angles
 
 Practise these questions aloud, and answer each one in your own words, as you would to a colleague.
 
@@ -368,7 +348,7 @@ Practise these questions aloud, and answer each one in your own words, as you wo
 
 Work through these six exercises, and write down your answer to each before you check it. They test whether you can follow a packet, compare encapsulations, read EVPN route types, and reason about shared failure.
 
-1. Follow a packet through a tunnel (Computer Networking Problems and Solutions, chapter 9). Trace the five steps of a packet from Host A, through tunnel headend Router C and underlay transit Router E, to tunnel tailend Router H and Host M. Explain the recursive lookup at Router C, and explain how VRFs change the lookup tables. Then state the two mandatory questions every network virtualization solution must answer, plus the optional QoS question.
+1. Follow a packet through a tunnel. Trace the five steps of a packet from Host A, through tunnel headend Router C and underlay transit Router E, to tunnel tailend Router H and Host M. Explain the recursive lookup at Router C, and explain how VRFs change the lookup tables. Then state the two mandatory questions every network virtualization solution must answer, plus the optional QoS question.
 
 2. Compare the encapsulations GRE, IPIP, VXLAN, Geneve, MPLS, SRv6, WireGuard and IPsec, and look at ECMP entropy. Compare the byte overhead and outer header structure of each. GRE adds 24 bytes, IPIP adds 20, VXLAN adds 50 on UDP port 4789, Geneve adds 50 or more on UDP port 6081, and MPLS adds 4 bytes per label. Then explain why VXLAN and Geneve balance across underlay ECMP links automatically, while GRE and IPIP pin to a single link unless inner-header hashing is enabled.
 
@@ -376,14 +356,14 @@ Work through these six exercises, and write down your answer to each before you 
 
 4. Explain how a distributed anycast gateway works on leaf switches. Then use `compute_irb_vni_scaling_per_leaf()` to compare how many VNIs a leaf must configure. Take a cluster with 200 tenant L2 subnets, of which 5 are present locally on that leaf. Under Asymmetric IRB the leaf needs 200 VNIs. Under Symmetric IRB, using an L3 VNI, it needs 6.
 
-5. Work through segment routing and SD-WAN (Computer Networking Problems and Solutions, chapter 9). First, distinguish a node SID from an adjacency SID. Trace `simulate_sr_mpls_label_stack([101, 104, 105, 107], [101, 104, 105, 107])`, and explain the MPLS PUSH, POP and CONTINUE (SWAP) operations along the way. Second, describe the three parts of a 128-bit SRv6 SID, which are Locator, Function and Argument, in the form `Locator : Function : Argument`. Describe the 16-bit uSIDs. Then summarize the core building blocks of SD-WAN.
+5. Work through segment routing and SD-WAN. First, distinguish a node SID from an adjacency SID. Trace `simulate_sr_mpls_label_stack([101, 104, 105, 107], [101, 104, 105, 107])`, and explain the MPLS PUSH, POP and CONTINUE (SWAP) operations along the way. Second, describe the three parts of a 128-bit SRv6 SID, which are Locator, Function and Argument, in the form `Locator : Function : Argument`. Describe the 16-bit uSIDs. Then summarize the core building blocks of SD-WAN.
 
 6. Study the complexity of virtualization, shared fate and AI back-end fabrics. First, use `check_overlay_srlg_diversity()` to explain why two logically separate overlay tunnels fail at the same time if their underlay paths share a shared risk link group (SRLG), such as `conduit-north`. Also explain what happens if the overlay failure detection timers are faster than underlay BFD and ECMP convergence. Second, give four reasons GPU back-end RoCEv2 and InfiniBand fabrics avoid VXLAN overlays on the collective path.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. Define a Tunnel, an Overlay, an Underlay, and a Recursive Lookup (Computer Networking Problems and Solutions, chapter 9).</summary>
+<summary>1. Define a Tunnel, an Overlay, an Underlay, and a Recursive Lookup.</summary>
 
 A tunnel is a virtual point-to-point link. An outer header wraps an inner packet, and the devices in between forward on the outer header alone. An overlay is a complete virtual network built from tunnels. The underlay is the physical or routed network that carries the tunnel packets. A recursive lookup happens when a headend routes an inner packet into a tunnel interface. The router then looks up the tunnel tailend's IP address, which is the VTEP address, in the underlay routing table. That lookup gives the next hop and the outgoing interface toward the tailend.
 </details>
@@ -472,7 +452,7 @@ Instead of separate `vxlanN` netdevs and `brN` bridges, one per VNI, create one 
 </details>
 
 <details>
-<summary>14. How do `PUSH`, `POP`, and `CONTINUE` work in `SR-MPLS` (Computer Networking Problems and Solutions, chapter 9)?</summary>
+<summary>14. How do `PUSH`, `POP`, and `CONTINUE` work in `SR-MPLS`?</summary>
 
 An SR-MPLS label is a 32-bit shim header. It holds a 20-bit label from the SR Global Block (SRGB), a 3-bit Traffic Class, a 1-bit Bottom-of-Stack flag and an 8-bit TTL. At the ingress router, PUSH imposes an ordered stack of Node and Adjacency SIDs, for example [103, 107]. Transit routers on the shortest path to 103 perform CONTINUE, which is an MPLS SWAP with the same label 103. When the packet reaches node 103, or its penultimate hop via PHP, label 103 is popped. That exposes 107 as the new top label, toward node 107.
 </details>
@@ -480,17 +460,17 @@ An SR-MPLS label is a 32-bit shim header. It holds a 20-bit label from the SR Gl
 <details>
 <summary>15. How does `SRv6` (RFC 8754 / RFC 8986) encode segments without MPLS, and what are `Locator`, `Function`, `Argument`, and `uSID`?</summary>
 
-SRv6 encodes each segment as a 128-bit IPv6 address. These addresses sit in a Segment Routing Header (SRH), or, with uSIDs, directly in the IPv6 destination address. Each SRv6 SID has the form Locator : Function : Argument. The Locator is the routable IPv6 prefix of the target node. The Function is the local action taken on arrival. End advances the segment, End.X cross-connects out an adjacency, and End.DT4 and End.DT6 decapsulate and look up in an IPv4 or IPv6 VRF. The Argument passes optional parameters. A uSID packs up to six 16-bit micro-segments into one 128-bit IPv6 address.
+SRv6 encodes each segment as a 128-bit IPv6 address. These addresses sit in a Segment Routing Header (SRH), or, with uSIDs, directly in the IPv6 destination address. Each SRv6 SID has the form Locator : Function : Argument. The Locator is the routable IPv6 prefix of the target node. The Function is the local action taken on arrival. End advances the segment, End.X cross-connects out an adjacency, and End.DT4 and End.DT6 decapsulate and look up in an IPv4 or IPv6 VRF. The Argument passes optional parameters. A uSID packs several 16-bit micro-segments into one 128-bit IPv6 address, for example six with a 32-bit block.
 </details>
 
 <details>
-<summary>16. What are the core architectural components of an `SD-WAN` solution (Computer Networking Problems and Solutions, chapter 9)?</summary>
+<summary>16. What are the core architectural components of an `SD-WAN` solution?</summary>
 
 An SD-WAN has four main parts. First, edge appliances, vEdge or cEdge, terminate several different underlay transports, such as MPLS, broadband Internet, and 5G or LTE. Second, encrypted IPsec or WireGuard overlay tunnels run across all of those transports. Third, a central control plane or orchestrator, using OMP or BGP over TLS, distributes routes, keys and security policies, so you avoid a full mesh of IKE sessions. Fourth, the edges run continuous active and passive probing of loss, latency and jitter, and steer each application onto a transport that meets its SLA.
 </details>
 
 <details>
-<summary>17. What are "Interaction Surfaces" and "Shared Risk Link Groups" (SRLGs) in virtualized networks (Computer Networking Problems and Solutions, chapter 9)?</summary>
+<summary>17. What are "Interaction Surfaces" and "Shared Risk Link Groups" (SRLGs) in virtualized networks?</summary>
 
 Interaction surfaces are the points where the overlay and underlay control planes touch. For example, if an overlay BFD or keepalive timer is shorter than the underlay's ECMP or BFD convergence time, a single underlay link flap can tear the whole overlay down and cause churn. A Shared Risk Link Group (SRLG) is a set of logically separate overlay links that share one physical failure domain in the underlay, such as a fibre trench, a patch panel, a line card or a spine switch. When that domain fails, the "redundant" overlay paths fail together. This is called fate sharing.
 </details>
@@ -522,4 +502,4 @@ Start with the underlay. From Leaf 1, run `ping -M do -s 8900` to the Leaf 3 VTE
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (Linux `iproute2` interface and bridge fundamentals).
 - **Run here:** `python3 code/part02/overlays_vxlan_evpn_lab.py` (10 passed, 0 failed).
 - **Explicitly labelled inferences:** The Linux `ip link add type vxlan` (`external vnifilter`) and FRR `l2vpn evpn` Symmetric IRB (`L3VNI 5001`) configurations, EVPN Route Types `1`–`5` table, and layered VTEP-to-VTEP troubleshooting sequence synthesize RFCs 7348 (VXLAN), 7432 (EVPN), 8365 (EVPN Overlay), 8402 (Segment Routing), 8926 (Geneve), 8986 (SRv6), and 9136 (EVPN IP Prefix Route) and the FRR/containerlab documentation (cross-referenced with Chapters 2.5, 2.7, 2.11–2.16, 2.19, 2.25, and 2.27, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All interactive VM and FRR commands (`ip link add type vxlan`, `bridge fdb`, `bridge vni`, `vtysh`, `show evpn vni`, `show bgp l2vpn evpn`, `tcpdump udp port 4789`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.
+- **Not verified on live hardware:** All interactive VM and FRR commands (`ip link add type vxlan`, `bridge fdb`, `bridge vni`, `vtysh`, `show evpn vni`, `show bgp l2vpn evpn`, `tcpdump udp port 4789`) were not run on live hardware and must be executed on a disposable Linux VM or containerlab topology.

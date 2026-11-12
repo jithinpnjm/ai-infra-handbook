@@ -25,7 +25,7 @@ type NodeVerdict struct {
 	Unhealthy      bool          // condition False for at least UnhealthyFor
 	Pending        bool          // condition False but window not yet elapsed
 	WaitFor        time.Duration // time until Pending becomes Unhealthy
-	Healthy        bool          // condition True (or absent) for at least HealthyFor
+	Healthy        bool          // condition True for at least HealthyFor
 	HealthyWaitFor time.Duration // time until a recovering node counts as healthy
 	OwnedByPolicy  bool
 	Unschedulable  bool
@@ -59,9 +59,8 @@ func Judge(p *v1alpha1.GPUHealthPolicy, n *corev1.Node, now time.Time) NodeVerdi
 		}
 		return v
 	}
-	// True, Unknown or absent: treat absent as healthy (no signal yet), Unknown as "not proven healthy".
+	// Absent or Unknown: no evidence either way. Neither act on the node nor release it.
 	if cond == nil {
-		v.Healthy = true
 		return v
 	}
 	if cond.Status == corev1.ConditionTrue {
