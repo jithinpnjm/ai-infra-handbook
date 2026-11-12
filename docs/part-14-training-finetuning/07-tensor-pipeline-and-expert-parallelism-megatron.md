@@ -19,19 +19,12 @@ lab_venue: "Nebius GPU"
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/tp_pp_ep_megatron_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
 | Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Ch. 2 & Ch. 5); NVIDIA Zero-to-Hero Volume 13 (`chapter-06-tensor-pipeline-and-expert-parallelism.md`, `chapter-07-megatron-lm-architecture.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 1 & Ch. 13) |
-| Coverage file | `planning/coverage/chapters/14-07.md` |
-| Claim & number ledger | `planning/ledgers/14-07.md` |
 
 ## Why this matters for AI infrastructure
 
-State sharding methods like FSDP2 and DeepSpeed ZeRO solve the storage redundancy problem. They partition model weights, gradients, and optimizer states across the cluster. Yet state sharding still makes one major assumption. Once a single layer is reconstructed by an AllGather collective, one GPU must hold and execute that entire layer. When a team scales up to frontier models with hundreds of billions of parameters, that assumption breaks down. Training jobs stall on network latency or crash with out-of-memory errors inside a single layer.
+A team trains a 175B model on a thousand GPUs with FSDP2 alone. Memory per GPU looks fine on paper, yet the job stalls on the network or runs out of memory inside a single layer. State sharding such as FSDP2 and DeepSpeed ZeRO splits the weights, gradients and optimizer states across the cluster. It still assumes that, after an AllGather rebuilds one layer, a single GPU can hold and run that whole layer. At frontier scale the assumption fails in four ways.
 
-Four physical limits explain why state sharding alone fails at frontier scale:
-
-1. **Single-layer matrices exceed single-GPU efficiency.** A single projection matrix in a 175B model holds over 600 million parameters and consumes 1.2 GB in half precision. At 1 trillion parameters, mixed-precision state reaches 12 TB, far exceeding the memory of two 8-GPU nodes.
-2. **Per-layer AllGather collectives saturate inter-node links.** Even when sharded state per GPU is small, gathering full layers across hundreds of nodes on every pass stalls on slower InfiniBand fabric links.
-3. **Long-context activations overwhelm GPU memory.** At sequence lengths of 32K to 128K tokens, intermediate activations exceed 40 GB to 52 GB per GPU even when weights are sharded.
-4. **Single-device compute time is far too slow.** Executing a single training step of a 175B model on one GPU would take over an hour. Iteration becomes impossible without splitting the math itself.
+A single projection matrix in a 175B model holds over 600 million parameters, which is 1.2 GB in half precision. Gathering full layers on every pass across hundreds of nodes saturates the InfiniBand links. At sequence lengths of 32K to 128K tokens, activations alone reach 40 GB to 52 GB per GPU, even with sharded weights. And one training step of a 175B model on a single GPU takes more than an hour, so the math itself has to be split.
 
 ```text
 Physical Limits That Force Computation Sharding:
@@ -53,7 +46,7 @@ Physical Limits That Force Computation Sharding:
      - On 1 x A100 (312 TFLOPS): 4,679 seconds (~78 minutes) per step vs ~37 seconds across 128 GPUs
 ```
 
-**Megatron-LM and Megatron Core overcome these barriers by introducing computation sharding as an orthogonal axis alongside state and data sharding.** Tensor Parallelism splits individual matrix multiplications across fast intra-node NVLink. Sequence Parallelism and Context Parallelism split activations along the token dimension. Pipeline Parallelism partitions model depth across nodes over InfiniBand links, and Expert Parallelism routes tokens across Mixture-of-Experts sub-networks. Before launching a multi-node job, map each parallelism dimension to the hardware link that can sustain its traffic.
+Megatron-LM and Megatron Core add a second axis, computation sharding, beside state and data sharding. **Computation sharding splits the math of a layer, while state sharding only splits where its weights are stored.** Tensor Parallelism splits individual matrix multiplications across fast intra-node NVLink. Sequence Parallelism and Context Parallelism split activations along the token dimension. Pipeline Parallelism partitions model depth across nodes over InfiniBand links, and Expert Parallelism routes tokens across Mixture-of-Experts sub-networks. Before launching a multi-node job, map each parallelism dimension to the hardware link that can sustain its traffic.
 
 ## Prerequisites and outcomes
 
@@ -156,12 +149,12 @@ flowchart LR
     end
 ```
 
-We can trace the four steps of this block pattern across both MLP and attention layers:
+The four steps below trace the pattern through an MLP block and an attention block.
 
-1. **First MLP projection (`ColumnParallelLinear`).** The weight matrix is split along its columns across the Tensor Parallel ranks. Each GPU multiplies the replicated input by its local column shard and applies GeLU or SwiGLU locally with zero communication.
-2. **Second MLP projection (`RowParallelLinear`).** The second weight matrix is split along its rows. Each GPU multiplies its local activation slice by its local row shard to produce a partial output matrix of full hidden shape. A single AllReduce sum then combines the partial outputs before the residual connection.
-3. **Multi-Head and Grouped-Query Attention.** The query, key, and value projections use `ColumnParallelLinear` to divide attention heads across GPUs. Softmax attention runs locally per head without communication, and the output projection uses `RowParallelLinear` followed by one AllReduce.
-4. **Total collectives per Transformer layer.** Every layer executes two AllReduce operations in the forward pass and two in the backward pass. That totals four collectives per layer per step.
+1. First MLP projection (`ColumnParallelLinear`). The weight matrix is split along its columns across the Tensor Parallel ranks. Each GPU multiplies the replicated input by its local column shard and applies GeLU or SwiGLU locally with zero communication.
+2. Second MLP projection (`RowParallelLinear`). The second weight matrix is split along its rows. Each GPU multiplies its local activation slice by its local row shard to produce a partial output matrix of full hidden shape. A single AllReduce sum then combines the partial outputs before the residual connection.
+3. Multi-Head and Grouped-Query Attention. The query, key, and value projections use `ColumnParallelLinear` to divide attention heads across GPUs. Softmax attention runs locally per head without communication, and the output projection uses `RowParallelLinear` followed by one AllReduce.
+4. Total collectives per Transformer layer. Every layer executes two AllReduce operations in the forward pass and two in the backward pass. That totals four collectives per layer per step.
 
 ```text
 Megatron Tensor Parallelism Block Algebra and Collective Count:
@@ -327,20 +320,20 @@ Pipeline Bubble & In-Flight Activation Memory Equations (PP stages, m micro-batc
 
 Even when you run many micro-batches, standard 1F1B pipelines still lose time to warm-up bubbles and uneven work across stages. If the first or last stage takes longer per micro-batch than the middle stages, every other GPU in the pipeline has to wait for the slowest stage on every step.
 
-Three architectural techniques eliminate these pipeline stalls:
+Three techniques remove these stalls.
 
-1. **Virtual Pipeline Parallelism (`--num-layers-per-virtual-pipeline-stage`).** Instead of giving each GPU one large contiguous block of layers, Interleaved 1F1B assigns `v` smaller non-contiguous layer chunks to each GPU. Each virtual stage finishes `v` times faster. The pipeline warm-up and cool-down bubbles shrink by a factor of `1 / v` while point-to-point transfers increase by `v`.
-2. **Eliminating the Ghost Straggler on edge stages.** Suppose a 96-layer model is split evenly into 6 layers per stage across 16 stages. Stage 0 and Stage 15 still run about 40 percent slower than Stages 1 through 14. Stage 0 must also compute the 1.2 GB vocabulary embedding lookup, and Stage 15 must compute the final projection and cross-entropy loss. Assigning fewer Transformer layers to the first and last stages and sharding the vocabulary with `VocabParallelEmbedding` removes the stall.
-3. **Bidirectional overlap with DeepSeek DualPipe.** Introduced in the DeepSeek-V3 Technical Report, DualPipe feeds micro-batches from both ends of the pipeline at the same time. Pairing a forward chunk and a backward chunk on each GPU hides point-to-point and AllToAll communication behind matrix math. That overlap reduces pipeline bubbles to near zero even on bandwidth-constrained H800 clusters.
+1. Virtual Pipeline Parallelism (`--num-layers-per-virtual-pipeline-stage`). Instead of giving each GPU one large contiguous block of layers, Interleaved 1F1B assigns `v` smaller non-contiguous layer chunks to each GPU. Each virtual stage finishes `v` times faster. The pipeline warm-up and cool-down bubbles shrink by a factor of `1 / v` while point-to-point transfers increase by `v`.
+2. Balancing the edge stages. Suppose a 96-layer model is split evenly into 6 layers per stage across 16 stages. Stage 0 and Stage 15 still run about 40 percent slower than Stages 1 through 14. Stage 0 must also compute the 1.2 GB vocabulary embedding lookup, and Stage 15 must compute the final projection and cross-entropy loss. Assigning fewer Transformer layers to the first and last stages and sharding the vocabulary with `VocabParallelEmbedding` removes the stall.
+3. Bidirectional overlap with DeepSeek DualPipe. Introduced in the DeepSeek-V3 Technical Report, DualPipe feeds micro-batches from both ends of the pipeline at the same time. Pairing a forward chunk and a backward chunk on each GPU hides point-to-point and AllToAll communication behind matrix math. That overlap reduces pipeline bubbles to near zero even on bandwidth-constrained H800 clusters.
 
 ```text
-Virtual Stages, Edge-Stage Ghost Stragglers, and DualPipe:
+Virtual Stages, Edge-Stage Stragglers, and DualPipe:
   1. Interleaved 1F1B (32 layers across PP = 2 GPUs with v = 2 virtual stages):
      - Standard (v = 1):     GPU 0 hosts Layers 0-15; GPU 1 hosts Layers 16-31
      - Interleaved (v = 2):  GPU 0 hosts Layers 0-7 (VS 0) and Layers 16-23 (VS 2)
                              GPU 1 hosts Layers 8-15 (VS 1) and Layers 24-31 (VS 3)
 
-  2. Stage 0 and Stage 15 Ghost Straggler Math (96 layers, PP = 16, 6 layers/stage):
+  2. Stage 0 and Stage 15 Edge-Stage Straggler Math (96 layers, PP = 16, 6 layers/stage):
      - Vocab embedding / lm_head table: 50,000 vocab x 12,288 hidden x 2 bytes (BF16) = 1,228,800,000 B (~1.2 GB)
      - Impact: Stage 0 and Stage 15 take ~40% longer per micro-batch than middle Stages 1-14
      - Fix: Assign 5 layers to edge stages and 6-7 layers to middle stages + VocabParallelEmbedding + VPP
@@ -400,12 +393,12 @@ Mixture-of-Experts Scaling and Capacity Factor Equations:
      - Cluster impact: 25% of expected throughput with uniformly low 40-50% nvidia-smi utilization across all 8 GPUs
 ```
 
-Optimizing Expert Parallelism requires solving four challenges that never appear in dense data or tensor parallelism:
+Expert Parallelism adds four problems that dense data or tensor parallelism never has.
 
-1. **Data-dependent, asymmetric message sizes.** In an AllReduce, every GPU sends and receives the exact same predictable byte count. In an MoE AllToAll, the number of tokens sent between any two GPUs changes on every micro-batch based on router decisions.
-2. **Router collapse and the hot-expert straggler.** If an untrained or unstable router sends most of the batch to one popular expert, that GPU becomes a severe bottleneck. Every other GPU sits idle at the synchronous AllToAll barrier.
-3. **Capacity Factor and load balancing.** Frameworks bound memory and step time by setting a Capacity Factor ceiling and dropping or residual-passing overflow tokens. Megatron Core prevents collapse using `--moe-router-load-balancing-type aux_loss`, Sinkhorn routing, or auxiliary-loss-free bias updates. DeepSeek's Expert Parallelism Load Balancer dynamically replicates hot experts.
-4. **Kernel and transport acceleration.** When a GPU hosts multiple experts, `--moe-grouped-gemm` fuses separate expert matrix multiplications into one kernel and `--moe-permute-fusion` fuses token permutation. DeepSeek's DeepEP provides low-latency NVLink and RDMA AllToAll kernels. PyTorch Symmetric Memory uses one-sided NVSHMEM `triton.nvshmem.put()/get()` calls to eliminate CPU synchronization so `all_to_all_v` can be captured inside a CUDA Graph.
+1. Data-dependent, asymmetric message sizes. In an AllReduce, every GPU sends and receives the exact same predictable byte count. In an MoE AllToAll, the number of tokens sent between any two GPUs changes on every micro-batch based on router decisions.
+2. Router collapse and the hot-expert straggler. If an untrained or unstable router sends most of the batch to one popular expert, that GPU becomes a severe bottleneck. Every other GPU sits idle at the synchronous AllToAll barrier.
+3. Capacity Factor and load balancing. Frameworks bound memory and step time by setting a Capacity Factor ceiling and dropping or residual-passing overflow tokens. Megatron Core prevents collapse using `--moe-router-load-balancing-type aux_loss`, Sinkhorn routing, or auxiliary-loss-free bias updates. DeepSeek's Expert Parallelism Load Balancer dynamically replicates hot experts.
+4. Kernel and transport acceleration. When a GPU hosts multiple experts, `--moe-grouped-gemm` fuses separate expert matrix multiplications into one kernel and `--moe-permute-fusion` fuses token permutation. DeepSeek's DeepEP provides low-latency NVLink and RDMA AllToAll kernels. PyTorch Symmetric Memory uses one-sided NVSHMEM `triton.nvshmem.put()/get()` calls to eliminate CPU synchronization so `all_to_all_v` can be captured inside a CUDA Graph.
 
 Always monitor per-expert token histograms during MoE training so a skewed router does not silently turn a fast cluster into a barrier stall.
 
@@ -492,9 +485,9 @@ Four Canonical Multi-Node Sizing Derivations (DAI Ch. 5 & Volume 13 Ch. 6-7):
 
 Even after splitting layers with Tensor and Pipeline Parallelism, replicating full optimizer states across the Data Parallel group wastes tens of gigabytes per GPU. External frameworks like DeepSpeed ZeRO or Colossal-AI with its Gemini heterogeneous memory manager can shard state. However, Megatron Core includes three native subsystems that coordinate directly with its model-parallel groups:
 
-1. **Megatron Distributed Optimizer (`--use-distributed-optimizer`).** This subsystem shards FP32 master weights and Adam momentum and variance buffers across the `d` Data Parallel ranks. It overlaps gradient ReduceScatter during backpropagation using `--overlap-grad-reduce` and overlaps parameter AllGather using `--overlap-param-gather`.
-2. **Megatron-FSDP (`--use-megatron-fsdp --data-parallel-sharding-strategy optim_grads_params`).** This is NVIDIA's TP, CP, and EP-aware ZeRO-3 implementation inside Megatron Core. It coordinates parameter bucketing with Tensor Parallelism and registers NCCL userbuffers via `ncclMemAlloc` to reduce Streaming Multiprocessor usage during collectives. Megatron-FSDP achieves 15 to 25 percent higher throughput and about 23 percent lower memory usage than general-purpose PyTorch FSDP2.
-3. **FP8 Training with NVIDIA Transformer Engine (`--fp8-format hybrid`).** On Hopper, Ada, and Blackwell GPUs, FP8 halves memory bandwidth demand and doubles Tensor Core throughput for a 1.5x to 2x GEMM speedup over BF16. The hybrid format uses E4M3 in the forward pass for higher precision and E5M2 in the backward pass for wider dynamic range. Meanwhile, `--fp8-param-gather` cuts parameter AllGather traffic in half.
+1. Megatron Distributed Optimizer (`--use-distributed-optimizer`). This subsystem shards FP32 master weights and Adam momentum and variance buffers across the `d` Data Parallel ranks. It overlaps gradient ReduceScatter during backpropagation using `--overlap-grad-reduce` and overlaps parameter AllGather using `--overlap-param-gather`.
+2. Megatron-FSDP (`--use-megatron-fsdp --data-parallel-sharding-strategy optim_grads_params`). This is NVIDIA's TP, CP, and EP-aware ZeRO-3 implementation inside Megatron Core. It coordinates parameter bucketing with Tensor Parallelism and registers NCCL userbuffers via `ncclMemAlloc` to reduce Streaming Multiprocessor usage during collectives. Megatron-FSDP achieves 15 to 25 percent higher throughput and about 23 percent lower memory usage than general-purpose PyTorch FSDP2.
+3. FP8 Training with NVIDIA Transformer Engine (`--fp8-format hybrid`). On Hopper, Ada, and Blackwell GPUs, FP8 halves memory bandwidth demand and doubles Tensor Core throughput for a 1.5x to 2x GEMM speedup over BF16. The hybrid format uses E4M3 in the forward pass for higher precision and E5M2 in the backward pass for wider dynamic range. Meanwhile, `--fp8-param-gather` cuts parameter AllGather traffic in half.
 
 | Precision Configuration | Memory per Parameter Without Distributed Optimizer | Memory per Parameter With Distributed Optimizer (`d` DP GPUs) | Concrete Value at `d = 8` DP Ranks |
 |---|---|---|---|
@@ -776,22 +769,28 @@ Summary: 26 passed, 0 failed
 
 ## Common first mistakes
 
-1. **Setting `--tensor-model-parallel-size` larger than the intra-node NVLink domain.** Stretching TP to 16 or 32 across 8-GPU nodes forces every layer's AllReduce across InfiniBand at 9 ms instead of 0.25 ms on NVLink. That causes a 15x to 16.7x throughput collapse, so keep TP at or below 8 on DGX and HGX nodes and scale across nodes with PP and DP.
-2. **Enabling TP without `--sequence-parallel` on long-context runs.** Without Sequence Parallelism, LayerNorm and Dropout activations are duplicated across all TP GPUs. Adding `--sequence-parallel` cuts those activations by `1 / TP` with zero additional collective bytes.
-3. **Starving Pipeline Parallelism of micro-batches.** Setting PP to 8 with only 16 micro-batches leaves GPUs idle 30.4 percent of the time. Ensure the micro-batch count is at least 4 to 8 times the pipeline depth or enable `--num-layers-per-virtual-pipeline-stage`.
-4. **Assuming equal layer counts mean equal stage times in Pipeline Parallelism.** Stage 0 with its 1.2 GB embedding table and Stage `PP-1` with its output projection and loss run up to 40 percent slower than middle stages unless rebalanced or interleaved.
-5. **Directly loading a checkpoint across different TP and PP topologies without resharding.** A raw checkpoint saved at TP=4 and PP=2 has weight shard shapes that cannot be loaded directly into TP=8 and PP=1. Use Megatron's distributed checkpointing resharding tools instead.
+1. Setting `--tensor-model-parallel-size` larger than the intra-node NVLink domain. Stretching TP to 16 or 32 across 8-GPU nodes forces every layer's AllReduce across InfiniBand at 9 ms instead of 0.25 ms on NVLink. That causes a 15x to 16.7x throughput collapse, so keep TP at or below 8 on DGX and HGX nodes and scale across nodes with PP and DP.
+2. Enabling TP without `--sequence-parallel` on long-context runs. Without Sequence Parallelism, LayerNorm and Dropout activations are duplicated across all TP GPUs. Adding `--sequence-parallel` cuts those activations by `1 / TP` with zero additional collective bytes.
+3. Starving Pipeline Parallelism of micro-batches. Setting PP to 8 with only 16 micro-batches leaves GPUs idle 30.4 percent of the time. Ensure the micro-batch count is at least 4 to 8 times the pipeline depth or enable `--num-layers-per-virtual-pipeline-stage`.
+4. Assuming equal layer counts mean equal stage times in Pipeline Parallelism. Stage 0 with its 1.2 GB embedding table and Stage `PP-1` with its output projection and loss run up to 40 percent slower than middle stages unless rebalanced or interleaved.
+5. Directly loading a checkpoint across different TP and PP topologies without resharding. A raw checkpoint saved at TP=4 and PP=2 has weight shard shapes that cannot be loaded directly into TP=8 and PP=1. Use Megatron's distributed checkpointing resharding tools instead.
 
 ---
 
 ## Exercises
 
-1. **Megatron ColumnParallel and RowParallel Sharding and Sequence Parallelism Math.** Run `analyze_tensor_and_sequence_parallelism()` in `code/part14/tp_pp_ep_megatron.py` on the GPT-3 175B layer parameters in the block below. Determine the unsharded parameter count and megabytes of the first MLP weight matrix, its per-GPU shard shape under TP=8, the second MLP shard shape, and the attention heads per GPU. Then prove that Sequence Parallelism moves the exact same byte volume while reducing non-TP activation memory by 8x.
-2. **Cross-Node Tensor Parallelism Penalty.** Use `simulate_tp_cross_node_penalty()` and the parameters below to calculate the per-collective latency and total pass communication overhead across 120 layers on intra-node NVLink versus inter-node InfiniBand. State the per-collective slowdown ratio and throughput recovery.
-3. **Pipeline Bubble Fractions and GPipe vs. 1F1B Activation Memory.** Use `compute_pipeline_parallel_metrics()` to compute the pipeline bubble percentage for PP=4 and PP=8 across the micro-batch counts listed below. Next, compare Stage 0 peak in-flight activation memory under GPipe versus 1F1B for PP=16 and `m=256`, and calculate the bubble reduction factor with 2 virtual stages.
-4. **Long-Context Sharding: CP Ring Attention vs. DeepSpeed-Ulysses.** Run `analyze_context_parallelism_vs_ulysses()` on the 32K sequence parameters below. Compute the local sequence length per GPU, the number of Ring Attention rotation steps, and the tensor shapes before and after the DeepSpeed-Ulysses AllToAll transpose.
-5. **MoE Expert Parallelism on Mixtral 8x7B and DeepSeek-V3.** Use `analyze_expert_parallelism_moe()` and the specifications below to calculate the local experts per GPU, dispatched token embeddings per GPU, uniform tokens per expert, and maximum expert token capacity for Mixtral 8x7B. Also calculate the active experts per token and routed experts per GPU for DeepSeek-V3.
-6. **5D Hybrid Parallelism Grid and Distributed Optimizer Sizing.** Use `validate_hybrid_5d_config()` and `compute_distributed_optimizer_bytes_per_param()` to compute the per-parameter memory for BF16 parameters with FP32 gradients across 8 DP ranks. Then verify the GPT-3 175B configuration on 1024 H100 GPUs and the 70B hybrid configuration on 64 GPUs.
+Each exercise is one situation. The helper functions live in `code/part14/tp_pp_ep_megatron.py`, and the inputs are in the block after the list.
+
+1. A GPT-3 175B layer is split across 8 GPUs. Run `analyze_tensor_and_sequence_parallelism()` and find the shape of the first MLP matrix on each GPU. Then find the shape of the second matrix and the number of attention heads per GPU.
+2. The same layer now runs with Sequence Parallelism. Find the local sequence length on each GPU. Say why the network bytes stay the same.
+3. A 200B model runs with TP across two nodes. Use `simulate_tp_cross_node_penalty()` to find the time of one AllReduce on NVLink and on InfiniBand. Then give the total over 120 layers.
+4. A pipeline has 4 stages. Use `compute_pipeline_parallel_metrics()` to find the bubble at 8, 16 and 32 micro-batches. Repeat for 8 stages.
+5. A pipeline has 16 stages and 256 micro-batches. Compare the peak activation memory of Stage 0 under GPipe and under 1F1B. Then find how much 2 virtual stages cut the bubble.
+6. A 32K-token sequence is split over 4 GPUs. Run `analyze_context_parallelism_vs_ulysses()` and find the local length and the number of ring steps. Then give the tensor shapes before and after the Ulysses AllToAll.
+7. Mixtral 8x7B runs with expert parallelism on 8 GPUs. Use `analyze_expert_parallelism_moe()` to find the experts per GPU and the tokens per expert. Then find the capacity limit per expert.
+8. DeepSeek-V3 runs on 64 expert-parallel GPUs. Find the active experts per token and the routed experts per GPU.
+9. A BF16 model with FP32 gradients uses the Distributed Optimizer on 8 data-parallel ranks. Compute the bytes per parameter.
+10. Check two grids with `validate_hybrid_5d_config()`: GPT-3 175B on 1024 H100 GPUs, and a 70B model on 64 GPUs.
 
 ```text
 Exercise Input Parameters:
@@ -813,13 +812,13 @@ Exercise Input Parameters:
 
 ## Interview angles
 
-1. **Why is the first Megatron linear layer split by columns while the second is split by rows?**
+1. Why is the first Megatron linear layer split by columns while the second is split by rows?
    Splitting the first MLP matrix by columns partitions its output along the feature dimension. Because GeLU or SwiGLU is element-wise, each GPU applies the activation locally with zero communication. Splitting the second matrix by rows lets each GPU multiply its local post-GeLU slice by its row shard to produce a partial sum of full shape. Only one AllReduce is needed at the end of the block instead of two.
-2. **Why can't Tensor Parallelism cross node boundaries over InfiniBand, and how do you size a 175B or 1T model on 1,024 H100 GPUs?**
+2. Why can't Tensor Parallelism cross node boundaries over InfiniBand, and how do you size a 175B or 1T model on 1,024 H100 GPUs?
    Tensor Parallelism runs four AllReduces per layer on the critical execution path. Moving a 219 MB shard across 240 AllReduces takes 0.25 ms per collective or 60 ms total on 900 GB/s NVLink, versus 9 ms per collective or 2,160 ms total on 25 GB/s InfiniBand. That degrades throughput by 16.7x. Keep TP=8 inside each 8-GPU NVSwitch node, use PP=16 across nodes for 175B or PP=4 for 1T, and assign the remaining GPUs to DP=8 or DP=32 with the Distributed Optimizer.
-3. **Why would activation memory climb steadily over hundreds of steps and crash only on the final pipeline stage?**
+3. Why would activation memory climb steadily over hundreds of steps and crash only on the final pipeline stage?
    A static sizing error crashes on the first step. Monotonic memory growth isolated to the last pipeline stage means an evaluation or logging hook is retaining references to the output logits or loss graph without calling `.detach()`. That prevents 1F1B from freeing micro-batch activations on that stage. Verify with `torch.cuda.memory_summary()` on the final stage rank and detach all logged tensors.
-4. **Why is AllToAll in Expert Parallelism harder to optimize than AllReduce in DDP or TP?**
+4. Why is AllToAll in Expert Parallelism harder to optimize than AllReduce in DDP or TP?
    AllReduce sends a static, symmetric byte volume across every rank that NCCL schedules cleanly over rings or trees. MoE AllToAll traffic is dynamic, asymmetric, and data-dependent because token counts between any two GPUs change on every micro-batch based on router decisions. Small messages suffer from latency and host synchronization gaps. A skewed router sending 80 percent of tokens to one hot expert stalls the entire group at the barrier.
 
 ---
@@ -925,7 +924,7 @@ GPipe runs all `m` forward passes before any backward pass, forcing Stage 0 to s
 </details>
 
 <details>
-<summary>**12. What causes the Ghost Straggler on Stage 0 and Stage `PP-1` of a balanced-layer-count pipeline, and how do you fix it?**</summary>
+<summary>**12. What makes the edge-stage straggler appear on Stage 0 and Stage `PP-1` of a balanced-layer-count pipeline, and how do you fix it?**</summary>
 
 Even when every stage has 6 Transformer layers across 16 stages, Stage 0 also executes the 1.2 GB input vocabulary embedding table (`50,000 x 12,288 x 2B`). Stage 15 also executes the output projection and cross-entropy loss. That extra work makes Stages 0 and 15 about 40 percent slower than Stages 1 through 14. Fix it by placing fewer Transformer layers on Stage 0 and `PP-1`, sharding the vocabulary across TP, or enabling interleaved virtual stages.
 </details>
@@ -1012,6 +1011,8 @@ GB200 / GB300 NVL72 Rack Specifications (AISPE Ch. 1):
 ## Sources and review notes
 
 ### Primary Sources Read in Full and Migrated
+
+The planning files used to build this chapter are `planning/coverage/chapters/14-07.md` and `planning/ledgers/14-07.md`. The term edge-stage straggler is this chapter's plain name for the effect that NVIDIA Zero-to-Hero Volume 13 Chapter 7 calls the Ghost Straggler.
 
 | Source | What was read and used |
 |---|---|

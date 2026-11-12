@@ -19,8 +19,6 @@ lab_venue: "Nebius GPU"
 | Lab venue | Nebius GPU + Local Python Verification Lab (`code/part14/fsdp_parameter_sharding_lab.py`) |
 | Part | Part 14: Distributed training and fine-tuning |
 | Primary sources | *Distributed AI Systems* (`distributed-ai-systems`, Ch. 4); NVIDIA Zero-to-Hero Volume 13 (`chapter-04-fsdp-and-parameter-sharding.md`, `chapter-01-why-distributed-training-exists.md`, `chapter-08-nccl-collectives-and-communication-paths.md`, `chapter-12-volume-13-summary.md`, `index.md`, `labs/lab-01..04`); *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Ch. 13) |
-| Coverage file | `planning/coverage/chapters/14-05.md` |
-| Claim & number ledger | `planning/ledgers/14-05.md` |
 
 ## Why this matters for AI infrastructure
 
@@ -28,7 +26,11 @@ In Chapter 14.4, DistributedDataParallel scaled training throughput by giving ev
 
 Fully Sharded Data Parallel breaks this single-GPU memory ceiling by applying the Zero Redundancy Optimizer principle natively inside PyTorch. Instead of replicating parameters, gradients, and optimizer states on every rank, FSDP shards them across all GPUs. Each rank stores only a fraction of the model state at rest. On eight GPUs, a 7B model's state drops to a fraction of an 80 GB card. On sixteen GPUs, a 70B model fits comfortably with tens of gigabytes of headroom left for activations and temporary buffers.
 
-For AI infrastructure engineers, FSDP shifts the cluster bottleneck from single-device HBM capacity to interconnect bandwidth and collective scheduling. Every forward pass and backward pass dynamically reassembles unsharded layer weights via AllGather and shards gradients via ReduceScatter. That lifecycle increases per-step collective network volume by fifty percent compared to DDP. Wrapping a 70B model too coarsely materializes all weights during AllGather and immediately triggers an out-of-memory crash. Failing to throttle asynchronous AllGather calls or saving an unsharded state dict onto rank zero will likewise exhaust HBM. Scaling full sharding across multi-node InfiniBand fabrics can also stall on cross-node AllGather latency unless you deploy Hybrid Sharded Data Parallel over a two-dimensional DeviceMesh.
+FSDP trades memory for network. The bottleneck moves from the capacity of one GPU to the bandwidth between GPUs. Each layer must be gathered before it runs and its gradients scattered afterward, so a step moves fifty percent more data than DDP.
+
+Three mistakes then show up as crashes. Wrapping a 70B model as one unit gathers all weights at once and runs out of memory. Letting the CPU queue too many AllGather calls fills memory with buffers. Saving an unsharded state dict on rank zero does the same at checkpoint time.
+
+Across many nodes, a fourth problem appears. Cross-node AllGather latency can stall the job, and Hybrid Sharded Data Parallel over a two-dimensional DeviceMesh is the remedy.
 
 | Model & Sharding Scenario | Weights + Gradients + Optimizer State | Per-GPU State Memory | Infrastructure Consequence |
 |---|---|---|---|
@@ -83,7 +85,7 @@ Even under the conservative 840 GB figure for a 70B model, a single 80 GB A100 o
 
 ### 1.2 The Hierarchy of FSDP Sharding Strategies
 
-Choosing the wrong sharding stage either causes out-of-memory crashes or wastes interconnect bandwidth on unnecessary collective operations. ML engineers feel this tradeoff as a tension between maximum batch size and step time, especially on slower multi-node networks. FSDP exposes a hierarchy of sharding strategies so you shard only what is needed to fit the model and its activations.
+A team that shards too little runs out of memory. A team that shards too much pays for network traffic it does not need, which shows up as longer steps on slower multi-node networks. FSDP offers a ladder of sharding strategies so that you shard only what the model and its activations require.
 
 FSDP maps directly to the ZeRO sharding stages through `ShardingStrategy` in FSDP1 and `reshard_after_forward` plus `DeviceMesh` in FSDP2. Stage 1 shards only the optimizer states across ranks, cutting the 560 GB Adam footprint of a 70B model down to 70 GB per GPU. Stage 2 also shards the gradients, saving another 122.5 GB per GPU while keeping weights present after the forward pass. Stage 3 shards weights, gradients, and optimizer states alike, so each GPU holds only one-eighth or one-sixteenth of the total state at rest.
 
@@ -276,7 +278,7 @@ Multi-Node Bandwidth Sizing: 70B FP16 Model (M = 140.0 GB) on 32 GPUs (R = 4 Nod
 
 If a GPU waits idly for every layer's AllGather to finish before starting its matrix multiplications, network latency directly adds to step time. Conversely, if the CPU dispatches asynchronous AllGather kernels too far ahead of GPU execution, temporary buffers pile up and crash the job with an out-of-memory error. Engineers must balance prefetch overlap against strict memory rate limiting.
 
-Modern GPUs have dedicated DMA copy and communication engines separate from Tensor Core compute streams. Forward prefetching launches the AllGather for upcoming layers on a secondary communication stream while the current layer computes on the default stream. During backpropagation, `BackwardPrefetch.BACKWARD_PRE` prefetches the previous layer's parameters before the current layer's backward compute finishes, allowing AllGather and ReduceScatter to overlap with matmuls.
+Modern GPUs have copy engines, which move data by direct memory access (DMA), and communication engines that are separate from the Tensor Core compute streams. Forward prefetching launches the AllGather for upcoming layers on a secondary communication stream while the current layer computes on the default stream. During backpropagation, `BackwardPrefetch.BACKWARD_PRE` prefetches the previous layer's parameters before the current layer's backward compute finishes, allowing AllGather and ReduceScatter to overlap with matmuls.
 
 Because Python host dispatch runs asynchronously ahead of GPU execution, a fast CPU thread can enqueue AllGather kernels for ten to fifteen upcoming layers before the GPU finishes layer one. Without rate limiting, fifteen queued buffers on a 70B model lock 28.0 GB of extra HBM and trigger sudden out-of-memory crashes. Setting `limit_all_gathers=True` blocks the CPU thread whenever two unsharded units are in flight, capping transient buffer memory at 3.5 GB.
 
@@ -315,7 +317,7 @@ When a model still exceeds HBM capacity after full sharding and activation check
 
 This slowdown occurs because a PCIe Gen4 x16 link provides only 32 GB/s of bandwidth compared to 3 TB/s on GPU HBM3, creating a hundredfold bandwidth bottleneck. Streaming sharded weights and gradients between host RAM and GPU memory stalls the Streaming Multiprocessors on host-to-device and device-to-host DMA transfers. On PCIe servers, you should scale out to more GPUs before enabling CPU offload.
 
-On Grace Hopper and Grace Blackwell superchips, however, SuperOffload eliminates this PCIe bottleneck using four hardware-aware mechanisms. First, coherent NVLink-C2C links connect the Grace ARM CPU and Blackwell GPU at 900 GB/s. Second, Speculation-Then-Validation allows the Grace CPU to run speculative optimizer updates concurrently with GPU backpropagation before validating for NaN or Inf values. Third, heterogeneous optimizer partitioning splits compute-heavy tensor casts onto the GPU while keeping momentum and variance updates on the CPU. Fourth, `GraceAdam` vectorizes the Adam update across ARM Scalable Vector Extension registers.
+Grace Hopper and Grace Blackwell superchips avoid this problem, and SuperOffload is the technique that exploits it. A coherent NVLink-C2C link joins the Grace ARM CPU and the Blackwell GPU at 900 GB/s. On top of that link, the CPU runs optimizer updates speculatively while the GPU is still in backpropagation, and checks them for NaN or Inf values afterward. The optimizer work is also split: the GPU takes the heavy tensor casts, and the CPU keeps the momentum and variance updates. Last, `GraceAdam` runs the Adam update on the ARM Scalable Vector Extension registers.
 
 | Configuration (`70B` Model) | Interconnect Bandwidth | Step Time (`s`) | Throughput (`tokens/sec`) | GPU SM Utilization | Operational Verdict |
 |---|---|---|---|---|---|
@@ -341,7 +343,7 @@ Long multi-GPU training runs inevitably encounter hardware faults such as double
 
 This crash is the `FULL_STATE_DICT` rank-zero out-of-memory trap. Calling `model.state_dict()` under default settings gathers all shards of a 70B model onto rank zero. That gather requires 280.0 GB in FP32 or up to 700 GB with optimizer states, instantly exhausting an 80 GB GPU. You should reserve `full_state_dict=True` with `cpu_offload=True` strictly for final model export when host CPU RAM is large enough.
 
-For all periodic training checkpoints, use PyTorch Distributed Checkpoint (`torch.distributed.checkpoint`) with `full_state_dict=False`. Each rank writes only its local DTensor shard in parallel to shared storage, which is just 8.75 GB of FP16 weights per rank on sixteen GPUs. Furthermore, `dcp.load` supports automatic elastic resharding when resuming on a different number of GPUs. As verified in Volume 13 Lab 04, bit-for-bit reproducible recovery requires saving and restoring four state components behind `dist.barrier()`. Those four components are model weights, AdamW momentum and variance states, learning-rate scheduler state, and all RNG states.
+For all periodic training checkpoints, use PyTorch Distributed Checkpoint (`torch.distributed.checkpoint`) with `full_state_dict=False`. Each rank writes only its local DTensor shard in parallel to shared storage, which is just 8.75 GB of FP16 weights per rank on sixteen GPUs. Furthermore, `dcp.load` supports automatic elastic resharding when resuming on a different number of GPUs. Bit-for-bit reproducible recovery needs four kinds of state saved and restored behind `dist.barrier()`. They are the model weights, the AdamW momentum and variance, the learning-rate scheduler state and every random number generator state. The NVIDIA Zero-to-Hero Volume 13 lab on checkpointing demonstrates this.
 
 ```text
 70B Model Checkpointing Comparison on N = 16 GPUs (80 GB H100 per Rank):
@@ -660,22 +662,24 @@ Summary: 26 passed, 0 failed
 
 ## Common first mistakes
 
-1. **Calling `fully_shard(model)` only on the root module:** Wrapping the entire model as a single FSDP unit forces AllGather to reconstruct the full model on every GPU simultaneously. That mistake gives you all of FSDP's communication cost with none of its peak memory reduction. Always shard individual `TransformerBlock` children first, and then shard the root model.
-2. **Expecting FSDP to shard activation memory:** FSDP shards parameters, gradients, and optimizer states, never activations. At long sequence lengths or large micro-batches, activations will still trigger out-of-memory crashes. Enable activation checkpointing and gradient accumulation to keep activations in bounds.
-3. **Saving checkpoints with default `model.state_dict()` instead of DCP:** Gathering a 70B model onto rank zero requires 280 GB of FP32 weights on a single device and crashes at checkpoint time. Always save sharded checkpoints per rank via `torch.distributed.checkpoint`.
-4. **Enabling `CPUOffload` on PCIe servers before scaling out GPUs or enabling activation checkpointing:** Because PCIe Gen4 is roughly one hundred times slower than GPU HBM, CPU offloading drops GPU utilization to 18 percent. It also slows step time by four times.
-5. **Running flat `FULL_SHARD` across dozens of nodes when each node has NVLink headroom for HSDP:** Sharding across 32 or 64 GPUs flat forces every layer's AllGather and ReduceScatter across the slower inter-node InfiniBand fabric. When the shard fits inside an eight-GPU node with activation checkpointing, use a two-dimensional `DeviceMesh` for HSDP. That keeps AllGather and ReduceScatter on intra-node NVLink.
+1. Calling `fully_shard(model)` only on the root module. Wrapping the entire model as a single FSDP unit forces AllGather to reconstruct the full model on every GPU simultaneously. That mistake gives you all of FSDP's communication cost with none of its peak memory reduction. Always shard individual `TransformerBlock` children first, and then shard the root model.
+2. Expecting FSDP to shard activation memory. FSDP shards parameters, gradients, and optimizer states, never activations. At long sequence lengths or large micro-batches, activations will still trigger out-of-memory crashes. Enable activation checkpointing and gradient accumulation to keep activations in bounds.
+3. Saving checkpoints with default `model.state_dict()` instead of DCP. Gathering a 70B model onto rank zero requires 280 GB of FP32 weights on a single device and crashes at checkpoint time. Always save sharded checkpoints per rank via `torch.distributed.checkpoint`.
+4. Enabling `CPUOffload` on PCIe servers before scaling out GPUs or enabling activation checkpointing. Because PCIe Gen4 is roughly one hundred times slower than GPU HBM, CPU offloading drops GPU utilization to 18 percent. It also slows step time by four times.
+5. Running flat `FULL_SHARD` across dozens of nodes when each node has NVLink headroom for HSDP. Sharding across 32 or 64 GPUs flat forces every layer's AllGather and ReduceScatter across the slower inter-node InfiniBand fabric. When the shard fits inside an eight-GPU node with activation checkpointing, use a two-dimensional `DeviceMesh` for HSDP. That keeps AllGather and ReduceScatter on intra-node NVLink.
 
 ---
 
 ## Exercises
 
-1. **Sharding Stages & Memory Anatomy:** Calculate per-GPU steady-state memory for the 7B and 70B models across DDP, ZeRO-1, ZeRO-2, and ZeRO-3 using the parameters below.
-2. **Wrapping Granularity & Rate-Limiting Peak Buffer Math:** Compute the transient AllGather buffer size and peak state memory for monolithic root wrapping, 80-block wrapping, and unthrottled dispatch.
-3. **Collective Communication Volume:** Calculate asymptotic and exact eight-GPU per-step bytes transferred for DDP, FSDP ZeRO-2, and FSDP ZeRO-3. Also state the communication multiplier of ZeRO-3 over DDP.
-4. **Hybrid Sharding Bandwidth Sizing Across Four Nodes:** Calculate steady-state memory, intra-node NVLink traffic, and inter-node InfiniBand traffic for HSDP on 32 GPUs versus flat 32-GPU full sharding.
-5. **Activation Memory, Checkpointing, and DCP vs FULL_STATE_DICT:** Compute raw and checkpointed activation footprints for the 7B Transformer. Then compare rank-zero gather memory against per-rank DCP shard size for the 70B model.
-6. **FSDP2 DTensor Sharding & PCIe CPUOffload vs Grace-Blackwell SuperOffload:** Determine the local shard shape of a `(4096, 1024)` weight across four GPUs and state TorchTitan SimpleFSDP gains. Then compute the PCIe CPUOffload slowdown and bandwidth ratio.
+Each exercise below is one situation. The reference block after them lists the inputs and target numbers.
+
+1. A 7B model is trained on 8 GPUs with plain DDP and runs out of memory. Compute the per-GPU memory for DDP, ZeRO-2 and ZeRO-3. Then repeat the question for a 70B model.
+2. A 70B job on 16 GPUs wraps the whole model as one unit and fails on the first forward pass. Compute the peak state memory for that wrapping. Then compute it again with 80 separate blocks, and again with 15 AllGather calls queued ahead of compute.
+3. A network engineer asks why FSDP raises the traffic on an 8-GPU node. Use the ring cost formula to find the bytes per step for DDP and for ZeRO-2. Then do the same for ZeRO-3 and state the multiplier over DDP.
+4. A 32-GPU cluster has four nodes of eight GPUs. Compute the steady-state memory of Hybrid Sharded Data Parallel, and the traffic on NVLink and on InfiniBand. Compare it with flat full sharding on all 32 GPUs.
+5. A 7B job still runs out of memory at a long sequence length. Compute the activation memory with and without checkpointing. Separately, compare the rank-zero gather size for a 70B checkpoint with the per-rank size under DCP.
+6. A weight of shape 4096 by 1024 is sharded across four GPUs. Give the shape each GPU holds. Then compute how much CPU offload over PCIe slows a 70B step, and how much slower PCIe is than GPU memory.
 
 ```text
 Exercise Input Parameters and Target Scenarios:
@@ -703,10 +707,10 @@ Exercise Input Parameters and Target Scenarios:
 
 ## Interview angles
 
-1. **Why FSDP full sharding requires 50 percent more communication volume than DDP, and when to set `reshard_after_forward=False`:** In DDP, every GPU holds a full weight replica, so the only collective is a single backward AllReduce costing two times the weight size. In FSDP full sharding with `reshard_after_forward=True`, every layer runs one forward AllGather and frees the weights. It then runs a second backward AllGather followed by one ReduceScatter. That sequence totals three times the weight size, or 1.5 times DDP's traffic. If AllGather latency is the bottleneck and HBM has room to keep weights, setting `reshard_after_forward=False` skips the backward AllGather and drops traffic back to two times the weight size.
-2. **Memory timeline of a 70B model on sixteen 80 GB H100 GPUs and why root-only wrapping causes an immediate OOM:** At rest on sixteen GPUs, each GPU stores one-sixteenth of the 840 GB state, which is 52.5 GB and leaves 27.5 GB free. Wrapping each of the 80 Transformer blocks individually means AllGather materializes only 1.75 GB per block, or 3.5 GB with one prefetched block, peaking at 56.0 GB of state memory. Wrapping only the root model forces AllGather to materialize all 140.0 GB of weights at once. That spike pushes state memory to 192.5 GB and crashes on step one.
-3. **Diagnosing and fixing a per-GPU throughput drop when scaling FSDP from one node to eight nodes:** First, check `NCCL_DEBUG=INFO`, `all_reduce_perf`, and `nvidia-smi topo -m` to verify intra-node NVLink and inter-node InfiniBand are active. Second, inspect Kineto or HTA traces to see if AllGather exceeds 60 percent of step time across 64 ranks due to cross-node InfiniBand latency. If the sharded state fits within one or two nodes, switch from flat full sharding to two-dimensional Hybrid Sharding (`HSDP`). That change keeps all AllGather and ReduceScatter traffic on 900 GB/s intra-node NVLink and reduces cross-node InfiniBand traffic by 15.5 times on four nodes.
-4. **Architectural shift from FSDP1 to FSDP2 and why `torch.compile` works better with FSDP2 and SimpleFSDP:** FSDP1 concatenates all parameters in a wrapped module into a single one-dimensional `FlatParameter` tensor. That design breaks parameter abstraction, forces uniform data types per group, complicates state dicts, and hides individual tensors from `TorchDynamo`. FSDP2 (`fully_shard`) shards each parameter independently along dimension zero as a `DTensor(Shard(0))`. Because the compiler sees clean per-parameter DTensors and block boundaries, `TorchInductor` can fuse compute kernels and reorder collectives. That synergy yields up to 28 percent lower memory and 69 percent higher throughput in TorchTitan's SimpleFSDP benchmarks.
+1. Why FSDP full sharding requires 50 percent more communication volume than DDP, and when to set `reshard_after_forward=False`. In DDP, every GPU holds a full weight replica, so the only collective is a single backward AllReduce costing two times the weight size. In FSDP full sharding with `reshard_after_forward=True`, every layer runs one forward AllGather and frees the weights. It then runs a second backward AllGather followed by one ReduceScatter. That sequence totals three times the weight size, or 1.5 times DDP's traffic. If AllGather latency is the bottleneck and HBM has room to keep weights, setting `reshard_after_forward=False` skips the backward AllGather and drops traffic back to two times the weight size.
+2. Memory timeline of a 70B model on sixteen 80 GB H100 GPUs and why root-only wrapping causes an immediate OOM. At rest on sixteen GPUs, each GPU stores one-sixteenth of the 840 GB state, which is 52.5 GB and leaves 27.5 GB free. Wrapping each of the 80 Transformer blocks individually means AllGather materializes only 1.75 GB per block, or 3.5 GB with one prefetched block, peaking at 56.0 GB of state memory. Wrapping only the root model forces AllGather to materialize all 140.0 GB of weights at once. That spike pushes state memory to 192.5 GB and crashes on step one.
+3. Diagnosing and fixing a per-GPU throughput drop when scaling FSDP from one node to eight nodes. Start by checking `NCCL_DEBUG=INFO`, `all_reduce_perf`, and `nvidia-smi topo -m` to verify intra-node NVLink and inter-node InfiniBand are active. Then inspect Kineto or HTA traces to see if AllGather exceeds 60 percent of step time across 64 ranks due to cross-node InfiniBand latency. If the sharded state fits within one or two nodes, switch from flat full sharding to two-dimensional Hybrid Sharding (`HSDP`). That change keeps all AllGather and ReduceScatter traffic on 900 GB/s intra-node NVLink and reduces cross-node InfiniBand traffic by 15.5 times on four nodes.
+4. Architectural shift from FSDP1 to FSDP2 and why `torch.compile` works better with FSDP2 and SimpleFSDP. FSDP1 concatenates all parameters in a wrapped module into a single one-dimensional `FlatParameter` tensor. That design breaks parameter abstraction, forces uniform data types per group, complicates state dicts, and hides individual tensors from `TorchDynamo`. FSDP2 (`fully_shard`) shards each parameter independently along dimension zero as a `DTensor(Shard(0))`. Because the compiler sees clean per-parameter DTensors and block boundaries, `TorchInductor` can fuse compute kernels and reorder collectives. That synergy yields up to 28 percent lower memory and 69 percent higher throughput in TorchTitan's SimpleFSDP benchmarks.
 
 ---
 
@@ -852,7 +856,7 @@ Production FSDP Telemetry Thresholds (Volume 13 Ch. 4):
 
 ## Sources and review notes
 
-The primary book chapters and migrated reference materials read in full and used to build this chapter are summarized in the table below.
+The table lists the sources behind this chapter. The planning files used to build it are `planning/coverage/chapters/14-05.md` and `planning/ledgers/14-05.md`.
 
 | Source | What was read and used |
 |---|---|
