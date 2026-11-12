@@ -22,9 +22,11 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-Sooner or later, almost every platform component grows an HTTP API. An inventory service sits in front of NetBox and Redfish. A job-submission gateway fronts Slurm or Kubernetes. A webhook receiver takes alerts from Alertmanager. A model-serving front end handles authentication, batching and streaming before it calls Triton or vLLM. An internal control plane manages GPU quotas, and an "agent" exposes health and metrics.
+Sooner or later, almost every platform component grows an HTTP API, and that is usually a good sign. An inventory service sits in front of NetBox and Redfish. A job-submission gateway fronts Slurm or Kubernetes. A webhook receiver takes alerts from Alertmanager. A model-serving front end handles authentication, batching and streaming before it calls Triton or vLLM. An internal control plane manages GPU quotas, and an "agent" exposes health and metrics.
 
-FastAPI is the dominant Python framework for these services. It is asynchronous, built on ASGI, and type-driven. Request validation and OpenAPI documentation come from Python type hints and pydantic models. If you run control-plane services, it is fast enough for most of them, and for many data-plane services too.
+Each of those is a microservice: one small program that owns one job and talks to everything else over HTTP. FastAPI is the dominant Python framework for building them. It is asynchronous, built on ASGI, and type-driven. Request validation and OpenAPI documentation come from Python type hints and pydantic models. If you run control-plane services, it is fast enough for most of them, and for many data-plane services too.
+
+The framework also does a great deal on your behalf, and that is the reason to read this chapter rather than skim a quickstart. A tool that writes your validation, your documentation and your error responses for you is worth understanding properly. Its mistakes are quiet ones.
 
 This chapter teaches FastAPI from end to end, with an infrastructure and inference bias. It starts with the architecture, WSGI vs ASGI, and then moves through routing and validation, dependency injection, error handling, authentication and security, databases, background and long-running work, streaming responses, and testing. It finishes with packaging and deployment on containers and Kubernetes, including probes and graceful shutdown, and with observability.
 
@@ -32,7 +34,7 @@ As you read, keep one of these services in mind. The examples build a Fleet API 
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with functions, classes, typing and pydantic basics, which are covered in chapters 3.1 to 3.4. You also need concurrency and asyncio from chapter 3.6, and HTTP basics from chapter 2.10.
+Before you start, you should be comfortable with functions, classes, typing and pydantic basics, which are covered in chapters 3.1 to 3.4. You also need concurrency and asyncio from chapter 3.6, and HTTP basics from chapter 2.10. None of that is decorative. This chapter leans on all of it, and it is easier to pause here than halfway through the streaming section.
 
 After this chapter you can:
 
@@ -50,9 +52,15 @@ If any prerequisite feels unfamiliar, go back to that chapter before you start t
 
 ## 1. Architecture: from WSGI to ASGI
 
-Picture an inventory API that makes a database call on every request. If the server holds a worker while it waits on that call, the server can only serve as many requests as it has workers. The way a server model handles waiting decides how much traffic one process can carry.
+Start with a scene you will meet in your first month. A health endpoint was meant to be three lines that return `{"status": "ok"}`. Then someone added a version stamp that reads a config file, and then a database ping so the dashboard shows green only when the database is reachable. Now every node in the fleet calls the endpoint every few seconds, and the dashboard starts timing out while the CPU on that pod barely moves.
 
-WSGI, defined in PEP 3333, is the classic synchronous interface that Flask and Django use. Each request occupies one worker thread or process until it finishes. Concurrency therefore comes from running many workers, for example with gunicorn. ASGI is the asynchronous successor. It runs an event loop, supports `async def` handlers, and keeps long-lived connections open for WebSockets and SSE. Background tasks fit this model too.
+Nothing in that endpoint is slow. Every request is simply waiting, and waiting is the whole story of this section. The way a server model handles waiting decides how much traffic one process can carry.
+
+WSGI, defined in PEP 3333, is the classic synchronous interface that Flask and Django use. Synchronous means the server hands one request to one worker, then stands there until that worker comes back. Each request occupies one worker thread or process until it finishes. Concurrency therefore comes from running many workers, for example with gunicorn.
+
+ASGI is the asynchronous successor. Asynchronous means one worker can hold many requests at once and move between them whenever one of them is waiting on I/O. It runs an event loop, supports `async def` handlers, and keeps long-lived connections open for WebSockets and SSE, which is Server-Sent Events. Background tasks fit this model too.
+
+An event loop is worth a plain definition, because the rest of the chapter depends on it. Picture a single thread with a list of work on its desk. It picks up one item, starts it, and the moment that item has to wait for a disk or a socket, it sets it aside and picks up the next one. The thread never sits idle while something else could run.
 
 FastAPI is built on Starlette, an ASGI toolkit, and on pydantic for validation. On top of those two, it adds route declarations, dependency injection and automatic OpenAPI.
 
@@ -68,7 +76,9 @@ flowchart LR
   O --> C
 ```
 
-`async def` endpoints run directly on the event loop. That suits code that awaits non-blocking I/O, such as an `httpx.AsyncClient` or an async database driver. The cost is that one blocking call or heavy CPU job stalls every other request. `def` endpoints run in a thread pool managed by anyio, which has 40 threads by default. Blocking libraries are acceptable there, but concurrency is capped by the pool. For example, with a 40-thread pool, 40 blocking calls can run at once, and a 41st call waits for a free thread.
+An `async def` endpoint runs directly on the event loop. That suits code that awaits non-blocking I/O, such as an `httpx.AsyncClient` or an async database driver. The cost is that one blocking call or heavy CPU job stalls every other request, because there is only ever one thread to stall. A call is blocking when it holds the thread until it finishes, and `time.sleep` is the simplest example.
+
+A `def` endpoint is treated differently. FastAPI runs it in a thread pool managed by anyio, which has 40 threads by default. Blocking libraries are acceptable there, because a thread pool is exactly what they expect. Concurrency is capped by the pool, though. With a 40-thread pool, 40 blocking calls can run at once, and a 41st call waits for a free thread.
 
 The rule is simple. Use `async def` only when everything you await is truly async. Otherwise use `def`, or wrap the blocking call with `await asyncio.to_thread(...)` or `run_in_threadpool` inside async code. Never call `requests.get`, `time.sleep`, `subprocess.run` or heavy NumPy inside `async def`.
 
@@ -80,7 +90,9 @@ Decide for each endpoint whether it truly awaits async work, because that choice
 
 ## 2. A first application
 
-Suppose you need a small API that records the nodes in a rack. The app below is a Fleet API. A dictionary stands in for a database, so you can focus on the framework.
+Your first task is usually small and specific. A rack of nodes arrived, and the spreadsheet that tracks them is already behind. You want a service you can reach with `curl`, so that the next question about that rack goes to the API instead of to you.
+
+The app below is a Fleet API. A dictionary stands in for a database, so you can focus on the framework.
 
 ```python
 # app/main.py
@@ -124,7 +136,7 @@ async def list_nodes(rack: str | None = None, limit: int = 100, offset: int = 0)
     return items[offset: offset + limit]
 ```
 
-`NodeIn` describes what a client sends, and `Node` adds the `id` the server assigns. The dictionary is for demo only.
+Two models do the work here, and the split between them matters later. `NodeIn` describes what a client sends, and `Node` adds the `id` the server assigns. The dictionary is for demo only.
 
 ```bash
 uvicorn app.main:app --reload                        # development with autoreload
@@ -132,17 +144,21 @@ curl -s localhost:8000/nodes -X POST -H 'content-type: application/json' -d '{"n
 # interactive docs: http://localhost:8000/docs (Swagger UI), /redoc, machine-readable /openapi.json
 ```
 
-Start the server, then send the `curl` request. Open `/docs` in a browser to see the Swagger UI, which shows the same schema the code declares.
+Start the server, then send the `curl` request. Open `/docs` in a browser to see the Swagger UI, an interactive page built from your code. It shows the same schema the code declares, so it can never drift away from the real thing.
 
-Notice what FastAPI did for you. It validated the JSON body and returned a 422 with details on failure. It converted types, documented the endpoint in OpenAPI, filtered the response through `response_model`, set the status code and generated the docs.
+Notice what FastAPI did for you on that one request. It validated the JSON body and returned a 422 with details on failure. It converted types, documented the endpoint in OpenAPI, filtered the response through `response_model`, set the status code and generated the docs.
 
-Send a name that breaks the pattern, and compare the 422 response with that rule.
+Send a name that breaks the pattern, and compare the 422 response with that rule. The message names the field and the rule it violated, which saves a support round trip.
 
 ## 3. Requests: routing and parameters
 
+Picture the first support ticket of the week. `GET /nodes/summary` returns a 422 that complains `summary` is not a valid integer. The function that builds the summary exists and is correct, so the message makes no sense until you look at the order of the routes. The parameterised `/nodes/{node_id}` declared above it is answering first, and it is trying to read `summary` as a number.
+
+That is routing in one incident. A route is a rule that says which function answers which path and method, and the rules are tried in the order you wrote them.
+
 ### Path, query, header, cookie, form and body
 
-A request can carry its input in several places: the URL path, the query string, headers, cookies, a form or a JSON body. You declare each input as a function parameter, and FastAPI finds the right source for it.
+A request can carry its input in several places: the URL path, the query string, headers, cookies, a form or a JSON body. You declare each input as a function parameter, and FastAPI finds the right source for it. That is the whole trick, and it is worth reading the code below slowly once.
 
 ```python
 from fastapi import Path, Query, Header, Cookie, Body, Form, File, UploadFile, Depends
@@ -172,7 +188,7 @@ The book *Building Python Web APIs with FastAPI* shows the same ideas in chapter
 Nested pydantic models validate hierarchical JSON payloads. In that book, `class Item(BaseModel): item: str; status: str` sits inside `class Todo(BaseModel): id: int; item: Item`. Example data goes into `Config.schema_extra`, or into `model_config = ConfigDict(json_schema_extra={"example": ...})`. These models also fill the Swagger UI at `/docs` and the ReDoc page at `/redoc` automatically.
 
 - Enums and literals restrict the values a client can send. Declare them as `class State(StrEnum): ...`, and an invalid value returns a 422.
-- Path order matters. Define fixed paths such as `/nodes/summary` before parameterised paths such as `/nodes/{id}`.
+- Path order matters, and that is the incident from the top of this section. Define fixed paths such as `/nodes/summary` before parameterised paths such as `/nodes/{id}`.
 - Query parameter models arrived in version 0.115. Group query parameters into a pydantic model with `Annotated[Filter, Query()]`.
 - Pagination can use `limit` and `offset`, or a cursor-based `page_token`. Cap `limit` with `Query(le=1000)`, return total counts or `next` tokens, and keep the ordering stable.
 - For POST requests that create resources, accept an `Idempotency-Key` header. Store results by key, so a retried request can be matched to work already done.
@@ -181,9 +197,9 @@ Decide which of your routes create resources, because those are the ones that ne
 
 ### Request and response models
 
-Pydantic models define the schema of your API. Keep three kinds of model apart: input, stored and output. In this chapter, `NodeIn`, `NodeDB` and `NodeOut` play those three roles. The book uses the same idea in chapter 3 with `Todo`, `TodoItem` and `class TodoItems(BaseModel): todos: List[TodoItem]`. Its route is declared as `@todo_router.get("/todo", response_model=TodoItems)`, so `retrieve_todo()` returns only the `TodoItem` descriptions and hides the internal `id` fields.
+Pydantic models define the schema of your API, and a schema is simply a description of what the data must look like. Keep three kinds of model apart: input, stored and output. In this chapter, `NodeIn`, `NodeDB` and `NodeOut` play those three roles. The book uses the same idea in chapter 3 with `Todo`, `TodoItem` and `class TodoItems(BaseModel): todos: List[TodoItem]`. Its route is declared as `@todo_router.get("/todo", response_model=TodoItems)`, so `retrieve_todo()` returns only the `TodoItem` descriptions and hides the internal `id` fields.
 
-The separation protects you in two ways. Clients cannot set server-controlled fields, such as `id`, `owner` or timestamps, and secrets never leak into a response. This is called mass-assignment protection. The `response_model` filters and validates what you return. Options such as `response_model_exclude_none=True` and `response_model_by_alias` control the output further. To serialise ORM objects, set `model_config = {"from_attributes": True}`.
+The separation protects you in two ways. Clients cannot set server-controlled fields, such as `id`, `owner` or timestamps, and secrets never leak into a response. This is called mass-assignment protection, and the name describes the attack well: a client sends a field it has no business setting, and a careless server accepts it. The `response_model` filters and validates what you return. Options such as `response_model_exclude_none=True` and `response_model_by_alias` control the output further. To serialise ORM objects, set `model_config = {"from_attributes": True}`.
 
 ```python
 from datetime import datetime
@@ -214,9 +230,13 @@ You can annotate a return type directly, as in `-> JobOut`, and FastAPI uses it 
 
 ## 4. Dependency injection
 
-A handler often needs a database session, the settings and the current user. `Depends` declares each of these once, as a reusable component. FastAPI resolves it for each request and caches the result within that request.
+By the third resource you add, the same four lines sit at the top of every handler: read the settings, open a database session, check the API key, find the current user. The code works, and it is one careless copy away from a handler that forgets the key check.
 
-A dependency can be a function, a class or a generator. A generator runs cleanup after its `yield`.
+Dependency injection is the cure, and the name is more intimidating than the idea. A dependency is a small piece of setup that a handler needs. You write that setup once as a function, tell FastAPI to call it with `Depends`, and the framework hands the result to the handler on every request.
+
+A handler often needs a database session, the settings and the current user. `Depends` declares each of these once, as a reusable component. FastAPI resolves it for each request and caches the result within that request, so several dependencies that all ask for the settings do not build them twice.
+
+A dependency can be a function, a class or a generator. A generator runs cleanup after its `yield`, which is how a database session gets closed even when the handler fails.
 
 ```python
 from fastapi import Depends
@@ -246,13 +266,13 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(require_key)])    # appli
 app = FastAPI(dependencies=[Depends(require_key)])                        # global
 ```
 
-Read `get_db` first. Code before `yield` opens the session, and the endpoint receives it. Code after `yield` runs once the response is sent, which is where you commit, roll back or close it. `require_key` raises a 401 for a key that is not allowed.
+Read `get_db` first, because it is the pattern you will use most. Code before `yield` opens the session, and the endpoint receives it. Code after `yield` runs once the response is sent, which is where you commit, roll back or close it. `require_key` raises a 401 for a key that is not allowed.
 
 A dependency added through `dependencies=[...]` runs without injecting a value. You can attach it to one route, to a router, or to the whole app. Dependencies also make tests easier, because `app.dependency_overrides[get_db] = fake_db` swaps a component across the app. Create expensive shared objects once, in lifespan.
 
 ### Lifespan: startup and shutdown
 
-Load your model and open your HTTP client before the first request. Close them cleanly on shutdown.
+Load your model and open your HTTP client before the first request. Close them cleanly on shutdown. Doing this at startup means the first real user does not pay for the work, and doing it at shutdown means no connection is left half open.
 
 ```python
 from contextlib import asynccontextmanager
@@ -274,13 +294,15 @@ The code before `yield` runs at startup. It creates an `httpx.AsyncClient` with 
 
 The older `@app.on_event("startup")` hooks are deprecated in favour of lifespan. Store shared objects on `app.state`, and read them through `request.app.state`.
 
-Move expensive setup into lifespan, so it runs once per process.
+Move expensive setup into lifespan, so it runs once per process rather than once per request.
 
 ## 5. Errors, validation and middleware
 
-When a request goes wrong, the client should learn what failed and nothing more. Good error handling gives each failure a clear status code and one consistent body.
+A client asks for a node that was decommissioned last month. The response is a 500 with a Python traceback, the dashboard shows a blank panel, and the only way to find that request in the logs is to guess the timestamp. Nobody learns anything, and the operator has to reproduce the problem from scratch.
 
-FastAPI returns a 422 for validation errors automatically. To return your own error schema, customise the handler with `@app.exception_handler(RequestValidationError)`. For expected errors, raise `HTTPException(status_code, detail, headers)`. For domain errors, define an exception class and map it, as below.
+When a request goes wrong, the client should learn what failed and nothing more. Good error handling gives each failure a clear status code and one consistent body. That second part matters as much as the first, because a client that has to parse three different error shapes will get one of them wrong.
+
+FastAPI returns a 422 for validation errors automatically. To return your own error schema, customise the handler with `@app.exception_handler(RequestValidationError)`. For expected errors, raise `HTTPException(status_code, detail, headers)`. For domain errors, define an exception class and map it, as below. A domain error is a failure that belongs to your problem rather than to HTTP, such as a node that does not exist.
 
 ```python
 class NodeNotFound(Exception):
@@ -293,7 +315,7 @@ async def nf_handler(request: Request, exc: NodeNotFound):
 
 Keep one error body shape across the whole API. RFC 9457 defines `application/problem+json`, with the fields type, title, status, detail and instance. Choose status codes with care. 400, 422, 409 and 429 each mean something different, and 401 is not the same as 403. Use 502, 503 or 504 when an upstream service is the problem. Never leak stack traces or secrets. Log unexpected exceptions with a request id, and let a catch-all `Exception` handler return a 500.
 
-Middleware wraps every request. Use `@app.middleware("http")` or Starlette classes. Common uses include request ids, timing, logging, CORS through `CORSMiddleware` with explicit origins, GZip, trusted hosts, HTTPS redirects and `ProxyHeadersMiddleware` behind a load balancer. Body size limits are a proxy or ASGI setting. Pure ASGI middleware is faster than `BaseHTTPMiddleware`, which has quirks with streaming and background tasks.
+Middleware wraps every request. Picture a corridor that every visitor walks down in both directions: each middleware function can inspect the request on the way in and change the response on the way out. Use `@app.middleware("http")` or Starlette classes. Common uses include request ids, timing, logging, CORS through `CORSMiddleware` with explicit origins, GZip, trusted hosts, HTTPS redirects and `ProxyHeadersMiddleware` behind a load balancer. Body size limits are a proxy or ASGI setting. Pure ASGI middleware is faster than `BaseHTTPMiddleware`, which has quirks with streaming and background tasks.
 
 ```python
 import time, uuid, logging
@@ -313,9 +335,11 @@ async def access_log(request: Request, call_next):
     return response
 ```
 
-This middleware reuses an incoming `x-request-id` header or generates one when it is missing. It stores the id on the request and returns it in the response. It logs the method, path, status and duration, and it logs unhandled exceptions with the request id before it re-raises them. Decide your error body shape once.
+This middleware reuses an incoming `x-request-id` header or generates one when it is missing. It stores the id on the request and returns it in the response. It logs the method, path, status and duration, and it logs unhandled exceptions with the request id before it re-raises them. Decide your error body shape once, and let this middleware supply the id that ties a client report to a log line.
 
 ## 6. Structuring applications
+
+Six weeks in, `main.py` has become the whole application. Several people are editing it, the merge conflicts land in the same import block every time, and no test can import a service without starting the app.
 
 As an application grows, a single `main.py` becomes hard to test and hard to change. Splitting it into layers keeps HTTP code apart from business logic. The tree below shows one way to organize a fleet service.
 
@@ -338,27 +362,29 @@ fleet/
 └── tests/
 ```
 
-Start each resource with `APIRouter(prefix="/nodes", tags=["nodes"])`, then mount it with `app.include_router(nodes.router, prefix="/v1")`. The Event Planner app (`planner/`) in *Building Python Web APIs with FastAPI*, chapter 5, uses the same kind of split. Its application is organized into `database/connection.py`, `models/events.py`, `models/users.py`, `routes/events.py` and `routes/users.py`. The `Event` model in `models/events.py` has `id`, `title`, `image`, `description`, `tags: List[str]`, `location` and `creator`. The `models/users.py` file defines `User`, `NewUser` and `UserSignIn`, and `UserSignIn` uses `EmailStr`. The routes are `event_router = APIRouter(tags=["Events"])` in `routes/events.py`, and `user_router = APIRouter(tags=["User"])` in `routes/users.py`, which serves `/user/signup` and `/user/signin`. The `main.py` file registers them with `app.include_router(user_router, prefix="/user")` and `app.include_router(event_router, prefix="/event")`.
+Start each resource with `APIRouter(prefix="/nodes", tags=["nodes"])`, then mount it with `app.include_router(nodes.router, prefix="/v1")`. A router is simply a bundle of routes you can mount under a prefix, which is what keeps the URL layout in one place. The Event Planner app (`planner/`) in *Building Python Web APIs with FastAPI*, chapter 5, uses the same kind of split. Its application is organized into `database/connection.py`, `models/events.py`, `models/users.py`, `routes/events.py` and `routes/users.py`. The `Event` model in `models/events.py` has `id`, `title`, `image`, `description`, `tags: List[str]`, `location` and `creator`. The `models/users.py` file defines `User`, `NewUser` and `UserSignIn`, and `UserSignIn` uses `EmailStr`. The routes are `event_router = APIRouter(tags=["Events"])` in `routes/events.py`, and `user_router = APIRouter(tags=["User"])` in `routes/users.py`, which serves `/user/signup` and `/user/signin`. The `main.py` file registers them with `app.include_router(user_router, prefix="/user")` and `app.include_router(event_router, prefix="/event")`.
 
-Keep route functions thin. A route parses and validates input, calls a service, and maps the result to a response. Business logic belongs in services, which import nothing from FastAPI. Data access belongs in repositories. That split makes unit tests easy to write.
+Keep route functions thin. A route parses and validates input, calls a service, and maps the result to a response. Business logic belongs in services, which import nothing from FastAPI. Data access belongs in repositories. That split makes unit tests easy to write, because a service can be called without an HTTP client anywhere in sight.
 
 An app factory, `def create_app(settings=None) -> FastAPI`, lets tests build isolated apps. Version your API with a URL prefix such as `/v1`. Mark old routes with `deprecated=True`, and send `Sunset` headers when they retire. Evolve schemas additively, treat OpenAPI as the contract, and test for breaking changes, for example with `oasdiff`.
 
 Read configuration from environment variables with pydantic-settings, following the 12-factor approach. Load secrets from files or a secret manager. Keep no configuration in code.
 
-You can mount sub-apps and static files, as in `app.mount("/static", StaticFiles(...))`. For server-side HTML, chapter 4 of the book uses `Jinja2Templates(directory="templates/")`. It renders pages with `templates.TemplateResponse("todo.html", {"request": request, "todos": todo_list})`. Jinja2 gives you filters such as `default`, `escape`, `int`, `float`, `join` and `length`. It also gives you `{% if %}` and `{% for %}` blocks, `{% macro %}` for reusable components, and `{% extends "home.html" %}` with `{% block content %}` for template inheritance. That inheritance suits simple status dashboards.
+You can mount sub-apps and static files, as in `app.mount("/static", StaticFiles(...))`. For server-side HTML, use `Jinja2Templates(directory="templates/")`. It renders pages with `templates.TemplateResponse("todo.html", {"request": request, "todos": todo_list})`. Jinja2 gives you filters such as `default`, `escape`, `int`, `float`, `join` and `length`. It also gives you `{% if %}` and `{% for %}` blocks, `{% macro %}` for reusable components, and `{% extends "home.html" %}` with `{% block content %}` for template inheritance. That inheritance suits simple status dashboards.
 
 Keep your routes thin from the start, so the services and repositories stay easy to test.
 
 ## 7. Authentication and security
 
-Suppose a user with a valid token edits a job that belongs to someone else. The request is authenticated, but it is still wrong. Authentication answers who is calling. Authorisation decides what that caller may touch.
+Suppose a user with a valid token edits a job that belongs to someone else. The request is authenticated, but it is still wrong. Authentication answers who is calling. Authorisation decides what that caller may touch, and the two are separate questions.
 
-API keys travel in an `X-API-Key` header. Store them hashed, compare them with `secrets.compare_digest`, give each key its own scopes and rate limits, and rotate them.
+That gap is where an API can be authenticated and still wrong, and the second check is the one that gets forgotten. Keep the pair in mind through this section.
 
-Never store plaintext passwords. The `HashPassword` helper in the book's `auth/hash_password.py` uses passlib[bcrypt] with `CryptContext(schemes=["bcrypt"], deprecated="auto")`. The alternatives are `hashlib.pbkdf2_hmac`, `scrypt` and `argon2-cffi`. `create_hash(password: str)` hashes the password during `/user/signup`, and `verify_hash(plain_password: str, hashed_password: str)` checks it during `/user/signin`.
+API keys travel in an `X-API-Key` header. Store them hashed, compare them with `secrets.compare_digest`, give each key its own scopes and rate limits, and rotate them. The compare function takes the same time whether the key is nearly right or completely wrong, which removes a timing signal an attacker could otherwise measure.
 
-The JWT code lives in `auth/jwt_handler.py` and `auth/authenticate.py`, and it uses `python-jose`, `PyJWT` or `authlib`. `create_access_token(user: str)` builds a payload with `{"user": user, "expires": time.time() + 3600}`. It signs that payload with `jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")`. For asymmetric signing, use `RS256` against an OIDC provider's JWKS instead. `/user/signin` accepts `user: OAuth2PasswordRequestForm = Depends()` and returns `TokenResponse(access_token=access_token, token_type="Bearer")`.
+Never store plaintext passwords. A `HashPassword` helper in `auth/hash_password.py` can use passlib[bcrypt] with `CryptContext(schemes=["bcrypt"], deprecated="auto")`. The alternatives are `hashlib.pbkdf2_hmac`, `scrypt` and `argon2-cffi`. `create_hash(password: str)` hashes the password during `/user/signup`, and `verify_hash(plain_password: str, hashed_password: str)` checks it during `/user/signin`.
+
+The JWT code lives in `auth/jwt_handler.py` and `auth/authenticate.py`, and it uses `python-jose`, `PyJWT` or `authlib`. A JWT, or JSON Web Token, is a signed block of claims the server can hand to a client and check later without storing a session. `create_access_token(user: str)` builds a payload with `{"user": user, "expires": time.time() + 3600}`. It signs that payload with `jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")`. For asymmetric signing, use `RS256` against an OIDC provider's JWKS instead. `/user/signin` accepts `user: OAuth2PasswordRequestForm = Depends()` and returns `TokenResponse(access_token=access_token, token_type="Bearer")`.
 
 Protected routes, such as `POST /event/new`, `PUT /event/{id}` and `DELETE /event/{id}`, use `oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/signin")`. That reads the `Authorization: Bearer <token>` header. Then `authenticate(token: str = Depends(oauth2_scheme))` calls `verify_access_token(token)`. The check confirms that `expires` is present and that `datetime.utcnow() <= datetime.utcfromtimestamp(expire)`. It raises `400` or `403` otherwise. On success, it returns `data["user"]`.
 
@@ -384,7 +410,9 @@ async def current_user(scopes: SecurityScopes, token: Annotated[str, Depends(oau
 
 Transport security starts at the edge. TLS can end at the ingress or gateway, or at uvicorn with `--ssl-keyfile`. Redirect HTTP to HTTPS, send HSTS, and use mTLS for internal APIs.
 
-Hardening starts with input. Validate and bound every input, including lengths, counts and sizes. Set `extra="forbid"` on models, and limit request body and upload sizes. If you accept URLs, avoid SSRF with allow-lists, and block link-local and metadata IPs. Use parameterised queries only, which ORMs provide for you. Encode output for HTML, and set cookies to `HttpOnly`, `Secure` and `SameSite`. Add CSRF protection if cookies carry authentication. Allow CORS only for the origins you need, and set security headers. Rate limit at the gateway, with `slowapi`, or with a Redis-based limiter. Audit-log mutating calls, scan your dependencies, and turn debug mode off in production. Set `docs_url=None` if the API must not expose its docs publicly.
+Hardening starts with input. Validate and bound every input, including lengths, counts and sizes. Set `extra="forbid"` on models, and limit request body and upload sizes. If you accept URLs, avoid SSRF with allow-lists, and block link-local and metadata IPs. SSRF means server-side request forgery: a client persuades your server to fetch an address the client cannot reach itself. Use parameterised queries only, which ORMs provide for you.
+
+Encode output for HTML, and set cookies to `HttpOnly`, `Secure` and `SameSite`. Add CSRF protection if cookies carry authentication, where CSRF is cross-site request forgery. Allow CORS only for the origins you need, and set security headers. Rate limit at the gateway, with `slowapi`, or with a Redis-based limiter. Audit-log mutating calls, scan your dependencies, and turn debug mode off in production. Set `docs_url=None` if the API must not expose its docs publicly.
 
 The OWASP API Top 10 gives you a checklist. It covers broken object-level authorisation, which means checking ownership on every `/{id}` access. It also covers broken authentication, excessive data exposure (use response models), lack of resources and rate limiting, function-level authorisation, mass assignment, misconfiguration, injection, improper asset management, and unsafe consumption of upstream APIs.
 
@@ -394,7 +422,9 @@ Treat every route that takes an `{id}` as a place to check ownership first.
 
 ## 8. Databases
 
-Every request that reads or writes data needs a database session. The pool decides how many of those sessions run at once.
+The service is comfortable in staging, where a handful of people use it. On the first day of real traffic, PostgreSQL starts refusing connections, and the CPU and memory graphs stay calm the whole time. Nothing in the application looks wrong, which is the difficult part of this section.
+
+Every request that reads or writes data needs a database session. A session is one conversation with the database, and a pool is a fixed set of those conversations that the application reuses instead of opening a new one every time. The pool decides how many of those sessions run at once.
 
 ### SQL (SQLAlchemy 2.x / SQLModel)
 
@@ -422,9 +452,9 @@ async def list_nodes(db: Annotated[AsyncSession, Depends(get_db)], rack: str | N
     return (await db.scalars(stmt)).all()
 ```
 
-This example uses an async engine. The `pool_size=10` setting gives the base pool, and `max_overflow=20` allows up to 20 more connections. `pool_pre_ping=True` checks each connection before use. The `NodeRow` class maps to the `nodes` table, and `list_nodes` filters by rack when one is given. It caps `limit` at 1000.
+This example uses an async engine. The `pool_size=10` setting gives the base pool, and `max_overflow=20` allows up to 20 more connections. `pool_pre_ping=True` checks each connection before use, which saves you from handing a dead socket to a request. The `NodeRow` class maps to the `nodes` table, and `list_nodes` filters by rack when one is given. It caps `limit` at 1000.
 
-**SQLModel** merges pydantic and SQLAlchemy models into one class. Its author is also the author of FastAPI, and chapter 6 of the book uses it. A table model looks like `class Event(SQLModel, table=True): id: Optional[int] = Field(default=None, primary_key=True); tags: List[str] = Field(sa_column=Column(JSON))`. A partial update schema, `class EventUpdate(SQLModel): title: Optional[str] = None ...`, lets a client send only the fields it changes.
+**SQLModel** merges pydantic and SQLAlchemy models into one class. Its author is also the author of FastAPI. A table model looks like `class Event(SQLModel, table=True): id: Optional[int] = Field(default=None, primary_key=True); tags: List[str] = Field(sa_column=Column(JSON))`. A partial update schema, `class EventUpdate(SQLModel): title: Optional[str] = None ...`, lets a client send only the fields it changes.
 
 The book creates tables with `engine_url = create_engine("sqlite:///planner.db", echo=True, connect_args={"check_same_thread": False})` and `SQLModel.metadata.create_all(engine_url)`. It injects sessions with `def get_session(): with Session(engine_url) as session: yield session`.
 
@@ -433,18 +463,20 @@ The CRUD routes in `routes/events.py` follow four patterns. Create runs `session
 - **Migrations**: use Alembic. Generate a migration with `alembic revision --autogenerate`, and apply it with `alembic upgrade head`. In multi-replica deployments, run migrations as a separate job or init step. Do not run them when you start the app.
 - **Pools**: size them so that `workers × pool_size ≤ DB max_connections`. Use `pool_pre_ping` and timeouts. When many replicas connect, put a pooler such as PgBouncer in front. Do not share sessions across requests or tasks, and keep transactions short. Handle deadlocks and serialization retries, and avoid N+1 queries with `selectinload`.
 - **Blocking drivers**: a blocking driver such as psycopg2 is fine inside `def` endpoints, because those run in the thread pool. Inside `async def`, use an async driver such as asyncpg, psycopg3 async or aiomysql.
-- **NoSQL**: for MongoDB, the book uses Motor and the Beanie ODM, in chapter 6. A model such as `class Event(Document):` subclasses Beanie's `Document`, which extends the pydantic `BaseModel`. Initialize the connection at startup with `client = AsyncIOMotorClient(settings.DATABASE_URL)`, then `await init_beanie(database=client.get_default_database(), document_models=[Event, User])`. A generic `Database` repository wraps each operation. Create runs `await document.create()`. Read runs `await self.model.get(id)` with `PydanticObjectId`, or `await self.model.find_all().to_list()`. Update builds `des_body = {k: v for k, v in body.dict().items() if v is not None}` and runs `await doc.update({"$set": des_body})`. Delete runs `await doc.delete()`. For caches, queues and rate limits, use Redis through `redis.asyncio`. etcd, DynamoDB and Elasticsearch or OpenSearch are other options. Time-series metrics belong in Prometheus or VictoriaMetrics, not in your service database.
+- **NoSQL**: for MongoDB, use Motor and the Beanie ODM. A model such as `class Event(Document):` subclasses Beanie's `Document`, which extends the pydantic `BaseModel`. Initialize the connection at startup with `client = AsyncIOMotorClient(settings.DATABASE_URL)`, then `await init_beanie(database=client.get_default_database(), document_models=[Event, User])`. A generic `Database` repository wraps each operation. Create runs `await document.create()`. Read runs `await self.model.get(id)` with `PydanticObjectId`, or `await self.model.find_all().to_list()`. Update builds `des_body = {k: v for k, v in body.dict().items() if v is not None}` and runs `await doc.update({"$set": des_body})`. Delete runs `await doc.delete()`. For caches, queues and rate limits, use Redis through `redis.asyncio`. etcd, DynamoDB and Elasticsearch or OpenSearch are other options. Time-series metrics belong in Prometheus or VictoriaMetrics, not in your service database.
 - **Caching**: options include `cachetools`, `aiocache` and Redis. Use cache-aside with TTLs. Send ETags and `Cache-Control` headers to clients, and invalidate entries on writes.
 
 Pick your pool size from your worker count and the database's connection limit, not from a guess.
 
 ## 9. Long-running, background and streaming work
 
-A client submits a training job, and the API has to answer long before the job finishes. How you hand the work off decides whether it survives a restart.
+A user submits a multi-day training job and the browser waits. The job will not finish before lunch, the request cannot stay open that long, and the pod that accepted it may be replaced before the job is done. Somehow the API has to answer now and still be telling the truth an hour later.
+
+That is the general problem. A client submits a training job, and the API has to answer long before the job finishes. How you hand the work off decides whether it survives a restart.
 
 ### Background tasks and queues
 
-`BackgroundTasks` runs a function after the response is sent, in the same process. It suits quick, fire-and-forget work, such as sending a notification. Its work is lost on a restart, so it is unsuitable for long or critical jobs.
+`BackgroundTasks` runs a function after the response is sent, in the same process. It suits quick, fire-and-forget work, such as sending a notification. Its work is lost on a restart, so it is unsuitable for long or critical jobs. The distinction is not about size. It is about what you are willing to lose.
 
 ```python
 from fastapi import BackgroundTasks
@@ -461,7 +493,7 @@ Use `BackgroundTasks` only for work you can afford to lose, and send anything du
 
 ### Streaming
 
-A client watching a long job needs updates as they happen. Server-Sent Events (SSE) let the server push those updates over plain HTTP.
+A client watching a long job needs updates as they happen. Server-Sent Events (SSE) let the server push those updates over plain HTTP. The server holds one connection open and keeps writing lines to it, and the browser reads each line as it arrives.
 
 ```python
 from fastapi.responses import StreamingResponse
@@ -494,7 +526,7 @@ Turn off proxy buffering before you judge a streaming endpoint, since buffering 
 
 ### An inference gateway example
 
-The example below is a thin FastAPI front end over a model server.
+The example below is a thin FastAPI front end over a model server. It keeps the boring work at the edge, which is auth, validation, timeouts, streaming and metrics, and leaves inference to the backend.
 
 ```python
 # Thin FastAPI front end over a model server: auth, validation, timeouts, streaming passthrough, metrics
@@ -522,7 +554,9 @@ Set the timeouts and per-tenant limits before you put the gateway in front of us
 
 ## 10. Testing
 
-The fixture below builds an app with a `sqlite+aiosqlite://` URL and the key `k`, then replaces the database dependency with `fake_db`. You can run tests like these without a real database.
+The first version of the suite needs a live database, a Redis and a GPU. Nobody runs it locally, so it only ever runs in CI, and when it fails nobody is sure whether the code broke or the environment did.
+
+Tests for an API are mostly about taking dependencies away, and FastAPI is built for exactly that. The fixture below does the removing. A fixture is a named piece of preparation that pytest hands to a test, and this one builds an app with a `sqlite+aiosqlite://` URL and the key `k`, then replaces the database dependency with `fake_db`. You can run tests like these without a real database.
 
 ```python
 # tests/test_nodes.py
@@ -570,6 +604,8 @@ Run the whole suite in CI with coverage, as chapter 3.9 describes.
 
 ## 11. Deployment and operations
 
+You ship version 1.4.2 on a Tuesday afternoon. During the rolling update, a user's `POST /jobs` reaches a pod that is already shutting down. The request disappears with no error at all, the job never exists, and the rollout reports success.
+
 When you ship the API, the container image is what runs in production. A careless build can copy secrets or local environments into that image. The Dockerfile below keeps the image small and runs the app as a non-root user.
 
 ### Packaging
@@ -587,13 +623,13 @@ HEALTHCHECK CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.reque
 CMD ["uvicorn", "fleet.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*", "--timeout-graceful-shutdown", "25"]
 ```
 
-Always include a `.dockerignore` file that excludes `venv`, `.env`, `.git` and `__pycache__`. Without it, local virtual environments and secrets can end up in the image build context. Use `docker-compose.yml` for local multi-container checks before you deploy to Kubernetes. The compose file in chapter 9 of the book has an `api` service with `env_file: .env.prod`, and a `database` service with a persistent volume, `data:/data/db`. In production, use a managed cloud database such as Cloud SQL, RDS or Atlas, instead of unbacked container storage.
+Always include a `.dockerignore` file that excludes `venv`, `.env`, `.git` and `__pycache__`. Without it, local virtual environments and secrets can end up in the image build context, and the image grows for no benefit. Use `docker-compose.yml` for local multi-container checks before you deploy to Kubernetes. A typical compose file has an `api` service with `env_file: .env.prod`, and a `database` service with a persistent volume, `data:/data/db`. In production, use a managed cloud database such as Cloud SQL, RDS or Atlas, instead of unbacked container storage.
 
 Run one uvicorn process per container, and scale with replicas. Kubernetes HPA can scale on CPU, requests per second, queue depth or custom metrics. Use gunicorn with uvicorn workers only when you want several processes in one container. Set `--limit-concurrency`, or let the proxy shed load. Set `--timeout-keep-alive` above the load balancer's idle timeout, which avoids races. Finally, use multi-stage builds, a non-root user, a read-only root file system and dropped capabilities, as chapter 2.21 covers.
 
 ### Kubernetes deployment essentials
 
-A pod needs to answer two questions before it takes traffic: is it alive, and is it ready? Probes answer both. The shutdown settings then decide whether a rolling update drops requests.
+A pod needs to answer two questions before it takes traffic: is it alive, and is it ready? Probes answer both, and a probe is just a health check that Kubernetes calls on a schedule. The shutdown settings then decide whether a rolling update drops requests.
 
 ```yaml
 apiVersion: apps/v1
@@ -620,9 +656,9 @@ spec:
         lifecycle: { preStop: { exec: { command: ["sleep", "5"] } } }      # let endpoints deregister before SIGTERM handling
 ```
 
-The liveness probe at `/healthz` checks that the process and its event loop still respond. Keep it cheap, and keep it independent of external dependencies. Otherwise, a database blip restarts every pod. The readiness probe at `/readyz` checks that the pod can serve traffic now. That means the model is loaded, the database is reachable and the pod is not draining, so it flips to not-ready during shutdown. Use a startup probe for slow model loads.
+The liveness probe at `/healthz` checks that the process and its event loop still respond. Keep it cheap, and keep it independent of external dependencies. Otherwise, a database blip restarts every pod at once. The readiness probe at `/readyz` checks that the pod can serve traffic now. That means the model is loaded, the database is reachable and the pod is not draining, so it flips to not-ready during shutdown. Use a startup probe for slow model loads.
 
-On SIGTERM, uvicorn stops accepting connections and waits for in-flight requests until the graceful timeout expires. Align `terminationGracePeriodSeconds`, the `preStop` sleep, the load balancer deregistration delay and `--timeout-graceful-shutdown`. For streaming endpoints, decide whether to cut long-lived streams or drain them.
+On SIGTERM, uvicorn stops accepting connections and waits for in-flight requests until the graceful timeout expires. In-flight requests are the ones already accepted and still working, and they are exactly the requests you do not want to lose. Align `terminationGracePeriodSeconds`, the `preStop` sleep, the load balancer deregistration delay and `--timeout-graceful-shutdown`. For streaming endpoints, decide whether to cut long-lived streams or drain them.
 
 Set memory limits for models and caches. For GPU inference, request `nvidia.com/gpu`, and run one worker per GPU. Avoid CPU limits that throttle the event loop, and prefer CPU requests instead. Scale I/O-bound services on concurrency or queue length rather than CPU, and use KEDA for event-driven scaling. For configuration and rollout, use ConfigMaps and Secrets, immutable image tags or digests, and canary or blue/green releases through ingress, a mesh or Argo Rollouts. Run database migrations as pre-deploy Jobs, with backward-compatible schema changes that follow an expand and contract pattern.
 
@@ -630,13 +666,13 @@ Send SIGTERM to a test pod and time its shutdown, so you know the grace periods 
 
 ### Observability
 
-Write structured JSON logs to stdout, with the request id, user or tenant, route, status and latency. Redact secrets, and sample noisy logs, as chapter 3.5 describes.
+Write structured JSON logs to stdout, with the request id, user or tenant, route, status and latency. Structured here means one JSON object per line with named fields, so a log query can find a request instead of a grep guessing at it. Redact secrets, and sample noisy logs, as chapter 3.5 describes.
 
-Expose `/metrics` with `prometheus-fastapi-instrumentator` or `starlette-exporter`. They report request counts, latencies by route and status, and in-flight requests. Add business metrics such as jobs by state, queue depth, tokens per second and GPU utilisation from DCGM. The RED method covers rate, errors and duration. Alert on SLOs, as chapter 2.31 describes.
+Expose `/metrics` with `prometheus-fastapi-instrumentator` or `starlette-exporter`. They report request counts, latencies by route and status, and in-flight requests. Add business metrics such as jobs by state, queue depth, tokens per second and GPU utilisation from DCGM. The RED method covers rate, errors and duration, which is three questions in order: how many requests, how many failed, and how long they took. Alert on SLOs, as chapter 2.31 describes.
 
 Add OpenTelemetry instrumentation with `opentelemetry-instrumentation-fastapi`, `-httpx` and `-sqlalchemy`. It propagates `traceparent` through downstream calls, and it exports spans to Tempo, Jaeger or an OTLP collector.
 
-Expose health endpoints, a build info endpoint such as `/version` that returns the git SHA, and debug endpoints. Put debug endpoints behind auth.
+Expose health endpoints, a build info endpoint such as `/version` that returns the git SHA, and debug endpoints. Put debug endpoints behind auth, because a debug endpoint is a door and someone will find it.
 
 For profiling, use `py-spy`, or `pyinstrument` middleware in staging. Run `uvicorn --log-level debug` when you need more detail, and keep slow-request logs.
 
@@ -644,7 +680,7 @@ Add RED metrics before you tune anything, so you can see where the latency comes
 
 ### Performance checklist
 
-Use async drivers and one shared `httpx.AsyncClient`. Return orjson responses for large JSON, and avoid loading models per request. Paginate and stream big results. Compress responses with gzip or br at the proxy, and tune connection pools. Keep the event loop free by moving CPU or blocking work to threads, processes or queues. Cache expensive lookups.
+Use async drivers and one shared `httpx.AsyncClient`, because a client built per request throws away the connection pool you already paid for. Return orjson responses for large JSON, and avoid loading models per request. Paginate and stream big results. Compress responses with gzip or br at the proxy, and tune connection pools. Keep the event loop free by moving CPU or blocking work to threads, processes or queues. Cache expensive lookups.
 
 Measure with load tests, and profile before you optimise. Pydantic validation of huge payloads costs CPU, so limit payload sizes. Consider `model_validate_json` and `TypeAdapter` for those cases.
 
@@ -652,13 +688,13 @@ Profile before you optimise, and use load tests to confirm each change.
 
 ## 12. Lab
 
-Start with the self-checking Python lab at `code/part03/python_fastapi_microservices_lab.py`. It proves the core code works before you move on, so run it first. The script checks nested `Todo` and `TodoItem` models, and `response_model` field filtering, from chapters 2 and 3 of *Building Python Web APIs with FastAPI*. It checks `HashPassword` hashing, and `create_access_token` and `verify_access_token` with expiration, from chapter 7. It also checks `EventPlannerRepository` SQLite CRUD, partial `EventUpdate` with `exclude_unset`, and creator ownership (BOLA) enforcement, from chapters 5 to 8. Finally, it checks Server-Sent Events (SSE) framing and stream termination.
+Start with the self-checking Python lab at `code/part03/python_fastapi_microservices_lab.py`. It proves the core code works before you move on, so run it first. It is also the cheapest way to find out whether your environment is ready. The script checks nested `Todo` and `TodoItem` models, and `response_model` field filtering, from chapters 2 and 3 of *Building Python Web APIs with FastAPI*. It checks `HashPassword` hashing, and `create_access_token` and `verify_access_token` with expiration, from chapter 7. It also checks `EventPlannerRepository` SQLite CRUD, partial `EventUpdate` with `exclude_unset`, and creator ownership (BOLA) enforcement, from chapters 5 to 8. Finally, it checks Server-Sent Events (SSE) framing and stream termination.
 
 ```bash
 python3 code/part03/python_fastapi_microservices_lab.py
 ```
 
-Next, you can work through the exercises on any machine with Python 3.11 or later. All interactive shell steps below are `untested here`.
+Next, you can work through the exercises on any machine with Python 3.11 or later. The interactive shell steps below were not run on live hardware.
 
 1. Build the Fleet API with in-memory storage. Explore `/docs` and `/openapi.json`, trigger 422 errors, add pagination and filtering, and write requests with `curl` and `httpx`.
 2. Split your schemas into In, DB and Out models. Use `extra="forbid"`, validators and enums, and prove that mass assignment is blocked. Return `problem+json` errors through exception handlers.
@@ -675,7 +711,7 @@ Next, you can work through the exercises on any machine with Python 3.11 or late
 
 ## 13. Common mistakes
 
-Blocking calls inside `async def` endpoints are the first trap, because `async` does not make blocking code concurrent. If you load models or create clients on every request, that is another trap. Unbounded caches and global mutable state cause trouble too, since workers do not share memory.
+Blocking calls inside `async def` endpoints are the first trap, because `async` does not make blocking code concurrent. It only makes blocking code other people's problem. If you load models or create clients on every request, that is another trap. Unbounded caches and global mutable state cause trouble too, since workers do not share memory.
 
 Using one pydantic model for the database, input and output invites mass assignment and data leaks. Missing timeouts on downstream calls, and missing limits on concurrency, body size or pagination, let a single client overload the service.
 
@@ -683,13 +719,13 @@ Liveness probes that depend on external services can restart healthy pods. Readi
 
 Trusting `X-Forwarded-*` headers from the internet lets clients spoof their source IP. Leaving docs or debug endpoints public widens the exposure, and so does permissive CORS (`*` with credentials). Leaking stack traces or secrets in error responses and logs gives attackers information they should not have.
 
-If you use `BackgroundTasks` for work that must not be lost, you risk losing it. So is retrying POSTs without idempotency, since the work can be duplicated. Proxy buffering breaks SSE, and idle timeouts kill long streams.
+If you use `BackgroundTasks` for work that must not be lost, you risk losing it. Retrying POSTs without idempotency has the same shape, since the work can be duplicated. Proxy buffering breaks SSE, and idle timeouts kill long streams.
 
 Walk through this list against your own service before the first deploy.
 
 ## 14. Interview angles
 
-Interviewers ask about FastAPI in layers, starting with the server model and ending with production debugging. Each question below is a good test of how well you know the material.
+Interviewers tend to ask about FastAPI in layers, starting with the server model and ending with production debugging. Each question below is a good test of how well you know the material, and most of them reward a story from your own service more than a definition.
 
 - "WSGI vs ASGI? How does uvicorn run FastAPI? What runs sync endpoints?"
 - "When do you use `async def` vs `def` in FastAPI?"
@@ -705,7 +741,7 @@ If you can answer each question with a concrete example from this chapter, you k
 
 ## Exercises
 
-1. Contrast WSGI (PEP 3333) with ASGI, and explain what Starlette and pydantic each contribute to FastAPI. Use chapter 1 of *Building Python Web APIs with FastAPI* and `volume-02` as sources. Then explain why calling `time.sleep(2)` or `requests.get()` inside an `async def` endpoint stalls every concurrent request, while a plain `def` endpoint runs in AnyIO's 40-thread pool. Finally, explain why GPU-backed services run one worker process per GPU, while CPU-bound control-plane APIs run `gunicorn -k uvicorn.workers.UvicornWorker -w N`.
+1. Contrast WSGI (PEP 3333) with ASGI, and explain what Starlette and pydantic each contribute to FastAPI. Use chapter 1 of *Building Python Web APIs with FastAPI* as a source. Then explain why calling `time.sleep(2)` or `requests.get()` inside an `async def` endpoint stalls every concurrent request, while a plain `def` endpoint runs in AnyIO's 40-thread pool. Finally, explain why GPU-backed services run one worker process per GPU, while CPU-bound control-plane APIs run `gunicorn -k uvicorn.workers.UvicornWorker -w N`.
 2. Explain how FastAPI tells path parameters, query parameters, headers and JSON body payloads apart in `get(rack, name, verbose, tags, x_request_id)`. Explain why fixed routes such as `/nodes/summary` must be declared before parameterised routes such as `/nodes/{id}`. Then, using `Todo` and `TodoItem` in `code/part03/python_fastapi_microservices.py`, explain how separating `NodeIn` and `JobIn` (with `extra="forbid"`) from `NodeOut` and `TodoItems` (with `response_model`) prevents mass assignment and sensitive field leaks. You will need chapters 2, 3 and 5 of the FastAPI book.
 3. Trace the lifecycle of a generator dependency, `async def get_db(): async with SessionLocal() as session: yield session`, and of an `@asynccontextmanager async def lifespan(app: FastAPI):` that manages a shared `httpx.AsyncClient` and an ML model on `app.state`. Then show how `@app.exception_handler(NodeNotFound)` maps a domain exception to a structured RFC 9457 `application/problem+json` response with an `x-request-id` correlation header. You will find this material in chapters 3, 6 and 7 of the FastAPI book.
 4. Using `HashPassword`, `create_access_token()`, `verify_access_token()` and `EventPlannerRepository` in `code/part03/python_fastapi_microservices.py`, explain two things. First, how `/user/signup` hashes passwords, and how `/user/signin` issues signed JWTs with an `expires` claim that `Depends(authenticate)` verifies. Second, how checking whether `event.creator` matches `user` prevents Broken Object-Level Authorization (BOLA). Also cover `Security(current_user, scopes=["jobs:write"])` and `secrets.compare_digest` for API keys. You will find the source in chapter 7 of the FastAPI book.

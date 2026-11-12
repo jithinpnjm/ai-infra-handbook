@@ -12,23 +12,27 @@ lab_venue: "Mac"
 
 # 3.13 Statements, iteration and control flow in depth
 
-This chapter goes deeper into material that chapter 3.1 only introduces. You will meet it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
+Picture the Python behind a training launcher. It reads a config, tests a condition, walks a list of nodes, and prints a line for each one. All of that rests on four small pieces of syntax: assignment, selection, loops, and printing. Chapter 3.1 introduced them. This chapter sits with them long enough that they stop being syntax and start being habits.
+
+You will meet the same material again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
 
 ## Assignments
 
-Assignment is how Python attaches a name, or a slot inside a data structure, to an object. The target on the left of the equals sign can be a name or an object component. The right side can be any expression that creates an object. Most assignments are simple, but a few properties are worth knowing from the start.
+Type `x = 1` at the prompt and something quiet happens. Python builds an integer object, then attaches the name `x` to it. Nothing is copied into a box, and no storage is reserved for `x` itself. The name is a label tied to an object that lives somewhere else in memory.
 
-Assignments create object references. An assignment stores a reference to an object in a name or a component. It never copies the object. That makes Python variables behave more like pointers than like boxes that hold data.
+That is what an assignment does: it attaches a name, or a slot inside a data structure, to an object. The target on the left of the equals sign can be a plain name or an object component. The right side can be any expression that creates an object. Most assignments are simple, and a few of their properties are worth knowing from the start.
 
-Names are created when first assigned. You do not declare a name ahead of time. Some data structure slots appear on first assignment too, such as dictionary entries and some object attributes. After that, a name is replaced by its value wherever it appears in an expression.
+An assignment creates an object reference. It stores a reference to an object in a name or a component, and it never copies the object itself. That makes Python variables behave more like pointers than like boxes that hold data.
 
-Names must be assigned before they are referenced. Using a name that has no value raises an exception. Python does not hand back an ambiguous default in its place. This matters because names are never declared, so a silent default would hide typos in your code.
+A name is created when it is first assigned. You do not declare a name ahead of time. Some data structure slots appear on first assignment too, such as dictionary entries and some object attributes. After that, a name is replaced by its value wherever it appears in an expression.
 
-Some operations assign implicitly. Module imports, function and class definitions, `for` loop variables, and function arguments all bind names at runtime. Assignment works the same way in each of these places, so you can read every one of them as a binding.
+A name must be assigned before it is referenced, so using a name that holds no value raises an exception. Python does not hand back an ambiguous default in its place. That matters precisely because names are never declared, since a silent default would hide a typo in your code.
+
+Some operations assign implicitly, with no equals sign in sight. Module imports, function and class definitions, `for` loop variables, and function arguments all bind names at runtime. Assignment works the same way in each of these places, so you can read every one of them as a binding.
 
 ### Assignment syntax forms
 
-Assignment has several syntax forms. The basic form is by far the most common, and you could finish most work with it alone. The other forms are optional, but many programmers find them convenient in practice.
+Assignment has several syntax forms. The basic form is by far the most common, and you could finish most work with it alone. The other forms are optional, though many programmers find them convenient in practice. The table below shows the whole family at a glance, so you can see the shape of each member before we take them one at a time.
 
 | Operation | Interpretation |
 |---|---|
@@ -45,7 +49,7 @@ The sections that follow take each form in turn. The first four rows are stateme
 
 ### Basic assignments
 
-A basic assignment binds one target to one value. The target may be a name, an index, a slice, or an attribute. The value can be any expression. Here is a short session at the REPL prompt:
+A basic assignment binds one target to one value. The target may be a name, an index, a slice, or an attribute. The value can be any expression. Here is a short session at the prompt, which Python people call the REPL, short for read, evaluate, print, loop:
 
 ```
 $ python3
@@ -56,19 +60,19 @@ $ python3
 [3, 4, 5]
 ```
 
-Attribute targets show up with classes, which come later. The assignment looks the same, though:
+Attribute targets show up with classes, which come later in the handbook. The assignment itself looks no different, though:
 
 ```
 object.attr = L # Attribute target (see Part VI)
 ```
 
-Any of these four kinds of target can appear in any assignment form, unless a form says otherwise. Named assignment expressions are one exception, because they accept only a name.
+Any of these four kinds of target can appear in any assignment form, unless a form says otherwise. Named assignment expressions are the exception, because they accept only a plain name.
 
 A basic assignment can also carry an annotation. You write a colon right after the target, and the annotation is used for type hinting. This form allows only a single target. This handbook skips it, because Python itself does not rely on it and it sits at odds with the language's usual style. Consult Python's documentation if you meet it in the wild.
 
 ### Sequence assignments
 
-Tuple and list assignments unpack items into separate variables. Python pairs the values on the right with the targets on the left, by position. It assigns them one at a time, from left to right.
+Tuple and list assignments unpack items into separate variables. Python pairs the values on the right with the targets on the left, by position. It assigns them one at a time, from left to right. The picture to hold is two short rows lined up beside each other, position by position.
 
 ```
 >>> first = 1 # Basic assignment
@@ -81,9 +85,9 @@ Tuple and list assignments unpack items into separate variables. Python pairs th
 (1, 2)
 ```
 
-The third line really holds two tuples, with their parentheses left out. The same holds when the equals sign has lists on each side.
+That third line really holds two tuples, with their parentheses left out. The same holds when the equals sign has a list on each side.
 
-Tuple assignment gives a common trick for swapping two variables without a temporary variable of your own. Python builds a temporary tuple that keeps the original values while the statement runs. The tuple on the right remembers the prior values automatically.
+Tuple assignment gives a common trick for swapping two variables without a temporary variable of your own. Python builds a temporary tuple that keeps the original values while the statement runs. The tuple on the right remembers the prior values automatically, so you never have to.
 
 ```
 >>> first = 1
@@ -93,7 +97,7 @@ Tuple assignment gives a common trick for swapping two variables without a tempo
 (2, 1)
 ```
 
-The original tuple and list forms now accept any sequence on the right, as long as the lengths match. You can assign a tuple of values to a list of names, or a string of characters to a tuple of names. Python still assigns by position, from left to right.
+The tuple and list forms now accept any sequence on the right, as long as the lengths match. You can assign a tuple of values to a list of names, or a string of characters to a tuple of names. Python still assigns by position, from left to right.
 
 ```
 >>> [a, b, c] = (1, 2, 3) # Assign tuple of values to list of names
@@ -104,11 +108,11 @@ The original tuple and list forms now accept any sequence on the right, as long 
 ('A', 'C')
 ```
 
-The left side of a sequence assignment is still a sequence of targets. The right side may be any iterable, which is a broader group. Iterables include physical collections such as lists and virtual ones such as the lines of a file. For now, read the "sequence" in an assignment as the left side of the equals sign.
+The left side of a sequence assignment is still a sequence of targets. The right side may be any iterable, which is a broader group. An iterable is anything Python can walk through one item at a time. That includes physical collections such as lists and virtual ones such as the lines of a file. For now, read the "sequence" in an assignment as the left side of the equals sign.
 
 ### Advanced sequence-assignment patterns
 
-Although you can mix sequence types around the equals sign, the counts usually have to match. If the right side has more or fewer items than the left has targets, Python raises an error. Extended unpacking relaxes this rule, as the next section shows.
+You can mix sequence types around the equals sign, but the counts usually have to match. If the right side has more or fewer items than the left has targets, Python raises an error. Extended unpacking relaxes that rule, as the next section shows.
 
 ```
 >>> string = 'TEXT'
@@ -119,7 +123,7 @@ Although you can mix sequence types around the equals sign, the counts usually h
 ValueError: too many values to unpack (expected 3)
 ```
 
-To be more flexible, you can slice. There are several ways to use slicing so that the last case works.
+To be more flexible, you can slice. Several patterns with slicing make that last case work.
 
 ```
 >>> a, b, c = string[0], string[1], string[2:] # Index and slice
@@ -137,7 +141,7 @@ To be more flexible, you can slice. There are several ways to use slicing so tha
 ('T', 'E', 'XT')
 ```
 
-Sequences can also nest. Python unpacks their parts according to their shape. In the last example, the right side is a tuple of two items, and its first item is a nested string. It is the same as writing the nesting out in full.
+Sequences can also nest. Python unpacks their parts according to their shape. In the last example, the right side is a tuple of two items, and its first item is a nested string. Writing the nesting out in full gives exactly the same result.
 
 ```
 >>> ((a, b), c) = ('TE', 'XT') # Paired by shape and position
@@ -145,9 +149,9 @@ Sequences can also nest. Python unpacks their parts according to their shape. In
 ('T', 'E', 'XT')
 ```
 
-Python pairs the first string with the first tuple on the left, and assigns it one character at a time. It assigns the second string to `c` all at once. The shape of the left side must match the shape of the right side. Nested assignment like this is rare, but it can pick out parts of data with a known shape.
+Python pairs the first string with the first tuple on the left, and assigns it one character at a time. It assigns the second string to `c` all at once. The shape of the left side must match the shape of the right side. Nested assignment like this is rare, but it can pick out parts of data whose shape you already know.
 
-The same technique works in `for` loops, because loop items are assigned to the loop header's target as if an `=` statement had run.
+The same technique works in `for` loops, because loop items are assigned to the loop header's target as if an `=` statement had run. The loop header is the first line of the loop, the one that names the target.
 
 ```
 for (a, b, c) in [(1, 2, 3), (4, 5, 6)]: … # Simple tuple assignment
@@ -162,14 +166,14 @@ Nested sequence assignments can also be done with the `match` statement, which t
 (0, 2)
 ```
 
-This code sets the three names to `0`, `1`, and `2`, in that order. Each name gets a unique value. It is Python's simplest equivalent to the enumerated types found in other languages. The `range` built-in returns an iterable that generates successive integers. Wrap it in `list` to display all of its values at once.
+This code sets the three names to `0`, `1`, and `2`, in that order, so each name gets a unique value. It is Python's simplest equivalent to the enumerated types found in other languages. The `range` built-in returns an iterable that generates successive integers. Wrap it in `list` to display all of its values at once.
 
 ```
 >>> list(range(3)) # list() required for display
 [0, 1, 2]
 ```
 
-Tuple assignment also splits a sequence into its front and the rest. A `while` loop is a common place to see it.
+Tuple assignment also splits a sequence into its front and the rest. A `while` loop, which repeats while a test stays true, is a common place to see it.
 
 ```
 >>> L = [1, 2, 3, 4]
@@ -183,14 +187,14 @@ Tuple assignment also splits a sequence into its front and the rest. A `while` l
 4 []
 ```
 
-The tuple assignment in that loop could be written as two separate lines. It is often more convenient to string them together.
+The tuple assignment in that loop could be written as two separate lines. Stringing them together is often more convenient.
 
 ```
 ... front = L[0]
 ... L = L[1:]
 ```
 
-This code treats the list like a stack. The `append` and `pop` methods of a list can do much the same job. Here, `front = L.pop(0)` gives nearly the same result as the tuple assignment, but it changes the list in place. The chapter on `while` and `for` loops covers other, often better, ways to step through a sequence.
+This code treats the list like a stack, a pile you take items from at one end. The `append` and `pop` methods of a list can do much the same job. Here, `front = L.pop(0)` gives nearly the same result as the tuple assignment, but it changes the list in place. The chapter on `while` and `for` loops covers other, often better, ways to step through a sequence.
 
 ### Extended-unpacking assignments
 
@@ -297,7 +301,7 @@ The loop from the last section gets simpler with this form. You no longer need t
 
 ### Boundary cases of extended unpacking
 
-Some edge cases are worth knowing. First, a starred target that matches a single item is still assigned a list.
+Some edge cases are worth knowing. First, a starred target that matches a single item is still assigned a list, even though one item hardly looks like a collection.
 
 ```
 >>> seq = [1, 2, 3, 4]
@@ -306,7 +310,7 @@ Some edge cases are worth knowing. First, a starred target that matches a single
 1 2 3 [4]
 ```
 
-Second, if nothing is left for the starred target, it gets an empty list. This holds wherever the starred target sits. In the next example, the names `a` through `d` take every item. Python gives `e` an empty list instead of raising an error.
+Second, if nothing is left for the starred target, it gets an empty list. This holds wherever the starred target sits. In the next example, the names `a` through `d` take every item, so Python gives `e` an empty list instead of raising an error.
 
 ```
 >>> a, b, c, d, *e = seq
@@ -361,7 +365,7 @@ Any assignment target can be starred, even if you rarely see it in real code. Th
 
 ### Extended unpacking as a convenience
 
-Extended unpacking is only a convenience. You can usually get the same effect with explicit indexing and slicing. It is simply easier to write. The common "first, rest" split can be coded either way, but slicing takes extra work.
+Extended unpacking is only a convenience. You can usually get the same effect with explicit indexing and slicing, and the starred form is simply easier to write. The common "first, rest" split can be coded either way, but slicing takes extra work.
 
 ```
 >>> seq
@@ -389,19 +393,19 @@ Because it is both simpler and more natural, extended-unpacking syntax is common
 
 ### Extended unpacking in for loops
 
-The loop variable in a `for` statement can be any assignment target. That means extended unpacking works there too. A simple name is more common after `for`, but a starred target is allowed.
+The loop variable in a `for` statement can be any assignment target, so extended unpacking works there too. A simple name is more common after `for`, but a starred target is allowed.
 
 ```
 for (a, *b, c) in [(1, 2, 3, 4), (5, 6, 7, 8)]: …
 ```
 
-Each time the loop runs, Python hands the next tuple of values to the tuple of targets. On the first pass, that matches this assignment.
+Each time the loop runs, Python hands the next tuple of values to the tuple of targets. On the first pass, that matches the assignment below.
 
 ```
 a, *b, c = (1, 2, 3, 4) # b gets [2, 3]
 ```
 
-The names `a`, `b`, and `c` can then be used in the loop body. This is really no special case. It is ordinary assignment at work. You can also do simpler tuple assignment in a loop, as shown here.
+The names `a`, `b`, and `c` can then be used in the loop body. This is really no special case, just ordinary assignment at work. You can also do simpler tuple assignment in a loop, as shown here.
 
 ```
 for (a, b, c) in [(1, 2, 3), (4, 5, 6)]: … # a, b, c = (1, 2, 3), …
@@ -424,7 +428,7 @@ The `*` symbol has appeared in many special roles over the years. Before Python 
 - Function headers, where `*X` and `**X` collect unmatched positional and keyword arguments into a tuple and a dictionary.
 - Function calls, where `*X` and `**X` unpack iterables and mappings into individual positional and keyword arguments.
 
-As of Python 3.5, function calls accept any number of `*X` and `**X` unpacking expressions. Starred expressions can also appear in object literals. They unpack collections of the type that the literal implies.
+As of Python 3.5, function calls accept any number of `*X` and `**X` unpacking expressions. Starred expressions can also appear in object literals, where they unpack collections of the type that the literal implies.
 
 ```
 [x, *iter] # List: unpack items in iterables
@@ -435,13 +439,13 @@ As of Python 3.5, function calls accept any number of `*X` and `**X` unpacking e
 
 As of Python 3.10, both `*X` and `**X` can appear in the patterns of the `match` statement. They play roles similar to sequence assignment. Only `*X` overlaps between the two, and in `match` its assignment is really a side effect of a true-or-false test.
 
-As of Python 3.11, `except*` can appear in `try` statements. It lets several handlers run to process multiple exceptions wrapped in an exception group. This adds another layer to `try`, which the book saves for later.
+As of Python 3.11, `except*` can appear in `try` statements. It lets several handlers run to process multiple exceptions wrapped in an exception group. This adds another layer to `try`, which is covered later.
 
 The use of stars has wandered over the years, and other parts of the language may take up stars in the future. Check the official reference for the current rules.
 
 ### Multiple-target assignments
 
-A multiple-target assignment gives the same object to every target on the left. The object is the one farthest to the right. The next example assigns three names to one string.
+A multiple-target assignment gives the same object to every target on the left. The object involved is the one farthest to the right. The next example assigns three names to one string.
 
 ```
 >>> a = b = c = 'code'
@@ -457,7 +461,7 @@ This form does the same work as three separate assignments. It is easier to writ
 >>> a = b
 ```
 
-There is one object here, and all three names share it. This is safe for immutable types. Suppose you set a group of counters to zero. Variables must be assigned before use, so you start the counters at zero before adding to them.
+There is one object here, and all three names share it. That is safe for immutable types, meaning objects that cannot change in place. Suppose you set a group of counters to zero. Variables must be assigned before use, so you start the counters at zero before adding to them.
 
 ```
 >>> a = b = 0
@@ -487,7 +491,7 @@ Here, `a` and `b` refer to the same list. Appending through `b` also changes wha
 ([], [42])
 ```
 
-A tuple assignment can do this in one line. Each list literal creates a separate object.
+A tuple assignment can do the same job in one line, because each list literal creates a separate object.
 
 ```
 >>> a, b = [], [] # a and b do not share the same object
@@ -495,7 +499,7 @@ A tuple assignment can do this in one line. Each list literal creates a separate
 
 ### Augmented assignments
 
-Besides the basic, sequence, and multiple forms, Python has augmented assignments. The idea came from the C language. These forms combine a binary expression and an assignment in one shorter form. The next two lines are equivalent in result, although the second may change `X` in place.
+Besides the basic, sequence, and multiple forms, Python has augmented assignments. The idea came from the C language. These forms combine a binary expression and an assignment in one shorter form, where a binary expression is simply one with a value on each side of an operator. The next two lines are equivalent in result, although the second may change `X` in place.
 
 ```
 X = X + Y # Basic form
@@ -523,7 +527,7 @@ For a string, the augmented form performs concatenation, because that is what `+
 'hackHACK'
 ```
 
-Python has an augmented form for most binary operators. Each operator takes a value on its left and right side. The forms are listed below. The matrix-multiplication form, `@=`, is unused and unimplemented by Python itself today.
+Python has an augmented form for most binary operators, and each operator takes a value on its left and right side. The forms are listed below. The matrix-multiplication form, `@=`, is unused and unimplemented by Python itself today.
 
 ```
 X += Y
@@ -541,7 +545,7 @@ X |= Y
 X ^= Y
 ```
 
-Augmented assignments have three useful advantages. Each one matters for a different reason.
+Augmented assignments have three useful advantages, and each one matters for a different reason.
 
 - There is less to type.
 - The left side is evaluated only once. In `X += Y`, `X` may be a complicated expression, and it runs only once. In the long form, `X = X + Y`, the left side appears twice and runs twice. Because of this, augmented assignments usually run faster.
@@ -620,13 +624,13 @@ The in-place change in `+=` for lists is very different from the new object that
 ([1, 2, 3, 4], [1, 2, 3, 4])
 ```
 
-This matters only for mutable objects such as lists and dictionaries. It is an obscure case, until it affects your code. If you need to break a shared reference, make a copy of the mutable object.
+This matters only for mutable objects such as lists and dictionaries. It is an obscure case until it affects your code. If you need to break a shared reference, make a copy of the mutable object.
 
 C and C++ programmers should note one difference. Python now supports statements like `X += Y`. It still has no auto-increment or auto-decrement operators such as `X++` or `--X`. Those do not fit Python's object model, because Python has no in-place change for immutable objects such as numbers. Python also has no augmented named-expression form. A form like `:+= 1` would be close to `++`, but it does not exist.
 
 ### Named assignment expressions
 
-For most of its history, Python avoided the assignment-as-expression idiom from C. The reason was that it is subtle, error-prone, and can make code hard to read. Python 3.8 added a limited version called named assignment. It does not turn the `=` statement into a nestable expression, as in C. Instead, it adds a new operator, `:=`.
+For most of its history, Python avoided the assignment-as-expression idiom from C. The reason was that it is subtle, error-prone, and can make code hard to read. Python 3.8 added a limited version called named assignment. It does not turn the `=` statement into a nestable expression, as in C. Instead, it adds a new operator, `:=`, which people call the walrus operator because it looks like a walrus eye and tusks.
 
 The new operator has a different and limited syntax, which avoids many pitfalls of other languages. You still cannot type `=` by mistake where you meant `==`. The `:=` symbol also looks visually distinct.
 
@@ -659,7 +663,7 @@ SyntaxError: cannot use assignment expressions with subscript
 SyntaxError: cannot use assignment expressions with attribute
 ```
 
-The first failure shows why. Python reads the line as a three-item tuple with `:=` in the middle. It does not read it as a two-target named sequence assignment. Named assignment also has no augmented forms. There is no `:+=`, for example. A statement such as `X += 1` is shorter than `(X := X + 1)`. A `:=+` form does exist, but it only applies the `+` identity operator to the expression on the right.
+The first failure shows why. Python reads the line as a three-item tuple with `:=` in the middle. It does not read it as a two-target named sequence assignment. Named assignment also has no augmented forms, so there is no `:+=`, for example. A statement such as `X += 1` is shorter than `(X := X + 1)`. A `:=+` form does exist, but it only applies the `+` identity operator to the expression on the right.
 
 ### When to use named assignment
 
@@ -704,7 +708,7 @@ while (line := file.readline()) != stop: # And not a bad idea
     print(line)
 ```
 
-As a rule of thumb, wrap `:=` in parentheses whenever you use it. The parentheses set the expression off visually. They also prevent surprises if the surrounding code changes meaning. Without them, `!=` would bind tighter than `:=`, so the names would receive the results of the tests. The rules for `:=` also favor parenthesized use.
+As a rule of thumb, wrap `:=` in parentheses whenever you use it. The parentheses set the expression off visually, and they prevent surprises if the surrounding code changes meaning. Without them, `!=` would bind tighter than `:=`, so the names would receive the results of the tests. The rules for `:=` also favor parenthesized use.
 
 The `:=` operator has other roles. It can reuse a result inside a literal, or capture the last result in a comprehension or another iteration tool. It can also appear inside f-strings, and it can be nested inside itself, with parentheses.
 
@@ -730,7 +734,9 @@ A deeply nested `:=` may seem clever, but it is much harder to read than a plain
 
 ## Variable name rules
 
-Now that you have seen assignment statements and expressions, it helps to be precise about variable names. A name comes into existence when you assign a value to it. A few rules govern the names you pick for the parts of your programs.
+Try `1_hack = 3` at the prompt and Python stops with a syntax error before it runs a single line. The name is illegal, and the parser knows it. Names are the labels you choose for the parts of your programs, so it pays to know what a legal one looks like.
+
+A name comes into existence when you assign a value to it. A few rules govern the names you pick.
 
 ### Legal names
 
@@ -740,7 +746,7 @@ Python also accepts non-ASCII Unicode characters in names. Those characters can 
 
 ### Case matters
 
-Python pays attention to case, in names you create and in reserved words. The names `X` and `x` are two different variables. Case also matters in the names of imported module files, even on platforms with case-insensitive filesystems, such as most Windows setups. That keeps imports working when a program moves between platforms.
+Python pays attention to case, in names you create and in reserved words. The names `X` and `x` are two different variables, not two spellings of one. Case also matters in the names of imported module files, even on platforms with case-insensitive filesystems, such as most Windows setups. That keeps imports working when a program moves between platforms.
 
 ### Reserved words are off-limits
 
@@ -762,13 +768,13 @@ Four more words are soft reserved words: `match`, `case`, `_`, and `type`. They 
 
 Most reserved words are lowercase. The exceptions are `False`, `None`, and `True`. Those three are also names in the built-in scope, and they are technically objects. They are fully reserved, though, and cannot be used for anything except the objects they stand for. The other reserved words are built into the syntax, and each one works only in its own context.
 
-Other Python implementations, such as Jython, may allow reserved words as identifiers in some contexts. Chapter 2 of the book covers alternative Pythons.
+Other Python implementations, such as Jython, may allow reserved words as identifiers in some contexts.
 
 Module names also become variables. A file named `and.py` or `my-code.py` can run as a top-level script. You cannot import either one, because its name becomes a variable on import. Reserved words and dashes are not allowed in such names, but underscores are fine. The same constraint applies to package folder names.
 
 ### Python's deprecation policies
 
-Making a new word reserved can break a lot of code. For that reason, Python usually phases such changes in. When a change could affect existing code, Python first makes it an option. It then issues deprecation warnings for one or more releases before the change is enabled. That gives you time to notice the warnings and update your code.
+Making a new word reserved can break a lot of code. For that reason, Python usually phases such changes in. When a change could affect existing code, Python first makes it an option. It then issues deprecation warnings for one or more releases before the change is enabled, which gives you time to notice the warnings and update your code.
 
 A newer category, the soft reserved word, lets Python add a reserved word with neither warnings nor breakage. This is partly an admission that deprecations only go so far.
 
@@ -787,11 +793,11 @@ Besides the required rules, Python has naming conventions. They are not enforced
 
 Programmers also follow other conventions. Some write long names in camelCase, as in `aLongName`. Others use underscores, as in `a_long_name`. Both are valid under Python and under this book.
 
-Later, class names usually start with an uppercase letter. Module names usually start with a lowercase letter. The name `self` is not reserved, but it usually plays a special role in classes. Built-in names are predefined but not reserved, so you can reassign them. Setting `open = 99` silently works, though you may wish it did not.
+Later, class names usually start with an uppercase letter, and module names usually start with a lowercase letter. The name `self` is not reserved, but it usually plays a special role in classes. Built-in names are predefined but not reserved, so you can reassign them. Setting `open = 99` silently works, though you may wish it did not.
 
 ### Names have no type, but objects do
 
-It is important to keep names and objects apart. Objects have a type, such as integer or list. They may be mutable or immutable. Names, also called variables, are always references to objects. A name has no mutability and no type of its own. It only has the type of the object it refers to at a given moment.
+It is important to keep names and objects apart. Objects have a type, such as integer or list, and they may be mutable or immutable. Names, also called variables, are always references to objects. A name has no mutability and no type of its own. It only has the type of the object it refers to at a given moment.
 
 That means you can assign different kinds of objects to the same name over time.
 
@@ -803,15 +809,17 @@ That means you can assign different kinds of objects to the same name over time.
 
 Functions and classes make this flexibility useful. A name also lives in a scope, a region that sets where the name can be used. Where you assign a name determines where it is visible.
 
-C++ programmers may also note that Python has no `const` declaration. Some objects are immutable, but a name can always be assigned again. Python does have ways to hide names in classes and modules. Those ways differ from C++ declarations. Later chapters cover single-underscore module names, double-underscore class names, and a class decorator that hides attributes.
+C++ programmers may also note that Python has no `const` declaration. Some objects are immutable, but a name can always be assigned again. Python does have ways to hide names in classes and modules, though those ways differ from C++ declarations. Later chapters cover single-underscore module names, double-underscore class names, and a class decorator that hides attributes.
 
 ## Expression statements
 
-In Python, you can use any expression as a statement. That usually means putting it on a line by itself. The result of the expression is not saved, so an expression statement is useful only when it does something as a side effect. Expressions appear as statements in two common situations.
+You have written a line like `print('done')` many times without stopping to ask what kind of line it is. It is an expression used as a statement. In Python, any expression can be a statement, and that usually means putting it on a line by itself. The result of the expression is not saved, so an expression statement is useful only when it does something as a side effect.
 
-The first is a call to a function or method. Some functions do their work without returning a value. Other languages call these procedures. You can call them as expression statements, because there is no result you need to keep. Methods are simply functions with an implied subject, so the same applies to them.
+Expressions appear as statements in two common situations.
 
-The second is printing a value at the interactive prompt. Python echoes the result of each expression you type. Technically these are expression statements too. They are a shorthand for `print` statements.
+The first is a call to a function or method. Some functions do their work without returning a value, and other languages call these procedures. You can call them as expression statements, because there is no result you need to keep. Methods are simply functions with an implied subject, so the same applies to them.
+
+The second is printing a value at the interactive prompt. Python echoes the result of each expression you type. Technically these are expression statements too, and they are a shorthand for `print` statements.
 
 These are the common expression statement forms.
 
@@ -824,7 +832,7 @@ yield x ** 2 # Yielding expression statements (generators)
 await producer() # Pausing for steps to finish (coroutines)
 ```
 
-Calls take zero or more argument objects in parentheses, after the function or method name. An argument is really an expression that evaluates to an object.
+Calls take zero or more argument objects in parentheses after the function or method name, and an argument is really an expression that evaluates to an object.
 
 The last three forms are special cases. Printing is a function call that usually sits alone on a line, so it deserves its own section. The `yield` and `await` forms appear in generator and coroutine functions, which come later. All three are expressions that look like statements.
 
@@ -837,7 +845,7 @@ code
 None
 ```
 
-Expressions can appear as statements, but the reverse is not true. A statement cannot be used as an expression. A statement that is not also an expression usually has to stand alone on its line. It cannot nest inside a larger structure.
+Expressions can appear as statements, but the reverse is not true. A statement cannot be used as an expression. A statement that is not also an expression usually has to stand alone on its line, and it cannot nest inside a larger structure.
 
 Python does not let you put a basic `=` assignment inside another expression. This prevents a common mistake, where you type `=` when you meant the equality test `==`. The `:=` operator, covered earlier, works as a nested assignment with less risk of confusion. Other coding patterns can achieve similar goals, too.
 
@@ -860,19 +868,21 @@ Newcomers sometimes assign the result of such a call back to the name. The resul
 None
 ```
 
-In-place methods such as `append`, `sort`, and `reverse` change the list directly. They do not return the list. They return `None`. Assigning that result back to the name loses your reference to the list, which is then usually garbage-collected.
+In-place methods such as `append`, `sort`, and `reverse` change the list directly. They do not return the list, and they return `None` instead. Assigning that result back to the name loses your reference to the list, which is then usually garbage-collected.
 
 So call in-place operations without assigning their results. The same pitfall can appear with some looping statements, which later chapters cover.
 
 ## Print operations
 
-In Python, `print` prints things. It is a friendly interface to the standard output stream. It is a function-call expression, but it is so common that it is usually written as a statement.
+You add a `print` to a script to find out what a variable holds, and the text lands in the terminal window. That small act hides a chain of decisions. `print` turns objects into text, formats them, and writes them to a stream. This section opens that chain up.
+
+In Python, `print` prints things, and it is a friendly interface to the standard output stream. It is a function-call expression, but it is so common that it is usually written as a statement.
 
 Printing converts one or more objects to their text, adds a little formatting, and sends the result to standard output or another file-like stream. Printing ties closely to files and streams.
 
 ### File methods and the standard output stream
 
-Chapter 9 of the book covers file methods that write text, such as `file.write(str)`. Printing is similar but more focused. A file write method writes strings to any file. A `print` call writes objects to the `stdout` stream by default, and it converts and formats them for you. You do not need to turn objects into strings first.
+File methods write text, such as `file.write(str)`, and printing is similar but more focused. A file write method writes strings to any file. A `print` call writes objects to the `stdout` stream by default, and it converts and formats them for you. You do not need to turn objects into strings first.
 
 The standard output stream, often called `stdout`, is a default place for a program's text output. Together with standard input and standard error, it is one of three data connections made when a script starts. Standard output usually maps to the window where you started Python. It can be redirected to a file or pipe by the operating system shell, or rerouted by a coding GUI.
 
@@ -882,7 +892,7 @@ Printing was one place where Python 3 and Python 2 diverged. In Python 2, printi
 
 ### The print function
 
-Printing is not really a separate statement form. It is an instance of the expression statement from the previous section. Because `print` returns no value you care about, it usually stands alone on a line. It is a normal function, though. It accepts standard call syntax, including keyword arguments for special modes. You can also pass it around as an object or reassign it to another implementation.
+Printing is not really a separate statement form, since it is an instance of the expression statement from the previous section. Because `print` returns no value you care about, it usually stands alone on a line. It is a normal function, though, and it accepts standard call syntax, including keyword arguments for special modes. You can also pass it around as an object or reassign it to another implementation.
 
 Calls to `print` have this form.
 
@@ -890,7 +900,7 @@ Calls to `print` have this form.
 print([object, …][, sep=' '][, end='\n'][, file=sys.stdout][, flush=False])
 ```
 
-Items in square brackets are optional. Values after `=` are the defaults for keyword arguments. The function prints the text of one or more objects. It separates them with the `sep` string and ends with the `end` string. It writes to the `file` stream, and it flushes buffered output if `flush` is true.
+Items in square brackets are optional, and values after `=` are the defaults for keyword arguments. The function prints the text of one or more objects, separating them with the `sep` string and ending with the `end` string. It writes to the `file` stream, and it flushes buffered output if `flush` is true.
 
 The `sep`, `end`, `file`, and `flush` parts must be given as keyword arguments. You pass them with `name=value` syntax. Keyword arguments can appear in any left-to-right order after the objects to print. Each one controls a part of the output.
 
@@ -899,9 +909,9 @@ The `sep`, `end`, `file`, and `flush` parts must be given as keyword arguments. 
 - `file` names the file, standard stream, or other file-like object that receives the text. It defaults to `sys.stdout`. Any object with a `write(string)` method works, including a real file opened for output.
 - `flush` defaults to `False`. Passing a true value forces the text through the output stream right away. Normally, the file object decides whether output is buffered in memory.
 
-Each object is turned into text by the `str` built-in, or the equivalent inside Python. That built-in returns a user-friendly display string for any object. With no arguments, `print` writes only a newline. That shows as a blank line.
+Each object is turned into text by the `str` built-in, or the equivalent inside Python, which returns a user-friendly display string for any object. With no arguments, `print` writes only a newline, which shows as a blank line.
 
-Printing is simpler than the full details suggest. The examples below run at the REPL. They print several object types with the default separator and end. These defaults fit the most common use.
+Printing is simpler than the full details suggest. The examples below run at the REPL. They print several object types with the default separator and end, and those defaults fit the most common use.
 
 ```
 >>> print() # Display a blank line
@@ -912,7 +922,7 @@ Printing is simpler than the full details suggest. The examples below run at the
 python 3.12 ['lp6e']
 ```
 
-You do not need to convert objects to strings here, unlike with file write methods. By default, `print` adds a space between objects. To remove it, pass an empty string to `sep`. Or pass a separator of your own.
+You do not need to convert objects to strings here, unlike with file write methods. By default, `print` adds a space between objects. To remove it, pass an empty string to `sep`, or pass a separator of your own.
 
 ```
 >>> print(x, y, z, sep='') # Suppress separator
@@ -994,7 +1004,7 @@ At the interactive prompt, you often do not need `print` at all. Expressions you
 'hello world'
 ```
 
-This is not much of a program. It does show how printing works. The `print` operation is a convenience layer over `sys.stdout`, with a little default formatting. You can also write to `sys.stdout` directly, which is harder but shows the mechanism. Chapter 9's file methods make this possible.
+This is not much of a program, but it does show how printing works. The `print` operation is a convenience layer over `sys.stdout`, with a little default formatting. You can also write to `sys.stdout` directly, which is harder but shows the mechanism. Chapter 9's file methods make this possible.
 
 ```
 >>> import sys # Printing the hard way
@@ -1002,7 +1012,7 @@ This is not much of a program. It does show how printing works. The `print` oper
 hello world
 ```
 
-This code calls the `write` method of `sys.stdout`. That object is an open file connected to the output stream, set up when Python starts. The `print` operation hides these details, which makes simple printing simpler.
+This code calls the `write` method of `sys.stdout`, an open file connected to the output stream, set up when Python starts. The `print` operation hides these details, which makes simple printing simpler.
 
 ### Manual stream redirection
 
@@ -1019,7 +1029,7 @@ import sys
 sys.stdout.write(str(X) + ' ' + str(Y) + '\n')
 ```
 
-The longer form converts each value with `str`. It adds a separator and a newline with `+`. Then it calls the output stream's `write` method. That is exactly what `print` does. The long form is not useful for printing alone. The useful part is that you can reassign `sys.stdout` to something else. That sends every `print` somewhere different.
+The longer form converts each value with `str`. It adds a separator and a newline with `+`. Then it calls the output stream's `write` method. That is exactly what `print` does. The long form is not useful for printing alone. The useful part is that you can reassign `sys.stdout` to something else, which sends every `print` somewhere different.
 
 ```
 import sys
@@ -1127,7 +1137,7 @@ sys.stdout = FileFaker()
 print(someObjects) # Sends text to class write method
 ```
 
-This works because `print` is a polymorphic operation. It does not care what `sys.stdout` is. It cares only that the object has a `write` method. The `file` keyword makes this even simpler, because you do not need to reset `sys.stdout`. Normal prints still reach the standard output stream.
+This works because `print` is a polymorphic operation, meaning it does not care what kind of object it is talking to. It does not care what `sys.stdout` is. It cares only that the object has a `write` method. The `file` keyword makes this even simpler, because you do not need to reset `sys.stdout`. Normal prints still reach the standard output stream.
 
 ```
 myobj = FileFaker() # Redirect to object for one print
@@ -1153,13 +1163,15 @@ The next chapter covers the `if` statement, which is Python's main selection too
 
 ## if statements
 
-The `if` statement selects the actions a program performs. Along with the `if` expression, it is Python's main selection tool. Much of a program's logic lives in `if` statements. It is also the first compound statement we study in depth. Like every compound statement, it can contain other statements, including other `if` statements.
+An `if` statement is how a script chooses between two actions. Picture a launcher that must start a debug run or a normal run depending on a flag. The decision is one line, and everything after it depends on which way the decision went.
+
+The `if` statement selects the actions a program performs. Along with the `if` expression, it is Python's main selection tool. Much of a program's logic lives in `if` statements. It is also the first compound statement we study in depth, where a compound statement is one that contains other statements. Like every compound statement, it can contain other statements, including other `if` statements.
 
 Python lets you combine statements in two ways. They can run one after another, in sequence. They can also be nested, so that they run only under certain conditions. Selections and loops both work this way.
 
 ### General format
 
-The `if` statement looks like the `if` in most procedural languages. It starts with an `if` test. It can then have one or more optional `elif` tests, which mean "else if." It can end with an optional `else` block. Each test and the `else` has its own block of nested statements, indented under a header line.
+The `if` statement looks like the `if` in most procedural languages. It starts with an `if` test, a condition that is either true or false. It can then have one or more optional `elif` tests, which mean "else if." It can end with an optional `else` block. Each test and the `else` has its own block of nested statements, indented under a header line.
 
 When the statement runs, Python runs the block under the first test that is true. If every test is false, it runs the `else` block instead. The general form looks like this:
 
@@ -1215,6 +1227,8 @@ unknown?
 
 The whole statement runs from the `if` line through the block under `else`. Python runs the statements under the first true test. If all tests are false, it runs the `else` part. Both the `elif` and `else` parts can be left out. Each section can hold more than one statement. The words `if`, `elif`, and `else` line up at the same indentation, which shows they belong together.
 
+That alignment is the visual cue a beginner needs most. The indentation is not decoration. It is how Python knows which lines belong to which branch.
+
 The `and` operator in that example is true only when both of its sides are true. The next sections explain logical tests in more detail.
 
 You can nest an `if` inside another `if` to make choices that depend on earlier ones. This example first checks that the mode is `mobile`. Only then does it check the system name. The outer and inner tests act as an implied `and`.
@@ -1234,6 +1248,8 @@ Linux
 ```
 
 ## Multiple-choice selections
+
+Sooner or later you will need to map one value to one of several outcomes, such as a state name to a colour or an operating system name to a release year. A chain of `elif` tests is the first tool that comes to mind, and Python has other options worth knowing.
 
 Until Python 3.10, the language had no multiple-choice statement like the `switch` in some other languages. Python 3.10 added `match`, which covers the same goal and more. Even so, multiple-choice logic can be written with a series of `if`/`elif` tests. It can also be written by indexing a dictionary or searching a list.
 
@@ -1305,7 +1321,7 @@ Bad choice
 
 ### Handling larger actions
 
-Dictionaries link keys to values. The blocks under an `if` can hold much larger actions. Later, you will learn that dictionaries can also hold functions. Those functions represent complex actions, and they make a general "jump table." A dictionary value can be a function name or an inline `lambda`. Adding parentheses runs the action.
+Dictionaries link keys to values. The blocks under an `if` can hold much larger actions. Later, you will learn that dictionaries can also hold functions. Those functions represent complex actions, and they make a general "jump table." A dictionary value can be a function name or an inline `lambda`, which is a small unnamed function. Adding parentheses runs the action.
 
 The sample below is abstract. It is revisited after function definitions are covered.
 
@@ -1324,6 +1340,8 @@ Dictionary-based branching is useful when your data is dynamic. Most programmers
 The `match` statement may now handle basic multiple-choice selections better. But it does not do general logic the way `if` does. It cannot use dynamic data like a dictionary lookup. It also adds a good deal of complexity for other roles. The next section covers it.
 
 ## match statements
+
+Imagine a small service that reports health as `go`, `stop`, or something else, and turns each into a colour. The old code is an `elif` ladder and the new code is a `match` statement. Both work, and choosing between them is the real lesson of this section.
 
 For most of its history, Python had no multiple-choice statement. The tools described above were enough, and they still appear in plenty of Python code written today. Other languages, however, keep copying features from one another. Their own distinctions blur as a result, often for no better reason than familiarity. The `match` statement, new in Python 3.10, is one such feature.
 
@@ -1361,6 +1379,8 @@ match state:
 ```
 
 The `match` statement first evaluates the expression in its header, here `state`. It then compares the result with each `case` value below it, from top to bottom. When the first match is found, the block under that `case` runs, and the whole `match` ends. If no `case` matches, the `_` case runs as a fallback default. The `_` case must come last. If there is no `_` case, the statement exits silently.
+
+The underscore is the wildcard pattern. It matches anything and binds nothing, which is exactly why it works as a catch-all.
 
 A `case` block can hold several statements, and it can contain nested statements. A `match` can also sit inside other statements. A `case` header can list several values separated by `|`, which means "or." It can name a variable with `as` to hold the matched value. A bare name works as a catch-all, much like `_`, but it stores the value.
 
@@ -1429,9 +1449,9 @@ Beyond its basic level, `match` becomes too complex to cover fully here. It goes
 - As patterns: `X as Y` matches pattern `X`, and assigns the matched value to `Y`.
 - Additional patterns that match sequences, mappings, attributes, and instances by their structure.
 
-Example 12-1 is an artificial, if dense, example. It shows literal, sequence, and mapping patterns. Its `[…]` and `(…)` patterns both match any sequence, and they are interchangeable. Its `{…}` pattern matches a mapping. A single `*` or `**` name collects the unmatched parts of a sequence or mapping. This is similar to the extended unpacking you saw earlier. But `**` is unique to patterns, and not every part of a pattern must be a variable. Assignments to starred names happen as a side effect of the match test.
+The next example is artificial, if dense. It shows literal, sequence, and mapping patterns. Its `[…]` and `(…)` patterns both match any sequence, and they are interchangeable. Its `{…}` pattern matches a mapping. A single `*` or `**` name collects the unmatched parts of a sequence or mapping. This is similar to the extended unpacking you saw earlier. But `**` is unique to patterns, and not every part of a pattern must be a variable. Assignments to starred names happen as a side effect of the match test.
 
-Example 12-1. matchdemo.py
+matchdemo.py
 
 ```
 # state = 1 or
@@ -1495,9 +1515,11 @@ It is worth pausing on one fact first. Python ran successfully for about three d
 
 ## Python syntax revisited
 
+Sooner or later you will meet an `IndentationError` in a file that looks perfectly fine. One line carries one space too many, and Python refuses the whole module. The fix takes a keystroke. Understanding why it matters takes a few minutes, and this section is that explanation.
+
 The basic syntax model was introduced earlier. Now that `if` and `match` are larger statements, this section reviews the rules and adds detail. Python's syntax is simple and statement-based. These are its main points.
 
-**Statements run one after another.** Python normally runs statements in a file or nested block from first to last. Statements such as `if`, loops, and exceptions make the interpreter jump around. The path through a program is called the control flow. Statements that affect it are often called control-flow statements.
+**Statements run one after another.** Python normally runs statements in a file or nested block from first to last. Statements such as `if`, loops, and exceptions make the interpreter jump around. The path through a program is called the control flow, and statements that affect it are often called control-flow statements.
 
 **Block and statement boundaries are automatic.** Python has no braces or begin/end words around blocks. It uses the indentation of statements under a header to group them. Python statements also do not need semicolons. The end of a line usually ends the statement. Special cases let a statement span lines or share a line with another.
 
@@ -1525,9 +1547,9 @@ if x:
 print('block0')
 ```
 
-*Figure 12-1. Nested blocks of code denoted by their indentation*
+*Nested blocks of code denoted by their indentation*
 
-Top-level code must start in column 1. Nested blocks can start in any column. Indentation can use any number of spaces or tabs, as long as every statement in one block uses the same amount. Python does not care how you indent, only that you are consistent. Four spaces or one tab per level are common, but there is no single rule.
+Top-level code must start in column 1, while nested blocks can start in any column. Indentation can use any number of spaces or tabs, as long as every statement in one block uses the same amount. Python does not care how you indent, only that you are consistent. Four spaces or one tab per level are common, but there is no single rule.
 
 Indenting code is natural in practice. Errors of indentation are easy to spot, because the lines look wrong. The example with the `'Hack'` string shows three typical mistakes. The first line is indented when it should not be. One line is indented unexpectedly after an `if` block. And a line is indented inconsistently with the rest of its block. Python reports each of these as an error.
 
@@ -1630,6 +1652,8 @@ You can combine these special cases to write code that is hard to read. That is 
 
 ## Truth values revisited
 
+Picture a config with an empty list of nodes. You write `if nodes:` and move on, and the empty case takes care of itself. That works because every Python object carries a truth value, and this section shows where those values come from.
+
 Comparisons, equality, and truth values were introduced earlier. The `if` is the first statement that relies on them heavily, so this section adds detail. Python's Boolean operators differ a little from those in some other languages. In Python:
 
 - Every object has an inherent Boolean true or false value.
@@ -1640,7 +1664,7 @@ Comparisons, equality, and truth values were introduced earlier. The `if` is the
 - The Boolean `and` and `or` operators return a true or false operand object.
 - Boolean operators stop evaluating, or short-circuit, as soon as the result is known.
 
-The `if` statement acts on truth values. Boolean operators combine the results of other tests into richer truth values. There are three Boolean expression operators.
+The `if` statement acts on truth values, and Boolean operators combine the results of other tests into richer ones. A Boolean value is simply true or false. There are three Boolean expression operators.
 
 | Expression | True when | Returns |
 | --- | --- | --- |
@@ -1657,7 +1681,9 @@ The most unusual part is that `and` and `or` return an object, not a plain `True
 (True, False)
 ```
 
-Magnitude comparisons return `True` or `False`. Those are just custom versions of `1` and `0`. The `and` and `or` operators always return one of their operands, either the left object or the right one. In an `if`, their results behave as you expect. You just do not get back a simple `True` or `False`.
+Magnitude comparisons return `True` or `False`, which are just custom versions of `1` and `0`. The `and` and `or` operators always return one of their operands, either the left object or the right one. In an `if`, their results behave as you expect. You just do not get back a simple `True` or `False`.
+
+An operand is one of the values an operator works on. In `2 or 3`, the operands are `2` and `3`.
 
 For `or`, Python checks the operands from left to right. It returns the first true one and stops there. This is called short-circuit evaluation, because the result is known early and the rest is skipped.
 
@@ -1683,7 +1709,7 @@ The `and` operator also short-circuits. Python checks from left to right. If the
 []
 ```
 
-In the first line, both operands are true, so Python returns the right one. In the second line, the left operand is `[]`, which is false. Python returns it without running the right side. In the last line, the left side is true, so Python returns the right side, which is an empty list.
+In the first line, both operands are true, so Python returns the right one. In the second line, the left operand is `[]`, which is false, so Python returns it without running the right side. In the last line, the left side is true, so Python returns the right side, which is an empty list.
 
 The end result matches other languages. When you test the value in an `if` or `while`, you get the logic you expect from `or` and `and`. The difference is that Python returns either the left or the right object, not a simple integer flag. A later section shows how this behavior is useful.
 
@@ -1749,6 +1775,8 @@ This trick is not the same as the ternary expression. Python does not short-circ
 
 ## Why you will care: Booleans
 
+A configuration often arrives as `None`, an empty string, or a real value, and the script needs a usable fallback. That job is a one-liner with `or`, which is the first thing to learn about Booleans here.
+
 One common use of Python's Boolean operators is selecting from a set of objects with `or`.
 
 ```
@@ -1798,6 +1826,8 @@ The `bool` function returns the truth value of its argument, as if the argument 
 
 ## while loops
 
+Picture a script that waits for a service to answer. It has no fixed number of tries. It keeps asking while the answer is still missing, and that is exactly the job a `while` loop is built for.
+
 Loops repeat an action until some condition changes. Python has two main loop statements. The `while` statement is the most general one. It can handle repetitive work of all kinds. The `for` statement is more specialized. It steps through the items of any iterable object with very little code.
 
 The `while` statement repeats its block as long as a test at the top stays true. The word "loop" comes from control looping back to the top each time. When the test becomes false, control moves to the statement after the loop. If the test is false at the start, the body never runs and the loop is skipped.
@@ -1822,7 +1852,7 @@ while True:
     print('Type Ctrl+C to stop me!')
 ```
 
-The next example removes the first character of a string on each pass. It stops when the string is empty, which is false. Testing an object directly like this is common. It is shorter than writing `while x != '':`. The `end=' '` argument keeps all the output on one line, as the print operations section above explains.
+The next example removes the first character of a string on each pass. It stops when the string is empty, which is false. Testing an object directly like this is common, and it is shorter than writing `while x != '':`. The `end=' '` argument keeps all the output on one line, as the print operations section above explains.
 
 ```
 x = 'code'
@@ -1856,6 +1886,8 @@ while True:
 The `break` statement is what makes this structure work. The next section covers it.
 
 ## break, continue, pass, and the loop else
+
+Picture a search across a list of nodes. You want to stop the moment one matches, skip the ones that look wrong, and know afterwards whether anything matched at all. Three small statements cover those three needs.
 
 Some statements only do something inside a loop. `break` and `continue` are two of them. The loop `else` clause is tied to `break`, so the two work together. `pass` is a placeholder that is not tied to loops at all. It belongs in the same group of one-word statements.
 
@@ -1901,7 +1933,7 @@ def func2():
 
 We cannot leave the body empty without a syntax error, so we write `pass` instead.
 
-Python has a similar, more obscure option. An ellipsis, written as `...`, can appear anywhere an expression can. It is three plain dots, not the single Unicode ellipsis character. An ellipsis does nothing by itself. So it can stand in for `pass`, especially for code you plan to fill in later.
+Python has a similar, more obscure option. An ellipsis, written as `...`, can appear anywhere an expression can. It is three plain dots, not the single Unicode ellipsis character. An ellipsis does nothing by itself, so it can stand in for `pass`, especially for code you plan to fill in later.
 
 ```
 def func1():
@@ -2025,6 +2057,8 @@ else:                     # Normal exit, when x reaches 1
 
 Rather than setting a flag, this code inserts a `break` where a factor is found. The loop `else` can then assume it runs only when no factor is found. If the loop never hits the `break`, the number is prime. Trace through the code to see how this works.
 
+Beginners trip here, so say it plainly: this `else` belongs to the loop, not to the `if` inside it. It runs when the loop finishes its natural course, and it is skipped when a `break` cuts the loop short.
+
 The `else` also runs when the loop body never executes. In a `while` loop, that happens when the header test is false at the start. So this example still prints "is prime" when `x` starts at 1 or less, such as when `num` is 2.
 
 A note on accuracy: this example finds primes only informally. The strict mathematical definition says numbers below 2 are not prime. This code classifies 1 and 0 as prime, though. It also fails for negative numbers, and it accepts floating-point numbers whose decimal digits are all zero. The code uses `//` instead of `/`, so the first division truncates the remainder. Wrapping it in a function is a good next step for reuse.
@@ -2063,6 +2097,8 @@ You could replace the `else` with a test for an empty `x` after the loop, such a
 
 ## for loops
 
+Every script eventually has to do something to every item in a list. Picture a launcher that prints each node name, or a report that adds up each row. The `for` loop is the tool for that job, and it is the loop you will write most often.
+
 The `for` loop is a generic iterator. It steps through the items of any ordered sequence or other iterable object. That includes strings, lists, tuples, sets, dictionaries, and other built-in iterables. It also works with new objects you define with classes. You have already used `for` with sequences. This section looks at it more formally.
 
 ### General format
@@ -2076,9 +2112,11 @@ else:                     # Optional else
     statements            # Run if didn't exit loop body with break
 ```
 
-Python assigns the items of the iterable to `target` one by one. It runs the loop body once for each item. The body usually uses the target like a cursor that steps along the sequence.
+Python assigns the items of the iterable to `target` one by one. It runs the loop body once for each item. The body usually uses the target like a cursor that steps along the sequence, taking one item at a time.
 
 The target can be any assignment target. It is often a simple name. That name is a possibly new variable in the scope where the `for` statement is coded. You can even change it inside the body. Python still sets it to the next item when control returns to the top. After the loop, the name refers to the last item visited. That is the last item in the sequence, unless `break` ended the loop early.
+
+That last point surprises people. The loop variable does not disappear when the loop ends, and it keeps whatever value it held last.
 
 The `for` loop's `else` works exactly as it does in a `while` loop. It runs if the loop finishes without a `break`, which means every item was visited. `break` and `continue` behave the same here. The complete format looks like this.
 
@@ -2129,7 +2167,7 @@ P y t h o n
 web num app
 ```
 
-Some objects that are not sequences also work in a `for`, including files. The iterable behavior behind this gets a full treatment later.
+Some objects that are not sequences also work in a `for`, including files. A file hands over one line at a time, even though it is not a list. The iterable behavior behind this gets a full treatment later.
 
 #### Tuple assignment in for loops
 
@@ -2177,7 +2215,7 @@ Tuple assignment in a `for` is not a special case. Any assignment target works a
 5 6
 ```
 
-The tuple form in the header saves a step when you iterate through sequences of sequences. Nested structures unpack the same way.
+The tuple form in the header saves a step when you iterate through sequences of sequences. Nested structures unpack in the same way, shape by shape.
 
 ```
 >>> ((a, b), c) = ((1, 2), 3)         # Nested sequences work too
@@ -2247,7 +2285,7 @@ Every starred-target form works in a `for`, as it does in `=` assignment. That i
 
 #### Nested for loops
 
-The next loops are a bit more involved. The first shows nested `for` loops. The inner loop runs for every iteration of the outer loop. The `+` in the inner loop combines the current items from both loops.
+The next loops are a bit more involved. The first shows nested `for` loops. The inner loop runs for every iteration of the outer loop, so the body runs once for each pair of items. The `+` in the inner loop combines the current items from both loops.
 
 ```
 >>> for x in 'abc':                          # For each item in one string
@@ -2323,9 +2361,13 @@ Comprehensions get a full treatment later in this handbook.
 
 ## Loop coding techniques
 
-The `for` loop covers most counter-style loops. It is simpler to write and often quicker to run than a `while`. So reach for `for` first whenever you need to step through a sequence or another iterable. Python programmers should avoid counting by hand when they can. Its iteration tools handle much of the bookkeeping that lower-level languages like C leave to you.
+Counting is where beginners lose time. A C programmer writes an index, a bound check, and an increment. Python usually needs none of that. The `for` loop covers most counter-style loops, and three built-ins cover the rest.
 
-Some jobs need more specialized iteration. You might visit every second or third item, or change a list along the way. You might walk two sequences in parallel, or need the indexes too. You can always handle these with a `while` loop and manual indexing. Python also provides built-ins that let a `for` loop handle them.
+The `for` loop is simpler to write and often quicker to run than a `while`. So reach for `for` first whenever you need to step through a sequence or another iterable. Python programmers should avoid counting by hand when they can. Its iteration tools handle much of the bookkeeping that lower-level languages like C leave to you.
+
+Some jobs need more specialized iteration. You might visit every second or third item, or change a list along the way, or walk two sequences in parallel, or need the indexes too. You can always handle these with a `while` loop and manual indexing. Python also provides built-ins that let a `for` loop handle them.
+
+The three built-ins below are the ones you will reach for most: `range` for counters, `zip` for pairs, and `enumerate` for positions.
 
 - The built-in `range` function produces a series of successively higher integers. You can use them as indexes in a `for`.
 - The built-in `zip` function returns a series of parallel-item tuples. You can use them to traverse multiple sequences in a `for`.
@@ -2371,7 +2413,7 @@ A `for` loop pulls results from `range` automatically, so you do not need a `lis
 
 ### Sequence scans with while, range, and for
 
-The `range` function can step through a sequence indirectly. It is often not the best approach for that job. The easiest and fastest way to visit every item is a simple `for`. Python handles most of the details in quick internal code.
+The `range` function can step through a sequence indirectly, though it is often not the best approach for that job. The easiest and fastest way to visit every item is a simple `for`, because Python handles most of the details in quick internal code.
 
 ```
 >>> X = 'hack'
@@ -2379,7 +2421,7 @@ The `range` function can step through a sequence indirectly. It is often not the
 h a c k
 ```
 
-The `for` loop manages the iteration on its own. If you need to take over the indexing yourself, a `while` loop does it.
+The `for` loop manages the iteration on its own, and if you need to take over the indexing yourself, a `while` loop does it.
 
 ```
 >>> i = 0
@@ -2707,6 +2749,8 @@ To fully understand `enumerate` and comprehensions, you need the deeper look tha
 
 ## Why you will care: file scanners
 
+Your first real log file will be bigger than the examples in this chapter. It may hold a million lines, and reading it all into memory is not an option. That is the moment loops stop being an exercise and start doing the work.
+
 Loops show up wherever a job has to run again and again. Text files hold many characters and lines, so they suit loops well. When a file is small enough for memory, the file object's `read` method can pull the whole thing in at once.
 
 ```
@@ -2714,7 +2758,7 @@ file = open('data.txt')       # Read contents into a string all at once
 print(file.read())
 ```
 
-For more granular access, scan by characters. The second option below does not load the whole file. It also uses the `:=` named assignment from earlier.
+For more granular access, scan by characters. The second option below does not load the whole file, and it uses the `:=` named assignment from earlier.
 
 ```
 for char in open('data.txt').read():
@@ -2724,7 +2768,7 @@ while char := file.read(1):   # Read by character, empty means end-of-file
     print(char, end='')       # Don't add a \n after each character
 ```
 
-To read by lines or blocks instead, use `while` loops like these. Binary data is often read by blocks in binary mode, `'rb'`. Text should use text mode, so character bytes are not split.
+To read by lines or blocks instead, use `while` loops like these. Binary data is often read by blocks in binary mode, `'rb'`, where Python hands you raw bytes. Text should use text mode, so character bytes are not split.
 
 ```
 file = open('data.txt')
@@ -2744,9 +2788,9 @@ for line in open('data.txt'):      # Use iterators: best for text input (maybe)
     print(line.rstrip())
 ```
 
-The first version calls the file `readlines` method. It loads the whole file into a list of line strings. The second relies on file iterators, which read one line on each pass. The second version is generally best for text. It is simple, and it works for very large files, because it never loads the entire file into memory. Speed can vary by Python release, so time your code if it matters.
+The first version calls the file `readlines` method, which loads the whole file into a list of line strings. The second relies on file iterators, which read one line on each pass. The second version is generally best for text. It is simple, and it works for very large files, because it never loads the entire file into memory. Speed can vary by Python release, so time your code if it matters.
 
-The `readlines` call still has uses. To reverse a file's lines, for example, the file's contents must fit in memory. The `reversed` built-in works on sequences. It does not accept iterables that generate values. `sorted` does accept them. So it can order all the lines in a file without loading the whole file.
+The `readlines` call still has uses. To reverse a file's lines, for example, the file's contents must fit in memory. The `reversed` built-in works on sequences. It does not accept iterables that generate values. `sorted` does accept them, so it can order all the lines in a file without loading the whole file.
 
 ```
 for line in reversed(open('data.txt').readlines()):
@@ -2759,7 +2803,11 @@ Python's documentation covers the file calls used here. It also covers `os.popen
 
 ## The iteration protocol
 
+A `for` loop works on a list, on a string, on a dictionary, and on an open file, and nobody told it which one it had. That small miracle is built on one idea, and this section explains it.
+
 The `for` loop does not care what kind of collection it steps through. It works on any iterable object. That idea reaches well beyond loops. Comprehensions, `in` membership tests, and the `zip`, `enumerate`, and `map` built-in functions all scan objects from left to right in the same way. Even dictionaries work, although they are not sequences.
+
+**The trick is that Python never iterates over objects directly. It asks each object for an iterator, then asks that iterator for one item at a time.**
 
 ```python
 >>> for k in dict(a=1, b=2, c=3): print(k, end=' ')
@@ -2770,15 +2818,19 @@ An iterable is a generalization of a sequence. An object counts as iterable if i
 
 Virtual iterables are not true sequences, though. They do not support every operation that lists and tuples do. They only hand out values over time, when something asks for them. Whether an object is physical or virtual, it announces iteration support by implementing the iteration protocol. That protocol is a set of callable methods that all iteration tools use.
 
+A protocol here means an agreed set of method names. If an object has those methods, every tool that expects the protocol can work with it. Nothing is inherited and nothing is registered. The names themselves are the contract.
+
 ### Iterables and iterators
 
-Python sometimes uses the words iterable and iterator interchangeably. That can be confusing. In this handbook, an iterable is an object with the `__iter__` method at the top of the protocol. An iterator is an object with the `__next__` method that produces results. An iterable returns an iterator, and the iterator advances on each `next` call.
+Python sometimes uses the words iterable and iterator interchangeably, and that can be confusing. Keep them apart with this rule. In this handbook, an iterable is an object with the `__iter__` method at the top of the protocol. An iterator is an object with the `__next__` method that produces results. An iterable returns an iterator, and the iterator advances on each `next` call.
+
+A picture helps here. The iterable is the book, and the iterator is your bookmark. The book stays where it is. The bookmark moves, and it remembers where you stopped.
 
 The phrase iteration tool means any language feature that runs an iteration. A `for` loop and a `zip` call are both iteration tools.
 
 ### Reading a file one line at a time
 
-Files show the protocol clearly. Suppose `data.txt` holds three lines of text. The `readline` method reads one line on each call. At the end of the file, it returns an empty string. An empty string is false, so a loop can stop on it.
+Files show the protocol clearly. Suppose `data.txt` holds three lines of text. The `readline` method reads one line on each call. At the end of the file, it returns an empty string. An empty string is false, so a loop can stop on it. That is exactly why the `while line := ...` loops above work at all.
 
 ```python
 >>> f = open('data.txt')
@@ -2807,7 +2859,7 @@ Traceback (most recent call last):
 StopIteration
 ```
 
-Any object with a `__next__` method that raises `StopIteration` at the end counts as an iterator. Every iteration tool calls `__next__` on each pass. It catches `StopIteration` to learn when to stop. A file is its own iterator, so the initial `iter` step is optional for files.
+Any object with a `__next__` method that raises `StopIteration` at the end counts as an iterator. Every iteration tool calls `__next__` on each pass. It catches `StopIteration` to learn when to stop, which is a tidy way of saying "there is nothing left". A file is its own iterator, so the initial `iter` step is optional for files.
 
 ### Letting the for loop read the file
 
@@ -2886,7 +2938,7 @@ StopIteration
 
 Some objects are both an iteration tool and an iterable. The `enumerate` and `zip` built-ins are examples. They already avoid building result lists in memory. Applying them to other iterables saves even more space. No work happens until an iteration tool asks for results.
 
-Files are their own iterators, while lists are not. You can check this with `is`, which tests object identity.
+Files are their own iterators, while lists are not. You can check this with `is`, an operator that tests whether two names point to the very same object.
 
 ```python
 >>> f = open('data.txt')
@@ -2923,7 +2975,7 @@ while True:
 
 Both loops print `1 4 9`. The second loop does by hand what the `for` loop does automatically. It gets an iterator with `iter`, calls `next` on each pass, and catches the stop signal.
 
-A `try` statement runs an action and catches any exception raised while it runs. Exceptions get a fuller treatment later in the book. The `for` loop runs the internal equivalent of `__next__`, not `next`, but the effect is the same.
+A `try` statement runs an action and catches any exception raised while it runs. Exceptions get a fuller treatment later. The `for` loop runs the internal equivalent of `__next__`, not `next`, but the effect is the same.
 
 For user-defined classes, a `for` loop may index the object repeatedly instead of running the protocol. It prefers the protocol when the object supports it. The later chapter on operator overloading returns to this story.
 
@@ -2948,7 +3000,7 @@ Combined with `:=`, this default shortens manual loops. The catch is that it fai
 ...     print(X ** 2, end=' ')
 ```
 
-The `iter` built-in can also take a second argument, a sentinel value. The call then reads from a function until the function returns the sentinel. This is a tricky way to read a file in blocks with a `for` loop. It needs `lambda`, which you will meet later.
+The `iter` built-in can also take a second argument, a sentinel value. A sentinel is a value used as a stop signal. The call then reads from a function until the function returns the sentinel. This is a tricky way to read a file in blocks with a `for` loop. It needs `lambda`, which you will meet later.
 
 ```python
 >>> f = open('data.txt')
@@ -2961,6 +3013,8 @@ Python's documentation covers more modes of `next` and `iter`.
 ## Other built-in iterables
 
 ### Dictionaries, range, enumerate, and zip
+
+A dictionary is not a sequence, yet a `for` loop walks it without complaint. What the loop receives is one key at a time, and this section shows the pattern behind that.
 
 A `for` loop is the usual way to step through a dictionary's keys. Dictionaries are implicitly iterable. Their iterator returns one key at a time.
 
@@ -3111,7 +3165,7 @@ Both tools call functions instead of evaluating expressions. Their full story wa
 
 ### Multiple-pass versus single-pass iterables
 
-Some iterables allow many scans. Others allow only one. The difference changes how you use them.
+Some iterables allow many scans, and others allow only one. The difference changes how you use them, and it bites hardest when the same object is looped over twice.
 
 The `range` object, dictionaries, and lists are not their own iterators. You must make one with `iter` when you iterate manually. These objects support multiple iterators, and each iterator remembers its own position.
 
@@ -3157,15 +3211,19 @@ The results of `enumerate`, `zip`, `map`, and `filter` are their own iterators. 
 0
 ```
 
-Here the list supports several active scans at once, as `range` does. The `zip` and `map` objects share one position between their iterators. Classes you write later usually return a new object from `iter`, so each scan gets its own position. A single iterator usually returns itself and supports `next` directly. Generator functions and generator expressions behave like `map` and `zip` in this regard. They support just one active scan. Code that treats such single-pass iterators as lists may fail unless you convert them with `list` first.
+Here the list supports several active scans at once, as `range` does. The `zip` and `map` objects share one position between their iterators. Classes you write later usually return a new object from `iter`, so each scan gets its own position. A single iterator usually returns itself and supports `next` directly.
+
+Generator functions and generator expressions behave like `map` and `zip` in this regard. They support just one active scan. Code that treats such single-pass iterators as lists may fail unless you convert them with `list` first.
 
 ### Standard-library iterables
 
-Python's standard library adds more iterables. Shelves give access to stored objects by key. The results of `os.popen`, which reads the output of a shell command, are iterable too. You can process both with the full set of iteration tools. The `os.walk` directory walker is iterable as well. The details of that tool wait for the book's coverage of generators.
+Python's standard library adds more iterables. Shelves give access to stored objects by key. The results of `os.popen`, which reads the output of a shell command, are iterable too. You can process both with the full set of iteration tools. The `os.walk` directory walker is iterable as well. The details of that tool wait for the coverage of generators.
 
 All of these implement the same `iter` and `next` interface. Loops run that machinery for you, so you rarely see it.
 
 ## Comprehensions
+
+You have written this loop before. It builds an empty list, walks another list, and appends a result each time. Python has a shorter way to say the same thing, and it usually runs faster.
 
 Comprehensions and `for` loops are the most common places the iteration protocol appears. Earlier, you changed a list with `range` and an index.
 
@@ -3185,11 +3243,11 @@ This works, but it is not the best approach in Python. A list comprehension repl
 [21, 22, 23, 24, 25]
 ```
 
-The result is similar, and the code is shorter. It is often twice as fast as the loop, as tested in CPython 3.12. A comprehension makes a new list object. That can matter if several names refer to the original list. For most code, the difference does not matter.
+The result is similar, and the code is shorter. It is often twice as fast as the loop, as tested in CPython 3.12. A comprehension makes a new list object, which can matter if several names refer to the original list. For most code, the difference does not matter.
 
 ### List comprehension basics
 
-List comprehensions appeared earlier in the handbook. Their syntax comes from set-theory notation, which applies an operation to each item in a set. You do not need set theory to use them. Most people read a list comprehension as a backward `for` loop.
+List comprehensions appeared earlier in the handbook. Their syntax comes from set-theory notation, which applies an operation to each item in a set. You do not need set theory to use them. Most people read a list comprehension as a backward `for` loop, and that reading is the one to keep.
 
 Take the earlier example apart. The square brackets mean the result is a new list. The expression on the left is one you write. It uses a loop variable you name, such as `x + 10`. The part on the right is a `for` header. It names the loop variable and the iterable, as in `for x in L`.
 
@@ -3327,7 +3385,7 @@ Past a certain point, a comprehension becomes too compact to be useful. Comprehe
 
 ### Comprehensions and the other forms
 
-Comprehensions continue in the book's later chapter on functions, where their syntax is defined more formally. They are as closely related to functions as they are to loops. Several related forms share the same syntax. They differ in how they are written and what they produce.
+Comprehensions continue in the later chapter on functions, where their syntax is defined more formally. They are as closely related to functions as they are to loops. Several related forms share the same syntax. They differ in how they are written and what they produce.
 
 ```python
 [x + 10 for x in L if x > 0]      # List comprehension
@@ -3342,7 +3400,9 @@ Speed results vary. List comprehensions were consistently about twice as fast as
 
 ## Iteration tools
 
-Later in the book, you will see how user-defined classes can implement the iteration protocol too. Any tool that uses the protocol works on any built-in type or user-defined class that provides it. This section summarizes the tools that do.
+Once you know the protocol, a crowd of tools stops looking separate. `for`, `map`, `sorted`, and even plain tuple assignment all follow the same two-step pattern. This section gathers them in one place.
+
+Later, you will see how user-defined classes can implement the iteration protocol too. Any tool that uses the protocol works on any built-in type or user-defined class that provides it. This section summarizes the tools that do.
 
 So far, iterators have appeared mostly in `for` loops. But every built-in tool that scans collections from left to right uses the protocol. The `for` loop is one example.
 
@@ -3474,7 +3534,7 @@ True
 'Learning Python, 6E\n'
 ```
 
-A starred argument in a function call unpacks an iterable into separate arguments. It works like the starred form in list literals. You will see calls like this again in the book's functions material. It accepts any iterable.
+A starred argument in a function call unpacks an iterable into separate arguments. It works like the starred form in list literals. You will see calls like this again in the functions material. It accepts any iterable.
 
 ```python
 >>> def f(a, b, c):
@@ -3505,6 +3565,8 @@ The book returns to iteration in two later places. User-defined functions can be
 ### Iteration chapter summary
 
 The iteration protocol lets nonsequence objects take part in loops. Comprehensions apply an expression to every item in any iterable. A list comprehension is an expression similar to a `for` loop. Many built-in tools in Python use the same protocol. Use a `for` loop with a file iterator when you need to read a text file line by line.
+
+When a loop surprises you, ask one question first: is this object an iterable, an iterator, or both? The answer usually explains the bug.
 
 ## Checkpoint questions
 

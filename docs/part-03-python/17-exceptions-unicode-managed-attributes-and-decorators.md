@@ -12,19 +12,21 @@ lab_venue: "Mac"
 
 # 3.17 Exceptions, Unicode, managed attributes and decorators
 
-This chapter goes deeper into material that chapter 3.1 only introduces. You will meet it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
+Chapter 3.1 introduced this material, and here we go deeper. You will meet it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers, so the time spent now pays off later.
 
 ## The try statement
 
-The `try` statement is how your code catches exceptions. If an exception happens while the main block runs, Python jumps to one of the handlers and carries on from there. Those handlers can be `except`, `else`, `finally`, and `except*` clauses nested under the `try`. Each clause has its own job and its own rules for how it may be combined.
+Picture a checkpoint loader on a shared cluster. It reads a manifest, opens a file, and talks to a storage server, and any of those steps can fail. When one does, you want your code to decide what happens next, not the interpreter. The `try` statement is how you take that decision into your own hands.
 
-Because of that, we will learn the common roles of `try` one at a time. We will put the pieces together at the end of this section. Python once used separate statements for these jobs, so the combined form is easier to read once the parts are clear.
+A `try` statement wraps a block of code in handlers. If an exception happens while the main block runs, Python jumps to one of those handlers and carries on from there. The handlers are the `except`, `else`, `finally`, and `except*` clauses nested under the `try`. Each clause has its own job and its own rules for how it may be combined with the others.
+
+Because of that, we will learn the common roles of `try` one at a time, then put the pieces together at the end of this section. Python once used separate statements for these jobs. The combined form is easier to read once the parts are clear.
 
 We will also defer the `except*` clause to the next chapter. It works with exception objects, and it is rarely needed in everyday code. For now, the fundamentals matter most.
 
 ### try statement clauses
 
-A `try` statement can have several clauses after its header. Table 34-1 lists every form. It works as both a reference and a preview of what follows.
+A `try` statement can carry several clauses after its header line. Table 34-1 lists every form, and it works both as a reference and as a preview of what follows.
 
 | Clause form | Interpretation |
 | --- | --- |
@@ -37,13 +39,13 @@ A `try` statement can have several clauses after its header. Table 34-1 lists ev
 | `finally:` | Always perform this block on exit, exception or not |
 | `nonempty except forms`… | Catch multiple exceptions in a group (Chapter 35) |
 
-A `try` must use at least one of these clauses. It can have any number of `except` clauses. You can code an `else` only when at least one `except` exists, and there can be only one `else` and one `finally`. A `finally` may appear alongside `except` and `else`, and its ordering rules come later in this chapter.
+A `try` must use at least one of these clauses, and it can have any number of `except` clauses. You can code an `else` only when at least one `except` exists. There can be only one `else` and one `finally`. A `finally` may appear alongside `except` and `else`, and its ordering rules come later in this chapter.
 
-We will look at the `as var` form when we reach the `raise` statement. It gives you access to the object that was raised.
+We will look at the `as var` form when we reach the `raise` statement. That form gives your handler access to the object that was raised.
 
 ### The except and else clauses
 
-Syntactically, the `try` is a compound statement with several parts. It starts with a `try` header line, followed by an indented block of statements. After that come clauses that each name a condition and give a block of code to handle it. In its most common form, you write one or more `except` clauses and an optional `else` at the end. Line up `try`, `except`, and `else` at the same indentation level:
+Syntactically, the `try` is one compound statement with several parts. It starts with a `try` header line, followed by an indented block of statements. After that come clauses that each name a condition and give a block of code to handle it. In its most common form, you write one or more `except` clauses and an optional `else` at the end. Line up `try`, `except`, and `else` at the same indentation level:
 
 ```python
 try:
@@ -60,27 +62,27 @@ else:
     statements # Run if no exception was raised in the try block
 ```
 
-The block under the `try` header is the main action. It is the code you want to run, wrapped in handlers. The `except` clauses handle exceptions raised during that block. The optional `else` clause runs only when the `try` block finishes without an exception.
+The block under the `try` header is the main action: the code you want to run, wrapped in handlers. The `except` clauses handle exceptions raised during that block. The optional `else` clause runs only when the `try` block finishes without an exception.
 
-Each `except` names the exceptions it catches. A single name catches just that exception. A tuple catches any exception in the tuple. An `except` with no name matches all exceptions, or all the ones not caught above it. A nonempty `except` can also name a variable after `as`. Python assigns the exception object to that variable.
+Each `except` names the exceptions it catches. A single name catches just that one exception, while a tuple catches any exception listed inside it. An `except` with no name matches all exceptions, or all the ones not caught above it. A nonempty `except` can also name a variable after `as`, and Python assigns the exception object to that variable.
 
 ### How try statements run
 
-When Python enters a `try`, it records where it is so it can return if something goes wrong. It runs the statements under the `try` header first. What happens next depends on two questions. Was an exception raised? And does that exception match one the `try` is watching for?
+When Python enters a `try`, it records where it is so it can return if something goes wrong. It then runs the statements under the `try` header. What happens next depends on two questions. Was an exception raised, and does that exception match one the `try` is watching for?
 
-- **Exception and match.** An exception occurs in the `try` block, and one of the `except` clauses names it. Python jumps back to the topmost matching `except` clause. It assigns the exception object to the `as` variable, if one is given. After the handler runs, control continues below the whole `try` statement. If the handler raises another exception, the search starts again from that point.
+- **Exception and match.** An exception occurs in the `try` block, and one of the `except` clauses names it. Python jumps back to the topmost matching `except` clause, and it assigns the exception object to the `as` variable if one is given. After the handler runs, control continues below the whole `try` statement. If the handler raises another exception, the search starts again from that point.
 - **Exception and no match.** An exception occurs, but no clause names it. The exception moves up to the next `try` that was entered earlier and that matches it. If no matching `try` exists, Python prints a default error message and ends the program. The REPL is the exception to that last part.
 - **No exception.** The `try` block finishes cleanly. Python runs the `else` clause if one exists, then continues below the whole `try` statement. If the `else` block raises an exception, the propagation process starts again.
 
-In short, `except` clauses catch matching exceptions raised while the `try` block runs. The `else` clause runs only when that block raises nothing. Exceptions match `except` clauses through class relationships. A subclass matches its superclass, and the empty `except` matches any exception. We will explore those class rules in the next chapter.
+In short, `except` clauses catch matching exceptions raised while the `try` block runs, and the `else` clause runs only when that block raises nothing. Exceptions match `except` clauses through class relationships: a subclass matches its superclass, and the empty `except` matches any exception. We will explore those class rules in the next chapter.
 
-An `except` is a focused handler. It catches only exceptions that happen inside its `try` block. The block may call functions defined elsewhere, though, so the source of an exception may sit outside the `try` statement itself. A `try` block can call large amounts of code, including code with `try` statements of its own. Those inner `try` statements are searched first. Where an exception goes depends on what ran before it. Chapter 36 of the book explores this more.
+An `except` is a focused handler: it catches only exceptions that happen inside its own `try` block. The block may call functions defined elsewhere, though, so the source of an exception can sit outside the `try` statement itself. A `try` block can call large amounts of code, including code with `try` statements of its own, and those inner `try` statements are searched first. Where an exception goes depends on what ran before it. Chapter 36 of the book explores this more.
 
-If you add a `finally` clause, its block runs in all three cases above. We will see that shortly. First, let us look at some common variations of exception-catching clauses.
+If you add a `finally` clause, its block runs in all three cases above; we will see that shortly. First, let us look at some common variations of exception-catching clauses.
 
 ### Catching many exceptions with a tuple
 
-An `except` clause can list several exceptions in a parenthesized tuple. It catches any one of them. Python checks `except` clauses from top to bottom. So a tuple has the same effect as one `except` clause per exception. The difference is that you write the shared handler body only once.
+An `except` clause can list several exceptions in a parenthesized tuple, and it catches any one of them. Python checks `except` clauses from top to bottom, so a tuple has the same effect as one `except` clause per exception. The difference is that you write the shared handler body only once.
 
 ```python
 try:
@@ -93,7 +95,7 @@ except (AttributeError, TypeError, SyntaxError):
     …
 ```
 
-If an exception is raised while this `try` block runs, Python returns to the `try` and looks for the first `except` that names it. It checks clauses from top to bottom, and left to right within a tuple. It runs the first clause that matches. If none match, the exception moves past this `try`.
+If an exception is raised while this `try` block runs, Python returns to the `try` and looks for the first `except` that names it. It checks clauses from top to bottom, and left to right within a tuple, then runs the first clause that matches. If none match, the exception moves past this `try`.
 
 Parentheses are required around the tuple. Adding `as` to this form lets you check which exception occurred:
 
@@ -106,7 +108,7 @@ except (AttributeError, TypeError, SyntaxError) as What:
 
 ### Catching all exceptions with empty except and Exception
 
-An `except` clause with no exception name catches every exception not listed above it. It works as a catchall. If you want a general handler that runs when no other clause matches, an empty `except` does the job.
+An `except` clause with no exception name catches every exception not listed above it, so it works as a catchall. If you want a general handler that runs when no other clause matches, an empty `except` does the job.
 
 ```python
 try:
@@ -130,11 +132,11 @@ except:
     … # Catch all possible exceptions
 ```
 
-The empty `except` has costs, though. It can catch unexpected exceptions and intercept events that another handler needs. Even system exit calls and Ctrl+C interrupts work by raising exceptions. You usually want those to pass through.
+The empty `except` has costs, though. It can catch unexpected exceptions and intercept events that another handler needs. Even system exit calls and Ctrl+C interrupts work by raising exceptions, and you usually want those to pass through.
 
 It can also hide real programming mistakes. You may never see a bug until a user reports it, which is too late. We will come back to this as a gotcha at the end of this part of the book. For now, use it with care.
 
-Python offers a safer alternative. Catching the built-in `Exception` has nearly the same effect as an empty `except`. The difference is that it will not catch exceptions related to system exits and Ctrl+C.
+Python offers a safer alternative. Catching the built-in `Exception` has nearly the same effect as an empty `except`, with one difference: it will not catch exceptions related to system exits and Ctrl+C.
 
 ```python
 try:
@@ -143,13 +145,13 @@ except Exception:
     … # Catch all possible exceptions - except exits
 ```
 
-This works because an exception matches a clause when it is a subclass of the named class. `Exception` is the superclass of nearly every exception you should catch this way. This form keeps most of the convenience of the empty `except`. It avoids catching exit events, and it lets you inspect the exception with `as`. It still has some of the same risks, though. It can mask programming errors and ignore them silently.
+This works because an exception matches a clause when it is a subclass of the named class, and `Exception` is the superclass of nearly every exception you should catch this way. This form keeps most of the convenience of the empty `except`. It avoids catching exit events, and it lets you inspect the exception with `as`. It still has some of the same risks, though, because it can mask programming errors and ignore them silently.
 
 ### Catching the no-exception case with else
 
-The `else` keyword appears in three places in Python: in `if` selections, in `for` and `while` loops, and in `try` handlers. In a `try`, `else` runs when no exception occurs. It does not run for exceptions that go unmatched. That is the job of the empty `except` from the previous section. The role looks different from the other two, but the context is different too.
+The `else` keyword appears in three places in Python: in `if` selections, in `for` and `while` loops, and in `try` handlers. In a `try`, `else` runs when no exception occurs. It does not run for exceptions that go unmatched, because that is the job of the empty `except` from the previous section. The role looks different from the other two, but the context is different too.
 
-New Python users often miss why this clause matters. Without it, you cannot tell whether control passed a `try` because nothing went wrong, or because an error was handled. Either way, you land after the `try`:
+New Python users often miss why this clause matters. Without it, you cannot tell whether control passed a `try` because nothing went wrong or because an error was handled. Either way, you land after the `try`:
 
 ```python
 try:
@@ -159,7 +161,7 @@ except IndexError:
 # Did we get here because the try failed or not?
 ```
 
-You could set a Boolean flag and check it later, but that adds admin code. In a loop, `else` makes the exit cause clear when there is no `break`. The `else` clause does the same job in a `try`. It makes the outcome clear with very little extra code:
+You could set a Boolean flag and check it later, but that adds admin code. In a loop, `else` makes the exit cause clear when there is no `break`, and the `else` clause does the same job in a `try`. It makes the outcome clear with very little extra code:
 
 ```python
 try:
@@ -184,7 +186,7 @@ This approach can misclassify errors, though. If the "no exception occurred" act
 
 ### Example: default behavior
 
-Python's control flow can be easier to see in real code than in English. So let us run a few simple examples in files. Exceptions that no `try` catches move up to the top of the Python process. Python then runs its default logic. It ends the program and prints a standard error message.
+Python's control flow can be easier to see in real code than in English, so let us run a few simple examples in files. Exceptions that no `try` catches move up to the top of the Python process, and Python then runs its default logic. It ends the program and prints a standard error message.
 
 The module `crashware.py` in Example 34-1 raises a divide-by-zero exception on purpose:
 
@@ -210,7 +212,7 @@ Traceback (most recent call last):
 ZeroDivisionError: division by zero
 ```
 
-The message has two parts. The first is a stack trace, which starts with "Traceback." The second names the exception and gives its details. The trace lists every active line when the error occurred, from oldest to newest. Here, the bad divide happens on the last entry: line 2 of `crashware.py`, a `return` statement.
+The message has two parts. The first is a stack trace, which starts with "Traceback". The second names the exception and gives its details. The trace lists every active line when the error occurred, from oldest to newest. Here the bad divide happens on the last entry: line 2 of `crashware.py`, a `return` statement.
 
 Python reports every error by raising an exception, so exceptions sit at the heart of error handling and debugging. Even typos often produce a `SyntaxError` or another exception. That happens when a file is imported or run, because the compiler runs then.
 
@@ -232,7 +234,7 @@ Often, this standard message is all you need. For harder debugging, you can catc
 
 ### Example: catching built-in exceptions
 
-Python's default error handling is often exactly what you want. In a top-level script, an error should usually stop the program right away. Many programs need nothing more specific than that.
+Python's default error handling is often exactly what you want. In a top-level script, an error should usually stop the program right away, and many programs need nothing more specific than that.
 
 Sometimes, though, you want to recover from an error instead. If you do not want Python to end your program, wrap the logic in a `try`. This matters for network servers, which must keep running. The file `kaboom.py` in Example 34-2 catches and recovers from a `TypeError`. Python raises it when you join a list and a string with `+`. That operator expects the same sequence type on both sides.
 
@@ -263,7 +265,7 @@ Once you catch an error, control resumes where you caught it, after the `try`. T
 
 ### The finally clause
 
-The other main form of `try` handles cleanup, also called finalization or termination. This job is only loosely related to exceptions. If a `finally` clause is part of a `try`, Python always runs its block on the way out. That holds whether an exception occurred or not. The `finally` does not catch exceptions. It works around them.
+The other main form of `try` handles cleanup, also called finalization or termination. This job is only loosely related to exceptions. If a `finally` clause is part of a `try`, Python always runs its block on the way out, whether an exception occurred or not. A `finally` does not catch exceptions; it works around them.
 
 In its simplest form, the statement looks like this:
 
@@ -282,13 +284,13 @@ Python starts by running the `try` block. What happens next depends on whether a
 
 The `try`/`finally` form is useful when an action must always happen after some code, no matter what. It can guarantee cleanup such as closing a file or disconnecting from a server.
 
-`finally` can appear in the same statement as `except` and `else`. So there is really one `try` statement with several optional clauses. Its ordering rules set it apart, so many people treat `finally` as a separate tool. Either way, its job is the same: specify cleanup that always runs, regardless of exceptions.
+`finally` can appear in the same statement as `except` and `else`, so there is really one `try` statement with several optional clauses. Its ordering rules set it apart, and many people therefore treat `finally` as a separate tool. Either way, its job is the same: specify cleanup that always runs, regardless of exceptions.
 
-The `with` statement covers the same exit work with an object-based approach. It also supports entry actions. It works only with objects that implement the context-manager protocol, though. We will meet it later in this chapter.
+The `with` statement covers the same exit work with an object-based approach, and it supports entry actions too. It works only with objects that implement the context-manager protocol, though. We will meet it later in this chapter.
 
 ### Example: coding termination actions with try/finally
 
-We wrote a few simple `try`/`finally` examples in the last chapter. The following example shows a typical use. The file `closer.py` in Example 34-3 defines an exception and a function that raises it. The main code opens a file and calls the function inside a `try`:
+We wrote a few simple `try`/`finally` examples in the last chapter. The following example shows a typical use. The file `closer.py` in Example 34-3 defines an exception and a function that raises it. The main code opens a file, then calls that function inside a `try`:
 
 ```python
 class MyError(Exception): pass
@@ -304,7 +306,7 @@ if __name__ == '__main__':
     print('Am I reached?') # Continue here only if no exception
 ```
 
-When the function raises its exception, control jumps back and runs the `finally` block. That block closes the file. The exception then moves on to another `try` or to the top-level handler, which prints the standard message and stops the program. So the `print` after the `try` never runs:
+When the function raises its exception, control jumps back and runs the `finally` block, and that block closes the file. The exception then moves on to another `try` or to the top-level handler, which prints the standard message and stops the program. So the `print` after the `try` never runs:
 
 ```text
 $ python3 closer.py
@@ -329,13 +331,13 @@ This example's function is not very useful, since it always raises. Still, wrapp
 
 Notice that the user-defined exception here is a class. Exceptions must be class instances. We will see the reasons in the next chapter.
 
-CPython closes file objects automatically when they are garbage collected. That is handy for temporary files you never assign to a variable. Still, you cannot always predict when garbage collection runs. This is especially true in large programs and in other Python implementations, which use different policies. The `try` statement makes the close explicit. It closes the file when the block exits, with or without an exception.
+CPython closes file objects automatically when they are garbage collected. That is handy for temporary files you never assign to a variable. Still, you cannot always predict when garbage collection runs, especially in large programs and in other Python implementations, which use different policies. The `try` statement makes the close explicit: it closes the file when the block exits, with or without an exception.
 
 ### Combined try clauses
 
-For about the first fifteen years of Python, the `try` came in two flavors. They were two separate statements. One used `finally` to guarantee cleanup code ran. The other used `except` blocks to catch and recover from specific exceptions, and could end with an `else` for the no-exception case.
+For about the first fifteen years of Python, the `try` came in two flavors, and they were two separate statements. One used `finally` to guarantee that cleanup code ran. The other used `except` blocks to catch and recover from specific exceptions, and it could end with an `else` for the no-exception case.
 
-So `finally` could not be mixed with `except` and `else`. That was partly due to implementation issues. It was also because mixing them seemed confusing. Catching and recovering from errors seemed unrelated to cleanup.
+So `finally` could not be mixed with `except` and `else`. That was partly due to implementation issues, and partly because mixing them seemed confusing. Catching and recovering from errors seemed unrelated to cleanup.
 
 Over time, the two statements merged. Today you can mix `finally`, `except`, and `else` in one statement. Java had a similar feature, and Python borrowed the idea. The most complete form of `try` looks like this:
 
@@ -370,7 +372,7 @@ When the clauses are combined, the `try` must have either an `except` or a `fina
 try -> except -> else -> finally
 ```
 
-The `else` and `finally` are optional. You can have zero or more `except` clauses. But an `else` requires at least one `except`. The `try` statement really has two parts: the `except` clauses with an optional `else`, and the `finally`.
+The `else` and `finally` are optional, and you can have zero or more `except` clauses. An `else`, however, requires at least one `except`. The `try` statement really has two parts: the `except` clauses with an optional `else`, and the `finally`.
 
 More precisely, the combined statement has two formats. In the formats below, square brackets mark optional parts, and a star means any number of the item before it:
 
@@ -394,7 +396,7 @@ finally:
     statements
 ```
 
-Because of these rules, an `else` needs at least one `except`. You can always mix `except` with `finally`, with or without an `else`. You can mix `finally` with `else` only if an `except` also appears. An `except` can leave out the exception name to catch everything. It can then run a `raise` statement to reraise the current exception. If you break any of these ordering rules, Python raises a syntax error before your code runs.
+Because of these rules, an `else` needs at least one `except`. You can always mix `except` with `finally`, with or without an `else`. You can mix `finally` with `else` only if an `except` also appears. An `except` can leave out the exception name to catch everything, and it can then run a `raise` statement to reraise the current exception. If you break any of these ordering rules, Python raises a syntax error before your code runs.
 
 ### Combining finally and except by nesting
 
@@ -416,9 +418,9 @@ try: # Nested equivalent to combined form
         finally-block
 ```
 
-The `finally` block still runs on the way out, whatever the main action did. It runs regardless of the handlers inside the nested `try`. Trace the four cases from the previous section to see that this holds. Because an `else` always needs an `except`, the nested form follows the same mixing rules as the combined one.
+The `finally` block still runs on the way out, whatever the main action did, and it runs regardless of the handlers inside the nested `try`. Trace the four cases from the previous section to see that this holds. Because an `else` always needs an `except`, the nested form follows the same mixing rules as the combined one.
 
-The nested version can look more obscure to some people. It also takes more code. The combined form costs just one extra line of `finally:` plus extra indentation. Mixing `finally` into the same statement often makes code easier to write and read. Opinions differ on that, so choose what your team finds clear.
+The nested version can look more obscure to some people, and it takes more code. The combined form costs just one extra line of `finally:` plus extra indentation. Mixing `finally` into the same statement often makes code easier to write and read. Opinions differ on that, so choose what your team finds clear.
 
 ### Combined-clauses example
 
@@ -462,7 +464,7 @@ finally:
 print('after run')
 ```
 
-Running it produces this output. Trace the code yourself to see how each of the four tests reaches its result:
+Run it and you get this output. Trace the code yourself to see how each of the four tests reaches its result:
 
 ```text
 $ python3 trycombos.py
@@ -489,11 +491,11 @@ Traceback (most recent call last):
 ZeroDivisionError: division by zero
 ```
 
-This example uses built-in operations to trigger exceptions, or to avoid them. It depends on Python checking for errors while code runs. The next section shows how to raise exceptions yourself.
+This example uses built-in operations to trigger exceptions, or to avoid them, and it depends on Python checking for errors while code runs. The next section shows how to raise exceptions yourself.
 
 ## The raise statement
 
-To trigger an exception on purpose, write a `raise` statement. Its general form is simple. It is the word `raise`, optionally followed by a class or an instance of one:
+Picture the moment a launcher checks a job manifest and finds a rank of -1. Nothing in Python will complain on its own, because -1 is a perfectly good integer. Your code knows the rule that was broken, and it has to report the breach itself. To trigger an exception on purpose, write a `raise` statement. Its general form is simple: the word `raise`, optionally followed by a class or an instance of one:
 
 ```text
 raise instance # Raise an instance of a class
@@ -501,20 +503,20 @@ raise class # Make and raise an instance of a class
 raise # Reraise the most recent exception
 ```
 
-Exceptions are always class instances now. So the first form is the most common. You give an instance directly, created before the `raise` or inside the statement. If you pass a class instead, Python calls it with no constructor arguments. That form is the same as adding parentheses after the class name. The last form reraises the most recent exception. Handlers use it to pass along an exception they have caught.
+Exceptions are always class instances now, so the first form is the most common. You give an instance directly, created before the `raise` or inside the statement. If you pass a class instead, Python calls it with no constructor arguments, which makes that form the same as adding parentheses after the class name. The last form reraises the most recent exception, and handlers use it to pass along an exception they have caught.
 
-> Note: Before Python 2.6, exceptions could be plain strings, with an optional data item in `raise`. Classes replaced strings to add features and categories. Strings were simpler, though. They spared newcomers from learning classes before they could handle errors.
+> Note: Before Python 2.6, exceptions could be plain strings, with an optional data item in `raise`. Classes replaced strings to add features and categories. Strings were simpler, though, because they spared newcomers from learning classes before they could handle errors.
 
 ### Raising exceptions
 
-Two forms of `raise` with a built-in exception are equivalent. Both raise an instance of the named class. The first creates the instance implicitly:
+Two forms of `raise` with a built-in exception are equivalent, because both raise an instance of the named class. The first creates the instance implicitly:
 
 ```python
 raise IndexError # Class (instance created)
 raise IndexError() # Instance (created in statement)
 ```
 
-You can also create the instance ahead of time. `raise` accepts any object reference, so these both raise `IndexError`:
+You can also create the instance ahead of time. `raise` accepts any object reference, so both of these raise `IndexError`:
 
 ```python
 exc = IndexError() # Create instance ahead of time
@@ -538,7 +540,7 @@ except IndexError as X: # X assigned the raised instance object
 
 The `as` part is optional. Without it, the instance is simply not stored in a name. Including it lets the handler read data from the instance and call methods on its class.
 
-This works for your own exceptions too. Pass constructor arguments to the exception class. The handler can then read them through the instance:
+This works for your own exceptions too. Pass constructor arguments to the exception class, and the handler can then read them through the instance:
 
 ```python
 class MyExc(Exception): pass
@@ -550,11 +552,11 @@ except MyExc as X: # Instance attributes available in handler
 
 We will save the details for the next chapter, since they belong to exception classes.
 
-Whatever raised it, an exception is always a class instance. At most one is active at a time, leaving aside the `except*` groups of Chapter 35. Once an `except` clause catches an exception, that exception ends. It does not propagate to another `try`. The only exception is when another `raise` or error reraises it.
+Whatever raised it, an exception is always a class instance, and at most one is active at a time, leaving aside the `except*` groups of Chapter 35. Once an `except` clause catches an exception, that exception ends and does not propagate to another `try`. The only exception is when another `raise` or error reraises it.
 
 ### Scopes and except as
 
-Chapter 17 of the book introduced a scope issue. Now that we have seen the `as` name in action, we can settle it. The name used in an `except` clause's `as` is local to that `except` block. It is not available after the block exits. This works much like a loop variable in a comprehension:
+Chapter 17 of the book introduced a scope issue, and now that we have seen the `as` name in action we can settle it. The name used in an `except` clause's `as` is local to that `except` block, and it is not available after the block exits. This works much like a loop variable in a comprehension:
 
 ```python
 $ python3
@@ -568,7 +570,7 @@ division by zero
 NameError: name 'X' is not defined
 ```
 
-Comprehension loop variables are different in one way. The `as` name is also removed after the `except` block exits. Python does this because the name would otherwise keep a reference to the call stack. That reference would delay garbage collection and hold on to memory. The removal happens even if the name was used for something else in the surrounding scope. It is a stronger rule than the one used for comprehensions:
+Comprehension loop variables are different in one way: the `as` name is also removed after the `except` block exits. Python does this because the name would otherwise keep a reference to the call stack. That reference would delay garbage collection and hold on to memory. The removal happens even if the name was used for something else in the surrounding scope, which makes it a stronger rule than the one used for comprehensions:
 
 ```python
 >>> X = 99
@@ -605,7 +607,7 @@ ZeroDivisionError('division by zero',)
 
 ### Propagating exceptions with raise
 
-A `raise` with no exception named is more useful than it looks. It reraises the exception that is currently active. You use this when you need to catch an exception, do something, and still let it continue:
+A `raise` with no exception named is more useful than it looks, because it reraises the exception that is currently active. You use this when you need to catch an exception, do something, and still let it continue:
 
 ```python
 >>> try:
@@ -620,17 +622,17 @@ Traceback (most recent call last):
 IndexError: code
 ```
 
-The reraised exception moves up to a higher handler. If none exists, the top-level default handler stops the program with a standard message. The argument you passed to the exception class appears in that message. You will learn why in the next chapter.
+The reraised exception moves up to a higher handler. If none exists, the top-level default handler stops the program with a standard message, and the argument you passed to the exception class appears in that message. You will learn why in the next chapter.
 
 ### Exception chaining with raise from
 
-Sometimes one exception is raised because of another. That can be deliberate, or it can come from a new program error. To show the full picture, `raise` accepts an optional `from` clause:
+Sometimes one exception is raised because of another. That can be deliberate, or it can come from a new program error. Picture a config loader that wants to report a clean `ConfigError` while still recording the low-level failure that caused it. To show the full picture, `raise` accepts an optional `from` clause:
 
 ```python
 raise newexception from otherexception
 ```
 
-The expression after `from` names another exception class or instance. Python attaches it to the new exception's `__cause__` attribute. If the new exception goes uncaught, Python prints both exceptions in the standard message:
+The expression after `from` names another exception class or instance, and Python attaches it to the new exception's `__cause__` attribute. If the new exception goes uncaught, Python prints both exceptions in the standard message:
 
 ```python
 >>> try:
@@ -647,7 +649,7 @@ Traceback (most recent call last):
 TypeError: Bad
 ```
 
-An error inside an exception handler causes a similar chain automatically. Python attaches the earlier exception to the new one's `__context__` attribute. It shows that exception in the message too, if the new one goes uncaught:
+An error inside an exception handler causes a similar chain automatically. Python attaches the earlier exception to the new one's `__context__` attribute, and it shows that exception in the message too if the new one goes uncaught:
 
 ```python
 >>> try:
@@ -664,7 +666,7 @@ Traceback (most recent call last):
 NameError: name 'badname' is not defined
 ```
 
-Attached exceptions can have causes of their own. So a chain can be any length, and the message displays all of it. Explicit and implicit chaining both let you see every exception involved. Here is a chain of three:
+Attached exceptions can have causes of their own, so a chain can be any length and the message displays all of it. Explicit and implicit chaining both let you see every exception involved. Here is a chain of three:
 
 ```python
 >>> try:
@@ -688,7 +690,7 @@ Traceback (most recent call last):
 SyntaxError: None
 ```
 
-Code like this shows three exceptions too. Here the chain comes from errors in the handlers. The separator lines read "During handling of the above exception…" instead of "The above exception was the direct cause…":
+Code like this shows three exceptions too, but here the chain comes from errors in the handlers. The separator lines read "During handling of the above exception…" instead of "The above exception was the direct cause…":
 
 ```python
 try:
@@ -700,15 +702,15 @@ except:
     open('nonesuch')
 ```
 
-Chains change the error display. They do not change how exceptions are named and caught. The chain is stored in the exception object's attributes. You can inspect those attributes when needed.
+Chains change the error display; they do not change how exceptions are named and caught. The chain is stored in the exception object's attributes, and you can inspect those attributes when needed.
 
-Chaining is common in other languages too, including Java and C#. It is unclear which one influenced Python. In Python, chains often appear in error messages. Creating them yourself with `raise` is less common, so the Python manuals cover the details.
+Chaining is common in other languages too, including Java and C#. It is unclear which one influenced Python. In Python, chains often appear in error messages, while creating them yourself with `raise` is less common, so the Python manuals cover the details.
 
-One more tool stops chaining. `raise from None` hides the chained context in the display. Use it in applications that convert one exception type into another. It keeps error messages less cluttered.
+One more tool stops chaining: `raise from None` hides the chained context in the display. Use it in applications that convert one exception type into another, because it keeps error messages less cluttered.
 
 ## The assert statement
 
-Python's `assert` statement is a debugging aid. It is mostly shorthand for a common `raise` pattern. You can think of an `assert` as a conditional `raise`. The form is:
+Picture a manifest reader that assumes every rank is a positive integer. During development you want that assumption checked loudly, and you want the check gone from the production build. Python's `assert` statement is built for this kind of debugging aid. It is mostly shorthand for a common `raise` pattern, so you can think of an `assert` as a conditional `raise`. The form is:
 
 ```python
 assert test, data # The data part is optional
@@ -722,7 +724,7 @@ if __debug__:
         raise AssertionError(data)
 ```
 
-If `test` is false, Python raises an exception. The `data` item, if given, becomes the exception's constructor argument. The built-in `AssertionError` ends your program unless a `try` catches it. The `data` text appears in the standard message:
+If `test` is false, Python raises an exception, and the `data` item, if given, becomes the exception's constructor argument. The built-in `AssertionError` ends your program unless a `try` catches it. The `data` text appears in the standard message:
 
 ```python
 >>> language = 'Java'
@@ -730,13 +732,13 @@ If `test` is false, Python raises an exception. The `data` item, if given, becom
 AssertionError: You're using the wrong language!
 ```
 
-There is one extra feature. Python removes `assert` statements from compiled bytecode when you run with the `-O` flag. Then they never run. The built-in name `__debug__` is `True` by default. It is `False` under `-O`. Any code that depends on it being `True` is removed, including asserts.
+There is one extra feature worth stopping for. Python removes `assert` statements from compiled bytecode when you run with the `-O` flag, so they never run. The built-in name `__debug__` is `True` by default, and `False` under `-O`. Any code that depends on it being `True` is removed, including asserts.
 
 To disable and omit asserts, run your code with `python3 -O file.py`. You can also produce optimized bytecode before a run, using the `compileall` standard-library module or the `compile` built-in function. The Python manuals explain both.
 
 ### Trapping constraints, not errors
 
-Assertions are for checking conditions while you develop. Their messages include the source line and the value in the `assert` statement. The file `asserter.py` in Example 34-5 shows this:
+Assertions are for checking conditions while you develop, and their messages include the source line and the value in the `assert` statement. The file `asserter.py` in Example 34-5 shows this:
 
 ```python
 def f(x):
@@ -744,7 +746,7 @@ def f(x):
     return x ** 2
 ```
 
-Normally, a positive number triggers the assertion. Under `-O`, the check disappears:
+Normally a positive number triggers the assertion, and under `-O` the check disappears:
 
 ```text
 $ python3
@@ -763,7 +765,7 @@ $ python3 -O
 9
 ```
 
-Keep in mind that `assert` is mainly for user-defined constraints. It is not for catching real programming errors. Python already traps those errors, such as bad indexes, type mismatches, and zero divides. So you rarely need an `assert` for them:
+Keep in mind that `assert` is mainly for user-defined constraints, not for catching real programming errors. Python already traps those errors, such as bad indexes, type mismatches, and zero divides, so you rarely need an `assert` for them:
 
 ```python
 def reciprocal(x):
@@ -773,36 +775,36 @@ def reciprocal(x):
 
 Asserts like that are superfluous. Python raises exceptions on errors without help, so let it do the work. As a rule, you do not need to check for errors yourself in your own code.
 
-There are exceptions to every rule. If a function must do long-running or unrecoverable work before an error would be raised, a test may be worth it. Even then, keep your tests from being too specific or restrictive. Otherwise you limit how useful your code is.
+There are exceptions to every rule. If a function must do long-running or unrecoverable work before an error would be raised, a test may be worth it. Even then, keep your tests from being too specific or restrictive, or you limit how useful your code is.
 
 Chapter 29 of the book shows another common use. There, `assert` makes calls to undefined methods in an abstract superclass fail with a message. It is a rare but useful tool.
 
 ## The with statement and context managers
 
-Python includes one more exception tool, the `with` statement. It hands exception-related work to an object. The `with` statement works with context manager objects that follow a method-based protocol. The idea is similar to how `for` uses the iteration protocol.
+Think about a log-scrubbing job that opens a file, takes a lock, and changes a decimal rounding mode. Each of those needs an undo step, and each must be undone on the way out even when the work fails. Python includes one more exception tool for that job, the `with` statement, and it hands the exception-related work to an object. The `with` statement works with context manager objects that follow a method-based protocol, much as `for` uses the iteration protocol.
 
 The `with` statement is much like the "using" statement in C#. It is a more advanced tool, and it was once a candidate for the next part of this book. Context managers are light and useful enough that they fit with the exception tools here.
 
 In short, `with` is an alternative to a common `try`/`finally` pattern. Like `try`/`finally`, it mostly handles cleanup that must run whether or not an exception occurs in the block.
 
-`with` is based on method calls around a block. That makes it less general than `try`/`finally`. It is redundant for cleanup alone, and it requires a class for objects that do not support the protocol. On the other hand, `with` also handles entry actions. It can reduce code size where it is supported. It lets you manage code contexts with full object-oriented design.
+`with` is based on method calls around a block, which makes it less general than `try`/`finally`. It is redundant for cleanup alone, and it requires a class for objects that do not support the protocol. On the other hand, `with` also handles entry actions. It can reduce code size where it is supported, and it lets you manage code contexts with full object-oriented design.
 
 Python adds context managers to some built-in tools. Files close themselves, and thread locks lock and unlock themselves. Async tools await results automatically, as Chapter 20 of the book covers. You can also write your own context managers with classes. Let us look at the statement and its protocol.
 
 ### Basic with usage
 
-The basic form of `with` looks like this. The part in square brackets is optional:
+The basic form of `with` looks like this, and the part in square brackets is optional:
 
 ```text
 with expression [as variable]:
     with-block
 ```
 
-The statements in the `with-block` are the main action. The `expression` must return an object that supports the context-management protocol. That object can return a value, which is assigned to `variable` when an `as` clause is present.
+The statements in the `with-block` are the main action. The `expression` must return an object that supports the context-management protocol, and that object can return a value, which is assigned to `variable` when an `as` clause is present.
 
-The variable does not always receive the expression's result. The result is the context-manager object itself. The `variable` may receive something else meant for use inside the block. The object can run startup code before the block starts. It can also run termination code after the block ends, whether or not the block raised an exception.
+The variable does not always receive the expression's result, because the result is the context-manager object itself. The `variable` may receive something else meant for use inside the block. The object can run startup code before the block starts, and termination code after the block ends, whether or not the block raised an exception.
 
-Some built-in objects already support this protocol. File objects from Chapter 9 of the book have a context manager. It closes the file after the `with` block, whether or not an exception occurs. It does this no matter if or when the Python version would have closed the file automatically:
+Some built-in objects already support this protocol. File objects from Chapter 9 of the book have a context manager that closes the file after the `with` block, whether or not an exception occurs. It does this no matter if or when the Python version would have closed the file automatically:
 
 ```python
 with open('somefile.txt') as myfile:
@@ -810,11 +812,11 @@ with open('somefile.txt') as myfile:
         print(line)
 ```
 
-Here, `open` returns a file object that is assigned to `myfile`. You use `myfile` with the usual file tools. In this case, the file iterator reads one line at a time in the `for` loop.
+Here, `open` returns a file object that is assigned to `myfile`, and you use `myfile` with the usual file tools. In this case, the file iterator reads one line at a time in the `for` loop.
 
-The result of `open` also supports the context-management protocol. After the `with` statement finishes, the file is closed automatically. That holds even if the `for` loop raised an exception while processing the file.
+The result of `open` also supports the context-management protocol, so the file closes automatically after the `with` statement finishes. That holds even if the `for` loop raised an exception while processing the file.
 
-Garbage collection can close files too, but it is not always clear when. This matters more on other Python implementations. The `with` statement lets you be sure the close happens right after a specific block.
+Garbage collection can close files too, but it is not always clear when, and that matters more on other Python implementations. The `with` statement lets you be sure the close happens right after a specific block.
 
 You can get the same effect with `try`/`finally`. That takes three more lines of admin code here, four lines instead of one:
 
@@ -827,7 +829,7 @@ finally:
     myfile.close()
 ```
 
-You could skip both forms. But the file may stay open if an exception is raised during the `for` loop. That can matter in long-running programs. Chapter 36 of the book revisits these trade-offs.
+You could skip both forms, but then the file may stay open if an exception is raised during the `for` loop. That can matter in long-running programs. Chapter 36 of the book revisits these trade-offs.
 
 Threading locks offer another example. The book does not cover multithreading modules, but their lock and condition objects support the protocol. So `with` adds entry and exit actions around a block. After importing `threading`:
 
@@ -837,9 +839,9 @@ with lock:
     …access shared resources…
 ```
 
-The context manager acquires the lock before the block runs. It releases the lock when the block finishes, whatever the exception outcome.
+The context manager acquires the lock before the block runs, and it releases the lock when the block finishes, whatever the exception outcome.
 
-The `decimal` module, introduced in Chapter 5 of the book, uses context managers too. They save and restore the current decimal context. That context sets the precision and rounding rules for calculations:
+The `decimal` module, introduced in Chapter 5 of the book, uses context managers too, and they save and restore the current decimal context. That context sets the precision and rounding rules for calculations:
 
 ```python
 with decimal.localcontext() as ctx:
@@ -851,7 +853,7 @@ After the statement runs, the thread's context returns to what it was before the
 
 ### The context-management protocol
 
-Some built-in types come with context managers. You can also write your own. To do that, a class defines special methods, which fall under operator overloading. These methods hook into the `with` statement. The interface is somewhat complex. Most programmers only need to use existing context managers. Tool builders who write their own should know the details.
+Some built-in types come with context managers, and you can also write your own. To do that, a class defines special methods, which fall under operator overloading, and those methods hook into the `with` statement. The interface is somewhat complex. Most programmers only need to use existing context managers, while tool builders who write their own should know the details.
 
 Here is how `with` works:
 
@@ -887,9 +889,9 @@ if __name__ == '__main__':
         print('not reached')
 ```
 
-This `__exit__` returns `False`, so the exception propagates. Deleting the `return` line would have the same effect. A function that returns nothing returns `None`, which counts as false. Still, an explicit `return False` is clearer. The `__enter__` method returns `self`, which is assigned to `action`. In other designs, it could return a different object.
+This `__exit__` returns `False`, so the exception propagates. Deleting the `return` line would have the same effect, because a function that returns nothing returns `None`, which counts as false. Still, an explicit `return False` is clearer. The `__enter__` method returns `self`, which is assigned to `action`; in other designs, it could return a different object.
 
-Running the self-test traces two `with` blocks. The `__enter__` and `__exit__` methods run automatically:
+Running the self-test traces two `with` blocks, and the `__enter__` and `__exit__` methods run automatically:
 
 ```text
 $ python3 withas.py
@@ -906,13 +908,13 @@ Traceback (most recent call last):
 TypeError
 ```
 
-Context managers can use object-oriented state and inheritance. They are an advanced tool for tool builders, so this chapter skips those details. The Python manuals cover the full story, including the `contextlib` standard module. That module has more tools for writing context managers.
+Context managers can use object-oriented state and inheritance. They are an advanced tool for tool builders, so this chapter skips those details. The Python manuals cover the full story, including the `contextlib` standard module, which has more tools for writing context managers.
 
-The `try`/`finally` form also handles termination. It is often enough when a class is not worth the effort of supporting the `with` protocol.
+The `try`/`finally` form also handles termination, and it is often enough when a class is not worth the effort of supporting the `with` protocol.
 
 ### Multiple context managers
 
-The `with` statement can take several context managers, separated by commas. In the next snippet, both files close when the block exits. That happens whatever the exception outcome:
+The `with` statement can take several context managers, separated by commas. In the next snippet, both files close when the block exits, whatever the exception outcome:
 
 ```python
 with open('lines.txt') as input, open('matches.txt', 'w') as output:
@@ -921,7 +923,7 @@ with open('lines.txt') as input, open('matches.txt', 'w') as output:
             output.write(line)
 ```
 
-You can list any number of context-manager items. Several items behave the same as nested `with` statements. So this code:
+You can list any number of context-manager items, and several items behave the same as nested `with` statements. So this code:
 
 ```python
 with A() as a, B() as b:
@@ -936,13 +938,13 @@ with A() as a:
         statements
 ```
 
-Each manager's entry and exit methods run in turn, on entry and on exit. Exceptions in the block are caught automatically. The outermost manager's exit method decides whether to reraise them. Several file managers open all their files on entry and close them on exit, with or without an exception.
+Each manager's entry and exit methods run in turn, on entry and on exit, and exceptions in the block are caught automatically. The outermost manager's exit method decides whether to reraise them. Several file managers open all their files on entry and close them on exit, with or without an exception.
 
 ### Termination handlers compared
 
-The Python docs cover context managers in more depth. Here we will look at this feature in action and weigh its role. Using a newer and more redundant tool like `with` does not prove you are clever. You need to understand the trade-offs.
+The Python docs cover context managers in more depth. Here we will look at this feature in action and weigh its role. Using a newer and more redundant tool like `with` does not prove you are clever; you need to understand the trade-offs.
 
-The first example scans two files for matching lines. It uses `with` to open both files at once. Then it zips their next lines together on each pass of a `for` loop. The file objects handle closing, so you need not catch exceptions or close files yourself:
+The first example scans two files for matching lines. It uses `with` to open both files at once, then zips their next lines together on each pass of a `for` loop. The file objects handle closing, so you need not catch exceptions or close files yourself:
 
 ```python
 >>> with open('lines1.txt') as file1, open('lines2.txt') as file2:
@@ -953,7 +955,7 @@ The first example scans two files for matching lines. It uses `with` to open bot
 ('well\n', 'CODE\n')
 ```
 
-You can use the same structure to compare two text files. This version swaps the `print` for an `if` comparison. It also adds `enumerate` for line numbers:
+You can use the same structure to compare two text files. This version swaps the `print` for an `if` comparison, and it adds `enumerate` for line numbers:
 
 ```python
 >>> with open('lines1.txt') as file1, open('lines2.txt') as file2:
@@ -964,14 +966,14 @@ You can use the same structure to compare two text files. This version swaps the
 2 => 'well\n' != 'CODE\n'
 ```
 
-In CPython, though, `with` adds little here. Input files need no buffer flush. CPython closes files automatically when they are garbage collected. Exceptions in the block still propagate out of the statement if you do not catch them. So the simpler version below behaves the same:
+In CPython, though, `with` adds little here. Input files need no buffer flush, and CPython closes files automatically when they are garbage collected. Exceptions in the block still propagate out of the statement if you do not catch them. So the simpler version below behaves the same:
 
 ```python
 for pair in zip(open('lines1.txt'), open('lines2.txt')): # Same if auto close
     print(pair) # Ditto for != test
 ```
 
-Some alternative Pythons from Chapter 2 of the book use different garbage collectors. They may need direct closes to save system resources. Output files may also need closes, so buffered content reaches the disk before later code opens them.
+Some alternative Pythons from Chapter 2 of the book use different garbage collectors, and they may need direct closes to save system resources. Output files may also need closes, so buffered content reaches the disk before later code opens them.
 
 The following code handles both concerns. It closes files on statement exit, with or without an exception. It uses parentheses and line splits after `with`, which are available from Python 3.10. Write counts are omitted for brevity:
 
@@ -986,7 +988,7 @@ CODE
 WELL
 ```
 
-In simple scripts, you can often open files in separate statements. Close them when processing ends. Catching an exception there gains little. If an error stops your program, there is no point in recovering. Closing matters only to flush output buffers, or when a later step reopens the file. That step may never run after an exception:
+In simple scripts, you can often open files in separate statements and close them when processing ends. Catching an exception there gains little, because if an error stops your program there is no point in recovering. Closing matters only to flush output buffers, or when a later step reopens the file, and that step may never run after an exception:
 
 ```python
 input = open('lines1.txt')
@@ -995,7 +997,7 @@ for line in input: # Same effect if files auto close,
     output.write(line.upper()) # and file is not reopened ahead
 ```
 
-Some programs must continue after an exception and also close output files for later use in the same run. Here `with` avoids an equivalent `try`/`finally`. That version is more obvious to some readers. It also needs more code: eight lines instead of four:
+Some programs must continue after an exception and also close output files for later use in the same run. Here `with` avoids an equivalent `try`/`finally`. That version is more obvious to some readers, but it also needs more code: eight lines instead of four:
 
 ```python
 input = open('lines1.txt')
@@ -1008,31 +1010,31 @@ finally:
     output.close() # Whether exception occurs or not
 ```
 
-Still, `try`/`finally` is a single tool that covers every cleanup case, and it keeps the steps explicit. The `with` statement can be more concise for context-manager users. It works only with objects that implement its protocol. It also relies on implicit behavior that can hide meaning. Learning it adds to what a programmer must know. Weigh these trade-offs for yourself.
+Still, `try`/`finally` is a single tool that covers every cleanup case, and it keeps the steps explicit. The `with` statement can be more concise for context-manager users, but it works only with objects that implement its protocol. It also relies on implicit behavior that can hide meaning, and learning it adds to what a programmer must know. Weigh these trade-offs for yourself.
 
 ## Chapter summary
 
-The `try` statement catches exceptions and recovers from them. It names a block of code and one or more handlers for exceptions raised while it runs. The two common variations are `try`/`except`/`else` for catching exceptions, and `try`/`finally` for cleanup that must happen whether an exception is raised or not. The two forms can be mixed in one statement. Even when mixed, `finally` runs on the way out of the `try`. The combined form is equivalent to nesting a `try`/`except`/`else` inside a `try`/`finally`.
+The `try` statement catches exceptions and recovers from them. It names a block of code and one or more handlers for exceptions raised while it runs. The two common variations are `try`/`except`/`else` for catching exceptions, and `try`/`finally` for cleanup that must happen whether an exception is raised or not. The two forms can be mixed in one statement. Even when mixed, `finally` runs on the way out of the `try`, and the combined form is equivalent to nesting a `try`/`except`/`else` inside a `try`/`finally`.
 
-The `raise` statement triggers an exception. Python raises built-in exceptions itself when errors occur. Your scripts can raise built-in or user-defined exceptions with `raise`.
+The `raise` statement triggers an exception. Python raises built-in exceptions itself when errors occur, and your scripts can raise built-in or user-defined exceptions with `raise`.
 
-The `assert` statement raises an `AssertionError` when a condition is false. It works like a conditional `raise` inside an `if` statement. You can disable it with the `-O` command-line switch.
+The `assert` statement raises an `AssertionError` when a condition is false. It works like a conditional `raise` inside an `if` statement, and you can disable it with the `-O` command-line switch.
 
-The `with` statement automates startup and termination work around a block of code. It is roughly like `try`/`finally`, since its exit actions run whether or not an exception occurred. It uses an object-based protocol for entry and exit actions, which can shrink code for context-manager users. It is less general, though. It applies only to objects that support its protocol. `try` with `finally` covers more cases.
+The `with` statement automates startup and termination work around a block of code. It is roughly like `try`/`finally`, since its exit actions run whether or not an exception occurred. It uses an object-based protocol for entry and exit actions, which can shrink code for context-manager users. It is less general, though, because it applies only to objects that support its protocol, while `try` with `finally` covers more cases.
 
 The next chapter shows how exception objects are built. It explains how you can create new exceptions for your own programs with classes.
 
 ## Exception objects
 
-So far, this part of the handbook has been somewhat vague about what an exception actually is. This section clears up the mystery by disclosing the facts behind exception objects, both built-in and user-defined. An exception is a class instance object. Python raises that object, passes it along, and matches it against the `except` clauses in `try` statements. To define your own exception, you write a class.
+An on-call engineer opens a traceback at 3 a.m. and needs two answers fast: what kind of failure is this, and what details came with it. Both answers live in the exception object. So far, this part of the handbook has been somewhat vague about what that object actually is. This section clears up the mystery by disclosing the facts behind exception objects, both built-in and user-defined. An exception is a class instance object. Python raises that object, passes it along, and matches it against the `except` clauses in `try` statements. To define your own exception, you write a class.
 
-That means you need some object-oriented programming. The effort pays off, though. Class-based exceptions give you three things. You get flexible categories, so adding a new subclass does not force changes to existing `try` statements. You get state and behavior, because attributes and methods live on the raised instance. You also get reuse by inheritance, so error displays can share one look.
+That means you need some object-oriented programming, and the effort pays off. Class-based exceptions give you three things. You get flexible categories, so adding a new subclass does not force changes to existing `try` statements. You get state and behavior, because attributes and methods live on the raised instance. You also get reuse by inheritance, so error displays can share one look.
 
-Every built-in exception is a class too. Python arranges them in one inheritance tree. Your own exceptions join that tree, and they inherit useful defaults from it.
+Every built-in exception is a class too, and Python arranges them in one inheritance tree. Your own exceptions join that tree, and they inherit useful defaults from it.
 
 ### Exception classes and superclass matching
 
-A raised exception matches an `except` clause when the clause names its class or any superclass of that class. In plain terms, an `except` catches the class it lists and all of that class's subclasses. Superclasses act as category names. Subclasses act as specific kinds of errors inside a category.
+A raised exception matches an `except` clause when the clause names its class or any superclass of that class. In plain terms, an `except` catches the class it lists and all of that class's subclasses. Superclasses act as category names, while subclasses act as specific kinds of errors inside a category.
 
 Naming a general superclass therefore catches a whole category. Here is a small file called `categoric.py`:
 
@@ -1066,15 +1068,15 @@ caught: <class '__main__.Specific1'>
 caught: <class '__main__.Specific2'>
 ```
 
-Three points are worth noticing in this code. The category classes are nearly empty. Their bodies hold only `pass`, because the category is the whole point. The top class also inherits from the built-in `Exception` class, and that is required. A class that does not inherit from a built-in exception class will not work in most exception contexts.
+Three points are worth noticing in this code. The category classes are nearly empty: their bodies hold only `pass`, because the category is the whole point. The top class also inherits from the built-in `Exception` class, and that inheritance is required. A class that does not inherit from a built-in exception class will not work in most exception contexts.
 
-`Exception` is the root for nonexit exceptions. `BaseException` is the root for all exceptions, and it may also serve as the parent. Inheriting from `Exception` is the usual choice, and it gives you helpful behavior that you will meet later.
+`Exception` is the root for nonexit exceptions, while `BaseException` is the root for all exceptions and may also serve as the parent. Inheriting from `Exception` is the usual choice, and it gives you helpful behavior that you will meet later.
 
 The second point is about raising. The code calls the classes to make instances for the `raise` statements, so the parentheses matter. If you list a class name without parentheses in a `raise`, Python calls it with no constructor arguments. You can create the instance before the `raise`, as this file does, or inside the `raise` statement.
 
-The third point is about the handler. `sys.exc_info` returns a tuple. Its first item is the class of the exception raised, and its second item is the instance. In a general `except` that catches a whole category, that call tells you exactly what happened. The next chapter covers `sys.exc_info` and the related tools, including tracebacks, in more detail.
+The third point is about the handler. `sys.exc_info` returns a tuple, whose first item is the class of the exception raised and whose second item is the instance. In a general `except` that catches a whole category, that call tells you exactly what happened. The next chapter covers `sys.exc_info` and the related tools, including tracebacks, in more detail.
 
-When an `except` catches an exception, the instance belongs to the listed class or to one of its subclasses. So the specific kind is always available. You can read it through `type(X)` or through the `__class__` attribute. The variant `categoric2.py` shows this with the `as` form:
+When an `except` catches an exception, the instance belongs to the listed class or to one of its subclasses, so the specific kind is always available. You can read it through `type(X)` or through the `__class__` attribute. The variant `categoric2.py` shows this with the `as` form:
 
 ```python
 class General(Exception): pass
@@ -1090,13 +1092,13 @@ for func in (raiser0, raiser1, raiser2):
         print('caught:', type(X)) # Same as sys.exc_info()[0], X.__class__
 ```
 
-The `as` name gives you the instance directly. That makes `sys.exc_info` most useful in empty `except` clauses that have no other way to reach the instance or its class. Well-designed programs should rarely need to know which specific exception happened. Calling a method on the instance should run behavior that suits that exception.
+The `as` name gives you the instance directly, which makes `sys.exc_info` most useful in empty `except` clauses that have no other way to reach the instance or its class. Well-designed programs should rarely need to know which specific exception happened. Calling a method on the instance should run behavior that suits that exception.
 
 ### Why exception hierarchies?
 
-A tuple of names works well for small code. It is one way to catch several exceptions at once, and it is easy to read. For large programs with many exceptions, though, catching a category is easier than listing every member. A class hierarchy also keeps working as the set grows.
+A tuple of names works well for small code. It is one way to catch several exceptions at once, and it is easy to read. For large programs with many exceptions, though, catching a category is easier than listing every member, and a class hierarchy keeps working as the set grows.
 
-Suppose you write a numeric library for many people to use. You find two things that can go wrong, division by zero and numeric overflow. You document them as two standalone exceptions:
+Suppose you write a numeric library for many people to use, and you find two things that can go wrong: division by zero and numeric overflow. You document them as two standalone exceptions:
 
 ```python
 # mathlib.py
@@ -1119,9 +1121,9 @@ except (mathlib.Divzero, mathlib.Oflow):
     ...handle and recover...
 ```
 
-Six months later, you add a new error for underflow. Every client that listed the names must now edit each `try` statement to include `mathlib.Uflow`. That is a maintenance problem for your users. If you use the library only in-house, you can make those edits yourself. If many people depend on it, that is not a polite upgrade.
+Six months later, you add a new error for underflow. Every client that listed the names must now edit each `try` statement to include `mathlib.Uflow`. That is a maintenance problem for your users. If you use the library only in-house, you can make those edits yourself, but if many people depend on it, that is not a polite upgrade.
 
-Some users might avoid this with an empty `except`. That catches every error, but it also catches memory exhaustion, Ctrl+C, system exits, and typos in the `try` block itself. Those should pass through. Catching the `Exception` superclass is better, but it can still hide program errors. Users really want to catch only the exceptions your library documents. Any other exception is probably a bug in the library.
+Some users might avoid this with an empty `except`. That catches every error, but it also catches memory exhaustion, Ctrl+C, system exits, and typos in the `try` block itself, and those should pass through. Catching the `Exception` superclass is better, but it can still hide program errors. Users really want to catch only the exceptions your library documents, because any other exception is probably a bug in the library.
 
 A class tree solves this. Put your exceptions under one common superclass that stands for the whole category:
 
@@ -1159,7 +1161,7 @@ Client code that catches `NumErr` keeps working without change. As long as clien
 
 ### Built-in exception classes
 
-The built-in exceptions follow the same pattern. Every exception Python raises on its own is a predefined class. Names such as `SyntaxError` are really classes that live in the `builtins` module. Python groups them into a shallow hierarchy, with general categories above specific types.
+The built-in exceptions follow the same pattern. Every exception Python raises on its own is a predefined class. Names such as `SyntaxError` are really classes that live in the `builtins` module, and Python groups them into a shallow hierarchy, with general categories above specific types.
 
 | Class | Role |
 | --- | --- |
@@ -1169,13 +1171,13 @@ The built-in exceptions follow the same pattern. Every exception Python raises o
 | `LookupError` | Root of indexing errors for sequences and mappings. Its subclasses are `IndexError` and `KeyError`. |
 | `OSError` | Root of I/O and other system-function errors. It has attributes such as `errno`, `strerror`, and `filename`. |
 
-`Exception` is the superclass of every built-in exception except the system exit classes. Those are `SystemExit`, `KeyboardInterrupt`, and `GeneratorExit`. The set of built-in exceptions changes over time, so the Python documentation has the complete list.
+`Exception` is the superclass of every built-in exception except the system exit classes, which are `SystemExit`, `KeyboardInterrupt`, and `GeneratorExit`. The set of built-in exceptions changes over time, so the Python documentation has the complete list.
 
 ### Built-in exception categories
 
-The built-in tree lets you choose how specific a handler should be. `ArithmeticError` is the superclass of numeric errors such as `OverflowError` and `ZeroDivisionError`. Listing `ArithmeticError` in a `try` catches any numeric error. Listing `ZeroDivisionError` catches only that one kind.
+The built-in tree lets you choose how specific a handler should be. `ArithmeticError` is the superclass of numeric errors such as `OverflowError` and `ZeroDivisionError`, so listing `ArithmeticError` in a `try` catches any numeric error. Listing `ZeroDivisionError` catches only that one kind.
 
-`Exception` works as a broad catchall for application-level exceptions. It behaves much like an empty `except`, but system exit exceptions pass through as they should:
+`Exception` works as a broad catchall for application-level exceptions. It behaves much like an empty `except`, but system exit exceptions pass through, as they should:
 
 ```python
 try:
@@ -1190,9 +1192,9 @@ This technique is reliable, because Python requires all classes to derive from b
 
 ### Default printing and state
 
-Built-in exceptions also provide printing and state retention by default. In many cases, that is all a user-defined class needs. Unless you redefine the constructor, any arguments you pass are saved in the instance's `args` tuple. The same arguments appear when the instance is printed.
+Built-in exceptions also provide printing and state retention by default, and in many cases that is all a user-defined class needs. Unless you redefine the constructor, any arguments you pass are saved in the instance's `args` tuple. The same arguments appear when the instance is printed.
 
-An empty `args` tuple and display string are used when no arguments are passed. A single argument displays as itself, not as a tuple, and it serves as the message details. Here is how that looks at the interactive prompt:
+An empty `args` tuple and an empty display string are used when no arguments are passed. A single argument displays as itself, not as a tuple, and it serves as the message details. Here is how that looks at the interactive prompt:
 
 ```text
 >>> raise IndexError # Same as IndexError(): no arguments
@@ -1250,7 +1252,7 @@ bad - ('bad',) - E('bad')
 ('bad', 'stuff') - ('bad', 'stuff') - E('bad', 'stuff')
 ```
 
-An exception instance is not a string itself. It uses the `__str__` and `__repr__` methods to provide display text. To join it with real strings, convert it first, with `str(X)`, `'%s' % X`, or `f'{X}'`. If you need more control over display or stored state, you can redefine methods such as `__str__` and `__init__` in your subclasses.
+An exception instance is not a string itself. It uses the `__str__` and `__repr__` methods to provide display text, so to join it with real strings you convert it first, with `str(X)`, `'%s' % X`, or `f'{X}'`. If you need more control over display or stored state, you can redefine methods such as `__str__` and `__init__` in your subclasses.
 
 ### Custom print displays
 
@@ -1293,9 +1295,9 @@ File "<stdin>", line 1, in <module>
 MyBad: Stuff happens...
 ```
 
-The method can return a fixed string, as it does here. It can also process text and use state stored on the instance.
+The method can return a fixed string, as it does here, or it can process text and use state stored on the instance.
 
-You usually must redefine `__str__`, not `__repr__`. The built-in superclasses already have a `__str__` method. In some contexts, including error messages, `__str__` is preferred over `__repr__`. If you define only `__repr__`, the printed message still uses the built-in `__str__`:
+You usually must redefine `__str__`, not `__repr__`, because the built-in superclasses already have a `__str__` method. In some contexts, including error messages, `__str__` is preferred over `__repr__`. If you define only `__repr__`, the printed message still uses the built-in `__str__`:
 
 ```text
 >>> class Oops(Exception):
@@ -1317,13 +1319,13 @@ Oops: Custom display used
 
 ### Custom state and behavior
 
-Exception classes can store extra state as instance attributes. The built-in constructor saves its arguments in the `args` tuple, which is enough for many cases. For more specific needs, you can write your own constructor. A class can also define methods that handlers call to run exception-specific logic.
+Exception classes can store extra state as instance attributes. The built-in constructor saves its arguments in the `args` tuple, which is enough for many cases. For more specific needs, you can write your own constructor, and a class can also define methods that handlers call to run exception-specific logic.
 
 ### Providing exception details
 
-An exception may cross file boundaries. The `raise` can live in one module, and the `try` that catches it can live in another. Global variables are a poor place for extra details, because the `try` may not know which file holds them. Storing details on the exception itself gives the handler a reliable path to that data.
+An exception may cross file boundaries, because the `raise` can live in one module and the `try` that catches it can live in another. Global variables are a poor place for extra details, since the `try` may not know which file holds them. Storing details on the exception itself gives the handler a reliable path to that data.
 
-Classes make this almost automatic. Python passes the raised instance along with the exception. The `as` name in an `except` clause gives your handler access to it. Here, a parser reports a formatting error with a line number and a file name:
+Classes make this almost automatic. Python passes the raised instance along with the exception, and the `as` name in an `except` clause gives your handler access to it. Here, a parser reports a formatting error with a line number and a file name:
 
 ```text
 >>> class FormatError(Exception):
@@ -1340,7 +1342,7 @@ Classes make this almost automatic. Python passes the raised instance along with
 Error at: code.py #62
 ```
 
-The default constructor can do a simpler version of the same job. It stores the values as positional arguments in `args`. Keyword arguments are not allowed with that default:
+The default constructor can do a simpler version of the same job. It stores the values as positional arguments in `args`, and keyword arguments are not allowed with that default:
 
 ```text
 >>> class FormatError(Exception): pass # Inherited constructor
@@ -1388,7 +1390,7 @@ Error at: code.py #62 [Sat Jul 13 12:22:19 2024]
 Error at: code.py #62 [Sat Jul 13 12:22:25 2024]
 ```
 
-Methods such as `logerror` can be inherited from a superclass. The attributes `line` and `file` keep state for later method calls. A subclass can also change the behavior. The method below replaces the parent's `logerror` for its own instances:
+Methods such as `logerror` can be inherited from a superclass, and the attributes `line` and `file` keep state for later method calls. A subclass can also change the behavior. The method below replaces the parent's `logerror` for its own instances:
 
 ```python
 class CustomFormatError(FormatError):
@@ -1405,13 +1407,13 @@ except FormatError as exc:
 
 Because these classes are ordinary classes, the object-oriented ideas from earlier parts of the handbook apply to exceptions as well.
 
-Two more notes apply here. The instance bound to `exc` is also the second item from `sys.exc_info()`. You can use that call when your `except` clause has no name but you still need the exception. The `logerror` method writes a custom message. It could instead produce Python's standard error message with a stack trace, using the `traceback` standard-library module.
+Two more notes apply here. The instance bound to `exc` is also the second item from `sys.exc_info()`, and you can use that call when your `except` clause has no name but you still need the exception. The `logerror` method writes a custom message; it could instead produce Python's standard error message with a stack trace, using the `traceback` standard-library module.
 
 ## Exception groups
 
-Python 3.11 added exception groups and the `except*` clause. Most learners can treat this as an optional topic. It is useful to know that the feature exists, even if you rarely write it.
+Picture a dataloader that reads eight shards in parallel, and three of them fail with different errors. A plain `try` reports one failure at a time, which hides the rest until the next run. Python 3.11 added exception groups and the `except*` clause for exactly this shape of problem. Most learners can treat this as an optional topic, though it is useful to know that the feature exists even if you rarely write it.
 
-A normal `try` statement runs at most one matching handler, plus an optional `finally`:
+Start with the behavior you already know. A normal `try` statement runs at most one matching handler, plus an optional `finally`:
 
 ```text
 >>> try:
@@ -1424,7 +1426,7 @@ A normal `try` statement runs at most one matching handler, plus an optional `fi
 Got IE
 ```
 
-Python 3.11 can run several matching handlers in one `try`. You wrap the exceptions in an exception group and catch them with `except*` clauses:
+Python 3.11 can run several matching handlers in one `try`. You wrap the exceptions in an exception group, then catch them with `except*` clauses:
 
 ```text
 >>> try:
@@ -1438,11 +1440,13 @@ Got IE
 Got SE
 ```
 
-Each `except*` clause can process one exception, or one batch of them, from the group. Here the first clause handles `IndexError`, and the second handles `SyntaxError`. A tuple still means "any of these." The group is an exception object made by calling the built-in `ExceptionGroup` class. It takes a label for displays and a sequence of exceptions to match.
+Each `except*` clause can process one exception, or one batch of them, from the group. Here the first clause handles `IndexError`, and the second handles `SyntaxError`. A tuple still means "any of these." The group is an exception object made by calling the built-in `ExceptionGroup` class, and it takes a label for displays plus a sequence of exceptions to match.
 
-Some syntax rules apply, and they are stricter than the rules for a plain `try`. An empty `except*` is not allowed. A basic `except` cannot be mixed with `except*`. An `else` and a `finally` can be used with it. A `break`, `continue`, or `return` cannot appear inside an `except*` clause, although a basic `except` allows them.
+Think of the group as a box of failures rather than one failure. A plain `try` opens the box, takes out one failure, and lets the rest fall out later. An `except*` clause reaches into the box, takes every failure of the kind it names, and leaves the box holding the rest.
 
-The matching rules are also specific. Each `except*` clause runs at most once. It consumes all matching exceptions in the group. Each exception is handled by only one clause, the topmost clause that matches it. Any unmatched exceptions are raised again after the `try` finishes matching. The `as` name receives a group, and the `exceptions` attribute exposes its contents:
+Some syntax rules apply, and they are stricter than the rules for a plain `try`. An empty `except*` is not allowed, and a basic `except` cannot be mixed with `except*`. An `else` and a `finally` can be used with it. A `break`, `continue`, or `return` cannot appear inside an `except*` clause, although a basic `except` allows them.
+
+The matching rules are also specific. Each `except*` clause runs at most once and consumes all matching exceptions in the group. Each exception is handled by only one clause, the topmost clause that matches it. Any unmatched exceptions are raised again after the `try` finishes matching. The `as` name receives a group, and the `exceptions` attribute exposes its contents:
 
 ```text
 >>> excs = ExceptionGroup('Many', [IndexError(), SyntaxError(), TypeError()])
@@ -1463,7 +1467,7 @@ Got SE: Many (1 sub-exception) => (SyntaxError(),)
     +------------------------------------
 ```
 
-When a group holds several exceptions of the same type, one matching `except*` consumes them all. You can then loop over them in ordinary code. Spaces around the `*` are allowed and ignored:
+When a group holds several exceptions of the same type, one matching `except*` consumes them all, and you can then loop over them in ordinary code. Spaces around the `*` are allowed and ignored:
 
 ```text
 >>> try:
@@ -1477,7 +1481,7 @@ Got IE
 Got TE: Dups (2 sub-exceptions) => (TypeError(1), TypeError(2))
 ```
 
-Matching follows the same class rules as before. A clause matches its named class or any superclass. Because the first match wins and removes exceptions from the group, clause order matters. In the next example, the first clause takes `IndexError` through its `LookupError` superclass, along with both `TypeError` values:
+Matching follows the same class rules as before: a clause matches its named class or any superclass. Because the first match wins and removes exceptions from the group, clause order matters. In the next example, the first clause takes `IndexError` through its `LookupError` superclass, along with both `TypeError` values:
 
 ```text
 >>> try:
@@ -1537,19 +1541,19 @@ A catchall works in both models. There is no real reason to use `except*` for a 
 
 The next chapter shows how groups pass through nested handlers. Groups propagate until they are empty, then they behave like single exceptions. Many programmers find the extra syntax hard to justify. Groups are rarely needed, and a normal exception object with normal iteration can often carry a batch of errors. Decide for yourself whether a project needs them.
 
-Exception groups are an obscure tool with narrow roles. The Python documentation covers this `try` extension in more detail. The special cases above also make `except*` feel like a separate statement form. Adding it to `try` makes that statement a mix of related but different jobs.
+Exception groups are an obscure tool with narrow roles, and the Python documentation covers this `try` extension in more detail. The special cases above also make `except*` feel like a separate statement form. Adding it to `try` makes that statement a mix of related but different jobs.
 
 ## Exception objects summary
 
-Exceptions are implemented as class instance objects. Exception classes support hierarchies that ease maintenance. They let you attach data and behavior to exceptions as instance attributes and methods. They can also inherit tools from superclasses, as usual in object-oriented programming.
+Exceptions are implemented as class instance objects. Exception classes support hierarchies that ease maintenance. They let you attach data and behavior to exceptions as instance attributes and methods, and they can inherit tools from superclasses, as usual in object-oriented programming.
 
-A `try` statement that catches a superclass also catches every subclass below it. Superclasses act as exception category names, and subclasses act as more specific exception types within those categories. The built-in superclasses you must inherit from provide usable printing and state retention. You can override those defaults when you need to.
+A `try` statement that catches a superclass also catches every subclass below it. Superclasses act as exception category names, and subclasses act as more specific exception types within those categories. The built-in superclasses you must inherit from provide usable printing and state retention, and you can override those defaults when you need to.
 
 Exception groups and `except*` let one `try` run several handlers. We questioned whether this extension's convolution of `try` statements is justified by its roles. Whether that extra complexity is justified is a question you must answer for your own code. It is a lot to ask of most Python users, so learn the basic exception classes first.
 
 ## Unicode and byte strings
 
-Earlier in this part, the string story was kept simple on purpose, so you could get started quickly. This section widens it to full Unicode text and to binary data. Python handles both with its string types, and the difference matters as soon as your data leaves the simple ASCII world.
+A log file from another region opens in your editor and shows odd symbols where an accent should be. A checkpoint file loads as text and refuses to decode at all. Both problems start with the same question: is this data text, or is it bytes? Earlier in this part, the string story was kept simple on purpose, so you could get started quickly. This section widens it to full Unicode text and to binary data. Python handles both with its string types, and the difference matters as soon as your data leaves the simple ASCII world.
 
 How much of this you need depends on your work. If you handle non-ASCII text, such as internet content, internationalized applications, XML parsers, or some GUIs, Python's `str` type and its Unicode-aware text files support you directly. If you handle binary data, such as image or audio files, network transfers, or packed data shared with lower-level tools, you need the `bytes` type and a clear line between text and binary.
 
@@ -1618,9 +1622,9 @@ Some encodings are trivial. ASCII and Latin-1 map each character to a single byt
 1
 ```
 
-Other encodings can use several bytes per character. UTF-8 is the most common, because it can represent every Unicode code point with a variable number of bytes. That makes it a de facto standard for text on the internet. In UTF-8, codes below 128 take one byte. Codes from 128 up to `0x7ff` (2047) take two bytes, and larger codes take three or four bytes.
+Other encodings can use several bytes per character. UTF-8 is the most common, because it can represent every Unicode code point with a variable number of bytes, and that makes it a de facto standard for text on the internet. In UTF-8, codes below 128 take one byte. Codes from 128 up to `0x7ff` (2047) take two bytes, and larger codes take three or four bytes.
 
-This design keeps simple ASCII text compact. It also avoids zero bytes, which can cause trouble for C libraries and network code. Here is the byte count for three kinds of character:
+This design keeps simple ASCII text compact, and it avoids zero bytes, which can cause trouble for C libraries and network code. Here is the byte count for three kinds of character:
 
 ```text
 >>> len('a'.encode('UTF-8')) # ASCII: encodes in 1 byte
@@ -1631,9 +1635,9 @@ This design keeps simple ASCII text compact. It also avoids zero bytes, which ca
 4
 ```
 
-ASCII is a subset of Latin-1 and UTF-8. Both encodings store ASCII characters as the same single byte that ASCII uses. That means ASCII text is also valid Latin-1 text and valid UTF-8 text. The reverse does not hold, because Latin-1 or UTF-8 text with higher code points fails to encode as ASCII.
+ASCII is a subset of Latin-1 and UTF-8. Both encodings store ASCII characters as the same single byte that ASCII uses, so ASCII text is also valid Latin-1 text and valid UTF-8 text. The reverse does not hold, because Latin-1 or UTF-8 text with higher code points fails to encode as ASCII.
 
-The mapping is easy to see in Python. ASCII characters produce identical bytes in ASCII, UTF-8, and Latin-1. Non-ASCII characters need more bytes, and some encodings cannot represent them at all:
+The mapping is easy to see in Python. ASCII characters produce identical bytes in ASCII, UTF-8, and Latin-1, while non-ASCII characters need more bytes, and some encodings cannot represent them at all:
 
 ```text
 >>> 'a'.encode('ASCII') # ASCII encodes to the same byte
@@ -1662,9 +1666,9 @@ An encoding is named by a string, such as `'utf-8'` or `'latin-1'`. Python ships
 
 Python has three string-like types, and each has a clear job. `str` holds Unicode text as decoded code points. `bytes` holds binary data, including text that has already been encoded. `bytearray` is a mutable version of `bytes`.
 
-The `str` type is an immutable sequence of characters. Its content can be simple ASCII, where one character is one byte once encoded, or richer Unicode text, where one character may need several bytes. In memory, a `str` is just a list of code points. It has no notion of an encoding. Only when it moves to a file or network does Python encode it, using the platform default or a name you give.
+The `str` type is an immutable sequence of characters. Its content can be simple ASCII, where one character is one byte once encoded, or richer Unicode text, where one character may need several bytes. In memory, a `str` is just a list of code points, and it has no notion of an encoding. Only when it moves to a file or network does Python encode it, using the platform default or a name you give.
 
-The `bytes` type is an immutable sequence of 8-bit integers. It holds raw bytes, which may be image data, packed records, or encoded text with an implied encoding. Most of the operations that `str` supports also work on `bytes`. This includes string methods, sequence operations, and the `re` pattern-matching module. Indexing a `bytes` gives back an integer, and slicing gives back another `bytes`.
+The `bytes` type is an immutable sequence of 8-bit integers. It holds raw bytes, which may be image data, packed records, or encoded text with an implied encoding. Most of the operations that `str` supports also work on `bytes`, including string methods, sequence operations, and the `re` pattern-matching module. Indexing a `bytes` gives back an integer, and slicing gives back another `bytes`.
 
 When a `bytes` value holds byte values in the ASCII range, Python prints those values as ASCII characters, not as integers. This is a convenience, but it can blur the line between text and binary data. Operations that assume characters, such as `isalpha`, treat the bytes as ASCII-encoded data.
 
@@ -1682,7 +1686,7 @@ The mode decides the object type. Choose `str` and text mode for content that is
 
 ### Literals and basic properties
 
-Most string objects come from one of three places: a call to `str` or `bytes`, a file opened with `open`, or a literal in your code. The usual `'…'` and `"…"` forms, and triple-quoted blocks, create a `str`. Adding a `b` or `B` in front creates a `bytes` instead. The `bytes` literal behaves like a raw string in one way, because you can combine the `b` and `r` prefixes to keep backslashes as typed.
+Most string objects come from one of three places: a call to `str` or `bytes`, a file opened with `open`, or a literal in your code. The usual `'…'` and `"…"` forms, and triple-quoted blocks, create a `str`, while adding a `b` or `B` in front creates a `bytes` instead. The `bytes` literal behaves like a raw string in one way, because you can combine the `b` and `r` prefixes to keep backslashes as typed.
 
 ```text
 >>> B = b'code' # Make a bytes object: 8-bit bytes
@@ -1703,7 +1707,7 @@ b'\nxxxx\nyyyy\n'
 (b'A\nB\rC', b'A\\nB\\rC', b'A\\nB\\rC')
 ```
 
-Once you have a string, the usual operations work. Their results depend on the type. Indexing a `bytes` gives an integer, while indexing a `str` gives a character. Both types are immutable, so neither supports item assignment:
+Once you have a string, the usual operations work, and their results depend on the type. Indexing a `bytes` gives an integer, while indexing a `str` gives a character. Both types are immutable, so neither supports item assignment:
 
 ```text
 >>> B, S
@@ -1775,7 +1779,7 @@ TypeError: string argument without an encoding
 4
 ```
 
-Your platform's default encodings are available through the `sys` and `locale` modules. They are less dependable than they look. On a Windows PC, the `open` default is `cp1252`, which is a superset of Latin-1 that adds characters such as curly quotes. On macOS and most Unix systems, the same `open` default is `utf-8`:
+Your platform's default encodings are available through the `sys` and `locale` modules, and they are less dependable than they look. On a Windows PC, the `open` default is `cp1252`, which is a superset of Latin-1 that adds characters such as curly quotes. On macOS and most Unix systems, the same `open` default is `utf-8`:
 
 ```text
 $ py -3
@@ -1799,13 +1803,13 @@ $ python3
 'utf-8'
 ```
 
-Defaults can also depend on environment variables, command-line arguments, and host settings. Text from other sources may use any encoding at all. For that reason, do not rely on `open` defaults when portability matters. Always pass an explicit encoding to `open` when files must work across hosts.
+Defaults can also depend on environment variables, command-line arguments, and host settings, and text from other sources may use any encoding at all. For that reason, do not rely on `open` defaults when portability matters. Always pass an explicit encoding to `open` when files must work across hosts.
 
-Encoding and decoding are more than type conversions. They produce different kinds of data. Encoding returns the bytes that represent text under a scheme, and decoding returns the text that those bytes represent. For plain ASCII the mapping looks trivial, but for richer text the difference is real.
+Encoding and decoding are more than type conversions, because they produce different kinds of data. Encoding returns the bytes that represent text under a scheme, and decoding returns the text that those bytes represent. For plain ASCII the mapping looks trivial, but for richer text the difference is real.
 
 ### Coding Unicode strings in Python
 
-Encoding and decoding become more useful with non-ASCII text. Some characters are hard to type on a keyboard. Python string literals provide two kinds of escape for those characters:
+Encoding and decoding become more useful with non-ASCII text. Some characters are hard to type on a keyboard, so Python string literals provide two kinds of escape for them:
 
 - `\xNN` hex escapes, where two hex digits give a one-byte (8-bit) code.
 - `\uNNNN` and `\UNNNNNNNN` Unicode escapes. The lowercase `\u` form takes four hex digits for a two-byte (16-bit) code, and the uppercase `\U` form takes eight hex digits for a four-byte (32-bit) code.
@@ -1858,7 +1862,7 @@ Non-ASCII characters use escapes in the same way. The hex literals `0xC4` and `0
 2
 ```
 
-Encoding that string shows the byte cost of each encoding. ASCII fails. Latin-1 uses one byte per character, and UTF-8 uses two:
+Encoding that string shows the byte cost of each encoding. ASCII fails, Latin-1 uses one byte per character, and UTF-8 uses two:
 
 ```text
 >>> S = 'Äè'
@@ -1875,7 +1879,7 @@ b'\xc3\x84\xc3\xa8'
 4
 ```
 
-The reverse trip works too. You can decode raw bytes to a `str`. You can read the bytes by hand and decode them, but the encoding you pass to `open` does the same decoding for you. That also avoids errors from reading part of a multibyte character when you read in chunks:
+The reverse trip works too, and you can decode raw bytes to a `str`. You can read the bytes by hand and decode them, but the encoding you pass to `open` does the same decoding for you. That also avoids errors from reading part of a multibyte character when you read in chunks:
 
 ```text
 >>> B = b'\xc4\xe8'
@@ -1953,7 +1957,7 @@ b'A\xc4B\xe8C'
 'AÄBèC'
 ```
 
-A `bytes` literal must hold ASCII characters, or use escapes for byte values above 127. A `str` literal can hold any character that the source file's encoding supports. Python reads source code as UTF-8 by default.
+A `bytes` literal must hold ASCII characters, or use escapes for byte values above 127. A `str` literal can hold any character that the source file's encoding supports, and Python reads source code as UTF-8 by default.
 
 ```text
 >>> S = 'AÄBèC' # Chars from UTF-8 if no encoding declaration
@@ -1996,9 +2000,9 @@ Notice that the `str` literal `'AÄBèC'` contains raw Unicode characters, not e
 
 ### Source-file encoding declarations
 
-Escapes work for an occasional character. Coding many accented characters as escapes is tedious. Python reads source files as UTF-8 by default, so you can type the characters directly in string literals and other text in your script.
+Escapes work for an occasional character, but coding many accented characters as escapes is tedious. Python reads source files as UTF-8 by default, so you can type the characters directly in string literals and other text in your script.
 
-If you save your script in a different encoding, add a special comment near the top. The comment must be the first or second line. A `#!` line may come before it. The common form names the encoding:
+If you save your script in a different encoding, add a special comment near the top. The comment must be the first or second line, and a `#!` line may come before it. The common form names the encoding:
 
 ```text
 # -*- coding: latin-1 -*-
@@ -2066,13 +2070,13 @@ $ python3 source-encoding-utf8.py # Same output as Latin-1 version above
 
 Most programmers use UTF-8 for source files, and that is the safe choice. Python's standard manual covers the less common options, such as Unicode property and character-name escapes.
 
-Source encoding applies to the whole file. Variable names follow stricter rules. Some non-ASCII letters and digits are allowed in names, but symbols and emoji are not. For example, `hÄck` is a valid name, but a name with a symbol is not. The `isidentifier` method of `str` tests a name. Even when a name is valid, non-ASCII names can be hard to type on some keyboards. For that reason, the Python standard library uses ASCII-only names.
+Source encoding applies to the whole file, but variable names follow stricter rules. Some non-ASCII letters and digits are allowed in names, while symbols and emoji are not. For example, `hÄck` is a valid name, but a name with a symbol is not. The `isidentifier` method of `str` tests a name. Even when a name is valid, non-ASCII names can be hard to type on some keyboards, and for that reason the Python standard library uses ASCII-only names.
 
 ### Using byte strings
 
 The `bytes` type and its mutable partner `bytearray` handle binary data. They can hold encoded text too, but their scope is wider. Anything that can be stored as bytes works with them, and that covers all digital data.
 
-As noted earlier, `bytes` supports the sequence operations and most of the methods of `str`. Because you cannot mix `bytes` and `str` without explicit conversions, the usual rule is simple. Use `str` and text files for text, and use `bytes` and binary files for binary data.
+As noted earlier, `bytes` supports the sequence operations and most of the methods of `str`. Because you cannot mix `bytes` and `str` without explicit conversions, the usual rule is simple: use `str` and text files for text, and use `bytes` and binary files for binary data.
 
 #### Methods
 
@@ -2154,9 +2158,9 @@ AttributeError: 'bytes' object has no attribute 'format'
 SyntaxError: invalid syntax
 ```
 
-Some reasons for this choice are sound. Raw bytes may hold text in any encoding, or no text at all. Plugging ASCII text into a UTF-16 string or an image makes little sense. Still, the `%` operator is an exception to a rule that the other formatting styles do not follow.
+Some reasons for this choice are sound. Raw bytes may hold text in any encoding, or no text at all, so plugging ASCII text into a UTF-16 string or an image makes little sense. Still, the `%` operator is an exception to a rule that the other formatting styles do not follow.
 
-Encoding a formatted string is a different operation. The result depends on the encoding you choose. Encoding fails when the encoding cannot hold every character:
+Encoding a formatted string is a different operation, and the result depends on the encoding you choose. Encoding fails when the encoding cannot hold every character:
 
 ```text
 >>> kind = 'fine'
@@ -2193,7 +2197,7 @@ b'code'
 
 #### Mixing string types
 
-The `replace` method needs two `bytes` arguments. Passing a `str` fails. Python expects specific string types in some calls and does not convert them for you:
+The `replace` method needs two `bytes` arguments, and passing a `str` fails. Python expects specific string types in some calls and does not convert them for you:
 
 ```text
 >>> B = b'code'
@@ -2207,7 +2211,7 @@ TypeError: string argument without an encoding
 b'cXYe'
 ```
 
-Expressions follow the same rule. Keep text and binary data separate. If you must mix them, convert one side first:
+Expressions follow the same rule: keep text and binary data separate. If you must mix them, convert one side first:
 
 ```text
 >>> b'ab' + 'cd'
@@ -2224,7 +2228,7 @@ Conversion is more than a change of type, since encoding and decoding produce di
 
 ### The bytearray object
 
-The `bytearray` type is a mutable sequence of integers from 0 to 255. It supports the same string methods and sequence operations as `bytes`. It also has the in-place change methods of lists.
+The `bytearray` type is a mutable sequence of integers from 0 to 255. It supports the same string methods and sequence operations as `bytes`, and it also has the in-place change methods of lists.
 
 Call `bytearray` with a `bytes` value, not a `str`, to make one. Then you can change it cell by cell, but each cell must hold an integer:
 
@@ -2308,7 +2312,7 @@ b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00…
 (b'abcdefg', b'abcdefg')
 ```
 
-The three types differ in role. Use `str` for decoded text, `bytes` for binary data (including encoded text), and `bytearray` for binary data that you change in place. The `bytearray` type avoids the time and space cost of making a new copy for every change.
+The three types differ in role. Use `str` for decoded text, `bytes` for binary data, including encoded text, and `bytearray` for binary data that you change in place. The `bytearray` type avoids the time and space cost of making a new copy for every change.
 
 ```text
 >>> B = b'code' # Bytes
@@ -2324,9 +2328,9 @@ The three types differ in role. Use `str` for decoded text, `bytes` for binary d
 
 ### Text-file basics
 
-The mode of a file decides how its content is read and which Python type you use. Text mode uses `str` objects. Binary mode uses `bytes` objects. The default mode is `rt`, which means text input, and `r` means the same thing.
+The mode of a file decides how its content is read and which Python type you use. Text mode uses `str` objects, while binary mode uses `bytes` objects. The default mode is `rt`, which means text input, and `r` means the same thing.
 
-The first argument to `open` is the pathname, which can be absolute or relative to the current directory. The second argument is the mode, where `w` means write text. A `write` call returns the number of items it wrote. Those items are characters in text mode and bytes in binary mode.
+The first argument to `open` is the pathname, which can be absolute or relative to the current directory. The second argument is the mode, where `w` means write text. A `write` call returns the number of items it wrote, and those items are characters in text mode and bytes in binary mode.
 
 Here is a basic write and read of one line:
 
@@ -2340,11 +2344,11 @@ Here is a basic write and read of one line:
 'abc\n'
 ```
 
-The `close` call is optional in CPython, which closes files when they are garbage collected. Even so, closing is good practice. It flushes changes and keeps memory from growing. The example above uses the platform default encoding without naming one. That works for plain ASCII text.
+The `close` call is optional in CPython, which closes files when they are garbage collected. Even so, closing is good practice. It flushes changes and keeps memory from growing. The example above uses the platform default encoding without naming one, and that works for plain ASCII text.
 
 ### Text and binary modes
 
-Here is the same content read in text mode and in binary mode. Text mode needs a `str` for writing. Binary mode with the `rb` mode returns `bytes`. The output below comes from Windows, where text mode turns `\n` into `\r\n` on disk:
+Here is the same content read in text mode and in binary mode. Text mode needs a `str` for writing, while binary mode with the `rb` mode returns `bytes`. The output below comes from Windows, where text mode turns `\n` into `\r\n` on disk:
 
 ```text
 $ py -3 # Run on Windows (no \r on Unix)
@@ -2369,7 +2373,7 @@ Binary output works the same way, but it needs a `bytes` object. In this example
 b'abc\n'
 ```
 
-Binary data can contain zero bytes. A zero byte is the null character in ASCII and in UTF-8. Text mode can still read it as part of a `str`:
+Binary data can contain zero bytes. A zero byte is the null character in ASCII and in UTF-8, and text mode can still read it as part of a `str`:
 
 ```text
 >>> open('temp.bin', 'wb').write(b'a\x00c') # Binary data included
@@ -2380,7 +2384,7 @@ Binary data can contain zero bytes. A zero byte is the null character in ASCII a
 b'a\x00c'
 ```
 
-Binary files always return `bytes` when you read them. They accept either `bytes` or `bytearray` for writing. Most APIs that take `bytes` also take `bytearray`:
+Binary files always return `bytes` when you read them, and they accept either `bytes` or `bytearray` for writing. Most APIs that take `bytes` also take `bytearray`:
 
 ```text
 >>> BA = bytearray(b'\x01\x02\x03')
@@ -2392,7 +2396,7 @@ Binary files always return `bytes` when you read them. They accept either `bytes
 b'\x01\x02\x03'
 ```
 
-Python will not mix the two kinds of data in a file. Writing a `bytes` value to a text file fails. Writing a `str` value to a binary file also fails. Python cannot guess how you want to read the contents, so it refuses to convert them. Use `str` for text and `bytes` for binary data:
+Python will not mix the two kinds of data in a file. Writing a `bytes` value to a text file fails, and writing a `str` value to a binary file also fails. Python cannot guess how you want to read the contents, so it refuses to convert them. Use `str` for text and `bytes` for binary data:
 
 ```text
 >>> open('temp.txt', 'w').write('abc\n') # Auto encodes str to bytes
@@ -2407,7 +2411,7 @@ TypeError: a bytes-like object is required, not 'str'
 
 ### Unicode-text files
 
-Text files can carry a specific encoding. Pass the name in the `encoding` argument of `open`. Then the file decodes text on reads and encodes text on writes. For a file named by the variable `pathname`, these two calls show the idea:
+Text files can carry a specific encoding. Pass the name in the `encoding` argument of `open`, and the file decodes text on reads and encodes text on writes. For a file named by the variable `pathname`, these two calls show the idea:
 
 - `open(pathname, 'r', encoding='utf8')` returns a file object that decodes UTF-8 when it reads.
 - `open(pathname, 'w', encoding='latin1')` returns a file object that encodes Latin-1 when it writes.
@@ -2465,9 +2469,9 @@ UnicodeDecodeError: 'utf-16-le' codec can't decode byte 0x8d in position 16:…
 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0:…
 ```
 
-With no `encoding` argument, a text file uses the default for the host and platform. That default is from `locale`. The results can look right when the default and the file agree. Still, relying on the default makes your program depend on where its files were made. Use explicit encodings, especially for web servers that run as generic users with unreliable environment settings.
+With no `encoding` argument, a text file uses the default for the host and platform, and that default is from `locale`. The results can look right when the default and the file agree. Still, relying on the default makes your program depend on where its files were made. Use explicit encodings, especially for web servers that run as generic users with unreliable environment settings.
 
-For a real file, the workflow is usually simple. Open a file with an encoding, read it, change the text, and write it back. Reading a web page or an image is routine once you know the modes. An image uses binary mode with `rb`, and a page uses text mode with an explicit encoding:
+For a real file, the workflow is usually simple: open a file with an encoding, read it, change the text, and write it back. Reading a web page or an image is routine once you know the modes. An image uses binary mode with `rb`, and a page uses text mode with an explicit encoding:
 
 ```text
 >>> text = open('Websites/about-lp5e.html', encoding='utf8').read()
@@ -2478,7 +2482,7 @@ For a real file, the workflow is usually simple. Open a file with an encoding, r
 b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00'
 ```
 
-Once content is loaded, all the `str` and `bytes` operations are available. Saving follows the same pattern. Use an encoding for text and binary mode for bytes:
+Once content is loaded, all the `str` and `bytes` operations are available. Saving follows the same pattern: use an encoding for text and binary mode for bytes:
 
 ```text
 >>> text = text.replace('2013', '2024')
@@ -2522,7 +2526,7 @@ TypeError: cannot use a bytes pattern on a string-like object
 TypeError: unhashable type: 'bytearray'
 ```
 
-The `struct` module packs and unpacks binary data. It works with `bytes` and `bytearray` only, because it is meant for binary data and not for decoded text. A format string such as `'>i4sh'` gives the size and type of each item. The `>` prefix selects big-endian byte order:
+The `struct` module packs and unpacks binary data. It works with `bytes` and `bytearray` only, because it is meant for binary data and not for decoded text. A format string such as `'>i4sh'` gives the size and type of each item, and the `>` prefix selects big-endian byte order:
 
 ```text
 >>> import struct
@@ -2555,7 +2559,7 @@ b'\x00\x00\x00\x07code\x00\x08'
 (7, b'code', 8)
 ```
 
-The `pickle` module saves almost any Python object, not just the values that `struct` packs. Even so, `pickle` always produces a `bytes` object, whatever the protocol. The `dumps` call returns that pickled byte string:
+The `pickle` module saves almost any Python object, not just the values that `struct` packs. Even so, `pickle` always produces a `bytes` object, whatever the protocol, and the `dumps` call returns that pickled byte string:
 
 ```text
 >>> import pickle # dumps() returns pickle string
@@ -2636,9 +2640,9 @@ b'h\xc3\x84ck\xf0\x9f\x99\x822'
 'text2'
 ```
 
-On macOS and on Windows since Python 3.6, Python encodes `bytes` names with UTF-8. Windows converts them further to UTF-16 for its API. Linux, and so Android, accepts any bytes as file names. Python still tries UTF-8 when it converts names to and from `str`, and it uses surrogate escapes for encoding errors.
+On macOS and on Windows since Python 3.6, Python encodes `bytes` names with UTF-8, and Windows converts them further to UTF-16 for its API. Linux, and so Android, accepts any bytes as file names. Python still tries UTF-8 when it converts names to and from `str`, and it uses surrogate escapes for encoding errors.
 
-Using `bytes` names only works when the encoding matches what Python or the filesystem expects. The next example passes Latin-1 bytes. It fails on macOS and on Windows:
+Using `bytes` names only works when the encoding matches what Python or the filesystem expects. The next example passes Latin-1 bytes, and it fails on macOS and on Windows:
 
 ```text
 >>> 'hÄck'.encode('latin-1'), 'hÄck'.encode('utf-8')
@@ -2651,7 +2655,7 @@ OSError: [Errno 92] Illegal byte sequence: b'h\xc4ck'
 # open(b'h\xc3\x84ck', 'w') # Works: use UTF-8 encoding
 ```
 
-On Linux and Android the same call can work. Those systems decode the Latin-1 name with UTF-8 and keep the bad byte as a surrogate-escaped `str`. Even then, the result depends on the filesystem. On a removable exFAT drive, the Latin-1 name fails. So using arbitrary bytes in `open` depends on both the platform and the filesystem. Avoid it.
+On Linux and Android the same call can work. Those systems decode the Latin-1 name with UTF-8 and keep the bad byte as a surrogate-escaped `str`. Even then, the result depends on the filesystem, and on a removable exFAT drive the Latin-1 name fails. So using arbitrary bytes in `open` depends on both the platform and the filesystem. Avoid it.
 
 The `os` module lists directories in the same form you pass in. A `str` path gives `str` names, and a `bytes` path gives `bytes` names. The names can then be used in other file tools:
 
@@ -2670,7 +2674,7 @@ b'h\xc3\x84ck\xf0\x9f\x99\x821' => text1
 b'h\xc3\x84ck\xf0\x9f\x99\x822' => text2
 ```
 
-The `glob` module expands file name patterns in both forms. The `os.fsdecode` function decodes a name with the host's filesystem encoding:
+The `glob` module expands file name patterns in both forms, and the `os.fsdecode` function decodes a name with the host's filesystem encoding:
 
 ```text
 >>> glob.glob('h*ck*') # str gives str, bytes gives byte
@@ -2710,11 +2714,11 @@ Tools that make and walk folders also accept both forms. The following demo ran 
 
 The default encoding is a weirdly tangled topic. Each part of Python uses its own default, so it helps to see them together.
 
-The default for source code and for the `encode` and `decode` methods is always UTF-8. The default for file names comes from `sys.getfilesystemencoding()`. The default for file content read through `open` comes from `locale.getpreferredencoding(False)`.
+The default for source code and for the `encode` and `decode` methods is always UTF-8. The default for file names comes from `sys.getfilesystemencoding()`, and the default for file content read through `open` comes from `locale.getpreferredencoding(False)`.
 
-The `sys.getdefaultencoding()` value cannot be changed, as of Python 3.2. The file-name default is usually UTF-8, including on Windows since Python 3.6. That default rarely matters if your names are always `str`.
+The `sys.getdefaultencoding()` value cannot be changed, as of Python 3.2. The file-name default is usually UTF-8, including on Windows since Python 3.6, and that default rarely matters if your names are always `str`.
 
-The default for `open` is the least consistent. It is not simply the result of `locale.getencoding()` on every platform. It is UTF-8 when UTF-8 mode is on, which Python 3.7 introduced. Otherwise, it is the result of `getencoding()`. On Windows that can be a code-page encoding such as `cp1252`. Unix systems usually use UTF-8, so a bare `open` is not portable for non-ASCII text.
+The default for `open` is the least consistent, because it is not simply the result of `locale.getencoding()` on every platform. It is UTF-8 when UTF-8 mode is on, which Python 3.7 introduced. Otherwise, it is the result of `getencoding()`, and on Windows that can be a code-page encoding such as `cp1252`. Unix systems usually use UTF-8, so a bare `open` is not portable for non-ASCII text.
 
 UTF-8 mode fixes this. Turn it on by setting the environment variable `PYTHONUTF8` to `1`, or by starting Python with `-X utf8`. The `getencoding()` function, added in Python 3.11, does not change with UTF-8 mode, but `open` and the older `getpreferredencoding(False)` do.
 
@@ -2722,18 +2726,18 @@ The `locale` results can also depend on the platform, environment variables, and
 
 A few other environment variables change related behavior. `PYTHONIOENCODING` sets the encoding of the standard streams, such as `sys.stdout`, when they are redirected to a file. UTF-8 mode also affects redirected streams, unless `PYTHONIOENCODING` is set too. The other variables cover console streams on Windows, file names on Windows, and forcing Unix encodings to skip UTF-8.
 
-The practical advice is short. Use `str` for file names. Pass an explicit encoding to `open`, and do not rely on the defaults. The Python manuals have the full story when you need it.
+The practical advice is short: use `str` for file names, pass an explicit encoding to `open`, and do not rely on the defaults. The Python manuals have the full story when you need it.
 
 ### Byte-order marks (BOM)
 
-Some encodings store a special marker at the start of a file. This marker is the byte-order mark, or BOM. It records the byte order of the data, which is its endianness, or it names the encoding in general. Text-mode files in Python skip the marker on input and write it on output when the encoding implies one.
+Some encodings store a special marker at the start of a file. This marker is the byte-order mark, or BOM, and it records the byte order of the data, which is its endianness, or it names the encoding in general. Text-mode files in Python skip the marker on input and write it on output when the encoding implies one.
 
 UTF-16 and UTF-32 always carry a BOM that names the encoding and the big- or little-endian layout. A UTF-8 file may have a BOM, but it is not required, and the BOM only says that the file is UTF-8. Python handles both cases with specific encoding names.
 
 - In UTF-16, the general name `utf-16` always processes the BOM. The name `utf-16-le` means little-endian and does not add or remove one.
 - In UTF-8, the name `utf-8-sig` skips a BOM on input and writes one on output. The general name `utf-8` does neither.
 
-To see this, save a short file in an editor and read it back in Python. On Windows, Notepad can save a file as plain ANSI text, which has no BOM. Its UTF-8 choice can add a three-byte BOM. Its UTF-16 choices add a two-byte BOM:
+To see this, save a short file in an editor and read it back in Python. On Windows, Notepad can save a file as plain ANSI text, which has no BOM. Its UTF-8 choice can add a three-byte BOM, and its UTF-16 choices add a two-byte BOM:
 
 ```text
 $ py -3 # On Windows, post ANSI save in Notepad
@@ -2748,7 +2752,7 @@ b'code\r\nCODE\r\n'
 'code\nCODE\n'
 ```
 
-After a save as UTF-8 with a BOM, the file starts with the three bytes of the BOM. The default encoding keeps the BOM as a character. The `utf-8-sig` name removes it:
+After a save as UTF-8 with a BOM, the file starts with the three bytes of the BOM. The default encoding keeps the BOM as a character, while the `utf-8-sig` name removes it:
 
 ```text
 >>> open('code.txt', 'rb').read() # After resaved: UTF-8 with 3-byte BOM
@@ -2761,7 +2765,7 @@ b'\xef\xbb\xbfcode\r\nCODE\r\n'
 'code\nCODE\n'
 ```
 
-A UTF-16 big-endian file starts with a two-byte BOM. The name `utf-16` skips that BOM because the encoding implies it. The name `utf-16-be` decodes the big-endian data but keeps the BOM in the result:
+A UTF-16 big-endian file starts with a two-byte BOM. The name `utf-16` skips that BOM because the encoding implies it, while the name `utf-16-be` decodes the big-endian data but keeps the BOM in the result:
 
 ```text
 >>> open('code.txt', 'rb').read()
@@ -2774,7 +2778,7 @@ b'\xfe\xff\x00c\x00o\x00d\x00e\x00\r\x00\n\x00C\x00O\x00D\x00E\x00\r\x00\n'
 
 Other combinations of save and open show more. Reading with the wrong encoding can print garbage characters, because the bytes do not match the encoding.
 
-Python can write these files too. Python adds a BOM automatically for `utf-16`. For UTF-8, `utf-8` writes no BOM, while `utf-8-sig` writes one. The same rule applies on input. The `utf-8-sig` name works on files with or without a BOM, so it is a safe choice when you do not know:
+Python can write these files too. Python adds a BOM automatically for `utf-16`. For UTF-8, `utf-8` writes no BOM, while `utf-8-sig` writes one, and the same rule applies on input. The `utf-8-sig` name works on files with or without a BOM, so it is a safe choice when you do not know:
 
 ```text
 >>> open('temp.txt', 'w', encoding='utf-8').write('code\nCODE\n')
@@ -2807,7 +2811,7 @@ b'\xff\xfec\x00o\x00d\x00e\x00\r\x00\n\x00C\x00O\x00D\x00E\x00\r\x00\n\x00'
 'code\nCODE\n'
 ```
 
-The names `utf-16-le` and `utf-16-be` set the byte order explicitly. You may need to write or skip the BOM yourself in some cases. The `utf-16-le` name does not write a BOM, and `utf-16` cannot read a file that lacks one:
+The names `utf-16-le` and `utf-16-be` set the byte order explicitly, and you may need to write or skip the BOM yourself in some cases. The `utf-16-le` name does not write a BOM, and `utf-16` cannot read a file that lacks one:
 
 ```text
 >>> open('temp.txt', 'r', encoding='utf-16-le').read()
@@ -2837,7 +2841,7 @@ Experiment with these encodings to build intuition. The Python library manuals h
 
 ### Unicode normalization
 
-Unicode has one more weakness. The standard does not give one code point to every character. Some characters have more than one valid form. This breaks equality tests, and it can cause trouble for text-processing programs.
+Unicode has one more weakness that bites real systems. The standard does not give one code point to every character, so some characters have more than one valid form. Picture two nodes writing job names into the same log, one node sending `ñ` as a single code point and the other sending `n` plus a combining tilde. A dictionary keyed by job name then sees two different keys for what looks like one name. Equality tests fail, and text-processing programs go wrong in ways that are hard to see.
 
 The character `ñ` is a good example. It can be one code point, `ñ`, which is an `n` with a tilde. It can also be two code points, `n` and `̃`, which are a plain `n` followed by a combining tilde. The first form is called NFC, or the composed form, because the letter and accent are combined. The second form is called NFD, or the decomposed form, because its parts are split.
 
@@ -2863,7 +2867,7 @@ Other characters have both forms too. Examples include `Å`, `è`, and `é`, alo
 ('ϔ', 'ϔ')
 ```
 
-The two forms differ in memory as code points. They also differ when encoded, because each encoding stores the code points differently. Decoding the encoded forms gives back the two different code-point sequences:
+The two forms differ in memory as code points, and they also differ when encoded, because each encoding stores the code points differently. Decoding the encoded forms gives back the two different code-point sequences:
 
 ```text
 >>> 'ñ'.encode('utf8'), 'ñ'.encode('utf8')
@@ -2885,9 +2889,9 @@ False
 (1, 2)
 ```
 
-Vendors favor different forms. macOS tends to prefer NFD, Windows and many others prefer NFC, and the choice can depend on the filesystem. Tools also differ in how well they accept the form they did not expect. The result is an interoperability problem.
+Vendors favor different forms. macOS tends to prefer NFD, while Windows and many others prefer NFC, and the choice can depend on the filesystem. Tools also differ in how well they accept the form they did not expect. The result is an interoperability problem.
 
-The fix is to convert text to a common form before comparing it. Python's `unicodedata` module has a `normalize` function for this:
+The fix is to convert text to a common form before comparing it. Normalization rewrites the code points into one chosen form. Apply it to both sides before you compare, or apply it once as names enter your system, and the two spellings collapse into one. Python's `unicodedata` module has a `normalize` function for this:
 
 ```python
 from unicodedata import normalize # Python stdlib tool
@@ -2917,7 +2921,7 @@ For ordinary ASCII scripts, `str` without special handling is usually enough. If
 
 ## Managed attributes
 
-Most attributes are simple. A `person.name` fetch returns a stored value, and `person.name = value` stores a new one. The attribute usually lives in the object itself or in a class the object inherits from. That plain model handles most programs you will write.
+Most attributes are simple. A `person.name` fetch returns a stored value, and `person.name = value` stores a new one. The attribute usually lives in the object itself or in a class the object inherits from. That plain model handles most programs you will write. The trouble starts when an attribute has to grow rules after other code already depends on it.
 
 Sometimes requirements change after the code is written. Suppose a `name` attribute must now be validated or transformed whenever it is read or set. The obvious fix is to replace the attribute with get and set methods, as in this sketch. The `valid` and `transform` helpers here are placeholders, not real functions:
 
@@ -2938,7 +2942,7 @@ person.getName()
 person.setName('value')
 ```
 
-This fix has a cost. Every place that uses `name` in the program must change from attribute syntax to method calls. Clients also have to know which form to use. A method-based interface from the start keeps clients safe from later changes. Retrofitting one is harder.
+This fix has a cost. Every place that uses `name` in the program must change from attribute syntax to method calls, and clients have to know which form to use. A method-based interface from the start keeps clients safe from later changes. Retrofitting one is harder.
 
 This comes up more often than it seems. A cell in a spreadsheet-style program may start as a plain number and later become a calculation. An object's interface should handle that change without breaking code that already uses it. Managed attributes make that possible.
 
@@ -2953,13 +2957,13 @@ Python offers four accessor techniques for this job:
 - The `__getattr__` and `__setattr__` methods, which handle undefined attribute fetches and every attribute assignment.
 - The `__getattribute__` method, which handles every attribute fetch.
 
-You met some of these in chapters 30 and 32 of the book, and some only briefly. All four share goals, and you can often solve one problem with any of them. They differ in complexity and style, though, and you have to see them in action to judge. The first two apply to named attributes. The last two are general enough for proxy classes that route any attribute to a wrapped object.
+You met some of these in chapters 30 and 32 of the book, and some only briefly. All four share goals, and you can often solve one problem with any of them. They differ in complexity and style, though, and you have to see them in action to judge. The first two apply to named attributes, while the last two are general enough for proxy classes that route any attribute to a wrapped object.
 
 The chapter is an advanced topic. Most application programmers never need it, because they simply fetch and set attributes. Tool builders, however, use these techniques to design flexible APIs. Understanding the descriptor model also makes slots and properties easier to read when you meet them in code.
 
 ## Properties
 
-A property routes get, set and delete operations on one attribute to methods you write. That lets you run code on attribute access, reject deletions, and document an attribute. Properties are created with the `property` built-in and assigned to class attributes, just like method functions. Subclasses and instances inherit them as they inherit other class attributes.
+Suppose a configuration object must reject a negative timeout the moment someone assigns it. Callers should keep writing plain attribute syntax, and the check should still run. A property does exactly that. It routes get, set and delete operations on one attribute to methods you write, which lets you run code on attribute access, reject deletions, and document an attribute. Properties are created with the `property` built-in and assigned to class attributes, just like method functions. Subclasses and instances inherit them as they inherit other class attributes.
 
 ### The basics of properties
 
@@ -2969,9 +2973,9 @@ You create a property by assigning the result of a built-in call to a class attr
 attribute = property(fget, fset, fdel, doc)
 ```
 
-None of the four arguments is required, and each defaults to `None`. A `None` for `fget`, `fset` or `fdel` means that operation is not supported. Trying it raises an `AttributeError` automatically. The `fget` function returns the computed value, while `fset` and `fdel` return nothing. Any of the three can raise an exception to reject an access.
+None of the four arguments is required, and each defaults to `None`. A `None` for `fget`, `fset` or `fdel` means that operation is not supported, and trying it raises an `AttributeError` automatically. The `fget` function returns the computed value, while `fset` and `fdel` return nothing. Any of the three can raise an exception to reject an access.
 
-The `doc` argument sets a documentation string for the attribute. If you leave it out, the property copies the docstring from `fget`. Each function receives the instance as its first argument, so it can read and change that instance's data. You can pass any callable here, including a method.
+The `doc` argument sets a documentation string for the attribute, and if you leave it out, the property copies the docstring from `fget`. Each function receives the instance as its first argument, so it can read and change that instance's data. You can pass any callable here, including a method.
 
 ### A first example with properties
 
@@ -3089,7 +3093,7 @@ This code behaves exactly like Example 38-1, and its output matches. The decorat
 
 ## Descriptors
 
-A descriptor is a class that intercepts attribute access for one specific attribute. A property is actually a simple kind of descriptor. The `property` built-in creates a descriptor that calls functions on each access. Descriptors are also the mechanism behind properties and slots.
+Now suppose five unrelated classes all need the same rule on one attribute. Copying a property into each class works, but the rule then lives in five places. A descriptor moves that rule into its own reusable class. A descriptor intercepts attribute access for one specific attribute, and a property is actually a simple kind of descriptor: the `property` built-in creates a descriptor that calls functions on each access. Descriptors are also the mechanism behind properties and slots.
 
 Descriptors can do more than properties. Because a descriptor is a normal class, it can keep its own state, take part in inheritance, use composition to hold other objects, and hold its own helper methods and documentation. Like a property, though, a descriptor still manages only one attribute.
 
@@ -3216,7 +3220,7 @@ print(bob.name)
 print(Name.__doc__) # Or help(Name)
 ```
 
-The descriptor must be assigned to a class attribute. It does not work when assigned to an instance attribute with `self`. When `__get__` runs, Python passes three objects. The `self` is the `Name` instance. The `instance` is the `Person` object, and `owner` is the `Person` class.
+The descriptor must be assigned to a class attribute, and it does not work when assigned to an instance attribute with `self`. When `__get__` runs, Python passes three objects. The `self` is the `Name` instance, the `instance` is the `Person` object, and `owner` is the `Person` class.
 
 The output matches the property version exactly. Like the property, the descriptor is inherited by subclasses, and you can move it into a base class without changes. If the descriptor is useful only inside one class, you can nest it inside that class. The nested version works the same, but the docstring lives at a new path:
 
@@ -3239,7 +3243,7 @@ Nesting moves `Name` into the scope of `Person`, so it cannot clash with names o
 
 ### Computed attributes with descriptors
 
-Descriptors can compute values too. Example 38-5 reworks the squaring example with a descriptor. Each descriptor keeps its own base value:
+Descriptors can compute values too. Example 38-5 reworks the squaring example with a descriptor, and each descriptor keeps its own base value:
 
 ```python
 class DescSquare:
@@ -3266,7 +3270,7 @@ The output matches the property version: `9`, `16` and `1024`. This time a descr
 
 ### Using state in descriptors
 
-The first two descriptor examples keep their data in different places. The name example stores data on the client instance. The squaring example stores data on the descriptor itself, in `self`. A descriptor can use either place, or both.
+The first two descriptor examples keep their data in different places. The name example stores data on the client instance, while the squaring example stores data on the descriptor itself, in `self`. A descriptor can use either place, or both.
 
 Descriptor state is per-descriptor data. It can be internal to the descriptor, or it can span all instances. It can vary per attribute appearance, and it is often different for each client class. Instance state is per-client-object data, so it varies from one application object to the next.
 
@@ -3311,7 +3315,7 @@ DescState get
 50 6 4
 ```
 
-A descriptor can also store data on the client instance. That allows a value that varies per instance. Example 38-7 assumes the client sets an `_X` attribute on each instance, and the descriptor reads it:
+A descriptor can also store data on the client instance, which allows a value that varies per instance. Example 38-7 assumes the client sets an `_X` attribute on each instance, and the descriptor reads it:
 
 ```python
 class InstState: # Using instance state
@@ -3443,15 +3447,15 @@ This class handles only basic property use. To support `@` decorator syntax for 
 
 ### Descriptors, slots and other tools
 
-Descriptors also power Python's `__slots__` feature. Instance dictionaries are avoided by creating class-level descriptors. Those descriptors map slot names to fixed storage in the instance. Unlike the explicit `property` call, slot descriptors are created automatically when a `__slots__` attribute appears in the class.
+Descriptors also power Python's `__slots__` feature. Instance dictionaries are avoided by creating class-level descriptors, and those descriptors map slot names to fixed storage in the instance. Unlike the explicit `property` call, slot descriptors are created automatically when a `__slots__` attribute appears in the class.
 
 Chapter 32 of the book explains slots, and it explains why they are rarely worth using outside unusual cases. Descriptors also serve other class tools, but the internals are beyond this chapter. Python's manuals and open source code cover them.
 
 ## The `__getattr__` and `__getattribute__` methods
 
-The `__getattr__` and `__getattribute__` methods are operator-overloading methods, so they intercept attribute fetches in a more general way. They run automatically when an instance is used in an attribute fetch. Unlike properties and descriptors, they can catch any name. That makes them more flexible, but it can also add extra calls.
+Picture a proxy object that must log every attribute fetch made on the object it wraps, whatever the name. A property cannot do that, because it manages one known name. The `__getattr__` and `__getattribute__` methods can, because they are operator-overloading methods that intercept attribute fetches in a more general way. They run automatically when an instance is used in an attribute fetch. Unlike properties and descriptors, they can catch any name. That makes them more flexible, but it can also add extra calls.
 
-Attribute fetch interception comes in two forms. The `__getattr__` method runs only for attributes that are undefined. That means the attribute is not stored on the instance or inherited from its classes. The `__getattribute__` method runs for every attribute. Because it catches everything, it must be used carefully to avoid loops.
+Attribute fetch interception comes in two forms. The `__getattr__` method runs only for attributes that are undefined, which means the attribute is not stored on the instance or inherited from its classes. The `__getattribute__` method runs for every attribute. Because it catches everything, it must be used carefully to avoid loops.
 
 These two methods belong to a larger set. Python also has `__setattr__` for every assignment and `__delattr__` for every deletion. The four work together, so this chapter treats them as one topic. You met `__getattr__` and `__setattr__` in chapters 30 and 32 of the book, and `__getattribute__` only briefly.
 
@@ -3466,7 +3470,7 @@ def __setattr__(self, name, value): ... # On all attribute assignment [obj.name=
 def __delattr__(self, name): ... # On all attribute deletion [del obj.name]
 ```
 
-Here `self` is the instance, `name` is the attribute name as a string, and `value` is the object being assigned. The two fetch methods return a value. The other two return nothing. Each one can raise an exception to block an access.
+Here `self` is the instance, `name` is the attribute name as a string, and `value` is the object being assigned. The two fetch methods return a value, while the other two return nothing. Each one can raise an exception to block an access.
 
 Using `__getattr__` for fetches and `__setattr__` for assignments catches every access in a small class like this one:
 
@@ -3607,7 +3611,7 @@ get: name
 Bob Smith
 ```
 
-The assignment in `__init__` also triggers `__setattr__`. That method sees every instance assignment, including the `_name` attribute. These methods also cannot hold documentation. A managed attribute here is just code inside the methods, not a separate object.
+The assignment in `__init__` also triggers `__setattr__`, so that method sees every instance assignment, including the `_name` attribute. These methods also cannot hold documentation. A managed attribute here is just code inside the methods, not a separate object.
 
 Using `__getattribute__` gives the same result. Replace `__getattr__` in Example 38-9 with this method, which must route all other names to the superclass:
 
@@ -3695,7 +3699,7 @@ class AttrSquare:
     ...self-test code same as Example 38-11...
 ```
 
-The results are the same. Two things happen inside this class, though. The constructor's `self.value = start` triggers `__setattr__`. Also, `self.value` inside `__getattribute__` triggers `__getattribute__` again. That means each fetch of `X` runs the method twice. The `__getattr__` version avoids this because `value` is defined and skips the method.
+The results are the same. Two things happen inside this class, though. The constructor's `self.value = start` triggers `__setattr__`, and `self.value` inside `__getattribute__` triggers `__getattribute__` again. That means each fetch of `X` runs the method twice. The `__getattr__` version avoids this because `value` is defined and skips the method.
 
 To avoid the second call, fetch `value` through the superclass as well:
 
@@ -3743,7 +3747,7 @@ print(X.attr2)
 print(X.attr3)
 ```
 
-The `__getattr__` version intercepts only `attr3`, since the others are defined. The `__getattribute__` version intercepts every fetch. It must send the ones it does not manage to the superclass to avoid loops:
+The `__getattr__` version intercepts only `attr3`, since the others are defined. The `__getattribute__` version intercepts every fetch, and it must send the ones it does not manage to the superclass to avoid loops:
 
 ```text
 $ python3 getattr-v-getattribute.py
@@ -3760,7 +3764,7 @@ get: attr3
 3
 ```
 
-The two methods can catch different sets of fetches. In practice, though, they often do the same job. If an attribute is not physically stored, both produce the same result.
+The two methods can catch different sets of fetches. In practice, though, they often do the same job, because if an attribute is not physically stored, both produce the same result.
 
 ### Management techniques compared
 
@@ -3782,7 +3786,7 @@ class Powers:
     cube = property(getCube) # Likewise
 ```
 
-Example 38-15 does the same with descriptors. Each descriptor is a full class. These descriptors keep base values in instance state, so they need leading underscores too. The book notes that storing base values in descriptor state would avoid the rename. That would not suit values that must vary per client instance:
+Example 38-15 does the same with descriptors. Each descriptor is a full class. These descriptors keep base values in instance state, so they need leading underscores too. The book notes that storing base values in descriptor state would avoid the rename, but that would not suit values that must vary per client instance:
 
 ```python
 "Same, but with descriptors (per-instance state)"
@@ -3866,7 +3870,7 @@ All four modules produce the same result. This REPL session imports each module 
 
 ### Intercepting built-in operation attributes
 
-The generic methods have a limit that matters for delegation. Attribute fetches for implicit operator-overloading methods never reach `__getattr__` or `__getattribute__`. Printing, `+` and indexing look up methods such as `__str__`, `__add__` and `__getitem__` in the class. They skip the instance and its interceptors.
+The generic methods have a limit that matters for delegation. Attribute fetches for implicit operator-overloading methods never reach `__getattr__` or `__getattribute__`. Printing, `+` and indexing look up methods such as `__str__`, `__add__` and `__getitem__` in the class, and they skip the instance and its interceptors.
 
 Explicit fetches differ. `X.__add__` does reach the interceptors, but `X + Y` does not. A wrapper that wants to delegate built-in operations must define those methods itself. That is more work when the wrapped object has many operators, but it is workable. Adding them manually, with tools, or through a shared superclass all work.
 
@@ -3962,7 +3966,7 @@ This affects delegation. A wrapper class that passes printing requests to the wr
 
 ### Attribute validation case study
 
-The closing example is a `CardHolder` class with four attributes. Three of them are managed, and each one validates or transforms its value. The `remain` attribute is read-only and computed on demand. All four versions produce the same output for the same tests, but each uses a different technique. The case is mainly for self-study, though it uses every idea from this section.
+The closing example is a `CardHolder` class with four attributes. Three of them are managed, and each one validates or transforms its value, while the `remain` attribute is read-only and computed on demand. All four versions produce the same output for the same tests, but each uses a different technique. The case is mainly for self-study, though it uses every idea from this section.
 
 #### Validating with properties
 
@@ -4133,7 +4137,7 @@ sue: sue_jones 56781*** 35 124 main st
 bob: sue_jones 56781*** 35 123 main st
 ```
 
-Properties do not have this problem, since they hold no state. Descriptor state does have valid uses, such as data that spans all instances. This example used it on purpose to show the effect. In this case, though, the values belong to each client object. The fix is to store them on the instance, using the same `__X` naming as the property version.
+Properties do not have this problem, since they hold no state. Descriptor state does have valid uses, such as data that spans all instances, and this example used it on purpose to show the effect. In this case, though, the values belong to each client object. The fix is to store them on the instance, using the same `__X` naming as the property version.
 
 Example 38-23 makes that change. The line count stays at 45:
 
@@ -4210,7 +4214,7 @@ This version has one limit. It does not support fetches through the class, becau
 AttributeError: 'NoneType' object has no attribute '_Name__name'
 ```
 
-You could add code to raise a clearer error. The book suggests it is not worth it. This version keeps data on the client, so the descriptors need a client instance to mean anything, like an ordinary instance method. Choose state policies carefully, since they change how a descriptor behaves.
+You could add code to raise a clearer error, but the book suggests it is not worth it. This version keeps data on the client, so the descriptors need a client instance to mean anything, like an ordinary instance method. Choose state policies carefully, since they change how a descriptor behaves.
 
 #### Validating with `__getattr__`
 
@@ -4253,7 +4257,7 @@ class CardHolder:
         self.__dict__[name] = value # Avoid looping (or object)
 ```
 
-This class has 34 lines. The `match` statement adds two lines and some indentation. The version has one drawback. Assignments to unmanaged attributes, such as `addr`, now cost an extra call. Fetches of unmanaged attributes cost nothing, since they are defined. The book's view is that generic tools suit delegation, while properties and descriptors suit specific attributes. Running either tester gives the same output as before, with the class name changed:
+This class has 34 lines. The `match` statement adds two lines and some indentation. The version has one drawback: assignments to unmanaged attributes, such as `addr`, now cost an extra call, while fetches of unmanaged attributes cost nothing, since they are defined. The book's view is that generic tools suit delegation, while properties and descriptors suit specific attributes. Running either tester gives the same output as before, with the class name changed:
 
 ```text
 $ python3 validate_tester.py validate_getattr
@@ -4309,33 +4313,33 @@ Be sure to run this code yourself. It shows more patterns for managed attributes
 
 ## Managed attributes summary
 
-Python gives you four ways to manage attribute access. The `__getattr__` and `__getattribute__` methods are operator-overloading hooks that can catch many attributes. Properties and descriptors manage one named attribute each. The `__getattr__` method runs only for undefined attributes. The `__getattribute__` method runs for every fetch, so it must avoid loops by calling `object` methods.
+Python gives you four ways to manage attribute access. The `__getattr__` and `__getattribute__` methods are operator-overloading hooks that can catch many attributes, while properties and descriptors manage one named attribute each. The `__getattr__` method runs only for undefined attributes. The `__getattribute__` method runs for every fetch, so it must avoid loops by calling `object` methods.
 
-Properties are a simple form of descriptor, and both attach code to specific attributes. Descriptors are classes, so they can keep their own state, inherit, and use composition. Properties and descriptors handle fetches, assignments and deletions by design. The generic methods handle fetches, but assignments need `__setattr__`. Properties and descriptors also avoid extra calls on unmanaged names and show up in `dir` results. The generic methods are better suited to delegation.
+Properties are a simple form of descriptor, and both attach code to specific attributes. Descriptors are classes, so they can keep their own state, inherit, and use composition. Properties and descriptors handle fetches, assignments and deletions by design, while the generic methods handle fetches but need `__setattr__` for assignments. Properties and descriptors also avoid extra calls on unmanaged names and show up in `dir` results. The generic methods are better suited to delegation.
 
 Chapter 39 of the book covers decorators, which run when functions and classes are created instead of when attributes are accessed.
 
 ## Decorators
 
-Decorators let you add behavior to a function or class without editing its body. You place one short line above the `def` or `class` statement, and Python applies the extra logic when the definition runs. Most application programmers only use decorators. Decorators now show up often in popular Python frameworks, so knowing the mechanics makes their role less mysterious.
+A team has twelve functions that all need a timing line and a retry around failures. Editing every function body works once, then drifts as people copy and change it. Decorators let you add behavior to a function or class without editing its body. You place one short line above the `def` or `class` statement, and Python applies the extra logic when the definition runs. Most application programmers only use decorators. Decorators now show up often in popular Python frameworks, so knowing the mechanics makes their role less mysterious.
 
 ### What a decorator is
 
-A decorator is a callable object, usually a function, that takes another callable and returns a callable. Decoration is a way to attach management or augmentation code to functions and classes. Python supports two related kinds. A function decorator runs at the end of a `def` statement, and a class decorator runs at the end of a `class` statement.
+A decorator is a callable object, usually a function, that takes another callable and returns a callable. Decoration is a way to attach management or augmentation code to functions and classes. Python supports two related kinds: a function decorator runs at the end of a `def` statement, and a class decorator runs at the end of a `class` statement.
 
 Each kind rebinds a name. A function decorator rebinds the function name, so it can manage the function or the calls later made to it. A class decorator rebinds the class name, so it can manage the class or the instances created from it.
 
-In short, decorators run automatically right after a definition finishes. The `@` line is the signal that tells Python to do this.
+In short, decorators run automatically right after a definition finishes, and the `@` line is the signal that tells Python to do this.
 
 ### Managing calls and instances
 
-Most decorators wrap something. The wrapper is a proxy object that takes the place of the original name. When the name is used later, the proxy runs first. It can trace, time, check or change the request, and then it usually passes the request on to the original.
+Most decorators wrap something. The wrapper is a proxy object that takes the place of the original name, and when the name is used later, the proxy runs first. It can trace, time, check or change the request, and then it usually passes the request on to the original.
 
-A function decorator installs call proxies that intercept later function calls. A class decorator installs interface proxies that intercept instance-creation calls. The proxy often creates the real instance for you.
+A function decorator installs call proxies that intercept later function calls, while a class decorator installs interface proxies that intercept instance-creation calls. The proxy often creates the real instance for you.
 
 ### Managing functions and classes directly
 
-Decorators can also manage the function or class object itself. A function decorator might register a function with an API or store attributes on it. A class decorator might add methods or data to a class.
+Decorators can also manage the function or class object itself. A function decorator might register a function with an API or store attributes on it, and a class decorator might add methods or data to a class.
 
 If the decorator returns the same object it received, no wrapper is created. The decorator then becomes a simple post-creation step. Class decorators overlap with metaclasses, a more advanced tool, and often offer a lighter-weight option.
 
@@ -4345,13 +4349,13 @@ Decorators are never strictly required. You can always call a helper function or
 
 The syntax has three practical benefits. The decorator is easy to spot, unlike a helper call far away from the function. It is applied once, when the definition runs, so callers need no extra code. A user of an API is also less likely to forget a required step.
 
-Decorators have drawbacks too. A wrapper can change the type of the object it decorates. It can also add an extra call every time the object is used. Any wrapping technique has the same issues, so weigh them in context.
+Decorators have drawbacks too. A wrapper can change the type of the object it decorates, and it can add an extra call every time the object is used. Any wrapping technique has the same issues, so weigh them in context.
 
 ### Decorators and macros
 
 Some people compare decorators with aspect-oriented programming. That style inserts code that runs before or after a function call, and Python decorators have a similar effect. Their syntax also resembles Java annotations, though Python's model is more flexible and general.
 
-Others call decorators macros, and that comparison can mislead you. A C macro made with `#define` works by text replacement and expansion. A Python decorator is a runtime operation that rebinds a name to a callable object, often a proxy. Comparing the two is like comparing Python's `import` with C's `#include`. One works on objects at runtime, and the other inserts text.
+Others call decorators macros, and that comparison can mislead you. A C macro made with `#define` works by text replacement and expansion, while a Python decorator is a runtime operation that rebinds a name to a callable object, often a proxy. Comparing the two is like comparing Python's `import` with C's `#include`. One works on objects at runtime, and the other inserts text.
 
 Treat a decorator as a callable that manages another callable. Python code is best understood in Python terms.
 
@@ -4381,7 +4385,7 @@ F = decorator(F)  # Rebind function name to decorator result
 F(99)  # Essentially calls decorator(F)(99)
 ```
 
-The decorator is a one-argument callable that returns a callable with the same number of arguments as `F`, or `F` itself. It runs only once, when the function is defined. Later calls to `F` run whatever object the decorator returned. That object may be a wrapper that adds logic, or the original function.
+The decorator is a one-argument callable that returns a callable with the same number of arguments as `F`, or `F` itself. It runs only once, when the function is defined. Later calls to `F` run whatever object the decorator returned, and that object may be a wrapper that adds logic, or the original function.
 
 The same rebinding explains two built-in decorators you already know. Static methods and properties are declared this way:
 
@@ -4526,7 +4530,7 @@ C = decorator(C)  # Rebind class name to decorator result
 x = C(99)  # Essentially calls decorator(C)(99)
 ```
 
-Calling the class name later triggers the callable that the decorator returned. That callable may or may not call the original class. To manage the class only, return the class unchanged:
+Calling the class name later triggers the callable that the decorator returned, and that callable may or may not call the original class. To manage the class only, return the class unchanged:
 
 ```python
 def decorator(C):
@@ -4582,7 +4586,7 @@ x = C()
 y = C()  # Overwrites x!
 ```
 
-It handles several decorated classes, but each instance creation overwrites the one saved instance. Two patterns support multiple wrapped instances. Each one makes a new wrapper for every instance:
+It handles several decorated classes, but each instance creation overwrites the one saved instance. Two patterns support multiple wrapped instances, and each one makes a new wrapper for every instance:
 
 ```python
 def decorator(C):  # On @ decoration
@@ -4625,7 +4629,7 @@ def f(x):
 f = A(B(C(f)))
 ```
 
-The original function passes through three decorators, and the last one written is applied first. If every decorator inserts a wrapper, the calls stack. The innermost wrapper runs closest to the original function. Each layer can augment the call in a different way.
+The original function passes through three decorators, and the last one written is applied first. If every decorator inserts a wrapper, the calls stack, and the innermost wrapper runs closest to the original function. Each layer can augment the call in a different way.
 
 Class decorators stack in the same way:
 
@@ -4676,7 +4680,7 @@ Each `lambda` keeps the wrapped function in an enclosing scope. Wrappers can als
 
 ### Decorator arguments
 
-Decorators can take arguments too. The arguments are passed to a callable that returns the decorator. That decorator returns the callable that runs on later calls. So decorator arguments usually set up several levels of state. This code:
+Decorators can take arguments too. The arguments are passed to a callable that returns the decorator, and that decorator returns the callable that runs on later calls. So decorator arguments usually set up several levels of state. This code:
 
 ```python
 @decorator(A, B)
@@ -4696,7 +4700,7 @@ F = decorator(A, B)(F)  # Rebind F to result of decorator's return value
 F(99)  # Essentially calls decorator(A, B)(F)(99)
 ```
 
-Decorator arguments are resolved before decoration happens. They are usually kept as state for later use. The skeleton looks like this:
+Decorator arguments are resolved before decoration happens, and they are usually kept as state for later use. The skeleton looks like this:
 
 ```python
 def decorator(A, B):  # Save A and B for later
@@ -4711,7 +4715,7 @@ Decorator arguments therefore imply three levels of callables. The first accepts
 
 ### Decorators that manage functions and classes too
 
-Much of this chapter focuses on wrapping later calls. The decorator mechanism is more general, though. It is simply a protocol for passing a new function or class through a callable right after it is created:
+Much of this chapter focuses on wrapping later calls. The decorator mechanism is more general, though: it is simply a protocol for passing a new function or class through a callable right after it is created:
 
 ```python
 def decorator(O):
@@ -4773,7 +4777,7 @@ abc
 
 The decorated name is now an instance of the `tracer` class. That can matter for code that checks types, but it is usually harmless. The call count lives on the decorated function as an attribute.
 
-The `@` syntax is often more convenient than changing every call site. It also avoids calling the original function by accident. You could write the same tracing without decorators, but it needs extra code wherever the function is called:
+The `@` syntax is often more convenient than changing every call site, and it also avoids calling the original function by accident. You could write the same tracing without decorators, but it needs extra code wherever the function is called:
 
 ```text
 >>> calls = 0
@@ -4795,7 +4799,7 @@ This alternative works on any function, but every call must use the special form
 
 ### Decorator state retention options
 
-Decorators must keep state from decoration time for use during later calls. They need to support several decorated objects, each with its own calls. You have four main options: instance attributes, global variables, nonlocal closure variables and function attributes.
+Decorators must keep state from decoration time for use during later calls, and they need to support several decorated objects, each with its own calls. You have four main options: instance attributes, global variables, nonlocal closure variables and function attributes.
 
 #### State with class-instance attributes
 
@@ -4871,7 +4875,7 @@ if __name__ == '__main__':
     code(2, y=16)  # Global calls is not per-decoration here!
 ```
 
-A global counter is shared by every wrapped function. It counts calls across the whole program, not per function. The output shows the problem clearly:
+A global counter is shared by every wrapped function, so it counts calls across the whole program, not per function. The output shows the problem clearly:
 
 ```text
 $ python3 decorator_state_globals.py
@@ -4964,7 +4968,7 @@ This scheme is less common than `nonlocal`, so save it for cases where the other
 
 ### Class pitfall: decorating methods
 
-The class-based `tracer` from the state section works for plain functions. It was first assumed to work for methods too, with `self` simply included at the front of `*args`. That assumption is wrong, and the reason is not obvious. When the class-based tracer decorates a method, `self` is the decorator instance. The instance of the decorated class is not in `*args` at all.
+The class-based `tracer` from the state section works for plain functions. It was first assumed to work for methods too, with `self` simply included at the front of `*args`. That assumption is wrong, and the reason is not obvious. When the class-based tracer decorates a method, `self` is the decorator instance, and the instance of the decorated class is not in `*args` at all.
 
 Here is the class again:
 
@@ -5115,7 +5119,7 @@ class tracer:
         return wrapper
 ```
 
-Both descriptor versions are harder to follow than the nested-function version. They also cost more at runtime. The nested-function style is usually the better second choice.
+Both descriptor versions are harder to follow than the nested-function version, and they also cost more at runtime. The nested-function style is usually the better second choice.
 
 A simpler descriptor-only version looks tempting, but it only works for methods:
 
@@ -5138,7 +5142,7 @@ def hack(a, b, c):  # hack = tracer(hack)
 
 A function call never fetches an attribute, so `__get__` never runs for it. That limit is the reverse of the problem we set out to solve. If you want one decorator for both functions and methods, go with nested functions.
 
-Some decorators do not need the subject instance at all. Python's own `staticmethod` decorator is an example, because its whole purpose is to remove the instance from the call. Those decorators can be classes that still work on plain functions. The simpler rule still holds. If you want a decorator to work on both functions and methods, nested functions are usually the best choice.
+Some decorators do not need the subject instance at all. Python's own `staticmethod` decorator is an example, because its whole purpose is to remove the instance from the call. Those decorators can be classes that still work on plain functions. The simpler rule still holds: if you want a decorator to work on both functions and methods, nested functions are usually the best choice.
 
 ### Timing function calls
 
@@ -5215,11 +5219,11 @@ The `timeit` module and the timing helpers from the timing chapter do the same j
 0.06156357398140244
 ```
 
-A nondecorator approach lets the functions run with or without timing. But the call sites must change every time you want timing. There is also no direct way to make sure every call goes through the timer. Decorators are a good choice when functions are already deployed in a larger system and cannot easily be passed to an analysis function. A nondecorator approach may be better when you want to time only some calls.
+A nondecorator approach lets the functions run with or without timing, but the call sites must change every time you want timing. There is also no direct way to make sure every call goes through the timer. Decorators are a good choice when functions are already deployed in a larger system and cannot easily be passed to an analysis function. A nondecorator approach may be better when you want to time only some calls.
 
 ### Adding decorator arguments
 
-The timer works, but it would be more useful with settings. A label and an on-off switch for trace messages are the obvious ones. Decorator arguments provide that. Here is the general pattern:
+The timer works, but it would be more useful with settings. A label and an on-off switch for trace messages are the obvious ones, and decorator arguments provide them. Here is the general pattern:
 
 ```python
 def timer(label=''):
@@ -5261,7 +5265,7 @@ def timer(label='', trace=True):  # On decorator args: retain args
     return Timer
 ```
 
-The outer `timer` function creates a scope that holds the decorator arguments. It runs before decoration and returns the `Timer` class as the actual decorator. Each decorated function then gets its own `Timer` instance. That instance keeps the function and can also see the arguments.
+The outer `timer` function creates a scope that holds the decorator arguments. It runs before decoration and returns the `Timer` class as the actual decorator. Each decorated function then gets its own `Timer` instance, and that instance keeps the function and can also see the arguments.
 
 A client module applies the decorator with different settings for each function:
 
@@ -5287,7 +5291,7 @@ for func in (listcomp, mapcall):
 print('**map/comp =', round(mapcall.alltime / listcomp.alltime, 3))
 ```
 
-Each function now has a label of its own. That makes the trace lines easy to find in a larger program's output:
+Each function now has a label of its own, which makes the trace lines easy to find in a larger program's output:
 
 ```text
 $ python3 testseqs.py
@@ -5314,7 +5318,7 @@ Function decorators manage calls to functions. Class decorators can manage a cla
 
 ### Singleton classes
 
-Class decorators can manage all instances of a class. The classic singleton pattern allows at most one instance to exist. This decorator enforces that rule:
+Class decorators can manage all instances of a class. The classic singleton pattern allows at most one instance to exist, and this decorator enforces that rule:
 
 ```python
 instances = {}
@@ -5405,7 +5409,7 @@ The class-based version is the most explicit, and it may be easier to extend lat
 
 ### Tracing object interfaces
 
-Class decorators can also wrap a whole object interface. That is useful for tracing every attribute of an instance. A simple delegation example shows the idea first.
+Class decorators can also wrap a whole object interface, which is useful for tracing every attribute of an instance. A simple delegation example shows the idea first.
 
 #### The nondecorator approach
 
@@ -5562,7 +5566,7 @@ work = Hack()  # Triggers __call__
 work.display()  # Triggers __getattr__
 ```
 
-The `__init__` method runs when the decorator is applied to the class. The `__call__` method runs on each instance creation. Both versions handle several classes. But each new instance overwrites the saved one, so the decorator keeps only the last instance. A second decorated class shows the problem:
+The `__init__` method runs when the decorator is applied to the class, and the `__call__` method runs on each instance creation. Both versions handle several classes. But each new instance overwrites the saved one, so the decorator keeps only the last instance. A second decorated class shows the problem:
 
 ```python
 @Tracer
@@ -5591,13 +5595,13 @@ Trace: name
 Sue
 ```
 
-This is bad state retention. The decorator keeps one instance per class, not one per object created from it. The function-based `Tracer` from the previous part works for multiple instances. It returns a class, so each creation call makes a new `Wrapper`. Class-based decorators have this trap, so check which callable type you need.
+This is bad state retention. The decorator keeps one instance per class, not one per object created from it. The function-based `Tracer` from the previous part works for multiple instances, because it returns a class, so each creation call makes a new `Wrapper`. Class-based decorators have this trap, so check which callable type you need.
 
 ### Private and public attributes
 
-This case study implements attribute privacy with a class decorator. The `Private` declaration blocks fetches and changes of named attributes from outside the class. Code inside the class's own methods still has full access. The decorator is not identical to the private attributes of C++ or Java. It offers a development-time check where you need one.
+This case study implements attribute privacy with a class decorator. The `Private` declaration blocks fetches and changes of named attributes from outside the class, while code inside the class's own methods still has full access. The decorator is not identical to the private attributes of C++ or Java. It offers a development-time check where you need one.
 
-Attribute privacy was introduced earlier in this chapter's class material. This version adds checks on fetches too. It uses delegation instead of inheritance. Its interception is still based on the `__getattr__` and `__setattr__` methods. When a private attribute is accessed, it raises a `TypeError` with a message. A `try` statement can catch that exception, or the script can stop.
+Attribute privacy was introduced earlier in this chapter's class material. This version adds checks on fetches too, and it uses delegation instead of inheritance. Its interception is still based on the `__getattr__` and `__setattr__` methods. When a private attribute is accessed, it raises a `TypeError` with a message. A `try` statement can catch that exception, or the script can stop.
 
 The first version catches explicit attribute fetches but not implicit operations, which we cover later:
 
@@ -5702,15 +5706,15 @@ Y is => [-10, -20, -30]
 Hack => [-20, -40, -60]
 ```
 
-Three points help when you study this code. First, delegation makes it easy to tell inside accesses from outside ones. The Chapter 30 version used inheritance, which made that split awkward. Second, the decorator arguments are used before decoration. The `Private` function returns the decorator, and the decorator remembers the names. Third, three levels of state live in enclosing scopes and instance attributes. The arguments, the class and the wrapped instance each have a home.
+Three points help when you study this code. First, delegation makes it easy to tell inside accesses from outside ones, while the Chapter 30 version used inheritance, which made that split awkward. Second, the decorator arguments are used before decoration: the `Private` function returns the decorator, and the decorator remembers the names. Third, three levels of state live in enclosing scopes and instance attributes. The arguments, the class and the wrapped instance each have a home.
 
-The `__setattr__` method sets the proxy's own `wrapped` attribute through `__dict__`, which avoids a loop. It sets all other attributes through the built-in `setattr` on the wrapped object. It reads them with `getattr`. Because of this, the decorator works with classes that use `__slots__`, properties and descriptors. Each class gets the storage it needs, and the proxy stays out of the way.
+The `__setattr__` method sets the proxy's own `wrapped` attribute through `__dict__`, which avoids a loop. It sets all other attributes through the built-in `setattr` on the wrapped object, and it reads them with `getattr`. Because of this, the decorator works with classes that use `__slots__`, properties and descriptors. Each class gets the storage it needs, and the proxy stays out of the way.
 
 #### Generalizing for public declarations
 
-Once `Private` works, `Public` is only the inverse test. A `Private` declaration blocks outside access to the names it lists. A `Public` declaration allows outside access to the names it lists and blocks everything else. The two are mutually exclusive, so pick one per class.
+Once `Private` works, `Public` is only the inverse test. A `Private` declaration blocks outside access to the names it lists, while a `Public` declaration allows outside access to the names it lists and blocks everything else. The two are mutually exclusive, so pick one per class.
 
-With `Private`, undeclared names are public. New names can be created from outside. With `Public`, undeclared names are private, and new names cannot be created from outside. The code adds one more level of state: the validation test lives in its own enclosing scope.
+With `Private`, undeclared names are public, and new names can be created from outside. With `Public`, undeclared names are private, and new names cannot be created from outside. The code adds one more level of state: the validation test lives in its own enclosing scope.
 
 ```python
 """
@@ -5760,7 +5764,7 @@ def Public(*attributes):
     return accessControl(failIf=(lambda attr: attr not in attributes))
 ```
 
-At the interactive prompt, both decorators behave as advertised. Undeclared names can be read and changed from outside. Declared private names cannot:
+At the interactive prompt, both decorators behave as advertised. Undeclared names can be read and changed from outside, while declared private names cannot:
 
 ```text
 >>> from access2 import Private, Public
@@ -5798,19 +5802,19 @@ TypeError: private attribute change, age
 
 #### Implementation details
 
-The `__X` pseudoprivate name mangling feature keeps the wrapped attribute inside the proxy class. Python prefixes the name with the class name, so the attribute becomes `_onInstance__wrapped`. That avoids a clash with a `wrapped` attribute in the real class. Mangling is not true privacy, though. The mangled name is still visible to anyone who uses it. The `__setattr__` method must test for the expanded name string.
+The `__X` pseudoprivate name mangling feature keeps the wrapped attribute inside the proxy class. Python prefixes the name with the class name, so the attribute becomes `_onInstance__wrapped`, which avoids a clash with a `wrapped` attribute in the real class. Mangling is not true privacy, though, because the mangled name is still visible to anyone who uses it. The `__setattr__` method must test for the expanded name string.
 
-Privacy can be broken on purpose. You can fetch the proxy's inner object by its full mangled name, such as `bob._onInstance__wrapped.pay`. This is true in other languages too. Access controls prevent accidents, but they cannot stop a determined programmer. Python is about enabling, not controlling. Use privacy sparingly, if at all.
+Privacy can be broken on purpose. You can fetch the proxy's inner object by its full mangled name, such as `bob._onInstance__wrapped.pay`. This is true in other languages too. Access controls prevent accidents, but they cannot stop a determined programmer. Python is about enabling, not controlling, so use privacy sparingly, if at all.
 
 #### Decorator trade-offs
 
-You could get the same results with helper functions or by rebinding names by hand. The decorator syntax keeps that work consistent and obvious. The main costs of any wrapper-based approach are an extra call per attribute access, and instances that are not really instances of the original class. A check with `X.__class__` or `isinstance(X, C)` reveals the wrapper class.
+You could get the same results with helper functions or by rebinding names by hand, but the decorator syntax keeps that work consistent and obvious. The main costs of any wrapper-based approach are an extra call per attribute access, and instances that are not really instances of the original class. A check with `X.__class__` or `isinstance(X, C)` reveals the wrapper class.
 
 Unless your program inspects types, the type issue rarely matters. The extra call matters mostly during development. Later in this section you will see a way to remove decorations automatically with the `-O` flag.
 
 #### Delegating built-in operations
 
-Explicit attribute fetches work for the decorators so far. Operator overloading is weaker. Built-in operations such as `print` and `+` skip instance-level lookup. They search the class namespace directly, so a proxy's `__getattr__` never sees them.
+Explicit attribute fetches work for the decorators so far. Operator overloading is weaker. Built-in operations such as `print` and `+` skip instance-level lookup, because they search the class namespace directly, so a proxy's `__getattr__` never sees them.
 
 A simple class shows normal behavior:
 
@@ -5850,9 +5854,9 @@ TypeError: private attribute fetch, __add__
 TypeError: unsupported operand type(s) for +: 'onInstance' and 'int'
 ```
 
-The explicit fetches of `sum` and `__add__` are blocked, as they should be. The implicit `print` and `+` are not caught, so they never reach the wrapped `Tally`. The `print` works only because `object` prints the proxy itself. That is an inconsistency in Python's model.
+The explicit fetches of `sum` and `__add__` are blocked, as they should be. The implicit `print` and `+` are not caught, so they never reach the wrapped `Tally`, and the `print` works only because `object` prints the proxy itself. That is an inconsistency in Python's model.
 
-There are several workarounds. The simplest is to define each operator method on the proxy class. Each one forwards the operation to the wrapped object:
+There are several workarounds. The simplest is to define each operator method on the proxy class, and each one forwards the operation to the wrapped object:
 
 ```python
 "Inline methods, skip validations"
@@ -6023,7 +6027,7 @@ class Person:
         self.pay = int(self.pay * (1 + percent))
 ```
 
-The percentage should be between 0.0 and 1.0. You can check that with an inline `if` or with an `assert`:
+The percentage should be between 0.0 and 1.0, and you can check that with an inline `if` or with an `assert`:
 
 ```python
 class Person:
@@ -6038,7 +6042,7 @@ class Person:  # Validate with asserts
         self.pay = int(self.pay * (1 + percent))
 ```
 
-These checks clutter the method, and they are often useful only during development. Complex checks become tedious to inline. If the rule changes, you must find and update every copy. A general decorator solves these problems. You write the rule once, and each method declares the ranges it needs:
+These checks clutter the method, and they are often useful only during development. Complex checks become tedious to inline, and if the rule changes, you must find and update every copy. A general decorator solves these problems. You write the rule once, and each method declares the ranges it needs:
 
 ```python
 class Person:
@@ -6047,7 +6051,7 @@ class Person:
         self.pay = int(self.pay * (1 + percent))
 ```
 
-Isolating the validation in a decorator simplifies both the client code and future maintenance. This differs from the attribute validation in the previous section. Here the function's argument values are checked when the call happens. Introspection makes this new task just as easy to code.
+Isolating the validation in a decorator simplifies both the client code and future maintenance. This differs from the attribute validation in the previous section, because here the function's argument values are checked when the call happens. Introspection makes this new task just as easy to code.
 
 ### A basic range-testing decorator for positional arguments
 
@@ -6069,9 +6073,9 @@ def rangetest(*argchecks):  # Validate positional arg ranges
     return onDecorator
 ```
 
-This code reuses the patterns from earlier: decorator arguments, enclosing scopes for state, and nested `def` statements so it works for methods too. In a method, `onCall` receives the instance in the first item of `*args`. The argument numbers in the decorator therefore start at 1 for methods, to account for `self`.
+This code reuses the patterns from earlier: decorator arguments, enclosing scopes for state, and nested `def` statements so it works for methods too. In a method, `onCall` receives the instance in the first item of `*args`, so the argument numbers in the decorator start at 1 for methods, to account for `self`.
 
-The code also uses the `__debug__` built-in variable. Python sets it to `True` unless you run with the `-O` flag, as in `python -O main.py`. When `__debug__` is `False`, the decorator returns the original function unchanged. That removes the wrapper and its cost. You do not have to delete the decoration lines to get that result.
+The code also uses the `__debug__` built-in variable. Python sets it to `True` unless you run with the `-O` flag, as in `python -O main.py`. When `__debug__` is `False`, the decorator returns the original function unchanged, which removes the wrapper and its cost. You do not have to delete the decoration lines to get that result.
 
 Here is how the first version is used:
 
@@ -6127,7 +6131,7 @@ birthday = 8/31/2024
 TypeError: Argument 1 not in 0.0..1.0
 ```
 
-Running Python with the `-O` flag disables the range tests. It also removes the wrapping cost, so the original function runs directly. Assuming the checks are for debugging, that flag lets you ship a faster program. Here the last line still runs, with a print that shows the raise:
+Running Python with the `-O` flag disables the range tests, and it also removes the wrapping cost, so the original function runs directly. Assuming the checks are for debugging, that flag lets you ship a faster program. Here the last line still runs, with a print that shows the raise:
 
 ```text
 $ python3 -O rangetest0_test.py
@@ -6142,7 +6146,7 @@ birthday = 8/31/2024
 
 The first version handles only positional arguments. It ignores keyword arguments, and it does not know about defaults that a call may omit. That is fine for simple cases, but a general tool needs more.
 
-The next version matches the decorated function's expected arguments against the actual call. It validates arguments passed by position or by keyword name. It skips any default argument that the call omits:
+The next version matches the decorated function's expected arguments against the actual call. It validates arguments passed by position or by keyword name, and it skips any default argument that the call omits:
 
 ```python
 """
@@ -6261,7 +6265,7 @@ omitargs(d=8, c=7, a=1)  # Default b
 #omitargs(d=8, c=7, a=11)  # Bad a
 ```
 
-Out-of-range values raise an exception, whether they are passed by name or by position. Omitted defaults are not checked. The output shows which defaults were used:
+Out-of-range values raise an exception, whether they are passed by name or by position, while omitted defaults are not checked. The output shows which defaults were used:
 
 ```text
 $ python3 rangetest_test.py
@@ -6322,7 +6326,7 @@ Function introspection gives the expected names. The names of the first N local 
 ('a', 'b', 'c', 'e', 'f')
 ```
 
-Starred names in the wrapper collect any number of arguments. Those are compared with the expected names:
+Starred names in the wrapper collect any number of arguments, and those are compared with the expected names:
 
 ```text
 >>> def catcher(*pargs, **kargs): print(f'{pargs}, {kargs}')
@@ -6336,7 +6340,7 @@ The matching depends on two rules from Python's argument passing. At a call, pos
 
 The decorator also assumes that the call is valid. If it is not, Python will raise an error when the call finally runs. That is acceptable, because checking validity in advance would mean copying Python's full matching algorithm.
 
-The matching algorithm uses those rules. Let N be the number of positional arguments in `*pargs`. The first N expected names are the ones passed by position. Any other expected name was either passed by keyword or left at its default. For each checked name, the decorator looks in three places. If the name is in `**kargs`, its value is there. If the name is among the first N expected names, its value is in `*pargs` at that position. Otherwise the argument was defaulted, so it needs no check.
+The matching algorithm uses those rules. Let N be the number of positional arguments in `*pargs`. The first N expected names are the ones passed by position, and any other expected name was either passed by keyword or left at its default. For each checked name, the decorator looks in three places. If the name is in `**kargs`, its value is there. If the name is among the first N expected names, its value is in `*pargs` at that position. Otherwise the argument was defaulted, so it needs no check.
 
 #### Open issues
 
@@ -6349,9 +6353,9 @@ omitargs()
 omitargs(d=8, c=7, b=6)
 ```
 
-Trying to catch these earlier would mean imitating Python's argument matching. Letting Python report the error at the call is simpler.
+Trying to catch these earlier would mean imitating Python's argument matching, so letting Python report the error at the call is simpler.
 
-The decorator also does not handle starred names in the definition, such as `*pargs` and `**kargs`. Extra keyword arguments with a name can be tested if the decorator mentions that name. Extra positional arguments cannot be named, so they are skipped. Starred names are locals, but they are not expected arguments:
+The decorator also does not handle starred names in the definition, such as `*pargs` and `**kargs`. Extra keyword arguments with a name can be tested if the decorator mentions that name, while extra positional arguments cannot be named, so they are skipped. Starred names are locals, but they are not expected arguments:
 
 ```text
 >>> def func(*pargs, **kargs): pass
@@ -6366,11 +6370,11 @@ The decorator also does not handle starred names in the definition, such as `*pa
 (2, ('a', 'b'))
 ```
 
-Starred names in a call are flattened before the function starts, so the decorator never sees them. Nesting is the last caveat. The decorator analyzes names from the function's definition. A nested wrapper has its own call signature, so the names no longer match. In nested use, only the innermost validation runs in full. The outer levels can check only keyword arguments. Proxies change the signatures, so positional checks get lost.
+Starred names in a call are flattened before the function starts, so the decorator never sees them. Nesting is the last caveat. The decorator analyzes names from the function's definition, but a nested wrapper has its own call signature, so the names no longer match. In nested use, only the innermost validation runs in full. The outer levels can check only keyword arguments. Proxies change the signatures, so positional checks get lost.
 
 ### Decorator arguments versus function annotations
 
-Python's annotations offer another way to state range limits. An annotation is an expression written in the `def` header. Python stores annotations in a dictionary on the function. You could write the limits in the header instead of in decorator arguments:
+Python's annotations offer another way to state range limits. An annotation is an expression written in the `def` header, and Python stores annotations in a dictionary on the function. You could write the limits in the header instead of in decorator arguments:
 
 ```python
 @rangetest(a=(1, 5), c=(0.0, 1.0))
@@ -6431,7 +6435,7 @@ $ python3 decoargs-vs-annotation.py
 6
 ```
 
-Annotations limit the utility of the tool. Each parameter can carry only one annotation expression, so the function is committed to a single role. Range checks would block other uses, such as type hints. Decorator arguments stay outside the function. They are easier to remove, and nested decorators can apply several steps to one function. The function itself keeps a normal appearance.
+Annotations limit the utility of the tool. Each parameter can carry only one annotation expression, so the function is committed to a single role, and range checks would block other uses, such as type hints. Decorator arguments stay outside the function, so they are easier to remove, and nested decorators can apply several steps to one function. The function itself keeps a normal appearance.
 
 If you have a single purpose in mind, the choice is largely a matter of style. One programmer's decoration may be another's syntactic clutter.
 

@@ -12,25 +12,25 @@ lab_venue: "Mac"
 
 # 3.14 Functions, scopes and arguments in depth
 
-This chapter goes deeper into material that chapter 3.1 only introduces. You will meet it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
+Chapter 3.1 introduces functions in a hurry. This chapter slows down and walks the same ground properly: how names find their values, how arguments travel into a function, and what a closure really holds on to. You will meet all of it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
 
 ## Python scope basics
 
 ### Names live in namespaces
 
-Once you write your own functions, you need a clear idea of what a name means. When your code uses a name, Python creates it, changes it, or looks it up in a namespace. A namespace is simply a place where names live. In relation to code, each namespace corresponds to a scope, which is the part of the program where a name is visible.
+Sooner or later you write a function, and a name inside it surprises you. It points at a value you did not expect, or it raises an error for something that looks defined. To read such code calmly, you need a clear idea of what a name means in Python. When your code uses a name, Python creates it, changes it, or looks it up in a namespace. A namespace is simply a place where names live. In relation to code, each namespace corresponds to a scope, which is the part of the program where a name is visible.
 
 ### Assignment decides the scope
 
-Almost everything about names in Python happens at assignment time. A name springs into existence when you first assign it a value, and you must assign it before you use it. Python does not ask you to declare names ahead of time. The place where you assign a name in your source code decides which namespace it binds to, and so where it can be seen.
+Here is the sentence that unlocks most of this chapter: almost everything about names in Python happens at assignment time. A name springs into existence when you first assign it a value, and you must assign it before you use it. Python does not ask you to declare names ahead of time. The place where you assign a name in your source code decides which namespace it binds to, and so where it can be seen.
 
-Functions add an extra namespace layer. By default, every name assigned inside a function belongs to that function and no other. That gives you three practical rules:
+Functions add one more layer of namespaces. By default, every name assigned inside a function belongs to that function and no other. That gives you three practical rules:
 
 - A name assigned inside a `def` can be seen only by the code inside that `def`. You cannot refer to it from outside the function.
 - A name assigned inside a `def` does not clash with a variable of the same name outside it. A name `X` in another `def`, or at the top level of a module file, is a different variable.
 - A name assigned in a `lambda` works the same way. Assignment inside a `lambda` is limited to its arguments and `:=` named assignments, and it is much less common than inside a `def`.
 
-The scope of a variable depends only on where you assign it in the source code. Which functions call which has no effect on it. Python calls this lexical scoping, so you can settle most scope questions by reading the code without running it. A variable can be assigned in three places, and each place gives it a different scope:
+The scope of a variable depends only on where you assign it in the source code. Which function calls which has no effect on it at all. Python calls this lexical scoping, and that is good news: you can settle most scope questions by reading the code, without running it. A variable can be assigned in three places, and each place gives it a different scope:
 
 - If a variable is assigned inside a `def` or `lambda`, it is local to that function.
 - If a variable is assigned in an enclosing `def` or `lambda`, it is nonlocal to the functions nested inside it.
@@ -44,36 +44,38 @@ def func():
     X = 88 # Local (function) scope X: a different variable
 ```
 
-Even though both names are `X`, their scopes keep them apart. Function scopes prevent name clashes, and they make each function more self-contained. Its code does not need to know about names used elsewhere.
+Even though both names are `X`, their scopes keep them apart. This is the quiet service a function scope does for you. It prevents name clashes, and it makes each function more self-contained. Code inside it does not need to know about the names used elsewhere.
 
 ### Scopes overview
 
-Before you wrote functions, none of your code sat inside a `def`. The names you used lived in a module, or they were built-ins such as `open` and `zip`. Code typed at the interactive prompt counts too. Technically, the prompt is a module named `__main__` that prints results and does not match a real file. Otherwise it behaves like the top level of a module file.
+Before you wrote functions, none of your code sat inside a `def`. The names you used lived in a module, or they were built-ins such as `open` and `zip`. Code typed at the interactive prompt counts too. Technically, the prompt is a module named `__main__` that prints results and does not match a real file. In every other way it behaves like the top level of a module file.
 
-Functions give you nested namespaces, so names inside a function do not clash with names in a module or in another function. Two kinds of scope matter here:
+Functions give you nested namespaces, so a name inside a function does not clash with a name in a module or in another function. Two kinds of scope matter here:
 
 - Each module is a global scope. Variables assigned at the top level of a module live in its namespace. After an import, they become attributes of the module object, but inside the file you use them as plain variables.
 - Each function call creates a new local scope. The names created inside the function live there, unless a `global` or `nonlocal` statement says otherwise.
 
-The global scope spans a single file only. A name at the top level of one file is global only to code in that file. Python has no all-encompassing global scope for your own code. Names are split across modules, and you must import a module before you can use the names its file defines. When you hear "global" in Python, think "module."
+The global scope spans a single file only. A name at the top level of one file is global only to code in that file. Python has no all-encompassing global scope for your own code. Names are split across modules, and you must import a module before you can use the names its file defines. A useful habit: when you hear "global" in Python, think "module."
 
-Names assigned inside a function are local unless you declare them `global` or `nonlocal`. To change a name at the top level of the enclosing module, use a `global` statement inside the function. To change a name in an enclosing `def`, use a `nonlocal` statement. Because a `lambda` body holds only one expression, these two statements belong to `def` alone.
+Names assigned inside a function are local unless you declare them `global` or `nonlocal`. To change a name at the top level of the enclosing module, use a `global` statement inside the function. To change a name in an enclosing `def`, use a `nonlocal` statement. A `lambda` body holds only one expression, so these two statements belong to `def` alone.
 
-Names that a function does not assign are looked up elsewhere. Python treats them as locals of a physically enclosing function, as globals of the enclosing module, or as built-ins. An enclosing scope can come from any `def` or `lambda` combination. You cannot write a `def` inside a `lambda`, though.
+Names that a function does not assign are looked up elsewhere. Python treats them as locals of a physically enclosing function, as globals of the enclosing module, or as built-ins. An enclosing scope can come from any `def` or `lambda` combination. One limit to remember: you cannot write a `def` inside a `lambda`.
 
-Each call creates a new local scope. A `def` statement or a `lambda` expression defines a local scope, but the scope is really tied to each call of the function. That detail matters for recursion and closures.
+Each call creates a new local scope. A `def` statement or a `lambda` expression defines a local scope, but the scope is really tied to each call of the function. That detail looks small now, and it matters a great deal for recursion and closures. Hold on to it.
 
-Per-call scopes matter for recursion. Recursion is a technique where a function calls itself to loop, and each active call needs its own copy of the function's local variables. Recursion is useful when you process a structure whose shape you cannot predict ahead of time. Closures need per-call scopes too, because each call gets a fresh set of locals that can remember state for later.
+Per-call scopes matter for recursion. Recursion is a technique where a function calls itself to loop, and each active call needs its own copy of the function's local variables. That is what makes recursion useful when you process a structure whose shape you cannot predict ahead of time. Closures need per-call scopes too, because each call gets a fresh set of locals that can remember state for later.
 
-Three subtleties are worth knowing. First, code at the interactive prompt lives in a module and follows the normal scope rules. Names assigned there are global and visible across the whole session. Second, any kind of assignment decides whether a name is local or global, based on where the assignment appears. That includes `=` statements, `:=` expressions, `import` names, `def` names, function arguments, and names in a `class`. Third, changing an object in place does not make a name local. Only a real assignment does.
+Three subtleties are worth knowing before you move on. First, code at the interactive prompt lives in a module and follows the normal scope rules, so names assigned there are global and visible across the whole session. Second, any kind of assignment decides whether a name is local or global, based on where the assignment appears. That includes `=` statements, `:=` expressions, `import` names, `def` names, function arguments, and names in a `class`. Third, changing an object in place does not make a name local. Only a real assignment does.
 
-Here is the third point in action. Suppose `L` is a list at the top level of a module. A statement `L = X` inside a function makes `L` local to that function. But `L.append(X)` changes the list that `L` refers to, not the name `L` itself. So Python finds `L` in the global scope and changes it without a `global` declaration. Keep the difference clear: changing an object is not the same as assigning a name.
+Here is the third point in action. Suppose `L` is a list at the top level of a module. A statement `L = X` inside a function makes `L` local to that function. But `L.append(X)` changes the list that `L` refers to, not the name `L` itself. So Python finds `L` in the global scope and changes it without a `global` declaration. Keep the difference clear: changing an object is not the same thing as assigning a name.
 
 ## Name resolution: the LEGB rule
 
+Read any function and you will find three kinds of name: one that belongs to the call itself, one borrowed from the code around it, and one that Python simply provides. The LEGB rule is the order Python uses to tell them apart.
+
 ### The three rules inside a def
 
-If the previous section sounds complicated, it comes down to three simple rules. Inside a `def`:
+If the previous section sounds complicated, take heart. It comes down to three simple rules. Inside a `def`:
 
 - Assigning a name creates or changes a local name by default.
 - Referencing a name searches at most four scopes: local, then enclosing functions, then global, then built-in.
@@ -81,7 +83,7 @@ If the previous section sounds complicated, it comes down to three simple rules.
 
 The same rules apply to `lambda`, except for the last one, because a `lambda` cannot contain statements.
 
-Functions can use names assigned in enclosing functions and in the global scope. To change those names, however, they must declare them as `nonlocal` or `global`.
+Functions can use names assigned in enclosing functions and in the global scope. To change those names, however, a function must declare them as `nonlocal` or `global`. Reading is free, writing needs a declaration.
 
 Python calls this lookup order the LEGB rule, after the four scopes it searches:
 
@@ -90,35 +92,35 @@ Python calls this lookup order the LEGB rule, after the four scopes it searches:
 - G is the global scope of the surrounding module.
 - B is the built-in scope.
 
-When you use an unqualified name inside a function, Python checks these scopes in order and stops at the first match. If the name is not found anywhere, Python reports an error. When you assign a name inside a function, Python creates or changes it in the local scope, unless the name is declared `global` or `nonlocal`. When you assign a name at the top level of a module or at the interactive prompt, the local and global scopes are the same module namespace.
+When you use an unqualified name inside a function, Python checks these scopes in order and stops at the first match. If the name is not found anywhere, Python reports an error. When you assign a name inside a function, Python creates or changes it in the local scope, unless the name is declared `global` or `nonlocal`. When you assign a name at the top level of a module or at the interactive prompt, the local and global scopes are the same module namespace. That single fact explains many odd-looking results.
 
 Because names must be assigned before they are used, there are no hidden steps in this model. Assignments always determine scopes. The E layer can hold more than one level, and it comes into play only when you nest functions. The `nonlocal` statement is what lets you change names in that layer.
 
-> Note: this lookup rule was called the "LGB rule" in the first edition of the book. The E layer was added later, so that you did not have to pass enclosing names in with default arguments. Because `nonlocal` now handles that layer, the rule might have been named "LNGB," but backward compatibility matters. The acronym also ignores the newer comprehension and exception scopes, though acronyms longer than four letters tend to defeat their purpose.
+> Note: this lookup rule was once called the "LGB rule". The E layer was added later, so that you did not have to pass enclosing names in with default arguments. Because `nonlocal` now handles that layer, the rule might have been named "LNGB," but backward compatibility matters. The acronym also ignores the newer comprehension and exception scopes, though acronyms longer than four letters tend to defeat their purpose.
 
-These rules apply only to simple names, such as `name`. Qualified attribute names, such as `object.name`, follow a different lookup. Those names search objects, not scopes, and they can involve inheritance in object-oriented code.
+These rules apply only to simple names, such as `name`. Qualified attribute names, such as `object.name`, follow a different lookup. Those names search objects, not scopes, and they can involve inheritance in object-oriented code. Keep the two ideas apart and most of the confusion goes away.
 
 ### Other short-lived scopes
 
-There are three more scopes in Python, and they matter less at this stage. They cover loop variables in comprehensions, exception variables in `try` handlers, and the bodies of `class` statements. Most statement blocks do not localize the names they use. A loop variable in a `for` statement, for example, stays visible after the loop ends. The `:=` operator also follows the normal scope rules.
+Three more scopes exist in Python, and they matter less at this stage. They cover loop variables in comprehensions, exception variables in `try` handlers, and the bodies of `class` statements. Most statement blocks do not localize the names they use. A loop variable in a `for` statement, for example, stays visible after the loop ends. The `:=` operator also follows the normal scope rules.
 
 Comprehension loop variables are the first special case. In `[X for X in I]`, the variable `X` refers to the current item. It is local to the expression itself in every comprehension form: list, dictionary, set, and generator. A `for` statement does not do this for its loop variable, even though the syntax looks similar. Names assigned with `:=` inside a comprehension do leak out to the enclosing scope.
 
 Exception variables are the second case. In `except E as X`, the variable `X` refers to the raised exception. It is local to that `except` block, and Python removes it from the containing scope when the block exits. Even if you used the name earlier in your code, it is removed. This design avoids keeping the exception alive, which could delay memory recovery.
 
-Named assignments in a `lambda` are the third case. In `X := Y` inside a `lambda`, the name `X` works much like an unnested `=` statement. A `lambda` creates a new local scope, just like a `def`. Any name assigned with `:=` inside it can be used only within the `lambda` body and is not available outside it. This pattern is rare and adds complexity, so most code will not need it.
+Named assignments in a `lambda` are the third case. In `X := Y` inside a `lambda`, the name `X` works much like an unnested `=` statement. A `lambda` creates a new local scope, just like a `def`. Any name assigned with `:=` inside it can be used only within the `lambda` body and is not available outside it. This pattern is rare and adds complexity, so most code will never need it.
 
 Most of these contexts augment the LEGB rule instead of replacing it. A comprehension's loop variable is bound to one more nested, special-case local scope. Every other name in the expression follows the usual LEGB lookup.
 
 A `class` statement also creates a local scope for the names assigned at the top level of its block. Those names do not clash with names elsewhere, and the `class` block acts as the L level of the lookup. After the `class` statement ends, these names become attributes of the class object. Unlike a function, a class does not create new names on each call. Calling a class creates instances, which inherit the names assigned in the class and keep per-object state as their own attributes.
 
-Python uses LEGB to resolve names in a class body and in the methods nested inside it. However, class scopes are skipped when a method looks up a name. Python searches enclosing functions, but not enclosing classes. Names in a class must be fetched as object attributes, so the LEGB picture still applies to object-oriented code.
+Python uses LEGB to resolve names in a class body and in the methods nested inside it. There is one twist worth remembering. Class scopes are skipped when a method looks up a name, so Python searches enclosing functions but not enclosing classes. Names in a class must be fetched as object attributes, so the LEGB picture still applies to object-oriented code.
 
 ## Scope examples
 
 ### A module with one function
 
-Suppose you save this code in a module file named `scopes101.py`:
+Let us watch the rules work on a small file. Suppose you save this code in a module file named `scopes101.py`:
 
 ```python
 # Global scope
@@ -138,7 +140,7 @@ To see the result, import the module and call its function. The `func` name is a
 100
 ```
 
-The module and its function use several names. Python's scope rules classify them as follows.
+The module and its function use several names. Python's scope rules classify them as follows, and it is worth reading the list slowly.
 
 Global names are `X` and `func`. `X` is global because it is assigned at the top level of the module file. The function can refer to it as a simple name without declaring it `global`. `func` is global for the same reason, since the `def` statement assigns a function object to that name at the top level.
 
@@ -155,7 +157,7 @@ def func1():
         X = 'code' # ...is not the same as this X
 ```
 
-This keeps each function a self-contained unit of software, which is the goal.
+This keeps each function a self-contained unit of software, which is the goal you are aiming at.
 
 ### The built-in scope
 
@@ -199,7 +201,7 @@ def hider():
     open('data.txt') # Error: this no longer opens files in this scope!
 ```
 
-Inside the function, the local `open` hides the built-in `open`. The name now refers to a string, not the file opener. This is sometimes called shadowing a built-in. It is harmless if you never open a file in that function. It causes an error if you try.
+Inside the function, the local `open` hides the built-in `open`. The name now refers to a string, not the file opener. This is sometimes called shadowing a built-in. It is harmless if you never open a file in that function. It causes an error the moment you try.
 
 The same thing can happen at the interactive prompt, which acts as a global scope:
 
@@ -207,7 +209,7 @@ The same thing can happen at the interactive prompt, which acts as a global scop
 >>> open = 99 # Assign in global scope, hides built-in here too
 ```
 
-There is nothing wrong with using a built-in name for your own variable, as long as you do not need the original. If these names were off limits, you would have to memorize the whole list and treat every name as reserved. In Python 3.12, the `builtins` module has 158 names, and 150 of them do not start with double underscores:
+There is nothing wrong with using a built-in name for your own variable, as long as you do not need the original in that scope. If these names were off limits, you would have to memorize the whole list and treat every name as reserved. In Python 3.12, the `builtins` module has 158 names, and 150 of them do not start with double underscores:
 
 ```
 >>> len(dir(builtins)), len([x for x in dir(builtins) if not x.startswith('__')])
@@ -216,7 +218,7 @@ There is nothing wrong with using a built-in name for your own variable, as long
 
 Sometimes you really do want to replace a built-in name, such as writing a custom `open` that adds access checks. The `None`, `True`, and `False` names are the exception. They are treated as reserved words now, so you can no longer reassign them. All other built-in names are fair game.
 
-Still, redefining a built-in name is often a bug, and a difficult one to find. Python does not warn you when you do it. Some tools can flag such mistakes, but your best defense is knowledge. Do not redefine a built-in name you need. If you do it by accident at the interactive prompt, restart the session, or run a `del name` statement to remove the redefinition. Then the original built-in is restored, as the LEGB rule expects.
+Still, redefining a built-in name is often a bug, and a difficult one to find later. Python does not warn you when you do it. Some tools can flag such mistakes, but your best defense is knowledge. Do not redefine a built-in name you need. If you do it by accident at the interactive prompt, restart the session, or run a `del name` statement to remove the redefinition. Then the original built-in is restored, exactly as the LEGB rule expects.
 
 Functions can also hide global variables of the same name with locals. This is much of the point of local scopes. Because local names minimize clashes, your functions become self-contained namespaces:
 
@@ -266,7 +268,7 @@ Notice that `y` and `z` need no declaration. The LEGB lookup finds them in the m
 
 ### Minimize global variables
 
-Functions and global variables raise bigger design questions. How should functions communicate with each other? You will see more answers as you write larger programs, but a few guidelines now can save you trouble later. In general, functions should rely on arguments and return values instead of globals. Newcomers often do not expect this.
+Functions and global variables raise bigger design questions. How should functions communicate with each other? You will see more answers as you write larger programs, but a few guidelines now can save you trouble later. In general, functions should rely on arguments and return values instead of globals. Newcomers often do not expect this advice, and it is worth taking on trust for a while.
 
 Names assigned in functions are local by default. If you want to change names outside a function, you must write extra code, such as a `global` statement. That is deliberate. You have to say more to do the potentially risky thing. Globals are useful at times, and sometimes required. Still, local-by-default is the better policy most of the time.
 
@@ -380,9 +382,11 @@ The `nonlocal` statement is a close relative of `global`. It can change names in
 
 ## Nested functions and closures
 
+A function defined inside another function is where the scope story gets interesting. The inner function can see the outer function's names, long after the outer call has returned, and that small fact is the seed of closures.
+
 ### Nested scope lookups
 
-So far, this chapter has left out one part of Python's scope rules on purpose. It is uncommon in practice. Now it is time to look at layer E of the LEGB rule. Python 2.x added this layer. It consists of the local scopes of every enclosing function. Enclosing scopes are sometimes called statically nested scopes. The nesting is lexical, which means it follows the physical nesting of code in the source text.
+So far, this chapter has left out one part of Python's scope rules on purpose. It is uncommon in practice, and it needs a little room to explain. Now it is time to look at layer E of the LEGB rule. Python 2.x added this layer. It consists of the local scopes of every enclosing function. Enclosing scopes are sometimes called statically nested scopes. The nesting is lexical, which means it follows the physical nesting of code in the source text.
 
 With nested function scopes, lookups become a bit more involved. Inside a function:
 
@@ -403,11 +407,11 @@ def f1():
 f1() # Prints 89: enclosing def local + 1
 ```
 
-This is legal Python. A `def` is an executable statement, so it can appear anywhere another statement can, including inside another `def`. While `f1` runs, the nested `def` creates a function and assigns it to the name `f2` inside `f1`. The `f2` function is temporary. It lives only while `f1` runs, and only code inside `f1` can see it. That is one reason to nest it, since the name cannot clash with anything else in the program.
+This is legal Python. A `def` is an executable statement, so it can appear anywhere another statement can, including inside another `def`. While `f1` runs, the nested `def` creates a function and assigns it to the name `f2` inside `f1`. The `f2` function is temporary. It lives only while `f1` runs, and only code inside `f1` can see it. That is one good reason to nest it: the name cannot clash with anything else in the program.
 
-When `f2` uses `X`, it refers to the `X` in the enclosing `f1` scope. Functions can access names in every physically enclosing function. So the LEGB rule maps `X` in `f2` to `X` in `f1`, through the E level.
+When `f2` uses `X`, it refers to the `X` in the enclosing `f1` scope. Functions can access names in every physically enclosing function. So the LEGB rule maps `X` in `f2` to `X` in `f1`, through the E level. Read that mapping slowly, because the rest of this section builds on it.
 
-This enclosing lookup still works after the enclosing call has finished. The next example defines a function that makes and returns another function:
+Here is the part that surprises people. This enclosing lookup still works after the enclosing call has finished. The next example defines a function that makes and returns another function:
 
 ```python
 def f1():
@@ -419,17 +423,17 @@ action = f1() # Make, return function
 action() # Call it now: prints 89
 ```
 
-The call to `action` runs the function we named `f2` when `f1` ran. This works because functions are objects, like everything else in Python. They can be passed back as return values. `f2` remembers the `X` from `f1` even though `f1` is no longer active when `f2` runs. This memory is one of the main reasons to nest functions, and the next section looks at it closely.
+The call to `action` runs the function we named `f2` when `f1` ran. This works because functions are objects, like everything else in Python. They can be passed back as return values. `f2` remembers the `X` from `f1` even though `f1` is no longer active when `f2` runs. That memory is one of the main reasons to nest functions, and the next section looks at it closely.
 
 ### Closures and factory functions
 
-The behavior in the last example has two names. Some people call it a closure, which is a functional programming technique. Others call it a factory function, which is a design pattern. A factory function creates and returns a function that carries a closure of state. The two terms overlap a lot.
+The behavior in the last example has two names. Some people call it a closure, which is a functional programming technique. Others call it a factory function, which is a design pattern. A factory function creates and returns a function that carries a closure of state. The two terms overlap a lot, so do not worry about choosing between them yet.
 
-Either way, the function object remembers values from enclosing scopes, even when those scopes are no longer active. It carries packets of memory with it, and each new nested function gets its own packet. Closures often serve as a simple alternative to classes for this job.
+Either way, the function object remembers values from enclosing scopes, even when those scopes are no longer active. Think of it as carrying packets of memory with it, and each new nested function gets its own packet. That is why closures often serve as a simple alternative to classes for this job.
 
 Closures are useful when a program must create event handlers at runtime. Imagine a GUI that must define actions based on user input. That input cannot be predicted when the GUI is built, and each action differs. You need a function that creates and returns another function. Each function it makes carries its own state.
 
-Here is a simple demonstration. Type this at the interactive prompt:
+Here is a simple demonstration. Type this at the interactive prompt and watch what comes back:
 
 ```
 >>> def maker(N):
@@ -469,7 +473,7 @@ If you call the outer function again, you get a new nested function with differe
 
 The name `g` now cubes its argument, while `f` still squares. Each call to a factory like this gets its own state. Here, `g` remembers 3 and `f` remembers 2, because each has its own `N`. In a GUI, that `N` might be a username, an email address, or other data for one specific action.
 
-All of this is real Python behavior. Each nested function has a closure storage area for the enclosing names it uses. You can see it as the `__closure__` attribute of the function. You do not need those internals to use closures, though.
+All of this is real Python behavior, not a teaching simplification. Each nested function has a closure storage area for the enclosing names it uses. You can see it as the `__closure__` attribute of the function. You do not need those internals to use closures, though.
 
 Closures are an advanced technique. You may see them more often in code written by people with functional programming backgrounds. Enclosing scopes also appear in `lambda` expressions from the previous chapter. A `lambda` is an expression, so it is almost always nested inside a `def`. A `lambda` can stand in for a `def` here, and it also keeps state through enclosing references, such as `N` below:
 
@@ -483,7 +487,7 @@ Closures are an advanced technique. You may see them more often in code written 
 
 ### Customizing open with a closure
 
-Here is a practical example of a closure at work. Imagine you want to replace the built-in `open` with a custom version, as the built-in scope section suggested. If the custom version needs to call the original, it must save the original before replacing it. It must also keep that original for later. That is a classic state-retention job.
+Here is a practical example of a closure at work. Imagine you want to replace the built-in `open` with a custom version, as the built-in scope section suggested. If the custom version needs to call the original, it must save the original before replacing it. It must also keep that original for later. That is a classic state-retention job, and a closure fits it neatly.
 
 Globals are not a good fit. If you want to customize `open` more than once, a global would hold only one value. Each customizer needs its own state. The file below, `makeopen.py`, uses a nested closure to remember a value without using globals. It also avoids writing a full class, which would be more code than this job needs:
 
@@ -512,7 +516,7 @@ Custom open call MOD1 ('../Chapter14/data.txt',) {}
 'Testing file IO\nLearning Python, 6E\nPython 3.12\n'
 ```
 
-Closures can also nest in ways that globals cannot support. Each call to `makeopen` remembers its own `id` and `original`, so you can stack several customizations:
+Closures can also nest in ways that globals cannot support. Each call to `makeopen` remembers its own `id` and `original`, so you can stack several customizations on top of each other:
 
 ```
 >>> makeopen('MOD2') # Nested customizers work too
@@ -523,7 +527,7 @@ Custom open call MOD1 ('../Chapter14/data.txt',) {}
 'Testing file IO\nLearning Python, 6E\nPython 3.12\n'
 ```
 
-As written, this code adds call tracing to a built-in function. The general technique has other uses as well. A class-based version would work too, but it would need more code, because it must store `id` and `original` in object attributes. Classes come later in the book.
+As written, this code adds call tracing to a built-in function. The general technique has other uses as well. A class-based version would work too, but it would need more code, because it must store `id` and `original` in object attributes. Classes come later.
 
 ### Arbitrary scope nesting
 
@@ -544,6 +548,8 @@ Scopes can nest to any depth. Only enclosing functions are searched when a name 
 This does work. Python searches the local scopes of all enclosing `def`s, from inner to outer. It does this after the function's own local scope and before the module's global scope or the built-ins. Code like this is rare, though. The coding saying "flat is better than nested" still holds, even with closures available. Except in limited cases, you will have an easier time if you limit nesting in function definitions.
 
 ## The nonlocal statement
+
+Sooner or later a nested function must change a name it can see but does not own. Without help, Python treats that assignment as local, and the result surprises you. The `nonlocal` statement is the help.
 
 ### nonlocal basics
 
@@ -579,7 +585,7 @@ code 0
 hack 0
 ```
 
-Changing a name in an enclosing scope is not allowed by default, though:
+Changing a name in an enclosing scope is not allowed by default, though. This is the error that sends beginners looking for answers:
 
 ```
 >>> def outer(start):
@@ -622,11 +628,11 @@ hack 26
 more 3 # Each call has different state information
 ```
 
-Python's nonlocals are more capable than the "static" function locals in some other languages. In a closure, a nonlocal holds data that is per call, and you can make many copies of it.
+Python's nonlocals are more capable than the "static" function locals in some other languages. In a closure, a nonlocal holds data that is per call, and you can make as many copies of it as you have calls.
 
 ### nonlocal boundary cases
 
-`nonlocal` has a few subtleties. First, unlike `global`, a `nonlocal` name must already be assigned in an enclosing `def`. You cannot create it by assigning it in a nested function. The enclosing function's assignment can come before or after the nested function. If the assignment is missing, you get an error. Python checks for it when the nested function is defined, before either function is called:
+`nonlocal` has a few subtleties, and each one has caught someone. First, unlike `global`, a `nonlocal` name must already be assigned in an enclosing `def`. You cannot create it by assigning it in a nested function. The enclosing function's assignment can come before or after the nested function. If the assignment is missing, you get an error. Python checks for it when the nested function is defined, before either function is called:
 
 ```
 >>> def outer(start):
@@ -673,9 +679,11 @@ Third, a `nonlocal` name can appear anywhere in the chain of enclosing functions
 
 ## State-retention options
 
-Nested functions add complexity, so you may wonder why they are worth it. State matters in many programs, even though it is hard to see in small examples. A function can return results, but its local variables will not keep values between calls. Many applications also need those values to differ for each context of use.
+Many problems come down to one question: where should a function keep a value between calls? Python offers four answers, and each one trades a little clarity for a little power.
 
-Python offers several ways to retain state between calls. You have already met two of them: globals and enclosing scope references. The others are class-instance attributes and function attributes. This section compares them.
+Nested functions add complexity, so you may wonder why they are worth it. State matters in many programs, even though it is hard to see in small examples. A function can return results, but its local variables will not keep values between calls. Many applications also need those values to differ for each context of use. That combination is what pushes you toward one of the options below.
+
+Python offers several ways to retain state between calls. You have already met two of them: globals and enclosing scope references. The others are class-instance attributes and function attributes. This section compares them, so you can pick with your eyes open.
 
 ### Nonlocals
 
@@ -732,7 +740,7 @@ global3 25
 global4 26
 ```
 
-With `nonlocal` and nested closures, each call to `outer` keeps its own copy of `state`. Globals do not fit when each call needs its own data.
+With `nonlocal` and nested closures, each call to `outer` keeps its own copy of `state`. Globals simply do not fit when each call needs its own data.
 
 ### Function attributes
 
@@ -822,7 +830,7 @@ All four options can change state between calls: globals, nonlocals, function at
 
 The right tool depends on your program's goals. `nonlocal` gives changeable state to nested functions through a dedicated statement. It suits simple state needs where globals do not apply and classes are not worth it. Function attributes can often do the same job with less hidden behavior.
 
-Decorators are a realistic case that needs multilevel state, and the same options apply to them. Performance is another factor in choosing, and this section leaves it aside. Timing code comes up later in the book. For now, it is time to look at one more technique. It both bends the LEGB rule and leads to the next chapter.
+Decorators are a realistic case that needs multilevel state, and the same options apply to them. Performance is another factor in choosing, and this section leaves it aside. Timing code comes up later. For now, it is time to look at one more technique. It both bends the LEGB rule and leads to the next chapter.
 
 ## Scopes and argument defaults
 
@@ -876,7 +884,7 @@ If you avoid nesting this way, you can almost forget about nested scopes. Nested
 
 ### Loops require defaults, not scopes
 
-Why learn an outdated scope-reference scheme at all? Because one common case still needs it. Suppose a `lambda` or `def` sits inside a loop, and it references an enclosing variable that the loop changes. Then every function created in the loop ends up with the same value, the value the variable had in the last iteration. In that case you must use defaults to save the current value.
+Why learn an outdated scope-reference scheme at all? Because one common case still needs it. Suppose a `lambda` or `def` sits inside a loop, and it references an enclosing variable that the loop changes. Then every function created in the loop ends up with the same value, the value the variable had in the last iteration. In that case you must use defaults to save the current value. This is the classic late-binding trap, so read it twice.
 
 This can come up more often than you might think. It is common in code that creates event-handler functions for many widgets in a GUI. Click handlers for all the buttons in a panel are a typical example. If you create them in a loop, which is common, save their state with defaults. Otherwise every button may end up doing the same thing.
 
@@ -957,7 +965,7 @@ The next chapter continues with the second key idea: argument passing. Arguments
 
 ## Argument passing basics
 
-The earlier sections showed where names live. This part asks how values get into a function. When you call a function, each value you pass fills one name in the function header. Those names are the function's arguments, also called parameters. Python fills them in a simple way, and the result has some effects that surprise newcomers.
+The earlier sections showed where names live. This part asks a different question: how do values get into a function in the first place? When you call a function, each value you pass fills one name in the function header. Those names are the function's arguments, also called parameters. Python fills them in a simple way, and that simplicity has effects which surprise newcomers. Read this part slowly, because almost every confusing function bug traces back to it.
 
 Python passes every argument by assignment. When the call starts, each name in the header is assigned the object the caller sent. Nothing is copied on the way in. The caller and the function can therefore share the same object. The earlier section on object references applies here too. The only difference is that Python does the assignment for you.
 
@@ -1089,7 +1097,7 @@ These modes only decide which object goes to which name. The assignment still ha
 
 ### Argument matching syntax
 
-Table 18-1 is a quick lookup. It shows each form, where it appears, and what it means:
+The table below is a quick lookup. It shows each form, where it appears, and what it means:
 
 | Syntax | Location | Interpretation |
 | --- | --- | --- |
@@ -1139,7 +1147,7 @@ Argument passing is simpler in code than the rules above may suggest. Without sp
 1 2 3
 ```
 
-Here `a` matches `1`, `b` matches `2`, and `c` matches `3`. This works the way it does in most languages.
+Here `a` matches `1`, `b` matches `2`, and `c` matches `3`. This works the way it does in most languages, so your habits carry over.
 
 ### Keywords
 
@@ -1335,22 +1343,22 @@ Since Python 3.5, a call can contain several `*` and `**` items. Each one unpack
 SyntaxError: iterable argument unpacking follows keyword argument unpacking
 ```
 
-The last line fails because a single star cannot follow a double star in a call. The rules below explain why.
+The last line fails, and the reason is worth pausing on. Once a double star has unpacked keywords, a single star cannot follow it in the same call. The rules further down explain why the language settled on that.
 
-The call-side star accepts any iterable, not only tuples and lists. Iterables such as `range` and `zip` unpack into individual arguments. A file object reads its lines and passes them on:
+The star on the call side is more generous than you might expect. It accepts any iterable, not only tuples and lists, so objects such as `range` and `zip` unpack into individual arguments. A file object reads its lines and passes them on:
 
 ```
 func(*range(4)) # Same as func(0, 1, 2, 3)
 func(*open('filename')) # Read+pass lines as arguments
 ```
 
-Stars are a little inconsistent, though. The generality holds only in calls. In a definition, a star always collects extra arguments into a tuple. The extended unpacking in assignments, such as `x, *y = z`, uses the same syntax. That form always creates a list, not a tuple. The rules differ between tools even when the syntax looks the same.
+Stars are a little inconsistent, though, and this is where people slip. The generality holds only in calls. In a definition, a star always collects extra arguments into a tuple. The extended unpacking in assignments, such as `x, *y = z`, uses the same syntax, and that form always creates a list, not a tuple. So the same symbol means three slightly different things depending on where you write it.
 
 ### Why arbitrary arguments?
 
-These patterns may look academic at first. They are used more often than you might expect. Some programs must call functions generically, without hardcoding their names or argument lists. The real power of starred calls is that you do not need to know the argument count before you write the script.
+These patterns may look academic at first. In real programs they turn up more often than you might expect. Some programs must call functions generically, without hardcoding their names or argument lists. The real power of starred calls is that you do not need to know the argument count before you write the script.
 
-For example, you might choose a function and its arguments with `if` logic. Then you call whichever one you chose:
+Suppose the program picks a function and its arguments with `if` logic. It then calls whichever one it chose:
 
 ```
 if sometest:
@@ -1370,7 +1378,7 @@ args += (4,)
 func3(*args)
 ```
 
-The argument list is a tuple here, so the program can build it at runtime. This pattern is also common in functions that test or time other functions. The next example passes along whatever arguments it receives:
+The argument list is a tuple here, so the program can build it at runtime. The same pattern is common in functions that test or time other functions. The next example passes along whatever arguments it receives:
 
 ```
 def tracer(func, *pargs, **kargs): # Accept arbitrary arguments
@@ -1381,7 +1389,7 @@ def func(a, b, c, d):
 print(tracer(func, 1, 2, c=3, d=4))
 ```
 
-The code uses the `__name__` attribute that every function has. It holds the function's name as a string. The stars collect the arguments meant for the traced function, then pass them along with call-side unpacking. When you run it, the tracer intercepts the arguments and forwards them:
+The code uses the `__name__` attribute that every function has. It holds the function's name as a string. The stars collect the arguments meant for the traced function, then pass them along with call-side unpacking. When you run it, the tracer intercepts the arguments and forwards them untouched:
 
 ```
 $ python3 tracer0.py
@@ -1389,11 +1397,11 @@ calling: func
 10
 ```
 
-The customizing `open` example earlier in this chapter used the same idea. Later chapters on generators and decorators use this technique too. It is a common pattern in general-purpose tools.
+The customizing `open` example earlier in this chapter used the same idea. Later chapters on generators and decorators use this technique too. It is a common pattern in general-purpose tools, worth recognising on sight.
 
 ## Keyword-only arguments
 
-Function definitions can also require that some arguments be passed by keyword only. A positional value never fills them. This feature is called keyword-only arguments. It is useful when a function takes any number of positional values and also accepts optional configuration options.
+Sometimes a function wants to take any number of positional values and also a handful of named switches. A stray positional value must never land on a switch by accident. To make that safe, a function definition can require that some arguments be passed by keyword only. A positional value never fills them. This feature is called keyword-only arguments. It is useful when a function takes any number of positional values and also accepts optional configuration options.
 
 In the header, keyword-only arguments appear after `*name`. Every such argument must be passed by keyword in the call. In this example, `a` can be passed by name or position, `b` collects extra positionals, and `c` must be passed by keyword:
 
@@ -1449,7 +1457,7 @@ TypeError: kwonly() missing 1 required keyword-only argument: 'b'
 TypeError: kwonly() takes 1 positional argument but 2 were given
 ```
 
-Unlike the arguments before the star, keyword-only arguments can mix defaults and non-defaults in any order. This is an exception to the normal rule, and the reason is covered in the ordering section below:
+Here is a rule that catches people out. Unlike the arguments before the star, keyword-only arguments can mix defaults and non-defaults in any order. This is an exception to the normal rule, and the reason is covered in the ordering section below:
 
 ```
 >>> def kwonly(a, *, b=2, c, d=4): print(a, b, c, d)
@@ -1482,7 +1490,7 @@ These errors make more sense after the formal ordering rules below. The examples
 
 Keyword-only arguments let a function accept many positional values and also accept configuration options by keyword. You can do this without them, but the code gets longer. You must supply defaults for each option yourself, and you must check that no unexpected keywords were passed.
 
-Imagine a function that processes objects and takes a tracing flag:
+Picture a function that processes objects and also takes a tracing flag:
 
 ```
 process(X, Y, Z) # Use flag's default
@@ -1511,7 +1519,7 @@ This function requires `a` and `b` by position, but `c` can be passed either way
 1 2 3
 ```
 
-Passing either of the first two arguments by keyword raises an error:
+Passing either of the first two arguments by keyword raises an error. That is the point of the slash: it closes the door on names for those arguments:
 
 ```
 >>> mostlypos(1, b=2, c=3)
@@ -1556,7 +1564,7 @@ Whether this syntax is worth its complexity is up to you. Python developers mana
 
 ## Argument ordering: the gritty details
 
-So far, we have been loose about the rules for argument matching. Those rules rarely matter in simple code. In more advanced code, you need to know them exactly. Definitions and calls share similar syntax, but their rules differ because their roles differ.
+So far we have been loose about the rules for argument matching. In simple code those rules rarely matter. In more advanced code you need them exactly, so this section writes them down. Definitions and calls share similar syntax, but their rules differ because their roles differ.
 
 ### Definition ordering
 
@@ -1638,7 +1646,7 @@ function([positional-values -or- *iterable-positional-unpackings]
 [keyword-arguments -or- **mapping-keyword-unpackings])
 ```
 
-Here `function` is any expression that evaluates to a callable object. This example mixes positional, keyword, and unpacking arguments. It is a demonstration, not a style to copy:
+Here `function` is any expression that evaluates to a callable object. This example mixes positional, keyword, and unpacking arguments. Read it as a demonstration, not as a style to copy:
 
 ```
 >>> def f(a, b, c, d, e, f, g, h, i):
@@ -1670,7 +1678,7 @@ SyntaxError: positional argument follows keyword argument
 
 ### Perspective
 
-If these rules make your head spin, that is a sign to simplify. Python's argument-matching rules grew over time, and they now have many special cases. The first rule of programming applies here too. Keep it simple unless the problem demands complexity. If you must work hard to understand a call's argument order, consider rewriting it.
+If these rules make your head spin, take that as a sign to simplify. Python's argument-matching rules grew over time, and they now have many special cases. The first rule of programming applies here too. Keep it simple unless the problem demands complexity. If you must work hard to understand a call's argument order, consider rewriting it.
 
 ## Example: the min wakeup call
 
@@ -1678,7 +1686,7 @@ Now a more realistic exercise. Suppose you must write a function that returns th
 
 The `*` collector handles the first requirement. Collect the arguments in a tuple and step through it with a `for` loop. Most object types support comparison, so you do not need a separate version for each type. Python picks the right comparison for the objects it receives.
 
-The following file, `mins.py`, shows four ways to write this operation. Some came from students in a class exercise:
+The following file, `mins.py`, shows four ways to write this operation. Some of them came from students in a class exercise:
 
 ```
 "Find minimum value among all passed arguments of comparable types"
@@ -1707,9 +1715,9 @@ for func in (min1, min2, min3, min4): # Test all 4 functions
     print(func(*'hack')) # Unpacked characters
 ```
 
-The first version takes the first argument from `args` and scans the rest by slicing off the first item. There is no reason to compare the first object with itself, especially when it is a large structure. The second version lets Python split off the first argument and the rest. This avoids an index and a slice. The code is simpler, and it may be faster, though you would need many calls to notice. The third version converts the tuple to a list and calls the list `sort` method. The first item is the lowest after an ascending sort. The fourth version also sorts, but it uses the `sorted` built-in. It skips the list conversion and saves two lines.
+The first version takes the first argument out of `args` and scans the rest by slicing off the first item. There is no reason to compare the first object with itself, especially when that object is a large structure. The second version lets Python split off the first argument and the rest. That avoids an index and a slice. The code is simpler, and it may be faster, though you would need many calls to notice. The third version converts the tuple to a list and calls the list's `sort` method. After an ascending sort, the first item is the lowest. The fourth version sorts too, but with the `sorted` built-in. It skips the list conversion and saves two lines.
 
-The testing code uses the `__name__` attribute and a `for` loop to call each function in turn. Functions are objects, so they can sit in a tuple. All four versions give the same results. The output below shows only the first one:
+The testing code uses the `__name__` attribute and a `for` loop to call each function in turn. Functions are objects, so they can sit in a tuple without any fuss. All four versions give the same results. The output below shows only the first one:
 
 ```
 $ python3 mins.py
@@ -1721,15 +1729,15 @@ a
 …and the same for others…
 ```
 
-None of these versions checks for zero arguments. Python raises an exception automatically when no arguments are passed. The first version fails when it fetches item `0`. The second fails when it detects a mismatch in the argument list. The third and fourth fail when they try to return item `0` after sorting. That is the behavior you want. Since the functions accept any object, including `None`, no value could signal an error. Letting Python raise the exception is the cleanest option. Assume that the arguments will work, and let Python report the problems.
+None of these versions checks for zero arguments, and that is deliberate. Python raises an exception by itself when no arguments are passed. The first version fails when it fetches item `0`. The second fails when it detects a mismatch in the argument list. The third and fourth fail when they try to return item `0` after sorting. That is the behavior you want. Since the functions accept any object, including `None`, no value could signal an error. Letting Python raise the exception is the cleanest option. Assume that the arguments will work, and let Python report the problems.
 
-Sorting has a performance note too. CPython's sort is written in C, and it can take advantage of partial order in the items. The other versions do one linear scan, from left to right. Sorting may therefore be faster when the arguments are partly ordered, and slower otherwise. Python changes over time, so time the alternatives yourself with the `time` or `timeit` modules. In CPython, the non-sort versions are faster for random arguments, but slower for ordered ones.
+Sorting carries a performance note too. CPython's sort is written in C, and it can take advantage of partial order in the items. The other versions do one linear scan, from left to right. Sorting may therefore be faster when the arguments are partly ordered, and slower otherwise. Python changes over time, so time the alternatives yourself with the `time` or `timeit` modules. In CPython, the non-sort versions are faster for random arguments, but slower for ordered ones.
 
 ### Bonus points
 
 You can turn these functions into maximum finders. The first two versions need only `<` changed to `>`. The last two need item `[-1]` instead of `[0]`. Rename the functions to `max` too, if you want the extra credit.
 
-You can also write one function that handles both minimum and maximum. You could use `eval` with a comparison string. You could also pass in a comparison function. This example uses the second approach:
+You can also write one function that handles both minimum and maximum. One route is `eval` with a comparison string. A cleaner route is to pass in a comparison function. This example uses the second approach:
 
 ```
 "Find minimum -or- maximum value of arguments"
@@ -1757,7 +1765,7 @@ Functions are objects, so you can pass them into other functions. To make a maxi
 
 ### The punch line
 
-This was only a coding exercise. Python already has `min` and `max` as built-ins. The built-ins work almost the same way as these functions. They are written in C for speed, and they accept either one iterable or several arguments. The general pattern here can still be useful in other places.
+This was only a coding exercise, and it is worth saying so plainly. Python already has `min` and `max` as built-ins. The built-ins work almost the same way as these functions. They are written in C for speed, and they accept either one iterable or several arguments. The general pattern here can still be useful in other places.
 
 ## Example: generalized set functions
 
@@ -1833,7 +1841,7 @@ Two notes apply here. First, these functions produce no duplicates, so they act 
 
 ## Example: rolling your own print
 
-The last example uses `*` and `**` collectors, plus keyword-only arguments, to imitate most of Python's `print` function. Python already has `print`, so there is no urgent need for this code. Still, it teaches argument matching clearly. It can also be a base for custom versions of built-in tools.
+The last example uses `*` and `**` collectors, plus keyword-only arguments, to imitate most of Python's `print` function. Python already has `print`, so there is no urgent need for this code. Still, it teaches argument matching clearly, because everything you have just read appears in one small function. It can also be a base for custom versions of built-in tools.
 
 The module below does roughly what `print` does, in a small amount of code. It builds the output string from the configuration arguments and routes it to the right file:
 
@@ -1889,7 +1897,7 @@ The same argument-matching tools work in Python code as they do in Python's own 
 
 ### Using keyword-only arguments
 
-The emulator has a flaw. It treats every keyword as an option, and it ignores unknown ones. A call with a typo in an option name fails silently:
+The emulator has a flaw, and it is the kind of flaw that costs an afternoon. It treats every keyword as an option, and it ignores unknown ones. A call with a typo in an option name fails silently:
 
 ```
 $ python3
@@ -1898,7 +1906,7 @@ $ python3
 3.12 py
 ```
 
-You can catch unknown keywords by hand. Use `dict.pop()` to remove the keywords you expect. If anything is left when you finish, raise an error. The version below does this. It is equivalent to the first one, but it raises a `TypeError` for unexpected keywords. Exceptions and `raise` get a full treatment later in the book:
+You can catch unknown keywords by hand. Use `dict.pop()` to remove the keywords you expect. If anything is left when you finish, raise an error. The version below does this. It is equivalent to the first one, but it raises a `TypeError` for unexpected keywords. Exceptions and `raise` get a full treatment later:
 
 ```
 "Use keyword-collector arguments with deletion and defaults"
@@ -1979,7 +1987,7 @@ Usually you skip these options and let the defaults apply. The `dict` call, the 
 
 ## Function design concepts
 
-Writing one function is easy. Writing many that work well together takes more thought. Two ideas guide that work. Cohesion describes how well the steps inside one function belong together. Coupling describes how much a function depends on other code, or on the world outside it. Good designs keep cohesion high and coupling low. These ideas come from structured design, and they apply to Python as they do to any language.
+Writing one function is easy. Writing many that work well together takes more thought. Two ideas guide that work. Cohesion describes how well the steps inside one function belong together. Coupling describes how much a function depends on other code, or on the world outside it. Good designs keep cohesion high and coupling low. These ideas come from structured design, and they apply to Python as they do to any language. Keep the pair in mind and the guidelines below will feel obvious rather than arbitrary.
 
 Here are some guidelines for newcomers:
 
@@ -2022,7 +2030,7 @@ Import the file as a module to try it at the REPL:
 15
 ```
 
-Each call makes a new call for the rest of the list. When the list is empty, the function returns zero, and the recursion stops. The sums then add up as the calls return. Each open call has its own local scope on the call stack, so `L` holds a different slice at each level.
+Each call makes a new call for the rest of the list. When the list is empty, the function returns zero, and the recursion stops. The sums then add up as the calls return. Each open call has its own local scope on the call stack, so `L` holds a different slice at each level. This is the per-call scope idea from earlier, now doing real work.
 
 To see this happen, add a `print` of `L`:
 
@@ -2119,7 +2127,7 @@ def nonempty(L):
 
 ### Loop statements versus recursion
 
-Recursion works for summing, but it is probably more than this job needs. Python favors simple statements such as loops. A `while` loop makes the work concrete, and it needs no function definition:
+Recursion works for summing, but it is probably more machinery than this job needs. Python favours simple statements such as loops. A `while` loop makes the work concrete, and it needs no function definition at all:
 
 ```
 >>> L = [1, 2, 3, 4, 5]
@@ -2141,17 +2149,17 @@ A `for` loop iterates automatically, so recursion is often unnecessary:
 15
 ```
 
-Recursion is often less efficient, in both memory and execution time. A loop does not need a fresh local scope on the call stack for each pass. It also avoids the cost of calling a function at every step. You can time the alternatives yourself to compare them.
+Recursion is often less efficient, in both memory and execution time. A loop does not need a fresh local scope on the call stack for each pass. It also avoids the cost of calling a function at every step. You can time the alternatives yourself to compare them, and the next section shows how.
 
 ### Handling arbitrary structures
 
-Loops are not always enough. Consider a list that holds numbers and nested sublists:
+Loops are not always enough, though. Consider a list that holds numbers and nested sublists:
 
 ```
 [1, [2, [3, 4], 5], 6, [7, 8]]
 ```
 
-A single loop cannot handle this, because it is not a flat sequence. Nested loops fail too. Sublists can nest to any depth and in any pattern, so you cannot know how many loops to write. Recursion solves this. The function below steps into each sublist it finds:
+A single loop cannot handle this, because the data is not a flat sequence. Nested loops fail too. Sublists can nest to any depth and in any pattern, so you cannot know in advance how many loops to write. Recursion solves that neatly. The function below steps into each sublist it finds:
 
 ```python
 def sumtree(L, trace=False):
@@ -2199,11 +2207,11 @@ Import both files and pass the summer to the tester:
 1, 2, 3, 4, 5, 15
 ```
 
-Inside `tester`, the name `sumtree` refers to whichever function you pass in. Functions are objects, so you can pass them around this way. That keeps the code flexible.
+Inside `tester`, the name `sumtree` refers to whichever function you pass in. Functions are objects, so you can pass them around this way. That keeps the code flexible, and it lets one tester serve every version you write.
 
 ### Recursion versus queues and stacks
 
-Python implements recursion by pushing information onto a call stack at each recursive call. The stack remembers where each call must return and continue. You can also avoid recursive calls. An explicit stack or queue of your own can track the remaining steps. The item at the front of the list is always the next one to process.
+Python implements recursion by pushing information onto a call stack at each recursive call. The stack remembers where each call must return and continue. You are not forced to use it, though. An explicit stack or queue of your own can track the remaining steps. The item at the front of the list is always the next one to process.
 
 This queue version computes the same sums, but it schedules the work in a list:
 
@@ -2267,7 +2275,7 @@ Recursive calls are often more natural than the explicit lists they replace. The
 
 ### Cycles, paths, and stack limits
 
-These demos work, but larger recursive programs need more support. They may need to avoid cycles or repeats, record the paths they take, and manage stack space when they recurse deeply.
+These demos work, but larger recursive programs need more support. They may need to avoid cycles or repeats, record the paths they take, and manage stack space when they recurse deeply. Each of those needs is worth knowing before you meet it in someone else's code.
 
 The examples so far do not avoid cycles, which means visiting a location twice. That is fine here, because they walk strictly hierarchical trees of lists. Cyclic data breaks them. The recursive version falls into an infinite recursion, and the queue and stack versions loop forever, adding the same items again. A short demo shows the problem:
 
@@ -2326,7 +2334,7 @@ Unintended recursion is a risk too. Some operator-overloading methods, such as `
 
 ## Function tools: introspection, attributes, and annotations
 
-Functions are full objects, not just code for the compiler. They can be passed around, stored, and called indirectly. They also support operations that have little to do with calling them, such as attributes and annotations.
+Functions are full objects, not just code for the compiler. They can be passed around, stored, and called indirectly. They also support operations that have little to do with calling them, such as attributes and annotations. This section looks at both sides of that picture.
 
 ### The first-class object model
 
@@ -2375,7 +2383,7 @@ Hack Code!
 Hack App!
 ```
 
-Python's first-class object model and its lack of type constraints make the language very flexible.
+Python's first-class object model and its lack of type constraints make the language very flexible. The same few ideas keep coming back: a name, an object, and a call.
 
 ### Function introspection
 
@@ -2406,7 +2414,7 @@ Introspection gives you access to internals. Functions have attached code object
 1
 ```
 
-Tool writers use this information to manage functions. Decorators can use it to check arguments, which the book shows in a later chapter. Whether you write such tools or only use them, object introspection makes functions more useful.
+Tool writers use this information to manage functions. Decorators can use it to check arguments, which is shown later. Whether you write such tools or only use them, object introspection makes functions more useful.
 
 ### Attaching your own attributes
 
@@ -2541,7 +2549,7 @@ calling func
 I am running... 1 2
 ```
 
-Decorators can also take arguments, such as `@echo(args)`. Their use can overlap with annotations, because argument information can go to the decorator instead of the header. Decorators can also apply to classes, which the book covers later.
+Decorators can also take arguments, such as `@echo(args)`. Their use can overlap with annotations, because argument information can go to the decorator instead of the header. Decorators can also apply to classes, which is covered later.
 
 Compared with annotations, decorators do not add syntax to function headers. They also support more than one role. Annotations often serve a single role, and optional type hinting already claims that role in programs that use it. Some type-hinting advocates have tried to remove other uses of annotations. Decorators face no such pressure, so they may be the safer bet. Both tools are limited mainly by your imagination.
 
@@ -2549,7 +2557,7 @@ Annotations and decorators work on `def` statements, but not on `lambda` express
 
 ## Anonymous functions with lambda
 
-You met the `lambda` expression earlier. This section reviews the basics and goes deeper. Like `def`, a `lambda` creates a function to call later. Instead of assigning the function to a name, it returns the function object. That is why people call `lambda` an anonymous function. In practice, it inlines a small function definition or defers some code until later.
+You met the `lambda` expression earlier. This section reviews the basics and goes a little deeper. Like `def`, a `lambda` creates a function to call later. The difference is that it returns the function object instead of assigning it to a name. That is why people call `lambda` an anonymous function. In practice, it inlines a small function definition or defers some code until later.
 
 > Note: the name "lambda" intimidates people. It comes from the Lisp language, which took it from lambda calculus, a form of symbolic logic. In Python, `lambda` is just a keyword that starts an expression. That expression is an alternative way to write a function, but it has no statements, decorators, or annotations.
 
@@ -2561,7 +2569,7 @@ The general form has the keyword `lambda`, zero or more arguments, and an expres
 lambda argument1, argument2,… argumentN : expression-using-arguments
 ```
 
-The arguments follow the same rules as the arguments in a `def` header, without annotations. Parentheses are not allowed around the arguments. They are usually optional around the whole `lambda`, though some contexts need them. Functions made with `lambda` work the same as those made with `def`. The difference is in how they are written, and that makes `lambda` useful in special cases:
+The arguments follow the same rules as the arguments in a `def` header, without annotations. Parentheses are not allowed around the arguments. They are usually optional around the whole `lambda`, though some contexts need them. Functions made with `lambda` work the same as those made with `def`. The difference is in how they are written, and that difference makes `lambda` useful in special cases:
 
 - A `lambda` is an expression, not a statement. It can appear where a `def` is not allowed, such as inside a list literal or a function call's arguments. It returns a function object, which you can assign to a name or use right where it appears.
 - A `lambda` body is a single expression, not a block of statements. It works like the expression you would put in a `return` statement, without writing `return`. That makes `lambda` less general than `def`. This is by design, since `lambda` suits simple functions and `def` handles larger tasks.
@@ -2582,7 +2590,7 @@ A `lambda` can do the same job if you assign its result to a name:
 9
 ```
 
-Here you assign the function object yourself. A `def` does this assignment automatically. Defaults and other argument-matching forms also work in a `lambda`:
+Here you assign the function object yourself, where a `def` would do that assignment automatically. Defaults and other argument-matching forms work in a `lambda` too:
 
 ```
 >>> x = (lambda a='hack', b='python', c='code': a + b + c)
@@ -2602,7 +2610,7 @@ A `lambda` body follows the same scope lookup rules as a `def`. It creates a loc
 
 ### Why use lambda?
 
-A `lambda` is a shorthand that lets you embed a function definition where it is used. It is entirely optional. You can always write a `def` instead, and you should when the function needs the power of full statements. A `lambda` fits when you only need a small piece of code inline, where it will be used.
+A `lambda` is a shorthand that lets you embed a function definition where it is used. It is entirely optional. You can always write a `def` instead, and you should when the function needs the power of full statements. A `lambda` fits when you only need a small piece of code inline, right where it will be used.
 
 Callback handlers are a common example. They are often written as inline `lambda` expressions inside a registration call, rather than defined elsewhere and referred to by name. A GUI example appears later in this section.
 
@@ -2661,7 +2669,7 @@ The `match` statement gives similar results today. It can take even more code th
 
 ### How (not) to obfuscate your Python code
 
-A `lambda` body must be one expression. That seems to limit how much logic you can pack into one. If you know what you are doing, you can express most statements as expressions.
+A `lambda` body must be one expression, which seems to limit how much logic you can pack into it. If you know what you are doing, though, you can express most statements as expressions.
 
 To print from a `lambda`, use `print` or `sys.stdout.write`. To run several actions, put them in a tuple, which evaluates its expressions from left to right. Tuples need parentheses in this context:
 
@@ -2719,7 +2727,7 @@ Use these tricks only as a last resort. Without care, they produce obfuscated co
 
 ### Scopes in nested lambdas
 
-As covered in the scope section, `lambda` depends on enclosing-function lookup, the E layer of LEGB. A `lambda` inside a `def` can read the value that a name had in the enclosing function's call:
+As the scope section explained, `lambda` depends on enclosing-function lookup, the E layer of LEGB. A `lambda` inside a `def` can read the value that a name had in the enclosing function's call:
 
 ```
 >>> def action(x):
@@ -2729,7 +2737,7 @@ As covered in the scope section, `lambda` depends on enclosing-function lookup, 
 101
 ```
 
-A `lambda` can also see names in an enclosing `lambda`. To see it, rewrite the example with `lambda` alone:
+A `lambda` can also see names in an enclosing `lambda`. To see that, rewrite the example with `lambda` alone:
 
 ```
 >>> action = (lambda x: (lambda y: x + y))  # lambda scopes nest too
@@ -2757,7 +2765,7 @@ mainloop()  # This may be optional in some REPLs
 
 The button's `command` argument receives a function made with `lambda`. The advantage over `def` is that the handler sits right inside the button-creation call. The `lambda` defers the work until the event occurs. The `print` runs on each press, not when the button is created. It effectively knows the string to write when the event happens. Real GUIs rarely print to a console, but the pattern is the same.
 
-Nested function scope rules apply to `lambda` too. A `lambda` sees names in the functions it is coded in, so it rarely needs passed-in defaults. Loop variables are the exception. This also helps with the `self` argument in class methods. Here is a preview of that case, which the book covers in its object-oriented part:
+Nested function scope rules apply to `lambda` too. A `lambda` sees names in the functions it is coded in, so it rarely needs passed-in defaults. Loop variables are the exception. This also helps with the `self` argument in class methods. Here is a preview of that case, which belongs to the object-oriented part:
 
 ```python
 class MyGui:
@@ -2914,17 +2922,17 @@ The `operator` standard-library module offers functions that match Python's buil
 12
 ```
 
-Together, `map`, `filter`, and `reduce` support powerful functional techniques. Many people also count nested closures, `lambda` expressions, generators, and comprehensions as part of that toolset.
+Taken together, `map`, `filter`, and `reduce` open up a powerful functional style. Many people also count nested closures, `lambda` expressions, generators, and comprehensions as part of that toolset.
 
 ## Chapter wrap-up
 
-This part of the chapter covered function design guidelines, recursive functions, function attributes, annotations, and decorators. It also covered `lambda` expressions and the `map`, `filter`, and `reduce` built-ins. Some of these tools are advanced, but many are common in Python programs. Comprehensions and generators build on these functional tools next.
+This part of the chapter covered function design guidelines, recursive functions, function attributes, annotations, and decorators. It also covered `lambda` expressions and the `map`, `filter`, and `reduce` built-ins. Some of these tools are advanced, but many are common in Python programs. Comprehensions and generators build on these functional tools next, so nothing here was a detour.
 
 ## Comprehensions: the final act
 
 This part of the chapter finishes the story of comprehensions and iteration. The main subjects are generator functions and generator expressions. Both produce results on demand, the same way many built-in tools do. Generators follow the iteration protocol, and generator expressions reuse comprehension syntax, so this material extends the iteration ideas covered earlier. The chapter also gives a short start on `async` coroutines, which build on generators.
 
-Python supports procedural, object-oriented, and functional programming. Its functional tools include closures, generators, `lambda`, comprehensions, `map`, decorators, and function objects. These tools apply and combine functions in flexible ways. They often retain state in place of a class.
+Python supports procedural, object-oriented, and functional programming. Its functional tools include closures, generators, `lambda`, comprehensions, `map`, decorators, and function objects. These tools apply and combine functions in flexible ways, and they often retain state in place of a class.
 
 ### A quick review of list comprehensions
 
@@ -3226,7 +3234,7 @@ Matching the memory economy and timing of `map`, though, requires a comprehensio
 
 ## Generator functions and expressions
 
-Python now favors delayed results. It provides tools that produce values only when they are needed, not all at once. Files read lines on request, and functions such as `map` and `zip` produce items on demand. Python programs can also define their own lazy operations. Two constructs delay result creation for user-defined code:
+Python now favours delayed results. It provides tools that produce values only when they are needed, not all at once. Files read lines on request, and functions such as `map` and `zip` produce items on demand. Python programs can also define their own lazy operations. Two constructs delay result creation for user-defined code:
 
 - Generator functions are coded with normal `def` statements, but they use `yield` statements to return results one at a time. They suspend and resume their state between results.
 - Generator expressions are similar to the list comprehensions above. They return an object that produces results on demand instead of building a result list.
@@ -3245,7 +3253,7 @@ Generator functions look like normal functions, and they are coded with normal `
 
 Normal functions return a value and exit. Generator functions suspend and resume their execution and state around each value they produce. They are often a useful alternative to computing an entire series up front. They are also an alternative to saving and restoring state by hand in a class.
 
-When a generator is suspended, it keeps its position in the code and its entire local scope. Its local variables keep their values between results. When the function resumes, those values are still available.
+When a generator is suspended, it keeps its position in the code and its entire local scope. Its local variables keep their values between results. When the function resumes, those values are still available. In other words, the per-call local scope you studied earlier simply waits, intact, between yields.
 
 The main difference between a generator and a normal function is the statement they use. A generator uses `yield` where a normal function uses `return`. The `yield` statement suspends the function and sends a value back to the caller. The function keeps enough state to resume later. When it resumes, it continues right after the last `yield` that ran. The code can then produce a series of values over time, instead of computing them all at once and returning them in a list.
 
@@ -3383,11 +3391,11 @@ When you use this protocol, you send a value into generator `G` by calling `G.se
 3
 ```
 
-The `send` method can, for example, let a caller stop a generator by sending a termination code. It can also redirect the generator by passing a new position in the data being processed.
+The `send` method has practical uses. A caller can stop a generator by sending a termination code, or redirect it by passing a new position in the data being processed.
 
 Generators also support a `throw(type)` method. It raises an exception inside the generator at the latest `yield`. The `close` method raises a special `GeneratorExit` exception inside the generator, which ends the iteration. Together with `send`, these advanced features make generators behave more like coroutines. The `async` syntax later took over part of that role. This chapter does not go further. Python's standard manuals cover the details, and exceptions are covered in a later part.
 
-Note that `next(X)` is a built-in that calls `X.__next__()` for any iterable. Other generator methods, such as `send`, must be called directly on a generator object, as in `G.send(X)`. These methods exist only on built-in generator objects. The `__next__` method applies to all iterable objects, including user-defined classes.
+One distinction is easy to miss. `next(X)` is a built-in that calls `X.__next__()` for any iterable. Other generator methods, such as `send`, must be called directly on a generator object, as in `G.send(X)`. Those methods exist only on built-in generator objects. The `__next__` method applies to all iterable objects, including user-defined classes.
 
 #### The yield from extension
 
@@ -3401,7 +3409,7 @@ Python 3.3 added a `yield from` form. It lets a generator delegate to nested gen
 [0, 1, 2, 3, 4, 0, 1, 4, 9, 16]
 ```
 
-The `yield from` form is shorter and more explicit. It supports all the usual generator contexts. In the next example, `both` is the delegating generator. The `range` and `map` built-ins serve as subgenerators. A generator expression with `join` also appears here:
+The `yield from` form is shorter and, once you are used to it, more explicit. It supports all the usual generator contexts. In the next example, `both` is the delegating generator. The `range` and `map` built-ins serve as subgenerators. A generator expression with `join` also appears here:
 
 ```python
 >>> def both(N):
@@ -3457,7 +3465,7 @@ Wrapping a generator expression in a `list` call forces it to produce all its re
 
 The two forms behave very differently in memory. A generator expression does not build the list. It returns a generator object, which is an iterable created automatically. That object yields one item at a time in any iteration tool. It also keeps its state between results, including the variable `x` and its position in the code.
 
-The net effect resembles a generator function, but inside a comprehension expression. You get an object that remembers where it left off after each result. Like generator functions, it supports the protocol, and you can inspect that protocol directly. The `iter` call is again optional at the top level:
+The net effect resembles a generator function, but packed inside a comprehension expression. You get an object that remembers where it left off after each result. Like generator functions, it supports the protocol, and you can inspect that protocol directly. The `iter` call is again optional at the top level:
 
 ```python
 >>> G = (x ** 2 for x in range(3))
@@ -3516,11 +3524,11 @@ Generator expressions save memory, like generator functions do. They do not buil
 
 Generator expressions often run slower than list comprehensions today, though. They are best reserved for very large result sets, or for programs that cannot wait for full results. A firm statement about performance has to wait for the timing scripts in the next chapter.
 
-Generator expressions also offer real coding advantages. The next sections show them.
+Generator expressions also offer real coding advantages, and the next sections show them.
 
 #### Generator expressions versus map
 
-Generator expressions can be compared with other functional tools, just as list comprehensions were. Generator expressions are often equal to `map` calls, because both produce result items on request. Like list comprehensions, generator expressions are simpler when the operation is not a function call:
+It is worth setting generator expressions beside the other functional tools, as we did for list comprehensions. A generator expression often does the same job as a `map` call, because both hand back result items on request. Where the operation is not a function call, the generator expression is simpler, just as a list comprehension is:
 
 ```python
 >>> list(map(abs, (-1, -2, 3, 4)))  # Map function on tuple
@@ -3533,7 +3541,7 @@ Generator expressions can be compared with other functional tools, just as list 
 [2, 4, 6, 8]
 ```
 
-The same holds for text processing, such as the `join` call above. A list comprehension makes a temporary list that is not kept. That is wasteful in this context. A `map` call loses simplicity points when the operation is not a function call:
+Text processing shows the same pattern, as in the `join` call above. A list comprehension builds a temporary list that nobody keeps, which is pure waste here. A `map` call loses its edge in simplicity the moment the operation stops being a function call:
 
 ```python
 >>> line = 'aaa,bbb,ccc'
@@ -3549,7 +3557,7 @@ The same holds for text processing, such as the `join` call above. A list compre
 'aaaaaabbbbbbcccccc'
 ```
 
-Both `map` and generator expressions can be nested. A `list` call or another iteration tool starts the whole process. The list comprehension below gives the same result as the `map` and generator versions after it. It makes two physical lists, though. The other two forms generate one integer at a time through nested generators, and the generator form may show its intent more clearly:
+Both `map` and generator expressions can be nested, with a `list` call or another iteration tool setting the chain in motion. The list comprehension below matches the `map` and generator versions that follow it. It builds two physical lists, though. The other two forms generate one integer at a time through nested generators, and the generator form may show its intent more clearly:
 
 ```python
 >>> [x * 2 for x in [abs(x) for x in (-1, -2, 3, 4)]]  # Nested list comps
@@ -3560,7 +3568,7 @@ Both `map` and generator expressions can be nested. A `list` call or another ite
 [2, 4, 6, 8]
 ```
 
-All three combine operations. The generator versions do it without making temporary lists. The next example nests and combines generators. The inner generator expression is driven by `map`, which is driven by `list`:
+All three combine operations, and the generator versions do it without building temporary lists. The next example nests and combines generators. The inner generator expression is driven by `map`, which is driven by `list`:
 
 ```python
 >>> import math
@@ -3568,7 +3576,7 @@ All three combine operations. The generator versions do it without making tempor
 [0.0, 1.0, 2.0, 3.0]
 ```
 
-The `range` on the right is also a generator of values, driven by the generator expression. That makes three levels of value generation. Each level produces values from inner to outer, only on request. This works because of Python's iteration tools and protocol. Generator nesting can go as deep as you like, but some nestings are more sensible than others:
+The `range` on the right is also a generator of values, driven by the generator expression. That gives three levels of value generation. Each level produces values from inner to outer, only when asked. This works because of Python's iteration tools and protocol. Generator nesting can go as deep as you like, though some nestings are more sensible than others:
 
 ```python
 >>> list(map(abs, map(abs, map(abs, (-1, 0, 1)))))  # Nesting gone bad?
@@ -3577,9 +3585,9 @@ The `range` on the right is also a generator of values, driven by the generator 
 [1, 0, 1]
 ```
 
-These examples are intentionally convoluted, to show how general generators can be. They also show that generator expressions can be abused just as list comprehensions can. Keep them simple unless the problem truly needs complexity.
+These examples are deliberately convoluted, to show how general generators can be. They also show that generator expressions can be abused just as list comprehensions can. Keep them simple unless the problem truly needs complexity.
 
-Used well, generator expressions combine the expressiveness of comprehensions with the memory benefits of other iterables. The following unnested versions are simpler, and they still use generators:
+Used well, generator expressions combine the expressiveness of comprehensions with the memory benefits of other iterables. These unnested versions are simpler, and they still use generators:
 
 ```python
 >>> list(abs(x) * 2 for x in (-1, -2, 3, 4))  # Same, unnested
@@ -3602,7 +3610,7 @@ Generator expressions support all the usual comprehension syntax, including `if`
 'aabbb'
 ```
 
-The generator is only slightly simpler than the `filter` here. Once you add a processing step, though, `filter` needs a `map` too. That makes it much more complex:
+The generator is only slightly simpler than the `filter` here. Once you add a processing step, though, `filter` needs a `map` as well. That makes it much more complex:
 
 ```python
 >>> ''.join(x.upper() for x in line.split() if len(x) > 1)
@@ -3611,7 +3619,7 @@ The generator is only slightly simpler than the `filter` here. Once you add a pr
 'AABBB'
 ```
 
-Generator expressions give you general structures that do not rely on functions, and they still delay result production. A generator expression always has a statement equivalent, although it can take much more code:
+Generator expressions give you general structures that do not rely on functions, and they still delay result production. A generator expression always has a statement equivalent, though that equivalent can take much more code:
 
 ```python
 >>> res = ''
@@ -3622,13 +3630,13 @@ Generator expressions give you general structures that do not rely on functions,
 'AABBB'
 ```
 
-This statement form is not quite the same, though. It cannot produce items one at a time, and it also builds the whole result at once, as a `join` does. The true equivalent of a generator expression is a generator function with `yield`, which the next section shows.
+This statement form is not quite the same, though. It cannot produce items one at a time, and it builds the whole result at once, much as a `join` does. The true equivalent of a generator expression is a generator function with `yield`, which the next section shows.
 
 #### Generator functions versus generator expressions
 
-Here is a recap of what this section covered. A `def` statement that contains a `yield` becomes a generator function. Calling it returns a new generator object. That object keeps its local scope and code position. It has an automatically created `__iter__` method, which returns the object itself. It also has an automatically created `__next__` method. That method starts the function or resumes it where it last left off. It raises `StopIteration` when it finishes producing results.
+Let us recap the ground this section covered. A `def` statement that contains a `yield` becomes a generator function. Calling it returns a new generator object. That object keeps its local scope and its code position. It has an automatically created `__iter__` method, which returns the object itself. It also has an automatically created `__next__` method. That method starts the function or resumes it where it last left off. It raises `StopIteration` when it finishes producing results.
 
-A comprehension in parentheses is a generator expression. When it runs, it returns a new generator object. It has the same automatic methods and the same state retention as a generator-function call. Its `__iter__` returns itself, and its `__next__` starts or resumes the implied loop. It raises `StopIteration` when the results are done.
+A comprehension in parentheses is a generator expression. When it runs, it returns a new generator object. That object has the same automatic methods and the same state retention as a generator-function call. Its `__iter__` returns itself, and its `__next__` starts or resumes the implied loop. It raises `StopIteration` when the results are done.
 
 The net effect is that both forms produce results on demand, in every iteration tool that uses them. The same iteration can often be coded either way. This generator expression repeats each character in a string four times:
 
@@ -3638,7 +3646,7 @@ The net effect is that both forms produce results on demand, in every iteration 
 ['hhhh', 'aaaa', 'cccc', 'kkkk']
 ```
 
-The equivalent generator function needs a little more code. Its block of statements can hold more logic and more state. This is much like the earlier trade-off between `lambda` and `def`, where a single expression is concise and a statement is more powerful:
+The equivalent generator function needs a little more code. Its block of statements can hold more logic and more state. This is much like the earlier trade-off between `lambda` and `def`, where a single expression is concise and a block of statements is more powerful:
 
 ```python
 >>> def timesfour(S):  # Generator function
@@ -3666,7 +3674,7 @@ To their callers, the two forms look much alike. Both support automatic and manu
 'aaaa'
 ```
 
-Either way, Python creates a generator object. It has the methods the iteration protocol needs, and it keeps state for the variables in its code and its current position. You need new generators to iterate again. The next section explains why generators are single-pass iterators.
+Either way, Python creates a generator object. It has the methods the iteration protocol needs, and it keeps state for the variables in its code and for its current position. You need a new generator to iterate again. The next section explains why generators are single-pass iterators.
 
 Before that, here is the statement equivalent of the expression at the end of the last section. It is a function that yields values. The difference does not matter when the code uses a tool such as `join` to produce all the results:
 
@@ -3686,11 +3694,11 @@ Generators have valid roles. In a case like this, though, a generator is hard to
 
 ## Generator odds and ends
 
-This section covers the smaller related topics. Make sure you understand these before the larger examples.
+The topics that follow are smaller, but they explain behaviour you will meet in the larger examples. Read them with that in mind.
 
 ### Generators are single-pass iterables
 
-Generator functions and generator expressions return objects that are their own iterators. They support just one active iteration. Unlike some built-in types, you cannot have several iterators of one generator at different positions in the stream. A generator's iterator is the generator itself. Calling `iter` on a generator expression or function is therefore an optional no-op:
+Generator functions and generator expressions return objects that are their own iterators. They support just one active iteration. Unlike some built-in types, you cannot hold several iterators of one generator at different positions in the stream. A generator's iterator is the generator itself. Calling `iter` on a generator expression or function is therefore an optional no-op:
 
 ```python
 >>> G = (c * 4 for c in 'hack')
@@ -3727,7 +3735,7 @@ StopIteration
 'hhhh'
 ```
 
-Generator functions behave the same way. The `def` version below supports one active iterator. It is used up after one pass:
+Generator functions behave the same way. The `def` version below supports one active iterator, and it is used up after a single pass:
 
 ```python
 >>> def timesfour(S):
@@ -3745,7 +3753,7 @@ True
 'cccc'
 ```
 
-Built-in objects such as lists behave differently. A list supports multiple iterators and passes. Its in-place changes show up in active iterators:
+Built-in objects such as lists behave differently. A list supports multiple iterators and multiple passes. Its in-place changes also show up in active iterators:
 
 ```python
 >>> L = [1, 2, 3, 4]
@@ -3761,13 +3769,13 @@ Built-in objects such as lists behave differently. A list supports multiple iter
 StopIteration
 ```
 
-These simple examples hide why this matters. If you need to scan a generator's values more than once, you must do one of two things. You can create a new generator for each scan, or build a list that you can rescan. A generator's values are used up after a single pass.
+These simple examples hide why this matters. If you need to scan a generator's values more than once, you must do one of two things. You can create a new generator for each scan, or build a list that you can rescan. A generator's values are used up after a single pass, and no amount of rewinding brings them back.
 
 Class-based iterables also decide how many scans they support. Objects that allow multiple scans return a separate helper object from `iter`, instead of returning themselves.
 
 ### Generation in built-ins and classes
 
-Many built-in types generate values too. You have seen that dictionaries and files do. Looping over a dictionary yields its keys, and looping over a file yields its lines:
+Many built-in types generate values too. You have already seen that dictionaries and files do. Looping over a dictionary yields its keys, and looping over a file yields its lines:
 
 ```python
 for key in dictionary: ...
@@ -3798,7 +3806,7 @@ The current Python version of `os.walk` uses `yield` to return results. It is th
 ('../Chapter02', ['__pycache__'], ['script0.py'])
 ```
 
-The walker yields results as it goes. Callers do not wait for an entire tree to be scanned. Python's manuals cover this tool in more depth.
+The walker yields results as it goes, so callers do not wait for an entire tree to be scanned. Python's manuals cover this tool in more depth.
 
 You can also write your own generator objects with classes that follow the iteration protocol. Such a class defines `__iter__` and `__next__` methods, which support the protocol:
 
@@ -3811,7 +3819,7 @@ class SomeIterable:
         ...  # On next(): coded here, or in another class
 ```
 
-A class like this usually returns itself for single-pass behavior. For multiple scans, it returns a supplemental object that holds scan-specific state. Alternatively, a class's `__iter__` can use `yield` to turn itself into a generator. A `__getitem__` indexing method is also available as a fallback for iteration, with trade-offs covered later. Class-based iterables are a later topic, so the full iterator and generator story waits until the chapters on classes.
+A class like this usually returns itself for single-pass behaviour. For multiple scans, it returns a supplemental object that holds scan-specific state. Alternatively, a class's `__iter__` can use `yield` to turn itself into a generator. A `__getitem__` indexing method is also available as a fallback for iteration, with trade-offs covered later. Class-based iterables are a later topic, so the full iterator and generator story waits until the chapters on classes.
 
 ### Comprehensions versus type calls and generators
 
@@ -3867,7 +3875,7 @@ A loop variable in a comprehension lives in a further nested scope of its own. O
 a-a-a-b-b-b
 ```
 
-There is one exception. Names assigned with the `:=` expression inside a comprehension do leak out. They behave as though they were assigned in the scope that contains the comprehension:
+There is one exception, and it is easy to miss. Names assigned with the `:=` expression inside a comprehension do leak out. They behave as though they were assigned in the scope that contains the comprehension:
 
 ```python
 >>> S = 'hack'
@@ -3894,7 +3902,7 @@ A later example uses this `:=` nesting in a sequence scrambler. Chapter 11 has m
 
 ### Generating "infinite" results
 
-Generators can produce "infinite" results, which lists cannot. This sounds more impressive than it is. A generator keeps yielding values from the local variables in its retained state. It continues until its caller stops asking:
+Generators can produce "infinite" results, which lists cannot. The phrase sounds more impressive than the reality. A generator keeps yielding values from the local variables in its retained state. It continues until its caller stops asking:
 
 ```python
 >>> def squares(n):
@@ -3910,17 +3918,17 @@ Generators can produce "infinite" results, which lists cannot. This sounds more 
 16 25 36 49 64 81 100 121 144 169
 ```
 
-This pattern can suit narrow roles, such as generating test parameters. A list comprehension cannot compete here, because it must collect all of its results at once. Generators are finite in practice, though, since they stop when the caller does. Next, here is some code that is more concrete.
+Narrow roles suit this pattern, such as generating test parameters. A list comprehension cannot compete here, because it must collect all its results at once. In practice generators are finite: they stop when the caller does. Next, some code that is more concrete.
 
 ## Generator examples: shuffling and permuting sequences
 
-These examples show iteration and generation in action. Earlier, a testing function scrambled the order of the arguments used to check intersection and union functions. That function could be a generator of values. With generators now understood, this is a practical application.
+These examples put iteration and generation to work. Earlier, a testing function scrambled the order of the arguments used to check the intersection and union functions. That testing function could itself be a generator of values. Now that generators are understood, this becomes a practical application.
 
-One caution first. Because the examples slice and concatenate objects, they work only on sequences such as strings and lists. They do not work on arbitrary iterables such as files, `map` objects, or other generators. Some of the examples are generators themselves, but they cannot take generators as input. If you need to pass in a generator, wrap it in a `list` call first.
+One caution before we start. The examples slice and concatenate objects, so they work only on sequences such as strings and lists. They do not work on arbitrary iterables such as files, `map` objects, or other generators. Some examples are generators themselves, yet they cannot take generators as input. If you need to pass in a generator, wrap it in a `list` call first.
 
 ### Scrambling sequences
 
-First, a review. Earlier, a sequence was reordered by slicing and concatenation. Each loop moved the front item to the end. Slicing, instead of indexing, lets `+` work on any sequence type:
+First, a review. Earlier we reordered a sequence by slicing and concatenation. Each loop moved the front item to the end. Slicing, rather than indexing, lets `+` work on any sequence type:
 
 ```python
 >>> L, S = [1, 2, 3], 'code'
@@ -3947,7 +3955,7 @@ Trace this code to see how it works. Each version produces `N` results for an `N
 
 ### Simple functions
 
-This code works on specific named variables, and it only prints its results. You can generalize it into a normal function. The function works on any argument and returns its result for other uses. The first version below is the classic list comprehension pattern. The second version uses a comprehension, which saves some work:
+This code works on specific named variables and only prints its results. You can generalise it into a normal function, one that works on any argument and returns its result for other uses. The first version below is the classic list comprehension pattern. The second version uses a comprehension, which saves some work:
 
 ```python
 >>> def scramble(seq):
@@ -3966,11 +3974,11 @@ This code works on specific named variables, and it only prints its results. You
 (1, 2, 3) (2, 3, 1) (3, 1, 2)
 ```
 
-Recursion could also work here. It would be overkill for this fixed and linear task.
+Recursion could also work here, but it would be overkill for this fixed and linear task.
 
 ### Generator functions for scrambling
 
-The simple approach works, but it has two costs. It builds the whole result list in memory, which is a problem for massive results. It also makes the caller wait until the whole list is finished, which is slow for expensive work. You can do better on both counts. Translate the function into a generator that yields one result at a time. Either coding scheme works:
+The simple approach works, but it has two costs. It builds the whole result list in memory, which is a problem for massive results. It also makes the caller wait until the whole list is finished, which feels slow when the work is expensive. You can do better on both counts. Translate the function into a generator that yields one result at a time. Either coding scheme works:
 
 ```python
 >>> def scramble(seq):
@@ -3982,7 +3990,7 @@ The simple approach works, but it has two costs. It builds the whole result list
 ...         yield seq[i:] + seq[:i]  # Yield one item per iteration
 ```
 
-Both versions produce values for tools such as `list` and `for`. The results of the second version are in a slightly different order. That should not matter to future callers:
+Both versions produce values for tools such as `list` and `for`. The results of the second version arrive in a slightly different order. That should not matter to future callers:
 
 ```python
 >>> list(scramble('code'))  # list() generates all results
@@ -3998,7 +4006,7 @@ Both generator functions keep their local state, `seq` and `i`, while they are a
 
 ### Generator expressions for scrambling
 
-Generator expressions, which are comprehensions in parentheses, also produce values on request and keep their local state. They are not as flexible as full functions. Since they yield values automatically, they can be more concise for specific cases like this one:
+Generator expressions, which are comprehensions in parentheses, also produce values on request and keep their local state. They are not as flexible as full functions. Because they yield values automatically, they can be far more concise for a specific case like this one:
 
 ```python
 >>> S = 'code'
@@ -4007,7 +4015,7 @@ Generator expressions, which are comprehensions in parentheses, also produce val
 ['code', 'odec', 'deco', 'ecod']
 ```
 
-A generator expression cannot use the `seq` assignment from the first generator-function coding. It can reach the same effect by nesting the `:=` named assignment expression from earlier. The `:=` operator changes the name in the containing scope, and it also returns the assigned value, so the value appears in the results:
+A generator expression cannot use the `seq` assignment from the first generator-function coding. It can reach the same effect by nesting the `:=` named assignment expression from earlier. The `:=` operator changes the name in the containing scope, and it also returns the assigned value, so that value appears in the results:
 
 ```python
 >>> S = 'code'
@@ -4016,7 +4024,7 @@ A generator expression cannot use the `seq` assignment from the first generator-
 ['odec', 'deco', 'ecod', 'code']
 ```
 
-These versions still work on one specific variable, `S`. To generalize a generator expression, wrap it in a simple `lambda` that takes an argument and returns a generator. In the second version below, `seq` is not local to the generator. It is local to the `lambda` that encloses it:
+These versions still work on one specific variable, `S`. To generalise a generator expression, wrap it in a simple `lambda` that takes an argument and returns a generator. In the second version below, `seq` is not local to the generator. It is local to the `lambda` that encloses it:
 
 ```python
 >>> F = lambda seq: (seq[i:] + seq[:i] for i in range(len(seq)))
@@ -4035,7 +4043,7 @@ These versions still work on one specific variable, `S`. To generalize a generat
 
 ### Tester client
 
-You can use either the generator function or its expression equivalent in a tester. The tester feeds scrambled arguments to the functions under test. Once the scramblers live in a module, they become reusable tools. Example 20-1 shows that module:
+You can use either the generator function or its expression equivalent in a tester. The tester feeds scrambled arguments to the functions under test. Once the scramblers live in a module, they become reusable tools. The next example shows that module:
 
 ```python
 "Generate shuffles of a sequence, by function or expression"
@@ -4065,7 +4073,7 @@ To run this yourself, all the imported files must be in the current directory. Y
 
 ### Permutating sequences
 
-Generators have many real-world uses. You might parse attachments in an email message, or compute points to plot in a GUI. Other kinds of sequence scrambles matter in searches and mathematics too. The scrambler above is a simple reordering. Some programs need every possible ordering, which is a permutation. Example 20-2 has two permutation functions. One builds a list and the other is a generator. They are recursive:
+Generators have many real-world uses. You might parse attachments in an email message, or compute points to plot in a GUI. Other kinds of sequence scrambles matter in searches and mathematics too. The scrambler above is a simple reordering. Some programs need every possible ordering, which is a permutation. The next example has two permutation functions. One builds a list and the other is a generator. They are recursive:
 
 ```python
 "Permute sequences: as a list or generator of values"
@@ -4133,13 +4141,13 @@ Chapter 19 described nonrecursive options, which use explicit stacks or queues. 
 
 ### Why generators here: space, time, and more
 
-Generators are an advanced tool. They could be treated as optional, except that they appear everywhere in Python. Built-in tools such as `range`, `map`, dictionary `keys`, and files are generators now. You must know the concept even if you never write a generator yourself. User-defined generators also appear in code you will read, including the Python standard library.
+Generators are an advanced tool, and they might be treated as optional except for one fact: they appear everywhere in Python. Built-in tools such as `range`, `map`, dictionary `keys`, and files are generators now. You must know the concept even if you never write a generator yourself. User-defined generators also appear in code you will read, including the Python standard library.
 
-The guideline for comprehensions applies to generators too. Do not add user-defined generators unless they are warranted. Smaller programs and data sets may not need them. A simple list of results may be easier to understand, and it is garbage-collected automatically. It may also be produced faster, as the next chapter shows. Advanced tools that rely on implicit "magic" can be fun to experiment with. When they are optional, they may be a poor choice.
+The guideline for comprehensions applies to generators too. Do not add user-defined generators unless they are warranted. Smaller programs and data sets may not need them. A simple list of results may be easier to understand, and it is garbage-collected automatically. It may also be produced faster, as the next chapter shows. Advanced tools that rely on implicit "magic" can be fun to experiment with, but when they are optional they may be a poor choice.
 
 Some use cases do suit generators well. Generators can reduce memory use, reduce delays, and occasionally make the impossible possible. Take a program that must produce every permutation of a long sequence. The number of permutations is a factorial, which grows explosively. The recursive list builder `permute1` would either cause a long pause or fail on memory.
 
-The recursive generator `permute2` returns each result quickly. It handles very large result sets. The difference shows up even at 10 items, as Python's `math` module shows:
+The recursive generator `permute2` returns each result quickly, and it handles very large result sets. The difference shows up even at 10 items, as Python's `math` module shows:
 
 ```python
 >>> import math
@@ -4164,7 +4172,7 @@ Here, `permute1` pauses for about 17 seconds to build a list of 3.6 million item
 [0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
 ```
 
-Collecting every result from the generator is still slow. It is faster than the list builder, but it is not the intended use:
+Collecting every result from the generator is still slow. It is faster than the list builder, but that is not the intended use:
 
 ```python
 >>> p2 = list(permute2(seq))  # About 10 seconds, though still impractical
@@ -4207,13 +4215,13 @@ For variety, you can shuffle the input randomly before permuting. The `random` m
 
 You might use the random shuffler in place of manual shuffles in some cases. That works only if you can assume it will not repeat shuffles while you consume them. Otherwise you must test its results against earlier shuffles. When full coverage matters, manual shuffles give you more control.
 
-The main point is that generators can produce results from large solution sets when list builders cannot. Still, such use cases may be uncommon, and they do not justify the implicit style of generator functions and expressions everywhere. Class-based iterables can produce items on request too. They are more explicit than the magic objects and methods behind generator functions and expressions.
+The main point is that generators can produce results from large solution sets when list builders cannot. Still, such use cases may be uncommon, and they do not justify the implicit style of generator functions and expressions everywhere. Class-based iterables can produce items on request too, and they are more explicit than the magic objects and methods behind generator functions and expressions.
 
-Part of programming is finding a balance among trade-offs. There are no absolute rules here. The benefits of generators can justify their use, but maintainability counts too. Comprehensions and generators offer expressiveness and code economy that is hard to resist once you understand them. Weigh that against the frustration of coworkers who may not share your comfort with them.
+Part of programming is finding a balance among trade-offs, and there are no absolute rules here. The benefits of generators can justify their use, but maintainability counts too. Comprehensions and generators offer expressiveness and code economy that is hard to resist once you understand them. Weigh that against the frustration of coworkers who may not share your comfort with them.
 
 ### Example: emulating zip and map
 
-This example shows how expressive generators can be. Once you know comprehensions, generators, and other iteration tools, you can emulate many of Python's functional built-ins. The emulations are instructive, and they can be useful for custom roles.
+This example shows how expressive generators can be. Once you know comprehensions, generators, and other iteration tools, you can emulate many of Python's functional built-ins. The emulations are instructive, and they can also be useful for custom roles.
 
 The `zip` and `map` built-ins combine several iterables. `zip` pairs items from its iterables. `map` applies a function across items taken from each iterable, much as `zip` combines them. Both stop at the length of the shortest iterable:
 
@@ -4234,7 +4242,7 @@ Both built-ins work on any iterable, including files that read lines automatical
 
 ### Coding your own map
 
-The `map` and `zip` built-ins are fast and convenient. You can still implement them in your own code. The chapter on functions wrote a function that emulated `map` for a single iterable. Example 20-3 extends it to accept several iterables, as the built-in does:
+The `map` and `zip` built-ins are fast and convenient, yet you can still implement them in your own code. The chapter on functions wrote a function that emulated `map` for a single iterable. The next example extends it to accept several iterables, as the built-in does:
 
 ```python
 "Emulate map: support multiple arguments, build a list result"
@@ -4248,7 +4256,7 @@ print(mymap(abs, [-2, -1, 0, 1, 2]))
 print(mymap(pow, [1, 2, 3], [2, 3, 4, 5]))
 ```
 
-This version uses `*` argument syntax in three places. It collects several iterable arguments, unpacks them as arguments to `zip`, and then unpacks the combined results as arguments to the passed-in function. Zipping is essentially a nested step in mapping. The test code applies the function to one and to two sequences. It gives the same results as the built-in `map`:
+This version uses `*` argument syntax in three places. It collects several iterable arguments, unpacks them as arguments to `zip`, and then unpacks the combined results as arguments to the passed-in function. Zipping is essentially a nested step in mapping. The test code applies the function to one and to two sequences, and it gives the same results as the built-in `map`:
 
 ```
 $ python3 mymap-list.py
@@ -4263,7 +4271,7 @@ def mymap(func, *seqs):
     return [func(*args) for args in zip(*seqs)]
 ```
 
-The output is the same, and the code is shorter. It might also run faster, and the next chapter covers performance. Both `mymap` versions build their result lists all at once, which can waste memory with large lists. Now that you know generator functions and expressions, you can recode both as generators that produce results on demand. Example 20-4 does this:
+The output is the same, and the code is shorter. It might also run faster, and the next chapter covers performance. Both `mymap` versions build their result lists all at once, which can waste memory with large lists. Now that you know generator functions and expressions, you can recode both as generators that produce results on demand. The next example does this:
 
 ```python
 "Emulate map: support multiple arguments, generate results on request"
@@ -4279,7 +4287,7 @@ for mymap in (mymap_func, mymap_expr):
     print(list(mymap(pow, [1, 2, 3], [2, 3, 4, 5])))
 ```
 
-Both new versions give the same results. The first yields one result at a time explicitly. The second returns a generator expression, which does the same thing implicitly. Each is a generator, so you must wrap it in a `list` call to force its values all at once:
+Both new versions give the same results. The first yields one result at a time explicitly. The second returns a generator expression, which does the same thing implicitly. Each is a generator, so you must wrap it in a `list` call to force all its values out at once:
 
 ```
 $ python3 mymap-generate.py
@@ -4289,11 +4297,11 @@ $ python3 mymap-generate.py
 [1, 8, 81]
 ```
 
-No real work happens until the `list` calls activate the iteration protocol. The `list` calls exist for display in testing, and they are not usually wanted elsewhere. The generators returned here, and the generators that `zip` returns, produce results only on demand. That is the point of generators. Delaying results saves memory and avoids making callers wait for full results.
+No real work happens until the `list` calls activate the iteration protocol. Those `list` calls exist only to display results during testing, and you rarely want them elsewhere. The generators returned here, and the generators that `zip` returns, produce results only on demand. That is the whole point of generators. Delaying results saves memory and spares callers a wait for the full set.
 
 ### Coding your own zip and Python 2 map
 
-The `zip` built-in combines arguments from several iterables, and the examples so far depend on it. You can also write your own version. One version emulates the truncating behavior of today's `zip`. Another emulates the padding behavior of `map` in Python 2 when it receives `None` as its function. Padding `map` has no use in Python 3, but custom code can still provide it. Example 20-5 shows that `zip` and padding `map` are related in purpose and nearly the same in code:
+The `zip` built-in combines arguments from several iterables, and the examples so far depend on it. You can also write your own version. One version emulates the truncating behaviour of today's `zip`. Another emulates the padding behaviour of `map` in Python 2 when it receives `None` as its function. Padding `map` has no use in Python 3, but custom code can still provide it. The next example shows that `zip` and padding `map` are related in purpose and nearly the same in code:
 
 ```python
 # Emulate zip and padding map: build lists
@@ -4317,7 +4325,7 @@ print(mymapPad(S1, S2))
 print(mymapPad(S1, S2, pad=99))
 ```
 
-Both functions work on any iterable, because they pass their arguments through the `list` built-in to force results. Files work as arguments too, along with sequences like strings. The code uses the `all` and `any` built-ins. These return `True` when all items, or any item, of an iterable are true, which means nonempty here. The loops stop when all or any of the listified arguments become empty after deletions.
+Both functions work on any iterable, because they pass their arguments through the `list` built-in to force results. Files work as arguments too, along with sequences like strings. The code uses the `all` and `any` built-ins. These return `True` when all items, or any item, of an iterable are true, which here means nonempty. The loops stop when all or any of the listified arguments become empty after deletions.
 
 The `pad` argument is keyword-only. Unlike the Python 2 `map`, this version accepts any pad object. Running the file prints one `zip` result and two padded `map` results:
 
@@ -4328,7 +4336,7 @@ $ python3 myfptools-list.py
 [('a', 'x'), ('b', 'y'), ('c', 'z'), (99, '1'), (99, '2'), (99, '3')]
 ```
 
-These functions do not translate well into comprehensions, because their loops are too specific. Still, these `zip` and `map` workalikes can become generators. Use `yield` in place of building lists, so each returns one piece of its result at a time. Example 20-6 shows how:
+These functions do not translate well into comprehensions, because their loops are too specific. Still, these `zip` and `map` workalikes can become generators. Use `yield` in place of building lists, so each hands back one piece of its result at a time. The next example shows how:
 
 ```python
 # Emulate zip and padding map: generate results
@@ -4354,7 +4362,7 @@ $ python3
 [('a', 'x'), ('b', 'y'), ('c', 'z'), (99, '1'), (99, '2'), (99, '3')]
 ```
 
-Another version avoids the `pop` method. It computes the minimum and maximum argument lengths. With those lengths, nested comprehensions can step through the index ranges:
+Another version avoids the `pop` method entirely. It computes the minimum and maximum argument lengths. With those lengths, nested comprehensions can step through the index ranges:
 
 ```python
 def myzip(*seqs):
@@ -4371,7 +4379,7 @@ These versions use `len` and indexing. They assume the arguments are sequences o
 
 Generators and iterators are everywhere in this example. The arguments to `min` and `max` are generator expressions. They run to completion before the nested comprehensions begin. The nested comprehensions also have two levels of delayed evaluation. The `range` built-in is an iterable, and so is the generator expression passed to `tuple`.
 
-No results appear until the square brackets of the list comprehensions request values for the result list. That forces all the comprehensions and generators to run. To make these functions generators themselves, use parentheses instead of square brackets. Here is the `zip` version:
+No results appear until the square brackets of the list comprehensions ask for values for the result list. That request forces all the comprehensions and generators to run. To make these functions generators themselves, use parentheses instead of square brackets. Here is the `zip` version:
 
 ```python
 def myzip(*seqs):
@@ -4386,21 +4394,21 @@ Here, a `list` call is needed to activate the generators and the other iterables
 
 ## Asynchronous functions: the short story
 
-Python 3.5 added asynchronous functions, usually shortened to `async` functions. They can pause their own execution while they wait for a result. That lets other such functions run in the meantime.
+Python 3.5 added asynchronous functions, usually shortened to `async` functions. They can pause their own execution while they wait for a result. That pause lets other such functions run in the meantime, which is the whole trick.
 
-Other languages, such as JavaScript, have similar tools. They helped inspire Python's version. Many Python features, such as `match`, `:=`, f-strings, and type hints, come from the same language design race.
+Other languages, such as JavaScript, have similar tools, and they helped inspire Python's version. Many Python features, such as `match`, `:=`, f-strings, and type hints, come from the same language design race.
 
-The main use case for `async` is input and output. A function can pause until an I/O transfer finishes. Other parts of the program run during the wait. Threads can also solve this problem. Some developers find `async` functions a lighter-weight option.
+The main use case for `async` is input and output. A function can pause until an I/O transfer finishes, and other parts of the program run during the wait. Threads can solve this problem too. Some developers find `async` functions the lighter-weight option.
 
 There are downsides. The `async` design has changed almost constantly since its first versions in Python 3.4. That makes it hard to document in a book, which lasts longer than a web page. It is also all or nothing, because async code needs other async code to call it.
 
-Async functions also belong to parallel programming. That field includes multiprocessing and multithreading. Async is a heavyweight subject for most Python users, and a lot to ask of newcomers. Given how complex Python already is, this can be an optional add-on topic.
+Async functions also belong to parallel programming. That field includes multiprocessing and multithreading. Async is a heavyweight subject for most Python users, and a lot to ask of newcomers. Given how complex Python already is, it can reasonably be an optional add-on topic.
 
-Still, `async` functions are not truly optional. They were added to the language as syntax, through the `async` and `await` reserved words. You may have to reuse them, or face them in job interviews. This section gives a brief overview. Python's online resources cover the details.
+Still, `async` functions are not truly optional. They were added to the language as syntax, through the `async` and `await` reserved words. You may have to reuse them, or face them in job interviews. This section gives a brief overview, and Python's online resources cover the details.
 
 ### Async basics
 
-Async functions allow cooperative, nonpreemptive multitasking. The trade-offs resemble those of asynchronous network servers. Tasks must be short-lived, or they will monopolize the processor. Python 3.5 made this model part of the language. It added the `async def` statement, the `await` expression, the `async for` iterator, and the `async with` context manager.
+Async functions allow cooperative, nonpreemptive multitasking. The trade-offs resemble those of asynchronous network servers. Tasks must be short-lived, or one will monopolize the processor. Python 3.5 made this model part of the language. It added the `async def` statement, the `await` expression, the `async for` iterator, and the `async with` context manager.
 
 Async tools and syntax work only inside functions defined with `async def`. Like `yield` and `yield from`, `async def` compiles a function specially. When you call it, the body does not run. Instead, you get an awaitable object that supports a method-based protocol.
 
@@ -4408,7 +4416,7 @@ To run that object, you `await` its results, or use `async for` or `async with`,
 
 #### Running serial tasks with normal blocking calls
 
-Code is often easier to follow than prose, so the examples below use code. Their snippets come from a file named `all_async_demos.py` in the examples package. Example 20-7 shows its preamble. You can paste the snippets from it, or run the whole file, or run it with some parts disabled. Every example assumes the preamble has run:
+Code is often easier to follow than prose, so the examples below lean on code. Their snippets come from a file named `all_async_demos.py` in the examples package. The next example shows its preamble. You can paste the snippets from it, run the whole file, or run it with some parts disabled. Every example assumes the preamble has run:
 
 ```python
 import time, asyncio
@@ -4454,7 +4462,7 @@ Now do the same work with async functions. The `producer` is defined with `async
 
 The `async def` syntax is required for any function that uses `await`, `async for`, or `async with`. Because `async def` is required both to use and to define awaitable coroutines, it spreads through code like a virus. Some libraries now ship in two forms, asynchronous and not.
 
-In the next listing, `producer` uses `await` to pause itself until the sleep expires. `await` is similar to `yield from`. The event loop can pause the coroutine that runs the `await` and resume another coroutine if the awaited result is not ready. `await` works as a statement in `producer`. It is also an expression that returns the awaited result, as it does in `main`:
+In the next listing, `producer` uses `await` to pause itself until the sleep expires. `await` is similar to `yield from`. The event loop can pause the coroutine that runs the `await` and resume another coroutine if the awaited result is not ready. In `producer`, `await` works as a statement. It is also an expression that returns the awaited result, as it does in `main`:
 
 ```python
 async def producer(label):  # await requires async
@@ -4511,7 +4519,7 @@ In both `producer` and `main`, `await` suspends the coroutine that runs it. It d
 
 #### How not to use async functions
 
-Some incorrect codings show what the working example needs. The `await` expressions, the tasks, and the event loop are all essential. Without them, the code will not work. Calling `main` directly, without the event loop, fails at once with a warning. The call creates an awaitable but does nothing with it. The following snippets show only the differing code, followed by its results:
+Some incorrect codings show what the working example really needs. The `await` expressions, the tasks, and the event loop are all essential. Without them, the code will not work. Calling `main` directly, without the event loop, fails at once with a warning. The call creates an awaitable but does nothing with it. The following snippets show only the differing code, followed by its results:
 
 ```python
 async def main():
@@ -4576,7 +4584,7 @@ That is why tasks are needed in the working example. Tasks let the event loop pa
 
 #### Running concurrent tasks with as_completed and gather
 
-Besides creating tasks, you can use the `gather` function to wait for all coroutines at once. You can also use `as_completed` to handle results as they finish. `as_completed` works in an ordinary `for` loop, so you can watch the completions:
+Besides creating tasks, you can use the `gather` function to wait for all coroutines at once. You can also use `as_completed` to handle results as they finish. `as_completed` works in an ordinary `for` loop, so you can watch the completions arrive:
 
 ```python
 async def producer(label):
@@ -4603,7 +4611,7 @@ All done, async task 1, [19:00:40]
 Stop at [19:00:40]
 ```
 
-The `gather` call is different. It schedules tasks for the coroutines and awaits all of its arguments. When they all finish, it returns a list of their results. The list keeps the same order as the arguments:
+The `gather` call behaves differently. It schedules tasks for the coroutines and awaits all of its arguments. When they all finish, it returns a list of their results, and that list keeps the same order as the arguments:
 
 ```python
 async def producer(label):
@@ -4622,7 +4630,7 @@ async def main():
 asyncio.run(main())
 ```
 
-The results are in a list, shown here formatted for display. The whole job still takes just two seconds:
+The results come back in a list, formatted here for display. The whole job still takes just two seconds:
 
 ```
 Start => [19:00:40]
@@ -4718,17 +4726,17 @@ Within an `async def` function, you can also use `await` and `async for` inside 
 
 That covers all the time and space this topic deserves. Python's async functions may be more useful than type hints, which are rarely used and seem to clash with Python's core ideas. A full survey of either topic could fill chapters or books, and only some Python users would need it.
 
-This text does not cover Python's multithreading or multiprocessing tools. Both are valid ways to parallelize tasks, just as async functions are. Async alone received dedicated syntax, which favors one option and raises the bar for newcomers. Your goals may differ. For the full story, read Python's standard manuals before you wade deeper into async. For now, step back from this optional, complicated extension. Return to the fundamentals that nearly every Python program uses.
+This text does not cover Python's multithreading or multiprocessing tools. Both are valid ways to parallelize tasks, just as async functions are. Async alone received dedicated syntax, which favours one option and raises the bar for newcomers. Your goals may differ. For the full story, read Python's standard manuals before you wade deeper into async. For now, step back from this optional, complicated extension and return to the fundamentals that nearly every Python program uses.
 
 ## Comprehensions and generators: summary
 
-This part of the chapter covered the built-in comprehension and iteration tools. It explained list comprehensions as functional tools. It also presented generator functions and generator expressions as more tools for the iteration protocol. The larger examples showed iterations, comprehensions, and generators in action. The async extension was introduced briefly to whet your appetite for further study. Iteration will come up again when you write user-defined iterable classes.
+This part of the chapter covered the built-in comprehension and iteration tools. It explained list comprehensions as functional tools. It also presented generator functions and generator expressions as more tools for the iteration protocol. The larger examples showed iterations, comprehensions, and generators in action. The async extension was introduced briefly, to whet your appetite for further study. Iteration will come up again when you write user-defined iterable classes.
 
-The next chapter continues this theme. It times the performance of these tools in a case study. It is also a realistic example at the midpoint of this book.
+The next chapter continues this theme. It times the performance of these tools in a case study, which is also a realistic example at the midpoint of this book.
 
 ### Iteration versus Python morph
 
-Earlier in this part, we noted that some built-ins, such as `map`, support only a single traversal. After that, they are empty. This section shows why that matters in practice. It also shows how Python changes can break your code.
+Earlier in this part, we noted that some built-ins, such as `map`, support only a single traversal. After that, they are empty. This section shows why that matters in practice, and how a Python change can quietly break your code.
 
 In earlier editions of this book, a clever `zip` emulation worked. It was adapted from Python's documentation at the time. It worked because `map` returned a physical list, not a generator of values:
 
@@ -4744,7 +4752,7 @@ def myzip(*args):  # Before 3.0...
 KeyboardInterrupt
 ```
 
-This broke in Python 3.0. The code relied on `map` supporting several scans. In 3.0, `map` became a single-scan generator. Once the list comprehension scanned `iters` one time, the generator was used up. But it still tested as true. Later list comprehensions returned `[]`. The loop then ran until a Ctrl+C stopped it.
+This broke in Python 3.0. The code relied on `map` supporting several scans. In 3.0, `map` became a single-scan generator. Once the list comprehension scanned `iters` one time, the generator was used up. It still tested as true, though. Later list comprehensions returned `[]`, and the loop ran until a Ctrl+C stopped it.
 
 The earlier edition fixed this by wrapping `map` in `list`, which made it reiterable:
 
@@ -4759,7 +4767,7 @@ def myzip(*args):  # Before 3.7...
 RuntimeError: generator raised StopIteration
 ```
 
-This version broke in Python 3.7. The code had relied on an uncaught `StopIteration` from any iterable in `iters`. That exception passed through the function and ended its generation of values. Python 3.7 stopped this propagation. A generator now raises a `RuntimeError` instead. The workaround is to catch `StopIteration` explicitly and `return`. A `return` in a generator raises `StopIteration` anyway:
+This version broke in Python 3.7. The code had relied on an uncaught `StopIteration` from any iterable in `iters`. That exception passed through the function and ended its generation of values. Python 3.7 stopped this propagation, so a generator now raises a `RuntimeError` instead. The workaround is to catch `StopIteration` explicitly and `return`. A `return` in a generator raises `StopIteration` anyway:
 
 ```python
 def myzip(*args):  # After 3.7, and before ?...
@@ -4775,7 +4783,7 @@ def myzip(*args):  # After 3.7, and before ?...
 [('a', 'l'), ('b', 'm')]
 ```
 
-The `try` statement is covered in a later part. In rare generators that relied on the old bubbling behavior, you may need to translate exceptions into returns this way. This final version works today, but its future is uncertain.
+The `try` statement is covered in a later part. In rare generators that relied on the old bubbling behaviour, you may need to translate exceptions into returns this way. This final version works today, but its future is uncertain.
 
 The lessons are clear. Wrapping `map` calls in `list` calls is not just for display. Generators no longer pass exit exceptions out of the code they run. Python changes can break code, both subtly and repeatedly.
 
@@ -4783,17 +4791,17 @@ The lessons are clear. Wrapping `map` calls in `list` calls is not just for disp
 
 Now that you have worked through function coding and the iteration tools, this short detour puts both to use. It closes the functions part with a larger case study. The case study times the iteration tools we have met so far, in standard Python and in one of its alternatives.
 
-Along the way, you will survey Python's code-timing tools and learn general benchmarking techniques. You will also write timing code that is more realistic than most examples so far. The speeds you measure may or may not matter, depending on what your programs are for.
+Along the way, you will survey Python's code-timing tools and learn general benchmarking techniques. You will also write timing code that is more realistic than most examples so far. Whether the speeds you measure matter depends on what your programs are for.
 
-Because this is the last chapter in the part, the section ends with common gotchas. First, though, let's time some real code.
+Because this is the last chapter in the part, the section ends with common gotchas. First, though, let us time some real code.
 
 ## Benchmarking with homegrown tools
 
-We have met quite a few iteration alternatives. Each one is a trade-off between expressiveness and speed. Picking the right tool is part of an engineer's job, and speed is only one factor.
+We have met quite a few iteration alternatives. Each one is a trade-off between expressiveness and speed. Picking the right tool is part of an engineer's job, and speed is only one factor in that choice.
 
 Earlier sections said that list comprehensions and `map` calls sometimes beat `for` loop statements for speed. They also said that sort speed depends on how the input is ordered. Generator functions and expressions tend to be slower than the other options. They do save memory, though, and they do not delay the caller when there are many results to produce.
 
-That holds in common use today. Benchmarking still comes with big caveats. Code structure and host hardware can change speed in ways that are hard to predict. Python's speed also shifts over time, because its internals keep being optimized. Alternative Pythons can differ from CPython by a wide margin.
+That holds in common use today, but benchmarking still comes with big caveats. Code structure and host hardware can change speed in ways that are hard to predict. Python's speed also shifts over time, because its internals keep being optimized. Alternative Pythons can differ from CPython by a wide margin.
 
 In short, if you want to verify speed for yourself, time your code on your own device. Use the Python versions you plan to run, and measure them now. That list of qualifiers is long, yet benchmarking is at heart a hands-on, measure-it-yourself task.
 
@@ -4801,7 +4809,7 @@ In short, if you want to verify speed for yourself, time your code on your own d
 
 Python makes timing easy, which can be deceptive. To get the total time for several calls to a function with positional arguments, a small module like this is a fair first draft.
 
-Example 21-1. timer0.py
+timer0.py
 
 ```python
 "Simplistic timing function"
@@ -4817,7 +4825,7 @@ The function reads the clock from the standard-library `time` module. It runs th
 
 `time.perf_counter` is a portable clock with the best resolution for short durations. The difference between two calls is the usual way to measure performance. That difference includes time spent sleeping, and it counts system-wide time. `time.process_time` reports per-process CPU time instead, which is useful in some roles. The older `time.clock` was deprecated and later dropped, so older examples may break.
 
-Apart from those `time` calls, the code uses tools you already know. On the book's macOS machine with CPython 3.12, the REPL results look like this:
+Apart from those `time` calls, the code uses tools you already know. On a macOS machine with CPython 3.12, the REPL results look like this:
 
 ```
 >>> from timer0 import timer
@@ -4841,7 +4849,7 @@ In other words, timing code is more complex than it looks.
 
 The second version is more general and more accurate. It defines small timing utilities in a module file, so any program can import them. Its docstrings give usage details that `help` and PyDoc can display.
 
-Example 21-2. timer.py
+timer.py
 
 ```python
 """
@@ -4892,7 +4900,7 @@ The module times four ways: one call, a total over many calls, the best single t
 - Every function returns the timed function's return value with the time, so callers can verify the result.
 - The best-of modes return the minimum time, which filters out fluctuations on the host.
 
-Each function serves a different use case. `once` times a single call. `total` runs many calls, so very short functions accumulate measurable time. `bestof` returns the minimum among single calls, which filters out other activity. `bestoftotal` takes the minimum of nested total-time runs, which combines both ideas.
+Each function serves a different use case. `once` times a single call. `total` runs many calls, so very short functions accumulate measurable time. `bestof` returns the minimum among single calls, which filters out other activity on the host. `bestoftotal` takes the minimum of nested total-time runs, which combines both ideas.
 
 The `min` calls in the best-of variants work because Python compares tuples from left to right. Each result tuple begins with the time, so the time decides the comparison:
 
@@ -4934,13 +4942,13 @@ You could nest `total` inside `bestof` instead, like this:
 (0.07037258706986904, (0.039281503297388554, 'HACKHACKHACK…etc…'))
 ```
 
-That is not quite the same. The result is nested tuples, and the timed work now includes the `total` function itself, not only the function it runs. That adds admin overhead, which pushes the best-of time up. The nested result ends up larger than the best total shown inside it. Taking `min` of `total` directly avoids that skew. It is subtle, but it is true.
+That is not quite the same. The result is nested tuples, and the timed work now includes the `total` function itself, not only the function it runs. That adds admin overhead, which pushes the best-of time up. The nested result ends up larger than the best total shown inside it. Taking `min` of `total` directly avoids that skew. The point is subtle, but it is true.
 
 ### Timing runner and script
 
-To time iteration tools, write a script that defines test functions and hands them to the timer. Example 21-3 defines a utility module named `timer_runner`. Its `runner` function accepts any number of test functions. It passes each one to `bestoftotal` from the timer module.
+To time iteration tools, write a script that defines test functions and hands them to the timer. The next example defines a utility module named `timer_runner`. Its `runner` function accepts any number of test functions. It passes each one to `bestoftotal` from the timer module.
 
-Example 21-3. timer_runner.py
+timer_runner.py
 
 ```python
 "Run passed-in test functions with the timer.py module"
@@ -4960,11 +4968,11 @@ def runner(*tests):
           else 'All results same.')
 ```
 
-The `runner` function prints the Python version and platform. It steps through the tests, printing each function's `__name__` and its best time. It keeps the results, so it can check at the end that they all match. That keeps the comparison fair, because every test must build the same data.
+The `runner` function prints the Python version and platform. It steps through the tests, printing each function's `__name__` and its best time. It keeps the results, so it can check at the end that they all match. That check keeps the comparison fair, because every test must build the same data.
 
-Example 21-4 defines the actual tests and passes them to the runner. Run this file as a top-level script to time the iteration styles from this part.
+The next example defines the actual tests and passes them to the runner. Run this file as a top-level script to time the iteration styles from this part.
 
-Example 21-4. timer_tests.py
+timer_tests.py
 
 ```python
 "Test the relative speed of iteration coding alternatives."
@@ -5010,7 +5018,7 @@ genFunc : 0.41203 => [0...9999]
 All results same.
 ```
 
-In short, `map` calls are faster than list comprehensions, and list comprehensions are quicker than `for` loops. Generator expressions and generator functions come last, and they roughly tie for slowest. Generator expressions are much slower than list comprehensions today, which is surprising. The difference shows up clearly in two lines:
+In short, `map` calls beat list comprehensions here, and list comprehensions beat `for` loops. Generator expressions and generator functions come last, roughly tied for slowest. Generator expressions are much slower than list comprehensions today, which is surprising. The difference shows up clearly in two lines:
 
 ```
 return [abs(x) for x in repslist] # 0.20 seconds
@@ -5052,9 +5060,9 @@ The absolute times reflect older, slower machines. The relative performance of t
 
 ### For more good times: function calls and map
 
-Now swap the `abs` calls for an inline `+` in each test. The results shift in surprising ways. Only the code inside the test functions differs, and the shared runner treats every test the same. Example 21-5 shows the change.
+Now swap the `abs` calls for an inline `+` in each test, and watch the results shift in surprising ways. Only the code inside the test functions differs, and the shared runner treats every test the same. The next example shows the change.
 
-Example 21-5. timer_tests2.py
+timer_tests2.py
 
 ```python
 from timer_runner import runner
@@ -5091,13 +5099,13 @@ genFunc : 0.44476 => [10...10009]
 All results same.
 ```
 
-The earlier edition's Python 3.3 results, on a slower machine, look similar once you allow for machine differences. The interpreter optimizes so much internally that analyzing performance like this is tricky. Without numbers, it is nearly impossible to guess which method is fastest. The best you can do is time your code with your own test parameters.
+The earlier edition's Python 3.3 results, on a slower machine, look similar once you allow for machine differences. The interpreter optimizes so much internally that analysing performance like this is tricky. Without numbers, it is nearly impossible to guess which method is fastest. The best you can do is time your code with your own test parameters.
 
 On this Python, a user-defined `lambda` inside `map` seems to slow it down out of proportion. The `+` operator is also slower than a trivial `abs` call across the board. List comprehensions run quickest in this case, though `map` wins in some others. List comprehensions look consistently faster than `for` loops, but even that needs qualifiers. Extra syntax such as `if` filters can change the relative speed. So can later Python changes, and usage modes this test did not cover.
 
-Example 21-6 applies a simple user-defined function in all five iteration tests. Again, only the test functions' bodies change.
+The next example applies a simple user-defined function in all five iteration tests. Again, only the test functions' bodies change.
 
-Example 21-6. timer_tests3.py
+timer_tests3.py
 
 ```python
 from timer_runner import runner
@@ -5143,11 +5151,11 @@ Performance should not be your main concern when you write Python. The first ste
 
 ### More module mods
 
-The `timer.py` module works as designed, but it could be friendlier. Its functions require repetition counts as their first arguments, with no defaults. That is a minor point, but it is less than ideal in a general-purpose tool. A better design accepts repetition counts as keyword arguments with defaults, much as the print emulators in an earlier chapter did.
+The `timer.py` module works as designed, but it could be friendlier. Its functions require repetition counts as their first arguments, with no defaults. That is a minor point, yet it is less than ideal in a general-purpose tool. A better design accepts repetition counts as keyword arguments with defaults, much as the print emulators in an earlier chapter did.
 
-The repetition names must differ from the names in the timed function. That is why `_reps` replaces `reps`. The function object should also be positional-only, so the name `func` cannot clash with a keyword argument of the same name in the timed code. Example 21-7 makes these changes. Its docstrings are left out for space. The argument-matching sections earlier in this part give more insight.
+The repetition names must differ from the names in the timed function. That is why `_reps` replaces `reps`. The function object should also be positional-only, so the name `func` cannot clash with a keyword argument of the same name in the timed code. The next example makes these changes. Its docstrings are left out for space. The argument-matching sections earlier in this part give more insight.
 
-Example 21-7. timer2.py
+timer2.py
 
 ```python
 "Use keyword-only arguments with defaults for reps, and positional-only for func."
@@ -5221,7 +5229,7 @@ A `_reps` argument passed to `bestoftotal` travels along in `**kargs`, because n
 (0.0030745575204491615, (1, (2, 3), 66, {'d': 77, 'e': 88}))
 ```
 
-Passing keyword arguments to a timed function adds a small unpacking cost. The original `timer.py` has the same overhead. The cost is irrelevant when you compare relative times.
+Passing keyword arguments to a timed function adds a small unpacking cost. The original `timer.py` has the same overhead. That cost is irrelevant when you compare relative times.
 
 Beyond this, custom benchmarking is fun but open-ended. You could time set and dictionary comprehensions against their `for` loop equivalents. You could explore the `profile` and `cProfile` modules, which build full-program profiles instead of focused benchmarks. Or you could explore `timeit`, which works much like this chapter's homegrown code and offers extra options.
 
@@ -5231,7 +5239,7 @@ Beyond this, custom benchmarking is fun but open-ended. You could time set and d
 
 The earlier section used custom timing functions. The standard library also ships a module named `timeit`. It works in similar ways, but it offers more flexibility. It times code strings as well as functions, and it has a command-line mode.
 
-Python's "batteries included" approach means a precoded option exists for most goals. You still need the ideas behind those options to choose and use them well. The `timeit` module shows this clearly. Newcomers have misused it when they did not understand those ideas. Now that the basics are clear, let's move to a tool that automates much of this work.
+Python's "batteries included" approach means a precoded option exists for most goals. You still need the ideas behind those options to choose and use them well. The `timeit` module shows this clearly. Newcomers have misused it when they did not understand those ideas. Now that the basics are clear, let us move to a tool that automates much of this work.
 
 ### Basic timeit usage
 
@@ -5371,11 +5379,11 @@ Rather than more `timeit` details, study a program that uses it to time coding a
 
 ### Benchmark module
 
-The module in Example 21-8, `pybench.py`, times a sequence of statements. Scripts that import it supply the statements. It runs them either on the Python executing the script or on every Python version in a list. It relies on a few standard-library tools, such as `os.popen`.
+The module `pybench.py` times a sequence of statements. Scripts that import it supply the statements. It runs them either on the Python executing the script or on every Python version in a list. It relies on a few standard-library tools, such as `os.popen`.
 
 Because it mostly applies ideas you have already seen, and because it is well documented, treat this file as self-study material. It is also a good exercise in reading Python code.
 
-Example 21-8. pybench.py
+pybench.py
 
 ```python
 r"""
@@ -5443,9 +5451,9 @@ def runner(stmts, pythons=None, tracecmd=False):
 
 ### Benchmark script
 
-This module is only half the picture. Test scripts pass concrete lists of statements and Pythons into its function. The script in Example 21-9 uses command-line arguments to choose its mode. The `-a` switch tests all the listed Pythons instead of just one. The `-t` switch traces the command lines it builds, so you can see how quotes, multiline statements, and tabs are handled.
+This module is only half the picture. Test scripts pass concrete lists of statements and Pythons into its function. The script below uses command-line arguments to choose its mode. The `-a` switch tests all the listed Pythons instead of just one. The `-t` switch traces the command lines it builds, so you can see how quotes, multiline statements, and tabs are handled.
 
-Example 21-9. pybench_tests.py
+pybench_tests.py
 
 ```python
 """
@@ -5533,9 +5541,9 @@ Regrettably, this all-Pythons mode is nearly unusable today. PyPy's inserted cha
 
 ### Timing set and dictionary iterations
 
-Single-Python mode is still useful for scripting a batch of benchmarks, and it works on PyPy too. Example 21-10 runs set and dictionary tests through the driver module from Example 21-8. It shows how each construction style compares.
+Single-Python mode is still useful for scripting a batch of benchmarks, and it works on PyPy too. The next script runs set and dictionary tests through the driver module `pybench.py`. It shows how each construction style compares.
 
-Example 21-10. pybench_tests2.py
+pybench_tests2.py
 
 ```python
 import pybench
@@ -5602,11 +5610,11 @@ If your code relies on a built-in name that you reassign, however, you will have
 
 This case study measured the iteration alternatives from this part and other tools from earlier chapters. It also measured one alternative Python implementation. It used both custom timer code and `timeit`, with a helper that runs code in several modes. It also reviewed common function mistakes that cause trouble.
 
-This concludes the functions part. The next topic is modules, the files that group functions into reusable units. After that comes classes, which are largely packages of functions with special first arguments. Before moving on, work through the questions below to practice what you learned about functions here.
+This concludes the functions part. The next topic is modules, the files that group functions into reusable units. After that comes classes, which are largely packages of functions with special first arguments. Before moving on, work through the questions below to practise what you learned about functions here.
 
 ## Check your understanding
 
-Work through these questions to review the scope ideas in this chapter.
+Work through these questions to review the scope ideas in this chapter. Try to answer each one before you read the answer key, then come back to any that surprised you.
 
 1. What is the output of the following code, and why?
 
@@ -5741,29 +5749,29 @@ Work through these questions to review the scope ideas in this chapter.
 
 Answers:
 
-1. The output is `Hack`. The function references a global variable in the enclosing module. Because the function does not assign `X`, Python treats it as a global.
-2. The output is `Hack` again. Assigning `X` inside the function makes it a local, which hides the global of the same name. The `print` statement finds the global, which is unchanged.
-3. It prints `Py!` on one line and `Hack` on the next. The reference inside the function finds the assigned local. The `print` in the last line finds the global.
+1. The output is `Hack`. The function references a global variable in the enclosing module. Because the function does not assign `X`, Python treats `X` as a global.
+2. The output is `Hack` again. Assigning `X` inside the function makes it a local, and that local hides the global of the same name. The `print` statement finds the global, which is unchanged.
+3. It prints `Py!` on one line and `Hack` on the next. The reference inside the function finds the assigned local. The `print` on the last line finds the global.
 4. This time it prints only `Py!`. The `global` declaration makes the assignment inside the function refer to the module-level `X`, so the global itself changes.
-5. The output is `Py!` on one line and `Hack` on the next. The `print` inside the nested function finds the name in the enclosing function's local scope. The final `print` finds the global variable.
-6. This example prints `Hack`. The `nonlocal` statement makes the assignment to `X` inside the nested function change `X` in the enclosing function's scope. Without it, the assignment would make `X` local to the nested function, a different variable. The code would then print `Py!`.
+5. The output is `Py!` on one line and `Hack` on the next. The `print` inside the nested function finds the name in the enclosing function's local scope, through the E layer. The final `print` finds the global variable.
+6. This example prints `Hack`. The `nonlocal` statement makes the assignment to `X` inside the nested function change `X` in the enclosing function's scope. Without it, the assignment would make `X` local to the nested function, a different variable, and the code would print `Py!`.
 7. Even though local variables disappear when a function returns, you can keep state with shared global variables, with `nonlocal` references in nested functions, or with default argument values. Function attributes attach state to the function itself, instead of looking it up in a scope. Classes and OOP often retain state better than scope-based techniques, because the attribute assignments are explicit. Changing mutable objects in scopes and defaults also works, but some local coding standards may not allow it.
 
-8. The output is `1 2 5`, because `1` and `2` match `a` and `b` by position, and `c` is left out, so it defaults to `5`.
-9. The output is `1 2 3`, because `1` matches `a` by position, and `b` and `c` match `2` and `3` by name. Order does not matter with keywords.
-10. The output is `1 (2, 3)`, because `1` matches `a`, and `*pargs` collects the remaining positional arguments into a tuple.
-11. The output is `1 {'c': 3, 'b': 2}`, because `1` matches `a` by name, and `**kargs` collects the remaining keywords into a dictionary. Its keys keep the order in which they were passed.
-12. The output is `1 5 6 4`, because `1` matches `a`, `5` and `6` unpack into `b` and `c`, and `d` keeps its default of `4`.
+8. The output is `1 2 5`. The values `1` and `2` match `a` and `b` by position, and `c` is left out, so it defaults to `5`.
+9. The output is `1 2 3`. The value `1` matches `a` by position, and `b` and `c` match `2` and `3` by name. Order does not matter with keywords.
+10. The output is `1 (2, 3)`. The value `1` matches `a`, and `*pargs` collects the remaining positional arguments into a tuple.
+11. The output is `1 {'c': 3, 'b': 2}`. The value `1` matches `a` by name, and `**kargs` collects the remaining keywords into a dictionary. Its keys keep the order in which they were passed.
+12. The output is `1 5 6 4`. The value `1` matches `a`, `5` and `6` unpack into `b` and `c`, and `d` keeps its default of `4`.
 13. The output is `(1, ['x'], {'a': 'y'})`. The first assignment inside the function does not reach the caller. The next two change passed-in mutable objects in place, so the caller sees them.
 14. Both create function objects to call later. A `lambda` is an expression, so it returns a function object instead of assigning a name, and it fits where a `def` cannot. Its body is a single expression, so it suits small functions, not large ones.
 15. A `lambda` lets you inline a small piece of code, defer it, and give it state through defaults and enclosing variables. You never need one, because a `def` always works. It helps for small handlers used in one place, such as GUI callbacks, and it pairs well with `map` and `filter`.
-16. All three apply a function to the items of an iterable. `map` collects each call's result. `filter` keeps the items for which the function returns a true value. `reduce` combines the items into a single value by applying the function to a running result and the next item. `reduce` lives in `functools`, not the built-in scope.
-17. Annotations are syntax attached to a function's arguments and result. Python collects them in `__annotations__` and gives them no meaning. Other tools can read them, for example for type hints or error checking.
+16. All three apply a function to the items of an iterable. `map` collects each call's result. `filter` keeps the items for which the function returns a true value. `reduce` combines the items into a single value by applying the function to a running result and the next item. `reduce` lives in `functools`, not in the built-in scope.
+17. Annotations are syntax attached to a function's arguments and result. Python collects them in `__annotations__` and gives them no meaning of its own. Other tools can read them, for example for type hints or error checking.
 18. Recursive functions call themselves, directly or indirectly, to repeat work. They can traverse structures of arbitrary shape and depth. They can also iterate in general, though a loop is usually simpler and more efficient. Explicit stacks or queues can simulate or replace recursion.
 19. Keep functions small and self-contained, with one unified purpose. Communicate through arguments and return values. Change mutable arguments only when the caller expects it. Some programs need other communication mechanisms, but these basics keep code easy to reuse.
 20. Functions can send results back with `return` statements, by changing passed-in mutable arguments, and by setting global variables. Globals are generally discouraged because they make code harder to understand, except in special cases such as multithreaded programs. Functions can also communicate through files and sockets, which this chapter does not cover.
 
-21. A list comprehension in square brackets builds the whole result list in memory at once. In parentheses, it becomes a generator expression. It has the same internal syntax and a similar meaning, but it does not build the list. It returns a generator object that yields one item at a time, when an iteration tool or `next` asks for it.
+21. A list comprehension in square brackets builds the whole result list in memory at once. In parentheses, it becomes a generator expression. The internal syntax is the same and the meaning is similar, but it does not build the list. It returns a generator object that yields one item at a time, whenever an iteration tool or `next` asks.
 22. Generators are iterable objects that follow the iteration protocol automatically. Each has an iterator with a `__next__` method, which `next` runs. That method advances one item at a time and raises an exception at the end. Python has three ways to make one: generator functions with `def` and `yield`, generator expressions with parenthesized comprehensions, and classes that define `__iter__`.
 23. A generator function contains a `yield` statement, with or without its `from` extension. Otherwise it is written like a normal function. Python compiles it specially, so calling it returns a generator object that keeps its state between values. Deleting the `yield` turns it into a normal function, but deleting code can cause other problems.
 24. The `yield` statement sends a result back to the caller and suspends the function's state. The function resumes after that `yield` when `next` or `__next__` is called again. The generator `send` method also resumes it, and it can pass a value that becomes the value of the `yield` expression. A `return` statement ends the generator and can attach a value to the `StopIteration` exception.

@@ -557,6 +557,120 @@ Token Factory quota recovers.
 - Words: 9,087 -> 16,299 (validator count; the other session's expansion accounts for
   most of the pre-rewrite growth). `planning/STATUS.md` updated.
 
+## 3.7 FastAPI microservices (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, working
+  on top of another session's uncommitted edits (preserved, per author approval); Kimi
+  supervised with independent gate runs.
+- Voice treatment: "three-line" health endpoint that grew a DB ping; `/nodes/summary`
+  swallowed by `/nodes/{node_id}` path-order trap; authn/authz gap reframed with no
+  invented frequency claim.
+- Supervision verdict: `loss_check` 0 of 75 terms / 0 of 91 numbers / 0 sources lost;
+  `validate_chapter.py 3.7` VERDICT: OK; chain gate 0.0/1000; 20 questions; lab 4/4.
+  Code-density WARN 8.0 (was 9.5) accepted per policy.
+- Words: 7,936 -> 10,618 (validator count). `planning/STATUS.md` updated. Canonical
+  Volume 3 (3.1-3.11) now 11/11 in the teacher voice.
+
+## Annex 3.15 Modules and packages in depth (2026-11-12, subagent + supervision)
+
+- The 3.12-3.17 "in-depth" series is an annex authored by another session with its own
+  template (no 20 checkpoint questions, no exercises section, no chapter lab, no mermaid,
+  no claim ledger) and no `0f258b4` baseline. Adapted gates per author approval (2026-11-12):
+  loss is measured against a pre-edit working-tree copy kept at `/tmp/pre_31N.md`; the
+  annex template is preserved as-is; validator REVIEW items that appear on the ORIGINAL
+  are accepted (each agent verified by cp-aside comparison).
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`,
+  working on top of the other session's uncommitted edits; Kimi supervised with
+  independent gate runs using the agent's /tmp baseline.
+- Voice treatment: missing-module-on-a-job opener; `sys.path` and the `nobody`
+  web-server case; run-once surprise; two-teams and mailbox-scan images for relative
+  imports.
+- Supervision verdict: `loss_check` vs `/tmp/pre_315.md`: 0 of 123 terms / 0 of 62
+  numbers / 0 sources lost; chain gate 0.0/1000; 0 `details` blocks before and after
+  (annex template preserved); 172 code blocks and 114 headings intact; validator REVIEW
+  is identical on the original (six inherited template gaps: checkpoints, exercises,
+  inferences, mermaid, lab, ledger - not voice-scope).
+- Words: 20,428 -> 21,403 (validator count). No STATUS row (annex is not in
+  structure.txt); status tracked here only.
+
+## Annex 3.13 Statements, iteration and control flow (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, on top
+  of the other session's uncommitted edits; Kimi supervised with independent gate runs
+  using the agent's `/tmp/pre_313.md` baseline.
+- Voice treatment: illegal `1_hack` opener for variable names; health-state scene for
+  `match`; the `else`-belongs-to-the-loop paragraph; iteration protocol with the book
+  and bookmark analogy (consistent with 3.3).
+- Supervision verdict: `loss_check` vs `/tmp/pre_313.md`: 0 of 32 terms / 0 of 76
+  numbers / 0 sources lost; chain gate 0.0/1000; 20 `details` blocks before and after;
+  259 code blocks intact; validator REVIEW identical on the original (inherited annex
+  coverage/template gaps, not voice-scope).
+- Words: 22,256 -> 23,710 (validator count). No STATUS row (annex not in structure.txt);
+  status tracked here only.
+
+## Annex 3.14 Functions, scopes and arguments (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, on top
+  of the other session's uncommitted edits; Kimi supervised with independent gate runs
+  using the agent's `/tmp/pre_314.md` baseline.
+- Voice treatment: LEGB rule given a plain doorway ("three kinds of name"); closures
+  with a carried factory analogy; state-retention options compared as four homes.
+- Supervision verdict: `loss_check` vs `/tmp/pre_314.md`: 0 of 76 terms / 0 of 233
+  numbers / 0 sources lost; 372 code blocks, 196 headings, 13 table rows intact; chain
+  gate 0.0/1000; 0 `details` blocks (annex template preserved); validator REVIEW
+  identical on the original.
+- HONESTY NOTE FROM THE AGENT (recorded for the author): it describes this as a
+  light-to-moderate pass; the densest reference paragraphs (argument ordering, `timeit`
+  internals) still sit close to the original wording. The chapter is 36.7k words;
+  recommend a targeted human-voice spot-check of sections 5-8 if the author wants the
+  same depth of warm-up there.
+- Words: 35,835 -> 36,728 (validator count). No STATUS row (annex not in structure.txt);
+  status tracked here only.
+
+## Annex 3.12 Objects, types and data structures (2026-11-12, two passes + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, on top
+  of the other session's uncommitted edits. FIRST pass covered openers and conceptual
+  core (171/770 body paragraphs); the agent flagged the gap itself and was sent back for
+  a SECOND pass, which brought coverage to 736/770 (remaining 34 are deliberately kept:
+  32 checkpoint questions, 2 caption lines).
+- Voice treatment: shelf-with-numbered-slots for lists extended into a cabinet of
+  labelled drawers for dictionaries; luggage-tag for names vs objects; bit operations
+  walked step by step.
+- Supervision verdict: `loss_check` vs `/tmp/pre_312.md`: 0 of 45 terms / 0 of 251
+  numbers / 0 sources lost; 378 code fences, 186 table rows intact; chain gate 0.1/1000;
+  validator REVIEW identical on the original (inherited annex gaps), readability all ok.
+- Words: 31,832 -> 36,998 (validator count). No STATUS row (annex not in structure.txt);
+  status tracked here only.
+
+## Annex 3.16 Classes and OOP in depth (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017`, on top
+  of the other session's uncommitted edits; agent reports about half the paragraphs
+  re-voiced, definitional ones kept near-original (recorded for the author).
+- Voice treatment: "Python asks the object first" for display overloading; patient
+  hook-by-hook operator overloading walk; DFLR vs MRO for diamonds; mix-ins.
+- Supervision verdict: `loss_check` vs `/tmp/pre_316.md`: 0 of 209 terms / 0 of 132
+  numbers / 0 sources lost; 352 code blocks, 177 headings, 26 tables intact; chain gate
+  0.0/1000; validator REVIEW identical on the original.
+- Words: 40,891 -> 45,443 (validator count). No STATUS row (annex not in structure.txt);
+  status tracked here only.
+
+## Annex 3.17 Exceptions, Unicode, decorators (2026-11-12, subagent + supervision)
+
+- Drafted by `general` subagent on `nebius/deepseek-ai/DeepSeek-V4.1-Flash-1017` (the
+  annex chapter with no other-session edits); Kimi supervised with independent gates.
+- Voice treatment: checkpoint-loader opener for `try`; "box of failures" for
+  ExceptionGroup; two-node job-name story for Unicode normalization; twelve-timed-
+  functions opener for decorators.
+- Supervision verdict: `loss_check` vs `/tmp/pre_317.md`: 0 of 123 terms / 0 of 190
+  numbers / 0 sources lost; 329 fences, 17 tables, 194 headings intact; chain gate
+  0.0/1000; validator REVIEW identical on the original.
+- Noted pre-existing slip inside a PROTECTED code fence (NFC/NFD comment labels in the
+  `Å` example); left for a content pass, like the 1.4 counting slips.
+- Words: 27,206 -> 28,024 (validator count). No STATUS row (annex not in structure.txt);
+  status tracked here only.
+
 ## Model note: Kimi K3 run abandoned
 
 A parallel test of full `Kimi-K3` as a drafting subagent on 1.6 was cancelled by the

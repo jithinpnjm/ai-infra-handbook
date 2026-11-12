@@ -12,11 +12,11 @@ lab_venue: "Mac"
 
 # 3.15 Modules and packages in depth
 
-This chapter goes deeper into material that chapter 3.1 only introduces. You will meet it again whenever you read or write the Python behind schedulers, operators, exporters and training launchers.
+Sooner or later a job fails for a reason that has nothing to do with GPUs: Python cannot find one of its own files. Everything in this chapter builds on material that chapter 3.1 only introduces. You will meet it again the first time you open the Python behind a scheduler, an operator, an exporter or a training launcher.
 
 ## Module essentials
 
-A module usually matches one Python source file. Every file of code is a module automatically. Modules import other modules to use the names those modules define. A module can also stand for an extension written in C, Java or C#, or for a whole directory in a package import. Three tools handle modules in all of these forms.
+Open any scheduler, operator or exporter and the first thing you see is a wall of imports. Before you can read the rest of the file, you need to know what those lines really do. Most of the time a module is simply one Python source file. Any file of code becomes a module by existing; nothing declares it. Modules import other modules so they can use the names those modules define. A module can also stand for an extension written in C, Java or C#, or for a whole directory in a package import. Three tools handle modules in all of these forms.
 
 | Tool | What it does |
 |---|---|
@@ -24,25 +24,25 @@ A module usually matches one Python source file. Every file of code is a module 
 | `from` | Allows clients to fetch particular names from a module |
 | `importlib.reload` | Provides a way to reload a module's code without stopping Python |
 
-You have already used imports to load standard-library modules and code files in your current directory. The statement looks simple. Underneath it sits a richer model, and this chapter walks through it.
+You have already used imports to load standard-library modules and code files in your current directory. The statement looks simple enough. Underneath it sits a richer model, and this chapter walks you through that model one piece at a time.
 
 ### Why use modules
 
-A module organizes code into self-contained packages of variables called namespaces. Every name defined at the top level of a module file becomes an attribute of the imported module object. Those names stay hidden until another file imports them, so they do not clash with names in other files.
+A module organizes code into self-contained packages of variables called namespaces. Every name defined at the top level of a module file becomes an attribute of the imported module object. Until another file imports them, those names stay hidden, so they do not clash with names in other files.
 
 This ties back to scopes, which you studied earlier in this course. Imports give access to names in a module's global scope. The file around a function is that function's own global scope. An import lets one file see another file's global names as attributes. Once imported, the module file's global scope becomes the module object's attribute namespace.
 
-Modules help you link separate files into one larger program. They bring three main benefits.
+Modules are how you link separate files into one larger program. They bring three main benefits.
 
-**Code reuse.** Modules make code permanent. A module's code lives in a file, so you can run it many times and use it in many programs. Code you type at the REPL disappears when you exit Python. Code in a module file stays available.
+**Code reuse.** Modules make code permanent. The code lives in a file, so you can run it many times and use it in many programs. Code you type at the REPL disappears the moment you exit Python. Code in a module file stays available.
 
-**Minimizing redundancy.** When several files need the same code, write it once in a module and import it everywhere. In an earlier benchmarking example, test scripts imported shared timer and test-runner functions instead of repeating them. Like functions, modules keep you from copy-and-paste programming. Changing common code then takes less work.
+**Minimizing redundancy.** When several files need the same code, you write it once in a module and import it everywhere. In an earlier benchmarking example, test scripts imported shared timer and test-runner functions rather than repeating them. Like functions, modules keep you out of copy-and-paste programming. Changing common code then takes less work.
 
-**Namespace partitioning.** Modules are the highest-level namespace in a Python program. A name in another file is invisible unless you import that file explicitly. This works much like the local scope of a function, and it prevents name clashes across programs. You cannot avoid this feature, because everything you run and create lives in a module. Modules group components by their nature.
+**Namespace partitioning.** Modules are the highest-level namespace in a Python program. A name in another file is invisible unless you import that file explicitly. This works much like the local scope of a function, and it prevents name clashes across programs. You cannot opt out of the feature, because everything you run and create lives in a module. Modules group components by their nature.
 
 ## Python program architecture
 
-Most programs are more than one file. Even a small program often pulls in files that someone else wrote. Python encourages a modular structure, where code is grouped into coherent and reusable units. This section shows how the pieces link together.
+Have you ever split a script into two files and then wondered which one Python actually runs? That question sits at the centre of this section. Most programs are more than one file. Even a small program often pulls in files that someone else wrote. Python encourages a modular structure, where code is grouped into coherent and reusable units. This section shows how the pieces link together.
 
 ### How to structure a program
 
@@ -61,7 +61,7 @@ def job(tool):
     print(tool, 'coder')
 ```
 
-A `def` statement creates the function. You can run it later by passing values in parentheses after its name. This function is simple on purpose. It lets us focus on how modules work.
+A `def` statement creates the function. Later you can run it by passing values in parentheses after its name. The function is simple on purpose, so we can keep our eyes on how modules work.
 
 Now suppose `a.py` wants to use `job`. It can contain these statements:
 
@@ -82,7 +82,7 @@ Modules are the top level of code reuse in Python. If `b.job` proves useful, you
 
 ### Standard-library modules
 
-Python ships with a large collection of utility modules called the standard library. The library holds hundreds of modules. It covers operating system interfaces, object persistence, text pattern matching, network scripting, GUI construction, multithreading and much more. These tools are not part of the Python language itself. You get them by importing the right modules on any standard Python installation.
+Python ships with a large collection of utility modules called the standard library. The library holds hundreds of modules. It covers operating system interfaces, object persistence, text pattern matching, network scripting, GUI construction, multithreading and much more. None of these tools belong to the Python language itself. You get them by importing the right modules on any standard Python installation.
 
 Because they are standard-library modules, you can expect them to be present. They also work on most platforms. Earlier examples used `time`, `timeit`, `sys` and `os`. That is only a small part of the library. The standard-library reference manual is free online and covers the rest. The PyDoc tool also lists every importable module.
 
@@ -96,7 +96,7 @@ $ python3
 
 ## How imports work
 
-The import operation is easy to use but easy to misunderstand. Some C programmers compare it to `#include`. That comparison is misleading. Python does not paste one file's text into another. An import is a runtime operation. The first time a program imports a file, it performs three steps:
+You import a module, and a print statement from inside that file fires in the middle of your program's output. Or a module you edited an hour ago refuses to change its behaviour. Both surprises come from the same machinery. The import operation is easy to use and just as easy to misunderstand. Some C programmers compare it to `#include`. That comparison misleads. Python does not paste one file's text into another. An import is a runtime operation. The first time a program imports a file, it performs three steps:
 
 1. Find the module's file.
 2. Compile it to bytecode, if needed.
@@ -106,7 +106,7 @@ All three steps happen only the first time a module is imported during a program
 
 ### Loaded modules are cached
 
-Python stores loaded modules in a normal dictionary named `sys.modules`. At the start of each import, Python checks this dictionary for the module's name. The entry `sys.modules['name']` means the same thing as `name` after `import name`. The keys of `sys.modules` list every module loaded so far.
+Here is a question that puzzles many newcomers. You import a module, change its file, and import it again. Nothing happens. The answer is that Python keeps a registry. It stores loaded modules in a normal dictionary named `sys.modules`. At the start of each import, Python checks this dictionary for the module's name. The entry `sys.modules['name']` means the same thing as `name` after `import name`. The keys of `sys.modules` list every module loaded so far.
 
 ```
 >>> import sys, os
@@ -139,7 +139,7 @@ In either model, Python saves enough information to know when a bytecode file mu
 
 When a module is imported, Python first checks whether the program already loaded it. If not, it looks for a usable bytecode file. A `.pyc` file is usable only if it has the same base name as the source file, and if it passes three checks. It must use a compatible format, which the magic number confirms. It must be up to date with the source, which the saved timestamp and size or hash confirms. And it must have been created by the running Python, which the implementation and version tags in the filename confirm. If the file passes, Python loads it and skips compiling. If not, Python compiles the source and saves a new bytecode file.
 
-Programs still run when bytecode cannot be saved. The compiled code is then created in memory and discarded on exit. The `-B` command-line switch turns off bytecode saves, though you rarely need it. When saved, bytecode files go in a subdirectory named `__pycache__`, next to their source files. This keeps your source folders clean. It also avoids contention and repeated recompiles when several Pythons are installed. Here is what happens when one module file is imported by three different Pythons. On Windows, use `dir` and `py` instead of `ls` and the Python commands.
+A program still runs when bytecode cannot be saved. The compiled code is then created in memory and discarded on exit. The `-B` command-line switch turns off bytecode saves, though you rarely need it. When saved, bytecode files go in a subdirectory named `__pycache__`, next to their source files. This keeps your source folders clean. It also avoids contention and repeated recompiles when several Pythons are installed. Here is what happens when one module file is imported by three different Pythons. On Windows, use `dir` and `py` instead of `ls` and the Python commands.
 
 ```
 $ ls
@@ -170,17 +170,17 @@ Bytecode compilation happens during import. A top-level file therefore leaves no
 
 ### Step 3: run it
 
-After Python compiles or loads the bytecode, it runs the module's code. Statements run from top to bottom. Each name assigned along the way becomes an attribute of the module object. This is how the tools in a module come into being. A `def` statement runs at import time and creates a function. The function is then available to any file that imports the module.
+After Python compiles or loads the bytecode, it runs the module's code. Statements run from top to bottom, one at a time. Each name assigned along the way becomes an attribute of the module object, and that is how the tools in a module come into being. A `def` statement runs at import time and creates a function. The function is then available to any file that imports the module.
 
 Because this step runs real code, top-level work in a module shows up at import time. A top-level `print` displays its output when the file is imported. A `def` statement only creates an object for later use. A `class` statement does the same for classes.
 
 Import operations involve real work. They search for files, may run a compiler, and execute code. For that reason, Python imports each module only once per process by default. Later imports reuse the loaded module, as the `sys.modules` check shows. If you need to load a file again, for example to apply dynamic customizations, you can call `importlib.reload`. The next chapter covers that tool.
 
-Most programmers never notice these mechanics, except for faster startups from skipped compile steps. The search step is the one that often matters.
+Most programmers never notice these mechanics, except for faster startups from skipped compile steps. Of the three steps, the search step is the one that often matters.
 
 ## The module search path
 
-Most programmers must care about the first step, which finds the file to import. You need to know where Python looks. The module search path is the list of directories it searches. You can extend that list for folders of your own.
+Two files on the machine share the name `utils.py`. Which one does your import pick, and why? Most programmers must care about the first step, which finds the file to import. You need to know where Python looks. The module search path is the list of directories it searches. You can extend that list for folders of your own.
 
 Built-in modules such as `sys` are coded in C and linked into Python. Frozen modules such as `os` are optimized for faster startup, starting in Python 3.11. Python checks these two groups first, before it scans the search path, so they take precedence. There are only a few of them, so you can mostly ignore them. `sys.builtin_module_names` lists the first group. Counting the names that do not start with an underscore gives 11:
 
@@ -191,7 +191,7 @@ Built-in modules such as `sys` are coded in C and linked into Python. Frozen mod
 
 ### Search-path components
 
-Often you never need to configure the search path. If you want to import your own files across directory boundaries, you must customize it. Python builds the search path from five components. Some are set for you. Others you can change to tell Python where to look.
+Often you never need to configure the search path. If you want to import your own files across directory boundaries, you must customize it. Python builds the search path from five components. Some are set for you. Others you can change to tell Python where to look. Here they are, piece by piece.
 
 1. **Home directory (automatic).** When you run a program, this is the directory that holds the program's top-level script file. When you work in a REPL, it is the directory where you currently are. Code run with the `-c` and `-m` switches uses the current working directory as its home component.
 2. **`PYTHONPATH` directories (configurable).** Python searches the directories in your `PYTHONPATH` environment variable from left to right, if you set it. `PYTHONPATH` is a list of directory names that hold Python source or bytecode files. It is not set for you by default.
@@ -255,7 +255,7 @@ To see how your Python configures the path, print `sys.path`. The next section s
 
 ### The `sys.path` list
 
-To see the real search path on your machine, print the built-in `sys.path` list. It holds the directory names that Python searches on each import. Python checks each directory from left to right. It uses the first matching file it finds.
+When an import puzzles you, start here. To see the real search path on your machine, print the built-in `sys.path` list. It holds the directory names that Python searches on each import, and the order of that list matters. Python checks each directory from left to right. It uses the first matching file it finds.
 
 Python builds `sys.path` at startup by merging the components above. Inspecting it is useful for two reasons. First, it confirms that your settings took effect. If your settings do not appear after you restart Python, recheck your work. Suppose on macOS you set `PYTHONPATH` to `/Users/me/pycode1:/Users/me/pycode2`. Suppose a `mypath.pth` file in `site-packages` lists `/Users/me/pycode3`. The REPL output looks like this:
 
@@ -276,7 +276,7 @@ The empty string at the front stands for the current directory. Your two custom 
 
 Scripts can also change `sys.path` at runtime. Changes to the program-wide list affect every future import made during the run. The change lasts only for that run. `PYTHONPATH` and `.pth` files are the lasting options. `PYTHONPATH` applies per user, and a `.pth` file applies per installed Python.
 
-Some programs really do need to change `sys.path`. A script running on a web server often runs as a limited user such as `nobody`, to restrict machine access. That user cannot rely on `PYTHONPATH` being set in any particular way. Such a script can add the source directories it needs before it runs its imports. An `append`, an `insert` or another list operation does the job for one run:
+Some programs really do need to change `sys.path`, and the case is worth seeing once. A script running on a web server often runs as a limited user such as `nobody`, to restrict machine access. That user cannot rely on `PYTHONPATH` being set in any particular way. Such a script can add the source directories it needs before it runs its imports. An `append`, an `insert` or another list operation does the job for one run:
 
 ```
 >>> sys.path.append('/Users/me/pycode4') # Extend search path for this run
@@ -287,7 +287,7 @@ You can change `sys.path` in code to influence future imports, and this also wor
 
 ## Module file selection
 
-Folders are not the only thing that matters during an import. File types matter too. Import statements leave off extensions such as `.py`. Python picks the first file on the search path that matches the imported name. That file need not be a `.py` source file. It might be a `.pyc` bytecode file or something else.
+You write `import b`, and Python may load a source file, a bytecode file, a compiled extension or a folder. You never said which one you wanted. Folders are not the only thing that matters during an import. File types matter too. Import statements leave off extensions such as `.py`. Python picks the first file on the search path that matches the imported name. That file need not be a `.py` source file. It might be a `.pyc` bytecode file or something else.
 
 ### Module sources
 
@@ -304,13 +304,13 @@ Imports are the interface to many kinds of external components. These include so
 - A Java class, in the Jython version of Python.
 - A .NET component, in the IronPython version of Python.
 
-Most items on this list go beyond simple files. To the importer, the type of the loaded file does not matter. Both `import b` and `b.attr` work the same way. `b.attr` might fetch a Python variable or a C function that is linked in. Some standard-library modules are written in C rather than Python. They look like Python modules to their clients, so clients do not need to care.
+Most items on this list go beyond simple files. Here is the reassuring part. To the importer, the type of the loaded file does not matter. Both `import b` and `b.attr` work the same way. `b.attr` might fetch a Python variable or a C function that is linked in. Some standard-library modules are written in C rather than Python. They look like Python modules to their clients, so clients do not need to care.
 
 ### Selection priorities
 
-With so many options, conflicts are possible. Python always loads the matching item found in the first, leftmost directory on the search path. But what happens when one directory holds several matching items? Python then follows a standard picking order. That order is not guaranteed to stay the same over time or across implementations.
+With so many options, conflicts are possible, and they are worth understanding before they bite. Python always loads the matching item found in the first, leftmost directory on the search path. But what happens when one directory holds several matching items? Python then follows a standard picking order. That order is not guaranteed to stay the same over time or across implementations.
 
-Do not depend on which file type Python picks within one directory. Make your module names distinct. Or configure the search path so your preferences are explicit.
+One practical rule follows from that. Do not depend on which file type Python picks within one directory. Make your module names distinct. Or configure the search path so your preferences are explicit.
 
 ### Path outliers: standalones and packages
 
@@ -320,13 +320,13 @@ Package imports also differ. An import statement cannot include path or extensio
 
 ## Chapter summary
 
-This chapter covered the basics of modules and the operation of `import` statements. An import finds the designated file on the module search path. It compiles the file to bytecode and runs all its statements to build the module's contents. You can configure the search path to import from directories other than the home and standard-library directories. The main tool is the `PYTHONPATH` setting.
+This chapter covered the basics of modules and the operation of `import` statements. Here is the whole picture in a few sentences, in case you want to check your understanding before the details that follow. An import finds the designated file on the module search path. It compiles the file to bytecode and runs all its statements to build the module's contents. You can configure the search path to import from directories other than the home and standard-library directories. The main tool is the `PYTHONPATH` setting.
 
 Modules and imports sit at the heart of Python's program architecture. Larger programs split into multiple files. Imports link those files at runtime. Imports use the module search path to find files, and modules define attributes for outside use. Together, these divide a program's logic into reusable, self-contained software components.
 
 ## Module files and names
 
-A module is any text file of Python code saved with a `.py` extension. You write the code in a plain text editor. Python needs no special syntax to treat the file as a module. Every name assigned at the top level becomes an attribute that other files can use.
+Save a file called `module1.py` with one function inside it, and you have written a module. There is nothing else to do. A module is any text file of Python code saved with a `.py` extension. You write the code in a plain text editor. Python needs no special syntax to treat the file as a module. Every name assigned at the top level becomes an attribute that other files can use.
 
 For example, a file named `module1.py` can hold one function called `printer`. Importing that file gives you a module object with one attribute, `printer`. That attribute refers to the function.
 
@@ -342,7 +342,7 @@ Modules can also be written in other languages, such as C or C++. In the Jython 
 
 ## Import and from statements
 
-Clients use a module by running an `import` or a `from` statement. Both statements find and compile the module file if it is not loaded yet. Both then run its code. The main difference is how much they copy. An `import` fetches the module as a whole, so you must qualify each name with the module name. A `from` copies specific names out of the module, so you can use them directly.
+Two lines of code can load the same module and leave your file looking quite different. One leaves you holding a module object. The other leaves you with bare names. Clients use a module by running an `import` or a `from` statement. Both statements find and compile the module file if it is not loaded yet. Both then run its code. The main difference is how much they copy. An `import` fetches the module as a whole, so you must qualify each name with the module name. A `from` copies specific names out of the module, so you can use them directly.
 
 ### The import statement
 
@@ -366,9 +366,9 @@ The `from` statement copies one or more names out of the module, separated by co
 Hello world!
 ```
 
-The copied name lands in the scope where the `from` statement appears. So you can call `printer` without typing the module name. You must do it this way, because `from` does not assign the module's own name. After this statement, `module1` is undefined.
+The copied name lands in the scope where the `from` statement appears. So you can call `printer` without typing the module name first. You have to do it that way, because `from` does not assign the module's own name. After this statement, `module1` is undefined.
 
-The `from` statement is an extension of `import`. It loads the file in the usual way, then copies names out of it. Only names are copied, not objects. The whole file still loads, but you get direct access to the parts you need.
+Think of `from` as an extension of `import`. It loads the file in the usual way, then copies names out of it. Only names are copied, not objects. The whole file still loads, but you get direct access to the parts you need.
 
 ### The from * statement
 
@@ -388,7 +388,7 @@ The `*` form works only at the top level of a module file. Inside a function, it
 
 ## Imports run once and at runtime
 
-Many new users ask why their imports stop working. The first import works, but later imports in the same session seem to do nothing. This is by design. A module's code runs on the first `import` or `from` only. Importing is an expensive operation, so Python does it once per file, per process. Later imports fetch the module object that is already loaded.
+Picture a session like this. You import a module, see its message once, import it again, and nothing happens. Many new users ask why their imports stop working at that point. The first import worked, but later imports in the same session seem to do nothing. This is by design, not a fault. A module's code runs on the first `import` or `from` only. Importing is an expensive operation, so Python does it once per file, per process. Later imports fetch the module object that is already loaded.
 
 Because top-level code runs only once, you can use it to set up names. The name's value can then change later. Consider a file called `init.py` with two lines:
 
@@ -433,7 +433,7 @@ Python does not resolve or run an import until it reaches that line. So an impor
 
 ## Shared objects and cross-file changes
 
-Both `import` and `from` are implicit assignments. The normal assignment rules therefore apply. A name copied with `from` starts out referring to the same object as the module's name. Reassigning the copied name changes only the importer's name. Changing a shared mutable object through the copied name changes it in the source module too.
+Two files can end up pointing at one list. One of them appends to it, and the other sees the change too. That surprises people, but it is ordinary assignment at work. Both `import` and `from` are implicit assignments, so the normal assignment rules apply. A name copied with `from` starts out referring to the same object as the module's name. Reassigning the copied name changes only the importer's name. Changing a shared mutable object through the copied name changes it in the source module too.
 
 Consider a file called `share.py`:
 
@@ -479,7 +479,7 @@ The first assignment changes only your local `x`. The assignment to `share.x` ch
 
 ## Choosing import or from
 
-A `from` statement is equivalent to a short sequence of plain statements. This line:
+Which form you choose matters more than it looks at first, and the reason becomes clear once you see what each one expands to. A `from` statement is equivalent to a short sequence of plain statements. This line:
 
 ```
 from module import name1, name2
@@ -541,7 +541,7 @@ The `as` extension works in both `import` and `from`. In `import`, it can also g
 
 ## Module namespaces
 
-Modules are best understood as packages of names. A module is a place to define names that should be visible to the rest of a system. Usually a module matches a file. Python creates one module object that holds all names assigned in that file. In simple terms, a module is a namespace, and its names are attributes.
+You write `X = 1` near the top of a file, and a colleague reaches the same value as `M.X` from their own code. How did that name travel from a line in your file to an attribute on an object? Modules are best understood as packages of names. A module is a place to define names that should be visible to the rest of a system. Usually a module matches a file. Python creates one module object that holds all names assigned in that file. In simple terms, a module is a namespace, and its names are attributes.
 
 Given `X = 1` at the top level of a file `M.py`, the name `X` becomes an attribute of `M`. Outside the module, you refer to it as `M.X`. Inside `M.py`, `X` is also a global variable. Four ideas explain how this works.
 
@@ -644,7 +644,7 @@ Qualification works on modules, classes and other objects with attributes. Class
 
 ## Imports and scopes
 
-An import never gives a file access to names in another file. You must import the file first. A variable's meaning depends on where it is assigned in the source code. An attribute is always requested from an object by name.
+Here is a trap worth meeting early. A file imports another file and then expects to see that file's variables. It never will, no matter who imports whom. An import never gives a file access to names in another file. You must import the file first. A variable's meaning depends on where it is assigned in the source code. An attribute is always requested from an object by name.
 
 Consider two modules. The first, `lex1.py`, defines `X` and a function that changes it:
 
@@ -718,7 +718,7 @@ The statement `import nest2.nest3` is not the same as `import nest2`. It uses th
 
 ## Reloading modules
 
-A module's code runs only once per process by default. To run it again, call the `reload` function. The `reload` function is covered briefly in earlier chapters. Here is what happens with imports and reloads:
+You edit a module, save it, and switch back to a Python session that is still running. The session keeps using the old code, and importing again changes nothing. A module's code runs only once per process by default. To run it again, call the `reload` function. The `reload` function is covered briefly in earlier chapters. Here is what happens with imports and reloads:
 
 - Both `import` and `from` load and run a module's code only the first time it is imported in a process.
 - Later imports use the loaded module object. They do not rerun the file, even if you saved a new version of its source during the run.
@@ -822,7 +822,7 @@ The `reload` function has moved over time. It began as a built-in function, then
 
 ## Package imports
 
-So far, each import has loaded a single file. A package is a folder of module files, and it can hold nested folders too. Package imports let you load those files with the statements you already know. The import story gets richer here. This section covers four topics: package imports, packages themselves, package-relative imports, and namespace packages.
+Two tools installed on the same machine both ship a file called `utils.py`, and you need both of them. A single file import cannot give you both, and that is the problem packages solve. So far, each import has loaded a single file. A package is a folder of module files, and it can hold nested folders too. Package imports let you load those files with the statements you already know. The import story gets richer here. This section covers four topics: package imports, packages themselves, package-relative imports, and namespace packages.
 
 A package import turns a folder on your computer into a Python namespace. Its attributes match the module files and subfolders inside. Package imports also resolve cases where several installed programs contain files with the same name.
 
@@ -830,7 +830,7 @@ Packages are an advanced topic. Many readers can leave them until they gain expe
 
 ### Dotted paths in imports
 
-To load an item inside a package folder, list the folder names in a path, separated by periods. You can use that dotted path wherever you would name a simple file. This works in an `import` statement:
+To load an item inside a package folder, list the folder names in a path, separated by periods. You can use that dotted path wherever you would name a simple file. The dots are doing real work here, and the next few examples show where. This works in an `import` statement:
 
 ```
 import dir1.dir2.mod
@@ -860,7 +860,7 @@ Python treats the dotted path as nested objects. After `import dir1.dir2.mod`, t
 
 ### Packages and the module search path
 
-Package paths use only variable names separated by periods. You cannot use platform-specific path syntax in an import statement. Forms such as `C:\dir1`, `/Users/me/dir1`, or `../dir1` are not valid there. These lines fail with a syntax error:
+Package paths use only variable names separated by periods. You cannot use platform-specific path syntax in an import statement. This is where import syntax and shell syntax part company. Forms such as `C:\dir1`, `/Users/me/dir1`, or `../dir1` are not valid there. These lines fail with a syntax error:
 
 ```
 import C:\Users\me\mycode\dir1\dir2\mod # Error: illegal syntax (Windows)
@@ -877,7 +877,7 @@ Entries on the search path supply the platform-specific prefix. The import state
 
 ## Creating packages
 
-To build a package, bundle module files and nested folders into a package folder. The folder can also hold an `__init__.py` file, which runs on the first import. It can hold a `__main__.py` file too, which runs when the whole folder runs as a bundle. The next sections build these pieces one at a time.
+Suppose you have three helper modules in a folder, and a colleague wants to import them from another project. Turning that folder into a package is the usual answer. To build a package, bundle module files and nested folders into a package folder. The folder can also hold an `__init__.py` file, which runs on the first import. It can hold a `__main__.py` file too, which runs when the whole folder runs as a bundle. The next sections build these pieces one at a time.
 
 ### Basic package structure
 
@@ -937,7 +937,7 @@ As with top-level modules, a nested module's code runs only on its first import:
 >>> import dir1.dir2.mod
 ```
 
-You generally must import a nested module before you use its attributes. Folders that become module objects do not go back to the filesystem on attribute fetches. So importing only the root folder is not enough:
+This is the first thing that surprises people about packages. You generally must import a nested module before you use its attributes. Folders that become module objects do not go back to the filesystem on attribute fetches. So importing only the root folder is not enough:
 
 ```
 $ python3
@@ -993,7 +993,7 @@ The `as` form of `import` can shorten a path the same way `from` does. A plain r
 
 ### Package __init__.py files
 
-If a package folder needs setup code when it is imported, put that code in a file named `__init__.py` inside the folder. Python calls this file on the package's first import, whether that happens in a program run or in an interactive session. The structure now looks like this:
+A package often needs a little setup before anything else in it runs. The place for that work is a file named `__init__.py` inside the folder. Python calls this file on the package's first import, whether that happens in a program run or in an interactive session. The name is the only special thing about it. The structure now looks like this:
 
 ```
 dir0/
@@ -1019,7 +1019,7 @@ var = 3.12
 print('Running dir1.dir2.__init__.py')
 ```
 
-These files are optional in each folder of a package. They run on the first import through a folder, so they give a natural hook for package-specific setup. Their assignments also fill the namespace of the folder's module object. Names in these files become attributes of the package, as names in a regular file do:
+These files are optional in each folder of a package. When present, they run on the first import through a folder, so they give a natural hook for package-specific setup. Their assignments also fill the namespace of the folder's module object. In plain words, the folder gets a module object of its own, and `__init__.py` is the code that fills it. Names in these files become attributes of the package, as names in a regular file do:
 
 ```
 $ python3
@@ -1109,7 +1109,7 @@ Running dir1.dir2.__init__.py
 Loading dir1.dir2.mod
 ```
 
-A `__main__.py` file works like an app bundle on macOS or a smartphone. The bundle is really a folder, but you can run it as one item. Authors often use `__main__.py` to give a package a command-line interface. Other programs can import the package to use its tools. Users can also launch the whole package as a standalone program. The file can also host test code for the package.
+A `__main__.py` file works like an app bundle on macOS or a smartphone. The bundle is really a folder, but you can run it as one item. Keep that picture in mind, because it explains the rest of this section. Authors often use `__main__.py` to give a package a command-line interface. Other programs can import the package to use its tools. Users can also launch the whole package as a standalone program. The file can also host test code for the package.
 
 A `__main__.py` file also runs when it sits in a ZIP file on the search path. Python treats ZIP files like a normal folder during a module search. Python's documentation covers this option in more detail.
 
@@ -1117,9 +1117,9 @@ One subtlety applies here. Same-package imports inside `__main__.py` may need th
 
 ## Why packages?
 
-Packages are optional. Early in a coding journey they may seem like overkill, and you can write useful programs without them. Still, they are worth knowing. They help make names unique in large programs and in libraries that others use. Placing your code in a package folder makes it unlikely that its file names clash with other software on the same machine.
+Packages are optional, and here is the honest answer about them. Early in a coding journey they may seem like overkill, and you can write useful programs without them. Still, they are worth knowing. They help make names unique in large programs and in libraries that others use. Placing your code in a package folder makes it unlikely that its file names clash with other software on the same machine.
 
-This is the same namespace separation that file-based modules and local function scopes provide. Packages extend it to the filesystem. A reference to your package is qualified by the package folder's name, so same-name collisions are less likely.
+The idea is familiar by now. This is the same namespace separation that file-based modules and local function scopes provide. Packages extend it to the filesystem. A reference to your package is qualified by the package folder's name, so same-name collisions are less likely.
 
 Packages can also make imports more descriptive. They make it easier to track down where a variable lives. They can simplify your search path settings. Package imports are strictly required in one case. That case is resolving ambiguity when several installed programs have same-named files. This is mostly an installation issue. It can also come up in everyday work, because developers often pick simple, similar names for module files.
 
@@ -1201,7 +1201,7 @@ Bundling code in a package keeps such tools self-contained and avoids name confl
 
 The `__init__.py` files in the opening demo were simple. These files can hold arbitrary Python code, just like normal module files. Their special name makes Python run them automatically the first time a program imports the directory. That makes them a hook for setup steps the package needs. They can also be completely empty, and they sometimes have other roles.
 
-The `__init__.py` file serves four roles. It is a hook for package initialization. It creates a module namespace for a directory. It declares a directory as a regular Python package. It also controls what a `from *` statement does for folders in package imports.
+The file serves four roles, and only one of them is the obvious one. It is a hook for package initialization. It creates a module namespace for a directory. It declares a directory as a regular Python package. It also controls what a `from *` statement does for folders in package imports.
 
 ### Package initialization
 
@@ -1209,7 +1209,7 @@ The first time a program imports through a directory, Python runs all the code i
 
 ### Module namespace initialization
 
-Directory paths become real nested object paths after an import. In the earlier demo, `dir1.dir2` works and returns a module object. Its namespace holds all the names assigned by `dir2`'s `__init__.py` file. A folder has no module file of its own, so these assignments give it a place to define names.
+Directory paths become real nested object paths after an import. In the earlier demo, `dir1.dir2` works and returns a module object. Its namespace holds all the names assigned by `dir2`'s `__init__.py` file. A folder has no module file of its own, so these assignments give it a place to define names. That is the second role, and it is easy to miss.
 
 ### Package indicator for search
 
@@ -1229,7 +1229,7 @@ The `__all__` list also declares `from *` exports for simple file-based modules,
 
 ## Package-relative imports
 
-So far, package imports have loaded package files from outside the package. Files inside a package can use the same full-path syntax to import each other, and often should. They can also use a relative syntax. That syntax imports relative to the package itself. It makes sure the imports load the package's own files.
+Up to now, every package import in this chapter has come from outside the package. Files inside a package can import each other the same way, with the full path, and often should. They have a second option as well. A relative import points at the package itself, so the import cannot wander off and load some other file that happens to share the name.
 
 ### Relative and absolute imports
 
@@ -1244,7 +1244,7 @@ from ..module import name # Import a name from a parent-sibling module
 
 The `import` statement would not fit this form. It binds modules to simple names, not to paths. In a `from` statement, though, the source can begin with dots. An import like this is called relative. It finds an item relative to the folder of the enclosing package.
 
-The name comes from relative filename paths. Those paths point to a file from the current working directory. Here, a single dot means the enclosing package folder. Two dots mean its parent folder. Each extra dot goes one level higher, though that is rare. The effect names an item relative to the importing file's package, not a content file relative to the working directory.
+The name comes from relative filename paths. Those paths point to a file from the current working directory. Here the dots work the same way, except that the base is the package. A single dot means the enclosing package folder. Two dots mean its parent folder. Each extra dot goes one level higher, though that is rare. The effect names an item relative to the importing file's package, not a content file relative to the working directory.
 
 A relative import looks only inside the named package. It does not consult the folders on `sys.path`. It also skips the check for built-in and frozen modules. Relative syntax works only when a file is used as part of a package. It fails in any other use. That has both good and bad effects, as the next sections show.
 
@@ -1261,7 +1261,7 @@ Absolute imports within a package do not check the package itself. They skip it 
 
 ### Relative-import rationales and trade-offs
 
-So why use the dots? Relative imports let a package make sure its imports load its own modules. Because they search only the package itself, they will not load a same-named but unrelated module from elsewhere on the host. This makes the package more self-contained. Without relative imports, a stray module of that name could break the package's code. With them, the package depends less on search path settings it cannot predict or control.
+So why use the dots? The short answer is self-defence. Relative imports let a package make sure its imports load its own modules. Because they search only the package itself, they will not load a same-named but unrelated module from elsewhere on the host. This makes the package more self-contained. Without relative imports, a stray module of that name could break the package's code. With them, the package depends less on search path settings it cannot predict or control.
 
 The downside is that this model is all or nothing. You basically must choose a mode for your files: package or program. Relative imports see the package itself, but they cannot be used in nonpackage mode. Absolute imports work in nonpackage mode, but they cannot see the package itself. That combination seems like a catch-22 that limits your code.
 
@@ -1419,7 +1419,7 @@ Namespace packages do not add new syntax. They allow a module to span folders. T
 
 ## Namespace packages
 
-Namespace packages are the last package topic. They are packages that may be built from one or more folders, located in different parts of the module search path.
+Imagine two teams ship parts of one library from two different folders on the same machine. Neither folder knows about the other, yet a single import name has to reach both of them. That is what a namespace package does. Namespace packages are the last package topic. They are packages that may be built from one or more folders, located in different parts of the module search path.
 
 Packages split across folders are probably rare in practice. But the import search changes that made them possible also allow packages without `__init__.py` files. Since this revised algorithm is now the import search itself, namespace packages are a side topic. They are still worth understanding.
 
@@ -1473,7 +1473,7 @@ For most Python users, the biggest benefit is simpler. Namespace packages no lon
 
 ### The module search algorithm
 
-To understand how namespace packages change import search, look at how an import operation works. Python resolves an import by checking a group of candidate folders in turn. For the first part of a dotted name, the candidates are all the directories on `sys.path`. For components nested in a package import, or named in a relative import, the candidates are just the package itself. A package folder has one instance of a given name. A search path may have many.
+To understand how namespace packages change import search, look at how an import operation works. Python resolves an import by checking a group of candidate folders in turn, much like reading a row of mailboxes from left to right. For the first part of a dotted name, the candidates are all the directories on `sys.path`. For components nested in a package import, or named in a relative import, the candidates are just the package itself. A package folder has one instance of a given name. A search path may have many.
 
 For each directory among the candidates, Python tests for matches to the name, in this order:
 
@@ -1483,7 +1483,7 @@ For each directory among the candidates, Python tests for matches to the name, i
 4. If none of the above matches, Python continues the scan with the next candidate directory.
 5. If the candidate scan finishes without a regular package or module from steps 1 or 2, and step 3 recorded at least one directory, Python creates and returns a namespace package. Otherwise, it reports an error.
 
-The namespace package is created right away. It is not deferred until a lower-level import happens. It is a module object with no `__file__` attribute. Its `__path__` attribute is set to an iterable of the directory path strings that step 3 recorded during the candidate scan.
+The namespace package is created right away. It is not deferred until a lower-level import happens. In other words, a namespace package is a real module object, just one with no home file of its own. It is a module object with no `__file__` attribute. Its `__path__` attribute is set to an iterable of the directory path strings that step 3 recorded during the candidate scan.
 
 Later and deeper accesses use this `__path__` as their set of candidates. Each recorded entry is searched whenever a further-nested item is requested. A regular package searches only its one directory. Viewed another way, the `__path__` of a namespace package plays the same role for lower components that `sys.path` plays at the top. It becomes the parent search path for accessing lower items, using the same four-step procedure.
 
@@ -1597,7 +1597,7 @@ Namespace packages are a useful tool. Still, most Python learners do better by f
 
 ## Module design concepts
 
-Modules involve design trade-offs, just as functions do. You decide which functions belong in which module, and how modules communicate. These choices become clearer as systems grow. Four ideas help from the start.
+Picture two modules that read and write each other's globals. Nothing in Python stops you, and a month later nobody can say which value wins. Modules involve design trade-offs, just as functions do. You decide which functions belong in which module, and how modules communicate. These choices become clearer as systems grow. Four ideas help from the start.
 
 You are always inside a module in Python. There is no place to write code outside one. Even code typed at the interactive prompt, also called the REPL, runs in a built-in module named `__main__`. The prompt differs in two ways. Code runs and is discarded at once, and expression results print automatically.
 
@@ -1617,7 +1617,7 @@ A module exports every name assigned at its top level. Python has no syntax for 
 
 Prefix a name with a single underscore, such as `_X`, to keep it out of a `from *` import. This limits namespace pollution. A `from *` copies every name it can, so the importer may get more than it wanted. That can include names that overwrite its own. An underscore does not make a name private, though. `import` and a normal `from` still reach it.
 
-Example 25-1 shows the idea in `unders.py`:
+The idea appears in `unders.py`:
 
 ```
 a, b, _c, _d = 1, 2, 3, 4 # Control from * exports, take 1
@@ -1642,7 +1642,7 @@ NameError: name '_c' is not defined. Did you mean: '_'?
 
 You can also list the names to copy in a variable called `__all__`. Assign it a list of name strings at the top level of the module. Python checks for `__all__` first. When it exists, `from *` copies exactly the names listed, even ones with underscores. When it is missing, `from *` copies every name without a leading underscore. In effect, `__all__` says what to copy, while `_X` says what to skip.
 
-Example 25-2 uses both tools in `alls.py`:
+`alls.py` uses both tools:
 
 ```
 __all__ = ['a', '_c'] # Control from * exports, take 2
@@ -1674,7 +1674,7 @@ Python 3.7 added two special functions that can sit at a module's top level. If 
 
 Their names match same-named methods in classes. They also replace an older, obscure trick. That trick swapped a module's entry in `sys.modules` for a class instance with the same methods. These functions make the idea simpler. They make the most sense after you study classes, which come next.
 
-Example 25-3 shows the basics in `gamod.py`:
+`gamod.py` shows the basics:
 
 ```
 var = 2 # Real attribute returned directly
@@ -1737,7 +1737,7 @@ A later proposal to add a class-style `__setattr__` for module attribute assignm
 
 ## Enabling language changes with `__future__`
 
-Python changes often roll out in stages. Some arrive as optional extensions that stay off by default. Version 3.0 was a glaring exception to that gentle pace. Python 2.X still received support for 12 more years after 3.X came out.
+Open an older Python file and you may find a line that looks like a message from the future. That line is often the first executable statement in the file. Python changes often roll out in stages. Some arrive as optional extensions that stay off by default. Version 3.0 was a glaring exception to that gentle pace. Python 2.X still received support for 12 more years after 3.X came out.
 
 To enable an optional extension in an older Python, use this import form:
 
@@ -1759,12 +1759,12 @@ The Python library manual lists every feature name you can import this way. Thos
 
 ## The `__name__` usage-mode variable
 
-You can import a file as a module, or run it as a standalone script. Python sets a built-in attribute named `__name__` for each module:
+One file can serve two roles, as a library and as a program, and the trick behind it is a single variable. You can import a file as a module, or run it as a standalone script. Python sets a built-in attribute named `__name__` for each module:
 
 - If the file runs as a top-level script, `__name__` is the string `'__main__'`.
 - If the file is imported, `__name__` is the module's name as clients know it.
 
-A module can test its own `__name__` to see how it is being used. Example 25-4 shows the trick in `dualmode.py`:
+A module can test its own `__name__` to see how it is being used. `dualmode.py` shows the trick:
 
 ```
 def title():
@@ -1818,7 +1818,7 @@ print(minmax(lessthan, 4, 2, 1, 5, 6, 3)) # Self-test code
 print(minmax(grtrthan, 4, 2, 1, 5, 6, 3))
 ```
 
-The self-test calls are handy. The problem is that their output appears whenever another file imports this module as a tool. Wrap the self-test calls in a `__name__` check, so they run only for a top-level script. Example 25-5 shows the improved module:
+The self-test calls are handy. The problem is that their output appears whenever another file imports this module as a tool. Wrap the self-test calls in a `__name__` check, so they run only for a top-level script. The improved module follows:
 
 ```
 print('I am:', __name__)
@@ -1930,7 +1930,7 @@ That said, software changes are rarely just name changes.
 
 ## Module introspection
 
-Modules expose most of their useful properties as built-in attributes. That makes it easy to write programs that manage other programs. Tools like this are called metaprograms, because their subject is other programs. The field is called introspection, since programs can see and process object internals. It is an advanced feature, but it helps you build programming tools.
+How does a tool list every name in a module it has never seen? Modules expose most of their useful properties as built-in attributes. That makes it easy to write programs that manage other programs. Tools like this are called metaprograms, because their subject is other programs. The field is called introspection, since programs can see and process object internals. It is an advanced feature, but it helps you build programming tools.
 
 To fetch a module's attribute value, you can qualify the name. You can also index the module's attribute dictionary through the built-in `__dict__` attribute. Python's `vars` built-in is another way to reach `__dict__`. The `sys.modules` dictionary records all loaded modules by their import-name string. The `getattr` built-in fetches an attribute from a string name at runtime.
 
@@ -1960,7 +1960,7 @@ The first form is the easiest to read and type. The others support generic acces
 
 ### Example: listing modules with `__dict__`
 
-Python's internals make it possible to build programs about programs. Example 25-6 uses these ideas in `mydir.py`. The module offers a customized and expanded version of the built-in `dir` function. Its `listing` function takes a module object. It prints a formatted view of the module's namespace, sorted by attribute name.
+Python's internals make it possible to build programs about programs. `mydir.py` uses these ideas. The module offers a customized and expanded version of the built-in `dir` function. Its `listing` function takes a module object. It prints a formatted view of the module's namespace, sorted by attribute name.
 
 ```
 """
@@ -2055,7 +2055,7 @@ Note: you can preload tools such as `mydir.listing`, or a reloader you write, in
 
 ## Importing modules by name string
 
-Often a program gets a module name as a string at runtime. The string might come from a user's menu choice, or from parsing an XML document. You cannot pass such a string to an `import` statement directly. Python expects a variable name that it reads literally, not an evaluated string or expression:
+Type a module name at a prompt and pass it to `import`, and Python refuses. The statement wants a name it can read, not a string it has to evaluate. That is the awkward corner this section handles. Often a program gets a module name as a string at runtime. The string might come from a user's menu choice, or from parsing an XML document. You cannot pass such a string to an `import` statement directly. Python expects a variable name that it reads literally, not an evaluated string or expression:
 
 ```
 >>> import 'string'
@@ -2144,7 +2144,7 @@ By default, you cannot depend on reloads to update every module in a program. Yo
 
 A better approach is a general tool that reloads transitively. It scans a module's `__dict__` attributes and checks each value's `type`. When it finds a nested module, it reloads that module too. The tool calls itself recursively to walk import chains of any depth. The pieces come from earlier topics. The `__dict__` attribute holds a module's namespace. Recursion comes from the functions section. The `type` call checks an object's kind.
 
-The module `reloadall.py` in Example 25-7 defines `reload_all`. It reloads a module, every module it imports, and so on down each chain. It keeps a dictionary of reloaded modules. Recursion walks the import chains. The standard library's `types` module predefines type results for built-in types such as modules. The `visited` dictionary avoids repeats when imports are recursive or redundant. Module objects can serve as dictionary keys. A set would work too.
+The module `reloadall.py` defines `reload_all`. It reloads a module, every module it imports, and so on down each chain. It keeps a dictionary of reloaded modules. Recursion walks the import chains. The standard library's `types` module predefines type results for built-in types such as modules. The `visited` dictionary avoids repeats when imports are recursive or redundant. Module objects can serve as dictionary keys. A set would work too.
 
 ```
 """
@@ -2321,7 +2321,7 @@ The built-in `reload` changed only `ra`. The transitive reloader updated the nes
 
 ### Alternative codings
 
-Some readers prefer recursion, and the next module shows a recursive alternative. Example 25-8 in `reloadall2.py` uses a set instead of a dictionary to detect repeats and cycles. It is slightly more direct because it drops the top-level loop. It also shows recursive coding in general. This module extends the original and replaces only the parts that vary. It imports `tester` from the original and passes in its own `reload_all`. That makes sure this reloader runs in standalone mode.
+Some readers prefer recursion, and the next module shows a recursive alternative. `reloadall2.py` uses a set instead of a dictionary to detect repeats and cycles. It is slightly more direct because it drops the top-level loop. It also shows recursive coding in general. This module extends the original and replaces only the parts that vary. It imports `tester` from the original and passes in its own `reload_all`. That makes sure this reloader runs in standalone mode.
 
 ```
 """
@@ -2343,7 +2343,7 @@ if __name__ == '__main__':
     tester(reload_all, 'reloadall2') # Test: reload myself or arg
 ```
 
-The functions section covered recursive functions. An explicit stack or queue can replace recursion, which sometimes suits a context better. Example 25-9 in `reloadall3.py` is a nonrecursive transitive reloader. It uses a stack instead of recursion, and a set to skip repeats and cycles. For each module, it pushes all attribute values onto the end of the `objects` stack. Those values are filtered later. The loop repeats until no candidates remain. A generator expression could filter out nonmodules in the `extend` call, but that would be more complex.
+The functions section covered recursive functions. An explicit stack or queue can replace recursion, which sometimes suits a context better. `reloadall3.py` is a nonrecursive transitive reloader. It uses a stack instead of recursion, and a set to skip repeats and cycles. For each module, it pushes all attribute values onto the end of the `objects` stack. Those values are filtered later. The loop repeats until no candidates remain. A generator expression could filter out nonmodules in the `extend` call, but that would be more complex.
 
 ```
 """
@@ -2455,7 +2455,7 @@ This is another reason to prefer `import` over `from`. The next section covers t
 
 ## Module gotchas
 
-This section covers the boundary cases that trip up Python learners. Some repeat earlier points. A few are so obscure that good examples are hard to find. Most show something important about the language.
+The import bugs that hurt most are usually not deep. A name clash, or an import that ran before a name existed, is enough to end the afternoon. This section covers the boundary cases that trip up Python learners. Some repeat earlier points. A few are so obscure that good examples are hard to find. Most show something important about the language.
 
 ### Module name clashes
 
@@ -2490,7 +2490,7 @@ Mixing `def` statements with immediate code is hard to read, and it depends on s
 
 ### `from` copies names but does not link
 
-The `from` statement assigns names in the importer's scope. It copies names rather than aliasing them. That matters most for names that live in different files. Consider the simple module `nested.py` in Example 25-10:
+The `from` statement assigns names in the importer's scope. It copies names rather than aliasing them. That matters most for names that live in different files. Consider the simple module `nested.py`:
 
 ```
 X = 99
