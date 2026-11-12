@@ -46,11 +46,11 @@ Before you read on, make sure you know the methodology chapter (1.23), the obser
 When you finish this chapter, you can:
 
 - State the legitimate reasons for benchmarking and the properties of a good benchmark. Explain "casual benchmarking", where you benchmark A, measure B and conclude C.
-- Recognise and avoid the 16 classic failures. They include casual benchmarking, blind faith, numbers without analysis, complex tools, and testing the wrong thing. They also include ignoring the environment, errors, variance and perturbations, and changing multiple factors. The rest are the benchmark paradox, benchmarking the competition, friendly fire, misleading benchmarks, benchmark specials, and cheating.
+- Recognise and avoid the 16 classic failures in section 2. Some come from carelessness, such as casual benchmarking, blind faith, numbers without analysis, and ignoring errors. Others come from the setup, such as testing the wrong thing, ignoring the environment, and changing several factors at once. The rest are about the people involved, such as benchmarking the competition, misleading benchmarks, benchmark specials, and cheating.
 - Choose between micro-benchmarks, simulations (macro), replay and industry-standard benchmarks, and explain the risks of each. Design a micro-benchmark matrix with sunny-day and rainy-day cases.
-- Apply active benchmarking with observability tools. Profile the benchmark and the target, apply USE, characterise the workload, build a custom load generator, ramp load, run a sanity check using bandwidth arithmetic, and do statistical analysis.
+- Apply active benchmarking, which means watching the system with observability tools while the test runs. Profile both the benchmark and the target, apply the USE method, and characterise the workload. Ramp the load, check the result with bandwidth arithmetic, and analyse the numbers statistically.
 - Use the six-question checklist (why not double? did it break limits? did it error? does it reproduce? does it matter? did it even happen?) and the longer vendor-result questions.
-- Run correct CPU, memory, storage (`fio`, parallel filesystems), network (`iperf3`, RDMA `perftest`), GPU (`nvbandwidth`, DCGM diagnostics, burn-in), NCCL (`nccl-tests`), training and inference benchmarks. Along the way you will control clocks, warm-up, steady state, thermals, caches, NUMA and variance.
+- Run correct benchmarks for CPU, memory, storage, network, GPU, NCCL, training and inference. Section 6 names the tools for each, and each tool has its own traps. Along the way you will control clocks, warm-up, steady state, thermals, caches, NUMA and variance.
 - Write a reproducible benchmark report with environment metadata, raw data, distributions and stated limits.
 
 ## 1. Why benchmark, and what makes a good benchmark
@@ -409,7 +409,7 @@ In each case, ask what limited the number before you accept it, the way these ca
 
 ## 9. Hands-on lab: benchmark carefully
 
-Start with the self-checking Python lab. It runs on your own machine. It verifies the 6-question benchmarking checklist, the bandwidth sanity-check arithmetic (`50,000` NFS IOPS x `8 KiB` = `3.28 Gbit/s` > `1 GbE`), the `nccl-tests` conversion from `algbw` to `busbw = algbw * 2(n-1)/n`, the benchmark paradox (`0.5^3 = 12.5%`), and the `median - 3 * MAD` non-regression gate. Run it like this.
+Start with the self-checking Python lab. It runs on your own machine and checks four calculations from this chapter. The first is the bandwidth sanity check, where 50,000 NFS IOPS of 8 KiB each need 3.28 Gbit/s, more than a 1 GbE link can carry. The second is the `nccl-tests` conversion from `algbw` to `busbw`, which is `algbw * 2(n-1)/n`. The third is the benchmark paradox, where three 50 percent wins in a row happen only 12.5 percent of the time. The fourth is the non-regression gate based on `median - 3 * MAD`. The lab also checks the six-question checklist. Run it like this.
 
 ```bash
 python3 code/part01/benchmarking_correctly_lab.py
@@ -469,14 +469,22 @@ The answers come from the checklist, the sanity-check arithmetic and the accepta
 
 ## Exercises
 
-Work through these six exercises once you have read the chapter. They reuse the worked examples and the code above, so keep both open as you go. Check each answer against the worked example it refers to.
+Work through these exercises once you have read the chapter. They reuse the worked examples in section 8 and the code in `code/part01/benchmarking_correctly.py`, so keep both open. Each exercise has one situation and a short question.
 
-1. The first exercise is the Bonnie++ case study. Start by defining casual benchmarking, blind faith, benchmark specials, and the benchmark paradox. The function `compute_benchmark_paradox_win_prob(0.5, 3)` in `code/part01/benchmarking_correctly.py` covers the paradox. Then walk through how Gregg used `iostat`, `bpftrace` on `tracepoint:block:*` and `kprobe:vfs_write`, and `cachestat` to show that Bonnie++'s `739 KB/s` "sequential per-character disk output" test never touched the disk.
-2. The second exercise covers the six-question checklist and quick bandwidth arithmetic. State the six checklist questions, which live in `SIX_CHECKLIST_QUESTIONS`. Then evaluate `check_iops_link_sanity()` for a claim of `50,000` NFS `8 KiB` IOPS over a `1 GbE` link. Finally, decide whether each of three claims is physically possible: `"350 MB/s"` over `1 GbE`, `"55 GB/s"` unidirectional over `400 Gb/s` Ethernet, and `"40 GB/s"` unidirectional over PCIe Gen4 x16.
-3. The third exercise covers storage. Explain why `fio --rw=read --bs=1M --size=2G --numjobs=8` on a `1 TiB` RAM host reported `40 GB/s`. Then write the corrected `fio` flags, `--direct=1`, `--size=64G`, `--iodepth=32`, `--ramp_time=10` and `--lat_percentiles=1`, to measure true NVMe sequential and random 4 KiB performance. Finally, explain how `IOR -C` defeats client page-cache hits on multi-node parallel filesystems. Check your answer against Worked Example A.
-4. The fourth exercise covers GPU traps. Explain why Canary Node C in Worked Example C appeared `6%` slower after a driver upgrade, at `1,410 MHz` against `1,740 MHz`. Then name the four controls that you need for a valid GPU micro-benchmark: `torch.cuda.synchronize()` or CUDA events, warm-up discard, `nvidia-smi -lgc` clock locking, and explicit dtype/sparsity reporting.
-5. The fifth exercise covers `nccl-tests`. (a) Use `compute_nccl_allreduce_busbw()` to compute `algbw` in `GB/s`, the scaling factor `2(n - 1)/n`, and `busbw` in `GB/s`, for the case where `all_reduce_perf` completes a `1 GB` (`1,000,000,000`-byte) AllReduce in `10 ms` (`0.010 s`) across `n = 8` GPUs. Your answer should match the formula given earlier in this chapter. (b) In Worked Example B, explain why the 2-node run plateaued at `22 GB/s` instead of `46 GB/s`. Show how `NCCL_DEBUG=INFO` and `ibstat`/`perfquery` pinpointed both the TCP fallback and the degraded cable.
-6. The sixth exercise covers inference load and regression gating. (a) Contrast closed-loop fixed-concurrency benchmarking with open-loop Poisson-arrival benchmarking, and explain *coordinated omission*. Then explain why Worked Example D's capacity dropped from `4,200` to `1,350` tokens/s/GPU under realistic `3,000`-token prompt distributions. (b) Use `evaluate_median_mad_regression_gate()` to evaluate the candidate runs `[98.8, 99.2, 100.1, 99.0, 99.4]` and `[92.0, 91.5, 93.0, 92.2, 91.8]` against the baseline `[100.0, 101.0, 99.0, 100.5, 99.5]`. Your output should show which candidate passes the gate and which one fails.
+1. A well-known disk tool reports 739 KB/s for its "sequential per-character output" test. Explain why that number cannot come from a real disk, using the arithmetic in section 4. Then say which of `iostat`, `bpftrace`, and `cachestat` showed that the test never touched the disk.
+2. Define casual benchmarking, blind faith, benchmark specials, and the benchmark paradox. For the paradox, call `compute_benchmark_paradox_win_prob(0.5, 3)` and read the result.
+3. State the six checklist questions. They live in `SIX_CHECKLIST_QUESTIONS`.
+4. A vendor claims 50,000 NFS IOPS of 8 KiB each over a 1 GbE link. Run `check_iops_link_sanity()` on the claim. What does it tell you?
+5. Decide whether each claim is physically possible. The first is 350 MB/s over 1 GbE. The second is 55 GB/s in one direction over 400 Gb/s Ethernet. The third is 40 GB/s in one direction over PCIe Gen4 x16.
+6. A `fio` run with `--rw=read --bs=1M --size=2G --numjobs=8` on a host with 1 TiB of RAM reports 40 GB/s. Why? Use Worked Example A to explain.
+7. Write corrected `fio` flags for true NVMe performance. Include `--direct=1`, `--size=64G`, `--iodepth=32`, `--ramp_time=10`, and `--lat_percentiles=1`. Then explain how `IOR -C` stops client page-cache hits on a multi-node parallel filesystem.
+8. In Worked Example C, a canary node looks 6 percent slower after a driver upgrade, at 1,410 MHz against 1,740 MHz. Explain why. Then name the four controls that a valid GPU micro-benchmark needs: synchronization or CUDA events, a discarded warm-up, locked clocks, and a stated dtype and sparsity.
+9. A 1 GB AllReduce finishes in 10 ms across 8 GPUs. Use `compute_nccl_allreduce_busbw()` to find `algbw`, the scaling factor `2(n - 1)/n`, and `busbw`. Check your answer against the formula in section 6.6.
+10. In Worked Example B, the two-node run plateaus at 22 GB/s instead of 46 GB/s. Explain how `NCCL_DEBUG=INFO`, `ibstat`, and `perfquery` found the TCP fallback and the degraded cable.
+11. Contrast a closed-loop benchmark at fixed concurrency with an open-loop benchmark with Poisson arrivals, and explain coordinated omission. Then explain why capacity in Worked Example D fell from 4,200 to 1,350 tokens per second per GPU once the prompts averaged 3,000 tokens.
+12. Use `evaluate_median_mad_regression_gate()` with the baseline `[100.0, 101.0, 99.0, 100.5, 99.5]`. Which of the candidates `[98.8, 99.2, 100.1, 99.0, 99.4]` and `[92.0, 91.5, 93.0, 92.2, 91.8]` passes, and which fails?
+
+---
 
 ## Checkpoint questions (20)
 
