@@ -25,119 +25,46 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Imagine a Saturday night upgrade that leaves the GPU nodes stuck halfway through. Training jobs stop, the on-call engineer gets paged, and nobody knows which change caused it. The chapters in Part 17 so far have been about watching the cluster and acting on what you see. This chapter is about changing a cluster without breaking the work that runs on it. Upgrades are among the riskiest things a platform team does, because each one can break the service-level objectives (SLOs) the business depends on.
+A GPU driver upgrade starts on Saturday night. Half the nodes come back with the new driver, a few never leave the draining state, and a training run that had been healthy for nine days loses everything since its last checkpoint. Nobody can say which change caused it, because three changes went out together. A driver upgrade is risky for a specific reason: it is a kernel module that every GPU job on the node depends on, and the node cannot take new work until it is replaced.
 
-Without a lifecycle process, upgrades happen whenever someone finds time, and the first real test often happens in production. With one, every upgrade follows the same path. It is planned, tested in staging, rolled out with a way back, and checked against the SLOs.
+This chapter is about changing a GPU cluster without breaking the work that runs on it. The cluster has more moving parts than a CPU cluster: the GPU driver, the NVIDIA GPU Operator that manages it, the container toolkit, the Kubernetes version, and the CUDA and NCCL libraries inside the images. Each upgrade can break the service-level objectives (SLOs) the business depends on.
 
-Treat the numbers in the block below as example values, not measurements. Your own upgrade history is the better source for them.
+The method is the same each time. Write the change down, test it on a small canary pool, roll it out in stages with a drain policy that protects running jobs, collect evidence at every stage, and keep a rollback you have already tried. **Before you upgrade a GPU fleet, decide the canary pool, the pass conditions for each stage and the rollback command, and write them in the change request.**
 
-```text
-Why cluster lifecycle is on the critical path (background reading: NVIDIA Zero-to-Hero volume 19; Engineering AI Systems; NVIDIA Zero-to-Hero volume 10; the figures below are examples, not quotations):
-- A typical mature AI platform upgrades every 2-4 weeks (Kubernetes minor
-  versions, GPU driver updates, security patches). Each upgrade is a chance
-  to introduce a regression; each upgrade is a chance to break an SLO.
-- A typical cluster upgrade takes 4-8 hours (rolling restart of every node).
-  A typical failed upgrade takes 24-48 hours to roll back. The cost of a failed
-  upgrade is 24-48 hours of downtime plus the customer-facing SLO breach.
-- The cluster lifecycle process is what turns ad-hoc upgrades into planned
-  upgrades. The process is: change request; peer review; automated tests;
-  staging rollout; production rollout; rollback plan. The process is the
-  difference between a successful upgrade and a failed upgrade.
-```
+Three operational realities make this a platform-team concern.
 
-Three operational realities make this a platform-team concern rather than a data-science concern.
-
-1. The platform team owns the lifecycle. Every upgrade is a platform change, every upgrade carries risk, and every upgrade needs a rollback plan.
-2. Change management is a team habit. Each change gets a peer review, a staging test, and a rollback plan, and that discipline is what makes a change safe.
-3. The upgrade window is a planning constraint. The team chooses a window, such as Saturday 2-6 AM UTC in the example plan, avoids peak hours, and weighs upgrade risk against SLO risk.
-
-**Before you upgrade anything, write the process down: the change request, the peer review, the staging rollout, and the rollback plan.**
-
-### Software needs more than code
-
-A program is executable code that serves one purpose. Software is a larger thing. It includes the libraries, operating manuals, data structures, and documentation that make a program work in practice. A GPU cluster is software in this sense, because its manifests, images, runbooks, and upgrade scripts all change together.
-
-Software engineering applies scientific methods to build software in an organised, disciplined way. The goal is quality software, delivered within a reasonable time and at an affordable cost. An upgrade serves the same goal. A lifecycle process is how the platform team keeps quality, time, and cost in view for every change.
-
-Software is engineered rather than manufactured, so most of its cost lies in engineering, not in production runs. Software now matters to commerce, medicine, engineering, science, and entertainment. When software fails, people can be financially ruined and, in safety-critical systems, even killed. Quality has to be engineered into software on purpose, because it does not arrive by accident. IEEE Standard 610.12-1990 defines software engineering as a systematic, disciplined, and quantifiable approach to the development, operation, and maintenance of software.
-
-A software system is more than its code. It has six components. Users add information, request it, and perform some of the processing. Procedures are the tasks the human parts of the system perform. Information is the meaningful data the system stores and processes.
-
-Documents include the manuals, and sometimes data files that should not be stored electronically. Hardware covers the computers, the networks, and the input and output devices. Software is the set of applications that record, process, and control access to the information. Software also includes documentation for its users, and for the developers and maintainers who will change it.
-
-### Software degrades when it changes
-
-Hardware wears out with use, but software does not wear out in the same way. Software still degrades over its life. Each change can add a bug, and frequent changes can slowly reduce the performance and usefulness of the whole system. Once quality slips, there are no spare parts to swap in.
-
-The lesson for a platform team is an inference from this point, not a quotation. Every upgrade adds risk, even when nothing looks broken, so each change should be deliberate and tested.
-
-### Software keeps evolving after release
-
-Software changes after release because technology and user needs keep changing. Starting over from the beginning is rarely feasible or economical, so the existing software has to be updated instead. The work starts with users' requirements. A prototype goes to users, who suggest changes, and the loop repeats until the product meets its needs.
-
-Belady and Lehman published their laws of software evolution in 1976 and 1985. The laws describe a balance between the forces that drive new development and the forces that slow progress. Lehman also divided software into three types, and each one evolves differently.
-
-- **Static-type software** works strictly to predefined specifications, and it changes least. A calculator program is an example.
-- **Practical-type software** is defined by what its procedures can do, but its solution is not obvious at the start. Gaming software is an example.
-- **Embedded-type software** works closely with the real world, so it is very likely to evolve. Online trading software is an example.
-
-A platform that serves live AI traffic resembles embedded-type software, because the world it serves keeps changing. Lehman's laws for embedded-type software describe what to expect:
-
-- The software undergoes continuous change.
-- The software becomes increasingly complex.
-- Its developers must remember how and why it was built, for continuity.
-- The software keeps growing.
-- Quality declines unless the software is maintained and adapted.
-- The software is a multi-loop, multi-level feedback system, and it must be treated as one when you modify it.
-- The software is capable of self-regulation.
-- The software shows organisational stability over time.
-
-Read these laws as a warning. Quality falls unless someone maintains the system, and the cluster is no exception.
-
-### A lifecycle model is a guide, not a script
-
-Software process, software lifecycle, and system lifecycle all describe the same idea. A process model gives the best practices for carrying out development. Teams often treat that model as a script to follow exactly, and that is a mistake. Tailor the model to the needs of the project and the people on it.
-
-Software engineers care about complexity, scalability, quality, and cost, and software must adapt to a changing environment. A good process produces software that is correct, reliable, usable, and maintainable. It also helps a team predict cost and time more accurately, monitor progress, and re-plan when a project drifts off budget or schedule.
-
-Several basic points hold for almost every project, whatever model it uses:
-
-- Some development activities are common to all successful projects.
-- Some activities must happen before others.
-- Requirements change, so the team must expect that change and manage it.
-- An existing system must be understood before you design its replacement.
-- Delay the decisions that would lock in the final system. Start with an implementation-independent logical design, and commit to the detailed hardware and software design later.
-
-Software engineering can be pictured as four layers. Quality is the first layer. The process sits on top of it and defines the input and output products, the milestones, and how quality is ensured. Methods describe how each part of the process is carried out, such as testing or gathering requirements. Tools support the process, and they are called computer-aided software engineering tools.
+1. The platform team owns the lifecycle. Every upgrade is a platform change with its own risk and its own rollback.
+2. Change management is a team habit. Each change gets a peer review, a staging test and a rollback plan.
+3. The upgrade window is a planning constraint. A rolling driver upgrade takes hours on a big fleet, so the window decides how many nodes you can change at once.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 16.11, Cloud MLOps platforms, covers the upgrade paths on the managed stacks.
-- Chapter 17.6, Alerting and SLOs, defines the SLOs that an upgrade must preserve.
+- Chapter 17.6, Alerting, SLOs and health checks, defines the SLOs and burn-rate alerts that gate an upgrade.
+- Chapter 17.4, the DCGM exporter, holds the GPU fault-signal alerts used as pass conditions.
+- Chapter 10.21, GPU health, explains `dcgmi diag` and the Xid tiers.
 - Chapter 17.7, Failure modes, lists the failures an upgrade must not introduce.
-- Chapter 5.26, How Kubernetes uses the Linux kernel, explains the kernel side of an upgrade.
 
 ### Outcomes
 
 By the end of this chapter, you should be able to:
 
-- Choose an upgrade type (in-place, rolling, blue/green, or canary) for a given workload.
-- Run a change through the full process: change request, peer review, automated tests, staging rollout, production rollout, and rollback plan.
-- Pick an upgrade window that balances upgrade risk against SLO risk.
-- Carry out a rollback, verify that it worked, and tell the team what happened.
-- Run this lifecycle process on GKE, with reliable upgrades, sensible windows, and rollbacks you have tested.
+- Choose an upgrade type (in-place, rolling, blue/green or canary) for a given workload.
+- Plan a GPU driver upgrade with the GPU Operator: canary pool, stages, drain policy and pass conditions.
+- Write a change request, get it reviewed, and test it in staging.
+- Decide the rollback triggers in advance, roll back, and keep the evidence.
+- Pick an upgrade window by doing the arithmetic on node count and parallelism.
 
 ---
 
 ## 1. The upgrade types
 
-Production Kubernetes, chapter 2, sorts upgrade strategies into cluster replacement, node replacement, and in-place upgrades. Cluster replacement costs the most and carries the least risk, because you build a new cluster and move workloads across. Its example replaces a 300-node cluster with a new cluster that starts at, say, 20 nodes and grows as workloads move. In-place upgrades sit at the other end, with the lowest cost and the highest risk.
+Production Kubernetes sorts upgrade strategies into cluster replacement, node replacement and in-place upgrades. Cluster replacement costs the most and carries the least risk, because you build a new cluster and move workloads across. In-place upgrades sit at the other end, with the lowest cost and the highest risk. For a GPU fleet the same trade-off shows up at node level.
 
 ### 1.1 In-place upgrade
 
-Picture a development cluster that nobody depends on. You can stop a workload, replace its software, and start it again, and the change is over in one step. That is an in-place upgrade. It is simple and fast, but rollback is hard, because the old software is gone once it is replaced. Going back usually means restoring from backup, so this is a poor choice for stateful workloads.
+Picture a development cluster that nobody depends on. You stop a workload, replace its software and start it again. That is an in-place upgrade. It is simple and fast, but the old software is gone once it is replaced, so going back usually means restoring from backup.
 
 | Pros | Cons |
 |---|---|
@@ -149,7 +76,7 @@ Use it for dev environments and for non-critical workloads where a short outage 
 
 ### 1.2 Rolling upgrade
 
-Consider a pool of GPU nodes that serves one model. A rolling upgrade takes these nodes one at a time. While one node is upgraded, the rest of the pool keeps serving the old version, so users do not see a full outage. The rollback is to stop the rollout.
+Consider a pool of GPU nodes that serves one model. A rolling upgrade takes the nodes one at a time. While one node is upgraded, the rest of the pool keeps serving the old version. The rollback is to stop the rollout and reverse the nodes already done.
 
 ```mermaid
 flowchart LR
@@ -158,11 +85,11 @@ flowchart LR
     C --> D[Node N<br/>upgraded]
 ```
 
-For each node, drain it, upgrade it, uncordon it, and then move to the next. Use this pattern for stateless workloads, where a Pod can move to another node without losing its state.
+For each node, drain it, upgrade it, check it, uncordon it, and then move to the next. The GPU Operator's driver upgrade controller does exactly this, and section 3 shows its settings.
 
 ### 1.3 Blue/green upgrade
 
-Suppose your service runs on the blue environment, which is the current version. You build the green environment beside it, running the new version. Once green passes your checks, you shift traffic from blue to green at the load balancer. If green misbehaves, you shift traffic back to blue, which is still running. The pattern is suitable for stateful workloads and database upgrades.
+Suppose your service runs on the blue environment, the current version. You build the green environment beside it, running the new version. Once green passes your checks, you shift traffic from blue to green. If green misbehaves, you shift traffic back to blue, which is still running. For GPU fleets this costs a second set of GPUs, which is why it is used for critical or stateful services and not for the whole fleet.
 
 ```mermaid
 flowchart LR
@@ -184,7 +111,7 @@ Deploy green first and test it thoroughly. Shift the traffic only after the test
 
 ### 1.4 Canary upgrade
 
-A canary sends the new version a small share of traffic first. You watch the SLO while only a small group of users sees the new version. If the SLO holds, you widen the share step by step. If it does not, you stop the rollout while the damage is still small.
+A canary sends the new version a small share of traffic first. You watch the SLO while only a small group of users sees the new version. If the SLO holds, you widen the share step by step. If it does not, you stop while the damage is small.
 
 ```mermaid
 flowchart LR
@@ -204,55 +131,119 @@ flowchart LR
     L --> C1
 ```
 
-Deploy the canary, watch the SLO, expand the canary, watch again, and then complete the rollout. Give each step a clear pass condition before you move on. This pattern suits production AI workloads where the SLO is critical.
+For a driver, the canary is a node pool, not a traffic split, and section 3 describes it.
 
-### 1.5 Independent units make upgrades safer
+## 2. What a GPU upgrade touches
 
-Some architectures split a system into parts that deploy on their own. In a microservices design, each component is a separate unit with its own delivery path. A change to one unit does not force a release of the whole system. Applications built this way are generally more robust, scale better, and support continuous delivery more easily.
+A GPU upgrade is several changes with different blast radii. Change them one layer at a time, so a failure points at one cause.
 
-A microkernel design takes a similar approach with a different shape. A small core system holds only the minimal functions needed to keep the system running. Plug-in modules add features and custom rules around it. Many operating systems use this pattern, which is where its name comes from.
+| Layer | What changes | What can break | How you find out |
+|---|---|---|---|
+| GPU driver | Kernel module on every GPU node | Node never becomes ready, Xid errors, slower collectives | Operator upgrade state, `dcgmi diag`, nccl-tests |
+| GPU Operator | The controller and its operands | Operand pods crash, validation fails | `operator-validator` pod, Operator logs |
+| Container toolkit | How containers see GPUs | Pods start with no GPU | Smoke test pod running `nvidia-smi` |
+| Kubernetes version | Kubelet, API, device plugin compatibility | Pending pods, plugin errors | Staging rollout, node conditions |
+| CUDA and NCCL in images | Application libraries | Wrong results or hangs | Staging training and serving tests |
 
-Keep communication between plug-ins to a minimum, because every link is a possible dependency problem. An upgrade to one plug-in then touches far less of the system than an upgrade to the whole. When you choose an upgrade type, ask how many parts of the system the change touches.
+Do not combine the first and last rows in one window. A driver change and an image change together are the Saturday-night story from the opening.
 
-## 2. The change management process
+## 3. The GPU driver upgrade with canary pools
 
-### 2.1 The change request
+### 3.1 Who runs the upgrade
 
-Picture a driver upgrade across a GPU fleet. Before anyone touches a node, the change needs a written record that says what changes, why, how to undo it, and how to test it. That record is the change request. The example below is a sketch. Its bug ID, driver versions, and downtime figure are illustrative, so check each one against your own vendor notes before you reuse the template.
+The GPU Operator runs the driver as a container on each node and ships a driver upgrade controller. On a managed service such as GKE, the provider installs the driver with the node image, and you control it through the node pool settings, so check your provider's documentation. The rest of this section describes the Operator, which is the common case on clusters you run yourself.
 
-```markdown
-# Change Request: GPU Driver Upgrade to 550.54.15
+You change the driver version in one place, the `ClusterPolicy`. The controller then walks the nodes and labels each one with its state in `nvidia.com/gpu-driver-upgrade-state`. The states in order are upgrade-required, cordon-required, wait-for-jobs-required, pod-deletion-required, drain-required, pod-restart-required, validation-required, uncordon-required and upgrade-done. A node that fails ends in upgrade-failed. The validation step runs in the `operator-validator` pod.
 
-## What
-Upgrade the NVIDIA GPU driver from 550.54.14 to 550.54.15 on every GPU node.
+### 3.2 The drain policy
 
-## Why
-The new driver fixes a known issue with NCCL collective timeouts on H100 GPUs (NV Bug 4123456). The fix is critical for multi-node training reliability.
+The drain policy decides what happens to running jobs. It is the part of the upgrade that matters most for training. These are the settings under `spec.driver.upgradePolicy`.
 
-## Risk
-The upgrade requires a node restart; the workload will be evicted; the workload will resume on a different node. The estimated downtime is 5 minutes per node.
-
-## Rollback plan
-The driver can be rolled back by downgrading to 550.54.14. The rollback requires a node restart; the estimated downtime is 5 minutes per node.
-
-## Test plan
-1. Deploy the new driver on a single canary node
-2. Run the NCCL benchmark (nccl-tests) on the canary node
-3. Verify the canary node passes the benchmark
-4. Deploy the new driver on 10% of the cluster
-5. Monitor the SLO for 24 hours
-6. Deploy the new driver on the remaining 90% of the cluster
-7. Monitor the SLO for 7 days
+```yaml
+# ClusterPolicy fragment: settings worth choosing on purpose
+spec:
+  driver:
+    version: "580.95.05"          # the new driver, changed one stage at a time
+    upgradePolicy:
+      autoUpgrade: true
+      maxParallelUpgrades: 1      # nodes upgraded at once; 0 means no limit
+      maxUnavailable: 25%         # ceiling on nodes out of service
+      waitForCompletion:
+        timeoutSeconds: 0         # 0 waits indefinitely for matching jobs
+        podSelector: "app=training"
+      gpuPodDeletion:
+        force: false
+        timeoutSeconds: 300
+        deleteEmptyDir: false
+      drain:
+        enable: false
 ```
 
-### 2.2 The peer review
+Read it as three decisions. First, `waitForCompletion` lets the matching training jobs finish before the node is touched, so a nine-day run is not evicted. The cost is that the upgrade can wait for as long as the job runs, so combine it with a rule that long jobs checkpoint and are released before the window. Second, `gpuPodDeletion` evicts the pods that hold GPUs after a timeout, which suits inference pods that have a replica elsewhere. Third, `drain` is a fallback that drains the whole node and is off unless you enable it. NVIDIA's page lists these fields and the example values shown here. Defaults are stated only for the NVIDIADriver resource, so check the ones that apply to your Operator version.
 
-Next, a peer reads the change before anything runs. In a Git-based workflow, the change request becomes a pull request, which gives the review a natural home. The reviewer checks the change for correctness, reads the rollback plan closely, and then approves or rejects it.
+For inference, protect availability with a PodDisruptionBudget on each serving deployment, and a `preStop` hook that lets in-flight requests finish. For training, checkpoint before the window, because an eviction loses all work since the last checkpoint. The checkpoint interval is therefore the cost of a forced eviction.
+
+### 3.3 The canary pool and the stages
+
+A canary pool is a small group of nodes that takes the new driver first. Label it so you can target it, and run real but tolerant workloads there, such as a staging copy of an inference service or short training jobs. Move to the next stage only when every pass condition holds for the soak time.
+
+| Stage | Nodes (for 200) | Soak before the next stage | Pass conditions |
+|---|---|---|---|
+| Canary | 1 to 2 nodes | 24 hours | All of the conditions below |
+| Early | 10 percent, 20 nodes | 24 hours | Same conditions, under real load |
+| Wide | Remaining 180 nodes | 7 days of heightened monitoring | Same conditions, plus no rising rollback rate |
+
+The pass conditions use signals you already have.
+
+- `dcgmi diag -r 3` passes on the canary nodes. Level 3 takes about 15 minutes and stresses memory, tensor cores, PCIe, power and cooling, as chapter 10.21 explains.
+- An nccl-tests all-reduce run reaches a bus bandwidth within 5 percent of the pre-upgrade baseline. The 5 percent matches the benchmark threshold in `upgrade_tests.yaml`, and chapter 12.17 explains how to read bus bandwidth.
+- No tier 3 Xid, no failed row remap, no GPU count mismatch and no missing exporter, using the alerts in chapter 17.4.
+- No fast burn on the SLOs in chapter 17.6, meaning the one-hour and five-minute error ratios stay under 14.4 times the budget.
+- No node in the `upgrade-failed` state.
+
+To skip a node deliberately, for example one that runs a job you cannot interrupt, label it `nvidia.com/gpu-driver-upgrade.skip=true`. To stop the whole upgrade, set `autoUpgrade` to false, which makes the Operator remove the upgrade-state labels. Nodes already upgraded stay upgraded.
+
+### 3.4 Window arithmetic
+
+The window has to hold the work. Suppose each node takes 15 minutes from cordon to uncordon, which is an example and not a measurement. With `maxParallelUpgrades` at 1, the 180 remaining nodes need 45 hours. With ten at a time, they need 4.5 hours, but ten out of 200 nodes is 5 percent of capacity gone for the whole window, so check that the cluster can spare it. Measure your real per-node time on the canary and compute the window from it.
+
+## 4. The change management process
+
+### 4.1 The change request
+
+Before anyone touches a node, the change needs a written record: what changes, why, how to undo it and how to test it. The example below is a sketch. The new version is the example NVIDIA's documentation uses, and the old version and the downtime estimate are placeholders to replace from your own notes.
+
+```markdown
+# Change Request: GPU Driver Upgrade to 580.95.05
+
+## What
+Upgrade the NVIDIA GPU driver from DRIVER_OLD to 580.95.05 on every GPU node, using the GPU Operator upgrade controller.
+
+## Why
+State the vendor release note or bug that this driver fixes, and link it.
+
+## Risk
+Each node is cordoned and its driver pod restarted. Jobs matching the waitForCompletion selector finish first; other GPU pods are evicted after 300 seconds. Estimated time per node: measured on the canary.
+
+## Rollback plan
+Patch spec.driver.version back to DRIVER_OLD. The same controller reverses the nodes already upgraded. Tested in staging on DATE.
+
+## Test plan
+1. Upgrade the canary pool and run dcgmi diag -r 3 and nccl-tests
+2. Soak 24 hours and check the pass conditions
+3. Upgrade 10 percent of the cluster and soak 24 hours
+4. Upgrade the remaining nodes
+5. Monitor the SLOs for 7 days
+```
+
+### 4.2 The peer review
+
+A peer reads the change before anything runs. In a Git-based workflow, the change request becomes a pull request. The reviewer checks the change for correctness, reads the rollback plan closely, and approves or rejects it.
 
 ```bash
 # Request peer review on the change request
 gh pr create \
-  --title "Change Request: GPU Driver Upgrade to 550.54.15" \
+  --title "Change Request: GPU Driver Upgrade to 580.95.05" \
   --body-file change_request.md \
   --reviewer platform-team-lead
 
@@ -262,11 +253,11 @@ gh pr review --approve 1234
 gh pr review --request-changes --body "Rollback plan is too vague" 1234
 ```
 
-Every change request is a pull request, and a peer approves or rejects it. This human check catches gaps that automated tests cannot see, such as a rollback plan that says too little.
+This human check catches gaps that automated tests cannot see, such as a rollback plan that says too little.
 
-### 2.3 The automated tests
+### 4.3 The automated tests
 
-Automated tests come next, and they run against staging. They check the upgrade's correctness, and they check the rollback plan too. A rollback that has never been tested is only a hope, so give it a stage of its own.
+Automated tests run against staging. They check the upgrade and the rollback. A rollback that has never been tested is only a hope, so it gets a stage of its own.
 
 ```yaml
 # code/part17/upgrade_tests.yaml
@@ -297,9 +288,9 @@ stages:
     args: ["--change-request", "change_request.md"]
 ```
 
-### 2.4 The staging rollout
+### 4.4 The staging rollout
 
-Every change goes to staging before production. Staging is where you check the change in an environment that looks like production. Production Kubernetes, chapter 2, makes the same point: use one upgrade strategy everywhere, so that the method you run in production has already been tested in development and staging.
+Every change goes to staging before production. Staging is where you check the change in an environment that looks like production, including at least one node of each GPU model. Use the same upgrade method everywhere, so the method you run in production has already been tested in development and staging.
 
 ```bash
 # Deploy to staging
@@ -313,53 +304,13 @@ curl -s 'http://prometheus.staging:9090/api/v1/query?query=histogram_quantile(0.
 # expected: the staging SLO is met
 ```
 
-Check the staging SLO before you move on. If the query misses the target, stop and fix the change before it goes anywhere near production.
+Check the staging SLO before you move on. If the query misses the target, stop and fix the change.
 
-### 2.5 Why changes happen
+## 5. The upgrade window
 
-Software changes after delivery for four main reasons. Market conditions shift, and new rules, such as changes to tax or bookkeeping, can force a change. Clients ask for new features over time. The host platform, such as the operating system or the hardware, can also change, and the software has to keep up.
+### 5.1 The window selection
 
-Business changes are the fourth reason. The organisation evolves, and those changes can call for software changes too. Maintenance is the work that answers all four reasons. The book names four types of maintenance, and each type has a different trigger.
-
-| Type | What triggers it | What the change does |
-|---|---|---|
-| Corrective | A problem found by a user or in a user error report | Fixes the problem |
-| Adaptive | A change in technology | Keeps the software current with that technology |
-| Perfective | New user requirements, or a need to improve reliability and performance | Keeps the software usable and improves it over time |
-| Preventive | A problem that is small today but could become serious later | Prevents the future problem |
-
-Label each change request with its type. A team that tracks the mix can see whether it spends its time fixing problems or preventing them.
-
-### 2.6 The cost of maintenance
-
-Maintenance is necessary, but it is expensive. It can take as much as two-thirds of the whole software process cost. Two factors explain much of that cost, and both show up on a platform.
-
-The first factor is the real world. Maintainers often work by trial and error, and their changes can damage the original structure, which makes later changes harder. Those changes are also often left undocumented, which makes future problems worse.
-
-The second factor is age. Software is expected to last only 10–15 years, and older software cannot compete with new software on modern hardware. Its structure and programming language can go out of date, which makes it costlier to keep running. Document every change and test it before you apply it, so the next change does not start from guesswork.
-
-### 2.7 The maintenance activities
-
-The software process has five generic activities: communication, planning, modelling, construction, and deployment. Umbrella activities run through the whole life of the project. A maintenance change moves through its own sequence of steps. The sequence can run in cycles, and a team can extend it with its own steps.
-
-The five generic activities each have a job. Communication gathers the requirements from the customer. Planning sets out the work, manages risk, lists the outputs, and produces a schedule. Modelling captures the requirements and the design, so developers and customers can see the same picture. Construction builds the software, including its tests. Deployment delivers the software, and the customer gives feedback on it.
-
-- **Identification and tracing:** a user, or the system through its logs and error messages, shows the need for a change.
-- **Analysis:** study the change's impact on the system, including its safety and security. If the impact looks severe, look for other options, then set the cost.
-- **Design:** design the new modules from the analysis, and write the test cases that verify them.
-- **Implementation:** write the code for the new modules.
-- **System testing:** test the new modules together, then test the whole system with regression testing. This testing is internal.
-- **Acceptance testing:** users test the system, and their complaints are fixed now or in the next iteration.
-- **Delivery:** deploy the change to the organisation. Delivery can be a small update or a full reinstall, and it is the final test.
-- **Maintenance management:** configuration management is essential, and maintainers use version control tools.
-
-In this handbook's process, the change request covers identification and analysis. The peer review and the staging rollout cover design and testing. The pull request gives the change its version history.
-
-## 3. The upgrade window
-
-### 3.1 The window selection
-
-Picture a Saturday at 2 AM, when the model API is nearly silent, and a Tuesday afternoon, when the same API is busy. The upgrade window is the time you choose for the change, and that choice decides how much an upgrade can hurt. The table gives example risk levels for common times. Replace those values with your own traffic data before you rely on them.
+Picture a Saturday at 2 AM, when the model API is nearly silent, and a Tuesday afternoon, when the same API is busy. The window decides how much an upgrade can hurt. The table gives example risk levels. Replace them with your own traffic data.
 
 | Day | Time (UTC) | Traffic | Risk |
 |---|---|---|---|
@@ -371,447 +322,329 @@ Picture a Saturday at 2 AM, when the model API is nearly silent, and a Tuesday a
 
 The traffic pattern matters more than the calendar. Check a forecast before you choose a slot, because a quiet hour for one product can be the peak for another.
 
-### 3.2 The window announcement
+### 5.2 The window announcement
 
-Tell people before the window opens. An announcement with the date, the time, the change, and the rollback plan lets every team plan around it. The script below sends that announcement to Slack and to email.
+Tell people before the window opens. An announcement with the date, the time, the change and the rollback plan lets every team plan around it.
 
 ```bash
 # Announce the upgrade window
 python code/part17/announce_upgrade.py \
   --date "2024-04-13" \
   --time "02:00-06:00 UTC" \
-  --change "GPU Driver Upgrade to 550.54.15" \
-  --rollback "Rollback to 550.54.14 if SLO breach"
+  --change "GPU Driver Upgrade to 580.95.05" \
+  --rollback "Rollback to DRIVER_OLD if SLO breach"
 # expected: the announcement is sent to Slack; the announcement is sent to email
 ```
 
-### 3.3 The window verification
+### 5.3 The window verification
 
-Verify the upgrade when it finishes, not only when it starts. The check confirms that the SLO held through the window, that the rollback path still works, and that the upgrade is complete. Use an SLO window long enough to cover a full day of traffic, so a problem that appears only at a daily peak does not slip past.
+Verify the upgrade when it finishes, not only when it starts. The check confirms that the SLO held through the window. Use an SLO window long enough to cover a full day of traffic, so a problem that appears only at the daily peak does not slip past.
 
 ```bash
 # Verify the upgrade
 python code/part17/verify_upgrade.py \
-  --change "GPU Driver Upgrade to 550.54.15" \
+  --change "GPU Driver Upgrade to 580.95.05" \
   --slo-window "24h"
 # expected: the SLO is met; the rollback plan works; the upgrade is complete
 ```
 
-### 3.4 Scheduling the window with optimisation
+## 6. The rollback plan
 
-Choosing a window is a scheduling problem with many factors, such as traffic and risk. Conventional scheduling models face a very broad search space. They usually make simplifying assumptions to produce reproducible results. Search-based software engineering treats targets such as cost, duration, and quality as an optimisation problem under constraints.
+### 6.1 The rollback triggers
 
-Optimisation can help in three ways. Duration and cost pull against each other, and planners struggle to balance them. Task and time allocation often exceeds what a person can work out by hand. Self-optimising algorithms, such as ant colony optimisation, can reduce decision complexity by iterating. Even so, a person must still choose a suitable algorithm for the problem, so treat the output as a proposal to review.
-
-## 4. The rollback plan
-
-### 4.1 The rollback triggers
-
-Decide when you will roll back before the change starts, not in the middle of an outage. The table lists example signals and thresholds that could trigger the decision. The thresholds are example values, not standards, so set your own from the SLO you agreed on. Each signal should already feed an alert that reaches the on-call.
+Decide when you will roll back before the change starts, not in the middle of an outage. Each trigger below is a signal from the earlier chapters, and each should already feed an alert.
 
 | Trigger | Detection signal |
 |---|---|
-| **SLO breach** | inference_latency_p99 > SLO for 10 minutes |
-| **Error rate spike** | inference_error_rate > 0.1% for 5 minutes |
-| **Workload failure** | inference_pod_oom_killed > 0 for 5 minutes |
-| **GPU failure** | dcgm_ecc_dbe_total > 0 |
+| Tier 3 Xid or failed row remap on an upgraded node | `GPUXidTier3` and `GPURowRemapFailed` from chapter 17.4 |
+| GPUs missing after the upgrade | `GPUCountMismatch` and `DCGMExporterMissingOnGPUNode` |
+| Collectives slower than the baseline | nccl-tests bus bandwidth more than 5 percent below baseline on the canary |
+| Fast SLO burn | One-hour and five-minute error ratios above 14.4 times the budget, chapter 17.6 |
+| Upgrade stuck | A node in the `upgrade-failed` state, or no state change for longer than the node time you measured |
 
-Production Kubernetes, chapter 2, adds a warning about timing. Once an upgrade is far enough along, rolling back every earlier change can be a worse choice than fixing forward. Find those points of no return before you start, and write them into the plan. The same chapter also recommends taking backups before the change begins, including etcd snapshots and Velero backups taken through the API, plus backups of your applications' persistent data.
+Two more rules help. Find the points of no return before you start and write them into the plan, because once an upgrade is far enough along, rolling back every earlier change can be worse than fixing forward. And take backups before the change begins, including etcd snapshots and backups of persistent data.
 
-### 4.2 The rollback procedure
+### 6.2 The rollback procedure
 
-The rollback procedure lists the steps that undo a change. It belongs in the change request, it must be tested in staging, and the on-call engineer should be able to follow it without guessing. The commands below sketch a driver rollback. Treat them as a starting point, and test each step in staging before you rely on it.
+With the GPU Operator, a rollback is the same upgrade in the other direction. NVIDIA's page does not describe rollback, so the steps here are an inference from how the controller works, and they must be tested in staging before you rely on them.
 
 ```bash
-# Rollback the GPU driver upgrade
-kubectl --context=production drain gpu-node-1 --ignore-daemonsets --delete-emptydir-data
-kubectl --context=production exec gpu-node-1 -- nvidia-smi --query-gpu=driver_version
-# expected: the driver version is 550.54.15; we need to downgrade to 550.54.14
-kubectl --context=production exec gpu-node-1 -- apt-get install nvidia-driver-550.54.14
-kubectl --context=production uncordon gpu-node-1
+# 1. Pause: stop the controller from moving more nodes
+kubectl patch clusterpolicies.nvidia.com/cluster-policy --type='json' \
+  -p='[{"op":"replace","path":"/spec/driver/upgradePolicy/autoUpgrade","value":false}]'
+
+# 2. Point the policy back at the old driver, then re-enable the controller
+kubectl patch clusterpolicies.nvidia.com/cluster-policy --type='json' \
+  -p='[{"op":"replace","path":"/spec/driver/version","value":"DRIVER_OLD"}]'
+kubectl patch clusterpolicies.nvidia.com/cluster-policy --type='json' \
+  -p='[{"op":"replace","path":"/spec/driver/upgradePolicy/autoUpgrade","value":true}]'
+
+# 3. Watch the nodes move, and retry a failed one
+kubectl get nodes -L nvidia.com/gpu-driver-upgrade-state
+kubectl label node NODE nvidia.com/gpu-driver-upgrade-state=upgrade-required --overwrite
 ```
 
-### 4.3 The rollback communication
+Never roll back by installing packages inside a running node container, because the driver is part of an image the Operator manages, and a manual change is lost on the next restart.
 
-Tell the team as soon as you roll back. A good message names the change, the reason, the impact, and the next step. It also tells people the rollback is done, so nobody keeps working on the broken version.
+### 6.3 Rollback evidence
+
+A rollback is not finished until you can prove the node is healthy again. Keep this evidence in the change ticket for each stage.
+
+| Evidence | Command or source |
+|---|---|
+| Driver version before and after | `nvidia-smi --query-gpu=driver_version --format=csv,noheader` |
+| Node upgrade state history | `nvidia.com/gpu-driver-upgrade-state` label and the Operator events |
+| Hardware validation | `dcgmi diag -r 3` result |
+| Collective performance | nccl-tests bus bandwidth against the baseline |
+| Fault signals | Xid and row-remap alerts over the soak, from Prometheus |
+| SLO effect | Burn rate over the window, chapter 17.6 |
+
+### 6.4 The rollback communication
+
+Tell the team as soon as you roll back. A good message names the change, the reason, the impact and the next step, and tells people the rollback is done.
 
 ```bash
 # Communicate the rollback
 python code/part17/announce_rollback.py \
-  --change "GPU Driver Upgrade to 550.54.15" \
+  --change "GPU Driver Upgrade to 580.95.05" \
   --reason "SLO breach: inference latency p99 > 1000ms for 10 minutes" \
   --impact "Increased latency; no data loss" \
-  --next-steps "Investigate driver 550.54.15; revert to 550.54.14"
+  --next-steps "Investigate driver 580.95.05; revert to DRIVER_OLD"
 # expected: the announcement is sent to Slack; the announcement is sent to email
 ```
 
-## 5. Operating the cluster lifecycle on GKE
+## 7. Operating the lifecycle on GKE
 
-### 5.1 The components
-
-Every part of the lifecycle stack has an owner and a target. The table lists each part, where it runs, and the target you would track. The SLO column holds example values, not guarantees. Check your provider's current service terms before you rely on any percentage in the table.
-
-| Component | Where it runs | Backing store | SLO |
-|---|---|---|---|
-| GKE control plane | Managed (GCP) | (GCP) | Control plane availability 99.95% |
-| GKE node pools | GPU node pools | (GCP) | Node pool availability 99.5% |
-| Kubernetes version | Cluster config | (GKE) | Kubernetes version supported for 12 months |
-| GPU driver | Node config | (NVIDIA) | Driver version current with NVIDIA LTS |
-| Argo CD | Kubernetes Deployment | Git | Reconciliation latency p99 < 5 minutes |
-
-### 5.2 IAM and the change management
-
-The lifecycle stack needs its own access rules, because not everyone should be able to start an upgrade. The table shows one possible split of duties. These role names are a design sketch for your platform. They are not built-in GKE roles.
-
-| Role | Who | What they can do |
-|---|---|---|
-| `lifecycle.reader` | Every team | View the change log; view the upgrade schedule |
-| `lifecycle.writer` | The platform team | Submit change requests; trigger upgrades |
-| `lifecycle.approver` | The platform team lead | Approve or reject change requests |
-| `lifecycle.admin` | The platform team | Manage the upgrade window; manage the rollback plan |
-
-Change management is the platform team's discipline. Every change needs a peer review, a rollback plan, and a test plan. A split of duties like this one makes sure no single person can skip those steps alone.
-
-### 5.3 Observability
-
-Track the process itself, not only the cluster. The table lists lifecycle metrics with example alert thresholds, so tune those thresholds to your own history. The change request failure rate and the rollback rate matter most. A high failure rate suggests the changes are not well tested, and a high rollback rate suggests they are not safe to ship.
+Track the process itself, not only the cluster. The table lists lifecycle metrics with example alert thresholds, which you should tune to your history. The change failure rate and the rollback rate matter most, because they tell you whether changes are well tested and safe to ship.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
-| Cluster Kubernetes version | Upgrade status | > 1 minor version behind |
-| GPU driver version | Upgrade status | > 1 minor version behind |
-| Days since last upgrade | Upgrade frequency | > 30 days |
-| Change request failure rate | Change quality | > 10% |
-| Rollback rate | Change quality | > 5% |
-| Upgrade duration | Upgrade efficiency | > 8 hours |
+| Kubernetes version | Upgrade status | More than 1 minor version behind |
+| GPU driver version | Upgrade status | More than 1 minor version behind |
+| Days since last upgrade | Upgrade frequency | More than 30 days |
+| Change request failure rate | Change quality | More than 10% |
+| Rollback rate | Change quality | More than 5% |
+| Upgrade duration | Upgrade efficiency | More than 8 hours |
 
-The platform team reviews these numbers over time, and the numbers should drive changes to the process itself.
+On GKE the control plane and node pools are upgraded by the service, and GKE does not offer a control plane downgrade after an upgrade. Treat that step as a point of no return, and plan the rollback around the node pools by recreating the pool from the previous image. GPU capacity is often scarce, so check whether your pool can add surge nodes before you plan a surge upgrade.
 
-### 5.4 Re-engineering a legacy platform
+## 8. How it fails
 
-Sometimes an upgrade cannot fix the problem, because the platform itself is too old. Updating software to keep it current, without changing what it does, is called re-engineering. The design can change, and programs can be rewritten. Legacy software cannot keep up with the latest technology, and that is when re-engineering becomes necessary.
+The six failures below are the ones to rehearse before your first real upgrade.
 
-Re-engineering has three parts. Reverse engineering recovers the specifications of an existing system by studying its code and design. Restructuring rearranges the code or the data, in the same language or a new one, without changing the functions. Forward engineering then builds the desired software from the specifications that reverse engineering produced.
-
-Restructuring can improve reliability and maintainability, because the components that caused frequent errors can be updated. It can also remove the dependence on obsolete hardware platforms. The Unix operating system is a classic example. It was first written in assembly language, then re-engineered in C, because assembly had become too difficult to work with. Parts of a system that need more maintenance than others are the first candidates for re-engineering.
-
-### 5.5 Reuse and component-based delivery
-
-Reuse is the other side of change management. A component is a part of the code that performs an independent task, such as a login procedure or a printing system. Components provide interfaces, so they can communicate with each other. Component-based software engineering assembles large systems from components that already exist, which shortens the development cycle.
-
-Reusing pre-tested components reduces time to market and increases the reliability of the whole application. Components can be added, updated, removed, or replaced without rewriting the other parts. Errors then stay inside a component, which makes them easier to find and fix.
-
-Reuse follows five steps:
-
-- **Requirement specification:** state the functional and non-functional requirements, using the existing system, user input, or both.
-- **Design:** define the requirements in software terms, including the architecture of the system and its subsystems.
-- **Specify components:** divide the system into smaller components that work together.
-- **Search for suitable components:** look for existing components in a component repository that match the functions you need.
-- **Incorporate components:** integrate the components into a complete software system.
-
-Componentisation has a cost curve. Many components with small functions raise the cost of integration, the testing effort, and the number of interactions. The goal is a minimum cost region, where cost and effort balance against the number of components. Use only as many components as the requirements need.
-
-Concurrent component development runs four parallel processes: developing new components, selecting existing ones, integrating components, and control and management. Each of the first three needs a feedback path for problems, errors, and side effects. The control and management process assesses the development and manages the quality of components that are likely to be reused.
-
-Reuse also looks different across programming styles. In object-oriented programming, components are designed for one purpose and are unlikely to be reused elsewhere. In modular programming, components are coded for specific tasks across many programs, so they are more likely to be reused.
-
-### 5.6 What the system software does
-
-System software services and supports other programs. It includes operating systems, drivers, and utilities, and it runs at the lowest level of the computer. Its three major functions are allocating system resources, monitoring system activities, and managing disks and files.
-
-Resources include time, memory, input, and output. CPU time is divided into time slices, which are measured in milliseconds, and the slices are assigned by task priority. Monitoring covers security and performance. Performance measures include response time and CPU utilisation, which are the same signals a platform team watches around an upgrade.
-
-## 6. How it fails
-
-The six failures below are the ones to rehearse before your first real upgrade. Each has a symptom you will actually see, a likely cause, and a fix.
-
-### 6.1 "The upgrade breaks the SLO"
+### 8.1 "The upgrade breaks the SLO"
 
 **Symptom:** The upgrade finishes, the SLO breaks, and a customer complains.
 
-**Diagnosis:** The change skipped staging, was rushed, or went out with no ready rollback.
+**Diagnosis:** The change skipped the canary, was rushed, or went out with no ready rollback.
 
 **Fix:** Roll back, find the cause, add the regression to the staging tests, and try again.
 
-### 6.2 "The rollback does not work"
+### 8.2 "The rollback does not work"
 
-**Symptom:** The upgrade breaks the SLO. The on-call rolls back, but the rollback fails, and the SLO keeps breaching.
+**Symptom:** The on-call rolls back, but the rollback fails and the SLO keeps breaching.
 
 **Diagnosis:** Nobody tested the rollback in staging, and it needs a manual step the on-call did not know about.
 
-**Fix:** Roll forward with a different fix if that is safer. Add the rollback test to the staging suite, and automate the steps people keep forgetting.
+**Fix:** Roll forward with a different fix if that is safer. Add the rollback test to the staging suite and automate the steps people forget.
 
-### 6.3 "The upgrade window is wrong"
+### 8.3 "Nodes stick in a drain state"
 
-**Symptom:** The upgrade starts at 2 AM Saturday, customer traffic spikes at the same time, and the upgrade hurts customers.
+**Symptom:** A node stays in wait-for-jobs-required or drain-required for hours and the window runs out.
+
+**Diagnosis:** `waitForCompletion` matches a job that runs for days, or a PodDisruptionBudget blocks eviction.
+
+**Fix:** Skip the node with the skip label, checkpoint and release the job, or set a finite `timeoutSeconds`. Decide the policy before the window.
+
+### 8.4 "The upgrade window is wrong"
+
+**Symptom:** The upgrade starts at 2 AM and customer traffic spikes at the same time.
 
 **Diagnosis:** The window did not match the traffic pattern, and nobody checked the forecast.
 
-**Fix:** Reschedule. Align the window with real traffic, and check the forecast before you book the slot.
+**Fix:** Reschedule, align the window with real traffic, and check the forecast before you book the slot.
 
-### 6.4 "The change request is approved without review"
+### 8.5 "A mixed fleet behaves differently"
 
-**Symptom:** The change reaches production without review, breaks the SLO, and pages the on-call.
+**Symptom:** The same job is fast on upgraded nodes and slow on old ones, or a multi-node job hangs.
 
-**Diagnosis:** Someone approved the change without a peer review, and the change never went through staging.
+**Diagnosis:** Collectives across nodes with different drivers may behave differently, which also makes a slowdown harder to attribute, and the canary never ran a multi-node test.
 
-**Fix:** Roll back. Make peer review a required step in the change request process, and automate the staging rollout so it cannot be skipped.
+**Fix:** Include a multi-node nccl-tests run in the pass conditions, and keep jobs from spanning upgraded and old nodes during the soak.
 
-### 6.5 "The upgrade introduces a security vulnerability"
+### 8.6 "The process is not followed"
 
-**Symptom:** After the upgrade, the security team flags a known CVE in the new version.
+**Symptom:** The team skips the change request, the peer review and the canary, and the upgrade breaks the SLO.
 
-**Diagnosis:** The CVE scan did not cover the new version, and the upgrade was rushed.
+**Diagnosis:** The process exists on paper, but nothing enforces it.
 
-**Fix:** Roll back. Extend the CVE scan to the new version, and retry once the CVE is fixed.
+**Fix:** Enforce it with CI and a required pull request review, and add it to onboarding.
 
-### 6.6 "The upgrade process is not followed"
+## 9. Hands-on lab
 
-**Symptom:** The team skips the change request, the peer review, and the staging rollout, and the upgrade breaks the SLO.
+This lab walks the lifecycle once for a driver upgrade on a staging cluster that runs the GPU Operator. The commands were not run on hardware for this book, so expect to adjust details for your cluster.
 
-**Diagnosis:** The process exists on paper, but nothing enforces it, and the team was never trained on it.
+### 9.1 Prerequisites
 
-**Fix:** Train the team, enforce the process with CI, and add it to onboarding.
-
-## 7. Hands-on lab
-
-This lab walks you through the lifecycle process once, from change request to verification. You submit a change, review it, test it, roll it out to staging and then to production, and verify the result. The lab is **untested** in this repository, so expect to adjust a few details for your own cluster.
-
-### 7.1 Prerequisites
-
-You need the following before you start.
-
-- A GKE Autopilot or Standard cluster (1.27+) with a staging and a production environment.
+- A staging Kubernetes cluster with at least three GPU nodes and the GPU Operator installed.
 - A Git repository for the cluster manifests.
-- Argo CD installed.
+- Prometheus with the chapter 17.4 alerts loaded.
 
-### 7.2 Step 1: submit a change request
+### 9.2 Step 1: submit and review the change request
 
-Start with the change request. This example upgrades the cluster from 1.27 to 1.28, and it names the risk, the rollback plan, and the test plan. Then open it as a pull request so a peer can review it.
+Write the change request from section 4.1 and open it as a pull request, as in section 4.2. A reviewer who finds the rollback plan vague should request changes.
 
-```bash
-# Create the change request
-cat > change_request.md <<EOF
-# Change Request: Upgrade Kubernetes Version
-
-## What
-Upgrade the Kubernetes version from 1.27 to 1.28 on the production cluster.
-
-## Why
-The 1.28 release includes critical security patches and bug fixes.
-
-## Risk
-The upgrade requires a control plane upgrade and a node pool upgrade. The estimated downtime is 30 minutes.
-
-## Rollback plan
-GKE does not offer a control plane downgrade after an upgrade, so plan the rollback around the node pools. Recreate the node pool from the previous image, and treat the control plane upgrade as a point of no return. Production Kubernetes, chapter 2, makes the same point about points of no return.
-
-## Test plan
-1. Deploy the 1.28 cluster in staging
-2. Run the integration tests in staging
-3. Verify the SLO is met in staging
-4. Roll out to production with a canary strategy
-EOF
-
-# Submit the change request as a pull request
-gh pr create \
-  --title "Change Request: Upgrade Kubernetes Version" \
-  --body-file change_request.md \
-  --reviewer platform-team-lead
-```
-
-### 7.3 Step 2: review the change request
-
-The reviewer reads the change, and especially the rollback plan. A vague rollback plan is a reason to request changes, not to approve.
+### 9.3 Step 2: run the automated tests
 
 ```bash
-# The peer reviews the change
-gh pr review --approve 1234
-# or
-gh pr review --request-changes --body "Rollback plan is too vague" 1234
-```
-
-### 7.4 Step 3: run the automated tests
-
-Wait for CI to finish before you deploy anything. A failed check means the change is not ready.
-
-```bash
-# Run the tests in CI
 gh pr checks 1234
 # expected: all checks pass
 ```
 
-### 7.5 Step 4: roll out to staging
+### 9.4 Step 3: upgrade the canary node
 
-Apply the manifests to staging first, run the integration tests, and check the SLO query. Do not move to production until all three pass.
+Label one GPU node as the canary, set `spec.driver.version` and watch it move.
 
 ```bash
-# Deploy to staging
-kubectl --context=staging apply -f upgrade_manifests/
-
-# Run the integration tests in staging
-python -m pytest --test-path tests/integration/ --env staging
-
-# Verify the staging SLO
-curl -s 'http://prometheus.staging:9090/api/v1/query?query=histogram_quantile(0.99,%20rate(inference_request_duration_seconds_bucket[5m]))'
-# expected: the staging SLO is met
+kubectl get nodes -L nvidia.com/gpu-driver-upgrade-state
+# expected: the canary node passes through the states and ends in upgrade-done
 ```
 
-### 7.6 Step 5: roll out to production
+### 9.5 Step 4: check the pass conditions
 
-Apply the change to production, then watch the SLO query for as long as your window allows. The change request calls for a canary, but the commands below apply the manifests directly. Add a canary step before you use this path in production.
+Run `dcgmi diag -r 3` and an nccl-tests all-reduce on the canary node, and compare bus bandwidth with the baseline you recorded before the upgrade. Check that the chapter 17.4 alerts are quiet.
 
-```bash
-# Deploy to production with a canary strategy
-kubectl --context=production apply -f upgrade_manifests/
+### 9.6 Step 5: roll back and keep the evidence
 
-# Monitor the production SLO
-watch -n 10 'curl -s http://prometheus.production:9090/api/v1/query?query=histogram_quantile(0.99,%20rate(inference_request_duration_seconds_bucket[5m]))'
-# expected: the production SLO is met
-```
+Use the commands in section 6.2 to roll the canary back, and fill in the evidence table from section 6.3.
 
-### 7.7 Step 6: verify the upgrade
-
-Run the verification script after the window closes, using the same change name and SLO window as the change request. If it reports a missed SLO, follow the rollback plan from the change request.
+### 9.7 Step 6: verify the upgrade
 
 ```bash
-# Verify the upgrade
 python code/part17/verify_upgrade.py \
-  --change "Upgrade Kubernetes Version" \
+  --change "GPU Driver Upgrade to 580.95.05" \
   --slo-window "24h"
 # expected: the SLO is met; the rollback plan works; the upgrade is complete
 ```
 
-### 7.8 What to record
+### 9.8 What to record
 
-After the lab, you should be able to answer five questions quickly. The answers come from your change log and your metrics, so they show whether the process works.
-
-1. What is the current Kubernetes version?
-2. What is the most recent change request?
-3. What is the current change request failure rate?
-4. What is the current rollback rate?
-5. What is the next scheduled upgrade?
-
-Treat the 30-second limit as an example target that your team sets for itself. If any answer takes longer, the cluster lifecycle process is not yet a production service. The lab is **untested** against a live GKE cluster.
+Write down the per-node time you measured, the bus bandwidth before and after, and the time the rollback took. These three numbers decide your real window and your real rollback cost.
 
 ## Exercises
 
-1. **Add a change request template.** Build a template with sections for what, why, risk, rollback plan, and test plan. *Solution sketch:* a Markdown template that becomes the default for every change request you open.
-2. **Add an automated rollback test.** Add a CI step that runs the rollback and checks that the SLO recovers afterward. *Solution sketch:* a CI step runs the rollback, then verifies the SLO is met.
-3. **Add a traffic forecast integration.** Add a step to the change request that checks the forecast for the proposed window. *Solution sketch:* a Python script queries the forecast and warns when it exceeds your threshold.
-4. **Add a CVE scan integration.** Add a step that runs Trivy on the new version. *Solution sketch:* a CI step runs Trivy and fails if it finds any CVE.
-5. **Add a per-team upgrade schedule.** Build a calendar that shows each team its scheduled upgrades. *Solution sketch:* a calendar event for each upgrade, visible to the team, with the change request URL in it.
-6. **Add a post-upgrade report.** Generate a report that compares the SLO before and after the upgrade. *Solution sketch:* a Python script queries Prometheus and writes the report, which the platform team reviews.
+1. **Write a canary policy.** For a fleet of 400 GPU nodes, decide the canary size, the stage sizes and the soak times. *Solution sketch:* use 1 to 2 nodes, then 10 percent, then the rest, and justify each soak from your longest job and your traffic cycle.
+2. **Add an automated rollback test.** Add a CI step that runs the rollback in staging and checks that the SLO recovers. *Solution sketch:* the step patches the driver version forward and back, then runs the staging SLO query.
+3. **Choose a drain policy.** Pick `waitForCompletion`, `gpuPodDeletion` and `drain` settings for a cluster that runs both multi-day training and replicated inference. *Solution sketch:* wait for pods labelled as training, evict inference pods after a timeout, and keep drain off until you need it.
+4. **Compute the window.** Given 180 nodes, 15 minutes per node and a ceiling of 25 percent unavailable, find the shortest safe window. *Solution sketch:* divide 180 by the parallelism, multiply by 15 minutes, and check that the parallel nodes stay below the ceiling.
+5. **Build the evidence sheet.** Write a script that collects the evidence table from section 6.3 for one node. *Solution sketch:* run the driver, diag and Prometheus queries, and write the results to one file for the ticket.
+6. **Add a post-upgrade report.** Generate a report that compares the SLO before and after the upgrade. *Solution sketch:* a Python script queries Prometheus for both periods and writes the report for the platform team.
+
+---
 
 ## Checkpoint questions
 
-<details><summary>1. A Saturday night upgrade leaves the GPU nodes stuck halfway and nobody knows which change caused it. What was missing?</summary>
-The team had no lifecycle process, so the first real test happened in production. A process makes every upgrade follow the same path. It needs a change request, a peer review, automated tests, a staging rollout, a production rollout, and a rollback plan. Write the process down before you upgrade anything.
+<details><summary>1. A Saturday night driver upgrade leaves nodes stuck and nobody knows which change caused it. What was missing?</summary>
+The upgrade had no staged plan. Three changes went out together, so no single cause could be named. A canary pool, one layer changed at a time, and a change request with pass conditions would have narrowed the cause to one change.
 </details>
 
 <details><summary>2. An upgrade breaks the SLO, the on-call rolls back, and the rollback fails. Why, and what do you do now?</summary>
-Nobody tested the rollback in staging, and it needs a manual step the on-call did not know about. Roll forward with a different fix if that is safer. Then add the rollback test to the staging suite and automate the steps people keep forgetting.
+Nobody tested the rollback in staging, and it needed a manual step the on-call did not know about. Roll forward with a different fix if that is safer. Then add the rollback test to the staging suite and automate the forgotten steps.
 </details>
 
-<details><summary>3. An upgrade starts at 2 AM on Saturday and customer traffic spikes at the same time. What went wrong?</summary>
-The window did not match the traffic pattern and nobody checked the forecast. A quiet hour for one product can be the peak for another. Reschedule, align the window with real traffic, and check the forecast before you book the slot.
+<details><summary>3. A node sits in `wait-for-jobs-required` for hours. What are the likely causes and options?</summary>
+The `waitForCompletion` selector matches a job that runs for days, or a PodDisruptionBudget blocks eviction. Skip the node with the skip label, checkpoint and release the job, or set a finite timeout. Decide the policy before the window.
 </details>
 
-<details><summary>4. After an upgrade the security team flags a known CVE in the new version. What do you do?</summary>
-Roll back. The CVE scan did not cover the new version, and the upgrade was rushed. Extend the CVE scan to the new version, for example with a Trivy step in CI, and retry once the CVE is fixed.
+<details><summary>4. Why is the driver upgrade run on a canary pool and not as a traffic split?</summary>
+A driver is a kernel module on the node, so you cannot send a share of requests to it. The unit of exposure is the node. A small canary pool takes the driver first, and you widen the pool only after the pass conditions hold for the soak time.
 </details>
 
 <details><summary>5. A change reached production with no review and paged the on-call. How do you stop it happening again?</summary>
-Roll back first. Then make peer review a required step in the change request process, and automate the staging rollout so it cannot be skipped. A pull request gives the review a natural home and keeps a version history.
+Roll back first. Then make peer review a required step, and automate the staging rollout so it cannot be skipped. A pull request gives the review a home and keeps a history.
 </details>
 
-<details><summary>6. Midway through a GKE upgrade, the node pools misbehave after the control plane was already upgraded. What are your options?</summary>
-GKE does not offer a control plane downgrade after an upgrade, so treat that step as a point of no return. Plan the rollback around the node pools by recreating the pool from the previous image. Production Kubernetes also warns that rolling back everything late in an upgrade can be worse than fixing forward.
+<details><summary>6. After a GKE upgrade the node pools misbehave, but the control plane was already upgraded. What are your options?</summary>
+GKE does not offer a control plane downgrade after an upgrade, so that step is a point of no return. Plan the rollback around the node pools by recreating the pool from the previous image. Rolling back everything late in an upgrade can be worse than fixing forward.
 </details>
 
-<details><summary>7. Why does a rolling upgrade avoid a full outage, and why does it suit stateless workloads?</summary>
-It takes nodes one at a time, with drain, upgrade and uncordon for each. While one node is upgraded, the rest of the pool keeps serving the old version. A stateless Pod can move to another node without losing state, so users do not see a full outage.
+<details><summary>7. Why does a rolling upgrade avoid a full outage?</summary>
+It takes nodes one at a time, with drain, upgrade and uncordon for each. While one node is upgraded the rest of the pool keeps serving the old version. A pod that can move to another node loses no state.
 </details>
 
-<details><summary>8. Why is a blue/green rollback fast?</summary>
-Blue, the old version, is still running while green takes traffic. If green misbehaves, you shift traffic back to blue at the load balancer. For that reason retire blue only after green has run long enough that you trust it.
+<details><summary>8. Why is a blue/green rollback fast, and why is it not used for a whole GPU fleet?</summary>
+Blue, the old version, keeps running while green takes traffic, so you shift back at the load balancer. It needs a second set of GPUs, which is too expensive for a whole fleet, so it is kept for critical or stateful services.
 </details>
 
-<details><summary>9. Why does a canary limit the damage of a bad release?</summary>
-A small share of traffic reaches the new version first, so only a small group of users sees a problem. You watch the SLO and widen the share step by step. If the SLO does not hold, you stop while the damage is small. Give each step a clear pass condition.
+<details><summary>9. Which pass conditions must a canary meet before the next stage?</summary>
+`dcgmi diag -r 3` passes, nccl-tests bus bandwidth is within 5 percent of the baseline, there is no tier 3 Xid, failed row remap, GPU count mismatch or missing exporter, there is no fast SLO burn, and no node is in the `upgrade-failed` state. The soak time must also pass.
 </details>
 
-<details><summary>10. Why does the chapter add a separate rollback-test stage to the automated tests?</summary>
+<details><summary>10. Why does the pipeline include a separate rollback-test stage?</summary>
 A rollback that has never been tested is only a hope. The stage runs the rollback against staging and checks that the SLO recovers. Without it, the first real test of the rollback happens during an outage.
 </details>
 
-<details><summary>11. Why verify an upgrade with a 24 hour SLO window and not a few minutes?</summary>
-A 24 hour window covers a full day of traffic. A problem that appears only at a daily peak would slip past a short check. Verify when the upgrade finishes, not only when it starts, and confirm the SLO held and the rollback path still works.
+<details><summary>11. Why verify an upgrade over 24 hours and not a few minutes?</summary>
+A 24 hour window covers a full day of traffic, so a problem that appears only at a daily peak does not slip past. Verify when the upgrade finishes, not only when it starts.
 </details>
 
 <details><summary>12. When would you pick an in-place upgrade over a canary, and what do you give up?</summary>
-Use in-place for dev environments and non-critical workloads where a short outage is acceptable. It is simple, atomic and fast. You give up an easy rollback, since the old software is gone, and you accept downtime during the restart. Use a canary for production AI workloads where the SLO is critical.
+Use in-place for dev environments and non-critical workloads where a short outage is acceptable. It is simple and fast. You give up an easy rollback, because the old software is gone, and you accept downtime during the restart.
 </details>
 
-<details><summary>13. When would you replace the whole cluster instead of upgrading in place, and what do you give up?</summary>
-Cluster replacement carries the least risk, because you build a new cluster and move workloads across. It costs the most. An in-place upgrade has the lowest cost and the highest risk. The chapter's example replaces a 300-node cluster with a new one that starts at about 20 nodes and grows as workloads move.
+<details><summary>13. A long training job runs on a node that must be upgraded. What are your drain policy options and what does each cost?</summary>
+Use `waitForCompletion` to let it finish, which costs time and can stall the window. Checkpoint and release the job before the window, which costs a restart. Evicting it loses all work since the last checkpoint, so the checkpoint interval is the cost. The skip label leaves the node on the old driver for now.
 </details>
 
-<details><summary>14. When would you choose blue/green over a canary, and what do you give up?</summary>
-Blue/green suits stateful workloads and database upgrades, and it lets you switch back quickly. You give up simplicity, because you must build a whole green environment beside blue. A canary suits production AI workloads where the SLO is critical and you want to widen exposure gradually.
+<details><summary>14. How do you pause the driver upgrade, and what happens to nodes already done?</summary>
+Set `autoUpgrade` to false in the ClusterPolicy. The Operator removes the upgrade-state labels from the driver nodes and stops moving more nodes. Nodes already upgraded stay on the new driver.
 </details>
 
 <details><summary>15. How do you decide between rolling back and fixing forward late in an upgrade, and what do you prepare in advance?</summary>
-Find the points of no return before you start and write them into the plan. After such a point, rolling back every earlier change can be worse than fixing forward. Before the change begins, take backups, including etcd snapshots, Velero backups, and backups of your applications' persistent data.
+Find the points of no return before you start and write them in the plan. After such a point, rolling back every earlier change can be worse than fixing forward. Take backups first, including etcd snapshots and persistent data.
 </details>
 
-<details><summary>16. A driver upgrade costs 5 minutes of downtime per node, one node at a time. How long do 40 nodes take?</summary>
-Forty nodes times 5 minutes is 200 minutes, or 3 hours and 20 minutes. A rollback has the same estimate of 5 minutes per node. The 5 minute figure is an estimate in the example change request, and the 40 nodes is an assumption.
+<details><summary>16. Each node takes 15 minutes. How long do 180 nodes take one at a time, and ten at a time?</summary>
+One at a time is 180 times 15, which is 2,700 minutes, or 45 hours. Ten at a time is 18 batches of 15 minutes, which is 270 minutes, or 4.5 hours. Ten of 200 nodes is 5 percent of capacity out for the window. The 15 minutes is an example.
 </details>
 
-<details><summary>17. The test plan uses a canary node, then 10 percent of the cluster, then the remaining 90 percent. For 200 nodes, what are the stages and how long is monitoring?</summary>
-Ten percent of 200 is 20 nodes, and the remaining 90 percent is 180 nodes. The plan monitors the SLO for 24 hours after the 10 percent stage and for 7 days after the final stage. That is 24 hours plus 7 days, about 8 days of monitoring in total.
+<details><summary>17. The plan upgrades a canary, then 10 percent of 200 nodes, then the rest. How many nodes are in each stage and how long is monitoring?</summary>
+Ten percent of 200 is 20 nodes, and the remaining stage has 180 nodes, with a canary of one or two nodes taken from the first stage. Monitoring is 24 hours after the canary, 24 hours after the 10 percent stage and 7 days after the final stage.
 </details>
 
 <details><summary>18. In a quarter there were 40 changes, 5 failed and 3 were rolled back. Which lifecycle alerts fire?</summary>
-The failure rate is 5 divided by 40, which is 12.5 percent, above the 10 percent alert. The rollback rate is 3 divided by 40, which is 7.5 percent, above the 5 percent alert. Both fire. The thresholds are example values to tune to your history.
+The failure rate is 5 divided by 40, which is 12.5 percent, above the 10 percent alert. The rollback rate is 3 divided by 40, which is 7.5 percent, above the 5 percent alert. Both fire. The thresholds are examples.
 </details>
 
-<details><summary>19. Right after an upgrade the SLO breaks. What do you do, in order?</summary>
-First roll back, following the plan you wrote before the change. Second find the cause, since the likely reasons are a skipped staging run, a rushed change or no ready rollback. Third add the regression to the staging tests and try again.
+<details><summary>19. After an upgrade the canary's all-reduce bus bandwidth is 8 percent below the baseline. What do you do?</summary>
+That is outside the 5 percent pass condition, so do not move to the next stage. Roll the canary back, then compare driver, firmware and fabric settings between the canary and the baseline before you try again. Keep the nccl-tests output as evidence.
 </details>
 
-<details><summary>20. In what order should a change move through the process, and why can a peer review not be replaced by automated tests?</summary>
-The order is change request, peer review, automated tests including the rollback test, staging rollout, production rollout, then verification. A human reviewer catches gaps automated tests cannot see, such as a rollback plan that says too little. Do not move to production until staging passes.
+<details><summary>20. Why can a peer review not be replaced by automated tests, and in what order does a change move?</summary>
+A human reviewer catches gaps tests cannot see, such as a rollback plan that says too little. The order is change request, peer review, automated tests including the rollback test, staging, canary, early stage, wide stage, then verification.
 </details>
 
 ## Sources and review notes
 
-- NVIDIA Zero-to-Hero Volume 19 (`chapter-01-cluster-lifecycle.md`). Source for the cluster lifecycle, the upgrade types, and the change management process. The wording has been rewritten in the handbook's voice.
-- *Engineering AI Systems* (`engineering-ai-systems-architecture-and-devops-essentials`, Chapter 6). Source for the operational patterns and the lifecycle discipline.
-- *AI Factory* (`ai-factory`, Chapter 8). Source for the AI factory lifecycle and the upgrade cadence. Chapter 8 of that book is titled Software Engineering, and it supplied the material on software evolution, maintenance types and activities, re-engineering, component reuse, development paradigms, and the role of AI tools in testing and review.
-- NVIDIA Zero-to-Hero Volume 10 (`chapter-16-cluster-upgrades.md`, `chapter-10-cluster-lifecycle.md`). Source for the operational upgrade patterns and the rollback discipline.
+- NVIDIA GPU Operator documentation, GPU driver upgrades (fetched 2026-11-12). Source for the `driver.upgradePolicy` fields, the `nvidia.com/gpu-driver-upgrade-state` states, the skip label, the `autoUpgrade` switch and the `kubectl patch` of `spec.driver.version`. The page does not describe rollback, so section 6.2 is an inference from the controller's behaviour and needs a staging test.
+- *Production Kubernetes*, Chapter 2. Source for the upgrade strategies, points of no return and backups before an upgrade.
+- NVIDIA Zero-to-Hero Volume 19 (`chapter-01-cluster-lifecycle.md`) and Volume 10 (`chapter-16-cluster-upgrades.md`, `chapter-10-cluster-lifecycle.md`). Source for the change request, window and rollback patterns. The wording is the handbook's own.
+- Chapters 10.21, 17.4 and 17.6 for the pass conditions. The software engineering material that earlier versions of this chapter took from the *AI Factory* chapter on software engineering was removed as off topic.
 
 ### Cross-references to other handbook chapters
 
-- Chapter 16.11 for the cloud MLOps platforms' upgrade paths.
 - Chapter 17.6 for the alerting and SLOs.
 - Chapter 17.7 for the failure modes.
-- Chapter 5.26 for the kernel-side upgrade.
-
-### Migrated from `nvidia-devops`
-
-The cluster lifecycle operational patterns draw on Volume 19 chapter 1 and Volume 10 chapters 10 and 16. The wording has been rewritten in the handbook's voice.
+- Chapter 10.21 for `dcgmi diag` and the Xid tiers.
+- Chapter 12.17 for nccl-tests.
 
 ### Explicitly labelled inferences
 
-- The upgrade window recommendations (Saturday 2-6 AM UTC) are starting points; specific windows depend on the traffic pattern.
-- The change management process (change request, peer review, tests, staging, production, verification) is a starting point; specific steps depend on the team's discipline.
-- The rollback trigger thresholds (SLO breach for 10 minutes, error rate > 0.1% for 5 minutes) are starting points; specific thresholds depend on the SLO.
-- The lessons on software degradation and on human review of AI-generated changes are inferences from the Software Engineering chapter, not quotations.
+- The stage sizes, soak times and the 15 minute per-node time are starting values, not measurements.
+- The rollback commands in section 6.2 follow from how the controller reconciles `spec.driver.version`.
+- The upgrade window recommendations are starting points; specific windows depend on the traffic pattern.
 
 ### Not verified on live hardware
 
-- The lab in Section 7 is **untested** against a live GKE cluster in this repository.
-- The change request template in the lab is illustrative; production templates are more detailed.
-- The staging rollout in the lab assumes a staging cluster is available; production deployments may not have a staging cluster.
+- The commands and the lab in section 9 were not run against a live cluster.
+- Defaults for `upgradePolicy` fields depend on the Operator version; check yours.

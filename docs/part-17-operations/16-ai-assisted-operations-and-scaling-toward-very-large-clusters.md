@@ -27,21 +27,9 @@ lab_venue: "GCP / GKE"
 
 Picture the on-call engineer at the start of a shift. The dashboard shows thousands of time series, and the alert queue keeps growing. Every chapter in Part 17 has taught you to run the cluster you have today. This chapter prepares you for the larger cluster you will run next.
 
-That cluster is bigger, busier, and harder to watch by hand. Its metrics, logs, and incidents now outnumber what one person can read. The on-call engineer is being asked to do more with the same headcount, and AI-assisted operations is the answer many teams reach for. It uses AI to spot anomalies across huge numbers of metrics, draft runbooks from incident transcripts, rank likely root causes across traces and logs, and forecast capacity needs. The argument of this chapter is that without this help, operations effort grows with the number of people. With it, effort grows much more slowly.
+That cluster is bigger, busier, and harder to watch by hand. Its metrics, logs, and incidents now outnumber what one person can read. The on-call engineer is being asked to do more with the same headcount, and AI-assisted operations is the answer many teams reach for. It uses AI to spot anomalies across huge numbers of metrics, draft runbooks from incident transcripts, rank likely root causes across traces and logs, and forecast capacity needs. The argument of this chapter is narrow. AI is useful where a human cannot read everything and a wrong answer is cheap to check. It is dangerous where a wrong answer triggers an action. Every pattern below keeps a person between the model and the cluster.
 
-```text
-Why AI-assisted operations is on the critical path (background reading: AI Systems Performance Engineering; Distributed AI Systems; LLMOps; NVIDIA Zero-to-Hero volume 8; the figures below are examples, not quotations):
-- A typical mature AI platform emits millions of unique time series. The human
-  on-call cannot inspect every series; the human on-call cannot find the
-  needle in the haystack. AI-assisted anomaly detection is the only way
-  to scale.
-- A typical incident produces thousands of log lines and hundreds of spans.
-  The human on-call cannot read every line; the human on-call cannot trace
-  every span. AI-assisted root cause analysis is the only way to scale.
-- A typical mature AI platform supports thousands of workloads. The human
-  on-call cannot write a runbook for every workload. LLM-based runbook
-  generation is the only way to scale.
-```
+AI can help in four places, and each place has a way to go wrong. An LLM can summarise a burst of alerts, but it can also state a confident cause that is not true. A model can flag a GPU that drifts away from its peers, but with ten thousand series it can also page you every hour. An assistant can draft a runbook, but it can also invent a flag. And a cluster that grows tenfold does not get ten times more people, so the tooling has to scale while Prometheus itself reaches its limits. This chapter shows concrete patterns for each place, the guardrails that keep them honest, and the arithmetic that tells you whether they are worth running.
 
 Three facts make this a platform team problem, not only a data science problem:
 
@@ -49,7 +37,7 @@ Three facts make this a platform team problem, not only a data science problem:
 2. AI-assisted operations is a platform discipline with four jobs: detect anomalies, generate runbooks, find root causes, and predict capacity. The platform team sets those jobs and maintains the tooling that performs them.
 3. Scaling toward very large clusters is also a platform challenge. Gang scheduling, Kueue, and MIG from Chapter 11 reach thousands of GPUs. Multi-cluster, multi-region, and multi-tenant operation needs more, and this chapter covers that.
 
-Operating a thousand-GPU cluster by hand wears out the on-call engineer quickly. **Before you run thousands of GPUs, you need AI-assisted operations, because the by-hand alternative burns out the people who keep the cluster running.**
+**Use AI to shorten the time to understand a problem, and never to make the decision that changes the cluster.**
 
 ## Prerequisites and outcomes
 
@@ -83,9 +71,18 @@ Use this list as a checklist when you finish the lab. If you cannot tick an item
 
 Picture a GPU's memory use creeping down over a night. No static threshold fires, because the value still sits inside the range that looks normal for a busy cluster. Anomaly detection tries to catch this kind of change by learning what normal looks like for each metric.
 
-*AI Systems Performance Engineering* Chapter 20 describes AI assistants that flag anomalies in telemetry. This section builds a more concrete version. A model learns from history, predicts the expected value, and alerts when reality strays too far from it.
+Anomaly detection earns its place on slow drifts that fixed thresholds miss and that cost money. Examples are a GPU that draws less power than its neighbours at the same load, a GPU whose NVLink throughput falls behind its peers in one job, or a training step time that creeps up over a week. It does not replace the fault rules from chapter 17.4. A double-bit ECC error or a tier 3 Xid needs no model, because a plain rule is exact, explainable and testable.
 
-The same book makes a point worth keeping in mind. A GPU that stays busy on redundant data transfers is not doing useful work, so raw utilization can mislead you.
+A model learns from history, predicts the expected value, and alerts when reality strays too far from it. A simpler and often stronger variant compares each GPU with its peers right now. In a healthy job all GPUs of one model do similar work, so a GPU far from the median of its node or job is suspicious without any history.
+
+```promql
+# GPU power relative to the median power of the GPUs on the same node
+DCGM_FI_DEV_BOARD_POWER_WATTS
+  / on (node) group_left
+  quantile by (node) (0.5, DCGM_FI_DEV_BOARD_POWER_WATTS)
+```
+
+Utilisation alone can mislead here. A GPU that is busy moving redundant data looks as busy as one doing useful work, so chapter 15.13 covers the profiling signals that show useful work.
 
 ```mermaid
 flowchart LR
@@ -105,7 +102,9 @@ flowchart LR
     D --> Alert
 ```
 
-Read the diagram from left to right. History trains the model, which predicts the value you should see now. The alert fires when the gap between prediction and reality crosses a threshold you choose.
+History trains the model, which predicts the value you should see now. The alert fires when the gap between prediction and reality crosses a threshold you choose.
+
+**The false-positive budget.** Decide how many false alerts the on-call will tolerate, then work backwards. Take 1,000 GPUs with 10 monitored signals each, checked every 5 minutes. That is 10,000 series times 12 checks an hour times 168 hours, about 20 million checks a week. If the team will tolerate 5 false alerts a week, each check may be wrong about 2.5 times in 10 million. A plain three-sigma rule is wrong about 27 times in 10,000 checks on normal data, which would give roughly 54,000 false alerts a week. This is why anomaly alerts need more than a point threshold. Require the deviation to persist across several windows, require agreement with the peer comparison, and send the result to a ticket queue first. Consecutive windows are correlated, so the persistence rule helps less than independent odds suggest. Measure the real rate on a month of data before you route anything to a pager.
 
 ### 1.2 The implementation
 
@@ -151,21 +150,24 @@ spec:
 
 The schedule `0 2 * * *` is a cron expression, which runs training once a day at 02:00. Before you deploy, decide who may change that schedule. A retraining run changes what your system treats as normal.
 
-### 1.4 Aiming for goodput
+### 1.4 Alert summarisation with guardrails
 
-The book's real target is goodput. When a GPU is busy, it should be doing useful neural compute, not shuffling redundant data. AI-driven schedulers are built to maximize that quantity. They aim to cut wasted busy time, which directly lowers the cost of each unit of work.
+During an alert storm, the on-call opens forty notifications that share one cause. An LLM can read the grouped alerts and write a short summary: what is firing, what changed, and which dashboard to open. That saves minutes at three in the morning. It is also where a model does the most harm if it is trusted, because a fluent wrong cause sends the engineer down the wrong path.
 
-The book also describes AI performance copilots for system operators. An engineer could ask such an assistant, "How can I speed up my training job?" and receive informed suggestions. The assistant could draw on the accumulated knowledge of thousands of past runs, logs, and tuning attempts. That is the experience of human experts, available at any hour.
+The pattern is simple. Alertmanager groups related alerts and posts one notification. A summariser reads the group, calls the model, and posts the summary next to the original notification. The guardrails are the design.
 
-A copilot can also read the signals from a running job. If GPU memory usage is low, it might suggest a larger batch size. If the gradient noise scale is high, it might suggest a change to the learning rate schedule.
+| Guardrail | What it prevents |
+|---|---|
+| The summary sits beside the original alert and never replaces it | A wrong summary hiding the real alert |
+| Severity and routing come from labels, never from the model | A model downgrading a page |
+| The prompt contains only alert labels, annotations and a bounded set of recent metric values | Prompt injection through log text an attacker can control |
+| The summary may only name alerts and metrics that appear in its input, and a check rejects any other name | Invented alert names and services |
+| A timeout of a few seconds, after which the plain alert goes out | The summariser delaying a page |
+| Secrets and tokens are removed from the input | Leaking credentials to an outside API |
+| The model has no tools that change anything | An assistant acting on its own guess |
+| Every input and output is stored with an on-call rating | No way to measure whether it helps |
 
-Assistants can also watch training jobs and inference servers and flag anomalies. For example, an assistant might report that the loss is diverging early in training. It could suggest checking the input data or lowering the learning rate. Think of it as an extra pair of eyes that never tires.
-
-You can start on this with tools you already run. A metrics pipeline based on Prometheus can feed an LLM-based assistant. That assistant can alert when GPU memory suddenly drops, which may signal a memory leak or a data stall. It can also suggest likely root causes.
-
-Splunk (now Cisco) and PagerDuty already use AI models on system log data. They predict failures and detect anomalies in data centers. The book recommends extending these ideas to telemetry that comes from AI workloads.
-
-The book presents much of this as a direction rather than a finished product. Treat an assistant's suggestion as a hypothesis to test. Check it against your own measurements before you change a running job.
+Score the summariser on past incidents before it goes live. For each incident, ask whether the summary named the same cause the post-mortem found, and track that rate every month. If the rate is low, phrase the summary as context and do not state a cause at all.
 
 ---
 
@@ -175,7 +177,7 @@ The book presents much of this as a direction rather than a finished product. Tr
 
 During a night-time incident, the on-call engineer finds an alert with no runbook. Writing one from the incident transcript takes time that nobody has in the middle of an outage.
 
-*LLMOps* Chapter 10 introduces LLM-based runbook generation. In this pattern, the model reads the incident transcript and drafts the runbook steps. A platform engineer then reviews the draft before anyone publishes it.
+In LLM-based runbook generation, the model reads the incident transcript and drafts the runbook steps. A platform engineer then reviews the draft before anyone publishes it.
 
 ```python
 # code/part17/runbook_generation.py
@@ -252,6 +254,21 @@ git commit -m "Add runbook for GPU memory pressure"
 
 The script writes a draft file, and nothing reaches the repository until you copy and commit it. Once you do, the commit records the approval. Make this review a required step in your publishing process. Do not let it depend on who happens to be on shift.
 
+### 2.4 How LLM runbook assistants fail
+
+The validator in section 2.2 checks that six headings exist and that one line looks like a command. A draft can pass and still be wrong, so know the ways it fails.
+
+| Failure | Example | Control |
+|---|---|---|
+| Invented command or flag | A `dcgmi` option that does not exist | Run every command in staging before the runbook is published |
+| Stale step | A mitigation for an old driver | Record the runbook date and the versions it was written for, and review on a schedule |
+| Mutating step with no warning | A drain or delete placed in the diagnostic section | Allow only read-only commands in the Diagnostic steps section, and flag any other verb for the reviewer |
+| Wrong target | A node or namespace copied from the transcript | Use placeholders in commands and fill them from the alert labels |
+| Instructions hidden in the transcript | A pasted log line that says to ignore the format | Treat the transcript as data and review the draft line by line |
+| Headings present, content empty | Sections with one vague sentence | Reviewer checks that each section is actionable |
+
+The model never runs a command. A person reviews the draft, and a person publishes it.
+
 ---
 
 ## 3. AI-assisted root cause analysis
@@ -260,7 +277,7 @@ The script writes a draft file, and nothing reaches the repository until you cop
 
 During an incident, the evidence lives in three places. Traces sit in one tool, logs in another, and metrics in a third. Someone has to join them before the cause becomes visible, and that join is slow work the model can help with.
 
-*Distributed AI Systems* Chapter 11 introduces AI-assisted root cause analysis. The pattern has three steps. The model reads the traces, logs, and metrics. It proposes candidate hypotheses. The on-call engineer reviews them and picks the most likely one.
+AI-assisted root cause analysis has three steps. The model reads the traces, logs, and metrics. It proposes candidate hypotheses. The on-call engineer reviews them and picks the most likely one.
 
 ```python
 # code/part17/root_cause_analysis.py
@@ -355,15 +372,11 @@ def analyze_logs(logs: list[str]) -> dict:
 
 The scan finds the lines, but it does not connect them to traces. That correlation is still open in this section. Before you trust the grouping, check that your logs use these exact words for severity.
 
-### 3.4 Automated debugging for failed training runs
+### 3.4 Debugging a failed training run
 
-Picture a training job that fails halfway through a three-month run. Someone must read the error logs, the device statistics, and perhaps memory dumps. They must decide whether the cause was a hardware fault, a numerical overflow, or a networking hiccup. That search is slow, and it depends on what one engineer remembers.
+Picture a training job that fails halfway through a three-month run. Someone must read the error logs, the device statistics and perhaps memory dumps, and decide whether the cause was a hardware fault, a numerical overflow or a network problem. The pattern from this section helps with the joining work. Narrow the evidence with plain code, give the model the failure mode catalogue from chapter 17.7, and ask for ranked hypotheses with evidence.
 
-The book expects AI systems to digest logs, metrics, and alerts together. Such a system could pinpoint likely causes much faster than people do today. It might report that node 42 logged 5 ECC memory errors just before the crash. That pattern points to a fault in the GPU's HBM memory device or channel.
-
-The same kind of system could catch a loss problem. If the loss becomes NaN at iteration 10,000, it might point to an unstable gradient and suggest gradient clipping. By learning from many past incidents, it could save engineers many hours of detective work. The book notes that some large computing sites already train models on their incident databases to predict failures and suggest fixes.
-
-Treat each suggestion as a lead to verify, not a verdict. The engineer still checks the evidence before changing the job.
+Two examples show what a good hypothesis looks like. Five ECC memory errors on one node just before the crash point to that GPU's HBM, and chapter 17.4 has the rule. A loss that turns NaN at one iteration points to an unstable gradient, where clipping may help. In both cases the engineer still checks the evidence before changing the job. A hypothesis is a lead and not a verdict.
 
 ---
 
@@ -434,7 +447,7 @@ The function assumes every GPU runs all month at the price you pass in. Reserved
 
 ### 5.1 The scaling challenges
 
-Picture a cluster that now spans several sites and serves many teams. Bigger nodes will not solve that problem. Each new scale brings its own failure and needs its own tool. *Distributed AI Systems* Chapter 11 walks through the scaling challenges for AI clusters. The table names the three challenges and the tools platform teams usually reach for.
+Picture a cluster that now spans several sites and serves many teams. Bigger nodes will not solve that problem. Each new scale brings its own failure and needs its own tool. The table names the three challenges and the tools platform teams usually reach for.
 
 | Challenge | What it is | How the platform team addresses it |
 |---|---|---|
@@ -555,196 +568,34 @@ The LocalQueue sends a team's jobs to the shared queue. The ResourceQuota caps w
 
 Start each new team with a small quota, and raise it when usage data supports the change.
 
-### 5.5 AI-assisted scheduling and real-time control
+### 5.5 Prometheus cardinality at fleet scale
 
-The push toward automation reaches the cluster itself. Training and inference clusters run many jobs and requests at once, and they need resource-sharing strategies that change with conditions. Today's orchestrators, such as Kubernetes and SLURM, still rely on static heuristics and simple resource requests. Adaptive scheduling is the next step.
+The first thing that breaks at ten thousand GPUs is usually the monitoring system. Every GPU exports many series, and every label multiplies them. As an example, 10,000 GPUs with 50 series each is 500,000 active series. That is manageable. The trouble comes from churn. If a metric carries a pod label and each GPU sees 20 pod restarts a day, that is 10,000 times 50 times 20, or 10 million new series a day. These counts are example arithmetic, so measure your own.
 
-Picture a scheduling agent that watches the whole cluster and learns where to place inference requests and training jobs for the highest overall throughput. It might learn that two workloads can share a node without interfering. One could be compute-heavy while the other is memory-bandwidth-heavy. The agent could read Kubernetes telemetry, such as pod GPU utilization and queue wait times, then reschedule jobs or adjust pod resources.
+Prometheus exposes the numbers you need. `prometheus_tsdb_head_series` is the current series count, and the rate of `prometheus_tsdb_head_series_created_total` is the churn. Watch both, and alert when churn jumps after a release.
 
-In that picture, the cluster behaves like a self-driving car. It keeps adjusting its resource allocation as conditions change, rather than following a fixed route. Your job shifts toward setting policies and goals, while the scheduler works out the details. The payoff is higher resource use and fewer bottlenecks.
+Four levers keep the cost down.
 
-NVIDIA Dynamo is a distributed inference framework. It coordinates request scheduling, KV cache placement, and data movement across GPUs and nodes. It integrates with Kubernetes for inference and disaggregation. In that role, its scheduler assigns microbatches to pipeline stages and reroutes requests when a node fails.
+- Drop labels you never query, especially pod names on hardware metrics, with relabelling at scrape time.
+- Record per-node and per-rack aggregates, and let dashboards and models read the recorded series.
+- Scrape slow signals such as temperature less often than fast ones.
+- Run one Prometheus per cluster and send long-term data to a remote store, so one overloaded server does not blind the whole fleet.
 
-Weight streaming and activation offloading go further. A layer streams from host memory to the GPU only when its weights are needed, such as during decode. The same idea works across many nodes and GPUs. The book notes that parts of a 100-trillion-parameter model could then sit on cheaper storage, which helps inference scale.
+Anomaly models should read the recorded aggregates, not the raw per-GPU series, whenever the question allows it.
 
-Inference software does part of this work too. The book names vLLM, SGLang, NVIDIA Dynamo, and TensorRT-LLM as tools that improve scheduling and resource use in large inference clusters. They use in-flight batching and a paged KV cache. They can also split the prompt prefill stage from the generation decode stage onto separate resource pools. These choices reduce tail latency and improve throughput per watt.
+### 5.6 Fleet automation: the cordon, drain and RMA loop
 
-Reinforcement learning can also control live system behavior in ways fixed rules struggle to match. A power-management agent could tune clock frequencies and core allocation to get more performance per watt. It would learn its policy by observing the running system. Another agent could decide which tensors stay in GPU memory and which move to CPU memory or NVMe storage. That beats a fixed rule such as "swap least recently used," because it watches real access patterns.
+At fleet scale a person cannot handle every hardware fault by hand. The loop is simple. A fault alert from chapter 17.4 fires, automation cordons the node, drains it with the policy from chapter 17.10, runs `dcgmi diag -r 3`, and then either returns the node to service or opens a vendor RMA. Chapter 17.13 shows why the speed of this loop sets your pool availability.
 
-Practitioners already use reinforcement learning for cache eviction and network congestion control. Ultrascale systems have hundreds of interacting parts. There are too many knobs for a person to find good settings in time, especially when workloads change.
+Automation needs its own safety rules, because a bug in it can do more harm than the fault.
 
-For the performance engineer, the job becomes supervising these agents. The comparison is a pilot who relies on autopilot. The pilot still needs deep knowledge and must step in when something unusual happens. You set the objectives and the safety and fairness guardrails. You also handle situations the AI has not seen before, while routine load balancing, failure recovery, and memory-buffer tuning go to the AI.
+- **Rate limit.** Never take more nodes out of service than your spare pool covers.
+- **Common-cause breaker.** If many nodes raise the same alert within a short time, stop and page a person. A bad driver rollout, a switch failure or a power event looks like a hundred hardware faults, and draining a hundred nodes makes it worse. For example, stop when more than 2 percent of the fleet alarms within 10 minutes. The numbers are examples to tune.
+- **Dry run first.** New rules run in log-only mode for a month, and a person compares what they would have done with what happened.
+- **Audit trail.** Every action records the alert, the evidence and the actor.
+- **Human approval for irreversible steps** such as an RMA or a rack power cycle.
 
-Teams that insist on tuning everything by hand will fall behind teams that use AI assistance and autotuning. Spend your effort on new designs and hard optimizations, and let automation handle the routine work.
-
-### 5.6 Smart compilers and automated optimization
-
-Gone are the days when an engineer hand-tuned every CUDA kernel. High-level tools and AI systems now do much of the heavy lifting. Frameworks such as PyTorch, TensorFlow, and JAX use smart compilers and execution-graph optimizers. They fuse operations, use Tensor Cores automatically, and overlap computation with asynchronous data movement. On newer GPUs, they can use features such as the Tensor Memory Accelerator for that overlap.
-
-OpenAI's Triton compiler lets developers write GPU kernels in a Python-based language. Triton compiles those kernels into efficient CUDA kernels. The complexity stays hidden from the person writing them. OpenAI and NVIDIA work together so that Triton supports new GPU architectures and their specialized features.
-
-When a new GPU generation ships, an updated Triton compiler exposes its new capabilities. You write high-level Python, and the compiler generates code for that GPU. You do not need to write C++ or PTX assembly.
-
-Many optimizations that used to be hand-coded are now automated. Automatic kernel fusion, autotuning of kernel-launch parameters, and numerical-precision decisions can all go to compilers and AI assistants. The book expects this trend to accelerate.
-
-Graph execution cuts overhead too. CUDA Graphs capture a sequence of GPU operations, with their dependencies, as a static graph. You instantiate and launch that graph with little CPU overhead, using `cudaGraphInstantiate()` and `cudaGraphLaunch()`. Frameworks now capture training loops and other repeated patterns this way. Even a dynamic graph can be traced once and then replayed.
-
-Overlapping communication with computation is becoming automatic as well. A system could notice that while GPU 1 computes layer 10, GPU 2 can start layer 11. That is pipeline parallelism applied under the hood. Fully automatic pipeline parallelism is still an active research area. Current frameworks still need explicit pipeline-parallel code.
-
-The book covers 3D, 4D, and 5D parallelism, which combine data, tensor, model, expert, and context or sequence parallelism. These techniques still depend on human judgment and experience. Expert guides such as Hugging Face's Ultra-Scale Playbook describe them today. The hope is that compilers, libraries, and frameworks will absorb them soon.
-
-One day an AI advisor might see a 500 billion-parameter model and propose a layout. It might suggest eight-way tensor parallelism inside each node, followed by four-way pipeline parallelism across nodes. It could also suggest layer groupings and chunk sizes. The book presents this as a possibility, not a current feature.
-
-For performance engineers, this would be a large productivity gain. Instead of trying endless configurations, you could ask for a near-optimal starting point. Your role would shift toward guiding these tools and checking that they work well.
-
-The practical advice is to use these tools rather than fight them. Use high-level compilers such as Triton, which know what your hardware can do. Also watch new AI-driven optimization services. They can look like black boxes, but they hold a lot of hard-won performance knowledge.
-
-### 5.7 AlphaTensor and AI-discovered matrix multiplication
-
-Not all AI optimization happens at the code level. Some of it reaches into algorithms and math. In 2022, Google DeepMind's AlphaTensor project used AI to discover new general matrix multiply (GEMM) techniques.
-
-GEMMs sit under almost all model training and inference. A small gain in GEMM efficiency therefore affects the whole field. AlphaTensor treated the search for fast algorithms as a single-player game. Reinforcement learning let it explore many possibilities.
-
-The results beat the best human-derived methods known at the time. AlphaTensor rediscovered Strassen's famous subquadratic algorithm for 2 × 2 matrices. It also improved on that method for larger matrix sizes.
-
-The real test came on hardware. AlphaTensor found a method tuned for the NVIDIA Volta V100 generation. That method multiplied large matrices 10%–20% faster than the standard cuBLAS library of that era. A 10%–20% gain in GEMM speed is large. It is like gaining 10%–20% more compute in every forward and backward pass.
-
-Such gains usually need a new hardware generation or months of low-level CUDA tuning. Here the AI found a better mathematical method in a comparatively short time. The lesson is that efficiency may remain in core operations that engineers consider settled. An AI can search through millions of variations that no person could try.
-
-The return is indirect but broad. If the algorithm enters a GPU library, any large training job or inference workload speeds up without new hardware. The book notes that a 15% speed improvement, over thousands of training iterations on hundreds of GPUs, saves large amounts of time and energy. The gain pays back every time the code runs.
-
-The book says these matrix-multiplication algorithms remain experimental. Mainstream libraries such as cuBLAS had not yet adopted them, pending more validation and generalization.
-
-For the ultrascale performance engineer, stay open to AI-driven optimization at every level of the stack. Even well-tuned operations such as GEMMs may have room left. Letting an AI search the space without human bias can cut runtimes across the board.
-
-### 5.8 Generating a CUDA attention kernel with a reasoning model
-
-Writing low-level GPU code was long reserved for expert engineers the book calls CUDA Ninjas. NVIDIA engineers tested whether DeepSeek-R1, a reasoning model, could produce a high-performance CUDA kernel for a complex attention mechanism. The target was code that rivaled hand-tuned implementations.
-
-A reasoning model uses inference-time scaling. Instead of one quick pass, it refines its answer over a longer period. The longer it gets to iterate, the better the result tends to be. That is like a person who works through an answer before speaking.
-
-The NVIDIA team ran R1 on an H100 and gave it 15 minutes to generate an optimized attention kernel. They placed a verifier inside the generation loop. Each time the model proposed a kernel, the verifier checked its correctness and measured its efficiency. The loop looks like this:
-
-```
-for iteration in range(max_iters):
-    code = R1_model.generate_code(prompt)
-    valid, runtime = verifier.verify(code)
-    if valid and runtime < target_time:
-        break  # Accept this kernel
-    prompt = refine_prompt(prompt, verifier.feedback)
-    ...
-```
-
-The feedback becomes a better prompt for the next attempt. The loop stops when the kernel meets the criteria. The cycle is generate, verify, feedback, and iterate.
-
-The team's prompt asked for a kernel with on-the-fly relative position encoding:
-
-```text
-Please write a GPU attention kernel to support relative position encodings. Implement the relative positional encoding on the fly within the kernel. The complete code should be returned, including the necessary modifications.
-
-Use the following function to compute the relative positional encoding:
-
-def relative_positional(score, b, h, q_idx, kv_idx):
-    return score + (q_idx - kv_idx)
-
-When implementing the kernel, keep in mind that a constant scaling factor 1.44269504 should be applied to the relative positional encoding due to qk_scale = sm_scale * 1.44269504. The PyTorch reference does not need to scale the relative positional encoding, but in the GPU kernel, use:
-
-qk = qk * qk_scale + rel_pos * 1.44269504
-
-Please provide the complete updated kernel code that incorporates these changes, ensuring that the relative positional encoding is applied efficiently within the kernel operations.
-```
-
-The constant 1.44269504 equals 1 divided by ln(2). The prompt uses it to scale the relative-position term when forming `qk`. The AI produced a functionally correct CUDA kernel. That kernel ran 1.1–2.1× faster than PyTorch's FlexAttention API across attention patterns, including causal masks and long-document masks.
-
-On Stanford's KernelBench attention tasks, the generated kernels were accurate on 100% of basic Level-1 cases and 96% of complex Level-2 cases. The book says this essentially matches the reliability of a human engineer. Human oversight was still needed in this experiment. Pair a verifier with a robust test suite, as KernelBench does, so rare edge cases do not slip into generated code.
-
-Giving a model the tools to verify, critique, and refine its output improves code quality. The loop mirrors how an engineer profiles, debugs, and improves code. Even NVIDIA's top CUDA engineers might spend hours or days on one attention variant. An AI copilot can produce a comparable kernel in a fraction of that time, which frees engineers for system-level work.
-
-The book describes such copilots as pretrained and fine-tuned AI interns. They reason through hard problems using CUDA tips learned from existing code bases. Treat them as a force multiplier for human productivity, not a replacement for review.
-
-### 5.9 Reinforcement learning for Triton kernels
-
-Predibase, a startup, asked a bolder question. Could an LLM learn to write strong OpenAI Triton kernels from many examples of PyTorch and Triton code? Triton is a Python-like GPU language and compiler. The goal was code that replaces PyTorch operations and runs faster than TorchInductor, which itself uses Triton for GPU code generation.
-
-The team used a cluster of H100 GPUs. They fine-tuned Qwen2.5-Coder-32B-Instruct, a 32-billion-parameter model, with reinforcement learning. The method was Group Relative Preference Optimization (GRPO). The environment rewarded correctness more than runtime speed. The tuned model produced correct Triton kernels for all 13 tasks.
-
-The reward function guided the model toward better code over time. The model proposed a kernel. The system compiled and tested that kernel for correctness and speed. The model received a positive reward when the kernel ran without errors, produced the right results, and beat the baseline kernel's speed.
-
-Within a few days, success rose from near 0% to working kernels about 40% of the time. That took 5,000 training steps. Some kernels ran up to 3× faster than the baseline. The model kept improving as training went on.
-
-The model optimized by testing, observing feedback, and adjusting, much as engineers do. Rewarding both correctness and speed aligns the model with real performance. It can learn tactics such as warp-level parallelism and fewer global memory accesses.
-
-The value is that kernel-level tuning becomes automated. Instead of hand-building a kernel for each new model, a trained assistant can produce several variants and keep the best one. That shortens development cycles. It also lets smaller companies reach strong performance.
-
-The book suggests a future where Triton and Python may replace hand-written CUDA for many kernels. Over time, an AI agent could keep writing and improving kernels as part of the normal pipeline.
-
-### 5.10 Hardware for models with 100 trillion parameters
-
-The book's long-range question is how to scale toward models with tens or hundreds of trillions of parameters. The trillion-parameter threshold has already been crossed. The next step starts with hardware that offers more memory and more bandwidth, ideally on the GPU itself.
-
-Context helps here. The book gives 3 × 10^23 FLOPS as the training compute for GPT-3, and roughly 2 × 10^25 FLOPS for GPT-4. The upcoming ultrascale AI factories target 10^27 to 10^28 FLOPS for training. Against 2 × 10^25, that is roughly 50 to 500 times the compute used for GPT-4.
-
-High-bandwidth memory (HBM) keeps evolving. HBM3e ships with the Blackwell generation of GPUs. HBM4 appears in the Rubin generation, and it doubles bandwidth per stack again. The book puts that at about 1.6 TB/s per stack. HBM4 may also raise capacity to 48 GB or 64 GB per module.
-
-Future GPUs could carry 8 or 16 HBM stacks. At 64 GB each, that totals 512 GB or 1,024 GB on one board. That much local memory holds many parameters on each GPU, which cuts the need to swap data in and out. A job that needed 8 GPUs might fit on one. A job that needed 100 GPUs might fit on 10.
-
-Multichip designs such as the Grace Blackwell Superchip combine CPUs and GPUs. The NVIDIA GB200 and GB300 NVL72 link 72 GPUs into one NVLink domain. NVLink, NVSwitch, and SHARP form the communication base for the rack and the data center. Several NVL72 racks can join one cluster that acts like a single large GPU for communication. This works only while NVLink or a similar technology keeps scaling to those sizes.
-
-Hardware alone does not solve the problem. Naive data parallelism at this size would be very slow and expensive. The optimizer would update 100 trillion weights at every step. Engineers must lean on techniques that reduce the effective computation.
-
-Training a model at this scale will need a blend of aggressive quantization, multidimensional parallelism, and careful orchestration of communication between racks. The parallel dimensions are data, pipeline, tensor, expert, and context or sequence. Future scaling depends on hardware and on the ingenuity of software scheduling.
-
-The book expects several trends to continue together. Hardware must become faster and hold more data. Software must optimize itself more. Algorithms must avoid unnecessary work through sparsity, lower precision, and better optimizers.
-
-### 5.11 Low precision, sparsity, and cheaper optimizers
-
-Low precision is the first lever. The book covers FP8 and FP4 today. Future hardware may support even lower, 1-bit precision for some parts of a network. Hybrid schemes will likely matter most, using low precision for most of the model and higher precision for sensitive parts.
-
-For a 100-trillion-parameter model, the book says you very likely need low precision. Otherwise the workload becomes prohibitively slow and expensive. The good news is that the change should be smooth. CUDA provides first-class low-precision support through NVIDIA's Transformer Engine (TE) and Tensor Cores. PyTorch and Triton build on that support.
-
-The second lever is sparsity and conditional computation. Sparse mixture of experts (MoE) models already activate only part of their parameters for each input. The idea extends further. A model could use only the parts it needs for a given input. The book expects many 100-trillion-parameter models to be sparsely activated.
-
-Performance engineers then care about the efficiency of MoE routing, caching of expert outputs, and communication for sparse data exchange. Put the right experts on the right devices at the right time, and communication drops. That can speed up very large models a great deal.
-
-The third lever is the optimizer. Adam variants keep two extra copies of the weights, for momentum and variance estimates. This effectively triples memory use. A 100-trillion-parameter model would need 200 trillion extra values for optimizer state. Memory-efficient optimizers such as Adafactor and Shampoo reduce that overhead.
-
-Activation checkpointing trades compute for memory. It recomputes activations instead of storing them. At 100-trillion-parameter scale, the book expects aggressive checkpointing.
-
-A more radical idea is to update only a subset of weights on each step. The book compares this to watering plants in rotation rather than every plant every day. If done carefully, the model still learns, and each parameter gets fewer updates. Total compute drops as a result. This is an idea to explore, not a settled method.
-
-The habit to build is asking whether a step must happen this often, or at this precision. The answer is often no, because a cheaper approximation still works. At this scale, such approximations can save months of time or millions of dollars.
-
-### 5.12 Memory tiers, networks, and datacenter-scale training
-
-At more than 10,000 GPUs on one model, the network fabric matters as much as the GPUs. Ethernet and InfiniBand both keep improving throughput and adaptive routing. NVIDIA's Spectrum-X is an Ethernet fabric built for AI. It uses RoCE, adaptive routing, and high bisection bandwidth to reduce congestion in large training and inference jobs.
-
-Engineers must also keep data in the right memory tier at the right time. The goal is a memory space that spans GPUs and CPUs. A model that does not fit in one machine could then look almost local to the programmer. Unified Memory and on-demand paging already offer part of this. `cudaMemPrefetchAsync()` stages pages on the target device, which avoids page-fault stalls. At 100-trillion-parameter scale, this capability faces its hardest test.
-
-Frontier labs such as xAI, OpenAI, and Microsoft are building clusters of 1,000,000+ GPUs. At 100 trillion parameters, one job might span a whole datacenter. Performance engineers must think at datacenter scale, then at multidatacenter and global scale.
-
-Training at this scale may be beyond any single team or company. The book expects more collaboration, similar to large science projects that involve many institutions. Pooled compute could train a model that is then shared. That needs standard checkpoint formats, shared training code, and clear multiparty ownership. The book notes this is not a performance issue as such, but it shapes how teams build large systems. Those systems must be fault tolerant and easy to snapshot. The book points to initiatives similar to the Open Collective Foundation, a nonprofit that has since been dissolved, as a model for pooling compute.
-
-### 5.13 Self-improving agents: a hypothetical outlook
-
-The AI Futures Project published a report in early 2025. It described milestones for AI models and agents that speed up research and development. These scenarios are hypothetical. Read them as planning prompts, not forecasts.
-
-In the scenario, Agent-1 is trained with about two orders of magnitude more compute than the previous generation. It generates and optimizes code in real time. Its tasks range from routine debugging to complex kernel fusion. Automated coding acts as a force multiplier, which lets researchers try more ambitious ideas.
-
-Agent-2 is an always-learning model that never finishes training. Instead of deploying a fixed checkpoint, it updates its weights every day from fresh synthetic data. The approach remains an active research area. The main challenge is keeping the model stable. A model can forget earlier abilities as it specializes on new tasks.
-
-Agent-3 uses algorithmic breakthroughs to improve coding efficiency. In the scenario, it runs 200,000 copies in parallel. Together they form a workforce equivalent to tens of thousands of top programmers, running 30× faster. The book calls this a thought experiment that far exceeds today's practical limits.
-
-Agent-4 is the last step of the scenario, and it is a story, not a plan. The scenario imagines a superhuman researcher that rewrites its own code to improve itself, which the book calls the AGI scenario. It imagines interpretability tools being used to make that system's decisions clearer. Nothing in this section describes a system that exists, and nothing here is a target for your platform. The scenario only argues that each step would raise research productivity.
-
-These scenarios explain why AI system performance matters for progress toward AGI and superintelligence. Each generation raises research productivity. The book's advice is to build a strong foundation in performance fundamentals and stay ready to adapt.
-
-### 5.14 Performance per watt and cost per token
-
-Every example in this section aims at one number: throughput per unit cost. In practice, that means more tokens per second for each dollar and each watt. The book gives one example. The Grace Blackwell NVL72 rack system improves performance per watt by 25× over the prior Hopper generation. That lowers the cost per token compared with earlier GPU clusters.
-
-The lesson is codesign. Hardware, software, and algorithms must evolve together. The book describes this partnership as the way to shorten training time, improve inference, and lower operating costs. It is the basis for a measurable return on today's capital-intensive AI systems.
-
-Performance engineers will move up the stack. Their work expands from single-node kernels to system-wide and facility-wide optimization. Use your intuition to spot a bottleneck, such as a slow all-reduce pattern. Then guide your AI tools to fix it, and keep learning, because the pace of change will keep accelerating.
+The common-cause breaker is the part teams forget, and it is the one that prevents the worst night.
 
 ---
 
@@ -787,8 +638,11 @@ The monitoring for these tools is itself a production service, so it needs alert
 | Capacity forecast accuracy | Model quality | Error > 20% per month |
 | Multi-cluster queue latency | Multi-cluster performance | > 5 s |
 | Multi-region failover latency | Multi-region performance | > 1 hour |
+| Summary agreement with the post-mortem | Whether the summariser helps | Falling month over month |
+| Automation actions per day | Whether the loop is behaving | Above the pool's spare capacity |
+| Series churn | Monitoring health | Jump after a release |
 
-Alerting needs restraint. Too many critical alerts wear out on-call engineers, and false positives can bury the real event. *Production Kubernetes*, chapter 9, makes the same point. It also recommends a heartbeat alert that always fires, so that silence itself raises an alarm.
+Alerting needs restraint. Too many critical alerts wear out on-call engineers, and false positives can bury the real event. Also keep a heartbeat alert that always fires, so that silence itself raises an alarm.
 
 **The anomaly detection precision alert matters most.** A low precision means the model fires too many false positives, and the on-call engineer then learns to ignore it.
 
@@ -800,7 +654,7 @@ Six failures recur in these systems. Each one has a symptom you can see and a ca
 
 ### 7.1 "The anomaly detection fires too many false positives"
 
-The detector fires on every small wobble. The on-call engineer stops reading the alerts, and the real anomaly gets missed. The likely cause is a model that is too sensitive, a threshold set too low, or training data that does not match production traffic. Tune the model, raise the threshold, retrain on production traffic, and measure precision and recall.
+The detector fires on every small wobble. The on-call engineer stops reading the alerts, and the real anomaly gets missed. Work out the false-positive budget from section 1.1 before you tune anything. The likely cause is a model that is too sensitive, a threshold set too low, or training data that does not match production traffic. Tune the model, raise the threshold, retrain on production traffic, and measure precision and recall.
 
 ### 7.2 "The LLM-generated runbook is not actionable"
 
@@ -826,7 +680,7 @@ In one example, a regional outage takes 2 hours to recover from, and the service
 
 ## 8. Hands-on lab
 
-This lab walks through anomaly detection, runbook generation, root cause analysis, and capacity prediction in one session. The lab is **untested** in this repository.
+This lab walks through anomaly detection, runbook generation, root cause analysis, and capacity prediction in one session. The commands were not run on hardware for this book, so check flags against your versions.
 
 ### 8.1 Prerequisites
 
@@ -907,7 +761,7 @@ After the lab, answer five questions quickly. The five-second and 30-second figu
 4. What is the Q+1 GPU forecast per the capacity prediction?
 5. What is the current multi-cluster queue latency?
 
-If your team cannot answer these within the limit it chose, the stack is not ready to run as a production service. The lab has not been run against a live GKE cluster, so treat its steps as a plan to verify rather than proof that it works.
+If your team cannot answer these within the limit it chose, the stack is not ready to run as a production service. The lab was not run against a live GKE cluster, so treat its steps as a plan to verify.
 
 ---
 
@@ -966,8 +820,8 @@ It confirms that all six section headings appear and that at least one line is a
 Guessing at what the model meant could turn a malformed answer into a confident but wrong hypothesis. The parser demands the required keys and an integer confidence from 1 to 5. Anything else raises an error that a person can see.
 </details>
 
-<details><summary>11. Why did a verifier inside the generation loop help the reasoning model write a CUDA kernel?</summary>
-Each proposed kernel was checked for correctness and measured for efficiency. The feedback became a better prompt for the next attempt, so the cycle was generate, verify, feedback, iterate. The book says a robust test suite such as KernelBench is still needed so rare edge cases do not slip in.
+<details><summary>11. Your team will tolerate 5 false anomaly alerts a week across 10,000 series checked every 5 minutes. What false-positive rate per check does that require?</summary>
+There are 10,000 times 12 times 168, about 20 million checks a week. Five false alerts in 20 million checks is about 2.5 in 10 million. A three-sigma rule is wrong about 27 times in 10,000 checks, which would give tens of thousands of false alerts a week. So require persistence across windows, agreement with a peer comparison, and a ticket queue before any pager.
 </details>
 
 <details><summary>12. You must pick an anomaly model. When do you start with Prophet and when move to an LSTM autoencoder, and what do you give up?</summary>
@@ -982,8 +836,8 @@ Plan against the upper bound when running short costs more than holding spare ha
 Start small and raise the quota when usage data supports the change. The team waits for more capacity at first. In return one team's runaway job cannot starve everyone else, because the ResourceQuota caps what it can use.
 </details>
 
-<details><summary>15. Would you adopt a high-level compiler such as Triton or keep hand-tuning CUDA kernels, and what do you give up?</summary>
-The chapter advises using these tools rather than fighting them, because they know what the hardware can do. You give up some visibility, since they can look like black boxes. In return they hold a lot of hard-won performance knowledge, and you spend effort on new designs.
+<details><summary>15. A hardware fault alert fires on 3 percent of the fleet within 10 minutes. Should the cordon and drain automation proceed, and what do you give up?</summary>
+No. Many nodes raising one alert at once points to a common cause such as a driver rollout, a switch or a power event, and draining them all would make it worse. The common-cause breaker stops the automation and pages a person. You give up speed on genuine simultaneous faults, which is rare and costs less than draining a fleet by mistake.
 </details>
 
 <details><summary>16. A workload has 100 GPUs and a growth rate of 20 percent per 90 days. What does the forecast function project for 180 days?</summary>
@@ -994,8 +848,8 @@ The growth rate compounds once per 90-day period, and 180 days is two periods. T
 GPUs add up to 64 plus 64, which is 128. CPUs add up to 800 plus 800, which is 1,600. These are example values, so size your own from the capacity you have.
 </details>
 
-<details><summary>18. If a future GPU carries 16 HBM stacks of 64 GB each, how much local memory is that, and what does it do to GPU counts in the book's example?</summary>
-Sixteen times 64 GB is 1,024 GB on one board. With that much local memory, a job that needed 8 GPUs might fit on one. A job that needed 100 GPUs might fit on 10.
+<details><summary>18. A cluster has 10,000 GPUs with 50 series each, and a pod label adds 20 pod restarts a day per GPU. How many new series appear per day?</summary>
+That is 10,000 times 50 times 20, which is 10 million new series a day. The active count of 500,000 is manageable, but the churn is what overloads the head of the database. Drop the pod label from hardware metrics or record per-node aggregates. The inputs are example numbers, so measure your own.
 </details>
 
 <details><summary>19. The anomaly detection precision alert fires at below 80 percent for the week. In what order do you check?</summary>
@@ -1010,7 +864,7 @@ Read the error logs, the device statistics, and any memory dumps, and decide bet
 
 ## Sources and review notes
 
-- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapter 20). Chapter 20 is titled *AI-Assisted Performance Optimizations and Scaling Toward Multimillion GPU Clusters*. Source for the AI-assisted operations patterns, the anomaly detection models, and the capacity prediction models. It also supplies the kernel optimization case studies, the hardware and scaling outlook, and the self-improving agent scenarios behind Sections 1.4, 3.4, and 5.5 to 5.14. The wording has been rewritten in the handbook's voice.
+- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chapter 20), for AI-assisted operations and anomaly detection. The kernel generation, AlphaTensor and hardware outlook sections that earlier versions took from that chapter were moved out of this chapter. Prometheus metric names `prometheus_tsdb_head_series` and `prometheus_tsdb_head_series_created_total` are from the Prometheus documentation.
 - *Distributed AI Systems* (`distributed-ai-systems`, Chapter 11). Source for the scaling patterns and the multi-cluster, multi-region patterns.
 - *LLMOps* (`llmops`, Chapter 10). Source for the LLM-based operations patterns.
 - NVIDIA Zero-to-Hero Volume 8 (`chapter-03-ai-assisted-operations.md`). Source for the AI-assisted operations patterns.

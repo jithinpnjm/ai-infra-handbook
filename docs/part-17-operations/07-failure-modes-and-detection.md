@@ -23,7 +23,9 @@ lab_venue: "GCP / GKE"
 | Coverage file | `planning/coverage/chapters/17-07.md` |
 | Claim & number ledger | `planning/ledgers/17-07.md` |
 
-## Failure mode catalogue at a glance
+## The six failure families
+
+A failure mode is a specific way the cluster stops meeting its objectives. Each one below is a short entry: the symptom you see first, the signal that detects it, and the first action. The diagram shows where each family is caught.
 
 ```mermaid
 flowchart LR
@@ -31,7 +33,7 @@ flowchart LR
         HW[GPU hardware<br/>ECC, Xid, thermal]
         NET[Network<br/>NCCL, RDMA, partition]
         STO[Storage<br/>object store, disk]
-        SCH[Scheduler<br/>GPU OOM, image pull]
+        SCH[Scheduler<br/>OOMKilled, image pull]
         IMG[Container image<br/>signature, CVE]
         SVC[Model serving<br/>OOM, quality]
     end
@@ -64,42 +66,21 @@ flowchart LR
     IC --> DR
 ```
 
-Read the diagram from left to right. Each failure category points at the signal that should catch it. The signals feed Alertmanager, which leads to a runbook, then to the Incident Commander, and finally to disaster recovery. When you meet a new symptom, find its category first, then follow the arrows to the signal that should have caught it.
-
 ## Why this matters for AI infrastructure
 
 It is the middle of the night, and a page arrives. A training job stopped making progress a while ago, and the GPU dashboard shows nothing obvious. An on-call engineer who knows the failure modes can name the cause from the symptom and start the right fix. An engineer who does not know them spends the first minutes searching the wiki while the cluster stays stuck.
 
 The earlier chapters in this part teach you how to detect failures. This chapter is the catalogue of the failures themselves. An AI infrastructure failure mode is a specific way the cluster can stop meeting its service-level objectives. The range is wide. At one end, a single GPU reports a memory error that the DCGM exporter picks up. At the other, a network partition splits the cluster, and the Prometheus blackbox exporter is the detector.
 
-Every failure mode needs three things. It needs a detection signal, an alert built on that signal, and a runbook the alert links to. Without all three, the failure is either invisible or unhandled.
+Every failure mode needs three things. It needs a detection signal, an alert built on that signal, and a runbook the alert links to. Without all three, the failure is either invisible or unhandled. The tables in this chapter use the symptom, detect and first action columns for that reason.
 
-```text
-Why failure modes are on the critical path (background reading: NVIDIA Zero-to-Hero volume 16; NVIDIA Zero-to-Hero volume 20; Production Kubernetes; the figures below are examples, not quotations):
-- A typical mature AI platform has 30-50 distinct failure modes. Each failure
-  mode has a name, a symptom, a root cause, a detection signal, an alert, and a
-  runbook. The on-call engineer who has the catalogue is the on-call engineer
-  who resolves the incident in minutes; the on-call who does not is the on-call
-  who resolves the incident in hours.
-- The most common AI infrastructure failure modes are GPU hardware failures
-  (ECC errors, Xid events), network failures (NCCL timeouts, RDMA errors),
-  storage failures (object storage 5xx), scheduler failures (GPU OOM, queue
-  exhaustion), and container image failures (pull rate limit, image
-  corruption).
-- The failure mode catalogue is the on-call engineer's first responder tool.
-  The catalogue is updated after every incident; the catalogue is the on-call
-  engineer's institutional knowledge.
-```
-
-The count of 30 to 50 in that block is an example, not a measured figure. Count the failure modes on your own platform before you plan around any number.
-
-This chapter belongs to the platform team as much as to the data scientists. Three things make it a platform concern.
+Before the entries, one point about ownership. This chapter belongs to the platform team as much as to the data scientists. Three things make it a platform concern.
 
 1. The failure modes are platform-level. A data scientist sees a model that gives bad results. The platform team sees a cluster that stops working, and this chapter catalogues those cluster failures.
 
 2. The detection signals are platform-level. The DCGM exporter catches GPU failures, Prometheus catches metric failures, Loki catches log failures, and Tempo catches trace failures. The platform team owns that detection.
 
-3. The runbooks are platform-level. Each alert should carry a runbook link, so the on-call engineer finds the next step from the alert itself. Production Kubernetes, chapter 9, makes the same point. It recommends a description and a runbook link in each alert's annotations, so the responder has context right away. The platform team owns those runbooks.
+3. The runbooks are platform-level. Each alert should carry a runbook link, so the on-call engineer finds the next step from the alert itself. Put a description and a runbook link in each alert's annotations, so the responder has context right away. The platform team owns those runbooks.
 
 **Build the failure mode catalogue before the first AI workload runs on the cluster.** Without it, every incident starts from scratch. With it, the on-call engineer recognises the symptom and moves straight to the fix.
 
@@ -130,32 +111,30 @@ After completing this chapter, you will be able to:
 
 ### 1.1 The GPU failure catalogue
 
-GPU hardware causes a large share of training interruptions. In Meta's record of 54 days of Llama 3 405B pretraining, faulty GPUs caused 35.3 percent of the interruptions, and GPU HBM3 memory caused another 17.2 percent. AI Systems Performance Engineering, chapter 4, reports those figures. NVIDIA Zero-to-Hero Volume 16 chapter 8 and Volume 20 catalogue the same kinds of failure in more detail.
+GPU hardware causes a large share of training interruptions. Meta recorded 419 unexpected interruptions in 54 days of Llama 3 405B pretraining. Faulty GPUs caused 148 of them, which is 35.3 percent, and GPU HBM3 memory caused 72 more, which is 17.2 percent. Together that is more than half. Chapter 17.13 uses the full table for fleet reliability numbers.
 
-The table gives each failure a symptom, a likely root cause, a detection signal, and an alert level. Treat it as a starting list.
+The table gives each failure a symptom, the signal that detects it and the first action. The metric names are the dcgm-exporter 4.9.0 names, and chapter 17.4 maps them to the 4.8.x names and holds the tested alert rules.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **ECC single-bit error** | Increased error rate | GPU memory degradation | `DCGM_FI_DEV_ECC_SBE_VOL_TOTAL` rate | Warning |
-| **ECC double-bit error** | Data corruption | GPU memory failure | `DCGM_FI_DEV_ECC_DBE_VOL_TOTAL` count | Critical |
-| **GPU Xid error** | Driver-level error | Hardware or driver bug | `DCGM_FI_DEV_XID_ERRORS` count | Critical |
-| **Thermal throttling** | Reduced clock | Insufficient cooling | `DCGM_FI_DEV_GPU_TEMP > 85` | Warning |
-| **Power throttling** | Reduced clock | Insufficient power | `DCGM_FI_DEV_POWER_USAGE > TDP` | Warning |
-| **GPU OOM** | Training step crash | Model too large for HBM | `CUDA_OUT_OF_MEMORY` in logs | Warning |
-| **GPU hang** | No kernel progress | Driver or hardware hang | GPU utilisation stays high for > 10s while the job's step counter does not move | Critical |
-| **Retired pages** | Reduced HBM | Memory cell failure | `DCGM_FI_DEV_RETIRED_PENDING` count | Warning |
-| **NVLink CRC error** | Reduced bandwidth | Cable or port failure | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` count | Warning |
-| **PCIe replay** | Reduced PCIe bandwidth | Cable or slot failure | `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` count | Warning |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| Uncorrectable ECC error | Job crash or corrupted output | `increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]) > 0`, Xid 48 in the kernel log | Cordon and drain, flag checkpoints from the fault window |
+| Failed row remap | Spare rows exhausted | `DCGM_FI_DEV_ROW_REMAP_FAILED == 1`, Xid 64 | Cordon, drain, RMA |
+| Single-bit error growth | None yet | Weekly `increase` of `DCGM_FI_DEV_ECC_SBE_AGG_TOTAL` more than triples | Ticket, drain at the next window |
+| GPU fell off the bus | Job dies, GPU missing | Xid 79, node reports fewer GPUs than it advertises | Cordon, drain, PCIe rescan, `dcgmi diag -r 3` |
+| Thermal throttling | Jobs run slower, no error | `rate(DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL[10m])` above 0.1 | Check fans and inlet temperature, then the rack |
+| Power throttling | Jobs run slower | Rate of `DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL` | Compare with the site power cap |
+| CUDA out of memory | Step crashes with a CUDA error | `CUDA out of memory` in the application log | Shrink batch or model, see section 4.2 |
+| GPU hang | No progress, no error | Step counter flat while the GPU reports work, NCCL watchdog timeout in the log | Restart the job, drain the node if it repeats |
+| NVLink errors | Slow collectives | `increase(DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL[1h])` | Compare both link ends, reseat or replace |
+| PCIe replays | Slow host transfers | `increase(DCGM_FI_DEV_PCIE_REPLAY_TOTAL[1h])` | Check link width and generation, reseat |
 
-> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
-
-The 85 degree warning in the thermal row matches the example warning in AI Systems Performance Engineering, chapter 16. That chapter's example table also sets a critical level at 95 degrees and treats any uncorrectable ECC error as critical. Use these as starting points, then tune them to your own cooling and hardware.
+Thermal and power throttle counters, ECC counters and NVLink counters are optional fields in the default counters file, so enable them before you rely on these rows.
 
 ### 1.2 The ECC error storm
 
-Memory errors often come before a GPU fails. ECC, the error-correcting code built into the GPU's memory, fixes a single-bit error on the fly, so the job keeps running. A double-bit error cannot be corrected, but the hardware detects it and raises it to the program that caused it. AI Systems Performance Engineering, chapter 3, describes this behaviour, and it notes that ECC is on by default on NVIDIA data center GPUs.
+Memory errors often come before a GPU fails. ECC, the error-correcting code built into GPU memory, fixes a single-bit error on the fly, so the job keeps running. A double-bit error cannot be corrected, but the hardware detects it and raises it to the program that caused it. ECC is on by default on NVIDIA data center GPUs.
 
-The timeline below shows how a storm can unfold. It is an illustration, not a measured log from a real GPU. Use it to understand the order of events, not the exact times or rates.
+The timeline below shows how a storm can unfold. It is an illustration, not a measured log. Use it for the order of events, not the times or rates.
 
 ```text
 The ECC error storm:
@@ -167,21 +146,21 @@ The ECC error storm:
 - T+4h: GPU is replaced
 ```
 
-One example policy warns at 100 single-bit errors per hour, pages on any double-bit error, and drains the node at once. These numbers are examples. Measure the normal error rate on your own fleet before you choose yours.
+Alerting on a fixed single-bit rate would miss this storm, because the rate never reaches a round number like 100 per hour before the first double-bit error. The policy in chapter 17.4 watches the week-over-week growth of single-bit errors instead and pages on any double-bit error, then drains the node at once. Measure the normal error rate on your own fleet before you set thresholds.
 
 ### 1.3 The GPU hang
 
 A GPU hang is the quietest failure in this chapter. The workload still runs, kernels sit in the queue, and the GPU makes no progress. Nothing crashes, so nothing forces anyone to look until the job stalls.
 
-The SM clock does not show a hang, because a powered GPU has a non-zero clock whether it is working or stuck. The signal that does show it is a mismatch. The GPU reports high utilisation, but the job's own progress counter, such as steps or tokens per second, stays flat. If that lasts more than 10 seconds, the check treats the GPU as hung. The 10 seconds is an example threshold, and you should set it from your own step time.
+The SM clock does not show a hang, because a powered GPU has a non-zero clock whether it is working or stuck. The signal that does show it is a mismatch. The GPU reports high utilisation, but the job's own progress counter, such as steps or tokens per second, stays flat for several step times. Set the wait from your own step time, because a legitimate step can take seconds or minutes.
 
 ```bash
 # Detect a GPU hang
 nvidia-smi --query-gpu=utilization.gpu,clocks.sm --format=csv -l 5
-# expected: utilization stays high while the job's step counter does not advance -> hung
+# expected: utilisation stays high while the job's step counter does not advance, which means hung
 ```
 
-AI Systems Performance Engineering, chapter 16, argues for failing fast. Put timeouts around inference calls, so a hung call raises an error instead of holding GPU time. Apply the same idea to training jobs wherever you can.
+Fail fast. Put timeouts around inference calls, so a hung call raises an error instead of holding GPU time, and apply the same idea to training jobs wherever you can.
 
 A reasonable response, in order, is to alert, restart the workload, drain the node, and replace the GPU if the hang returns.
 
@@ -191,24 +170,23 @@ A reasonable response, in order, is to alert, restart the workload, drain the no
 
 ### 2.1 The network failure catalogue
 
-Network problems hit distributed training because every GPU depends on its neighbours. In the same Meta record, network switches and cables caused 8.4 percent of the interruptions. AI Systems Performance Engineering, chapter 4, reports that figure. The table lists the network failures this chapter covers. Start from the symptom column.
+Network problems hit distributed training because every GPU depends on its neighbours. In the same Meta record, network switches and cables caused 35 of the 419 interruptions, which is 8.4 percent. The table lists the network failures this chapter covers. Start from the symptom column.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **NCCL timeout** | Training step hangs | Network congestion or failure | NCCL timeout in logs | Critical |
-| **NCCL error** | Training step fails | Network or NCCL bug | `NCCL ERROR` in logs | Critical |
-| **RDMA error** | Reduced bandwidth | Cable or HCA failure | `RDMA ERROR` in logs | Warning |
-| **Network partition** | Multi-node training fails | Network split | `ping` failure between nodes | Critical |
-| **DNS failure** | Service discovery fails | DNS resolver error | `NXDOMAIN` in logs | Warning |
-| **Load balancer failure** | Traffic not routed | LB configuration error | 5xx rate spike | Critical |
-| **Ingress failure** | External traffic not routed | Ingress controller error | 5xx rate spike | Critical |
-| **Service mesh failure** | mTLS handshake fails | Istio/Linkerd error | `mTLS ERROR` in logs | Warning |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| NCCL timeout | Training step hangs | PyTorch watchdog line "Watchdog caught collective operation timeout" in the rank logs | Find the first rank that logged an error, see section 2.2 |
+| NCCL error | Training step fails | `NCCL WARN` lines in the rank logs, with `NCCL_DEBUG=WARN` | Read the first error, not the last |
+| InfiniBand or RoCE port errors | Slow collectives | Port error counters from the fabric manager or the node exporter InfiniBand collector | Compare both ends of the link, replace the cable or transceiver |
+| Network partition | Multi-node training fails | Probe failures between node groups, for example `probe_success == 0` from the blackbox exporter | Locate the failed switch or uplink |
+| DNS failure | Service discovery fails | CoreDNS `SERVFAIL` or `NXDOMAIN` response rates | Check the CoreDNS pods and upstream resolver |
+| Load balancer or ingress failure | External traffic not routed | 5xx rate spike at the gateway | Check the controller and backend health |
+| Mesh mTLS failure | Handshake errors between services | Proxy logs and the mesh's handshake failure counters | Check certificate expiry first |
 
 ### 2.2 The NCCL timeout
 
 An NCCL timeout happens when one collective operation, such as an all-reduce, runs past its time limit. Every GPU in the job waits on that operation, so the whole training step stalls. The timeout is the symptom you see first. The cause can be the network, or it can be a single rank that crashed, so check your peer ranks before you blame the fabric.
 
-That second case matters. AI Systems Performance Engineering, chapter 4, warns that when one GPU rank hits an error, the other ranks can hang waiting for it. Meta's record lists NCCL watchdog timeouts at 1.7 percent of interruptions, a small share, but each one stalls the whole job.
+That second case matters. When one GPU rank hits an error, the other ranks can hang waiting for it, so the ranks that print the timeout are often the healthy ones. Meta's record lists 7 NCCL watchdog timeouts, 1.7 percent of the unexpected interruptions, a small share, but each one stalls the whole job.
 
 ```python
 # code/part17/snippets/nccl_timeout.py
@@ -238,7 +216,7 @@ A simple policy sets the NCCL timeout to 600 seconds, alerts on any NCCL timeout
 
 A network partition splits the cluster into two halves that cannot reach each other. Multi-node training stops, because the ranks on one side wait for peers they can no longer reach. The detection signal is a failed ping between nodes, and the alert is critical.
 
-The check in this section is an Ansible ping across all hosts. A host that does not answer is either on the other side of the split or simply down, so you need to tell those cases apart. Run it from a host you trust.
+One quick check is an Ansible ping across all hosts. A host that does not answer is either on the other side of the split or simply down, so you need to tell those cases apart. Run it from a host you trust.
 
 ```bash
 # Check which hosts this machine can reach. Run it from a host on each side of the suspected split.
@@ -246,7 +224,7 @@ ansible all -m ping
 # expected: the set of unreachable hosts differs depending on where you run it
 ```
 
-AI Systems Performance Engineering, chapter 16, notes that a GPU which shows much lower utilization than its peers may have dropped out of the NCCL group. The book suggests searching the logs for `WARN NCCL_COMM_FAILURE`, and setting `NCCL_DEBUG=WARN` so silent errors become visible.
+A GPU that shows much lower utilisation than its peers may have dropped out of the NCCL group. Search the logs for `WARN NCCL_COMM_FAILURE`, and set `NCCL_DEBUG=WARN` so silent errors become visible.
 
 When the ping fails, alert, investigate the fabric, restart the affected workloads, and drain the affected nodes.
 
@@ -256,18 +234,17 @@ When the ping fails, alert, investigate the fabric, restart the affected workloa
 
 ### 3.1 The storage failure catalogue
 
-Storage failures either stop a job from starting or slow it down while it runs. Training reads its data from object storage or a shared filesystem, so an outage there starves the GPUs. A read error and a slow read need different alerts, which is why the table separates them.
+Storage failures either stop a job from starting or slow it down while it runs. Training reads its data from object storage or a shared filesystem, so an outage there starves the GPUs. A read error and a slow read need different alerts, which is why the table separates them. The object storage metric names in this section are illustrative, because every client library names its counters differently.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **Object storage 5xx** | Training fails to read data | Object storage outage | `s3_errors_total` rate | Critical |
-| **Object storage 4xx** | Training fails to read data | Permission or key issue | `s3_errors_total{status="4xx"}` rate | Warning |
-| **Object storage latency** | Training slow | Object storage degradation | `s3_request_duration_seconds` p99 | Warning |
-| **Distributed filesystem failure** | Training fails to read data | NFS/Lustre outage | `nfs_errors_total` rate | Critical |
-| **Local disk full** | Workload fails to start | Disk full | `node_filesystem_avail_bytes` < 10% | Warning |
-| **Disk I/O error** | Training slow | Disk failure | `node_disk_io_now` high | Warning |
-| **PVC mount failure** | Workload fails to start | PVC not bound | `kube_persistentvolumeclaim_status_phase{phase!="Bound"}` | Critical |
-| **Object lock failure** | Audit log cannot be deleted | Object storage misconfigured | Audit log bucket size | Critical |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| Object storage 5xx | Training cannot read data | Your object store client's error counter by status class (the metric name depends on the client) | Switch to a replica region if you have one |
+| Object storage 4xx | Reads fail for one job | Same counter, 4xx class, plus the 403 in the job log | Check the job's credentials and bucket policy |
+| Object storage latency | Training is slow, GPUs wait | p99 of the client's request duration | Check regional status, then the egress path |
+| Shared filesystem failure | Mounts hang, reads fail | Mount errors in the kernel log, stalled processes in D state | Check the filesystem servers, then remount |
+| Local disk full | Pods evicted or fail to start | `node_filesystem_avail_bytes` below 10 percent of size | Find the writer, clean up, resize |
+| Disk I/O error | Slow or failing writes | `I/O error` lines in the kernel log, SMART status | Drain the node and replace the disk |
+| PVC not bound | Pod stays Pending | `kube_persistentvolumeclaim_status_phase{phase="Pending"} == 1` | Check the storage class and provisioner events |
 
 ### 3.2 The object storage 5xx
 
@@ -305,32 +282,25 @@ The example alert fires below 10 percent free space, which is a starting point. 
 
 Scheduler failures leave a pod waiting or kill it before it does useful work. Your first question is whether the pod is waiting for capacity, or whether it started and then died. The table below groups the failures by symptom, so you can start from what the pod shows.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **GPU OOM** | Workload fails to start | Insufficient GPU memory | `kube_pod_container_status_terminated_reason{reason="OOMKilled"}` | Critical |
-| **GPU not available** | Workload pending | All GPUs allocated | `kube_pod_status_phase{phase="Pending"}` | Warning |
-| **Pod scheduling timeout** | Workload pending | Scheduler misconfigured | `kube_pod_status_phase{phase="Pending"}` for > 5m | Warning |
-| **Image pull failure** | Workload fails to start | Image not found or pull rate limit | `kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}` | Critical |
-| **Node not ready** | Workload pending | Node down | `kube_node_status_condition{condition="Ready",status="false"}` | Critical |
-| **Scheduler hang** | Workload pending | Scheduler crash | Pod pending for > 10m | Critical |
-| **Preemption loop** | Workload repeatedly preempted | Quota exhausted | Pod preempted events | Warning |
-| **Quota exhausted** | Workload pending | Team quota exhausted | Kueue LocalQueue depth | Warning |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| Container OOMKilled | Pod restarts, exit code 137 | `kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1` | Raise the memory limit or reduce host memory use |
+| GPUs all allocated | Pod Pending | `kube_pod_status_phase{phase="Pending"}` for more than 5 minutes, scheduler event "Insufficient nvidia.com/gpu" | Check queue position and quota |
+| Image pull failure | Pod stuck before start | `kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}` | Check name, tag, rate limit, pull secret |
+| Node not ready | Pods Pending or evicted | `kube_node_status_condition{condition="Ready",status="false"} == 1` | Check the kubelet and the node, drain if needed |
+| Preemption loop | Job restarts repeatedly | Preemption events in the job's namespace | Check priority classes and queue quota |
+| Quota exhausted | Job waits in the queue | Kueue pending workloads per ClusterQueue | Check team quota and borrowing |
 
-### 4.2 The GPU OOM
+### 4.2 OOMKilled is host memory, not GPU memory
 
-In this failure, the job asks for more GPU memory than the node can give, and Kubernetes kills the workload. The detection signal is the `OOMKilled` reason in the pod status. The query below finds those pods and counts them over the last hour.
+Two different out-of-memory failures look alike in a ticket. When the container uses more host memory than its limit, the kernel's cgroup memory controller kills it, and Kubernetes records the reason `OOMKilled` with exit code 137. When a kernel asks the GPU for more memory than it has, the CUDA runtime raises an error such as `CUDA out of memory` inside the application, and the pod usually exits with an ordinary error. The first one shows up in pod status. The second one shows up only in the application log.
 
 ```promql
-# The pods that were OOMKilled
-kube_pod_container_status_terminated_reason{reason="OOMKilled"}
-
-# Alert: any OOMKilled in the last hour
-sum(increase(kube_pod_container_status_terminated_reason{reason="OOMKilled"}[1h])) > 0
+# Containers whose last termination was an OOM kill
+kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
 ```
 
-AI Systems Performance Engineering, chapter 3, describes the Linux OOM killer as the cgroup enforcement that ends a container which exceeds its memory allocation. That is a system-memory limit, so check it when you suspect a host-memory problem. Confirm the GPU side from the CUDA out-of-memory error in the workload's own logs.
-
-A reasonable response is to alert on any OOMKilled in the last hour, check the workload's memory request, then raise the request or shrink the model, and redeploy.
+For an OOMKilled pod, check the memory limit against what the workload really uses, for example the dataloader workers and pinned host buffers, and raise the limit or reduce the use. For a CUDA error, shrink the batch or the model, or use a larger GPU. Do not raise the container memory limit to fix a CUDA out-of-memory error, because it cannot help.
 
 ### 4.3 The image pull failure
 
@@ -340,7 +310,7 @@ An image pull failure leaves a pod stuck before its container starts. Three caus
 # The pods that are ImagePullBackOff
 kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}
 
-# Alert: any ImagePullBackOff for > 5 minutes
+# Alert expression; set `for: 5m` on the rule
 count by (pod, namespace) (kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"}) > 0
 ```
 
@@ -354,19 +324,18 @@ Start by checking the image name and tag, because that is the cheapest fix. Then
 
 A container image can fail at the registry, at the admission check, or during a security scan. Each failure leaves a different trace, so read the event or log that names the stage first. The table lists the failures this chapter covers, along with the signal for each.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **Image not signed** | Pod fails to start | Image not signed by cosign | Admission controller log | Critical |
-| **Image signature mismatch** | Pod fails to start | Signature does not verify | Admission controller log | Critical |
-| **Image pull rate limit** | ImagePullBackOff | Docker Hub rate limit | Pull error in logs | Warning |
-| **Image corruption** | Pod fails to start | Image digest mismatch | Admission controller log | Critical |
-| **Image CVE** | Workload runs with vulnerability | Image has known CVE | Trivy scan | Warning |
-| **Image out of date** | Workload runs with old base | Image not updated | Trivy scan | Warning |
-| **Image storage full** | Image push fails | Registry storage full | Registry metrics | Warning |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| Image not signed | Pod rejected | Admission controller deny event | Fix the signing step in CI |
+| Signature mismatch | Pod rejected | Admission controller deny event | Investigate the pipeline, see section 5.2 |
+| Pull rate limit | ImagePullBackOff | Pull error text in the pod events | Use a mirror or authenticated pulls |
+| Digest mismatch | Pod fails to start | Pull error naming the digest | Re-push from CI, never edit the registry by hand |
+| Known CVE | Runs with a vulnerability | Scanner report, for example Trivy | Rebuild on an updated base image |
+| Registry storage full | Pushes fail | Registry metrics and push errors | Prune old tags |
 
 ### 5.2 The image signature mismatch
 
-A signature mismatch is the failure you should treat with the most care. The image was signed, but the signature no longer matches the image. The admission controller then refuses to start the pod, which is the behaviour you want. Production Kubernetes, chapter 15, notes that admission webhooks can check for signed images before a pod runs, so this check fits into the cluster itself.
+A signature mismatch is the failure you should treat with the most care. The image was signed, but the signature no longer matches the image. The admission controller then refuses to start the pod, which is the behaviour you want. Admission webhooks can check for signed images before a pod runs, so this check fits into the cluster itself.
 
 ```bash
 # Detect an image signature mismatch
@@ -386,7 +355,7 @@ trivy image my-image:v1
 # expected: list of CVEs with severity
 ```
 
-Production Kubernetes, chapter 15, makes a point you should keep in mind. An image that passed its scan at pull time can gain new CVEs later, so scans must repeat on a schedule. The chapter's policy is to run Trivy on every image in CI, alert on any CVE at HIGH severity or above, and rebuild on an updated base image. The severity cut-off is an example you can adjust.
+Keep one point in mind. An image that passed its scan at pull time can gain new CVEs later, so scans must repeat on a schedule. A reasonable policy is to run Trivy on every image in CI, alert on any CVE at HIGH severity or above, and rebuild on an updated base image. The severity cut-off is an example you can adjust.
 
 ---
 
@@ -396,20 +365,21 @@ Production Kubernetes, chapter 15, makes a point you should keep in mind. An ima
 
 Model serving failures reach users in two ways. Some crash the request, so the user gets an error. Others return a wrong answer with no error at all, and you will not see those in your error logs. The table separates the two kinds, and the second kind is the one that needs the most attention.
 
-| Failure mode | Symptom | Root cause | Detection signal | Alert |
-|---|---|---|---|---|
-| **Model OOM** | Inference request fails | Model too large for GPU | `inference_oom_total` rate | Critical |
-| **Model timeout** | Inference request hangs | Model too slow | `inference_request_duration_seconds` p99 > SLO | Warning |
-| **Model version mismatch** | Inference request returns wrong output | Stale model loaded | Model hash mismatch | Critical |
-| **Tokenizer failure** | Inference request fails | Tokenizer error | `tokenizer_errors_total` rate | Warning |
-| **Feature store failure** | Inference request fails | Feature store unavailable | `feature_store_errors_total` rate | Critical |
-| **Vector store failure** | RAG inference fails | Vector store unavailable | `vector_store_errors_total` rate | Critical |
-| **Model quality regression** | Inference succeeds but wrong | Model degradation | `model_quality_score` drop | Warning |
-| **Prompt injection** | Inference returns harmful content | Adversarial prompt | Guardrail trigger | Critical |
+| Failure mode | Symptom | Detect | First action |
+|---|---|---|---|
+| CUDA out of memory in serving | Requests fail, engine restarts | `CUDA out of memory` in the engine log, restart count | Lower concurrency or the KV cache budget, see section 6.2 |
+| Slow requests | Users see long waits | p99 time to first token and inter-token latency against the SLO, see chapter 20.19 | Check queue depth and cache usage first |
+| Wrong model version | Output differs from the approved model | Loaded model hash differs from the registry entry | Redeploy the approved version |
+| Tokenizer failure | Requests fail on some inputs | Error rate by error type at the gateway | Compare tokenizer files with the model |
+| Feature or vector store down | Requests fail or answers degrade | Dependency error rate and its own health check | Fail open or closed by design, then fix the dependency |
+| Quality regression | Requests succeed, answers are worse | Quality score from chapter 16.10 below its baseline | Roll back, then retrain |
+| Prompt injection | Harmful or leaked output | Guardrail trigger counts | Block, log and review the prompt |
+
+The signal names in this table are generic on purpose. Name the counters after your own engine and gateway, and see chapters 15.3 and 20.18 for vLLM metrics.
 
 ### 6.2 The model OOM
 
-An OOM in serving happens when the model and its working memory no longer fit on the GPU. The model is too large for the GPU's memory, the inference engine's KV cache fills up, and a CUDA out-of-memory crash follows. The detection signal is the `inference_oom_total` rate, and the query below counts it over five minutes.
+An OOM in serving happens when the model and its working memory no longer fit on the GPU. The model is too large for the GPU's memory, the inference engine's KV cache fills up, and a CUDA out-of-memory crash follows. The detection signal is a counter your engine or gateway exposes for these crashes. The counter name below is illustrative, and the query counts it over five minutes.
 
 ```promql
 # The inference OOM rate
@@ -419,7 +389,7 @@ sum(rate(inference_oom_total[5m]))
 sum(rate(inference_oom_total[5m])) > 0
 ```
 
-AI Systems Performance Engineering, chapter 16, recommends backpressure when errors spike. You reject new requests or reduce the batch size for a while, which gives the system room to recover. An alert on any inference OOM is a good first step, and the fixes are to shrink the KV cache budget, move to a larger GPU, or lower the number of concurrent requests.
+Apply backpressure when errors spike. Reject new requests or reduce the batch size for a while, which gives the system room to recover. An alert on any inference OOM is a good first step, and the fixes are to shrink the KV cache budget, move to a larger GPU, or lower the number of concurrent requests.
 
 ### 6.3 The model quality regression
 
@@ -503,7 +473,7 @@ Six patterns come back again and again when the catalogue or its alerts stop hel
 
 **Diagnosis:** The signal is too sensitive, the threshold is too low, or the alert is misconfigured.
 
-**Fix:** Tune the signal, raise the threshold, add hysteresis, and measure the alert's precision and recall. Production Kubernetes, chapter 9, warns that too many critical alerts burn out on-call engineers and let false positives hide real events. Tune each alert until it is worth a page.
+**Fix:** Tune the signal, raise the threshold, add hysteresis, and measure the alert's precision and recall. Too many critical alerts burn out on-call engineers and let false positives hide real events. Tune each alert until it is worth a page.
 
 ### 8.3 "The runbook is missing the recovery step"
 
@@ -519,7 +489,7 @@ Six patterns come back again and again when the catalogue or its alerts stop hel
 
 **Diagnosis:** Failure isolation is missing, so the failure travels along the dependency chain.
 
-**Fix:** Drain the node when its GPU fails. Add circuit breakers, so a workload stops calling a failing service. Add bulkheads, so one team's failure does not reach another team. Production Kubernetes, chapter 14, notes that anti-affinity rules spread pods across failure domains and limit the damage from one disturbance, though they cannot remove the disturbance itself.
+**Fix:** Drain the node when its GPU fails. Add circuit breakers, so a workload stops calling a failing service. Add bulkheads, so one team's failure does not reach another team. Anti-affinity rules spread pods across failure domains and limit the damage from one disturbance, though they cannot remove the disturbance itself.
 
 ### 8.5 "The alert is inhibited at the wrong moment"
 
@@ -527,7 +497,7 @@ Six patterns come back again and again when the catalogue or its alerts stop hel
 
 **Diagnosis:** The inhibit rule is too broad, or it matches the wrong alerts.
 
-**Fix:** Review the inhibit rules and check that each one matches only the alerts it should. If you cannot explain why an alert was hidden, read the inhibit rules first. Add an integration test. Production Kubernetes, chapter 9, also suggests an alert that always fires under normal conditions and pages when it goes quiet. That alert tells you when the alerting path itself has failed.
+**Fix:** Review the inhibit rules and check that each one matches only the alerts it should. If you cannot explain why an alert was hidden, read the inhibit rules first. Add an integration test. Also keep an alert that always fires under normal conditions and pages when it goes quiet. That alert tells you when the alerting path itself has failed.
 
 ### 8.6 "The catalogue is stale"
 
@@ -541,7 +511,7 @@ Six patterns come back again and again when the catalogue or its alerts stop hel
 
 ## 9. Hands-on lab
 
-Work through this lab in order. It builds the failure mode catalogue, configures the detection signals, and checks the on-call integration. The lab is **untested** in this repository, so treat each expected output as something to confirm on your own cluster.
+Work through this lab in order. It builds the failure mode catalogue, configures the detection signals, and checks the on-call integration. The commands were not run on hardware for this book, so treat each expected output as something to confirm on your own cluster.
 
 ### 9.1 Prerequisites
 
@@ -570,16 +540,11 @@ EOF
 
 ### 9.3 Step 2: configure the detection signals
 
-Load the alert rules into the cluster, then tell Prometheus to reload them. After the reload, the rules should be active.
+Load the GPU fault-signal rules from chapter 17.4 as a PrometheusRule, as that chapter's lab shows. After Prometheus reloads, the rules should be active.
 
 ```bash
-# Apply the alert rules
-kubectl -n monitoring create configmap gpu-alerts \
-  --from-file=configs/gpu_alerts.yaml
-
-# Reload Prometheus
-curl -X POST http://prometheus.monitoring:9090/-/reload
-# expected: the alert rules are active
+promtool check rules code/part17/gpu_alerts.yaml
+# expected: SUCCESS: 13 rules found
 ```
 
 ### 9.4 Step 3: verify the runbook integration
@@ -595,12 +560,11 @@ curl -s http://localhost:9093/api/v2/alerts | jq '.[] | {alertname, runbookURL}'
 
 ### 9.5 Step 4: simulate a failure mode
 
-The command below only reads the ECC counters on the GPU. It does not inject an error. Use it to see what the detector sees. To test the alert itself, use a test cluster and a fault-injection tool such as the one in DCGM, or write a test value for the alert rule. Never inject faults on a production GPU.
+Inject a fault on a test node with DCGM, as chapter 17.4 does, and watch the matching row of the catalogue come alive. Never inject faults on a production GPU.
 
 ```bash
-# Read the ECC counters (read-only, safe on any node)
-nvidia-smi -q -d ECC
-# expected: the ECC counts are listed. A non-zero double-bit count should match an active alert.
+dcgmi test --inject --gpuid 0 -f 202 -v 99999
+# expected: Successfully injected field info. The PCIe replay alert fires once the exporter reads the same host engine.
 ```
 
 ### 9.6 Step 5: verify the on-call runbook
@@ -634,7 +598,7 @@ After the lab, you should be able to answer five questions quickly:
 4. What is the current ECC error rate per GPU?
 5. What is the current alert firing rate per failure mode?
 
-Aim for five seconds per answer, and treat 30 seconds as the upper limit. Those times are examples, so pick targets that match how fast your on-call engineers need answers. If an answer takes longer than your target, the catalogue is not yet a production service. The lab is **untested** against a live GKE cluster.
+If an answer takes longer than your on-call engineers can afford, the catalogue is not yet a production service. The lab was not run against a live GKE cluster.
 
 ---
 
@@ -656,7 +620,7 @@ Check the peer ranks. When one GPU rank hits an error, the other ranks can hang 
 </details>
 
 <details><summary>2. A GPU's single-bit ECC error rate climbs, and two hours later the first double-bit error appears. What do you do?</summary>
-A double-bit error cannot be corrected, so the GPU may be corrupting data. The example policy pages on any double-bit error and drains the node at once. Move the workload off that node and replace the GPU. Treat the rising single-bit rate as the earlier warning you should have acted on.
+A double-bit error cannot be corrected, so the GPU may be corrupting data. Cordon and drain the node, flag the outputs of jobs that ran there, and replace the GPU. The rising single-bit rate was the earlier warning, which is why chapter 17.4 alerts on its week-over-week growth.
 </details>
 
 <details><summary>3. A multi-node job fails, and a ping between two nodes fails. How do you tell a network partition from a dead host?</summary>
@@ -668,7 +632,7 @@ This is a quality regression, which error logs cannot show. Retrain with recent 
 </details>
 
 <details><summary>5. A pod is killed with the reason `OOMKilled`. Does that prove the GPU ran out of memory?</summary>
-No. The Linux OOM killer is a cgroup limit on system memory, so `OOMKilled` points at host memory. Confirm the GPU side from the CUDA out-of-memory error in the workload's own logs. Then check the memory request, and raise it or shrink the model.
+No. `OOMKilled` means the container exceeded its host memory limit and the kernel killed it, usually with exit code 137. A GPU out-of-memory error is raised by the CUDA runtime inside the application and shows in the application log. Check the host memory limit and the dataloader and pinned-buffer use, and do not raise the container limit to fix a CUDA error.
 </details>
 
 <details><summary>6. A pod will not start and the events show "Failed to verify signature". What do you do and what must you never do?</summary>
@@ -680,7 +644,7 @@ Every GPU waits on each collective, so one missing rank blocks them all. The tim
 </details>
 
 <details><summary>8. Why does a GPU hang go unnoticed until the job stalls?</summary>
-Nothing crashes. The workload still runs, kernels sit in the queue, and the GPU makes no progress. The check treats the GPU as hung when utilisation stays high for 10 seconds while the job's step counter does not move, so it needs two signals, one from the GPU and one from the job. The SM clock alone cannot show a hang. Timeouts around calls make a hang fail fast.
+Nothing crashes. The workload still runs, kernels sit in the queue, and the GPU makes no progress. The check needs two signals, one from the GPU and one from the job: utilisation stays high while the step counter stays flat for several step times. The SM clock alone cannot show a hang. Timeouts around calls make a hang fail fast.
 </details>
 
 <details><summary>9. Why must image scans repeat on a schedule?</summary>
@@ -711,16 +675,16 @@ Backpressure rejects new requests or reduces the batch size for a while, which g
 A node that writes large checkpoints may need more margin, because the disk can fill before anyone reacts. A higher margin gives earlier warning but fires more often and wastes usable space. The 10 percent is a starting point, so tune it to your workload.
 </details>
 
-<details><summary>16. In Meta's 54 days of Llama 3 405B pretraining, faulty GPUs caused 35.3 percent of interruptions and HBM3 memory 17.2 percent. What share is that together?</summary>
-Add the two shares, 35.3 plus 17.2, which is 52.5 percent. More than half of all interruptions came from GPU hardware. Network switches and cables added another 8.4 percent.
+<details><summary>16. In Meta's 54 days of Llama 3 405B pretraining, 419 interruptions were unexpected. Faulty GPUs caused 148 and HBM3 memory 72. What share is that together?</summary>
+Add the counts, 148 plus 72, which is 220. Divide by 419 to get 52.5 percent, with 35.3 percent from faulty GPUs and 17.2 percent from HBM3. More than half of all unexpected interruptions came from those two causes. Network switches and cables added 35, which is 8.4 percent.
 </details>
 
 <details><summary>17. The disk alert is `node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1`. At what free space does it fire on a 2 TB disk?</summary>
 The ratio is below 0.1 when free space is under 10 percent of 2 TB. Ten percent of 2,000 GB is 200 GB. So the alert fires when less than about 200 GB is free.
 </details>
 
-<details><summary>18. The example policy warns at 100 single-bit errors per hour. In the example storm, what does the warning miss?</summary>
-In the timeline, the single-bit rate reaches only 50 per hour at the first hour, and the first double-bit error appears at two hours. The rate never reaches 100, so the warning does not fire before the double-bit page. Measure your own fleet's normal rate before choosing a threshold.
+<details><summary>18. In the example storm, why would an alert on 100 single-bit errors per hour miss the warning?</summary>
+The single-bit rate reaches only 50 per hour in the first hour, and the first double-bit error appears at two hours. The rate never reaches 100 before the double-bit page, so the fixed threshold adds nothing. Alerting on week-over-week growth of the single-bit count, as chapter 17.4 does, catches the climb earlier.
 </details>
 
 <details><summary>19. Pods are stuck in `ImagePullBackOff`. What do you check first, second and third?</summary>
@@ -735,6 +699,8 @@ First read the inhibit rules, since a less important alert may be hiding the cri
 
 - NVIDIA Zero-to-Hero Volume 16 (`chapter-08-failure-modes-and-detection.md`). Source for the GPU hardware failures, the network failures, the storage failures, and the detection signals. The wording has been rewritten in the handbook's voice.
 - NVIDIA Zero-to-Hero Volume 20. Source for additional failure modes drawn from the broader nvidia-devops corpus.
+- *AI Systems Performance Engineering*, Table 4-4 (Meta's Llama 3 405B interruptions). The book prints 30.1 percent for the 148 faulty-GPU interruptions, but 148 of 419 is 35.3 percent, and the other rows use 419 as the base, so this chapter uses 35.3.
+- Chapter 10.21 and chapter 17.4 for the Xid tiers, row remapping and the alert rules.
 - *Production Kubernetes* (`production-kubernetes`, Chapter 14). Source for the Kubernetes-level failure modes (scheduler, container image) and the operational patterns.
 
 ### Cross-references to other handbook chapters

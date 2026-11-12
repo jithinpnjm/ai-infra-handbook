@@ -29,18 +29,7 @@ Suppose a platform team is asked how reliable its AI factory is. The honest answ
 
 Customers do not care how many GPUs your cluster has or how it is wired. They care whether the service answers when they call it. An AI factory without reliability engineering depends on luck. An AI factory with it knows its uptime, because the targets are measured, the budget is tracked and the failure drills are run.
 
-```text
-Why reliability engineering is on the critical path (background reading: Engineering AI Systems; NVIDIA Zero-to-Hero volume 19; Production Kubernetes; the figures below are examples, not quotations):
-- A typical mature AI platform commits to 99.9% monthly availability. The
-  commitment is enforced by the SLO; the commitment is measured by the
-  error budget; the commitment is tested by chaos engineering.
-- A typical chaos engineering game day catches 1-3 latent failure modes
-  that would have caused an incident in production. Each caught failure
-  mode is worth 10-100x the cost of the game day.
-- The reliability discipline is what makes the platform team's SLO
-  commitments honest. The discipline is the SLO; the discipline is the
-  error budget; the discipline is the chaos engineering game day.
-```
+A large GPU fleet fails on a schedule you can compute. In 54 days of Llama 3 405B pretraining on up to 16,000 H100 GPUs, Meta recorded 419 unexpected interruptions, about one every three hours. Most were hardware. A team that knows those numbers can size its spare nodes, price its repair time and set a budget it can actually keep. A team that does not know them promises 99.9 percent and finds out in the first month. Section 1.4 works through the numbers.
 
 Three realities make this a platform-team concern, not only a data-science concern. Each one changes who has to act.
 
@@ -76,7 +65,7 @@ After completing this chapter you will be able to do the following. Each outcome
 
 ### 1.1 The reliability triangle
 
-Reliability needs three parts that check one another. The *Engineering AI Systems* book, Chapter 7, calls this the reliability triangle. It joins an SLO (the commitment), an error budget (the allowed unreliability) and chaos engineering (the drill). If one corner is missing, the other two cannot prove much.
+Reliability needs three parts that check one another. One useful picture is a reliability triangle. It joins an SLO (the commitment), an error budget (the allowed unreliability) and chaos engineering (the drill). If one corner is missing, the other two cannot prove much.
 
 ```mermaid
 flowchart TB
@@ -117,6 +106,44 @@ Not every consumer needs the same reliability, and higher reliability costs more
 
 The numbers in this table are example values, not industry standards. Each consumer picks a tier, the tier sets the SLO, and the tier sets the cost. The platform team can then charge each consumer for the level it chooses.
 
+### 1.4 What a large GPU fleet really experiences
+
+The best public record of GPU fleet failures is Meta's account of 54 days of Llama 3 405B pretraining. The run used up to 16,000 H100 GPUs, and Meta reported 466 job interruptions, of which 47 were planned and 419 were unexpected. The table lists the unexpected ones by root cause, with each share computed against the 419.
+
+| Root cause | Count | Share of 419 |
+|---|---|---|
+| Faulty GPU | 148 | 35.3% |
+| GPU HBM3 memory | 72 | 17.2% |
+| Software bug | 54 | 12.9% |
+| Network switch or cable | 35 | 8.4% |
+| Host maintenance (unplanned) | 32 | 7.6% |
+| GPU SRAM memory | 19 | 4.5% |
+| GPU system processor | 17 | 4.1% |
+| NIC | 7 | 1.7% |
+| NCCL watchdog timeouts | 7 | 1.7% |
+| Silent data corruption | 6 | 1.4% |
+| GPU thermal interface and sensor | 6 | 1.4% |
+| Other host parts, dependency and CPU | 16 | 3.8% |
+
+Five numbers come out of the table, and each one feeds a decision.
+
+- **Time between interruptions.** 54 days is 1,296 hours, and 1,296 divided by 419 is 3.1 hours. A job that spans the whole fleet is interrupted about every three hours.
+- **GPU share.** The six GPU rows add up to 268 of 419, which is 64 percent. Plan spares and repair around GPU and node hardware first.
+- **Per-GPU rate.** The 268 GPU-caused interruptions over at most 16,000 GPUs is about 1.7 percent of GPUs in 54 days, or roughly 11 percent a year. The real GPU count in the snapshot is not stated, so treat this as a lower bound.
+- **Effective training time.** Meta reports that despite the interruptions it kept more than 90 percent effective training time, which depends on fast detection, automatic restart and checkpoints, covered in chapter 14.11.
+- **Scaling to your fleet.** Scale the rate by GPU count. A 1,024-GPU cluster sees about 0.5 interruptions a day, one every two days. That assumes your hardware and software behave like Meta's, so replace the rate with your own after one quarter of data.
+
+**Spare pool sizing.** A failed node is out of service until it is repaired or replaced. If failures arrive at a rate of r per day and repair takes d days, the average number of nodes in repair is r times d. For 1,024 GPUs the rate is 0.5 a day. With a one-day repair, 0.5 nodes are out on average. The spare pool has to cover the bad days, not the average. Treat the arrivals as random, which gives these odds that the spare pool is enough.
+
+| Repair time | Mean nodes out | Spares for 98% cover | Spares for 99.5% cover |
+|---|---|---|---|
+| 1 day | 0.5 | 2 | 3 |
+| 2 days | 1.0 | 3 | 4 |
+
+Doubling repair time doubles the average nodes out, and the spare pool grows with it. The cheapest reliability work on a GPU fleet is often a faster repair loop, not more spares: automatic cordon and drain from chapter 17.4, a quick vendor RMA path and a validation run with `dcgmi diag -r 3` before the node returns.
+
+**Pool availability follows.** A 128-node pool with 0.5 nodes out on average is 99.6 percent available. At a two-day repair time it is 99.2 percent. A 99.5 percent GPU pool SLO therefore holds with a one-day repair and fails with a two-day repair, with no change in hardware quality. Set the SLO from the repair loop you can sustain.
+
 ---
 
 ## 2. The error budget
@@ -129,12 +156,11 @@ Suppose your team promises 99.9% availability for a month. That promise leaves a
 Error budget at 99.9% monthly availability:
 - Total time per month: 30 days * 24 hours * 60 minutes = 43,200 minutes
 - Budget: 0.1% * 43,200 = 43.2 minutes of downtime per month
-- Burn rate at 1x: 43.2 minutes / 30 days = 1.44 minutes per day
-- Burn rate at 2x: 2.88 minutes per day (alert)
-- Burn rate at 10x: 14.4 minutes per day (page on-call)
+- Burn rate 1 spends it evenly: 43.2 minutes / 30 days = 1.44 minutes per day
+- Burn rate 10 spends it in 3 days: 14.4 minutes per day
 ```
 
-The arithmetic is simple. A 30-day month has 43,200 minutes, and the 0.1% allowance is 43.2 minutes of that. The burn rate measures how fast you spend that allowance. At 1x you spend it evenly across the month, while 10x spends it ten times faster.
+The arithmetic is simple. A 30-day month has 43,200 minutes, and the 0.1% allowance is 43.2 minutes of that. The burn rate measures how fast you spend that allowance. At a burn rate of 1 you spend it evenly across the month, while a burn rate of 10 spends it ten times faster. Chapter 17.6 turns burn rate into paging rules with two windows.
 
 Before you set an alert, decide how much budget you are willing to lose before someone must act.
 
@@ -149,6 +175,8 @@ Error budget policy:
 - Budget at 10% remaining: the team freezes all deployments except critical security patches
 - Budget at 0% remaining: the team freezes all deployments; the IC convenes a war room
 ```
+
+A GPU fleet adds two budget rules of its own. First, count the repair backlog as budget spend. A pool that is 99.2 percent available against a 99.5 percent target is out of budget even if every service SLO is green, so freeze non-critical changes and draining upgrades, as in chapter 17.10, until spares are back. Second, spend budget on purpose. A planned driver upgrade takes nodes out of service, and the budget should say how many node-hours per month planned work may use, so planned work does not eat the margin that failures need.
 
 ### 2.3 The error budget dashboard
 
@@ -230,17 +258,17 @@ The Chaos Mesh version changes what the manifest may contain. The current PodCha
 
 ### 4.1 N+1 GPU nodes
 
-GPU hardware fails, and a spare node is the cheapest way to keep a training run going. N+1 redundancy keeps one spare for every group of nodes a workload needs. When a node fails, the scheduler moves the work to the spare. The AI Factory book, Chapter 9, makes the same point at the level of cloud services: the goal is no single point of failure, so one failed server does not stop the service.
+GPU hardware fails, and a spare node is the cheapest way to keep a training run going. The unit of replacement is the node, not the single GPU, because the eight GPUs of a node share one NVLink domain and one host. N+1 redundancy keeps at least one spare node for each group of nodes a workload needs. Section 1.4 shows how to size the pool from the failure rate and the repair time, and the result is usually more than one spare for a large fleet.
 
 ```text
-N+1 GPU nodes:
-- Workload needs: 8 GPUs per training run
-- Cluster size: 9 GPUs (8 for the workload + 1 spare)
-- When a GPU fails: the workload is rescheduled to the spare GPU
-- Cost overhead: 1/9 = 11% extra GPUs
+Spare nodes for a 128-node pool (1,024 GPUs):
+- Failure rate: about 0.5 node failures per day
+- Repair time: 1 day, so about 0.5 nodes are in repair on average
+- Spare pool: 2 nodes for 98 percent cover, 3 nodes for 99.5 percent
+- Cost overhead: 2/128 = 1.6 percent to 3/128 = 2.3 percent extra nodes
 ```
 
-In this example the spare adds about 11 percent to the GPU bill. You pay that price for faster recovery. Before you buy the spare, confirm that the scheduler can really move the workload onto it.
+The spare pool is cheap next to the cost of a stalled run, but only if the scheduler can use it. Confirm that a failed node's job restarts on a spare from its last checkpoint, and drill it.
 
 ### 4.2 Multi-region failover
 
@@ -308,12 +336,14 @@ A dashboard alone is not enough. You need alerts that fire before the budget is 
 | Metric | Why it matters | Alert |
 |---|---|---|
 | Error budget remaining | SLO compliance | < 25% for 1 day |
-| Burn rate (1h) | SLO compliance | > 2x for 1 hour |
+| Burn rate | SLO compliance | Multi-window rules from chapter 17.6 |
+| GPU pool availability | Spare and repair health | Below the pool SLO for 1 day |
+| Nodes in repair | Spare pool pressure | More than the spares you hold |
 | Chaos experiment success rate | Drill effectiveness | < 80% per quarter |
 | N+1 spare GPU ratio | Redundancy | < 1 spare GPU |
 | Multi-region failover latency | Redundancy | > 5 minutes |
 
-Production Kubernetes, Chapter 9, adds one alert that teams often forget. Set an alert that fires on a regular schedule while everything is healthy. If that alert stops arriving, send a critical notice, because your alerting may be down without anyone knowing.
+Add one alert that teams often forget. Set an alert that fires on a regular schedule while everything is healthy. If that alert stops arriving, send a critical notice, because your alerting may be down without anyone knowing.
 
 Of the metrics above, the chaos experiment success rate says the most about whether your drills work. A falling rate means the drills keep failing, and the reliability claims are not yet tested.
 
@@ -355,7 +385,7 @@ Six failure modes come up again and again. You may recognise one of them from yo
 
 **Fix:** Add an SLO alert, name an owner for the dashboard, and add breach checks to the on-call routine.
 
-Hardware signals belong on the same alert list. AI Systems Performance Engineering, Chapter 16, treats any uncorrectable ECC memory error as a critical alert, because it corrupts data and requires a reset.
+Hardware signals belong on the same alert list. Treat any uncorrectable ECC memory error as a critical alert, because it corrupts data and requires a reset. Chapter 17.4 holds the rule.
 
 ### 6.5 "The reliability metrics are not tracked"
 
@@ -377,7 +407,7 @@ Hardware signals belong on the same alert list. AI Systems Performance Engineeri
 
 ## 7. Hands-on lab
 
-This lab walks through the SLOs, the error budget, a chaos experiment and a redundancy drill. No one has run it against a live cluster yet, so treat each step as a plan to test, not a proven procedure.
+This lab walks through the SLOs, the error budget, a chaos experiment and a redundancy drill. The commands were not run on hardware for this book, so treat each step as a plan to test.
 
 ### 7.1 Prerequisites
 
@@ -427,8 +457,6 @@ kubectl get events -n mlops -w
 # expected: the experiment injects a pod failure; the workload is rescheduled
 ```
 
-### 8 (lab step 4) -- skipping this part because the rest is rendered below
-
 ### 7.5 Step 4: observe the SLO during the experiment
 
 While the experiment runs, query the availability metric. The result shows whether the SLO held through the failure.
@@ -465,7 +493,7 @@ After the lab, check that you can answer five questions quickly. Each answer sho
 4. What was the result of the most recent failover drill?
 5. What is the current SLO compliance per service?
 
-The five-second and 30-second limits in this section are example values. Pick limits that match your own on-call needs. If the answers take longer, the stack still needs work before it can carry production traffic. The lab has not yet been run against a live GKE cluster.
+The five-second and 30-second limits in this section are example values. Pick limits that match your own on-call needs. If the answers take longer, the stack still needs work before it can carry production traffic. The lab was not run against a live GKE cluster.
 
 ---
 
@@ -505,7 +533,7 @@ The remaining budget is below the 25 percent step, so the team freezes non-criti
 </details>
 
 <details><summary>6. The regular always-firing alert stops arriving while everything looks healthy. What should you do?</summary>
-Treat it as a critical notice, because your alerting may be down without anyone knowing. Production Kubernetes, Chapter 9, describes this alert. It fires on a schedule while the system is healthy, so its silence is the signal.
+Treat it as a critical notice, because your alerting may be down without anyone knowing. The alert fires on a schedule while the system is healthy, so its silence is the signal.
 </details>
 
 <details><summary>7. Why does the error budget make the SLO commitment honest?</summary>
@@ -525,15 +553,15 @@ With failover, the secondary region has to start and then take traffic. With act
 </details>
 
 <details><summary>11. Why does the chapter treat an uncorrectable ECC memory error as a critical alert?</summary>
-AI Systems Performance Engineering, Chapter 16, says such an error corrupts data and requires a reset. It is a hardware signal, so it belongs on the same alert list as the SLO signals. Waiting for a customer to notice would be too late.
+Such an error corrupts data and requires a reset. It is a hardware signal, so it belongs on the same alert list as the SLO signals. Waiting for a customer to notice would be too late.
 </details>
 
 <details><summary>12. A service is customer-facing and another is an internal tool. Which tier do you give each, and what do you give up?</summary>
 Give the customer-facing service Gold at 99.99 percent monthly and under 300 ms, and the internal tool Silver at 99.9 percent and under 500 ms. Higher tiers cost more to run, so you give up spend for the stronger commitment. The tier sets the SLO and the cost, so the platform team can charge accordingly.
 </details>
 
-<details><summary>13. When would you choose N+1 nodes, multi-region failover, or active-active, and what do you give up with each?</summary>
-N+1 covers a single GPU node failure and costs about 11 percent in the 8-GPU example. Multi-region failover covers a whole region outage but doubles compute and takes time to switch. Active-active has no switch delay but also doubles compute, so choose it only when even a short outage costs too much.
+<details><summary>13. When would you choose spare nodes, multi-region failover, or active-active, and what do you give up with each?</summary>
+Spare nodes cover single node failures and cost a few percent of nodes in the 128-node example. Multi-region failover covers a whole region outage but doubles compute and takes time to switch. Active-active has no switch delay but also doubles compute, so choose it only when even a short outage costs too much.
 </details>
 
 <details><summary>14. Would you start chaos experiments in production or in staging, and what is the trade-off?</summary>
@@ -548,16 +576,16 @@ Freezing early protects the SLO but slows delivery. Waiting keeps velocity high 
 A month has 30 times 24 times 60, which is 43,200 minutes. The allowance of 0.1 percent is 43.2 minutes. At a burn rate of 1x that is 43.2 divided by 30, or 1.44 minutes per day.
 </details>
 
-<details><summary>17. At a 10x burn rate, how fast is the 43.2-minute budget gone?</summary>
-At 10x the team loses 14.4 minutes per day, since 1.44 times 10 is 14.4. The budget lasts 43.2 divided by 14.4, which is 3 days. That is why a 10x burn pages the on-call.
+<details><summary>17. In Meta's 54-day Llama 3 405B run, 148 of 419 unexpected interruptions were faulty GPUs. What share is that, and how often did the fleet restart?</summary>
+148 divided by 419 is 35.3 percent. The 54 days are 1,296 hours, and 1,296 divided by 419 is 3.1 hours, so the job was interrupted about every three hours.
 </details>
 
-<details><summary>18. A workload needs 8 GPUs, and you add one spare. What is the overhead, and what does the second region add?</summary>
-The cluster is 9 GPUs. The spare is 1 out of 9, which is about 11 percent. A second region doubles the compute, so 9 GPUs becomes 18 in the example.
+<details><summary>18. A 1,024-GPU pool fails at 0.5 nodes a day and repairs take 2 days. How many nodes are out on average, and what does that do to a 128-node pool's availability?</summary>
+The average number out is 0.5 times 2, which is 1 node. One node out of 128 is 0.8 percent, so the pool is about 99.2 percent available. That misses a 99.5 percent pool SLO that a one-day repair time would have met.
 </details>
 
-<details><summary>19. The burn rate alert fires. What do you look at first, second, and third?</summary>
-First check the error budget remaining, to see how much room is left. Second compare the 1-hour and 24-hour burn rates, to see whether the spend is a spike or a steady drain. Third read the end-of-month forecast, to decide whether to freeze deployments under the policy.
+<details><summary>19. The fast burn-rate page fires. What do you look at first, second, and third?</summary>
+First check the error budget remaining, to see how much room is left. Second compare the one-hour and six-hour burn rates, to see whether the spend is a spike or a steady drain. Third read the end-of-month forecast, to decide whether to freeze deployments under the policy.
 </details>
 
 <details><summary>20. A chaos experiment starts and the SLI leaves steady state. What do you do, in order?</summary>
@@ -572,6 +600,7 @@ First watch the SLI against the steady state you measured. Second reverse the ex
 - NVIDIA Zero-to-Hero Volume 19. Source for the reliability operational patterns.
 - NVIDIA Zero-to-Hero Volume 16 (`chapter-13-reliability-engineering.md`). Source for the MLOps reliability patterns.
 - *Production Kubernetes* (`production-kubernetes`, Chapters 9, 14). Source for the Kubernetes reliability patterns.
+- *AI Systems Performance Engineering*, Table 4-4, and Meta's Llama 3 paper (arXiv 2407.21783, section on reliability, fetched 2026-11-12). Source for the 466 interruptions (47 planned, 419 unexpected), the root-cause counts, up to 16,000 H100 GPUs and more than 90 percent effective training time. The book's 30.1 percent for faulty GPUs is corrected to 35.3 percent (148 of 419). The rates, spare-pool odds and pool availability in section 1.4 are this chapter's own arithmetic, with Poisson arrivals assumed.
 
 ### Cross-references to other handbook chapters
 
@@ -587,11 +616,12 @@ The reliability engineering operational patterns draw on Volume 19 and Volume 16
 ### Explicitly labelled inferences
 
 - The reliability tiers (bronze, silver, gold, platinum) are starting points; specific tiers depend on the team's customer-facing SLOs.
-- The error budget burn rate thresholds (2x for 1 hour, 10x for 5 minutes) are starting points; specific thresholds depend on the SLO.
+- The scaled failure rate for other fleet sizes assumes your hardware and software behave like Meta's; replace it with your own data.
+- Burn-rate thresholds are in chapter 17.6.
 - The chaos engineering experiment frequency (quarterly) is a starting point; specific frequencies depend on the team's discipline.
 
 ### Not verified on live hardware
 
-- The lab in Section 7 is **untested** against a live GKE cluster in this repository.
+- The lab in Section 7 was not run against a live GKE cluster.
 - The Chaos Mesh version assumed in the lab should be pinned against the current releases before production use.
 - The N+1 and multi-region patterns in the lab assume a multi-region deployment is available; production deployments may not have multi-region.

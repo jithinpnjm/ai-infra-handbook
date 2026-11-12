@@ -29,20 +29,7 @@ Every chapter in this part so far has been about collecting signal. This chapter
 
 Imagine each piece is missing. Without alerting, the on-call learns about an outage from a customer. Without SLOs, nobody can say which alerts the business cares about most. Without health checks, Kubernetes keeps sending requests to a pod that cannot answer them.
 
-```text
-Why alerting + SLOs + health checks is on the critical path (background reading: NVIDIA Zero-to-Hero volume 16; Production Kubernetes; the figures below are examples, not quotations):
-- A typical mature AI platform emits 50-200 alerts per day. Without SLO-based
-  routing, the on-call ignores all of them. With SLO-based routing, the on-call
-  responds to the 5-10 alerts that matter.
-- A typical GPU cluster has 8-16 health checks per workload. Without the
-  health checks, Kubernetes cannot tell whether the workload is alive; the
-  readiness probe fails; the workload is removed from the load balancer.
-- The error budget is the bridge between the engineering team and the business.
-  The error budget says "we can afford 43 minutes of downtime per month". The
-  error budget is what the SLO alert burns against.
-```
-
-The counts in that block are examples, not measurements from a real platform. Use them as a rough picture, then measure your own alert volume before you set any target.
+Here is the failure this chapter prevents. A token API starts returning errors for two percent of requests at four in the morning. A threshold alert on the error rate pages the on-call for every one-minute blip all week, so by Thursday the pager is muted. This time the errors last all night, and the first person to notice is a customer. The fix has two parts. Alert on how fast the error budget is burning, which is what separates a blip from an outage, and send every alert to a route that matches how urgent it is.
 
 Three operating realities make this a platform-team concern rather than only a data-science one.
 
@@ -117,14 +104,44 @@ When the budget runs out, a common policy is to pause new deployments until the 
 Error budget at 99.9% monthly availability:
 - Total time per month: 30 days * 24 hours * 60 minutes = 43,200 minutes
 - Budget: 0.1% * 43,200 = 43.2 minutes of downtime per month
-- Burn rate at 1x: 43.2 minutes / 30 days = 1.44 minutes per day
-- Burn rate at 2x: 2.88 minutes per day (alert)
-- Burn rate at 10x: 14.4 minutes per day (page on-call)
+- Burn rate 1 spends the budget at an even pace: 43.2 minutes / 30 days = 1.44 minutes per day
+- Burn rate 10 spends it in 3 days: 14.4 minutes per day
 ```
 
-The arithmetic above assumes a 30-day month. If your window is different, recalculate the 43.2 minutes before you publish the number. The 2x and 10x burn rates are example alert thresholds, where 2x is a warning and 10x is a page. Choose thresholds that match how fast your team can respond.
+The arithmetic assumes a 30-day month. If your window is different, recalculate the 43.2 minutes before you publish the number. Section 1.4 turns burn rate into alert rules.
 
 Before you publish an SLO, do the budget arithmetic for its window, so the team knows how much room it really has.
+
+### 1.4 Burn-rate alerting for a token API
+
+A token API is an HTTP service that streams model output. Chapter 20.19 owns what to measure for it: time to first token, inter-token latency, and per-tenant slices. This section owns the alerting method, shown with the simplest SLI, availability.
+
+The method works on a ratio. The burn rate is the observed error ratio divided by the error budget ratio. With a 99.9 percent SLO the budget ratio is 0.001, so an error ratio of 0.02 is a burn rate of 20. A burn rate of 1 uses exactly the whole budget by the end of the window.
+
+Start with the traffic. Say the API serves 100 requests per second. In a 30-day month that is 259,200,000 requests, and the budget allows 259,200 failures. At a 2 percent error ratio the API fails 7,200 requests per hour, and the budget lasts 36 hours.
+
+A single threshold such as "error ratio above 0.1 percent for 5 minutes" fails in both directions. It pages on a one-minute blip that costs almost nothing, and it stays silent on a steady 0.2 percent error ratio that spends the budget in 15 days. The fix is to alert on burn rate over two windows at once. The long window shows the problem is large enough to matter. The short window shows it is still happening, so the alert clears soon after the fix.
+
+| Severity | Long window | Short window | Burn rate | Error ratio threshold | Budget spent in the long window |
+|---|---|---|---|---|---|
+| Page | 1 hour | 5 minutes | 14.4 | 0.0144 | 2% |
+| Page | 6 hours | 30 minutes | 6 | 0.006 | 5% |
+| Ticket | 3 days | 6 hours | 1 | 0.001 | 10% |
+
+Check the first row by hand. A burn rate of 14.4 for one hour spends 14.4 times 1 divided by 720 hours, which is 2 percent of the budget. At 100 requests per second that is 5,184 failed requests, and 5,184 divided by 259,200 is 0.02. The second row gives 6 times 6 over 720, which is 5 percent. The third gives 1 times 72 over 720, which is 10 percent.
+
+How fast do the rules fire? If the API goes fully dark after a clean hour, the one-hour ratio reaches 0.0144 after 0.0144 hours, about 52 seconds. At a steady 2 percent error ratio the first row fires after 0.0144 divided by 0.02 hours, about 43 minutes. At 1 percent errors the first row never fires, because 1 percent is below 1.44 percent, and the second row fires after 3.6 hours. At 0.5 percent only the ticket rule fires, after about 14 hours. Slower leaks cost less per hour, so a slower alert is acceptable.
+
+Here is the page rule as PromQL, with the ratios kept as recording rules so the alert stays short.
+
+```promql
+# page when both windows burn above 14.4 times the budget
+gateway_error_ratio:rate1h > 0.0144 and gateway_error_ratio:rate5m > 0.0144
+```
+
+The tested rule files for this method are `code/part20/slo_burn_alerts_availability.yaml` and the calculator beside it, and chapter 20.19 explains them. Two limits apply. A tenant with 100 percent errors can hide inside a healthy global ratio, so page on per-model ratios and use per-tenant ratios for tickets. And a low-traffic series needs a traffic guard, or three failed requests produce a 100 percent ratio. Chapter 20.19 covers both.
+
+**A page should mean the budget is burning fast and is still burning now.**
 
 ---
 
@@ -211,11 +228,11 @@ inhibit_rules:
   - source_matchers:
       - alertname="GPUNodeDown"
     target_matchers:
-      - alertname="GPUXidError"
+      - alertname=~"GPUXidTier[23]"
     equal: ['gpu', 'node']
 ```
 
-The first rule mutes any alert below critical severity that shares a cluster label with a firing ClusterDown alert. The second rule mutes GPUXidError alerts that share the gpu and node labels with a firing GPUNodeDown alert. Both rules cut noise, so the on-call sees the most important alert first. Before you rely on them, check that your exporters really set the labels the rules match on.
+The first rule mutes any alert below critical severity that shares a cluster label with a firing ClusterDown alert. The second rule mutes the tier 2 and tier 3 Xid alerts from chapter 17.4 that share the gpu and node labels with a firing GPUNodeDown alert. Both rules cut noise, so the on-call sees the most important alert first. Before you rely on them, check that your exporters really set the labels the rules match on.
 
 ---
 
@@ -308,32 +325,31 @@ At night, an on-call engineer needs one question answered fast: what do I do now
 
 ### 4.2 The runbook template
 
-The template below is a complete example for one alert. The 90 percent threshold, the 5-minute wait, and the 30-minute escalation window are example values. Set each one from your own incident history and your team's response time.
+The template below is a complete example for one alert. The escalation conditions are example values. Set them from your own incident history and your team's response time. The Xid tiers come from chapter 10.21, and chapter 17.4 holds the alert.
 
 ```markdown
-# Alert: GPUMemoryPressure
+# Alert: GPUXidTier3
 
 ## What the alert means
-The GPU's HBM utilisation has exceeded 90% for more than 5 minutes. The workload is at risk of CUDA OOM; the next training step may crash.
+A GPU reported a tier 3 Xid code (48, 61, 62, 64, 79 or 95) in the last hour. These codes mean uncorrectable memory errors, a failed row remap or a GPU that fell off the bus. Running jobs on this GPU may have produced bad output.
 
 ## Symptoms
-- The GPU's HBM utilisation is above 90%
-- The workload's training step is taking longer than expected
-- The CUDA OOM error appears in the workload's logs
+- A training job on the node hangs or crashes with a CUDA or NCCL error
+- The kernel log shows an NVRM Xid line for the GPU
+- The node may report fewer GPUs than it advertises
 
 ## Diagnostic steps
-1. Verify the GPU's HBM utilisation: `kubectl exec -it <pod> -- nvidia-smi`
-2. Check the workload's memory usage: `kubectl top pod <pod>`
-3. Check the workload's logs for CUDA OOM: `kubectl logs <pod> | grep OOM`
+1. Read the Xid sequence: `dmesg -T | grep Xid` on the node
+2. Check the GPU count: `nvidia-smi -L` and `lspci | grep -i nvidia`
+3. Check the row remapper: `nvidia-smi -q -d ROW_REMAPPER`
 
 ## Mitigation steps
-1. Reduce the model size
-2. Enable gradient checkpointing
-3. Increase the GPU's HBM by moving to a larger GPU
-4. Reduce the batch size
+1. Cordon and drain the node: `kubectl cordon <node>` then `kubectl drain <node> --ignore-daemonsets`
+2. Flag checkpoints written during the fault window as suspect
+3. After recovery, run `dcgmi diag -r 3` before the node takes work again
 
 ## Escalation path
-If the mitigation fails within 30 minutes, page the ML platform team.
+If the diagnostic fails or the Xid repeats after reset, open an RMA with the hardware vendor and page the platform lead if a training run lost more than one checkpoint interval.
 
 ## Post-mortem template
 - What was the alert?
@@ -348,19 +364,16 @@ If the mitigation fails within 30 minutes, page the ML platform team.
 The runbook is integrated with Alertmanager via the `runbook_url` annotation.
 
 ```yaml
-- alert: GPUMemoryPressure
-  expr: DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9
-  for: 5m
+- alert: GPUXidTier3
+  expr: (DCGM_FI_DEV_XID_ERROR == 79) and (changes(DCGM_FI_DEV_XID_ERROR[1h]) > 0)
   labels:
-    severity: warning
+    severity: critical
   annotations:
-    summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is under memory pressure"
-    runbook_url: "https://wiki.example.com/runbooks/gpu-memory-pressure"
+    summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} reported Xid 79"
+    runbook_url: "https://wiki.example.com/runbooks/gpu-xid-tier3"
 ```
 
-> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
-
-Every alert should carry a runbook_url annotation, so the page links straight to its steps. The on-call opens the link and follows the runbook from there. Production Kubernetes, chapter 9, makes the same point: alert annotations should give enough context to act on, including links to runbooks.
+The expression here is a one-code excerpt using the 4.9.0 name. The full rule, with every tier 3 code and the 4.8.x names, is in `code/part17/gpu_alerts.yaml`, and chapter 17.4 explains the renames. Every alert should carry a `runbook_url` annotation, so the page links straight to its steps. Alert annotations should give enough context to act on, including a link to the runbook.
 
 ---
 
@@ -461,7 +474,7 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 ## 7. Hands-on lab
 
-Reading about alert routing is not the same as running it. This lab installs Alertmanager on GKE, configures the routing, and checks the runbook integration. The lab is **untested** in this repository.
+Reading about alert routing is not the same as running it. This lab installs Alertmanager on GKE, configures the routing, and checks the runbook integration. The commands were not run on hardware for this book, so check flags against your versions.
 
 ### 7.1 Prerequisites
 
@@ -542,7 +555,7 @@ After the lab, you should be able to answer five questions quickly. The five-sec
 4. What is the current SLO compliance per service?
 5. What is the most recent critical alert, and what was the runbook URL?
 
-The 30-second limit is also an example value. If an answer takes longer than your limit, the stack is not yet ready for production. The lab itself is **untested** against a live GKE cluster.
+The 30-second limit is also an example value. If an answer takes longer than your limit, the stack is not yet ready for production. The lab was not run against a live GKE cluster.
 
 ---
 
@@ -550,7 +563,7 @@ The 30-second limit is also an example value. If an answer takes longer than you
 
 Work through these on a lab cluster, not on production. Try to explain each result to a teammate before you move on. If you get stuck, reread the runbook section first.
 
-1. **Add a new alert for a GPU Xid error.** Configure an alert that fires when a GPU Xid error is detected, add the runbook URL, and verify that the alert fires. *Solution sketch:* a Prometheus alert rule on the DCGM_FI_DEV_XID_ERRORS metric, with a runbook URL annotation.
+1. **Add a runbook for a tier 2 Xid alert.** Configure the alert, add the runbook URL, and verify that the alert fires. *Solution sketch:* start from the Xid rules in chapter 17.4, add a runbook URL annotation, and test with `promtool test rules`.
 2. **Add an inhibit rule for cluster down.** Add an inhibit rule that mutes per-workload alerts while the cluster is down. *Solution sketch:* an Alertmanager inhibit rule whose source matches ClusterDown and whose targets are the per-workload alerts.
 3. **Add an error budget dashboard.** Build a Grafana dashboard that shows the remaining error budget for each service. *Solution sketch:* a Prometheus recording rule that computes the remaining budget, then a Grafana dashboard that plots it.
 4. **Add a runbook freshness check.** Configure a Prometheus alert that fires when a runbook has not changed in 30 days. *Solution sketch:* a CI step that records each runbook's last update time, and a Prometheus alert that compares that time with the current time. The 30 days is an example threshold.
@@ -581,8 +594,8 @@ The liveness probe probably calls the database. Kubernetes restarts a pod when l
 There was no budget alert, nobody tracked the budget on a dashboard, and nothing paused releases when the budget ran out. Add a budget alert that fires early, such as at 75 percent spent. Show the remaining budget on the team dashboard and pause new deployments when it is gone.
 </details>
 
-<details><summary>6. A GPUMemoryPressure alert fires for a training pod. What do you do, in what order?</summary>
-The alert means HBM use has been above 90 percent for more than 5 minutes, so a CUDA OOM may be next. Confirm with `nvidia-smi` in the pod, check `kubectl top pod`, and search the logs for OOM. Then mitigate by reducing batch size or model size, or by enabling gradient checkpointing. Page the ML platform team if that fails within 30 minutes.
+<details><summary>6. A GPUXidTier3 alert fires for a node. What do you do, in what order?</summary>
+The alert means a GPU reported an Xid that signals uncorrectable memory errors, a failed remap or a lost GPU. Read the Xid sequence in the kernel log and check the GPU count. Then cordon and drain the node, flag checkpoints from the fault window, and run `dcgmi diag -r 3` before it takes work again. Start an RMA if the diagnostic fails.
 </details>
 
 <details><summary>7. Why is the end-to-end availability of a request below every single service's target?</summary>
@@ -609,8 +622,8 @@ A probe inside a pod cannot see a broken GPU stack on the host. The script check
 Mark it critical only when someone must act now. Critical alerts go to PagerDuty and repeat every hour, while warnings go to Slack and repeat every 12 hours. You give up fast attention on warnings, because Slack may be read later. Excess critical alerts burn out the on-call and bury the real ones.
 </details>
 
-<details><summary>13. You can alert at a 2x burn rate or only page at 10x. When do you choose each, and what do you give up?</summary>
-A 2x alert is a warning that shows a slow burn early but fires more often. A 10x page is rare and urgent. Choose thresholds that match how fast your team can respond. Both values are examples. Using only 10x gives less noise but a slower warning.
+<details><summary>13. Why does the page rule need both a one-hour window and a five-minute window?</summary>
+The one-hour ratio shows the problem is large enough to matter, because it has already spent 2 percent of the budget. The five-minute ratio shows the errors are still happening, so the alert clears soon after the fix. With only the long window the alert would keep firing for up to an hour after recovery. With only the short window it would page on every blip.
 </details>
 
 <details><summary>14. Should a readiness probe check the database the model depends on, and what do you give up?</summary>
@@ -625,8 +638,8 @@ Pausing new deployments until the next window is a common policy, but it is a te
 A 30-day month has 30 times 24 times 60, which is 43,200 minutes. The budget is 0.05 percent of that, which is 21.6 minutes. This is half the 43.2 minutes at 99.9 percent. The targets are examples.
 </details>
 
-<details><summary>17. At 99.9 percent monthly availability, a 10x burn starts. How many days until the budget is gone?</summary>
-The budget is 43.2 minutes. A 10x burn spends 14.4 minutes per day, which is 10 times the 1.44 minutes per day at 1x. So 43.2 divided by 14.4 gives 3 days.
+<details><summary>17. A token API serves 100 requests per second against a 99.9 percent monthly SLO. How many failed requests does the budget allow, and how long does a 2 percent error ratio take to spend it?</summary>
+A 30-day month has 259,200,000 requests, so the budget allows 259,200 failures. A 2 percent ratio fails 7,200 requests per hour, so the budget lasts 259,200 divided by 7,200, which is 36 hours. That is a burn rate of 20, so the 14.4 rule pages after about 43 minutes.
 </details>
 
 <details><summary>18. The startup probe has `periodSeconds: 5` and `failureThreshold: 30`. How long can the model take to start?</summary>
@@ -645,6 +658,7 @@ First post the alert to the Alertmanager API with severity critical. Second port
 
 - NVIDIA Zero-to-Hero Volume 16 (`chapter-09-alerting-slos-and-health-checks.md`). Source for the Alertmanager configuration, the SLO patterns, the health check templates, and the runbook integration. The wording has been rewritten in the handbook's voice.
 - *Practical MLOps* (`practical-mlops`, Chapter 6, Monitoring and Logging). Source for the monitoring and logging patterns that bridge MLOps and operations, and for the framing of monitoring as a first-class MLOps discipline.
+- Google SRE Workbook, chapter 5, Table 5-8, as used in chapter 20.19, for the multi-window burn-rate thresholds. The arithmetic in section 1.4 was recomputed for this chapter.
 - NVIDIA Zero-to-Hero Volume 10 (`chapter-09-on-call-and-runbooks.md`). Source for the on-call runbook patterns, the escalation policy, and the post-mortem template.
 - *Production Kubernetes* (`production-kubernetes`, Chapters 9, 14). Source for the Alertmanager patterns, the probe primitives, and the operational discipline.
 
@@ -654,6 +668,7 @@ First post the alert to the Alertmanager API with severity critical. Second port
 - Chapter 17.4 for the GPU-specific alerts.
 - Chapter 17.5 for the profiling integration.
 - Chapter 16.14 for the SLO-based platform design.
+- Chapter 20.19 for token API SLIs, SLOs and the tested burn-rate rule files.
 
 ### Migrated from `nvidia-devops`
 
