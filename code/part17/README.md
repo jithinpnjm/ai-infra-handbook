@@ -13,4 +13,4 @@ Run everything: `python3 code/part17/operations_lab.py`.
 | `snippets/` | Syntax only: need GPUs, PyTorch, Prophet or an OTLP collector |
 
 Notices (announcements, status updates, schedules) are written to a local outbox; nothing is sent to Slack, PagerDuty or email.
-Alert rules are syntax-checked, not unit-tested with `promtool test rules`.
+Alert rules are syntax-checked. The GPU fault-signal rules in `gpu_alerts.yaml` are also unit-tested with `promtool test rules gpu_alerts_test.yml`.

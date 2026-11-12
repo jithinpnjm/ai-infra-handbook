@@ -6,7 +6,7 @@
       {"title": "Current GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO)"}]},
       {"title": "Forecast growth rate", "type": "stat", "targets": [{"expr": "(count(DCGM_FI_DEV_GPU_UTIL_RATIO) - count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d)) / count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d) * 100"}]},
       {"title": "Q+1 forecast GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30"}]},
-      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30 * 3.20"}]}
+      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30 * 4.00"}]}
     ]
   }
 }

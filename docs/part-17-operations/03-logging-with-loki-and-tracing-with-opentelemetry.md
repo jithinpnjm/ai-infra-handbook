@@ -395,6 +395,8 @@ exporters:
     endpoint: tempo.monitoring:4317
     tls:
       insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
 
 service:
   pipelines:
@@ -405,10 +407,10 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo]
+      exporters: [prometheus]
 ```
 
-The pipeline reads from top to bottom. It receives OTLP from every workload, applies the memory limit, makes the sampling decision, batches the spans, and exports them to Tempo. Set the memory limit before you tune the sampling policy, because an out-of-memory restart drops spans.
+The pipeline reads from top to bottom. It receives OTLP from every workload, applies the memory limit, makes the sampling decision, batches the spans, and exports them to Tempo. The metrics pipeline sends metrics to a Prometheus exporter on port 8889, which Prometheus scrapes. Tempo stores traces only, so metrics must not go there. Set the memory limit before you tune the sampling policy, because an out-of-memory restart drops spans.
 
 The numbers in this file are example values. Set the batch size, memory limit, and sampling rate for your own traffic.
 

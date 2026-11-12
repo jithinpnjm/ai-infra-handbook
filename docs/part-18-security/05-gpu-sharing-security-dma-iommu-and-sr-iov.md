@@ -67,9 +67,9 @@ The figures in the block below are example values for planning a budget. They ar
 ```text
 Why GPU sharing security is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 11; the figures below are examples, not quotations):
 - A typical mature AI platform runs 50-200 GPU nodes. Each node has 8 GPUs.
-  Each GPU costs $3-5/hour. The cluster costs $10-30k/hour. GPU sharing
-  reduces the cluster cost by 2-4x; the cost saving is millions of dollars
-  per year.
+  Each GPU costs $3-5/hour, so 400-1,600 GPUs cost about $1.2k-8k/hour.
+  GPU sharing reduces the cluster cost by 2-4x; the cost saving is millions
+  of dollars per year.
 - GPU sharing without hardware-enforced isolation is a security risk. A
   tenant can read another tenant's GPU memory via DMA. The platform team's
   job is to enable hardware-enforced isolation (MIG, SR-IOV, IOMMU).
@@ -539,7 +539,7 @@ MIG was never enabled or the partitions were never created. Enable MIG, create t
 </details>
 
 <details><summary>4. A workload runs on time-slicing but needs strong isolation. Why did this happen and what do you change?</summary>
-The workload's isolation needs were never written down, so the mode was picked ad hoc. Write down each workload's isolation needs, choose the sharing mode for it, and review the choice on a schedule. The chapter suggests quarterly.
+The workload's isolation needs were never written down, so the mode was picked ad hoc. Write down each workload's isolation needs, choose the sharing mode for it, and review the choice on a schedule. The chapter calls a quarterly review a reasonable starting point, but your team should pick a schedule it can keep.
 </details>
 
 <details><summary>5. `dmesg | grep -i iommu` does not show the expected line on a node. Is the IOMMU off?</summary>

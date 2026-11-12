@@ -433,13 +433,13 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 **Fix:** Compare the alert rule with the SLO, field by field. Confirm that the SLI and the window both match the SLO, and add a test that catches any mismatch.
 
-### 6.4 "The readiness probe fails and Kubernetes restarts the pod in a loop"
+### 6.4 "The liveness probe fails and Kubernetes restarts the pod in a loop"
 
-**Symptom:** The readiness probe fails again and again, so Kubernetes restarts the pod. The workload never serves traffic.
+**Symptom:** The liveness probe fails again and again, so Kubernetes restarts the pod. The workload never finishes starting and never serves traffic. A failing readiness probe alone would not cause this. It only keeps the pod out of the load balancer.
 
-**Diagnosis:** The probe may be too aggressive, check a dependency that is not ready yet, or use a timeout that is too short.
+**Diagnosis:** The liveness probe may be too aggressive, check a dependency that is not ready yet, or use a timeout that is too short.
 
-**Fix:** Increase the initial delay and the timeout. Use a startup probe for slow starts, since it holds off the other probes until it passes. Production Kubernetes, chapter 14, adds a useful rule here: let the readiness check reflect a dependency, and keep the liveness check local, because restarting a pod rarely fixes a dependency that is down.
+**Fix:** Increase the initial delay and the timeout of the liveness probe. Use a startup probe for slow starts, since it holds off the other probes until it passes. Production Kubernetes, chapter 14, adds a useful rule here: let the readiness check reflect a dependency, and keep the liveness check local, because restarting a pod rarely fixes a dependency that is down.
 
 ### 6.5 "The error budget is exhausted but the team does not know"
 

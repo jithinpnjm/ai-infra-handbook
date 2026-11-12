@@ -442,7 +442,7 @@ Four release habits follow from this design. Pin each release to a tag or commit
 
 Database migrations must also stay backward compatible with the previous release during a rolling update. Use the expand/contract pattern: run migrations once, then roll out the code.
 
-The systemd unit also limits the damage a compromised process can do. `NoNewPrivileges=yes` stops the process and its children from gaining new privileges, for example through a setuid binary. `ProtectSystem` and `PrivateTmp` restrict where the process can write. Adjust them for any write paths your app needs.
+The systemd unit also limits the damage a compromised process can do. `NoNewPrivileges=yes` stops the process and its children from gaining new privileges, for example through a setuid binary or a binary with file capabilities. `ProtectSystem` and `PrivateTmp` restrict where the process can write. Adjust them for any write paths your app needs.
 
 Finally, prefer building artefacts in CI, as a wheel or a container, and let Ansible deploy the artefact. That is more reproducible and faster than cloning source and installing on every host, and it gives you control over the supply chain. You can fetch an artefact with `get_url` from an artefact repository with a checksum, or install with `pip` from an internal index with hashes.
 
@@ -785,8 +785,8 @@ Handlers such as `Restart fleetapp` normally wait until the very end of the `tas
 <summary>10. What do the systemd security-hardening directives in `fleetapp.service.j2` protect against?</summary>
 
 - **`User=fleetapp` / `Group=fleetapp`** (a system account with `/usr/sbin/nologin`): the service runs without root privileges.
-- **`NoNewPrivileges=yes`**: the process and any children it forks can never gain new privileges through `setuid` or `setgid` binaries.
-- **`ProtectSystem=strict`**: the whole OS filesystem (`/usr`, `/boot`, `/etc`) is mounted read-only inside the service's mount namespace.
+- **`NoNewPrivileges=yes`**: the process and any children it forks can never gain new privileges by running `setuid` or `setgid` binaries or binaries with file capabilities.
+- **`ProtectSystem=strict`**: the whole file system is mounted read-only inside the service's mount namespace, except `/dev`, `/proc`, `/sys` and the paths listed in `ReadWritePaths`.
 - **`ProtectHome=yes`**: `/home`, `/root` and `/run/user` are made inaccessible.
 - **`PrivateTmp=yes`**: the service gets its own `/tmp` and `/var/tmp`, which are deleted when the service stops.
 - **`ReadWritePaths={{ app_root }}/shared`**: this carves out the only directory the service may write to.

@@ -1,4 +1,4 @@
-import argparse, hashlib, subprocess, mlflow, mlflow.sklearn
+import argparse, hashlib, os, subprocess, mlflow, mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
@@ -17,6 +17,8 @@ with mlflow.start_run(run_name=f"churn-{data_hash[:8]}") as run:
     mlflow.set_tag("data_hash", data_hash)
     mlflow.set_tag("code_commit", commit)
     mlflow.log_param("seed", args.seed)
+    mlflow.set_tag("seed", str(args.seed))
+    mlflow.set_tag("env_image", os.environ.get("ENV_IMAGE", "local"))
 
     # Synthetic train/test split for the lab
     train, test = df.iloc[:800], df.iloc[800:]

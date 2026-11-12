@@ -7,5 +7,5 @@ inhibit_rules:
   - source_matchers:
       - alertname="GPUNodeDown"
     target_matchers:
-      - alertname="GPUXidError"
+      - alertname=~"GPUXidTier[23]"
     equal: ['gpu', 'node']

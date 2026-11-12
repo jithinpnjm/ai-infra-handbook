@@ -288,7 +288,7 @@ spec:
       port: 8000
 ```
 
-An earlier draft of this chapter used the API group `serving.nvidia.com` and invented fields such as `resources.gpu.type`. Neither is correct. The NIM Operator's group is `apps.nvidia.com`, and the model weights come from a separate NIMCache resource that the NIMService names. The Operator reads both resources and builds a Deployment with the right GPU binding, pull secret, model storage, and service.
+The NIM Operator's API group is `apps.nvidia.com`, not `serving.nvidia.com`, and the manifest has no `resources.gpu.type` field. The model weights come from a separate NIMCache resource that the NIMService names. The Operator reads both resources and builds a Deployment with the right GPU binding, pull secret, model storage, and service.
 
 ### 3.2 The NIM model's lifecycle
 
@@ -544,14 +544,19 @@ This lab sets up the NGC pull-through proxy, deploys a NIM microservice, runs a 
 
 ### 8.2 Step 1: configure the NGC API key
 
-Start by storing the key as a Kubernetes secret in the `nvaie` namespace.
+Start by storing the key as two Kubernetes secrets in the `nvaie` namespace. They use the same names as the NIM examples in Section 3.1. The first, `ngc-api-secret`, holds the key itself for the NIM to download models. The second, `ngc-secret`, is the image pull secret for `nvcr.io`.
 
 ```bash
 kubectl create namespace nvaie
-kubectl create secret generic ngc-api-key \
+kubectl create secret generic ngc-api-secret \
   --namespace nvaie \
-  --from-literal=api-key=${NGC_API_KEY}
-# expected: the secret is created; the NGC API key is stored
+  --from-literal=NGC_API_KEY=${NGC_API_KEY}
+kubectl create secret docker-registry ngc-secret \
+  --namespace nvaie \
+  --docker-server=nvcr.io \
+  --docker-username='$oauthtoken' \
+  --docker-password=${NGC_API_KEY}
+# expected: both secrets are created in the nvaie namespace
 ```
 
 ### 8.3 Step 2: deploy the NGC pull-through proxy
@@ -580,7 +585,7 @@ helm install nim-llama3 nvidia/nim-llm \
   --set image.repository=nvcr.io/nim \
   --set image.tag=1.0.0 \
   --set resources.limits.nvidia\\.com/gpu=1 \
-  --set imagePullSecrets[0]=ngc-pull-secret
+  --set imagePullSecrets[0]=ngc-secret
 # expected: the NIM pod is running; the InferenceService URL is printed
 ```
 

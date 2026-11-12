@@ -295,7 +295,7 @@ Bob (primary, this week); Carol (secondary)
 
 ## Current state
 - Cluster is healthy
-- SLO compliance is 99.95% (above the 99.9% target)
+- SLO compliance is 99.99% (above the 99.9% target)
 - Error budget remaining is 38 minutes (down from 43.2 minutes)
 
 ## Open incidents
@@ -310,7 +310,7 @@ Bob (primary, this week); Carol (secondary)
 - The on-call training is scheduled for 2024-04-15
 ```
 
-The numbers in this example are illustrative. Check them against your own error budget before you copy the template. As written, the compliance and error-budget figures do not clearly match each other.
+The numbers in this example are illustrative. Check them against your own error budget before you copy the template. The two figures agree. A 30-day month has 43,200 minutes, so 5.2 minutes of downtime is about 0.012 percent, which gives 99.988 percent, shown here as 99.99.
 
 ### 3.3 The on-call responsibilities
 
@@ -646,8 +646,8 @@ The chapter keeps runbooks in Git. The update script writes a commit and a revie
 The budget used is 43.2 minus 38, which is 5.2 minutes. This matches a month where the target is 99.9 percent. The remaining budget is therefore about 88 percent of the original.
 </details>
 
-<details><summary>17. The same handover reports 99.95 percent compliance and 38 minutes left. Do the two figures agree?</summary>
-Not clearly. 43.2 minutes is 0.1 percent, so 0.05 percent is 21.6 minutes of downtime. Using 5.2 minutes of budget would mean the compliance is higher than 99.95 percent. The chapter itself says the numbers do not clearly match.
+<details><summary>17. The same handover reports 99.99 percent compliance and 38 minutes left. Do the two figures agree?</summary>
+Yes. A 30-day month has 43,200 minutes, and 43.2 minutes is 0.1 percent of it. Using 5.2 minutes of budget is about 0.012 percent downtime, so compliance is about 99.988 percent, which rounds to 99.99.
 </details>
 
 <details><summary>18. The alert for page frequency fires above 30 pages per week and the escalation alert above 10 percent of pages. With 50 pages, how many escalations trip the second alert?</summary>

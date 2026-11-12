@@ -423,7 +423,7 @@ The play below configures a leaf with NVUE. It sets the MTU on `swp1-32` to 9216
               router:
                 bgp:
                   address-family: { ipv4-unicast: { enable: on } }
-                  neighbor: "{{ bgp_unnumbered_neighbors }}"      # BGP unnumbered, RFC 7938 style (2.16)
+                  neighbor: "{{ bgp_unnumbered_neighbors }}"      # BGP unnumbered, uses RFC 5549 (2.16)
         apply: true
       # module options vary by version; check ansible-doc nvidia.nvue.config
 ```

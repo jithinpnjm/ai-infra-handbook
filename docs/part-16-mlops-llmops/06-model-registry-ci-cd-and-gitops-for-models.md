@@ -116,19 +116,19 @@ A model does not jump from training to production in one step. It moves through 
 stateDiagram-v2
     [*] --> None: training run completes
     None --> Staging: signed artifact<br/>+ code_commit<br/>+ data hash
-    Staging --> Production: canary error budget<br/>+ SLO attainment<br/>+ promotion record
+    Staging --> Production: merged promotion PR<br/>+ promotion record<br/>(canary then ramps traffic)
     Production --> Archived: model retired<br/>or replaced by newer version
-    Staging --> Archived: failed canary<br/>+ rolled back
-    Production --> Staging: hot rollback
+    Staging --> Archived: rejected or<br/>failed canary rolled back
+    Production --> Staging: failed canary<br/>or hot rollback
 ```
 
 | Stage transition | Gate | Who runs it |
 |---|---|---|
 | None → Staging | Run record has all required tags; artifact is signed; baseline beat | The CI pipeline (Chapter 16.4 orchestrator) |
-| Staging → Production | Canary error budget OK; SLO attainment above threshold; promotion record written | The CI pipeline + the canary system (Argo Rollouts, KServe canary) |
+| Staging → Production | Promotion pull request merged; promotion record written. The canary then ramps traffic, and the new version keeps its place only while the canary error budget and SLO attainment hold | The CI pipeline + the canary system (Argo Rollouts, KServe canary) |
 | Production → Archived | Newer version promoted; or model retired by owner | The owner + the CI pipeline |
-| Production → Staging (rollback) | Hot rollback triggered; previous model re-promoted | The on-call engineer + the registry CLI |
-| Staging → Archived | Failed canary; rollback committed | The CI pipeline |
+| Production → Staging (rollback) | Canary failed or hot rollback triggered; previous model re-promoted | The on-call engineer + the registry CLI |
+| Staging → Archived | Version rejected, or a failed canary has been rolled back and the rollback committed | The CI pipeline |
 
 During a canary, the same artifact sits in both staging and production. Production holds a pointer, such as an image tag or a stage value, to the artifact in the object store. The canary system moves that pointer by traffic weight. The rollback system drops the new version's weight to zero and re-promotes the previous one.
 
@@ -314,8 +314,8 @@ Promotion flow with GitOps (background reading: Practical MLOps; Production Kube
    name is on the run record, plus a platform engineer whose team owns the
    registry.
 4. When the PR merges, the reconciler writes v7 to the registry's production
-   stage. The canary starts.
-5. The canary completes. If pass, the PR that moved v7 to production stays
+   stage and the canary starts at a small share of traffic.
+5. The canary completes. If pass, v7 takes all traffic and the PR that moved v7 to production stays
    merged. If fail, a new PR reverts production.yaml to the previous version.
 ```
 

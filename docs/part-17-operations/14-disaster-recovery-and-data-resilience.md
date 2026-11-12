@@ -59,14 +59,14 @@ Normally the primary region serves all traffic. The secondary region stays pre-w
 
 ## Why this matters for AI infrastructure
 
-Chapter 17.13 teaches you how to prevent incidents. This chapter starts where that work stops, when prevention fails and something has to be brought back. Disaster recovery is the discipline that lets a team restore service within a time it agreed on in advance, with a known amount of lost data. For example, a team might aim to be back within 4 hours with no data loss. Those figures are examples you choose for your own platform, not industry standards.
+Chapter 17.13 teaches you how to prevent incidents. This chapter starts where that work stops, when prevention fails and something has to be brought back. Disaster recovery is the discipline that lets a team restore service within a time it agreed on in advance, with a known amount of lost data. For example, a team might aim to be back within 1 hour and lose at most 1 minute of data. Those figures are examples you choose for your own platform, not industry standards.
 
 A disaster is any event that takes the cluster down beyond what the normal recovery steps can handle. It might be a regional outage, a ransomware attack, or a hardware failure that takes out a whole zone. When that happens, the disaster recovery plan is what your team follows, because the usual playbook no longer works.
 
 ```text
 Why disaster recovery is on the critical path (background reading: NVIDIA Zero-to-Hero volume 19; Production Kubernetes; the figures below are examples, not quotations):
-- A typical mature AI platform commits to a 4-hour RTO and a 1-hour RPO for
-  critical workloads. The RTO is the recovery time objective; the RPO is the
+- A typical mature AI platform commits to a 1-hour RTO and a 1-minute RPO for
+  critical workloads, and a 4-hour RTO and a 1-hour RPO for standard workloads. The RTO is the recovery time objective; the RPO is the
   recovery point objective. The RTO/RPO are what the business commits to.
 - A typical disaster recovery drill catches 1-3 latent failures that would
   have caused an extended outage. Each caught failure is worth 10-100x the
@@ -369,15 +369,16 @@ Every drill ends with a post-mortem. It records what was tested, what worked, wh
 ## What worked
 - The failover was automatic
 - The RTO was met (45 minutes)
-- The RPO was met (5 minutes)
 
 ## What did not work
+- The RPO was missed: 5 minutes of data were lost against a 1-minute target
 - The IC was not declared within 15 minutes
 - The runbook was missing the failover procedure for the registry
 
 ## Action items
 - Add the IC declaration to the alerting (Owner: platform-team, Due: 2024-04-30)
 - Update the runbook with the registry failover (Owner: platform-team, Due: 2024-04-22)
+- Shorten the backup cadence to meet the 1-minute RPO (Owner: platform-team, Due: 2024-05-15)
 ```
 
 Give each action item one owner and one due date. Without both, an action item tends to stay open with nobody responsible for it.
@@ -561,7 +562,7 @@ kubectl get pods -n mlops -w
 
 ### 8.6 Step 5: measure the RTO and RPO
 
-Measure the RTO and RPO from timestamps, not from memory. Read the sample output carefully, because its comments do not agree with each other.
+Measure the RTO and RPO from timestamps, not from memory. The second command misses its target, and that is the point of the example.
 
 ```bash
 # Measure the RTO
@@ -574,10 +575,10 @@ python code/part17/measure_rto.py \
 python code/part17/measure_rpo.py \
   --last-backup "2024-03-15T13:55:00Z" \
   --disaster-time "2024-03-15T14:00:00Z"
-# expected: RPO is 5 minutes; RPO is within the 1-minute target (need to improve cadence)
+# expected: RPO is 5m; OUTSIDE the 1m target (exit code 1), so the backup cadence must improve
 ```
 
-The sample comments say the 5-minute RPO is within the 1-minute target. A 5-minute gap is larger than a 1-minute target, so the backup cadence has to improve before the target can be met.
+A 5-minute gap is larger than a 1-minute target, so the RPO was missed. The backup cadence has to improve before the target can be met. The post-mortem in Section 5.3 records the miss in the same way.
 
 ### 8.7 Step 6: write the drill post-mortem
 
@@ -631,7 +632,7 @@ Nobody verified the backup, it lived on a single disk, and its checksum does not
 </details>
 
 <details><summary>4. A drill post-mortem says "the RPO was met (5 minutes)" for a critical workload whose RPO is 1 minute. Is that statement correct?</summary>
-No. Five minutes of lost data is larger than a 1-minute target, so the RPO was missed. The lab's own sample output admits this, because the backup cadence has to improve before the target can be met. The post-mortem line contradicts the lab and should be treated as an error.
+No. Five minutes of lost data is larger than a 1-minute target, so the RPO was missed. The lab's sample output shows the same 5-minute gap as outside the target, so a post-mortem should list it under what did not work and add an action to shorten the backup cadence.
 </details>
 
 <details><summary>5. Recovery finishes but customer records are missing because the data is older than the RPO. What do you look at?</summary>

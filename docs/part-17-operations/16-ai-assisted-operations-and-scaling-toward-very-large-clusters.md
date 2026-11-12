@@ -682,7 +682,7 @@ The book suggests a future where Triton and Python may replace hand-written CUDA
 
 The book's long-range question is how to scale toward models with tens or hundreds of trillions of parameters. The trillion-parameter threshold has already been crossed. The next step starts with hardware that offers more memory and more bandwidth, ideally on the GPU itself.
 
-Context helps here. The book gives 3 × 10^23 FLOPS as the training compute for GPT-3, and roughly 2 × 10^25 FLOPS for GPT-4. The upcoming ultrascale AI factories target 10^27 to 10^28 FLOPS for training. That is about 100 times the compute used for GPT-4.
+Context helps here. The book gives 3 × 10^23 FLOPS as the training compute for GPT-3, and roughly 2 × 10^25 FLOPS for GPT-4. The upcoming ultrascale AI factories target 10^27 to 10^28 FLOPS for training. Against 2 × 10^25, that is roughly 50 to 500 times the compute used for GPT-4.
 
 High-bandwidth memory (HBM) keeps evolving. HBM3e ships with the Blackwell generation of GPUs. HBM4 appears in the Rubin generation, and it doubles bandwidth per stack again. The book puts that at about 1.6 TB/s per stack. HBM4 may also raise capacity to 48 GB or 64 GB per module.
 
@@ -734,7 +734,7 @@ Agent-2 is an always-learning model that never finishes training. Instead of dep
 
 Agent-3 uses algorithmic breakthroughs to improve coding efficiency. In the scenario, it runs 200,000 copies in parallel. Together they form a workforce equivalent to tens of thousands of top programmers, running 30× faster. The book calls this a thought experiment that far exceeds today's practical limits.
 
-Agent-4 is a hypothetical self-rewriting, superhuman researcher. It can rewrite its own code to improve itself, which the book calls the AGI scenario. It uses mechanistic interpretability to make its internal decisions clearer. The scenario describes it as a turning point that starts a virtuous cycle of discovery.
+Agent-4 is the last step of the scenario, and it is a story, not a plan. The scenario imagines a superhuman researcher that rewrites its own code to improve itself, which the book calls the AGI scenario. It imagines interpretability tools being used to make that system's decisions clearer. Nothing in this section describes a system that exists, and nothing here is a target for your platform. The scenario only argues that each step would raise research productivity.
 
 These scenarios explain why AI system performance matters for progress toward AGI and superintelligence. Each generation raises research productivity. The book's advice is to build a strong foundation in performance fundamentals and stay ready to adapt.
 

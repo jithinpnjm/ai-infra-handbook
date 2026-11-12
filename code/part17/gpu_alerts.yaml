@@ -1,64 +1,152 @@
-# dcgm-exporter 4.9.0 renamed these metrics and changed some units (see code/part17/dcgm_exporter_4_9_rename.json).
+# GPU fault-signal alerts. Utilisation, memory used and clock speed are NOT alerted on:
+# a busy GPU is the goal, vLLM reserves most memory by design, and an idle GPU lowers its clocks.
+# dcgm-exporter 4.9.0 renamed many metrics and changed some units (see code/part17/dcgm_exporter_4_9_rename.json).
 # Each rule has a 4.9.0 leg and a 4.8.x leg joined with `or`, so it works on a mixed fleet during the rollout.
 # Drop the second leg of each expr once every exporter runs 4.9.0 or later.
-# 4.8.x memory leg uses used / (used + free): 4.8.4 does not collect FB_TOTAL by default.
+# Optional counters (ECC, NVLink CRC, throttle seconds) are commented out in the default counters file: enable them first.
+# The Xid gauge holds the LAST Xid code until a new one arrives, so each Xid rule also requires changes() > 0.
 groups:
-  - name: gpu_health
+  - name: gpu_fault_signals
     interval: 30s
     rules:
-      - alert: GPUHighUtilization
+      - alert: GPURowRemapFailed
         expr: |
-          (avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL_RATIO) > 0.95)
-          or (avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL) > 95)
-        for: 10m
+          (max by (gpu, node) (DCGM_FI_DEV_ROW_REMAP_FAILED) == 1)
+          or (max by (gpu, node) (DCGM_FI_DEV_ROW_REMAP_FAILURE) == 1)
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is over-utilised"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} failed a row remap: cordon, drain, RMA"
 
-      - alert: GPUMemoryPressure
+      - alert: GPURowRemapUncorrectable
         expr: |
-          (DCGM_FI_DEV_FB_USED_BYTES / DCGM_FI_DEV_FB_CAPACITY_BYTES > 0.9)
-          or (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.9)
-        for: 5m
+          (max by (gpu, node) (increase(DCGM_FI_DEV_ROW_REMAP_UNCORRECTABLE_TOTAL[24h])) > 0)
+          or (max by (gpu, node) (increase(DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS[24h])) > 0)
         labels:
           severity: warning
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is under memory pressure"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} remapped a row after an uncorrectable error"
 
       - alert: GPUDoubleBitECCError
         expr: sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h])) > 0
         labels:
           severity: critical
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has DBE errors"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} had an uncorrectable ECC error"
 
-      - alert: GPUSingleBitECCErrors
-        expr: sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[1h])) > 100
+      - alert: GPUSingleBitECCGrowth
+        expr: |
+          sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_SBE_AGG_TOTAL[7d])) > 10
+          and
+          sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_SBE_AGG_TOTAL[7d]))
+            > 3 * sum by (gpu, node) (increase(DCGM_FI_DEV_ECC_SBE_AGG_TOTAL[7d] offset 7d))
         labels:
-          severity: warning
+          severity: ticket
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has SBE errors"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }}: single-bit ECC errors more than tripled week over week"
 
-      - alert: GPUXidError
-        expr: (DCGM_FI_DEV_XID_ERROR > 0) or (DCGM_FI_DEV_XID_ERRORS > 0)
+      - alert: GPUXidTier3
+        expr: |
+          (
+            (DCGM_FI_DEV_XID_ERROR == 48) or (DCGM_FI_DEV_XID_ERROR == 61) or (DCGM_FI_DEV_XID_ERROR == 62)
+            or (DCGM_FI_DEV_XID_ERROR == 64) or (DCGM_FI_DEV_XID_ERROR == 79) or (DCGM_FI_DEV_XID_ERROR == 95)
+            or (DCGM_FI_DEV_XID_ERRORS == 48) or (DCGM_FI_DEV_XID_ERRORS == 61) or (DCGM_FI_DEV_XID_ERRORS == 62)
+            or (DCGM_FI_DEV_XID_ERRORS == 64) or (DCGM_FI_DEV_XID_ERRORS == 79) or (DCGM_FI_DEV_XID_ERRORS == 95)
+          )
+          and
+          (
+            (changes(DCGM_FI_DEV_XID_ERROR[1h]) > 0)
+            or (changes(DCGM_FI_DEV_XID_ERRORS[1h]) > 0)
+          )
         labels:
           severity: critical
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has Xid errors"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} reported a tier 3 Xid ({{ $value }}): cordon and drain"
 
-      - alert: GPUThermalThrottle
-        expr: (DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85) or (DCGM_FI_DEV_GPU_TEMP > 85)
+      - alert: GPUXidTier2
+        expr: |
+          (
+            (DCGM_FI_DEV_XID_ERROR == 13) or (DCGM_FI_DEV_XID_ERROR == 31) or (DCGM_FI_DEV_XID_ERROR == 32)
+            or (DCGM_FI_DEV_XID_ERROR == 43) or (DCGM_FI_DEV_XID_ERROR == 94)
+            or (DCGM_FI_DEV_XID_ERRORS == 13) or (DCGM_FI_DEV_XID_ERRORS == 31) or (DCGM_FI_DEV_XID_ERRORS == 32)
+            or (DCGM_FI_DEV_XID_ERRORS == 43) or (DCGM_FI_DEV_XID_ERRORS == 94)
+          )
+          and
+          (
+            (changes(DCGM_FI_DEV_XID_ERROR[1h]) > 0)
+            or (changes(DCGM_FI_DEV_XID_ERRORS[1h]) > 0)
+          )
+        labels:
+          severity: ticket
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} reported a tier 2 Xid ({{ $value }}): restart the offending pod"
+
+      - alert: GPUThermalThrottleViolation
+        expr: |
+          (rate(DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL[10m]) > 0.1)
+          or (rate(DCGM_FI_DEV_THERMAL_VIOLATION[10m]) / 1e9 > 0.1)
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is thermal-throttling"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} spent over 10 percent of the last 10 minutes below its clocks because of heat"
 
-      - alert: GPUClockThrottle
-        expr: (DCGM_FI_DEV_SM_CLOCK_HERTZ < 1400e6) or (DCGM_FI_DEV_SM_CLOCK < 1400)
-        for: 10m
+      - alert: GPUPowerThrottleViolation
+        expr: |
+          (rate(DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL[10m]) > 0.5)
+          or (rate(DCGM_FI_DEV_POWER_VIOLATION[10m]) / 1e9 > 0.5)
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} spends most of its time power-capped"
+
+      - alert: GPUNVLinkCRCErrors
+        expr: sum by (gpu, node) (increase(DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL[1h])) > 100
+        for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} is clock-throttling"
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has a rising NVLink CRC error count"
+
+      - alert: GPUPCIeReplays
+        expr: |
+          (sum by (gpu, node) (increase(DCGM_FI_DEV_PCIE_REPLAY_TOTAL[1h])) > 50)
+          or (sum by (gpu, node) (increase(DCGM_FI_DEV_PCIE_REPLAY_COUNTER[1h])) > 50)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU {{ $labels.gpu }} on {{ $labels.node }} has a high PCIe replay rate"
+
+  - name: gpu_exporter_presence
+    interval: 30s
+    rules:
+      - alert: DCGMExporterAbsentFleetwide
+        expr: absent(DCGM_FI_DEV_GPU_TEMP_CELSIUS) and absent(DCGM_FI_DEV_GPU_TEMP)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No DCGM exporter metrics at all: the GPU fleet is blind"
+
+      - alert: DCGMExporterMissingOnGPUNode
+        expr: |
+          (sum by (node) (kube_node_status_capacity{resource="nvidia_com_gpu"}) > 0)
+          unless on (node)
+          (count by (node) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) or count by (node) (DCGM_FI_DEV_GPU_TEMP))
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node {{ $labels.node }} advertises GPUs but exports no DCGM metrics"
+
+      - alert: GPUCountMismatch
+        expr: |
+          (count by (node) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) or count by (node) (DCGM_FI_DEV_GPU_TEMP))
+          < on (node) sum by (node) (kube_node_status_capacity{resource="nvidia_com_gpu"})
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ $labels.node }} reports fewer GPUs than it advertises: a GPU may have fallen off the bus"

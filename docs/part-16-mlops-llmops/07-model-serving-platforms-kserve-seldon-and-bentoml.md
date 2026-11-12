@@ -29,18 +29,9 @@ Chapter 15 showed what happens inside one inference engine. This chapter covers 
 
 The serving platform is where MLOps meets Kubernetes. Think of the InferenceService as a single description of the whole serving path. You can read that path in one place. It records the registry's stage, the canary's traffic split, the autoscaler's GPU trigger, the predictor's runtime, the transformer, and the explainer. Each of those fields depends on cluster basics from Parts 1 through 5, such as namespaces, access rules, pod security, network policies, ingress, secrets, and observability.
 
-```text
-Why the serving platform is on the critical path (background reading: Generative AI on Kubernetes; Practical MLOps; Designing Machine Learning Systems; the figures below are examples, not quotations):
-- A typical mature AI platform runs dozens to hundreds of InferenceService resources.
-  The platform team owns the CRDs, the controllers, the autoscalers, and the
-  ingress that fronts them.
-- A serving platform that is not multi-tenant is a serving platform that becomes
-  one by accident: teams share a namespace, their models share a registry, their
-  traffic collides on the same ingress.
-- The InferenceService is the unit that ties the registry's model version to the
-  cluster's serving replicas. The reconciliation is what makes "what is running"
-  answerable from a single source of truth.
-```
+A mature AI platform can run dozens or hundreds of InferenceService resources. The platform team owns the CRDs, the controllers, the autoscalers, and the ingress in front of them. If the platform is not built for many teams from the start, it becomes shared by accident: teams end up in one namespace, one registry, and one ingress, and their traffic collides.
+
+The InferenceService ties a registry model version to the serving replicas in the cluster. That link is what lets you answer "what is running right now" from one source of truth.
 
 Three operational realities make this a platform-team concern, not only a data-science concern.
 
@@ -124,7 +115,7 @@ The platform gives the model team the same contract, whichever product you choos
 | **scaling** | min replicas, max replicas, concurrency target, GPU request | Model team writes the values in the InferenceService, and the platform team sets the limits and the autoscaler behind them |
 | **canary** | Traffic split between previous and new version, observation window | Platform team, declared via the canary system |
 | **explainer** | Optional metadata for fairness, drift, or SHAP-based explanation | Model team + platform team |
-| **transformer** | Pre/post-processing pipeline (tokenisation, normalisation, response shaping) | Model team, declared as a sidecar |
+| **transformer** | Pre/post-processing pipeline (tokenisation, normalisation, response shaping) | Model team, declared as its own component with its own pods |
 
 ### 1.2 The InferenceService as a Kubernetes CRD
 
@@ -164,7 +155,7 @@ The platform team owns the CRD definition. The model team fills in the model URI
 
 ### 1.3 The transformer and the explainer
 
-Some requests need work before and after the model runs. *Practical MLOps* Chapter 10 describes the transformer pattern for that work. The transformer is a sidecar. It runs before the predictor for input transformation, and after it for output transformation.
+Some requests need work before and after the model runs. *Practical MLOps* Chapter 10 describes the transformer pattern for that work. The transformer is not a sidecar. KServe runs it as a separate component, in its own Deployment, next to the predictor's Deployment. It receives the client's request, prepares the input, calls the predictor over the network, and shapes the response on the way back. Because the two are separate Deployments, you can place them on different nodes, so the transformer can run on cheap CPU nodes while the predictor holds the GPU, and scale them independently. If the two are tightly coupled and you want to canary them together or save the network hop, KServe lets you collocate them as containers in one predictor pod. The containers must then listen on different ports.
 
 ```yaml
 # code/part16/inference_service_with_transformer.yaml
@@ -192,7 +183,7 @@ spec:
 
 Put work in the transformer when the inference engine should not do it, and check that choice when you design a new service. Examples include BPE tokenisation for LLMs, normalisation for tabular models, JSON reshaping, and schema validation. The explainer produces a per-prediction explanation for models that need one. Typical methods are SHAP, LIME, and attention maps.
 
-Seldon Core runs its transformer and explainer as containers beside the predictor. BentoML defines the same pre- and post-processing as Python functions in the `bentoml.Service`.
+Seldon Core v1 describes a transformer as a node in the inference graph, so it is a graph step and not a hidden helper. BentoML defines the same pre- and post-processing as Python functions in the `bentoml.Service`.
 
 ---
 
@@ -212,11 +203,11 @@ KServe started as KFServing in the Kubeflow project, and it is now the Kubernete
 | **Canary** | Built-in support for traffic splitting on the `canary` field; integrates with Argo Rollouts for advanced patterns. |
 | **Ecosystem** | First-class integration with Kubeflow, KServe transformers, ModelMesh for multi-model serving. |
 
-The KServe controller runs as an ordinary Deployment. Its runtimes are container images, and KServe publishes them under `gcr.io/kserve/`. The InferenceService lives in the cluster next to your other Deployments and Services.
+The KServe controller runs as an ordinary Deployment. Its runtimes are container images, and KServe publishes them under the kserve organisation on Docker Hub, for example `kserve/storage-initializer`. Registry locations change between releases, so check the release you install. The InferenceService lives in the cluster next to your other Deployments and Services.
 
 ### 2.2 Seldon Core
 
-Seldon Core predates KServe. It defines its own CRD, `SeldonDeployment`, and it uses Istio for traffic routing. Its main strength is the `graph` field, which chains models, ensembles, and routers. That matters for a RAG pipeline, where a retriever and a generator must work as one unit.
+Seldon Core predates KServe. Its first generation defines its own CRD, `SeldonDeployment`, and it uses Istio for traffic routing. The examples here use that API. Section 2.5 explains what happened to it. Its main strength is the `graph` field, which chains models, ensembles, and routers. That matters for a RAG pipeline, where a retriever and a generator must work as one unit.
 
 | Strength | Detail |
 |---|---|
@@ -236,9 +227,9 @@ BentoML takes the opposite route. You write a Python `bentoml.Service` that hold
 | **Python-first** | The entire serving stack is Python; no YAML CRD to learn. |
 | **Multi-model** | First-class support for serving multiple models in one image; useful for foundation-model catalogues. |
 | **Bento format** | The `Bento` is a packaging format that bundles the model, the dependencies, and the serving code. |
-| **Yatai** | The Yatai deployment plane schedules Bentos on Kubernetes and handles autoscaling and traffic routing. |
+| **Yatai** | A Kubernetes operator that deployed Bentos. Its repository is now archived, see Section 2.5. |
 
-BentoML fits teams that would rather write Python than YAML. It also fits teams that need to serve many small models from one image. The platform team runs Yatai, BentoML's Kubernetes operator, as a multi-tenant service.
+BentoML fits teams that would rather write Python than YAML. It also fits teams that need to serve many small models from one image. On Kubernetes, you package the Bento as an image and deploy it with the same tools as any other service.
 
 ### 2.4 Comparison
 
@@ -248,13 +239,26 @@ All three expose the contract from Section 1.1, so the choice comes down to oper
 |---|---|---|---|
 | Definition | Kubernetes CRD | Kubernetes CRD | Python `bentoml.Service` |
 | Data plane | Pluggable runtime images | `seldon-core-microservice` image | Custom Docker image per Bento |
-| Autoscaling | Knative request-concurrency + custom GPU metrics | Kubernetes HPA + custom metrics | Yatai with custom metrics |
-| Canary | Built-in field + Argo Rollouts integration | Istio traffic splitting | Yatai canary |
-| Inference graphs | Limited (multiple predictors per service) | First-class (`graph` field) | Multi-model in one Bento |
+| Autoscaling | Knative request-concurrency, or HPA and KEDA in Standard mode | Kubernetes HPA + custom metrics | Whatever runs the image, for example HPA |
+| Canary | Built-in field in Knative mode, plus Argo Rollouts integration | Istio traffic splitting | Your rollout tool |
+| Inference graphs | `InferenceGraph` resource with Sequence, Switch, Ensemble and Splitter nodes | First-class (`graph` field) | Multi-model in one Bento |
 | Explainers | Alibi, AIF360 integration | First-class SHAP, anchor, counterfactual | Custom |
 | Best fit | Kubeflow teams; Kubernetes-native; need pluggable runtimes | Inference graphs; rich explainer ecosystem | Python-first teams; many small models |
 
-KServe is a sound default for Kubernetes-native teams. Seldon Core fits teams that need inference graphs and a rich explainer set from the start. BentoML fits teams that prefer Python.
+KServe is a sound default for Kubernetes-native teams. BentoML fits teams that prefer Python. Seldon Core needs a closer look before you start a new project, as the next section explains.
+
+### 2.5 Project status in November 2026
+
+Check the state of each project before you commit to it. The facts below come from the project repositories on 2026-11-12.
+
+| Project | State |
+|---|---|
+| KServe | Active. The latest release is v0.21.0, published 2026-09-25. |
+| Seldon Core | Two lines exist. Core 1 (the `SeldonDeployment` CRD in this chapter) had its last release, v1.19.0, on 2026-01-23. Core 2 is the line the README and documentation point new users to, with v2.10.2 released 2025-12-19 and a different model: Model, Server and Pipeline resources with Kafka between pipeline steps. Both lines are licensed under the Business Source License, not Apache 2.0, so read the licence before you adopt either for a commercial product. |
+| BentoML | Active, Apache 2.0. The latest release is v1.4.40, published 2026-10-23. |
+| Yatai | The repository is archived. Its last release, v1.1.13, is dated 2023-10-09, and its README says Yatai for BentoML 1.2 is under construction. Do not plan a new platform around it. |
+
+If you want Bentos on Kubernetes today, build the Bento into a container image and run it as an ordinary Deployment, or as a KServe custom runtime, through your normal GitOps flow.
 
 ---
 
@@ -295,7 +299,7 @@ spec:
     scaleMetric: concurrency
 ```
 
-Here, `scaleTarget: 4` means each replica takes up to four concurrent requests before the platform adds another. The `scaleMetric: concurrency` setting tells the autoscaler to watch in-flight requests rather than CPU. Knative's request-concurrency metric does the measuring, and the autoscaler adjusts the replica count to match. If you tune this setting, watch the replica count under real traffic before you trust it.
+This manifest assumes Serverless mode, because scale to zero and the concurrency metric come from Knative. In Standard mode you scale with HPA or KEDA instead. Here, `scaleTarget: 4` means each replica takes up to four concurrent requests before the platform adds another. The `scaleMetric: concurrency` setting tells the autoscaler to watch in-flight requests rather than CPU. Knative's request-concurrency metric does the measuring, and the autoscaler adjusts the replica count to match. If you tune this setting, watch the replica count under real traffic before you trust it.
 
 ### 3.2 Scale-to-zero for low-traffic models
 
@@ -309,7 +313,7 @@ Use scale-to-zero for low-traffic internal tools, periodic batch predictors, and
 
 Routing traffic is the platform's job. The model team points the service at a new version. The platform sends a slice of traffic to it, watches the SLO, and then either finishes the rollout or rolls back. *Designing Machine Learning Systems* Chapter 7 and *Generative AI on Kubernetes* Chapter 1 both describe this pattern.
 
-In KServe, the canary is a field on the same InferenceService, not a separate resource. You edit the spec to point at the new model and set `canaryTrafficPercent`. KServe keeps the last rolled-out revision serving the remaining traffic. Setting the percentage to 100, or removing the field, promotes the new revision. To roll back, set the percentage to 0 or restore the old spec.
+In KServe, the canary is a field on the same InferenceService, not a separate resource. It works only in the Knative based serverless mode, so it is not available in Standard mode. You edit the spec to point at the new model and set `canaryTrafficPercent`. KServe keeps the last rolled-out revision serving the remaining traffic. Setting the percentage to 100, or removing the field, promotes the new revision. To roll back, set the percentage to 0 or restore the old spec.
 
 ```yaml
 # code/part16/canary_inference_service.yaml
@@ -327,7 +331,7 @@ spec:
 
 KServe does not judge the canary itself. Your pipeline, or a tool such as Argo Rollouts, watches the SLO and then raises the percentage or sets it to 0. The layout above follows the upstream KServe repository.
 
-Seldon Core splits traffic through Istio, and BentoML uses Yatai. The mechanisms differ, but the contract stays the same.
+Seldon Core splits traffic through Istio. For BentoML, you use the rollout tool of your cluster. The mechanisms differ, but the contract stays the same.
 
 ### 3.4 A/B testing and shadow mode
 
@@ -335,13 +339,15 @@ A canary tests whether a new version is safe. Two other patterns test whether it
 
 A/B testing sends each request a header or cookie that names its variant, and the router splits on that value. Use it to compare two models on one user group or a marketing experiment.
 
-Shadow mode sends the new model all of the traffic, but its responses are discarded and the live model answers the user. Use it to collect ground truth before you promote anything.
+Shadow mode sends the new model a copy of the traffic, but its responses are discarded and the live model answers the user. Use it to collect ground truth before you promote anything.
 
-KServe and Seldon both support A/B through custom routing rules. Shadow mode works by sending 100% of traffic to the canary and disabling its response path. The platform's logs keep the canary's answers for offline review.
+KServe and Seldon both support A/B through custom routing rules.
+
+Shadow mode is not a canary at 100 percent. In KServe, `canaryTrafficPercent: 100` promotes the new revision, so users start receiving its answers. A shadow needs a copy of each request, and a copy comes from request mirroring in the mesh or gateway. Istio calls it traffic mirroring or shadowing: it sends a copy of live traffic to the mirrored service, and the responses of the copy are dropped. Run the new model as a second InferenceService and mirror the live traffic to it. The shadow's logs keep its answers for offline review. Remember that the shadow does real work, so it needs the same GPU capacity as the live model, and its side effects, such as writes to a database, must be switched off.
 
 ---
 
-## 4. Multi-model serving and inference graphs
+## 4. Multi-model serving, inference graphs and LLMs
 
 ### 4.1 ModelMesh and multi-model endpoints
 
@@ -351,7 +357,7 @@ ModelMesh keeps the models in a shared memory pool. Each request carries a model
 
 ### 4.2 Inference graphs
 
-One model is often not enough. A RAG question may need a retriever to find documents, then a generator to write the answer. Seldon Core's `graph` field describes that chain as a directed acyclic graph of models, routers, and combiners.
+One model is often not enough. A RAG question may need a retriever to find documents, then a generator to write the answer. Seldon Core's `graph` field describes that chain as a directed acyclic graph of models, routers, and combiners. KServe has a similar `InferenceGraph` resource with Sequence, Switch, Ensemble and Splitter nodes.
 
 ```yaml
 # code/part16/seldon_graph.yaml
@@ -388,23 +394,100 @@ BentoML takes a different approach. One Bento holds several models, and a routin
 ```python
 # code/part16/multi_model_service.py
 import bentoml
+import joblib
+from bentoml.models import BentoModel
+
 
 @bentoml.service(
     resources={"cpu": "2", "memory": "4Gi"},
 )
 class MultiModelService:
-    model_a = bentoml.models.BentoModel("model_a:latest")
-    model_b = bentoml.models.BentoModel("model_b:latest")
+    # Declared at class scope so the Bento packages both models.
+    ref_a = BentoModel("model_a:latest")
+    ref_b = BentoModel("model_b:latest")
 
-    def predict(self, input_data: dict, model_name: str) -> dict:
-        if model_name == "model_a":
-            return self.model_a.predict(input_data)
-        elif model_name == "model_b":
-            return self.model_b.predict(input_data)
-        raise ValueError(f"unknown model: {model_name}")
+    def __init__(self):
+        # BentoModel gives a model reference, not a model. Load the real
+        # object from the stored files yourself.
+        self.models = {
+            "model_a": joblib.load(self.ref_a.path_of("model.pkl")),
+            "model_b": joblib.load(self.ref_b.path_of("model.pkl")),
+        }
+
+    @bentoml.api
+    def predict(self, rows: list[list[float]], model_name: str) -> list:
+        if model_name not in self.models:
+            raise ValueError(f"unknown model: {model_name}")
+        return self.models[model_name].predict(rows).tolist()
 ```
 
-The router runs first, reading the model name from the request body. If you see the unknown-model error, check the name in your request first. The whole Bento becomes one Docker image, and the platform runs it as one Kubernetes Deployment.
+`BentoModel` only gives a reference to a stored model. The service must load the real model object from the stored files, here with joblib, inside `__init__`. The two references sit at class scope so that the Bento packages both models. The `predict` method carries the `@bentoml.api` decorator, which makes it an HTTP endpoint, and it picks the model by the name in the request. If you see the unknown-model error, check the name in your request first. The whole Bento becomes one Docker image, and the platform runs it as one Kubernetes Deployment.
+
+### 4.4 LLM serving on KServe today
+
+A churn model loads in seconds and fits on a CPU. A language model is different in three ways that change how you run the platform. Its weights are tens or hundreds of gigabytes, so loading them is the slow part of every start. It needs one or more GPUs, so a wasted replica is expensive. And its requests last seconds and stream tokens, so a plain round-robin load balancer spreads work badly. The KServe documentation for version 0.21 answers each of these.
+
+**Deployment mode.** KServe has two modes. Serverless mode uses Knative and gives scale to zero and the canary field. Standard mode, also called RawDeployment, uses plain Deployments, Services and the Horizontal Pod Autoscaler, with optional KEDA. The documentation recommends Standard mode for generative inference, because it gives full control of GPU resources and predictable scaling for long requests. The price is that scale from zero is not supported for HTTP requests in Standard mode, and the `canaryTrafficPercent` rollout is not available. Autoscaling on LLM metrics, such as waiting requests or KV cache use from vLLM, is done with KEDA in Standard mode.
+
+**The vLLM runtime.** KServe's Hugging Face serving runtime uses vLLM as its backend for text generation, and falls back to the plain Hugging Face backend when vLLM does not support a model. It exposes OpenAI compatible endpoints, such as chat completions and embeddings. A model is declared with the `huggingface` model format, and asking for `nvidia.com/gpu` makes KServe pick the CUDA image.
+
+```yaml
+# from the KServe Hugging Face runtime overview
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "huggingface-llm"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: huggingface
+      storageUri: "hf://meta-llama/llama-3-8b-instruct"
+      resources:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+          nvidia.com/gpu: 1
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+          nvidia.com/gpu: 1
+```
+
+**Model delivery with a modelcar.** By default, a storage initializer container downloads the model into the pod before the server starts. For a large model that download is a delay on every scale-out and every restart. A modelcar avoids the copy. You package the weights in an OCI image and set `storageUri: oci://registry/mymodel:1.0`. KServe adds a small container to the pod that runs the image. The runtime reads the weights through the shared process namespace, with no copy into another volume. This also lets the container runtime cache the image on the node, and lets you pre-pull it. Two rules from the documentation matter. The feature is off by default and is enabled in the `inferenceservice-config` ConfigMap with `enableModelcar`. And you must use a specific tag, not `latest`, because only a specific tag gets the `IfNotPresent` pull policy that makes the node cache useful. A modelcar does not remove the cost of reading the weights into GPU memory. It moves the transfer from a copy at pod start to the image pull, which can happen ahead of time.
+
+**Routing with an inference gateway.** For a stateless service, any replica is as good as another. For an LLM it is not: a replica that already holds the prompt prefix in its KV cache can answer faster, and a replica with a long queue should be avoided. KServe's newer `LLMInferenceService` resource, built on the llm-d project, handles this with Gateway API and the Gateway API Inference Extension. The gateway sends a request to an InferencePool, and an endpoint picker service scores the pods, using KV cache state and load, before the gateway chooses one. The same resource supports splitting prefill and decode into separate pools, and multi-node serving with LeaderWorkerSet. The documentation states that an ordinary InferenceService can serve LLMs only for basic single-node cases. It also says the two resources follow separate tracks: InferenceService for predictive models and LLMInferenceService for generative ones.
+
+```yaml
+# from the KServe LLMInferenceService overview (API version v1alpha1)
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: llama-3-8b
+  namespace: default
+spec:
+  model:
+    uri: hf://meta-llama/Llama-3.1-8B-Instruct
+    name: meta-llama/Llama-3.1-8B-Instruct
+  replicas: 3
+  template:
+    containers:
+      - name: main
+        image: vllm/vllm-openai:latest
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+            cpu: "8"
+            memory: 32Gi
+  router:
+    gateway: {}
+    route: {}
+    scheduler: {}
+```
+
+This resource needs more of the cluster than a plain InferenceService. Its dependencies are cert-manager, a Gateway API controller, the Gateway API Inference Extension CRDs, and LeaderWorkerSet for multi-node models. Install the inference extension CRDs before the Gateway provider. The documentation warns that a provider installed first will not know about InferencePool.
+
+Pin image tags in production. The example above uses `latest` only because the documentation does. Before you serve a large model, work out the load time from Section 5.4 and put it in the SLO, since every new replica pays it.
 
 ---
 
@@ -441,15 +524,32 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: ingress
+              kubernetes.io/metadata.name: istio-system
+        - podSelector: {}
   egress:
+    # DNS, otherwise no name resolves
     - to:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # Model download by the storage initializer: HTTPS to public object stores only
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - {protocol: TCP, port: 443}
+    # Traffic between pods of the same namespace (transformer to predictor)
+    - to:
+        - podSelector: {}
 ```
 
-This policy lets traffic into the team's pods come only from the cluster's ingress namespace. Outbound traffic is allowed only to the `kube-system` namespace. Teams cannot reach one another's pods across namespaces, and their pods cannot reach the public internet. The platform team owns this policy.
+The policy has two halves. Inbound traffic may come only from the ingress namespace, here `istio-system`, and from pods of the same namespace. Outbound traffic is allowed to three places: DNS in `kube-system`, public addresses on port 443, and pods of the same namespace.
+
+The second rule matters most. When a pod starts, KServe's storage initializer downloads the model from the object store, and that download is outbound traffic from the pod. A policy that allows only `kube-system` blocks it, and the pod then waits in its init stage and never becomes ready. The same policy would also fail name lookup, because DNS needs port 53. Namespace labels must match exactly. The reliable label is `kubernetes.io/metadata.name`, which Kubernetes sets on every namespace, whereas a label such as `name: ingress` exists only if someone added it. If your object store is reached through a private endpoint, replace the public CIDR rule with that endpoint's address. The platform team owns this policy.
 
 ### 5.3 IAM and secrets
 
@@ -548,7 +648,7 @@ Start by installing KServe with Helm. The controller pod should be running once 
 helm repo add kserve https://kserve.github.io/helm-charts
 helm install kserve kserve/kserve \
   --namespace kserve --create-namespace \
-  --set kserve.controller.deploymentMode=Deployment
+  --set kserve.controller.deploymentMode=Serverless
 # expected: the kserve-controller pod is running
 ```
 
@@ -628,11 +728,11 @@ If any answer takes longer than 30 seconds, the serving platform is not yet a pr
 
 Try these after the lab. If you get stuck, the solution sketch shows the shape of the answer. Work through them in order, and keep notes on anything that surprises you.
 
-1. **Add a transformer.** Add a pre-processing transformer that normalises the input before inference. Then confirm the predictor receives the transformer's output unchanged. *Solution sketch:* an InferenceService with a transformer section. The transformer image runs `python transform.py --mode preprocess` and forwards the JSON.
+1. **Add a transformer and prove it is not a sidecar.** Add a pre-processing transformer that normalises the input before inference. Then confirm the predictor receives the transformer's output unchanged. *Check:* `kubectl get deploy -n team-data-science` shows two Deployments for the service, one for the transformer and one for the predictor, and a request with raw input returns normalised predictions.
 2. **Add a custom GPU metric.** Expose the GPU's KV cache utilisation as a Prometheus gauge, then point the autoscaler at that metric. *Solution sketch:* a sidecar that polls `nvidia-smi` and publishes the metric, plus an HPA that reads it.
 3. **Add A/B routing by header.** Send 50% of requests that carry the header `X-Experiment: model-b` to a canary, and check that the routing works. *Solution sketch:* a VirtualService with a match block on the header. Matching requests go to the canary.
 4. **Add an explainer.** Attach an Alibi explainer to the InferenceService, then confirm it returns SHAP values for a sample input. *Solution sketch:* the explainer section of the InferenceService. A request to `/explain` returns the SHAP values.
-5. **Add a BentoML multi-model service.** Define a BentoML service that serves two models, then deploy it on Kubernetes through Yatai. *Solution sketch:* start from the `MultiModelService` in Section 4.3. Run `bentoml build` to produce the Bento, and let Yatai deploy it.
+5. **Build a BentoML multi-model service.** Define a BentoML service that serves two models, then build it into a container image and deploy it as a Deployment. *Check:* a request with `model_name` set to each model returns that model's prediction, and an unknown name returns the error. Start from the `MultiModelService` in Section 4.3 and run `bentoml build`.
 6. **Add inference-graph deadlock detection.** Set explicit timeouts on every edge of a RAG inference graph, then confirm the timeouts fire. *Solution sketch:* Seldon's `timeout` field on each component, plus a load test that triggers the timeout.
 
 ---
@@ -659,8 +759,8 @@ The artefact exists, but the serving service account cannot read it. Its IAM bin
 The scale-from-zero delay was longer than the spike. In the chapter's example the SLO is p99 under 200 ms and scale-from-zero takes 30 seconds, so the new replicas were not ready in time. Knative's `panic-mode` can help. When the autoscaler sees a sudden spike, it allocates extra capacity above the steady-state target.
 </details>
 
-<details><summary>6. A model team says their pod in `team-data-science` cannot call a public API on the internet. Nothing is wrong with the pod. What is the likely reason?</summary>
-The namespace's network policy blocks it. The example policy allows inbound traffic only from the ingress namespace and outbound traffic only to `kube-system`. So pods cannot reach other teams' pods and cannot reach the public internet. The platform team owns this policy, so the team must ask for a change there.
+<details><summary>6. After a network policy is applied to `team-data-science`, new model pods stay in their init stage and never become ready. Nothing is wrong with the image. What is the likely reason?</summary>
+The policy blocks the model download. The storage initializer pulls the artefact from the object store when the pod starts, and that is outbound traffic. If the policy allows egress only to `kube-system`, the pull is blocked, and DNS lookups fail as well unless port 53 is allowed. The fix is an egress rule for HTTPS to the object store and one for DNS. The platform team owns this policy, so the model team must ask for the change there.
 </details>
 
 <details><summary>7. Why can a CPU-based trigger make the autoscaler scale out when traffic has not risen?</summary>
@@ -680,7 +780,7 @@ The canary is a field on the same InferenceService, `canaryTrafficPercent`, not 
 </details>
 
 <details><summary>11. Why does shadow mode catch failures that a short canary misses, and why is it safe for users?</summary>
-Shadow mode sends the new model all of the traffic, so rare paths and long-tail cases get exercised. The new model's responses are discarded and the live model answers the user. The platform's logs keep the canary's answers for offline review. A 10 percent canary for 10 minutes sees far fewer cases than 24 hours of full shadow traffic.
+Shadow mode sends the new model a copy of all of the traffic, so rare paths and long-tail cases get exercised. The new model's responses are discarded and the live model answers the user. The platform's logs keep the canary's answers for offline review. A 10 percent canary for 10 minutes sees far fewer cases than 24 hours of full shadow traffic.
 </details>
 
 <details><summary>12. When would you choose scale-to-zero over reserved capacity, and what do you give up?</summary>
@@ -728,6 +828,9 @@ First, check whether the retriever is slow under load, since the generator waits
 - *Practical MLOps* (`practical-mlops`, Chapter 10). Source for the transformer pattern, the ML interoperability concerns (ONNX, PMML, portable inference engines), and the platform abstractions for serving. Chapter 10 is approximately 7,500 words.
 - *Machine Learning Platform Engineering* (`machine-learning-platform-engineering`, Chapters 5, 10). Source for the operational pattern (Postgres backend, object store for artefacts, IAM model, observability SLOs) and the multi-tenant platform view. Chapter 5 is approximately 9,000 words; Chapter 10 is approximately 9,000 words.
 - KServe, Seldon Core, and BentoML official documentation. Source for the InferenceService CRD shape, the canary mechanism, the inference graph syntax, and the multi-model patterns.
+- KServe documentation, source `github.com/kserve/website`, branch main, read 2026-11-12, matching KServe v0.21.0 (released 2026-09-25): the transformer page "Collocate Transformer and Predictor" (transformer and predictor are separate Deployments by default); "Canary Rollout Strategy" (supported only in serverless mode); "Serving Models with OCI Images" (modelcars, `oci://` storage, a pinned tag gives IfNotPresent pull, `shareProcessNamespace`); "Kubernetes Deployment Installation Guide" (Standard mode, recommended for generative inference, scale from zero not supported for HTTP); "Hugging Face LLM Serving Runtime" overview (vLLM backend, OpenAI endpoints, GPU image selected by `nvidia.com/gpu`); "Understanding LLMInferenceService", "LLMInferenceService Architecture Deep Dive" and the dependencies page (Gateway API Inference Extension, InferencePool, endpoint picker); the InferenceGraph overview.
+- Istio documentation, "Mirroring" task, read 2026-11-12: mirroring sends a copy of live traffic to a mirrored service, which is how shadowing is done.
+- Repository state read 2026-11-12: SeldonIO/seldon-core (v1.19.0 on 2026-01-23, v2.10.2 on 2025-12-19, Business Source License in both LICENSE files); bentoml/Yatai (archived, v1.1.13 on 2023-10-09); bentoml/BentoML v1.4.40 (2026-10-23, Apache 2.0) and its model loading documentation (`BentoModel` is declared at class scope and loaded with `path_of`, API methods use `@bentoml.api`).
 
 ### Cross-references to other handbook chapters
 
@@ -750,5 +853,6 @@ The transformer and explainer pattern draws on Volume 25 chapter 9. The wording 
 ### Not verified on live hardware
 
 - The lab in Section 7 is **untested** against a live GKE cluster in this repository.
+- The LLMInferenceService example in Section 4.4 is taken from the KServe documentation and was not applied to a live cluster. Its API version is `v1alpha1`, so field names can change.
 - The KServe, Knative, and Istio versions assumed in the lab should be pinned against the current releases before production use.
 - The custom GPU metric adapter assumes a Prometheus-based observability stack; verify against the current KServe documentation.

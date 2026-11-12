@@ -343,7 +343,7 @@ Six failure modes come up again and again. Each one below gives you a symptom to
 
 ### 6.1 "The forecast is wrong"
 
-**Symptom:** The forecast asked for 156 GPUs, but the team used 100. That leaves 56 GPUs bought and idle, using the chapter's example numbers.
+**Symptom:** The forecast said the team would need 156 GPUs next quarter, and the order was placed. When the quarter ended, the actual peak use was still 100 GPUs because the expected growth never arrived. That leaves 56 GPUs bought and idle. The numbers are the chapter's example, and the 100 is an assumed actual, not a measurement.
 
 **Diagnosis:** The forecast model is off. The growth rate, the buffer, or the history the model learned from may be wrong.
 

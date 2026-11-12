@@ -226,13 +226,13 @@ When the installs finish, each component should show as healthy on the platform 
 
 ## 4. Step 3-4: ingest and version the dataset
 
-Data versioning matters because a model is only as reproducible as its data. If you cannot say which rows trained a model, you cannot explain its behavior later. The capstone uses a public dataset, the UCI Adult dataset for churn prediction, and versions it with DVC.
+Data versioning matters because a model is only as reproducible as its data. If you cannot say which rows trained a model, you cannot explain its behavior later. The capstone uses a public dataset, the UCI Adult dataset, and versions it with DVC. Adult is not a churn dataset. Its label says whether a person earns more than 50,000 dollars a year. It stands in for a churn table because it is a small, stable, public binary-classification file. The capstone keeps the name churn for the files and the model so that the other chapters line up, and you treat the income label as the target.
 
 You download the file. DVC then adds a small pointer file to Git and pushes the data itself to a GCS bucket. The commit holds the pointer, so the dataset's content hash becomes part of your code history.
 
 ```bash
 # Download the dataset
-mkdir churn-capstone && cd churn-capstone
+mkdir -p churn-capstone/data && cd churn-capstone
 git init
 curl -O https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data
 mv adult.data data/churn.csv
@@ -243,7 +243,7 @@ dvc init --storage.gs gs://${PROJECT_ID}-dvc
 # Version the dataset
 dvc add data/churn.csv
 git add data/churn.csv.dvc data/.gitignore
-git commit -m "v1 of churn dataset (UCI Adult)"
+git commit -m "v1 of the capstone dataset (UCI Adult, stands in for churn)"
 dvc push
 # expected: a content hash in GCS; a sha256 in data/churn.csv.dvc
 ```

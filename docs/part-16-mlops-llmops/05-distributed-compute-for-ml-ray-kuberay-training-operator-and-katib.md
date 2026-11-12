@@ -267,7 +267,7 @@ The tools complement each other rather than compete. A team that runs multi-node
 
 ### 2.1 The contract is the resource request
 
-Picture a `PyTorchJob` with one master and seven workers. The job needs all eight GPUs at the same moment. The default scheduler places pods one at a time, so it can give the master a GPU and six workers GPUs while the seventh worker waits. The job is now wedged. It holds seven GPUs and cannot start.
+Picture a `PyTorchJob` with one master and seven workers. The job needs all eight pods running at the same moment, and each pod holds its own GPUs. The default scheduler places pods one at a time, so it can place the master and six workers while the seventh worker waits. The job is now wedged. It holds the GPUs of seven pods and cannot start.
 
 A gang scheduler solves this by treating the whole job as one unit. The Training Operator, KubeRay and Katib each integrate with one.
 
@@ -385,7 +385,7 @@ A checkpoint is your safety net. The job saves its model and optimiser state eve
 # code/part16/snippets/train_elastic.py
 # Run with:  torchrun --nnodes=1:4 --nproc-per-node=8 --max-restarts=3 --rdzv-backend=c10d --rdzv-endpoint=$HEAD:29400 train_elastic.py
 # torchrun is the elastic launcher; the training script itself only initialises the process group and resumes from a checkpoint.
-# (An earlier draft called torch.distributed.elastic.agent.run(...), which is not how a training script is launched.)
+# (Do not call torch.distributed.elastic.agent.run(...). That is not how a training script is launched.)
 import os, torch, torch.distributed as dist
 
 MAX_STEPS = 10_000

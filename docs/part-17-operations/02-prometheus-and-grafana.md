@@ -652,16 +652,16 @@ Each sample goes to the write-ahead log on disk and into the head block in memor
 
 Keeping metrics longer costs disk space. Keeping them shorter means you cannot look back at last month's incident. The retention period is the balance between those two needs.
 
-| Retention | Storage per series per year | Use case |
+| Retention | Disk for one series | Use case |
 |---|---|---|
-| 1 day | 1 MB | Debugging only |
-| 7 days | 7 MB | Recent debugging |
-| 30 days | 30 MB | Default |
-| 90 days | 90 MB | Capacity planning |
-| 1 year | 365 MB | Regulatory audit |
-| 5 years | 1.8 GB | Long-term retention (rare) |
+| 1 day | 12 KB | Debugging only |
+| 7 days | 81 KB | Recent debugging |
+| 30 days | 346 KB | Default |
+| 90 days | 1.0 MB | Capacity planning |
+| 1 year | 4.2 MB | Regulatory audit |
+| 5 years | 21 MB | Long-term retention (rare) |
 
-The figures in this table are illustrative, not measured. Real storage depends on how many series you keep and how often you scrape them, so measure your own before you set a budget.
+The table assumes one sample every 15 seconds, which is 5,760 samples a day, and 2 bytes per compressed sample. The Prometheus documentation gives 1 to 2 bytes per sample as a planning figure. Disk use grows in step with the retention period, so 90 days needs three times the disk of 30 days. Multiply by the number of series you keep. Real storage depends on your scrape interval and your data, so measure your own before you set a budget.
 
 The chapter's pattern is 30 days for operational dashboards, 90 days for capacity planning, and one year for the audit log. Set the period with the Prometheus flag `--storage.tsdb.retention.time`.
 
@@ -976,8 +976,8 @@ Apply the higher of the two, which is 3 percent. A cluster that runs out of eith
 A day has 24 times 60 times 60, which is 86,400 seconds. Divided by 15, that is 5,760 samples per series per day. A `10s` interval would give 8,640.
 </details>
 
-<details><summary>18. Your retention is 30 days and you want 90 days for capacity planning. Using the chapter's illustrative table, how does storage per series change?</summary>
-The table gives 30 MB for 30 days and 90 MB for 90 days. That is a factor of 90 divided by 30, which is 3. The figures are illustrative, so measure your own before you set a budget.
+<details><summary>18. Your retention is 30 days and you want 90 days for capacity planning. Using the chapter's table, how does disk use per series change?</summary>
+The table gives 346 KB for 30 days and 1.0 MB for 90 days. Disk use grows in step with retention, so the factor is 90 divided by 30, which is 3. The figures assume 15-second scrapes and 2 bytes per sample, so measure your own before you set a budget.
 </details>
 
 <details><summary>19. After a restart in the middle of an incident, what do you expect Prometheus to do and why does it not lose the last minutes?</summary>
@@ -1010,7 +1010,7 @@ The Prometheus + Grafana operational patterns draw on Volume 16 chapter 5 and Vo
 
 ### Explicitly labelled inferences
 
-- The retention period table in Section 4.2 is a starting point; specific retention depends on the regulatory regime and the storage budget.
+- The retention period table in Section 4.2 is computed from a 15-second scrape and 2 bytes per sample, the upper end of the Prometheus documentation's 1 to 2 bytes planning figure, and is a starting point; specific retention depends on the regulatory regime and the storage budget.
 - The on-call dashboard panels in Section 3.2 are a starting point; specific panels depend on the team's operational discipline.
 - The cardinality budget's 1000-value limit is a rule of thumb; specific limits depend on the cluster's memory budget.
 

@@ -180,10 +180,10 @@ Attention kernel arithmetic intensity:
   - Example: 4 * 1 * 2048 * 2048 * 4096 = 6.87e10 FLOPs
 - Bytes: batch * seq_len * hidden_size * 4 (FP16 weights + activations)
   - Example: 1 * 2048 * 4096 * 4 = 3.36e7 bytes
-- Arithmetic intensity: 6.87e10 / 3.36e7 = 2045 FLOP/byte
+- Arithmetic intensity: 6.87e10 / 3.36e7 = 2048 FLOP/byte
 
 Comparison to H100 ridge point (295 FLOP/byte):
-- Attention intensity (2045) > ridge point (295)
+- Attention intensity (2048) > ridge point (295)
 - The kernel is compute-bound
 - The optimisation is to increase the compute peak (use FP8; use Tensor Cores)
 ```
@@ -343,7 +343,7 @@ Capacity planning model:
 - Q+1 order: 156 GPUs (rounded up)
 ```
 
-The model counts GPUs, not busy GPU hours, so the 80 percent utilisation in the first line does not change the result. If utilisation is low, the count alone will overstate the order. AI Systems Performance Engineering, chapter 16, suggests watching how latency rises as load rises. The load where tail latency climbs sharply shows the practical limit, which is a better basis for the order than the raw count.
+The model counts GPUs, not busy GPU hours, so the 80 percent utilisation in the current-usage line of the block does not change the result. If utilisation is low, the count alone will overstate the order. AI Systems Performance Engineering, chapter 16, suggests watching how latency rises as load rises. The load where tail latency climbs sharply shows the practical limit, which is a better basis for the order than the raw count.
 
 ### 5.2 The capacity planning dashboard
 
@@ -359,13 +359,13 @@ Put the same arithmetic on a dashboard, so the forecast updates as the metrics c
       {"title": "Current GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO)"}]},
       {"title": "Forecast growth rate", "type": "stat", "targets": [{"expr": "(count(DCGM_FI_DEV_GPU_UTIL_RATIO) - count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d)) / count(DCGM_FI_DEV_GPU_UTIL_RATIO offset 30d) * 100"}]},
       {"title": "Q+1 forecast GPU count", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30"}]},
-      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30 * 3.20"}]}
+      {"title": "Q+1 forecast cost per hour", "type": "stat", "targets": [{"expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) * 1.20 * 1.30 * 4.00"}]}
     ]
   }
 }
 ```
 
-The last panel uses an example rate of 3.20 per GPU hour. Replace it with the rate in your own contract before the number reaches finance.
+The last panel uses an example rate of $4.00 per GPU hour, which matches the $32 per hour for 8 GPUs in Section 4.1. Replace it with the rate in your own contract before the number reaches finance.
 
 Before the next procurement cycle, compare last quarter's forecast with the actual GPU count and write down the error.
 
@@ -664,12 +664,12 @@ Nsight Compute reports the arithmetic intensity directly and plots each kernel a
 The ridge is 989 TFLOPS divided by 3,350 GB/s, about 295 FLOP per byte. At 100 FLOP per byte the kernel is left of the ridge, so it is memory-bound. Performance is bandwidth times intensity, 3,350 GB/s times 100, which is 335 TFLOPS.
 </details>
 
-<details><summary>17. Use the capacity model with 100 GPUs, 20 percent growth and a 30 percent buffer. What is the Q+1 order and hourly cost at 3.20 per GPU hour?</summary>
-The forecast is 100 times 1.20 times 1.30, which is 156 GPUs. At 3.20 per GPU hour the cost is 156 times 3.20, which is 499.20 per hour. The 3.20 is an example rate, so replace it with the rate in your contract.
+<details><summary>17. Use the capacity model with 100 GPUs, 20 percent growth and a 30 percent buffer. What is the Q+1 order and hourly cost at $4.00 per GPU hour?</summary>
+The forecast is 100 times 1.20 times 1.30, which is 156 GPUs. At $4.00 per GPU hour the cost is 156 times 4.00, which is $624 per hour. The $4.00 is an example rate, so replace it with the rate in your contract.
 </details>
 
 <details><summary>18. The attention example has 6.87e10 FLOPs and 3.36e7 bytes. What is the intensity and which side of the 295 ridge is it?</summary>
-Divide 6.87e10 by 3.36e7, which gives about 2,045 FLOP per byte. That is far above 295, so the kernel is compute-bound. The suggested fixes are lower precision such as FP8 and fuller use of Tensor Cores. Check the counts first, because a wrong byte count changes the answer.
+Divide 6.87e10 by 3.36e7, which gives about 2,048 FLOP per byte. That is far above 295, so the kernel is compute-bound. The suggested fixes are lower precision such as FP8 and fuller use of Tensor Cores. Check the counts first, because a wrong byte count changes the answer.
 </details>
 
 <details><summary>19. Following the decision tree, what do you check first, second and third when GPU utilisation is not above 90 percent?</summary>

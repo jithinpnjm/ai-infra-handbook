@@ -142,7 +142,7 @@ The table gives each failure a symptom, a likely root cause, a detection signal,
 | **Thermal throttling** | Reduced clock | Insufficient cooling | `DCGM_FI_DEV_GPU_TEMP > 85` | Warning |
 | **Power throttling** | Reduced clock | Insufficient power | `DCGM_FI_DEV_POWER_USAGE > TDP` | Warning |
 | **GPU OOM** | Training step crash | Model too large for HBM | `CUDA_OUT_OF_MEMORY` in logs | Warning |
-| **GPU hang** | No kernel progress | Driver or hardware hang | `DCGM_FI_DEV_SM_CLOCK > 0` for > 10s with no kernel | Critical |
+| **GPU hang** | No kernel progress | Driver or hardware hang | GPU utilisation stays high for > 10s while the job's step counter does not move | Critical |
 | **Retired pages** | Reduced HBM | Memory cell failure | `DCGM_FI_DEV_RETIRED_PENDING` count | Warning |
 | **NVLink CRC error** | Reduced bandwidth | Cable or port failure | `DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL` count | Warning |
 | **PCIe replay** | Reduced PCIe bandwidth | Cable or slot failure | `DCGM_FI_DEV_PCIE_REPLAY_COUNTER` count | Warning |
@@ -173,12 +173,12 @@ One example policy warns at 100 single-bit errors per hour, pages on any double-
 
 A GPU hang is the quietest failure in this chapter. The workload still runs, kernels sit in the queue, and the GPU makes no progress. Nothing crashes, so nothing forces anyone to look until the job stalls.
 
-The detection signal in this section is the SM clock. If the clock stays above zero for more than 10 seconds with no kernel progress, the check treats the GPU as hung. The 10 seconds is an example threshold, and the check itself needs a second signal to be reliable.
+The SM clock does not show a hang, because a powered GPU has a non-zero clock whether it is working or stuck. The signal that does show it is a mismatch. The GPU reports high utilisation, but the job's own progress counter, such as steps or tokens per second, stays flat. If that lasts more than 10 seconds, the check treats the GPU as hung. The 10 seconds is an example threshold, and you should set it from your own step time.
 
 ```bash
 # Detect a GPU hang
-nvidia-smi --query-gpu=clocks.sm,clocks.mem --format=csv
-# expected: SM clock > 0 with no recent kernel activity -> hung
+nvidia-smi --query-gpu=utilization.gpu,clocks.sm --format=csv -l 5
+# expected: utilization stays high while the job's step counter does not advance -> hung
 ```
 
 AI Systems Performance Engineering, chapter 16, argues for failing fast. Put timeouts around inference calls, so a hung call raises an error instead of holding GPU time. Apply the same idea to training jobs wherever you can.
@@ -595,12 +595,12 @@ curl -s http://localhost:9093/api/v2/alerts | jq '.[] | {alertname, runbookURL}'
 
 ### 9.5 Step 4: simulate a failure mode
 
-The command below reads the ECC counters on the GPU. It does not create an error, so it checks what the detector sees rather than producing a fault. A non-zero count means ECC errors exist, and in that case the alert should fire.
+The command below only reads the ECC counters on the GPU. It does not inject an error. Use it to see what the detector sees. To test the alert itself, use a test cluster and a fault-injection tool such as the one in DCGM, or write a test value for the alert rule. Never inject faults on a production GPU.
 
 ```bash
-# Inject a synthetic ECC error (for testing only - DO NOT run on production)
+# Read the ECC counters (read-only, safe on any node)
 nvidia-smi -q -d ECC
-# expected: the ECC error count is non-zero; the alert fires
+# expected: the ECC counts are listed. A non-zero double-bit count should match an active alert.
 ```
 
 ### 9.6 Step 5: verify the on-call runbook
@@ -680,7 +680,7 @@ Every GPU waits on each collective, so one missing rank blocks them all. The tim
 </details>
 
 <details><summary>8. Why does a GPU hang go unnoticed until the job stalls?</summary>
-Nothing crashes. The workload still runs, kernels sit in the queue, and the GPU makes no progress. The SM clock check treats the GPU as hung when the clock stays above zero for 10 seconds with no kernel progress, so it needs a second signal. Timeouts around calls make a hang fail fast.
+Nothing crashes. The workload still runs, kernels sit in the queue, and the GPU makes no progress. The check treats the GPU as hung when utilisation stays high for 10 seconds while the job's step counter does not move, so it needs two signals, one from the GPU and one from the job. The SM clock alone cannot show a hang. Timeouts around calls make a hang fail fast.
 </details>
 
 <details><summary>9. Why must image scans repeat on a schedule?</summary>

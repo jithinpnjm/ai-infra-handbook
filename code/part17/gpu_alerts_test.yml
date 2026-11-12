@@ -1,70 +1,88 @@
 # promtool test rules gpu_alerts_test.yml
-# Series use the 4.9.0 names (ratio, hertz, bytes) and the 4.8.x names (percent, MHz, MiB).
+# Series use the 4.9.0 names and the 4.8.x names, so both legs of each rule are exercised.
 rule_files:
   - gpu_alerts.yaml
 evaluation_interval: 30s
 tests:
   - interval: 1m
     input_series:
-      - series: 'DCGM_FI_DEV_GPU_UTIL_RATIO{gpu="0",node="n49"}'
-        values: '0.97+0x15'
-      - series: 'DCGM_FI_DEV_GPU_UTIL{gpu="0",node="n48"}'
-        values: '97+0x15'
-      - series: 'DCGM_FI_DEV_GPU_UTIL_RATIO{gpu="1",node="n49"}'
-        values: '0.50+0x15'
-      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{gpu="0",node="n49"}'
-        values: '90+0x15'
-      - series: 'DCGM_FI_DEV_GPU_TEMP{gpu="0",node="n48"}'
-        values: '90+0x15'
+      # row remap failure: 4.9.0 name on n49, 4.8.x name on n48
+      - series: 'DCGM_FI_DEV_ROW_REMAP_FAILED{gpu="0",node="n49"}'
+        values: '0 0 1 1 1 1'
+      - series: 'DCGM_FI_DEV_ROW_REMAP_FAILURE{gpu="0",node="n48"}'
+        values: '0 0 1 1 1 1'
+      # uncorrectable ECC: the counter steps up once
+      - series: 'DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{gpu="1",node="n49"}'
+        values: '0 0 0 1 1 1'
+      # Xid gauge: tier 3 code 79 on n49, tier 2 code 31 on n48 (old name), a stale tier 3 code on n47
       - series: 'DCGM_FI_DEV_XID_ERROR{gpu="2",node="n49"}'
-        values: '0 79 79 79'
+        values: '0 0 79 79 79 79'
       - series: 'DCGM_FI_DEV_XID_ERRORS{gpu="2",node="n48"}'
-        values: '0 79 79 79'
-      - series: 'DCGM_FI_DEV_FB_USED_BYTES{gpu="0",node="n49"}'
-        values: '78383153152+0x15'
-      - series: 'DCGM_FI_DEV_FB_CAPACITY_BYTES{gpu="0",node="n49"}'
-        values: '85899345920+0x15'
-      - series: 'DCGM_FI_DEV_FB_USED{gpu="0",node="n48"}'
-        values: '74752+0x15'
-      - series: 'DCGM_FI_DEV_FB_FREE{gpu="0",node="n48"}'
-        values: '8192+0x15'
-      - series: 'DCGM_FI_DEV_SM_CLOCK_HERTZ{gpu="0",node="n49"}'
-        values: '1200000000+0x15'
-      - series: 'DCGM_FI_DEV_SM_CLOCK{gpu="0",node="n48"}'
-        values: '1200+0x15'
+        values: '0 0 31 31 31 31'
+      - series: 'DCGM_FI_DEV_XID_ERROR{gpu="3",node="n47"}'
+        values: '79+0x5'
+      # thermal throttle: 4.9.0 counter in seconds, 4.8.x counter in nanoseconds; 0.5 s of throttling per second
+      - series: 'DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL{gpu="0",node="n49"}'
+        values: '0+30x20'
+      - series: 'DCGM_FI_DEV_THERMAL_VIOLATION{gpu="0",node="n48"}'
+        values: '0+30000000000x20'
+      # a GPU that is merely busy, full of memory and at low clocks must not alert
+      - series: 'DCGM_FI_DEV_GPU_UTIL_RATIO{gpu="4",node="n46"}'
+        values: '1+0x20'
+      - series: 'DCGM_FI_DEV_FB_USED_BYTES{gpu="4",node="n46"}'
+        values: '77000000000+0x20'
+      - series: 'DCGM_FI_DEV_SM_CLOCK_HERTZ{gpu="4",node="n46"}'
+        values: '345000000+0x20'
+      # GPU count: n45 advertises 2 GPUs and exports 1, n44 advertises 2 and exports 2, n43 advertises 2 and exports none
+      - series: 'kube_node_status_capacity{node="n45",resource="nvidia_com_gpu"}'
+        values: '2+0x20'
+      - series: 'kube_node_status_capacity{node="n44",resource="nvidia_com_gpu"}'
+        values: '2+0x20'
+      - series: 'kube_node_status_capacity{node="n43",resource="nvidia_com_gpu"}'
+        values: '2+0x20'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{gpu="0",node="n45"}'
+        values: '60+0x20'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{gpu="0",node="n44"}'
+        values: '60+0x20'
+      - series: 'DCGM_FI_DEV_GPU_TEMP_CELSIUS{gpu="1",node="n44"}'
+        values: '60+0x20'
     alert_rule_test:
-      - eval_time: 12m
-        alertname: GPUHighUtilization
+      - eval_time: 5m
+        alertname: GPURowRemapFailed
         exp_alerts:
-          - exp_labels: {severity: warning, gpu: "0", node: n49}
-            exp_annotations: {summary: "GPU 0 on n49 is over-utilised"}
-          - exp_labels: {severity: warning, gpu: "0", node: n48}
-            exp_annotations: {summary: "GPU 0 on n48 is over-utilised"}
-      - eval_time: 12m
-        alertname: GPUThermalThrottle
+          - exp_labels: {severity: critical, gpu: "0", node: n49}
+            exp_annotations: {summary: "GPU 0 on n49 failed a row remap: cordon, drain, RMA"}
+          - exp_labels: {severity: critical, gpu: "0", node: n48}
+            exp_annotations: {summary: "GPU 0 on n48 failed a row remap: cordon, drain, RMA"}
+      - eval_time: 5m
+        alertname: GPUDoubleBitECCError
         exp_alerts:
-          - exp_labels: {severity: warning, gpu: "0", node: n49}
-            exp_annotations: {summary: "GPU 0 on n49 is thermal-throttling"}
-          - exp_labels: {severity: warning, gpu: "0", node: n48}
-            exp_annotations: {summary: "GPU 0 on n48 is thermal-throttling"}
-      - eval_time: 3m
-        alertname: GPUXidError
+          - exp_labels: {severity: critical, gpu: "1", node: n49}
+            exp_annotations: {summary: "GPU 1 on n49 had an uncorrectable ECC error"}
+      - eval_time: 5m
+        alertname: GPUXidTier3
         exp_alerts:
           - exp_labels: {severity: critical, gpu: "2", node: n49}
-            exp_annotations: {summary: "GPU 2 on n49 has Xid errors"}
-          - exp_labels: {severity: critical, gpu: "2", node: n48}
-            exp_annotations: {summary: "GPU 2 on n48 has Xid errors"}
-      - eval_time: 8m
-        alertname: GPUMemoryPressure
+            exp_annotations: {summary: "GPU 2 on n49 reported a tier 3 Xid (79): cordon and drain"}
+      - eval_time: 5m
+        alertname: GPUXidTier2
+        exp_alerts:
+          - exp_labels: {severity: ticket, gpu: "2", node: n48}
+            exp_annotations: {summary: "GPU 2 on n48 reported a tier 2 Xid (31): restart the offending pod"}
+      - eval_time: 15m
+        alertname: GPUThermalThrottleViolation
         exp_alerts:
           - exp_labels: {severity: warning, gpu: "0", node: n49}
-            exp_annotations: {summary: "GPU 0 on n49 is under memory pressure"}
+            exp_annotations: {summary: "GPU 0 on n49 spent over 10 percent of the last 10 minutes below its clocks because of heat"}
           - exp_labels: {severity: warning, gpu: "0", node: n48}
-            exp_annotations: {summary: "GPU 0 on n48 is under memory pressure"}
-      - eval_time: 12m
-        alertname: GPUClockThrottle
+            exp_annotations: {summary: "GPU 0 on n48 spent over 10 percent of the last 10 minutes below its clocks because of heat"}
+      - eval_time: 10m
+        alertname: GPUCountMismatch
         exp_alerts:
-          - exp_labels: {severity: warning, gpu: "0", node: n49}
-            exp_annotations: {summary: "GPU 0 on n49 is clock-throttling"}
-          - exp_labels: {severity: warning, gpu: "0", node: n48}
-            exp_annotations: {summary: "GPU 0 on n48 is clock-throttling"}
+          - exp_labels: {severity: critical, node: n45}
+            exp_annotations: {summary: "Node n45 reports fewer GPUs than it advertises: a GPU may have fallen off the bus"}
+      - eval_time: 10m
+        alertname: DCGMExporterMissingOnGPUNode
+        exp_alerts:
+          - exp_labels: {severity: warning, node: n43}
+            exp_annotations: {summary: "Node n43 advertises GPUs but exports no DCGM metrics"}

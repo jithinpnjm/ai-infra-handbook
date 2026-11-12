@@ -1,15 +1,26 @@
 import bentoml
+import joblib
+from bentoml.models import BentoModel
+
 
 @bentoml.service(
     resources={"cpu": "2", "memory": "4Gi"},
 )
 class MultiModelService:
-    model_a = bentoml.models.BentoModel("model_a:latest")
-    model_b = bentoml.models.BentoModel("model_b:latest")
+    # Declared at class scope so the Bento packages both models.
+    ref_a = BentoModel("model_a:latest")
+    ref_b = BentoModel("model_b:latest")
 
-    def predict(self, input_data: dict, model_name: str) -> dict:
-        if model_name == "model_a":
-            return self.model_a.predict(input_data)
-        elif model_name == "model_b":
-            return self.model_b.predict(input_data)
-        raise ValueError(f"unknown model: {model_name}")
+    def __init__(self):
+        # BentoModel gives a model reference, not a model. Load the real
+        # object from the stored files yourself.
+        self.models = {
+            "model_a": joblib.load(self.ref_a.path_of("model.pkl")),
+            "model_b": joblib.load(self.ref_b.path_of("model.pkl")),
+        }
+
+    @bentoml.api
+    def predict(self, rows: list[list[float]], model_name: str) -> list:
+        if model_name not in self.models:
+            raise ValueError(f"unknown model: {model_name}")
+        return self.models[model_name].predict(rows).tolist()

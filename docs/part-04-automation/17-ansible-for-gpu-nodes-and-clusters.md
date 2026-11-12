@@ -300,10 +300,10 @@ The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute 
 
 | Setting | Command | When you need it |
 |---|---|---|
-| Persistence | `nvidia-persistenced`, or `nvidia-smi -pm 1` | When you want the GPU initialised ahead of workloads |
-| Clocks | `nvidia-smi -lgc` | When policy requires locked or application clocks |
+| Persistence | `nvidia-persistenced`, or the older `nvidia-smi -pm 1` | On every Linux GPU server, so the GPU stays initialised and its settings are kept between jobs |
+| Clocks | `nvidia-smi -lgc` | When policy or acceptance benchmarks require locked clocks |
 | Power limit | `nvidia-smi -pl`, or the `gpu_power_limit` module from 4.15 | When policy caps power |
-| ECC and compute mode | `nvidia-smi` settings, such as `EXCLUSIVE_PROCESS` | When policy sets them away from the default |
+| ECC and compute mode | `nvidia-smi -e` for ECC, `nvidia-smi -c EXCLUSIVE_PROCESS` for compute mode | ECC stays on for production training. Change the compute mode only when policy asks for one process per GPU |
 | MIG | `nvidia-smi -mig 1`, then `nvidia-smi mig -cgi ... -C` | For multi-tenant small workloads |
 
 Changing MIG mode may need a GPU reset or a reboot, and no processes can be running on the GPU. The role also takes an `nvidia-smi topo -m` snapshot for inventory, installs the GDRCopy kernel module, and loads `nvidia-peermem` at boot through `modules-load.d`. If non-root runtimes need device nodes, it can set udev rules under `/etc/udev`.

@@ -779,7 +779,7 @@ git init
 dvc init --storage.gs ${PROJECT_ID}-dvc
 python -c "import pandas as pd; \
   pd.DataFrame({'user_id': range(1000), 'tier': ['gold']*500+['silver']*500, \
-  'churned': [0,1]*500}).to_csv('data/churn.csv', index=False)"
+  'tier_gold': [1]*500+[0]*500, 'churned': [0,1]*500}).to_csv('data/churn.csv', index=False)"
 dvc add data/churn.csv
 git add data/churn.csv.dvc .gitignore
 git commit -m "v1 of churn dataset"
@@ -796,7 +796,7 @@ pip install mlflow scikit-learn pandas
 python train.py --dataset data/churn.csv --seed 42
 # expected: a run in the MLflow UI, an experiment record with
 #   - params: seed=42
-#   - tags: data_hash=<sha256>, code_commit=<git rev-parse HEAD>
+#   - tags: data_hash=<sha256>, code_commit=<git rev-parse HEAD>, seed, env_image
 #   - metrics: auc, accuracy, f1
 #   - artifacts: model.pkl
 ```
@@ -805,7 +805,7 @@ The training script structure:
 
 ```python
 # code/part16/train.py
-import argparse, hashlib, subprocess, mlflow, mlflow.sklearn
+import argparse, hashlib, os, subprocess, mlflow, mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
@@ -824,6 +824,8 @@ with mlflow.start_run(run_name=f"churn-{data_hash[:8]}") as run:
     mlflow.set_tag("data_hash", data_hash)
     mlflow.set_tag("code_commit", commit)
     mlflow.log_param("seed", args.seed)
+    mlflow.set_tag("seed", str(args.seed))
+    mlflow.set_tag("env_image", os.environ.get("ENV_IMAGE", "local"))
 
     # Synthetic train/test split for the lab
     train, test = df.iloc[:800], df.iloc[800:]
@@ -842,13 +844,14 @@ with mlflow.start_run(run_name=f"churn-{data_hash[:8]}") as run:
 
 ### 8.4 Step 4: add a promotion gate
 
-Run the promotion gate against the new run and the previously registered model. The gate blocks the promotion if the AUC regressed.
+Run the promotion gate against the new run and the previously registered model. The gate blocks the promotion if a required tag is missing or the AUC regressed. This lab uses `code/part16/promotion_gate.py`, which reads runs from MLflow. The file `promote.py` in the same folder is a different version that reads run records from the local stand-in registry used by the tests, so it does not work with these MLflow run IDs.
 
 ```bash
-python code/part16/promote.py --candidate <new-run-id> --baseline <previous-run-id>
-# expected: "PROMOTION BLOCKED" or "PROMOTED TO STAGING" with an entry
-# in planning/mlops_audit.log (or your team's audit sink)
+python -c "import sys; sys.path.insert(0, 'code/part16'); import promotion_gate; sys.exit(promotion_gate.promote('<new-run-id>', '<previous-run-id>'))"
+# expected: "PROMOTION BLOCKED: ..." with a reason, or "PROMOTED churn-model vN to Staging"
 ```
+
+This version prints its decision but does not write an audit log. Add an audit sink of your own before you rely on it, as Section 4.3 describes.
 
 ### 8.5 Step 5: deploy the staged model behind KServe
 
@@ -922,7 +925,7 @@ These exercises extend the lab. Each one has a deliverable you can check by read
 
 1. Wire a retraining trigger on a schedule. Add a Kubernetes CronJob that runs `train.py` weekly with a fixed seed, and pushes the resulting model into the registry. Check that a new run appears in MLflow within the next scheduled window. *Solution sketch:* a `CronJob` YAML that runs `python train.py --dataset data/churn.csv --seed 42` with a service account that has write access to the bucket. Expect one new run per scheduled period.
 2. Add a drift detector. Install whylogs or Evidently, and profile the served traffic. Compare the served input distribution with the training distribution, and log the result to MLflow. *Solution sketch:* a sidecar that profiles the JSON body of each request and emits a profile at an interval you choose. Expect the profile in object storage and the metric in MLflow.
-3. Add a promotion-gate rule for fairness. Extend `promote.py` so it refuses promotion if a segment-level metric drops too far. For example, use the AUC for the tier=silver slice, with a drop limit that your team chooses. *Solution sketch:* add a `segment_metrics` field to the dataclass that holds a run, and add a rule to `rules["max_segment_drop"]`. The sketch uses 5 percentage points as an example limit. Expect the gate to print a fairness reason on regression.
+3. Add a promotion-gate rule for fairness. Extend the gate in `mlops_promotion_gate.py` so it refuses promotion if a segment-level metric drops too far. For example, use the AUC for the tier=silver slice, with a drop limit that your team chooses. *Solution sketch:* add a `segment_metrics` field to the dataclass that holds a run, and add a rule to `rules["max_segment_drop"]`. The sketch uses 5 percentage points as an example limit. Expect the gate to print a fairness reason on regression.
 4. Sign the training image. Build the training image, sign it with `cosign`, and add an admission policy that refuses unsigned images in the `mlops` namespace. *Solution sketch:* `cosign sign --key cosign.key $IMAGE` and a Kyverno policy that requires a `cosign.sigstore.dev` signature. Expect unsigned pods to be rejected by the admission controller.
 5. Add a feature store. Replace the inline feature `tier_gold` with a feature from Feast, Tecton or the Vertex AI Feature Store. Verify that the training pipeline reads the offline view and the serving pipeline reads the online view. *Solution sketch:* define an entity (`user_id`) and a feature (`tier_gold`). Train with `get_historical_features` and serve with `get_online_features`. Expect both views to return the same value.
 6. Add an LLM regression set. For an LLM application, freeze a set of input and output pairs as a regression set. The sketch uses 50 pairs as an example size. Add the set to a CI step that runs on every prompt-template change, and fail the pull request if any regression fails. *Solution sketch:* a JSON file of pairs checked into the prompt repo, and a CI step that calls the LLM with each input and checks the output against a stored expectation. Expect CI to fail on a known-bad prompt edit.
@@ -1021,6 +1024,8 @@ The chapter is grounded in six primary sources, each cited at the paragraph leve
 - *AI Engineering* (`ai-engineering`, Chapter 1). Source for the framing of LLMOps as the application of MLOps to LLM-based systems, the AI engineering architecture and user feedback loop, the role of evaluation in the lifecycle, and the "buy vs build" framing of building on existing foundation models.
 - *LLMOps* (`llmops`, Chapters 1 and 2). Source for the three new artifacts of LLMOps (prompt template, retrieval index, agent trace), the new failure modes (prompt regression, retrieval staleness, agent runaway), the four LLMOps goals (security, scalability, robustness, reliability), the SLO/SLA/KPI framework, the Gartner 30%/85% failure-rate statistics, and the extended lifecycle diagram. Word count for Chapter 1 is approximately 6,900 words; for Chapter 2 approximately 7,500 words.
 - *Engineering AI Systems: Architecture and DevOps Essentials* (`engineering-ai-systems-architecture-and-devops-essentials`, Chapter 5). Source for the AI model life cycle, the governance meanings of MLOps (reproducibility, auditability, accountability, rollback readiness), the framing of MLOps as a structural discipline, and the red-teaming capability with its blue-team staffing warning.
+
+The lab files `code/part16/train.py` and `code/part16/promotion_gate.py` were checked against each other: the dataset command now creates the `tier_gold` column that `train.py` reads, and `train.py` sets the `seed` and `env_image` tags that the gate requires.
 
 ### Cross-references to other handbook chapters
 

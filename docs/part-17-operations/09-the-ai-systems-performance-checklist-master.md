@@ -380,7 +380,7 @@ Count the CPU needs of each GPU task, including data loader threads. Do not pack
 
 On NVSwitch systems such as GB200 and GB300 NVL72, NVIDIA Fabric Manager manages the NVSwitch topology and routing. Without it, multi-GPU communication may be suboptimal or fail for large jobs. The service usually runs by default, but confirm it is running after each driver update.
 
-Pack jobs deliberately. On a 4-GPU node, two 2-GPU jobs that use little CPU can share the node. If both sit inside one NVLink-enabled rack, they can use NVLink for communication. Avoid placing jobs together when they exceed the node's memory or I/O capacity. The goal is high utilization without contention.
+Pack jobs deliberately. On a 4-GPU node, two 2-GPU jobs that use little CPU can share the node. If both sit on GPUs that share an NVLink connection, they can use NVLink for communication. Avoid placing jobs together when they exceed the node's memory or I/O capacity. The goal is high utilization without contention.
 
 ---
 
@@ -410,11 +410,11 @@ A distributed job is only as fast as its slowest network hop. The appendix of *A
 | # | Item | Detection signal |
 |---|---|---|
 | NET-013 | NCCL is the latest production version | nccl-tests |
-| NET-014 | NCCL_DEBUG is INFO in production | env NCCL_DEBUG |
+| NET-014 | NCCL_DEBUG is WARN in production (INFO only while diagnosing) | env NCCL_DEBUG |
 | NET-015 | NCCL_IB_HCA is set to the correct HCA | env NCCL_IB_HCA |
 | NET-016 | NCCL_SOCKET_IFNAME is set to the correct interface | env NCCL_SOCKET_IFNAME |
 | NET-017 | NCCL_IB_GID_INDEX is set correctly | env NCCL_IB_GID_INDEX |
-| NET-018 | NCCL_IB_TIMEOUT is set to 600 seconds | env NCCL_IB_TIMEOUT |
+| NET-018 | NCCL_IB_TIMEOUT is set on purpose; the value is an exponent, 4.096 microseconds times 2 to the power of the value, so 20 is about 4.3 seconds | env NCCL_IB_TIMEOUT |
 | NET-019 | GDRCopy is enabled for GPU-to-NIC direct copy | gdrcopy_copy |
 | NET-020 | Netbonding is configured (for multi-NIC bonding) | cat /proc/net/bonding/* |
 | NET-021 | SR-IOV is configured for virtual functions | ip link show |
@@ -1191,6 +1191,7 @@ First confirm with `dstat` or DCGM that the GPUs wait on data. Second check how 
 
 ## Sources and review notes
 
+- NVIDIA NCCL user guide, environment variables page. Source for the NCCL_IB_TIMEOUT formula (4.096 microseconds times 2 to the power of the value, default 20) used in NET-018, and for the warning not to leave debug variables set in production; checked 2026-11-12.
 - *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Appendix: AI Systems Performance Checklist (175+ Items)). Source for the master checklist items across hardware, software, network, storage, model, training, inference, operations, security, and observability. The wording has been rewritten in the handbook's voice.
 - NVIDIA Zero-to-Hero Volume 17. Source for the cluster-specific checklist items and the operational patterns.
 

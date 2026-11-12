@@ -136,15 +136,15 @@ The NVIDIA Zero-to-Hero Volume 16, chapter 3, and the DCGM exporter documentatio
 
 Each family answers its own question. Utilisation and memory show how much capacity is in use. ECC and Xid show hardware and driver health. Temperature and power show heat, clocks show throttling, and NVLink and PCIe show whether the links are healthy.
 
-The field names were checked against the dcgm-exporter source, and that check turned up three points. `DCGM_FI_PROF_SM_UTIL_RATIO` (called `DCGM_FI_PROF_SM_ACTIVE` before 4.9.0, a naming link that is inferred, see 1.4) reports a ratio from 0 to 1, not a percentage, and is commented out in the default counters file. The retired-page family is `DCGM_FI_DEV_PAGE_RETIRED_PENDING`, `DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL` and `DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL`, also inferred and commented out by default. ECC counters end in `_TOTAL`, because an earlier draft used `_DEDUP` names that the exporter does not define.
+The field names were checked against the dcgm-exporter source, and that check turned up three points. `DCGM_FI_PROF_SM_UTIL_RATIO` (called `DCGM_FI_PROF_SM_ACTIVE` before 4.9.0, a naming link that is inferred, see 1.4) reports a ratio from 0 to 1, not a percentage, and is commented out in the default counters file. The retired-page family is `DCGM_FI_DEV_PAGE_RETIRED_PENDING`, `DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL` and `DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL`, also inferred and commented out by default. ECC counters end in `_TOTAL`. The exporter does not define `_DEDUP` names.
 
 ### 1.4 What dcgm-exporter 4.9.0 renamed
 
 dcgm-exporter 4.9.0 (released 2026-11-06) renames the default and profiling-preset fields that DCGM 4.7 deprecates. The GitHub release notes say 4.9.0 "renames default metrics and labels, changes some units, and changes the configuration and Helm values formats". Twenty-three default fields get new names, and eleven of those also change unit. Clocks move from MHz to hertz, energy from millijoules to joules, utilisation from a percentage to a 0 to 1 ratio, GPU memory from MiB to bytes, and NVLink throughput from MB/s to bytes per second. The driver-version label on every metric changes from `DCGM_FI_DRIVER_VERSION` to `DCGM_FI_SYSTEM_DRIVER_VERSION`.
 
-Three more facts from the release notes matter for queries. `DCGM_FI_DEV_FB_CAPACITY_BYTES` (total framebuffer, in bytes) is now collected by default. For Kubernetes pods the exporter adds up per-process GPU utilisation and memory and emits them under the new names and the old names, and a pod's utilisation ratio can be above 1.0. `dcp-metrics-included.csv` and `1.x-compatibility-metrics.csv` are deprecated, and `default-counters.csv` replaces them. The rest of this chapter uses the 4.9.0 names. A 4.8.x exporter still emits the old names, so rules that must run on both can join the two forms with `or`, as `code/part17/gpu_alerts.yaml` does.
+Three more facts from the release notes matter for queries. `DCGM_FI_DEV_FB_CAPACITY_BYTES` (total framebuffer, in bytes) is now collected by default. For Kubernetes pods the exporter adds up per-process GPU utilisation and memory and emits them under the new names and the old names, and the release notes say a pod's utilisation ratio can be above 1.0. That happens because the exporter adds up the per-process figures, so treat a value over 1.0 as a sum, not as a fault. `dcp-metrics-included.csv` and `1.x-compatibility-metrics.csv` are deprecated, and `default-counters.csv` replaces them. The rest of this chapter uses the 4.9.0 names. A 4.8.x exporter still emits the old names, so rules that must run on both can join the two forms with `or`, as `code/part17/gpu_alerts.yaml` does.
 
-The table is built from `etc/default-counters.csv` at the 4.8.4 and 4.9.0 tags of the dcgm-exporter repository, row by row. The unit factors for clocks, energy, utilisation and memory match the conversions in the exporter's own signal catalog. The NVLink factor is not stated anywhere I could confirm: the release notes say only "MB/s to bytes per second", so the helper refuses to scale it.
+The table is built from `etc/default-counters.csv` at the 4.8.4 and 4.9.0 tags of the dcgm-exporter repository, row by row. The unit factors for clocks, energy, utilisation and memory match the conversions in the exporter's own signal catalog. The NVLink factor is not stated in any source checked for this chapter: the release notes say only "MB/s to bytes per second", so the helper refuses to scale it.
 
 | 4.8.x name | 4.9.0 name | Unit change | New value = old value ... |
 |---|---|---|---|
@@ -241,7 +241,7 @@ sum by (team) (DCGM_FI_DEV_GPU_UTIL_RATIO)
 
 Read utilisation as a pattern over time, not as a single reading. *AI Systems Performance Engineering*, chapter 2, says training GPUs should sit near full utilisation most of the time. If they sit at 50 percent, something keeps them idle half the time, often a slow data loader or a synchronization point.
 
-The draft's example values are 30 percent for under-use, 90 percent for over-use, and an alert when utilisation stays above 95 percent for 10 minutes. These are examples. Choose your own numbers for your workload.
+The example values are 30 percent for under-use, 90 percent for over-use, and an alert when utilisation stays above 95 percent for 10 minutes. These are examples. Choose your own numbers for your workload.
 
 ### 2.2 GPU memory
 
@@ -280,7 +280,7 @@ DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL
 sum by (gpu) (increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h])) > 0
 ```
 
-The draft treats a single double-bit error as critical and calls for replacing the GPU. It warns on single-bit errors and says the GPU should be scheduled for replacement once that rate stays high. The example rate in the draft is 100 per hour, so treat it as a starting value.
+The example treats a single double-bit error as critical and calls for replacing the GPU. It warns on single-bit errors and says the GPU should be scheduled for replacement once that rate stays high. The example rate is 100 per hour, so treat it as a starting value.
 
 ### 2.4 Xid errors
 
@@ -294,7 +294,7 @@ DCGM_FI_DEV_XID_ERROR
 count by (gpu) (DCGM_FI_DEV_XID_ERROR)
 ```
 
-The draft alerts on every Xid error. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement. Whatever you alert on, the runbook should say what to do for each code.
+The example alerts on every Xid error. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement. Whatever you alert on, the runbook should say what to do for each code.
 
 ### 2.5 Temperature and power
 
@@ -311,7 +311,7 @@ DCGM_FI_DEV_BOARD_POWER_WATTS
 DCGM_FI_DEV_GPU_TEMP_CELSIUS > 85
 ```
 
-The draft's example lines are 85 degrees for a warning, 90 for throttling and 95 for critical. They are example values, not manufacturer limits, so check your GPU's documented thresholds first. The draft also says power draw above the rated TDP for your GPU model points to power supply problems.
+The example lines are 85 degrees for a warning, 90 for throttling and 95 for critical. They are example values, not manufacturer limits, so check your GPU's documented thresholds first. The example also says power draw above the rated TDP for your GPU model points to power supply problems.
 
 ### 2.6 Clocks
 
@@ -328,7 +328,7 @@ DCGM_FI_DEV_MEMORY_CLOCK_HERTZ
 DCGM_FI_DEV_SM_CLOCK_HERTZ < 1400e6  # H100 base clock is 1.4 GHz; 4.9.0 reports hertz
 ```
 
-The 1400 threshold in the example is a base-clock value for one model. Confirm your model's base clock before you use it. The draft alerts when the clock stays below base for 10 minutes, and that duration is an example too.
+The 1400 threshold in the example is a base-clock value for one model. Confirm your model's base clock before you use it. The example alerts when the clock stays below base for 10 minutes, and that duration is an example too.
 
 ---
 
@@ -430,7 +430,7 @@ Each alert needs a first action, so the on-call engineer is not guessing in the 
 
 ### 4.1 The components
 
-Four pieces make up this stack, and each one can fail on its own. The table shows where each piece runs and the service target the draft uses for it.
+Four pieces make up this stack, and each one can fail on its own. The table shows where each piece runs and the example service target for it.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -630,7 +630,7 @@ If any answer takes more than 30 seconds, the GPU exporter is not yet a producti
 
 Try these after the lab. Each one asks you to build something you could use on your own cluster.
 
-1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows temperature for each GPU. Alert when temperature passes a limit you choose. The draft's example is 85 degrees. *Solution sketch:* start from `DCGM_FI_DEV_GPU_TEMP_CELSIUS`, add a Grafana panel, and write the alert rule.
+1. **Add a GPU temperature dashboard.** Build a Grafana dashboard that shows temperature for each GPU. Alert when temperature passes a limit you choose. The chapter's example is 85 degrees. *Solution sketch:* start from `DCGM_FI_DEV_GPU_TEMP_CELSIUS`, add a Grafana panel, and write the alert rule.
 2. **Add a retired-GPUs list.** Keep a list of GPUs retired because of ECC errors, and alert when a GPU joins it. *Solution sketch:* store the list in a ConfigMap, then write a Prometheus alert that compares the running GPUs against it.
 3. **Add a per-team GPU cost.** Compute the GPU cost per team from the DCGM metrics, and feed the result into the FinOps dashboard from chapter 16.14. *Solution sketch:* multiply `DCGM_FI_DEV_GPU_UTIL_RATIO` by `DCGM_FI_DEV_BOARD_POWER_WATTS`, group the result by the team labels, and build the cost dashboard on top.
 4. **Add a GPU health check.** Add a Kubernetes health check that fails when the DCGM exporter is missing from a GPU node. *Solution sketch:* a Kubernetes probe that calls the exporter's `/health` endpoint.
@@ -686,11 +686,11 @@ A restarting exporter stops publishing, and the GPU graphs stop updating without
 </details>
 
 <details><summary>12. When would you alert on every Xid error, and what must you have ready before you do?</summary>
-The chapter's draft alerts on every Xid error and gives severity critical. Before doing that, the runbook must say what to do for each code, because each code points to a class of problem. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement.
+The chapter's example alerts on every Xid error and gives severity critical. Before doing that, the runbook must say what to do for each code, because each code points to a class of problem. Its common codes are 31 for a GPU memory page fault, 43 for a GPU that stopped responding, 48 for a double-bit ECC error and 63 for ECC page retirement.
 </details>
 
 <details><summary>13. A single double-bit error versus 100 single-bit errors an hour. How do you treat each and what do you give up by choosing the strict rule for double-bit errors?</summary>
-A single double-bit error is critical, and the draft calls for replacing the GPU. Single-bit errors are warnings, and the GPU is scheduled for replacement once the rate stays high. The 100 per hour figure is an example. The strict rule pulls a GPU out of service early, which costs capacity.
+A single double-bit error is critical, and the example calls for replacing the GPU. Single-bit errors are warnings, and the GPU is scheduled for replacement once the rate stays high. The 100 per hour figure is an example. The strict rule pulls a GPU out of service early, which costs capacity.
 </details>
 
 <details><summary>14. Your fleet runs both 4.8.x and 4.9.0 exporters during a rollout. How do the alert rules cope, and when do you simplify them?</summary>
@@ -725,6 +725,7 @@ First check Xid and ECC errors on the GPUs the job uses, because they show hardw
 
 ## Sources and review notes
 
+- dcgm-exporter 4.9.0 release notes (github.com/NVIDIA/dcgm-exporter, tag 4.9.0). Source for the statement that a pod's utilisation ratio can be above 1.0; checked 2026-11-12.
 - NVIDIA Zero-to-Hero Volume 16 (`chapter-03-dcgm-exporter.md`, `chapter-04-interpreting-gpu-metrics.md`). Source for the DCGM exporter deployment, the metric families, the PromQL queries, the alert thresholds, and the operational patterns. The wording has been rewritten in the handbook's voice.
 - NVIDIA Zero-to-Hero Volume 7 (`chapter-02-dcgm-and-gpu-metrics.md`). Source for the DCGM integration with the observability stack and the dashboard composition.
 - *Generative AI on Kubernetes* (`generative-ai-on-kubernetes`, Chapter 5). Source for the GPU observability patterns on AI infrastructure and the integration with the model serving stack.

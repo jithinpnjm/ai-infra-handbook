@@ -432,11 +432,11 @@ Fix: adopt the production shadow stage from Chapter 16.6 Section 7.3. The shadow
 
 ### 6.5 "The ground truth never arrived"
 
-The online evaluation pipeline is waiting for ground truth. The drift threshold is breached, but the trigger cannot fire, because live accuracy is undefined.
+The online evaluation pipeline is waiting for ground truth. The drift threshold is breached, so the drift trigger can fire. The performance trigger cannot fire, because live accuracy is undefined until the labels arrive.
 
-Diagnosis: the ground truth is delayed, as with a churn label or a fraud dispute. The pipeline is waiting correctly.
+Diagnosis: the ground truth is delayed, as with a churn label or a fraud dispute. The performance trigger is waiting correctly.
 
-Fix: use the proxy signal from Section 3.2. A proxy is an estimate, not a measurement, but it is good enough to fire the trigger. Fire the drift trigger right away, and fire the performance trigger once the proxy signal is available.
+Fix: use the proxy signal from Section 3.2. A proxy is an estimate, not a measurement, but it is good enough for an early performance trigger. The drift trigger needs no labels, so let it fire right away. Fire the performance trigger once the proxy signal is available, and again when the real labels arrive.
 
 ### 6.6 "The drift detector was bypassed"
 
@@ -591,7 +591,7 @@ The serving system does not emit prediction logs, so the detector has nothing to
 </details>
 
 <details><summary>6. The drift threshold is breached on a churn model, but live accuracy is undefined because the labels are weeks away. What do you do?</summary>
-The pipeline is waiting correctly for delayed ground truth. Use a proxy signal such as a cancellation page view or a customer service contact. A proxy is an estimate, not a measurement. Fire the drift trigger right away and fire the performance trigger once the proxy signal is available.
+The performance trigger is waiting correctly for delayed ground truth. Use a proxy signal such as a cancellation page view or a customer service contact. A proxy is an estimate, not a measurement. Fire the drift trigger right away and fire the performance trigger once the proxy signal is available.
 </details>
 
 <details><summary>7. Why do you check feature drift first and use prediction drift as a second check?</summary>

@@ -10,9 +10,24 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: ingress
+              kubernetes.io/metadata.name: istio-system
+        - podSelector: {}
   egress:
+    # DNS, otherwise no name resolves
     - to:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # Model download by the storage initializer: HTTPS to public object stores only
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - {protocol: TCP, port: 443}
+    # Traffic between pods of the same namespace (transformer to predictor)
+    - to:
+        - podSelector: {}
