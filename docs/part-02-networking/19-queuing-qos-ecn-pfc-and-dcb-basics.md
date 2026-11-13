@@ -185,6 +185,8 @@ Thresholds are set in bytes or cells of queue occupancy. They can apply per queu
 
 ## 6. PFC: lossless links by backpressure
 
+Here is the same story as a timeline, from a single receiver's point of view. A burst from several senders arrives at one ingress buffer. The queue for priority 3 climbs past the XOFF line, and the receiver sends a pause frame upstream. The upstream switch stops sending priority 3 and keeps sending everything else. The packets that were already on the wire keep arriving, and the headroom above XOFF takes them. The buffer drains, and when it falls below the XON line the receiver sends a resume. The upstream switch then restarts priority 3 from where it stopped. Nothing was dropped, and the cost was a pause that stalled the whole class for a short time.
+
 Picture one faulty network card that keeps telling its neighbour to stop sending. The neighbour pauses, then its own neighbour pauses too, and the stoppage spreads back along the path like a line of cars that halts when one car breaks down. Priority Flow Control is designed to stop a queue from overflowing, but it has this dangerous side. The explanation below describes the mechanism first, and then the ways it can go wrong.
 
 ECN is polite and slow. Sometimes a burst arrives faster than the message can travel back, and the queue is about to overflow right now. For that moment the fabric needs a brake that works at the next hop, not at the far end. PFC is that brake. It keeps RoCE traffic from dropping, but you should know that it pauses whole priorities. That trade-off shapes everything in this section. Priority Flow Control (PFC, IEEE 802.1Qbb) pauses traffic one priority at a time. A congested receiver sends a PFC pause frame upstream. This is a MAC control frame with EtherType 0x8808, opcode 0x0101, and destination 01:80:C2:00:00:01. The frame carries a class-enable vector, which says which of the 8 priorities it covers. It also carries a 16-bit pause time for each priority, counted in units of 512 bit-times. The maximum is 65535, and 0 means resume. The upstream sender stops transmitting that priority, not the whole link, for the pause time.
@@ -200,6 +202,8 @@ sequenceDiagram
   R->>S: PFC pause with time=0 (resume)
   Note over S: resumes sending priority 3
 ```
+
+Picture a receiver that sends a pause and then, a moment later, sends a second pause because its buffer is still high. The first pause is not wasted. Each pause carries a timer, and a timer that runs out returns the traffic to the sender, so the receiver keeps renewing the pause while the queue stays high. This renewal is why a long-lived pause looks like a steady stream of frames on a port counter, rather than one event.
 
 XOFF is the occupancy at which a pause is sent. XON is lower, and it is where resume is sent. The gap between them, called hysteresis, stops the pause from flapping on and off. Think of a thermostat that switches the heater off at one temperature and back on at a slightly lower one, so it does not click every second. Packets keep arriving after XOFF is crossed, because the sender takes time to stop. The pause message needs time to travel, and the packets already on the wire still have to land somewhere. The switch therefore reserves headroom above XOFF to absorb them. If you want a rough budget, use this: headroom ≈ 2 × (propagation delay × bandwidth) + MTU-sized packets in flight at each end + pause processing time. Longer cables, such as 500 m optics, need much more headroom. You budget buffer for each lossless priority and each port, and that is a core design step.
 
@@ -222,11 +226,17 @@ The PFC watchdog, also called PFC storm prevention, is the safety valve for stor
 2. Mitigation: the watchdog either drops or forwards. Drop flushes the queue, discards new packets for that queue, and ignores or drops incoming pause frames, so the stall cannot spread. Forward ignores the pause frames and keeps transmitting. Dropping is the most common choice.
 3. Restoration: once pause frames fall below a threshold for a restoration interval, normal lossless behaviour returns.
 
+Walk through a storm from the first symptom. A NIC firmware bug makes one receiver stop draining its buffer and keep asserting pause. Upstream, the switch port that feeds that receiver fills, so it pauses its own upstream neighbour. The pause spreads one hop at a time, and within a short while, every queue on the path that carries priority 3 is paused. The watchdog sits on each port, and it watches the lossless queue. Once that queue has stayed paused beyond the interval, which is in the 100 ms to 200 ms range from the list above, the watchdog drops the queue's packets and ignores the pause frames. The queue is free again, and the other classes never noticed the storm.
+
+Now the restoration stage. The watchdog keeps watching, and when pause frames fall below its threshold for the restoration interval, it returns the queue to normal lossless behaviour. The fabric recovers without anyone touching a switch, but the event still leaves a trace in the counters, and that trace is what you should alert on.
+
 The watchdog trades a few lost packets for keeping the rest of the fabric alive. Your application sees that loss, either through RoCE retransmission or a job restart. Treat every watchdog trigger as a fabric-level incident marker, and alert on it.
 
 ## 7. DCQCN: ECN and PFC together
 
 Picture a fabric that uses ECN for most congestion, and PFC only when ECN falls behind. That arrangement is what DCQCN sets up. DCQCN (Data Center Quantized Congestion Notification, from Microsoft and Mellanox, SIGCOMM 2015) is the standard congestion control for RoCEv2. It combines two signals, a gentle early one and a hard last one.
+
+Here is the threshold ordering worked through with the numbers from exercise 9. XON is 50 KB, Kmin is 100 KB, Kmax is 500 KB, Pmax is 0.20, and XOFF is 1000 KB. At a queue depth of 30 KB the queue is below Kmin, so no packet is marked, and the queue is at or below XON, so any pause has long since been released. At 300 KB the queue sits halfway between Kmin and Kmax, so the marking probability is half of Pmax, which is 0.10. At 600 KB the queue is above Kmax, so every packet is marked. At 1100 KB the queue has crossed XOFF, so a pause goes upstream. ECN does its work in the middle band, and PFC is reserved for the top of the range.
 
 The first is ECN. It is the primary, early, flow-level signal. A switch marks packets, the receiver sends a CNP, and the sender reduces its rate. The NIC uses a QCN-style rate decrease, followed by multi-stage rate recovery.
 
@@ -248,9 +258,13 @@ NIC-side parameters are vendor-specific. They include the initial rate, the rate
 
 ## 8. Newer mechanisms: SFC and CSIG
 
+Picture the ECN loop from the sender's side. A burst of marked packets leaves the switch, travels to the receiver, and comes back as a CNP. The sender does not see the congestion until that round trip is complete, and by then more packets may already be queued. A flow that is paused by PFC, on the other hand, stops at once but also takes its innocent neighbours along. The two signals are fast or precise in different ways, and the research below asks whether one signal can be both.
+
 ECN takes a long loop to slow a sender, and PFC pauses whole classes. Neither is perfect, and researchers have asked whether the signal could be faster or more precise. Two newer mechanisms try to fix one or the other.
 
-- Source Flow Control (SFC) is an IEEE 802.1 project, P802.1Qdw, also called source PFC. It was still under development when this chapter was written. Instead of pausing hop by hop, a congested switch sends the signal directly to the source. It does this by trimming the packet payload and reversing the source and destination addresses. The first-hop leaf can pause the queue of the flow. It can forward the signal to the NIC if the NIC supports it, or translate it into PFC. SFC avoids the long loop of ECN, because the signal never travels to the receiver and back. It also acts on the flow rather than the class, so it avoids head-of-line blocking.
+- Walk through how a source-level signal would travel, so the idea feels concrete. A congested switch sees a packet from a flow that is filling its queue. Instead of marking the packet and waiting for the round trip, it trims the payload and swaps the source and destination addresses, so the small remnant heads straight back to the sender's first-hop leaf. That leaf reads the remnant and pauses only the queue of that one flow. Nothing travelled to the receiver, and no other flow was paused.
+
+Source Flow Control (SFC) is an IEEE 802.1 project, P802.1Qdw, also called source PFC. It was still under development when this chapter was written. Instead of pausing hop by hop, a congested switch sends the signal directly to the source. It does this by trimming the packet payload and reversing the source and destination addresses. The first-hop leaf can pause the queue of the flow. It can forward the signal to the NIC if the NIC supports it, or translate it into PFC. SFC avoids the long loop of ECN, because the signal never travels to the receiver and back. It also acts on the flow rather than the class, so it avoids head-of-line blocking.
 - Congestion Signaling (CSIG) is an emerging in-band mechanism. Each hop updates a small tag in the data packet. The tag carries a signal type and a quantized value. Typical signals are the minimum available bandwidth ratio and the maximum path delay.
 - The tag also carries locator information: the capacity of the bottleneck, the stage, the device ID, and whether the port is an uplink or a downlink. The receiver reflects the aggregated signal back to the sender, which gets path-aware, multi-bit information rather than the single ECN mark. That signal can feed rate control and adaptive routing decisions.
 - Related work includes the Ultra Ethernet Consortium transport, with packet spraying, selective retransmission and new congestion control. Vendors also ship their own adaptive routing plus congestion control as a production alternative to DCQCN alone, for example NVIDIA Spectrum-X. It also includes in-band network telemetry (INT) and trimming, and credit-based or receiver-driven schemes such as NDP and HPCC, which uses INT. Switch-level adaptive routing and packet spraying belong here too. So does fabric-wide VOQ in scheduled fabrics (chapter 2.18).
@@ -269,11 +283,15 @@ By now several names have appeared, PFC, ETS and DCBX among them, and it is fair
 | 802.1Qau | QCN | Layer-2 congestion notification (rarely deployed; DCQCN uses ECN instead) |
 | 802.1Qdw | SFC/source PFC | See above |
 
+Picture a cluster where the NICs and the switches were configured by two different people, and each side enabled DCBX in a different mode. Each end negotiated, and each end believed it had been given the final word. Two weeks later a firmware upgrade reset one side, and the negotiated settings changed without anyone deciding to change them. Fixing the design in advance, and writing it down, avoids that kind of quiet drift.
+
 To apply DCB, start by defining 8 priorities. Next, assign each traffic type to a priority by DSCP, PCP or port. Then mark which priorities are lossless, with PFC enabled, and set the ETS weights. Last, choose how DCBX runs. You can set willing or non-willing modes consistently, or you can disable DCBX and push the configuration explicitly through automation. The second option is common in AI clusters, where it avoids surprises, because the two ends can never silently negotiate their way to a different setup.
 
 Pick a single DCBX approach for the cluster, and enforce it the same way on every NIC and switch.
 
 ## 10. Configuring a lossless RoCE class (conceptual, verify per vendor)
+
+Picture a team that brings up the RoCE class and sees the training job run, but at only part of the speed the vendor promised. One switch port has the lossless class on priority 4, while the NICs mark RoCE on priority 3. The RoCE packets fall into the lossy default queue. Under light load nothing drops, so the job looks healthy. Under a burst, the lossy queue drops packets silently, RoCE retransmits, and the step time climbs. The mismatch sits in a single priority number, and the counters show it only if you look at drops on the lossless class.
 
 Suppose you are bringing up one RoCE class from scratch. Several pieces must agree, from the NIC to the last switch, and a mismatch in any one of them can turn lossless traffic into lossy traffic. Configure the pieces below, and keep them consistent across every NIC and switch.
 
@@ -283,6 +301,8 @@ Suppose you are bringing up one RoCE class from scratch. Several pieces must agr
 4. ECN: turn on ECN marking for the queue of priority 3, with Kmin, Kmax and Pmax. For example, Kmin might be a few hundred KB and Kmax a few MB at 400G. Tune these with measurements. Make sure the switch preserves the ECN bits.
 5. NIC: trust DSCP, and set the RoCE traffic class or ToS for the QP. You can do that through the `NCCL_IB_TC`/`NCCL_IB_SL` environment, or through `cma_roce_tos` or `rdma_cm` settings. Enable DCQCN and set its parameters. Enable PFC on the same priority. Keep the MTU and the RoCE MTU consistent, for example 9000 for Ethernet and 4096 for RoCE.
 6. Verification: send traffic with `ib_write_bw` and `nccl-tests all_reduce_perf`, then watch the counters. Look at PFC pause frames sent and received per priority, ECN-marked packets, CNPs sent and handled, and buffer watermarks. Queue drops must be 0 on the lossless class. Also check the out-of-sequence and retransmit counters on the NIC, using `ethtool -S`, `rdma statistic`, `mlnx_qos` or vendor telemetry.
+
+Read the steps above as a chain. Step 1 decides which packets get priority 3. Step 2 decides how much link time priority 3 gets. Step 3 decides when priority 3 pauses. Step 4 decides when it marks. Step 5 decides how the NIC reacts. If any link in the chain disagrees with the rest, the chain breaks, and the failure looks like slowness rather than an error. That is why the verification step checks the drop counter on the lossless class first.
 
 These commands show the host side and the fabric side of the configuration above.
 
@@ -347,6 +367,8 @@ Next, work through these steps on a disposable Linux VM. Step 8 also needs optio
 
 ## 13. Design guidance for AI back-ends
 
+Picture a new AI cluster being designed. The team has to decide three things at once: how many lossless classes it will run, how much buffer each port gets, and how the ECN thresholds sit against XOFF. Each decision depends on the other two. A good place to start is to fix the cable lengths and the link speed first, because headroom depends on them, then set the thresholds, and only then pick the number of lossless classes. Reversing that order usually means rebuilding the plan.
+
 Prefer 1:1 fabrics with good load balancing, such as adaptive, dynamic or global load balancing, or packet spraying. With those in place, congestion is rare, and congestion control becomes the safety net. Use ECN with DCQCN as the primary control. Add PFC only on the RoCE class where the NIC or transport needs it. Always run the PFC watchdog, and keep the number of lossless classes at one or two.
 
 Size the headroom and buffers for the longest cable you run, and keep ECN thresholds below XOFF. Validate both with incast tests at the target scale. Give CNPs a high-priority path, so the feedback is not delayed by the congestion it reports.
@@ -409,7 +431,7 @@ Work through these in order. Each one ties back to a section above, so you can c
 Here are four reasons you can give.
 
 - Fan-in and microbursts make a momentary queue build-up a certainty, even when the one-minute average link utilization is low.
-- Serialization delay and jitter matter here. A 9,000-byte jumbo packet takes 0.72 ms on a 100 Mb/s link. A 64-byte packet (0.05 ms) queued behind it waits 14x its own transmission time.
+- Serialization delay and jitter matter here. A 9,000-byte jumbo packet takes 0.72 ms on a 100 Mb/s link. A 64-byte packet (about 0.005 ms) queued behind it waits about 140x its own transmission time.
 - Adding bandwidth at one link only moves the bottleneck to the next hop or to the receiver NIC.
 - WAN, inter-pod and host PCIe or NIC links have economic and physical limits.
 </details>

@@ -108,6 +108,10 @@ all:
       vars: { ansible_network_os: arista.eos.eos, ansible_connection: ansible.netcommon.network_cli, ansible_become: true, ansible_become_method: enable }
 ```
 
+Read the inventory file from the top, one level at a time. `all` is the root, and everything else hangs under it. The `spine` and `leaf` groups list their hosts, and each host carries its own `ansible_host` address and its `bgp_asn`. The per-host values are the facts that differ from one switch to the next, such as the ASN. The `eos` group is different. It does not hold switches itself. It holds the groups `spine` and `leaf` as children, using `children: { spine: {}, leaf: {} }`, so any setting in its `vars` block reaches all of them at once. Those settings say how to connect: the `network_cli` plugin speaks the command line over SSH, the OS name tells Ansible which modules to use, and `ansible_become` with `enable` gets the switch into privileged mode.
+
+Think of it as a postal system. The root is the country, the groups are regions, and the hosts are addresses. A rule written for a region reaches every address inside it, and an address that moves to another region picks up that region's rules without anyone rewriting the letters.
+
 Variables follow a precedence order. In simplified form, from lowest to highest, it runs through role defaults, then inventory group variables (`all`, then the parent group, then the child group), then inventory host variables, playbook variables, `vars_files`, role variables, task variables, and finally extra variables passed with `-e`. Keep per-group variables in `group_vars/<group>.yml` and per-host variables in `host_vars/<host>.yml`. Put design constants in `group_vars/all`. The rule of thumb is that the more specific a variable is, the more power it has to override the general one.
 
 Here is precedence in practice. A default value sits in the role, and an inventory variable overrides it for one group. A command-line variable overrides both for a single run. If a value surprises you, read the layers from the top, and find the highest layer that sets the variable. That layer is the one you are actually running.
@@ -160,6 +164,10 @@ The playbook below ties these pieces together. It configures leaf switches in ba
     - name: save config
       arista.eos.eos_config: { save_when: modified }
 ```
+
+Now walk through the playbook task by task, since each one has a job. The play header says `hosts: leaf`, so every task runs only against the leaf group. `gather_facts: false` skips the generic fact collection, because the next task asks the switch for exactly the facts it needs. `serial: "25%"` splits the leaves into batches, and the play finishes one batch before it starts the next. `max_fail_percentage: 0` tells Ansible to stop the whole run as soon as any host in a batch fails, so one bad switch does not let the rollout continue. `vars_files` loads the QoS variables that the templates use.
+
+The first task collects facts. Ansible asks the switch for its interfaces and its BGP global settings, and it stores them so later tasks can read them. The second task renders the template on the control node, not on the switch. `delegate_to: localhost` makes that happen, and `changed_when: false` stops the render step from showing as a change, since it only writes a local file. The third task pushes the file with `eos_config`. `replace: config` tells the module to treat the file as the full configuration rather than a few lines to add, `backup: true` saves the old configuration before the change, and `diff_against: running` compares the file with what the switch is running now. `notify` then queues the handler, and the handler saves the configuration only when a task reports a change. The last task waits for BGP. It runs a `show` command in JSON, and `until` repeats the check up to 12 times with a 5 second pause between tries, until every peer reports `Established`. If the sessions never come up, the task fails and the batch stops.
 
 Idempotency is the central idea here. A task describes a desired state, so running it twice leaves the system unchanged the second time, which shows up as `changed=0`. Resource modules such as `*_interfaces`, `*_bgp_global` and `*_vlans` take a `state` of `merged`, `replaced`, `overridden`, `deleted`, `gathered`, `rendered` or `parsed`, and give you structured, idempotent control. The generic `*_config` modules diff text lines instead. The `*_command` modules only run commands, so they are not idempotent. An idempotent task is like a thermostat set to a target temperature: it does nothing when the room is already right, instead of adding heat every time you look at it.
 
@@ -224,6 +232,8 @@ inventory: { plugin: SimpleInventory, options: { host_file: inventory/hosts.yaml
 runner: { plugin: threaded, options: { num_workers: 20 } }
 ```
 
+Nornir reads three files and merges them, and it helps to see the merge order. `hosts.yaml` names each leaf, its address and its group membership, plus the data that is unique to that host, such as the ASN. `groups.yaml` holds the settings shared by a group, such as the platform name for every `eos` device. `defaults.yaml` holds what every host inherits unless a group or host overrides it, such as the login name. The password line calls `env()`, so the value is read from an environment variable at run time, and the file on disk holds no secret. `config.yaml` points Nornir at the three files and sets the threaded runner with 20 workers, which controls how many hosts it works on at once.
+
 The script below reads the inventory, renders a configuration for each leaf, and previews the deploy with a dry run. The verify step stays commented out until the diffs look right.
 
 ```python
@@ -259,6 +269,8 @@ Read the script from the top. `InitNornir` loads the config, and `nr.filter(role
 
 Read the script as a set of steps. First it loads the configuration and the inventory. Then it selects only the leaves. For each leaf it renders the template with that leaf's variables. Finally it prints the result instead of pushing it. Each step is a small function call, so you can stop at any point and inspect what has been built so far.
 
+Two details in the code carry the safety. The `deploy` task passes `dry_run=True` through to the napalm call, so the device computes the diff and changes nothing. The `Result` object then carries that diff and a `changed` flag, which `print_result` shows you. The flag is set only when the diff is not empty, so a clean run reports no change, the same as an idempotent Ansible task. The `verify` task reads the BGP neighbours that napalm returns and builds a list of peers that are not up. It sets `failed=True` only when that list is not empty, so a failed verification shows up in the summary with the names of the peers that are down. Only after both of those look right do you uncomment the live deploy line.
+
 Nornir gives you full control flow in Python, including early exits, per-host branching and complex data handling. You get type hints and `pytest` unit tests, tracebacks instead of YAML errors, and speed from threads. It also integrates easily with NetBox through pynetbox. The costs are real, though. You maintain the code yourself, and the ecosystem has fewer built-in batteries than the module collection of Ansible. Plugins do exist, including `nornir_netmiko`, `nornir_scrapli`, `nornir_napalm`, `nornir_netconf`, `nornir_jinja2`, `nornir_utils` and `nornir_netbox`. The two tools combine well. Use Ansible for common operations and Nornir for custom validators.
 
 If your job is mostly custom checks and branching, reach for Nornir. If it is mostly standard module calls, keep it in Ansible.
@@ -291,11 +303,17 @@ resource "google_compute_firewall" "allow_internal" {
 }
 ```
 
+Read the HCL block as a list of promises. The first resource says the network is called `ai-fabric`, that it does not create subnets on its own (`auto_create_subnetworks = false`, so you define every range yourself), and that its MTU is set to the value shown. The second resource declares one subnet, `train-a`, with a single address range in one region, and `private_ip_google_access = true` lets machines on that subnet reach Google APIs without a public address. The third resource is a firewall rule. Each `allow` block lists a protocol that is permitted, and `source_ranges` limits where the traffic may come from. In this case, only the internal range may send it.
+
+Terraform does not need you to list the resources in order. It reads each reference, such as the subnet's pointer to the network, and it works out that the network must exist first. That is the dependency graph in plain terms.
+
 The subnet points at the network through `google_compute_network.ai.id`. Terraform reads those references to build its dependency graph.
 
 Store remote state with locking, in GCS or in S3 with locking, so two runs cannot collide. Give each blast radius its own state. The blast radius is how much one change can break, so keep network core apart from workloads. Use modules for reuse, and treat `terraform plan` output as a review artefact in each pull request. Policy-as-code checks with OPA, Sentinel, Checkov or tfsec catch rule violations early. A scheduled `plan` detects drift, `import` brings existing resources under management, and `lifecycle { prevent_destroy = true }` protects critical network objects. Keep secrets out of state where you can.
 
 Terraform and Ansible do different jobs. Terraform excels at creating and destroying resources that an API can address, using dependency graphs and state. Ansible excels at configuring existing devices and hosts step by step. Many teams use Terraform to build the VPC and the VMs, then use Ansible to configure what runs inside them. Immutable approaches, where you replace a node with a fresh image instead of patching it, fit the cloud and server layers. Switches generally stay mutable, although white-box switches can be re-imaged through ONIE or ZTP.
+
+Here is what the plan output looks like when you read it in review. Terraform prints a symbol at the start of each line. A plus sign means a new object will be created. A tilde means an existing object will be updated in place. A minus means an object will be destroyed, and a minus followed by a plus means it will be replaced. Read the plan for minus lines first, because a destroy on a network core is the change that hurts. If the plan shows the firewall rule being destroyed when the pull request only edited a label, stop and find out why before anyone runs `terraform apply`.
 
 A simple way to decide is to ask what the object is. If it is a cloud resource that an API creates and destroys, Terraform should own it. If it is the configuration inside a running switch or server, Ansible usually owns it. A clear boundary stops the two tools from fighting over the same setting.
 
@@ -385,6 +403,10 @@ jobs:
       - run: ansible-playbook -i inventory/prod.yml playbooks/leaf_config.yml --limit canary --diff
       - run: python tests/validate.py --scope canary
 ```
+
+Read the workflow from the top, and the structure becomes clear. The `on` block says when it runs: on every pull request, and on every push to `main`. Each job under `jobs` is a separate machine with its own steps. The `lint-and-test` job checks out the code, installs Python 3.12 and the requirements, runs the linters and unit tests, renders the configurations, and uploads them as an artifact, so a reviewer can open the exact text that would reach a switch. The `emulate` job waits for the first one because of `needs: lint-and-test`. It builds the containerlab fabric, runs the playbook against it, and runs the validation script from chapter 2.27. The last step has `if: always()`, which means it runs even when an earlier step failed, so the lab is torn down either way and does not keep running.
+
+The `deploy-canary` job has two extra guards. `if: github.ref == 'refs/heads/main'` stops it from running on a pull request, so a change must be merged before it can reach production. `environment: production-canary` ties the job to a named environment, and the environment's required reviewers must approve before the job starts. The `--limit canary` flag in the playbook command then restricts the run to the canary devices, and the validation script runs again with `--scope canary` to check only those devices.
 
 A few habits keep this pipeline safe. Use short-lived credentials, such as OIDC to the cloud or Vault, for production deploys. Run production jobs on self-hosted runners inside the management network. Record artefacts such as rendered configs, diffs and test reports. Fail closed, and keep the pipeline fast so feedback arrives in minutes.
 
@@ -512,6 +534,10 @@ The rest of the lab runs on a disposable Linux VM that builds on the containerla
 8. **Telemetry loop**: deploy gNMIc or Telegraf, Prometheus and Grafana, or an FRR exporter. Alert on a BGP session going down, and use a webhook to trigger a diagnostic playbook that attaches `show` output to the alert.
 9. **ChatOps (optional)**: if you want, build a minimal Slack or Matrix webhook bot that runs read-only validation and posts the result.
 10. **Retrospective**: write an architecture diagram with the six components, and list the data owners, the failure modes of the automation system, and the credential model.
+
+Steps 5 and 6 are where the pipeline meets real infrastructure, so they deserve a moment. In step 5, the `plan` output is attached to the pull request, which gives a reviewer the same view you had. The scheduled drift check runs the same plan on a timer with no change to the code. If the plan then shows a difference, someone changed the cloud by hand, and the difference is the record of that change. In step 6, the Batfish job checks the design before a device sees it. Batfish reads the configurations as a model of the network and answers questions about them, so a broken design fails the build instead of the fabric.
+
+Step 7 is the most useful one for a skeptic. It deliberately breaks the pipeline, so you learn which stage catches which mistake. A wrong ASN and a wrong MTU may be caught by different stages, and if an error gets past the stage you expected, you have found a gap in that stage. Write down which stage caught each injected error. That list is your evidence that the gates work.
 
 You should do steps 1 to 3 first, because every later step depends on a clean inventory and a working playbook.
 

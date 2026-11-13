@@ -53,3 +53,6 @@ Note: Kimi rewrote Parts 1 and 3 after this list was written; re-check items tou
 
 ## Part 2 status update (2026-11-13)
 Deep rewrite done and committed: words 284,384 to 326,912 across Part 2 (guard 0 hard failures, 776 Mermaid OK, build OK). Weakest remaining (thin, still need walkthroughs): 2.27 lab steps, 2.28 SDN examples, 2.29 Ansible/Nornir/Terraform sections; chapters 2.16-2.25 grew only 10-20 percent versus 11 percent average for 2.1-2.15 and 25-42 percent for 2.26-2.30. 2.15 exercise 5 "mashed-potato routing" undefined. Not human-read. Checkpoint questions and Sources not rewritten.
+
+## Part 2 second deepening (2026-11-13)
+2.15 exercise 5 fixed (hot/cold potato wording). 2.19 serialization example corrected to about 0.005 ms and about 140x. 2.27-2.29 and 2.16, 2.17, 2.19-2.22 deepened (Part 2 now about 338k words). Open: 2.15 intro and Sources mention resource segmentation and flow pinning that the body never teaches; 2.21 checkpoint 14 says "seven" classic L2 attacks but the answer covers six (check and reconcile); 2.19 and 2.22 metadata cells still say "(untested here)"; 2.18 and 2.23-2.25 only grew 10-20 percent; checkpoints and Sources not rewritten.

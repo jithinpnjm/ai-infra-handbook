@@ -258,6 +258,8 @@ module example-interfaces {
 
 Read the `leaf` lines first. Each one names a value, its type and any limits. The MTU leaf accepts only values from 68 to 9216.
 
+Now read the rest of the module the same way. `namespace` and `prefix` give the module a unique name, so `ex:` in another file cannot be confused with a different `interfaces` tree. `container interfaces` is a box with no value of its own, and it only groups the list inside it. `list interface` is a table of rows, and `key "name"` says that each row is identified by its name, so two rows cannot share one. The `default true` on `enabled` means that a device uses true when nobody sets the leaf. The `leaf-list` allows several values for one row, such as several addresses on one interface. When you run `pyang -f tree` on this file, the printed tree shows the same boxes, lists and leaves, so you can check the shape before you write any data against it.
+
 Suppose a script sends an MTU value that the model's range does not allow. The device refuses the whole change, and the error names the field. You fix the value, rather than hunting for a silent failure that shows up later as slow traffic.
 
 Three families of models matter. **IETF** models are standards-track, such as `ietf-interfaces`, `ietf-ip` and `ietf-routing`. **OpenConfig** models are operator-driven and vendor-neutral, such as `openconfig-interfaces`, `openconfig-bgp` and `openconfig-network-instance`. They focus on gNMI telemetry. **Native vendor models** expose the own features of each platform, as with Cisco-IOS-XE-native, Junos and Arista EOS.
@@ -382,7 +384,11 @@ curl -sk -u admin:$PW -X PATCH -H 'Content-Type: application/yang-data+json' htt
 curl -v ... ; curl --cacert ca.pem ... ; curl -w '%{http_code}\n' -o /dev/null -s ...
 ```
 
+Here is the request, piece by piece. The URL is built from the model. `/restconf/data/` is the root for data, `ietf-interfaces:interfaces` names the container in the model, and `interface=Ethernet1` picks one row from the list by its key. Read the path as a walk down the tree you printed with `pyang`. The `Accept` header asks for JSON that follows the YANG model, and `-u admin:$PW` sends the login with the request. The `-k` flag skips certificate checking, which is handy on a lab box and risky anywhere else, as the next section explains.
+
 The first command reads one interface over RESTCONF and formats the JSON with `jq`. The second sends a PATCH that sets the description to uplink. The last line lists three more options. `-v` shows the full exchange, `--cacert` points at your CA, and `-w` prints only the status code.
+
+The PATCH line shows why the verb matters. PATCH merges, so only the two fields in the body change, and the MTU, the addresses and everything else stay as they were. A PUT to the same path would replace the whole interface, and any field you left out could fall back to its default. Think of PATCH as editing one line of a form, and PUT as handing in a blank form with a few lines filled in. The status code tells you how the device took the request. A 200 or 204 means the change was accepted. A 400 or 422 means the body did not match the model, and the error text usually names the field.
 
 Plan authentication early. Options include HTTP basic over TLS, bearer tokens or API keys, session cookies, and OAuth2 or mTLS for modern controllers. Never turn off TLS verification in production. See chapter 2.10.
 
@@ -423,6 +429,10 @@ with manager.connect(host="sw1", port=830, username="admin", password=PW, hostke
         m.commit()                                    # confirming commit
 ```
 
+Now walk through the code line by line, since each line does one part of the careful change. `manager.connect` opens a NETCONF session over SSH to port 830. `hostkey_verify=True` makes the client check the device's SSH host key, so it refuses a device it does not recognise. `server_capabilities` is the list the device sent in its hello message, and the `print` line shows whether the device offers a candidate datastore at all. `m.locked("candidate")` takes the lock, and the lock is released when the block ends, even if an error stops the code partway through. `edit_config` loads the XML into the candidate, and `default_operation="merge"` means that existing settings stay in place and only the listed leaves change.
+
+The XML itself matters too. The namespace on `<interfaces>` names the model, here the OpenConfig interfaces model, so the device knows which meaning each tag has. `<mtu>9214</mtu>` is the value the model range checks, and the device will refuse the whole edit if the value falls outside it. `validate` asks the device to check the candidate against its models before anything goes live. The `commit(confirmed=True, timeout="120")` line then applies the candidate to running, but it arms a timer. The final `commit()` is the confirmation, and it makes the change permanent.
+
 Watch the timer. If the script does not confirm within 120 seconds, the device rolls back, so the checks between the two commits must finish in time.
 
 Support differs by vendor. Junos supports NETCONF natively, with a candidate, commit confirmed and a `compare` rollback diff. Cisco IOS XE, NX-OS, IOS XR, Arista EOS and Nokia SR OS support NETCONF with native models, OpenConfig models or both, and their capabilities differ. Always read the capabilities the device advertises, and check its YANG library.
@@ -445,6 +455,8 @@ Think of a gRPC call as a function call that crosses the network. The client nam
 
 **gNMI**, the gRPC Network Management Interface from OpenConfig, defines a small service. `Capabilities` reports the supported models, encodings and gNMI version. `Get` reads state or configuration. `Set` updates, replaces or deletes, with transactional semantics for each request. `Subscribe` streams telemetry in `STREAM`, `ONCE` or `POLL` mode, either sampled or on change.
 
+Read a gNMI path the way you read a file path, from left to right. Each slash moves one level down the YANG tree. The `interface[name=Ethernet1]` part picks one row from the list by its key, which is the same idea as the key in the YANG module above. `state` means the operational values the device reports, and `config` means the values you intend. That split is why a path ending in `state/counters` returns live numbers, while one ending in `config/mtu` returns what was configured.
+
 gNMI paths are YANG-based, such as `/interfaces/interface[name=Ethernet1]/state/counters`. Payloads can use the JSON, JSON_IETF, PROTO or ASCII encodings.
 
 Related interfaces extend the family. gNOI covers operations such as reboot, OS install, file and cert. gNSI covers security, gRIBI handles RIB injection, and P4Runtime is also related.
@@ -460,6 +472,8 @@ gnmic -a sw1:6030 -u admin -p $PW --skip-verify subscribe --path /interfaces/int
 gnmic ... --encoding json_ietf ... ; gnmic ... -e proto
 ```
 
+Each gNMIc line uses the same connection flags, so read the first line as the pattern. `-a` gives the target address and port, `-u` and `-p` give the login, and `--skip-verify` turns off certificate checking, which again belongs only on a lab box. `capabilities` asks the device which models and encodings it supports, the same question the NETCONF hello answers. `get` reads one path, here the operational status of Ethernet1, and returns its current value. `set` with `--update-path` and `--update-value` changes the MTU, which is the write side of the same model. The encoding flags pick the wire format. `json_ietf` is the JSON that follows the IETF rules, and `-e proto` asks for the binary protobuf encoding.
+
 The `subscribe` line is the telemetry command. It samples interface counters every 10 seconds.
 
 A subscription has three parts. It names the path to watch, it sets a sample interval, and it asks for a mode. The collector then keeps the connection open, and the device pushes a value each time the interval passes. Nothing is polled, so the device never waits for a question it has to answer.
@@ -471,6 +485,8 @@ with gNMIclient(target=("sw1", 6030), username="admin", password=PW, insecure=Fa
     r = gc.get(path=["/interfaces/interface[name=Ethernet1]/state"])
     gc.set(update=[("/interfaces/interface[name=Ethernet1]/config/mtu", 9214)])
 ```
+
+Read the pygnmi script as a short story. The `with gNMIclient(...)` block opens a connection and closes it when the block ends, so a script that fails halfway does not leave a session open. `insecure=False` with `path_cert="ca.pem"` tells the client to check the device certificate against your CA file. `capabilities()` returns a dictionary, and the code slices the first few supported models for a quick look. `gc.get` returns the state of one interface as Python data, which you can compare or log. `gc.set` takes a list of pairs, each one a path and a value, so several writes can travel in one call.
 
 The pygnmi version does the same work in code. It reads capabilities, gets interface state and sets an MTU.
 
@@ -532,6 +548,8 @@ with ConnectHandler(**dev) as c:
     print(c.send_command("show ip bgp summary", use_textfsm=True))     # structured output via ntc-templates
 ```
 
+Read the Netmiko script in the order it runs. The `dev` dictionary is the connection recipe. `device_type` tells Netmiko which vendor dialect to speak, `fast_cli` turns on a quicker mode, and the password comes from a variable filled at run time, not from the file. The `with ConnectHandler(**dev) as c` line opens the SSH session and closes it at the end of the block. `send_command` records the BGP section of the running configuration first, which gives you a before picture. `send_config_set` then enters configuration mode and sends the neighbour line, and `save_config` writes the change to startup so it survives a reboot. The final `show ip bgp summary` is read as structured data. Keep the before picture in your logs, because it is the only record of what the device looked like before the change.
+
 The `use_textfsm=True` flag turns the raw CLI text into structured data through the ntc-templates library.
 
 Safe scripts follow a few rules. Set timeouts and retries with backoff. Isolate errors per device, so one failure does not silently abort the batch. Make the script idempotent by comparing desired and current state and changing only the difference. Run in `--dry-run` or diff mode by default, and use commit-confirmed, or back up and restore.
@@ -581,9 +599,13 @@ When you evaluate any SDN design, ask these questions. Which functions are centr
 
 BGP as an SDN works when BGP already runs fabric-wide. A controller joins as an iBGP or eBGP speaker, reads the topology and injects better-metric paths hop by hop. That pins a flow to a chosen path. If you are new to SDN, start here. This is the augmented model, where the same protocol carries both topology and policy. It is simple to deploy. But automating a complicated process does not remove its complexity. It only relocates it.
 
+Picture a situation where BGP-as-SDN earns its keep. A large training job is sending heavy traffic over one spine, and the other spine sits mostly idle. A controller that knows the load can inject a more preferred route for part of the traffic, so the idle spine takes some of the flows. When the job ends, the controller withdraws the route, and the fabric falls back to its normal choice. The switches never learned anything new. They only received a route with a better attribute, through the session they already had.
+
 The attraction of this example is that nothing new has to run on the switches. The controller speaks BGP, the protocol that the fabric already uses. The routes it injects stay in place only as long as its BGP session stays up, so a controller failure removes its routes rather than leaving a device unreachable.
 
 Fibbing takes a different route. In link-state protocols, tags are never used for traffic engineering, because all routers must hold the same database. So Fibbing has a controller join the IGP and inject **fake nodes and links**. These arrive as OSPF external LSAs, which can carry a third-party next hop. The unmodified shortest-path calculation then produces the desired path. For example, a chain of fake nodes with lowered costs and specific forwarding addresses steers traffic from A to H along a longer but desired route. Nothing in the protocols changes. The approach is limited to what external routes can express, and you must watch the scale of the injected LSAs.
+
+Here is the idea in everyday terms. Imagine a road map where every driver uses the same map and picks the shortest route on it. A traffic planner cannot order a driver onto a longer road, but the planner can add a fake road sign to the map, which every driver accepts as real. The drivers still compute their own shortest path, and the fake sign steers them where the planner wants. That is the whole trick. Every router still runs the same algorithm, and only the map has changed. The cost is that the fake signs must stay consistent with the real map, or drivers will be sent down roads that do not exist.
 
 PCEP, the Path Computation Element Protocol, is another augmented example. A central PCE computes paths for MPLS or SR LSPs and tells the headends, called PCCs, through PCEP. The headends then signal or encode those paths, as with SR policies.
 
@@ -650,6 +672,8 @@ Next, move to a disposable Linux VM with Python 3 and containerlab with FRR. The
 9. Now write a safe rollout. The script applies a change to leaves one at a time, runs post-checks on ECMP width and BGP sessions, and halts and rolls back on failure. Test it with an injected bad change.
 10. Finally, build a small controller toy. Use FRR containers and write a Python program that injects a more-preferred route over a BGP session, through ExaBGP or `vtysh`, to pin a path. Verify the path with traceroute, and then discuss the limits.
 11. Clean up when you finish.
+
+Some of these steps are easy to read past, so here is what a few of them teach. Step 1 is about formats, and the YAML Norway problem is the classic trap. In YAML 1.1, a bare `NO` is read as the boolean false, so a country code of Norway can silently turn into a false value in your inventory. Quoting the value keeps it a string. Step 6 is the first place where a change can strand a device. The `commit confirmed` line works like a hotel key card that stops working unless you tap it again before the timer runs out. If you do not press it, the device falls back to its last good state on its own. Practise that fallback on purpose, so you know what it looks like before a real outage depends on it. Step 9 is the rollout habit that protects a fleet. Change one leaf, check it, then move on, so a bad change stops at one device instead of reaching all of them.
 
 Do the Python lab first, then work through the VM steps in order.
 

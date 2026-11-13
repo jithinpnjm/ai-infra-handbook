@@ -116,6 +116,14 @@ Take the first experiment as a worked example. `ip -n hA route get 10.2.0.2` ask
 4. Masquerade the traffic from hA that leaves through rB, and then run `conntrack -L` in r to see the translations.
 5. Build asymmetric routing. Add a second router, `r2`, between the hosts, and send the replies through r2. Set `rp_filter=1` on hB, and the replies start to drop. Check the drops with `nstat -z | grep -i ReversePath`. Then fix the problem with loose mode or policy routing.
 
+Read the five experiments as one story. The first two follow a single packet through the router. `ip route get` shows the decision the kernel makes, and the traceroute shows the router answering as the first hop, because a packet's TTL runs out there and the router reports it.
+
+The third experiment is about size. A link has a maximum packet size, its MTU. Think of a mail slot that accepts only envelopes up to a certain width. When rB takes a smaller MTU, a large ping from hA no longer fits. The router should then send back a "message too long" reply, which is the fragmentation-needed signal. If the firewall drops that reply, hA never learns the new limit. It keeps sending packets that are too big, and they vanish without any error. That is the black hole. A TCP transfer behaves the same way, and it looks like a transfer that simply stops. Clamping the MSS is the fix. It tells both ends, during the handshake, to keep segments small enough from the start, so the signal is no longer needed.
+
+The fourth experiment shows what NAT does to a flow. The router rewrites the source address of packets leaving through rB, and it keeps a record of each rewrite. `conntrack -L` prints that record, which is how you check that a reply can find its way back.
+
+The fifth experiment shows the reply path. When the request goes through r and the reply comes back through r2, a strict reverse path check on hB sees a source that does not match the arrival interface, and it drops the packet. `nstat` counts those drops, so you can confirm the cause from the counter rather than guessing. Loose mode or policy routing fixes it, because the check then accepts a reply that arrives on another interface.
+
 Run `./down.sh` when you finish.
 
 ---
@@ -161,6 +169,10 @@ router ospf
 EOF
 ```
 
+Read `start_frr()` one flag at a time. `sudo ip netns exec $n` runs the daemon inside the room for that router, so its interfaces and routes belong to that router alone. `-d` starts the process in the background. `-f ./$n.conf` names the config file it reads, and `-i` names the file that records its process ID, so you can stop it later. `-z` names the socket where zebra and the protocol daemon talk to each other, and `--vty_socket` names the socket that `vtysh` uses when you type commands. Each router therefore gets its own copy of every file it needs, and two routers on one host never overwrite each other.
+
+Next, read `R1.conf` the same way. `interface lo` gives the router a stable identity address, `10.255.0.1/32`, which the other routers use to reach it, no matter which link is up. `ip ospf area 0` places the loopback and the link into the backbone area. `ip ospf network point-to-point` tells OSPF that the link has exactly two ends, so the routers do not need to elect a designated router on it. The hello and dead intervals set how often the two ends greet each other, and how long silence is tolerated before the neighbour is declared dead. The `ospf router-id` is the router's name in the shared map. `auto-cost reference-bandwidth` makes fast links look cheaper than slow ones, and `maximum-paths 8` lets the router install up to eight equal-cost routes, which is what allows the diamond to use both paths.
+
 You can skip hand-started daemons in Lab 3, because containerlab starts them for each container. This lab keeps the namespace version so you can see what a router really is: a network namespace plus routing daemons.
 
 Compare the two ways a router comes to life. In this lab you start the daemons yourself, and you see each piece: a namespace, a config file, a zebra process and an ospfd process. In Lab 3, containerlab hides those pieces inside a container image. The result is the same routing table, so the hand-built version is worth the time. Once you know what the container is doing, you can read its logs and find a missing daemon without guessing.
@@ -175,6 +187,10 @@ Consider what the second experiment means in practice. A link fails, traffic sto
 4. Create an MTU mismatch on one link. Then watch the adjacency get stuck in ExStart or Exchange.
 5. Change the interface costs, and watch ECMP collapse to one path.
 6. Replace OSPF with IS-IS, using `isisd` and point-to-point links. Give each router a NET in the form `49.0001.0000.0000.000N.00`, then compare its `show isis database` output with the OSPF results.
+
+Here is how to read the first two experiments when you run them. Experiment 1 is a first look at a healthy network. Run the neighbour command and read the state column from top to bottom. `ExStart` is the moment the two routers decide who speaks first. The exchange states are the stretch where they trade their maps, one summary at a time. `Full` means both maps now match, and only then does the route table hold the paths. If the state stops short of `Full` and stays there, the adjacency is stuck, and the MTU mismatch in experiment 4 is one way to get there.
+
+Experiment 2 is the outage question. Pull the link down while the fast ping runs. The ping output then shows a run of lost replies, followed by replies again. Count the lost ones, and multiply by the interval between pings. That gives you the outage as the traffic saw it. `ip monitor route` shows the moment the route changed, so you can compare the route change with the first lost ping. If the two times do not line up, the delay is in the detection, not in the routing.
 
 If you want to see convergence before anything else, start with experiment 2.
 
@@ -261,6 +277,8 @@ topology:
     - endpoints: [ "h42:eth1", "leaf4:eth4" ]
 ```
 
+Read the topology file from the top, since each part does one job. `name: fabric` sets the prefix on every container. That is why the leaf1 container is called `clab-fabric-leaf1`, the name you type after `docker exec` later in this lab. `kind: linux` tells containerlab to start an ordinary Linux container, and the `binds` lines mount each node's `daemons` and `frr.conf` files into the path where FRR looks for them. The `nodes` section lists the boxes, and the `links` section lists the cables. Each link line joins two named ports, such as `leaf1:eth1` and `spine1:eth1`, and containerlab creates one virtual cable, a veth pair, for each line.
+
 The host `exec` lines assume that the data interface is `eth1`. containerlab gives the management interface the name `eth0`, and it names the data links `eth1...`, in the order that each node declares them. Each leaf has two server-facing ports, `eth3` and `eth4`, and you can handle them in two ways. You can address them one at a time, with `eth3` for the first host and `eth4` for the second. Or, for a one-subnet-per-leaf design, you can bridge both into `br0` and put `10.10.N.1/24` on `br0`.
 
 A lived example shows why the names matter. You deploy the fabric, run a ping from h11, and get no reply. The host has an address on one interface, but the route points at the leaf. Your first suspicion is the fabric, and that suspicion is wrong. The likely cause is a naming mismatch, where the exec line ran before the interface existed, or ran against an interface with another name. Look at the host's addresses first. Only when the host shows the address you expect should you look at BGP.
@@ -343,6 +361,10 @@ for name, v in SPINES.items():
 print("generated")
 ```
 
+Read `gen.py` in the order it runs. The two dictionaries at the top hold the only values you change. `LEAVES` gives each leaf its ASN, its loopback and its server subnet. The line that builds it loops over the numbers 1 to 4, so one line produces all four leaves, and a fifth leaf means changing that range. `SPINES` gives each spine its loopback, and all spines share one ASN. `DAEMONS` turns on zebra, bgpd and bfdd, and leaves ospfd off, since this fabric runs BGP alone.
+
+Each `Template` is a text pattern with holes. The double braces are the holes, and the render call fills them with a name, an ASN or an address. The `LEAF` template matches the design from chapter 2.16. `neighbor swp peer-group` groups the two uplinks under one name. `remote-as external` lets each session form without anyone typing the neighbour's ASN, because any eBGP neighbour is accepted. `neighbor swp bfd` turns on fast failure detection for every uplink, and `timers 3 9` sets the keepalive and hold times. The `route-map CONN` at the end permits only the loopback and the server subnet to be redistributed into BGP, so the leaf advertises its own identity and its servers, and nothing else. The final loop writes one directory per node, each holding the two files that containerlab mounts.
+
 ### Deploy and verify
 
 Generate the configs, deploy the fabric, and then check it from the leaves and the hosts.
@@ -359,6 +381,8 @@ docker exec clab-fabric-h11 traceroute -n 10.10.4.11                    # leaf1 
 docker exec clab-fabric-leaf1 ip route show 10.10.4.0/24                # expect 2 next hops (ECMP) via fe80::.. dev eth1 / eth2
 docker exec clab-fabric-leaf1 ip route get 10.10.4.11 ipproto tcp sport 40000 dport 80
 ```
+
+Each command in the block answers one question about the fabric. `containerlab inspect` lists the running nodes, so you can confirm that all of them started before you test anything. `show bgp summary` lists each neighbour and its state. `show ip route` shows what the leaf actually installed, and `show bfd peers brief` shows whether fast failure detection is running on each uplink. The `ping` from h11 tests the data path to a host on another leaf. The `traceroute -n` shows each hop, so you can see that the packet went up to a spine and down to leaf4. The two `ip route` commands read the kernel's own table, and the `ipproto tcp sport 40000 dport 80` part asks which next hop a TCP flow on port 80 would take. Read the output in that order, and a problem shows up at the first command that disagrees with the design.
 
 A healthy fabric looks like this. Every leaf has two ECMP next hops to the subnet and the loopback of every other leaf. Sessions show as Established, with neighbours named after their interfaces. The routes point at `inet6 fe80::...` link-local next hops. To check how the sessions come up, capture an OPEN message with `docker exec clab-fabric-leaf1 tcpdump -ni eth1 -c 20 port 179 -w -`, pipe it into tshark, and locate capability 5, which is the extended next hop.
 
@@ -378,6 +402,8 @@ Read the experiments as small stories. The first asks whether the load spreads o
 6. **Policy**: Add an inbound prefix-list on the leaves that accepts only `10.10.0.0/16 le 24` and the loopbacks. Then inject a bogus route from an FRR instance running on a host, and confirm that the leaf rejects it.
 7. **BGP to the host**: Run FRR on h11 and h12. You can also use the `frrouting/frr` image as the host image. Peer both hosts with leaf1 using unnumbered sessions, and have each one advertise its own /32 plus the anycast VIP `10.99.0.1/32`. Check ECMP from h41 to the VIP, then stop BGP on one host and measure the failover.
 8. **Weighted ECMP**: Set link-bandwidth communities and enable weighted multipath, if your FRR version supports it. Then verify the traffic split with iperf3.
+
+Here is how to read the outcomes. Experiment 1 needs many flows at once. With a single flow, one hash picks one path, so the counters on one link climb and the other stays flat. That is correct behaviour, not a fault. With 16 parallel streams, the hash spreads them, and both counters should climb. If one counter stays flat even with 16 streams, check the route table for a missing next hop. Experiment 2 is a timing test. The ping interval sets how fine your measurement is. At 0.05 seconds between pings, each lost reply stands for about one interval of outage, so the count of lost pings tells you the outage length. Compare the table with BFD on and with the default timers, because the gap between the two rows is the value that BFD adds. Experiment 3 changes a single ASN, and it teaches a rule about loops. EBGP rejects a path that carries its own ASN, so when a double failure forces a route through a second spine, the ASN design decides whether that route is accepted or dropped. Revert the change after each step, so the next result is caused by one change only.
 
 Tear the lab down with `sudo containerlab destroy -t fabric.clab.yml --cleanup` when you finish.
 
@@ -408,6 +434,10 @@ bridge vlan add dev vxlan0 vid 100 ; bridge vni add dev vxlan0 vni 10100 ; bridg
 5. Move an IP from h11 to h31 by sending a gratuitous ARP, which migrates the host. Then watch the type 2 route sequence number increase. This is MAC mobility.
 6. Break the MTU on purpose. Set the underlay to 1500 and the host MTU to 1500, then show that large packets fail. Fix the problem by raising the underlay to 1600 and lowering the host MTU to 1450.
 
+Read step 1 as a list of small jobs, one per line. `ip link add br0 type bridge vlan_filtering 1` creates a bridge that understands VLAN tags, which is the switch inside the leaf. `ip link add vxlan0 ... external vnifilter` creates one VXLAN device that can carry many VNIs, so you do not need one device per segment. `nolearning` turns off flood-and-learn, since the EVPN control plane will tell the leaves where each MAC lives. `bridge vlan add dev eth3 vid 100 pvid untagged` tells the server port that frames arriving without a tag belong to VLAN 100, which is how a plain server joins the tenant without knowing about VLANs. The `bridge vlan add dev vxlan0 vid 100 tunnel_info id 10100` line is the mapping. It says that VLAN 100 on this leaf travels across the fabric as VNI 10100, and the far leaf maps it back to its own local VLAN.
+
+A picture helps. The server sends an ordinary untagged frame. The leaf puts it in VLAN 100, then in a VXLAN packet tagged with VNI 10100, and then sends that packet across the spines as ordinary IP traffic. The spines never see the server's frame, only an outer IP packet between the two leaves.
+
 Check the syntax before you rely on it. The exact `vnifilter`, single VXLAN device (SVD) and VLAN-to-VNI mapping syntax depends on your kernel version (6.x) and your FRR version (9.x or 10.x). If it does not work, fall back to per-VNI `vxlan` devices, such as `ip link add vxlan100 type vxlan id 10100 local LOOP dstport 4789 nolearning`, and bridge them per VLAN. FRR supports that setup too.
 
 Confirm the bridge and VNI mapping of each leaf before you move on to the FRR configuration.
@@ -426,6 +456,8 @@ A short calculation shows why the lost bytes matter. Suppose a physical link car
 4. Show ECMP entropy by sending many flows over a two-path core. GRE and IPIP flows share one path, unless inner-header hashing is enabled with `sysctl net.ipv4.fib_multipath_hash_policy=2`. VXLAN and WireGuard flows spread across both paths by their outer UDP port.
 5. Try a segment routing mini-demo. For SRv6, run `ip route add 10.9.9.0/24 encap seg6 mode encap segs fc00:2::1,fc00:3::1 dev eth0` across IPv6 routers that have `seg6_enabled` set. For MPLS, load the modules with `modprobe mpls_router mpls_iptunnel`, and then run `ip route add 10.9.9.0/24 encap mpls 100/200 via inet 10.0.0.2`.
 
+Two of the items need a closer look before you run them. Item 1 is about encapsulation. Each tunnel wraps the original packet in a new header, and the wrapper takes space. Compare the captures from the core. The outer header is the one the core router reads, and the inner header is the one the sites care about. Item 4 is about ECMP, and it explains why one tunnel type can use only one path. A router picks a path by hashing fields from the packet header. GRE and IPIP hide the inner ports behind the outer header, so every flow looks the same to the hash, and all of them take one path. VXLAN and WireGuard put a UDP header on the outside, and that header has ports that vary per flow, so the hash spreads them. Turning on inner-header hashing lets GRE and IPIP spread too, because the hash can then read the inner fields.
+
 Work through the items in order, because item 2 gives you the MTU figures you need before the throughput tests in item 3.
 
 ---
@@ -443,6 +475,12 @@ This lab combines chapters 2.12, 2.16 and 2.20. You place load balancers and an 
 3. Test connection pinning with `grpcurl` or `ghz` against a simple gRPC server, first through L4 and then through L7.
 4. Add delay and loss to a leaf-spine link with `tc netem`. Then observe the BGP and BFD behaviour, the TCP throughput with `ss -ti`, and any ECMP imbalance.
 5. Finish with a failure matrix. Cover each failure (link, spine, leaf, host NIC, LB node, backend) and each observer (ping, TCP flow, HTTP request). Record the packet loss, the recovery time and what recovered the service.
+
+Item 1 uses a design called direct return, or DR mode, in IPVS. The load balancer changes only the destination MAC address of each packet and sends it on to a chosen backend. The packet still carries the virtual IP as its destination, so each backend must hold that VIP on a local loopback interface, where it accepts the packet. The backend then replies straight to the client, and the reply never passes back through the balancer. That is why the balancer can stay small, and why the backends need the VIP configured by hand.
+
+Items 2 and 3 are measurements. A tool like `hey` or `wrk` sends many requests at a steady rate and records each reply, so you can count the errors in the window when one balancer dies. The gRPC test is different. gRPC keeps one long connection open and sends many calls over it, so an L4 balancer pins the whole connection to one backend, while an L7 balancer can route each call. The two tests show you which layer decides where a client's traffic lands.
+
+Item 4 adds delay and loss with `tc netem`, which is a traffic shaping tool in the kernel. It lets you make a healthy link slow or lossy on purpose, so you can see how BGP, BFD and TCP react to the kind of trouble a real link has, rather than to a clean cut.
 
 Fill in the failure matrix row by row as you go, so the results can be compared side by side.
 
@@ -492,6 +530,10 @@ for h, ip in pings:
     check("0% packet loss" in out, f"{h} -> {ip} reachable")
 sys.exit(1 if failures else 0)
 ```
+
+Read `validate.py` as three small parts. The `sh()` helper runs a command inside one leaf or host container, using `docker exec`, and returns the text it printed. The `check()` function prints a PASS or FAIL line for each claim and remembers every failure. The main part loops over the four leaves. For each leaf it asks for the BGP summary in JSON, and it checks that exactly two peers exist and that both are `Established`. It then asks the route table for each other leaf's subnet and checks that two next hops are installed, which is the ECMP check from the deploy section. The last loop pings one host per leaf and looks for `0% packet loss` in the summary line. The final `sys.exit` returns 1 when any check failed, and that exit code is what a CI system reads as red or green.
+
+Notice that each check asks a question the design already answers. Nothing in the script guesses. If someone edits a config and removes a neighbour, the first check goes red, and the message names the leaf.
 
 Run the harness in CI. A GitHub Actions job works, as long as the runner can run Docker and containerlab. A self-hosted runner also works. The job deploys the fabric, runs `python3 validate.py`, runs the failure tests, and then destroys the fabric. You can extend the job with three kinds of check. Convergence budgets assert how many pings a link failure may lose. Configuration-drift diffs compare `vtysh -c 'show running-config'` with the generated files. Pcap-based assertions catch anything unexpected, such as an ICMP error that should not appear. For network automation and CI/CD patterns, see chapters 2.28 and 2.29. For Ansible and Terraform integration, see Part 4.
 

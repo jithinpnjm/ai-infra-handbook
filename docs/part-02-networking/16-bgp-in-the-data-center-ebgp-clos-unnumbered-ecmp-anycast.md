@@ -199,6 +199,12 @@ The standard design works well for ordinary traffic. AI traffic stresses it in s
 
 ### ADD-PATH
 
+Picture a leaf that has two good ways out of the fabric, one through each border leaf. Traffic to the internet is fine on both paths, yet the leaf sends everything through a single one. When the chosen border leaf is busy, the other path sits idle, and nothing on the leaf explains why. The answer is in what the spine chose to pass along.
+
+Here is what happens step by step. The two border leaves each announce the same destination. The spine receives both announcements and runs its best-path rule, which picks one winner. Under the default behaviour, the spine then tells the leaf about that winner only. The loser never reaches the leaf, so the leaf has no second path to share traffic across. ADD-PATH changes step three, so the spine passes along both paths, each tagged with its own path identifier. The leaf now holds two entries and can spread flows over both.
+
+Think of a delivery company that only lists the fastest route on its dispatch board. Drivers on the slower route are never told it exists. ADD-PATH is the instruction to list every route that works, so the dispatcher can use them all when the fastest one is crowded.
+
 Consider a leaf that learns about one destination from two border leaves, through a spine. By default, a BGP speaker advertises only its single best path per prefix, so the spine picks one and tells the leaf only about that one. The second path, which was perfectly good, is hidden. ADD-PATH (RFC 7911) changes that, because it advertises several paths, each with a path identifier. If you run route reflectors, this keeps path diversity, so ToRs see all next hops rather than only the choice of the reflector. In eBGP, a spine can pass both paths it receives from two border leaves, and a leaf can then ECMP across both instead of depending on the best-path pick of the spine. The gain is resilience, because only the share on a failed path is affected, and load balancing also improves. The cost is more RIB state.
 
 ### AS-PATH strip and replace
@@ -245,6 +251,8 @@ DPF works in both designs. In the unified case, you can pin each GPU ID, or QP r
 Treat DPF as an emerging, vendor-led approach, and validate it on your hardware. The general principle is logical planes in a Clos with controlled mapping of flows to planes. You can also reach it with VRFs, segment routing, Flex Algo or policy-based routing.
 
 ## 5. IGPs for AI back-end fabrics: IS-IS flood reduction, Flex Algo and RIFT
+
+Picture a training step as a relay race. Every GPU has to pass its baton before the next leg begins, so the whole team moves at the pace of its slowest runner. A link that slows down for a few milliseconds is a runner who stumbles. The IGP options in this section exist because some teams want the fabric to react to a stumble before the race is lost, and BGP was never built to watch the track that closely.
 
 Why would anyone consider an IGP again, after the long argument for eBGP? Because back-end training networks want reactions on a microsecond scale to link and queue conditions. A training step is a synchronised dance, and when one link slows, every GPU waits. They want awareness of the whole topology and of collective communication patterns, plus link- and queue-level information. BGP was designed to advertise prefixes, so it does not carry any of this natively. It also needs BFD or OAM add-ons for fast detection, and it needs significant CPU to react.
 
@@ -299,6 +307,10 @@ RIFT was first built in the open-source community for routing on servers. Some v
 
 ## 6. Dragonfly and sparse topologies (routing view)
 
+Imagine a training job spread across several rows of racks. Its all-reduce step, in which every GPU exchanges partial results with every other GPU, runs at full speed inside each row. Each time it has to cross between rows, though, it slows down, because the long cables between rows are the narrow point. Adding more of those long cables in a deep Clos costs a great deal of money and time. That situation is where a dragonfly starts to look attractive.
+
+Follow one packet from a server in group A to a server in group C to see the routing problem. The shortest path may run over the single global link that joins A to C. If that link is busy, the shortest path becomes a queue, and the packet waits while the cheap detour sits unused. A detour takes the packet first to group B, then across to C. It is one hop longer, but it uses a link that is free. Valiant routing does this on purpose. It picks a middle group at random for each flow, so the load spreads and no single highway fills up.
+
 A Clos is not the only way to wire a cluster, and sometimes it is not the cheapest one. Think about what a deep Clos costs you at large scale: many tiers, so many hops, and many long cables between rows. Consider a dragonfly when hop count and cable length matter. A **dragonfly** has groups of switches that mesh internally, and the groups connect to each other through global links. Picture several small towns where everyone knows everyone, and each town has a few direct highways to every other town. Compared with a deep Clos, it cuts hop count and long cables, which helps latency-sensitive AI and HPC work. Full dragonfly cabling is heavy, so a **sparse dragonfly** keeps each group as a leaf-spine Clos and connects only the top-of-fabric spines between groups.
 
 The routing consequences are significant, because a protocol that was happy in a Clos now meets a topology where the shortest path is not always the best path. Non-shortest-path forwarding, such as valiant or UCMP, is needed for balance. Valiant routing means sending traffic through a random intermediate group so that no single highway is overloaded. Control planes must identify the inter-group global links and partition the fabric. They must apply split-horizon rules for the group links, and they may reflect link quality. eBGP struggles here, because of policy complexity and the lack of native link awareness. That is why IGP-style protocols, RIFT and IS-IS, are being extended for dragonfly designs.
@@ -308,6 +320,8 @@ Scale-up domains are different. NVLink-class pods act like one big GPU server, a
 If your fabric is a dragonfly, choose a protocol that can handle the group links, such as RIFT or extended IS-IS.
 
 ### 6.1 The canonical dragonfly
+
+Start with the wiring, because the wiring is where the design gets heavy. Every group must reach every other group, so the number of links grows with the number of pairs of groups. Add one more group and it needs links to every group that already exists. A designer who draws the seven groups on paper can see the cables multiply as the picture fills with lines. The layout is simple to describe and expensive to build, which is why most real deployments cut it down.
 
 In the canonical dragonfly, every group is a full mesh of switches, and every group links to every other group. Seven groups of eight switches each make a good picture. Each group needs several global links to each other group, and the cabling grows quickly, because each new group adds a link to every group that already exists. There is a second catch. Only a limited share of traffic can cross between two groups at once, so collective operations should stay mostly inside a group. Otherwise the inter-group links become the bottleneck.
 
@@ -371,6 +385,10 @@ Correlate the overlay with the underlay where needed. Tenants on specific colour
 
 ## 8. Extending routing to the server
 
+Picture a GPU server with two uplinks to two leaves. In the switch-only design, the server knows nothing about routing. It has one default route, and when one uplink fails, the switch on the other side must notice and send everything through the survivor. The server has no say in the matter. The routing-on-server design gives the server a voice. It runs a small routing daemon, announces its own address and service prefixes, and can withdraw a service the moment its health check fails.
+
+Here is the sequence when one inference server in an anycast group fails its health check. The same service address, called a VIP, is announced from several servers. The failing server's daemon sees the health check fail and stops announcing the VIP. The leaves see one fewer path and move the flows that were heading to that server onto the remaining servers. Clients keep using the same address and never learn which server answered. Remove the health check and the failing server keeps announcing, so clients keep landing on a broken machine.
+
 So far routing stops at the ToR and the server is a dumb endpoint. It has one default route, and the switch decides everything. That changes when you run a routing daemon on the GPU server or its DPU, the network card that has its own small computer. FRR and BIRD are common choices, and Calico or Cilium do this for pods. The server then chooses among leaves, with ECMP across its two uplinks and no MLAG. MLAG is a vendor feature that makes two switches pretend to be one, and it is a source of its own complexity. The server advertises its own `/32` loopback and its service prefixes. It supports **anycast** services, where the same VIP is advertised from many servers, the fabric ECMPs to the nearest or any of them, and health checks remove a server by withdrawing its route. You also get L3 multi-tenancy with per-tenant VRFs on the host, plus fast failover through BFD.
 
 Three patterns are common, and they differ in who the server talks to.
@@ -386,6 +404,10 @@ Security matters here too, because the server is less trusted than a switch. A s
 Filter every server session at the ToR, so it accepts only the prefixes that server owns.
 
 ## 9. Traffic engineering: telemetry, controllers and segment routing
+
+Picture a training job whose flows all hashed onto the same two links, while other links in the fabric sit almost empty. Each switch made its own choice, and none of them could see the whole map. A central controller can see the map. It reads the queue depth on the busy links, sees the quiet ones, and steers new flows toward the quiet paths. Here is the loop it runs. It collects telemetry, works out which links are overloaded, chooses new paths for the next flows, and pushes those paths to the ingress nodes. Then it waits and checks again.
+
+The loop has a trap, and the trap has a name, oscillation. Suppose the controller sees one quiet road and sends every new flow there at once. In the next cycle, that road is jammed and the old busy road is empty, so the controller sends everything back. The network swings from one jam to the other. The fix is to move only a few flows in each cycle, and to add hysteresis. Hysteresis means a path must stay better for a while before the controller will choose it, so a short dip in load does not trigger a stampede.
 
 Distributed load balancing leaves every switch deciding for itself, and no switch sees the whole picture. It is like drivers each choosing a route from what they can see through the windscreen, with no traffic radio. A **central controller** can complement it with a global view. It consumes fabric telemetry, including queue depth trends, sFlow, BGP statistics, per-queue interface counters, and DCQCN and PFC event telemetry. It also uses agent probes of end-to-end path quality, and placement data from the GPU job scheduler. With that information, it steers new jobs and flows onto less-loaded paths, so the flows of one job use a deterministic set of paths.
 
@@ -423,6 +445,8 @@ The Segment Routing Header, or SRH, sits between the IPv6 header and the Layer 4
 
 ## 10. Operations: verifying, converging and failing safely
 
+Picture a rack whose training runs are consistently slower than the racks beside it. Nothing has failed outright, and every session shows up as established. The problem is a path that is missing from the set, so the rack uses a single spine where the design promised several. The checks below are the ones that find it. Run them in order, because each one narrows the question for the next.
+
 A design is only as good as your ability to prove it works and to change it without an outage. Imagine the fabric has been running for a month and someone asks, "Is it healthy?" The honest answer needs checks you can repeat. Start with verification. Every leaf should have N ECMP paths to every remote server prefix, so `show ip route 10.10.5.0/24` should show 4 or 64 next hops. Loopbacks must be reachable, and `show bgp summary` should show all sessions Established. Prefix counts should match the design, so a leaf carries roughly the number of racks plus loopbacks. Look for unexpected longer AS-PATHs, since a long path usually means a detour. From a server, `ip route get` with different source ports should hit different uplinks. Check that the MTU is consistent, with jumbo frames on all links, and that BFD is up on every session.
 
 Next, test convergence, which is how long the network takes to settle after a change. Fail links, linecards, a spine and a leaf. Measure with a timestamped ping or iperf3, and watch `ip monitor route`. Typical targets are under 1 s for a link failure with BFD, and sub-second to seconds for a node failure. Planned maintenance should lose 0 packets when you use graceful shutdown.
@@ -430,6 +454,8 @@ Next, test convergence, which is how long the network takes to settle after a ch
 When you run the test, run a continuous ping or iperf3 stream across the fabric first, then pull the link, and watch what the stream does. The shape of the gap tells you the story. A short blip means the failure was noticed quickly and a surviving path took over. A longer silence means that something waited for a timer to expire, which is exactly what BFD and the shorter BGP timers are there to prevent. Write the gap down next to the date, so that the next time someone changes a timer you have a baseline to compare against.
 
 For maintenance, drain a switch before the reboot, the way you would ask customers to leave a shop before locking the door. Use `bgp graceful-shutdown`, or set `LOCAL_PREF`, an AS-path prepend, or a maximum metric through a community. Verify that traffic has moved before you touch the switch, and then re-enable it gradually.
+
+A drain runs like this. First, mark the switch so its routes look less attractive, which moves traffic toward its neighbours. Second, check that the traffic counters on the switch have fallen, which shows the drain worked. Third, reboot the switch only after the counters are near zero. Fourth, when it returns, remove the mark slowly so that flows come back in steps rather than all at once. Skipping the second step is the usual cause of a maintenance window that ends in packet loss, because the switch went down while it was still carrying traffic.
 
 Several failure patterns come up again and again, and recognising them saves hours:
 

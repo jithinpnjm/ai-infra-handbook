@@ -82,6 +82,8 @@ Each layer does a different job. At the edge, packet filters and rate limits con
 
 The time an attacker needs to cross each layer is time for your defenders to notice. More layers also mean more places to apply specific controls. Think of the whole network as one defensive system, in which routers, switches, load balancers, hosts and applications each contribute controls.
 
+Follow an attacker who wants a customer's model weights. They find a forgotten dashboard on the public edge. The edge filter allows it, because the port is open to the world. The stateful firewall lets the first packet in, because it looks like a normal web request. The service behind it asks for a login, and the attacker has a stolen password from an older breach, so the check passes. The service has access to the model store, and the store's network policy allows the connection. Each layer stopped nothing on its own, but each one was a point where a different control could have caught the attacker. Notice that the attack took four passes through the defence, and each pass could have been a detection point.
+
 When you review a design, count the layers an attacker must cross, not just the perimeter.
 
 ## 3. Access control and AAA
@@ -95,6 +97,8 @@ The protocols divide this work. RADIUS (UDP 1812 and 1813) handles network acces
 Use MFA for administrative access and VPNs, because it combines something you know, something you have and something you are. Hardware keys (FIDO2) resist phishing well. Pair MFA with least privilege and just-in-time access. Least privilege means giving each account only what its job needs, and just-in-time access means granting the rights only for the hours the task takes. Keep admin accounts separate, and avoid shared accounts.
 
 Logging closes the loop. Send central logs through syslog or journald, account for commands on network devices, store logs in immutable storage, and sync time with NTP. Without a shared clock, you cannot line up events from different machines into one story.
+
+Walk through one VPN login from start to finish, because each step is a place where access is decided. The laptop starts the tunnel and presents its certificate, which proves the device is one the company issued. The VPN server asks for a password, then for a one-time code from the phone. Only when both checks pass does the server look up the user's groups. The groups decide which network segments the tunnel may reach. After that, the server logs the login with the time and the source address, so an analyst can later match a session to a person. Each step answers a different question: is the device known, is the person who they claim, what may they reach, and who was it.
 
 Start with administrative access and VPNs when you add MFA, because the chapter names them first for that control.
 
@@ -110,6 +114,8 @@ Not every firewall works the same way. A firewall is a checkpoint that decides w
 | **Host-based firewall** | Policy on each server (nftables, firewalld, ufw), cloud security groups | Protects against lateral movement; enforce by configuration management |
 | **Microsegmentation / NetworkPolicy** | Per-workload policies enforced in the data plane (Kubernetes NetworkPolicy via Calico/Cilium, VXLAN GBP, NSX) | Identity-based rather than IP-based rules |
 
+Picture a developer whose laptop asks a server on the internet for a package. The reply comes back to the laptop's port. A stateful firewall remembers that the laptop opened the connection, so the reply is allowed in, and nothing else is. Now picture an unknown computer sending a packet to the same laptop without any earlier request. The stateful firewall has no record of it, so it drops the packet. A stateless filter could not make that distinction, because it reads each packet alone. The gap between those two behaviours is why most hosts run a stateful firewall.
+
 Stateless filters are fast, because they run in switch hardware, but they have no memory of connections. Stateful firewalls track each connection and let return traffic back in automatically, which makes them the default for hosts and perimeters. NGFWs, proxies and WAFs look deeper into the application, at the cost of CPU and TLS inspection trade-offs. Host-based firewalls and microsegmentation protect against lateral movement, which is the way an intruder who has taken one machine moves sideways to the next.
 
 Your default stance should be deny. Block all inbound traffic by default, then explicitly allow the services you need. Restrict outbound traffic too, because egress filtering limits exfiltration and command-and-control. Exfiltration is stolen data leaving the building, and command-and-control is the channel an attacker uses to give orders to a compromised machine. Log the drops that matter. Split the network into zones for users, servers, management, storage and the fabric. Place management interfaces such as SSH, BMCs and switch consoles only on a dedicated management network. Review rules regularly, remove unused ones, and test from outside and inside. Chapter 2.23 covers the detailed mechanics and rule examples.
@@ -123,6 +129,8 @@ Access controls and systems fail, and when they do, encryption is the last line 
 Model weights and datasets deserve the care you give source code and credentials. Sign your artifacts, control who can reach the registry, keep versions immutable, and record where each artifact came from. That last part is supply-chain security, and it uses a software bill of materials and signature checks on containers and packages.
 
 AI traffic is fast, so encrypting it has a cost. For RDMA fabrics you have three options: MACsec on links (line rate in hardware on some switches and NICs), IPsec offload on NICs and DPUs, or logical isolation combined with physical security. Do not assume TLS inside the fabric is feasible for GPUDirect traffic. Make that threat-model decision on purpose instead. Shared tenants need stronger isolation and encryption, while a single tenant in a locked cage can rely on segmentation and physical controls.
+
+Picture a backup disk that goes missing from a courier van. The disk holds a copy of a training dataset, and the team's first question is whether the data is exposed. If the disk was encrypted and the key was stored somewhere else, the answer is almost certainly no. If the key was taped to the disk, the answer is yes. The same question applies to a network capture. A capture of encrypted traffic gives an attacker little beyond metadata, while a capture of cleartext hands over the payload. Encryption at rest and in transit is the thing that decides which of those two stories you tell.
 
 Make the encryption decision for each fabric explicitly, based on whether tenants share it.
 
@@ -142,6 +150,8 @@ Volumetric attacks saturate bandwidth, so you absorb them upstream with scrubbin
 The main techniques are rate limiting and policing, SYN cookies with sensible backlogs (chapter 2.6), and anycast to spread load across sites. Blackhole routing (RTBH) drops traffic bound for an attacked destination. It sacrifices the victim address to save the rest of the network. Selective BGP traffic diversion uses the `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links. BCP 38 and uRPF drop packets with spoofed sources, which prevents reflection. Traffic scrubbing services, overprovisioning and autoscaling with budget caps add capacity. Separating critical services, such as putting management on its own network, limits the damage. Finally, rehearse your runbooks before you need them.
 
 Inference APIs are attractive targets, because each request can consume GPU seconds. That makes them a resource-exhaustion target. One expensive prompt costs far more than a web page, so a modest stream of them can starve a cluster. Use authentication, per-key quotas, token-based rate limits and admission control (chapter 2.20).
+
+Walk through a SYN flood step by step, since the mechanism explains the defence. The attacker sends many connection requests, each with a fake source address. The server answers each one with a SYN-ACK and stores a half-open entry, which waits for a final acknowledgement that never arrives. The table of half-open entries fills, and legitimate clients are refused because no room is left. SYN cookies change the server's answer. The server encodes the connection details into the sequence number of its SYN-ACK and stores nothing. A real client returns the value, and the server rebuilds the connection from it. The attacker, who never sends the final acknowledgement, gains no stored state at all.
 
 Set your rate limits and quotas before traffic spikes, not during an attack.
 
@@ -260,6 +270,8 @@ nmap --script ssl-enum-ciphers -p 443 host     # TLS protocol/cipher audit
 ss -tulpn                             # compare with what the host itself says it listens on
 ```
 
+Picture an engineer who runs nmap from a laptop on the office network and sees only the SSH port on a server. The result looks reassuring. A scan from the bastion, which sits on a different segment, shows a second port that the office laptop never reached. The firewall was allowing that second port only from the bastion, so the first scan missed it. Both scans were correct, and each one answered a different question about the same server. That is why the scan has to come from more than one place before you trust it.
+
 Run scans from at least two vantage points, the host itself and another network, ideally one outside your perimeter. That shows what the firewall really blocks. What a server believes about its own ports and what the outside world sees can be very different, and the gap is exactly where surprises hide. Scan only networks you own or have written permission to test. Scans get logged, they can disrupt fragile devices, and they may break policy or the law.
 
 Add vulnerability scanners such as OpenVAS, Nessus and Trivy for images. Add configuration baselines such as CIS benchmarks and Lynis, and keep a continuous asset inventory. The `rpcbind` service on port 111, along with NFS and NIS, is a common unwanted exposure, so disable it if you do not use it. Typical findings are forgotten dev servers, default credentials and management ports exposed beyond need. Watch for BMC on 623 and 443, Redis on 6379, the Docker API on 2375, and kubelet on 10250. Also watch etcd on 2379, Jupyter on 8888, TensorBoard on 6006, Triton on 8000-8002, the Ray dashboard on 8265, and MLflow on 5000.
@@ -269,6 +281,8 @@ Scan from outside, compare the result with `ss`, and close every port you cannot
 ## 9. Basic rules and how attacks reach AI clusters
 
 Most intrusions into a GPU cluster start with something small and ordinary. A forgotten dashboard, a stolen cloud key or an unpatched service gives the attacker a foothold. The rules below shrink that exposure, and the table shows the paths attackers use in practice.
+
+Picture a data scientist who starts a Jupyter notebook on a GPU node to test a model. The notebook listens on all interfaces, with a token that the scientist copied into a chat window. A week later the notebook is still running, the token is still valid, and a scanner finds the port open from outside the cluster. Nothing was broken on purpose, but the open service was the attacker's way in. A simple habit prevents this: bind the notebook to localhost, tunnel to it over SSH, and stop it when the work is done.
 
 Run as few services as possible. Every running service is a door, and a door nobody uses is a door nobody watches. Block everything you do not need with a firewall, both on the host and at the perimeter. Track and patch every service you expose, and subscribe to security advisories. Use long-term support releases on servers, because security teams concentrate their work on stable, supported releases. Give accounts only to people who need them, because local access makes privilege escalation far easier than a remote attack. Verify signatures and hashes on every download, and install software only from sources you trust.
 
@@ -290,6 +304,8 @@ For advisories, read the CISA and national CERT advisories, the SANS newsletters
 ## 10. Securing routing and the control plane
 
 Strong data-plane security does not help if someone can hijack the control plane. Routing protocols decide where traffic goes, so they need protection of their own. If a stranger can whisper a better route into your router, your carefully filtered traffic will happily flow through the stranger's machine. Start by authenticating them. OSPF and IS-IS use HMAC-SHA, and BGP uses TCP-AO or MD5. For eBGP, use GTSM with TTL 255. GTSM is a trick that accepts a BGP packet only if its TTL is still at the maximum, which proves the sender is directly attached, because every router in between would have lowered it. Restrict BGP and OSPF to specific interfaces and peers, and make `passive-interface` the default.
+
+Picture a peer that announces, one afternoon, a set of routes it has never announced before. Its prefixes overlap with a block of your own addresses, and the new routes are more specific, so your routers prefer them. Traffic meant for your servers starts flowing to the peer. Without a prefix list, a max-prefix limit or RPKI origin validation, nothing stops that announcement. With them, the routes are rejected at the edge, and the traffic keeps flowing to your own network. The check happens on the way in, which is the only moment you can stop a leak before it spreads.
 
 Filter the routes that come in. On every peer, apply prefix lists and max-prefix limits, and use RPKI origin validation. Reject bogons, default routes from the wrong peer and overly specific prefixes. Make sure you never carry transit traffic by accident.
 
@@ -316,6 +332,8 @@ Some attacks target the local network itself, below anything a perimeter firewal
 | VLAN hopping (double tagging, DTP) | Disable DTP, no VLAN 1 native, set native VLAN to an unused ID, prune trunks |
 | Unauthorised device attach | **802.1X** (EAP-TLS) or MAB, per-port authentication, dynamic VLAN assignment |
 | Link eavesdropping | **MACsec (802.1AE)** on sensitive links |
+
+Walk through a rogue DHCP server on an office port. A laptop plugged into the wrong port starts answering DHCP requests before the real server does. A new client broadcasts a request, and the rogue answers first with an address and with its own address as the default gateway. The client accepts the offer and sends its traffic to the rogue. DHCP snooping stops this at the switch. The switch trusts the offers only from the port where the real server sits, and it drops offers from every other port. The rogue's offer never leaves its port, and the client gets its address from the real server.
 
 Use the table as a checklist for each switch you manage. 802.1X decides which devices may attach to a port, and MACsec protects the traffic on the link itself.
 
@@ -359,6 +377,8 @@ Test enforcement before you rely on the default-deny policy, because a policy do
 
 Picture a bare-metal GPU cluster that several tenants share. Their traffic crosses shared switches, and each node has a management controller. The sections below follow the attack paths from the management controller outward.
 
+Picture a bare-metal GPU server that a tenant has rented for a week. When the tenant returns the machine, the provider reinstalls the operating system and assumes the box is clean. The BMC still holds the tenant's settings, and it may still accept the old password. Anyone who reaches that BMC can reinstall firmware or read memory, whatever the operating system does. The lesson for the provider is that the BMC needs its own credential rotation and its own firmware check at every handover, not just a fresh operating system.
+
 Start with the BMC. Out-of-band management, through IPMI, Redfish, iDRAC, iLO, XClarity or the DGX BMC, has a weak history. Default credentials, the old IPMI 2.0 cipher-zero, exposed web UIs and unauthenticated firmware vectors have all caused trouble. Put BMCs on an isolated management network with strict ACLs. Give each one a unique, strong credential, and disable IPMI-over-LAN if you do not use it. Keep firmware current, serve HTTPS with real certificates, and allow access only through jump hosts. Watch for Redfish events and firmware changes.
 
 Next comes provisioning. PXE, DHCP, TFTP and image servers are trust anchors for every node. A node that boots from the network believes whatever the image server tells it, so whoever controls that server controls the fleet. Protect them with signed images, HTTPS boot, secure boot and TPM measured boot where you use them. Isolate their VLAN, and treat a compromise there as a fleet-wide problem.
@@ -391,6 +411,8 @@ An alert fires, and the clock starts. Security work is a cycle you repeat, not a
 2. **Orient**: Put the observations in context. Ask what is normal, which asset is affected, what the attacker is likely after (MITRE ATT&CK technique), and what the business impact would be. Orientation is where experience and a good inventory pay off, and bias and assumptions are its main enemies.
 3. **Decide**: Choose a response. You can contain (isolate a host or VLAN, block an IP, revoke credentials), eradicate, recover, or keep monitoring. Predefined playbooks speed up the decision.
 4. **Act**: Execute the response, preferably automatically. Then observe the result and loop again. Afterwards, improve your defenses through lessons learned and a post-incident review.
+
+Walk through the three-in-the-morning alert from the top. Observe: the flow logs show a GPU node sending steady traffic to an address outside the company, and the traffic is far larger than the node's usual pattern. Orient: the team checks the asset inventory and finds that the node runs a training job with no reason to talk to that address. They also look up the address in the threat feed, and the feed lists it as a known command-and-control server. Decide: the playbook says to quarantine the node. Act: the node's port moves to a quarantine VLAN, the credentials it used are revoked, and the team starts a forensic copy of its disk. Then the loop starts again, to check that the traffic has stopped and that no other node talks to the same address.
 
 Build fast loops on purpose. Automate isolation hooks, such as moving a port to a quarantine VLAN, applying a K8s deny policy or disabling an account. Write runbooks, rehearse them in game days, and assign clear ownership. Keep forensic readiness too. Preserve logs and memory, avoid destroying evidence, and record timelines.
 

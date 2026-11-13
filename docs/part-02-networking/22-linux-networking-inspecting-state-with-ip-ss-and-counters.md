@@ -75,6 +75,8 @@ ip monitor                  # live netlink events: link, addr, route, neigh chan
 ip -j addr | jq '.[] | {ifname, addr_info}'     # machine-readable output for scripts
 ```
 
+Picture a job that reports its interface as up, while the training nodes cannot reach it. An engineer runs `ip -br addr` and sees the name, the state and an address, and the job still fails. The brief view is a good first filter, because it answers whether the interface exists and holds the expected address. The full view, shown next, answers whether the link has carrier, which MTU it uses, and where each address came from. Work through the two views in that order, so the cheap check settles the easy cases before you read the detail.
+
 Read the `ip addr` output from top to bottom. The first line describes the link, and the indented lines describe its addresses.
 
 ```text
@@ -103,6 +105,8 @@ sudo ip link add link eth0 name eth0.100 type vlan id 100
 sudo ip link set eth1 down ; sudo ip addr flush dev eth1
 ```
 
+Picture a fix made at two in the morning. An engineer adds a route by hand, the job starts, and everyone goes to bed. At the next reboot the route is gone, and the job fails again at the same hour. The manual command did what it said, but nothing recorded it anywhere the boot process reads. The commands above are fine for finding out what works. The result then has to move into the configuration file of the manager that owns the interface, or the fix will disappear.
+
 Manual configuration is useful for experiments and emergencies, but it is fragile. It disappears on reboot. It also conflicts with the manager that owns the interface, because a running DHCP client or NetworkManager will undo or fight your change. The legacy tools (`ifconfig`, `route`, `arp`, `netstat`) come from the `net-tools` package. They may not be installed, and they miss newer features, but you will still see them in old documentation.
 
 ### `ethtool`: the hardware side
@@ -122,6 +126,8 @@ ethtool -x eth0 ; ethtool -n eth0                        # RSS indirection table
 ethtool -m eth0                                          # transceiver/optics diagnostics (power, temperature, vendor)
 ethtool --show-fec eth0 ; ethtool -T eth0                # forward error correction ; timestamping/PTP capabilities
 ```
+
+Walk through a common ethtool case. A server is moved to a new rack, and its training job runs at a fraction of the expected rate. The first check is the link speed in the ethtool output. It shows a lower speed than the NIC supports, and the second check is the optics. The `ethtool -m` output shows that the receive power is low, which points to a dirty connector. Cleaning the connector restores the speed. The order matters here, because the speed line alone could suggest a switch setting, while the optics line points at the cable.
 
 A cable that has been pulled, or a switch port that is down, shows `Link detected: no`. A 100 GbE NIC that negotiates 25 GbE shows the lower figure in `Speed:`. A half-duplex link or a wrong-speed link is a classic cause of mystery throughput loss. `ethtool -m` reveals dirty optics, such as low RX power, before they cause CRC errors. Check `ethtool` first whenever a link is slower than you expect.
 
@@ -346,6 +352,8 @@ The table lists the tools that read those counters. Start with the tool closest 
 
 Read each counter by its type. **Errors** with CRC, frame or length labels point to the physical layer, such as a cable, the optics, FEC, or a speed or duplex mismatch. **Dropped**, **missed** and **no_buffer** counters mean the host could not keep up. The fixes there are larger rings, more RSS queues, correct IRQ affinity, lower per-packet cost, more CPU, or XDP. Softnet `dropped` and `time_squeeze` point to softirq starvation, which you tune with `net.core.netdev_budget` and `netdev_max_backlog`, or with RPS and RFS. TCP retransmits point to loss somewhere on the path. Compare them with a baseline, because Internet-facing flows retransmit more than rack-local ones. `ListenOverflows` means the accept queue is full, and `UdpRcvbufErrors` means socket buffers overflowed. Pause and PFC counters show backpressure, which chapter 2.19 covers.
 
+Picture a host whose receive drop counter has a large number, and an engineer who wants to know whether the drops are happening now. The counter has been climbing since the machine was installed, so the number says nothing about today. The engineer reads it once, waits a short time with the workload running, reads it again, and subtracts. If the difference is zero, the drops are old history, and the team can look elsewhere. If the difference keeps rising during the job, the drops are live, and the team starts at the layer where the counter lives.
+
 Always work with deltas over an interval, because counters only grow. A counter that reads a million drops tells you nothing by itself, since those drops might have happened last year. `nstat` and `sar` do this for you. Take two readings a few seconds apart, and act on the difference rather than the running total.
 
 The script below runs a quick first pass over links, speeds, errors, TCP, softnet and conntrack.
@@ -383,23 +391,33 @@ Measure what the system is being asked to do before you judge how it performs. T
 
 ### Latency analysis
 
+Picture a user who says that the internal app is slow, but only from one office. The team does not start by changing servers. They split the wait into parts. The name lookup is the first part, and a `dig` with statistics shows whether it takes too long. The handshake is the second, and the connection time from `curl -w` shows whether it is slow. The first-byte time is the third, and it shows whether the server is slow once the connection is open. Each part has its own cause, so the team learns which one grows before it changes anything.
+
 Break latency into parts, and find the part that grows. A slow page load is a sum of many small waits, and only one of them is usually the culprit. Name resolution (DNS) can time out for tens of seconds. Ping and RTT show the path. TCP connection latency is the handshake, and first-byte latency is the think time of the server plus the RTT. Connection life span matters too, because short-lived connections multiply the handshake cost. Per-request latency comes from the application itself. The tools for this are `curl -w` timing variables, `dig +stats`, `tcpconnlat`, `tcpdump` timestamps, the `rtt` field from `ss -ti`, `mtr`, and application tracing. Compare what you measure against expected values. Rack-local 100G traffic should take tens of microseconds, same-DC traffic 0.2 to 0.6 ms, and cross-continent traffic 40 to 180 ms.
 
 ### TCP analysis
+
+Picture a large file copy that starts fast, then sits at a fixed speed no matter how much bandwidth is free. The `ss -ti` output for that connection shows `rwnd_limited` as a large share of its time. That label means the receiver's window is the thing holding the sender back. The sender has data and congestion room, but the receiver has not opened its window enough. The fix is on the receiving side, for example a larger receive buffer, or an application that reads faster. Changing the sender does nothing, because the sender is already waiting on the other end.
 
 Look at the TCP-specific behaviour. Check the send and receive buffer sizes and their limits, the window sizes, the congestion control state, retransmits and timeouts, the listen queue, duplicate ACKs, zero windows, the SYN backlog and TIME_WAIT. The `ss -ti` limiter flags (`rwnd_limited`, `cwnd_limited`, `sndbuf_limited`, `app_limited`) tell you which factor bounds each connection. `nstat` explains loss, and `tcpretrans` shows which flows retransmit and where. `tcpdump` and Wireshark give the ground truth, as chapters 2.6 and 2.26 cover.
 
 ### Static performance tuning
 
+Picture a rack of identical servers that run one job. Nineteen show the expected throughput, and one runs much slower on the same workload. The team does not start by profiling the job. They compare the configuration of the slow node with the others: the negotiated speed, the MTU, the offloads, the driver version. In most cases one line differs, and that line explains the whole gap. A systematic check across the fleet finds the difference in minutes, while a hunt for a mysterious cause can take days.
+
 Check the configuration for deviations from best practice before any load arrives. Look at the negotiated link speed, duplex and FEC. Confirm that the MTU is consistent end to end, that offloads are on, and that ring sizes and queue counts are right. Check IRQ affinity, the NUMA locality of the NIC and the GPU, interrupt coalescing, the qdisc, TCP buffer limits and congestion control. Also check `somaxconn` and the backlog, conntrack limits, firewall rule counts, routing correctness, bonding and LACP state, DNS configuration, the NIC firmware and driver versions, and the kernel version. Most real problems are configuration drift, such as one node with a 1 GbE negotiated link, a wrong MTU, a disabled offload or a different driver. One odd machine among a hundred identical ones is a configuration problem far more often than a mystery.
 
 ### Resource controls
+
+Picture a pod that downloads model weights and takes the whole node's bandwidth. Other pods on the node slow down, and their health checks start to fail. The fix is to give the download pod a cap, so the others keep their share. Before blaming the network, the team checks which limit is in force. A cap set by the cloud, an SR-IOV rate, and a Kubernetes annotation each look like a slow network from inside the pod, so the question of which one applies comes first.
 
 You can limit network bandwidth per cgroup, per process or per interface. The tools are `tc` (qdiscs and classes, `htb`, `tbf`, and `fq` with `SO_MAX_PACING_RATE`), cgroup v2 with eBPF (`net_cls` and `net_prio` in the legacy setup, and `bpf` rate limiting), and Kubernetes bandwidth annotations (`kubernetes.io/ingress-bandwidth`). Cloud instance caps, NIC SR-IOV VF rate limits and switch policing can also limit traffic. Know which limit is active before you blame the network.
 
 ### Micro-benchmarking
 
 Measure isolated components to confirm what they can do. Use `iperf3` for TCP and UDP throughput, and `netperf` for request and response work, with `TCP_RR` for latency. `ping -f`, `ib_write_bw/ib_write_lat` (RDMA) and `nccl-tests` (collectives) cover the rest of the network. `fio` runs over NFS or S3, `wrk/hey/ghz` tests HTTP and gRPC, and `pktgen`, `trafgen` and TRex test packet rates.
+
+Walk through a throughput test on a 100G link from the start. First run a single stream and record the number. Then run several parallel streams with the same tool, which fills the link better. If the single stream reaches only part of the link while the parallel streams reach much more, the limit is per flow, not per link. Only after that comparison does the test look at the CPU placement, because each step narrows the cause before you spend time on the next one.
 
 Pin the CPUs to the same NUMA node as the NIC, and run long enough to smooth out noise. Record the kernel, driver and firmware versions, then compare the result with theory. At a 1500 MTU, expect about 94 percent of the nominal rate, which is the line rate minus overhead.
 
@@ -416,6 +434,8 @@ ESTAB 0 0 10.0.0.2:51234 10.0.0.5:443
   bytes_retrans:12K segs_out:1500 segs_in:900 send 373Mbps pacing_rate 746Mbps delivery_rate 330Mbps
   busy:2300ms rwnd_limited:100ms(4.3%) app_limited retrans:0/9 reordering:3 rcv_space:14480
 ```
+
+Read the example line from left to right, as one story. The connection is established, and it uses cubic congestion control. The round-trip time is about 0.31 ms. The congestion window has 10 segments, and the sender has pushed out about 2 MB with almost no retransmits. The delivery rate is well below the pacing rate, so the connection is not using all it is allowed. The limiter column answers why. The receive window was the limit for a small share of the time, and the application limit is flagged as well. Each field answers one question, and reading them in order gives the full picture.
 
 The field `rtt:avg/var` gives the round-trip time, and `cwnd` and `ssthresh` give the congestion window state. The `retrans:current/total` field counts retransmits. `delivery_rate` is what the connection actually achieves, and `pacing_rate` is what it aims for. The limiter times, `busy`, `rwnd_limited`, `sndbuf_limited` and `cwnd_limited`, are shown as percentages. `app_limited` means the application is not providing data fast enough. `reordering` and `minrtt` complete the picture.
 
@@ -457,7 +477,9 @@ Pick the tool that matches the question, and keep the test repeatable.
 
 Work from the symptom inward. When a service is unreachable, you can start at the application and move down toward the wire. Or you can start at the hardware and move up toward the application. Both directions end at the same place, and the table at the end maps common symptoms to their first checks.
 
-**Top-down (application symptom to wire).**
+**Picture a monitoring alert that says the batch job cannot reach a service, while the same service works from an engineer's laptop. The laptop test proves that the service runs, so the team starts at the top of the checklist and moves down one question at a time. The job's logs show a timeout rather than a refusal, which already rules out a closed port. The next questions are about DNS, the route the job takes, and the firewall. The list is long, but each answer removes a whole group of causes.
+
+Top-down (application symptom to wire).**
 
 1. Is the process running and listening (`ss -tulpn`, `systemctl status`)? Is it listening on the expected address and port, loopback or all addresses? Is the accept queue (`ss -ltn` Recv-Q) full?
 2. Can a local client connect (`nc -zv localhost port`)? Can a peer connect (`nc -zv host port`)? Is the failure a refusal or a timeout (chapter 2.6)?

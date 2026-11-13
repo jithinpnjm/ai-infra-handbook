@@ -155,6 +155,10 @@ bridge fdb show dev vxlan100 ; ip -d link show vxlan100 ; tcpdump -ni eth0 udp p
 sudo ip link add vxlan0 type vxlan dstport 4789 local 10.255.0.11 nolearning external vnifilter
 ```
 
+Here is what happens when VM A on host 1 sends a frame to VM B on host 2, both on the same VNI. VM A hands its Ethernet frame to the bridge on host 1. The bridge looks up the destination MAC. If that MAC is not yet known on the local bridge, the frame goes out to the VTEP as unknown unicast, which is the same flooding case described earlier. The VTEP then wraps the frame. It adds the VXLAN header with the VNI, a UDP header whose destination port is 4789 and whose source port is a hash of the inner flow, and an outer IP header addressed to the VTEP on host 2. The underlay routes that packet like any other IP packet, and it never looks inside.
+
+On host 2, the VTEP removes the outer headers, reads the VNI and hands the inner frame to the bridge that serves that VNI. The bridge learns the source MAC of VM A against host 1's VTEP, so the next reply needs no flooding. VM B receives a frame that looks as if it came across one switch. The whole trip was invisible to both VMs, and that invisibility is the point of the design.
+
 To debug, run `tcpdump -ni eth0 -vv udp port 4789`. Wireshark decodes the VXLAN header and the inner frame. Check the MTU with `ping -M do`. Test the underlay path between the VTEP loopbacks separately from the overlay, so you know which layer has the fault.
 
 ## 4. EVPN: a control plane for Ethernet and IP overlays
@@ -231,6 +235,8 @@ As you verify the fabric, work in this order, from the bottom layer up. Confirm 
 
 ### Common EVPN/VXLAN pitfalls
 
+Picture a fabric that passes every ping test and still drops large transfers between two racks. The small pings fit inside the underlay, and the large transfers do not. The list below is the set of usual suspects. The first two checks, the MTU and the VTEP loopbacks, catch the most cases, so start there.
+
 Most EVPN faults come from a short list:
 
 - The underlay MTU is too small.
@@ -244,15 +250,21 @@ Most EVPN faults come from a short list:
 - Missing resilient hashing, or split brain from MLAG mixed with EVPN multihoming, causes further trouble.
 - A default import of `any` lets tenant routes leak.
 
+Take the ECMP polarization entry as a worked example. Suppose the VTEP hashes its outer UDP source port from the inner flow, but a spine's hash ignores that port and looks only at the outer addresses. Every flow between the same two VTEPs then carries the same outer addresses, so the spine sends all of them down one link. The other ECMP links sit idle while one link saturates. The packet headers look correct, and the mistake shows only in the link counters. The fix is to make sure the spine hashes on the UDP ports as well.
+
 Before you turn on EVPN, check that the route targets match at both ends and that the underlay MTU is large enough.
 
 ## 5. Overlays for AI clusters and containers
 
 Consider a GPU cluster with two traffic paths. The GPU-to-GPU path carries the heavy collective traffic of training. The Kubernetes pod network carries service calls, logs and control traffic. They do not face the same trade-offs, so each needs its own overlay decision.
 
+Picture a training job that runs fine on its own rack and slows down badly when it spans two. The collective traffic now crosses the overlay, and each packet is 50 bytes larger than the job expected. The job's packet size does not fit the underlay anymore, so the stack either fragments or drops, and the collective waits. Teams that run this kind of job check the MTU before they check anything else.
+
 RDMA fabrics for GPU-to-GPU traffic are normally routed IP or Ethernet, without VXLAN. The reason is easy to see once you remember what an overlay costs. Encapsulation costs MTU, adds hardware complexity and complicates lossless-queue mapping. So overlay-based multi-tenancy is usually applied at the front end, for storage, inference and management. On the back end, it tends to rely on NIC or DPU offload instead. If VXLAN does carry RoCE, make sure the ECN and PFC markings are copied from the inner DSCP to the outer one, keep the queue mappings intact, and verify ASIC and NIC support.
 
 If you run multi-tenant clusters, give each tenant its own EVPN-VXLAN VRF or MAC-VRF. Add GBP or ACLs for microsegmentation, and pair that with performance isolation, which chapter 2.16 section 7 and chapter 2.19 cover.
+
+Here is a walkthrough for one pod call under an overlay CNI. Pod A on node 1 calls a service that ends up on pod B on node 2. The packet leaves pod A through its virtual interface, reaches the node bridge, and is found to belong to a remote pod subnet. The overlay device on node 1 wraps the packet in an outer header addressed to node 2. The underlay carries it across the fabric. Node 2 unwraps it and passes the inner packet to pod B. Each hop adds a little work, so the same call on native routing skips the wrapping step and runs with fewer steps and no extra header.
 
 Inside Kubernetes, every pod needs an IP that other pods can reach, and the CNI plugin decides how that happens. CNIs offer several modes. Flannel runs VXLAN. Calico runs IPIP or VXLAN, or native BGP. Cilium runs VXLAN or Geneve, or native routing with eBPF. Antrea runs Geneve. Overlay mode lowers the pod MTU, adds CPU cost and hides pod IPs from the fabric. Native BGP routing is preferred for performance-critical clusters, as chapter 5 and chapter 2.25 explain. To debug, run `ip -d link show flannel.1`, `bridge fdb`, and `tcpdump -ni eth0 udp port 8472`, which is the Flannel and Cilium default, or `4789`.
 
@@ -277,6 +289,8 @@ flowchart LR
   B --> D["D: node SID 104"]
   C --> D
 ```
+
+Follow the packet through the diamond. Router A pushes two labels, 103 on top and 104 underneath, because it wants the packet to pass through C on the way to D. Router B is not on the chosen path, so the packet never goes near it. Router C looks at the top label, sees 103, which is its own node SID, and removes it. What remains on top is 104, which tells the next router to head for D. Router D sees its own label on top, removes it, and the packet is a normal IP packet by the time it reaches the destination. Each router reads only the top of the stack, which is why the transit routers need no memory of the flow.
 
 SR-MPLS carries segments as MPLS labels. Each MPLS header is 32 bits: a 20-bit label, a 3-bit traffic class, a bottom-of-stack bit and an 8-bit TTL. PUSH adds a label, POP removes the top one, and SWAP replaces it. The ingress imposes the stack with PUSH. Transit routers on the way to a node SID perform CONTINUE, which swaps in the same label, and the owner of the top label pops it. Labels come from the SR Global Block, and the IGP distributes them through IS-IS or OSPF extensions, or through BGP-LS.
 
@@ -335,6 +349,8 @@ The second part runs on a disposable Linux VM, using network namespaces and cont
 11. Clean up.
 
 ## 9. Common mistakes
+
+Picture a team that tests a new overlay with a short ping, sees replies, and declares the design ready. Two days later, a file copy stalls at the same point every time. The short ping never reached the size where the lost headers matter, so it proved nothing about the real traffic. Check the overlay with a large, don't-fragment ping and with a real transfer before you sign off, because the mistake is quiet until the packets get big.
 
 The most common trap is forgetting the MTU tax. Tunnels look fine for small pings, then hang on real traffic. The small packets fit inside the reduced limit, and the big ones quietly do not. Non-UDP encapsulations give you no ECMP entropy if you hash only on the outer addresses. Do not treat the overlay as independent of the underlay. Monitor both.
 
