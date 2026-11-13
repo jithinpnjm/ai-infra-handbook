@@ -23,12 +23,14 @@ lab_venue: "none (design / reading)"
 
 ## Why this matters for AI infrastructure
 
-For fifteen years, accelerated computing lived with a painful compromise. Even as GPU High Bandwidth Memory soared into the multi-terabyte-per-second range, the host CPU stayed stranded behind a narrow PCIe bus. Whenever a recommender model looked up giant embedding tables in host RAM, the GPU sat idle. Long-context language models offloading key-value caches or graph networks sampling massive datasets paid the exact same PCIe tax. Engineers watched expensive accelerators stall while waiting for bytes to crawl across an I/O bus designed for network cards and storage drives.
+Picture a recommendation model whose embedding tables are too large for the GPU, so they sit in host RAM. Each training step asks the GPU to fetch a few rows from those tables. The GPU finishes its math in a moment and then waits for the rows to arrive. Your utilization graph shows busy GPUs only part of the time, and nothing in the logs explains why.
 
-To remove this wall between the CPU and GPU, NVIDIA designed its own data center processor. The Grace CPU pairs 72 Arm Neoverse V2 cores with fast on-package LPDDR5X memory. It bonds directly to Hopper and Blackwell GPUs over NVLink-C2C at 900 GB/s bidirectional with full hardware cache coherence and a single virtual address space. Understanding how Grace, GH200, GB200, and GB300 Superchips work is essential for running modern rack-scale clusters. You must also learn what they do not solve automatically. GPU-to-GPU caches remain non-coherent across NVSwitch, and hot tensors must stay in HBM.
+For fifteen years, accelerated computing lived with that kind of compromise. GPU High Bandwidth Memory (HBM, the fast memory package mounted next to the GPU die) climbed into the multi-terabyte-per-second range. The host CPU, however, stayed behind a narrow PCIe bus. PCIe, short for Peripheral Component Interconnect Express, is the general-purpose bus that connects cards to a server board. Long-context language models that offload key-value caches to host memory paid the same toll, and so did graph networks that sample huge datasets. In each case the accelerator sat idle while bytes crawled across an I/O bus that was designed for network cards and storage drives.
+
+To remove this wall between the CPU and GPU, NVIDIA designed its own data center processor. The Grace CPU pairs 72 Arm Neoverse V2 cores with fast on-package LPDDR5X memory. Arm Neoverse V2 is a CPU core design from Arm, and LPDDR5X is a low-power memory standard used in servers. The CPU bonds directly to Hopper and Blackwell GPUs over NVLink-C2C, a chip-to-chip link, at 900 GB/s bidirectional. The link carries full hardware cache coherence, so the CPU and the GPU always see the same current copy of a value, and a single virtual address space, so both use the same pointers. Understanding how Grace, GH200, GB200, and GB300 Superchips work is essential for running modern rack-scale clusters. You must also learn what they do not solve automatically. GPU-to-GPU caches remain non-coherent across NVSwitch, and hot tensors must stay in HBM.
 
 :::info Corpus scope note
-Standalone *NVIDIA Grace CPU Superchip Architecture Whitepaper* and *NVIDIA GH200 Grace Hopper Superchip Datasheet* PDFs are not in the local book corpus. The architectural specifications, NVLink-C2C coherence model, memory placement rules, and SuperOffload or GraceAdam algorithms in this chapter come from the cited corpus books and notes.
+The standalone *NVIDIA Grace CPU Superchip Architecture Whitepaper* and *NVIDIA GH200 Grace Hopper Superchip Datasheet* are not among the sources this chapter used. The architecture figures, the NVLink-C2C coherence model, the memory placement rules, and the SuperOffload and GraceAdam methods come from the books cited in the Sources section.
 :::
 
 ## Prerequisites and outcomes
@@ -36,11 +38,7 @@ Standalone *NVIDIA Grace CPU Superchip Architecture Whitepaper* and *NVIDIA GH20
 **Prerequisites:**
 - Chapters 9.1 to 9.3 covering DGX and HGX system families, PCIe Gen5 switch complexes, and NUMA domains.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Quantify the PCIe Gen5 tax against NVLink-C2C bandwidth and energy efficiency.
-2. Explain the internal design of the NVIDIA Grace CPU, including its Arm Neoverse V2 cores, Armv9 SVE vector units, and soldered on-package ECC LPDDR5X.
-3. Contrast the Grace CPU Superchip, GH200 Grace Hopper, GB200 Grace Blackwell, GB300 Grace Blackwell Ultra, and the Vera Rubin roadmap.
-4. Distinguish CPU-to-GPU hardware cache coherence over NVLink-C2C from GPU-to-GPU memory sharing over NVSwitch. Configure Linux NUMA pinning, hugepages, and SuperOffload.
+This chapter starts with the cost of the PCIe bus and works up to the Grace CPU itself. It then covers the coherence rules that tie the CPU to the GPU, the lineup of Superchip modules and the roadmap after Blackwell, and the operating system settings that make Grace run well. Those settings are NUMA pinning (non-uniform memory access, which means binding work to the memory closest to it), hugepages, and SuperOffload.
 
 ---
 
@@ -48,13 +46,15 @@ Standalone *NVIDIA Grace CPU Superchip Architecture Whitepaper* and *NVIDIA GH20
 
 ## 1. The bottleneck: the PCIe tax on x86 GPU servers
 
-When a model or dataset outgrows GPU memory on a traditional x86 server, training and inference speeds collapse. Platform engineers and ML researchers feel this slowdown immediately when a job fits in host DDR5 RAM but runs ten times slower than expected. The culprit is the narrow PCIe bus separating the Intel Xeon or AMD EPYC processor from the GPU.
+Imagine a training job whose data fits in the server's ordinary RAM but not in the GPU's memory. The job starts, and it runs far slower than expected. Platform engineers and ML researchers meet this slowdown often, and it usually traces back to one narrow link. When a model or dataset outgrows GPU memory on a traditional x86 server, training and inference speeds collapse. The culprit is the narrow PCIe bus separating the Intel Xeon or AMD EPYC processor from the GPU. x86 is the instruction set family that Intel and AMD server processors share, and DDR5 is the current generation of server memory.
 
 In a standard x86 server, the CPU and GPU live on separate boards with separate physical memory pools. Think of the GPU HBM3e memory as a factory floor moving materials on wide conveyor belts at 8,000 GB/s. The host CPU DDR5 RAM is a giant warehouse across the street. Connecting them with a 16-lane PCIe Gen5 slot is like linking that warehouse to the factory with a single garden hose. As long as all materials fit inside the factory floor, production flies. The moment the factory fetches parts from across the street, the machines grind to a halt.
 
+The analogy has a limit, but it points at the right question. The question is not how fast the factory is. The question is how often the factory has to reach across the street. If the working set stays on the factory floor, the slow link barely matters. If the working set keeps moving back and forth, the link decides the speed of the whole plant.
+
 ### 1.1 Quantifying the PCIe Gen5 bandwidth gap
 
-The table below compares the three memory and interconnect tiers inside a traditional x86 Hopper or Blackwell server.
+Suppose a GPU needs a tensor that sits in host memory. How long does the trip take, compared with reading from the GPU's own memory? The table below compares the three memory and interconnect tiers inside a traditional x86 Hopper or Blackwell server. Read each row as a question about speed. How fast can the GPU reach its own memory, how fast can GPUs talk to each other, and how fast can the GPU reach the host? The last column turns each answer into a multiple of the PCIe baseline, which makes the gap easier to see.
 
 | Memory or Interconnect Tier | Hardware Example | Unidirectional Bandwidth | Bidirectional or Total Bandwidth | Relative Speed vs PCIe Gen5 x16 |
 |---|---|---|---|---|
@@ -62,10 +62,13 @@ The table below compares the three memory and interconnect tiers inside a tradit
 | **GPU-to-GPU NVLink** | Hopper NVLink 4, Blackwell NVLink 5 | 450 GB/s or 900 GB/s | 900 GB/s (Hopper) or 1,800 GB/s (Blackwell) | 7× to 14× faster |
 | **CPU-to-GPU PCIe Gen5 x16** | x86 Host to GPU | 64 GB/s | 128 GB/s | 1× baseline |
 
-Whenever a workload exceeds local HBM capacity and spills into host CPU memory, it pays the PCIe tax across three common AI workloads.
-1. **Giant Recommendation Models:** Deep learning recommendation models store multi-terabyte embedding tables in host RAM and query them on every mini-batch.
-2. **Long-context KV-cache offloading and MoE streaming:** Evicting inactive key-value cache blocks or unscheduled Mixture-of-Experts weights to host DDR5 stalls the decode loop when transfers are capped at 64 GB/s.
-3. **Massive Graph Neural Networks:** A fraud-detection graph of 1.2 TB cannot fit inside 80 GB of GPU HBM. Streaming those node features across PCIe Gen5 leaves the GPU compute cores idle for days.
+Whenever a workload exceeds local HBM capacity and spills into host CPU memory, it pays the PCIe tax. Three common AI workloads pay it most often.
+
+1. Giant recommendation models store multi-terabyte embedding tables in host RAM and query them on every mini-batch.
+2. Long-context KV-cache offloading and MoE streaming push inactive key-value cache blocks or unscheduled Mixture-of-Experts weights to host DDR5, and the decode loop stalls when transfers are capped at 64 GB/s.
+3. Massive graph neural networks run into the same wall. A fraud-detection graph of 1.2 TB cannot fit inside 80 GB of GPU HBM, and streaming those node features across PCIe Gen5 leaves the GPU compute cores idle for days.
+
+The three workloads share one pattern. Each one keeps reaching for data that does not fit where the GPU can use it at full speed. A mixture-of-experts model, for example, activates only a few experts for each token, so the rest of its weights wait in host memory. Every time one of those waiting experts is needed, the transfer crosses the slow bus.
 
 ```text
 Portfolio GNN host-to-GPU transfer time on PCIe Gen5 x16 (my inference):
@@ -73,6 +76,8 @@ Dataset size: 1.2 TB = 1,200 GB (from Volume 04 Chapter 7 customer scenario)
 PCIe Gen5 x16 unidirectional limit: 64 GB/s
 Pure bus transfer time per pass = 1,200 GB / 64 GB/s = 18.75 seconds
 ```
+
+The arithmetic in the block is simple division. The dataset size divided by the bus rate gives the minimum time to move the dataset once. That number is a floor, not an estimate of the whole training step, because the bus has to carry the data even when nothing else is slow.
 
 :::tip In one minute
 - A 16-lane PCIe Gen5 bus delivers only 64 GB/s in one direction and 128 GB/s bidirectional, which is over 50× slower than Hopper HBM3 and 125× slower than Blackwell HBM3e.
@@ -83,9 +88,9 @@ Pure bus transfer time per pass = 1,200 GB / 64 GB/s = 18.75 seconds
 
 ## 2. Inside the NVIDIA Grace CPU: 72 Arm Neoverse V2 cores and on-package LPDDR5X
 
-General-purpose x86 server processors burn hundreds of watts and huge board area on legacy instruction decoders and bulky DDR5 DIMM slots. In a dense liquid-cooled AI rack, every watt wasted on the host CPU or its memory DIMMs is a watt stolen from the GPUs. NVIDIA needed a compact, high-bandwidth host processor built specifically to feed accelerators.
+Picture a dense, liquid-cooled AI rack where the power budget is already committed to the GPUs. Every watt that the host CPU and its memory slots burn is a watt that cannot go to a GPU. General-purpose x86 server processors burn hundreds of watts and take up huge board area on legacy instruction decoders and bulky DDR5 DIMM slots. A DIMM, or dual inline memory module, is the removable memory stick that plugs into a server board. NVIDIA needed a compact, high-bandwidth host processor built specifically to feed accelerators.
 
-To remove the CPU-to-GPU bottleneck, NVIDIA engineered the Grace CPU from a clean sheet of paper. A general-purpose x86 CPU acts like a Swiss Army knife carrying decades of legacy attachments for older desktop and enterprise software. By contrast, the Grace CPU is a purpose-built fuel pump. Its sole job is to pre-process tensors, orchestrate CUDA graphs, and stream memory into attached GPUs at maximum bandwidth per watt.
+To remove the CPU-to-GPU bottleneck, NVIDIA engineered the Grace CPU from a clean sheet of paper. A general-purpose x86 CPU acts like a Swiss Army knife carrying decades of legacy attachments for older desktop and enterprise software. By contrast, the Grace CPU is a purpose-built fuel pump. Its sole job is to pre-process tensors, orchestrate CUDA graphs, and stream memory into attached GPUs at maximum bandwidth per watt. A CUDA graph is a recorded sequence of GPU work that the CPU can launch in one step, which cuts the back-and-forth of launching each piece separately.
 
 ```mermaid
 flowchart LR
@@ -100,15 +105,19 @@ flowchart LR
     end
 ```
 
+The diagram shows the package as a small set of blocks. The cores on the left do the computing. The memory on the right holds the data. The fabric in the middle connects them and also connects the cores to the link that leads to the GPU. Data can move from memory to a core, and from a core out to the GPU, without leaving the package.
+
 ### 2.1 72 Arm Neoverse V2 cores and Armv9 Scalable Vector Extension
 
-Instead of licensing x86, NVIDIA built Grace around the Armv9 architecture. Each socket integrates 72 high-performance Arm Neoverse V2 cores linked by a high-bandwidth on-die mesh called the Scalable Coherency Fabric. All 72 cores feed data loaders, tokenizers, and network rings without legacy x86 decode overhead.
+Suppose a team moves a data preprocessing job from an x86 server to a Grace node. The job starts, and then one library fails to load. The library was built for x86 and cannot run on the Arm processor without a rebuild. Problems like this are the first thing a team meets when it changes architectures.
 
-For CPU-side math such as offloaded Adam optimizer steps or data augmentations, Grace implements the Arm Scalable Vector Extension. SVE provides 32 vector registers and 16 predicate registers per core. Operators migrating containers from x86 servers must keep one compatibility rule in mind. Any C++ or Cython Python wheel that hard-codes x86 AVX2 or AVX-512 intrinsics will fail on Grace and must be compiled for `aarch64` and Arm SVE.
+Instead of licensing x86, NVIDIA built Grace around the Armv9 architecture. Each socket integrates 72 high-performance Arm Neoverse V2 cores linked by a high-bandwidth on-die mesh called the Scalable Coherency Fabric. All 72 cores feed data loaders, tokenizers, and network rings without legacy x86 decode overhead. A tokenizer turns raw text into the integer token IDs that a language model reads, and a data loader is the code that prepares batches for the GPU.
+
+For CPU-side math such as offloaded Adam optimizer steps or data augmentations, Grace implements the Arm Scalable Vector Extension. SVE provides 32 vector registers and 16 predicate registers per core. A vector register holds several numbers that one instruction can process together, and a predicate register marks which of those numbers should take part. Operators migrating containers from x86 servers must keep one compatibility rule in mind. Any C++ or Cython Python wheel that hard-codes x86 AVX2 or AVX-512 intrinsics will fail on Grace and must be compiled for `aarch64` and Arm SVE. A wheel is a prebuilt Python package, and an intrinsic is a low-level instruction written directly into the code.
 
 ### 2.2 Soldered on-package ECC LPDDR5X memory
 
-Look at a Grace Superchip board and you will notice that there are no DIMM slots. Instead of using socketed DDR5 RDIMMs, NVIDIA solders low-power server-grade ECC LPDDR5X memory directly onto the module substrate millimeters from the Grace CPU die. That physical proximity delivers high sustained bandwidth inside a fraction of the power and board area required by 8-channel or 12-channel x86 DDR5 subsystems. The saved power and board area go directly to the GPUs and liquid cold plates.
+Look at a Grace Superchip board and you will notice that there are no DIMM slots. The memory is part of the module itself, which changes what you can upgrade and what you can replace in the field. Instead of using socketed DDR5 RDIMMs, NVIDIA solders low-power server-grade ECC LPDDR5X memory directly onto the module substrate millimeters from the Grace CPU die. ECC, or error-correcting code, lets the memory detect and fix single-bit errors on its own. That physical proximity delivers high sustained bandwidth inside a fraction of the power and board area required by 8-channel or 12-channel x86 DDR5 subsystems. The saved power and board area go directly to the GPUs and liquid cold plates.
 
 | Grace CPU Subsystem Feature | Specification | Operational Impact |
 |---|---|---|
@@ -117,6 +126,8 @@ Look at a Grace Superchip board and you will notice that there are no DIMM slots
 | **On-Package Memory Capacity** | Up to 480 GB (500 GB to 512 GB on high-capacity GH200 and GB300 SKUs) | Holds giant embedding tables, graph features, and offloaded KV caches |
 | **Sustained Memory Bandwidth** | ~500 GB/s per Grace CPU | Matches or beats bulky multi-channel x86 DDR5 DIMM banks |
 | **Combined CPU + Memory Power** | 60W to 200W total envelope | Frees rack power and PCB area for high-TDP GPUs and cold plates |
+
+Read the table as a set of trade-offs. The left column names the part, the middle column gives its specification, and the right column says what that specification changes in daily work. The memory row is the one most people miss. A large capacity sitting next to the CPU is useful only if the CPU and GPU can reach it fast enough, and the bandwidth row answers that question.
 
 :::tip In one minute
 - The NVIDIA Grace CPU integrates 72 Arm Neoverse V2 cores with Arm SVE vector units for fast data preprocessing and CPU-offloaded optimizer math.
@@ -127,17 +138,19 @@ Look at a Grace Superchip board and you will notice that there are no DIMM slots
 
 ### The Grace CPU as a data feeder
 
-A GPU is only as fast as the data it receives. The design goal for Grace is that the CPU should never be the bottleneck when it shovels data to the GPUs. Grace can stream data from storage. It can also run on-the-fly transforms such as tokenization or data augmentation, then feed the results to the GPUs over NVLink-C2C. If part of the workload suits a CPU better, the Grace cores can handle it and leave the results where the GPUs can read them at once.
+A training loop that stalls between steps often has its GPUs waiting for the next batch. The GPU is ready to work, but the data has not arrived. A GPU is only as fast as the data it receives. The design goal for Grace is that the CPU should never be the bottleneck when it shovels data to the GPUs. Grace can stream data from storage. It can also run on-the-fly transforms such as tokenization or data augmentation, then feed the results to the GPUs over NVLink-C2C. If part of the workload suits a CPU better, the Grace cores can handle it and leave the results where the GPUs can read them at once.
 
-The two chips complement each other. The CPU covers the work GPUs do poorly, such as random memory access and control-heavy code. The GPUs handle the number crunching that a CPU cannot keep up with. The low-latency link also lets them trade tasks cheaply. Launching a GPU kernel from the CPU is much faster here, because the command does not cross a slow PCIe bus. It is similar to calling a fast local function instead of a slow remote one.
+The two chips complement each other. The CPU covers the work GPUs do poorly, such as random memory access and control-heavy code. The GPUs handle the number crunching that a CPU cannot keep up with. The low-latency link also lets them trade tasks cheaply. Launching a GPU kernel from the CPU is much faster here, because the command does not cross a slow PCIe bus. A kernel is a function that runs on the GPU. The launch is like calling a fast local function instead of a slow remote one.
 
 ## 3. NVLink-C2C and the hardware-coherent unified memory model
 
-Having a fast Arm CPU with half a terabyte of LPDDR5X only helps if the attached GPU can read and write that memory without squeezing through a 64 GB/s PCIe straw. On traditional systems, developers also waste weeks writing explicit host-to-device memory copies and managing pinned staging buffers whenever data spills out of GPU HBM.
+Picture a fine-tuning job that outgrows GPU memory. On a traditional server, the engineer writes explicit copy commands to move each block of data to and from the GPU, and manages a special staging buffer for each copy. Weeks of such code are common. Having a fast Arm CPU with half a terabyte of LPDDR5X only helps if the attached GPU can read and write that memory without squeezing through a 64 GB/s PCIe straw. On traditional systems, developers also waste weeks writing explicit host-to-device memory copies and managing pinned staging buffers whenever data spills out of GPU HBM. A pinned buffer is host memory that the operating system is not allowed to move, so the GPU can copy from it directly.
 
-The bridge that removes both bottlenecks is NVLink-C2C. NVLink-C2C is a custom, ultra-short-reach die-to-die and package-to-package coherent interconnect etched directly onto the Superchip substrate between the Grace CPU and its paired Hopper or Blackwell GPUs.
+The bridge that removes both bottlenecks is NVLink-C2C. NVLink-C2C is a custom, ultra-short-reach die-to-die and package-to-package coherent interconnect etched directly onto the Superchip substrate between the Grace CPU and its paired Hopper or Blackwell GPUs. Die-to-die means the link joins two chips in the same package, and coherent means both sides agree on the latest value stored in memory.
 
 ### 3.1 Physical specs of NVLink-C2C vs PCIe Gen5 x16
+
+Consider two quotes for the same rack, one built on PCIe and one built on NVLink-C2C. The spec sheet is the first place the difference shows up. The table compares the two links row by row. Start with the bandwidth rows, since they answer how much data moves per second. Then look at the energy row, which matters in a rack that already draws a lot of power. The last two rows explain what a programmer sees, which is the part that changes the code.
 
 | Metric | Traditional x86 PCIe Gen5 x16 | NVIDIA NVLink-C2C (Superchip) | Advantage (NVLink-C2C vs PCIe Gen5) |
 |---|---|---|---|
@@ -147,21 +160,27 @@ The bridge that removes both bottlenecks is NVLink-C2C. NVLink-C2C is a custom, 
 | **Memory Address Space** | Separate host RAM and GPU BAR spaces | Single Unified Virtual Address Space with hardware ATS | CPU and GPU threads share standard pointers without explicit `cudaMemcpy()` |
 | **Hardware Cache Coherence** | Non-coherent by default | Full hardware cache coherence between Grace CPU caches and GPU memory | Zero software staging buffer overhead for CPU–GPU access |
 
+Two terms in the table need a plain definition. A picojoule is one trillionth of a joule, and energy per bit tells you how much power the link spends for each bit it moves. ATS, or Address Translation Services, is the hardware that lets the GPU translate a CPU address into the physical location of the data without help from the driver.
+
 ### 3.2 What hardware cache coherence means and the crucial GPU-to-GPU boundary
 
-On a Grace Hopper or Grace Blackwell Superchip, NVLink-C2C implements hardware Address Translation Services and full cache coherence across the Grace CPU and its paired GPUs. A CUDA kernel running on the GPU can dereference a pointer residing in the Grace CPU LPDDR5X memory at 450 GB/s per direction without a single `cudaMemcpy()` call. The programmer does not need to allocate a page-locked staging buffer for that transfer.
+A developer who reads that the GPU can see CPU memory may assume that every GPU in a rack can also see every other GPU's memory with the same guarantees. That assumption is wrong, and this section explains why.
 
-On a DGX GB300 compute tray, which houses two GB300 Superchips, a coherent NVLink-C2C link also bridges the two Superchips together. That bridge allows both Grace CPUs and all four B300 GPUs on the tray to act as a single logical unit under one Linux OS instance.
+On a Grace Hopper or Grace Blackwell Superchip, NVLink-C2C implements hardware Address Translation Services and full cache coherence across the Grace CPU and its paired GPUs. A CUDA kernel running on the GPU can dereference a pointer residing in the Grace CPU LPDDR5X memory at 450 GB/s per direction without a single `cudaMemcpy()` call. A kernel that dereferences a pointer reads the data at that address directly. The programmer does not need to allocate a page-locked staging buffer for that transfer.
+
+On a DGX GB300 compute tray, which houses two GB300 Superchips, a coherent NVLink-C2C link also bridges the two Superchips together. That bridge allows both Grace CPUs and all four B300 GPUs on the tray to act as a single logical unit under one Linux OS instance. The operating system sees one machine, even though the hardware is made of two modules.
 
 :::caution Critical distinction: CPU–GPU coherence vs GPU–GPU non-coherence
 Do not confuse CPU-to-GPU coherence over NVLink-C2C with GPU-to-GPU memory sharing over NVSwitch. As detailed in *AI Systems Performance Engineering*, only the CPU-to-GPU path over NVLink-C2C is hardware cache-coherent. Across multiple GPUs connected by NVLink and NVSwitch, there is a shared global physical address space for peer-to-peer loads and stores. However, GPU L1 and L2 caches are not globally hardware cache-coherent across GPUs. Multi-GPU communication still requires explicit software synchronization and memory ordering via NCCL collectives or NVSHMEM symmetric memory barriers.
 :::
 
+The caution box is the most important idea in this section. Shared addressing and shared caching are different properties. A GPU can read another GPU's memory through the switch and still see a stale copy in its own cache, unless the software forces an update. NCCL, the NVIDIA collective communication library, and NVSHMEM, a library for symmetric memory across GPUs, are the tools that provide that ordering.
+
 ### 3.3 Real-world impact: solving the 1.2 TB Graph Neural Network bottleneck
 
-Return to the financial-services team from Section 1. Their fraud-detection Graph Neural Network took 4 days per training epoch on an x86 and H100 PCIe server. Streaming 1,200 GB of graph node features across a 64 GB/s PCIe Gen5 slot took 18.75 seconds of pure bus transfer time per pass.
+Return to the financial-services team from Section 1. Their fraud-detection Graph Neural Network took 4 days per training epoch on an x86 and H100 PCIe server. An epoch is one full pass over the training data. Streaming 1,200 GB of graph node features across a 64 GB/s PCIe Gen5 slot took 18.75 seconds of pure bus transfer time per pass.
 
-When the team moves that workload onto two GH200 Grace Hopper Superchips, the entire dataset fits inside the hardware-coherent memory pool. When the Hopper GPUs sample graph neighbors stored in Grace LPDDR5X, they read the features directly over the NVLink-C2C highway. That direct memory access collapses epoch times from days to hours.
+When the team moves that workload onto two GH200 Grace Hopper Superchips, the entire dataset fits inside the hardware-coherent memory pool. When the Hopper GPUs sample graph neighbors stored in Grace LPDDR5X, they read the features directly over the NVLink-C2C highway. That direct memory access collapses epoch times from days to hours. The change comes from where the data lives. The features no longer sit behind a narrow bus that the GPU has to cross every time it needs a neighbor.
 
 ```text
 Two-Superchip GH200 GNN memory and transfer math (my inference from code/part09/grace_superchips.py):
@@ -170,6 +189,8 @@ Two-Superchip total coherent pool: 2 × 624 GB = 1,248 GB
 Dataset placement (1,200 GB total): 240 GB hot GNN weights/activations in HBM3e + 960 GB feature tables in LPDDR5X
 NVLink-C2C unidirectional pass time: 1,200 GB / 450 GB/s = 2.67 seconds (7.03× faster than 18.75 seconds on PCIe Gen5)
 ```
+
+Read the block as a placement plan. The first lines add up the memory the two Superchips provide. The next line splits the dataset between fast HBM and the larger LPDDR5X pool. The last line gives the time for one pass over the features on the faster link. The split matters because the hot part of the work, the weights and activations that the GPU touches constantly, stays in HBM, and the large feature tables sit in the slower but roomier memory.
 
 :::tip In one minute
 - NVLink-C2C links the Grace CPU to its paired GPUs at 900 GB/s bidirectional, which is 7.03× faster than PCIe Gen5 x16 while consuming less than 5 picojoules per bit.
@@ -180,15 +201,15 @@ NVLink-C2C unidirectional pass time: 1,200 GB / 450 GB/s = 2.67 seconds (7.03× 
 
 ### Fitting a 500 GB model on one superchip
 
-Memory size used to be the hard limit. A model too big for one GPU's HBM had to be split across several GPUs or spilled to slower storage. On a GB200 superchip, the GPU can use the CPU's LPDDR5X as overflow. A model of about 500 GB is too large for one GPU's HBM, but it fits in one superchip. The superchip has 192 GB of HBM (180 GB usable) and about 500 GB of CPU memory, so the model runs without partitioning across GPUs.
+A researcher has a 500 GB model and a GPU whose HBM is much smaller. Before this design, the choices were to split the model across several GPUs or to spill part of it to slower storage. Both options add complexity to the code and the schedule. Memory size used to be the hard limit. A model too big for one GPU's HBM had to be split across several GPUs or spilled to slower storage. On a GB200 superchip, the GPU can use the CPU's LPDDR5X as overflow. A model of about 500 GB is too large for one GPU's HBM, but it fits in one superchip. The superchip has 192 GB of HBM (180 GB usable) and about 500 GB of CPU memory, so the model runs without partitioning across GPUs.
 
-The GPU pulls the extra data from CPU memory when it needs it, and the overflow does not have to go out to NVMe storage or across a network. The trade-off is speed. Reading LPDDR5X over NVLink-C2C has higher latency and about one-tenth the bandwidth of local HBM. A smart runtime keeps hot data in HBM and uses CPU memory for the rest. Prefetch the data you can see coming. Memory size stops being a hard wall, but placement still decides how fast the model runs.
+The GPU pulls the extra data from CPU memory when it needs it, and the overflow does not have to go out to NVMe storage or across a network. NVMe is solid-state storage that connects over PCIe, and it is far slower than memory. The trade-off is speed. Reading LPDDR5X over NVLink-C2C has higher latency and about one-tenth the bandwidth of local HBM. A smart runtime keeps hot data in HBM and uses CPU memory for the rest. Prefetch the data you can see coming. Prefetching means copying data into HBM before the kernel that needs it starts. Memory size stops being a hard wall, but placement still decides how fast the model runs.
 
 ## 4. The Superchip lineup: Grace CPU Superchip, GH200, GB200, GB300, and the Vera Rubin roadmap
 
-Cluster architects sizing a new AI factory must choose between CPU-only Grace nodes, single-GPU Grace Hopper nodes, and dual-GPU Grace Blackwell compute trays. Picking the wrong module or misreading memory SKU tables leads to under-provisioned HBM capacity or wasted rack power.
+Imagine you are sizing the racks for a new AI factory. You must pick between CPU-only Grace nodes, single-GPU Grace Hopper nodes, and dual-GPU Grace Blackwell compute trays. Each choice sets how much HBM and how much CPU memory the rack will hold. Cluster architects make this choice before the hardware arrives. Picking the wrong module or misreading memory SKU tables leads to under-provisioned HBM capacity or wasted rack power. A SKU, or stock-keeping unit, is the specific model variant that the vendor sells, and two SKUs of the same module can carry different memory.
 
-NVIDIA packages the Grace CPU and NVLink-C2C into four production Superchip modules today, with the next-generation Vera Rubin and Feynman architectures on the roadmap.
+NVIDIA packages the Grace CPU and NVLink-C2C into four production Superchip modules today, with the next-generation Vera Rubin and Feynman architectures on the roadmap. The diagram below shows how each module pairs its CPU and GPUs.
 
 ```mermaid
 flowchart TD
@@ -203,7 +224,11 @@ flowchart TD
     end
 ```
 
+Read the diagram as three boxes with the same link in each. The box changes with the module. The GPU count changes from zero to one to two, and the memory on each side changes with it. Keep that picture in mind for the rest of the section, since the comparison table below depends on it.
+
 ### 4.1 Complete comparison of Grace-based Superchip modules
+
+Imagine a buyer choosing among Superchip modules for a rack, where each module changes how much memory every node carries. Read this table one row at a time. Each row is one module, and each column answers a sizing question. The CPU column tells you how many cores you get. The memory column tells you the size and speed of the CPU-attached memory. The GPU columns tell you what sits on the other side of the link, and the last two columns give the total memory pool and the power envelope. Power matters because it decides the cooling you need.
 
 | Superchip Module | CPU Configuration | On-Package LPDDR5X & Bandwidth | Paired GPU(s) | Total GPU HBM & Bandwidth | Total Coherent Memory Pool | Module TDP Envelope |
 |---|---|---|---|---|---|---|
@@ -213,9 +238,13 @@ flowchart TD
 | **GB200 Grace Blackwell Superchip** | 1x Grace CPU (72 Arm cores) | Up to 480 GB LPDDR5X @ ~500 GB/s | 2x Blackwell B200 GPUs (dual-reticle dies each) | 384 GB HBM3e (2 × 192 GB, or 360 GB usable on 180 GB SKU) @ 16.0 TB/s | Up to 864 GB (480 + 384 GB) per Superchip | ~2,700W (liquid-cooled) |
 | **GB300 Grace Blackwell Ultra Superchip** | 1x Grace CPU (72 Arm cores) | ~500 GB LPDDR5X @ ~500 GB/s (18 TB across 36 modules) | 2x Blackwell Ultra B300 GPUs (1.5× FP4 compute vs B200) | 576 GB HBM3e (2 × 288 GB, 1.5× B200) @ 16.0 TB/s | ~1,076 GB (~1.08 TB) per Superchip (~2.15 TB per 2-superchip compute tray) | ~2,800W+ (liquid-cooled) |
 
+The rows show that the Superchip family is not one product. The first row has no GPU at all, which makes it a CPU server. The GH200 rows share a CPU but come with two different GPU memory sizes, so two GH200 nodes can have different pools. The GB200 and GB300 rows double the GPU count and therefore the HBM. Read a row before you trust a memory figure, and check the SKU name first.
+
 :::note Reconciling GH200 and GB200 memory SKU numbers across sources
-Different books and reference guides quote either raw or usable memory capacities depending on the SKU. The table below reconciles all figures from our corpus.
+Different books and reference guides quote either raw or usable memory capacities depending on the SKU. The table below reconciles all figures from the sources used in this handbook.
 :::
+
+The next table lists each source and the figure that source gives. When two sources disagree, the difference usually comes from the SKU or from whether a figure counts raw or usable memory. The table shows where each number comes from, so you can check it against the vendor sheet for your own hardware.
 
 | Platform | Source Citation | LPDDR5X Capacity | GPU HBM Capacity | Combined Memory Pool |
 |---|---|---|---|---|
@@ -227,9 +256,11 @@ Different books and reference guides quote either raw or usable memory capacitie
 
 ### 4.2 Why GB200 and GB300 move from a 1:1 to a 1:2 CPU-to-GPU ratio
 
-Notice the architectural shift from GH200, which pairs one Grace CPU with one Hopper GPU, to GB200 and GB300, which pair one Grace CPU with two Blackwell GPUs. A single 72-core Grace CPU with 500 GB/s of LPDDR5X and 900 GB/s of NVLink-C2C has more than enough CPU cores and memory capacity to drive two GPUs simultaneously. Providing 36 Arm cores per GPU while pairing one Grace CPU with two Blackwell GPUs doubles GPU compute density inside every 1U tray.
+Picture two rack designs side by side. One has a Grace CPU for every Hopper GPU. The other has a Grace CPU for every two Blackwell GPUs. The second design has fewer CPUs per GPU, and that difference is the reason the GB200 and GB300 modules look the way they do. The shift from GH200 to GB200 is the most visible change in the lineup.
 
-In a GB200 or GB300 NVL72 compute tray, two Superchips sit side-by-side and are bridged by a coherent NVLink-C2C link. A single Linux OS kernel manages both Grace CPUs and all four GPUs as one node.
+Notice the architectural shift from GH200, which pairs one Grace CPU with one Hopper GPU, to GB200 and GB300, which pair one Grace CPU with two Blackwell GPUs. A single 72-core Grace CPU with 500 GB/s of LPDDR5X and 900 GB/s of NVLink-C2C has more than enough CPU cores and memory capacity to drive two GPUs simultaneously. Providing 36 Arm cores per GPU while pairing one Grace CPU with two Blackwell GPUs doubles GPU compute density inside every 1U tray. A 1U tray is a server that is one unit tall in the rack, and a rack unit is the standard height measure for rack equipment.
+
+In a GB200 or GB300 NVL72 compute tray, two Superchips sit side-by-side and are bridged by a coherent NVLink-C2C link. A single Linux OS kernel manages both Grace CPUs and all four GPUs as one node. The kernel is the core of the operating system, and it schedules every process across the tray's hardware.
 
 ```text
 NVL72 compute tray and full-rack scaling math:
@@ -237,15 +268,19 @@ NVL72 compute tray and full-rack scaling math:
 18 compute trays per NVL72 rack = 36 Superchips = 36 Grace CPUs (2,592 Arm Neoverse V2 cores) + 72 Blackwell GPUs
 ```
 
+The math is a straight multiplication. Each tray carries two Superchips, and each Superchip carries one CPU and two GPUs. The rack repeats that tray 18 times. The result is the rack total that you see in later tables, and the same multiplication is the first thing to check when a quoted rack figure looks wrong.
+
 ### 4.3 The multi-year Superchip roadmap: Vera Rubin and Feynman
 
-As documented in *AI Systems Performance Engineering* Chapter 2, NVIDIA continues the one-CPU-to-two-GPU Superchip design across three upcoming generations.
+A capacity plan that covers three or four years has to say what hardware will arrive next. The roadmap answers that question, but it describes plans rather than shipping products, so treat each row as a target to verify when it becomes available. As documented in *AI Systems Performance Engineering* Chapter 2, NVIDIA continues the one-CPU-to-two-GPU Superchip design across three upcoming generations.
 
 | Generation & Target Year | CPU Architecture & Memory | GPU Architecture & HBM | Interconnect & Rack Scale |
 |---|---|---|---|
 | **Vera Rubin (`VR200`, 2026)** | 1x Vera Arm CPU (TSMC 3nm, more cores, LPDDR6 at ~1 TB/s) | 2x Rubin GPUs (~200 SMs per die, 288 GB HBM4 at ~13–14 TB/s) | 6th-generation NVLink 6 doubling CPU–GPU and GPU–GPU bandwidth |
 | **Vera Rubin Ultra (`VR300` / `R300`, 2027)** | Vera Arm CPU complex | Quad-die Rubin Ultra GPU module (4 GPU dies, 16 HBM stacks, 1 TB HBM per GPU module) | NVL144 and NVL576 rack configurations (~3–4 ExaFLOPS per rack) |
 | **Feynman (2028)** | Next-generation Arm host CPU | 2nm process node with HBM5 and multi-tier on-package memory | On-package optical NVLink interconnects for reasoning-era scaling |
+
+Each row answers the same questions as the earlier tables. What CPU comes with the module, how much memory the GPUs get, and how the racks connect. The Vera Rubin row names the chip process and memory type, and the Ultra row names the rack configurations, which tell you how many GPUs fit together. The Feynman row is the furthest out, and its details are the least settled.
 
 :::tip In one minute
 - Moving from GH200 (1 Grace to 1 Hopper) to GB200 and GB300 (1 Grace to 2 Blackwell GPUs) doubles GPU compute density per 1U tray while still providing 36 Arm Neoverse V2 cores per GPU.
@@ -256,39 +291,43 @@ As documented in *AI Systems Performance Engineering* Chapter 2, NVIDIA continue
 
 ### Why each generation doubles something
 
-NVIDIA's roadmap follows a pattern. Each generation doubles something important, and some years it doubles more than one thing. Blackwell introduced two GPU dies per module instead of one. NVLink bidirectional bandwidth per link doubled from about 900 GB/s to about 1.8 TB/s. Per-GPU memory grew from 180 GB in Blackwell to about 288 GB in Blackwell Ultra. Over a few years, that compound growth is large. Vera Rubin and Feynman push compute, memory, and bandwidth further.
+NVIDIA's roadmap follows a pattern. Each generation doubles something important, and some years it doubles more than one thing. Picture a planner who wants to know whether a model that does not fit today will fit in two generations. The pattern gives a quick answer. Blackwell introduced two GPU dies per module instead of one. NVLink bidirectional bandwidth per link doubled from about 900 GB/s to about 1.8 TB/s. Per-GPU memory grew from 180 GB in Blackwell to about 288 GB in Blackwell Ultra. Over a few years, that compound growth is large. Vera Rubin and Feynman push compute, memory, and bandwidth further.
 
-For a performance engineer, the message is steady. Hardware will keep unlocking larger scale, so models that are out of reach today may become routine. You will also have to keep adapting software to new precision formats, larger memory pools, and faster interconnects. The Grace Blackwell design is the base for that path, and the same codesign ideas carry forward to Vera Rubin and beyond.
+For a performance engineer, the message is steady. Hardware will keep unlocking larger scale, so models that are out of reach today may become routine. You will also have to keep adapting software to new precision formats, larger memory pools, and faster interconnects. A precision format is the number representation, such as FP8 or FP4, that the model uses to store its values. The Grace Blackwell design is the base for that path, and the same codesign ideas carry forward to Vera Rubin and beyond.
 
 ## 5. Software co-design on Grace Superchips: data placement, NUMA, hugepages, and SuperOffload
 
-When teams treat an 864 GB GB200 Superchip as a flat pool of uniform memory, training step times and inference token latencies suddenly spike by an order of magnitude. Having a 900 GB/s coherent NVLink-C2C link between the CPU and GPU prevents out-of-memory crashes, but it does not change memory physics or eliminate Linux page-table overhead.
+Picture a team that tests a model on an 864 GB GB200 Superchip and treats the whole pool as one flat block of memory. Training steps and inference token times then jump by an order of magnitude. Having a 900 GB/s coherent NVLink-C2C link between the CPU and GPU prevents out-of-memory crashes, but it does not change memory physics or eliminate Linux page-table overhead. A page table is the data structure the operating system uses to translate addresses, and walking it costs time. The hardware makes the memory reachable, but the team still has to decide what lives where.
 
 ### 5.1 Two-tier memory placement: keeping hot tensors in HBM and cold overflow in LPDDR5X
 
-Even though Grace LPDDR5X and NVLink-C2C are over seven times faster than PCIe Gen5, Blackwell HBM3e is still roughly 16× to 32× faster than LPDDR5X. Therefore, you must treat a Grace Superchip as an explicit two-tier coherent memory complex.
+Consider a single training step. The GPU reads the weights of the current layer many times, while the Adam momentum buffers are touched only once per step. Those two kinds of data should not share the same tier. Even though Grace LPDDR5X and NVLink-C2C are over seven times faster than PCIe Gen5, Blackwell HBM3e is still roughly 16× to 32× faster than LPDDR5X. Therefore, you must treat a Grace Superchip as an explicit two-tier coherent memory complex. A tier is a level of memory with its own speed and size, and placing data in the right tier is the job of the runtime and the programmer.
 
 | Memory Tier | Bandwidth | What to Place Here | Prefetching Strategy |
 |---|---|---|---|
 | **Tier 1: GPU HBM3 / HBM3e** | 4.0–8.0 TB/s per GPU (8,000 GB/s per B200, 16,000 GB/s per Superchip) | Hot working-set tensors, active layer weights, forward/backward activations, and active KV-cache blocks | Resident in HBM during active kernel execution |
 | **Tier 2: Grace CPU LPDDR5X** | ~500 GB/s (accessed at 450 GB/s per direction via NVLink-C2C) | Cold or overflow structures, unscheduled MoE expert weights, master FP32 weights, Adam momentum/variance buffers, DLRM/GNN feature tables, and evicted KV-cache blocks | Use `cudaMallocAsync` and prefetch upcoming slices into HBM via `cudaMemPrefetchAsync()` on a secondary CUDA stream |
 
+Read the table as a rule for each kind of data. The first tier takes whatever the GPU touches on every step. The second tier takes whatever the GPU touches rarely or in a predictable order. The last column is the mechanism. A CUDA stream is an ordered queue of GPU work, and a second stream lets a copy run while the first stream computes. Prefetching on that second stream hides the cost of the copy from the kernels that need the data.
+
 ### 5.2 Linux NUMA pinning, `pin_memory`, and Transparent Hugepages on Grace
 
-Even though NVLink-C2C is hardware cache-coherent, the Linux kernel still models each Grace CPU LPDDR5X pool as a CPU NUMA node and each GPU HBM pool as a distinct memory domain. On a dual-Superchip compute tray with two Grace CPUs and four Blackwell GPUs, crossing from Grace CPU 0 to a GPU attached to Grace CPU 1 adds hop latency. Always pin each training rank and its PyTorch `DataLoader` workers via `worker_init_fn` to the local Grace CPU NUMA node.
+A training job on a dual-Superchip compute tray runs at a steady speed for a while. Then the throughput drops, and the GPUs show short gaps between steps. Often the cause is not the GPU at all. It is where the operating system placed the work. Even though NVLink-C2C is hardware cache-coherent, the Linux kernel still models each Grace CPU LPDDR5X pool as a CPU NUMA node and each GPU HBM pool as a distinct memory domain. On a dual-Superchip compute tray with two Grace CPUs and four Blackwell GPUs, crossing from Grace CPU 0 to a GPU attached to Grace CPU 1 adds hop latency. Always pin each training rank and its PyTorch `DataLoader` workers via `worker_init_fn` to the local Grace CPU NUMA node. A training rank is one process that drives one GPU, and a DataLoader worker is a helper process that prepares batches.
 
-On standard x86 PCIe servers, setting `pin_memory=True` for page-locked memory is mandatory to achieve two to three times faster DMA copies. On Grace Superchips, CPU-to-GPU transfers already use the coherent NVLink-C2C path without explicit page-locking. You must still enable Linux hugepages of 2 MB or 1 GB so the CPU and GPU Translation Lookaside Buffers do not thrash on millions of 4 KB page translations. When the `DataLoader` thread is CPU-bound during heavy LLM tokenization, combine `pin_memory=True` or hugepages with `ulimit -l unlimited`, `non_blocking=True`, and `persistent_workers=True`. Always verify transfer overlap with Nsight Systems.
+On standard x86 PCIe servers, setting `pin_memory=True` for page-locked memory is mandatory to achieve two to three times faster DMA copies. A DMA copy moves data without the CPU doing the work of each byte. On Grace Superchips, CPU-to-GPU transfers already use the coherent NVLink-C2C path without explicit page-locking. You must still enable Linux hugepages of 2 MB or 1 GB so the CPU and GPU Translation Lookaside Buffers do not thrash on millions of 4 KB page translations. A TLB, or translation lookaside buffer, is a small cache of recent address translations, and missing it forces a slower lookup. When the `DataLoader` thread is CPU-bound during heavy LLM tokenization, combine `pin_memory=True` or hugepages with `ulimit -l unlimited`, `non_blocking=True`, and `persistent_workers=True`. Always verify transfer overlap with Nsight Systems, NVIDIA's profiler, which shows when copies and kernels run at the same time.
 
 | Linux Tuning Parameter | Setting for Throughput Training | Setting for Low-Latency Inference | Reason and Measured Impact |
 |---|---|---|---|
 | **NUMA Node Binding** | `numactl --cpunodebind=$NODE --membind=$NODE` | `numactl --cpunodebind=$NODE --membind=$NODE` | Local NUMA memory latency is ~80 ns versus ~139 ns cross-node (~75% remote latency penalty) |
 | **Transparent Hugepages (THP)** | `always` (2 MB pages) | `madvise` or `never` (`transparent_hugepage=never` + explicit `hugetlbfs` / `vm.nr_hugepages`) | `always` yields a ~3%–5% training throughput gain by cutting TLB misses, while `madvise` or `never` avoids background THP compaction pauses that hurt P99 ITL |
 
+The table gives two settings for two goals. Training cares about total throughput, so it can accept a small background cost in return for fewer TLB misses. Inference cares about the slowest responses, so it avoids background work that might pause a request. P99 ITL is a tail-latency measure. It describes the wait between tokens that the slowest one percent of requests experience. Compaction is the kernel's work to merge memory into larger pages, and it can pause a process for a moment.
+
 ### 5.3 SuperOffload and GraceAdam: superchip-native training optimization
 
-Traditional CPU offload engines such as standard ZeRO-Offload were built for slow 64 GB/s PCIe buses. They wait for global gradient reductions and NaN or Inf norm checks to finish on the GPU before copying gradients to the CPU. Next, they run the CPU Adam step sequentially and copy updated weights back. On a Grace Superchip, that sequential barrier wastes both the 72 Arm cores and the 900 GB/s NVLink-C2C link.
+Picture the end of a training step. The backward pass has just produced gradients. On an offload setup built for slow buses, the system then waits for the gradients to be combined, checks them for bad numbers, runs the optimizer on the CPU, and copies the updated weights back. Each wait leaves the GPU idle. Traditional CPU offload engines such as standard ZeRO-Offload were built for slow 64 GB/s PCIe buses. ZeRO-Offload is a method that moves optimizer work from the GPU to host memory to save GPU memory. They wait for global gradient reductions and NaN or Inf norm checks to finish on the GPU before copying gradients to the CPU. A gradient reduction combines gradients from every GPU, and NaN or Inf checks look for values that are not valid numbers. Next, they run the CPU Adam step sequentially and copy updated weights back. On a Grace Superchip, that sequential barrier wastes both the 72 Arm cores and the 900 GB/s NVLink-C2C link.
 
-SuperOffload, which is detailed in *AI Systems Performance Engineering* Chapter 13, re-architects CPU-to-GPU offloading around four Grace-native mechanisms.
+SuperOffload, which is detailed in *AI Systems Performance Engineering* Chapter 13, re-architects CPU-to-GPU offloading around four Grace-native mechanisms. The diagram shows how work moves between the two chips during one step.
 
 ```mermaid
 flowchart LR
@@ -305,10 +344,12 @@ flowchart LR
     GADAM <-->|"Coherent Parameter Sync"| HOPT
 ```
 
-1. **Speculation-Then-Validation:** Instead of waiting for the backward pass and global gradient norm check to finish, STV speculatively runs the optimizer updates on the Grace CPU in parallel with GPU backpropagation. It then validates to commit or roll back the updates once the global check completes, eliminating the end-of-step synchronization bubble.
-2. **Heterogeneous Optimizer Computation:** Rather than running 100% of the optimizer on the CPU or 100% on the GPU, SuperOffload partitions optimizer work across both chips simultaneously. Compute-heavy tensor updates run on the GPU Tensor and SIMT cores. Lighter state updates for Adam first-moment and second-moment buffers in LPDDR5X run on the 72 Grace CPU cores.
-3. **Superchip-Aware Type Casts and Copies:** Because NVLink-C2C provides 900 GB/s of coherent bandwidth, SuperOffload shifts FP32 to BF16 or FP8 precision conversions onto the GPU. That avoids burning CPU memory bandwidth on type casting before transfer.
-4. **GraceAdam Vectorized Optimizer:** Standard x86 PyTorch CPU Adam kernels rely on x86 AVX intrinsics. SuperOffload replaces them with GraceAdam, an Adam implementation hand-tuned for the Grace CPU Arm A64 Scalable Vector Extension. GraceAdam exploits all 32 SVE vector registers and 16 predicate registers across all 72 Neoverse V2 cores.
+The diagram follows one step from left to right. The backward pass on the GPU streams gradients to the Grace CPU. The CPU starts its optimizer work early, before the global check is done. The heavy tensor work returns to the GPU, and the two chips keep their copies of the parameters in sync. The numbered boxes match the list below.
+
+1. Speculation-Then-Validation: Instead of waiting for the backward pass and global gradient norm check to finish, STV speculatively runs the optimizer updates on the Grace CPU in parallel with GPU backpropagation. It then validates to commit or roll back the updates once the global check completes, eliminating the end-of-step synchronization bubble. To speculate means to do the work before you know it is allowed, and to roll back means to undo it if the check fails.
+2. Heterogeneous Optimizer Computation: Rather than running 100% of the optimizer on the CPU or 100% on the GPU, SuperOffload partitions optimizer work across both chips simultaneously. Compute-heavy tensor updates run on the GPU Tensor and SIMT cores. Lighter state updates for Adam first-moment and second-moment buffers in LPDDR5X run on the 72 Grace CPU cores. The first moment and second moment are the running averages that Adam keeps for each parameter.
+3. Superchip-Aware Type Casts and Copies: Because NVLink-C2C provides 900 GB/s of coherent bandwidth, SuperOffload shifts FP32 to BF16 or FP8 precision conversions onto the GPU. That avoids burning CPU memory bandwidth on type casting before transfer. A type cast converts a number from one precision format to another.
+4. GraceAdam Vectorized Optimizer: Standard x86 PyTorch CPU Adam kernels rely on x86 AVX intrinsics. SuperOffload replaces them with GraceAdam, an Adam implementation hand-tuned for the Grace CPU Arm A64 Scalable Vector Extension. GraceAdam exploits all 32 SVE vector registers and 16 predicate registers across all 72 Neoverse V2 cores. A kernel tuned this way processes many values per instruction instead of one at a time.
 
 :::tip In one minute
 - Keep hot tensors in GPU HBM and place overflow or cold states in Grace LPDDR5X, using `cudaMemPrefetchAsync()` to hide NVLink-C2C transfer latency.
@@ -320,9 +361,11 @@ flowchart LR
 
 ## Commands and configurations that matter
 
-Use these commands on a Grace Hopper or Grace Blackwell node to inspect the Arm Neoverse V2 CPU, verify NVLink-C2C coherence and NUMA topology, configure hugepages, and pin PyTorch workers. These commands are **untested** on live Grace Superchip hardware in this authoring environment. Their rules are verified in `code/part09/grace_superchips_lab.py`.
+Suppose you log into a new Grace node and want to confirm it is the right kind of machine before you start a job. The commands in this section do that check, then configure memory and CPU placement. These commands were not run on live Grace Superchip hardware. Their rules are checked in `code/part09/grace_superchips_lab.py`.
 
 ### 1. Inspect the 72-core or 144-core Grace Arm Neoverse V2 CPU and SVE capabilities
+
+Start with the CPU itself. The first command reads the architecture and core count, and the second looks for the SVE flag that tells you the vector extension is present.
 
 ```bash
 # 1. Verify aarch64 architecture, 72 cores per socket (144 cores on dual-Superchip tray), and SVE flags
@@ -333,6 +376,8 @@ grep -m 1 -oE "sve[^ ]*" /proc/cpuinfo
 ```
 
 ### 2. Inspect Grace LPDDR5X and GPU HBM NUMA topology and NVLink-C2C links
+
+Next, check how the operating system sees memory. Each memory pool should appear as its own NUMA node, and the GPU-to-GPU links should show up in the topology matrix. If a pool or a link is missing, the placement rules in the earlier sections cannot be applied.
 
 ```bash
 # 1. View CPU and memory NUMA nodes (LPDDR5X vs GPU memory nodes)
@@ -346,6 +391,8 @@ nvidia-smi nvlink --status
 ```
 
 ### 3. Tune Linux virtual memory, locked memory limits, and Transparent Hugepages
+
+These settings decide how the kernel treats the memory that the training job uses. Swapping off keeps the working set in RAM, which matters because a swap to NVMe would add delays that the GPUs cannot hide. The locked-memory limit lets pinned buffers exist, and the hugepage setting trades background work for fewer TLB misses. Choose the THP setting that matches the job, and do not apply both settings to the same node at the same time.
 
 ```bash
 # 1. Disable swapping on GPU/Superchip compute nodes so LPDDR5X never swaps to NVMe
@@ -364,6 +411,8 @@ echo madvise | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
 
 ### 4. Launch a training process pinned to each GPU local Grace CPU NUMA node
 
+The last command starts one training process for each GPU and binds each process to the NUMA node of its local Grace CPU. The loop reads the NUMA affinity from the topology matrix, so the binding follows the hardware instead of a hard-coded guess. The wait command at the end keeps the shell running until all the processes finish.
+
 ```bash
 # Dynamically query each GPU's local NUMA node from nvidia-smi topo -m and bind CPU + memory
 for GPU in 0 1 2 3; do
@@ -378,6 +427,8 @@ wait
 
 ## How it fails
 
+The table lists five failures that teams meet on Grace systems. Each row follows the same path. The symptom is what the on-call engineer sees first, the root cause is the design error behind it, and the last column is the fix. Notice that three of the five come from treating Grace like an ordinary x86 server, and the other two come from treating shared memory as if it behaved like local memory.
+
 | Failure mode | Symptom | Root cause | Diagnosis & fix |
 |---|---|---|---|
 | **1. Assuming GPU-to-GPU caches are hardware cache-coherent across NVSwitch** | Custom multi-GPU CUDA kernels reading/writing peer GPU memory directly across NVLink produce silent stale-cache data corruption or race conditions on a GB200/GB300 node. | Engineers hear *"Grace Blackwell has coherent unified memory"* and assume all 4 or 72 GPUs have globally coherent L1/L2 caches. In reality, **only the CPU–GPU NVLink-C2C link is hardware cache-coherent**; GPU-to-GPU memory across NVSwitch has a shared global address space but **non-coherent GPU caches**. | Use **NCCL** collectives or **NVSHMEM** symmetric memory APIs (`nvshmem_barrier_all()`, `triton.nvshmem.put()/get()`) to enforce explicit memory ordering and cache invalidation across GPUs. |
@@ -386,11 +437,13 @@ wait
 | **4. `Illegal instruction (core dumped)` or 10× slower CPU preprocessing on Grace** | Moving an x86 Docker container or custom C++ optimizer extension onto a GH200/GB200 node either fails to start (`exec format error` / `SIGILL`) or runs CPU Adam updates painfully slowly. | The Grace CPU is **Armv9 `aarch64` (Neoverse V2)** with **Arm SVE** (`32` vector + `16` predicate registers), not x86_64. Containers built for `amd64` or C++ extensions compiled with x86 `AVX2`/`AVX-512` intrinsics either crash or fall back to scalar C loops. | Build multi-arch (`linux/arm64`) NGC containers, recompile native wheels with `-march=armv9-a+sve2`, and use **`GraceAdam` / SuperOffload** to vectorize offloaded optimizer updates on Arm SVE. |
 | **5. Unbound DataLoader workers migrating across dual Grace Superchips** | On a 2-Superchip compute tray (`144` Arm cores, `4` GPUs), training throughput fluctuates by 5%–10% with periodic GPU launch bubbles. | Linux CFS migrated `DataLoader` workers for `GPU 0` (attached to `Grace CPU 0`) onto `Grace CPU 1` cores, incurring a **~75% remote NUMA memory latency penalty** (`~139 ns` vs `~80 ns`). | Bind both the main rank process (`numactl --cpunodebind --membind`) and every forked `DataLoader` worker (`worker_init_fn` with `psutil.Process().cpu_affinity()` + `libnuma`) to the GPU's local Grace CPU NUMA node, and set `persistent_workers=True`. |
 
+Two of the rows deserve a closer read. Row 2 is the one that surprises people, because the model fits and nothing crashes. The job simply runs slowly, and the only clue is the step time. Row 5 is a reminder that the scheduler moves threads around unless you tell it not to. A worker that lands on the wrong CPU keeps paying for remote memory on every batch.
+
 ---
 
 ## Hands-on lab
 
-This chapter provides a self-checking Python model in `code/part09/grace_superchips.py` and a lab runner in `code/part09/grace_superchips_lab.py` that verify four core areas.
+This chapter provides a self-checking Python model in `code/part09/grace_superchips.py` and a lab runner in `code/part09/grace_superchips_lab.py` that verify four core areas. Think of the lab as a set of calculators with rules attached. Each check either reproduces a number from this chapter or confirms that the code rejects a bad input. When you change a value in the model, the checks tell you whether the chapter's arithmetic still holds.
 
 | Lab Component | Verified Calculations and Rules |
 |---|---|
@@ -399,13 +452,13 @@ This chapter provides a self-checking Python model in `code/part09/grace_superch
 | **3. Two-Tier Coherent Memory Placement Evaluator** | Verifies whether hot working sets fit in HBM3 or HBM3e and how overflow spills into Grace LPDDR5X |
 | **4. Runtime & OS Configuration Auditor** | Checks CPU–GPU vs GPU–GPU cache-coherence assumptions, local Grace NUMA pinning, large-page enablement, THP `always` vs `madvise`, hot tensor placement, and Arm A64 SVE vs x86 AVX compatibility |
 
-Run the lab from the repository root.
+Run the lab from the repository root. The command runs the Python script with bytecode writing turned off, so no cache files appear in the repository.
 
 ```bash
 python3 -B code/part09/grace_superchips_lab.py
 ```
 
-Expected output verified in this repository:
+Expected output from a run of this lab in this repository:
 
 ```text
 === Chapter 9.4 Lab: Grace CPU, GH200, GB200 & GB300 Superchips ===
@@ -430,12 +483,12 @@ Summary: 30 passed, 0 failed (total 30)
 
 ## Exercises
 
-1. Run `python3 -B code/part09/grace_superchips_lab.py`. Pick the check that compares PCIe Gen5 and NVLink-C2C transfer time for the 1,200 GB graph. Reproduce the two numbers of 18.75 s and 2.67 s by hand.
-2. Work out the total coherent memory of one GB300 Superchip and of the whole 36-Superchip NVL72 rack, using the numbers in Section 4.1. Which two numbers in the chapter should you compare when sizing a model that must stay in HBM?
-3. You have a GB200 node and a 600 GB model with a 200 GB KV cache. Sketch which tensors you would place in HBM and which in LPDDR5X, and say what you would prefetch and when.
-4. Write the three commands that show whether a node is `aarch64`, has SVE, and how many NUMA nodes it has. Say what you expect on a GB200 compute tray.
-5. A teammate moves an x86 container to a GH200 node and gets `exec format error`. Write the checklist you would give them covering image build, wheels, and native code.
-6. Explain in five lines to a colleague why unified memory on a Grace Superchip does not mean the 864 GB behaves like HBM.
+1. Run `python3 -B code/part09/grace_superchips_lab.py`. Find the check that compares PCIe Gen5 and NVLink-C2C transfer time for the 1,200 GB graph. Can you reproduce the 18.75 s figure by hand? Then reproduce the 2.67 s figure.
+2. Work out the total coherent memory of one GB300 Superchip. Then work out the total for the whole 36-Superchip NVL72 rack, using the numbers in Section 4.1. Which figure should you compare with the HBM size when you size a model that must stay in HBM?
+3. You have a GB200 node and a 600 GB model with a 200 GB KV cache. Which tensors would you place in HBM? Which would you place in LPDDR5X? What would you prefetch, and when?
+4. Write the three commands that show whether a node is `aarch64`, has SVE, and how many NUMA nodes it has. What do you expect to see on a GB200 compute tray?
+5. A teammate moves an x86 container to a GH200 node and gets `exec format error`. What checklist would you give them? Cover the image build, the wheels, and any native code.
+6. Explain to a colleague in five lines why unified memory on a Grace Superchip does not mean the 864 GB behaves like HBM.
 
 ## Checkpoint questions (20)
 

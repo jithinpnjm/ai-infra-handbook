@@ -14,43 +14,39 @@ lab_venue: "none (design / reading)"
 
 | | |
 |---|---|
-| **Status** | Drafted (`dgx_families_lab.py`: 38 checks pass; hardware commands **untested** on live DGX) |
+| **Status** | Drafted (`dgx_families_lab.py`: 38 checks pass; the hardware commands were not run on a live DGX) |
 | **Level** | Basics |
 | **Priority tier** | 1b |
 | **Lab venue** | none (design / reading) + self-checking Python model (`code/part09/dgx_families_lab.py`) |
 | **Part** | Part 9: NVIDIA systems and reference architectures |
-| **Sources used** | `nvidia-devops` Volume 04 and Volume 05; *AI Systems Performance Engineering*; *Data Center Best Practices with DGX B200* (`superpod-b200-dc`); *NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`) |
+| **Sources used** | the `nvidia-devops` material, *AI Systems Performance Engineering*, *Data Center Best Practices with DGX B200* (`superpod-b200-dc`), and *NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`); the full list is at the end of the chapter |
 
 ## Why this matters for AI infrastructure
 
-A team buys sixteen cheap PCIe servers for a 70B chat service. In the demo, one user gets fast answers. At 64 concurrent users, the inter-token latency breaks the target, and the team learns that nobody checked memory bandwidth on the spec sheet. A different team assembles eight high-wattage GPUs in a generic chassis. Training runs, but at three in the morning the GPUs lower their clocks because the airflow was never tested for all eight at full load.
+Imagine a team that buys sixteen cheap PCIe servers to serve a 70B chat model. In the demo, one user gets fast answers, and everyone is pleased. Then the service opens to 64 users at the same time. The time between tokens stretches out and misses the target, and nobody can say why, because the team never checked how fast each GPU can read its own memory. The spec sheet had that number on it, and it was never read.
 
-Both failures come from picking hardware without a model of the workload or of the machine. This chapter gives you two models to use together. Later chapters in Part 9 go deeper on node internals, HGX, Grace, NVL72 racks and facility cooling.
+A different team takes eight high-wattage GPUs and puts them in a generic chassis. Training runs without errors for a while. Then, at three in the morning, the GPUs quietly lower their clocks to protect themselves from heat. The job slows down, and no alarm goes off. The airflow in the chassis was never tested with all eight GPUs at full load.
 
-- **Workload-first accelerator selection.** Describe a job by four numbers: how much math it needs, how much memory it holds, how fast it reads that memory, and how fast GPUs must talk to each other. Those four numbers decide whether the job belongs on an L4, an H100, or a rack-scale Grace Blackwell system.
-- **Appliance-level systems engineering.** NVIDIA sells DGX systems as tested units, from air-cooled eight-GPU nodes to liquid-cooled 72-GPU racks. Knowing what is inside one tells you how storage, networking, management, and power fit together.
+Both failures come from the same habit, which is choosing hardware without a model of the workload or of the machine. This chapter gives you two models to use together. The first is a way to match a workload to an accelerator. The second is a way to understand a complete NVIDIA DGX system as one engineered unit. Later chapters in Part 9 go deeper into node internals, HGX boards, Grace CPUs, NVL72 racks and facility cooling, and they all lean on the ideas here.
+
+- How do you choose a GPU for a job? Describe the job with four numbers: how much math it needs, how much memory it holds, how fast it reads that memory, and how fast its GPUs must talk to each other. Those four numbers decide whether the job belongs on an L4, an H100, or a rack-scale Grace Blackwell system.
+- How do you judge a whole server? NVIDIA sells DGX systems as tested units, from air-cooled eight-GPU nodes to liquid-cooled 72-GPU racks. Once you know what is inside one, you can see how storage, networking, management and power fit together, and where a problem is likely to start.
 
 ## Prerequisites and outcomes
 
-You should know basic server parts such as CPUs, PCIe buses, NVMe drives, power supplies, and Baseboard Management Controllers (BMCs) from Part 7. You should also know how a cluster manager provisions bare-metal GPU nodes and runs health checks, from Part 8.
+You should already know the basic parts of a server, such as CPUs, PCIe buses, NVMe drives, power supplies, and Baseboard Management Controllers (BMCs, the small computers that manage a server's hardware even when its operating system is off). Part 7 covers those. You should also know how a cluster manager provisions bare-metal GPU nodes and runs health checks, which Part 8 covers.
 
-After completing this chapter, you will be able to accomplish the following five engineering tasks.
-
-- Size VRAM capacity and memory bandwidth for training and LLM inference, and score GPU candidates against facility power ceilings and Cost per 1M Tokens.
-- Distinguish NVIDIA accelerator generations from Volta through Blackwell across PCIe cards, SXM modules, and Grace-coupled Superchips.
-- Explain why a server assembled from loose parts has not been tested as a whole, and contrast air-cooled SXM DGX nodes with liquid-cooled rack-scale NVLink appliances.
-- Trace how a DGX node separates its internal NVMe storage tiers and its three physical network planes.
-- Run a baseline DGX qualification check while avoiding ad-hoc firmware flashes and PCIe Access Control Services traps.
+The chapter walks through the four limits that decide which GPU fits a workload, then the generations and form factors of NVIDIA accelerators. After that it explains why DGX exists and what each member of the DGX family is for. Next come the internal data paths of a DGX node, including its storage tiers and its three network planes, followed by the management plane and the facility needs of power, cooling and floor space. The hands-on lab then checks a baseline for a newly delivered node, and the failure cases show what goes wrong when the baseline is skipped. The main engineering skills are sizing memory and bandwidth, reading generation and form-factor labels correctly, and running a baseline check before a node serves real work.
 
 ---
 
 ## 1. Four limits that decide which GPU fits a workload
 
-A team picks a GPU by the peak TFLOPS line on the datasheet and deploys it for low-batch LLM token generation. Production misses its latency target. Token generation reads every weight for each new token, so the GPU spends most of its time waiting on memory and very little time on math. Peak compute told the team nothing about that wait.
+Picture a team that picks a GPU by the peak TFLOPS figure on the datasheet. TFLOPS means trillions of floating-point operations per second, a measure of how much math a chip can do at its fastest. The team then deploys that GPU for LLM token generation at low batch size, which means one or a few users at a time. Production misses its latency target. The reason is simple once you look at the work. Token generation reads every weight in the model for each new token, so the GPU spends most of its time waiting for memory and very little time doing math. The peak figure said nothing about that wait, because it measured the math and not the memory.
 
 ### 1.1 Compute, capacity, bandwidth and interconnect
 
-A GPU is limited by four things: how fast it does math, how much memory it holds, how fast it reads that memory, and how fast it talks to other GPUs. Every AI workload leans on these four in different proportions.
+A GPU has four limits, and each workload runs into them in a different order. Think of a GPU as a busy kitchen. The cooks are the compute units, the counter space is the memory, the speed of the delivery door is the memory bandwidth, and the hallway between kitchens is the interconnect. A kitchen with fast cooks still stalls if the delivery door is slow. The four numbers below work the same way.
 
 ```mermaid
 flowchart TD
@@ -64,19 +60,24 @@ flowchart TD
     IC --> SEL
 ```
 
-- **Compute throughput.** This is how many matrix operations the Streaming Multiprocessors and Tensor Cores finish per second. Pre-training and the prefill phase of LLM inference are dense matrix multiplications, so they are compute-bound. Prefill speed sets Time to First Token.
-- **Memory capacity.** This is how much data fits on the GPU package at once. If the job needs more than the GPU holds, it either crashes with an Out-Of-Memory error or spills over the PCIe bus to host RAM, which ruins throughput.
-- **Memory bandwidth.** This is how fast bytes move from GDDR6 or High Bandwidth Memory into the compute units. The decode phase of LLM inference generates one token at a time and reads the whole weight matrix for each token. There is very little math per byte read, so decode speed is limited by memory bandwidth and sets Inter-Token Latency.
-- **Interconnect bandwidth.** This is how fast data moves between GPUs inside a server and across servers over InfiniBand or RoCEv2 RDMA. When a model is split across GPUs with Tensor or Pipeline Parallelism, or gradients are synchronized with Data Parallelism, the interconnect sits on the critical path.
+The first limit is compute throughput. It measures how many matrix operations the Streaming Multiprocessors (SMs, the processing blocks inside a GPU) and their Tensor Cores (the units built to multiply matrices quickly) finish each second. Pre-training and the prefill phase of LLM inference are dense matrix multiplications, so they are limited by compute. Prefill is the step where the model reads your whole prompt at once. Its speed sets the Time to First Token (TTFT), which is how long a user waits before the first word appears.
+
+The second limit is memory capacity. It measures how much data fits on the GPU at one time. A job that needs more memory than the GPU holds has two bad options. It can crash with an Out-Of-Memory error, or it can spill data over the PCIe bus into host RAM, which is much slower than GPU memory and ruins throughput.
+
+The third limit is memory bandwidth. It measures how fast bytes move from the GPU's memory into its compute units. The memory is either GDDR6 (a graphics-style memory used on smaller cards) or High Bandwidth Memory (HBM, stacked memory placed very close to the GPU die). The decode phase of LLM inference generates one token at a time, and for each token it reads the whole weight matrix. Very little math happens for each byte read, so decode speed is set by bandwidth. Decode speed sets the Inter-Token Latency (ITL), which is the pause between one word and the next.
+
+The fourth limit is interconnect bandwidth. It measures how fast data moves between GPUs inside one server, and between servers over InfiniBand or RoCEv2 RDMA. RDMA lets one machine write into another machine's memory without going through the operating system on either side. When a model is split across GPUs with Tensor or Pipeline Parallelism, or when gradients are combined across GPUs with Data Parallelism, the interconnect sits on the critical path. Every step waits for it.
 
 ### 1.2 Calculating memory footprints: training versus inference
 
-If an engineer sizes a cluster only for raw model weights, training crashes on the first optimizer step. Inference servers run out of memory as soon as concurrent users connect. Before looking at hardware catalogs, translate the workload into a gigabyte requirement.
+Suppose an engineer sizes a cluster by counting only the raw model weights. The training job crashes on its first optimizer step, because training needs much more memory than the weights alone. An inference server with the same sizing runs out of memory as soon as several users connect, because each user adds memory too. The lesson is to translate the workload into a gigabyte requirement before you look at any hardware catalog.
 
-- **Full training and fine-tuning.** Training stores far more than the model weights. The GPU also holds master weights, the Adam optimizer's momentum and variance, gradients, and the activations saved for backpropagation. As a rule of thumb, full training needs four to six times the raw weight footprint.
-- **Static model weights in inference.** Inference does not store optimizer states or gradients. Static weight memory simply equals the parameter count multiplied by the bytes per parameter.
-- **Dynamic KV cache in inference.** To avoid recomputing attention over earlier tokens at every decode step, the GPU keeps the Key and Value tensors of every active user sequence. With many users and long sequences, the KV cache can rival the weights in size.
-- **Runtime safety margin in inference.** Multiply the sum of weights and KV cache by 1.2. The extra twenty percent covers CUDA context overhead, scratch buffers, and temporary activations.
+The memory need splits into parts. Training and inference use different parts, so the two need different formulas.
+
+- How much memory does training need? Full training and fine-tuning need far more than the model weights. The GPU also holds master weights, the momentum and variance values kept by the Adam optimizer (a common training method that keeps two running averages for each weight), the gradients, and the activations saved for backpropagation. Backpropagation is the backward pass that works out how each weight should change. As a rule of thumb, full training needs four to six times the raw weight footprint.
+- How much memory do inference weights need? Inference does not keep optimizer states or gradients. The static weight memory is simply the parameter count multiplied by the bytes each parameter takes.
+- Why does the KV cache grow with users? To avoid recomputing attention over earlier tokens at every decode step, the GPU keeps the Key and Value tensors for every active user sequence. This is the KV cache. With many users and long sequences, the KV cache can rival the weights in size.
+- Why add a safety margin? Multiply the sum of weights and KV cache by 1.2. The extra twenty percent covers CUDA context overhead (the setup memory the CUDA runtime keeps for each process), scratch buffers and temporary activations.
 
 ```text
 Workload VRAM sizing formulas and 70B worked example (dgx_families.py):
@@ -101,17 +102,19 @@ Workload VRAM sizing formulas and 70B worked example (dgx_families.py):
      (135.54 GB fits on two 80 GB H100 GPUs = 160 GB total, or one 141 GB H200 GPU with little headroom)
 ```
 
-The KV formula counts KV heads, not attention heads. Llama-3-70B has 64 attention heads, but groups of eight heads share one key and value vector, so only 8 KV heads are stored. Using 64 would overstate the cache eight times. Always read the number of KV heads from the model configuration.
+Read the KV-cache line carefully, because it is the easiest one to get wrong. The formula counts KV heads, not attention heads. Llama-3-70B has 64 attention heads, but groups of eight heads share one key vector and one value vector, so only 8 KV heads are stored. Using 64 would overstate the cache eight times. Always read the number of KV heads from the model configuration, and do not guess it from the model's name.
 
 ### 1.3 The five-step selection scorecard and inference economics
 
-A team buys cheaper PCIe servers to save capital, then finds that each server handles very few concurrent users, so each token costs about twice as much to serve. A five-step workflow keeps the choice tied to the workload instead of the hourly server price.
+Picture a team that buys cheaper PCIe servers to save money on each machine. Each server then handles only a few users at once, so the cost of each token rises. The team has saved money on the purchase and spent more on every answer the service gives. A five-step workflow keeps the choice tied to the workload and not to the hourly price of a server.
 
-- **Step 1: Classify the primary workload.** Decide whether the cluster mainly runs pre-training, LoRA or full fine-tuning, real-time inference, batch inference, or rendering.
-- **Step 2: Calculate the memory footprint.** Apply the training multiplier or the inference KV-cache and safety-margin formula to get the VRAM you need.
-- **Step 3: Compare bandwidth with compute.** Check whether your latency target is set by compute-bound prefill or bandwidth-bound decode. An H100 SXM5 has about four times the memory bandwidth of an L40S, so it decodes about four times faster at small batch sizes. Its peak FP8 compute does not explain that gap.
-- **Step 4: Decide the interconnect.** If a model does not fit on one GPU, Tensor Parallelism needs an `AllReduce` after every transformer layer. Over PCIe Gen5 the GPUs can lose a large share of each step waiting on the bus. High-throughput multi-GPU serving and multi-node training need SXM with NVLink.
-- **Step 5: Apply facility and cost limits.** Remove any candidate that breaks a hard limit first, such as the rack power ceiling, a missing NVLink, or no native FP8 support.
+The five steps run in order. Each step narrows the list of candidates, so the expensive comparison happens last, when only a few options remain.
+
+- Step 1: what is the main job? Decide whether the cluster mainly runs pre-training, LoRA or full fine-tuning, real-time inference, batch inference, or rendering. LoRA is a small add-on method for fine-tuning that trains only a few extra weights.
+- Step 2: how much memory does the job need? Apply the training multiplier, or the inference KV-cache and safety-margin formula, to get the VRAM you need.
+- Step 3: is the bottleneck math or memory? Check whether your latency target is set by compute-bound prefill or bandwidth-bound decode. An H100 SXM5 has about four times the memory bandwidth of an L40S, so it decodes about four times faster at small batch sizes. Its peak FP8 compute does not explain that gap, because decode is limited by memory and not by math.
+- Step 4: how do the GPUs talk to each other? If a model does not fit on one GPU, Tensor Parallelism needs an `AllReduce` after every transformer layer. An AllReduce is a collective operation that combines results from all GPUs and gives every GPU the total. Over PCIe Gen5 the GPUs can lose a large share of each step waiting on the bus. High-throughput multi-GPU serving and multi-node training need SXM with NVLink.
+- Step 5: which candidates break a hard limit? Remove any candidate that breaks a hard limit first, such as the rack power ceiling, a missing NVLink, or no native FP8 support. Do this before any scoring, because a server that cannot be powered does not matter how well it scores.
 
 ```text
 Selection scorecard weights, SLO targets, and economics (dgx_families.py):
@@ -130,19 +133,19 @@ Selection scorecard weights, SLO targets, and economics (dgx_families.py):
   Cost per 1M Tokens ($) = (Hourly System Cost ($) / (Total Tokens/sec * 3,600)) * 1,000,000
 ```
 
-Score the candidates that survive across the five weighted dimensions, then benchmark the shortlist using Goodput. Goodput is the number of requests per second that meet both the P99 TTFT and the P99 ITL targets. An SXM H100 or H200 costs more per hour than a PCIe server but often costs less per million tokens. Its HBM bandwidth and NVLink sustain far more tokens per second before the decode latency target is missed.
+After the hard limits, score the remaining candidates across the five weighted dimensions. The weights say how much each dimension counts toward the final score. Then benchmark the shortlist with Goodput. Goodput is the number of requests per second that meet both the P99 TTFT and the P99 ITL targets. P99 is the value that only the slowest few requests exceed, so it describes the slow tail that users actually feel. A requests-per-second number that ignores the latency targets can look good while most users wait too long.
 
-Before you compare prices, size the memory and rule out any server that cannot meet the decode latency target.
+An SXM H100 or H200 costs more per hour than a PCIe server, but it often costs less per million tokens. The reason is that its HBM bandwidth and NVLink keep more tokens flowing per second before the decode latency target is missed. A cost per token falls when each busy hour produces more answers. Before you compare prices, size the memory and rule out any server that cannot meet the decode latency target. A cheap hour that serves nothing is an expensive hour.
 
 ---
 
 ## 2. Accelerator generations and form factors: PCIe, SXM, and Superchips
 
-A team moves a BF16 model onto older Turing cards and finds it running at a fraction of the expected speed, because the card emulates BF16 in software. Another team buys PCIe Hopper cards and finds them well below the SXM5 version of the same chip. Generation and form factor both matter. Once you know your workload's profile, match it to NVIDIA's portfolio on those two axes.
+Picture a team that moves a BF16 model onto older Turing cards and finds it running far slower than expected. BF16 is a 16-bit number format that many newer GPUs handle in hardware. The Turing card does not have that hardware, so it emulates BF16 in software, and software emulation is slow. Another team buys PCIe Hopper cards and finds them well below the SXM5 version of the same chip. Both mistakes come from reading only half of the label. Generation tells you which hardware features exist, and form factor tells you how much power and cooling the chip gets and how it is wired. Once you know your workload's profile, match it to NVIDIA's portfolio on those two axes.
 
 ### 2.1 Five architectural generations: Volta to Blackwell
 
-Each NVIDIA data center GPU generation added hardware that removed the main scaling bottleneck of its time. The table lists the main changes.
+Each NVIDIA data center GPU generation added hardware that removed the main scaling bottleneck of its time. Read the table as a history. Each row answers the question "what problem did this generation fix that the one before could not fix?" The table lists the main changes.
 
 | Generation & Year | Flagship GPUs | Process & Scale | Key Architectural Shifts | Memory & Interconnect Leap |
 |---|---|---|---|---|
@@ -152,17 +155,19 @@ Each NVIDIA data center GPU generation added hardware that removed the main scal
 | **Hopper (2022–2024)** | `H100`, `H200` | 4nm (80B transistors) | Transformer Engine that switches between FP8 and FP16 or BF16 per layer; thread block clusters; Tensor Memory Accelerator; Confidential Computing. H200 moves to HBM3e. | `H100`: 80 GB HBM3 @ 3.35 TB/s; `H200`: 141 GB HBM3e @ 4.8 TB/s; 4th-gen NVLink @ 900 GB/s; 700W TDP |
 | **Blackwell & Blackwell Ultra (2024–2025)** | `B200`, `GB200`, `B300`, `GB300` | 4NP **dual-reticle** (208B transistors) | Two dies joined by a 10 TB/s chip-to-chip link that software sees as one GPU; second-generation Transformer Engine with FP4 and FP6; fifth-generation NVLink for 72-GPU racks; a Decompression Engine and a RAS Engine for health telemetry. | `B200`: 180–192 GB HBM3e @ 8.0 TB/s; `B300`: 288 GB HBM3e; 1.8 TB/s NVLink 5; 1,000W–1,400W TDP |
 
+Some of the labels in the table are short forms, so it helps to know what they stand for. The Tensor Core is the unit that does the matrix math. FP8 and FP4 are very small number formats, which let a chip move and multiply more numbers per second, at the cost of some precision. The Transformer Engine is hardware and software that chooses the number format for each layer of a transformer model. NVLink is NVIDIA's fast link between GPUs, and NVSwitch is the chip that connects many GPUs through it. The TDP, or thermal design power, is the heat a chip is designed to give off under load, and it is a good proxy for the power and cooling it needs.
+
 :::note Reconciling B200 HBM3e capacity numbers across sources
 The B200 die carries eight HBM3e stacks of 24 GB, which is 192 GB per GPU and 384 GB across the two GPUs of a GB200 Superchip. The DGX B200 system table lists 180 GB per GPU, which is 1,440 GB across the eight GPUs of a node and 13,440 GB across the 72 GPUs of a GB200 NVL72 rack. Both figures are real. Check the sheet for the exact product before you size a tight memory budget.
 :::
 
 ### 2.2 The PCIe inference workhorses: T4, L4, and L40S
 
-Most sites do not train frontier models. Enterprise data centers and edge sites with ordinary air-cooled racks mostly run inference on one of three PCIe cards. Pick the wrong one and a modern transformer service stalls on a missing precision format or a saturated PCIe bus.
+Most sites do not train frontier models. Enterprise data centers and edge sites with ordinary air-cooled racks mostly run inference, which means serving answers from a trained model, on one of three PCIe cards. PCIe is the standard expansion slot that plugs a card into a server board. Pick the wrong card and a modern transformer service stalls, either on a number format the card cannot handle or on a PCIe bus that is already full.
 
-- **NVIDIA T4.** This low-profile single-slot Turing PCIe Gen3 card draws 70W and needs no extra power connector. It suits older small models such as BERT, ResNet-50 and Whisper, and video transcoding. It has no BF16 or FP8 hardware, so a BF16 model on a T4 runs through slow software emulation.
-- **NVIDIA L4.** This low-profile single-slot Ada Lovelace PCIe Gen4 card draws 72W and is the drop-in successor to the T4. It has more GDDR6 and fourth-generation Tensor Cores with native FP8. Its four hardware AV1 engines suit small LLMs and video analytics.
-- **NVIDIA L40S.** This dual-slot full-height Ada Lovelace PCIe Gen4 card draws 350W and combines 48 GB of GDDR6, FP8 Tensor Cores, RT cores and media engines. Two or four of them fit in a standard OEM server and can serve a 70B FP8 model at low concurrency. It has no NVLink, so it misses the decode latency target at much lower concurrency than an H100.
+- What does the T4 offer? The NVIDIA T4 is a low-profile, single-slot Turing card on PCIe Gen3. It draws 70W and needs no extra power connector. It suits older small models such as BERT, ResNet-50 and Whisper, and it handles video transcoding well. It has no BF16 or FP8 hardware, so a BF16 model on a T4 runs through slow software emulation.
+- What does the L4 change? The NVIDIA L4 is a low-profile, single-slot Ada Lovelace card on PCIe Gen4, and it draws 72W. It is the drop-in successor to the T4 for the same kind of rack. It has more GDDR6 memory and fourth-generation Tensor Cores with native FP8, so it can run modern small models directly. Its four hardware AV1 engines, which decode and encode the AV1 video format, suit small LLMs and video analytics.
+- When is the L40S the right card? The NVIDIA L40S is a dual-slot, full-height Ada Lovelace card on PCIe Gen4, and it draws 350W. It combines 48 GB of GDDR6, FP8 Tensor Cores, RT cores (units for ray tracing, which is light simulation for graphics) and media engines. Two or four of them fit in a standard OEM server, which is a server built by a system vendor such as Dell or HPE, and they can serve a 70B FP8 model at low concurrency. Because it has no NVLink, it misses the decode latency target at much lower concurrency than an H100.
 
 ```text
 PCIe inference accelerator specifications (dgx_families.py):
@@ -174,7 +179,7 @@ PCIe inference accelerator specifications (dgx_families.py):
 
 ### 2.3 Form factors: PCIe vs SXM vs Grace Superchips
 
-Engineers new to AI hardware often ask why an H100 PCIe performs so differently from an H100 SXM5 when both use the same GH100 die. The form factor sets the power budget, the cooling, the memory type and the board wiring.
+Engineers new to AI hardware often ask why an H100 PCIe card performs so differently from an H100 SXM5 module when both use the same GH100 die. A die is the single piece of silicon that holds the chip's logic. The form factor is the physical package around that die. It sets the power budget, the cooling, the memory type and the wiring on the board, and those four things decide most of the performance difference. Two cards with the same die can behave very differently once they sit in different packages.
 
 | Attribute | PCIe Form Factor (`H100 PCIe`) | SXM Form Factor (`H100 SXM5`) | Grace Superchip (`GH200` / `GB200` / `GB300`) |
 |---|---|---|---|
@@ -184,38 +189,42 @@ Engineers new to AI hardware often ask why an H100 PCIe performs so differently 
 | **FP8 Tensor Compute** | ~1,513 TFLOPS (with sparsity) | ~3,958 TFLOPS (with sparsity, **>2× faster** sustained clocks) | `GB200`: up to 20 PFLOPS FP4 / 10 PFLOPS FP8 |
 | **GPU-to-GPU interconnect** | PCIe Gen5 x16 (**64 GB/s** uni / **128 GB/s** bi) or optional 2-GPU NVLink bridge | **NVSwitch** full-mesh across all 8 GPUs (**900 GB/s** per GPU on Hopper; **1.8 TB/s** on Blackwell) | **NVLink-C2C** (**900 GB/s** CPU-GPU) + **NVLink 4/5** across up to 72 or 256 GPUs |
 
-In a traditional x86 server, the CPU talks to the GPUs over PCIe Gen5 x16. That narrow bus becomes a bottleneck, called the PCIe tax, whenever large embedding tables, optimizer states or KV caches spill to host RAM.
+Read the table one row at a time, and ask one question per row. The mounting row asks how the chip is attached, and the answer decides how many chips a server can hold and how they are cooled. The power row asks how much heat the package can carry, and that limit caps the clock speed the chip can hold under load. The memory row asks how fast the chip can read its own memory. The compute row shows the math ceiling. The interconnect row asks how the GPUs reach each other, which matters as soon as a model spans more than one GPU.
 
-Grace Superchips (GH200, GB200 and GB300) replace the PCIe link between CPU and GPU with NVLink-C2C. It runs at 900 GB/s bidirectional and uses under 5 pJ per bit. It joins the 72-core Arm Grace CPU's LPDDR5X memory and the GPU's HBM into one coherent address space. Chapter 9.4 covers Grace Superchips in full, and Chapter 10.7 covers GPU generations.
+In a traditional x86 server, the CPU talks to the GPUs over PCIe Gen5 x16, which is a PCIe link with 16 lanes. That link becomes a bottleneck whenever large embedding tables, optimizer states or KV caches spill out of GPU memory into host RAM. Engineers call the slowdown the PCIe tax. The data has to cross the narrow bus, and the GPU waits for it.
 
-Use PCIe GPUs when the model fits on one or two cards in ordinary air-cooled racks. Choose SXM or Grace Superchips when multi-GPU Tensor Parallelism or multi-node training is on the critical path.
+Grace Superchips (GH200, GB200 and GB300) replace the PCIe link between CPU and GPU with NVLink-C2C, a chip-to-chip link. It runs at 900 GB/s bidirectional and uses under 5 pJ per bit, where pJ means picojoules, a tiny unit of energy. It joins the 72-core Arm Grace CPU's LPDDR5X memory and the GPU's HBM into one coherent address space. Coherent means both processors see the same memory contents at all times, so the CPU and the GPU do not need to copy data back and forth. Chapter 9.4 covers Grace Superchips in full, and Chapter 10.7 covers GPU generations.
+
+A simple rule ties these points together. Use PCIe GPUs when the model fits on one or two cards in ordinary air-cooled racks. Choose SXM or Grace Superchips when multi-GPU Tensor Parallelism or multi-node training is on the critical path, because then the speed of the links between GPUs decides how fast every step runs.
 
 ---
 
 ## 3. Why DGX exists and the DGX family lineup
 
-Many vendors sell servers with NVIDIA GPUs, so buyers ask why NVIDIA also sells DGX. The answer shows up when a team builds a server from eight high-wattage GPUs, two CPUs and eight network cards taken from separate catalogs. Under load it throttles, GPUs drop off the bus, and traffic stalls on the link between the CPU sockets.
+Many vendors sell servers that hold NVIDIA GPUs, so buyers often ask why NVIDIA also sells DGX systems. The answer shows up when a team builds a server from eight high-wattage GPUs, two CPUs and eight network cards, each taken from a separate catalog. The parts may each be good. Once the server runs a real load, it throttles, GPUs drop off the PCIe bus, and traffic stalls on the link between the two CPU sockets. Nobody made an obvious mistake, and yet the machine does not perform.
 
 ### 3.1 Why a server built from loose parts underperforms
 
-A server built from loose parts has not been tested as a whole. Each GPU, NIC, and CPU may be a good part, but nobody has checked how they behave together at full load. Four problems show up again and again.
+A server built from loose parts has never been tested as a whole. Each GPU, NIC (network interface card) and CPU may be a good part on its own, but nobody has checked how they behave together at full load. Four problems show up again and again, and each one gets worse as the server gets denser.
 
-- **Internal topology.** A naive board routes GPU-to-NIC traffic across the CPU socket link, such as Intel UPI or AMD Infinity Fabric. This happens when the PCIe switches are not balanced one-to-one with the GPUs. Under a multi-node collective, cross-socket traffic can cut GPUDirect RDMA throughput sharply.
-- **Thermal throttling.** Eight SXM GPUs in a dense collective put out a lot of heat in one chassis, next to the NVSwitches and optical transceivers. If airflow and heatsinks are not designed for all of them at peak, the GPUs quietly lower their clocks at three in the morning to protect the silicon.
-- **Firmware mismatches.** An 8-GPU server holds dozens of separate controllers: the BMC, BIOS, motherboard CPLDs, PCIe Gen5 retimers, four NVSwitch chips, eight GPU VBIOSes and ten NIC or DPU firmwares. Update one out of step with the rest and GPUs can vanish from the PCIe bus or NVLink training can fail.
-- **Finger-pointing.** When a training job hangs inside `ncclAllReduce`, the server vendor blames the NIC firmware and the switch vendor blames the CUDA driver. Meanwhile the cluster sits idle at thousands of dollars an hour.
+- How does the internal wiring cause trouble? A naive board routes GPU-to-NIC traffic across the link between the CPU sockets, such as Intel UPI or AMD Infinity Fabric. This happens when the PCIe switches are not balanced one-to-one with the GPUs. Under a multi-node collective, which is an operation that involves many machines at once, cross-socket traffic can cut GPUDirect RDMA throughput sharply.
+- Why do GPUs slow down under heat? Eight SXM GPUs running a dense collective give off a lot of heat inside one chassis, close to the NVSwitches and the optical transceivers. If airflow and heatsinks are not designed for all of them at peak, the GPUs quietly lower their clocks to protect the silicon. The slowdown looks like a bad night, not like a fault.
+- What happens when firmware versions do not match? An 8-GPU server holds dozens of separate controllers. Firmware is the small program that runs inside each controller. The list includes the BMC, the BIOS, motherboard CPLDs (small programmable logic chips), PCIe Gen5 retimers (chips that clean up a signal on a long PCIe trace), four NVSwitch chips, eight GPU VBIOSes and ten NIC or DPU firmwares. A DPU is a data processing unit, a NIC with its own processor. Update one controller out of step with the rest, and GPUs can vanish from the PCIe bus or NVLink training can fail.
+- Who is responsible when a job hangs? When a training job hangs inside `ncclAllReduce`, the NCCL collective call that combines gradients, the server vendor may blame the NIC firmware. The switch vendor may blame the CUDA driver. Meanwhile the cluster sits idle, and the idle time costs thousands of dollars an hour.
 
-DGX answers these four problems with one tested design. The chassis, PCIe and NVSwitch wiring, the unified DGX Firmware Container, DGX OS and the NGC container stack are validated together and ship as one product with one support contact.
+DGX answers these four problems with one tested design. The chassis, the PCIe and NVSwitch wiring, the unified DGX Firmware Container, DGX OS and the NGC container stack are validated together. They ship as one product with one support contact. An NGC container is a software image from NGC, the NVIDIA container catalog, and NVIDIA builds and tests it for the same hardware.
 
-If you are choosing between a DGX and a server from another vendor, ask who owns the whole stack when a job hangs.
+If you are choosing between a DGX and a server from another vendor, ask who owns the whole stack when a job hangs. A single owner shortens the time to find a fault, and a split owner usually adds days.
 
 ### 3.2 The three DGX system archetypes and generation comparison
 
-The DGX line falls into three groups. The grouping is this handbook's own, built from NVIDIA's published system descriptions.
+The DGX line falls into three groups. The grouping is this handbook's own, built from NVIDIA's published system descriptions, so think of it as a helpful way to organize the family and not as an official label. Each group answers a different question about where the system will live.
 
-- **Deskside development appliances.** The DGX Station family is quiet enough for an office and suits small research teams without a data center room. It runs the same DGX OS and NGC container stack as cluster nodes.
-- **8-GPU air-cooled SXM compute nodes.** DGX-1, DGX-2, DGX A100, DGX H100, DGX H200 and DGX B200 are self-contained rack servers. Eight SXM GPUs talk to each other over an NVSwitch baseboard, and eight NICs connect the node to the InfiniBand or RoCEv2 fabric.
-- **Rack-scale multi-node NVLink appliances.** DGX GH200, DGX GB200 NVL72 and DGX GB300 NVL72 go past the 8-GPU chassis. They extend NVLink across a 72-GPU rack, or across a multi-rack fabric of up to 256 GPUs, so the whole rack behaves like one large GPU.
+- Which DGX fits an office? The deskside development appliances, the DGX Station family, are quiet enough for an office and suit small research teams without a data center room. They run the same DGX OS and NGC container stack as the cluster nodes, so code that works on the desk moves to the cluster without changes.
+- Which DGX fits a data center row? The 8-GPU air-cooled SXM compute nodes are DGX-1, DGX-2, DGX A100, DGX H100, DGX H200 and DGX B200. Each one is a self-contained rack server. Eight SXM GPUs talk to each other over an NVSwitch baseboard, and eight NICs connect the node to the InfiniBand or RoCEv2 fabric, which is the high-speed network between nodes.
+- Which DGX fits a model too big for one server? The rack-scale multi-node NVLink appliances, which are DGX GH200, DGX GB200 NVL72 and DGX GB300 NVL72, go past the 8-GPU chassis. They extend NVLink across a 72-GPU rack, or across a multi-rack fabric of up to 256 GPUs, so the whole rack behaves like one large GPU.
+
+Use the table below as a lookup. Each row gives one system's specifications. Start with the archetype column to find the group, and then compare the memory and power columns for the facility question.
 
 | DGX System | Archetype & Form Factor | GPUs & CPUs | Total GPU Memory & HBM Bandwidth | NVLink Generation & Fabric Bandwidth | Compute Network (East-West) | Max Power & Cooling |
 |---|---|---|---|---|---|---|
@@ -227,13 +236,15 @@ The DGX line falls into three groups. The grouping is this handbook's own, built
 | **DGX GB200 NVL72** | 48U liquid-cooled rack (18 compute trays + 9 NVLink switch trays) | **36x Grace CPUs + 72x B200 GPUs** (36x GB200 Superchips) | **13.4–13.8 TB** HBM3e (@ **576 TB/s**) + **17 TB** LPDDR5X (**~30 TB** total fast memory) | NVLink 5 rear copper backplane (passive copper cables): **1.8 TB/s** per GPU (**130 TB/s** agg) | 72x 400 Gbps (ConnectX-7) or 800 Gbps (ConnectX-8) | **~120 kW** per rack (Direct Liquid Cooling) |
 | **DGX GB300 NVL72** | 48U hybrid liquid+air rack (18 compute trays + 9 NVLink switch trays + 8x 33 kW power shelves) | **36x Grace CPUs + 72x B300 GPUs** (36x GB300 Superchips) | **20.7 TB** HBM3e (72 × 288 GB) + Grace LPDDR5X | NVLink 5 blind-mate backplane (9 switch trays): **1.8 TB/s** per GPU (**130 TB/s** agg) | 4x ConnectX-8 (**800 Gbps** Quantum-X800 IB) + 1x BlueField-3 (2x400G) per tray | **~150 kW** per rack (**1.2 MW** per 8-rack Scalable Unit) |
 
+Two columns deserve a closer look. The memory column lists the total HBM across the whole system, not per GPU, so a 640 GB entry means eight GPUs sharing the total. The power column is what the facility must deliver, and it sets the number of racks you can fill. The compute network column tells you how many links leave each node for the fabric, which later sets how well the nodes scale together.
+
 ### 3.3 Why rack-scale NVL72 changes the physics of trillion-parameter models
 
-A large Mixture-of-Experts or trillion-parameter model eventually outgrows an 8-GPU server. Inside a DGX H100 or DGX B200, the eight GPUs talk at NVLink speed. The ninth GPU sits in another server, and traffic to it slows to the speed of a network card, about eighteen times lower. Tensor Parallelism and expert routing stall at that step.
+A large Mixture-of-Experts model, or a model with a trillion parameters, eventually outgrows an 8-GPU server. A Mixture-of-Experts model routes each token to a few specialist sub-networks, which are called experts. Inside a DGX H100 or DGX B200, the eight GPUs talk at NVLink speed. A ninth GPU sits in another server, though, and traffic to it slows to the speed of a network card. That is about eighteen times lower bandwidth, a cliff that Tensor Parallelism and expert routing run into at exactly that step.
 
-The DGX GB200 NVL72 and DGX GB300 NVL72 remove that wall. Eighteen compute trays and nine NVLink switch trays are joined by a passive copper backplane at the back of the rack. All 72 GPUs share full NVLink 5 bandwidth in one NVLink domain, without the power draw and failure rate of optical cabling for 72 GPUs. Chapter 9.5 covers the compute tray, switch tray, power shelf and crossbar in detail.
+The DGX GB200 NVL72 and DGX GB300 NVL72 remove that wall. Eighteen compute trays and nine NVLink switch trays are joined by a passive copper backplane at the back of the rack. A backplane is the board that carries the signals between the trays. Because it is passive, it holds no active chips and draws no power of its own. All 72 GPUs share full NVLink 5 bandwidth in one NVLink domain, which is one big group of GPUs that can talk at full link speed. Copper keeps the rack free of the power draw and the failure rate that optical cabling for 72 GPUs would bring. Chapter 9.5 covers the compute tray, switch tray, power shelf and crossbar in detail.
 
-Choose an 8-GPU air-cooled DGX when your facility is air-cooled and Tensor Parallelism fits in eight GPUs. Choose a liquid-cooled NVL72 rack when the model needs a 72-GPU NVLink domain.
+Choose an 8-GPU air-cooled DGX when your facility is air-cooled and Tensor Parallelism fits in eight GPUs. Choose a liquid-cooled NVL72 rack when the model needs a 72-GPU NVLink domain. The choice follows the facility and the model together, so decide both before you order.
 
 ```text
 Breaking the 8-GPU NVLink wall in NVL72 (dgx_families.py):
@@ -249,13 +260,13 @@ Breaking the 8-GPU NVLink wall in NVL72 (dgx_families.py):
 
 ## 4. Inside the DGX data paths: storage tiers, GPUDirect Storage, and the three network planes
 
-Suppose a training job reads its dataset through the host CPU page cache, or shares network ports between storage traffic and GPU collectives. The GPUs then spend much of their time waiting for data.
+Suppose a training job reads its dataset through the host CPU's page cache, which is the operating system's memory copy of recently read files. The same job shares its network ports between storage reads and GPU collectives. The GPUs then spend much of their time waiting for data, while the CPU works hard copying bytes that nobody needed to touch. The fix is a layout where the data goes straight where it is needed.
 
-Every DGX is wired so that bytes move directly between NVMe drives, network cards and GPU memory, without passing through the host CPU or system DDR5 RAM. Chapter 9.2 walks through the two-tray layout and the four-switch PCIe Gen5 complex.
+Every DGX is wired so that bytes move directly between NVMe drives, network cards and GPU memory, without passing through the host CPU or the system's DDR5 RAM. Chapter 9.2 walks through the two-tray layout and the four-switch PCIe Gen5 complex in detail. The rest of this section covers two ideas that follow from that wiring. The first is how a node splits its flash into tiers. The second is how the network is split into separate planes.
 
 ### 4.1 The two internal NVMe storage tiers and GPUDirect Storage
 
-A data scientist saves the only copy of a checkpoint on the node's local `/raid` volume, and one NVMe drive failure wipes out days of training. To keep dataset reads off shared network storage while protecting the operating system, a DGX node splits its flash into two separate tiers.
+Picture a data scientist who saves the only copy of a checkpoint on the node's local `/raid` volume. A checkpoint is a saved snapshot of a model in the middle of training. One NVMe drive fails, and days of training disappear with it. The lesson is that fast local storage and safe storage are different jobs, and a DGX node splits its flash into two tiers to keep them apart. The first tier protects the operating system. The second tier serves fast reads for the dataset. NVMe is a fast flash-storage interface that connects directly to the PCIe bus.
 
 ```mermaid
 flowchart LR
@@ -268,9 +279,11 @@ flowchart LR
     end
 ```
 
-- **Tier 1: OS and Management Drives.** Mirrored M.2 NVMe drives in Hardware RAID 1 hold DGX OS, system logs, and container layers under `/var/lib/containerd`.
-- **Tier 2: Ephemeral Data Cache.** Dedicated U.2 or E1.S NVMe drives in RAID 0 mounted at `/raid` are striped for high sequential read bandwidth and wired directly under the PCIe Gen5 switches. Because `/raid` is a RAID 0 stripe with zero parity or mirroring, losing a single drive destroys the entire volume. Never store the sole copy of model checkpoints or source code on `/raid`. Always replicate checkpoints immediately to the shared Parallel File System.
-- **GPUDirect Storage.** Ordinary Linux I/O copies data from NVMe into a bounce buffer in DDR5 RAM and then across PCIe a second time into GPU memory. GPUDirect Storage uses the `nvidia-fs` kernel module and the `cuFile` API to move data directly between local NVMe or remote RDMA storage and the GPU. Chapter 13.3 covers it in depth.
+The diagram shows the two paths side by side. In the traditional path, data crosses the PCIe bus into host RAM, sits in a bounce buffer there, and then crosses the bus a second time into GPU memory. A bounce buffer is a temporary holding area in host memory. In the GPUDirect Storage path, the data moves from the drive to the GPU in one step, through the PCIe switch and without the host RAM.
+
+- Which drives run the operating system? Tier 1 is the operating system and management tier. It uses mirrored M.2 NVMe drives in Hardware RAID 1, which means the two drives hold identical copies, so one can fail without losing the system. These drives hold DGX OS, the system logs, and the container layers under `/var/lib/containerd`.
+- Why is `/raid` not safe for checkpoints? Tier 2 is the ephemeral data cache. It uses dedicated U.2 or E1.S NVMe drives in RAID 0 mounted at `/raid`. RAID 0 stripes data across the drives for speed, so it reads and writes quickly. The drives sit directly under the PCIe Gen5 switches. Because `/raid` has no parity and no mirror, losing a single drive destroys the entire volume. For that reason, never store the only copy of model checkpoints or source code on `/raid`. Replicate checkpoints right away to the shared parallel file system, which is the storage that every node in the cluster can reach.
+- What does GPUDirect Storage change? Ordinary Linux I/O copies data from NVMe into a bounce buffer in DDR5 RAM and then across PCIe a second time into GPU memory. GPUDirect Storage uses the `nvidia-fs` kernel module and the `cuFile` API to move data directly between local NVMe, or remote RDMA storage, and the GPU. A kernel module is a driver that runs inside the Linux kernel, and an API is the set of functions a program calls. Chapter 13.3 covers GPUDirect Storage in depth.
 
 ```text
 Internal NVMe storage layout by platform (dgx_families.py):
@@ -284,7 +297,9 @@ Internal NVMe storage layout by platform (dgx_families.py):
 
 ### 4.2 Three physical network planes and the rail-optimized topology
 
-If GPU collectives, storage reads and BMC management share one network, a storage burst slows one link and stalls every GPU in the collective. A DGX node therefore keeps three kinds of traffic on three physically separate networks. Chapters 9.6 and 9.9 show how they grow at SuperPOD scale.
+Picture a storage burst that lands on the same network as GPU collectives. The burst slows one link, and because a collective only finishes when its slowest member finishes, every GPU in that collective waits. A DGX node therefore keeps three kinds of traffic on three physically separate networks. A plane here means one network with its own cables, switches and ports, so that traffic on one plane cannot slow the others. Chapters 9.6 and 9.9 show how these planes grow at SuperPOD scale.
+
+The table below sets out the three planes. Read each row by asking what kind of traffic the plane carries, what hardware carries it, and what rule keeps it apart from the others.
 
 | Network Plane | Hardware in DGX H100 / H200 / B200 | Hardware in DGX GB300 Compute Tray | Traffic Carried & Key Rule |
 |---|---|---|---|
@@ -292,18 +307,24 @@ If GPU collectives, storage reads and BMC management share one network, a storag
 | **2. Storage & In-Band Management Fabric (North-South)** | **2x dual-port BlueField-3 DPUs** (or ConnectX-7 NICs, up to 4x 200/400 GbE) | **1x BlueField-3 DPU** (**2x 400 Gbps** Ethernet) | Parallel File System I/O (GDS), Slurm/Kubernetes control plane, NGC pulls, Prometheus, SSH. Never mix with East-West NCCL traffic. |
 | **3. Out-of-Band (OOB) Management** | **1x 1 GbE RJ45** dedicated BMC port | **1x 1 GbE RJ45** BMC port on trays, switches, and power shelves | **Redfish** REST APIs, IPMI, KVM-over-IP, virtual media on an isolated OOB management VLAN. |
 
-Before you wire a new node, confirm that `/raid` is treated as scratch and that each of the three networks lands on its own switches.
+The first plane is the compute fabric, which the table labels East-West. East-west traffic runs between nodes, side by side, and it carries the GPU-to-GPU collectives. Each GPU has its own NIC, paired with it under the same PCIe switch, so the GPU reaches its network card without crossing the CPU. The rail-optimized fat-tree wiring sends NIC number i to leaf switch number i. A rail is one NIC position across all the nodes, so traffic on the same rail can reach its peer in one switch hop. A switch hop is one trip through a network switch.
+
+The second plane is the storage and in-band management fabric, which the table labels North-South. North-south traffic goes between the node and the rest of the data center, such as the file system, the schedulers and the container registry. The rule is simple. Never mix this traffic with the East-West collective traffic, because a long storage read would then slow every GPU in the job.
+
+The third plane is out-of-band management. It uses a separate 1 GbE port on the BMC, which keeps working when the host operating system is down. Administrators reach the node through this port with Redfish, IPMI and KVM-over-IP, which is remote keyboard, video and mouse access. The port sits on an isolated management VLAN, a separate virtual network, so that a fault on the data network cannot cut off the operator.
+
+Before you wire a new node, confirm that `/raid` is treated as scratch and that each of the three networks lands on its own switches. A quick check at this stage costs far less than tracing a slow job later.
 
 ---
 
 ## 5. The DGX management plane: BMC, Redfish, NVSM, DCGM, and unified firmware
 
-An operator flashes a NIC or BIOS update from a component vendor onto a DGX node, and afterwards a GPU drops off the PCIe bus. Managing a DGX fleet takes two kinds of tools: out-of-band control that works when the host OS is down, and in-band daemons that run while jobs are running. Part 7 covers the Redfish protocol, and Chapter 9.2 covers the two-BMC layout and the 46-component firmware inventory.
+Picture an operator who flashes a NIC or BIOS update from a component vendor onto a DGX node. Afterwards a GPU drops off the PCIe bus, and the node will not run a job. Flashing means writing new firmware into a chip's memory. The operator did what the vendor page suggested, and the damage came from updating one part out of step with the rest. Managing a DGX fleet takes two kinds of tools. The first is out-of-band control, which works even when the host OS is down. The second is in-band daemons, which run alongside the jobs and watch the hardware while the node is busy. A daemon is a background program that runs continuously. Part 7 covers the Redfish protocol, and Chapter 9.2 covers the two-BMC layout and the 46-component firmware inventory.
 
-- **Out-of-Band Redfish APIs.** The dedicated 1 GbE BMC port on an isolated management VLAN exposes Redfish endpoints for power state, thermal telemetry, power draw, and fleet firmware staging.
-- **NVIDIA System Management.** The in-band `nvsm` daemon watches the whole chassis: the RAID 1 OS mirror, the `/raid` drives, DIMM errors, PCIe links, fans, power supplies and NVSwitches. `sudo nvsm show health` reports status, and `sudo nvsm dump health` creates the support bundle NVIDIA Enterprise Support asks for.
-- **NVIDIA Data Center GPU Manager.** The `dcgmi` tool streams GPU and NVSwitch telemetry to Prometheus through `dcgm-exporter`. It also runs active stress tests at four levels, `dcgmi diag -r 1` through `-r 4`, from Slurm prologs and Kubernetes admission gates.
-- **Firmware.** A DGX has 46 firmware components that depend on each other. Never flash one of them from a chip vendor's package. Use the unified DGX Firmware Container (`show_version` and `update_fw all`), and follow it with a full AC power cycle through Redfish when GPU-tray components change.
+- What can the out-of-band tools do? The dedicated 1 GbE BMC port, on an isolated management VLAN, exposes Redfish endpoints. These endpoints report power state, thermal telemetry, power draw, and the staging of firmware for the whole fleet.
+- What does NVIDIA System Management watch? The in-band `nvsm` daemon watches the whole chassis. It covers the RAID 1 OS mirror, the `/raid` drives, DIMM errors (memory module faults), PCIe links, fans, power supplies and NVSwitches. Run `sudo nvsm show health` to see the status. Run `sudo nvsm dump health` to create the support bundle that NVIDIA Enterprise Support asks for when you open a case.
+- What does the Data Center GPU Manager add? The `dcgmi` tool streams GPU and NVSwitch telemetry to Prometheus through `dcgm-exporter`, which is a bridge that turns those readings into metrics. It also runs active stress tests at four levels, from `dcgmi diag -r 1` through `-r 4`. The higher the level, the longer and deeper the test. Teams run these tests from Slurm prologs, which are scripts that run before a job starts, and from Kubernetes admission gates, which decide whether a node may take new work.
+- Why must firmware come from one source? A DGX has 46 firmware components that depend on each other. Never flash one of them from a chip vendor's package. Use the unified DGX Firmware Container, with `show_version` and `update_fw all`. Then follow it with a full AC power cycle through Redfish whenever the GPU-tray components change, because some firmware only takes effect after the power is fully removed and restored.
 
 ```text
 Key DGX Redfish endpoints and firmware container workflow:
@@ -314,18 +335,18 @@ Key DGX Redfish endpoints and firmware container workflow:
 - Unified firmware container:     nvfw-dgx-h100_<version>.run (show_version / update_fw all)
 ```
 
-Before you touch firmware on a DGX, check that you are using the unified container and that a maintenance window allows the AC power cycle.
+Before you touch firmware on a DGX, check two things. Confirm that you are using the unified container, and confirm that a maintenance window allows the AC power cycle. Without the window, the cycle can take a node out of service at the wrong moment.
 
 ---
 
 ## 6. Power, cooling, and physical facility readiness
 
-A team orders DGX nodes for a data hall built for 5 to 8 kW web racks. On delivery day breakers trip under load, the rack doors will not close over the rear power cords, and the floor tiles are not rated for the weight. Before a DGX goes into a data center, check power density, power supply redundancy, floor load and rack depth. Chapters 9.7 and 9.11 cover these at facility scale.
+Picture a team that orders DGX nodes for a data hall built for 5 to 8 kW web racks. On delivery day the breakers trip under load. The rack doors will not close over the rear power cords, and the floor tiles are not rated for the weight. Every one of those problems was visible in the spec sheets before the order was placed. Before a DGX goes into a data center, check four things: the power density, the power supply redundancy, the floor load and the rack depth. Chapters 9.7 and 9.11 cover these at facility scale.
 
-- **DGX H100 and H200.** Each 8U node draws up to 10.2 kW from six 3.3 kW power supplies, wired three and three to Feed A and Feed B. If a whole feed is lost, the remaining three supplies run close to full load. Air-cooled rooms usually cap racks at two to four nodes, with hot and cold aisle containment.
-- **DGX B200.** Each 10U air-cooled node draws up to 14.3 kW and needs five of its six power supplies energized. A three-and-three split across two feeds therefore fails when one feed is lost, and NVIDIA does not recommend interleaving feeds this way. The standard patterns are two nodes per rack, or four nodes per 52U rack, on two three-phase circuits.
-- **DGX GB200 and GB300 NVL72.** A rack draws roughly 120 kW (GB200) to 150 kW (GB300). The GB300 rack has eight 33 kW power shelves with extra energy storage and RJ45 power-brake ports. The GPUs and CPUs are liquid cooled with cold plates connected to a Coolant Distribution Unit.
-- **Weight and depth.** A DGX H100 weighs nearly 300 pounds, and a filled NVL72 rack is on the order of 3,000 pounds. Check the floor load rating and use a rated server lift. The chassis is more than 35 inches deep and needs room behind it for cable bends. NVIDIA's DGX B200 guidance sets a minimum cabinet of 600 by 1,100 mm and 48U, and recommends 700 by 1,200 mm and 52U.
+- How much power does one DGX H100 or H200 need? Each 8U node draws up to 10.2 kW from six 3.3 kW power supplies. The supplies are wired three and three, to Feed A and Feed B. A feed is one independent power source. If a whole feed is lost, the remaining three supplies run close to full load. Air-cooled rooms usually cap racks at two to four nodes, and they use hot and cold aisle containment, which means walls or doors that keep the hot exhaust air apart from the cold intake air.
+- Why is the DGX B200 harder to place? Each 10U air-cooled node draws up to 14.3 kW and needs five of its six power supplies energized. A three-and-three split across two feeds therefore fails when one feed is lost, and NVIDIA does not recommend interleaving feeds this way. The standard patterns are two nodes per rack, or four nodes per 52U rack, on two three-phase circuits. A three-phase circuit carries three power legs at once, which is the usual supply for dense equipment.
+- What does a GB200 or GB300 NVL72 rack need? A rack draws roughly 120 kW for the GB200 and 150 kW for the GB300. The GB300 rack has eight 33 kW power shelves, with extra energy storage and RJ45 power-brake ports, so the rack can ride through short power dips. The GPUs and CPUs are liquid cooled. Cold plates sit on the chips, and a Coolant Distribution Unit (CDU) moves the liquid between the plates and the facility loop.
+- How heavy and how deep is a node? A DGX H100 weighs nearly 300 pounds, and a filled NVL72 rack is on the order of 3,000 pounds. Check the floor load rating, and use a rated server lift for the unit. The chassis is more than 35 inches deep and needs room behind it for cable bends. NVIDIA's DGX B200 guidance sets a minimum cabinet of 600 by 1,100 mm and 48U, and it recommends 700 by 1,200 mm and 52U.
 
 ```text
 Facility power, airflow, weight, and dimension envelopes (dgx_families.py):
@@ -348,17 +369,17 @@ Facility power, airflow, weight, and dimension envelopes (dgx_families.py):
    - Cooling & weight: Direct Liquid Cooling (DLC) cold plates + CDU; filled rack about 3,000 lbs
 ```
 
-Before delivery day, get the rack depth, the floor rating and the power circuits confirmed in writing.
+Before delivery day, get the rack depth, the floor rating and the power circuits confirmed in writing. A verbal promise from the facility team does not help when the truck is already in the loading bay.
 
 ---
 
 ## Commands and configurations that matter
 
-When a new DGX node arrives on the data center floor or returns from maintenance, run this five-stage baseline and data-path validation sequence before releasing it to Slurm or Kubernetes. These hardware commands are untested on live DGX hardware in this authoring environment, while their validation logic is verified in `code/part09/dgx_families_lab.py`.
+When a new DGX node arrives on the data center floor, or comes back from maintenance, run this five-stage baseline and data-path validation sequence before you release it to Slurm or Kubernetes. The stages go from the outside in. First you check the BMC, then the firmware, then the host and GPUs, then the chassis and the InfiniBand rails, and last the bandwidth of the data paths. The hardware commands were not run on live DGX hardware while this chapter was written. Their validation logic is checked in `code/part09/dgx_families_lab.py`.
 
 ### 1. Out-of-Band Redfish health, thermal, and power check
 
-Query the DGX BMC over its isolated OOB management network to confirm system health and power supply redundancy before booting workloads.
+Query the DGX BMC over its isolated OOB management network to confirm system health and power supply redundancy. Do this before you boot any workload, because a failed supply is much easier to find while the node is still empty.
 
 ```bash
 # 1. Inspect overall system health and power state via Redfish
@@ -373,7 +394,7 @@ curl -sk -u "${BMC_USER}:${BMC_PASS}" \
 
 ### 2. Unified DGX Firmware Container check
 
-Verify that all internal microcontrollers across the BMC, BIOS, CPLDs, PCIe retimers, NVSwitches, GPU VBIOS, and NICs match the current NVIDIA-validated matrix.
+Verify that all internal microcontrollers across the BMC, BIOS, CPLDs, PCIe retimers, NVSwitches, GPU VBIOS, and NICs match the current NVIDIA-validated matrix. The container checks them as a set, so you never have to compare each part by hand.
 
 ```bash
 # Inspect current vs target firmware versions across all DGX components
@@ -385,7 +406,7 @@ sudo ./nvfw-dgx-h100_24.05.1.run update_fw all
 
 ### 3. In-band GPU, NVLink, PCIe ACS, storage, and kernel module baseline
 
-Run these six host checks to confirm that all GPUs, NVLink sub-links, GPUDirect kernel modules, PCIe switch settings, and storage mounts are healthy.
+Run these six host checks to confirm that all GPUs, NVLink sub-links, GPUDirect kernel modules, PCIe switch settings, and storage mounts are healthy. Each check answers one question about the node, and each one has an expected answer.
 
 ```bash
 # 1. Verify all 8 GPUs are visible and check volatile uncorrected ECC errors (must be 0)
@@ -410,7 +431,7 @@ df -h / /raid
 
 ### 4. NVSM chassis audit, DCGM Level 3 active diagnostics, and InfiniBand rail check
 
-Verify full-chassis health with `nvsm`, run active GPU and NVSwitch stress tests with `dcgmi`, and confirm that all eight compute fabric ports are active.
+Verify full-chassis health with `nvsm`, run active GPU and NVSwitch stress tests with `dcgmi`, and confirm that all eight compute fabric ports are active. Active tests are slower than passive checks, because they load the hardware on purpose, so schedule them while the node is empty.
 
 ```bash
 # 1. Run full DGX chassis health check via NVIDIA System Management
@@ -426,7 +447,7 @@ ibstat | grep -E "CA '|State:|Physical state:|Rate:"
 
 ### 5. Data-path throughput benchmarks
 
-Run intra-node collective and GPUDirect Storage read benchmarks to confirm that actual data-path bandwidth matches hardware specifications.
+Run intra-node collective and GPUDirect Storage read benchmarks to confirm that the actual data-path bandwidth matches the hardware specifications. A check that passes on paper can still fail under real traffic, so measure the path itself.
 
 ```bash
 # 1. Intra-node 8-GPU NVSwitch AllReduce benchmark (expect ~300-350+ GB/s busbw on DGX H100)
@@ -440,51 +461,53 @@ Run intra-node collective and GPUDirect Storage read benchmarks to confirm that 
 
 ## How it fails
 
+Each of the five failures below starts with a symptom that someone noticed first. Read the symptom, then the cause, then the fix. The cause is what to check, and the fix is what to change. In every case the cause was a setting or a habit, not a broken part.
+
 ### 1. The PCIe ACS trap
 
-Symptom: intra-node `nccl-tests` or GPUDirect RDMA bandwidth falls to about 15 to 25 GB/s, against more than 300 GB/s over NVLink or about 45 GB/s per NIC in `ib_write_bw --use_cuda=0`, and host CPU cores get busy.
+Symptom: intra-node `nccl-tests` or GPUDirect RDMA bandwidth falls to about 15 to 25 GB/s. Compare that with more than 300 GB/s over NVLink, or about 45 GB/s per NIC in `ib_write_bw --use_cuda=0`. Host CPU cores also get busy, even though the job should not need them.
 
-Cause: PCIe Access Control Services (ACS) came back on after a BIOS reset or a bad firmware setting. Every peer-to-peer packet between a GPU and its NIC on the same PCIe switch now detours up through the CPU root complex.
+Cause: PCIe Access Control Services (ACS) came back on after a BIOS reset or a bad firmware setting. ACS is a PCIe feature that can force traffic between two devices up through the CPU, even when they sit on the same switch. Every peer-to-peer packet between a GPU and its NIC on the same PCIe switch now detours up through the CPU root complex, which is the top of the PCIe tree inside the CPU.
 
-Fix: run `sudo lspci -vvv | grep -i ACSCtl`. If you see `SrcValid+`, disable ACS in the BIOS or run a start-up script that clears the ACS bits (`setpci -s <bdf> ECAP_ACS+0x6.w=0000`). Then verify with `p2pBandwidthLatencyTest`.
+Fix: run `sudo lspci -vvv | grep -i ACSCtl`. If you see `SrcValid+`, disable ACS in the BIOS, or run a start-up script that clears the ACS bits with `setpci -s <bdf> ECAP_ACS+0x6.w=0000`. Then verify the change with `p2pBandwidthLatencyTest`, and confirm that the bandwidth has recovered before you release the node.
 
 ### 2. Silent fallback to TCP in multi-node NCCL
 
-Symptom: the job runs without errors, but throughput falls ten to twenty times, to about 1 to 5 GB/s of `busbw`, while the north-south management network saturates.
+Symptom: the job runs without errors, but throughput falls ten to twenty times, to about 1 to 5 GB/s of `busbw`, which is the bus bandwidth figure that NCCL tests report. At the same time the north-south management network saturates. The job looks healthy, which is why this failure can run for days.
 
-Cause: `NCCL_IB_DISABLE=1` was left in the container environment, the container lacks `IPC_LOCK` or `/dev/infiniband` access, or `nvidia-peermem` is not loaded. NCCL gives up GPUDirect RDMA over the eight 400G compute rails and falls back to TCP sockets over `eth0` or `bond0`.
+Cause: `NCCL_IB_DISABLE=1` was left in the container environment, the container lacks `IPC_LOCK` or `/dev/infiniband` access, or `nvidia-peermem` is not loaded. NCCL gives up GPUDirect RDMA over the eight 400G compute rails and falls back to TCP sockets over `eth0` or `bond0`. A TCP socket fallback is slower and uses the wrong network, which explains both the slowdown and the saturated management link.
 
-Fix: set `NCCL_DEBUG=INFO` and look in the job log for `NET/IB` versus `NET/Socket`. Load the module with `sudo modprobe nvidia-peermem`, pass `--ipc=host --ulimit memlock=-1` to the container, and check that `ibstat` shows all eight compute adapters as `State: Active`.
+Fix: set `NCCL_DEBUG=INFO` and look in the job log for `NET/IB` versus `NET/Socket`. `NET/IB` means the fast path is in use, and `NET/Socket` means the fallback is in use. Load the module with `sudo modprobe nvidia-peermem`, pass `--ipc=host --ulimit memlock=-1` to the container, and check that `ibstat` shows all eight compute adapters as `State: Active`.
 
 ### 3. Checkpoints lost when one `/raid` drive fails
 
-Symptom: one U.2 NVMe drive reports SMART media errors and the whole 30.7 TB `/raid` volume becomes unreadable, taking 48 hours of checkpoints with it.
+Symptom: one U.2 NVMe drive reports SMART media errors, which are the drive's own warnings about failing flash cells. The whole 30.7 TB `/raid` volume becomes unreadable, and 48 hours of checkpoints go with it.
 
-Cause: the team treated `/raid` as durable. It is an eight-drive RAID 0 stripe with no parity and no mirror, meant only as a fast dataset cache and scratch area.
+Cause: the team treated `/raid` as durable storage. It is an eight-drive RAID 0 stripe with no parity and no mirror, meant only as a fast dataset cache and scratch area. A stripe that loses one drive loses all of its data, because the data is spread across every drive.
 
-Fix: replace the drive and rebuild `/raid`. Then set a cluster rule that checkpoints go straight to the shared parallel file system, or that a background job copies them off `/raid` after every save.
+Fix: replace the drive and rebuild `/raid`. Then set a cluster rule that checkpoints go straight to the shared parallel file system, or that a background job copies them off `/raid` after every save. The rule is what prevents the next failure, and the rebuild only repairs the volume.
 
 ### 4. A GPU falls off the bus after a one-off firmware flash
 
-Symptom: after flashing a NIC or BIOS image from a component vendor, `nvidia-smi` reports only seven GPUs (`GPU 0000:xx:00.0: Fallen off the bus`), or `nvidia-smi nvlink --status` shows degraded links such as `16/18`.
+Symptom: after flashing a NIC or BIOS image from a component vendor, `nvidia-smi` reports only seven GPUs, with a line such as `GPU 0000:xx:00.0: Fallen off the bus`. Or `nvidia-smi nvlink --status` shows degraded links, such as `16/18`, where two of the eighteen links are down.
 
-Cause: one controller was updated out of step with the PCIe Gen5 retimers, the motherboard CPLDs and the NVSwitch firmware. Link training on the baseboard no longer works.
+Cause: one controller was updated out of step with the PCIe Gen5 retimers, the motherboard CPLDs and the NVSwitch firmware. Link training on the baseboard, which is the handshake that brings each NVLink up, no longer works. The parts that are supposed to agree no longer agree.
 
-Fix: never flash a single component on a DGX. Run `sudo ./nvfw-dgx-h100_<version>.run show_version` to find the mismatch, run `update_fw all` from the official DGX Firmware Container, and finish with a full AC power cycle through Redfish so every CPLD and retimer reloads.
+Fix: never flash a single component on a DGX. Run `sudo ./nvfw-dgx-h100_<version>.run show_version` to find the mismatch. Run `update_fw all` from the official DGX Firmware Container, and finish with a full AC power cycle through Redfish, so that every CPLD and retimer reloads its settings.
 
 ### 5. Decode latency target missed on PCIe GPUs at high concurrency
 
-Symptom: a 70B FP8 model on four L40S cards passes single-user tests, but at 64 concurrent users the P99 Inter-Token Latency rises above 34 ms and breaks the 30 ms target.
+Symptom: a 70B FP8 model on four L40S cards passes single-user tests. At 64 concurrent users, however, the P99 Inter-Token Latency rises above 34 ms, which breaks the 30 ms target.
 
-Cause: the team sized for memory (four cards give 192 GB against 135.54 GB needed) and for peak FP8 TFLOPS. Decode is limited by memory bandwidth, and tensor-parallel traffic is limited by PCIe. The L40S offers 864 GB/s of GDDR6 and about 64 GB/s of PCIe. An H100 or H200 offers 3.35 to 4.8 TB/s of HBM and 900 GB/s of NVLink.
+Cause: the team sized for memory and for peak FP8 TFLOPS. Four cards give 192 GB against the 135.54 GB needed, so memory was not the problem. Decode is limited by memory bandwidth, and tensor-parallel traffic is limited by PCIe. The L40S offers 864 GB/s of GDDR6 and about 64 GB/s of PCIe. An H100 or H200 offers 3.35 to 4.8 TB/s of HBM and 900 GB/s of NVLink. The team bought the numbers that were not the bottleneck.
 
-Fix: move high-concurrency 70B real-time serving to DGX H100, H200 or B200, where HBM bandwidth and 900 to 1,800 GB/s of NVLink keep P99 ITL under 20 ms and lower the cost per million tokens.
+Fix: move high-concurrency 70B real-time serving to DGX H100, H200 or B200, where HBM bandwidth and 900 to 1,800 GB/s of NVLink keep P99 ITL under 20 ms, and where the cost per million tokens drops.
 
 ---
 
 ## Hands-on lab
 
-The lab is a self-checking Python model (`code/part09/dgx_families.py`) with a runner (`code/part09/dgx_families_lab.py`). It has five modules.
+The lab is a self-checking Python model, `code/part09/dgx_families.py`, with a runner, `code/part09/dgx_families_lab.py`. You do not need a DGX to use it. The model runs the same formulas as this chapter, so each check compares a calculated value with the figure the chapter gives. It has five modules, listed in the table below.
 
 | Lab module | What the Python model verifies |
 |---|---|
@@ -494,13 +517,15 @@ The lab is a self-checking Python model (`code/part09/dgx_families.py`) with a r
 | **4. DGX Rack Power, Cooling, and Airflow Planner** | Models DGX H100 (10.2 kW / 34,804 BTU/hr), DGX B200 2-node (28.6 kW / 4,290 CFM) and 4-node (57.2 kW / 8,580 CFM) racks, and DGX GB200/GB300 NVL72 liquid cooling |
 | **5. DGX Node Readiness Baseline Auditor** | Verifies 8/8 GPUs, 18/18 NVLink sub-links, 0 uncorrected ECC errors, 8/8 Active IB rails, `/raid` mount and checkpoint safety, `nvidia-peermem` + `nvidia-fs` modules, PCIe ACS disabled, and unified firmware compliance |
 
-Run the lab from the repository root.
+The first two modules check the sizing and selection logic from sections 1 and 2. The third checks the inference targets. The fourth checks the facility envelope from section 6, and the fifth checks the readiness baseline from the commands section.
+
+Run the lab from the repository root. The command below runs it without writing bytecode files.
 
 ```bash
 python3 -B code/part09/dgx_families_lab.py
 ```
 
-Expected output verified in this repository appears below.
+When it finishes, compare your output with the expected output below. Every line should read PASS, and the summary should show 38 passed.
 
 ```text
 === Chapter 9.1 Lab: DGX System Families & Accelerator Selection ===
@@ -518,15 +543,19 @@ Expected output verified in this repository appears below.
 Summary: 38 passed, 0 failed (total 38)
 ```
 
+If a line fails, do not change the expected value to match. Read the check name, find the section of the chapter that states that rule, and compare the formula in the code with the formula in the text.
+
 ---
 
 ## Exercises
 
-1. A 13B model has 40 layers, 40 KV heads and a head size of 128. It serves 24 users at 4,096 tokens of context. First compute the KV bytes per token as 2 times layers times KV heads times head size times bytes per element, using 2 bytes for FP16. Then add the 26 GB of FP16 weights, multiply by 1.2, and say how much memory the service needs. Repeat with FP8 weights and an FP8 cache. Does either version fit on one 80 GB H100?
-2. Run the lab script and read its output. Pick three checks. For each, say in one sentence which rule from the chapter it tests.
-3. A site has racks rated at 8.0 kW. Using Section 6, can it host a DGX H100, a DGX B200, or a GB300 NVL72 in one rack? For each system it cannot host, say what must change.
-4. Draw the three network planes of one DGX H100 on paper. Label each plane with its speed and the traffic it carries.
-5. A DGX node has just been repaired. Write a five-line checklist to run before it returns to the scheduler. Give the command and the expected result on each line.
+Each exercise is one short task. Work them in order, because later ones reuse the numbers from earlier ones.
+
+1. A 13B model has 40 layers and 40 KV heads. Its head size is 128. The service handles 24 users. Each user has a context of 4,096 tokens. Start with the KV bytes per token. Use 2 times layers times KV heads times head size times bytes per element. For FP16, the element is 2 bytes. Next, add the 26 GB of FP16 weights. Then multiply that total by 1.2. How much memory does the service need? Repeat the sum with FP8 weights and an FP8 cache. Does either version fit on one 80 GB H100?
+2. Run the lab script and read its output. Pick three checks. For each check, say in one sentence which rule from the chapter it tests.
+3. A site has racks rated at 8.0 kW. Can it host a DGX H100 in one rack? Can it host a DGX B200? Can it host a GB300 NVL72? For each system it cannot host, say what must change.
+4. Draw the three network planes of one DGX H100 on paper. Label the first plane with its speed. Label the second plane with its speed. Label the third plane with its speed. Then write the traffic each plane carries.
+5. A DGX node has just been repaired. Write a five-line checklist to run before it returns to the scheduler. Give the command on each line. Then write the expected result on each line.
 6. Use the cost-per-million-tokens formula to compare an SXM server with a PCIe server. Take the workload rates from the lab script. Why does the server with the higher hourly rate end up cheaper per million tokens at high concurrency?
 
 ## Checkpoint questions (20)
