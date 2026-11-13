@@ -18,29 +18,25 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | Linux host with Apptainer; Slurm for the MPI parts |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. Apptainer statements come from the Apptainer user documentation (apptainer/apptainer-userdocs commit `69efb83`, 2026-10-23: definition files, GPU, MPI, build environment); enroot/pyxis from 6.13. `code/part06/container_lint.py` was run on a bad and a good definition file (output shown). **Apptainer itself was not run** (Linux only), nor any container build. Security-model statements are from general knowledge. Labs **untested** |
+| Status | Drafted. Apptainer statements come from the Apptainer user documentation (apptainer/apptainer-userdocs commit `69efb83`, 2026-10-23: definition files, GPU, MPI, build environment); enroot/pyxis from 6.13. `code/part06/container_lint.py` was run on a bad and a good definition file (output shown). **Apptainer itself was not run** (Linux only), and no container build was run either. Security-model statements come from general knowledge and still need checking. The labs were not run, except the linter steps |
 
 ## Why this matters for AI infrastructure
 
-Suppose a training run that worked last month now gives different numbers on a new cluster. You need to find out which layer changed. Chapter 6.13 showed how NVIDIA's enroot and pyxis run containers inside Slurm. Many clusters, including most academic and national-lab systems, use **Apptainer**, which was formerly known as Singularity. Many scientific groups publish their software as Apptainer or Singularity images.
+Suppose a training run that worked last month now gives different numbers on a new cluster. The researcher asks what changed, and the honest answer is that nobody knows yet. You have to find out which layer moved: the driver, a library, the base image, or the cluster itself. Chapter 6.13 showed how NVIDIA's enroot and pyxis run containers inside Slurm, the batch scheduler that hands out cluster resources. Many clusters, including most academic and national-lab systems, use **Apptainer** instead. Apptainer was formerly known as Singularity. Many scientific groups publish their software as Apptainer or Singularity images, so you will meet these files on almost any shared research system.
 
-Whichever runtime you use, the harder problem is **reproducibility**. Can you rebuild the same environment next year? Can you prove which libraries produced a result, and run it on a different cluster?
+Whichever runtime you use, the harder problem is **reproducibility**. Can you rebuild the same environment next year? Can you prove which libraries produced a result, and run that same environment on a different cluster? Those questions matter more than which tool you picked. A runtime that starts a job quickly does not help you if you cannot say later what was inside the container.
 
-AI makes this sharper. CUDA, cuDNN, NCCL, PyTorch, drivers and Python wheels all interact, and a one-line drift can change performance or numerics. This chapter compares the runtimes and gives you a discipline that makes container images trustworthy. Decide which runtime fits your cluster first, then apply the discipline to its images.
+AI makes this sharper. CUDA (NVIDIA's GPU programming platform), cuDNN (its library of deep learning routines), NCCL (its library for moving data between GPUs), PyTorch, the GPU drivers and Python wheels, which are packaged Python libraries, all interact with each other. A one-line drift in any of them can change speed or the numbers a calculation produces. This chapter compares the runtimes and gives you a discipline that makes container images trustworthy. Decide which runtime fits your cluster first, then apply the discipline to its images.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 6.6, 6.13, and either 6.4 or 6.12, which cover MPI and NCCL. By the end, you will be able to:
-
-- Explain what a container is mechanically, using cgroups, namespaces and chroot, and why HPC runtimes differ from Docker.
-- Build, run and share Apptainer images (SIF, definition files, `build`, `exec`, `--nv`, binds), and explain the host-MPI hybrid and bind models.
-- Compare Apptainer, Charliecloud and enroot/pyxis along security, GPU, MPI, image format and Slurm integration.
-- Apply a reproducibility discipline and lint definition files and Dockerfiles for violations.
-- Manage caches, signing, and image distribution.
-
-If one of these outcomes is new to you, read its section before you start the labs.
+This chapter builds on 6.6, 6.13, and either 6.4 or 6.12, which cover MPI (the Message Passing Interface, the standard way programs on many nodes send data to each other) and NCCL. The chapter starts with what a container is mechanically, using cgroups (the kernel's resource limit mechanism), namespaces and `chroot`, and why HPC runtimes differ from Docker. It then covers building, running and sharing Apptainer images. After that comes a comparison of Apptainer, Charliecloud and enroot with pyxis, a reproducibility discipline with a linter that checks it, and the way images are cached, signed and distributed. If one of these ideas is new to you, read its section before you start the labs.
 
 ## 1. What a container is, and why HPC needed new runtimes
+
+Picture a shared research cluster where a dozen teams each want their own version of Python, CUDA and a handful of scientific libraries. One team upgrades a shared library on a Friday afternoon, and on Monday another team's job fails to start. Nobody did anything wrong, but everyone shares one set of files. Containers are one way out of that trap. They are also the reason HPC sites need runtimes that behave differently from the ones built for cloud servers.
+
+The diagram below shows the path a container takes on a well-run cluster. Read it from left to right. Each box is a step that someone performs, and each step has a clear owner.
 
 ```mermaid
 flowchart LR
@@ -49,9 +45,11 @@ flowchart LR
   Store --> Run["4. Slurm Launch (srun --mpi=pmix)<br/>apptainer exec --nv --cleanenv<br/>(Hybrid MPI + Host Driver)"]
 ```
 
-The book *Supercomputers for Linux SysAdmins*, in chapter 16, defines a container as "an isolated set of processes". Those processes have limited access to the other processes, the network, the file system and devices. A container is similar to a virtual machine, but it does no emulation. Every process is real, and you can see each one from the host.
+The first box is the recipe, which is the text that says how the image is built. It lives in Git, pins its base image by digest and lists its Python packages with a lock file. The second box is a build that runs in a continuous integration system, which is an automated build server, and not on someone's laptop. The build runs the image's tests and produces a software bill of materials (SBOM), a list of every component inside the image. Then it signs the result. The third box is where the finished image sits, either on a shared file system or in a registry. The fourth box is the moment a job starts. Slurm launches the container on each node, and the container uses the host's GPU driver and MPI launcher.
 
-Three kernel facilities build a container. **cgroups** limit memory, CPU and devices. **namespaces** isolate PID, user, mount, network and IPC, so processes can have "virtual" numbers. **chroot** changes the root directory. Docker packages these with a root daemon and a layered image format.
+*Supercomputers for Linux SysAdmins*, in chapter 16, defines a container as "an isolated set of processes". Those processes have limited access to the other processes, the network, the file system and devices. A container is similar to a virtual machine, but it does no emulation. Every process is real, and you can see each one from the host. That last point is worth remembering, because it means a container process is just another process to the kernel, with some limits applied.
+
+Three kernel facilities build a container. **cgroups** limit memory, CPU and devices. **namespaces** isolate PID, user, mount, network and IPC, so processes can have "virtual" numbers. A PID is a process ID, and IPC means inter-process communication. **chroot** changes the root directory, so the process sees a different tree of files as if it were `/`. Docker packages these with a root daemon, which is a background service that runs as root and does the work for every user, and with a layered image format.
 
 HPC clusters need different properties. Each row of the table below shows one of them, and how the two models handle it.
 
@@ -65,41 +63,41 @@ HPC clusters need different properties. Each row of the table below shows one of
 | One portable file | Layered store | Single image file (SIF, squashfs) |
 | MPI across nodes | Network namespaces get in the way | Host network, host or hybrid MPI |
 
-Notice that the HPC column keeps each user's own identity, and it leaves the scheduler in charge of the processes.
+Notice that the HPC column keeps each user's own identity, and it leaves the scheduler in charge of the processes. Think about what that means for a shared cluster. If a user runs a container and it writes a file to the project directory, the file should belong to that user, not to root. If a job runs out of its allocation, Slurm should be the thing that stops it, using the same accounting it uses for every other job. The table is really asking one question in several ways: who owns this process, and who can stop it?
 
 ### Layers and data mounts
 
-Containers help you escape dependency hell, the tangle that appears when you recompile a program or try to run one binary next to other software. Picture a team that wants to test a new database for an afternoon. They cannot install it on the shared system without risking a clash with the software already there. A container avoids this by carrying its own files: the binaries, the libraries and even a private copy of `libc`.
+Containers help you escape dependency hell, the tangle that appears when you recompile a program or try to run one binary next to other software. Picture a team that wants to test a new database for an afternoon. They cannot install it on the shared system without risking a clash with the software already there. A container avoids this by carrying its own files: the binaries, the libraries and even a private copy of `libc`, the C library that nearly every Linux program depends on.
 
-Under the hood, a container is cgroups, namespaces and `chroot` applied to a set of processes. When it starts, its file system is mounted, the cgroups and namespaces are set up, and the first process starts with `chroot` into that file system.
+Under the hood, a container is cgroups, namespaces and `chroot` applied to a set of processes. When it starts, its file system is mounted, the cgroups and namespaces are set up, and the first process starts with `chroot` into that file system. That first process is usually the one you asked for, and every child it starts inherits the same walls.
 
-The network side is a little more involved, but the idea is the same. You can limit a container so it sees only certain interfaces, usually virtual ones you created for it. The options go further. For example, you can allow a container to use no more than 20% of your memory, or only one CPU core.
+The network side is a little more involved, but the idea is the same. You can limit a container so it sees only certain interfaces, usually virtual ones you created for it. The options go further. For example, you can allow a container to use no more than 20% of your memory, or only one CPU core. Those limits are the cgroup part of the story, and they protect your neighbours on a shared node from a runaway job.
 
-Docker adds a layered design on top of this. The first layer is a base system, such as a freshly installed Ubuntu system. Each later layer stores the changes you make on top of the layer below, including file deletions. Because layers live in the registry and on local storage, a second image built on the same base downloads only its new layers.
+Docker adds a layered design on top of this. The first layer is a base system, such as a freshly installed Ubuntu system. Each later layer stores the changes you make on top of the layer below, including file deletions. Because layers live in the registry and on local storage, a second image built on the same base downloads only its new layers. That saves time and disk space, and it is the reason a team can share one base across many images.
 
-Almost every line in a Dockerfile creates a new squashfs layer. Suppose you edit one line and rebuild. Only that line and the lines after it are rebuilt, because the earlier layers have not changed.
+Almost every line in a Dockerfile creates a new squashfs layer. A Dockerfile is the recipe file Docker reads to build an image, and squashfs is a compressed, read-only file system format. Suppose you edit one line and rebuild. Only that line and the lines after it are rebuilt, because the earlier layers have not changed. That is why the order of lines in a Dockerfile matters so much, and why the chapter returns to it in section 4.
 
-Your data still has to reach the container. On Linux, the `--bind` option mounts a local directory into another directory, so your files appear inside the container. Container systems let you choose both what to mount and the path where it appears inside the container.
+Your data still has to reach the container. On Linux, the `--bind` option mounts a local directory into another directory, so your files appear inside the container. Container systems let you choose both what to mount and the path where it appears inside the container. A dataset that lives at `/scratch` on the host can appear at `/scratch` inside, or at a different path if your code expects one. The mount is a view, not a copy, so the container reads and writes the same bytes as the host.
 
 ### Containers in short
 
-In short, a container is an isolated set of processes and a light alternative to virtual machines. It is handy when you want to run an application without installing new packages or compiling it from source. On an HPC system, though, you need to be careful. Jobs need low-latency access to devices and must run MPI applications. Pick a runtime that supports both.
+In short, a container is an isolated set of processes and a light alternative to virtual machines. It is handy when you want to run an application without installing new packages or compiling it from source. On an HPC system, though, you need to be careful. Jobs need low-latency access to devices and must run MPI applications, and an isolation layer that gets in the way of those needs is a problem, not a feature. Pick a runtime that supports both.
 
 ## 2. Apptainer
 
-Apptainer runs a container from a single **SIF** file. SIF stands for Singularity Image Format. It is a squashfs-based, immutable image that can also carry signatures, definition files and extra data partitions. Apptainer is the Linux Foundation project formerly known as Singularity. The name "Singularity" also belongs to a separate commercial line from Sylabs Inc.
+Imagine you have just received a container file from a collaborator, and you want to run it on your cluster tomorrow morning. You need a format that is one file, that you can copy to a shared disk, and that runs without asking the cluster for root access. Apptainer is built around that need. It runs a container from a single **SIF** file. SIF stands for Singularity Image Format. It is a squashfs-based, immutable image that can also carry signatures, definition files and extra data partitions. Immutable means the file cannot be changed after it is built. Apptainer is the Linux Foundation project formerly known as Singularity. The name "Singularity" also belongs to a separate commercial line from Sylabs Inc.
 
 ### Singularity and Apptainer
 
 Singularity comes from Sylabs Inc. Its open source community edition is mature, and it uses its own image format. You can convert a Docker container into that format with little effort. Singularity was designed for HPC, which is why it integrates easily with any batch system.
 
-It gives HPC applications transparent access to InfiniBand and GPU accelerators. For NVIDIA GPUs, the host needs `nvidia-container-toolkit` installed.
+It gives HPC applications transparent access to InfiniBand and GPU accelerators. InfiniBand is the fast network fabric used between nodes in most large clusters. For NVIDIA GPUs, the host needs `nvidia-container-toolkit` installed, because that package is what makes the GPU visible to the container.
 
-Apptainer is a fork of Singularity, developed independently under the Linux Foundation. Most of what is written about Singularity applies to Apptainer too. This book notes that the history is more tangled than that, because Singularity was itself a fork. The Apptainer community announcement explains the details. For day-to-day work, the commands and image workflows are the same.
+Apptainer is a fork of Singularity, developed independently under the Linux Foundation. A fork is a copy of the code that then goes its own way. Most of what is written about Singularity applies to Apptainer too. The history is a little more tangled than that, because Singularity was itself a fork. The Apptainer community announcement explains the details. For day-to-day work, the commands and image workflows are the same, so you can follow either set of documentation with confidence.
 
 ### Core commands
 
-The commands below cover the common workflow, from pulling an image to signing it.
+The commands below cover the common workflow, from pulling an image to signing it. Read them as a story. You first fetch or build an image, then run it, then check it and sign it.
 
 ```bash
 apptainer pull docker://ubuntu:24.04                        # create a SIF from an OCI image (cached)
@@ -110,17 +108,19 @@ apptainer shell myenv.sif ; apptainer run myenv.sif          # interactive shell
 apptainer inspect myenv.sif ; apptainer sign myenv.sif ; apptainer verify myenv.sif
 ```
 
-Notice that `--fakeroot` lets you build without root, and `--nv` exposes the GPU to the container. The command set comes from the Apptainer user documentation, which also lists the `-B/--bind` flag.
+The first line pulls an image from an OCI registry. OCI stands for Open Container Initiative, the standards body behind the image format that Docker and most registries use. Apptainer converts it into a SIF file and keeps a copy in its cache, so the next pull is faster. The second line builds a SIF from your own definition file. The third line does the same thing without root, which is the setting you will use on a shared cluster.
+
+Notice that `--fakeroot` lets you build without root, and `--nv` exposes the GPU to the container. The command set comes from the Apptainer user documentation, which also lists the `-B/--bind` flag. The `exec` line is the one you will type most often. It runs one command inside the container, and the `-B` flag adds a mount so the container can see `/scratch`. The last line handles trust. `inspect` shows the metadata, `sign` adds a signature, and `verify` checks that signature before anyone relies on the file.
 
 ### Definition files
 
-The Apptainer documentation describes a definition file, or "def" file, as "a set of blueprints explaining how to build a custom container." You write one to say how an image gets built. Every definition file has a **header** and a set of sections.
+The Apptainer documentation describes a definition file, or "def" file, as "a set of blueprints explaining how to build a custom container." You write one to say how an image gets built. Think of it as a recipe that says where to start, what to install and what to check. Every definition file has a **header** and a set of sections.
 
-The header starts with `Bootstrap:`, which selects the *bootstrap agent*. For the `docker` agent, the `From:` line names the base image. Other agents include `oras`, `localimage`, `scratch`, `library`, `shub`, `yum`/`dnf` and `debootstrap`.
+The header starts with `Bootstrap:`, which selects the *bootstrap agent*. A bootstrap agent is the method Apptainer uses to fetch the starting system. For the `docker` agent, the `From:` line names the base image. Other agents include `oras`, `localimage`, `scratch`, `library`, `shub`, `yum`/`dnf` and `debootstrap`. Each agent answers the question "where does the first layer of this image come from?" in a different way.
 
-Sections start with `%`. The main ones are `%files`, which copies from the host; `%post`, which runs build-time commands; `%environment`; `%runscript`; `%startscript`; `%test`, which runs at the end of the build; `%labels`; `%help`; `%setup`; and `%arguments`. Build-time sections run under `/bin/sh`.
+Sections start with `%`. The main ones are `%files`, which copies from the host; `%post`, which runs build-time commands; `%environment`; `%runscript`; `%startscript`; `%test`, which runs at the end of the build; `%labels`; `%help`; `%setup`; and `%arguments`. Build-time sections run under `/bin/sh`. Keep that in mind when you write one. A line that works in your interactive bash shell may not work inside `%post`, because the build uses the simpler shell.
 
-The example below pins its base image by digest and ends with a `%test` section.
+The example below pins its base image by digest and ends with a `%test` section. The digest pin means the build always starts from the same bytes, and the test at the end means the build fails loudly if PyTorch does not import.
 
 ```text
 Bootstrap: docker
@@ -137,51 +137,55 @@ From: nvcr.io/nvidia/pytorch@sha256:<digest>
     python -c "import torch; print(torch.__version__)"
 ```
 
-Notice that the `From:` line points to a digest, not a tag.
+Notice that the `From:` line points to a digest, not a tag. A tag is a human-friendly name such as `24.04`, and a digest is a fingerprint of the exact image bytes. Section 4 explains why that difference matters for reproducibility.
 
 ### Cache
 
-Apptainer caches SIF images built from remote sources, along with OCI and Docker layers. By default the cache sits under `$HOME/.apptainer/cache`. To move it, set `APPTAINER_CACHEDIR`. For a root build, use `sudo -E` so the variable carries through.
+Apptainer caches SIF images built from remote sources, along with OCI and Docker layers. A cache is a local store of work you have already done, so you do not repeat it. By default the cache sits under `$HOME/.apptainer/cache`. To move it, set `APPTAINER_CACHEDIR`. For a root build, use `sudo -E` so the variable carries through. The `-E` flag keeps your environment variables when sudo switches to root.
 
-On a cluster, point the cache and `APPTAINER_TMPDIR` at node-local or scratch storage. Avoid a small, quota-limited home directory, or a shared mount that is sensitive to metadata load. Clean the cache from time to time with `apptainer cache clean`. *Supercomputers for Linux SysAdmins* makes the same point in its "Caching" section, covering image and layer caches for the HPC runtimes it describes.
+On a cluster, point the cache and `APPTAINER_TMPDIR` at node-local or scratch storage. Node-local means the disk physically inside the compute node. Avoid a small, quota-limited home directory, or a shared mount that is sensitive to metadata load. Metadata load is the pressure that many small file operations put on a shared file system, and a cache full of image layers creates exactly that pressure. Clean the cache from time to time with `apptainer cache clean`. *Supercomputers for Linux SysAdmins* makes the same point in its "Caching" section, covering image and layer caches for the HPC runtimes it describes.
 
 ### GPUs
 
-The `--nv` flag prepares a container for NVIDIA GPUs. It binds the host driver libraries and device nodes into the container. The documentation says Apptainer natively supports NVIDIA's CUDA, AMD's ROCm and Intel's Gaudi. It also supports OCI **CDI** (Container Device Interface) as a generic method. An experimental `--nvccli` option uses `nvidia-container-cli`.
+The `--nv` flag prepares a container for NVIDIA GPUs. It binds the host driver libraries and device nodes into the container. A device node is the file under `/dev` that a program opens to talk to hardware. The documentation says Apptainer natively supports NVIDIA's CUDA, AMD's ROCm and Intel's Gaudi. It also supports OCI **CDI** (Container Device Interface) as a generic method. An experimental `--nvccli` option uses `nvidia-container-cli`.
 
-The documentation warns about one practical failure. Because libraries come from the host, the **libc versions in the container and on the host must not be too far apart**. Otherwise you get libc mismatch errors. The error can occur when the container's libc is older than the host's. It can also occur when the container's libc is much newer.
+The documentation warns about one practical failure. Because libraries come from the host, the **libc versions in the container and on the host must not be too far apart**. libc is the C standard library, and it is the lowest layer that every other library calls. Otherwise you get libc mismatch errors. The error can occur when the container's libc is older than the host's. It can also occur when the container's libc is much newer.
 
-The CUDA toolkit in the image must also be compatible with the host driver. See Part 10 for the details. A quick check is `apptainer exec --nv img.sif nvidia-smi`, followed by a small CUDA test.
+The CUDA toolkit in the image must also be compatible with the host driver. The toolkit is the set of compilers and libraries inside the image, and the driver is the component on the host that talks to the GPU. Their version rules are covered in Part 10. A quick check is `apptainer exec --nv img.sif nvidia-smi`, followed by a small CUDA test. If `nvidia-smi` lists the GPUs, the driver is visible. The small CUDA test then proves the toolkit can actually run a kernel on them.
 
 ### MPI
 
-The documentation describes two models for MPI applications. Under the hybrid model, the host provides `mpirun` or `srun`, along with its own MPI. The container also carries an MPI. The launcher starts the container once per rank, and the MPI inside connects back through PMI. For Open MPI, `orted` launches Apptainer, which starts the application, which connects back through PMI.
+The documentation describes two models for MPI applications. The difference between them is simple: who carries the MPI library, the container or the host.
 
-The container's MPI must be ABI and PMI compatible with the host's. That means the same implementation and a close version. The advantage is that the application is self-contained.
+Under the hybrid model, the host provides `mpirun` or `srun`, along with its own MPI. The container also carries an MPI. The launcher starts the container once per rank, and the MPI inside connects back through PMI. A rank is one copy of your program, and PMI (Process Management Interface) is the protocol that lets those copies find each other. For Open MPI, `orted` launches Apptainer, which starts the application, which connects back through PMI.
 
-Under the bind model, the container has no MPI. The host's MPI libraries are bind-mounted in instead. This model needs administrators to allow user-specified bind mounts.
+The container's MPI must be ABI and PMI compatible with the host's. ABI stands for application binary interface, the low-level contract that lets compiled code work with a library without being rebuilt. That means the same implementation and a close version. The advantage is that the application is self-contained. You can move the image to another cluster with a different host MPI, and it still carries its own working copy.
 
-On Slurm, you launch with `srun --mpi=pmix apptainer exec ... ./app`, as covered in 6.12. For AI jobs, NCCL ships with the framework in the image. It uses the host's IB devices and driver, and it needs host networking.
+Under the bind model, the container has no MPI. The host's MPI libraries are bind-mounted in instead. This model needs administrators to allow user-specified bind mounts. In exchange, the MPI in use is exactly the one the cluster tested, so you avoid version mismatches. The price is that the image now depends on that cluster's host layout.
+
+On Slurm, you launch with `srun --mpi=pmix apptainer exec ... ./app`, as covered in 6.12. For AI jobs, NCCL ships with the framework in the image. It uses the host's IB devices and driver, and it needs host networking. Host networking means the container shares the node's network stack, instead of getting a private one. That is what lets NCCL reach the fast fabric directly.
 
 ### Security model (general knowledge, verify)
 
-Apptainer can run with a small setuid-root helper. The helper mounts SIFs and sets up namespaces. Apptainer can also run entirely in unprivileged mode, using user namespaces. In that mode, the `--fakeroot` feature maps your user to root inside the build.
+Apptainer can run with a small setuid-root helper. Setuid means a program runs with the owner's privileges, here root, even when a normal user starts it. The helper mounts SIFs and sets up namespaces. Apptainer can also run entirely in unprivileged mode, using user namespaces. In that mode, the `--fakeroot` feature maps your user to root inside the build. That mapping exists only inside the build, and it does not give you real root on the host.
 
-The design principle is simple. Privilege escalation inside the container is impossible, because the user stays the same user. There is no `sudo` inside.
+The design principle is simple. Privilege escalation inside the container is impossible, because the user stays the same user. There is no `sudo` inside. A researcher who runs a container is still the same person with the same files and the same limits, which is exactly what a shared cluster needs.
 
-Security controls include signed SIF images. PGP keys are the default, used with `apptainer sign` and `verify`, and with a key server. Other controls are image encryption and restrictions on which images may run. Those restrictions come from `limit container` settings in `apptainer.conf`. The settings can cover allowed paths, owners, groups, or signed-only images.
+Security controls include signed SIF images. PGP keys are the default, used with `apptainer sign` and `verify`, and with a key server. A key server is a public directory where signing keys are published. Other controls are image encryption and restrictions on which images may run. Those restrictions come from `limit container` settings in `apptainer.conf`. The settings can cover allowed paths, owners, groups, or signed-only images.
 
-Some distributions restrict unprivileged user namespaces, and some Ubuntu configurations do this. On those systems, ask your administrators to allow it, or use the setuid mode.
+Some distributions restrict unprivileged user namespaces, and some Ubuntu configurations do this. On those systems, ask your administrators to allow it, or use the setuid mode. Either way, the decision belongs to the people who run the cluster, not to the person building the image.
 
 ## 3. Charliecloud, enroot and the comparison
 
-**Charliecloud** comes from Los Alamos. It provides minimal, unprivileged containers that use only user namespaces. Its images are directory trees or squashfs. `ch-image` builds them, and `ch-run` runs them. Its small code size is a selling point for security reviews. The book describes Charliecloud as intended to be lightweight and uncomplicated. It integrates with job management systems through PMIx, which keeps its use simple. *Supercomputers for Linux SysAdmins* covers it together with Singularity.
+Suppose your group has two clusters. One runs Apptainer, and the other is an NVIDIA system that uses enroot. A colleague builds an image on her laptop and asks whether it will run on both. To answer, you need to know what each runtime expects, so you can decide what to test and what to rebuild. This section describes the three HPC options and the rootless Docker-style option, and then puts them side by side.
 
-**enroot + pyxis** is NVIDIA's pair, covered in 6.13. enroot converts OCI images to squashfs and runs them unprivileged. It has hooks for GPU, IB and PMIx. Slurm integration comes through the pyxis SPANK plugin, which provides `srun --container-*` options.
+**Charliecloud** comes from Los Alamos. It provides minimal, unprivileged containers that use only user namespaces. Its images are directory trees or squashfs. `ch-image` builds them, and `ch-run` runs them. Its small code size is a selling point for security reviews, because a reviewer can read the whole thing in a reasonable time. *Supercomputers for Linux SysAdmins* describes Charliecloud as intended to be lightweight and uncomplicated. It integrates with job management systems through PMIx, which keeps its use simple. *Supercomputers for Linux SysAdmins* covers it together with Singularity.
 
-**Podman rootless** and **Docker rootless** are OCI-compliant tools that run in user namespaces. They offer more features, but they are heavier and less tuned for HPC. They can still work on workstations and on some clusters.
+**enroot + pyxis** is NVIDIA's pair, covered in 6.13. enroot converts OCI images to squashfs and runs them unprivileged. It has hooks for GPU, IB and PMIx. A hook is a small piece of code that runs at a set point in the container's start-up, so enroot can, for example, add GPU device files at the right moment. Slurm integration comes through the pyxis SPANK plugin, which provides `srun --container-*` options. SPANK is Slurm's plugin system, and pyxis is the plugin that adds container flags to `srun`.
 
-If you need to compare the four runtimes, the table below does it side by side.
+**Podman rootless** and **Docker rootless** are OCI-compliant tools that run in user namespaces. They offer more features, but they are heavier and less tuned for HPC. They can still work on workstations and on some clusters. If your team already builds images with Docker or Podman on a laptop, these tools let you run the same image without giving anyone root.
+
+If you need to compare the four runtimes, the table below does it side by side. Each row asks one practical question, such as which image format you will store, or who gets root.
 
 | | Apptainer | Charliecloud | enroot + pyxis | Podman rootless |
 |---|---|---|---|---|
@@ -193,36 +197,38 @@ If you need to compare the four runtimes, the table below does it side by side.
 | MPI | host-MPI hybrid/bind | host MPI | PMIx hooks | host network |
 | Ecosystem | Widest in academic HPC; OCI compat | Smaller | Strong in NVIDIA clusters (NGC) | Dev workflows |
 
-When you look at the Privilege row, notice that only Apptainer lists a setuid helper.
+When you look at the Privilege row, notice that only Apptainer lists a setuid helper. That is the one place where a small piece of software runs as root on the host, so it deserves the closest review. The other three stay entirely in user namespaces.
 
-All four can consume OCI and Docker images. You can therefore build once with a standard tool and deploy to whichever runtime a cluster uses. Test each runtime yourself anyway. The runtimes differ in environment handling, home mounting, and PID and network namespace choices.
+All four can consume OCI and Docker images. You can therefore build once with a standard tool and deploy to whichever runtime a cluster uses. Test each runtime yourself anyway. The runtimes differ in environment handling, home mounting, and PID and network namespace choices. Those differences rarely show up in a small test, and they often show up on the first real multi-node job.
 
 ## 4. Reproducibility discipline
 
-Reproducibility comes in four levels. You can *rerun* the same image, which depends on immutability. You can *rebuild* the same image, which depends on the build being deterministic. You can *reuse* the environment on another system, which depends on portability. And you can *understand* it, which depends on provenance and metadata.
+Imagine a reviewer asks you to rerun an analysis from a paper you published two years ago. The image file still exists on the shared disk, but nobody can say which base image it came from or which package versions it holds. Reproducibility is the work of making that question easy to answer, long before anyone asks it.
 
-The discipline comes down to twelve practices.
+Reproducibility comes in four levels. You can *rerun* the same image, which depends on immutability. You can *rebuild* the same image, which depends on the build being deterministic, meaning the same recipe always produces the same result. You can *reuse* the environment on another system, which depends on portability. And you can *understand* it, which depends on provenance and metadata. Provenance means a written record of where each piece came from. Each level asks more of your process, so most teams aim for the first two and make the last two possible.
 
-1. Pin the base image by digest, written `From: image@sha256:...`, not by tag. Tags are mutable: `latest` moves, and even `24.04` moves with patch updates. Record the digest in the lab notebook, the job log and the image labels.
-2. Pin every dependency with a lock file that includes hashes. `pip install --require-hashes -r requirements.lock` does this, and `conda-lock` and `uv.lock` are alternatives. System packages can be pinned with `apt-get install pkg=version`. A more practical option is to pin the repository snapshot, such as a dated mirror like snapshot.debian.org or an internal Artifactory or Nexus mirror. Then rebuilds see the same packages.
-3. Avoid floating network fetches in `%post`. Verify checksums with `sha256sum -c` or GPG signatures, and do not use `curl | sh`. When you clone Git repositories, use a tag, and verify the commit hash too.
+The discipline comes down to twelve practices. Each one closes a specific gap that the four levels expose.
+
+1. Pin the base image by digest, written `From: image@sha256:...`, not by tag. Tags are mutable: `latest` moves, and even `24.04` moves with patch updates. A patch update is a small security or bug fix to the same release. Record the digest in the lab notebook, the job log and the image labels.
+2. Pin every dependency with a lock file that includes hashes. `pip install --require-hashes -r requirements.lock` does this, and `conda-lock` and `uv.lock` are alternatives. A hash is a short fingerprint of a package file, and a mismatch means the file is not the one you locked. System packages can be pinned with `apt-get install pkg=version`. A more practical option is to pin the repository snapshot, such as a dated mirror like snapshot.debian.org or an internal Artifactory or Nexus mirror. Then rebuilds see the same packages.
+3. Avoid floating network fetches in `%post`. A floating fetch downloads whatever is current on the day of the build. Verify checksums with `sha256sum -c` or GPG signatures, and do not use `curl | sh`. When you clone Git repositories, use a tag, and verify the commit hash too.
 4. Do not upgrade the system during the build. A command such as `apt-get upgrade` makes the result depend on the build date.
 5. Record metadata as you go. Put the version, the recipe's Git commit, the build date, the base digest and the maintainer in `%labels`. Keep the definition file and lock files in Git, next to the code. Embed or attach a software bill of materials (SBOM), which you can generate with `syft` or a similar tool. Keep the output of your vulnerability scans with it.
-6. Build in CI, not on someone's laptop, and build in a clean environment. Tag each image with the recipe's commit. Store it in an OCI registry with Apptainer `oras` support, or in a shared directory of SIFs on the parallel file system, with checksums.
-7. Test at build time with `%test`, and test again before promotion. Import the framework, run a tiny GPU kernel, run a short NCCL test, and compare numerics to a reference.
+6. Build in CI, not on someone's laptop, and build in a clean environment. Tag each image with the recipe's commit. Store it in an OCI registry with Apptainer `oras` support, or in a shared directory of SIFs on the parallel file system, with checksums. A parallel file system is shared storage that many nodes read at once, and you will meet it again in 6.18.
+7. Test at build time with `%test`, and test again before promotion. Promotion means moving an image from a test area into the area that real jobs use. Import the framework, run a tiny GPU kernel, run a short NCCL test, and compare numerics to a reference.
 8. Sign and verify images that run in production, using `apptainer sign` and `verify`, or cosign for OCI images. See 5.22.
 9. Keep the base separate from the application. A slow-moving base image, with CUDA and the framework, can sit under a fast-moving application layer. Rebuild the application layer often.
-10. Record the runtime environment at run time. Log the image digest, host driver, kernel, GPU model, and environment variables. A few lines in your job prologue will do it.
-11. Bitwise reproducibility across GPU architectures and library versions is not guaranteed. The reasons are covered in 6.5 for fast-math and reductions, and in 6.12 for NCCL algorithms. Fix seeds and use deterministic modes when you need identical results. Otherwise, accept statistical equivalence.
-12. Keep images for the life of the publication or project. The registry's garbage collection must not delete referenced digests.
+10. Record the runtime environment at run time. Log the image digest, host driver, kernel, GPU model, and environment variables. A few lines in your job prologue will do it. The prologue is the script Slurm runs before your job starts.
+11. Bitwise reproducibility across GPU architectures and library versions is not guaranteed. Bitwise means every bit of the result matches. The reasons are covered in 6.5 for fast-math and reductions, and in 6.12 for NCCL algorithms. Fix seeds and use deterministic modes when you need identical results. Otherwise, accept statistical equivalence, which means the results agree within normal run-to-run noise.
+12. Keep images for the life of the publication or project. The registry's garbage collection must not delete referenced digests. Garbage collection is the cleanup pass that removes data nothing points to any more, and a digest that a paper cites counts as something that points to it.
 
-Before you promote an image, check that every digest is pinned, recorded and tested.
+Before you promote an image, check that every digest is pinned, recorded and tested. If one of the three is missing, the image is not ready, however well it runs on the day you built it.
 
 ### A linter (tested)
 
-`code/part06/container_lint.py` checks an Apptainer definition file or a Dockerfile for the violations above. It flags floating base tags, such as `:latest`, missing tags, and tags without digests. It also flags `upgrade` steps, unpinned `apt` and `pip` installs, `curl | sh`, downloads without checksums, `git clone` without a pinned ref, and missing labels and tests.
+`code/part06/container_lint.py` checks an Apptainer definition file or a Dockerfile for the violations above. A linter is a program that reads a file and points at risky lines without running them. This one is a text check, so it is quick and safe to run on any file. It flags floating base tags, such as `:latest`, missing tags, and tags without digests. It also flags `upgrade` steps, unpinned `apt` and `pip` installs, `curl | sh`, downloads without checksums, `git clone` without a pinned ref, and missing labels and tests.
 
-Here is its output on a deliberately poor file.
+Here is its output on a deliberately poor file. Read each line as a question the linter asks. An ERROR means the image is not reproducible at all, a warning means it is probably fragile, and an info line is a tidy-up suggestion.
 
 ```text
 ERROR line 2: base image 'ubuntu:latest' is not pinned (use a version tag, better a digest @sha256:...)
@@ -239,29 +245,29 @@ info  no %labels section ...
 info  no %test section ...
 ```
 
-The good file produced "no findings". It had a digest-pinned base, a lock-file `pip install` with `--no-cache-dir`, a checksum-verified download, labels and a test.
+The good file produced "no findings". It had a digest-pinned base, a lock-file `pip install` with `--no-cache-dir`, a checksum-verified download, labels and a test. Compare the two outputs side by side. Almost every warning on the poor file corresponds to a practice from the list of twelve, which is the point of building the linter from that list.
 
-The first version of the linter had two bugs, and the test files exposed both. It missed `apt-get -y upgrade`, because the flag came before the verb. It also flagged `... | sha256sum -c -` as "pipes into a shell", because the pattern `| sh` matched the start of `sha256sum`. Both were fixed with word-boundary and optional-flag patterns. That is a reminder to test a linter on both good and bad inputs.
+The first version of the linter had two bugs, and the test files exposed both. It missed `apt-get -y upgrade`, because the flag came before the verb. It also flagged `... | sha256sum -c -` as "pipes into a shell", because the pattern `| sh` matched the start of `sha256sum`. Both were fixed with word-boundary and optional-flag patterns. That is a reminder to test a linter on both good and bad inputs. A linter that only ever sees bad files can pass every check while missing the cases it was meant to allow.
 
-The linter is a heuristic text check. It does not parse multi-line continuations or build stages. Run it on your own definition files and Dockerfiles, and test any change to it on both bad and good inputs.
+The linter is a heuristic text check. It does not parse multi-line continuations or build stages. A continuation is a single command split over several lines with a backslash, and a build stage is one section of a multi-stage Dockerfile. Run it on your own definition files and Dockerfiles, and test any change to it on both bad and good inputs.
 
 ## 5. Distribution and operations
 
-Once you have an image that works on one node, the harder questions start. Where does it live, and how do thousands of ranks reach it without stalling?
+Imagine the image works perfectly on one node. You are happy, and then you submit the same job to every node in a large GPU partition at once. Within minutes, the file server slows, the first ranks are waiting on the image, and the rest queue behind them. Once you have an image that works on one node, the harder questions start. Where does it live, and how do thousands of ranks reach it without stalling?
 
-Images need a home. Use a registry, such as Harbor, Artifactory, GHCR or the NGC private registry, for OCI images. For Apptainer, keep a controlled directory of SIFs on the parallel file system, for example `/shared/containers/<name>/<version>.sif`, with a `sha256` file beside it. Squashfs is one file, which makes it a good fit for Lustre or GPFS (see 6.18) and for staging to node-local NVMe.
+Images need a home. Use a registry, such as Harbor, Artifactory, GHCR or the NGC private registry, for OCI images. A registry is the server that stores and serves images by name and digest. For Apptainer, keep a controlled directory of SIFs on the parallel file system, for example `/shared/containers/<name>/<version>.sif`, with a `sha256` file beside it. The checksum file lets anyone confirm the image has not been damaged or swapped. Squashfs is one file, which makes it a good fit for Lustre or GPFS (see 6.18) and for staging to node-local NVMe. Lustre and GPFS are parallel file systems, and NVMe is fast solid-state disk inside the node.
 
-Start-up at scale is its own problem. When thousands of ranks pull or mount the same image, the registry and the file system both feel it. Stage the image to local disk, or rely on page-cache sharing. Do not pull from a registry inside the job, and avoid unpacking the image on every rank.
+Start-up at scale is its own problem. When thousands of ranks pull or mount the same image, the registry and the file system both feel it. Stage the image to local disk, or rely on page-cache sharing. The page cache is the memory the kernel uses to hold recently read file data, so once one rank reads the file, others on the same node can read it from memory. Do not pull from a registry inside the job, and avoid unpacking the image on every rank. Unpacking on every rank multiplies the work by the number of ranks, and that work is the first thing that stalls.
 
-Default binds can leak host state. Apptainer's defaults bind home, `/tmp`, `/proc`, `/sys` and `/dev`, so verify that list for your version. Those binds can break reproducibility. For example, `~/.local` Python packages silently override container packages. Use `--no-home`, `--cleanenv` or `--containall` where needed, or set `PYTHONNOUSERSITE=1`. Prefer explicit, minimal binds for datasets and outputs.
+Default binds can leak host state. Apptainer's defaults bind home, `/tmp`, `/proc`, `/sys` and `/dev`, so verify that list for your version. Those binds can break reproducibility. For example, `~/.local` Python packages silently override container packages. A bind that carries host state into the container means the container is no longer the self-contained environment you tested. Use `--no-home`, `--cleanenv` or `--containall` where needed, or set `PYTHONNOUSERSITE=1`. Prefer explicit, minimal binds for datasets and outputs, so the container sees only what the job needs.
 
-The environment leaks too. Apptainer passes the host environment by default, and `--cleanenv` (`-e`) starts clean. Combine it with Slurm's `--export` choices, covered in 6.11.
+The environment leaks too. Apptainer passes the host environment by default, and `--cleanenv` (`-e`) starts clean. A host variable such as a different `LD_LIBRARY_PATH` can change which libraries load, and that change is invisible from inside the image. Combine it with Slurm's `--export` choices, covered in 6.11, so you decide on purpose which variables cross into the job.
 
-Quotas and cleanup need automation. Image caches and build directories grow. Automate cleanup in prolog and epilog scripts, or with cron.
+Quotas and cleanup need automation. Image caches and build directories grow. A quota is the limit a file system puts on how much one user or project can store. Automate cleanup in prolog and epilog scripts, or with cron. The prolog and epilog run before and after each job, and cron is the standard Linux scheduler for timed tasks. A cleanup job that runs on a schedule is far more reliable than a reminder to clean up by hand.
 
-Publish a support matrix. List which base images, CUDA versions, MPI and PMIx versions, and runtimes each partition supports, as covered in 6.6. Give your users a test job they can run to verify an image.
+Publish a support matrix. List which base images, CUDA versions, MPI and PMIx versions, and runtimes each partition supports, as covered in 6.6. A partition is a named group of nodes in Slurm, such as one set of GPU nodes. Give your users a test job they can run to verify an image. A test job that takes a minute tells a researcher whether their image will run on a partition before they wait in the queue for a long job.
 
-Keep the image runtime-agnostic. The same OCI image should run under Kubernetes (Part 11) and under Slurm, through enroot or Apptainer. Put runtime-specific settings in the launch scripts, not in the image.
+Keep the image runtime-agnostic. The same OCI image should run under Kubernetes (Part 11) and under Slurm, through enroot or Apptainer. Put runtime-specific settings in the launch scripts, not in the image. That way the image stays the same no matter where it runs, and only the thin launch layer changes.
 
 ## 6. Lab
 
@@ -271,22 +277,24 @@ Start with the self-checking Python lab, `code/part06/container_lint_lab.py`. Ru
 python3 code/part06/container_lint_lab.py
 ```
 
-The tested items come first.
+Each of the three inputs tests a different promise. The good file tests that the linter stays quiet when you do the right thing. The bad file tests that it speaks up when you do the wrong thing. The Dockerfile tests that the same rules apply to a second format. If any of the three answers changes, the linter itself has changed, and you should find out why before you trust it.
 
-1. Run `container_lint.py` on a Dockerfile and on a definition file of your own. Fix every ERROR and warning.
-2. Add one new check, such as an `ADD http://` instruction in a Dockerfile, and give it a test. Then create the `bad.def` and `good.def` pair from section 4, and reproduce the output.
+The tested items come first. These steps run on any laptop with Python.
 
-The next items need Linux with Apptainer, and they are untested here.
+1. Run `container_lint.py` on a Dockerfile and on a definition file of your own. Fix every ERROR and warning. This shows the linter on real files, not only on the test fixtures.
+2. Add one new check, such as an `ADD http://` instruction in a Dockerfile, and give it a test. Then create the `bad.def` and `good.def` pair from section 4, and reproduce the output. A new check earns trust only after you have seen it fire on bad input and stay quiet on good input.
 
-3. Run `apptainer pull docker://...`, then `build` a definition file that has a `%test` section. Run it with `--nv` on a GPU node. Then trigger a libc mismatch with an old base image, and diagnose it.
-4. Run an MPI hello program with the hybrid model under `srun --mpi=pmix`.
-5. Measure how long a 5 GB SIF takes to start on Lustre, and compare that with node-local NVMe, using 64 ranks.
-6. Sign an image and verify it. Then try to run a modified copy.
-7. Rebuild the same definition file twice, a week apart. Do one build with digest and lock-file pinning, and one without. Compare `pip freeze` and the image checksums.
-8. Convert one workflow between Apptainer and enroot/pyxis. List the differences in environment and mounts.
-9. Generate an SBOM for an image, and scan the image.
+The next items need Linux with Apptainer. These steps were not run in this chapter, so treat them as a plan to follow on your own GPU node.
 
-Start with the tested items, then work through the rest on a Linux GPU node that you can reach.
+3. Run `apptainer pull docker://...`, then `build` a definition file that has a `%test` section. Run it with `--nv` on a GPU node. Then trigger a libc mismatch with an old base image, and diagnose it. This ties together the build, the GPU binding and the libc failure from section 2 on real hardware.
+4. Run an MPI hello program with the hybrid model under `srun --mpi=pmix`. A hello program is the smallest MPI test, so a pass proves the launch path works before you run anything large.
+5. Measure how long a 5 GB SIF takes to start on Lustre, and compare that with node-local NVMe, using 64 ranks. The gap shows what the shared file system costs when many ranks start at the same moment.
+6. Sign an image and verify it. Then try to run a modified copy. The modified copy should be refused, which shows the signature is doing its job.
+7. Rebuild the same definition file twice, a week apart. Do one build with digest and lock-file pinning, and one without. Compare `pip freeze` and the image checksums. The difference between the two builds is the cost of skipping the pins.
+8. Convert one workflow between Apptainer and enroot/pyxis. List the differences in environment and mounts. Those differences are where an image that works in one runtime breaks in the other.
+9. Generate an SBOM for an image, and scan the image. The SBOM tells you what is inside, and the scan tells you which of those parts has a known problem.
+
+Start with the tested items, then work through the rest on a Linux GPU node that you can reach. Keep a notebook open while you do. Write down the digest, the driver version and the result of each step, because the notebook is the provenance record that section 4 asked for.
 
 ## 7. Interview angles
 
@@ -304,39 +312,39 @@ Start with the tested items, then work through the rest on a Linux GPU node that
 
 Picture this on-call page. *"A researcher built an Apptainer `.sif` or Enroot `.sqsh` container on Cluster A, where their multi-node training job ran at full speed. They copied the exact same image file to Cluster B. It either crashes on launch or runs ten times slower. Why?"*
 
-HPC containers share the host Linux kernel. They also bind host GPU and RDMA driver libraries at runtime. That means an immutable image is **not** completely self-contained at the hardware boundary. Work through these five checks in order.
+HPC containers share the host Linux kernel. They also bind host GPU and RDMA driver libraries at runtime. RDMA (remote direct memory access) lets one node read and write another node's memory over the network without going through the CPU. That means an immutable image is **not** completely self-contained at the hardware boundary. The image holds your code and libraries, but the hardware-facing pieces come from whichever host you run on. Work through these five checks in order.
 
-The first check compares glibc on the host with the NVIDIA driver libraries that `--nv` (or `98-nvidia.sh`) injects. Passing `--nv` in Apptainer, or running Pyxis and Enroot with `nvidia-container-cli`, bind-mounts the host OS's user-space driver libraries into the container. Those are `libcuda.so` and `libnvidia-ml.so`, and they match the loaded `nvidia.ko` module. They were compiled against the host OS's glibc. Suppose Cluster B runs Ubuntu 24.04 with glibc 2.39, but the image was built on Ubuntu 18.04 with glibc 2.27. Dynamic linking then fails at once, with `version 'GLIBC_2.34' not found (required by libcuda.so.1)`. Rebase the container onto a modern base whose glibc is at least as new as the host's.
+The first check compares glibc on the host with the NVIDIA driver libraries that `--nv` (or `98-nvidia.sh`) injects. glibc is the GNU version of the C library. Passing `--nv` in Apptainer, or running Pyxis and Enroot with `nvidia-container-cli`, bind-mounts the host OS's user-space driver libraries into the container. Those are `libcuda.so` and `libnvidia-ml.so`, and they match the loaded `nvidia.ko` module. They were compiled against the host OS's glibc. Suppose Cluster B runs Ubuntu 24.04 with glibc 2.39, but the image was built on Ubuntu 18.04 with glibc 2.27. Dynamic linking then fails at once, with `version 'GLIBC_2.34' not found (required by libcuda.so.1)`. Rebase the container onto a modern base whose glibc is at least as new as the host's.
 
-The second check is CUDA forward compatibility, which compares `cudaDriverGetVersion` with `cudaRuntimeGetVersion`. The container holds the CUDA toolkit and runtime, `libcudart.so`, for example CUDA 12.6. The host provides the kernel driver, `libcuda.so`. Suppose Cluster B runs an older driver branch that does not support that toolkit. If the matching `cuda-compat` package is not installed and added to `LD_LIBRARY_PATH`, then `torch.cuda.is_available()` returns `False`. It may also throw `CUDA driver version is insufficient for CUDA runtime version`.
+The second check is CUDA forward compatibility, which compares `cudaDriverGetVersion` with `cudaRuntimeGetVersion`. Those two calls report the driver version the host is running and the CUDA runtime version the container was built with. The container holds the CUDA toolkit and runtime, `libcudart.so`, for example CUDA 12.6. The host provides the kernel driver, `libcuda.so`. Suppose Cluster B runs an older driver branch that does not support that toolkit. If the matching `cuda-compat` package is not installed and added to `LD_LIBRARY_PATH`, then `torch.cuda.is_available()` returns `False`. It may also throw `CUDA driver version is insufficient for CUDA runtime version`. The fix is either a newer driver on the host or a compatibility package in the image, and the error message tells you which side is out of date.
 
-The third check is `$HOME` and `~/.local` leakage. By default, Apptainer bind-mounts your shared `$HOME` and inherits the calling shell's environment variables. Suppose the researcher ran `pip install --user` on Cluster B's login node. Python inside the container then adds `~/.local/lib/python3.x/site-packages` to `sys.path`. Those broken host files silently shadow the container's locked PyTorch or Triton packages. Always pass `--cleanenv` (`-e`). Then add either `--no-home` or `--containall`, or export `PYTHONNOUSERSITE=1` in the job script.
+The third check is `$HOME` and `~/.local` leakage. By default, Apptainer bind-mounts your shared `$HOME` and inherits the calling shell's environment variables. Suppose the researcher ran `pip install --user` on Cluster B's login node. Python inside the container then adds `~/.local/lib/python3.x/site-packages` to `sys.path`. `sys.path` is the list of places Python looks for packages, and that directory is searched alongside the packages baked into the image. Those broken host files silently shadow the container's locked PyTorch or Triton packages. Always pass `--cleanenv` (`-e`). Then add either `--no-home` or `--containall`, or export `PYTHONNOUSERSITE=1` in the job script.
 
-The fourth check is whether the MPI, PMIx, UCX and libfabric providers match the interconnect. Suppose Cluster A uses NVIDIA Quantum InfiniBand with `mlx5` Verbs and UCX. Cluster B uses RoCEv2, which needs `NCCL_IB_GID_INDEX`, or Slingshot with the libfabric CXI provider, or AWS EFA. An image that compiled Open MPI and NCCL only against standard libibverbs lacks the target fabric plugin. The same happens if `/dev/infiniband` or the host OFED providers are not bind-mounted. NCCL then silently falls back from NET/IB, which uses GPUDirect RDMA, to NET/Socket, which uses host TCP over Ethernet. That causes a $10\times$ drop in multi-node AllReduce bandwidth. To check it at once, inspect `NCCL_DEBUG=INFO` on Rank 0.
+The fourth check is whether the MPI, PMIx, UCX and libfabric providers match the interconnect. PMIx is the process-management protocol introduced in section 2. UCX and libfabric are the low-level communication libraries that MPI and NCCL use to reach the network. Suppose Cluster A uses NVIDIA Quantum InfiniBand with `mlx5` Verbs and UCX. Cluster B uses RoCEv2, which needs `NCCL_IB_GID_INDEX`, or Slingshot with the libfabric CXI provider, or AWS EFA. An image that compiled Open MPI and NCCL only against standard libibverbs lacks the target fabric plugin. The same happens if `/dev/infiniband` or the host OFED providers are not bind-mounted. NCCL then silently falls back from NET/IB, which uses GPUDirect RDMA, to NET/Socket, which uses host TCP over Ethernet. That causes a $10\times$ drop in multi-node AllReduce bandwidth. To check it at once, inspect `NCCL_DEBUG=INFO` on Rank 0. The silent part is what makes this check important. The job still runs, just far more slowly, so the only sign is in the NCCL log.
 
-Work through the checks in order, starting with glibc, before you change the image.
-
-## Exercises
-
-1. Use `code/part06/container_lint.py` and `container_lint_lab.py` to check definition files for reproducibility. Run `python3 code/part06/container_lint_lab.py`. Then explain three things. First, why does `container_lint.py` flag `From: ubuntu:latest` and `curl ... | sh` as hard `ERROR`s? Second, why does `apt-get upgrade` make an image non-reproducible across build dates? Third, why is the word-boundary regex `\b(ba)?sh\b` necessary, so that `echo "<hash>  file" | sha256sum -c -` is not misclassified as piping into a shell?
-2. Write a complete Apptainer `.def` file that starts with `Bootstrap: docker` and `From: nvcr.io/nvidia/pytorch@sha256:...`. It should copy a hash-locked `requirements.lock` with `%files`. In `%post`, install the packages with `pip install --no-cache-dir --require-hashes -r /opt/requirements.lock`. Record the git commit and base digest in `%labels`, and run a PyTorch and CUDA import check in `%test`. Finally, show the unprivileged `apptainer build --fakeroot` command, and the PGP `apptainer sign` and `verify` commands.
-3. Write the Slurm batch launch line, `srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py`. Then compare two models. The first is Apptainer's hybrid MPI model, where the container holds its own PMIx-compatible Open MPI or HPC-X that talks to host `slurmstepd`. The second is the bind MPI model, where host MPI libraries are bound into the container.
-4. A researcher builds an Apptainer `.sif` from an Ubuntu 18.04 base image, which has glibc 2.27. They run `apptainer exec --nv old.sif nvidia-smi` on an Ubuntu 24.04 GPU node, which has glibc 2.39. It fails with `GLIBC_2.34 not found`. Explain why `--nv` triggers this error, and how CDI or a newer base image resolves it. Then explain how `~/.local/lib/python3.x/site-packages` on a shared `$HOME` silently overrides container packages, unless you use `--no-home`, `--containall` or `PYTHONNOUSERSITE=1`.
-5. Write the `/etc/profile.d/containers.sh` snippet that points `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR` to node-local NVMe at `/tmp/$USER/apptainer`, instead of `$HOME/.apptainer/cache`. Then explain why `sudo -E` is required when you pass `APPTAINER_CACHEDIR` to a privileged build.
-6. Compare all four runtimes: Apptainer, Charliecloud, Enroot with Pyxis, and rootless Podman. Cover image format (`.sif` vs `.sqsh` vs OCI layers), privilege mechanism (setuid or userns), GPU injection (`--nv`/CDI vs `98-nvidia.sh`), Slurm integration (`srun apptainer exec` vs SPANK `--container-image`), and cryptographic image signing.
-
-If you start with exercise 1, you need only the lint scripts.
+Work through the checks in order, starting with glibc, before you change the image. Each check is cheap to run and rules out a whole family of causes. If you jump straight to rebuilding the image, you may spend a day fixing something that was never broken.
 
 ## Exercises
 
-1. Use `code/part06/container_lint.py` and `container_lint_lab.py` to check definition files for reproducibility. Run `python3 code/part06/container_lint_lab.py`. Then explain three things. First, why does `container_lint.py` flag `From: ubuntu:latest` and `curl ... | sh` as hard `ERROR`s? Second, why does `apt-get upgrade` make an image non-reproducible across build dates? Third, why is the word-boundary regex `\b(ba)?sh\b` necessary, so that `echo "<hash>  file" | sha256sum -c -` is not misclassified as piping into a shell?
-2. Write a complete Apptainer `.def` file that starts with `Bootstrap: docker` and `From: nvcr.io/nvidia/pytorch@sha256:...`. It should copy a hash-locked `requirements.lock` with `%files`. In `%post`, install the packages with `pip install --no-cache-dir --require-hashes -r /opt/requirements.lock`. Record the git commit and base digest in `%labels`, and run a PyTorch and CUDA import check in `%test`. Finally, show the unprivileged `apptainer build --fakeroot` command, and the PGP `apptainer sign` and `verify` commands.
-3. Write the Slurm batch launch line, `srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py`. Then compare two models. The first is Apptainer's hybrid MPI model, where the container holds its own PMIx-compatible Open MPI or HPC-X that talks to host `slurmstepd`. The second is the bind MPI model, where host MPI libraries are bound into the container.
-4. A researcher builds an Apptainer `.sif` from an Ubuntu 18.04 base image, which has glibc 2.27. They run `apptainer exec --nv old.sif nvidia-smi` on an Ubuntu 24.04 GPU node, which has glibc 2.39. It fails with `GLIBC_2.34 not found`. Explain why `--nv` triggers this error, and how CDI or a newer base image resolves it. Then explain how `~/.local/lib/python3.x/site-packages` on a shared `$HOME` silently overrides container packages, unless you use `--no-home`, `--containall` or `PYTHONNOUSERSITE=1`.
-5. Write the `/etc/profile.d/containers.sh` snippet that points `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR` to node-local NVMe at `/tmp/$USER/apptainer`, instead of `$HOME/.apptainer/cache`. Then explain why `sudo -E` is required when you pass `APPTAINER_CACHEDIR` to a privileged build.
-6. Compare all four runtimes: Apptainer, Charliecloud, Enroot with Pyxis, and rootless Podman. Cover image format (`.sif` vs `.sqsh` vs OCI layers), privilege mechanism (setuid or userns), GPU injection (`--nv`/CDI vs `98-nvidia.sh`), Slurm integration (`srun apptainer exec` vs SPANK `--container-image`), and cryptographic image signing.
+1. Your team's lint check failed on a definition file, and you want to know why before you change it. Run `python3 code/part06/container_lint_lab.py` first, so you can see the linter pass its own tests. Use `code/part06/container_lint.py` and `container_lint_lab.py` to check your own definition files for reproducibility. Explain why `container_lint.py` flags `From: ubuntu:latest` as a hard `ERROR`. Explain why it flags `curl ... | sh` as a hard `ERROR` too. Explain why `apt-get upgrade` makes an image non-reproducible across build dates. Explain why the word-boundary regex `\b(ba)?sh\b` is needed, so that `echo "<hash>  file" | sha256sum -c -` is not misread as piping into a shell.
+2. A researcher needs a definition file that pins everything, so a rebuild next year gives the same result. Write a complete Apptainer `.def` file that starts with `Bootstrap: docker` and `From: nvcr.io/nvidia/pytorch@sha256:...`. Copy a hash-locked `requirements.lock` into the image with `%files`. In `%post`, install the packages with `pip install --no-cache-dir --require-hashes -r /opt/requirements.lock`. Record the git commit and base digest in `%labels`. Add a PyTorch and CUDA import check in `%test`. Show the unprivileged `apptainer build --fakeroot` command. Show the PGP `apptainer sign` and `verify` commands last.
+3. Your job must start MPI across several nodes from one batch script. Write the Slurm batch launch line, `srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py`. Describe the hybrid MPI model. In that model, the container holds its own PMIx-compatible Open MPI or HPC-X, which talks to host `slurmstepd`. Describe the bind MPI model. In that model, host MPI libraries are bound into the container. Then compare the two models.
+4. A researcher built `old.sif` from an Ubuntu 18.04 base image, which has glibc 2.27. On an Ubuntu 24.04 GPU node, which has glibc 2.39, `apptainer exec --nv old.sif nvidia-smi` fails with `GLIBC_2.34 not found`. Explain why `--nv` triggers this error. Explain how CDI or a newer base image resolves it. Then explain how `~/.local/lib/python3.x/site-packages` on a shared `$HOME` can silently override container packages. Name the three ways to stop that: `--no-home`, `--containall`, or `PYTHONNOUSERSITE=1`.
+5. Your cluster's nodes have local NVMe, and you want the Apptainer cache off the shared home directory. Write the `/etc/profile.d/containers.sh` snippet that points `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR` to node-local NVMe at `/tmp/$USER/apptainer`. It should replace `$HOME/.apptainer/cache`. Then explain why `sudo -E` is required when you pass `APPTAINER_CACHEDIR` to a privileged build.
+6. Your team must pick one runtime for a new cluster, and you want a fair comparison first. Compare all four runtimes: Apptainer, Charliecloud, Enroot with Pyxis, and rootless Podman. Cover image format (`.sif` vs `.sqsh` vs OCI layers). Cover privilege mechanism (setuid or userns). Cover GPU injection (`--nv`/CDI vs `98-nvidia.sh`). Cover Slurm integration (`srun apptainer exec` vs SPANK `--container-image`). Cover cryptographic image signing.
 
-If you start with exercise 1, you need only the lint scripts.
+If you start with exercise 1, you need only the lint scripts. Write each answer in your own words before you check it against the section it comes from.
+
+## Exercises
+
+1. Your team's lint check failed on a definition file, and you want to know why before you change it. Run `python3 code/part06/container_lint_lab.py` first, so you can see the linter pass its own tests. Use `code/part06/container_lint.py` and `container_lint_lab.py` to check your own definition files for reproducibility. Explain why `container_lint.py` flags `From: ubuntu:latest` as a hard `ERROR`. Explain why it flags `curl ... | sh` as a hard `ERROR` too. Explain why `apt-get upgrade` makes an image non-reproducible across build dates. Explain why the word-boundary regex `\b(ba)?sh\b` is needed, so that `echo "<hash>  file" | sha256sum -c -` is not misread as piping into a shell.
+2. A researcher needs a definition file that pins everything, so a rebuild next year gives the same result. Write a complete Apptainer `.def` file that starts with `Bootstrap: docker` and `From: nvcr.io/nvidia/pytorch@sha256:...`. Copy a hash-locked `requirements.lock` into the image with `%files`. In `%post`, install the packages with `pip install --no-cache-dir --require-hashes -r /opt/requirements.lock`. Record the git commit and base digest in `%labels`. Add a PyTorch and CUDA import check in `%test`. Show the unprivileged `apptainer build --fakeroot` command. Show the PGP `apptainer sign` and `verify` commands last.
+3. Your job must start MPI across several nodes from one batch script. Write the Slurm batch launch line, `srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py`. Describe the hybrid MPI model. In that model, the container holds its own PMIx-compatible Open MPI or HPC-X, which talks to host `slurmstepd`. Describe the bind MPI model. In that model, host MPI libraries are bound into the container. Then compare the two models.
+4. A researcher built `old.sif` from an Ubuntu 18.04 base image, which has glibc 2.27. On an Ubuntu 24.04 GPU node, which has glibc 2.39, `apptainer exec --nv old.sif nvidia-smi` fails with `GLIBC_2.34 not found`. Explain why `--nv` triggers this error. Explain how CDI or a newer base image resolves it. Then explain how `~/.local/lib/python3.x/site-packages` on a shared `$HOME` can silently override container packages. Name the three ways to stop that: `--no-home`, `--containall`, or `PYTHONNOUSERSITE=1`.
+5. Your cluster's nodes have local NVMe, and you want the Apptainer cache off the shared home directory. Write the `/etc/profile.d/containers.sh` snippet that points `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR` to node-local NVMe at `/tmp/$USER/apptainer`. It should replace `$HOME/.apptainer/cache`. Then explain why `sudo -E` is required when you pass `APPTAINER_CACHEDIR` to a privileged build.
+6. Your team must pick one runtime for a new cluster, and you want a fair comparison first. Compare all four runtimes: Apptainer, Charliecloud, Enroot with Pyxis, and rootless Podman. Cover image format (`.sif` vs `.sqsh` vs OCI layers). Cover privilege mechanism (setuid or userns). Cover GPU injection (`--nv`/CDI vs `98-nvidia.sh`). Cover Slurm integration (`srun apptainer exec` vs SPANK `--container-image`). Cover cryptographic image signing.
+
+If you start with exercise 1, you need only the lint scripts. Write each answer in your own words before you check it against the section it comes from.
 
 ## Checkpoint
 

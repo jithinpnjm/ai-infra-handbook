@@ -22,15 +22,15 @@ lab_venue: "GCP / GKE."
 
 ## Why this matters for AI infrastructure
 
-Picture a shared GPU cluster that serves fifty researchers. Group A needs GCC 10.4, Open MPI 4.1, and CUDA 11.8 for a legacy molecular dynamics code. Group B needs GCC 15.1, Open MPI 5.0.7, and CUDA 12.6 to compile custom FlashAttention kernels for a foundation model.
+Picture a shared GPU cluster that serves fifty researchers. Group A needs GCC 10.4, Open MPI 4.1, and CUDA 11.8 for a legacy molecular dynamics code. Group B needs GCC 15.1, Open MPI 5.0.7, and CUDA 12.6 to compile custom FlashAttention kernels for a foundation model. Both groups log in to the same login node on the same morning, and both expect their jobs to run without any surprises.
 
-Suppose you install one global version into `/usr/bin` and `/usr/lib64`. Then half your users cannot work. Now suppose you tell everyone to edit their own `~/.bashrc` and install compilers into their home directories. Users will end up mixing a GCC 15 binary with a GCC 10 standard C++ library, or with an incompatible MPI runtime. Your ticket queue then fills with segmentation faults.
+Suppose you install one global version into `/usr/bin` and `/usr/lib64`. Then half your users cannot work, because the version you picked suits only one group. Now suppose you tell everyone to edit their own `~/.bashrc` and install compilers into their home directories. That sounds flexible, but it is fragile. Users will end up mixing a GCC 15 binary with a GCC 10 standard C++ library, or with an incompatible MPI runtime. Your ticket queue then fills with segmentation faults, and nobody can say which change caused them.
 
-HPC centers solved this decades ago with Environment Modules, which uses Tcl modules and Lua-based Lmod, backed by automated source build frameworks, Spack and EasyBuild. On modern AI clusters these tools work alongside OCI containers, through Enroot and Pyxis, and Python managers such as uv and conda. Together they keep compilers, MPI, CUDA, NCCL, and PyTorch aligned across every login and compute node.
+HPC (high-performance computing) centers solved this problem decades ago with Environment Modules. That system uses Tcl modules and the Lua-based Lmod, and it is backed by two automated source build frameworks, Spack and EasyBuild. On modern AI clusters these tools work alongside OCI (Open Container Initiative) containers, run through Enroot and Pyxis, and Python managers such as uv and conda. Together they keep compilers, MPI, CUDA, NCCL, and PyTorch aligned across every login and compute node. The rest of this chapter follows that idea from the bottom of the stack, where the dynamic linker searches for files, up to the build tools that fill the shared software tree.
 
 ## Prerequisites and outcomes
 
-This chapter builds on Chapters 6.2 through 6.5 and on Part 1, which cover Linux shells, environment variables, and shared libraries. After you finish, you will be able to do the following.
+This chapter builds on Chapters 6.2 through 6.5 and on Part 1, which cover Linux shells, environment variables, and shared libraries. The chapter walks through how `PATH`, `LD_LIBRARY_PATH`, `RPATH`, `RUNPATH`, `/etc/ld.so.conf`, `ldconfig`, `CPATH`, and `MODULEPATH` decide which executables and shared libraries run. It then covers how to use and write Tcl and Lua modulefiles, including the `module spider` command, the `stderr` versus `stdout` rule, and version sorting. Next it builds HPC software stacks with EasyBuild and Spack, using specs, `spack.yaml`, `spack.lock`, and `spack module lmod refresh`. Last, it lays out a shared, read-only software tree under `/opt/apps/<arch>` and explains when to choose modules, Spack, EasyBuild, uv, conda, or containers.
 
 - Explain how `PATH`, `LD_LIBRARY_PATH`, `RPATH`, `RUNPATH`, `/etc/ld.so.conf` and `ldconfig`, `CPATH`, and `MODULEPATH` decide which executables and shared libraries run.
 - Use and write Tcl Environment Modules and Lua Lmod modulefiles. That covers the Table 21-1 commands, the `stderr` versus `stdout` rule, `module spider`, inactive modules, and numeric versus string version sorting, drawn from *Supercomputers for Linux SysAdmins* Chapter 21.
@@ -39,7 +39,9 @@ This chapter builds on Chapters 6.2 through 6.5 and on Part 1, which cover Linux
 
 ## 1. The problem: how Linux finds binaries and shared libraries
 
-When you type `mpirun` or `python3` on a login node, the shell searches the colon-separated directories in `PATH` from left to right. It runs the first match it finds. Once that ELF binary starts, the Linux dynamic linker, `ld-linux-x86-64.so.2`, has to find every shared library the binary needs. Those include `libmpi.so`, `libcudart.so`, and `libstdc++.so`, which are listed in the binary's dynamic section.
+A new user types `mpirun` on a login node and gets the wrong version, or no version at all. The shell is not confused. It is doing exactly what it was told. When you type `mpirun` or `python3`, the shell searches the colon-separated directories in `PATH` from left to right, and it runs the first match it finds. Once that ELF binary (the standard executable format on Linux) starts, the Linux dynamic linker, `ld-linux-x86-64.so.2`, has to find every shared library the binary needs. Those include `libmpi.so`, `libcudart.so`, and `libstdc++.so`, which are listed in the binary's dynamic section.
+
+Before the list, it helps to see why the order matters. Suppose an old copy of `libmpi.so` sits in `LD_LIBRARY_PATH`, and a newer copy sits in the directory a binary was linked against with `RUNPATH`. The loader checks `LD_LIBRARY_PATH` first, so the old copy wins, and the program runs against the wrong MPI. Nothing in the error message says so. The program starts, then fails in a strange way, or it simply gives different answers. Knowing the order lets you predict which copy will load, without guessing.
 
 The loader searches five locations, in a strict order:
 
@@ -49,16 +51,18 @@ The loader searches five locations, in a strict order:
 4. `/etc/ld.so.cache`, the binary cache that `ldconfig` builds from `/etc/ld.so.conf` and `/etc/ld.so.conf.d/*.conf`.
 5. The default operating system library directories, `/lib64` and `/usr/lib64`.
 
-Compilers and tools read their own variables too. Compilers consult `CPATH`, `C_INCLUDE_PATH`, `LIBRARY_PATH`, and `PKG_CONFIG_PATH`. Python consults `PYTHONPATH`, and CUDA tools consult `CUDA_HOME` and `CUDA_PATH`. A complete software stack therefore means setting several of these variables consistently. It also means reversing every change cleanly when you switch to another version.
+Compilers and tools read their own variables too. Compilers consult `CPATH`, `C_INCLUDE_PATH`, `LIBRARY_PATH`, and `PKG_CONFIG_PATH`. Python consults `PYTHONPATH`, and CUDA tools consult `CUDA_HOME` and `CUDA_PATH`. A complete software stack therefore means setting several of these variables consistently. It also means reversing every change cleanly when you switch to another version. If one variable points at the old compiler and another points at the new one, the build may still succeed, and the failure shows up much later, at run time.
 
 ### Installing compilers and libraries on shared storage (*Supercomputers for Linux Sysadmins* Chapter 24)
 
 Zhumatiy makes the point in *Supercomputers for Linux SysAdmins* Chapter 24, *Installing Compilers and Libraries*. Installing a compiler is not hard in itself. The runtime libraries that compiled programs need, however, must be available on every compute node. The standard practice is to install compilers into a shared directory on the network file system. To make those libraries visible to the dynamic linker across the cluster, you have two choices.
 
-- **Option A, `/etc/ld.so.conf` with `ldconfig` on all nodes.** You list the library directories in `/etc/ld.so.conf` and run `ldconfig`. Every time you update a compiler version, its library path changes, so you must update `/etc/ld.so.conf` and run `ldconfig` on all nodes. A single global `ld.so.cache` also cannot easily isolate two conflicting library versions that different users need at the same time.
-- **Option B, `LD_LIBRARY_PATH` managed through Environment Modules.** You keep several compiler and MPI versions in separate directories, such as `/opt/mpi/openmpi-4.0.1-icc` and `/opt/mpi/openmpi-5.0.7-gcc15`. Environment Modules then prepend and remove the exact `PATH`, `LD_LIBRARY_PATH`, and `MANPATH` entries in the user's shell as needed.
+- Option A, `/etc/ld.so.conf` with `ldconfig` on all nodes: you list the library directories in `/etc/ld.so.conf` and run `ldconfig`. Every time you update a compiler version, its library path changes, so you must update `/etc/ld.so.conf` and run `ldconfig` on all nodes. A single global `ld.so.cache` also cannot easily isolate two conflicting library versions that different users need at the same time.
+- Option B, `LD_LIBRARY_PATH` managed through Environment Modules: you keep several compiler and MPI versions in separate directories, such as `/opt/mpi/openmpi-4.0.1-icc` and `/opt/mpi/openmpi-5.0.7-gcc15`. Environment Modules then prepend and remove the exact `PATH`, `LD_LIBRARY_PATH`, and `MANPATH` entries in the user's shell as needed. The change is local to the session, and it reverses cleanly.
 
-Never ask users to hand-edit `PATH` and `LD_LIBRARY_PATH` in `~/.bashrc`. Those edits are fragile and depend on order. You cannot unload them cleanly when a user switches compilers, and they are invisible when you debug a failed job. To see how a binary resolves its libraries, run `ldd ./myapp`, `readelf -d ./myapp | grep -i path`, and `LD_DEBUG=libs ./myapp`.
+Never ask users to hand-edit `PATH` and `LD_LIBRARY_PATH` in `~/.bashrc`. Those edits are fragile and depend on order. You cannot unload them cleanly when a user switches compilers, and they are invisible when you debug a failed job. When a job fails, you need to see which libraries the binary really loads. To see how a binary resolves its libraries, run `ldd ./myapp`, `readelf -d ./myapp | grep -i path`, and `LD_DEBUG=libs ./myapp`. Each command shows the search from a different angle, so run them in that order.
+
+This rule is easy to break with good intentions. A user who wants a specific compiler may add one line to `~/.bashrc`, and it works for them. Then the same line is copied into a shared script, and the next user inherits a path that no longer exists after an upgrade. Modules avoid that trap, because the path is set by a named module that the system maintains, and it can be removed with a single unload command.
 
 **When multiple versions exist, do not hardcode `/opt` compiler or MPI paths into `~/.bashrc` or `/etc/ld.so.conf`. Manage `PATH` and `LD_LIBRARY_PATH` through Environment Modules or `RPATH` instead.**
 
@@ -86,9 +90,9 @@ flowchart TB
   OMPI_G -- "module load openmpi/5.0.7" --> APPS
 ```
 
-Most clusters want several compilers and MPI implementations installed at the same time. Typing full paths to every executable and library, in every session, quickly becomes tedious. The Environment Modules package solves this by adding and removing paths from `PATH`, `LD_LIBRARY_PATH`, and other variables for you. It lives at `http://modules.sourceforge.net/`. The later Lua-based Lmod project lives at `https://www.tacc.utexas.edu/research-development/tacc-projects/lmod`. Both provide one command, `module`, which is really a shell function. It evaluates the output of the underlying module binary inside your current shell, so it can change your live environment directly.
+Most clusters want several compilers and MPI implementations installed at the same time. Typing full paths to every executable and library, in every session, quickly becomes tedious and error-prone. The Environment Modules package solves this by adding and removing paths from `PATH`, `LD_LIBRARY_PATH`, and other variables for you. It lives at `http://modules.sourceforge.net/`. The later Lua-based Lmod project lives at `https://www.tacc.utexas.edu/research-development/tacc-projects/lmod`. Both provide one command, `module`, which is really a shell function. It evaluates the output of the underlying module binary inside your current shell, so it can change your live environment directly. That is why a module can alter your session, and why a stray print statement inside a module file can break it.
 
-Table 21-1 in *Supercomputers for Linux SysAdmins* Chapter 21 lists the main `module` commands. Each subcommand changes your environment in a different way, so read the meanings before you use them.
+The table below follows *Supercomputers for Linux SysAdmins* Chapter 21, which lists the main `module` commands. Each subcommand changes your environment in a different way, so read the meanings before you use them. Start with load, unload, and list, which cover most daily work.
 
 | Command (`module <subcommand>`) | Meaning (*Supercomputers for Linux Sysadmins* Table 21-1) |
 |---|---|
@@ -106,7 +110,7 @@ Table 21-1 in *Supercomputers for Linux SysAdmins* Chapter 21 lists the main `mo
 
 ### Writing a Tcl modulefile and the `stderr` vs. `stdout` rule
 
-In Chapter 21, Zhumatiy walks through a complete Tcl modulefile for OpenMPI 4.0.1 built with Intel compilers. The example is **untested** here.
+In Chapter 21, Zhumatiy walks through a complete Tcl modulefile for OpenMPI 4.0.1 built with Intel compilers. The file is short, and each line has a clear job. Read it from top to bottom, and notice that the file does not run anything. It only describes the environment changes that the module system should make.
 
 ```tcl
 #%Module1.0###############################
@@ -126,11 +130,11 @@ prepend-path MANPATH $base/share/man
 
 Three rules in this file deserve your attention.
 
-1. **The `#%Module1.0` magic header:** The first line must be `#%Module1.0`. If you omit the version number `1.0`, the module system assumes the file matches the latest version of Environment Modules. Without the header, the module system ignores the file entirely.
-2. **Print to `stderr` only:** A modulefile is a Tcl program, but you do not need deep Tcl knowledge to write one. Text written to the standard error stream, `stderr`, is shown to the user. Never write to the standard output stream, `stdout`. The `module` shell function evaluates `stdout` as shell commands, so any text printed there breaks the whole module system.
-3. **Reversible `prepend-path`:** The main work happens in `prepend-path` and `append-path`. They modify colon-separated path lists such as `PATH`, `LD_LIBRARY_PATH`, and `MANPATH`. Other commands set or delete variables, or load another module, and `man modulefile` documents them. When you run `module unload`, the module system reverses every `prepend-path` in the file automatically.
+1. The `#%Module1.0` magic header: the first line must be `#%Module1.0`. If you omit the version number `1.0`, the module system assumes the file matches the latest version of Environment Modules. Without the header, the module system ignores the file entirely.
+2. Print to `stderr` only: a modulefile is a Tcl program, but you do not need deep Tcl knowledge to write one. Text written to the standard error stream, `stderr`, is shown to the user. Never write to the standard output stream, `stdout`. The `module` shell function evaluates `stdout` as shell commands, so any text printed there breaks the whole module system.
+3. Reversible `prepend-path`: the main work happens in `prepend-path` and `append-path`. They modify colon-separated path lists such as `PATH`, `LD_LIBRARY_PATH`, and `MANPATH`. Other commands set or delete variables, or load another module, and `man modulefile` documents them. When you run `module unload`, the module system reverses every `prepend-path` in the file automatically.
 
-The Lmod version uses Lua syntax but keeps the same ideas. It is **untested** here as well.
+The Lmod version uses Lua syntax but keeps the same ideas. The file below sets the same three paths, and it adds the MPI_HOME variable and a dependency on the GCC 15.1.0 module. Notice the depends_on line, which tells Lmod to load the compiler first.
 
 ```lua
 whatis("Open MPI 5.0.7 built with GCC 15.1.0")
@@ -145,13 +149,15 @@ setenv("MPI_HOME", base)
 
 ### Why Lmod replaced classic Tcl Modules 3.2.10 (2012 vs. 2017)
 
-Zhumatiy explains that the original Environment Modules project, also called Tcl modules or Tcl/C modules, paused after the 3.2.10 release in 2012. Development resumed at the end of 2017, aimed at different technical features. Version 3.2.10 caused two problems in practice. Loading a package failed if another version was already loaded. Tracking dependencies between modules was also hard, for example MPI builds made with different compilers.
+It helps to know why the newer project exists before you read the details. A module system is only as good as its handling of conflicts. When two versions of one package are present, the system has to decide which one wins, and what happens to the packages that depend on it. The sections below describe how Lmod makes those decisions, and each one answers a conflict that a real cluster meets every week.
 
-The alternative project, Lua Modules (Lmod), was created at TACC to fix these problems. Lmod uses Lua for module files. It can also read classic Tcl modulefiles and translate them on the fly, so you can deploy Lmod directly onto an existing Tcl modulefile setup. Lmod solves four critical cluster problems. The `simulate_lmod_compiler_swap()` and `compare_module_versions_tcl_vs_lmod()` functions in `code/part06/modules_spack.py` model them.
+Zhumatiy explains that the original Environment Modules project, also called Tcl modules or Tcl/C modules, paused after the 3.2.10 release in 2012. Development resumed at the end of 2017, aimed at different technical features. Version 3.2.10 caused two problems in practice. Loading a package failed if another version was already loaded. Tracking dependencies between modules was also hard, for example MPI builds made with different compilers. Those two problems are the reason the Lmod project exists.
 
-1. **Automatic replacement of conflicting versions:** Suppose a package already has one version loaded, and you load another. Lmod unloads the old version automatically and prints a version-change message. That stops two compiler versions from being active at once, which would make their runtime libraries conflict.
-2. **On-the-fly `MODULEPATH` hierarchies and `inactive` modules:** Lmod changes `MODULEPATH` as modules load. Loading a compiler such as `gcc` adds the directory of packages built with that compiler to `MODULEPATH`. Imagine a cluster with OpenMPI built by two compilers, `gcc` and the Intel Compiler. You load `gcc`, then `openmpi`. When you later unload `gcc`, Lmod sees that `openmpi` is no longer visible, and marks it **inactive**. Its paths leave `PATH` and `LD_LIBRARY_PATH`, but Lmod still remembers `openmpi` in your loaded list. If you then load the Intel compiler module, which has its own `openmpi` in its `MODULEPATH`, **Lmod reloads the Intel build of `openmpi` automatically** and updates your variables.
-3. **`module spider` across the whole module tree:** Lmod provides `module spider`, which searches every module in the hierarchy. You can narrow it to one module family, or ask for the prerequisites of an exact version. The output below is **untested** here.
+The alternative project, Lua Modules (Lmod), was created at TACC to fix these problems. Lmod uses Lua for module files. It can also read classic Tcl modulefiles and translate them on the fly, so you can deploy Lmod directly onto an existing Tcl modulefile setup. Lmod solves four critical cluster problems, and the list below takes them one at a time. The `simulate_lmod_compiler_swap()` and `compare_module_versions_tcl_vs_lmod()` functions in `code/part06/modules_spack.py` model them, so you can watch each behavior run.
+
+1. Automatic replacement of conflicting versions: suppose a package already has one version loaded, and you load another. Lmod unloads the old version automatically and prints a version-change message. That stops two compiler versions from being active at once, which would make their runtime libraries conflict.
+2. On-the-fly `MODULEPATH` hierarchies and `inactive` modules: Lmod changes `MODULEPATH` as modules load. Loading a compiler such as `gcc` adds the directory of packages built with that compiler to `MODULEPATH`. Imagine a cluster with OpenMPI built by two compilers, `gcc` and the Intel Compiler. You load `gcc`, then `openmpi`. When you later unload `gcc`, Lmod sees that `openmpi` is no longer visible, and marks it `inactive`. Its paths leave `PATH` and `LD_LIBRARY_PATH`, but Lmod still remembers `openmpi` in your loaded list. If you then load the Intel compiler module, which has its own `openmpi` in its `MODULEPATH`, Lmod reloads the Intel build of `openmpi` automatically and updates your variables.
+3. `module spider` across the whole module tree: Lmod provides `module spider`, which searches every module in the hierarchy. You can narrow it to one module family, or ask for the prerequisites of an exact version. Read the output below to see both forms.
    ```text
    $ module spider
    ----------------------------------------------------------
@@ -174,7 +180,9 @@ The alternative project, Lua Modules (Lmod), was created at TACC to fix these pr
          gcc/10.4.0
          gcc/15.1.0
    ```
-4. **Numeric version sorting versus Tcl string sorting (`mkl/11.0` vs. `mkl/4.0`):** If you load a module by name with no version, and no default is set, the highest version is chosen. This is where Lmod and classic Tcl modules differ. Lmod sorts versions as numbers. Classic Tcl modules sort them as strings, so `mkl/4.0` ranks higher than `mkl/11.0`. Lmod also saves and restores module collections with `module save` and `module restore`. It can hide modules for testing, and it supports flexible dependency declarations.
+4. Numeric version sorting versus Tcl string sorting (`mkl/11.0` vs. `mkl/4.0`): if you load a module by name with no version, and no default is set, the highest version is chosen. This is where Lmod and classic Tcl modules differ. Lmod sorts versions as numbers. Classic Tcl modules sort them as strings, so `mkl/4.0` ranks higher than `mkl/11.0`. Lmod also saves and restores module collections with `module save` and `module restore`. It can hide modules for testing, and it supports flexible dependency declarations.
+
+Here is how the hierarchy protects a user. A researcher loads `gcc/15.1.0` and then `openmpi/5.0.7`, and their job runs. Later, the same researcher decides to test the Intel toolchain and loads the intel/2025.0 module. Lmod does not leave the old MPI in place. It shows the Intel build of MPI, because that is what the new compiler can see, and the environment stays consistent. Without the hierarchy, the researcher would have to remember which MPI goes with which compiler, and one forgotten step would mix two toolchains in one job. That is the whole point of the hierarchy, and it costs the user nothing extra to follow. Teaching `module spider` helps too, because a user who cannot see a module can ask Lmod where it lives instead of guessing a path.
 
 **Use Lmod with a `Core -> Compiler -> MPI` `MODULEPATH` hierarchy, so users can never accidentally mix a GCC-compiled MPI library with an Intel-compiled application, and teach them `module spider`.**
 
@@ -184,11 +192,11 @@ The alternative project, Lua Modules (Lmod), was created at TACC to fix these pr
 
 ## 3. Build Systems: EasyBuild and Spack (*Supercomputers for Linux Sysadmins* Chapter 21)
 
-Suppose you need a new version of a solver, and it depends on a dozen libraries. Building that whole chain by hand, one library at a time, is slow and easy to get wrong. Zhumatiy covers this problem in the *Build Systems* section of Chapter 21. Two open-source build frameworks dominate modern clusters: EasyBuild and Spack.
+Suppose you need a new version of a solver, and it depends on a dozen libraries. Building that whole chain by hand, one library at a time, is slow and easy to get wrong. A single missing dependency can waste an afternoon, and the error often appears far from its real cause. Zhumatiy covers this problem in the *Build Systems* section of Chapter 21. Two open-source build frameworks dominate modern clusters: EasyBuild and Spack. Both automate the chain, but they think about it in different ways.
 
 ### EasyBuild: Python venv bootstrap, `.eb` easyconfigs, and toolchains
 
-EasyBuild is an open-source Python package that needs `python3.6` or higher. It builds software from declarative easyconfig files, which end in `.eb`. These files are organized around toolchains such as `foss-2024a`, which bundles GCC, Open MPI, OpenBLAS, FFTW, and ScaLAPACK, or `intel`. Its documentation lives at `https://docs.easybuild.io/`. Zhumatiy recommends installing EasyBuild into an isolated Python venv, then registering EasyBuild itself as a module. That setup is **untested** here.
+EasyBuild is an open-source Python package that needs `python3.6` or higher. It builds software from declarative easyconfig files, which end in `.eb`. A declarative file says what you want, and the tool works out the steps. These files are organized around toolchains such as `foss-2024a`, which bundles GCC, Open MPI, OpenBLAS, FFTW, and ScaLAPACK, or `intel`. Its documentation lives at `https://docs.easybuild.io/`. Zhumatiy recommends installing EasyBuild into an isolated Python venv (a private Python environment), then registering EasyBuild itself as a module. That keeps the build tool from fighting with the system Python.
 
 ```bash
 # 1. Install EasyBuild in an isolated Python virtual environment (untested here)
@@ -203,7 +211,7 @@ module use /opt/easybuild/modules/all
 module load EasyBuild
 ```
 
-After you load the `EasyBuild` module, the `eb` command builds a package and generates its modulefile. The example below builds HPL 2.3 with the `foss-2024a` GCC toolchain. The output is **untested** here.
+After you load the `EasyBuild` module, the `eb` command builds a package and generates its modulefile. The example below builds HPL 2.3 with the `foss-2024a` GCC toolchain. Read the log lines from top to bottom. They show where the log file lives, which easyconfig was picked up, and where the software will be installed.
 
 ```text
 eb HPL-2.3-foss-2024a.eb
@@ -215,15 +223,19 @@ eb HPL-2.3-foss-2024a.eb
 == fetching files and verifying checksums...
 ```
 
+These three commands map to three moments in your work. You check the configuration before you start, you preview the plan before you spend hours building, and you let the tool do the whole chain once you trust it. Start with the first, because a wrong configuration path makes every later step confusing.
+
 Three commands cover most day-to-day EasyBuild work.
 
-- `eb --show-config` lists the directories holding configuration files, build descriptions, and the default installation path.
-- `eb <file>.eb --dry-run` previews the dependency build plan without compiling. The short form is `-D`.
-- `eb <file>.eb --robot` resolves and builds the whole dependency graph automatically, then exposes the packages through modules. The short form is `-r`.
+- Where does EasyBuild look for its settings? `eb --show-config` lists the directories holding configuration files, build descriptions, and the default installation path.
+- Will this build work before I wait for it? `eb <file>.eb --dry-run` previews the dependency build plan without compiling. The short form is `-D`.
+- How do I build everything the package needs? `eb <file>.eb --robot` resolves and builds the whole dependency graph automatically, then exposes the packages through modules. The short form is `-r`.
 
 ### Spack: specs, concretization hashes, environments, externals, and buildcaches
 
-Spack is a flexible package manager. It builds multiple versions, compilers, variants, and microarchitecture targets side by side. Its documentation lives at `https://spack.readthedocs.io/`. Installation needs only a shallow Git clone and a source of its setup script. That step is **untested** here.
+Spack and EasyBuild answer the same question in different ways, and it helps to hold them side by side. EasyBuild starts from a recipe for one package and its toolchain, then builds the chain you asked for. Spack starts from a spec, a precise description of the build you want, and it solves for the rest. Both can end in a module that users load. Pick the tool that matches how your site already works, and keep to it, so that your users see one pattern instead of two.
+
+Spack is a flexible package manager. It builds multiple versions, compilers, variants, and microarchitecture targets side by side. A variant is an optional feature of a package, such as MPI support or CUDA support, that you can switch on or off. Its documentation lives at `https://spack.readthedocs.io/`. Installation needs only a shallow Git clone and a source of its setup script. A shallow clone copies only the latest history, which keeps the first download small.
 
 ```bash
 git clone -c feature.manyFiles=true --depth=2 \
@@ -231,7 +243,7 @@ git clone -c feature.manyFiles=true --depth=2 \
 source spack/share/spack/setup-env.sh
 ```
 
-Add the `source` line to your shell profile, and Spack activates in every session. You can then build a package straight away. The example below installs `hpl`, which the Chapter 21 example also uses. The output is **untested** here.
+Add the `source` line to your shell profile, and Spack activates in every session. You can then build a package straight away. The example below installs `hpl`, which the Chapter 21 example also uses. Expect a long log, because Spack first bootstraps its own helper tools, such as the `clingo` solver, before it builds your package.
 
 ```text
 spack install hpl
@@ -245,19 +257,21 @@ spack install hpl
 ==> Installing compiler-wrapper-1.0-xi6ijcvw2a5xtrfyz4zgtzwscmtmi5t3 [3/44]
 ```
 
-Run `spack list` to see the available package recipes. The first run takes a moment, because it builds the index. Run `spack info hpl` to inspect the versions and variants of one package. When the builds finish, expose every Spack package to Lmod, or to Tcl modules, with the commands below.
+Run `spack list` to see the available package recipes. The first run takes a moment, because it builds the index. Run `spack info hpl` to inspect the versions and variants of one package. When the builds finish, expose every Spack package to Lmod, or to Tcl modules, with the commands below. Run the first command on a node where Spack is active, and the second one points your session at the generated modulefiles.
 
 ```bash
 spack module lmod refresh     # or: spack module tcl refresh
 module use $SPACK_ROOT/spack/share/spack/modules/linux-ubuntu14-x86_64
 ```
 
-Four core Spack concepts come from the Spack documentation, at commit `29aea8a`.
+Four core Spack concepts come from the Spack documentation, at commit `29aea8a`. Each one answers a question you will ask when a build behaves oddly. Read them in order, because the later ideas depend on the earlier ones.
 
-1. **Compact spec syntax (`parse_spack_spec()` in `code/part06/modules_spack.py`):** A spec is a short string of symbols. `@` selects a version, as in `hdf5@1.14.3`. `+` and `~` turn boolean variants on and off, as in `+mpi`, `+cuda`, and `~shared`. `name=value` sets valued variants, such as `cuda_arch=90` and `target=x86_64_v3`. `%` selects the compiler, as in `%gcc@13.3.0`, and `^` constrains a dependency, as in `^openmpi@5.0.7`. Run `spack spec <spec>` to preview the resolved dependency graph before you build.
-2. **Concretization and DAG hashes:** Spack's `clingo` solver turns an abstract spec into a concrete spec. Each concrete spec gets a unique hash, which is appended to its install directory, such as `openmpi/5.0.10-gcc-13.3.0-<hash>`. Dozens of builds can therefore coexist without collisions.
-3. **Reproducible environments (`spack.yaml` and `spack.lock`):** You group specs into an environment with `spack env create myenv`, `spack env activate myenv`, `spack add ...`, `spack concretize`, and `spack install`. Commit both `spack.yaml`, which sets `concretizer: unify: true`, and `spack.lock` to Git.
-4. **Externals and build caches:** Pre-installed system software can be marked in `packages.yaml`. Examples include `OFED` InfiniBand drivers, vendor MPI, the system CUDA toolkit, and `rocm-5.3.0` with `amdgpu_target=gfx90a`. Set `buildable: false` and give an `externals:` prefix, and Spack reuses those installs instead of building them. To share precompiled binary packages across clusters, use `spack buildcache push <mirror> <spec>`.
+1. Compact spec syntax (`parse_spack_spec()` in `code/part06/modules_spack.py`): a spec is a short string of symbols that describes the build you want. `@` selects a version, as in `hdf5@1.14.3`. `+` and `~` turn boolean variants on and off, as in `+mpi`, `+cuda`, and `~shared`. `name=value` sets valued variants, such as `cuda_arch=90` and `target=x86_64_v3`. `%` selects the compiler, as in `%gcc@13.3.0`, and `^` constrains a dependency, as in `^openmpi@5.0.7`. Run `spack spec <spec>` to preview the resolved dependency graph before you build.
+2. Concretization and DAG hashes: concretization is the step where Spack turns an abstract spec into a concrete one with every detail fixed. Spack's `clingo` solver does that work. Each concrete spec gets a unique hash, which is appended to its install directory, such as `openmpi/5.0.10-gcc-13.3.0-<hash>`. Dozens of builds can therefore coexist without collisions, and a rebuild with the same inputs lands in the same place.
+3. Reproducible environments (`spack.yaml` and `spack.lock`): you group specs into an environment with `spack env create myenv`, `spack env activate myenv`, `spack add ...`, `spack concretize`, and `spack install`. Commit both `spack.yaml`, which sets `concretizer: unify: true`, and `spack.lock` to Git. The lock file records the exact result, so a colleague can rebuild the same stack later.
+4. Externals and build caches: pre-installed system software can be marked in `packages.yaml`. Examples include `OFED` InfiniBand drivers, vendor MPI, the system CUDA toolkit, and `rocm-5.3.0` with `amdgpu_target=gfx90a`. Set `buildable: false` and give an `externals:` prefix, and Spack reuses those installs instead of building them. To share precompiled binary packages across clusters, use `spack buildcache push <mirror> <spec>`.
+
+The same idea applies to CUDA. The system CUDA toolkit and the fabric MPI are already installed on the nodes, often by the vendor or the network team. If Spack builds its own copy, you end up with two CUDA libraries on one machine, and the job may load the wrong one. Marking those packages as non-buildable externals tells Spack to use what is already there. The lock file then records that choice, so a rebuild next month makes the same choice.
 
 **Pin the system CUDA toolkit and fabric MPI as non-buildable externals in Spack's `packages.yaml`, commit `spack.yaml` and `spack.lock` to Git, and refresh Lmod modules with `spack module lmod refresh`.**
 
@@ -267,31 +281,31 @@ Four core Spack concepts come from the Spack documentation, at commit `29aea8a`.
 
 ## 4. Node setup, minicluster staging, and the shared software tree (*Supercomputers for Linux Sysadmins* Chapter 24)
 
-How do you roll out operating systems, InfiniBand drivers, compilers, and shared software trees across a new cluster? You need a way to avoid cloning a broken configuration onto a hundred nodes. In *Supercomputers for Linux SysAdmins* Chapter 24, *Configuring the Control and Compute Nodes*, Zhumatiy lays out a battle-tested sequence of eleven steps for a minicluster deployment.
+How do you roll out operating systems, InfiniBand drivers, compilers, and shared software trees across a new cluster? You need a way to avoid cloning a broken configuration onto a hundred nodes. In *Supercomputers for Linux SysAdmins* Chapter 24, *Configuring the Control and Compute Nodes*, Zhumatiy lays out a battle-tested sequence of eleven steps for a minicluster deployment. A minicluster is a small test cluster with one control node and two compute nodes, which you build before the full system. Read the steps as a checklist that goes from the control server to the cloned fleet.
 
-1. Install the control (head) server.
-2. If you use a network file system, install and configure its server. Set the exports in `/etc/exports` and run `exportfs -av`.
-3. Install the first reference compute node. Give the operating system partition 50–100 GB, a small swap, and the remaining space to `/tmp`. Alternatively, use RAID-1 for `/tmp` across two local disks, because Enroot unpacks containers there by default.
-4. Install the communication software stack. The Linux kernel supports the InfiniBand stack directly. In most cases, however, that is not worth using, because application performance comes in lower than expected. For efficient HPC work, use the `OFED` package from `openfabrics.org` or from the card manufacturer. It includes card drivers, libraries (`mad`, `verbs`, `ibutils`), network diagnostics, a simple subnet manager, and `openmpi` and `mvapich` builds. Back up any existing OFED packages before you upgrade. The installer deletes every OFED package it finds before it starts the build. Then set `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf`.
+1. Install the control (head) server. This machine runs the scheduler and the shared services for everything else.
+2. If you use a network file system, install and configure its server. Set the exports in `/etc/exports` and run `exportfs -av`. The exports list which directories the clients may mount.
+3. Install the first reference compute node. Give the operating system partition 50–100 GB, a small swap, and the remaining space to `/tmp`. Alternatively, use RAID-1 for `/tmp` across two local disks, because Enroot unpacks containers there by default. The reference node is the template for every node after it, so take care here.
+4. Install the communication software stack. The Linux kernel supports the InfiniBand stack directly. In most cases, however, that is not worth using, because application performance comes in lower than expected. For efficient HPC work, use the `OFED` package from `openfabrics.org` or from the card manufacturer. It includes card drivers, libraries (`mad`, `verbs`, `ibutils`), network diagnostics, a simple subnet manager, and `openmpi` and `mvapich` builds. Back up any existing OFED packages before you upgrade. The installer deletes every OFED package it finds before it starts the build. Then set `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf`. Those two lines let MPI pin enough memory for fast transfers.
 5. Install the second compute node. For the NFS server, install the `nfs-server` package. Enable it at startup with `systemctl enable --now nfs-server`, or with the `chkconfig` or `update-rc.d` command. Open the matching RPC services in the firewall on the internal network interface. Edit `/etc/exports` to list the exported directories and client permissions. Then run `exportfs -av` to reload the NFS server configuration.
-6. Assemble a **minicluster** from the control node and the two compute nodes.
-7. Install compilers and test packages onto the shared network file system tree.
-8. Benchmark the communication equipment between the two compute nodes. Check that bandwidth and latency match the hardware datasheets.
+6. Assemble a minicluster from the control node and the two compute nodes. This small set is your first real test of the whole design.
+7. Install compilers and test packages onto the shared network file system tree. Put them where every node will see the same path.
+8. Benchmark the communication equipment between the two compute nodes. Check that bandwidth and latency match the hardware datasheets. A slow link found now is cheap to fix. The same link found in production is expensive.
 9. Install and configure the batch task management system, `Slurm`.
 10. Run end-to-end task completion tests. Confirm passwordless admin and user SSH, load an MPI module, run an OFED MPI test job through the scheduler, and check that its output writes to shared storage. Set up monitoring and backups *before* you let users onto the cluster.
-11. **Clone the verified reference compute node** to the remaining compute nodes. You can use Kickstart (`/root/anaconda-ks.cfg` or DHCP `<ip-addr>-kickstart`), Clonezilla, `dd`, or a read-only `NFS-root` image. Before you clone the disk, replace hardware-specific disk IDs with generic device names. For example, change `root=/dev/disk/by-id/ata-WDC_...` to `root=/dev/sda1` in `/boot/grub/grub.cfg` and `/etc/fstab`. Then clear the MAC bindings in `/etc/udev/rules.d/70-persistent-net.rules`.
+11. Clone the verified reference compute node to the remaining compute nodes. You can use Kickstart (`/root/anaconda-ks.cfg` or DHCP `<ip-addr>-kickstart`), Clonezilla, `dd`, or a read-only `NFS-root` image. Before you clone the disk, replace hardware-specific disk IDs with generic device names. For example, change `root=/dev/disk/by-id/ata-WDC_...` to `root=/dev/sda1` in `/boot/grub/grub.cfg` and `/etc/fstab`. Then clear the MAC bindings in `/etc/udev/rules.d/70-persistent-net.rules`. Otherwise every clone claims the identity of the reference machine.
 
 ### Cloning a disk between nodes
 
-Suppose you want the finished system disk copied to the other nodes. One method is to connect each new disk to the reference node, one at a time, and copy the disk across. This is safe only if the disk and its controller support hot swap. Otherwise, connect the disk only while the node is powered off.
+Suppose you want the finished system disk copied to the other nodes. One method is to connect each new disk to the reference node, one at a time, and copy the disk across. This is safe only if the disk and its controller support hot swap. Otherwise, connect the disk only while the node is powered off, so the controller does not see a surprise change.
 
-Another method is a network install of the operating system on each node. You then add the changes you made on the reference node after its install. A network install avoids moving disks entirely.
+Another method is a network install of the operating system on each node. You then add the changes you made on the reference node after its install. A network install avoids moving disks entirely, which makes it the safer choice for a large fleet. The cost is that you must keep the list of changes in a script, so every node receives the same changes in the same order.
 
-Testing a minicluster does not prove that the full cluster will run without failure. It does not show how the network responds under heavy load, or how reliable the network services are. It does catch most problems early, though. That is the point. You avoid cloning a broken setup onto every node.
+Testing a minicluster does not prove that the full cluster will run without failure. It does not show how the network responds under heavy load, or how reliable the network services are. It does catch most problems early, though. That is the point. You avoid cloning a broken setup onto every node, and you find the broken part while it is still one machine to fix.
 
 ### Designing the shared `/opt/apps` software tree
 
-Mount the shared software tree read-only on every login and compute node. An `/etc/fstab` entry such as `myserver:/export /export nfs defaults 0 0` does this. Organize the tree by CPU microarchitecture baseline, so heterogeneous node pools never hit `Illegal instruction` faults.
+Mount the shared software tree read-only on every login and compute node. Read-only mounts protect the tree from accidental edits by a job in the middle of a run. An `/etc/fstab` entry such as `myserver:/export /export nfs defaults 0 0` does this. Organize the tree by CPU microarchitecture baseline, so heterogeneous node pools never hit `Illegal instruction` faults. A baseline is the lowest set of CPU instructions a build assumes, and a node with a newer CPU still runs that build.
 
 ```text
 /opt/apps/                       # exported read-only to all login and compute nodes
@@ -305,7 +319,7 @@ Mount the shared software tree read-only on every login and compute node. An `/e
 
 ### Where containers (`Enroot`/`Pyxis`) and `uv`/`conda` fit
 
-Containers, Python environments, and the Lmod stack each suit a different job. The table below shows where each one fits and the rule that goes with it.
+Containers, Python environments, and the Lmod stack each suit a different job. A new engineer often asks which one to use for a given problem, and the answer depends on what needs to be shared and what needs to stay private. The table below shows where each one fits and the rule that goes with it.
 
 | Tool | Best role on an AI cluster | Operational rule |
 |---|---|---|
@@ -313,7 +327,9 @@ Containers, Python environments, and the Lmod stack each suit a different job. T
 | **Containers (`Enroot` + `Pyxis`, `Apptainer`)** | Multi-node `PyTorch`, `vLLM`, `NeMo`, and `Megatron-LM` workloads | Container `libcudart` toolkit version must be $\le$ the host driver's supported CUDA version in `nvidia-smi` |
 | **`uv` / `conda` / `venv` Python envs** | Fast user iteration on Python packages | **Never let 500 ranks import an unpacked conda env directly from shared Lustre/NFS** (tens of thousands of tiny files cause a metadata storm); pack into an `Enroot` `.sqsh` image or stage to local `/tmp` NVMe |
 
-Look closely at the last row. Importing an unpacked conda environment from shared storage can overwhelm the metadata servers. Pack the environment into an `Enroot` `.sqsh` image, or stage it on local `/tmp` NVMe first.
+Look closely at the last row. Importing an unpacked conda environment from shared storage can overwhelm the metadata servers. Each import opens many tiny files, and every open is a request to the file server. Hundreds of ranks doing this at once create a storm of those requests. Pack the environment into an `Enroot` `.sqsh` image, or stage it on local `/tmp` NVMe first, so the imports read from a single file or from local disk.
+
+Read this rule as a sequence. First, build the stack on the small minicluster, where a mistake costs one machine. Second, confirm that the software tree is mounted read-only on every node, so nothing writes into it by accident. Third, package any multi-node Python environment into a container or a local copy before you start a large job. Each step protects the one after it. Skipping the first step is the usual reason a whole fleet ends up with the same broken configuration. Write the sequence down where new staff will find it.
 
 **Build and test your software stack on a 2-node minicluster before cloning compute nodes, mount `/opt/apps` read-only everywhere, and package multi-node Python environments into containers or local `/tmp` to protect shared storage metadata.**
 
@@ -323,26 +339,27 @@ Look closely at the last row. Importing an unpacked conda environment from share
 
 ## 5. Lab: test Lmod hierarchy swapping, version sorting, and Spack spec parsing
 
-Start with the self-checking Python lab in `code/part06/modules_spack_lab.py`. You can run it locally. It checks three things. The first is the Lmod compiler swap, which marks modules `inactive` and reloads the ABI-matched MPI build automatically, as `simulate_lmod_compiler_swap` shows. The second is version sorting. The classic Tcl string sort gives `mkl/4.0 > mkl/11.0`, while the Lmod numeric sort gives `mkl/11.0 > mkl/4.0`, as `compare_module_versions_tcl_vs_lmod` shows. The third is the Spack spec parser, `parse_spack_spec`.
+Start with the self-checking Python lab in `code/part06/modules_spack_lab.py`. You can run it locally. It checks three things. The first is the Lmod compiler swap, which marks modules `inactive` and reloads the ABI-matched MPI build automatically, as `simulate_lmod_compiler_swap` shows. The second is version sorting. The classic Tcl string sort gives `mkl/4.0 > mkl/11.0`, while the Lmod numeric sort gives `mkl/11.0 > mkl/4.0`, as `compare_module_versions_tcl_vs_lmod` shows. The third is the Spack spec parser, `parse_spack_spec`. The module swap and the Spack parser were not run on a live cluster software tree, so the lab checks the logic, not your site.
 
 ```bash
 python3 code/part06/modules_spack_lab.py
 ```
 
-Next, run the standalone script so you can inspect its output.
+Next, run the standalone script so you can inspect its output. Read the printed lines for the swap, the sort order, and the parsed spec, and compare each one with what you expected from the text.
 
 ```bash
 python3 code/part06/modules_spack.py
 ```
 
-Then work through these hands-on steps yourself. They are **untested** on live cluster software trees.
+Then work through these three steps yourself. They use the same functions as the lab, so you can check your reasoning against the output. Write each answer in your own words before you look at the output. Then compare them with the lab. Treat any surprise as a question to take to your own site.
 
-1. Inspect `compare_module_versions_tcl_vs_lmod(["mkl/4.0", "mkl/11.0"])`. Then explain why Tcl Environment Modules 3.2.10 picks `mkl/4.0` as the highest version, while Lmod picks `mkl/11.0`.
+1. Inspect `compare_module_versions_tcl_vs_lmod(["mkl/4.0", "mkl/11.0"])`. Then explain why Tcl Environment Modules 3.2.10 picks `mkl/4.0` as the highest version. Next, explain why Lmod picks `mkl/11.0`.
 2. Trace `simulate_lmod_compiler_swap()` for a user who has `gcc/15.1.0` and `openmpi/5.0.7` loaded. Check that switching to `clang/18.0` marks `openmpi/5.0.7` as `inactive`. Then check that switching to `intel/2025.0` reloads the Intel build of `openmpi/5.0.7` automatically.
-3. Write a Tcl modulefile that starts with `#%Module1.0`, and a Lua modulefile, both for `/opt/cuda/12.6`. Make sure the help text goes to `stderr`.
+3. Write a Tcl modulefile that starts with `#%Module1.0`. Then write a Lua modulefile for `/opt/cuda/12.6`. Make sure the help text goes to `stderr`.
 
 ## 6. Interview angles
 
+A hiring manager for an HPC platform team might open with these five questions. Answer each one in your own words, and point to the section of this chapter that supports it.
 - What order does the Linux dynamic loader, `ld.so`, follow when it searches for a shared library, `.so`? Why is it better to manage compiler libraries through Environment Modules than to edit `/etc/ld.so.conf` and run `ldconfig` (*Supercomputers for Linux SysAdmins* Chapter 24)?
 - In a Tcl modulefile, why must `ModulesHelp` print to `stderr` with `puts stderr` and not to `stdout`? What happens in classic Tcl Modules and in Lmod when `mkl/4.0` and `mkl/11.0` are both installed (*Supercomputers for Linux SysAdmins* Chapter 21)?
 - Explain how an Lmod `Core -> Compiler -> MPI` hierarchy works when a user swaps `gcc` for `intel`. What is an `inactive` module, and what does `module spider openmpi/5.0.7` show?
@@ -351,9 +368,9 @@ Then work through these hands-on steps yourself. They are **untested** on live c
 
 ## Exercises
 
-1. Start with the dynamic linker's search order. List the five places it checks for shared libraries, in order: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache` built by `ldconfig`, and `/lib64`. Then explain why Zhumatiy notes that `/etc/ld.so.conf` and `ldconfig` for shared NFS compilers adds node-wide maintenance on every compiler upgrade, compared with Environment Modules (*Supercomputers for Linux SysAdmins* Chapter 24).
+1. Start with the dynamic linker's search order. List the five places it checks for shared libraries, in order: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache` built by `ldconfig`, and `/lib64`. Then explain why Zhumatiy notes that `/etc/ld.so.conf` and `ldconfig` for shared NFS compilers adds node-wide maintenance on every compiler upgrade. Compare that with Environment Modules (*Supercomputers for Linux SysAdmins* Chapter 24).
 2. Write a Tcl modulefile for `/opt/mpi/openmpi-4.0.1-icc`. Include `ModulesHelp`, `module-whatis`, and `prepend-path` calls for `PATH`, `LD_LIBRARY_PATH`, and `MANPATH`. Explain why writing to `stdout` inside a modulefile breaks the `module` shell function. Then use `compare_module_versions_tcl_vs_lmod(["mkl/4.0", "mkl/11.0"])` in `code/part06/modules_spack.py` to explain why Tcl Modules picks `mkl/4.0` while Lmod picks `mkl/11.0` (*Supercomputers for Linux SysAdmins* Chapter 21).
-3. You will see how Lmod changes `MODULEPATH` dynamically. Use `simulate_lmod_compiler_swap()` in `code/part06/modules_spack.py` to trace three things. First, what happens to `openmpi/5.0.7` when a user unloads `gcc/15.1.0`, which marks it `inactive`. Second, what happens when the user loads `intel/2025.0`, which triggers the automatic reload of the Intel build. Third, how `module spider openmpi/5.0.7` helps users discover hidden hierarchical modules.
+3. Use `simulate_lmod_compiler_swap()` in `code/part06/modules_spack.py` to trace how Lmod changes `MODULEPATH` dynamically. First, see what happens to `openmpi/5.0.7` when a user unloads `gcc/15.1.0`, which marks it `inactive`. Second, see what happens when the user loads `intel/2025.0`, which triggers the automatic reload of the Intel build. Third, explain how `module spider openmpi/5.0.7` helps users find hidden hierarchical modules.
 4. Write the command sequence from *Supercomputers for Linux SysAdmins* Chapter 21. It installs EasyBuild inside a Python `venv`, installs EasyBuild as a module under `/opt/easybuild`, loads the `EasyBuild` module, and inspects config paths with `eb --show-config`. Finish by building `HPL-2.3-foss-2024a.eb`.
 5. Use `parse_spack_spec("petsc@3.21 +cuda %gcc@13.3.0 cuda_arch=90 ^openmpi@5.0.7")` to explain each spec operator: `@`, `+`, `%`, `key=val`, and `^`. Then trace what happens during `spack install hpl`, including the `clingo-bootstrap` buildcache and compiler auto-detection. Last, write the command that exposes Spack packages to Lmod, which is `spack module lmod refresh`.
 6. List the 11 steps of Zhumatiy's minicluster software deployment sequence. Then name the two files or rules that must be cleaned before you clone a node disk with `dd` or Clonezilla: `/dev/disk/by-id` and `70-persistent-net.rules`. Finally, explain how to eliminate 500-rank Python `import` metadata storms, using `Enroot` `.sqsh` containers or node-local `/tmp` RAID-1 scratch disks.

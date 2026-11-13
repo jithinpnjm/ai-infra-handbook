@@ -22,22 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-You will rarely choose a file system from scratch. More often someone will ask you to operate it, size it or compare it. A neocloud might offer WEKA or VAST, a national lab might run Lustre or GPFS, a university might run BeeGFS, and an appliance vendor might ship PanFS, now called VDURA. Each system makes different trade-offs between metadata scaling, small-file performance, operational complexity, POSIX semantics, cost and ecosystem.
+Imagine a training job that starts slowly every morning. The GPUs are paid for, the dashboards look green, and the storage team says the file system is healthy. Somebody still has to find out where the time goes, and that somebody is often you. Most of the time you will not choose a file system from scratch. More often someone will ask you to run one, size one or compare two.
 
-The 6.19 chapter covered Lustre in depth. This chapter gives you the architecture, strengths and pitfalls of the alternatives, along with the questions to ask about each one. Keep the questions in section 1 in mind as you read, because they apply to every system here. Part 13, on AI storage, returns to these systems for AI pipelines, checkpointing and GPUDirect Storage.
+The options are wide. A neocloud, which is a cloud provider that rents GPU capacity, might offer WEKA or VAST. A national lab might run Lustre or GPFS. A university might run BeeGFS. An appliance vendor might ship PanFS, which now goes by the name VDURA. Each system makes its own trade-offs. It handles metadata differently, which means the information about files such as names, sizes and locations. It handles small files differently, and it asks for different amounts of operations effort. It also offers different POSIX semantics, which are the rules about locking and consistency that ordinary Linux programs expect. Finally, each one comes with its own cost and its own ecosystem of partners.
+
+The 6.19 chapter covered Lustre in depth. This chapter gives you the architecture, strengths and pitfalls of the alternatives. Read it as a tour. For each system, ask the same questions that section 1 lays out, because those questions work for every system here. Part 13, on AI storage, returns to these systems for AI pipelines, checkpointing and GPUDirect Storage.
 
 ## Prerequisites and outcomes
 
-Read 6.18 and 6.19 first. When you finish this chapter, you should be able to:
-
-- Describe the architecture of BeeGFS, GPFS/Storage Scale, PanFS, WEKA and VAST in a few sentences each, and map their components to Lustre's.
-- Name the main configuration objects and commands of BeeGFS, and read its configuration files.
-- Compare the systems on metadata handling, data protection, client access, RDMA and GPUDirect, tiering, multi-tenancy and cost model.
-- Pick a candidate for a scenario, such as checkpoint scratch, a dataset store, home directories or mixed HPC, and list the validation tests.
+Start with 6.18 and 6.19, because this chapter assumes you already know how a parallel file system splits a file across servers. The chapter spends the most time on BeeGFS, since it is open and you can build a small one yourself. Next it covers GPFS (IBM Storage Scale), PanFS, WEKA and VAST in shorter sections, and then it places all six side by side. It finishes with a method for shortlisting a candidate and testing that candidate against your own workload.
 
 ## 1. A common frame
 
-Picture a training job that runs slowly while the storage team insists the file system looks healthy. Before you can test that claim, you need a common way to describe every system. The diagram below shows how each one divides its work into parts.
+Picture a training job that runs slowly while the storage team insists the file system looks healthy. Before you can test that claim, you need a common way to describe every system. Without one, you end up comparing a BeeGFS word with a VAST word and learning nothing. The diagram below shows how each system divides its work into parts. Read each box as a job the file system must do, and notice that each product puts those jobs in different places.
 
 ```mermaid
 flowchart TB
@@ -55,7 +52,7 @@ flowchart TB
   end
 ```
 
-Each system answers the same design questions, although its answers differ. The table lists those questions and why each one matters to a GPU cluster.
+Each system answers the same design questions, although its answers differ. The table lists those questions and says why each one matters to a GPU cluster. Think of it as a form you fill in for every candidate.
 
 | Question | Why it matters |
 |---|---|
@@ -68,11 +65,15 @@ Each system answers the same design questions, although its answers differ. The 
 | Multi-tenancy, quotas, snapshots, encryption, audit? | Shared AI platforms |
 | Failure model and recovery | Availability during hardware failure and upgrades |
 
-Notice that the first question, where metadata lives, controls how fast small files are created and checked. Use these eight questions as a checklist when you compare any two systems in this chapter.
+The first question matters most for AI work, so look at it closely. Metadata is the information about files, not the file contents. It covers names, permissions, sizes and the locations of each file's chunks. Every open, create and attribute check reaches the metadata side first. When a job starts and many processes open the same dataset at the same moment, the metadata side gets a burst of requests all at once. That burst is the epoch-start storm in the table. An epoch is one full pass over the training data, and each pass often starts with exactly this kind of rush.
+
+Keep these eight questions in mind as you read the rest of the chapter. Use them as a checklist when you compare any two systems.
 
 ## 2. BeeGFS
 
-BeeGFS is a parallel cluster file system. It was formerly called FhGFS, it was developed at Fraunhofer, and it is now maintained by ThinkParQ. Its README describes it as "designed for very easy installation and management". It runs on ordinary Linux servers with a kernel client module, and its services are separable, so you can see each role on its own in the table below.
+Suppose a university asks you to run storage for its GPU cluster. The admin team has two people, and nobody wants a system that needs a full-time specialist. BeeGFS is one of the first systems you would look at in that situation.
+
+BeeGFS is a parallel cluster file system. Parallel means that one file is split into pieces that sit on several servers, so many clients can read and write at once. It was formerly called FhGFS, it was developed at Fraunhofer, and it is now maintained by ThinkParQ. Its README describes it as "designed for very easy installation and management". It runs on ordinary Linux servers and uses a kernel client module, which is code that runs inside the Linux kernel itself. Its services are separate from one another, so you can see each role on its own in the table below.
 
 | Service | Role | Notes (from the repository layout and defaults) |
 |---|---|---|
@@ -84,49 +85,61 @@ BeeGFS is a parallel cluster file system. It was formerly called FhGFS, it was d
 | **Mon / helperd / fsck** | Monitoring (InfluxDB export), client helper, file system checker | |
 | **BeeOND** | BeeGFS On Demand: spin up a temporary BeeGFS across the local SSDs of a job's nodes, giving a fast scratch private to the job | Good for staging datasets and checkpoints in training jobs |
 
-Read the table as a map of the pieces you would configure. The Notes column shows where each piece matters in practice.
+Read the table as a map of the pieces you would configure. The Notes column shows where each piece matters in practice. Here is one way to follow a write through the map. The client asks the metadata service to create a file. The metadata service records the name and the stripe pattern, which is the plan for where the chunks go. The client then sends the chunks to the storage targets named in that plan. Each target is a local file system on a storage server. The management service keeps the list of which nodes and targets exist, so that clients and servers can find one another.
 
-Four ideas tie these services together. Striping spreads a file across storage targets, and you set the pattern per directory by choosing the chunk size and the number of targets. For example, `beegfs-ctl --setpattern --chunksize=1m --numtargets=4 /mnt/beegfs/dir` sets the pattern on one directory. Storage pools group targets, such as NVMe and HDD. Buddy mirroring keeps replicated metadata and storage groups for high availability.
+Four ideas tie these services together. The first is striping, and it is the reason a parallel file system is fast. Instead of one server holding a whole file, the file is cut into chunks that go to several targets in turn, a bit like dealing cards to several players. When you read the file back, every target works at the same time. You set the pattern per directory by choosing the chunk size and the number of targets. For example, `beegfs-ctl --setpattern --chunksize=1m --numtargets=4 /mnt/beegfs/dir` sets the pattern on one directory.
 
-Quotas and ACLs round out the feature set. Newer releases also add security options. Connection authentication uses `connAuthFile = /etc/beegfs/conn.auth`, and newer releases add TLS.
+Choosing those two numbers is a real trade-off. A larger chunk means fewer, bigger pieces, which suits big sequential files such as checkpoints. Spreading a file over more targets adds more parallel workers, but each small file then touches more servers. Test the pattern with your own file sizes, because the example values in this chapter are only a starting point.
 
-BeeGFS is quick to install and operate, and its hardware can be flexible. It streams data well, supports RDMA, includes BeeOND, and a small team can run it. Practitioners also report trade-offs. Metadata scaling and small-file performance generally trail Lustre with DNE and flash-native systems. Failure handling and resyncs need care, and support depends on the commercial agreement with ThinkParQ.
+The second idea is storage pools. A pool groups targets of the same kind, such as NVMe and HDD, so you can decide which data lands on fast media. The third idea is buddy mirroring. It keeps replicated copies of metadata and storage groups, so that a partner can take over when one server fails. The fourth idea is the set of quotas and ACLs (access control lists) that let you limit space and control who can read or write what.
 
-Be careful with the numbers in the NVIDIA-DevOps volume-15 chapter. Its figures, "50K to 100K ops/s per metadata server" and "500 MB/s to 2 GB/s per storage node", are illustrative. Its sample `beegfs-client.conf` also contains parameters such as `tuneUseGDTLSConnPool` and similar parameters that do not appear in the default configuration file in the repository. Trust the shipped config files over a sample when you set your client configuration.
+Newer releases also add security options. Connection authentication uses `connAuthFile = /etc/beegfs/conn.auth`, and newer releases add TLS, which is the encryption layer that web sites use.
+
+BeeGFS is quick to install and operate, and its hardware can be flexible. It streams data well, supports RDMA (Remote Direct Memory Access, a way to move data between machines with little CPU work), includes BeeOND, and a small team can run it. Practitioners also report trade-offs. Metadata scaling and small-file performance generally trail Lustre with DNE and flash-native systems. DNE is the Lustre feature that spreads metadata over several servers. Failure handling and resyncs need care, and support depends on the commercial agreement with ThinkParQ.
+
+Be careful with the numbers in the NVIDIA-DevOps BeeGFS chapter. Its figures, "50K to 100K ops/s per metadata server" and "500 MB/s to 2 GB/s per storage node", are illustrative. Its sample `beegfs-client.conf` also contains parameters such as `tuneUseGDTLSConnPool` and similar parameters that do not appear in the default configuration file in the repository. Trust the shipped config files over a sample when you set your client configuration.
 
 ## 3. IBM Storage Scale (GPFS)
 
-Suppose you are asked to run storage for a large HPC site where many users share one system. GPFS is one of the options you will meet there. The product is IBM Storage Scale. It was formerly called Spectrum Scale and GPFS, which stands for General Parallel File System. It is a proprietary, commercial parallel file system, common in large HPC sites and enterprises. Chapter 9 of *Supercomputers for Linux SysAdmins* covers it under the heading "GPFS/IBM Storage Scale".
+Suppose a large HPC site asks you to make one file system serve many research groups at once. Each group has its own quota. Some groups want very large files, and a few want long-term archives. The site already runs IBM hardware, so IBM's product comes up in the discussion. You will meet it in that kind of setting.
 
-GPFS was developed by IBM in 1998 and became available for Linux in 2001. IBM's architectural figures from 2013, cited in that chapter, put GPFS at 9,300 nodes and 16,386 clients. The largest installation at that time had 5,000 nodes. GPFS also supports RDMA over InfiniBand. The key ideas below come from that chapter and from general knowledge, so check IBM's documentation before you rely on them.
+The product is IBM Storage Scale. It was formerly called Spectrum Scale and GPFS, which stands for General Parallel File System. It is a proprietary, commercial parallel file system, and you will find it in large HPC sites and enterprises. Chapter 9 of *Supercomputers for Linux SysAdmins* covers it under the heading "GPFS/IBM Storage Scale".
 
-GPFS uses a shared-disk design. Every node in the cluster can access all of the disks, either directly or through NSD servers, where NSD stands for Network Shared Disk. There are no dedicated metadata servers. Instead, metadata is distributed across the cluster. Directory entries are indexed to speed up very large directories, and any node can act as a file system manager for certain functions.
+GPFS was developed by IBM in 1998 and became available for Linux in 2001. IBM's architectural figures from 2013, cited in that chapter, put GPFS at 9,300 nodes and 16,386 clients. The largest installation at that time had 5,000 nodes. GPFS also supports RDMA over InfiniBand, which is a fast network fabric common in HPC. The key ideas below come from that chapter and from general knowledge, so check IBM's documentation before you rely on them.
 
-GPFS has built-in heartbeat and quorum protocols. They let the file system keep running in degraded mode, even if a network failure splits the file system servers into two isolated subnets. Data can be duplicated across servers, so the whole file system stays alive when one server goes down. Maintenance is fully online. You can add new disks, replace a failed disk or rebalance data while the file system keeps serving jobs.
+GPFS uses a shared-disk design. In plain words, nobody owns a disk. Every node in the cluster can reach all of the disks, either directly or through NSD servers, where NSD stands for Network Shared Disk. An NSD server is a machine that serves a disk to the rest of the cluster over the network. There are no dedicated metadata servers. Instead, metadata is spread across the cluster. You can picture it as every node holding a piece of the directory map, rather than one clerk holding all of it. Directory entries are indexed to speed up very large directories, and any node can act as a file system manager for certain functions.
 
-Files are wide-striped across all disks in a storage pool. GPFS uses large blocks, in the multi-MiB range, plus subblocks, so small files are handled efficiently. Storage pools and policies work together. An ILM-style policy engine moves files between pools, such as flash, HDD and tape, using rules based on age, size, name and user.
+GPFS has built-in heartbeat and quorum protocols. A heartbeat is a regular "I am alive" message between nodes. Quorum means a majority of the members agree on who is still in the cluster. Together they let the file system keep running in degraded mode, even if a network failure splits the file system servers into two isolated subnets. Data can be duplicated across servers, so the whole file system stays alive when one server goes down. Maintenance is fully online. You can add new disks, replace a failed disk or rebalance data while the file system keeps serving jobs.
 
-Filesets and quotas give you finer control, and snapshots are available too. AFM, which stands for Active File Management, handles caching and replication across sites. Protocol nodes export NFS, SMB and S3. For erasure coding, ESS, the Elastic Storage System, uses declustered RAID. ECE, the Erasure Code Edition, runs on commodity servers.
+Files are wide-striped across all disks in a storage pool. GPFS uses large blocks, in the multi-MiB range, plus subblocks, so small files are handled efficiently. A block is the smallest unit the file system hands out, and a subblock is a fraction of one, so a small file uses only the space it needs. Storage pools and policies work together. An ILM-style policy engine, where ILM stands for information lifecycle management, moves files between pools such as flash, HDD and tape. It uses rules based on age, size, name and user.
 
-GPFS gives strong POSIX semantics through distributed locking, managed as token management. The same locking makes some patterns, such as small writes to a shared file, prone to contention.
+Filesets and quotas give you finer control, and snapshots are available too. A fileset is an independent part of the namespace with its own quotas and snapshots. AFM, which stands for Active File Management, handles caching and replication across sites. Protocol nodes export NFS, SMB and S3. For erasure coding, ESS, the Elastic Storage System, uses declustered RAID. ECE, the Erasure Code Edition, runs on commodity servers.
 
-Licensing needs care. Depending on how you configure a host where GPFS is installed, it acts as a GPFS server or a GPFS client, and both servers and clients must be licensed. The licences can take a significant share of the cluster budget, so plan for future expansion. Study the recommendations carefully before you format, because many GPFS parameters cannot be changed once the file system has been created.
+GPFS gives strong POSIX semantics through distributed locking, which it manages as token management. A token is a permission slip that a node holds for a piece of a file. Before a node changes that piece, it must hold the token. When two nodes want to write the same spot, they fight over the token, and that fight is the contention. The same locking makes some patterns, such as small writes to a shared file, prone to contention.
 
-In AI, GPFS appears mostly at very large HPC and AI centres that have IBM relationships. It is used under NVIDIA SuperPOD-class reference designs as one of the validated options, though you should verify the current support matrices.
+Licensing needs care, so raise it early. Depending on how you configure a host where GPFS is installed, it acts as a GPFS server or a GPFS client, and both servers and clients must be licensed. The licences can take a significant share of the cluster budget, so plan for future expansion. Study the recommendations carefully before you format, because many GPFS parameters cannot be changed once the file system has been created.
 
-The operations commands include `mmlscluster`, `mmlsconfig`, `mmgetstate -a`, `mmlsdisk`, `mmlsfs`, `mmcrfs`, `mmmount`, `mmlsmount`, `mmdf`, `mmlsquota`, `mmedquota`, `mmapplypolicy` and `mmhealth`. Its dependencies include a quorum of cluster manager nodes, a cluster-wide configuration repository, tiebreaker disks, and kernel-module compatibility. The portability layer is built for each kernel.
+In AI, GPFS appears mostly at very large HPC and AI centres that have IBM relationships.
+
+The shared-disk idea matters for a site like that. When every node can reach every disk, one busy research group does not have to wait behind a single server that owns its data. The cost is in the locking and the licences, which is why the next paragraph and the licence paragraph after it deserve as much attention as the speed numbers. It is used under NVIDIA SuperPOD-class reference designs as one of the validated options, though you should verify the current support matrices.
+
+The operations commands include `mmlscluster`, `mmlsconfig`, `mmgetstate -a`, `mmlsdisk`, `mmlsfs`, `mmcrfs`, `mmmount`, `mmlsmount`, `mmdf`, `mmlsquota`, `mmedquota`, `mmapplypolicy` and `mmhealth`. Its dependencies include a quorum of cluster manager nodes, a cluster-wide configuration repository, tiebreaker disks, and kernel-module compatibility. The portability layer is built for each kernel, so every kernel upgrade means a rebuild.
 
 If you run GPFS, settle the licence budget and the parameter choices before you format anything.
 
 ## 4. PanFS (Panasas, now VDURA)
 
+Imagine a storage appliance arriving in a rack, with a week to make it useful. An appliance is a storage system sold as one box, with the hardware and software tuned together. PanFS is that kind of product, so the first questions are about what the box contains and how the clients talk to it.
+
 *Supercomputers for Linux SysAdmins*, chapter 9, describes PanFS as a hardware and software system from Panasas, now VDURA. It consists of one or more ActiveStor storage appliances plus client file system drivers. The drivers are available for Linux only.
 
-An ActiveStor system has two kinds of nodes. Metadata and management nodes are called Directors, and object data storage nodes hold the data. The native data network is Ethernet, at 1, 10 or 25 GbE. VDURA also provides an InfiniBand router server that bridges PanFS into InfiniBand clusters, and an under-provisioned router can become a bottleneck. CIFS and NFS re-export modules are available too. You might use NFS to serve a root file system to diskless nodes, but the re-exporting gateway nodes can become a bottleneck under heavy parallel load.
+An ActiveStor system has two kinds of nodes. Metadata and management nodes are called Directors, and object data storage nodes hold the data. The native data network is Ethernet, at 1, 10 or 25 GbE. VDURA also provides an InfiniBand router server that bridges PanFS into InfiniBand clusters, and an under-provisioned router can become a bottleneck. A bottleneck is the one part that slows the whole chain down. CIFS and NFS re-export modules are available too. You might use NFS to serve a root file system to diskless nodes, but the re-exporting gateway nodes can become a bottleneck under heavy parallel load.
 
-You manage all volumes and access levels across several VDURA systems from one point, through `https`, an `ssh` console or a serial port. PanFS client drivers are not licensed by client count, which sets them apart from GPFS. The Linux client driver does not use `DKMS`, though, so the supported distributions and kernel versions are tightly constrained. You request kernel-specific drivers from VDURA.
+You manage all volumes and access levels across several VDURA systems from one point, through `https`, an `ssh` console or a serial port. PanFS client drivers are not licensed by client count, which sets them apart from GPFS. The Linux client driver does not use `DKMS`, though, so the supported distributions and kernel versions are tightly constrained. DKMS is a tool that rebuilds kernel modules automatically after an upgrade. Without it, you request kernel-specific drivers from VDURA.
 
-Data protection works per object across nodes. Small files use RAID-1, and medium and large files use RAID-5, although you can configure this. The file system therefore stays online when a storage node goes down. Metadata is mirrored from the primary Director to a standby Director. With 3 or more metadata and management nodes, the cluster runs in full fault-tolerant mode with transparent failover.
+Data protection works per object across nodes. Small files use RAID-1, and medium and large files use RAID-5, although you can configure this.
+
+From the job's side, the goal is simple. Its writes keep going while the cluster repairs itself after a failure. Whether a given failure is that gentle depends on the layout and on the load at that moment, so test it rather than assume it. The file system therefore stays online when a storage node goes down. Metadata is mirrored from the primary Director to a standby Director. With 3 or more metadata and management nodes, the cluster runs in full fault-tolerant mode with transparent failover, which means clients keep working while the cluster switches to a surviving node.
 
 PanFS makes one distinctive design choice. It offloads RAID checksum calculation and data caching to the client driver on the compute nodes. Checksum CPU work therefore grows with the cluster. The cost is that the compute nodes must spare a substantial amount of RAM for client system buffers.
 
@@ -134,39 +147,47 @@ Every Director, storage node and client needs tightly synchronised clocks. Sync 
 
 ## 5. WEKA (WekaFS) and other distributed filesystems (*Supercomputers for Linux Sysadmins* Chapter 9)
 
-WEKA is a commercial, software-defined, NVMe-first distributed file system, and it is popular in AI and EDA work. The sources for this section are chapter 9 of *Supercomputers for Linux SysAdmins*, under the heading Other File Systems, along with general knowledge.
+Your AI team says the GPUs wait on the file system during data loading. They also say the data is full of tiny files, and they want something that handles those well. WEKA is one of the commercial answers to that request. WEKA is a commercial, software-defined, NVMe-first distributed file system, and it is popular in AI and EDA work. EDA means electronic design automation, the chip design tools that also produce many small files. The sources for this section are chapter 9 of *Supercomputers for Linux SysAdmins*, under the heading Other File Systems, along with general knowledge.
 
-WEKA runs on commodity servers with NVMe. It uses user-space drivers in the SPDK and DPDK style to bypass the kernel. Clients can use a kernel or POSIX client, and WEKA also offers POSIX, NFS, SMB, S3 and GPUDirect Storage paths, along with storage tiering, namespaces, encryption and snapshots. Dedicated cores on each client and backend host run the WEKA data-plane threads, so CPU planning matters. As you plan a WEKA deployment, size those cores before you size anything else.
+WEKA runs on commodity servers with NVMe, which is the fast flash interface used in modern drives. It uses user-space drivers in the SPDK and DPDK style to bypass the kernel. Normally every request has to pass through the kernel, which costs time. A user-space driver lets the program talk to the hardware more directly. Clients can use a kernel or POSIX client, and WEKA also offers POSIX, NFS, SMB, S3 and GPUDirect Storage paths, along with storage tiering, namespaces, encryption and snapshots. Dedicated cores on each client and backend host run the WEKA data-plane threads, so CPU planning matters. As you plan a WEKA deployment, size those cores before you size anything else.
 
-Metadata and data are both distributed across all backend servers, with no dedicated metadata servers. WEKA aims at high small-file and metadata performance, a flash-optimised data layout and distributed erasure coding. Its stripes are written as `N+2` or `N+4`. For example, `8+2` gives 80.0% usable efficiency and `16+2` gives 88.89%.
+Metadata and data are both distributed across all backend servers, with no dedicated metadata servers. WEKA aims at high small-file and metadata performance, a flash-optimised data layout and distributed erasure coding. Erasure coding splits data into pieces and adds parity pieces, so that data survives a failure. Its stripes are written as `N+2` or `N+4`. For example, `8+2` gives 80.0% usable efficiency and `16+2` gives 88.89%. In `8+2`, each stripe holds 8 data pieces and 2 parity pieces, so 8 of every 10 pieces are useful data.
 
-WEKA protects data at the file level. After a node or drive failure, it recovers actively used files first, which cuts recovery time and rebuild overhead. In cloud deployments, WEKA clusters support auto-expand and auto-shrink.
+WEKA protects data at the file level. After a node or drive failure, it recovers actively used files first, which cuts recovery time and rebuild overhead. In cloud deployments, WEKA clusters support auto-expand and auto-shrink, which means the cluster grows or shrinks as you add or remove nodes.
 
-Behind the flash tier, WEKA can tier to S3-compatible object storage for capacity. It also offers snapshots, snap-to-object, filesystem groups and quotas for multi-tenancy, and encryption. Its cost model combines a software licence, priced by capacity or cores, with NVMe server hardware. WEKA is strong on performance per rack, but it is costly per TB at pure flash.
+Behind the flash tier, WEKA can tier to S3-compatible object storage for capacity.
+
+Consider a dataset made of many small image files. Each file open is a metadata request, so the data loader can wait on the metadata side even when the bandwidth looks high. That is why WEKA's pitch centres on small-file and metadata performance. Test that claim with a dataset shaped like yours, not with one large file. It also offers snapshots, snap-to-object, filesystem groups and quotas for multi-tenancy, and encryption. Its cost model combines a software licence, priced by capacity or cores, with NVMe server hardware. WEKA is strong on performance per rack, but it is costly per TB at pure flash.
 
 ### Other Linux distributed filesystems, `CernVM-FS`, and `autofs` (*Supercomputers for Linux Sysadmins* Chapter 9)
 
-Chapter 9 also surveys other distributed file systems that run on Linux. They include Gluster (GlusterFS), Coda, CEPH (CephFS), Hadoop HDFS, MooseFS and zFS. The zFS in this list is the IBM z/OS distributed file system, so do not confuse it with OpenZFS. The chapter warns against adopting general-purpose or non-POSIX file systems blindly for HPC and AI compute scratch. Such file systems may lack strict POSIX compliance, high-concurrency lock scaling or production stability under thousand-node load.
+Chapter 9 also surveys other distributed file systems that run on Linux. They include Gluster (GlusterFS), Coda, CEPH (CephFS), Hadoop HDFS, MooseFS and zFS. The zFS in this list is the IBM z/OS distributed file system, so do not confuse it with OpenZFS. The chapter warns against adopting general-purpose or non-POSIX file systems blindly for HPC and AI compute scratch. Such file systems may lack strict POSIX compliance, high-concurrency lock scaling or production stability under thousand-node load. Scratch is the fast temporary space a job uses while it runs, so a scratch file system has to hold up under heavy load.
 
 For specialised read-only roles, chapter 9 highlights two tools. The first is CernVM-FS, written CVMFS for short, at `https://cvmfs.readthedocs.io/en/stable/index.html`. It is an HTTP-based, aggressively cached, read-only file system. It suits software trees, local container images and static reference datasets that must reach thousands of nodes. Read-only NFS mounts of `/home` on compute nodes also fit, when jobs write only to `/scratch`.
 
-The second tool is `autofs`, which mounts user home directories or shared exports on demand. Its maps come from LDAP or NIS. Chapter 9 recommends `autofs` on login and data-copying nodes. It advises against `autofs` on compute nodes, where static mounts verified by `HealthCheckProgram` are more predictable.
+The second tool is `autofs`, which mounts user home directories or shared exports on demand. It mounts them when someone first touches the path, and it unmounts them when they go quiet. Its maps come from LDAP or NIS, which are directory services that hold user and share lists. Chapter 9 recommends `autofs` on login and data-copying nodes. It advises against `autofs` on compute nodes, where static mounts verified by `HealthCheckProgram` are more predictable.
 
 ## 6. VAST Data
 
-VAST Data's Universal Storage uses a DASE architecture, which stands for Disaggregated, Shared-Everything. It is a commercial, all-flash, scale-out system. The description below comes from general knowledge, so verify it before you rely on it.
+Picture a customer who wants to hold training datasets on the same platform as the old NFS shares that the company already runs. They want one system that is fast enough for GPUs and simple enough for the enterprise IT team. VAST Data is built for that kind of consolidation, so it comes up often in enterprise AI factories.
 
-The design separates compute from storage. Stateless compute nodes, called CNodes, run as containers. NVMe storage enclosures, called DBoxes, hold storage-class memory and QLC flash. The two sides connect through an NVMe-over-Fabrics network. Every CNode can access all of the media, so capacity and compute scale independently, and there is no data partitioning between servers.
+VAST Data's Universal Storage uses a DASE architecture, which stands for Disaggregated, Shared-Everything. It is a commercial, all-flash, scale-out system. Scale-out means you grow the system by adding more boxes. The description below comes from general knowledge, so verify it before you rely on it.
 
-Most HPC and AI access goes through NFS, including NFS over RDMA and multipath, `nconnect`-style client mounts. SMB, S3 and a database and analytics interface are also available. A VAST client handles multipathing, and a POSIX-like kernel client is not required. The chapter sums this up as "enterprise NAS speed with parallel-file-system bandwidth".
+The design separates compute from storage. Stateless compute nodes, called CNodes, run as containers. Stateless here means a CNode holds no unique data of its own, so you can replace one without losing anything. NVMe storage enclosures, called DBoxes, hold storage-class memory and QLC flash. QLC is a dense, cheaper kind of flash. The two sides connect through an NVMe-over-Fabrics network. Every CNode can access all of the media, so capacity and compute scale independently, and there is no data partitioning between servers.
 
-VAST uses global similarity-based reduction and wide erasure coding. The goal is to make QLC flash cost-efficient. VAST appears in AI factories, in reference architectures with NVIDIA, and it is used notably for dataset hosting. How well checkpoints are absorbed depends on configuration.
+Most HPC and AI access goes through NFS, including NFS over RDMA and multipath, `nconnect`-style client mounts. Multipath means the client opens several paths to the storage at once. SMB, S3 and a database and analytics interface are also available. A VAST client handles multipathing, and a POSIX-like kernel client is not required. The chapter sums this up as "enterprise NAS speed with parallel-file-system bandwidth". NAS means network-attached storage, the simple file server that most enterprises already know.
+
+VAST uses global similarity-based reduction and wide erasure coding. Similarity-based reduction removes repeated or similar data across the whole system, not only inside one file. Wide erasure coding spreads each stripe across many pieces, which keeps the overhead low. The goal is to make QLC flash cost-efficient. VAST appears in AI factories, in reference architectures with NVIDIA, and it is used notably for dataset hosting. How well checkpoints are absorbed depends on configuration. A checkpoint is the snapshot of model state that a training job writes so it can restart after a failure.
 
 Ask for the configuration before you accept any checkpoint claim for VAST.
 
+A useful way to read the DASE design is to set it beside the shared-disk design of GPFS. In GPFS, nodes reach shared disks through NSD servers. In VAST, the stateless CNodes reach the DBoxes over the fabric. Both let any node reach all of the media, but the parts that move the data are built differently, and those parts decide where the bottlenecks sit.
+
 ## 7. Comparison
 
-The comparison below is qualitative and general, so check it against the versions you actually evaluate. It puts all six systems side by side, which makes the differences easy to see.
+Picture a small team with a budget, a deadline and six vendor names on the same slide. They need to narrow the list before the next meeting.
+
+The comparison below is qualitative and general, so check it against the versions you actually evaluate. It puts all six systems side by side, which makes the differences easy to see. Put a vendor's answer into the matching cell, then look at the row to see where that vendor stands on the property.
 
 | | Lustre | GPFS / Storage Scale | BeeGFS | PanFS | WEKA | VAST |
 |---|---|---|---|---|---|---|
@@ -180,42 +201,46 @@ The comparison below is qualitative and general, so check it against the version
 | Operational skill | High | High | Low to medium | Low (appliance) | Medium | Low to medium |
 | Typical fit | Large scratch for HPC and AI, national labs | Mixed HPC/enterprise, long-term data | Smaller clusters, university, BeeOND scratch | Legacy HPC appliance | AI/EDA performance tier | AI datasets, enterprise consolidation |
 
-Read a row when you want to compare one property across the systems, and read a column when you want one system's profile. Use the table to shortlist, then test the shortlist with your own workload.
+Read a row when you want to compare one property across the systems, and read a column when you want one system's profile. The Small files row is a good place to start for AI work, because data loaders often open many small files. The Operational skill row matters just as much for a small team. Use the table to shortlist, then test the shortlist with your own workload.
+
+A shortlist of two or three is enough. Anything longer usually means the requirements are still vague, and it is better to fix the workload numbers first.
 
 ## 8. Selecting and validating
 
-Start with the workload, because every later step depends on its numbers.
+Start with the workload, because every later step depends on its numbers. A file system that wins a spec sheet can still lose on your jobs, so the workload comes first.
 
-1. Characterise the workload first. Write down checkpoint size and cadence, the dataset format (shards or small files), the number of clients, the read and write mix, the metadata rate (creates and stats per second), latency sensitivity and POSIX needs. Use the arithmetic from 6.18.
-2. Shortlist by constraints. Consider the budget model, which may be a capex appliance, software plus hardware, or a managed service. Then weigh existing skills, support, the ecosystem of reference architectures from the GPU vendor, the network and its RDMA fabric, data protection requirements and multi-tenancy.
-3. Prove it on your own pipeline. Run `fio` for bandwidth, IOPS, latency and mixed workloads. Run `IOR` for a shared file and for file-per-process I/O. Run `mdtest` for metadata. Then run an AI-realistic read job, using your data loader on your dataset format, and a checkpoint job that does synchronised all-rank writes at your target size. Run all of them at the intended client count. While the load runs, test the failure modes: kill a server, pull a drive, and upgrade.
-4. Total up the cost. Count capacity, performance per GB/s, power and rack space, licences per client or core, support, growth steps and data egress.
+1. Characterise the workload first. Write down checkpoint size and cadence, meaning how big each checkpoint is and how often it is written. Then add the dataset format, which may be shards or small files, the number of clients, the read and write mix, the metadata rate (creates and stats per second), latency sensitivity and POSIX needs. Use the arithmetic from 6.18.
+2. Shortlist by constraints. Consider the budget model, which may be a capex appliance, software plus hardware, or a managed service. Capex means money spent once on equipment. Then weigh existing skills, support, the ecosystem of reference architectures from the GPU vendor, the network and its RDMA fabric, data protection requirements and multi-tenancy.
+3. Prove it on your own pipeline. Run `fio` for bandwidth, IOPS, latency and mixed workloads. Run `IOR` for a shared file and for file-per-process I/O. Run `mdtest` for metadata. Then run an AI-realistic read job, using your data loader on your dataset format, and a checkpoint job that does synchronised all-rank writes at your target size. Run all of them at the intended client count. While the load runs, test the failure modes: kill a server, pull a drive, and upgrade. A benchmark on an empty system tells you very little about the day a drive fails.
+4. Total up the cost. Count capacity, performance per GB/s, power and rack space, licences per client or core, support, growth steps and data egress. Data egress is the charge for moving data back out of the system.
 5. Plan for tiers. Even the fastest system is rarely the only tier. Combine it with local NVMe, object storage and NFS for home directories, as section 8 of 6.18 describes.
 
 ### 8.1 The AI data path: GPUDirect Storage (`GDS`) and NVMe staging (Volume 15)
 
-Across all five parallel and scale-out file systems (Lustre, GPFS, BeeGFS, WEKA, and VAST over NFS-RDMA), feeding 8 H100 or B200 GPUs per node at wire speed means bypassing the host CPU page-cache bounce path. The source for this material is `nvidia-zero-to-hero/volume-15`, chapters 1 to 12 and labs 1 to 4.
+Picture one server with 8 H100 or B200 GPUs. Each GPU waits for its next batch of data, and the batch comes from a file system across the network. If the data path is slow, the GPUs idle while the bill keeps running. Across all five parallel and scale-out file systems in this chapter (Lustre, GPFS, BeeGFS, WEKA, and VAST over NFS-RDMA), the fix is the same. The data should skip the host CPU's page-cache bounce path, where the page cache is the kernel's memory buffer for file data. The source for this material is `nvidia-zero-to-hero/volume-15`, chapters 1 to 12 and labs 1 to 4.
 
-The legacy buffered I/O path crosses PCIe twice and adds 2.0x host DRAM bounce traffic. A standard POSIX `read()` copies data from the local NVMe drive or the RDMA storage NIC across PCIe into the Linux kernel page cache in host DRAM. It copies the data again into a user-space CPU buffer, then calls `cudaMemcpyHostToDevice` across PCIe into GPU HBM. For every 100.0 GB loaded to the GPUs, the host generates 200.0 GB of DRAM read and write traffic. Host CPU cores and NUMA interconnects become the bottleneck.
+The legacy buffered I/O path crosses PCIe twice and adds 2.0x host DRAM bounce traffic. PCIe is the bus that connects the CPU, the storage cards and the GPUs. Walk through one read to see why. A standard POSIX `read()` copies data from the local NVMe drive or the RDMA storage NIC across PCIe into the Linux kernel page cache in host DRAM. It copies the data again into a user-space CPU buffer, then calls `cudaMemcpyHostToDevice` across PCIe into GPU HBM. HBM is the fast memory on the GPU itself. For every 100.0 GB loaded to the GPUs, the host generates 200.0 GB of DRAM read and write traffic. Host CPU cores and NUMA interconnects become the bottleneck. NUMA is the layout that splits memory between CPU sockets, and traffic that crosses between sockets slows down.
 
-GPUDirect Storage cuts out that bounce. With `nvidia-fs.ko` loaded and a GDS-enabled file system, the storage NIC or NVMe controller performs peer-to-peer DMA directly into GPU `BAR1` HBM memory, through `cuFileRead` and `cuFileWrite`. That is one PCIe crossing and 0.0 GB of host DRAM bounce traffic. The file systems that can use this path include Lustre, GPFS, WEKA, VAST NFS-RDMA, BeeGFS, and local NVMe with `ext4` or `XFS` in `O_DIRECT` mode. You can validate the path with `/usr/local/cuda/gds/tools/gdscheck -p` and benchmark it with `gdsio`.
+GPUDirect Storage cuts out that bounce. With `nvidia-fs.ko` loaded and a GDS-enabled file system, the storage NIC or NVMe controller performs peer-to-peer DMA directly into GPU `BAR1` HBM memory, through `cuFileRead` and `cuFileWrite`. DMA means the device moves the data itself, without the CPU copying it. The data crosses PCIe once and touches 0.0 GB of host DRAM. The file systems that can use this path include Lustre, GPFS, WEKA, VAST NFS-RDMA, BeeGFS, and local NVMe with `ext4` or `XFS` in `O_DIRECT` mode. You can validate the path with `/usr/local/cuda/gds/tools/gdscheck -p` and benchmark it with `gdsio`.
 
-Check the GDS path with `gdscheck` before you benchmark the file system on top of it.
+Check the GDS path with `gdscheck` before you benchmark the file system on top of it. A slow number from a broken GDS path tells you nothing about the file system.
 
 ## 9. Lab (self-checking efficiency & GDS lab tested; VM cluster parts untested)
 
-Start with the self-checking Python lab, which runs on your own machine. It checks four things. It verifies erasure-coding usable capacity for RAID-1 at 50.0%, `8+2` at 80.0%, `16+2` at 88.89% and VAST-style wide `146+4` stripes at 97.33%. It checks the PCIe and host DRAM bounce-buffer math for GPUDirect Storage (`GDS`), where a 100.0 GB read drops from 200.0 GB to 0.0 GB of host DRAM traffic. It also checks the GPFS scale limits from chapter 9 of *Supercomputers for Linux SysAdmins*, which are 9,300 nodes, 16,386 clients and a 5,000-node install. Last, it checks the PanFS Ethernet rates of 1, 10 and 25 GbE. Read each result as a check you can repeat yourself, not as a claim you have to take on trust.
+You do not need a cluster to start. The first lab runs on your own machine, and it checks four things. It verifies erasure-coding usable capacity for RAID-1 at 50.0%, `8+2` at 80.0%, `16+2` at 88.89% and VAST-style wide `146+4` stripes at 97.33%. It checks the PCIe and host DRAM bounce-buffer math for GPUDirect Storage (`GDS`), where a 100.0 GB read drops from 200.0 GB to 0.0 GB of host DRAM traffic. It also checks the GPFS scale limits from chapter 9 of *Supercomputers for Linux SysAdmins*, which are 9,300 nodes, 16,386 clients and a 5,000-node install. Last, it checks the PanFS Ethernet rates of 1, 10 and 25 GbE. Read each result as a check you can repeat yourself, not as a claim you have to take on trust.
+
+If a printed result does not match the number in this chapter, do not average the two. Check the formula first, because a wrong input or an out-of-date copy of the lab is the usual cause.
 
 ```bash
 python3 code/part06/parallel_fs_compare_lab.py
 ```
 
-The rest of the lab runs on a 3-VM testbed, where BeeGFS is open source. Work through these steps in order.
+The rest of the lab runs on a 3-VM testbed, where BeeGFS is open source. The VM steps below were not run on a live cluster, so treat them as a plan until you have run them yourself. Work through these steps in order.
 
 1. Install the BeeGFS management service, one metadata service, two storage services and a client on small VMs. Read `beegfs-meta.conf` and `beegfs-storage.conf`, then mount the client.
 2. Create a directory and set a stripe pattern of 4 targets and 512k chunks. Write a large file, then inspect it with `beegfs-ctl --getentryinfo`.
 3. Run `fio` and `iomix.py` (from 6.18) against BeeGFS and against an NFS export on the same VMs. Compare the data rates and the metadata rates.
-4. Disable `connUseRDMA` or `connTCPFallbackEnabled` on a lab with Soft-RoCE, so you can see the transport selection logs.
+4. Disable `connUseRDMA` or `connTCPFallbackEnabled` on a lab with Soft-RoCE, so you can see the transport selection logs. Soft-RoCE is a software version of RDMA, which lets you test without special hardware.
 5. Try BeeOND on two nodes, using their local disks as a job-private scratch.
 6. Write a comparison worksheet for two candidate file systems for a hypothetical 1,024-GPU cluster. Use the questions in section 1, and list the validation tests you would run.
 
@@ -223,7 +248,9 @@ Finish the first three steps before you rely on any number this lab produces.
 
 ## 10. Interview angles
 
-Use these questions to test yourself. Each one can be answered from this chapter.
+Picture a panel asking you to pick a file system on the spot. You have a few minutes and no vendor deck.
+
+Interviewers like to ask questions like these, and each one can be answered from this chapter. Try two of them out loud before you start the exercises.
 
 - Compare Lustre, GPFS, BeeGFS, WEKA and VAST for a new 2,000-GPU training cluster.
 - What is BeeOND and when is it useful?
@@ -234,18 +261,16 @@ Use these questions to test yourself. Each one can be answered from this chapter
 - What happens to throughput during a drive failure or rebuild in each system?
 - Which file system fits a university cluster of 200 nodes with a two-person admin team?
 
-Pick two of these and answer them out loud before you start the Exercises.
-
 ## Exercises
 
-Each exercise asks you to explain a number or a design choice from this chapter, and you should be able to answer it without looking at the answer. Start with exercise 1, since it needs only the Python lab.
+Each exercise asks you to explain a number or a design choice from this chapter. Try to answer it without looking at the answer first. Start with exercise 1, since it needs only the Python lab.
 
-1. Compare erasure coding efficiency across parallel file systems. Run `python3 code/part06/parallel_fs_compare_lab.py`. Using `erasure_coding_efficiency(d, p)`, compare usable raw-to-effective capacity across RAID-1 or buddy mirroring (1+1 = 50.0%), standard 8+2 RAID-6 or EC (80.0%), 16+2 distributed EC (88.89%), and VAST-style wide 146+4 stripes (97.33%). Then explain the trade-off in failure domain size and rebuild network traffic.
-2. Quantify GPUDirect Storage (`GDS`) against host page-cache bounce buffering, using the lab. Trace the GPUDirect Storage difference in host DRAM copies. Use `pcie_host_dram_copies(100.0, use_gds)` in `code/part06/parallel_fs_compare_lab.py`. Explain why reading 100.0 GB of checkpoint or dataset tensors through traditional POSIX buffered I/O generates 200.0 GB of host DRAM read and write traffic and 2 PCIe root-complex crossings. Then explain why `cuFileRead` with `nvidia-fs.ko` makes one direct peer-to-peer DMA transfer into GPU BAR1 memory, with 0.0 GB of host DRAM bounce traffic.
-3. Configure BeeGFS striping, RDMA transport and BeeOND ephemeral scratch. Write the `beegfs-ctl --setpattern --chunksize=1m --numtargets=4 /mnt/beegfs/dir` command. Explain the role of `sysMgmtdHost`, of `storeMetaDirectory` with `storeUseExtendedAttribs = true`, of `storeStorageDirectory`, of `connUseRDMA = true`, of `connTCPFallbackEnabled = true` and of `connAuthFile = /etc/beegfs/conn.auth`. Finally, explain how BeeOND aggregates the local NVMe drives of compute nodes into a per-Slurm-job parallel scratch file system.
-4. Contrast the metadata and high-availability models of IBM Storage Scale (GPFS) and Lustre, using chapter 9 of *Supercomputers for Linux SysAdmins*. For GPFS, cover NSDs, distributed metadata with directory indexing, the token lock manager, quorum and heartbeat that survive a subnet split, online disk rebalancing, per-server and per-client licensing, and the 9,300-node and 16,386-client scale. For Lustre, cover MGS, dedicated MDS and MDTs with DNE, OSS and OSTs, and open-source kernel modules. Then explain how the two structures differ.
-5. Compare how PanFS, WEKA and VAST Data handle metadata scaling and node failures. For PanFS, cover Directors plus object storage nodes, RAID-1 for small files and RAID-5 for large files, and client-side RAID checksum offload. For WEKA, cover user-space DPDK and SPDK cores on clients and backends, distributed metadata and data, active-file-first rebuilds, and S3 tiering. For VAST Data, cover DASE stateless CNodes over NVMe-oF to shared-everything DBoxes, plus multipath NFS-RDMA and S3.
-6. Design a storage acceptance benchmark suite with `fio`, `IOR`, `mdtest` and `gdsio`. Write a 5-stage pre-purchase acceptance test plan for a 1,024-GPU AI cluster. The plan covers (a) `IOR` N-to-1 and N-to-N synchronous checkpoint bursts, (b) `mdtest` directory sharded against single-directory small-file creation and stat rates, (c) `gdsio` GPUDirect Storage verification with `gdscheck -p`, (d) `CernVM-FS` or `.sqsh` 1,000-rank import storm testing, and (e) degraded-mode throughput during an active storage server kill.
+1. Compare erasure coding efficiency across parallel file systems. Imagine a vendor quotes you a usable capacity and you want to check it. Run `python3 code/part06/parallel_fs_compare_lab.py`. Use `erasure_coding_efficiency(d, p)` to compare four layouts. RAID-1 or buddy mirroring, written 1+1, gives 50.0%. Standard 8+2 RAID-6 or EC gives 80.0%. Distributed 16+2 EC gives 88.89%. VAST-style wide 146+4 stripes give 97.33%. Then explain the trade-off. What changes as the stripe gets wider? How does the size of a failure domain change, and how much network traffic does a rebuild need?
+2. Quantify GPUDirect Storage (`GDS`) against host page-cache bounce buffering. A colleague says a 100.0 GB checkpoint load is cheap on paper. Use `pcie_host_dram_copies(100.0, use_gds)` in `code/part06/parallel_fs_compare_lab.py` to test that claim. Explain why buffered POSIX I/O generates 200.0 GB of host DRAM read and write traffic. The buffered path makes 2 PCIe root-complex crossings. Then explain why `cuFileRead` with `nvidia-fs.ko` makes one direct peer-to-peer DMA transfer into GPU BAR1 memory. That path produces 0.0 GB of host DRAM bounce traffic.
+3. Configure BeeGFS striping, RDMA transport and BeeOND ephemeral scratch. Your team has a new client, and one directory needs wide striping. Write the `beegfs-ctl --setpattern --chunksize=1m --numtargets=4 /mnt/beegfs/dir` command. Explain what `sysMgmtdHost` does. Explain what `storeMetaDirectory` does with `storeUseExtendedAttribs = true`. Explain the job of `storeStorageDirectory`. Explain what `connUseRDMA = true` does, and what `connTCPFallbackEnabled = true` adds. Explain why `connAuthFile = /etc/beegfs/conn.auth` matters. Finally, explain how BeeOND aggregates the local NVMe drives of compute nodes into a per-Slurm-job parallel scratch file system.
+4. Contrast the metadata and high-availability models of IBM Storage Scale (GPFS) and Lustre, using chapter 9 of *Supercomputers for Linux SysAdmins*. A manager asks why the two sites need different admin skills. For GPFS, cover NSDs, distributed metadata with directory indexing, the token lock manager, quorum and heartbeat that survive a subnet split, online disk rebalancing, per-server and per-client licensing, and the 9,300-node and 16,386-client scale. For Lustre, cover MGS, dedicated MDS and MDTs with DNE, OSS and OSTs, and open-source kernel modules. Then explain how the two structures differ.
+5. Compare how PanFS, WEKA and VAST Data handle metadata scaling and node failures. A bid asks you to rank three appliances on this point. For PanFS, cover Directors plus object storage nodes, RAID-1 for small files and RAID-5 for large files, and client-side RAID checksum offload. For WEKA, cover user-space DPDK and SPDK cores on clients and backends, distributed metadata and data, active-file-first rebuilds, and S3 tiering. For VAST Data, cover DASE stateless CNodes over NVMe-oF to shared-everything DBoxes, plus multipath NFS-RDMA and S3.
+6. Design a storage acceptance benchmark suite with `fio`, `IOR`, `mdtest` and `gdsio`. You are about to buy storage for a 1,024-GPU AI cluster, and you want proof before you sign. Write a 5-stage pre-purchase acceptance test plan. Stage 1 runs `IOR` N-to-1 and N-to-N synchronous checkpoint bursts. Stage 2 compares `mdtest` with a sharded directory against single-directory small-file creation and stat rates. Stage 3 verifies GPUDirect Storage with `gdsio` and `gdscheck -p`. Stage 4 runs a `CernVM-FS` or `.sqsh` import storm with 1,000 ranks. Stage 5 measures degraded-mode throughput during an active storage server kill.
 
 ## Checkpoint
 

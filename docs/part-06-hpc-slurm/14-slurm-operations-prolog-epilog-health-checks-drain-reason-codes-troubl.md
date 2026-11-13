@@ -22,22 +22,25 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose one node in a job that spans hundreds of GPUs starts to fail. A GPU falls off the bus, a link flaps, a mount goes stale, or the node runs out of `/tmp`. In a large GPU cluster something is always broken, so the real question is how you respond. A well-run cluster removes bad nodes from the pool quickly, cleans up after every job, and lets an operator say exactly why a job failed. One sick node wastes the whole job, which is why these habits matter so much at scale. The tools for this work are prolog and epilog scripts, a periodic health check, automatic draining with a reason, and disciplined diagnosis from logs.
+Suppose one node in a job that spans hundreds of GPUs starts to fail. A GPU falls off the bus, a link flaps, a mount goes stale, or the node runs out of `/tmp`. None of these failures announces itself with a clear error at the top of the job log. The job just slows down, hangs or dies in a strange way, and everyone waits to find out why.
+
+In a large GPU cluster something is always broken somewhere, so the real question is how you respond. A well-run cluster removes bad nodes from the pool quickly, cleans up after every job, and lets an operator say exactly why a job failed. One sick node wastes the whole job, which is why these habits matter so much at scale. A job that holds four hundred GPUs for a day has a lot to lose if one of them is quietly wrong.
+
+Think about what the on-call engineer sees when the habits are missing. A page arrives saying a training run failed. Nobody knows whether the fault is in the code, the network or one card in one box. The engineer spends an hour reading logs on every node. When the habits are in place, the bad node has already drained itself, its reason names the check that caught the fault, and the job has been requeued to healthy hardware.
+
+The tools for this work are prolog and epilog scripts, a periodic health check, automatic draining with a reason, and disciplined diagnosis from logs. Each one is small. Together they turn a confusing failure into a short, clear action.
 
 ## Prerequisites and outcomes
 
-You need 6.7 to 6.11 first. When you finish this chapter, you should be able to:
+You need 6.7 to 6.11 first. Those chapters cover the cluster configuration, node and partition layout, GPU scheduling, job submission and multi-node runs. The scripts and node states in this chapter sit on top of that material, so the terms will make more sense if you have read it.
 
-- Explain when prolog and epilog scripts run, what happens when they fail, and what belongs in each.
-- Write and test a health-check program, then wire it to Slurm and to draining.
-- Manage node lifecycle, covering drain, resume, down, reboot and replace, with accurate reason strings.
-- Handle unkillable steps, stuck jobs and misbehaving users.
-- Read daemon logs, and use `sdiag`, `scontrol` and `sacct` to diagnose scheduling and node problems.
-- Apply a troubleshooting playbook, and avoid classic mistakes such as undrained reboots, silent failures and thundering herds.
+This chapter covers when prolog and epilog scripts run, what happens when they fail, and what belongs in each. It shows how to write and test a health-check program, then wire it to Slurm and to draining. It walks through node lifecycle, including drain, resume, down, reboot and replace, and how to write reason strings that another engineer can act on. It also explains how to handle unkillable steps and stuck jobs, how to read daemon logs with `sdiag`, `scontrol` and `sacct`, and how to follow a troubleshooting playbook without skipping steps. The troubleshooting section also names the classic mistakes, such as undrained reboots, silent failures and thundering herds, so you can recognise them early.
 
 ## 1. Prolog and epilog
 
-Slurm can run your own scripts at job boundaries. A prolog runs on a node before the work starts, and an epilog runs after the allocation is released. Before you write either one, you need to know which machine runs it, as which user, and at which moment. The table is a lookup for exactly that.
+Picture a shared GPU node where one job has just finished. Its temporary files are still on the local disk, a few of its processes may still be holding GPU memory, and the next job is already waiting in the queue. Nobody wants that next job to inherit the mess. Slurm handles this with two scripts that it runs at the edges of every job. A prolog runs on a node before the work starts, and an epilog runs after the allocation is released. An allocation is the set of nodes that Slurm reserved for one job.
+
+Before you write either script, you need to know which machine runs it, as which user, and at which moment. Those three answers decide what the script is allowed to touch and what happens when it fails. The table is a lookup for exactly that.
 
 | Script | Where and who | When |
 |---|---|---|
@@ -47,53 +50,59 @@ Slurm can run your own scripts at job boundaries. A prolog runs on a node before
 | `TaskProlog`, `TaskEpilog` | As the user, per task | Before/after each task; `TaskProlog` can print `export VAR=val` lines to set the task environment |
 | `SrunProlog`/`SrunEpilog`, `BcastParameters`, `ResvProlog`/`ResvEpilog` | Various | Per `srun`, reservations |
 
-Notice that the prolog and epilog run on every compute node, while `PrologSlurmctld` and `EpilogSlurmctld` run only once per job, on the controller.
+Notice that the prolog and epilog run on every compute node, while `PrologSlurmctld` and `EpilogSlurmctld` run only once per job, on the controller. The node-side scripts touch the hardware, so they carry most of the risk. The controller-side scripts run in one place, which makes them easier to reason about and easier to log.
 
 Failures are where these scripts cause the most trouble, so learn them well. If the prolog exits with a non-zero status, Slurm sets the node to DRAIN and requeues the job. The job is held too, unless `nohold_on_prolog_fail` is set in `SchedulerParameters`. A failing epilog sets the node to DRAIN.
 
-The controller-side scripts behave differently. A failing `PrologSlurmctld` requeues a batch job so it can run elsewhere, but it cancels an interactive job. A failing `EpilogSlurmctld` is only logged. None of these scripts keep their standard output or error, so write your own log. Each script also has a timeout set by `PrologEpilogTimeout`. A slow prolog delays job start, and a slow epilog delays node release.
+The DRAIN state matters here. A drained node still looks healthy on paper, but Slurm will not give it new work. Someone has to look at the node, fix the cause and resume it by hand. That is the point of the design: a failed prolog is a signal to a human, not a quiet retry on the same bad hardware.
 
-The `PrologFlags` option takes a comma-separated list, and its default is empty. It changes when the prolog runs and what it covers. `Alloc` runs the prolog at allocation, so the job sits in `CONFIGURING` while it runs, and start time goes up. `Contain` creates a job container at allocation for processes Slurm did not launch, such as `pam_slurm_adopt` SSH sessions. It needs `proctrack/cgroup` and implies `Alloc`. `DeferBatch` waits for the prolog on all nodes before the batch script starts, and `NoHold` lets `salloc` avoid blocking. Flags such as `Serial` and `X11` also exist.
+The controller-side scripts behave differently. A failing `PrologSlurmctld` requeues a batch job so it can run elsewhere, but it cancels an interactive job. A failing `EpilogSlurmctld` is only logged. None of these scripts keep their standard output or error, so write your own log. Each script also has a timeout set by `PrologEpilogTimeout`. A slow prolog delays job start, and a slow epilog delays node release. Both delays are easy to miss until a queue starts to back up.
 
-Slurm passes job details to these scripts as environment variables. Examples are `SLURM_JOB_ID`, `SLURM_JOB_USER` and `SLURM_JOB_GPUS` in prolog and epilog. `SLURM_SCRIPT_CONTEXT` tells you which script is running. The prolog and epilog guide lists the rest.
+The `PrologFlags` option takes a comma-separated list, and its default is empty. It changes when the prolog runs and what it covers. `Alloc` runs the prolog at allocation, so the job sits in `CONFIGURING` while it runs, and start time goes up. `Contain` creates a job container at allocation for processes Slurm did not launch, such as `pam_slurm_adopt` SSH sessions. It needs `proctrack/cgroup` and implies `Alloc`. `DeferBatch` waits for the prolog on all nodes before the batch script starts, and `NoHold` lets `salloc` avoid blocking. Flags such as `Serial` and `X11` also exist. Treat the flags as a menu. Pick only the ones your site needs, because each one changes the timing that your users see.
+
+Slurm passes job details to these scripts as environment variables. Examples are `SLURM_JOB_ID`, `SLURM_JOB_USER` and `SLURM_JOB_GPUS` in prolog and epilog. `SLURM_SCRIPT_CONTEXT` tells you which script is running. That matters when one file serves more than one role, because the script can branch on the context. The prolog and epilog guide lists the rest.
 
 ### What to put in them
 
-The prolog should be fast, idempotent and safe, because a failing prolog drains the node. Good work here includes quick sanity checks, such as a visible GPU count and a mounted file system. It also covers per-job temp directories such as `/tmp/slurm-$SLURM_JOB_ID`, clearing leftover state from a previous job, setting GPU modes such as persistence and clocks if your policy calls for them, and logging the job start.
+Picture a team that adds one more check to the prolog every month. A year later, every job waits a long time before its first line of code runs, and nobody remembers which check is the slow one. The prolog grew by accident, and the fix is to decide on purpose what it is for.
 
-Keep long checks out of the prolog. A 30-second DCGM diagnostic in every prolog would slow every job start. Put deep tests in the periodic health check instead.
+The prolog should be fast, idempotent and safe, because a failing prolog drains the node. Idempotent means that running it twice gives the same result as running it once, so a retry does no harm. Good work here includes quick sanity checks, such as a visible GPU count and a mounted file system. It also covers per-job temp directories such as `/tmp/slurm-$SLURM_JOB_ID`, clearing leftover state from a previous job, setting GPU modes such as persistence and clocks if your policy calls for them, and logging the job start. Each of these is a small job with a clear pass or fail result.
 
-The epilog is your cleanup guarantee. It runs on every node when the allocation ends, so it is the right place to catch leaked processes, temp directories and GPU state. Kill leftover processes of the job's user with `pkill -u $SLURM_JOB_USER`, but only if that user has no other job on the node. Check with `squeue` first. Then remove the per-job temp directories, and drop the page cache if policy demands it.
+Keep long checks out of the prolog. A 30-second DCGM diagnostic in every prolog would slow every job start. DCGM here means NVIDIA's Data Center GPU Manager, the tool that runs deep health tests on GPUs. Put deep tests in the periodic health check instead, where they run on a schedule and do not hold up a user's job.
 
-Reset GPU state, such as compute mode, and run `nvidia-smi --gpu-reset` only when no process uses the GPU. Unmount any job-specific mounts and flush logs. Sample GPU Xid errors from `dmesg` since job start, drain the node on hardware errors, and record a per-job GPU usage summary.
+The epilog is your cleanup guarantee. It runs on every node when the allocation ends, so it is the right place to catch leaked processes, temp directories and GPU state. Kill leftover processes of the job's user with `pkill -u $SLURM_JOB_USER`, but only if that user has no other job on the node. Check with `squeue` first. Then remove the per-job temp directories, and drop the page cache if policy demands it. The page cache is the memory Linux uses to keep recently read file data, and dropping it is a blunt tool that only some sites want.
 
-An epilog that fails drains the node, so make it tolerant. Use `|| true` for best-effort steps, and exit non-zero only when you want the node drained.
+Reset GPU state, such as compute mode, and run `nvidia-smi --gpu-reset` only when no process uses the GPU. Unmount any job-specific mounts and flush logs. Sample GPU Xid errors from `dmesg` since job start, drain the node on hardware errors, and record a per-job GPU usage summary. An Xid is the code NVIDIA's driver writes to the kernel log when a GPU reports a fault. You will meet the list of critical codes later in this chapter.
 
-Watch out for shared nodes. An epilog that kills all user processes can harm the same user's other job on that node. Use cgroups instead, because the job's cgroup cleans itself up under `proctrack/cgroup`, and make the epilog check for other jobs first.
+An epilog that fails drains the node, so make it tolerant. Use `|| true` for best-effort steps, and exit non-zero only when you want the node drained. The `|| true` suffix tells the shell to treat a failed command as a success, so one optional cleanup step cannot take a healthy node out of service. Reserve a non-zero exit for the failures that really do need a human.
+
+Watch out for shared nodes. An epilog that kills all user processes can harm the same user's other job on that node. Use cgroups instead, because the job's cgroup cleans itself up under `proctrack/cgroup`, and make the epilog check for other jobs first. A cgroup is the kernel's grouping of processes for resource control, and it lets Slurm track every process a job started, even the ones that tried to hide.
 
 On a shared node, make the epilog check for other jobs before it kills anything.
 
 ## 2. Health checks
 
-A health check is a script that Slurm runs on a schedule, as root, on compute nodes. Slurm runs the script but does not judge its output. The program decides what counts as a failure and what to do about it. `HealthCheckProgram` names the script, and `HealthCheckInterval` sets how often it runs. The default interval is 0, which leaves the check disabled. `HealthCheckNodeState` chooses which node states get checked, and its default is `ANY`. Other values include `ALLOC`, `IDLE`, `MIXED` and `CYCLE`. With `CYCLE`, the runs are spread across the interval instead of hitting every node at once. That avoids a thundering herd against shared storage.
+Picture a GPU that is quietly losing its link to the rest of the node. Nothing has crashed yet, but the next job that uses it will fail in a confusing way, and the user will blame the code. A health check is how the cluster notices this on its own, before a user does.
 
-The man page is blunt on one point: "Any action to be taken must be explicitly performed by the program." If the script finds a bad node, it has to run something like `scontrol update NodeName=foo State=drain Reason=tmp_file_system_full` itself. Many sites use the open-source LBNL NHC (Node Health Check), vendor tools such as DCGM-based or BCM health checks (Part 8), or custom scripts.
+A health check is a script that Slurm runs on a schedule, as root, on compute nodes. Slurm runs the script but does not judge its output. The program decides what counts as a failure and what to do about it. `HealthCheckProgram` names the script, and `HealthCheckInterval` sets how often it runs. The default interval is 0, which leaves the check disabled. `HealthCheckNodeState` chooses which node states get checked, and its default is `ANY`. Other values include `ALLOC`, `IDLE`, `MIXED` and `CYCLE`. With `CYCLE`, the runs are spread across the interval instead of hitting every node at once. That avoids a thundering herd against shared storage, which is what happens when thousands of nodes all check the same mount in the same second.
+
+The man page is blunt on one point: "Any action to be taken must be explicitly performed by the program." If the script finds a bad node, it has to run something like `scontrol update NodeName=foo State=drain Reason=tmp_file_system_full` itself. Slurm will not drain the node just because the script exited with an error. Many sites use the open-source LBNL NHC (Node Health Check), vendor tools such as DCGM-based or BCM health checks (Part 8), or custom scripts. LBNL is Lawrence Berkeley National Laboratory, which publishes NHC. BCM is Bright Cluster Manager, covered in Part 8.
 
 ### Design rules
 
-1. Keep the basic checks cheap and frequent, and save the deep tests for rare runs. Every 1 to 5 minutes, check the GPU count, mounts, free space, time sync, fabric port state, service daemons such as slurmd and munge, memory and swap, and kernel errors. Hourly, or between jobs on idle nodes, run DCGM level 2 diagnostics, an NCCL bandwidth test between neighbours, and disk and memory stress.
-2. Drain the node instead of killing its work. Draining lets running jobs finish, unless the failure is severe. In that case you also run `scancel` or set `State=down`.
-3. Write clear reasons. When you drain a node, the Reason string is the first clue your colleagues will read. Include the check name, the evidence and the time, and keep the string under the allowed length. Operators see these reasons with `sinfo -R`.
-4. Avoid false positives at scale. A check that flaps 1 percent of the time drains many nodes in a 5,000-node cluster. Require two consecutive failures, or classify each failure as transient or persistent.
-5. Never let a check block forever. Wrap external commands with `timeout`. A hung `nvidia-smi` is itself a signal that the GPU is wedged, so you want it reported as a failure, not as a hang.
-6. Keep the check idempotent and silent when things are fine. Print output only on failure, or log to syslog, and keep logs per node.
+1. Keep the basic checks cheap and frequent, and save the deep tests for rare runs. Every 1 to 5 minutes, check the GPU count, mounts, free space, time sync, fabric port state, service daemons such as slurmd and munge, memory and swap, and kernel errors. Hourly, or between jobs on idle nodes, run DCGM level 2 diagnostics, an NCCL bandwidth test between neighbours, and disk and memory stress. The cheap checks catch the common faults fast. The deep tests catch the subtle ones, and they cost too much time to run on every pass.
+2. Drain the node instead of killing its work. Draining lets running jobs finish, unless the failure is severe. In that case you also run `scancel` or set `State=down`. A user who loses a job to a drain has a better day than a user whose job was killed by an overreaction.
+3. Write clear reasons. When you drain a node, the Reason string is the first clue your colleagues will read. Include the check name, the evidence and the time, and keep the string under the allowed length. Operators see these reasons with `sinfo -R`. A reason like "gpu_count: found 7, expected 8" tells the next engineer what to do. A reason like "bad node" does not.
+4. Avoid false positives at scale. A check that flaps 1 percent of the time drains many nodes in a 5,000-node cluster. Require two consecutive failures, or classify each failure as transient or persistent. A transient failure goes away on its own, and a persistent one stays. Only the persistent ones deserve a drain.
+5. Never let a check block forever. Wrap external commands with `timeout`. A hung `nvidia-smi` is itself a signal that the GPU is wedged, so you want it reported as a failure, not as a hang. A check that never returns is worse than a check that fails, because nobody gets the signal.
+6. Keep the check idempotent and silent when things are fine. Print output only on failure, or log to syslog, and keep logs per node. Silence on a healthy node makes the failures easy to see in the log.
 7. Set a return-to-service policy alongside `ReturnToService` (6.8). Nodes drained by an operator or by the health check stay drained until someone resumes them. Only nodes that went DOWN because they stopped responding return on their own, and only with `ReturnToService=1`. A safer pattern is an explicit auto-heal path that reruns the check and resumes the node only when it passes.
 
 ### A tested example
 
-The chapter's script, `code/part06/node_health.sh`, implements six checks. It looks at the GPU count (`nvidia-smi -L`), serious GPU Xid errors in `dmesg`, free space in `/tmp`, required mounts, clock synchronisation (`chronyc`), and InfiniBand port state (`ibstat`). The critical Xid codes it checks are 48, 63, 64, 74, 79, 94 and 95. They cover double-bit ECC errors, row-remap failures, and a GPU that fell off the bus. Treat that list as a starting point, and verify it against NVIDIA's Xid documentation for your driver. On any failure, the script drains the node with a combined reason. With `DRY_RUN=1`, it only prints what it would do.
+A degraded node is easiest to understand when you can watch it fail. The chapter's script, `code/part06/node_health.sh`, implements six checks. It looks at the GPU count (`nvidia-smi -L`), serious GPU Xid errors in `dmesg`, free space in `/tmp`, required mounts, clock synchronisation (`chronyc`), and InfiniBand port state (`ibstat`). InfiniBand is the high-speed network that links the nodes in many GPU clusters. The critical Xid codes it checks are 48, 63, 64, 74, 79, 94 and 95. They cover double-bit ECC errors, row-remap failures, and a GPU that fell off the bus. Treat that list as a starting point, and verify it against NVIDIA's Xid documentation for your driver. On any failure, the script drains the node with a combined reason. With `DRY_RUN=1`, it only prints what it would do.
 
-The output below comes from a degraded node, simulated with stub commands. The stubs report seven GPUs, an Xid 79 in the kernel log, `/scratch` unmounted and one IB port down.
+The output below comes from a degraded node, simulated with stub commands. A stub is a fake program that prints a fixed answer, so you can test the script without real hardware. The stubs report seven GPUs, an Xid 79 in the kernel log, `/scratch` unmounted and one IB port down.
 
 ```text
 FAIL gpu_count: found 7 GPUs, expected 8
@@ -105,11 +114,15 @@ FAIL ib_links: 1 IB ports down
 DRY_RUN would drain gpu07: health: gpu_count: found 7 GPUs, expected 8; gpu_xid: ...
 ```
 
-A healthy node, with eight GPUs, a quiet kernel log, the mounts present and one active IB port, passes every check and exits 0. The `/tmp` check failed in my first healthy run, because the laptop genuinely had only 14 GB free. Lowering `MIN_TMP_MB` for the test made it pass.
+Read the output from top to bottom. Each line names one check and says whether it passed, so you can see at a glance which part of the node failed. The last line shows the single drain command the script would run, with every failure joined into one reason. That combined reason is what an operator reads later with `sinfo -R`.
 
-Fix these limitations before you run the script in production. Wrap each command in `timeout`, and give `nvidia-smi` a deadline. Check `dmesg` only since the last check, using an offset file, so an old fixed error does not drain a healed node. Add DCGM checks, ECC counters from `nvidia-smi --query-gpu`, NVLink status, and PCIe link speed and width, because downtrained links are a classic silent slowdown. Also add temperature and throttle reasons, and move thresholds into configuration instead of code.
+A healthy node, with eight GPUs, a quiet kernel log, the mounts present and one active IB port, passes every check and exits 0. The `/tmp` check failed on the first healthy run, because the laptop used for the test had only 14 GB free. Lowering `MIN_TMP_MB` for that test made the check pass. That is a fair way to test the script, but it is not a fix for production, where the threshold should match what the jobs really need.
+
+Fix these limitations before you run the script in production. Wrap each command in `timeout`, and give `nvidia-smi` a deadline. Check `dmesg` only since the last check, using an offset file, so an old fixed error does not drain a healed node. Add DCGM checks, ECC counters from `nvidia-smi --query-gpu`, NVLink status, and PCIe link speed and width, because downtrained links are a classic silent slowdown. Also add temperature and throttle reasons, and move thresholds into configuration instead of code. A threshold in configuration can be changed by an operator in one place, without editing and re-testing the script.
 
 ## 3. Node lifecycle
+
+Picture a Friday afternoon. One GPU shows a rising count of memory errors, and the job on its neighbours is halfway through a long run. You need to take that GPU out of service without killing the work on the other nodes. Node lifecycle is the set of states that tell you what Slurm will do next, and the commands that move a node between them.
 
 Nodes move between states as jobs start and finish, and an operator drives many of the transitions. The diagram shows the main ones, so read it before you run any state-changing command.
 
@@ -127,7 +140,7 @@ stateDiagram-v2
   DOWN --> IDLE: resume or ReturnToService on valid registration
 ```
 
-These are the commands you will use most often.
+These are the commands you will reach for most often.
 
 ```bash
 sinfo -R -o "%20E %9u %19H %N"            # why nodes are down/drained: reason, who, when, which
@@ -139,27 +152,33 @@ scontrol update NodeName=gpu07 State=down Reason="dead PSU"                # job
 scontrol show node gpu07 | grep -E "State|Reason|Gres|CPULoad|FreeMem"
 ```
 
-The `scontrol reboot` command is the clean way to patch. It drains the nodes, waits for their jobs to finish, reboots them through `RebootProgram`, and resumes them. The `ASAP` option stops new jobs from starting right away. Always include who, why and the ticket in the reason, because auditors and colleagues rely on it.
+The first two lines are read-only. They list the nodes that are drained or down, along with the reason and the time. Run them first, every time, so you know what the cluster already looks like before you change anything. The third line drains two nodes and attaches a ticket number to the reason. The fourth returns a node to service. The fifth is the clean way to patch a group of nodes, and the sixth marks a node as down because its hardware is dead.
 
-Drain and down mean different things. DRAIN stops new work and lets current jobs finish. DOWN means the node is unusable, so its running jobs are requeued if requeue is allowed, or killed. Use down only when the node is truly dead. Draining a node that still has healthy jobs is kinder to those jobs.
+The `scontrol reboot` command is the clean way to patch. It drains the nodes, waits for their jobs to finish, reboots them through `RebootProgram`, and resumes them. The `ASAP` option stops new jobs from starting right away. Always include who, why and the ticket in the reason, because auditors and colleagues rely on it. A reason that says only "maintenance" is hard to act on six weeks later.
 
-A failed node follows a replacement flow. Drain it with a ticket reference, and collect evidence such as logs, a DCGM report and `nvidia-bug-report.sh`. Open a vendor case, then swap the hardware. Run burn-in and acceptance tests (6.28) before you resume it. Keep a spare pool, and keep a record of repeat offenders, measured as mean time between failures per node, so marginal hardware shows up early.
+Drain and down mean different things. DRAIN stops new work and lets current jobs finish. DOWN means the node is unusable, so its running jobs are requeued if requeue is allowed, or killed. Use down only when the node is truly dead. Draining a node that still has healthy jobs is kinder to those jobs. A simple way to decide is to ask whether the running work can safely finish. If it can, drain. If the node has already crashed, down is the honest state.
+
+A failed node follows a replacement flow. Drain it with a ticket reference, and collect evidence such as logs, a DCGM report and `nvidia-bug-report.sh`. Evidence matters because the vendor will ask for it, and because the logs disappear once the node is rebooted or swapped. Open a vendor case, then swap the hardware. Run burn-in and acceptance tests (6.28) before you resume it. Burn-in means running the hardware hard for a while to make the early failures show up. Keep a spare pool, and keep a record of repeat offenders, measured as mean time between failures per node, so marginal hardware shows up early. A node that fails every few weeks is a better candidate for replacement than one that failed once.
 
 Resume a node only after it passes burn-in and acceptance tests, not as soon as the repair is done.
 
 ## 4. Unkillable steps and stuck jobs
 
-Sometimes a job step's processes ignore SIGKILL, the signal that forces a process to exit. You will see them stuck in the `D` state, which means they are blocked in uninterruptible I/O. The usual causes are a hung network file system or a GPU in a bad state. Slurm waits `UnkillableStepTimeout` before it acts. That defaults to 60 seconds or five times `MessageTimeout`, whichever is larger. Then it runs `UnkillableStepProgram` if you set one, and it drains the node "to prevent future jobs from being scheduled on the node."
+Imagine a user cancels a job, and `squeue` keeps showing it in a state that never ends. On the node, `ps` shows a process that ignores even the strongest signal. This is the unkillable step, and it is one of the most frustrating problems on a shared cluster, because the cancel did nothing and the node is now holding resources that other jobs need.
 
-That program runs as root on the node. It can collect stack traces from `/proc/PID/stack`, `lsof` output, `nvidia-smi` output and hung mount information, and it can send an alert. Common causes include an NFS or Lustre server problem, a dead NIC with outstanding RDMA operations, or a GPU Xid error. Fix the underlying cause, and expect the node to need a reboot.
+Sometimes a job step's processes ignore SIGKILL, the signal that forces a process to exit. You will see them stuck in the `D` state, which means they are blocked in uninterruptible I/O. Uninterruptible I/O means the process is waiting on a disk or network operation, and the kernel will not let a signal interrupt that wait. The usual causes are a hung network file system or a GPU in a bad state. Slurm waits `UnkillableStepTimeout` before it acts. That defaults to 60 seconds or five times `MessageTimeout`, whichever is larger. Then it runs `UnkillableStepProgram` if you set one, and it drains the node "to prevent future jobs from being scheduled on the node."
 
-Stuck jobs show up in other states too. A job that sits in `COMPLETING` for a long time has an epilog that is running or hung, an unkillable step, or an unreachable node. Check `scontrol show job` and `sinfo` for the nodes involved. A job that stays `PENDING` forever is covered in 6.9, section 8. A job that is `RUNNING` but makes no progress usually means a hang on the user's side. Check GPU utilisation with `srun --overlap --jobid=ID nvidia-smi`, read the NCCL logs, or dump the Python stacks with `py-spy dump`.
+That program runs as root on the node. It can collect stack traces from `/proc/PID/stack`, `lsof` output, `nvidia-smi` output and hung mount information, and it can send an alert. A stack trace shows the kernel code path that a stuck process is sitting in, which is the best clue to the cause. Common causes include an NFS or Lustre server problem, a dead NIC with outstanding RDMA operations, or a GPU Xid error. Fix the underlying cause, and expect the node to need a reboot. Rebooting clears the stuck kernel state, and draining first keeps other jobs off the node while you do it.
+
+Stuck jobs show up in other states too. A job that sits in `COMPLETING` for a long time has an epilog that is running or hung, an unkillable step, or an unreachable node. Check `scontrol show job` and `sinfo` for the nodes involved. A job that stays `PENDING` forever is covered in 6.9, section 8. A job that is `RUNNING` but makes no progress usually means a hang on the user's side. Check GPU utilisation with `srun --overlap --jobid=ID nvidia-smi`, read the NCCL logs, or dump the Python stacks with `py-spy dump`. The first question is always which state the job is in, because each state points to a different owner, either the cluster or the user.
 
 Fix the underlying cause, and plan on rebooting the node.
 
 ## 5. Logs and diagnostics
 
-When a job or a node fails, the answer is usually in a log. Slurm writes logs on the controller, on every compute node, and in the accounting database. The table shows where each one lives and what it tells you.
+Picture a user who writes in the morning to say their job died overnight and asks why. Your first move is to open the right log, not to guess. The answer is almost always in one of a handful of places, and knowing which place to check saves an hour of searching.
+
+When a job or a node fails, the answer is usually in a log. Slurm writes logs on the controller, on every compute node, and in the accounting database. The accounting database is where Slurm keeps the permanent record of every job, including who ran it and how it ended. The table shows where each one lives and what it tells you.
 
 | Source | Use |
 |---|---|
@@ -174,30 +193,30 @@ When a job or a node fails, the answer is usually in a log. Slurm writes logs on
 | `sinfo -R`, `sinfo -N -l` | Node reasons and states |
 | `strigger` | Event hooks: run a program when a node goes down/up, a job finishes, etc. |
 
-Each source answers a different question, so match the log to the question you have. Note that `sacct` reports the exit code and the signal together, which is why `ExitCode=0:9` means the job was killed by signal 9 rather than failing with exit code 0.
+Each source answers a different question, so match the log to the question you have. A job that never started is usually explained by the controller log. A job that started and then failed on one node is usually explained by that node's `slurmd.log` and by `dmesg`. A job whose final state looks wrong is usually explained by `sacct`. Note that `sacct` reports the exit code and the signal together, which is why `ExitCode=0:9` means the job was killed by signal 9 rather than failing with exit code 0.
 
-The `sdiag` command is the first place to look when the controller itself feels slow. The book *Supercomputers for Linux SysAdmins* covers this in chapter 15, "Troubleshooting." Start with `Agent queue size` and `Server thread count`. High values mean `slurmctld` cannot keep up with incoming requests or with the messages it sends out to nodes. Next, check `Remote Procedure Call statistics by message type` to see which request kinds take the most time. A sample line reads `REQUEST_PARTITION_INFO (2009) count:325127 ave_time:183 total_time:5978485`.
+The `sdiag` command is the first place to look when the controller itself feels slow. The book *Supercomputers for Linux SysAdmins* covers this in chapter 15, "Troubleshooting." Start with `Agent queue size` and `Server thread count`. High values mean `slurmctld` cannot keep up with incoming requests or with the messages it sends out to nodes. Next, check `Remote Procedure Call statistics by message type` to see which request kinds take the most time. A remote procedure call, or RPC, is one request that a Slurm command or daemon sends to the controller. A sample line reads `REQUEST_PARTITION_INFO (2009) count:325127 ave_time:183 total_time:5978485`.
 
-The `Remote Procedure Call statistics by user` section shows who is sending those requests. In the sample, `root (0) count:728986 ave_time:10228 total_time:456422703` appears next to `user1 (25002) count:29784 ave_time:13439 total_time:269036`. A single user running `squeue` in a tight loop is the classic cause of a sluggish controller under a request storm. Check the backfill cycle mean and maximum times and depth as well, as covered in 6.9. Then use `max_rpc_cnt`, and the `defer` options `salloc_wait_nodes` and `sbatch_wait_nodes`, in `SchedulerParameters` to protect the controller. Teach your users not to run `watch -n1 squeue`. Offer `squeue` caching or a read-only web dashboard instead.
+The `Remote Procedure Call statistics by user` section shows who is sending those requests. In the sample, `root (0) count:728986 ave_time:10228 total_time:456422703` appears next to `user1 (25002) count:29784 ave_time:13439 total_time:269036`. A single user running `squeue` in a tight loop is the classic cause of a sluggish controller under a request storm. Check the backfill cycle mean and maximum times and depth as well, as covered in 6.9. Then use `max_rpc_cnt`, and the `defer` options `salloc_wait_nodes` and `sbatch_wait_nodes`, in `SchedulerParameters` to protect the controller. Teach your users not to run `watch -n1 squeue`. Offer `squeue` caching or a read-only web dashboard instead. A dashboard gives people the status they want without asking the controller a thousand times a minute.
 
-When the default logs are too terse for a live incident, you can raise the debug level and toggle `DebugFlags` on the fly, without restarting any daemon. Use `scontrol setdebug LEVEL`, such as `debug2`, and add `nodes=<nodelist>` to target only specific `slurmd` nodes. Use `scontrol setdebugflags {+|-}FLAG [{+|-}FLAG...]` to switch individual flags on or off. The accounting database has its own checks. `sacctmgr show stats` gives accounting database statistics. `sacctmgr show problem` lists potential association or configuration problems. `sacctmgr show runawayjobs` finds orphaned jobs that the database still lists as running after a controller crash, and it offers to fix them.
+When the default logs are too terse for a live incident, you can raise the debug level and toggle `DebugFlags` on the fly, without restarting any daemon. Use `scontrol setdebug LEVEL`, such as `debug2`, and add `nodes=<nodelist>` to target only specific `slurmd` nodes. Use `scontrol setdebugflags {+|-}FLAG [{+|-}FLAG...]` to switch individual flags on or off. Turn the debug level back down as soon as the incident is over, because verbose logs fill disks quickly. The accounting database has its own checks. `sacctmgr show stats` gives accounting database statistics. `sacctmgr show problem` lists potential association or configuration problems. `sacctmgr show runawayjobs` finds orphaned jobs that the database still lists as running after a controller crash, and it offers to fix them.
 
-Chapter 15 of *Supercomputers for Linux SysAdmins* also includes sample `sacct` and `sreport` outputs from a `superhpc` cluster.
+Chapter 15 of *Supercomputers for Linux SysAdmins* also includes sample `sacct` and `sreport` outputs from a `superhpc` cluster. Read the samples as examples of what the output looks like, and then run the same kind of query against your own cluster.
 
-- `sacct -S 2024-01-01 -E 2024-01-02 -o JobID,Partition,User%16,CPUTimeRAW,State%20 -X`: shows `522783 test user_12345 7168 COMPLETED`, `523455 compute user_23456 0 CANCELLED by 0` (cancelled by root), `526258 compute user_55436 0 CANCELLED by 10107` (cancelled by UID `10107`), `527646 compute user_11231 1624 FAILED`, `528244 compute user_43546 46125352 NODE_FAIL`, `528479 compute user_12345 10526502 COMPLETED`, and `528480 compute user_12345 15060654 COMPLETED`.
-- `sreport job SizesByAccount grouping=0-16,17-1024 start=2024-01-01 end=2024-01-07`: reports `518400 secs` in minutes for account `userst500` (`0-4294967295`: `6678604725`, `0-16 cpus`: `1000612`, `>= 17 cpus`: `6677604113`, `100.00%` of cluster).
-- `sreport cluster utilization Start=2024-11-01 End=2024-12-01 -t percent`: reports `superhpc` `Allocated 85.08%`, `Down 8.59%`, `PLND Down 0.00%`, `Idle 2.10%`, `Planned 4.23%`, and `Reported 100.00%`.
-- `sreport user topusage topcount=5 start=2024-01-10 end=2024-02-10`: reports the top users in TRES Minutes, with `user_12` at `43466331`, `user_25` at `35227321`, `user_11` at `35104234`, `user_32` at `30548681`, and `user_47` at `27162101`, all under account `usert500`.
+- *Which jobs ended badly on a given day?* Run `sacct -S 2024-01-01 -E 2024-01-02 -o JobID,Partition,User%16,CPUTimeRAW,State%20 -X`. It shows `522783 test user_12345 7168 COMPLETED`, `523455 compute user_23456 0 CANCELLED by 0` (cancelled by root), `526258 compute user_55436 0 CANCELLED by 10107` (cancelled by UID `10107`), `527646 compute user_11231 1624 FAILED`, `528244 compute user_43546 46125352 NODE_FAIL`, `528479 compute user_12345 10526502 COMPLETED`, and `528480 compute user_12345 15060654 COMPLETED`. The `NODE_FAIL` line is the one to chase, because the node failed under the job and the user did nothing wrong.
+- *Which accounts used the most CPUs in a week?* Run `sreport job SizesByAccount grouping=0-16,17-1024 start=2024-01-01 end=2024-01-07`. It reports `518400 secs` in minutes for account `userst500` (`0-4294967295`: `6678604725`, `0-16 cpus`: `1000612`, `>= 17 cpus`: `6677604113`, `100.00%` of cluster). The grouping splits small jobs from large ones, so you can see where the time went.
+- *How busy was the whole cluster last month?* Run `sreport cluster utilization Start=2024-11-01 End=2024-12-01 -t percent`. It reports `superhpc` `Allocated 85.08%`, `Down 8.59%`, `PLND Down 0.00%`, `Idle 2.10%`, `Planned 4.23%`, and `Reported 100.00%`. A high Down figure points to hardware trouble, while a high Idle figure points to a scheduling or demand problem.
+- *Who used the most time this month?* Run `sreport user topusage topcount=5 start=2024-01-10 end=2024-02-10`. It reports the top users in TRES Minutes, with `user_12` at `43466331`, `user_25` at `35227321`, `user_11` at `35104234`, `user_32` at `30548681`, and `user_47` at `27162101`, all under account `usert500`. TRES is Slurm's name for a trackable resource, such as CPU time or GPU time.
 
-Size the controller with its state in mind. Keep `StateSaveLocation` on fast local storage or on shared high-availability storage (6.15), with enough inodes. Set a large `MaxJobCount`. Run slurmdbd on a capable database host with regular purging and archiving, using options such as `PurgeJobAfter` in `slurmdbd.conf`.
+Size the controller with its state in mind. Keep `StateSaveLocation` on fast local storage or on shared high-availability storage (6.15), with enough inodes. Inodes are the file records the file system uses, and running out of them stops a disk from accepting new files even when space remains. Set a large `MaxJobCount`. Run slurmdbd on a capable database host with regular purging and archiving, using options such as `PurgeJobAfter` in `slurmdbd.conf`.
 
-Time and identity cause many hidden failures. Munge failures caused by clock skew show up as `Invalid credential`. Missing users on a node produce `Invalid user id`. DNS and `/etc/hosts` inconsistencies cause `getaddrinfo` errors. Firewalls that block ports 6817 to 6819, or the ephemeral `srun` ports, are another hidden cause.
+Time and identity cause many hidden failures. Munge failures caused by clock skew show up as `Invalid credential`. Munge is the authentication service that Slurm uses between its daemons, and it rejects messages whose timestamps are too far apart. Missing users on a node produce `Invalid user id`. DNS and `/etc/hosts` inconsistencies cause `getaddrinfo` errors. Firewalls that block ports 6817 to 6819, or the ephemeral `srun` ports, are another hidden cause. Ephemeral ports are the temporary port numbers that `srun` opens for each job.
 
 When a failure looks strange, check the clock, the user database and DNS before you blame Slurm.
 
 ## 6. Troubleshooting playbook
 
-When something breaks, start by finding the symptom in this table. You will see what to check and the usual fix for each row.
+Picture a channel full of messages that say the cluster feels slow. Some jobs are pending, some nodes are down, and nobody agrees on the cause. The fastest way out is a method you follow every time, starting from the symptom. When something breaks, start by finding the symptom in this table. You will see what to check and the usual fix for each row.
 
 | Symptom | Diagnose | Typical resolution |
 |---|---|---|
@@ -216,11 +235,13 @@ When something breaks, start by finding the symptom in this table. You will see 
 | MPI job fails to launch | `srun --mpi=list`, PMIx versions, firewall | 6.4, 6.12 |
 | Scheduler stopped scheduling | `slurmctld` logs, `sdiag`, deadlock after config change, full disk in `StateSaveLocation` | Restart per procedure; fix disk |
 
-Follow the same method every time, so you do not skip a step. State the symptom exactly, with the job ID, the node and the time. Read `scontrol show` for the object involved, and find the first error in the relevant log near that time. Check the layer below, such as node health, network, storage or time. Change one thing at a time. Finally, record the cause and the fix in the ticket, and update the health check so the next occurrence is caught automatically.
+Read the table as a set of starting points. Each row names a symptom, the first things to look at, and the usual fix. Use the row to choose where to look, and then confirm the cause before you act. A node that reads "Not responding" might be a dead network, a stopped daemon or a clock that has drifted, and the table tells you which checks separate those cases.
+
+Follow the same method every time, so you do not skip a step. State the symptom exactly, with the job ID, the node and the time. Read `scontrol show` for the object involved, and find the first error in the relevant log near that time. Check the layer below, such as node health, network, storage or time. Change one thing at a time. Finally, record the cause and the fix in the ticket, and update the health check so the next occurrence is caught automatically. Changing one thing at a time matters because, if the cluster recovers after two changes, you will not know which one helped.
 
 ### 6.1 GPU hardware and cross-layer failure catalog (Volume 20)
 
-On GPU clusters, health checks and epilog scripts have to turn a job-level symptom into a specific hardware or firmware fault. The catalog below comes from chapters 1 to 12 and labs 1 to 4 in `nvidia-zero-to-hero/volume-20`. Read each row from left to right. You will see the evidence that points to the fault, and the action tells Slurm what to do with the node.
+A job that slows down or hangs can have a hardware fault underneath it, and the job log will rarely say so. On GPU clusters, health checks and epilog scripts have to turn a job-level symptom into a specific hardware or firmware fault. The catalog below comes from chapters 1 to 12 and labs 1 to 4 in `nvidia-zero-to-hero/volume-20`. Read each row from left to right. You will see the evidence that points to the fault, and the action tells Slurm what to do with the node.
 
 | Failure Domain | Signature / Evidence | Automated Slurm Action |
 |---|---|---|
@@ -237,27 +258,31 @@ On GPU clusters, health checks and epilog scripts have to turn a job-level sympt
 | **11. Multi-GPU Imbalance & Stragglers** | One rank consistently lags step time by $20\text{–}40\%$ | Check CPU NUMA pinning (`--gpu-bind=closest`), PCIe/NVLink downgrade, and thermal throttling on the slow rank's node |
 | **12. Cross-Layer Diagnosis (When Metrics Lie)** | `nvidia-smi` reports `100%` `utilization.gpu` while training step progress is zero | `NCCL` spin-wait kernel is pegging SM utilization while waiting on a dead remote rank or dropped IB packet; inspect power draw (low watts at 100% util = spin wait) and `py-spy` / `torch.profiler` |
 
-Match what you see to a row first. For most of these rows, you should drain the node before you touch the hardware.
+Match what you see to a row first. For most of these rows, you should drain the node before you touch the hardware. Draining first keeps the next job off a suspect GPU while you read the evidence. Then the hardware work can happen calmly, without a job waiting on the same card.
 
 ## 7. Operational practices
 
-Keep config changes in Git and automation, and test them in a staging cluster first. Prefer `scontrol reconfigure` to a restart when you can. Never restart `slurmctld` during peak load unless you have to.
+Picture a maintenance window booked for Saturday. A batch of nodes needs a new kernel, the firmware team wants a look at a few GPUs, and users have jobs due on Monday. Good operations means the work happens on schedule, with the jobs protected and the users told in advance. The habits below make that possible.
 
-Maintenance windows need reservations, so that no job starts that cannot finish before the work begins. A command such as `scontrol create reservation StartTime=... Duration=... Nodes=... Flags=MAINT,IGNORE_JOBS` sets one up. For rolling patches, use `scontrol reboot`. Slurm also has strict rules for upgrade order and version skew. Upgrade slurmdbd first, then slurmctld, then slurmd. The versions usually stay at most two major releases apart. See 6.15 for details.
+Keep config changes in Git and automation, and test them in a staging cluster first. Prefer `scontrol reconfigure` to a restart when you can. Never restart `slurmctld` during peak load unless you have to. A restart drops the controller's view of the cluster for a short time, and a busy queue makes that gap more painful.
 
-Tell users what is happening. A status page, a message of the day with maintenance notices, clear reason strings and documentation for common errors all help. For each alert, write a runbook with commands and an escalation path. Practise failure drills, such as killing slurmd, filling a disk or unplugging a node.
+Maintenance windows need reservations, so that no job starts that cannot finish before the work begins. A command such as `scontrol create reservation StartTime=... Duration=... Nodes=... Flags=MAINT,IGNORE_JOBS` sets one up. For rolling patches, use `scontrol reboot`. Slurm also has strict rules for upgrade order and version skew. Version skew means the controller and the nodes run different Slurm releases. Upgrade slurmdbd first, then slurmctld, then slurmd. The versions usually stay at most two major releases apart. See 6.15 for details.
 
-Track node availability, the percentage of nodes drained, the mean time to drain and to repair, and the job failure rate by cause, such as `NODE_FAIL`, OOM and timeout. Also track prolog and epilog durations, queue wait times, controller RPC rates and utilisation per partition, as covered in Part 17.
+Tell users what is happening. A status page, a message of the day with maintenance notices, clear reason strings and documentation for common errors all help. A user who knows the window is on Saturday plans around it. A user who finds out from a failed job does not. For each alert, write a runbook with commands and an escalation path. A runbook is a short written procedure that the on-call person can follow at night without guessing. Practise failure drills, such as killing slurmd, filling a disk or unplugging a node, so the runbook has been tested before a real incident uses it.
 
-You also need to protect the cluster from the inside. Restrict who can run `scontrol update`, and log admin actions. Keep the prolog, epilog and health scripts root-owned and not world-writable. Use `pam_slurm_adopt` to stop SSH access to nodes that have no job on them.
+Track node availability, the percentage of nodes drained, the mean time to drain and to repair, and the job failure rate by cause, such as `NODE_FAIL`, OOM and timeout. Also track prolog and epilog durations, queue wait times, controller RPC rates and utilisation per partition, as covered in Part 17. These numbers tell you whether the cluster is getting healthier or quietly getting worse.
+
+You also need to protect the cluster from the inside. Restrict who can run `scontrol update`, and log admin actions. Keep the prolog, epilog and health scripts root-owned and not world-writable. Use `pam_slurm_adopt` to stop SSH access to nodes that have no job on them. A script that any user can edit is a script that any user can use to run code as root on every node.
 
 Restrict `scontrol update` to the people who need it, because it can change the state of any node.
 
 ### Maintenance and user reservations (`scontrol` reservation lifecycle and flags)
 
-A **reservation** sets aside a specific node count (`NodeCnt=...`) or an explicit node list (`Nodes=...`) for chosen users or accounts (`Users=...`, `Accounts=...`). It does this for a future time window (`StartTime=...`, `EndTime=...` or `Duration=...`). Other users' jobs cannot take those nodes during the window. They also cannot start before the window if their wall time would run into it. That makes reservations the standard tool for two jobs. One is a guaranteed run for particular users. The other is a cluster maintenance window, where admins run verification jobs on the reserved nodes while regular jobs wait in the queue.
+Picture a research team that needs 100 nodes for a deadline on a fixed day. The same nodes also need a quiet window so the cluster team can check firmware. A reservation is the tool that gives each side what it needs, without the two fighting over the same hardware.
 
-*Supercomputers for Linux SysAdmins*, chapter 15, walks through the reservation lifecycle. Creating, using, inspecting, modifying and deleting a reservation all use `scontrol`. The commands below are untested here.
+A **reservation** sets aside a specific node count (`NodeCnt=...`) or an explicit node list (`Nodes=...`) for chosen users or accounts (`Users=...`, `Accounts=...`). It does this for a future time window (`StartTime=...`, `EndTime=...` or `Duration=...`). Other users' jobs cannot take those nodes during the window. They also cannot start before the window if their wall time would run into it. Wall time is the clock time a job is allowed to run, as opposed to the CPU time it uses. That makes reservations the standard tool for two jobs. One is a guaranteed run for particular users. The other is a cluster maintenance window, where admins run verification jobs on the reserved nodes while regular jobs wait in the queue.
+
+*Supercomputers for Linux SysAdmins*, chapter 15, walks through the reservation lifecycle. Creating, using, inspecting, modifying and deleting a reservation all use `scontrol`. Read the five steps as one life cycle, from creation to deletion. The commands below were not run on a live cluster.
 
 ```bash
 # (untested here) — 1. Create a 5-hour reservation of 100 nodes for user1 and user2
@@ -280,6 +305,8 @@ scontrol update reservationname=important \
 scontrol delete reservationname=important
 ```
 
+The first command creates the reservation, and the second sends a job into it. The third command lets you check that the reservation exists and see its nodes. The fourth changes the reservation while it is live, which is useful when a maintenance window runs longer than planned. The fifth removes it once the work is done, so the nodes return to the normal pool.
+
 The flags change how a reservation behaves when a node fails or when a job runs past the end of the window. The table defines each one.
 
 | Reservation flag | Meaning |
@@ -291,9 +318,13 @@ The flags change how a reservation behaves when a node fails or when a job runs 
 | `STATIC_ALLOC` | When a reservation is created by node count (`NodeCnt`), Slurm normally replaces any reserved node that goes `DOWN` with a healthy spare node; `STATIC_ALLOC` disables automatic node replacement |
 | `MAINT` | Maintenance mode shorthand: combines `OVERLAP` and `STATIC_ALLOC` together (and marks nodes with the `$` maintenance state indicator in `sinfo`) |
 
+Two of these flags decide most maintenance outcomes. `IGNORE_JOBS` lets you book the window even when work is still running on those nodes. `STATIC_ALLOC` stops Slurm from swapping in a spare when a reserved node fails, which matters when the work depends on that exact set of hardware.
+
 `MAINT` is the flag to reach for during maintenance, because it bundles `OVERLAP` and `STATIC_ALLOC` for you.
 
 ## 8. Lab (self-checking stub test run; live cluster parts untested)
+
+Before you touch a real node, you want to see the health check fail on purpose. This lab does that with fake commands. You will see a healthy node pass and a degraded node fail, and you can read the reason string the script produces.
 
 Start with the self-checking Python lab. It runs `code/part06/node_health.sh` against temporary mock binaries (`nvidia-smi`, `dmesg`, `df`, `mountpoint`, `chronyc`, `ibstat`) in `DRY_RUN=1` mode. It tests two nodes. A healthy 8-GPU node should exit 0. A degraded node, with 7 GPUs, an Xid 79, 14462 MB free in `/tmp`, `/scratch` unmounted and one IB port down, should exit 1 with a combined `DRY_RUN would drain gpu07:` reason. The lab also checks the `sdiag` RPC storm counters, the `sreport` utilization percentages from *Supercomputers for Linux SysAdmins*, chapter 15, and the critical GPU Xid set (`48, 63, 64, 74, 79, 94, 95`).
 
@@ -301,7 +332,9 @@ Start with the self-checking Python lab. It runs `code/part06/node_health.sh` ag
 python3 code/part06/node_health_lab.py
 ```
 
-Once the lab passes, move to a test cluster and work through these steps.
+Run the lab from the repository root, so the relative path resolves. A pass on the stub run means the script logic is sound. It does not prove that the real `nvidia-smi` or `scontrol` behaves the same way on your hardware.
+
+Once the lab passes, move to a test cluster and work through these steps. Each step builds on the one before it, and each one adds a little more real Slurm behaviour.
 
 1. Run `node_health.sh` with `DRY_RUN=1` against stub commands, as in the status box above. Change one stub at a time to produce each failure, and watch the reason string change.
 2. Set `HealthCheckProgram`, `HealthCheckInterval=300` and `HealthCheckNodeState=ANY,CYCLE`. Break a mount on one node, and confirm that the node drains with your reason.
@@ -314,7 +347,7 @@ Once the lab passes, move to a test cluster and work through these steps.
 
 ## 9. Interview angles
 
-Interviewers often ask about these topics, so be ready to answer each one out loud.
+A hiring panel often asks you to walk through a bad week on a large cluster, and the questions below come from that kind of story. Answer each one from the situation first, then give the mechanism. A good answer shows that you know what Slurm will do and what you would do about it.
 
 - When do the prolog and epilog run, and what happens if they fail?
 - Design a health-check strategy for a 2,000-GPU cluster. What do you check, how often, and what do you do on failure?
@@ -328,11 +361,11 @@ Interviewers often ask about these topics, so be ready to answer each one out lo
 
 ## Exercises
 
-1. Automate node health gating with stub binaries. Run `python3 code/part06/node_health_lab.py`, then read `code/part06/node_health.sh` and `node_health_lab.py` so you can see how `run_node_health_with_stubs(healthy=False)` injects mock `nvidia-smi` (`7` GPUs vs `EXPECT_GPUS=8`), `dmesg` (`Xid 79`), `df` (`14462 MB` vs `MIN_TMP_MB=20480`), `mountpoint` (`/scratch` unmounted) and `ibstat` (`State: Down`) binaries. Confirm that `node_health.sh` builds a single truncated `Reason` string (`cut -c1-200`) and exits non-zero.
-2. Decide where you would place each task, in `Prolog`, `Epilog`, or `HealthCheckProgram` (`ANY,CYCLE`), and explain why: (a) creating `/tmp/slurm-$SLURM_JOB_ID`, (b) checking `dmesg` for new `Xid` errors after a job finishes and removing `/tmp/slurm-$SLURM_JOB_ID`, (c) running a 2-minute DCGM level-2 diagnostic, and (d) verifying `/scratch` is mounted every 5 minutes across idle and allocated nodes.
-3. Decode the `Xid` hardware errors and the PCIe and NVLink degradation (Volume 20). Given kernel logs and `nvidia-smi` outputs showing `Xid 48`, `Xid 63`, `Xid 74`, `Xid 79`, `HW Power Brake Slowdown: Active`, and `LnkSta: Speed 16GT/s (downgraded), Width x8 (downgraded)`, map each signature to its root hardware subsystem: HBM ECC, row remapper, NVLink, PCIe bus drop, PSU or power brake, and PCIe lane downtraining. Then state the remediation required before you run `scontrol update NodeName=... State=resume`.
-4. Diagnose a job where the metrics lie. A 64-GPU training job shows `100%` `utilization.gpu` in `nvidia-smi` on all 64 GPUs, yet the training log has not printed a step for 2 hours. Explain why `nvidia-smi` reports `100%` utilization during an `NCCL` collective hang. Then name the secondary `nvidia-smi` metric, power draw in watts, that exposes a spin-waiting GPU straight away, and explain how `UnkillableStepTimeout` handles processes wedged in kernel `D` state.
-5. Analyze `sdiag` RPC storms and `sacctmgr` database health, using *Supercomputers for Linux SysAdmins*, chapter 15. Given `sdiag` output showing `REQUEST_PARTITION_INFO (2009) count:325127 ave_time:183 total_time:5978485` and `user1 (25002) count:29784 ave_time:13439 total_time:269036`, explain how you would identify a user script hammering `slurmctld`. Then name the `SchedulerParameters` flags (`max_rpc_cnt`, `defer`, `batch_sched_delay`) that protect the controller, and say what `sacctmgr show problem` and `sacctmgr show runawayjobs` fix.
+1. Automate node health gating with stub binaries. Run `python3 code/part06/node_health_lab.py` first. Then read `code/part06/node_health.sh` and `node_health_lab.py`. Look at how `run_node_health_with_stubs(healthy=False)` injects a mock `nvidia-smi` that reports `7` GPUs against `EXPECT_GPUS=8`. Find the mock `dmesg` that shows `Xid 79`. Find the mock `df` that reports `14462 MB` against `MIN_TMP_MB=20480`. Find the mock `mountpoint` that reports `/scratch` as unmounted. Finally, find the mock `ibstat` that shows `State: Down`. Does `node_health.sh` build a single truncated `Reason` string (`cut -c1-200`) and exit non-zero?
+2. Decide where each task belongs, in `Prolog`, `Epilog`, or `HealthCheckProgram` (`ANY,CYCLE`), and explain why. The first task is creating `/tmp/slurm-$SLURM_JOB_ID`. Where does it go? The second task is checking `dmesg` for new `Xid` errors after a job finishes, then removing `/tmp/slurm-$SLURM_JOB_ID`. Where does it go? The third task is running a 2-minute DCGM level-2 diagnostic. Where does it go? The fourth task is verifying that `/scratch` is mounted every 5 minutes across idle and allocated nodes. Where does it go?
+3. Decode the `Xid` hardware errors and the PCIe and NVLink degradation (Volume 20). Suppose the kernel logs and `nvidia-smi` outputs show `Xid 48`, `Xid 63`, `Xid 74` and `Xid 79`. Also suppose they show `HW Power Brake Slowdown: Active` and `LnkSta: Speed 16GT/s (downgraded), Width x8 (downgraded)`. Map each signature to its root hardware subsystem: HBM ECC, row remapper, NVLink, PCIe bus drop, PSU or power brake, and PCIe lane downtraining. Then state the remediation required before you run `scontrol update NodeName=... State=resume`.
+4. Diagnose a job where the metrics lie. A 64-GPU training job shows `100%` `utilization.gpu` in `nvidia-smi` on all 64 GPUs. The training log has not printed a step for 2 hours. Why does `nvidia-smi` report `100%` utilization during an `NCCL` collective hang? Which secondary `nvidia-smi` metric exposes a spin-waiting GPU straight away? Name the metric, which is power draw in watts. Then explain how `UnkillableStepTimeout` handles processes wedged in kernel `D` state.
+5. Analyze `sdiag` RPC storms and `sacctmgr` database health, using *Supercomputers for Linux SysAdmins*, chapter 15. Suppose `sdiag` shows `REQUEST_PARTITION_INFO (2009) count:325127 ave_time:183 total_time:5978485`. Suppose it also shows `user1 (25002) count:29784 ave_time:13439 total_time:269036`. How would you identify a user script that hammers `slurmctld`? Which `SchedulerParameters` flags (`max_rpc_cnt`, `defer`, `batch_sched_delay`) protect the controller? What do `sacctmgr show problem` and `sacctmgr show runawayjobs` fix?
 6. Manage a maintenance window with `scontrol` reservations and rolling reboots, using *Supercomputers for Linux SysAdmins*, chapter 15. Write the exact `scontrol create reservation`, `scontrol update reservationname=...`, `scontrol reboot ASAP nextstate=resume` and `scontrol delete reservationname=...` commands to drain and patch a 100-node subcluster. Then explain the difference between `IGNORE_JOBS`, `STATIC_ALLOC`, `NO_HOLD_JOBS_AFTER` and `MAINT`.
 
 ## Checkpoint

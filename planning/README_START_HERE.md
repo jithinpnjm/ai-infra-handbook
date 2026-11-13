@@ -33,3 +33,5 @@ Every part rewritten to the Kimi/DeepSeek bar, in this order: Part 2, 4, 5, 6, 7
 - Limit subagents to 1-2, no repeated resumes, short briefs that point to files.
 
 All superseded files are in planning/archive/superseded/ (voice spec, language rule, fix worklist, audit prompt included; their content is merged into RULES_AND_WORKFLOW.md and WORKLIST.md). tools/ scripts may still print paths to them in comments.
+
+- Haiku/opencode runs: planning/HAIKU_REWRITE_INSTRUCTIONS.md. Edits made outside Claude sessions are logged in planning/EXTERNAL_EDITS.md; review unreviewed rows at session start.

@@ -22,29 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a 4,096-GPU job that reaches the end of a training step and has to write a checkpoint. Every GPU waits while the write finishes. If the storage is slow, the job stalls for minutes at every checkpoint, and the GPUs sit idle the whole time.
+Picture a 4,096-GPU job that reaches the end of a training step and has to write a checkpoint. A checkpoint is a snapshot of the model's weights and optimiser state, saved so that the run can restart after a failure. Every GPU waits while the write finishes. If the storage is slow, the job stalls for minutes at every checkpoint, and the GPUs sit idle the whole time. At that scale, an idle GPU is an expensive one, so a slow disk is a cost problem as much as a speed problem.
 
-Training reads datasets, writes checkpoints and logs, and loads Python environments, all from shared storage. A different failure looks just as bad. A data loader starves for files, or a thousand ranks import Python packages at the same moment and bring the metadata server to its knees. Storage design is one of the highest-leverage and most misunderstood parts of an AI cluster.
+Training reads datasets, writes checkpoints and logs, and loads Python environments, all from shared storage. A different failure looks just as bad. A data loader starves for files, or a thousand ranks import Python packages at the same moment and bring the metadata server to its knees. A rank is one process of a parallel job, and each one needs its own inputs. Storage design is one of the highest-leverage and most misunderstood parts of an AI cluster, because the same disk can look fast in a benchmark and still fail a real job.
 
 This chapter builds the vocabulary you need: metadata, data, striping and consistency. It explains where NFS is fine and where it fails. It also sets up the Lustre, GPFS, BeeGFS, WEKA and VAST material in chapters 6.19 and 6.20, and Part 13 on AI storage.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know file systems and block devices from Part 1, networking from Part 2, and the anatomy of a node from 6.2. When you finish this chapter, you should be able to:
-
-- Explain why all compute nodes need a shared namespace, and what POSIX semantics a cluster file system must provide.
-- Describe how NFS is built, how its consistency model works and which tuning knobs it has, and predict where it will hit its limits.
-- Tell metadata workloads from data workloads, and recognise the N-to-1, N-to-N and small-file patterns.
-- Describe how parallel file systems stripe data, separate metadata from data and keep caches coherent.
-- Do the arithmetic for checkpoint and dataset bandwidth, and size a storage tier.
-- Run a micro-benchmark to characterise a file system, and know what it cannot tell you.
-- Explain the time synchronisation that shared file systems and authentication need, using chrony or NTP.
+Before you start, you should know file systems and block devices from Part 1, networking from Part 2, and the anatomy of a node from 6.2. This chapter walks through why all compute nodes need one shared namespace and what POSIX semantics, the standard rules for how a file system behaves, a cluster file system must provide. It explains how NFS is built, how its consistency model works and which tuning knobs it has, and where it will hit its limits. It separates metadata workloads from data workloads, and it names the N-to-1, N-to-N and small-file patterns. It describes how parallel file systems stripe data, separate metadata from data and keep caches coherent. It also works through the arithmetic for checkpoint and dataset bandwidth, and it shows how to size a storage tier. A micro-benchmark closes the technical part, along with a note on what a benchmark cannot tell you. Time synchronisation, which shared file systems and authentication both depend on, gets its own section near the end.
 
 ## 1. Why shared storage
 
-Consider a job that starts on whichever compute nodes happen to be free. Every rank in that job must read the same inputs and write its results where any other node can see them. Compute nodes are stateless or reimageable (see 6.2 and 6.22), so user data has to live somewhere else and look identical on every node.
+Consider a job that starts on whichever compute nodes happen to be free. Every rank in that job must read the same inputs and write its results where any other node can see them. Compute nodes are stateless or reimageable (see 6.2 and 6.22), which means a node can be wiped and reinstalled without losing anything important. So user data has to live somewhere else and look identical on every node. If it does not, the same job will behave differently depending on which hosts it lands on.
 
 *Supercomputers for Linux SysAdmins* states the basic requirement plainly: "in a compute cluster, all nodes must have write access to the user's directory." That rules out block-level network protocols as the shared layer. Protocols such as iSCSI, ATA-over-Ethernet and network block devices do not synchronise data between nodes that write at the same time. They can sit beneath a clustered file system as a backend, but they cannot be the shared namespace itself. What remains are network and distributed file systems.
+
+Walk through what one job actually touches. A rank starts, reads its configuration file from a home directory, opens a shard of the dataset from scratch, imports a Python package from a software tree, and then writes a checkpoint and a log line. Each of those five steps goes to storage, and each one has its own cost and its own failure mode. A slow import looks like a slow job, while a slow checkpoint looks like idle GPUs. Naming the step that is slow is the first real skill in storage debugging.
 
 A cluster holds several kinds of data, and each kind needs something different from storage. The table lists them. Notice that home data needs backups and quotas, while scratch needs aggregate bandwidth and is not backed up.
 
@@ -58,31 +52,33 @@ A cluster holds several kinds of data, and each kind needs something different f
 | Logs, metrics, traces | GB to TB | Many appends | Metadata, small writes |
 | Archive | PB | Rare | Capacity, cost, object interfaces |
 
-Decide which of these classes you have before you choose a file system for them.
+Read the table by asking what happens if you lose each class. Losing scratch hurts, but the data can often be regenerated. Losing home directories can end someone's thesis, so home needs backups that scratch does not. Decide which of these classes you have before you choose a file system for them. A single file system that tries to serve every row well usually serves none of them well.
 
 ## 2. NFS: what it is and where it ends
 
-NFS (Network File System) lets one server export a directory to many clients over RPC. It has several versions, and they differ a lot. NFSv3 keeps the server stateless and runs a separate lock manager, `lockd` and `statd`. NFSv4.0, 4.1 and 4.2 are stateful. They fold locking into the protocol, batch requests into compound operations, and support Kerberos and delegations. Version 4.1 adds sessions and pNFS for parallel data access. Version 4.2 adds server-side copy and sparse files. To a program, NFS looks like a transparent, POSIX-like view of a single server, or of a clustered NAS head.
+NFS (Network File System) lets one server export a directory to many clients over RPC, which stands for remote procedure call, a way for a program on one machine to call a function on another. NFS has several versions, and they differ a lot. NFSv3 keeps the server stateless and runs a separate lock manager, `lockd` and `statd`. A stateless server does not remember what each client has open, which makes it simple to restart, but it pushes more work onto the protocol around it. NFSv4.0, 4.1 and 4.2 are stateful. They fold locking into the protocol, batch requests into compound operations, and support Kerberos and delegations. Version 4.1 adds sessions and pNFS for parallel data access. Version 4.2 adds server-side copy and sparse files. To a program, NFS looks like a transparent, POSIX-like view of a single server, or of a clustered NAS head. A NAS head is the front machine of a network-attached storage appliance that serves the files to clients.
 
-The consistency model is the part that surprises people. NFS provides *close-to-open* consistency, not strict POSIX coherence. A client caches attributes (`actimeo`, `acregmin/max`) and data. A write becomes visible to another client only after the writer closes the file and the reader opens it. Suppose two nodes append to the same log file, or one node polls a status file that another keeps writing. The reader can see stale data. Parallel I/O libraries, some build systems and `tail -f` across nodes all depend on immediate visibility, so they misbehave. Using `noac` or `lookupcache=none` fixes the correctness problem, but at a large cost.
+The consistency model is the part that surprises people. NFS provides *close-to-open* consistency, not strict POSIX coherence. A client caches attributes (`actimeo`, `acregmin/max`) and data. A write becomes visible to another client only after the writer closes the file and the reader opens it. Suppose two nodes append to the same log file, or one node polls a status file that another keeps writing. The reader can see stale data. Parallel I/O libraries, some build systems and `tail -f` across nodes all depend on immediate visibility, so they misbehave. Using `noac` or `lookupcache=none` fixes the correctness problem, but at a large cost, because every access then asks the server again.
 
-Locking works in byte ranges. NLM handles it in NFSv3, and NFSv4 builds it in. Every lock goes through the server, which makes it slow, so many HPC codes avoid locks altogether. When a server fails, recovering its locks is a classic cause of hangs.
+Locking works in byte ranges. A byte-range lock covers only part of a file, so two ranks can each hold a lock on their own section. NLM handles it in NFSv3, and NFSv4 builds it in. Every lock goes through the server, which makes it slow, so many HPC codes avoid locks altogether. When a server fails, recovering its locks is a classic cause of hangs. The client waits for a lock that the restarted server no longer remembers, and the job appears frozen.
 
-Why does one NFS server stop scaling? The book's argument and common experience point to five causes.
+Why does one NFS server stop scaling? *Supercomputers for Linux SysAdmins* and common experience point to five causes.
 
-1. Bandwidth is a single funnel. One server has one network connection, or a few, and one storage backend. As the book puts it, "already on two dozen nodes, a single task can easily create a load that completely blocks the NFS server", for example with checkpoint writes. A server with a 100 GbE link delivers about 10 GB/s at best. A checkpoint from 1,000 GPUs wants many times that, as section 6 works out.
-2. Metadata is a single funnel. Every `open`, `stat`, `readdir` and `create` goes to one server's CPU and one file system's journal. Metadata-heavy jobs, such as Python imports, compiles and millions of small files, scale badly.
-3. The server is a single point of failure, unless it is a clustered or HA NAS. That design moves the problem to the vendor.
-4. Thousands of clients can flood the server with cache and attribute traffic, in what are called `GETATTR` storms.
+1. Bandwidth is a single funnel. One server has one network connection, or a few, and one storage backend. As *Supercomputers for Linux SysAdmins* puts it, "already on two dozen nodes, a single task can easily create a load that completely blocks the NFS server", for example with checkpoint writes. A server with a 100 GbE link delivers about 10 GB/s at best. A checkpoint from 1,000 GPUs wants many times that, as section 6 works out.
+2. Metadata is a single funnel. Every `open`, `stat`, `readdir` and `create` goes to one server's CPU and one file system's journal. A journal is the log the file system writes before it changes its structures, and it is a point of contention when many clients write at once. Metadata-heavy jobs, such as Python imports, compiles and millions of small files, scale badly.
+3. The server is a single point of failure, unless it is a clustered or HA NAS. HA means high availability, a design where a standby takes over when the main machine fails. That design moves the problem to the vendor.
+4. Thousands of clients can flood the server with cache and attribute traffic, in what are called `GETATTR` storms. A GETATTR is the request a client sends to ask for a file's attributes, such as its size and modification time. When many clients ask at once, the server spends its time answering questions instead of moving data.
 5. Classic NFS does not stripe data across servers. pNFS addresses this, but adoption and support vary.
+
+Put plainly, NFS is a fine tool for a small group of people who share code and documents, and it is a poor tool for thousands of ranks that all want the same large file at once. The protocol did not change between those two cases, but the load did. Keep that in mind when a vendor describes a NAS as a parallel file system.
 
 NFS still fits some jobs well. Home directories and software trees on small to medium clusters, with hundreds of nodes and a strong server, are a good example. So are read-mostly shared trees and configuration. Even large GPU clusters often keep `/home` and `/opt` on NFS. Some use NAS appliances for the same job. Datasets and checkpoints go to a parallel file system or an object store instead. As you read the rest of this chapter, check which of these cases describes your own cluster. Decide early whether your bulk data will outgrow one server, because that decides whether NFS is enough.
 
 ### NFS server and mount essentials (general practice, untested here)
 
-On the server, the export line lives in `/etc/exports`. An example is `/export/home 10.0.0.0/16(rw,sync,no_subtree_check,root_squash)`. Use `async` only if you accept data loss on a crash in exchange for speed. Run enough `nfsd` threads: use `RPCNFSDCOUNT` or `threads=64` in `nfs.conf`, or more on a busy server, because the default of 8 is far too low. Pick a journaled or modern file system such as XFS, ext4 or ZFS, on a fast and redundant backend. Keep metadata-heavy exports apart from bulk exports. On a dedicated storage network, enable jumbo frames. To monitor the server, use `nfsstat -s`, `nfsiostat` and `/proc/net/rpc/nfsd`.
+On the server, the export line lives in `/etc/exports`. An example is `/export/home 10.0.0.0/16(rw,sync,no_subtree_check,root_squash)`. Use `async` only if you accept data loss on a crash in exchange for speed. Run enough `nfsd` threads, which are the server's worker threads for NFS requests. Set them with `RPCNFSDCOUNT` or with `threads=64` in `nfs.conf`, or run more on a busy server, because the default of 8 is far too low for a cluster. Pick a journaled or modern file system such as XFS, ext4 or ZFS, on a fast and redundant backend. Keep metadata-heavy exports apart from bulk exports, so that one noisy workload cannot starve the other. On a dedicated storage network, enable jumbo frames, which are larger network packets that cut the per-packet overhead for big transfers. To monitor the server, use `nfsstat -s`, `nfsiostat` and `/proc/net/rpc/nfsd`.
 
-The book's examples in chapters 9 and 28 of *Supercomputers for Linux SysAdmins* need two things on the server: the `portmap` service and the `nfsd` and `mountd` services. The Port Mapper maps RPC service names to TCP and UDP ports. For NFS, that port is usually `2049`. Each line in `/etc/exports` names an export directory, followed by a host list. The host list is comma-separated. It may use the wildcards `*` and `?` in hostnames, or CIDR or netmask notation. Export options come last.
+*Supercomputers for Linux SysAdmins* has examples in chapters 9 and 28 that need two things on the server: the `portmap` service and the `nfsd` and `mountd` services. The Port Mapper maps RPC service names to TCP and UDP ports. For NFS, that port is usually `2049`. Each line in `/etc/exports` names an export directory, followed by a host list. The host list is comma-separated. It may use the wildcards `*` and `?` in hostnames, or CIDR or netmask notation. CIDR is the slash notation for a network range, such as `10.0.0.0/8`. Export options come last, in parentheses.
 
 ```text
 # (untested here) — Chapter 9 & Chapter 28 /etc/exports examples
@@ -90,7 +86,7 @@ The book's examples in chapters 9 and 28 of *Supercomputers for Linux SysAdmins*
 /home 10.0.0.0/8(rw,no_subtree_check)
 ```
 
-Table 9-1 in the book lists the main `/etc/exports` options.
+Table 9-1 in *Supercomputers for Linux SysAdmins* lists the main `/etc/exports` options. Read the table as a list of trade-offs, because most of the options either protect data or buy speed.
 
 | Option | Meaning |
 |---|---|
@@ -103,18 +99,18 @@ Table 9-1 in the book lists the main `/etc/exports` options.
 | `async` | Allows the server to confirm write operations before they are executed |
 | `sync` | Confirms operations only after the server's `write` system call completes (note: data may still reside in the server OS file cache rather than on physical disk) |
 
-The `sync` row is the one to read twice. It confirms a write when the `write` system call completes, and that does not guarantee the data has reached the physical disk.
+The `sync` row is the one to read twice. It confirms a write when the `write` system call completes, and that does not guarantee the data has reached the physical disk. The data may still sit in the server's own page cache, which is the memory the operating system uses to hold recent file data. A power cut at that moment can lose it, so `sync` is safer than `async` but not a full guarantee.
 
-After you edit `/etc/exports`, apply the change with `exportfs -r` or `exportfs -ra`. To inspect active client mounts, use `showmount -d` for directories in use, `showmount -a` for `host:directory` pairs, or `showmount -e` for the exported list. On the client, the book's `/etc/fstab` recipe mounts `/home` like this:
+After you edit `/etc/exports`, apply the change with `exportfs -r` or `exportfs -ra`. To inspect active client mounts, use `showmount -d` for directories in use, `showmount -a` for `host:directory` pairs, or `showmount -e` for the exported list. On the client, the `/etc/fstab` recipe in *Supercomputers for Linux SysAdmins* mounts `/home` like this:
 
 ```text
 # (untested here)
 10.0.0.1:/home /home nfs rw,noatime,nodiratime 0 0
 ```
 
-Table 9-2 in the book adds more client options. The main ones work like this. `soft` and `hard` decide what happens when the server stops answering. `retrans=n` sets how many times a request is resent when `soft` is used. `rsize` and `wsize=n` set the transfer size, in multiples of `1024` bytes. `ac` and `noac` turn client attribute caching on and off. `proto=udp` and `proto=tcp` choose the transport. `intr` and `nointr` decide whether a signal can interrupt a hung file operation, which then returns `EINTR`. `acl` and `noacl` control the `NFSACL` auxiliary protocol. `nfsvers=N` picks the protocol version. `sync` and `async` set how writes are handled. `lock` and `nolock` enable or disable `flock` through `lockd` and `nfslockd`.
+Table 9-2 in *Supercomputers for Linux SysAdmins* adds more client options. The main ones work like this. `soft` and `hard` decide what happens when the server stops answering. `retrans=n` sets how many times a request is resent when `soft` is used. `rsize` and `wsize=n` set the transfer size, in multiples of `1024` bytes. `ac` and `noac` turn client attribute caching on and off. `proto=udp` and `proto=tcp` choose the transport. `intr` and `nointr` decide whether a signal can interrupt a hung file operation, which then returns `EINTR`. `acl` and `noacl` control the `NFSACL` auxiliary protocol. `nfsvers=N` picks the protocol version. `sync` and `async` set how writes are handled. `lock` and `nolock` enable or disable `flock` through `lockd` and `nfslockd`.
 
-Some client options change performance and correctness far more than others. The table shows what each one does.
+Some client options change performance and correctness far more than others. The table shows what each one does, and the rows that matter most are the ones that trade safety for speed.
 
 | Option | Effect |
 |---|---|
@@ -128,13 +124,13 @@ Some client options change performance and correctness far more than others. The
 | `proto=rdma` | NFS over RDMA on InfiniBand/RoCE for lower CPU and latency (needs server support) |
 | `_netdev`, `x-systemd.automount` | Boot ordering; automounts avoid hangs on login |
 
-The `hard` and `soft` rows show the central trade-off. `hard` keeps data safe but can hang a job. `soft` returns errors and risks silent corruption.
+The `hard` and `soft` rows show the central trade-off. `hard` keeps data safe but can hang a job. `soft` returns errors and risks silent corruption. Most HPC sites choose `hard` and then manage the hangs with timeouts and health checks, because a hang is visible and a corrupted file is not.
 
-Watch for stale-handle and hang scenarios. Do not unmount a file system under running jobs. Monitor server health and use automounter timeouts. Make the health checks in 6.14 test each mount with a timeout, so a hung mount drains the node instead of hanging the checker.
+Watch for stale-handle and hang scenarios. A stale file handle means the client holds a reference to a file that the server no longer recognises, often after the export was moved or deleted. Do not unmount a file system under running jobs. Monitor server health and use automounter timeouts. Make the health checks in 6.14 test each mount with a timeout, so a hung mount drains the node instead of hanging the checker.
 
 ### Minimal NFS server and client steps from the book
 
-The book gives a short recipe for sharing `/home` with the cluster. Treat it as a starting point, and check each step on a test server first. The server side comes first:
+*Supercomputers for Linux SysAdmins* gives a short recipe for sharing `/home` with the cluster. Treat it as a starting point, and check each step on a test server first. The server side comes first:
 
 1. Install the `nfs-server` package, or a similar one, and `portmap` if your system needs it.
 2. Start the `portmap` and `nfsd` services, and include them in the services that start at boot.
@@ -148,21 +144,21 @@ On each client, the steps are:
 3. Create the `/home` directory if it does not exist.
 4. Run `mount /home`.
 
-The export line above opens the share to a whole `/8` network. On a real cluster, narrow it to the subnet your nodes actually use.
+The export line above opens the share to a whole `/8` network. That is a very large range, so on a real cluster, narrow it to the subnet your nodes actually use.
 
 ## 3. Time synchronisation
 
-Clocks matter more than most people expect. *Supercomputers for Linux SysAdmins* places NTP in its file system chapter on purpose, because distributed file systems and authentication depend on synchronised clocks. Skewed clocks cause stale-cache decisions, `make` rebuild loops, and Kerberos or munge failures, where the error reads `Invalid credential`. They also make logs confusing. In some parallel file systems, they cause lease and lock timeouts.
+Clocks matter more than most people expect. *Supercomputers for Linux SysAdmins* places NTP in its file system chapter on purpose, because distributed file systems and authentication depend on synchronised clocks. NTP, the Network Time Protocol, is the standard way a machine keeps its clock close to a reliable reference. Skewed clocks cause stale-cache decisions, `make` rebuild loops, and Kerberos or munge failures, where the error reads `Invalid credential`. Munge is the authentication service that Slurm uses between its daemons. They also make logs confusing, because events from two machines no longer line up in time. In some parallel file systems, skew causes lease and lock timeouts.
 
-Use `chronyd`, `ntpd` or systemd-timesyncd. `chronyd` is the modern default on RHEL-family systems and is widely used elsewhere. Point all nodes at two or more internal servers, and have those servers sync to reliable upstream sources, such as GPS or PTP-backed sources in large sites. Watch the offset with `chronyc tracking` and `chronyc sources -v`, and alert when it crosses a threshold. Milliseconds are fine for most uses. PTP is for tighter needs.
+Use `chronyd`, `ntpd` or systemd-timesyncd. `chronyd` is the modern default on RHEL-family systems and is widely used elsewhere. Point all nodes at two or more internal servers, and have those servers sync to reliable upstream sources, such as GPS or PTP-backed sources in large sites. PTP, the Precision Time Protocol, gives much tighter sync than NTP on a well-built network. Watch the offset with `chronyc tracking` and `chronyc sources -v`, and alert when it crosses a threshold. Milliseconds are fine for most uses. PTP is for tighter needs.
 
-A health check should include clock synchronisation, which is the `time_sync` check in 6.14. Decide which internal servers will serve time for the cluster, and confirm the offset before you mount a parallel file system.
+A health check should include clock synchronisation, which is the `time_sync` check in 6.14. Decide which internal servers will serve time for the cluster, and confirm the offset before you mount a parallel file system. A node that mounts first and syncs later can record file timestamps that do not match the rest of the cluster.
 
 ### `ntpd.conf` / `openntpd`, `chrony`, `ntpdate`, and `systemd-timesyncd` details
 
-Network distance affects how accurate synchronisation is. So install an NTP server on at least one service node. That node syncs with external upstream servers and serves the internal cluster network. The book covers three common implementations.
+Network distance affects how accurate synchronisation is. So install an NTP server on at least one service node. That node syncs with external upstream servers and serves the internal cluster network. *Supercomputers for Linux SysAdmins* covers three common implementations.
 
-1. `ntpd` or `openntpd`, configured in `/etc/ntpd.conf`. On the service node that acts as the cluster NTP server, you set four things. You set the upstream servers. You set the internal interface to listen on, which is `listen on` in `openntpd`, or `interface listen eth0` in chapter 28's `ntpd.conf`. You set a `driftfile` if you use standard `ntpd`. And you set the client restriction flags. The book's example in chapter 9 looks like this:
+1. `ntpd` or `openntpd`, configured in `/etc/ntpd.conf`. On the service node that acts as the cluster NTP server, you set four things. You set the upstream servers. You set the internal interface to listen on, which is `listen on` in `openntpd`, or `interface listen eth0` in chapter 28's `ntpd.conf`. You set a `driftfile` if you use standard `ntpd`. And you set the client restriction flags. The example in chapter 9 of *Supercomputers for Linux SysAdmins* looks like this:
 
    ```text
    # — Chapter 9 /etc/ntpd.conf example
@@ -172,7 +168,7 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
    restrict default kod nomodify notrap nopeer noquery
    ```
 
-   On compute nodes, `/etc/ntpd.conf` omits `listen on` and points only to the internal server, for example `server server.cluster.myorg`. The five `restrict` flags in the book's configuration each do one job. `kod` sends a "Kiss-of-death" packet that rate-limits unwanted client queries. `nomodify` stops clients from changing the server's configuration remotely. `notrap` disables protocol trap support. `nopeer` stops remote hosts from forming a peer association with the server. `noquery` blocks `ntpq` and `ntpdc` status queries, while the server still answers normal time requests. For IPv6, duplicate the `restrict` line with `-6`. To restrict by subnet, replace `default` with, for example, `192.168.2.0 mask 255.255.255.0`.
+   On compute nodes, `/etc/ntpd.conf` omits `listen on` and points only to the internal server, for example `server server.cluster.myorg`. The five `restrict` flags in that configuration each do one job. `kod` sends a "Kiss-of-death" packet that rate-limits unwanted client queries. `nomodify` stops clients from changing the server's configuration remotely. `notrap` disables protocol trap support. `nopeer` stops remote hosts from forming a peer association with the server. `noquery` blocks `ntpq` and `ntpdc` status queries, while the server still answers normal time requests. For IPv6, duplicate the `restrict` line with `-6`. To restrict by subnet, replace `default` with, for example, `192.168.2.0 mask 255.255.255.0`.
 
    NTP daemons adjust large clock offsets gradually by default. A 1-hour offset at boot can take many minutes to converge, and during that time parallel file systems may refuse to mount. So run a forced step synchronisation before you start the daemon on a client node. The `ntpdate` tool cannot run while `ntpd` is already running.
 
@@ -181,9 +177,9 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
    ntpdate server_ntp_server_address
    ```
 
-2. `chrony`, configured in `/etc/chrony.conf`. It uses `server` or `pool` directives. The `iburst` option sends initial requests more often at startup, so the clock syncs faster. Server mode for the cluster subnet comes from `allow 10.20.30.0/24`, and you can also write `allow all`.
+2. `chrony`, configured in `/etc/chrony.conf`. It uses `server` or `pool` directives. The `iburst` option sends initial requests more often at startup, so the clock syncs faster. Server mode for the cluster subnet comes from `allow 10.20.30.0/24`, and you can also write `allow all`. A chrony node that is not set to serve the cluster will quietly sync only itself, which is a common cause of nodes that disagree about the time. Think of it as a clock that is correct but private. Every other machine in the building is set by a different clock, and nobody notices until a log comparison fails.
 
-3. `systemd-timesyncd`, a lightweight client-only daemon that cannot act as an NTP server. You configure it in `/etc/systemd/timesyncd.conf`. It also reads drop-in directories: `/etc/systemd/timesyncd.conf.d/*.conf`, `/run/systemd/timesyncd.conf.d/*.conf` and `/usr/lib/systemd/timesyncd.conf.d/*.conf`.
+3. `systemd-timesyncd`, a lightweight client-only daemon that cannot act as an NTP server. You configure it in `/etc/systemd/timesyncd.conf`. It also reads drop-in directories: `/etc/systemd/timesyncd.conf.d/*.conf`, `/run/systemd/timesyncd.conf.d/*.conf` and `/usr/lib/systemd/timesyncd.conf.d/*.conf`. A drop-in is a small override file, so a site can change one setting without editing the main file.
 
    ```ini
    # — /etc/systemd/timesyncd.conf
@@ -200,11 +196,11 @@ Network distance affects how accurate synchronisation is. So install an NTP serv
    timedatectl show-timesync --all
    ```
 
-   The book's example reports these values: `FallbackNTPServers`, `ServerName`, `ServerAddress`, `RootDistanceMaxUSec=5s`, `PollIntervalMinUSec=32s`, `PollIntervalMaxUSec=34min 8s`, and `PollIntervalUSec=1min 4s`.
+   The example in *Supercomputers for Linux SysAdmins* reports these values: `FallbackNTPServers`, `ServerName`, `ServerAddress`, `RootDistanceMaxUSec=5s`, `PollIntervalMinUSec=32s`, `PollIntervalMaxUSec=34min 8s`, and `PollIntervalUSec=1min 4s`.
 
 ## 4. Metadata, data and the parallel file system idea
 
-Every file system keeps two kinds of state. Metadata covers names, directories, permissions, sizes, timestamps, and which blocks hold the data. Data is the bytes themselves. NFS serves both from one place. A parallel file system splits them apart, so each one can scale on its own.
+Every file system keeps two kinds of state. Metadata covers names, directories, permissions, sizes, timestamps, and which blocks hold the data. Data is the bytes themselves. Think of metadata as the card catalogue in a library and data as the books on the shelves. NFS serves both from one place, so one busy catalogue slows down every reader. A parallel file system splits them apart, so each one can scale on its own.
 
 Picture how the pieces fit together, and where your own client sits:
 
@@ -217,25 +213,27 @@ flowchart LR
   MDS --- D1
 ```
 
-A client first asks the metadata service where a file's data lives. That answer is the layout. The client then talks directly to many data servers in parallel, so bandwidth grows with the number of data servers and clients.
+A client first asks the metadata service where a file's data lives. That answer is the layout. The client then talks directly to many data servers in parallel, so bandwidth grows with the number of data servers and clients. The metadata service is consulted once for the layout, and the bulk of the traffic goes around it. That design is the reason parallel file systems can reach speeds that a single NFS server cannot.
 
-Striping divides each file into chunks of a set stripe size, for example 1 MiB. The chunks are spread round-robin over a set of data targets, and the number of targets is the stripe count. A large file written by many clients reaches many servers at once. A single client reading a striped file gets the combined speed of several servers.
+Striping divides each file into chunks of a set stripe size, for example 1 MiB. The chunks are spread round-robin over a set of data targets, and the number of targets is the stripe count. A large file written by many clients reaches many servers at once. A single client reading a striped file gets the combined speed of several servers. Striping only helps when a request covers several chunks, so a file of small records gains nothing from it.
 
-Metadata scaling uses several metadata servers or targets, directory sharding and client caching. It is still the hardest part. Operations inside one directory, and the rate of creating files, scale poorly in many systems.
+Metadata scaling uses several metadata servers or targets, directory sharding and client caching. It is still the hardest part. Operations inside one directory, and the rate of creating files, scale poorly in many systems. A directory with a hundred thousand entries is slow to search and slow to change, no matter how fast the disks are underneath.
 
-Clients cache data and metadata under locks or leases that the servers grant. When another client wants to write a range, the server revokes the lock and invalidates the cache. That gives POSIX semantics, so a write is visible to others as soon as it returns. The price is lock traffic, especially for small writes to a shared file.
+Picture two ranks writing neighbouring pieces of one checkpoint file. Rank A writes its piece, and rank B, on another node, writes the piece right next to it. If the boundary between the two pieces does not line up with the stripe size, both ranks touch the same stripe, and the lock for that stripe moves back and forth between their nodes. Each move costs a round trip. Aligning the boundary removes most of that traffic, which is why alignment shows up in every checklist for shared-file writes.
 
-Data servers rely on redundancy, such as RAID, erasure coding, replication or failover pairs. Metadata is mirrored, or kept on shared storage with failover. Clients reconnect and replay their requests after a failure.
+Clients cache data and metadata under locks or leases that the servers grant. A lease is a time-limited promise from the server that the cached copy stays valid. When another client wants to write a range, the server revokes the lock and invalidates the cache. That gives POSIX semantics, so a write is visible to others as soon as it returns. The price is lock traffic, especially for small writes to a shared file, because each small write can force a round of revocations.
 
-A file system can also group storage into pools or tiers, such as NVMe flash, HDD, and object or cloud storage. Policies then move data between the tiers.
+Data servers rely on redundancy, such as RAID, erasure coding, replication or failover pairs. Erasure coding stores extra pieces of data so that the file can be rebuilt if a disk fails, and it uses less space than full copies. Metadata is mirrored, or kept on shared storage with failover. Clients reconnect and replay their requests after a failure, so a short outage shows up as a pause rather than an error.
 
-The main families are covered in chapters 6.19 and 6.20. Lustre is open source and dominant in HPC. Its parts are the MDS/MDT, OSS/OST and MGS. IBM Storage Scale / GPFS has a shared-disk heritage, NSD servers and distributed metadata. BeeGFS is simple and flexible, with an open core. PanFS is the Panasas vendor appliance. WEKA and VAST are NVMe-first and software-defined, and they are increasingly common in AI clusters. CephFS, GlusterFS, OrangeFS/PVFS2 and others appear in the book's "other file systems". Object stores with S3-compatible interfaces serve datasets and archives, which Part 13 covers.
+A file system can also group storage into pools or tiers, such as NVMe flash, HDD, and object or cloud storage. Policies then move data between the tiers. A hot dataset can sit on flash for a training run and move to disk once the run is finished.
 
-Before you pick a parallel file system, check whether your workload stresses metadata or data, since each one scales differently.
+The main families are covered in chapters 6.19 and 6.20. Lustre is open source and dominant in HPC. Its parts are the MDS/MDT, OSS/OST and MGS. IBM Storage Scale, formerly GPFS, has a shared-disk heritage, NSD servers and distributed metadata. NSD stands for network shared disk, the server role that exports disks to the rest of the cluster. BeeGFS is simple and flexible, with an open core. PanFS is the Panasas vendor appliance. WEKA and VAST are NVMe-first and software-defined, and they are increasingly common in AI clusters. CephFS, GlusterFS, OrangeFS/PVFS2 and others appear in *Supercomputers for Linux SysAdmins* under "other file systems". Object stores with S3-compatible interfaces serve datasets and archives, which Part 13 covers.
+
+Before you pick a parallel file system, check whether your workload stresses metadata or data, since each one scales differently. A system that is excellent at streaming large files can still stall on a job that creates a million tiny ones.
 
 ## 5. I/O patterns and what breaks
 
-Your job's I/O pattern decides which failures you will meet. A job that writes one file per rank hits a different wall from a job that reads millions of small image files. The table lists the common patterns and what usually goes wrong with each.
+Your job's I/O pattern decides which failures you will meet. A job that writes one file per rank hits a different wall from a job that reads millions of small image files. The table lists the common patterns and what usually goes wrong with each. Find the row that looks like your job before you change any setting, because the fix for one row often makes another row worse.
 
 | Pattern | Description | Typical trouble |
 |---|---|---|
@@ -248,13 +246,13 @@ Your job's I/O pattern decides which failures you will meet. A job that writes o
 | **Append logs from many nodes** | Interleaved small appends | Lock ping-pong on shared files; use per-rank logs |
 | **Checkpoint restart read** | All ranks read after a failure | Aggregate read; restart time counts against goodput |
 
-The fixes follow from the table. Prefer fewer, larger files, such as WebDataset or TFRecord-style shards for datasets. Align I/O to the stripe size. Avoid giant directories by sharding them into subdirectories. Keep Python environments in containers or on local disk. Make each rank log to its own file. Write checkpoints asynchronously from a local or burst tier, as Part 14 describes.
+Two of these rows need a closer look. N-to-N means each rank writes its own file. That is kind to the data path, because no two ranks fight over the same bytes. The cost is the number of files. A checkpoint from ten thousand ranks creates ten thousand files in one go, and if they all land in one directory, the metadata server gets a create storm. N-to-1 is the opposite. One shared file has only one entry in the namespace, but every rank wants a piece of it, and unaligned writes make the locks bounce between nodes.
 
-Find the row that matches your job's I/O before you tune anything.
+The fixes follow from the table. Prefer fewer, larger files, such as WebDataset or TFRecord-style shards for datasets. Align I/O to the stripe size. Avoid giant directories by sharding them into subdirectories. Keep Python environments in containers or on local disk. Make each rank log to its own file. Write checkpoints asynchronously from a local or burst tier, as Part 14 describes. Each fix attacks one row, and none of them is free, so measure after each change.
 
 ## 6. Arithmetic you should be able to do
 
-Start with checkpoints, since they are the largest. A full training checkpoint with mixed precision and Adam commonly holds about 14 bytes per parameter. That is 2 bytes for bf16 weights, 4 bytes for fp32 master weights, and 8 bytes for the two fp32 Adam moments. Some stacks also save fp32 gradients, which brings the total to about 18 bytes. The script `code/part06/ckpt_math.py` computes the sizes and the bandwidth you need:
+Storage sizing starts with a little arithmetic, which you can do on the back of an envelope before anyone opens a vendor spreadsheet. Start with checkpoints, since they are the largest. A full training checkpoint with mixed precision and Adam commonly holds about 14 bytes per parameter. A parameter is one learned number in the model, and Adam is the standard optimiser that keeps two extra running averages for each parameter. That is 2 bytes for bf16 weights, 4 bytes for fp32 master weights, and 8 bytes for the two fp32 Adam moments. Some stacks also save fp32 gradients, which brings the total to about 18 bytes. The script `code/part06/ckpt_math.py` computes the sizes and the bandwidth you need:
 
 ```text
  params  train ckpt  to write in 60 s  at 10 GB/s: time  every 1h: lost
@@ -264,17 +262,17 @@ Start with checkpoints, since they are the largest. A full training checkpoint w
  1000B      14.00TB            233GB/s            1400 s          38.9%
 ```
 
-Read the 70B row as a worked example. A 70B model writes about 0.98 TB per checkpoint, which is nearly a terabyte. At 10 GB/s, that write takes 98 seconds. If the write is synchronous, every GPU idles for those 98 seconds. Against an hourly cadence, that is 2.7 percent lost. A trillion-parameter model needs hundreds of GB/s to checkpoint in a minute. That is why large clusters use burst-buffer-like fast tiers, asynchronous checkpointing that writes to local NVMe or host memory and then drains, sharded or distributed checkpoints, and a parallel file system with hundreds of GB/s to TB/s of aggregate bandwidth. Per-parameter byte counts are the common accounting. Verify them for your framework and sharding.
+Read the 70B row as a worked example. A 70B model writes about 0.98 TB per checkpoint, which is nearly a terabyte. At 10 GB/s, that write takes 98 seconds. If the write is synchronous, every GPU idles for those 98 seconds. Against an hourly cadence, that is 2.7 percent lost. Multiply that by the cost of a GPU hour, and you have the price of one storage decision, repeated every hour of a multi-week run. A trillion-parameter model needs hundreds of GB/s to checkpoint in a minute. That is why large clusters use burst-buffer-like fast tiers, asynchronous checkpointing that writes to local NVMe or host memory and then drains, sharded or distributed checkpoints, and a parallel file system with hundreds of GB/s to TB/s of aggregate bandwidth. A burst buffer is a fast intermediate tier that absorbs a sudden write and then passes it on at a steady rate. Per-parameter byte counts are the common accounting. Verify them for your framework and sharding.
 
-Dataset reads have a different shape. Pre-tokenised text is small in bandwidth terms. The script's example has 4,096 GPUs each consuming 3,000 tokens per second, at 4 bytes per token. That comes to about 49 MB/s of text. For text, the real problem is random access and the number of files. Images and video are orders of magnitude more demanding. Take a vision job at 2,000 images per second per node, with 150 KB per image. That is 300 MB/s per node. Times 500 nodes, it is 150 GB/s. Compute the requirement from your own sample rates.
+Dataset reads have a different shape. Pre-tokenised text is small in bandwidth terms, because a token is just a number that stands for a piece of a word. The script's example has 4,096 GPUs each consuming 3,000 tokens per second, at 4 bytes per token. That comes to about 49 MB/s of text. For text, the real problem is random access and the number of files. Images and video are orders of magnitude more demanding. Take a vision job at 2,000 images per second per node, with 150 KB per image. That is 300 MB/s per node. Times 500 nodes, it is 150 GB/s. Compute the requirement from your own sample rates, because the same cluster can be idle on text and saturated on images.
 
-Striping has its own arithmetic. Aggregate bandwidth is roughly the smallest of three limits: `min(client_count x per_client_bw, servers x per_server_bw, network bisection)`. The bandwidth of a single file is `stripe_count x per_target_bw`. Take a single-stripe 1 TB file. It lives on one target, so it runs at that target's speed, however large the file system is. Setting a larger stripe count for big shared files is a standard tuning step, covered in 6.19.
+Striping has its own arithmetic. Aggregate bandwidth is roughly the smallest of three limits: `min(client_count x per_client_bw, servers x per_server_bw, network bisection)`. The bisection limit is the bandwidth across the cut that splits the network in half, which is often the real ceiling in a large fabric. The bandwidth of a single file is `stripe_count x per_target_bw`. Take a single-stripe 1 TB file. It lives on one target, so it runs at that target's speed, however large the file system is. Setting a larger stripe count for big shared files is a standard tuning step, covered in 6.19.
 
-Do this arithmetic with your own model size and sample rates before you size a tier.
+Do this arithmetic with your own model size and sample rates before you size a tier. Write the numbers down, and keep the assumptions next to them, because a sizing review is much easier when everyone can see which input to change.
 
 ## 7. A micro-benchmark and its lessons
 
-`code/part06/iomix.py` measures sequential write (fsync'd) and read, random 4 KiB reads, and file create, stat and unlink rates in a directory you choose. On a laptop SSD running APFS, in `/tmp`, it printed this:
+`code/part06/iomix.py` measures sequential write (fsync'd) and read, random 4 KiB reads, and file create, stat and unlink rates in a directory you choose. Fsync is the call that forces written data out to stable storage before it returns, so a write measured with fsync reflects the disk and not just the memory. On a laptop SSD running APFS, in `/tmp`, it printed this:
 
 ```text
 sequential write      633 MB/s (fsync'd)   read    11562 MB/s (likely cached)
@@ -282,17 +280,19 @@ random 4 KiB read     705949 IOPS (likely cached)
 create      4585 files/s   stat    378127/s   unlink      8303/s
 ```
 
-The lessons matter more than the absolute numbers. 1. The reads came from the page cache. 11.5 GB/s is memory speed, so a benchmark has to defeat caching. Use large files, drop caches, use `O_DIRECT`, or remount. Otherwise it measures RAM.
+The lessons matter more than the absolute numbers. Each lesson below comes from one line of that output. Read them as a warning to the person who will run the benchmark next, because the same mistake happens on every new cluster.
+
+1. The reads came from the page cache. 11.5 GB/s is memory speed, so a benchmark has to defeat caching. Use large files, drop caches, use `O_DIRECT`, or remount. Otherwise it measures RAM.
 2. Data bandwidth and metadata rates are different universes. The run wrote at 633 MB/s, but it managed only about 4.6 thousand creates per second. Meanwhile, `stat` on cached entries ran at 378 thousand per second.
 3. Create is roughly 80 times slower than a cached stat, even on a local disk. On a network file system, each create is also a network round trip to a metadata server. So thousands of ranks creating files at once multiply the pain.
 
-Run the same script on `/home` (NFS), on scratch (the parallel file system) and on local NVMe to see the difference. Run it from several nodes at once to see how it scales. Serious benchmarking uses `fio`, `IOR` and `mdtest`, and the IO500 methodology in 6.28.
+Run the same script on `/home` (NFS), on scratch (the parallel file system) and on local NVMe to see the difference. Run it from several nodes at once to see how it scales. Serious benchmarking uses `fio`, `IOR` and `mdtest`, and the IO500 methodology in 6.28. IO500 is a standard benchmark suite that measures both bandwidth and metadata, so it covers the gap that a simple script leaves.
 
-These numbers came from a laptop, so measure your own storage before you trust any figure.
+These numbers came from a laptop, so measure your own storage before you trust any figure. A laptop SSD tells you how the script behaves, not how the cluster will behave under two hundred ranks.
 
 ## 8. Choosing for an AI cluster (preview of Part 13)
 
-The table previews Part 13. It suggests a technology for each tier of an AI cluster's storage.
+The table previews Part 13. It suggests a technology for each tier of an AI cluster's storage. Treat it as a first draft that you will test against your own workload, not as a purchase order.
 
 | Tier | Suggested technology | Notes |
 |---|---|---|
@@ -302,19 +302,25 @@ The table previews Part 13. It suggests a technology for each tier of an AI clus
 | Cold datasets, models, archives | S3-compatible object store | Cost; use a cache layer for training |
 | Container images | Squashfs on the parallel FS or local copies (6.13) | One big file beats many small ones |
 
-Before you choose, gather the inputs that decide the answer. They are peak aggregate bandwidth, metadata rate, capacity, client count, POSIX needs, multi-tenancy and quotas, failure domains, operational skills, cost per TB and per GB/s, the network (storage fabric, RDMA), and vendor support.
+Each row answers a different question. The home row is about safety, because home data needs backups and quotas. The scratch row is about bandwidth, because many ranks read and write at once. The checkpoint row is about the GPU stall, and the archive row is about cost per terabyte. A single technology rarely wins all four.
+
+A useful way to start is to ask what each tier must never do. Home storage must never lose a file. Scratch must never stop serving a job for long. The checkpoint tier must never make a GPU wait longer than the write takes on the fastest path. The archive must never cost more per terabyte than the data is worth. Write those four sentences first, and the technology choice often follows.
+
+Before you choose, gather the inputs that decide the answer. They are peak aggregate bandwidth, metadata rate, capacity, client count, POSIX needs, multi-tenancy and quotas, failure domains, operational skills, cost per TB and per GB/s, the network (storage fabric, RDMA), and vendor support. A failure domain is the set of parts that can fail together, such as one rack or one power feed, and a good design keeps replicas in different domains. Operational skills matter as much as the specification, because a file system that nobody on the team can repair is a risk however fast it is.
 
 ## 9. Lab
 
-The self-checking lab runs on your own machine first. It is `code/part06/iomix_lab.py`, and it checks `ckpt_math.py` for two models. A 70B model writes a checkpoint of 0.98 TB. A 60-second write needs 16 GB/s, and on a 10 GB/s server the job loses 98 seconds, or 2.7 percent of every hour. A 405B model writes 5.67 TB. It needs 94 GB/s, and on the same server it loses 567 seconds, or 15.8 percent of every hour.
+Suppose a teammate asks how big the checkpoint storage needs to be for a 405B model, and you want to answer with numbers rather than a guess. The self-checking lab runs on your own machine first, so you can check the arithmetic before you touch a cluster. It is `code/part06/iomix_lab.py`, and it checks `ckpt_math.py` for two models. A 70B model writes a checkpoint of 0.98 TB. A 60-second write needs 16 GB/s, and on a 10 GB/s server the job loses 98 seconds, or 2.7 percent of every hour. A 405B model writes 5.67 TB. It needs 94 GB/s, and on the same server it loses 567 seconds, or 15.8 percent of every hour.
 
-The lab also checks the dataset read arithmetic. Pre-tokenized text needs about 49 MB/s for the whole cluster, while raw image streaming needs about 150 GB/s. Finally, it runs `code/part06/iomix.py --mb 4 --files 100`. That script measures sequential write and read, random 4 KiB IOPS, and the rates for creating, reading metadata of, and deleting small files. Start it with this command:
+The lab also checks the dataset read arithmetic. Pre-tokenized text needs about 49 MB/s for the whole cluster, while raw image streaming needs about 150 GB/s. Finally, it runs `code/part06/iomix.py --mb 4 --files 100`. That script measures sequential write and read, random 4 KiB IOPS, and the rates for creating, reading metadata of, and deleting small files. Start the lab with this command:
 
 ```bash
 python3 code/part06/iomix_lab.py
 ```
 
-The first two tasks run on one machine. The last five need two or three VMs, and this chapter did not test them.
+Each task builds on the one before it. The first tasks confirm that the arithmetic and the local benchmark behave as the chapter describes. The later tasks put load on a real network, and they show the limits that the arithmetic predicted. If a later task surprises you, go back to the earlier one and check whether your numbers still agree.
+
+The first two tasks run on one machine. The last five need two or three VMs, and this chapter did not test them. Treat those five as a plan until you run them on your own hardware.
 
 1. Run `iomix.py` in `/tmp` and in your home directory. Record the three lines it prints, and explain the differences.
 2. Run `ckpt_math.py`. Change the bytes per parameter to 18, then to 2. Change the interval and the bandwidth. Then decide what bandwidth your target model needs.
@@ -324,7 +330,11 @@ The first two tasks run on one machine. The last five need two or three VMs, and
 6. Run `iomix.py` on two clients at the same time, and watch `nfsiostat` on both. Note where the server limits show up.
 7. Configure `chronyd` on all VMs, skew a clock, and observe what breaks first: munge, make or Kerberos.
 
+Keep the lab notes as you go. Each change in step 2 or step 3 should come with the number it moved, because a single unexplained result is hard to defend in a sizing review.
+
 ## 10. Interview angles
+
+Interviewers use these questions to see whether you can reason about storage, not just recite option names. Good answers start with the mechanism, such as the metadata path or the lock, and then name the command or setting that checks it.
 
 - Why can't NFS serve a 1,000-GPU cluster's checkpoints?
 - What is close-to-open consistency and what does it break?
@@ -338,19 +348,21 @@ The first two tasks run on one machine. The last five need two or three VMs, and
 
 ## Exercises
 
-1. A 70B-parameter mixed-precision Adam checkpoint is 0.98 TB. Use `ckpt_bytes(params, 14)` and `need_gbs(size, 60)` from `code/part06/ckpt_math.py`. What write speed does a 60-second checkpoint need?
-2. The same checkpoint goes to a 10 GB/s NFS server. Use `overhead(size, 10, 3600)` to find the time wasted per hour, as seconds and as a percentage.
-3. Repeat exercises 1 and 2 for a 405B-parameter checkpoint of 5.67 TB. The answers you should reach are 94 GB/s, 567 seconds, and 15.8 percent.
-4. Run `python3 code/part06/iomix.py --mb 64 --files 2000`. In the laptop run, sequential reads reach 11,562 MB/s but `fsync`'d writes reach only 633 MB/s. Why is the read so much faster?
-5. In the same run, creating a file runs at 4,585 files per second and a cached `stat` at 378,127 per second. How many times slower is the create? Why?
+Each exercise below uses one number or one command from this chapter, and each one asks a single question. Work through them in order, because the later ones reuse the arithmetic from the earlier ones.
+
+1. Your team is sizing a 70B-parameter mixed-precision Adam checkpoint, which is 0.98 TB. Use `ckpt_bytes(params, 14)` and `need_gbs(size, 60)` from `code/part06/ckpt_math.py`. What write speed does a 60-second checkpoint need?
+2. The same checkpoint goes to a 10 GB/s NFS server. Use `overhead(size, 10, 3600)` to find the time wasted per hour. Give the answer in seconds and as a percentage.
+3. Repeat exercises 1 and 2 for a 405B-parameter checkpoint of 5.67 TB. The answer for the write speed is 94 GB/s. The answer for the time wasted is 567 seconds, which is 15.8 percent of each hour.
+4. Run `python3 code/part06/iomix.py --mb 64 --files 2000`. In the laptop run, sequential reads reach 11,562 MB/s. Sequential writes with `fsync` reach only 633 MB/s. Why is the read so much faster?
+5. In the same run, creating a file runs at 4,585 files per second. A cached `stat` runs at 378,127 per second. How many times slower is the create? Why?
 6. How would you defeat the OS page cache when you benchmark storage?
-7. Write the `/etc/exports` lines for `/export/dir` to host1, host2, and host3 with `rw,root_squash`, and for `/home` to `10.0.0.0/8` with `rw,no_subtree_check`. Then write the command that applies them and the `showmount` commands that inspect them. Chapters 9 and 28 of *Supercomputers for Linux SysAdmins* show the pattern.
-8. Write the client `/etc/fstab` line for NFS version 4.2 with 1 MiB read and write sizes, `nconnect=8`, `noatime`, `nodiratime`, and a `hard` mount.
-9. Compare `root_squash` with `no_root_squash`, `sync` with `async`, and `hard` with `soft`. When is each choice right?
+7. Write the `/etc/exports` lines for `/export/dir` to host1, host2, and host3 with `rw,root_squash`. Write the second line for `/home` to `10.0.0.0/8` with `rw,no_subtree_check`. Then write the command that applies them and the `showmount` commands that inspect them. Chapters 9 and 28 of *Supercomputers for Linux SysAdmins* show the pattern.
+8. Write the client `/etc/fstab` line for NFS version 4.2. It should use 1 MiB read and write sizes, `nconnect=8`, `noatime`, `nodiratime`, and a `hard` mount.
+9. Compare `root_squash` with `no_root_squash`. Then compare `sync` with `async`, and `hard` with `soft`. When is each choice right?
 10. Write `/etc/ntpd.conf` for a cluster service node. It should listen on 10.1.2.251 and use `restrict default kod nomodify notrap nopeer noquery`. What does each of the five restrict flags do?
 11. After a cold boot with a large clock offset, why must `ntpdate`, or `chronyd` with `iburst`, run before you mount a parallel file system? Which command verifies `systemd-timesyncd`?
-12. 4,096 GPUs train on pre-tokenized text at 3,000 tokens per second per GPU and 4 bytes per token. What read bandwidth does the whole cluster need? The answer is about 49 MB/s.
-13. 500 nodes train a vision model at 2,000 images per second per node and 150 KB per image. What read bandwidth does the cluster need? The answer is about 150 GB/s.
+12. 4,096 GPUs train on pre-tokenized text. Each GPU reads 3,000 tokens per second, and each token is 4 bytes. What read bandwidth does the whole cluster need? The answer is about 49 MB/s.
+13. 500 nodes train a vision model at 2,000 images per second per node. Each image is 150 KB. What read bandwidth does the cluster need? The answer is about 150 GB/s.
 14. Why does converting millions of small JPEG files into WebDataset `.tar` shards fix both the metadata and the bandwidth problem?
 15. A 2,048-GPU cluster needs four storage tiers: `/home` and `/opt`, `/scratch` for active datasets, node-local NVMe for asynchronous checkpoints, and a cold S3 archive. Name a technology, a capacity, a bandwidth target, and a lifecycle policy for each.
 

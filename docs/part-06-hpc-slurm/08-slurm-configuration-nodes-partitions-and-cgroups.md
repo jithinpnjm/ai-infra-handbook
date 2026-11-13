@@ -22,23 +22,21 @@ lab_venue: "GCP / GKE."
 
 ## Why this matters for AI infrastructure
 
-Most "my GPU job is behaving strangely" tickets on an AI cluster can be traced to a handful of lines in `slurm.conf` and `cgroup.conf`. Picture a researcher who requests 2 GPUs on an 8-GPU node. They still see all 8 GPUs, because `ConstrainDevices=yes` was left out. Another job gets killed by the node kernel's OOM killer. That takes down three neighboring jobs on the same server, because `SelectTypeParameters` omitted `_Memory`. A newly provisioned DGX node may register with the controller and flip straight to `drain` (`invalid`). The cause is that `RealMemory` in `slurm.conf` was set higher than the memory the kernel reports after BIOS reservations.
+Most of the tickets that say "my GPU job is behaving strangely" on an AI cluster can be traced back to a handful of lines in `slurm.conf` and `cgroup.conf`. Picture a researcher who asks for 2 GPUs on an 8-GPU node. They run `nvidia-smi` inside the job and see every GPU in the box. They assume the scheduler is broken. The scheduler is actually doing what it was told. Nobody set `ConstrainDevices=yes`, so the kernel never hid the GPUs the job did not ask for, and the job could see all of them.
 
-Getting these settings right is what turns a fragile cluster into a predictable production appliance. That covers node definitions, partition policies, `cons_tres` resource tracking, and cgroup containment. It also covers switch topology, which runs through `topology.conf` or `topology.yaml` and `SwitchAsNodeRank`.
+Here is a second case. A job grows past the memory it requested, and the node's kernel OOM killer (the out-of-memory killer, the part of Linux that stops processes when RAM runs out) picks a victim. Three neighboring jobs on the same server die with it. The reason is that `SelectTypeParameters` omitted `_Memory`, so Slurm never treated RAM as something jobs must share. The jobs were packed onto one machine without anyone counting their memory.
+
+The third case shows up on a newly provisioned DGX node. It registers with the controller and flips straight to `drain` (`invalid`). The machine is healthy. Its configuration is the problem, because `RealMemory` in `slurm.conf` was set higher than the memory the kernel reports after BIOS reservations. The config claims more RAM than the box really has, so Slurm refuses to trust the node.
+
+Getting these settings right is what turns a fragile cluster into a predictable production appliance. That covers node definitions, partition policies, `cons_tres` resource tracking, and cgroup containment. It also covers switch topology, which runs through `topology.conf` or `topology.yaml` and `SwitchAsNodeRank`. Each of these is a single file or a single parameter, so when you know where to look, most fixes take a few minutes. When you do not know where to look, the same symptom can cost a whole day of guessing. The good news is that the same few files show up in almost every fix. Once you know them, you can read a cluster configuration and see its weak spots quickly.
 
 ## Prerequisites and outcomes
 
-Before you start, you need Chapters 6.2 and 6.7, along with the Linux cgroups basics from Part 1. By the end of this chapter, you will be able to do the following.
-
-- Write accurate `NodeName` definitions from the output of `slurmd -C`. That includes `NodeSet` aliases, reserved system cores and memory (`CoreSpecCount`, `MemSpecLimit`), boolean `Features`, scheduling `Weight`, and `Gres`.
-- Explain the node states (`IDLE`, `MIXED`, `ALLOCATED`, `DRAINING`, `DRAINED`, `DOWN`, `FUTURE`), the state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`), and automatic recovery with `ReturnToService`.
-- Design overlapping and hardware-isolated `PartitionName` queues. You will use `PriorityTier`, `PriorityJobFactor`, `OverSubscribe`, `DefMemPerGPU`, `DefCpuPerGPU`, and `MaxCPUsPerNode`, and you will change them live with `scontrol`.
-- Configure `SelectType=select/cons_tres`, `SelectTypeParameters=CR_Core_Memory`, and `cgroup.conf` (`ConstrainCores`, `ConstrainRAMSpace`, `ConstrainDevices`), so the Linux kernel enforces every scheduler allocation.
-- Configure network topology with `topology.conf` or `topology.yaml`, using the `block` and `tree` plugins and `TopologyParam=SwitchAsNodeRank`. You will also set advanced `slurm.conf` parameters (`PrologFlags`, `SchedulerParameters`, `HealthCheckInterval`, `PrivateData`) covered in Chapter 15 of *Supercomputers for Linux SysAdmins*.
+It is a Monday morning, and a new GPU node has just been racked. Someone has to write its entry in the cluster configuration before any job can land on it, and this chapter walks you through that job and the ones around it. Before you start, you need Chapters 6.2 and 6.7, along with the Linux cgroups basics from Part 1. The chapter begins with writing accurate `NodeName` definitions from the output of `slurmd -C`. That includes `NodeSet` aliases, reserved system cores and memory (`CoreSpecCount`, `MemSpecLimit`), boolean `Features`, scheduling `Weight`, and `Gres`. Next come the node states (`IDLE`, `MIXED`, `ALLOCATED`, `DRAINING`, `DRAINED`, `DOWN`, `FUTURE`), the state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`), and automatic recovery with `ReturnToService`. After that you design overlapping and hardware-isolated `PartitionName` queues with `PriorityTier`, `PriorityJobFactor`, `OverSubscribe`, `DefMemPerGPU`, `DefCpuPerGPU`, and `MaxCPUsPerNode`, and you change them live with `scontrol`. Then you set `SelectType=select/cons_tres`, `SelectTypeParameters=CR_Core_Memory`, and `cgroup.conf` (`ConstrainCores`, `ConstrainRAMSpace`, `ConstrainDevices`), so that the Linux kernel enforces every scheduler allocation. Network topology follows, using `topology.conf` or `topology.yaml`, the `block` and `tree` plugins, and `TopologyParam=SwitchAsNodeRank`. The last part covers advanced `slurm.conf` parameters, namely `PrologFlags`, `SchedulerParameters`, `HealthCheckInterval`, and `PrivateData`, which Chapter 15 of *Supercomputers for Linux SysAdmins* covers in depth.
 
 ## 1. How Slurm configuration is organized
 
-Before you change any parameter, you need to know which file feeds which daemon. The diagram below shows the four configuration files and the process that reads each one.
+Suppose a colleague edits `cgroup.conf` on a Friday afternoon, restarts a daemon, and then asks why nothing changed. Often the answer is that the edit went into a file that the daemon never reads. Before you touch any parameter, you need to know which file feeds which daemon. The diagram below shows the four configuration files and the process that reads each one.
 
 ```mermaid
 flowchart LR
@@ -54,15 +52,15 @@ flowchart LR
   TP --> CTLD
 ```
 
-Slurm reads `slurm.conf` and its companion files from `/etc/slurm`. The companions are `cgroup.conf`, `gres.conf`, `topology.conf` or `topology.yaml`, `plugstack.conf`, and `slurmdbd.conf`. The rules here come from the `slurm.conf(5)` man page at commit `521370b`, and from Chapter 15 of Zhumatiy's *Supercomputers for Linux SysAdmins*.
+Slurm reads `slurm.conf` and its companion files from `/etc/slurm`. The companions are `cgroup.conf`, `gres.conf`, `topology.conf` or `topology.yaml`, `plugstack.conf`, and `slurmdbd.conf`. Each file answers a different question. `slurm.conf` describes the whole cluster, meaning the nodes, the partitions and the scheduling rules. `cgroup.conf` tells the kernel how to fence a running job. `gres.conf` describes the devices on one node, and the topology file describes which switch each node hangs from. The rules here come from the `slurm.conf(5)` man page at commit `521370b`, and from Chapter 15 of Zhumatiy's *Supercomputers for Linux SysAdmins*.
 
-Parameter names are case-insensitive, and `#` starts a comment. Use `Include <filename>` to pull in sub-files. That lets you keep node and partition definitions in modular files, which Ansible or BCM can manage.
+Parameter names are case-insensitive, and `#` starts a comment. Use `Include <filename>` to pull in sub-files. Think of `Include` as a way to split one long recipe into a few cards. One card can hold node definitions, another the partitions, and another the QOS settings. A tool such as Ansible or BCM can then manage each card on its own, without anyone editing one huge file by hand.
 
-Permissions matter as well. `slurm.conf` must be world-readable (`0644`), because user CLI tools such as `sbatch`, `squeue`, and `sinfo` parse it directly. Never put database passwords in `slurm.conf`. Keep those credentials in `slurmdbd.conf`, which should be `0600` and owned by `SlurmUser`.
+Permissions matter as well. `slurm.conf` must be world-readable (`0644`), because user CLI tools such as `sbatch`, `squeue`, and `sinfo` parse it directly. Every time a user runs `squeue`, the command reads this file as that user. If the file were locked down, every ordinary user would see errors from every command. Never put database passwords in `slurm.conf`. Keep those credentials in `slurmdbd.conf`, which should be `0600` and owned by `SlurmUser`.
 
-Consistency across nodes is the next concern. You can distribute identical copies of `/etc/slurm/*` to every node, but a hash mismatch drains the affected node. The alternative is configless mode, enabled with `SlurmctldParameters=enable_configless` and covered in Chapter 6.7. In that mode, `slurmctld` serves the configuration files directly to `slurmd` and `sackd`.
+Consistency across nodes is the next concern. You can distribute identical copies of `/etc/slurm/*` to every node, but a hash mismatch drains the affected node. Picture one node that missed the last copy. Its configuration no longer matches the controller's, so Slurm takes the node out of service rather than let it run jobs under the wrong rules. The alternative is configless mode, enabled with `SlurmctldParameters=enable_configless` and covered in Chapter 6.7. In that mode, `slurmctld` serves the configuration files directly to `slurmd` and `sackd`. There is one copy to edit, and nothing to keep in sync by hand.
 
-Slurm uses compact bracket ranges everywhere, such as `node[1-10]`, `gpu[01-04,07]`, and `n[15-33]`. As Zhumatiy notes in Chapter 15, Slurm itself does not ship a standalone CLI tool that converts bracket notation into plain host lists, or back. The command `scontrol show hostnames gpu[01-04]` does expand the brackets. External tools such as `cluset`, from the ClusterShell package, convert in both directions.
+Slurm uses compact bracket ranges everywhere, such as `node[1-10]`, `gpu[01-04,07]`, and `n[15-33]`. Brackets matter because a long rack would otherwise need one line per host. As Zhumatiy notes in Chapter 15, Slurm itself does not ship a standalone CLI tool that converts bracket notation into plain host lists, or back. The command `scontrol show hostnames gpu[01-04]` does expand the brackets. External tools such as `cluset`, from the ClusterShell package, convert in both directions.
 
 **Keep `slurm.conf` modular with `Include` files, never store secrets in it, and lint every edit before you run `scontrol reconfigure`.**
 
@@ -72,9 +70,11 @@ Slurm uses compact bracket ranges everywhere, such as `node[1-10]`, `gpu[01-04,0
 
 ## 2. Nodes: hardware discovery (`slurmd -C`), `DEFAULT`, `NodeSet`, and states
 
+A rack of new GPU servers arrives, and the vendor's sheet lists the RAM as a tidy round number. You are about to type that number into `slurm.conf`. This is the moment to stop and measure instead, because the number on the sheet is not the number the kernel will report.
+
 ### Describing node hardware (`slurmd -C` and *Supercomputers for Linux Sysadmins* Chapter 15 attributes)
 
-Do not guess CPU counts or RAM from a server datasheet. The Linux kernel reserves several gigabytes of RAM for page tables and kernel structures, so `MemTotal` always comes in slightly below the nominal DIMM capacity. Run `slurmd -C` on each node class to print the exact hardware topology that `slurmd` detects (**untested** here).
+Do not guess CPU counts or RAM from a server datasheet. The Linux kernel reserves several gigabytes of RAM for page tables and kernel structures, so `MemTotal` always comes in slightly below the nominal DIMM capacity. The datasheet describes the memory sticks that are installed, and the kernel reports what is usable. Run `slurmd -C` on each node class to print the exact hardware topology that `slurmd` detects. Then copy that output into your config, rather than retyping it from memory. A practical habit helps here. Keep the raw `slurmd -C` output in your change request, next to the line you wrote. When someone asks months later why `RealMemory` is set the way it is, the answer is already on the page. Reviewers also catch typos faster when they can compare the two side by side.
 
 ```bash
 # (untested here)
@@ -82,7 +82,7 @@ slurmd -C
 # NodeName=gpu01 CPUs=64 Boards=1 SocketsPerBoard=2 CoresPerSocket=16 ThreadsPerCore=2 RealMemory=515000 ...
 ```
 
-In `slurm.conf`, nodes are declared on `NodeName=...` lines. Do not write one line per node. Group identical nodes with bracket notation, such as `NodeName=gpu[01-32] ...`. Use **`NodeName=DEFAULT`** to set shared attributes for every later `NodeName` line, until the next `DEFAULT` line appears. You can also define a **`NodeSet`** alias to shorten node lists inside partition definitions. *Supercomputers for Linux SysAdmins* shows this form in Chapter 15:
+In `slurm.conf`, nodes are declared on `NodeName=...` lines. Do not write one line per node. Group identical nodes with bracket notation, such as `NodeName=gpu[01-32] ...`. Use `NodeName=DEFAULT` to set shared attributes for every later `NodeName` line, until the next `DEFAULT` line appears. You can also define a `NodeSet` alias to shorten node lists inside partition definitions. *Supercomputers for Linux SysAdmins* shows this form in Chapter 15:
 
 ```ini
 NodeSet=Set1 Nodes=n[10-20],n[55,66,77]
@@ -101,13 +101,15 @@ Each attribute in the table below has its own rule, so read the table before you
 | `Weight` | Scheduling preference integer: Slurm allocates the **lowest-weight** nodes that satisfy a job first. Assign higher `Weight` to large-RAM or special-feature nodes so ordinary jobs leave them free |
 | `State` | Set `State=UNKNOWN` in `slurm.conf` (never hardcode `IDLE` or `BUSY` in the config file) |
 
-As you read the table, notice that `CPUs` has to match the hardware arithmetic, and that `RealMemory` should sit below the RAM that `slurmd -C` reports. Take the `gpu01` line above, which reports `RealMemory=515000`. Keeping about 97 percent of that leaves Slurm roughly 499,550 MiB (515000 × 0.97 = 499,550), which is the margin the table asks for.
+As you read the table, notice that `CPUs` has to match the hardware arithmetic, and that `RealMemory` should sit below the RAM that `slurmd -C` reports. Take the `gpu01` line above, which reports `RealMemory=515000`. Keeping about 97 percent of that leaves Slurm roughly 499,550 MiB (515000 × 0.97 = 499,550), which is the margin the table asks for. The margin is deliberate. A kernel update after a reboot can change the reserved memory by a little, and the margin keeps that small change from draining the node.
 
 ### Node states, state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`), and `ReturnToService`
 
+It is the middle of the night, and an alert says that the queue has stopped moving. You run `sinfo` to see what the cluster looks like. The output is full of state words and small symbols, and you need to read them quickly.
+
 When you inspect nodes with `sinfo`, you can narrow the output with `-t STATES`, `-n NODES`, `-R` for reasons, `-s` for a summary, `-h` for no header, or `--json` and `--yaml`. The format codes come from Tables 15-3 and 15-4 of *Supercomputers for Linux SysAdmins*. They include `%a`, `%A` (busy and free), `%C` (processors busy, free, other, and total), `%D` (nodes), `%E` (reason), `%F` (nodes busy, free, other, and total), `%P` (partition, with `*` for the default), and `%t` and `%T` (short and long state). Nodes appear in base states such as `IDLE`, `MIXED`, `ALLOCATED`, `DRAIN`, `DRAINING`, `DRAINED`, `DOWN`, `FAIL`, `FAILING`, `COMPLETING`, `MAINT`, `RESERVED`, `FUTURE`, and `UNKNOWN`.
 
-`sinfo` sometimes adds one suffix symbol to a node's state, as in `idle*`, `drain$`, or `idle~`. The table below decodes all eight symbols from Table 15-4 of *Supercomputers for Linux SysAdmins*.
+`sinfo` sometimes adds one suffix symbol to a node's state, as in `idle*`, `drain$`, or `idle~`. The suffix is a short code for something extra that is happening to the node. The table below decodes all eight symbols from Table 15-4 of *Supercomputers for Linux SysAdmins*.
 
 | Suffix symbol | Meaning on node state in `sinfo` (*Supercomputers for Linux Sysadmins* Chapter 15) |
 |---|---|
@@ -120,13 +122,15 @@ When you inspect nodes with `sinfo`, you can narrow the output with `-t STATES`,
 | `@` | The node is **pending reboot** (for example via `scontrol reboot asap`) |
 | `^` | A **node reboot was issued** and is in progress |
 
-The table shows that `*` means the controller cannot reach the node's `slurmd`, while `@` and `^` both belong to reboots, one pending and one under way. Keep the table nearby when you read a `sinfo` line, so you can decode its state quickly.
+The table shows that `*` means the controller cannot reach the node's `slurmd`, while `@` and `^` both belong to reboots, one pending and one under way. Keep the table nearby when you read a `sinfo` line, so you can decode its state at a glance.
 
-What happens when a `DOWN` node finishes rebooting and its `slurmd` registers with `slurmctld`? The global **`ReturnToService`** parameter decides.
+Here is how a node usually moves through these states. A healthy node sits in `IDLE` until a job lands on it. It becomes `MIXED` when only some of its CPUs are in use, and `ALLOCATED` when all of them are. If `slurmd` stops answering, the controller marks the node `DOWN`, and `sinfo` shows a `*` after the state. An administrator who wants the node out of rotation for repair drains it. The state then reads `DRAINING` while the last jobs finish, and `DRAINED` once the node is empty. Each step carries a reason, and the `-R` option prints that reason so you can see why the node is out of service.
 
-- **`ReturnToService=0` (default):** A `DOWN` node stays `DOWN` until an administrator inspects it and runs `scontrol update nodename=<node> state=resume`.
-- **`ReturnToService=1`:** A `DOWN` node returns to service on valid registration, but only if it was marked `DOWN` because `slurmd` stopped responding (`SlurmdTimeout`).
-- **`ReturnToService=2`:** A `DOWN` node returns to service on valid registration, whatever the reason it went `DOWN`. This is safe only when a strict node health check gates it (Chapter 6.14). An explicitly **`DRAIN`**ed node never auto-resumes under `ReturnToService`. An administrator or a health program has to resume it.
+What happens when a `DOWN` node finishes rebooting and its `slurmd` registers with `slurmctld`? The global `ReturnToService` parameter decides.
+
+- `ReturnToService=0` (default): A `DOWN` node stays `DOWN` until an administrator inspects it and runs `scontrol update nodename=<node> state=resume`. Choose this when you want a person to look at every failure.
+- `ReturnToService=1`: A `DOWN` node returns to service on valid registration, but only if it was marked `DOWN` because `slurmd` stopped responding (`SlurmdTimeout`). A node that failed for some other reason stays down.
+- `ReturnToService=2`: A `DOWN` node returns to service on valid registration, whatever the reason it went `DOWN`. This is safe only when a strict node health check gates it (Chapter 6.14). A node that was explicitly drained with `DRAIN` never auto-resumes under `ReturnToService`. An administrator or a health program has to resume it.
 
 **Generate every `NodeName` line from `slurmd -C`, set `RealMemory` slightly below physical RAM, use `Weight` to protect scarce high-memory or multi-GPU nodes, and memorize the `sinfo` suffix symbols.** Start with `*` for an unresponsive node, `$` for maintenance, and `@` or `^` for a reboot.
 
@@ -136,7 +140,7 @@ What happens when a `DOWN` node finishes rebooting and its `slurmd` registers wi
 
 ## 3. Partitions: attributes, states, and live `scontrol` updates (*Supercomputers for Linux Sysadmins* Chapter 15)
 
-Suppose your cluster has a debug queue for quick interactive work and a batch queue for long training runs. A partition is the object that keeps them apart. It is a logical queue that wraps a set of nodes (`Nodes=...`), with its own scheduling constraints and access controls. Partitions can be nested, can share the same physical nodes, or can intersect.
+Think about two people using the same cluster. One student needs a shell on a GPU for a few minutes to debug a script. A research team needs a training run that lasts for days. A partition is the object that keeps their work apart. It is a logical queue that wraps a set of nodes (`Nodes=...`), with its own scheduling constraints and access controls. Partitions can be nested, can share the same physical nodes, or can intersect. A debug partition and a batch partition can point at the same hardware and still behave very differently. The partition is also where policy lives. A debug partition can have a short `MaxTime` and a high tier, so students get in quickly. A training partition can have a long `MaxTime` and a lower tier, so long runs never block the debug queue. Users never see the nodes behind the queues. They see only the partition name, and that name becomes a contract with them.
 
 The attributes in the table below control who can submit, how long jobs may run, and how partitions compete with each other.
 
@@ -153,16 +157,16 @@ The attributes in the table below control who can submit, how long jobs may run,
 | `QOS`, `TRESBillingWeights` | Attaches a partition QoS (only one per partition) and defines TRES billing weights (`GPU=1.0,CPU=0.001,Mem=0.01G`) |
 | `DefMemPerGPU`, `DefCpuPerGPU` | Automatically grants a sensible default RAM (`65536` MiB) and CPU count (`8` cores) per requested GPU |
 
-Two attributes in that table look alike but behave differently. `PriorityTier` decides the order between whole partitions, so a higher tier can jump ahead of a lower one. `PriorityJobFactor` only adds weight inside the multifactor priority sum. If you mix these two up, an interactive queue may not jump ahead of batch jobs.
+Two attributes in that table look alike but behave differently. `PriorityTier` decides the order between whole partitions, so a higher tier can jump ahead of a lower one. `PriorityJobFactor` only adds weight inside the multifactor priority sum. Picture the interactive queue that never gets its turn even though it is supposed to be urgent. Very often someone set `PriorityJobFactor` where they needed `PriorityTier`.
 
 A partition is always in one of four operational states, and each state controls submissions and job starts in its own way. Chapter 15 of *Supercomputers for Linux SysAdmins* describes them this way.
 
-1. **`UP`:** New jobs can be submitted, and queued jobs will start.
-2. **`DOWN`:** New jobs can still be submitted to the queue, but no new jobs will start. Jobs that are already running continue to completion.
-3. **`DRAIN`:** No new jobs can be submitted, while jobs already queued in the partition continue to start and finish.
-4. **`INACTIVE`:** Neither new submissions nor job starts are permitted.
+1. `UP`: New jobs can be submitted, and queued jobs will start.
+2. `DOWN`: New jobs can still be submitted to the queue, but no new jobs will start. Jobs that are already running continue to completion.
+3. `DRAIN`: No new jobs can be submitted, while jobs already queued in the partition continue to start and finish.
+4. `INACTIVE`: Neither new submissions nor job starts are permitted.
 
-You can modify or create partitions on the fly, without restarting `slurmctld`, by using `scontrol`. The syntax has quirks that Chapter 15 highlights. `update` takes `partitionname=main` as one word and supports `+=` and `-=` on node lists. `create` takes `partition` and `name=new` as two separate arguments. Both commands below are untested here.
+You can modify or create partitions on the fly, without restarting `slurmctld`, by using `scontrol`. The syntax has quirks that Chapter 15 highlights. `update` takes `partitionname=main` as one word and supports `+=` and `-=` on node lists. `create` takes `partition` and `name=new` as two separate arguments. The two commands below are shown for reference.
 
 ```bash
 # Modify an existing partition on the fly (untested here)
@@ -174,7 +178,7 @@ scontrol create partition name=new nodes=node[30-32] \
   allowaccounts=acc1,acc3
 ```
 
-Watch the second command. Its `partition` and `name=new` are separate arguments, unlike the single `partitionname=main` token in the first.
+Watch the second command. Its `partition` and `name=new` are separate arguments, unlike the single `partitionname=main` token in the first. That small difference is the kind of thing that makes a command fail in the middle of an incident when you copy it from an older note.
 
 **Set `Default=YES` on exactly one partition, configure `DefCpuPerGPU` and `DefMemPerGPU` on every GPU partition, and use `PriorityTier` rather than `PriorityJobFactor` alone when an interactive or debug queue must jump ahead of batch jobs.**
 
@@ -184,9 +188,11 @@ Watch the second command. Its `partition` and `name=new` are separate arguments,
 
 ## 4. Resource selection (`select/cons_tres`) and cgroup containment
 
-A GPU node is only safe when two halves work together. Resource selection happens in `slurmctld`, and cgroup containment happens in `slurmstepd`.
+A shared GPU node is only safe when two halves work together. Imagine two jobs on the same server, each one sure that it owns the RAM and the cores it was given. If only one half of the system knows about the limits, the other job pays for the mistake. Resource selection happens in `slurmctld`, which decides which job gets which resources. Cgroup containment happens in `slurmstepd`, which is the process that starts the job on the node and then fences it in with kernel limits.
 
-1. **Consumable Trackable Resources (`select/cons_tres`):** In `slurm.conf`, set the following.
+Here is what happens when a job starts. `slurmctld` picks the nodes and the cores, and it records that choice. On the node, `slurmstepd` creates the job's cgroup, writes the RAM and device limits into it, and only then starts the user's tasks. The tasks cannot step outside the fence, because the kernel checks every access against the limits. The controller's choice is a promise, and the cgroup is what keeps the promise.
+
+1. Consumable Trackable Resources (`select/cons_tres`): In `slurm.conf`, set the following.
 
    ```ini
    SelectType=select/cons_tres
@@ -197,7 +203,7 @@ A GPU node is only safe when two halves work together. Resource selection happen
 
    Chapter 15 of *Supercomputers for Linux SysAdmins* notes that Slurm tracks `Billing`, `CPU`, `Energy`, `Mem`, `Node`, `Pages`, `VMem`, and `FS` (which covers `disk` and `lustre`) by default. You can also track `BB` (burst buffers), `GRES` (`gres/gpu`), `IC` (`ic/ofed`), and `License` (`license/cad`). Never omit `_Memory` from `SelectTypeParameters`. Without it, as in `CR_Core_Memory`, Slurm treats RAM as advisory. Jobs can then oversubscribe node memory, and cgroup RAM enforcement is disabled.
 
-2. **Kernel enforcement (`proctrack/cgroup`, `task/cgroup`, and `cgroup.conf`):** In `slurm.conf`, set `ProctrackType=proctrack/cgroup`, `TaskPlugin=task/affinity,task/cgroup`, and `JobAcctGatherType=jobacct_gather/cgroup`. Every `Constrain*` option in `cgroup.conf` defaults to `no`, so you must enable all three explicitly in `/etc/slurm/cgroup.conf`.
+2. Kernel enforcement (`proctrack/cgroup`, `task/cgroup`, and `cgroup.conf`): In `slurm.conf`, set `ProctrackType=proctrack/cgroup`, `TaskPlugin=task/affinity,task/cgroup`, and `JobAcctGatherType=jobacct_gather/cgroup`. Every `Constrain*` option in `cgroup.conf` defaults to `no`, so you must enable all three explicitly in `/etc/slurm/cgroup.conf`. An option left at `no` does nothing, and it does nothing quietly, so there is no warning to tell you the fence is missing.
 
    ```ini
    CgroupPlugin=autodetect
@@ -206,7 +212,7 @@ A GPU node is only safe when two halves work together. Resource selection happen
    ConstrainDevices=yes
    ```
 
-   Without `ConstrainDevices=yes`, a user who requests `--gres=gpu:1` can unset `CUDA_VISIBLE_DEVICES` inside the script and use all 8 GPUs on the node.
+   Without `ConstrainDevices=yes`, a user who requests `--gres=gpu:1` can unset `CUDA_VISIBLE_DEVICES` inside the script and use all of the node's GPUs. The variable is only a hint to the software, and the kernel is what enforces the limit. Turning on the device constraint is what moves the limit from the hint to the kernel.
 
 **Always pair `SelectTypeParameters=CR_Core_Memory` with `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, and `ConstrainDevices=yes` in `cgroup.conf`.**
 
@@ -216,7 +222,7 @@ A GPU node is only safe when two halves work together. Resource selection happen
 
 ## 5. Topology awareness (`topology.conf` / `topology.yaml` and `SwitchAsNodeRank`)
 
-Consider a 16-node job on an InfiniBand or RoCE fat-tree fabric. If Slurm places all 16 nodes under one leaf switch, their collective traffic stays on that switch, one hop away. It never congests the spine uplinks. In Chapter 15, Zhumatiy shows how to make Slurm aware of this. You set `TopologyPlugin=topology/<type>`, where the type is `default`, `block`, `3d-torus`, or `tree`. The layout goes in `topology.conf`, or in the newer `topology.yaml`.
+Consider a 16-node job on an InfiniBand or RoCE fat-tree fabric. If Slurm places all 16 nodes under one leaf switch, their collective traffic stays on that switch, one hop away. It never congests the spine uplinks. The leaf switch is the switch that a group of nodes plugs into directly, and the spine is the layer of switches above it that connects the leaves. When a job spreads across many leaves, its traffic has to climb to the spine and back down, which is slower and more likely to be congested. In Chapter 15, Zhumatiy shows how to make Slurm aware of this. You set `TopologyPlugin=topology/<type>`, where the type is `default`, `block`, `3d-torus`, or `tree`. The layout goes in `topology.conf`, or in the newer `topology.yaml`.
 
 ```ini
 # (untested here) — topology/block example in topology.conf
@@ -229,17 +235,17 @@ SwitchName=s1 Nodes=n[1,3,5,7]
 SwitchName=top Switches=s[0-1]
 ```
 
-Look closely at the `topology/tree` example. Even-numbered nodes, n0, n2, n4, and n6, sit on leaf switch s0. Odd-numbered nodes, n1, n3, n5, and n7, sit on leaf switch s1. Suppose a job receives n0, n1, n2, and n3. Slurm's default alphabetical ordering gives Rank 0 to n0 on s0, Rank 1 to n1 on s1, Rank 2 to n2 on s0, and Rank 3 to n3 on s1. Each nearest-neighbor pair, `0 <-> 1`, `1 <-> 2`, and `2 <-> 3`, now crosses the top spine switch.
+Look closely at the `topology/tree` example. Even-numbered nodes, n0, n2, n4, and n6, sit on leaf switch s0. Odd-numbered nodes, n1, n3, n5, and n7, sit on leaf switch s1. Suppose a job receives n0, n1, n2, and n3. Slurm's default alphabetical ordering gives Rank 0 to n0 on s0, Rank 1 to n1 on s1, Rank 2 to n2 on s0, and Rank 3 to n3 on s1. Each nearest-neighbor pair, `0 <-> 1`, `1 <-> 2`, and `2 <-> 3`, now crosses the top spine switch. Every neighbor exchange in the MPI job takes the long way. In practice this shows up as a job that runs slower than the same job on a tidy allocation, with no error anywhere. The scheduler did what it was asked. The topology file simply did not carry the detail that would have helped it choose well.
 
-Set **`TopologyParam=SwitchAsNodeRank`** in `slurm.conf` to fix this. The `reorder_nodes_switch_as_node_rank()` function in `code/part06/slurmconf_lint_lab.py` models the behavior. Slurm sorts the allocated node list by leaf switch first and then by node name, giving ['n0', 'n2', 'n1', 'n3']. Consecutive ranks then stay on the same leaf switch.
+Set `TopologyParam=SwitchAsNodeRank` in `slurm.conf` to fix this. The `reorder_nodes_switch_as_node_rank()` function in `code/part06/slurmconf_lint_lab.py` models the behavior. Slurm sorts the allocated node list by leaf switch first and then by node name, giving ['n0', 'n2', 'n1', 'n3']. Consecutive ranks then stay on the same leaf switch, so most of the neighbor traffic stays one hop away.
 
-**Warning:** Whenever you add compute nodes to `slurm.conf`, update `topology.conf` or `topology.yaml` in the same change. Any node missing from the topology file will never be scheduled.
+Watch for this one. Whenever you add compute nodes to `slurm.conf`, update `topology.conf` or `topology.yaml` in the same change. Any node missing from the topology file will never be scheduled.
 
-Add each new node to the topology file in the same change that adds it to `slurm.conf`.
+Add each new node to the topology file in the same change that adds it to `slurm.conf`. Treat the two files as one edit, and review them together.
 
 ## 6. Advanced `slurm.conf` parameters (`PrologFlags`, `SchedulerParameters`, `PrivateData`)
 
-Some of the most useful settings in `slurm.conf` handle scale-up bottlenecks. Jobs can start before every node is ready, or the controller can be buried under a flood of submissions. At the end of Chapter 15, Zhumatiy catalogs the high-leverage parameters. They include `PropagateResourceLimits`, `HealthCheckInterval`, `HealthCheckNodeState=ALLOC,ANY,CYCLE,IDLE,NONDRAINED_IDLE,MIXED`, `PrivateData=accounts,events,jobs,nodes,partitions,reservations,usage,users`, `SlurmSchedLogFile`, and `SlurmSchedLogLevel`. Two of them, `PrologFlags` and `SchedulerParameters`, have sub-options that solve these scale-up problems. The table below lists those sub-options.
+A cluster that grows overnight can hit scale-up bottlenecks in two ways. Jobs can start before every node is ready, or the controller can be buried under a flood of submissions from one busy team. The settings in this section address both problems. At the end of Chapter 15, Zhumatiy catalogs the high-leverage parameters. They include `PropagateResourceLimits`, `HealthCheckInterval`, `HealthCheckNodeState=ALLOC,ANY,CYCLE,IDLE,NONDRAINED_IDLE,MIXED`, `PrivateData=accounts,events,jobs,nodes,partitions,reservations,usage,users`, `SlurmSchedLogFile`, and `SlurmSchedLogLevel`. Two of them, `PrologFlags` and `SchedulerParameters`, have sub-options that solve these scale-up problems. The table below lists those sub-options.
 
 | Parameter family | Sub-option (*Supercomputers for Linux Sysadmins* Chapter 15) | What it does in production |
 |---|---|---|
@@ -253,7 +259,9 @@ Some of the most useful settings in `slurm.conf` handle scale-up bottlenecks. Jo
 | **`SchedulerParameters`** | `max_rpc_cnt=N`, `max_sched_time`, `max_switch_wait=300` | `max_rpc_cnt` defers scheduling whenever active `slurmctld` RPC threads exceed `N` (`256` max threads note); `max_sched_time` caps scheduler loop duration (keep `< MessageTimeout`); `max_switch_wait` caps `--switches` wait (`300` s default) |
 | **`SchedulerParameters`** | `salloc_wait_nodes`, `sbatch_wait_nodes`, `nohold_on_prolog_fail`, `pack_serial_at_end` | Waits for all allocated nodes to finish prolog/boot before starting `salloc`/`sbatch` (`--wait-all-nodes`); requeues jobs without holding them on prolog failure; packs serial jobs at the end of node lists to reduce fragmentation |
 
-The table splits the work in two, so you can see which setting solves which problem. If your controller slows down during a submit storm, you know which rows to read first. If you need every node ready before a job starts, the `PrologFlags` rows are where you look. `PrologFlags` controls when prologs run and how jobs are contained. `SchedulerParameters` controls how often the scheduler runs and how much work each pass does.
+The table splits the work in two, so you can see which setting solves which problem. If your controller slows down during a submit storm, you know which rows to read first. If you need every node ready before a job starts, the `PrologFlags` rows are where you look. `PrologFlags` controls when prologs run and how jobs are contained. `SchedulerParameters` controls how often the scheduler runs and how much work each pass does. Think of the first as a rule about the start of a job, and the second as a rule about the scheduler's own rhythm.
+
+A submit storm is a burst of many `sbatch` calls in a short time, often from a script that loops over a parameter sweep. Each submission normally triggers scheduling work, so a storm keeps the controller busy and slows everyone's commands. The `defer` options spread that work into periodic passes instead, which is why they help during exactly that kind of burst.
 
 **Set `PrologFlags=Alloc,Contain,DeferBatch` on GPU clusters that use `pam_slurm_adopt`, and tune `SchedulerParameters=defer_batch,bf_max_job_test=500,max_rpc_cnt=128` when large queues or submit storms slow down `slurmctld`.**
 
@@ -264,9 +272,9 @@ The table splits the work in two, so you can see which setting solves which prob
 
 ## 7. Validating configurations: `slurmconf_lint.py` and `gen_slurm_conf.py`
 
-Before you run `scontrol reconfigure` or restart `slurmctld`, check the configuration. A lint script catches the classic mistakes before they can take down a node. Use `code/part06/slurmconf_lint.py` to validate a file. Use `code/part06/gen_slurm_conf.py` to generate clean starter configs from a CSV hardware inventory.
+It is late, and you are about to push a one-line change that restarts the controller. A typo in that file can take every node out of service at once. Before you run `scontrol reconfigure` or restart `slurmctld`, check the configuration. A lint script catches the classic mistakes before they can take down a node. Use `code/part06/slurmconf_lint.py` to validate a file. Use `code/part06/gen_slurm_conf.py` to generate clean starter configs from a CSV hardware inventory.
 
-Start with the self-checking Python lab, which runs locally. It expands bracket hostlists, such as `expand("gpu[01-04,07]")`. It runs `slurmconf_lint.py` against a deliberately broken config, which should catch all 5 errors and 3 warnings, and against a valid production GPU config, which should report `0` findings. It also tests `TopologyParam=SwitchAsNodeRank` leaf-switch sorting with `reorder_nodes_switch_as_node_rank`.
+These steps were not run on a live cluster. Start with the self-checking Python lab, which runs locally. It expands bracket hostlists, such as `expand("gpu[01-04,07]")`. It runs `slurmconf_lint.py` against a deliberately broken config, which should catch all 5 errors and 3 warnings, and against a valid production GPU config, which should report `0` findings. It also tests `TopologyParam=SwitchAsNodeRank` leaf-switch sorting with `reorder_nodes_switch_as_node_rank`. This lab does not need a cluster, so run it first on your own machine.
 
 ```bash
 python3 code/part06/slurmconf_lint_lab.py
@@ -285,13 +293,13 @@ warn:  SelectTypeParameters has no *_Memory: memory is not a consumable resource
 warn:  TaskPlugin/ProctrackType do not both use cgroup: job cleanup and containment will be weak
 ```
 
-Each line names the node or partition at fault, so you can correct the file before a reconfigure. Fix the `ERROR` lines first, then work through the `warn` lines.
+Each line names the node or partition at fault, so you can correct the file before a reconfigure. Fix the `ERROR` lines first, then work through the `warn` lines. Errors are the lines that would break scheduling. Warnings are the lines that would quietly weaken containment or memory limits.
 
-Treat a clean lint run as the gate before every `scontrol reconfigure`.
+Treat a clean lint run as the gate before every `scontrol reconfigure`. A clean run does not prove that the cluster will behave well. It proves that the file is internally consistent, which catches the cheap mistakes. The expensive mistakes, such as a wrong memory figure that only shows under load, still need a test node and a careful reconfigure.
 
 ## 8. Interview angles
 
-These questions test whether you can connect a symptom to the file and parameter behind it. Try each one against the config before you answer from memory.
+Interviewers often start from a symptom, not from a definition. A strong answer names the file, the parameter and the reason in one breath. They describe a user complaint and wait to see whether you can name the file and the parameter behind it. Try each question against the config before you answer from memory.
 
 - A user submits `sbatch --gres=gpu:1` on an 8-GPU node, yet `nvidia-smi` inside the job lists all 8 GPUs. Which exact file and parameter were missed?
 - What separates a partition in state `DOWN` from one in state `DRAIN`? And how does `PriorityTier` differ from `PriorityJobFactor`?
@@ -301,14 +309,14 @@ These questions test whether you can connect a symptom to the file and parameter
 
 ## Exercises
 
-Work through each task on paper first, then check your answer against the code or output named in it.
+Work through each task on paper first, then check your answer against the code or output named in it. Each exercise starts from a situation you might meet on a real cluster.
 
-1. Use `lint()` and `expand()` in `code/part06/slurmconf_lint.py` to explain four things. Why does `CPUs=64` fail when the node has `Sockets=2 CoresPerSocket=16 ThreadsPerCore=1`? What happens if `RealMemory` is omitted from a `NodeName` line? Why must `SelectTypeParameters` include `_Memory`? And why should exactly one partition set `Default=YES`?
-2. Generate cluster configs from a hardware inventory. If you run `python3 code/part06/gen_slurm_conf.py code/part06/capstone_inputs/hardware.csv /tmp/slurm_out`, then inspect the generated `slurm.conf`, `cgroup.conf`, and `gres.conf`. Explain why `gen_slurm_conf.py` multiplies `mem_mb` by `0.97` for `RealMemory`, and why it sets `DefMemPerGPU=65536` and `DefCpuPerGPU=8` on GPU partitions.
-3. Decode the `sinfo` node states `idle*`, `drain$`, `idle~`, `alloc#`, `comp@`, and `down^`. Then contrast `ReturnToService=0`, `1`, and `2`. Finally, write the `scontrol` commands that drain nodes `n[22,25]` with reason `'badmem'`, and that schedule an immediate drain-and-reboot with `scontrol reboot asap nextstate=resume`.
-4. Chapter 15 covers partition states, `OverSubscribe`, and `PriorityTier`. Contrast the four partition states, `UP`, `DOWN`, `DRAIN`, and `INACTIVE`, on job submissions and on job starts. Then compare `OverSubscribe=NO`, `YES:4`, `FORCE:4`, and `EXCLUSIVE`. Last, write the `scontrol` commands that update partition `main` and create partition `new`, restricted to `acc1,acc3`.
-5. Leaf switch `s0` hosts `n[0,2,4,6]`, and leaf switch `s1` hosts `n[1,3,5,7]`. Use `reorder_nodes_switch_as_node_rank()` in `code/part06/slurmconf_lint_lab.py` to reorder an allocation of `n0, n1, n2, n3`. Show how `TopologyParam=SwitchAsNodeRank` keeps neighboring MPI ranks on the same leaf switch.
-6. Suppose you must design the `PrologFlags` and `SchedulerParameters` lines for a 1,000-node GPU cluster. The cluster uses `pam_slurm_adopt`, suffers from synchronized MPI startup failures when one node's prolog runs slowly, and sees `sbatch` submission bursts of 2,000 jobs at a time.
+1. Your lint run reports errors, and you want to understand each one before you fix it. Read each error as a claim about the file, and test the claim before you edit anything. Use `lint()` and `expand()` in `code/part06/slurmconf_lint.py` to check your reading. The node has `Sockets=2 CoresPerSocket=16 ThreadsPerCore=1`. Why does `CPUs=64` fail? What happens if `RealMemory` is omitted from a `NodeName` line? Why must `SelectTypeParameters` include `_Memory`? Why should exactly one partition set `Default=YES`?
+2. You have a hardware inventory in a CSV file, and you need starter configs for a new cluster. Run `python3 code/part06/gen_slurm_conf.py code/part06/capstone_inputs/hardware.csv /tmp/slurm_out`. Inspect the generated `slurm.conf` file. Then inspect the generated `cgroup.conf` and `gres.conf` files. Explain why `gen_slurm_conf.py` multiplies `mem_mb` by `0.97` for `RealMemory`. Explain why it sets `DefMemPerGPU=65536` and `DefCpuPerGPU=8` on GPU partitions.
+3. The on-call engineer sends you a screenshot of `sinfo` output, and some of the states are new to you. Decode `idle*`, `drain$`, `idle~`, `alloc#`, `comp@`, and `down^`. Contrast `ReturnToService=0`, `1`, and `2`. Write the `scontrol` commands that drain nodes `n[22,25]` with reason `'badmem'`. Write the command that schedules an immediate drain-and-reboot with `scontrol reboot asap nextstate=resume`.
+4. A user asks why a partition accepts their submissions but nothing starts. Chapter 15 covers partition states, `OverSubscribe`, and `PriorityTier`, so start there. Contrast the four partition states, `UP`, `DOWN`, `DRAIN`, and `INACTIVE`, on job submissions and on job starts. Then compare `OverSubscribe=NO`, `YES:4`, `FORCE:4`, and `EXCLUSIVE`. Last, write the `scontrol` commands that update partition `main` and create partition `new`, restricted to `acc1,acc3`.
+5. A job lands on nodes that hang off two leaf switches, and its MPI job runs slowly. Leaf switch `s0` hosts `n[0,2,4,6]`. Leaf switch `s1` hosts `n[1,3,5,7]`. Use `reorder_nodes_switch_as_node_rank()` in `code/part06/slurmconf_lint_lab.py` to reorder an allocation of `n0, n1, n2, n3`. Show how `TopologyParam=SwitchAsNodeRank` keeps neighboring MPI ranks on the same leaf switch.
+6. Your team is designing a 1,000-node GPU cluster. Start by listing which problem each setting solves, and only then choose the values. The cluster uses `pam_slurm_adopt`. It suffers from synchronized MPI startup failures when one node's prolog runs slowly. It also sees `sbatch` submission bursts of 2,000 jobs at a time. Design the `PrologFlags` and `SchedulerParameters` lines for this cluster, and explain the reason for each choice.
 
 ## Checkpoint questions (20)
 
@@ -461,3 +469,4 @@ Run `scontrol reboot asap nextstate=resume <nodelist>`. The `asap` flag drains t
 - **Run here:** `python3 code/part06/slurmconf_lint.py` and `python3 code/part06/slurmconf_lint_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `expand`, `lint`, and `reorder_nodes_switch_as_node_rank` functions in `code/part06/slurmconf_lint.py` and `code/part06/slurmconf_lint_lab.py` and `code/part06/gen_slurm_conf.py` are deterministic models built on Chapter 15 of *Supercomputers for Linux SysAdmins* and `slurm.conf(5)`.
 - **Not verified on live hardware:** Live execution of `slurmd -C`, `scontrol`, `sinfo`, `srun`, `topology.conf` / `TopologyParam=SwitchAsNodeRank`, and cgroup v2 OOM kills on a cluster is marked (`untested here`).
+

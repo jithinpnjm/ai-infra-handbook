@@ -22,26 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a 2,000-GPU cluster that looks fine from across the room. Some of its parts may be failing quietly, and each one is expensive. Monitoring is how you keep that cluster working as one system instead of a heap of hardware. It answers four different questions. *Is it up?* is about health. *Is it healthy?* covers errors, thermals and the fabric. *Is it used well?* asks about utilisation, the queue and goodput. *Is it going to fail?* looks at trends and predictive signals.
+Picture a 2,000-GPU cluster that looks fine from across the room. The lights are on, the jobs are running and the queue is long, and all of that sounds healthy. Yet some of its parts may be failing quietly, and each one is expensive. A single GPU that starts throwing errors can slow a multi-day training run for hours before anyone notices. The run keeps going, so no alarm sounds on its own. The cost shows up later, as results that arrive late or a bill that is higher than it should be.
 
-Monitoring also feeds chargeback, capacity planning and incident analysis. GPU clusters send different signals than web services do. You watch GPU errors such as Xid, ECC and remapped rows, NVLink and InfiniBand counters, thermal throttling, power, storage latency and scheduler state. Keep these four questions in mind.
+Monitoring is how you keep that cluster working as one system instead of a heap of hardware. It helps to think of monitoring as answering four different questions, and each question needs its own signals. *Is it up?* is the simplest kind of health check: do the nodes, daemons, mounts and fabrics respond at all? *Is it healthy?* goes further, and it covers errors, temperatures and the network fabric that carries traffic between GPUs. *Is it used well?* asks about utilisation, the queue and goodput, which is the share of time that turns into useful work. *Is it going to fail?* looks at trends and early warnings, so you can act before a part dies.
+
+Monitoring also feeds chargeback (billing each team for what it uses), capacity planning and incident analysis. GPU clusters send different signals than ordinary web services do. A web server mostly reports requests and errors. A GPU node reports Xid errors, which are codes the NVIDIA driver writes when a GPU hits a fault. It reports ECC events, which are memory errors that the hardware either corrects or cannot correct. It reports remapped rows, which are spare memory rows that the GPU swaps in for damaged ones. You also watch NVLink and InfiniBand counters, thermal throttling (the GPU slowing itself down to cool off), power draw, storage latency and scheduler state. Keep the four questions in mind, because each later section answers at least one of them.
 
 ## Prerequisites and outcomes
 
-You need 6.2, 6.8 to 6.14 and Part 2 before you start this chapter. When you finish, you will be able to:
-
-- Place the classic tools (SNMP, Ganglia, Nagios, Zabbix, XDMoD) and the modern Prometheus stack, and explain what each one is good at.
-- Define a monitoring plan layer by layer: facility, node, GPU, network fabric, storage, scheduler and application.
-- Collect GPU metrics with DCGM and `dcgm-exporter`, and read the key fields correctly.
-- Write, test and route alerts so they page for the right things, and link each alert to a runbook and automatic remediation.
-- Combine monitoring with health checks (6.14) and security scans, and build usage reports.
-- Scale the stack through cardinality, retention, federation and long-term storage.
+You need 6.2, 6.8 to 6.14 and Part 2 before you start this chapter. The chapter begins with the classic monitoring tools and the modern Prometheus stack, so you can see what each one is good at. It then moves layer by layer, from the facility down to the scheduler and the jobs themselves. It shows how DCGM (NVIDIA's Data Center GPU Manager, the software that reads GPU health and usage) feeds `dcgm-exporter`, which is the piece that turns those readings into metrics a monitoring server can scrape. After that come alerts that page the right people, with a link to each alert's runbook, and then the link to health checks (6.14) and security scans. The chapter closes with usage reports and with the work of scaling the stack.
 
 Pick the layers you need to cover before you pick any tool.
 
 ## 1. The tool landscape
 
-Picture an on-call engineer who gets paged about one rack and has to decide which tool can answer the question. Monitoring tools have changed a lot over the decades. The diagram below shows the modern shape. Telemetry collectors on the left send their numbers into a time-series store. Dashboards, alerts and usage reports then read from that store.
+Picture an on-call engineer, the person who gets the alert when something breaks outside office hours. The phone buzzes about one hot rack in the middle of the night. The engineer has to decide which tool can answer the question, and the answer depends on which tool has the right numbers. Monitoring tools have changed a lot over the decades. Some are still in daily use, and others you will only meet in old documentation.
+
+The diagram below shows the modern shape. Telemetry collectors on the left send their numbers into a time-series store, which is a database built for values that change over time and carry a timestamp. Dashboards, alerts and usage reports then read from that store. Read the diagram from left to right. The store sits in the middle, so every consumer reads the same numbers.
 
 ```mermaid
 flowchart LR
@@ -60,7 +57,7 @@ flowchart LR
   Prom --> XDMoD
 ```
 
-*Supercomputers for Linux SysAdmins* surveys the generations of these tools in chapter 19, "Cluster Status Monitoring Systems". Read the table from top to bottom. Each row shows what a tool does and whether you still meet it today.
+*Supercomputers for Linux SysAdmins* surveys the generations of these tools in chapter 19, "Cluster Status Monitoring Systems". Read the table from top to bottom, since the rows roughly follow the history. Each row shows what the tool does and whether you still meet it today.
 
 | Tool | Idea | Today |
 |---|---|---|
@@ -73,15 +70,15 @@ flowchart LR
 | **DCGM / dcgm-exporter** | NVIDIA's data-centre GPU manager and its Prometheus exporter | GPU-specific telemetry and diagnostics |
 | **Commercial/vendor** | BCM monitoring, Datadog, Splunk, NVIDIA UFM (fabric), Mission Control | Integrated stacks |
 
-The same chapter adds sections on health checks and security scans, which come later in this chapter. Its sensor and UPS sections cover in-band and out-of-band hardware readings and power monitoring.
+The same chapter adds sections on health checks and security scans, which come later in this chapter. Its sensor and UPS sections cover in-band and out-of-band hardware readings and power monitoring. In-band means you read the hardware from inside the running operating system. Out-of-band means you read it through a separate path, such as the management controller on the server board, which keeps answering when the operating system does not.
 
 ### SNMP, `snmpconf`, and `snmptrapd` handlers
 
-SNMP is how you talk to many network and power devices. The monitored device runs an **agent**, which listens on UDP port `161`. For v3 over TLS the port is `10161`, described in RFC `6353`. The monitoring server runs a **manager** that receives asynchronous **Trap** notifications on UDP port `162`. For v3 over TLS that port is `10162`.
+SNMP is how you talk to many network and power devices. Switches, PDUs (the power distribution units that feed each rack) and UPSes often do not run an operating system that you can log into. They do run a small SNMP agent, though, and that agent answers questions over the network. The monitored device runs an **agent**, which listens on UDP port `161`. (A UDP port is a numbered door on a machine, and a service listens behind it for packets.) For v3 over TLS the port is `10161`, described in RFC `6353`. The monitoring server runs a **manager** that receives asynchronous **Trap** notifications on UDP port `162`. For v3 over TLS that port is `10162`.
 
-The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable in a device's Management Information Base (MIB) has a numeric address called an Object Identifier (OID). The uptime counter, `sysUpTime`, has the OID `1.3.6.1.2.1.1.3`. Its readable name is `iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`, and it counts the time since the device's management software last restarted. The standards bodies IETF, ISO, and IANA define most OID branches. Manufacturers such as Cisco and APC own the enterprise branches.
+The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable that a device exposes sits in its Management Information Base (MIB), which is the device's published list of values. Each variable in that list has a numeric address called an Object Identifier (OID). The uptime counter, `sysUpTime`, has the OID `1.3.6.1.2.1.1.3`. Its readable name is `iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`, and it counts the time since the device's management software last restarted. The standards bodies IETF, ISO, and IANA define most OID branches. Manufacturers such as Cisco and APC own the enterprise branches.
 
-The `net-snmp` package, also called `snmp`, provides the client utilities. The three commands below show them with sample output. They were not run against a live device.
+The `net-snmp` package, also called `snmp`, provides the client utilities. The three commands below show them with sample output. The output comes from a public test agent, so it shows the shape of the answer rather than a device you own. Read the first command as a single question and the third as a sweep of a whole branch.
 
 ```bash
 # 1. Read a single OID (omitting default prefix iso.org.dod.internet.mgmt.mib-2.system)
@@ -106,15 +103,15 @@ snmpwalk -v 2c -c demopublic test.net-snmp.org system
 # SNMPv2-MIB::sysORUpTime.1..5 = Timeticks: (4) 0:00:00.04 / (5) 0:00:00.05
 ```
 
-Two more tools cover other jobs. `snmpbulkget` and `snmpbulkwalk` perform bulk reads, and `snmpset` writes variables.
+Two more tools cover other jobs. `snmpbulkget` and `snmpbulkwalk` perform bulk reads, which fetch many values in one round trip instead of one at a time. `snmpset` writes variables, so use it with care, because a write changes a live device.
 
-To configure the local SNMP agent, start by backing up `/etc/snmp/snmpd.conf` with `cp /etc/snmp/snmpd.conf{,.bak}`. Then run the interactive `snmpconf` utility. Pick `snmpd.conf`, then section `6` (`Access Control Setup`), then option `3` (`a SNMPv1/SNMPv2c read-only access community name`). Enter the community `public` and the network `192.168.0.0`. The utility then writes this directive:
+To configure the local SNMP agent, start by backing up `/etc/snmp/snmpd.conf` with `cp /etc/snmp/snmpd.conf{,.bak}`. That copy lets you return to the old file if the new settings lock you out. Then run the interactive `snmpconf` utility. Pick `snmpd.conf`, then section `6` (`Access Control Setup`), then option `3` (`a SNMPv1/SNMPv2c read-only access community name`). Enter the community `public` and the network `192.168.0.0`. A community string works like a shared password for SNMP v1 and v2c. The name `public` is a widely known default, so treat it as a lab value only. The utility then writes this directive:
 
 ```text
 rocommunity public 192.168.0.0
 ```
 
-Traps from switches, PDUs, cooling units or UPSs need a receiver. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The usual example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives:
+Traps from switches, PDUs, cooling units or UPSs need a receiver. A trap works the other way round from a poll. The device calls you when something happens, rather than you asking it a question. That matters for a switch that has just failed, because a failed switch cannot answer a poll but can still send a trap if it is able to. Configure `snmptrapd` in `/etc/snmp/snmptrapd.conf`. If TCP wrappers are active, also add `snmptrapd: 0.0.0.0` to `/etc/hosts.allow`. The usual example uses `authCommunity` to let the `public` community log, execute handlers and forward traps. The `traphandle` line runs a custom script whenever a matching notification OID arrives:
 
 ```text
 # /etc/snmp/snmptrapd.conf
@@ -122,7 +119,7 @@ authCommunity log,execute,net public
 traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification /tmp/demo demo-trap
 ```
 
-The handler script reads its input from standard input. Line 1 is the sender hostname, and line 2 is the sender IP and transport. Every later line is an `oid val` pair:
+The handler script reads its input from standard input. Think of it as a short pipeline. Line 1 is the sender hostname, and line 2 is the sender IP and transport. Every later line is an `oid val` pair, which is one variable name and its value, as the device reported it:
 
 ```sh
 #!/bin/sh
@@ -142,7 +139,9 @@ done
 echo -e "trap: $1 $host $ip $vars" > /tmp/demo.log
 ```
 
-To test the whole trap pipeline without a real device, send a trap from the command line with `snmptrap`:
+The script writes to `/tmp` only because this is a demo. The comment in the first lines already warns you to use a different path in production, since `/tmp` is writable by many accounts.
+
+To test the whole trap pipeline without a real device, send a trap from the command line with `snmptrap`. If the handler writes its log line, the configuration works end to end. If it does not, check the `authCommunity` line first, because a community mismatch drops the trap before the handler ever runs:
 
 ```bash
 snmptrap -v 2c -c public localhost "" \
@@ -152,30 +151,30 @@ snmptrap -v 2c -c public localhost "" \
 
 ### Ganglia multicast routing, Zabbix proxies, VictoriaMetrics, and XDMoD
 
-- **Ganglia**: Ganglia was built for computing clusters by scientists at the University of California, Berkeley (`http://ganglia.sourceforge.net/`). Each machine runs the `gmond` daemon. It collects CPU speed, memory usage and custom C++/Python or XDR metrics, and sends them in either `multicast` mode or `unicast` mode. Multicast is the default, and every subscriber to the multicast stream receives the packet. Unicast sends to one specific server instead. The collector server runs `gmetad`, compiled with `./configure --with-gmetad && make && make install`. `gmetad` processes and aggregates the metrics, using max or sum. It stores Round-Robin Database (RRD) files in `/var/lib/ganglia/rrds`, owned by `nobody:nobody`. It also serves the web interface, copied to `/var/www/html/ganglia/`. You can generate a default agent config with `gmond -t | tee /etc/ganglia/gmond.conf`. Because `gmond` sends multicast on `239.2.11.71` by default, you must add a multicast route on the interface that faces the compute nodes. The book uses `eth0`, so packets reach `gmetad`:
+- **Ganglia**: Ganglia was built for computing clusters by scientists at the University of California, Berkeley (`http://ganglia.sourceforge.net/`). Each machine runs the `gmond` daemon. A daemon is a background program that keeps running, and `gmond` is the one that watches the machine it lives on. It collects CPU speed, memory usage and custom C++/Python or XDR metrics, and sends them in either `multicast` mode or `unicast` mode. Multicast sends one packet to a group address, so every subscriber to the group receives a copy. Multicast is the default. Unicast sends to one specific server instead. The collector server runs `gmetad`, compiled with `./configure --with-gmetad && make && make install`. `gmetad` processes and aggregates the metrics, using max or sum. It stores Round-Robin Database (RRD) files in `/var/lib/ganglia/rrds`, owned by `nobody:nobody`. An RRD is a fixed-size file that keeps the history of one metric, so the disk use stays flat over time. `gmetad` also serves the web interface, copied to `/var/www/html/ganglia/`. You can generate a default agent config with `gmond -t | tee /etc/ganglia/gmond.conf`. Because `gmond` sends multicast on `239.2.11.71` by default, you must add a multicast route on the interface that faces the compute nodes. Without that route, the packets never reach `gmetad`. *Supercomputers for Linux SysAdmins* uses `eth0` in its example, so the packets reach `gmetad` on that interface:
   ```bash
   #
   ip route add 239.2.11.71/4 dev eth0
   ```
-- **Nagios and Zabbix at cluster scale**: In Nagios (`http://www.nagios.org/`, and its fork Icinga `https://icinga.com/`), each plug-in is a separate program or script. That is both a strength and a weakness. It is very easy to write your own plug-in to monitor SMTP, HTTP, SNMP, Cisco or Brocade gear. But collecting many metrics means running many separate programs, through SSH or a local NRPE. That creates high load on compute nodes and limits polling to every few minutes. Zabbix uses a **Server → Proxy → Agent** hierarchy, backed by MySQL, PostgreSQL, SQLite or Oracle. With proxies aggregating traffic, it scales to roughly `1000` nodes. It also includes automatic SNMP device discovery. Polling hundreds of nodes directly on one flat LAN without proxies can still cause network spikes.
-- **Time-series databases (TSDBs)**: Prometheus TSDB and InfluxDB are paired with collectors such as `prometheus`, `telegraf` or `collectd`, and with visualizers such as Grafana or Kibana. The book highlights **VictoriaMetrics** as a fast, disk-efficient TSDB for cluster metrics. It has one constraint: VictoriaMetrics stores only numeric values and cannot store string metrics.
-- **XDMoD and SUPReMM**: Open XDMoD ingests scheduler accounting logs from `SLURM` or `PBS` into a MySQL/MariaDB and Apache/PHP/Node.js stack. It charts usage efficiency by user, group or project. To connect job records with node-level hardware counters, you extend XDMoD with its **SUPReMM** module. That module is backed by Prometheus, Performance Co-Pilot (PCP) or `TACC_Stats`. With it, you can track GPU usage, licences and energy through Slurm TRES/GRES.
+- **Nagios and Zabbix at cluster scale**: In Nagios (`http://www.nagios.org/`, and its fork Icinga `https://icinga.com/`), each plug-in is a separate program or script. That is both a strength and a weakness. It is very easy to write your own plug-in to monitor SMTP, HTTP, SNMP, Cisco or Brocade gear. But collecting many metrics means running many separate programs, through SSH or a local NRPE (the Nagios remote plugin executor). Each of those programs starts a new process on the compute node, which costs CPU. That creates high load on the compute nodes and limits polling to every few minutes. Zabbix uses a **Server → Proxy → Agent** hierarchy, backed by MySQL, PostgreSQL, SQLite or Oracle. The proxies collect traffic close to the nodes and pass a summary upward, so the central server does less work. With proxies aggregating traffic, it scales to roughly `1000` nodes. It also includes automatic SNMP device discovery. Polling hundreds of nodes directly on one flat LAN without proxies can still cause network spikes.
+- **Time-series databases (TSDBs)**: A TSDB stores values indexed by time, which is the shape of almost every metric. Prometheus TSDB and InfluxDB are paired with collectors such as `prometheus`, `telegraf` or `collectd`, and with visualizers such as Grafana or Kibana. *Supercomputers for Linux SysAdmins* highlights **VictoriaMetrics** as a fast, disk-efficient TSDB for cluster metrics. It has one constraint: VictoriaMetrics stores only numeric values and cannot store string metrics. Plan your labels with that in mind, and keep text fields out of the metric values.
+- **XDMoD and SUPReMM**: Open XDMoD ingests scheduler accounting logs from `SLURM` or `PBS` into a MySQL/MariaDB and Apache/PHP/Node.js stack. Accounting logs are the records the scheduler writes about each job, such as who ran it, on which nodes and for how long. XDMoD charts usage efficiency by user, group or project. To connect job records with node-level hardware counters, you extend XDMoD with its **SUPReMM** module. That module is backed by Prometheus, Performance Co-Pilot (PCP) or `TACC_Stats`. With it, you can track GPU usage, licences and energy through Slurm TRES/GRES.
 
 ### In-band hardware sensors: `lm_sensors` and `/etc/sensors3.conf`
 
-The `lm_sensors` package reads hardware sensors in-band, which means from inside the running system. It works with the kernel's `/sys/class/hwmon` interface and `libsensors`. It reads over `150` sensor types across ISA, I2C, SMBus, SPI, Super-I/O, south bridge, CPU die (`coretemp`) and DIMM thermal sensors. Run `sensors-detect` to probe the controllers. It writes the required kernel module list to `/etc/sysconfig/lm_sensors`.
+A sensor chip on the motherboard works like a tiny thermometer or voltmeter. The `lm_sensors` package reads those chips in-band, which means from inside the running system. It works with the kernel's `/sys/class/hwmon` interface and `libsensors`. The kernel exposes each reading as a file, so a program can read a temperature the same way it reads any other file. The package reads over `150` sensor types across ISA, I2C, SMBus, SPI, Super-I/O, south bridge, CPU die (`coretemp`) and DIMM thermal sensors. Run `sensors-detect` to probe the controllers. It writes the required kernel module list to `/etc/sysconfig/lm_sensors`.
 
 Sensor formatting, scaling formulas and hardware threshold limits live in `/etc/sensors3.conf`, or in `/etc/sensors.conf` on older releases. Each stanza starts with a `chip` selector in the form `type-bus-hexaddress`. For example, `lm78-i2c-2d` names an LM78 chip at address `0x2d` on the I2C bus, and `lm78-*` uses a wildcard instead. Standard input names are `in0, in1, ...` for voltages, with parameters such as `in0_input`, `in0_min`, `in0_max` and `in0_alarm`. `fan1, fan2, ...` are fans, and `temp1, temp2, ...` are temperatures. Inside a `chip` block, four directives control behaviour:
 
-- `label`: sets the human-readable name shown by `sensors`:
+- `label`: sets the human-readable name shown by `sensors`. Without it, you see a cryptic channel number:
   ```text
   label in3 "+5V"
   ```
-- `ignore`: suppresses a noisy or unconnected sensor channel:
+- `ignore`: suppresses a noisy or unconnected sensor channel, so it does not clutter the output or trigger false alarms:
   ```text
   ignore fan1
   ```
-- `compute`: defines two comma-separated conversion formulas that use `@` for the raw value. The first converts the raw chip reading to the displayed value, which voltage dividers need. The second is the inverse, which converts the displayed value back to the raw register value when you write limits:
+- `compute`: defines two comma-separated conversion formulas that use `@` for the raw value. The first converts the raw chip reading to the displayed value, which voltage dividers need. A voltage divider is a pair of resistors that scales a voltage down so the chip can read it. The second formula is the inverse, which converts the displayed value back to the raw register value when you write limits:
   ```text
   compute in3 ((6.8/10)+1)*@, @/((6.8/10)+1)
   ```
@@ -196,21 +195,21 @@ sensors -s
 sensors
 ```
 
-Chapter 19 of *Supercomputers for Linux SysAdmins* shows a server's `sensors` output. The chip `fschds-i2c-5-73` appears on `Adapter: SMBus I801 adapter at 1c20`, and `coretemp-isa-0000` appears on `Adapter: ISA adapter`. The output includes `+12V: +12.00 V`, `+5V: +5.15 V`, `Vbat: +3.14 V`, `PSU Fan: 1440 RPM (div = 4)`, `CPU Fan: 720 RPM (div = 4)`, `System FAN3: 720 RPM`, `System FAN4: 720 RPM`, `CPU Temp: +36.0°C (high = +69.0°C)`, `Super I/O Temp: +38.0°C (high = +52.0°C)`, `System Temp: +41.0°C (high = +56.0°C)`, and `Core 0..3: +51.0°C / +49.0°C (high = +82.0°C, crit = +100.0°C)`. One line stands out: **`System FAN2: FAULT (div = 4)`**. It flags a failed chassis fan immediately.
+*Supercomputers for Linux SysAdmins* chapter 19 shows a server's `sensors` output. The chip `fschds-i2c-5-73` appears on `Adapter: SMBus I801 adapter at 1c20`, and `coretemp-isa-0000` appears on `Adapter: ISA adapter`. The output includes `+12V: +12.00 V`, `+5V: +5.15 V`, `Vbat: +3.14 V`, `PSU Fan: 1440 RPM (div = 4)`, `CPU Fan: 720 RPM (div = 4)`, `System FAN3: 720 RPM`, `System FAN4: 720 RPM`, `CPU Temp: +36.0°C (high = +69.0°C)`, `Super I/O Temp: +38.0°C (high = +52.0°C)`, `System Temp: +41.0°C (high = +56.0°C)`, and `Core 0..3: +51.0°C / +49.0°C (high = +82.0°C, crit = +100.0°C)`. One line stands out: **`System FAN2: FAULT (div = 4)`**. It flags a failed chassis fan immediately. Read every line of the output once, so that a line like this one does not hide among the normal readings.
 
-For out-of-band readings through IPMI (`ipmitool`), polling BMCs remotely at high frequency can overload the BMC controllers. Read IPMI sensors locally on each node instead, through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
+For out-of-band readings through IPMI (`ipmitool`), polling BMCs remotely at high frequency can overload the BMC controllers. The BMC (baseboard management controller) is a small computer on the server board that reports sensors even when the operating system is down. IPMI (the Intelligent Platform Management Interface) is the protocol you use to query it. The BMC is slow compared with the main processor, so a flood of remote queries can lock it up. Read IPMI sensors locally on each node instead, through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
 
 ### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`
 
-Computing clusters solve large, resource-intensive tasks, so they need reliable, uninterrupted power. That takes an uninterruptible power supply (`UPS`), which means both UPS hardware and the software that manages the link between the UPS and the equipment it protects. Chapter 19 of *Supercomputers for Linux SysAdmins* covers *APCUPS* and *NUT*.
+Computing clusters solve large, resource-intensive tasks, so they need reliable, uninterrupted power. A power cut in the middle of a long job can throw away hours of work if no checkpoint exists. That takes an uninterruptible power supply (`UPS`), which means both the UPS hardware and the software that manages the link between the UPS and the equipment it protects. *Supercomputers for Linux SysAdmins* chapter 19 covers *APCUPS* and *NUT*.
 
-Cluster UPS systems are typically designed to provide power for at least `10–30 minutes` during a grid outage. If utility power is not restored within `5 minutes`, they must start a controlled cluster shutdown. That shutdown prohibits new jobs and stops the compute nodes first, to relieve the energy load. The network file systems and monitoring servers shut down last.
+Cluster UPS systems are typically designed to provide power for at least `10–30 minutes` during a grid outage. If utility power is not restored within `5 minutes`, they must start a controlled cluster shutdown. That shutdown prohibits new jobs and stops the compute nodes first, to relieve the energy load. The network file systems and monitoring servers shut down last, because the rest of the cluster depends on them. The order matters, and the next section explains how the monitoring software enforces it.
 
-For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install`. Then `apcaccess` queries UPS status. A typical run reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. The package also runs `/etc/apcupsd/onbattery` and `offbattery`. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
+For APC UPSs, the freely distributed `apcupsd` package has four parts: the `apcupsd` daemon, the `apcaccess` status reader, parameter adjustment tools, and CGI web scripts. You build it from source with `./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install`. Then `apcaccess` queries UPS status. A typical run reports `APC: 001 / 048 / 1157`, `HOSTNAME: rsufs`, `VERSION: 3.14.7`, `UPSNAME: UPS_3`, `MODEL: SNMP UPS Driver`, `STATUS: ONLINE`, `LINEV: 226.0 Volts`, `LOADPCT: 32.0 Percent Load Capacity`, `BCHARGE: 100.0 Percent`, `TIMELEFT: 73.0 Minutes`, `MBATTCHG: 5 Percent`, `MINTIMEL: 3 Minutes`, `MAXTIME: 0 Seconds`, `MAXLINEV: 227.0 Volts`, `MINLINEV: 221.0 Volts`, `OUTPUTV: 218.0 Volts`, and `APCMODEL: Smart-UPS RT 10000`. Read `STATUS` and `TIMELEFT` first, because those two lines tell you whether the UPS is on mains power and how long the battery can carry the load. The package also runs `/etc/apcupsd/onbattery` and `offbattery`, which are scripts that fire when the power leaves and returns. It serves the `http://localhost/cgi-bin/multimon.cgi` web dashboard, which reads its hosts from `/etc/apcupsd/hosts.conf`: `MONITOR 192.168.5.11 "asile1"`, `MONITOR 192.168.5.77 "asile2"` and `MONITOR 192.168.5.99 "storage"`. Concrete `apcupsd.conf` parameters and staged shutdown scripts are detailed in Chapter 6.30.
 
-For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work across three pieces: hardware drivers, a network server called `upsd`, and a reaction client called `upsmon`. The setup is spread across four files in `/etc/nut`:
+For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** splits the work across three pieces: hardware drivers, a network server called `upsd`, and a reaction client called `upsmon`. Think of the driver as the translator for one brand of UPS, the server as the post office that shares its status, and the client as the watcher that decides what each machine should do. The setup is spread across four files in `/etc/nut`:
 
-1. **`/etc/nut/ups.conf`**, for driver settings. It names each UPS section and selects the driver from `/usr/share/nut/driver.list`:
+1. **`/etc/nut/ups.conf`**, for driver settings. It names each UPS section and selects the driver from `/usr/share/nut/driver.list`. Start here, because the other files refer back to the name you choose in this file:
    ```ini
    [ups1]
    driver = usbhid-ups
@@ -246,11 +245,11 @@ After the `nut` / `upsd` service starts, query the live UPS state with `upsc`:
 upsc ups1@localhost
 ```
 
-After any change to these four files, run `upsc` to confirm that they work together.
+After any change to these four files, run `upsc` to confirm that they work together. A file that reads correctly can still fail if the name in `ups.conf` does not match the name in `upsmon.conf`, and `upsc` shows that mismatch at once.
 
 ## 2. What to monitor, by layer
 
-Every layer of a GPU cluster sends its own kind of signal, and each signal comes from a different source. If you watch only the servers, you will miss the fabric, the storage and the facility. Read the table row by row, since each row lists what to watch in one layer and where the data comes from.
+Think about the last time a slow job turned out to be a storage problem and not a code problem. If you watched only the servers, you would have missed it entirely. Every layer of a GPU cluster sends its own kind of signal, and each signal comes from a different source. Servers, the fabric, the storage and the facility all have their own readings. Read the table row by row, since each row lists what to watch in one layer and where the data comes from.
 
 | Layer | Signals | Source |
 |---|---|---|
@@ -263,13 +262,13 @@ Every layer of a GPU cluster sends its own kind of signal, and each signal comes
 | **Jobs/application** | Per-job GPU utilisation and efficiency, step time, tokens/s, loss, checkpoint duration, data-loader stalls | DCGM job mapping, framework metrics, MLflow/W&B, Slurm accounting |
 | **Security** | Auth failures, new keys, privilege changes, image/package vulnerabilities, open ports | Audit logs, scanners (below) |
 
-Notice that each row names both what to measure and where the number comes from, so you know which exporter to install for you to get it. The Golden Rule is **alert on symptoms that need human action; graph everything else.** A GPU at 99 C might be fine for a minute. A rack where 40 percent of GPUs show Xid 79 is an incident, and that is the kind of symptom that should page someone.
+Notice that each row names both what to measure and where the number comes from. That tells you which exporter to install before you can get the number at all. The Golden Rule is **alert on symptoms that need human action; graph everything else.** A GPU at 99 C might be fine for a minute, and a graph can show that without waking anyone. A rack where 40 percent of GPUs show Xid 79 is an incident, and that is the kind of symptom that should page someone. The rule keeps the pager quiet enough that a real page still gets read.
 
 ## 3. GPU metrics with DCGM
 
-Suppose a job runs for two hours, its GPUs look busy, and the results still arrive slower than last week. Before you blame the code, you need the right GPU counters on screen. `dcgm-exporter` serves the DCGM fields at `:9400/metrics`. A CSV file of counters decides which fields it publishes. The default file is `etc/default-counters.csv` in the NVIDIA/dcgm-exporter repository, and a larger set is in `dcp-metrics-included.csv`.
+Suppose a job runs for two hours, its GPUs look busy, and the results still arrive slower than last week. Before you blame the code, you need the right GPU counters on screen. A metric is a single number tracked over time, such as a GPU's temperature or its memory in use. `dcgm-exporter` serves the DCGM fields at `:9400/metrics`, where a field is one named measurement that DCGM can read. A CSV file of counters decides which fields it publishes. The default file is `etc/default-counters.csv` in the NVIDIA/dcgm-exporter repository, and a larger set is in `dcp-metrics-included.csv`.
 
-Four fields explain most slow-job questions. `DCGM_FI_DEV_GPU_UTIL` says whether a kernel was running. `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` says whether the tensor cores were busy. `DCGM_FI_DEV_XID_ERRORS` shows the last GPU error. `DCGM_FI_DEV_POWER_USAGE` and the clock fields show throttling. The table lists the rest of the default fields by what they answer.
+Four fields explain most slow-job questions. `DCGM_FI_DEV_GPU_UTIL` says whether a kernel was running. `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` says whether the tensor cores were busy. `DCGM_FI_DEV_XID_ERRORS` shows the last GPU error. `DCGM_FI_DEV_POWER_USAGE` and the clock fields show throttling. Start with these four when a job looks slow, and only then reach for the rest. The table lists the rest of the default fields by what they answer.
 
 | Question | Fields in the default CSV |
 |---|---|
@@ -279,26 +278,26 @@ Four fields explain most slow-job questions. `DCGM_FI_DEV_GPU_UTIL` says whether
 | How much memory and bandwidth? | `DCGM_FI_DEV_FB_FREE`, `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_RESERVED` (MiB), `DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL`, `DCGM_FI_PROF_PCIE_TX_BYTES`, `DCGM_FI_PROF_PCIE_RX_BYTES` |
 | Which driver? | `DCGM_FI_DRIVER_VERSION` (a label) |
 
-> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit. If you change the unit and forget the threshold, an alert will either never fire or fire all the time.
 
-Reading these fields takes care. **`GPU_UTIL`** is the fraction of time any kernel was running. It does not tell you how efficiently the SMs are used. A job can show 100 percent util while its tensor cores sit idle. `PIPE_TENSOR_ACTIVE` and `DRAM_ACTIVE` show real efficiency. Low tensor activity with high DRAM activity means the job is memory-bound.
+Reading these fields takes care. **`GPU_UTIL`** is the fraction of time any kernel was running. A kernel is a unit of work the GPU runs, and this number only asks whether one was on the GPU at all. It does not tell you how efficiently the streaming multiprocessors (the SMs, the compute blocks inside the GPU) are used. A job can show 100 percent util while its tensor cores sit idle, because the kernels are busy waiting on memory. `PIPE_TENSOR_ACTIVE` and `DRAM_ACTIVE` show real efficiency. Low tensor activity with high DRAM activity means the job is memory-bound, which means the GPU spends its time moving data rather than computing on it.
 
-`XID_ERRORS` reports only the last Xid number, so it behaves like a gauge. Alert on any non-zero value, and keep the history in logs. Remapped rows and a failed remap are RMA (return merchandise authorisation) signals. Temperature, power and clocks together reveal throttling.
+`XID_ERRORS` reports only the last Xid number, so it behaves like a gauge. A gauge is a value that goes up and down, and this one only tells you the most recent error code. Alert on any non-zero value, and keep the history in logs, because the gauge forgets earlier codes. Remapped rows and a failed remap are RMA (return merchandise authorisation) signals, which means the vendor may need to replace the card. Temperature, power and clocks together reveal throttling, since a GPU that is hot and drawing less power than it should is often slowing itself down.
 
-Always include the job-to-GPU mapping labels. DCGM can map GPUs to Kubernetes pods. For Slurm, map them via `SLURM_JOB_GPUS`, a cgroup, or a prolog-written file that the textfile collector reads. With those labels in place, you can attribute usage to users and projects.
+Always include the job-to-GPU mapping labels. A label is a tag on a metric, such as a job name or a pod name, that lets you filter and group the numbers. DCGM can map GPUs to Kubernetes pods. For Slurm, map them via `SLURM_JOB_GPUS`, a cgroup, or a prolog-written file that the textfile collector reads. A prolog is a script that Slurm runs before a job starts, and a textfile collector is a node_exporter feature that reads small metric files from disk. With those labels in place, you can attribute usage to users and projects.
 
-Metrics are passive. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3`. Level 1 is quick, and higher levels stress memory, PCIe and compute. The levels are described from general knowledge of DCGM, not from a cited source. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14).
+Metrics are passive, which means they only watch what the GPU is already doing. **DCGM diagnostics** run active tests instead. The command is `dcgmi diag -r 1|2|3`. Level 1 is quick, and higher levels stress memory, PCIe and compute. Run these before jobs as part of health checks. Do not run them as continuous monitors (6.14), because a stress test takes the GPU away from real work while it runs.
 
 ## 4. A Slurm exporter (tested)
 
-Before you trust a Slurm exporter on a production cluster, you want proof that its parser works. Maintained exporters already exist, including the community `prometheus-slurm-exporter` family and others. The point of `code/part06/slurm_exporter.py` is different. It shows what an exporter does, and how to test its parser without a cluster. The exporter runs these two commands:
+Imagine you are about to turn on a new Slurm exporter for the whole cluster, and the first dashboard shows a GPU count that looks too low. Before you trust the numbers, you want proof that the parser reads the output correctly. Maintained exporters already exist, including the community `prometheus-slurm-exporter` family and others. The point of `code/part06/slurm_exporter.py` is different. It shows what an exporter does, and how to test its parser without a cluster. The exporter runs these two commands:
 
 ```text
 sinfo -h -N -O "NodeList:32,StateLong:20,Gres:40,GresUsed:60,Reason:80,Partition:24"
 squeue -h -o "%T|%P|%u|%D"
 ```
 
-The `-O` fields `NodeList`, `StateLong`, `Gres`, `GresUsed`, `Reason` and `Partition`, and the `-o` specifiers `%T %P %u %D`, were checked against the `sinfo(1)` and `squeue(1)` man pages. The exporter parses fixed-width columns. It removes duplicate nodes that appear in several partitions. It pulls GPU counts out of GRES strings such as `gpu:h100:8(S:0-1)`. It classifies drain reasons (`gpu`, `network`, `storage`, `prolog`, `unresponsive`, `unkillable`...), and renders metrics with `prometheus_client`.
+The `-O` fields `NodeList`, `StateLong`, `Gres`, `GresUsed`, `Reason` and `Partition`, and the `-o` specifiers `%T %P %u %D`, were checked against the `sinfo(1)` and `squeue(1)` man pages. The exporter parses fixed-width columns, which means each field sits at a set position in the line. It removes duplicate nodes that appear in several partitions. It pulls GPU counts out of GRES strings such as `gpu:h100:8(S:0-1)`, where GRES is the Slurm name for generic resources such as GPUs. It classifies drain reasons (`gpu`, `network`, `storage`, `prolog`, `unresponsive`, `unkillable`...), and renders metrics with `prometheus_client`. A drain reason tells you why a node was taken out of service, so the classification turns a free-text note into a label you can count.
 
 The self-test uses six canned node rows and four jobs. The rows include one node listed in two partitions, one node with a GPU Xid reason, and one node that is down and not responding. The test checks the aggregation and prints this result:
 
@@ -319,27 +318,27 @@ slurm_exporter_scrape_ok 1.0
 selftest passed
 ```
 
-The demo teaches a few design lessons. Expose *state counts*, not per-job series, to keep cardinality under control. Think about the load on the controller too. Every scrape runs `sinfo` and `squeue` against `slurmctld`, so scrape every 30 to 60 seconds, never every second. That is the same RPC load problem as users running `watch squeue` (6.14). Emit a `scrape_ok` gauge so that a dead exporter pages you. Treat unknown output formats as scrape failures, rather than quietly reporting zeros.
+The demo teaches a few design lessons. Expose *state counts*, not per-job series, to keep cardinality under control. Cardinality is the number of distinct series a metric produces, and each new label value adds another. Think about the load on the controller too. Every scrape runs `sinfo` and `squeue` against `slurmctld`, which is the central Slurm controller, so scrape every 30 to 60 seconds, never every second. That is the same RPC load problem as users running `watch squeue` (6.14). An RPC is a request sent to the controller, and too many of them slow down the scheduler for everyone. Emit a `scrape_ok` gauge so that a dead exporter pages you. Treat unknown output formats as scrape failures, rather than quietly reporting zeros. A silent zero looks like a healthy empty cluster, which is the worst way to fail.
 
-The demo has limits. It was not run against real `sinfo` output, and the fixed-width format and node-state suffixes vary by version. It does not report per-user usage. It also parses CLI text rather than using the REST API (`slurmrestd`, 6.15), which is more robust for production. Use a maintained exporter, or move to `slurmrestd`, before you depend on this in production.
+The demo has limits. Its output comes from canned rows rather than real `sinfo` output from a live controller, and the fixed-width format and node-state suffixes vary by version. It does not report per-user usage. It also parses CLI text rather than using the REST API (`slurmrestd`, 6.15), which is more robust for production. Use a maintained exporter, or move to `slurmrestd`, before you depend on this in production.
 
 ## 5. Alerting
 
-Six principles guide the alert rules. The first is the most important. **Page only on user-visible or capacity-threatening symptoms.** Ticket the degradations, and graph the rest. A paged alert must be actionable at 3 a.m. and come with a runbook.
+It is the middle of the night, and your phone buzzes. An alert has fired, and you have to decide in a few seconds whether to get out of bed. Good alert design is what makes that decision easy. Six principles guide the alert rules. The first is the most important. **Page only on user-visible or capacity-threatening symptoms.** Ticket the degradations, and graph the rest. A paged alert must be actionable at 3 a.m. and come with a runbook, which is a short written procedure that tells the on-call engineer what to check first.
 
-Principle 2 says to use `for:` durations to avoid flapping, and to group related alerts. Inhibit lower-level alerts when a higher-level cause is firing. A rack power loss should not page 32 nodes.
+Principle 2 says to use `for:` durations to avoid flapping, which means an alert that switches on and off again every few seconds. A `for:` clause makes the condition hold for a set window before it fires. The same principle says to group related alerts. Inhibit lower-level alerts when a higher-level cause is firing. A rack power loss should not page 32 nodes, because the one rack alert already tells the whole story.
 
-Third, watch cardinality and labels. Good labels include hostname, GPU index, rack and partition. Never use user-supplied free text as a label.
+Third, watch cardinality and labels. Good labels include hostname, GPU index, rack and partition, because each of those answers a question someone will ask at 3 a.m. Never use user-supplied free text as a label, since users can type anything and each new string creates a new series.
 
-Principle 4 is to alert on absence. Use `absent()` for exporters. Add heartbeat alerts, sometimes called a dead man's switch, to verify the alert path itself.
+Principle 4 is to alert on absence. If an exporter stops sending data, the alert rules see nothing and stay quiet, which looks the same as a healthy system. Use `absent()` for exporters, so that silence itself becomes an alert. Add heartbeat alerts, sometimes called a dead man's switch, to verify the alert path itself. A heartbeat is an alert that always fires, and it should always reach a second system. When the heartbeat stops arriving, you know the alerting chain is broken.
 
-Fifth, link every alert to remediation. Annotate each alert with a runbook URL. For known hardware faults, you can drain a node automatically through a webhook: Alertmanager calls a service that runs `scontrol update ... state=drain reason=...`. Test that automation for loops and false positives. 6.14 and 5.32 discuss the safety properties it needs: budgets, dry-run, and provenance of what you changed.
+Fifth, link every alert to remediation. Annotate each alert with a runbook URL. For known hardware faults, you can drain a node automatically through a webhook. A webhook is a message that one system sends to another over HTTP. In this case, Alertmanager calls a service that runs `scontrol update ... state=drain reason=...`. Test that automation for loops and false positives. A loop would drain a node, which triggers an alert, which drains it again. 6.14 and 5.32 discuss the safety properties it needs: budgets, dry-run, and provenance of what you changed.
 
-Principle 6 is to review the rules weekly. Delete alerts nobody acts on, and measure alert precision.
+Principle 6 is to review the rules weekly. Delete alerts nobody acts on, and measure alert precision. Precision here means the share of pages that led to a real action. If most pages end with nothing to do, the rule is teaching people to ignore the pager.
 
-The file `code/part06/alerts_gpu_cluster.yml` is an illustrative rule file with nine alerts in three groups. `GpuXidError` fires on any non-zero last-Xid for 1 minute. `GpuRowRemapFailure` is the row-remap alert. `GpuHot` fires above 85 C for 10 minutes. `AllocatedGpuIdle` watches for 30-minute average utilisation under 5 percent while GPUs are allocated. `SlurmNodesDrainedHigh` fires when more than 5 percent of nodes are drained or down for 15 minutes. `SlurmExporterDown` is the exporter-down alert. `GpuQueueBacklogWhileIdle` flags many pending GPU jobs while more than 16 GPUs sit idle, which points to a policy or fragmentation problem. `TmpFull` and `IbPortDown` complete the set.
+The file `code/part06/alerts_gpu_cluster.yml` is an illustrative rule file with nine alerts in three groups. `GpuXidError` fires on any non-zero last-Xid for 1 minute. `GpuRowRemapFailure` is the row-remap alert. `GpuHot` fires above 85 C for 10 minutes. `AllocatedGpuIdle` watches for 30-minute average utilisation under 5 percent while GPUs are allocated. `SlurmNodesDrainedHigh` fires when more than 5 percent of nodes are drained or down for 15 minutes. `SlurmExporterDown` is the exporter-down alert. `GpuQueueBacklogWhileIdle` flags many pending GPU jobs while more than 16 GPUs sit idle, which points to a policy or fragmentation problem. Fragmentation means the free GPUs are scattered in pieces too small for the jobs waiting in the queue. `TmpFull` and `IbPortDown` complete the set.
 
-`check_alert_rules.py` loads the YAML and checks its structure. It looks for duplicate names, bracket balance and severity labels. It requires `summary` and `runbook` annotations. It requires `for:` on paging rules, with one exception: the row-remap failure, which is a discrete, severe event. It also checks that every `DCGM_FI_*` name appears in the exporter's counters CSV.
+`check_alert_rules.py` loads the YAML and checks its structure. It looks for duplicate names, bracket balance and severity labels. It requires `summary` and `runbook` annotations. It requires `for:` on paging rules, with one exception: the row-remap failure, which is a discrete, severe event. It also checks that every `DCGM_FI_*` name appears in the exporter's counters CSV. That last check catches a misspelled metric before the alert quietly never fires.
 
 The original file passes with `9 rules in 3 groups` and no problems. A copy with a typo tells a different story. In that copy, `DCGM_FI_DEV_GPU_TEMP` is mistyped as `DCGM_FI_DEV_GPU_TEMPERATURE > (85`, and the checker reports:
 
@@ -349,49 +348,57 @@ PROBLEM GpuHot: unbalanced brackets in expr
 PROBLEM GpuHot: DCGM_FI_DEV_GPU_TEMPERATURE is not in the dcgm-exporter counters file
 ```
 
-This is a lint, not real PromQL validation. Run `promtool check rules`, and unit-test the rules with `promtool test rules` in CI. Several thresholds are guesses that you will need to tune, so treat them as starting points. The 85 C limit depends on the GPU model's slowdown and shutdown temperatures. The idle test depends on your workload. Join keys such as `Hostname` depend on your relabelling. The `AllocatedGpuIdle` expression joins DCGM series with a Slurm series that does not carry a `Hostname` label in the demo exporter, so it needs per-node labels to work as written.
+This is a lint, not real PromQL validation. A lint checks the shape of a file, while PromQL (the Prometheus query language) validation checks whether the expressions actually compute what you meant. Run `promtool check rules`, and unit-test the rules with `promtool test rules` in CI. CI is the automated pipeline that runs your checks on every change. Several thresholds are guesses that you will need to tune, so treat them as starting points. The 85 C limit depends on the GPU model's slowdown and shutdown temperatures. The idle test depends on your workload. Join keys such as `Hostname` depend on your relabelling, which means the rename rules that Prometheus applies to labels as it scrapes. The `AllocatedGpuIdle` expression joins DCGM series with a Slurm series that does not carry a `Hostname` label in the demo exporter, so it needs per-node labels to work as written.
 
 ## 6. Health checks, scans, and active testing
 
-Passive monitoring only tells you what already happened. Once a node boots, and again before each job starts, you can run active **healthchecks** to decide whether the node is fit for user jobs. Examples include `node_health.sh` from Chapter 6.14, DCGM diagnostics, and NCCL pair tests. In Slurm, you can enable periodic execution of a custom healthcheck script with `HealthCheckProgram`. You can also include a fast check in the `Prolog` script. Keep prologue checks short, because prologue time is limited and counts toward job runtime. The book describes these options as part of the monitoring work, citing its chapter 19 on *Healthchecks*. You can write your own scripts, or use the open-source **LBNL Node Health Check (`NHC`, `https://github.com/mej/nhc`)**. NHC is written in bash, is highly portable, and ships with many built-in modules. It lets you run different check modes, such as a fast prologue check or a full background check, by passing different configuration files.
+Passive monitoring only tells you what already happened. Once a node boots, and again before each job starts, you can run active **healthchecks** to decide whether the node is fit for user jobs. A healthcheck is a short script or test that exercises the node on purpose and returns pass or fail. Examples include `node_health.sh` from Chapter 6.14, DCGM diagnostics, and NCCL pair tests. In Slurm, you can enable periodic execution of a custom healthcheck script with `HealthCheckProgram`. You can also include a fast check in the `Prolog` script. Keep prologue checks short, because prologue time is limited and counts toward job runtime. Every second spent in the prolog is a second the GPUs sit idle while they are already allocated to you. *Supercomputers for Linux SysAdmins* treats these options as part of the monitoring work, in its chapter 19 on *Healthchecks*. You can write your own scripts, or use the open-source **LBNL Node Health Check (`NHC`, `https://github.com/mej/nhc`)**. NHC is written in bash, is highly portable, and ships with many built-in modules. It lets you run different check modes, such as a fast prologue check or a full background check, by passing different configuration files.
 
-Burn-in is the step for new hardware. Run stress tests on CPU, memory, GPU, network and storage before the machines take real work (6.28).
+Burn-in is the step for new hardware. Burn-in means you run stress tests on CPU, memory, GPU, network and storage before the machines take real work, so that early failures show up while nothing depends on them (6.28).
 
-Security scans belong in the monitoring picture too. The book recommends system software updates `two to four times a year`, tested on a small node subset first and after backups. It also recommends daily automated scans with open-source tools such as `chkrootkit`, `rkhunter`, `Nessus`, `Lynis` and `Maltrail`. On user-facing and service nodes, it adds commercial endpoint agents from SentinelOne, Palo Alto Networks and CrowdStrike. Other checks include vulnerability scanning of images and packages (Trivy, Grype, OpenSCAP), port scans of internal ranges to find unexpected services (`nmap`), configuration audits (the `sshd_audit.py` idea from 6.25), integrity monitoring (AIDE), and log analysis for auth anomalies and `sudo` activity. Container image provenance comes from 5.22 and Part 18. Treat every scan result as an input to the same ticketing and SLO process.
+Security scans belong in the monitoring picture too. A security scan looks for known weaknesses, unexpected open ports and changes that nobody approved. *Supercomputers for Linux SysAdmins* recommends system software updates `two to four times a year`, tested on a small node subset first and after backups. It also recommends daily automated scans with open-source tools such as `chkrootkit`, `rkhunter`, `Nessus`, `Lynis` and `Maltrail`. On user-facing and service nodes, it adds commercial endpoint agents from SentinelOne, Palo Alto Networks and CrowdStrike. Other checks include vulnerability scanning of images and packages (Trivy, Grype, OpenSCAP), port scans of internal ranges to find unexpected services (`nmap`), configuration audits (the `sshd_audit.py` idea from 6.25), integrity monitoring (AIDE), and log analysis for auth anomalies and `sudo` activity. Container image provenance comes from 5.22 and Part 18. Treat every scan result as an input to the same ticketing and SLO process, so that a finding gets an owner and a deadline like any other problem. An SLO (service level objective) is the target you promise for a service, such as how much of the time it must be available.
 
-Some problems never reach the OS, so you need out-of-band signals. BMC sensors, SEL logs and Redfish events (Part 7) still report when the OS is dead. Wire them into the same alerting so a dead host does not go quiet.
+Some problems never reach the OS, so you need out-of-band signals. A node with a dead operating system can still report a fan failure or a power event through its BMC. BMC sensors, SEL logs and Redfish events (Part 7) still report when the OS is dead. The SEL (system event log) is the record the BMC keeps of hardware events, and Redfish is a modern web-based interface to the same hardware data. Wire them into the same alerting so a dead host does not go quiet.
 
 ## 7. Usage and efficiency analytics
 
-Some monitoring questions are about people and money rather than hardware. Who used which resources, how well, and at what cost? Your sources are Slurm accounting (`sacct`, `sreport`, 6.9), job-level GPU metrics from DCGM job stats or per-job exporters, and XDMoD-style tools that combine accounting with performance data. The reports you build from them cover cluster utilisation (allocated vs total GPU-hours), efficiency, wait times by queue, failure causes (`NODE_FAIL`, OOM, timeout), top users and projects, and storage growth. Efficiency is the average GPU utilisation of allocated GPUs, and a classic finding is many allocated GPUs running below 20 percent. Use these reports to right-size allocations, steer small jobs to MIG (6.10), plan capacity and justify spend. Publish dashboards to users as well, because transparency reduces wasteful allocation.
+Some monitoring questions are about people and money rather than hardware. A research group says its GPUs are full, yet the cluster bill keeps climbing. Who used which resources, how well, and at what cost? Your sources are Slurm accounting (`sacct`, `sreport`, 6.9), job-level GPU metrics from DCGM job stats or per-job exporters, and XDMoD-style tools that combine accounting with performance data. The reports you build from them cover cluster utilisation (allocated vs total GPU-hours), efficiency, wait times by queue, failure causes (`NODE_FAIL`, OOM, timeout), top users and projects, and storage growth. Efficiency is the average GPU utilisation of allocated GPUs, and a classic finding is many allocated GPUs running below 20 percent. Those GPUs are reserved and paid for, yet most of their time goes unused. Use these reports to right-size allocations, steer small jobs to MIG (6.10), plan capacity and justify spend. Publish dashboards to users as well, because transparency reduces wasteful allocation. When people can see their own numbers, they tend to ask for fewer GPUs and release them sooner.
 
 ## 8. Scaling the monitoring stack
 
-Monitoring a few racks is easy. Monitoring a whole cluster means watching the number of series grow quickly. Per-GPU, per-port and per-job series multiply. For example, 2,000 GPUs times 30 fields, scraped every 15 seconds, is a large number of series. Drop the fields you do not use from the CSV. Aggregate with recording rules, and keep per-job series out of Prometheus by taking them from accounting.
+Monitoring a few racks is easy. Monitoring a whole cluster means watching the number of series grow quickly. A series is one stream of values, identified by a metric name and a set of labels, and each new label combination creates a new series. Per-GPU, per-port and per-job series multiply. For example, 2,000 GPUs times 30 fields, scraped every 15 seconds, is a large number of series. Drop the fields you do not use from the CSV. Aggregate with recording rules, which are Prometheus rules that compute a summary and store it as a new metric. Keep per-job series out of Prometheus by taking them from accounting, since the accounting database already holds that history.
 
-Topology comes next. Run one Prometheus per cluster or per failure domain. Send its data by remote-write or federation to a central long-term store, such as Thanos, Mimir or VictoriaMetrics. Scrape GPU metrics every 15 to 30 seconds, and slow signals every 60 seconds. Keep retention in tiers.
+Topology comes next. Run one Prometheus per cluster or per failure domain, where a failure domain is a group of machines that can fail together, such as one power feed. Send its data by remote-write or federation to a central long-term store, such as Thanos, Mimir or VictoriaMetrics. Remote-write pushes samples to another system, and federation lets one Prometheus pull selected series from another. Scrape GPU metrics every 15 to 30 seconds, and slow signals every 60 seconds. Keep retention in tiers, which means keeping fine detail for a short time and coarser summaries for much longer.
 
-The monitor must be reliable too. Run redundant Prometheus pairs, and add an external dead-man's-switch. Keep the monitoring network separate from the data plane, so you can still see what is happening during a fabric outage. Time sync (6.18) matters here as well.
+The monitor must be reliable too. If the monitoring system fails with the cluster it watches, you lose sight at the worst moment. Run redundant Prometheus pairs, and add an external dead-man's-switch. Keep the monitoring network separate from the data plane, so you can still see what is happening during a fabric outage. Time sync (6.18) matters here as well, because logs from several machines are only useful when their clocks agree.
 
-Logs and traces need their own path. Forward journald and syslog to Loki or Elasticsearch. Send structured logs from prolog, epilog and health scripts, and filter kernel logs for Xid, ECC and MCE lines. Keep them in central retention.
+Logs and traces need their own path. Forward journald and syslog to Loki or Elasticsearch, which are systems built to store and search log lines. Send structured logs from prolog, epilog and health scripts, and filter kernel logs for Xid, ECC and MCE lines. An MCE (machine check exception) is a hardware error report that the CPU raises. Keep them in central retention, so the evidence survives when a node is reimaged.
 
-Exporters need hygiene. Pin versions, run as non-root, bind to the management network, and authenticate if they are reachable remotely. Avoid scraping `slurmctld` too often. Finally, long retention of high-cardinality data costs real storage, so define retention by how the data gets used.
+Exporters need hygiene. Pin versions, run as non-root, bind to the management network, and authenticate if they are reachable remotely. Avoid scraping `slurmctld` too often. Finally, long retention of high-cardinality data costs real storage, so define retention by how the data gets used. Ask who will open the data, and how far back they will need to look. Keep the answers in your runbook, so the next person can change the retention with a reason.
 
 ## 9. Lab
 
-Start with the self-checking Python lab, `code/part06/slurm_exporter_lab.py`, and run it locally. You get a pass or fail for the parser, the alert linter and the sensor math before you touch a cluster. The script calls `slurm_exporter.selftest()`. That confirms `gpu002`, which appears in two partitions, is deduplicated. It reports `40.0` total GPUs and `11.0` allocated GPUs, along with the `gpu` and `unresponsive` drain reasons and `slurm_exporter_scrape_ok 1.0`. It then runs `check_alert_rules.py` on `code/part06/alerts_gpu_cluster.yml`, which should show `9` rules in `3` groups and `0` problems. It also runs the checker on a mutated copy, catching unbalanced brackets and unknown `DCGM_FI_*` metric names. Last, it verifies the voltage-divider `compute in3` math in `/etc/sensors3.conf` from *Supercomputers for Linux SysAdmins* chapter 19 (`1.68 * 2.9762 V = 5.00 V`):
+You have an exporter, an alert file and a sensor config, and you want proof that they work before anyone relies on them. Start with the self-checking Python lab, `code/part06/slurm_exporter_lab.py`, and run it locally. You get a pass or fail for the parser, the alert linter and the sensor math before you touch a cluster. The script calls `slurm_exporter.selftest()`. That confirms `gpu002`, which appears in two partitions, is deduplicated. It reports `40.0` total GPUs and `11.0` allocated GPUs, along with the `gpu` and `unresponsive` drain reasons and `slurm_exporter_scrape_ok 1.0`. It then runs `check_alert_rules.py` on `code/part06/alerts_gpu_cluster.yml`, which should show `9` rules in `3` groups and `0` problems. It also runs the checker on a mutated copy, catching unbalanced brackets and unknown `DCGM_FI_*` metric names. Last, it verifies the voltage-divider `compute in3` math in `/etc/sensors3.conf` from *Supercomputers for Linux SysAdmins* chapter 19 (`1.68 * 2.9762 V = 5.00 V`):
 
 ```bash
 python3 code/part06/slurm_exporter_lab.py
 ```
 
-The first three steps run locally. Step 1 is to install `prometheus-client` and run `slurm_exporter.py --selftest`. Then add a drain reason class and a test, and extend the parser to a second `sinfo` layout. Step 2 runs `check_alert_rules.py` on the rules file and on copies with deliberate mistakes. Add rules for NVLink bandwidth and PCIe replay counters, and look up the names in `dcp-metrics-included.csv`. Step 3 writes a recording rule for per-partition GPU utilisation efficiency, as a sketch.
+The steps below were not run on a live cluster. The first three ran locally on a workstation, and the rest need hardware you may not have yet.
 
-The remaining steps need a real cluster, and none of them was run for this handbook. Step 4 deploys `node_exporter` and `dcgm-exporter` on a GPU node, scrapes them with Prometheus, and builds a Grafana dashboard covering utilisation, tensor activity, power, temperature and Xid. Step 5 runs `promtool check rules` and `promtool test rules` on the file. Step 6 configures Alertmanager routes (page, warn, ticket) and an inhibition rule for rack power loss. Step 7 wires a webhook that drains a node on `GpuXidError`, and runs it in dry-run mode first. Step 8 builds an efficiency report from `sacct` and DCGM job stats. Step 9 runs a fabric congestion test and watches the counters.
+1. Install `prometheus-client` and run `slurm_exporter.py --selftest`. Then add a drain reason class and a test, and extend the parser to a second `sinfo` layout.
+2. Run `check_alert_rules.py` on the rules file and on copies with deliberate mistakes. Add rules for NVLink bandwidth and PCIe replay counters, and look up the names in `dcp-metrics-included.csv`.
+3. Write a recording rule for per-partition GPU utilisation efficiency, as a sketch.
+4. Deploy `node_exporter` and `dcgm-exporter` on a GPU node, scrape them with Prometheus, and build a Grafana dashboard covering utilisation, tensor activity, power, temperature and Xid.
+5. Run `promtool check rules` and `promtool test rules` on the file.
+6. Configure Alertmanager routes (page, warn, ticket) and an inhibition rule for rack power loss.
+7. Wire a webhook that drains a node on `GpuXidError`, and run it in dry-run mode first.
+8. Build an efficiency report from `sacct` and DCGM job stats.
+9. Run a fabric congestion test and watch the counters.
 
 ## 10. Interview angles
 
-Interviewers use these questions to see whether you can reason about monitoring, not just name tools. Practise answering each one out loud.
+Interviewers use these questions to see whether you can reason about monitoring, not just name tools. Each question is a small situation, and a good answer walks from the symptom to the signal to the action. Practise answering each one out loud.
 
 - What would you monitor on a 1,000-GPU training cluster, layer by layer, and which problems would page someone?
 - What does `DCGM_FI_DEV_GPU_UTIL` really measure, and which fields show real efficiency?
@@ -412,14 +419,14 @@ Work through these in order. The later ones build on the lab.
 3. Run `python3 code/part06/check_alert_rules.py code/part06/alerts_gpu_cluster.yml`. The file has nine rules in three groups. Name the groups.
 4. `GpuRowRemapFailure` pages at once. `GpuHot` waits ten minutes and `SlurmNodesDrainedHigh` waits fifteen. Why do they differ?
 5. How does `check_alert_rules.py` catch a misspelled `DCGM_FI_*` name?
-6. Write the `snmpget` and `snmpwalk` commands that read `sysUpTime`. Then write the `snmptranslate -Td -Ib` command that prints its numeric path. What OID does it print?
-7. Write the `rocommunity` line that `snmpconf` generates for the network 192.168.0.0. Then write the `snmptrapd.conf` lines with `authCommunity` and `traphandle`.
+6. Write the `snmpget` command that reads `sysUpTime`. Write the `snmpwalk` command that reads the same branch. Then write the `snmptranslate -Td -Ib` command that prints its numeric path. What OID does it print?
+7. Write the `rocommunity` line that `snmpconf` generates for the network 192.168.0.0. Write the `authCommunity` line for `snmptrapd.conf`. Then write the matching `traphandle` line.
 8. Write a `/bin/sh` trap handler. It must read the host, the IP, and the `oid val` pairs from standard input.
-9. Chip `lm78-i2c-2d` measures +5V through a divider on `in3`. Write its `/etc/sensors3.conf` stanza with a label, a `compute` line, and limits at 95 and 105 percent of 5 V.
-10. Check the stanza from exercise 9 with `sensors_compute_in3(2.9762)` in `code/part06/slurm_exporter_lab.py`. What voltage does a raw reading of 2.9762 V display?
-11. Write the four files in `/etc/nut/` for one USB UPS named `ups1`. Then run `upsc ups1@localhost`.
+9. Chip `lm78-i2c-2d` measures +5V through a divider on `in3`. Write its stanza in `/etc/sensors3.conf`. Include a label line and a `compute` line. Set the minimum limit to 95 percent of 5 V.
+10. Set the maximum limit to 105 percent of 5 V in the same stanza. Then check the stanza with `sensors_compute_in3(2.9762)` in `code/part06/slurm_exporter_lab.py`. What voltage does a raw reading of 2.9762 V display?
+11. Write the four files in `/etc/nut/` for one USB UPS named `ups1`. Start with `ups.conf`. Run `upsc ups1@localhost` when the four files are done.
 12. Why must `slave` monitors shut down before the `master` monitor?
-13. A 64-GPU job shows `DCGM_FI_DEV_GPU_UTIL` at 99 percent, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` at 4 percent, and `DCGM_FI_PROF_DRAM_ACTIVE` at 82 percent. Its H100 GPUs draw 260 W of a possible 700 W. What are the GPUs actually doing?
+13. A 64-GPU job shows `DCGM_FI_DEV_GPU_UTIL` at 99 percent. Its tensor activity, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, is 4 percent. Its DRAM activity, `DCGM_FI_PROF_DRAM_ACTIVE`, is 82 percent. Its H100 GPUs draw 260 W of a possible 700 W. What are the GPUs actually doing?
 14. How do Open XDMoD and its SUPReMM module help you find jobs like the one in exercise 13 across many accounts?
 
 ---
@@ -597,3 +604,4 @@ If Prometheus, Alertmanager and `snmptrapd` run over the InfiniBand or RoCE data
 - Run here: `code/part06/slurm_exporter.py --selftest`, `code/part06/alerts_gpu_cluster.yml`, `code/part06/check_alert_rules.py`, and `python3 code/part06/slurm_exporter_lab.py` (3 passed, 0 failed).
 - Explicitly labelled inferences: `sensors_compute_in3` in `code/part06/slurm_exporter_lab.py` is a deterministic check of chapter 19 of *Supercomputers for Linux SysAdmins*'s `/etc/sensors3.conf` voltage divider formula.
 - Not verified on live hardware: `node_exporter` metric names used in the sample rules (`node_infiniband_port_state_id`, filesystem metrics), live DCGM diag levels, SNMP/Ganglia/lm_sensors/NUT daemon execution on hardware, and live `sinfo` output across Slurm versions (not run).
+

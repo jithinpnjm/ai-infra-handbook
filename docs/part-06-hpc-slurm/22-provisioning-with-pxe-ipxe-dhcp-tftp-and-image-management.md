@@ -22,26 +22,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that fails and has to be replaced. The new machine must come up with the right OS image, drivers, firmware settings, name and identity, and it must do so within minutes. Nobody should have to touch a keyboard. A GPU cluster has hundreds to thousands of nodes, and each one must be installed, reinstalled, patched and replaced this way.
+Picture a GPU node that fails in the middle of the night and has to be replaced before the morning training run. The new machine must come up with the right OS image, drivers, firmware settings, name and identity, and it must do so within minutes. Nobody should have to walk to the rack with a USB stick. A GPU cluster has hundreds to thousands of nodes, and each one must be installed, reinstalled, patched and replaced this way. Provisioning is the name for that whole process, from a bare machine to a node that is ready for work.
 
-That makes provisioning a system in its own right, with its own ways to fail. You can run into DHCP misconfiguration, boot storms, image drift or mismatched firmware modes. Several tools build on the mechanisms in this chapter. NVIDIA Base Command Manager (Part 8), xCAT and Warewulf (6.23), and MAAS and Foreman all rely on them. Learn the mechanisms first, because each of those tools is built on them.
+That makes provisioning a system in its own right, with its own ways to fail. You can run into DHCP misconfiguration, boot storms, image drift or mismatched firmware modes. A boot storm happens when many nodes ask for their files at the same instant, and image drift happens when nodes that should match slowly stop matching. Several tools build on the mechanisms in this chapter. NVIDIA Base Command Manager (Part 8), xCAT and Warewulf (6.23), and MAAS and Foreman all rely on them. Learn the mechanisms first, because each of those tools is built on them, and when a tool fails you will need to read the mechanisms underneath it.
 
 ## Prerequisites and outcomes
 
-This chapter builds on Part 1 (boot process, systemd), Part 2 (DHCP, VLANs) and 6.2 (management network). When you finish, you should be able to do the following:
-
-- Describe the boot chain and show where network boot plugs in, covering BIOS versus UEFI, PXE, iPXE and HTTP boot.
-- Configure a provisioning server with DHCP, TFTP and HTTP at the conceptual level, and generate its configuration from an inventory with validation.
-- Choose between stateful, stateless (diskless) and hybrid node designs, and explain NFS-root and squashfs+overlay.
-- Build, version, test and roll out node images, and manage node identity and first-boot configuration.
-- Troubleshoot network-boot failures with a staged method.
-- Relate xCAT, Warewulf, MAAS, Foreman, BCM and out-of-the-box stacks to this foundation.
-
-If Parts 1 and 2 feel unfamiliar, go back to them before the network-boot sections, because the rest of this chapter assumes them.
+This chapter builds on Part 1 (boot process, systemd), Part 2 (DHCP, VLANs) and 6.2 (management network). It starts with the boot chain, then covers the network boot protocols (DHCP, TFTP, PXE, iPXE and UEFI HTTP Boot). Next it shows a generator that builds the provisioning files from one inventory and checks them, followed by the choice between stateful, stateless and hybrid nodes. It then covers image building, node identity, the cluster managers that sit on top, and a staged method for finding a boot failure. If Parts 1 and 2 feel unfamiliar, go back to them before the network-boot sections, because the rest of the chapter assumes them.
 
 ## 1. The boot chain
 
-A node that will not boot can fail at any of five steps, so you should know the order. Network boot changes where some of the files come from.
+Picture a node that powers on and sits at a blank screen. Something went wrong, and the first question is which step it reached. A node that will not boot can fail at any of five steps, so you should know the order. Network boot changes where some of the files come from, but the order of the steps stays the same.
 
 ```mermaid
 flowchart LR
@@ -51,23 +42,29 @@ flowchart LR
   HTTP --> Init["5. Rootfs (OverlayFS / Disk)<br/>systemd PID 1 + cloud-init / Slurm"]
 ```
 
-1. **Firmware** starts first. The BIOS or UEFI firmware initialises the hardware and picks a boot device from the boot order, which can be disk, USB or network.
-2. **Boot loader** comes next. The machine can load it from disk, using GRUB or systemd-boot. Or it can load it from the network. There, the PXE ROM or the UEFI network stack downloads a small program called an NBP, short for network bootstrap program.
-3. **Kernel and initramfs** load into memory. The kernel starts and runs the initramfs, an early user space that carries drivers. The initramfs assembles the root device and may fetch the root image itself.
-4. **Root file system** gets mounted. It can come from a local disk, from NFS, or from a squashfs image held in RAM.
-5. **Init** is PID 1, and it starts the services. The book Supercomputers for Linux Sysadmins compares two styles. SysV init runs shell scripts from runlevel directories, one after another. systemd uses units and dependencies, starts services in parallel, and works with cgroups and journald. Modern distributions use systemd, and that matters for cgroup-based Slurm (6.8).
+Firmware starts first. The BIOS or UEFI firmware initialises the hardware and picks a boot device from the boot order, which can be disk, USB or network. BIOS is the older firmware style, and UEFI is the newer one that replaced it on most servers.
+
+The boot loader comes next. The machine can load it from disk, using GRUB or systemd-boot. Or it can load it from the network. There, the PXE ROM or the UEFI network stack downloads a small program called an NBP, short for network bootstrap program. The PXE ROM is the small piece of code on the network card that makes network boot possible.
+
+The kernel and the initramfs load into memory. The kernel starts and runs the initramfs, an early user space that carries drivers. User space is the part of the system where ordinary programs run, outside the kernel. The initramfs assembles the root device and may fetch the root image itself.
+
+The root file system gets mounted next. It can come from a local disk, from NFS, or from a squashfs image held in RAM. Squashfs is a compressed, read-only file system, which makes it a good fit for a shared image.
+
+Init is PID 1, and it starts the services. The book Supercomputers for Linux Sysadmins compares two styles. SysV init runs shell scripts from runlevel directories, one after another. systemd uses units and dependencies, starts services in parallel, and works with cgroups and journald. A unit is one thing systemd manages, such as a service or a mount. Cgroups are the kernel groups that limit and track processes, and journald is the logging service. Modern distributions use systemd, and that matters for cgroup-based Slurm (6.8).
 
 Local-disk boot is covered in the book's "Booting from Hard Disk" chapter. This chapter concentrates on the network paths.
 
-Find the step where the node stopped before you change anything else, because the fix depends on that step.
+Find the step where the node stopped before you change anything else, because the fix depends on that step. Changing the image when the problem is in DHCP wastes an hour, and the reverse is just as true.
+
+A simple way to work through it is to ask one question at each stage, and write the answer down. Did the node get its address? Did the bootloader arrive? Did the binary match the firmware? Did the image start? The first no is your fault line, and everything after it can wait.
 
 ## 2. Network boot protocols
 
 ### DHCP
 
-When you power on a node, its first step is asking for an address. The node's firmware broadcasts a DHCPDISCOVER message. The server replies with an IP address, a router, a DNS server and boot information. The boot information has two parts: the next-server address (`siaddr`) and the boot file name (`file`, option 67). The server can also send vendor options.
+When you power on a node, its first step is asking for an address. DHCP, the Dynamic Host Configuration Protocol, is the service that hands out addresses. The node's firmware broadcasts a DHCPDISCOVER message, which means "is there a DHCP server out there?" The server replies with an IP address, a router, a DNS server and boot information. The boot information has two parts: the next-server address (`siaddr`) and the boot file name (`file`, option 67). The server can also send vendor options.
 
-The node says what kind of machine it is, and the server answers with the matching boot file. The node sends option 60, the vendor class, which reads `PXEClient` or `HTTPClient`. It also sends option 93, the client system architecture. The values come from the PXE and UEFI specifications, and the table below lists them.
+The node also says what kind of machine it is, and the server answers with the matching boot file. The node sends option 60, the vendor class, which reads `PXEClient` or `HTTPClient`. It also sends option 93, the client system architecture. The values come from the PXE and UEFI specifications, and the table below lists them. A DHCP option is a numbered field in the message, so the number tells both sides what the value means.
 
 | Option 93 value | Client firmware |
 |---|---|
@@ -76,23 +73,27 @@ The node says what kind of machine it is, and the server answers with the matchi
 | 16 | x64 UEFI HTTP |
 | 11 | ARM64 UEFI |
 
-The server uses these values to hand BIOS, UEFI and HTTP clients different boot files. Static assignment gives each node a stable identity. You bind a MAC address to a fixed address with `dhcp-host=mac,name,ip` in dnsmasq, with `host` blocks in ISC dhcpd, or with reservations in Kea. An unknown MAC address gets an address from the discovery pool, and that node is then added to the inventory. The inventory chapter, 6.23, covers that step.
+The server uses these values to hand BIOS, UEFI and HTTP clients different boot files.
 
-You have several servers to choose from. ISC `dhcpd` is end-of-life, but many clusters still run it. ISC Kea is its successor, with JSON configuration, hooks and database backends. dnsmasq is lightweight and handles DHCP, TFTP and DNS in one program, so many deployment tools use it inside small and medium clusters. Vendor appliances are another option.
+Here is the whole conversation for one UEFI node, in plain order. The node broadcasts its request and says it is a UEFI client. The DHCP server answers with an address and a boot file name that fits that client. The firmware then fetches that file over TFTP, and the file it gets is the iPXE program. iPXE asks DHCP again, this time saying it is iPXE. The server now answers with a script URL instead of another binary, and iPXE fetches the script over HTTP. Each message has one job, and each job depends on the one before it. Think of it as a receptionist who checks which kind of visitor has arrived before handing over the right badge. Static assignment gives each node a stable identity. You bind a MAC address to a fixed address with `dhcp-host=mac,name,ip` in dnsmasq, with `host` blocks in ISC dhcpd, or with reservations in Kea. A MAC address is the hardware address burned into the network card. An unknown MAC address gets an address from the discovery pool, and that node is then added to the inventory. The inventory chapter, 6.23, covers that step.
 
-Run one authoritative DHCP server per provisioning VLAN. Two DHCP servers on one segment cause intermittent wrong-image boots. Watch for relay surprises too. The switch should forward DHCP between VLANs only on purpose, using `ip helper-address`.
+You have several servers to choose from. ISC `dhcpd` is end-of-life, but many clusters still run it. ISC Kea is its successor, with JSON configuration, hooks and database backends. dnsmasq is lightweight and handles DHCP, TFTP and DNS in one program, so many deployment tools use it inside small and medium clusters. Vendor appliances are another option, and they come with their own management tools.
+
+Run one authoritative DHCP server per provisioning VLAN. An authoritative server is the one that is allowed to answer for that network. Two DHCP servers on one segment cause intermittent wrong-image boots, because each node takes whichever answer arrives first. Watch for relay surprises too. A relay is a switch or router that forwards DHCP messages between VLANs. The switch should forward DHCP between VLANs only on purpose, using `ip helper-address`.
+
+A relay that forwards by accident is hard to notice, because the boot works most of the time. Write down which relays you intend to use, and check that list against the switch configuration whenever someone changes a VLAN.
 
 ### TFTP and PXE
 
-PXE, the Preboot Execution Environment, lives in the firmware of the network card. It gets an address from DHCP, downloads a boot file over TFTP (Trivial File Transfer Protocol, UDP port 69, RFC 1350), and runs that file. TFTP is simple enough to fit in a network card's ROM.
+PXE, the Preboot Execution Environment, lives in the firmware of the network card. It gets an address from DHCP, downloads a boot file over TFTP (Trivial File Transfer Protocol, UDP port 69, RFC 1350), and runs that file. TFTP is simple enough to fit in a network card's ROM. A ROM is memory that holds fixed code, so the card can boot before any operating system exists.
 
-You may have heard that TFTP is slow. Its default protocol is stop-and-wait, with 512-byte blocks, so each block waits for an acknowledgement. Modern servers and clients can negotiate bigger blocks with `blksize` (RFC 2348) and bigger windows with `windowsize` (RFC 7440). With those options, TFTP is good enough for a small bootloader. Large kernels and initramfs images should not travel over TFTP on big clusters. Send them over HTTP instead.
+You may have heard that TFTP is slow. Its default protocol is stop-and-wait, with 512-byte blocks, so each block waits for an acknowledgement. Picture sending a parcel one brick at a time, and waiting for a signature before you send the next one. Modern servers and clients can negotiate bigger blocks with `blksize` (RFC 2348) and bigger windows with `windowsize` (RFC 7440). A window lets several blocks travel before the sender waits. With those options, TFTP is good enough for a small bootloader. Large kernels and initramfs images should not travel over TFTP on big clusters. Send them over HTTP instead.
 
-TFTP has no authentication or encryption. Picture a rack that power-cycles at once. In that boot storm, hundreds of UDP transfers can start together and overwhelm a single server. You can stage the boot, spread the load over several servers, rate-limit the transfers, or switch to HTTP.
+TFTP has no authentication or encryption. Anyone on the network can request a file, so the provisioning VLAN has to be private. Picture a rack that power-cycles at once. In that boot storm, hundreds of UDP transfers can start together and overwhelm a single server. You can stage the boot, spread the load over several servers, rate-limit the transfers, or switch to HTTP.
 
 ### iPXE
 
-iPXE is an open-source network boot firmware. It adds a scriptable shell, HTTP and HTTPS, iSCSI, and many NIC drivers. The usual setup is chain loading. The PXE ROM first fetches `undionly.kpxe` for BIOS or `ipxe.efi` for UEFI over TFTP. Once iPXE starts, it asks DHCP again, and this time it identifies itself with DHCP option 175. The dnsmasq tag for that match is `ipxe`. The server then hands iPXE an HTTP URL that points to a script, instead of another binary. That step prevents an endless loop in which iPXE keeps loading itself.
+iPXE is an open-source network boot firmware. It adds a scriptable shell, HTTP and HTTPS, iSCSI, and many NIC drivers. The usual setup is chain loading. Chain loading means one program loads the next one in a sequence. The PXE ROM first fetches `undionly.kpxe` for BIOS or `ipxe.efi` for UEFI over TFTP. Once iPXE starts, it asks DHCP again, and this time it identifies itself with DHCP option 175. The dnsmasq tag for that match is `ipxe`. The server then hands iPXE an HTTP URL that points to a script, instead of another binary. That step prevents an endless loop in which iPXE keeps loading itself, because iPXE is no longer asking for the same binary a second time.
 
 A script is only a few lines:
 
@@ -104,13 +105,15 @@ initrd http://10.10.0.1:8080/images/dgx-os-24.04/initrd.img
 boot || goto failed
 ```
 
-You can branch a script on variables such as `${mac}`, `${hostname}`, `${uuid}`, `${serial}` and `${asset}`. A script can also chain to a per-node script, or fall back to a discovery or rescue image. Because the scripts are plain text served over HTTP, per-node and per-role images are easy to manage and audit.
+Read the script from the top. The first line marks it as an iPXE script. The `dhcp` line gets the node's network settings. The `kernel` and `initrd` lines name the files to fetch, and the `boot` line starts them. If the boot fails, the script jumps to a failure branch.
+
+You can branch a script on variables such as `${mac}`, `${hostname}`, `${uuid}`, `${serial}` and `${asset}`. A script can also chain to a per-node script, or fall back to a discovery or rescue image. Because the scripts are plain text served over HTTP, per-node and per-role images are easy to manage and audit. You can open a script in a text editor and see exactly what a node will boot.
 
 ### UEFI HTTP Boot
 
-Modern UEFI firmware can boot straight over HTTP or HTTPS, with no PXE and no TFTP. The DHCP offer carries a boot URL in option 67, and the client sends the vendor class `HTTPClient` with client architecture 16. The firmware downloads the boot file, often `grubx64.efi` or `shimx64.efi`, over TCP. That allows full-speed transfers, TLS and ordinary web servers.
+Modern UEFI firmware can boot straight over HTTP or HTTPS, with no PXE and no TFTP. The DHCP offer carries a boot URL in option 67, and the client sends the vendor class `HTTPClient` with client architecture 16. The firmware downloads the boot file, often `grubx64.efi` or `shimx64.efi`, over TCP. That allows full-speed transfers, TLS and ordinary web servers. TLS is the encryption that keeps the transfer private and checks that the server is the right one.
 
-If you come from PXE, the differences are practical. The DHCP server must answer HTTPClient requests with a URL, not with a filename relative to TFTP, and it must handle option 60 `HTTPClient`. DNS names require the firmware to resolve them. HTTPS also needs the CA certificate enrolled in the firmware. NVIDIA DGX systems and many servers support UEFI HTTP Boot. BCM uses its own boot flow, built on these same primitives (Part 8). The NVIDIA-DevOps note that "TFTP has no window scaling and needs an ACK per 512-byte block" describes the default behaviour only, as above. The conclusion still holds: use HTTP for large payloads.
+If you come from PXE, the differences are practical. The DHCP server must answer HTTPClient requests with a URL, not with a filename relative to TFTP, and it must handle option 60 `HTTPClient`. DNS names require the firmware to resolve them. HTTPS also needs the CA certificate enrolled in the firmware. A CA is the certificate authority that signs the server's certificate, and the firmware has to trust it. NVIDIA DGX systems and many servers support UEFI HTTP Boot. BCM uses its own boot flow, built on these same primitives (Part 8). The NVIDIA-DevOps note that "TFTP has no window scaling and needs an ACK per 512-byte block" describes the default behaviour only, as above. The conclusion still holds: use HTTP for large payloads.
 
 Here is a Kea client-class sketch for serving different boot files. It comes from general knowledge, so adapt it and validate it with `kea-dhcp4 -t`.
 
@@ -124,11 +127,11 @@ Here is a Kea client-class sketch for serving different boot files. It comes fro
   ] } }
 ```
 
-The class test is required. A bare `boot-file-name` at the subnet level, as some tutorials show, sends the same file to every client. That includes PXE clients, which cannot fetch HTTP URLs. Give each boot path its own class, and you should test the configuration before it reaches a node.
+The class test is required. A client class is a rule that sorts clients into groups by what they send. A bare `boot-file-name` at the subnet level, as some tutorials show, sends the same file to every client. That includes PXE clients, which cannot fetch HTTP URLs. Give each boot path its own class, and test the configuration before it reaches a node.
 
 ## 3. A tested generator
 
-Hand-editing DHCP files for a thousand nodes is how typos reach production. You can avoid that by generating every file from one inventory. The script `code/part06/gen_provision.py` reads an inventory CSV with the columns `name,mac,ip,bmc_mac,bmc_ip,role,image`. It validates each row for hostname syntax, MAC syntax, subnet membership and duplicates. Then it writes a `dnsmasq.conf`, one iPXE script per node, and a `boot.ipxe` dispatcher.
+Hand-editing DHCP files for a thousand nodes is how typos reach production. One wrong digit in a MAC address can send a node to the wrong image, and nobody notices until it boots the wrong OS. You can avoid that by generating every file from one inventory. The script `code/part06/gen_provision.py` reads an inventory CSV with the columns `name,mac,ip,bmc_mac,bmc_ip,role,image`. It validates each row for hostname syntax, MAC syntax, subnet membership and duplicates. Then it writes a `dnsmasq.conf`, one iPXE script per node, and a `boot.ipxe` dispatcher. The dispatcher is the small script that sends each node to its own file.
 
 The generated `dnsmasq.conf` uses option names from the dnsmasq(8) manual. They include `dhcp-range`, `dhcp-host`, and `dhcp-match` with `option:client-arch`. The special number 175 marks iPXE. Other options include `dhcp-boot=[tag:<tag>,]<filename>`, `enable-tftp`, `tftp-root` and `port=0`. For an input of three nodes, the script produced this:
 
@@ -152,7 +155,9 @@ dhcp-host=aa:bb:cc:10:00:01,gpu001-bmc,10.20.1.1
 ...
 ```
 
-The script also wrote `ipxe/gpu001.ipxe`, which holds the kernel, initrd and root lines for that node's image. Next comes the rejection test. The second inventory was broken on purpose. It had a duplicate MAC and IP, a BMC address outside its subnet, an uppercase and underscored hostname, and a malformed MAC. The script rejected it with five errors and wrote no files:
+Read the file in three groups. The first group sets up TFTP and marks the server as authoritative. The second group gives the discovery pools, which are the address ranges for machines the inventory has not seen yet. The third group sorts clients by their tags and names the boot file for each one. The `dhcp-host` lines bind known MAC addresses to fixed names and addresses.
+
+The script also wrote `ipxe/gpu001.ipxe`, which holds the kernel, initrd and root lines for that node's image. Next comes the rejection test. The second inventory was broken on purpose. It had a duplicate MAC and IP, a BMC address outside its subnet, an uppercase and underscored hostname, and a malformed MAC. The BMC is the separate management controller on each server. The script rejected it with five errors and wrote no files. Writing no files is the important part. A broken inventory should stop the process, not produce a half-valid set of configs.
 
 ```text
 ERROR gpu002: bmc_ip 10.30.1.2 not in 10.20.0.0/16
@@ -162,13 +167,15 @@ ERROR GPU_3: invalid hostname
 ERROR GPU_3: bad mac 'aa:bb:cc:00:00:zz'
 ```
 
-The generator has limits you should know about. Its discovery pool arithmetic is naive, because it uses fixed offsets. dnsmasq itself was not available to run its syntax check, so run `dnsmasq --test -C dnsmasq.conf` in CI. The generator also supports one image per node, no IPv6, and no secure boot signing.
+The generator has limits you should know about. Its discovery pool arithmetic is naive, because it uses fixed offsets. dnsmasq itself was not available to run its syntax check, so run `dnsmasq --test -C dnsmasq.conf` in CI. The generator also supports one image per node, no IPv6, and no secure boot signing. A limit is not a bug, but you need to know it before you rely on the output.
 
-The principle matters more than the script. **Inventory is the source of truth, and it lives in Git. Everything else is generated and validated.** The same pattern drives BCM, MAAS and Foreman, which keep the inventory in a database.
+The principle matters more than the script. **Inventory is the source of truth, and it lives in Git. Everything else is generated and validated.** When someone asks why a node has the wrong image, you can check one file in Git instead of hunting through a dozen config files on the server. The same pattern drives BCM, MAAS and Foreman, which keep the inventory in a database.
+
+Treat a change to the inventory the way you treat a change to application code. Open it as a pull request, let a reviewer read the diff, and let the validator run before anything merges. That way a bad MAC address is caught in review, not at three in the morning when the node will not boot.
 
 ## 4. Stateless, stateful and hybrid nodes
 
-Each node design trades boot speed, RAM and configuration drift against the others. The table compares the four designs side by side.
+Picture two nodes that look identical on the rack. One has been running for months, with a few small changes that someone made by hand. The other was just reinstalled from the image. Which one will behave the same way next week? The answer depends on the node design, and each design trades boot speed, RAM and configuration drift against the others. Drift means the node slowly stops matching the others. The table compares the four designs side by side.
 
 | Design | How it works | Pros | Cons |
 |---|---|---|---|
@@ -177,68 +184,82 @@ Each node design trades boot speed, RAM and configuration drift against the othe
 | **NFS root** | Root mounted read-only (often with per-node overlay) from an NFS server | Smaller RAM, changes visible instantly | NFS server becomes critical path and bottleneck; boot storms; latency |
 | **Hybrid** | Read-only image in RAM plus local NVMe for scratch/logs/containers | Best of both; the common GPU-cluster choice | Need to manage persistent per-node state (SSH host keys, machine-id, logs) |
 
-Read the stateless row first if drift is your main worry. Every reboot returns the node to a clean image, so nothing left over from earlier work can linger.
+Read the stateless row first if drift is your main worry. Every reboot returns the node to a clean image, so nothing left over from earlier work can linger. A hand-edit made last week simply vanishes at the next boot. That sounds harsh, but it is exactly what makes the fleet predictable.
 
-A stateless node usually compresses its root image as a squashfs, which is read-only. Writes go to a separate layer, either tmpfs or overlayfs on local NVMe. An optional node-local config overlay can be applied at boot.
+Hybrid is the design most GPU clusters end up with, because it keeps the clean-image property of stateless nodes and still gives jobs fast local NVMe for scratch, logs and container layers. The price is a short list of per-node state that you have to manage on purpose.
 
-On a stateless node, you need deliberate handling for persistent identity. That covers SSH host keys, `machine-id`, the hostname (from a DHCP or hostname hook), the Munge key (6.7), GPU and NIC configuration, and credentials. Inject them at first boot from the provisioning server or a secret store. You should not bake them into shared images.
+A stateless node usually compresses its root image as a squashfs, which is read-only. Writes go to a separate layer, either tmpfs or overlayfs on local NVMe. Tmpfs is a file system that lives in RAM, and overlayfs stacks a writable layer on top of the read-only image. An optional node-local config overlay can be applied at boot. The read-only image never changes, and every write lands in the layer above it.
 
-The book's chapter on booting describes the classic setup for diskless nodes. It uses a PXE ROM, DHCP, a TFTP kernel and initrd, and an NFS-root. It also uses a read-only common tree with per-node writable parts, and it covers building an initrd for that setup. Today's equivalents deliver squashfs over HTTP. They use `dracut` on the RHEL family, or `initramfs-tools` and `mkinitramfs` on the Debian family, with live-boot hooks. Vendor tooling is another route.
+On a stateless node, you need deliberate handling for persistent identity. Identity here means the things that make one node different from another, and they must survive a reboot even though the rest of the node does not. That covers SSH host keys, `machine-id`, the hostname (from a DHCP or hostname hook), the Munge key (6.7), GPU and NIC configuration, and credentials. Inject them at first boot from the provisioning server or a secret store. You should not bake them into shared images, because then every node would share the same identity.
 
-For a GPU cluster, you decide which state must survive a reboot, and where that state gets injected from.
+The book's chapter on booting describes the classic setup for diskless nodes. It uses a PXE ROM, DHCP, a TFTP kernel and initrd, and an NFS-root. It also uses a read-only common tree with per-node writable parts, and it covers building an initrd for that setup. Today's equivalents deliver squashfs over HTTP. They use `dracut` on the RHEL family, or `initramfs-tools` and `mkinitramfs` on the Debian family, with live-boot hooks. Vendor tooling is another route. The old setup still explains the ideas, and the modern one is what you will usually run.
 
+For a GPU cluster, you decide which state must survive a reboot, and where that state gets injected from. Write that decision down as a short list. Anything not on the list should be safe to lose at the next reboot.
 ## 5. Image management
 
-Think of an image as one file set that many nodes will boot from. An **image** is the node's root file system plus its kernel and initramfs. Good practice covers nine habits, and each one protects the cluster in a different way.
+Think of an image as one file set that many nodes will boot from. Change it carelessly and you change hundreds of nodes at once. An **image** is the node's root file system plus its kernel and initramfs. Good practice covers nine habits, and each one protects the cluster in a different way.
 
-1. Build reproducibly from a definition kept under version control. You can use `debootstrap` or `mmdebstrap` for the Debian family, and `dnf --installroot` or `mock` or `kiwi` for the RHEL family. Other options are `mkosi`, `Packer` with a chroot or QEMU builder, container-based builds that export the rootfs, and the cluster manager's image tooling, such as BCM software images or Warewulf containers. Pin package repositories to snapshots or a local mirror, so every rebuild stays repeatable.
-2. Layer the image by role. A base OS layer comes first. A GPU layer follows, with the driver, CUDA, DCGM, NCCL, fabric manager and Mellanox OFED or DOCA. A Slurm layer and role overlays for login, compute and storage gateway nodes come after that. Keep the drivers in the same image build as the kernel they match.
-3. Test before you promote. Boot the candidate on a canary node group. Run health checks (6.14), a GPU smoke test, an NCCL test, a small Slurm job and storage mount checks. Promote the image only after all of them pass. Keep the previous image for instant rollback, which is only a pointer change, because images are files.
-4. Version and sign the image. Use a semantic name with the date, such as `dgx-os-24.04-2026-10-24`. Store checksums. If the secure boot or shim chain is in use, sign the image with a key.
-5. Roll out in waves, or rings. Nodes get their image through an inventory attribute or an iPXE script. Drain each node through Slurm before you reboot it, using `scontrol reboot ASAP nextstate=resume` (6.14).
-6. Keep the image minimal. Software that changes often belongs in modules or containers (6.6, 6.13), not in the base image.
-7. Apply configuration at boot. Cloud-init, Ignition, systemd units or cluster-manager agents read metadata and apply node-specific settings, such as hostname, network, mounts and the Slurm node name. That avoids a separate image build for each node.
-8. Treat firmware and BIOS state as part of provisioning. You manage those settings through Redfish, covered in Part 7, and through firmware baselines in 6.14 and Part 9. Enforce a known BIOS profile first, with boot mode UEFI, SR-IOV, NUMA and a power profile. Only then does the OS image matter.
+1. Build reproducibly from a definition kept under version control. A reproducible build gives the same result every time you run it from the same inputs. You can use `debootstrap` or `mmdebstrap` for the Debian family, and `dnf --installroot` or `mock` or `kiwi` for the RHEL family. Other options are `mkosi`, `Packer` with a chroot or QEMU builder, container-based builds that export the rootfs, and the cluster manager's image tooling, such as BCM software images or Warewulf containers. Pin package repositories to snapshots or a local mirror, so every rebuild stays repeatable. If the package source moves under you, two builds from the same definition can differ.
+2. Layer the image by role. A base OS layer comes first. A GPU layer follows, with the driver, CUDA, DCGM, NCCL, fabric manager and Mellanox OFED or DOCA. A Slurm layer and role overlays for login, compute and storage gateway nodes come after that. Keep the drivers in the same image build as the kernel they match. Layering by role means a change to the login node does not force a rebuild of the GPU layer.
+3. Test before you promote. Boot the candidate on a canary node group, which is a small set of nodes that take the new image first. Run health checks (6.14), a GPU smoke test, an NCCL test, a small Slurm job and storage mount checks. Promote the image only after all of them pass. Keep the previous image for instant rollback, which is only a pointer change, because images are files. Rolling back means pointing the nodes at the old file again, and nothing has to be rebuilt.
+4. Version and sign the image. Use a semantic name with the date, such as `dgx-os-24.04-2026-10-24`. Store checksums, so you can prove later that the bytes on the server are the bytes you built. If the secure boot or shim chain is in use, sign the image with a key. The shim is the small signed program that lets the firmware trust the rest of the boot chain.
+5. Roll out in waves, or rings. A wave is a group of nodes that receives the new image together, and the first wave is the smallest. Nodes get their image through an inventory attribute or an iPXE script. Drain each node through Slurm before you reboot it, using `scontrol reboot ASAP nextstate=resume` (6.14). Draining means the node finishes its current jobs and accepts no new ones before the reboot.
+6. Keep the image minimal. Software that changes often belongs in modules or containers (6.6, 6.13), not in the base image. A large image takes longer to build, longer to copy and longer to test, and every extra package is one more thing that can break.
+7. Apply configuration at boot. Cloud-init, Ignition, systemd units or cluster-manager agents read metadata and apply node-specific settings, such as hostname, network, mounts and the Slurm node name. Cloud-init and Ignition are two tools that set up a freshly booted machine from its metadata. That avoids a separate image build for each node.
+8. Treat firmware and BIOS state as part of provisioning. You manage those settings through Redfish, covered in Part 7, and through firmware baselines in 6.14 and Part 9. Redfish is the standard web API for managing servers through their BMCs. Enforce a known BIOS profile first, with boot mode UEFI, SR-IOV, NUMA and a power profile. SR-IOV lets one network card share itself across several virtual functions, and NUMA is the memory layout between CPU sockets. Only then does the OS image matter, because a mismatched firmware setting can break boot before the image ever runs.
 9. Lock down security. Restrict who can change boot scripts and images. Serve images only on the provisioning VLAN. Use HTTPS with a private CA where the firmware supports it. Keep the BMC and provisioning networks isolated (Part 18).
 
-Promote an image only after the canary group passes its checks.
+Promote an image only after the canary group passes its checks. A promotion that skips the canary is the most common way a single bad image takes down a whole pod.
+
+A safe rollout looks like this. The canary group boots the new image and passes every check. The first wave follows, and you watch it for a full day of jobs. Only then does the next wave move. Each step is slow on purpose, because a bad image that reaches a full pod in one go costs far more than the extra hours.
 
 ## 6. Node identity and lifecycle
 
-A node moves through a set of states over its life. You start with a **racked** node, meaning physically installed. It becomes **discovered** when DHCP sees its MAC in the discovery pool, or when it is imported from a vendor manifest. It is **registered** once it has a name, role, image and BMC credentials. After its image boots, it is **provisioned**. After first-boot configuration joins it to Slurm or Kubernetes, it is **configured**. Then it is **in service**, or **drained or failed** (6.14). When new hardware takes over an old name, the node is **replaced**, which means updating MAC addresses in the inventory. Otherwise it is **decommissioned**.
+A node moves through a set of states over its life. Think of it as a path with stops along the way, and each stop has a clear owner. You start with a racked node, meaning physically installed. It becomes discovered when DHCP sees its MAC in the discovery pool, or when it is imported from a vendor manifest. It is registered once it has a name, role, image and BMC credentials. After its image boots, it is provisioned. After first-boot configuration joins it to Slurm or Kubernetes, it is configured. Then it is in service, or drained or failed (6.14). When new hardware takes over an old name, the node is replaced, which means updating MAC addresses in the inventory. Otherwise it is decommissioned, which means it leaves the inventory for good.
 
-Good inventories record serial numbers, asset tags, rack and U position, switch ports learned through LLDP, firmware versions and warranty status.
+Good inventories record serial numbers, asset tags, rack and U position, switch ports learned through LLDP, firmware versions and warranty status. A U position is the height slot in the rack, and LLDP (Link Layer Discovery Protocol) is how a switch learns what is plugged into each of its ports.
 
-DHCP logs show unknown MACs, and switch MAC tables map each port to a rack position. BMC Redfish queries (Part 7) and vendor CSVs are other methods. Use LLDP and port mapping, so identity follows physical location. Then replacing a node is a one-line inventory edit.
+DHCP logs show unknown MACs, and switch MAC tables map each port to a rack position. BMC Redfish queries (Part 7) and vendor CSVs are other methods. Use LLDP and port mapping, so identity follows physical location. Then replacing a node is a one-line inventory edit. Identity that follows the port is far more reliable than identity that follows a sticker, because stickers come off and ports stay put.
 
-When you swap hardware, the inventory's MAC address is the edit that matters most.
+A short example makes the point. A board fails, and the technician swaps it. The new MAC address appears on the same switch port. Because the inventory maps that port to the old name, the new board takes over the old identity after one edit. Nothing else in the cluster has to change.
+
+When you swap hardware, the inventory's MAC address is the edit that matters most. Get that one line right, and the new machine takes over the old name, address and role without anyone touching the rest of the cluster.
 
 ## 7. Cluster managers built on this foundation
 
-This section covers the cluster managers that sit on top of this foundation. The details appear in 6.23 and Part 8. The book Supercomputers for Linux Sysadmins covers the same ground in its chapters 25 and 26.
+Picture a team with a rack of spare servers and no budget for a commercial stack. They need to pick a tool that fits the job.
 
-- **ROCKS** is a historic cluster distribution. The National Partnership for Advanced compute Infrastructure and the San Diego Supercomputer Center developed it in `2000`. It is based on RedHat and CentOS and uses a modified version of the RedHat `anaconda` auto-installer. It stores all cluster configuration in a `MySQL` database, and you can find it at `http://www.rocksclusters.org/`. ROCKS splits the distribution into modular **Roll CDs**. Each Roll holds a software suite, for example `Base`, `HPC`, `Java`, `Lustre` or `Ganglia`. You can build custom Roll CDs and update installed software from new Roll CD images. The book's installation walkthrough `(untested here)` goes like this:
-  1. Boot the head node from the **Base Roll CD**, and enter `frontend` mode at the boot prompt instead of the default `compute` mode.
-  2. At the prompt `"Do you have a roll CD/DVD?"`, answer `"Yes"` and insert the **HPC Roll CD**. Then answer `"No"` and re-insert the Base Roll CD. Use `Autopartition`, and configure the internal cluster NIC by hand by unselecting `"configure using DHCP"`.
-  3. After the head node reboots, log in as `root` and run `insert-ethers` `(untested here)`. Choose `compute`, then power on each compute node in PXE network-boot mode. `insert-ethers` captures each booting node's MAC address, assigns its hostname and IP in the MySQL database, and provisions its image over the network. When every compute node is registered, press `F1` to exit `insert-ethers`.
-  4. Create a user with `useradd USERNAME`. Initialize SSH keys with `ssh-agent $SHELL` and `ssh-add`. Then launch jobs by hand with `/opt/mpich/gnu/bin/mpirun -nolocal -np 2 -machinefile machines ./myexe`, or through the default **Grid Engine** batch system with `qsub sge-run-script.sh` `(untested here)`.
-- **Parallel Knoppix/PelicanHPC** (`https://sourceforge.net/projects/pelicanhpc/`) is a Debian-based **LiveCD / LiveUSB** stack. It turns a BeoWulf-class cluster, made from improvised materials, into a temporary diskless cluster. It can also turn an idle classroom or office of workstations into one at night. It ships with OpenMPI, parallel versions of Linpack and Octave, and `apt-get` `.deb` package delivery, and it runs without modifying local hard drives. LiveCD stacks are less flexible than custom-built clusters. Still, a day spent on a deployment system lets you install an entire cluster in an hour and expand or reconfigure it in half an hour. The book makes this point in chapter 25. The walkthrough `(untested here)` goes like this:
+This section covers the cluster managers that sit on top of this foundation. The details appear in 6.23 and Part 8. The book Supercomputers for Linux Sysadmins covers the same ground in its chapters 25 and 26. Each tool automates the steps in this chapter, so knowing the mechanisms helps you judge what each tool is doing for you.
+
+ROCKS is a historic cluster distribution. The National Partnership for Advanced compute Infrastructure and the San Diego Supercomputer Center developed it in `2000`. It is based on RedHat and CentOS and uses a modified version of the RedHat `anaconda` auto-installer. It stores all cluster configuration in a `MySQL` database, and you can find it at `http://www.rocksclusters.org/`. ROCKS splits the distribution into modular Roll CDs. Each Roll holds a software suite, for example `Base`, `HPC`, `Java`, `Lustre` or `Ganglia`. You can build custom Roll CDs and update installed software from new Roll CD images. The book's installation walkthrough goes like this:
+
+  1. Boot the head node from the Base Roll CD, and enter `frontend` mode at the boot prompt instead of the default `compute` mode.
+  2. At the prompt `"Do you have a roll CD/DVD?"`, answer `"Yes"` and insert the HPC Roll CD. Then answer `"No"` and re-insert the Base Roll CD. Use `Autopartition`, and configure the internal cluster NIC by hand by unselecting `"configure using DHCP"`.
+  3. After the head node reboots, log in as `root` and run `insert-ethers`. Choose `compute`, then power on each compute node in PXE network-boot mode. `insert-ethers` captures each booting node's MAC address, assigns its hostname and IP in the MySQL database, and provisions its image over the network. When every compute node is registered, press `F1` to exit `insert-ethers`.
+  4. Create a user with `useradd USERNAME`. Initialize SSH keys with `ssh-agent $SHELL` and `ssh-add`. Then launch jobs by hand with `/opt/mpich/gnu/bin/mpirun -nolocal -np 2 -machinefile machines ./myexe`, or through the default Grid Engine batch system with `qsub sge-run-script.sh`.
+
+Parallel Knoppix/PelicanHPC (`https://sourceforge.net/projects/pelicanhpc/`) is a Debian-based LiveCD / LiveUSB stack. A LiveCD runs straight from the disc, so it leaves the local hard drives untouched. It turns a BeoWulf-class cluster, made from improvised materials, into a temporary diskless cluster. It can also turn an idle classroom or office of workstations into one at night. It ships with OpenMPI, parallel versions of Linpack and Octave, and `apt-get` `.deb` package delivery, and it runs without modifying local hard drives. LiveCD stacks are less flexible than custom-built clusters. Still, a day spent on a deployment system lets you install an entire cluster in an hour and expand or reconfigure it in half an hour. The book makes this point in chapter 25. The walkthrough goes like this:
+
   1. Boot the head machine from the LiveCD and choose `Start Debian Live`. Pick where `/home` lives. By default it sits on a RAM disk. The other choice is persistent mount options, which `/home/user/pelican_config` documents. Then replace the default password `PleaseChangeMe` for the account `user`. You can optionally start Xfce with `startx`.
-  2. Run `pelican_setup` `(untested here)` and select the interface connected to the cluster LAN. Be careful not to start PelicanHPC's DHCP server on a corporate LAN.
+  2. Run `pelican_setup` and select the interface connected to the cluster LAN. Be careful not to start PelicanHPC's DHCP server on a corporate LAN.
   3. Confirm that the `DHCP`, `TFTP` and `NFS` services start. Then PXE-boot the compute nodes until each one displays `"This is a PelicanHPC compute node."`
-  4. PelicanHPC writes the node list it finds to `/home/user/tmp/bhosts`. When you add or remove compute nodes later, run `pelican_restart_hpc` `(untested here)` to refresh the cluster configuration.
-- **xCAT** belongs to the IBM and Lenovo lineage. It handles DHCP, TFTP and DNS, and it keeps node definitions in a database. Its commands include `nodeset`, `rpower` and `rinstall`. It builds stateless, statelite or diskful images, and it can arrange service nodes in hierarchies.
-- **Warewulf 4** provisions stateless nodes from containers. It is simple, and it is popular.
-- **Canonical MAAS** works like a bare-metal cloud. It discovers machines, commissions them and deploys Ubuntu, and you drive it through an API. **Foreman**, with Katello and Puppet, manages the lifecycle of mixed fleets.
-- **NVIDIA Base Command Manager (BCM)** is the cluster manager that NVIDIA supports. It covers the head node, software images, categories, node discovery, provisioning and health. It also integrates with Slurm and Kubernetes, which Part 8 covers.
+  4. PelicanHPC writes the node list it finds to `/home/user/tmp/bhosts`. When you add or remove compute nodes later, run `pelican_restart_hpc` to refresh the cluster configuration.
+
+xCAT belongs to the IBM and Lenovo lineage. It handles DHCP, TFTP and DNS, and it keeps node definitions in a database. Its commands include `nodeset`, `rpower` and `rinstall`. It builds stateless, statelite or diskful images, and it can arrange service nodes in hierarchies. Statelite sits between stateless and stateful, with a few paths kept writable. Diskful means the node keeps its OS on local disk.
+
+Warewulf 4 provisions stateless nodes from containers. It is simple, and it is popular.
+
+Canonical MAAS works like a bare-metal cloud. It discovers machines, commissions them and deploys Ubuntu, and you drive it through an API. Commissioning means MAAS powers on a new machine and checks its hardware before it is ever deployed. Foreman, with Katello and Puppet, manages the lifecycle of mixed fleets. Katello handles content and patch management, and Puppet keeps configuration in line.
+
+NVIDIA Base Command Manager (BCM) is the cluster manager that NVIDIA supports. It covers the head node, software images, categories, node discovery, provisioning and health. It also integrates with Slurm and Kubernetes, which Part 8 covers.
 
 ### Out-of-the-box stacks: when they fit
 
-Setting up a cluster by hand means installing the OS, the scheduler, MPI and libraries on every node. Every new machine, and every change, repeats that work. Linux cluster distributions exist to cut that effort. They help, but only up to a point.
+Setting up a cluster by hand means installing the OS, the scheduler, MPI and libraries on every node. Every new machine, and every change, repeats that work. Linux cluster distributions exist to cut that effort. They help, but only up to a point. The trick is knowing where that point is before you commit.
 
 Flexibility is the main limit. A stack with a fixed set of tools is hard to extend, and you cannot always add commercial or open source software to it. Suppose your cluster grows beyond a small set of tasks, or your users compile their own or open source packages. Then a ready-made stack is usually the wrong choice.
 
-When the task list is small and the stack already runs those tasks, the stack can save a lot of time. Setting up a deployment system takes about a day at first. After that, the book says, an entire cluster can be installed in an hour, and expanded or reconfigured in half an hour.
+When the task list is small and the stack already runs those tasks, the stack can save a lot of time. Setting up a deployment system takes about a day at first. The book's figures for that case are an entire cluster installed in an hour, and expanded or reconfigured in half an hour. Those times describe a small, well-defined job, not a large, unusual one.
 
 List the tasks and tools your users need before you pick a stack. If the stack cannot run that list, you need a full provisioning system, like the ones described in 6.23 and Part 8.
 
@@ -246,17 +267,17 @@ List the tasks and tools your users need before you pick a stack. If the stack c
 
 ROCKS suits typical tasks on small configurations, so it can be a good first choice for that kind of cluster. It groups its software into Roll CDs. Each Roll holds a suite such as Java, Lustre or Ganglia, and you can create your own Roll CDs too.
 
-Effort grows fast when your hardware, network topology or applications are nonstandard or not-so-standard. Then you will spend a lot of time tuning and configuring ROCKS to fit.
+Effort grows fast when your hardware, network topology or applications are nonstandard or not-so-standard. Then you will spend a lot of time tuning and configuring ROCKS to fit. A nonstandard network is the common surprise, because the installer assumes a simple layout.
 
-Plan the network before you start the installer. It asks general questions first, then questions about the cluster network. Decide your addresses, and decide which network card goes where, before you begin.
+Plan the network before you start the installer. It asks general questions first, then questions about the cluster network. Decide your addresses, and decide which network card goes where, before you begin. Writing the plan on paper is a cheap habit that saves a reinstall.
 
 Use the `Autopartition` option to partition the head node disk. You can partition by hand, but the automatic option is the safer default. Watch the network card step closely. The installer picks which card is internal and which is external, and its choice may differ from yours. For the internal network, select manual mode by clearing `configure using DHCP`.
 
-Once you answer the last question, the installer formats the disk and unpacks the packages. It asks for the HPC Roll CD during that unpacking. Then the head node reboots and is ready for use. Most of the other questions match those of any Linux installer.
+Once you answer the last question, the installer formats the disk and unpacks the packages. It asks for the HPC Roll CD during that unpacking. Then the head node reboots and is ready for use. Most of the other questions match those of any Linux installer, so you can answer them as you would for any server.
 
 Compute nodes take one more step. Use this path when the nodes are diskless, or when you want to keep the OS already on them, as with machines in a computer lab. The nodes must be able to boot over the network with PXE. Start `insert-ethers` on the head node as `root`, select `compute`, and power on each node in network boot mode. The program shows each node's MAC address as it installs that node. Press `F1` once all the nodes are installed.
 
-When the cluster is ready, create a regular user with `useradd USERNAME`. Log out of `root` and log in as that user. Then you can build MPI programs with `mpicc` or `mpif77`. Before your first MPI run, start an agent with `ssh-agent $SHELL` and load your key with `ssh-add`.
+When the cluster is ready, create a regular user with `useradd USERNAME`. Log out of `root` and log in as that user. Then you can build MPI programs with `mpicc` or `mpif77`. Before your first MPI run, start an agent with `ssh-agent $SHELL` and load your key with `ssh-add`. An SSH agent holds your key in memory, so MPI can log in to the other nodes without asking for a password each time.
 
 For a manual run, list the compute nodes in a `machines` file, one node per line. ROCKS uses Grid Engine by default, so a batch job needs a startup script first. Submit that script with `qsub`, as in `qsub sge-run-script.sh`.
 
@@ -282,7 +303,7 @@ Use PelicanHPC for a short-lived cluster, and reach for a full provisioning syst
 
 ## 8. Boot triage
 
-When a node will not boot, you work through a staged method. The NVIDIA-DevOps notes call it D-T-B-I, and the four stages are standard. The table gives the question each stage asks, along with the checks to run.
+Picture a full rack of nodes after a power cut, and one node in the middle that stays dark. The console shows nothing useful, and the team wants an answer before lunch. When a node will not boot, you work through a staged method rather than guessing. The NVIDIA-DevOps notes call it D-T-B-I, and the four stages are standard. Each letter is one stage of the boot chain, and you check them in order. The table gives the question each stage asks, along with the checks to run.
 
 | Stage | Question | Checks |
 |---|---|---|
@@ -291,11 +312,17 @@ When a node will not boot, you work through a staged method. The NVIDIA-DevOps n
 | **B**oot-mode | Does the binary match the firmware? | UEFI vs BIOS (`ipxe.efi` vs `undionly.kpxe`), architecture (x86_64 vs ARM64), Secure Boot signing (shim), correct NIC driver in iPXE (some NICs need a specific build) |
 | **I**mage | Did kernel, initramfs and root load and start the OS? | Serial console output of the kernel, initramfs shell (`rd.break`), missing NIC driver in initramfs (no network to fetch rootfs), wrong `root=`/URL, not enough RAM for the image, DNS failures, time/TLS errors |
 
+Walk the stages in order, and stop at the first one that fails.
+
+A useful habit is to write down what you saw at each stage, even when it looked fine. A written record stops you from checking the same stage twice, and it gives the next person a starting point if the node fails again. The DHCP stage comes first because it decides everything after it. If the node never got its boot file name, the image stage is irrelevant. The tcpdump line in the first row is the most direct test. It shows you the actual DHCP messages on the wire, so you can see whether the node asked and whether anybody answered.
+
 Several causes come up again and again. Two DHCP servers can answer the same node. A PXE client sent to a relay that drops option 60 or option 93 can fail to boot. The boot order can put disk ahead of network after the first install, so the node never reimages. You set that order with IPMI `chassis bootdev pxe options=efiboot` or with Redfish `BootSourceOverrideTarget`.
 
-Other causes are just as common. Firmware set to legacy can meet a server that offers UEFI binaries. Secure Boot can reject unsigned iPXE. A big initramfs sent over TFTP can time out. A storm of 500 nodes against one HTTP server calls for caching or multiple mirrors. A node's MAC address can change after a NIC or board swap, and a stale ARP or DHCP lease can outlive a replaced node. PXE works only untagged, unless the NIC firmware supports VLAN tagging, so a wrong VLAN on the switch port breaks boot.
+Other causes are just as common. Firmware set to legacy can meet a server that offers UEFI binaries. Secure Boot can reject unsigned iPXE. A big initramfs sent over TFTP can time out. A storm of 500 nodes against one HTTP server calls for caching or multiple mirrors. A node's MAC address can change after a NIC or board swap, and a stale ARP or DHCP lease can outlive a replaced node. ARP is how machines map IP addresses to MAC addresses, so a stale entry sends traffic to the wrong place. PXE works only untagged, unless the NIC firmware supports VLAN tagging, so a wrong VLAN on the switch port breaks boot.
 
-Get serial-over-LAN or BMC console access, covered in Part 7, before you debug a node remotely.
+Get serial-over-LAN or BMC console access, covered in Part 7, before you debug a node remotely. Without a console, you are guessing at what the node is doing.
+
+A console also saves a trip to the rack. You can watch the boot messages as they happen, and the message often names the failing stage for you, which turns a long guess into a short check.
 
 ## 9. Lab
 
@@ -305,9 +332,13 @@ Suppose you just changed the generator and want proof that it still works. Start
 python3 code/part06/gen_provision_lab.py
 ```
 
-What has been tested: the generator ran on the sample inventory and on the broken one. Two extensions remain. Extend `validate()` so that it checks that BMC IPs sit in a different /16 than node IPs, and that role values come from an allowed list. Add a `--check` mode that only validates.
+Run the lab, then read its output, because the output tells you what passed and what failed. A passing run does not prove the generator is right for your network. It proves the generator still does what its tests describe.
 
-Several steps are still untested. They need two VMs on a host-only network. Work through them in this order:
+The two extensions below are worth doing soon, because each one closes a gap that the current checks leave open. Until then, keep a human review step for every inventory change.
+
+What has been tested: the generator ran on the sample inventory and on the broken one. Two extensions remain. Extend `validate()` so that it checks that BMC IPs sit in a different /16 than node IPs, and that role values come from an allowed list. Add a `--check` mode that only validates. These two changes would catch the next class of mistake before it reaches a file.
+
+The VM steps have not been run yet. They need two VMs on a host-only network, which is a virtual network that only your VMs can see. Work through them in this order:
 
 1. Set up dnsmasq for DHCP and TFTP with a BIOS client. Boot an iPXE ROM, then chain to an HTTP script that boots a small live image.
 2. Switch the VM to UEFI and watch the boot file change. Add `ipxe.efi`.
@@ -321,7 +352,9 @@ Run the lab first. Treat the seven VM steps as the next thing to try.
 
 ## 10. Interview angles
 
-Interviewers tend to ask about this material in a few familiar ways. Expect questions like these, and try to answer each one by walking the boot chain from section 1:
+Picture a hiring manager who asks you to walk through a boot on a whiteboard, from power-on to a running OS.
+
+Interviewers tend to ask about this material in a few familiar ways. Expect questions like these, and try to answer each one by walking the boot chain from section 1. Start from power-on, name each stage, and then say where the question sits.
 
 - Walk me through a PXE boot, from power-on to a running OS.
 - How do PXE, iPXE and UEFI HTTP Boot differ, and when would you use each one?
@@ -335,12 +368,16 @@ Interviewers tend to ask about this material in a few familiar ways. Expect ques
 
 ## Exercises
 
-1. Start by generating and validating `dnsmasq.conf` and the iPXE scripts with `python3 code/part06/gen_provision_lab.py`, which uses `code/part06/gen_provision.py`. Explain how `validate()` catches all 5 inventory mistakes: `bmc_ip` outside `10.20.0.0/16`, a duplicate MAC, a duplicate IP, the uppercase and underscored hostname `GPU_3`, and the non-hex MAC `'aa:bb:cc:00:00:zz'`. Then explain how `dnsmasq_conf()` uses `dhcp-match=set:ipxe,175` and `option:client-arch` (`7` and `9`) to chain-load `ipxe.efi` / `undionly.kpxe` into `http://10.10.0.1:8080/boot.ipxe`.
-2. Configure Kea client classes for BIOS PXE, UEFI PXE and UEFI HTTP Boot. Write the Kea `Dhcp4` `client-classes` configuration that tells them apart: `option[93].hex == 0x0000` (`undionly.kpxe`), `option[93].hex == 0x0007` (`ipxe.efi`), and `option[93].hex == 0x0010` (`HTTPClient` with `http://10.10.0.1:8080/boot/shimx64.efi`). Then explain what you expect to break if `boot-file-name` is set globally at the subnet level without client classes.
-3. Compare all four models, Stateless (`RAM-root`), Stateful (`Diskful`), `NFS-root` and Hybrid, on a 512-node H100 cluster. Each node has 2 TB of host RAM and 8 local NVMe drives. Cover boot speed, RAM consumption, dependence on the provisioning server's HA, and configuration-drift trade-offs. Then explain how you would persist or inject SSH host keys, `/etc/machine-id` and `/etc/munge/munge.key` in a hybrid RAM-root + local-NVMe design.
-4. Design a 5-step image promotion pipeline for `dgx-os-24.04-2026-10-24`. The image layers a matched kernel, NVIDIA driver, CUDA, DCGM, MOFED/DOCA and `slurmd`. Include canary validation with `node_health.sh` and `nccl-tests`, rolling wave assignment in the inventory CSV, and drain-aware reboots with `scontrol reboot ASAP nextstate=resume`. Your pipeline finishes with a one-line iPXE pointer rollback.
-5. Apply the D-T-B-I method to four non-booting nodes, and name the stage and fix for each. Node (a)'s serial console hangs at `DHCP....`. Node (b)'s TFTP times out downloading `initrd.img` during a 200-node rack power-on. Node (c)'s UEFI screen flashes `Server response timeout` or `Security Violation` right after it downloads `ipxe.efi`. Node (d)'s kernel boots but drops into the `dracut` / `initramfs` emergency shell, unable to fetch `rootfs.squashfs`. For each node, you give the exact stage (`D`, `T`, `B` or `I`) and the fix.
-6. Contrast how `ROCKS` (`frontend` mode, the `Base` and `HPC` Roll CDs, `insert-ethers` capturing PXE MAC addresses into MySQL, the `F1` exit and Grid Engine `qsub`) and `Parallel Knoppix/PelicanHPC` (`pelican_setup`, `/home/user/tmp/bhosts` and `pelican_restart_hpc`) provision compute nodes with how xCAT, Warewulf 4 and NVIDIA Base Command Manager (BCM) do it. The book Supercomputers for Linux Sysadmins covers the first two in its chapter 25.
+Each exercise starts from a situation you are likely to meet on a provisioning project. Work through them in order, and check your answers against the lab output and the chapter. If an answer disagrees with the lab output, trust the output and find the line that explains the difference.
+
+1. Generate and validate the provisioning files, starting with `dnsmasq.conf` and the iPXE scripts. Run `python3 code/part06/gen_provision_lab.py`, which uses `code/part06/gen_provision.py`. Explain how `validate()` catches all 5 inventory mistakes. Those are `bmc_ip` outside `10.20.0.0/16`, a duplicate MAC, a duplicate IP, the uppercase and underscored hostname `GPU_3`, and the non-hex MAC `'aa:bb:cc:00:00:zz'`. Then explain how `dnsmasq_conf()` uses `dhcp-match=set:ipxe,175` and `option:client-arch` (`7` and `9`). Explain how that chain-loads `ipxe.efi` or `undionly.kpxe`, and then sends iPXE to `http://10.10.0.1:8080/boot.ipxe`.
+2. Configure Kea client classes for three boot paths. Write the Kea `Dhcp4` `client-classes` configuration that tells the paths apart. BIOS PXE uses `option[93].hex == 0x0000` and serves `undionly.kpxe`. UEFI PXE uses `option[93].hex == 0x0007` and serves `ipxe.efi`. UEFI HTTP Boot uses `option[93].hex == 0x0010` with the `HTTPClient` vendor class, and serves `http://10.10.0.1:8080/boot/shimx64.efi`. Then predict what breaks if `boot-file-name` is set globally at the subnet level, without client classes.
+3. Compare the four node models on a cluster. Your team is choosing a design for a 512-node H100 cluster. Each node has 2 TB of host RAM and 8 local NVMe drives. Compare the stateless (`RAM-root`), stateful (`Diskful`), `NFS-root` and hybrid models on boot speed, RAM use, dependence on the provisioning server's high availability, and configuration drift.
+
+Start with the question that matters most to your team. If nobody can afford a long reinstall, weight boot speed first. If the provisioning server is fragile, weight high availability first. Write your answer as a short paragraph, and name the one trade-off you are willing to accept. Then explain how you would persist or inject SSH host keys, `/etc/machine-id` and `/etc/munge/munge.key` in a hybrid design that uses RAM-root and local NVMe.
+4. Design an image promotion pipeline. You are shipping a new image called `dgx-os-24.04-2026-10-24`. It layers a matched kernel, NVIDIA driver, CUDA, DCGM, MOFED/DOCA and `slurmd`. Build a five-step pipeline. Include canary validation with `node_health.sh` and `nccl-tests`. Include rolling wave assignment in the inventory CSV. Include drain-aware reboots with `scontrol reboot ASAP nextstate=resume`. Finish the pipeline with a one-line iPXE pointer rollback.
+5. Triage four nodes that will not boot. Apply the D-T-B-I method, and name the stage and the fix for each node. The first node's serial console hangs at `DHCP....`. The second node's TFTP times out while it downloads `initrd.img` during a 200-node rack power-on. The third node's UEFI screen flashes `Server response timeout` or `Security Violation` right after it downloads `ipxe.efi`. The fourth node's kernel boots, but it drops into the `dracut` / `initramfs` emergency shell, unable to fetch `rootfs.squashfs`. For each node, give the exact stage (`D`, `T`, `B` or `I`) and the fix.
+6. Compare the old-style and the modern provisioning tools. Contrast how `ROCKS` and `Parallel Knoppix/PelicanHPC` provision compute nodes with how xCAT, Warewulf 4 and NVIDIA Base Command Manager (BCM) do it. Cover the ROCKS parts you already know: `frontend` mode, the `Base` and `HPC` Roll CDs, `insert-ethers` capturing PXE MAC addresses into MySQL, the `F1` exit and Grid Engine `qsub`. Cover the PelicanHPC parts too: `pelican_setup`, `/home/user/tmp/bhosts` and `pelican_restart_hpc`. The book Supercomputers for Linux Sysadmins covers the first two in its chapter 25.
 
 Exercise 1 is the quickest check, because the lab output confirms your answer.
 

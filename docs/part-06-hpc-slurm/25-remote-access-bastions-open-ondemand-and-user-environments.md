@@ -22,23 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Researchers meet the cluster through access paths. An SSH session, a browser-based Jupyter, a VS Code remote window and a web job composer are all paths in. Each one makes decisions for you: how secure the cluster is, how quickly a researcher can start working, and how many support tickets you will field.
+Picture a new researcher on her first morning. She has a laptop, a password from the admin team and a deadline for a training run. Her first contact with the cluster is an access path. It might be an SSH session, a browser-based Jupyter notebook, a VS Code remote window or a web form that composes a job. Each path is a door into the cluster, and each one makes decisions for you. Those decisions cover how secure the cluster is, how quickly a researcher can start working and how many support tickets you will field.
 
 Security depends on the login node first. It sits close to the internet, and a weak bastion is the most common initial-access vector in compromised research clusters. Productivity depends on the path too. Can users get a GPU notebook in two clicks? When the answer is no, people find their own way. They run notebooks on login nodes or move data to cloud notebooks, and the support load grows.
 
-This chapter covers the technology and the operating practices around it.
+Consider how a typical support day looks. A morning starts with a user who cannot reach the login node, then a second user who cannot find the portal, and then a third who says the notebook is slow. Each of those problems sits on a different hop of the access path. If you know the path, you can sort the three problems in minutes. If you do not, you end up guessing across all of them at once. That is why this chapter describes the path before it describes the tools.
+
+The good news is that these two goals usually line up. A path that is secure, logged and easy to use is also the path people choose. A path that is hard to use pushes people toward shortcuts, and shortcuts are where the security problems start. This chapter covers the technology and the operating practices around it, so that you can design the doors and the rules together.
 
 ## Prerequisites and outcomes
 
-This chapter builds on chapter 6.2 for login nodes, chapters 6.8 to 6.11 for Slurm and chapter 6.24 for identity. Read those first if the terms below feel new. When you finish, you should be able to:
+This chapter builds on chapter 6.2 for login nodes, chapters 6.8 to 6.11 for Slurm and chapter 6.24 for identity. Read those first if the terms below feel new. Terms such as bastion and jump host are defined in the first section, so you can follow them as they come up.
 
-- Design the access architecture: bastion, login nodes, compute node access, web portal and data transfer nodes.
-- Harden and audit `sshd`, and choose a key, certificate and MFA strategy. Use `ProxyJump`, tunnels and X11 forwarding properly, and know the risk that comes with agent forwarding.
-- Explain Open OnDemand's architecture and write a cluster configuration for Slurm. You will also understand the interactive apps, such as Jupyter, RStudio and VNC desktops, and the batch-connect model behind them.
-- Provide user environments, covering shells, modules and containers, dotfiles, conda and uv guidance, quotas and etiquette.
-- Run user support through channels, tickets, documentation, status communication and training.
-
-Use this list as a self-check. Any outcome you cannot yet explain is the place to start.
+The chapter walks through the access architecture, from the bastion to the compute node. It then covers SSH itself, which means authentication choices, hardening, client settings and graphical access. Next comes Open OnDemand (OOD), the web portal that runs interactive apps as Slurm jobs, followed by the user environment, the human side of support, and the security practices that tie it all together. Use the self-check at the end of the lab to see which of these you can already explain.
 
 ## 1. Access architecture
 
@@ -59,25 +55,27 @@ flowchart LR
   C --- ST
 ```
 
-The bastion, or jump host, is the only SSH entry point that the internet or the campus network can reach. Keep it hardened, with minimal software, no user data and no compute. It should log everything and require MFA. You reach internal hosts through it with `ssh -J user@bastion user@login`, which uses OpenSSH's `ProxyJump` option.
+Read the diagram from the laptop outward. The two arrows from the laptop are the two front doors, SSH through the bastion and HTTPS through the portal. Every other box sits behind one of those doors, and the dotted line shows the one exception, a portal that proxies an interactive app running on a compute node.
 
-Login nodes are where users edit code, compile and submit jobs, as chapter 6.2 explains. In strict designs, outside clients cannot reach them directly. A DNS alias spreads the load across several of them.
+The bastion, or jump host, is the only SSH entry point that the internet or the campus network can reach. Keep it hardened, with minimal software, no user data and no compute. It should log everything and require MFA. You reach internal hosts through it with `ssh -J user@bastion user@login`, which uses OpenSSH's `ProxyJump` option. A jump host is a machine you pass through on the way to another one, and the connection stays encrypted end to end while it passes.
 
-Users reach compute nodes only through Slurm, with `srun` or `salloc`. There is one exception. With `pam_slurm_adopt`, a user can SSH to a node where they have a running job. Chapter 6.14 covers the `Contain` prolog flag that this mode relies on. Interactive web apps reach compute nodes through the portal's reverse proxy instead.
+Login nodes are where users edit code, compile and submit jobs, as chapter 6.2 explains. In strict designs, outside clients cannot reach them directly. A DNS alias spreads the load across several of them, so a single busy login node does not become the bottleneck for the whole team.
 
-Bulk transfers should not load the login nodes. Data transfer nodes (DTNs) are dedicated hosts with fast external links, and they run tools such as Globus, `rsync`, `rclone` and `aria2` to move datasets in and out. Their firewall and intrusion detection are tuned for large flows, which is the Science DMZ pattern.
+Users reach compute nodes only through Slurm, with `srun` or `salloc`. There is one exception. With `pam_slurm_adopt`, a user can SSH to a node where they have a running job. Chapter 6.14 covers the `Contain` prolog flag that this mode relies on. Interactive web apps reach compute nodes through the portal's reverse proxy instead. A reverse proxy is a front server that forwards each request to the right back-end machine, so the user never connects to the compute node directly.
 
-The web portal can be Open OnDemand, JupyterHub or a custom one. It sits behind HTTPS with single sign-on.
+Bulk transfers should not load the login nodes. Data transfer nodes (DTNs) are dedicated hosts with fast external links, and they run tools such as Globus, `rsync`, `rclone` and `aria2` to move datasets in and out. Their firewall and intrusion detection are tuned for large flows, which is the Science DMZ pattern. A Science DMZ is a separate network segment built for high-volume research traffic, with a security policy tuned to that traffic.
 
-Network zones are covered in Parts 2 and 18. The internet and campus network sit outside. The DMZ holds the bastion, the portal and the DTNs. Users reach the login nodes from the user zone, and the compute and storage fabrics have zones of their own. The management network holds the BMCs, and users must never reach it.
+The web portal can be Open OnDemand, JupyterHub or a custom one. It sits behind HTTPS with single sign-on, so users sign in once with their institution account and do not manage a separate password for the portal.
+
+Network zones are covered in Parts 2 and 18. The internet and campus network sit outside. The DMZ holds the bastion, the portal and the DTNs. Users reach the login nodes from the user zone, and the compute and storage fabrics have zones of their own. The management network holds the BMCs, and users must never reach it. Each zone boundary is a place to write a rule, and the rules are easier to audit when every host has one clear role.
 
 ## 2. SSH
 
-In Chapter 18 of *Supercomputers for Linux Sysadmins*, "Remote User Access", the author calls SSH "the main method of remote access to supercomputers today". The practical stance is that users need only a few commands, such as queuing a job or checking its status. File copying happens in a GUI client on the personal computer. For newcomers on the access node, a two-panel file manager such as Midnight Commander eases the first steps.
+Picture a user who types the same long command every morning to queue a job and check its status. For that user, SSH is the whole cluster. In Chapter 18 of *Supercomputers for Linux Sysadmins*, "Remote User Access", the author calls SSH "the main method of remote access to supercomputers today". The practical stance is that users need only a few commands, such as queuing a job or checking its status. File copying happens in a GUI client on the personal computer. For newcomers on the access node, a two-panel file manager such as Midnight Commander eases the first steps.
 
 ### Authentication
 
-SSH offers several ways to prove who you are. Each one trades convenience against control, so compare them before you choose.
+SSH offers several ways to prove who you are. Each one trades convenience against control, so compare them before you choose. The table lists the common methods and the main note for each.
 
 | Method | Notes |
 |---|---|
@@ -87,13 +85,13 @@ SSH offers several ways to prove who you are. Each one trades convenience agains
 | **Kerberos / GSSAPI** | Ticket-based SSO inside an institution |
 | **MFA** | PAM modules (TOTP, Duo, hardware tokens) via keyboard-interactive; or `AuthenticationMethods publickey,keyboard-interactive` to require key *and* a second factor |
 
-Avoid passwords on exposed hosts. They are a brute-force target, and if you cannot avoid them, rate-limit them and add MFA. Public keys are the standard choice. Passphrase-protect them, or use hardware-backed FIDO2 keys, and keep the keys in the directory, served through `AuthorizedKeysCommand`, so that revoking a user happens in one place. Certificates from a CA expire on their own, which limits the damage from a stolen credential.
+Avoid passwords on exposed hosts. They are a brute-force target, and if you cannot avoid them, rate-limit them and add MFA. Public keys are the standard choice. Passphrase-protect them, or use hardware-backed FIDO2 keys, and keep the keys in the directory, served through `AuthorizedKeysCommand`, so that revoking a user happens in one place. Certificates from a CA expire on their own, which limits the damage from a stolen credential. A key that never expires is a key that stays valid long after the person who owned it has gone.
 
 ### Hardening and audit
 
-Start with the defaults that `sshd_config(5)` documents. `PermitRootLogin prohibit-password` is the default, which blocks password logins for root. `MaxStartups 10:30:100` throttles unauthenticated connections. Current OpenSSH also enables `PerSourcePenalties` by default, which penalises abusive sources.
+Start with the defaults that `sshd_config(5)` documents. `PermitRootLogin prohibit-password` is the default, which blocks password logins for root. `MaxStartups 10:30:100` throttles unauthenticated connections. Current OpenSSH also enables `PerSourcePenalties` by default, which penalises abusive sources. Defaults are a floor, not a finished design. They protect a generic host, and a login node that many people share needs more deliberate choices.
 
-On every login host, review `PermitRootLogin`, `PasswordAuthentication`, `KbdInteractiveAuthentication`, `PermitEmptyPasswords`, `PermitUserEnvironment`, `AllowGroups`/`AllowUsers`, `MaxAuthTries`, `LoginGraceTime`, `ClientAliveInterval`/`ClientAliveCountMax`, `X11Forwarding`, `AllowTcpForwarding`, `AuthorizedKeysCommand`, `LogLevel`, `Banner` and `MaxStartups`.
+On every login host, review `PermitRootLogin`, `PasswordAuthentication`, `KbdInteractiveAuthentication`, `PermitEmptyPasswords`, `PermitUserEnvironment`, `AllowGroups`/`AllowUsers`, `MaxAuthTries`, `LoginGraceTime`, `ClientAliveInterval`/`ClientAliveCountMax`, `X11Forwarding`, `AllowTcpForwarding`, `AuthorizedKeysCommand`, `LogLevel`, `Banner` and `MaxStartups`. Work through the list once per host type, because a bastion and a login node often need different answers.
 
 The script `code/part06/sshd_audit.py` reads the global section of an `sshd_config` and applies these rules. Each finding is reported as ERROR, warn or info. We ran it on a deliberately poor config that turned on root login, passwords, user environment and X11. It produced this output:
 
@@ -106,15 +104,15 @@ warn  MaxAuthTries=<default>: set MaxAuthTries <= 4 (default 6)
 ERROR PermitUserEnvironment=yes: PermitUserEnvironment must stay 'no' (lets users inject LD_PRELOAD-style variables)
 ```
 
-A reasonable config produced only the informational note about X11. When you read the output, treat it as a to-do list. Every ERROR is a setting to change before the host goes into service.
+A reasonable config produced only the informational note about X11. When you read the output, treat it as a to-do list. Every ERROR is a setting to change before the host goes into service. The warn lines matter too, but they are less urgent, and you can schedule them after the errors are gone.
 
-The audit reads the global block, which means everything before the first `Match`. In sshd, the first occurrence of a keyword wins, and the audit follows that rule. It does not evaluate `Match` blocks, `Include` files or the effective configuration. For that, use `sshd -T`, for example `sshd -T -C user=alice,host=x,addr=1.2.3.4`. Treat the script as a checklist, not a scanner.
+The audit reads the global block, which means everything before the first `Match`. In sshd, the first occurrence of a keyword wins, and the audit follows that rule. It does not evaluate `Match` blocks, `Include` files or the effective configuration. For that, use `sshd -T`, for example `sshd -T -C user=alice,host=x,addr=1.2.3.4`. Treat the script as a checklist, not a scanner. A `Match` block can change a setting for one group of users, so a clean audit of the global block does not prove that every user gets a clean configuration.
 
-Add controls around the config as well. Use fail2ban or `PerSourcePenalties`, and allow only known networks through a host firewall, so the bastion is reachable from known networks alone. Admins can run a separate `sshd` instance on a non-standard port. Keep the privilege separation defaults, rotate host keys regularly, and sign them with host certificates. Ship auth logs to a SIEM, since `LogLevel VERBOSE` records key fingerprints. Record sessions on bastions with tools such as `tlog` or `ttyrec`, set idle timeouts, and tie `AllowGroups` to directory groups.
+Add controls around the config as well. Use fail2ban or `PerSourcePenalties`, and allow only known networks through a host firewall, so the bastion is reachable from known networks alone. fail2ban is a tool that watches the logs and blocks addresses that fail too often. Before you reload `sshd` after any change, keep one existing session open in a second window. If the new config locks you out, the open session is your way back in to fix it. Test the change from a fresh connection while the old session is still running, and only close the old one after the new login works. Admins can run a separate `sshd` instance on a non-standard port. Keep the privilege separation defaults, rotate host keys regularly, and sign them with host certificates. Ship auth logs to a SIEM, since `LogLevel VERBOSE` records key fingerprints. A SIEM (security information and event management) system collects logs from many hosts so that one person can search them together. Record sessions on bastions with tools such as `tlog` or `ttyrec`, set idle timeouts, and tie `AllowGroups` to directory groups.
 
 ### Client-side practices (document these for users)
 
-You also need to give users a client configuration, so write one and share it. The example below is a `~/.ssh/config` for a laptop.
+You also need to give users a client configuration, so write one and share it. A shared file means every user starts from the same settings, which removes a common source of connection problems. The example below is a `~/.ssh/config` for a laptop.
 
 ```text
 # ~/.ssh/config on the user's laptop
@@ -129,21 +127,25 @@ Host login
     ServerAliveInterval 60
 ```
 
-Use `ProxyJump` rather than agent forwarding to reach internal hosts. Agent forwarding exposes the user's agent socket to root on the intermediate hosts, so avoid it or limit it. With `ssh -J`, the keys stay on the laptop.
+Read the file as two named hosts. The first, bastion, is the door. The second, login, is the internal host, and its ProxyJump line tells the laptop to pass through the door first. After that, typing ssh login is all a user needs to do. Each host entry is short, which makes the file easy to copy to a new laptop when a user changes machines.
 
-For data, use `scp`, `rsync`, `sftp` or Globus. Tunnels such as `ssh -L 8888:localhost:8888` follow the same pattern. To reach a Jupyter server on a compute node through the login node, use `ssh -L 8888:gpu014:8888 login`, but only if the policy allows `AllowTcpForwarding`. Run `tmux` or `screen` on login nodes so that sessions survive a disconnect. Do not run them for compute work.
+Use `ProxyJump` rather than agent forwarding to reach internal hosts. Agent forwarding exposes the user's agent socket to root on the intermediate hosts, so avoid it or limit it. With `ssh -J`, the keys stay on the laptop. An SSH agent is the program that holds your decrypted keys in memory, so anything that can use the agent socket can act as you.
+
+For data, use `scp`, `rsync`, `sftp` or Globus. Tunnels such as `ssh -L 8888:localhost:8888` follow the same pattern. To reach a Jupyter server on a compute node through the login node, use `ssh -L 8888:gpu014:8888 login`, but only if the policy allows `AllowTcpForwarding`. Run `tmux` or `screen` on login nodes so that sessions survive a disconnect. Do not run them for compute work. A tunnel is a private pipe through SSH, so a port that works on a laptop can reach a service that never appears on the public network. Run `tmux` or `screen` on login nodes only for the session that holds your terminal, not for long compute jobs, which belong in Slurm.
 
 ### X11 and graphical tools (*Supercomputers for Linux Sysadmins* Chapter 18)
 
-Sometimes a visualization tool has to run on the cluster, because moving multi-terabyte datasets to a workstation is not practical. Chapter 18 of *Supercomputers for Linux Sysadmins* explains how graphical access works in that case.
+Sometimes a visualization tool has to run on the cluster, because moving multi-terabyte datasets to a workstation is not practical. A researcher who wants to look at a volume of simulation output will often rather see the picture next to the data. Chapter 18 of *Supercomputers for Linux Sysadmins* explains how graphical access works in that case.
 
-The X Window System, also called `X11` or `X.Org Server`, does not live in the kernel. Unlike Windows, Linux keeps its graphics subsystem out of the kernel. X uses a client and server model. The X server owns the physical or virtual display, which is `:0` by default, so you can run `xclock -display :0` or `export DISPLAY=:0`. The server has two parts: 1) the hardware drivers for the keyboard, mouse, video adapters and monitors, and 2) an X protocol handler. Graphical applications, the X clients, talk to that handler over UNIX domain sockets or Internet TCP sockets.
+The X Window System, also called `X11` or `X.Org Server`, does not live in the kernel. Unlike Windows, Linux keeps its graphics subsystem out of the kernel. X uses a client and server model. That model is the reverse of what many people expect. The X server owns the physical or virtual display, which is `:0` by default, so you can run `xclock -display :0` or `export DISPLAY=:0`. The server has two parts. The first is the hardware drivers for the keyboard, mouse, video adapters and monitors. The second is an X protocol handler. Graphical applications, the X clients, talk to that handler over UNIX domain sockets or Internet TCP sockets.
+
+So when you run a graphical program on the cluster and see its window on your workstation, the program is the client and your workstation is the server. Keep that role swap in mind, because it explains why the security choices in this section matter for the workstation as well as the cluster.
 
 X draws and moves windows, but a window manager frames and places them. The options range from Windows-like and Macintosh-like managers, such as `Kwin` in KDE and `Metacity` in GNOME, to frame-based tiling managers like `Ion`, the minimal `twm` and the full-featured `Enlightenment`. The Single UNIX Specification standardizes `CDE`, and freedesktop.org standardizes interoperability.
 
-The reference `X.Org Server` reads `/etc/X11/xorg.conf`, which takes priority if it exists. It also reads `/etc/X11/xorg.conf.d/`, which holds several files with separate configuration sections. If auto-detection fails, `Xorg -configure` generates `xorg.conf.new`. The `man xorg.conf` page covers this. Startup errors go to `/var/log/Xorg.0.log`, where `0` is the display number. From a terminal, `startx` launches the X server and then `~/.xsession` and `/etc/X11/Xsession.d`. When X runs as a service, a screen manager authenticates the user and starts the session. The screen managers are `xdm`, configured under `/etc/X11/xdm/` and running `/etc/X11/xdm/Xsession`, `gdm` in `/etc/gdm/`, `kdm` in `/etc/kde4/kdm/`, and `lightdm`.
+The reference `X.Org Server` reads `/etc/X11/xorg.conf`, which takes priority if it exists. It also reads `/etc/X11/xorg.conf.d/`, which holds several files with separate configuration sections. If auto-detection fails, `Xorg -configure` generates `xorg.conf.new`. The `man xorg.conf` page covers this. Startup errors go to `/var/log/Xorg.0.log`, where `0` is the display number. From a terminal, `startx` launches the X server and then `~/.xsession` and `/etc/X11/Xsession.d`. When X runs as a service, a screen manager authenticates the user and starts the session. The screen managers are `xdm`, configured under `/etc/X11/xdm/` and running `/etc/X11/xdm/Xsession`, `gdm` in `/etc/gdm/`, `kdm` in `/etc/kde4/kdm/`, and `lightdm`. When a login screen appears and then fails, the log file for the display is the first place to look.
 
-On Windows workstations, the open-source `Xming` X server is one option, available at `http://www.straightrunning.com/XmingNotes/`. It comes in two variants. Standard `xming` is one, and `xming Mesa` is the other, which lets you run OpenGL applications on a remote terminal. The downloads also include backgrounds, some in Cyrillic, and `Xlaunch` manages startup parameters. A typical start command looks like this:
+On Windows workstations, the open-source `Xming` X server is one option, available at `http://www.straightrunning.com/XmingNotes/`. It comes in two variants. Standard `xming` is one, and `xming Mesa` is the other, which lets you run OpenGL applications on a remote terminal. OpenGL is the graphics library that many scientific viewers use for 3D views. The downloads also include backgrounds, some in Cyrillic, and `Xlaunch` manages startup parameters. A typical start command looks like this:
 
 ```text
 "C:\Program Files\Xming\Xming.exe" :0 -clipboard \
@@ -151,15 +153,19 @@ On Windows workstations, the open-source `Xming` X server is one option, availab
   -xkboptions grp:ctrl_shift_toggle
 ```
 
-Each flag does one job. `:0` sets the display number. `-clipboard` shares the Windows clipboard, and `-multiwindow` gives each X11 app its own native window. `-xkblayout us,ru` sets English and Russian keyboard layouts, and `-xkbvariant winkeys` enables Windows keys. `-xkboptions grp:ctrl_shift_toggle` switches layouts on `Ctrl+Shift`. Restrict the Xming Windows Firewall rule to known cluster hosts.
+Each flag does one job. `:0` sets the display number. `-clipboard` shares the Windows clipboard, and `-multiwindow` gives each X11 app its own native window. `-xkblayout us,ru` sets English and Russian keyboard layouts, and `-xkbvariant winkeys` enables Windows keys. `-xkboptions grp:ctrl_shift_toggle` switches layouts on `Ctrl+Shift`. Restrict the Xming Windows Firewall rule to known cluster hosts, so that the local X server accepts connections only from the machines you trust.
 
 In PuTTY, enabling "Connection/SSH/X11 Forwarding" sets `DISPLAY` automatically. It also fills `XAUTHORITY` through `xauth` on the remote node. That avoids the insecure IP-based `C:\Program Files\Xming\X0.hosts` file and `xhost +computer_name` rules.
 
-Raw X11 forwarding, through `ssh -X`, `ssh -Y` or `srun --x11` with `PrologFlags=X11`, is chatty and slow over WAN links. The book compares compressed remote desktop protocols instead. VNC runs as `tightvncserver` or `TigerVNC`, and RDP is another option. `x2go` is open source and derived from NoMachine `NX`. It tunnels over SSH without a persistent daemon, and it can stream individual application windows. The book also covers NoMachine `NX` and `SPICE`, along with browser terminals such as `shellinabox` and log monitors such as `logcheck` and `logwatch`.
+Raw X11 forwarding, through `ssh -X`, `ssh -Y` or `srun --x11` with `PrologFlags=X11`, is chatty and slow over WAN links. A WAN link is a long-distance connection, and every small drawing request has to make the trip, so latency adds up quickly. The book compares compressed remote desktop protocols instead. VNC runs as `tightvncserver` or `TigerVNC`, and RDP is another option. `x2go` is open source and derived from NoMachine `NX`. It tunnels over SSH without a persistent daemon, and it can stream individual application windows. The book also covers NoMachine `NX` and `SPICE`, along with browser terminals such as `shellinabox` and log monitors such as `logcheck` and `logwatch`.
 
-The book sums up the principle this way: for a supercomputer, as for any server, "the less access, the better, without clamping users in a hedgehog's grip". In practice, SSH with SCP or SFTP, plus web portals like Open OnDemand, covers 99% of normal operation. Start with SSH and a portal, and add graphical tools only when a real workload needs them.
+The book sums up the principle this way: for a supercomputer, as for any server, "the less access, the better, without clamping users in a hedgehog's grip". In practice, SSH with SCP or SFTP, plus web portals like Open OnDemand, covers 99% of normal operation. Start with SSH and a portal, and add graphical tools only when a real workload needs them. Each extra tool is one more thing to secure, patch and support.
 
 ## 3. Open OnDemand
+
+Picture a biologist who has never used a terminal. She needs a notebook with a GPU, and she needs it before her meeting at two. A web portal lets her click through a form and get a running session without learning Slurm first. That is the job of Open OnDemand.
+
+The portal also changes who does the work. Without it, each researcher needs to know partition names, GPU flags and the right module to load. With it, the site decides those defaults once, in a form, and every user inherits them. That shift matters for support, because the number of "how do I" questions drops when the defaults are right. It also gives you one place to change a default for everyone, instead of editing a wiki page that nobody reads.
 
 Open OnDemand, called OOD in this chapter, comes from the Ohio Supercomputer Center. It is an open-source web portal that gives users browser access to a cluster. The portal offers a file manager, a shell, a job composer and an active-jobs viewer. It also runs interactive apps, such as Jupyter, RStudio, VS Code server, VNC desktops and TensorBoard. Those apps run as Slurm jobs, and the portal reaches them on the user's behalf.
 
@@ -167,11 +173,13 @@ Open OnDemand, called OOD in this chapter, comes from the Ohio Supercomputer Cen
 
 The OOD documentation describes the request path. Apache is the front end, and it accepts every request. It "authenticates the user", "starts per-user NGINX processes (PUNs)" and "reverse proxies each user to her PUN via Unix domain sockets". It also "reverse proxies to interactive apps running on compute nodes (RStudio, Jupyter, VNC desktop) via TCP sockets".
 
-Each Per-User NGINX (PUN) serves the Ruby and Node web apps. It is also how users submit jobs and start interactive apps. A PUN runs as the user, so file access follows the user's real permissions.
+Read that path as a chain of hand-offs. Apache checks who you are. It then hands your traffic to a process that belongs to you, and that process hands the interactive app traffic to the compute node. Each hand-off is a place where a wrong identity or a wrong address would show up, which is why the chain is built this way.
 
-Authentication is pluggable. The options include OIDC, which is OpenID Connect, SAML, LDAP, Dex, Shibboleth and basic auth for testing. The cluster, the file systems and the identity source are site-specific, so they sit outside OOD.
+Each Per-User NGINX (PUN) serves the Ruby and Node web apps. It is also how users submit jobs and start interactive apps. A PUN runs as the user, so file access follows the user's real permissions. This is the central safety property of the design. The portal does not need broad rights over other users' files, because each request is handled by a process that already has only one user's rights.
 
-Interactive apps use batch connect. In the form, you pick options such as partition, GPUs, hours and environment. OOD renders a job script from a template and submits it through the scheduler. Once the job starts, OOD proxies the user to the web server on the compute node, using a generated password and port.
+Authentication is pluggable. The options include OIDC, which is OpenID Connect, SAML, LDAP, Dex, Shibboleth and basic auth for testing. The cluster, the file systems and the identity source are site-specific, so they sit outside OOD. Basic auth is a simple username and password check, and it is fine for a test install but not for a production portal.
+
+Interactive apps use batch connect. In the form, you pick options such as partition, GPUs, hours and environment. OOD renders a job script from a template and submits it through the scheduler. Once the job starts, OOD proxies the user to the web server on the compute node, using a generated password and port. The app therefore lives on a compute node with the GPU, while the user only ever sees a browser tab.
 
 ### Cluster configuration (docs)
 
@@ -204,45 +212,51 @@ v2:
     copy_environment: false
 ```
 
-Two points in the docs matter most. First, name the YAML file after `ClusterName` in `slurm.conf`, so OOD can discover information from `sacctmgr`. Second, OOD's Slurm support issues its CLI commands with `--export=NONE`, while Slurm's own default is `ALL`. That difference can break jobs that rely on `srun`. You can fix it with `export SLURM_EXPORT_ENV=ALL` in a script wrapper, or with `copy_environment`. The caveat is that the PUN's environment differs from normal shells.
+Two points in the docs matter most. First, name the YAML file after `ClusterName` in `slurm.conf`, so OOD can discover information from `sacctmgr`. Second, OOD's Slurm support issues its CLI commands with `--export=NONE`, while Slurm's own default is `ALL`. That difference can break jobs that rely on `srun`. You can fix it with `export SLURM_EXPORT_ENV=ALL` in a script wrapper, or with `copy_environment`. The caveat is that the PUN's environment differs from normal shells. The first point is about finding the cluster. The second is about the environment a job inherits, and both show up as confusing failures when they are wrong.
 
 `bin_overrides` lets you swap wrapper scripts in for `sbatch`, `squeue`, `scontrol` and `scancel`. You can automate the whole configuration with the project's Puppet module and Ansible role. The docs also list other adapters: Torque, PBS Pro, LSF, SGE, HTCondor, Kubernetes, systemd and the Linux host adapter, which is covered in 6.17.
 
 ### Interactive apps for AI work
 
-Jupyter (JupyterLab) needs GPU options. Its form fields cover partition, GPUs (`--gpus`), CPUs, memory, hours, and container or environment. The app uses the site's modules and containers from 6.6 and 6.13. Provide curated kernels, such as PyTorch with matching CUDA, instead of letting users build environments on shared storage, where they cause metadata storms covered in 6.18.
+Jupyter (JupyterLab) needs GPU options. Its form fields cover partition, GPUs (`--gpus`), CPUs, memory, hours, and container or environment. The app uses the site's modules and containers from 6.6 and 6.13. Provide curated kernels, such as PyTorch with matching CUDA, instead of letting users build environments on shared storage, where they cause metadata storms covered in 6.18. A metadata storm is a flood of small file operations that slows the shared file system for everyone, and a fresh environment install produces exactly that kind of load.
 
-Run VS Code server through code-server or a tunnel for remote development. Watch the extension host's resource use on login nodes, and run it as a job instead.
+Run VS Code server through code-server or a tunnel for remote development. Watch the extension host's resource use on login nodes, and run it as a job instead. The extension host is the background process that runs extensions, and on a shared machine it can quietly consume a lot of memory.
 
-Use VNC desktops for GUI tools such as TensorBoard, and for the Nsight Systems UI through VirtualGL on GPU nodes. TensorBoard, MLflow and Weights & Biases proxies link job output to dashboards.
+Use VNC desktops for GUI tools such as TensorBoard, and for the Nsight Systems UI through VirtualGL on GPU nodes. TensorBoard, MLflow and Weights & Biases proxies link job output to dashboards. A proxy here is the same reverse-proxy idea as before, so the dashboard is reached through the portal instead of on an open port.
 
-Governance matters here. Limit the time and resources for interactive sessions, and reap idle sessions with Jupyter culling. Use a dedicated interactive or MIG partition (6.10, 6.11), and keep the default sizes small.
+Governance matters here. Limit the time and resources for interactive sessions, and reap idle sessions with Jupyter culling. Reaping means automatically ending sessions that have been idle for a set time, so a forgotten notebook does not hold a GPU all weekend. Use a dedicated interactive or MIG partition (6.10, 6.11), and keep the default sizes small. MIG (Multi-Instance GPU) lets one physical GPU be split into smaller isolated pieces, which suits small interactive sessions well.
 
 ### Alternatives
 
-JupyterHub with a Slurm spawner, batchspawner or wrapspawner, is one option. SSH-based remote development is another. VS Code Remote-SSH to a login node is tolerated by some sites and banned by others because of its load, so use job-based tunnels instead. NVIDIA Base Command and the BCM web UI are covered in Part 8, and notebooks on Kubernetes in Part 16.
+JupyterHub with a Slurm spawner, batchspawner or wrapspawner, is one option. A spawner is the component that starts a single-user notebook server when someone logs in. SSH-based remote development is another. VS Code Remote-SSH to a login node is tolerated by some sites and banned by others because of its load, so use job-based tunnels instead. NVIDIA Base Command and the BCM web UI are covered in Part 8, and notebooks on Kubernetes in Part 16.
 
-Decide the default size and the reaping rule for each interactive app before you publish it to users.
+Decide the default size and the reaping rule for each interactive app before you publish it to users. A portal with no defaults invites users to request the largest possible session, and that is the fastest way to empty a partition.
 
 ## 4. User environment
 
+Picture a user whose job runs fine on Monday and fails on Tuesday with an error about a missing library. Nothing in the code changed. What changed was the shell environment that the job inherited, which came from a file in her home directory. The user environment is the set of shells, modules, storage rules and habits that decide what a job actually sees.
+
 The user environment covers the shell, the software, storage, compute, reproducibility and data movement.
 
-Start with a sane default `~/.bashrc`. It should not `module load` heavy stacks or activate conda automatically, because that breaks batch jobs. `sbatch` exports the environment, as chapter 6.11 explains, so tell users to load modules inside their job scripts. Provide `/etc/skel` templates and `/etc/profile.d/` snippets for site settings, such as a message of the day with status or maintenance notices, and the `module` initialisation. Keep the difference between login shells and non-login interactive shells in mind.
+Start with a sane default `~/.bashrc`. It should not `module load` heavy stacks or activate conda automatically, because that breaks batch jobs. `sbatch` exports the environment, as chapter 6.11 explains, so tell users to load modules inside their job scripts. Provide `/etc/skel` templates and `/etc/profile.d/` snippets for site settings, such as a message of the day with status or maintenance notices, and the `module` initialisation. Keep the difference between login shells and non-login interactive shells in mind. A login shell reads the profile files when you sign in, while a non-login shell, such as a new terminal tab, reads `~/.bashrc`. Batch jobs are usually non-login, which is why `~/.bashrc` is the file that causes trouble.
 
-Software comes from modules and containers, covered in 6.6 and 6.13. Document one supported way to create Python environments. Either `uv` or `venv` on fast storage works, or conda in a place that quotas can handle. Guide users away from millions of small files on parallel file systems. Pre-built "AI base" modules help as well.
+Software comes from modules and containers, covered in 6.6 and 6.13. Document one supported way to create Python environments. Either `uv` or `venv` on fast storage works, or conda in a place that quotas can handle. Guide users away from millions of small files on parallel file systems. Pre-built "AI base" modules help as well, because a shared, tested base means each user does not rebuild the same stack from scratch.
 
-Storage etiquette says what goes where. Home, project, scratch (which is purged) and local NVMe each serve a different purpose, and quotas apply as described in 6.24. Do not run I/O-heavy work on login nodes. Send big transfers through DTNs.
+A useful way to teach these rules is to ask a new user where she would put three kinds of file: a script she edits daily, a dataset she needs for a month, and a checkpoint she will reuse next week. The answers differ, and the storage rules tell her which place fits each one. Good etiquette makes that choice obvious before a file lands in the wrong place.
 
-Compute etiquette starts with one rule: no computation on login nodes. Set limits on CPU and memory per user there, through systemd user slices or `limits.conf`. Avoid `watch squeue` loops, because they add load to the controller (6.14). Right-size job requests, as 6.9 covers.
+Storage etiquette says what goes where. Home, project, scratch (which is purged) and local NVMe each serve a different purpose, and quotas apply as described in 6.24. Local NVMe is fast disk inside the compute node, and it disappears when the job ends, so anything you must keep has to leave it first. Do not run I/O-heavy work on login nodes. Send big transfers through DTNs.
 
-For reproducibility, keep job templates, `module save`, container digests, `sacct` instructions, and a record of the environment in the logs.
+Compute etiquette starts with one rule: no computation on login nodes. Set limits on CPU and memory per user there, through systemd user slices or `limits.conf`. Avoid `watch squeue` loops, because they add load to the controller (6.14). Right-size job requests, as 6.9 covers. A job that asks for far more memory than it uses blocks other users, even though its own work is small.
 
-For data movement, you can use Globus endpoints, or `rclone` to reach object stores, and verify your transfers with checksums.
+For reproducibility, keep job templates, `module save`, container digests, `sacct` instructions, and a record of the environment in the logs. A reproducible run is one another person can repeat. Write down the exact module set and container digest, so that next month's rerun uses the same software and not whatever is newest.
 
-Choose which of these rules you will enforce on login nodes, and publish them where users will see them.
+For data movement, you can use Globus endpoints, or `rclone` to reach object stores, and verify your transfers with checksums. A checksum is a short fingerprint of a file, and comparing fingerprints at both ends is how you know the copy is complete and correct.
+
+Choose which of these rules you will enforce on login nodes, and publish them where users will see them. A rule nobody can find is a rule nobody follows.
 
 ## 5. Communicating with users (*Supercomputers for Linux Sysadmins* chapter 27)
+
+Imagine a user who emails the admin address on a Friday night with a question about a failed job. The message goes to one person's inbox. That person is on leave, and the question waits until Monday. Good communication practice exists to stop exactly that kind of gap.
 
 The book opens with a blunt point: "one of the most important components of any supercomputer is its customers, or users. Without them, it is of no use to anyone". Four themes follow from that idea, and each one translates directly into practice.
 
@@ -257,35 +271,39 @@ cluster-support: foo, bar, expert@supermail.org
 newaliases
 ```
 
-Next, configure the admins' mail clients. In Thunderbird, a message filter under `Tools/Message Filters` works on the `to whom/copy` field. Route incoming mail into a `support` folder for open requests and a `support_done` folder for resolved ones. Send replies from `cluster-support@your.server`, with both `Reply-To` and `BCC` set to `cluster-support@your.server`. Every assistant then sees every reply at once.
+Next, configure the admins' mail clients. In Thunderbird, a message filter under `Tools/Message Filters` works on the `to whom/copy` field. Route incoming mail into a `support` folder for open requests and a `support_done` folder for resolved ones. Send replies from `cluster-support@your.server`, with both `Reply-To` and `BCC` set to `cluster-support@your.server`. Every assistant then sees every reply at once. The filter does the sorting, so nobody has to check a shared inbox by hand to find what is open.
 
-Good email etiquette matters here too. Remove unnecessary quotes of the user's question, such as headers, addresses and signatures, and keep only the key lines. Write your answer directly underneath them. If a letter holds several questions, answer each one under its own quotation. The book covers this in Chapter 27.
+Good email etiquette matters here too. Remove unnecessary quotes of the user's question, such as headers, addresses and signatures, and keep only the key lines. Write your answer directly underneath them. If a letter holds several questions, answer each one under its own quotation. The book covers this in Chapter 27. A short, clean reply is easier to act on than a long thread that buries the answer.
 
-For cluster-wide maintenance and update announcements, automate subscription at account creation. Use a mailing-list manager such as Mailman or majordomo, and configure it in moderated mode, which restricts senders to `cluster-support`. Then a user who replies to the list by mistake does not broadcast to everyone. If you run a chat channel, such as Slack, Rocket.Chat, Microsoft Teams or Telegram, require users or a channel bot to turn support requests into tracked tickets.
+For cluster-wide maintenance and update announcements, automate subscription at account creation. Use a mailing-list manager such as Mailman or majordomo, and configure it in moderated mode, which restricts senders to `cluster-support`. Then a user who replies to the list by mistake does not broadcast to everyone. If you run a chat channel, such as Slack, Rocket.Chat, Microsoft Teams or Telegram, require users or a channel bot to turn support requests into tracked tickets. A chat message that is never recorded is a request that nobody can prove was handled.
 
-Accounting for requests means tracking user support requests, hardware failures, software installation requests and access approvals in a helpdesk or ticketing system. Options include RT (Request Tracker), OTRS, Trac and OpenProject. Modern equivalents include Jira Service Management, GitLab issues, Zendesk and ServiceNow. Keep one ticket per problem, with its status, creator, owner and full correspondence history. The same system can hold internal data, such as event logs, requests to hardware and software manufacturers' technical support, and preventive maintenance plans.
+Accounting for requests means tracking user support requests, hardware failures, software installation requests and access approvals in a helpdesk or ticketing system. Options include RT (Request Tracker), OTRS, Trac and OpenProject. Modern equivalents include Jira Service Management, GitLab issues, Zendesk and ServiceNow. Keep one ticket per problem, with its status, creator, owner and full correspondence history. The same system can hold internal data, such as event logs, requests to hardware and software manufacturers' technical support, and preventive maintenance plans. A ticket is the record that lets a new admin pick up a problem without asking the previous admin.
 
-These systems integrate well with email and web forms, but Chapter 27 flags two recurring challenges: 1) authorizing users is complex, because helpdesk accounts are often not tied to supercomputer user accounts, and 2) linking actions in the ticketing system to actions on the supercomputer, and back again, is complex. The book also advises against repurposing software bug trackers such as Bugzilla or Redmine, because their workflows fit code defects rather than operational support.
+These systems integrate well with email and web forms, but Chapter 27 flags two recurring challenges: 1) authorizing users is complex, because helpdesk accounts are often not tied to supercomputer user accounts, and 2) linking actions in the ticketing system to actions on the supercomputer, and back again, is complex. The book also advises against repurposing software bug trackers such as Bugzilla or Redmine, because their workflows fit code defects rather than operational support. A bug tracker expects a developer to fix code, while a support request often needs a person to reset an account or swap a part.
 
-Accounts need upkeep too. On multi-institution or research clusters, the account count can reach dozens or hundreds after three or four years, and many accounts go inactive. The book calls these "dead souls". They can take `5%` or more of disk space. Deleting every account that has not logged in for a year sounds tidy. But that rule will sooner or later delete an important experiment or an important employee's data, and the administrator will be blamed despite the rules.
+Accounts need upkeep too. On multi-institution or research clusters, the account count can reach dozens or hundreds after three or four years, and many accounts go inactive. The book calls these "dead souls". They can take `5%` or more of disk space. Deleting every account that has not logged in for a year sounds tidy. But that rule will sooner or later delete an important experiment or an important employee's data, and the administrator will be blamed despite the rules. The tidy rule is easy to write and hard to defend, which is why the next approach is different.
 
-Run an annual re-registration campaign instead. The book calls it actualization. Give it a window of at least two to three weeks, so people can cover business trips, vacations and time to write an activity report. Users confirm that their account is up to date. You can use email with automated processing of replies, or a better option, a web form. The form can be part of your IT infrastructure or a standalone `cgi-script`. It writes results to a database or log, handles duplicates when someone submits two or three times by mistake, saves the submission date, notifies the administrator and returns a confirmation message number.
+Run an annual re-registration campaign instead. The book calls it actualization. Give it a window of at least two to three weeks, so people can cover business trips, vacations and time to write an activity report. Users confirm that their account is up to date. You can use email with automated processing of replies, or a better option, a web form. The form can be part of your IT infrastructure or a standalone `cgi-script`. A CGI script is a small program that a web server runs to answer a form. This one writes results to a database or log, handles duplicates when someone submits two or three times by mistake, saves the submission date, notifies the administrator and returns a confirmation message number.
 
-Users who have not re-registered within the window are blocked, not deleted. Their data stays, or moves to archive storage, at least until the next re-registration cycle. That way a user who missed the window can still re-register later.
+Users who have not re-registered within the window are blocked, not deleted. Their data stays, or moves to archive storage, at least until the next re-registration cycle. That way a user who missed the window can still re-register later. Blocking keeps the cluster tidy without the risk of destroying work that someone still needs.
 
-Documentation, status pages, the MOTD and mailing lists must change with every cluster change, because stale docs generate tickets. Keep a status page for planned maintenance, incidents and post-mortems. Keep a changelog of software stacks and policies, and keep versioned docs in Git.
+Documentation, status pages, the MOTD and mailing lists must change with every cluster change, because stale docs generate tickets. Keep a status page for planned maintenance, incidents and post-mortems. A post-mortem is a short written review of an incident that records what happened and what will change. Keep a changelog of software stacks and policies, and keep versioned docs in Git, so that you can tell which version of a rule was in force on a given day.
 
-Education helps users solve issues before they ask for support. Cover the day-to-day cluster limits, the partition and priority structure, and vendor best practices and FAQs. Run onboarding sessions, a "first job in 15 minutes" tutorial, and workshops on Slurm, data management, GPU profiling, Python environments and containers. Build a FAQ from ticket analysis. When you reply, link directly to the FAQ item, such as `http://your.server/docs/faq.html#p1.1`, and reuse email templates instead of replying "read the docs, it's written for you". Point users to Victor Eijkhout's *The Art of HPC* (`https://theartofhpc.com/`) from TACC (Texas Advanced Computing Center). It covers parallel programming, HPC packages and Slurm fundamentals. For AI clusters, add checkpointing and resume patterns, NCCL debugging basics, data sharding and right-sizing GPU requests.
+Education helps users solve issues before they ask for support. Cover the day-to-day cluster limits, the partition and priority structure, and vendor best practices and FAQs. Run onboarding sessions, a "first job in 15 minutes" tutorial, and workshops on Slurm, data management, GPU profiling, Python environments and containers. Build a FAQ from ticket analysis. When you reply, link directly to the FAQ item, such as `http://your.server/docs/faq.html#p1.1`, and reuse email templates instead of replying "read the docs, it's written for you". Point users to Victor Eijkhout's *The Art of HPC* (`https://theartofhpc.com/`) from TACC (Texas Advanced Computing Center). It covers parallel programming, HPC packages and Slurm fundamentals. For AI clusters, add checkpointing and resume patterns, NCCL debugging basics, data sharding and right-sizing GPU requests. Checkpointing means saving training progress regularly, so a crashed job resumes instead of starting over.
 
-Track support metrics: time to first response, time to resolution, tickets per user, top categories and user satisfaction. Review them monthly, and turn the top categories into docs or tooling. For incidents, acknowledge quickly, state the impact and any workaround, post updates on a cadence, and close with the cause and prevention.
+Track support metrics: time to first response, time to resolution, tickets per user, top categories and user satisfaction. Review them monthly, and turn the top categories into docs or tooling. For incidents, acknowledge quickly, state the impact and any workaround, post updates on a cadence, and close with the cause and prevention. Users tend to be more patient during an outage when they know what is happening and when the next update will come.
 
-Pick the support channel you will staff first, and make sure every request that arrives there becomes a ticket.
+Pick the support channel you will staff first, and make sure every request that arrives there becomes a ticket. A second channel can come later, once the first one has a steady rhythm and its tickets are being closed. Starting with two channels at once usually means neither one gets answered well.
 
 ## 6. Security and compliance
 
-Give every user least privilege, and restrict the portal and bastion networks. Require MFA on all remote access, and use short-lived certificates. Log everything, and review the logs. Patch the bastion, the portal and OOD promptly, because they face the internet. Isolate the management networks (Parts 7 and 18). Protect the tokens, such as JWT tokens for Slurm REST and Jupyter tokens, and disable the Jupyter terminal where policy requires it. Scan user-run web apps. Classify what data may leave through DTNs, and keep an acceptable-use policy with a documented process for suspending an account quickly.
+Picture an audit that asks one question: if a laptop is stolen tomorrow, what can the thief reach? The answer depends on every choice in this chapter. A short list of rules keeps that answer small. The most useful rules limit what a stolen credential can do, and they limit how long it stays useful. Short-lived certificates and MFA both serve that goal, because a thief who holds one factor still cannot get far.
 
-Finally, keep an incident response runbook. For a compromised key, revoke it in the directory, kill sessions, search for persistence, and rotate shared secrets. Write the runbook before you need it.
+Treat the security list as a set of habits rather than a one-time project. Review the bastion settings after each OS update, and review the portal after each OOD release. A host that was hardened two years ago and never touched again slowly drifts out of line with current practice.
+
+Give every user least privilege, and restrict the portal and bastion networks. Require MFA on all remote access, and use short-lived certificates. Log everything, and review the logs. Patch the bastion, the portal and OOD promptly, because they face the internet. Isolate the management networks (Parts 7 and 18). Protect the tokens, such as JWT tokens for Slurm REST and Jupyter tokens, and disable the Jupyter terminal where policy requires it. Scan user-run web apps. Classify what data may leave through DTNs, and keep an acceptable-use policy with a documented process for suspending an account quickly. An acceptable-use policy is the written agreement users sign that says what they may and may not do on the cluster.
+
+Finally, keep an incident response runbook. A runbook is a step-by-step guide for a known kind of problem, written so that an on-call engineer can follow it at night. For a compromised key, revoke it in the directory, kill sessions, search for persistence, and rotate shared secrets. Write the runbook before you need it, because a compromise is the worst time to start designing the response.
 
 ## 7. Lab
 
@@ -295,23 +313,20 @@ Start with the self-checking Python lab, and run it locally. It tests `parse()` 
 python3 code/part06/sshd_audit_lab.py
 ```
 
-Tested: run `sshd_audit.py` against your own `sshd_config`, or against `sshd -T` output saved to a file (global section only). Then fix every ERROR and warn it reports.
+Run `sshd_audit.py` against your own `sshd_config`, or against `sshd -T` output saved to a file (global section only). Then fix every ERROR and warn it reports. This step works on your own copy of a config, so you can fix problems before they reach a live host.
 
-Untested steps follow. None of them has been run here, so treat them as your own checklist.
+The steps below have not been run on live systems, so treat them as your own checklist.
 
-Untested: 1) On a bastion and login VM pair, configure `ProxyJump`, `AllowGroups`, key-only auth and `AuthorizedKeysCommand`. Then test with a user who is not in the group.
-
-Untested: 2) Add TOTP MFA through PAM and `AuthenticationMethods`.
-
-Untested: 3) Install Open OnDemand on a VM and authenticate with a test OIDC or LDAP provider. Add a Slurm cluster file named after your `ClusterName`. Check `active-jobs` and `job-composer`, and run the documented resource-manager test.
-
-Untested: 4) Create a Jupyter batch-connect app with GPU form fields, and observe the `--export` behaviour.
-
-Untested: 5) Build a user onboarding page and a "first job" tutorial, then test both with a new user.
-
-Untested: 6) Draft the incident communication template for a storage outage.
+1. On a bastion and login VM pair, configure `ProxyJump`, `AllowGroups`, key-only auth and `AuthorizedKeysCommand`. Then test with a user who is not in the group.
+2. Add TOTP MFA through PAM and `AuthenticationMethods`.
+3. Install Open OnDemand on a VM and authenticate with a test OIDC or LDAP provider. Add a Slurm cluster file named after your `ClusterName`. Check `active-jobs` and `job-composer`, and run the documented resource-manager test.
+4. Create a Jupyter batch-connect app with GPU form fields, and observe the `--export` behaviour.
+5. Build a user onboarding page and a "first job" tutorial, then test both with a new user.
+6. Draft the incident communication template for a storage outage.
 
 ## 8. Interview angles
+
+These questions are a good way to check your own understanding. For each one, name the host, file or setting that you would look at first, and say why.
 
 - Describe the access architecture of a secure GPU cluster.
 - Why would you use ProxyJump instead of agent forwarding?
@@ -325,16 +340,13 @@ Untested: 6) Draft the incident communication template for a storage outage.
 
 ## Exercises
 
-1. Audit and harden `sshd_config` on bastion and login nodes, using `code/part06/sshd_audit.py` and `code/part06/sshd_audit_lab.py`. Run `python3 code/part06/sshd_audit_lab.py` first. Your answer should explain why `sshd_audit.py` treats `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes` and `PermitUserEnvironment=yes` as hard `ERROR`s. You should also explain why `parse()` uses `cfg.setdefault()` to honor OpenSSH's "first occurrence wins" semantics, and how to inspect the effective `Match`-evaluated settings with `sshd -T -C user=alice,host=x,addr=1.2.3.4`.
+Work through these six exercises in order. The first one runs on your own machine. The rest are design and writing tasks, and you can check each one against the chapter.
 
-2. Design a `ProxyJump` client config and SSH certificate authentication with MFA. Write a user `~/.ssh/config` that reaches `login.cluster.internal` through `bastion.cluster.example.org` using `ProxyJump`. Explain why `ForwardAgent yes` is a privilege-escalation risk on shared hosts. Then write the server `sshd_config` settings for short-lived SSH user certificates (`TrustedUserCAKeys`), combined with a second factor from PAM TOTP through `AuthenticationMethods publickey,keyboard-interactive`.
-
-3. Configure Open OnDemand for a Slurm GPU cluster. Write `/etc/ood/config/clusters.d/my_cluster.yml` for a Slurm cluster. Then explain the roles of OOD's front-end Apache reverse proxy and the Per-User NGINX (`PUN`). Explain why the YAML filename must match `ClusterName` in `slurm.conf`, and how OOD's `--export=NONE` behaviour affects `sbatch` jobs that invoke `srun`.
-
-4. Compare remote graphical access: `X11`, `Xming`, `TigerVNC`, `x2go` and OOD batch-connect, using Chapter 18 of *Supercomputers for Linux Sysadmins*. Explain the role swap in X11, where the X server runs on your workstation and the X client runs on the cluster node. Trace each flag in `"C:\Program Files\Xming\Xming.exe" :0 -clipboard -multiwindow -xkblayout us,ru -xkbvariant winkeys -xkboptions grp:ctrl_shift_toggle`. Explain why `xauth` is strongly preferred over `xhost +` and `X0.hosts`. Then compare `TigerVNC`, `x2go` and Open OnDemand browser desktops over high-latency WAN links.
-
+1. Audit and harden `sshd_config` on bastion and login nodes, using `code/part06/sshd_audit.py` and `code/part06/sshd_audit_lab.py`. Run `python3 code/part06/sshd_audit_lab.py` first. Explain why `sshd_audit.py` treats `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes` and `PermitUserEnvironment=yes` as hard `ERROR`s. Then explain why `parse()` uses `cfg.setdefault()` to honor OpenSSH's "first occurrence wins" semantics. Finally, show how to inspect the effective `Match`-evaluated settings with `sshd -T -C user=alice,host=x,addr=1.2.3.4`.
+2. Design a `ProxyJump` client config and SSH certificate authentication with MFA. Write a user `~/.ssh/config` that reaches `login.cluster.internal` through `bastion.cluster.example.org` using `ProxyJump`. Explain why `ForwardAgent yes` is a privilege-escalation risk on shared hosts. Then write the server `sshd_config` settings for short-lived SSH user certificates (`TrustedUserCAKeys`). Combine them with a second factor from PAM TOTP through `AuthenticationMethods publickey,keyboard-interactive`.
+3. Configure Open OnDemand for a Slurm GPU cluster. Write `/etc/ood/config/clusters.d/my_cluster.yml` for a Slurm cluster. Then explain the roles of OOD's front-end Apache reverse proxy and the Per-User NGINX (`PUN`). Explain why the YAML filename must match `ClusterName` in `slurm.conf`. Last, explain how OOD's `--export=NONE` behaviour affects `sbatch` jobs that invoke `srun`.
+4. Compare remote graphical access options, using Chapter 18 of *Supercomputers for Linux Sysadmins* as the reference. Start with `X11`, `Xming`, `TigerVNC`, `x2go` and OOD batch-connect. Explain the role swap in X11, where the X server runs on your workstation and the X client runs on the cluster node. Then trace each flag in `"C:\Program Files\Xming\Xming.exe" :0 -clipboard -multiwindow -xkblayout us,ru -xkbvariant winkeys -xkboptions grp:ctrl_shift_toggle`. Explain why `xauth` is strongly preferred over `xhost +` and `X0.hosts`. Finally, compare `TigerVNC`, `x2go` and Open OnDemand browser desktops over high-latency WAN links.
 5. Prevent dotfile pollution and login-node abuse. Explain why putting `conda activate` or `module load cuda` inside `~/.bashrc` breaks batch reproducibility when `sbatch` runs with `--export=ALL`. Then design a login-node protection policy. Combine `/etc/skel` templates, `systemd` `user-.slice` CPU and RAM caps, `pam_slurm_adopt` on compute nodes, and dedicated Data Transfer Nodes (`DTN`s).
-
 6. Build the user support, ticketing and annual account "actualization" process, using Chapter 27 of *Supercomputers for Linux Sysadmins*. Write the `/etc/aliases` entry (`cluster-support: foo, bar, expert@supermail.org`) and the `newaliases` setup. Explain why `Mailman` or `majordomo` announcement lists must use moderated mode. Compare `RT`, `OTRS`, `Trac` and `OpenProject` with `Bugzilla` and `Redmine`. Then design the 3-week annual account re-registration ("actualization") workflow. Inactive "dead soul" accounts should be blocked and archived, and active experiment data must never be deleted.
 
 ## Checkpoint

@@ -22,30 +22,27 @@ lab_venue: "GCP / GKE."
 
 ## Why this matters for AI infrastructure
 
-On Monday morning a research team asks why doubling their Slurm allocation from 64 GPUs to 128 GPUs cut their training epoch time by only 25 percent. The same mathematical laws that High-Performance Computing engineers have used for fifty years explain it. Those laws hold whether a parallel job scales from 8 GPUs to 8,000 GPUs.
+On Monday morning a research team asks why doubling their Slurm allocation from 64 GPUs to 128 GPUs cut their training epoch time by only 25 percent. They expected nearly half the time, and they are a little annoyed. Nothing in their code is broken, and the cluster is not broken either. The same mathematical laws that High-Performance Computing engineers have used for fifty years explain the result. Those laws hold whether a parallel job scales from 8 GPUs to 8,000 GPUs, so once you understand them, a disappointing graph stops being a mystery.
 
-Amdahl's law shows why even a tiny unparallelized dataloader or checkpoint step caps your maximum speedup. Strong and weak scaling separate two goals. One is finishing a fixed training run faster. The other is growing the global batch size or model size along with the cluster. Message passing is what MPI and NCCL do across nodes. Shared memory is what OpenMP threads do on a CPU socket, or what GPUs do across an NVLink domain. If you know these concepts and can spot the core numerical libraries and parallel debuggers in user job logs, you can diagnose scaling walls. You can also separate userland bugs from cluster hardware faults.
+The first law shows why a tiny piece of unparallelized work caps your maximum speedup. A dataloader that still runs on one core, or a checkpoint step that writes everything from one process, can quietly set the ceiling for the whole job. The second idea separates two different goals. One goal is finishing a fixed training run faster. The other goal is growing the global batch size or the model size along with the cluster, so each step does more useful work. Those two goals call for different designs, and mixing them up is a common source of wasted effort.
+
+You will also meet the words message passing and shared memory all the time. Message passing is what MPI and NCCL do across nodes, when processes send data to each other over the network. Shared memory is what OpenMP threads do on one CPU socket, or what GPUs do across an NVLink domain, where many workers see the same memory. If you know these concepts, you can spot the core numerical libraries and the parallel debuggers in a user's job log. You can also tell a userland bug apart from a cluster hardware fault, which saves a lot of finger-pointing between the research team and the operations team.
 
 ## Prerequisites and outcomes
 
-Before you start, read Chapters 6.1 and 6.2 and know basic Python from Part 3. By the end of this chapter, you will be able to do the following:
-
-- Compute speedup and parallel efficiency, apply Amdahl's law and Gustafson's law, and infer the experimental serial fraction from benchmark timings using the Karp-Flatt metric.
-- Distinguish strong scaling from weak scaling and identify which scaling regime a given HPC simulation or LLM training run uses.
-- Compare shared-memory, distributed message-passing, PGAS, and accelerator programming models across OpenMP, TBB, MPI, OpenSHMEM, NVSHMEM, CUDA, OpenCL, OpenACC, NCCL, and UCX.
-- Apply the Hockney latency-bandwidth cost model and the ring AllReduce volume formula to reason about message sizes and fabric bottlenecks.
-- Explain how domain decomposition halo exchanges and surface-to-volume ratios limit strong scaling.
-- Support the core HPC numerical libraries (ScaLAPACK, PETSc, FFTW, and Intel TBB) and the parallel debuggers and profilers from *Supercomputers for Linux SysAdmins* Chapters 21 and 22.
+Before you start, read Chapters 6.1 and 6.2, and know basic Python from Part 3. The chapter then walks through the measures you use to judge a parallel run, which are speedup and parallel efficiency. It explains Amdahl's law and Gustafson's law, and the Karp-Flatt metric that reads the serial fraction back out of a benchmark. It compares strong and weak scaling, and it sets the programming models side by side. Those models are OpenMP, TBB, MPI, OpenSHMEM, NVSHMEM, CUDA, OpenCL, OpenACC, NCCL, and UCX. The chapter then covers the Hockney latency-bandwidth cost model, the ring AllReduce volume formula, and the domain decomposition and halo exchanges that limit strong scaling. The last sections cover the core HPC numerical libraries (ScaLAPACK, PETSc, FFTW, and Intel TBB) and the parallel debuggers and profilers from *Supercomputers for Linux SysAdmins* Chapters 21 and 22.
 
 ## 1. Speedup, efficiency, and scalability
 
-Suppose a single processor or GPU finishes a computation in time T(1). Then suppose n processors working together finish that same computation in time T(n). Three metrics tell you how well the parallel run used the hardware:
+Imagine a single GPU finishes a simulation in one afternoon. Your manager now asks what happens if you use a whole node of GPUs instead. To answer that, you need a clear way to measure how much faster the parallel run is, and how well it uses the extra hardware. The standard measures start from two timings. Suppose a single processor or GPU finishes a computation in time T(1). Then suppose n processors working together finish that same computation in time T(n). Three metrics then tell you how well the parallel run used the hardware.
 
-- **Speedup:** S(n) equals T(1) divided by T(n). Ideal linear speedup equals n, which means n processors finish the work n times faster.
-- **Parallel efficiency:** E(n) equals S(n) divided by n. It is a fraction between 0 and 1 that measures what share of each processor's time went into useful work rather than waiting or communicating. Sometimes a job shows **superlinear speedup**, where efficiency exceeds 1. That usually happens because splitting the problem across more nodes lets the whole working set fit inside fast CPU caches or GPU SRAM, instead of spilling to slower main memory.
-- **Baseline honesty:** Always ask what T(1) actually represents. The honest baseline is the **best known sequential algorithm** running on one processor. Running a heavy multi-process parallel code with a single worker often adds parallel bookkeeping overhead. That overhead inflates T(1) and flatters the reported speedup.
+- **Speedup:** S(n) equals T(1) divided by T(n). Ideal linear speedup equals n, which means n processors finish the work n times faster. In practice you almost never reach the ideal, and the gap is what the rest of this chapter explains.
+- **Parallel efficiency:** E(n) equals S(n) divided by n. It is a fraction between 0 and 1 that measures what share of each processor's time went into useful work rather than waiting or communicating. Sometimes a job shows **superlinear speedup**, where efficiency exceeds 1. That usually happens because splitting the problem across more nodes lets the whole working set fit inside fast CPU caches or GPU SRAM, instead of spilling to slower main memory. The job did not get magic. It got more fast memory.
+- **Baseline honesty:** Always ask what T(1) actually represents. The honest baseline is the **best known sequential algorithm** running on one processor. Running a heavy multi-process parallel code with a single worker often adds parallel bookkeeping overhead. That overhead inflates T(1) and flatters the reported speedup, so a slide that shows a big speedup may be comparing against a weak baseline.
 
-Judge a multi-node job by its parallel efficiency against a clean single-node baseline, not by raw wall-clock time alone.
+Judge a multi-node job by its parallel efficiency against a clean single-node baseline, not by raw wall-clock time alone. A job that finishes sooner but wastes half its hardware is a different result from a job that finishes sooner and uses the hardware well.
+
+Here is how a misleading speedup usually happens. A team reports a large speedup, and the baseline is a parallel build run with a single worker. That single worker carries all of the bookkeeping that the parallel version needs, so T(1) is inflated before the comparison even starts. When someone reruns the baseline with the best sequential code, the honest speedup is much smaller, and the decision about the hardware changes with it. Always ask who wrote the baseline and how it was built.
 
 > **In one minute:**
 > - Speedup is `S(n) = T(1) / T(n)`, and parallel efficiency is `E(n) = S(n) / n`.
@@ -54,7 +51,9 @@ Judge a multi-node job by its parallel efficiency against a clean single-node ba
 
 ## 2. Amdahl's law (strong scaling)
 
-Why can't you make a 10-hour job finish in 1 second by throwing 36,000 processors at it? In 1967, Gene Amdahl pointed out that every program has some work that is strictly serial, meaning it cannot be split up. Examples include initializing files, reading a configuration on rank 0, or waiting at a barrier that does not overlap with other work. Call that serial share `1 - p`. The remaining share, p, can be parallelized across n processors.
+Why can't you make a 10-hour job finish in 1 second by throwing 36,000 processors at it? The answer is in the part of the job that cannot be split. In 1967, Gene Amdahl pointed out that every program has some work that is strictly serial, meaning it cannot be divided among processors. Examples include initializing files, reading a configuration on rank 0, or waiting at a barrier that does not overlap with other work. Call that serial share `1 - p`. The remaining share, p, can be parallelized across n processors.
+
+The picture helps. Imagine a kitchen where one cook must read the recipe aloud before anyone else can start. The more helpers you hire, the faster the cooking goes, but the reading still takes the same time, and it sets a floor under the whole meal. Amdahl's law says exactly that about a program.
 
 For a **fixed problem size**, called **strong scaling**, the total execution time on n processors is `T(n) = T(1) * ((1 - p) + p / n)`. That expression gives Amdahl's law for speedup.
 
@@ -62,9 +61,11 @@ For a **fixed problem size**, called **strong scaling**, the total execution tim
 S(n) = 1 / ((1 - p) + p / n)       upper limit as n -> infinity: 1 / (1 - p)
 ```
 
-Notice the ceiling `1 / (1 - p)`. Even when 99% of your code is perfectly parallel, the 1% that is serial sets a hard limit. No number of GPUs in the universe can push the speedup past 100x. On 1,024 processors, a parallel fraction of 0.99 gives only 91.2x, which is under 9% efficiency.
+Notice the ceiling `1 / (1 - p)`. Even when 99% of your code is perfectly parallel, the 1% that is serial sets a hard limit. No number of GPUs in the universe can push the speedup past 100x. On 1,024 processors, a parallel fraction of 0.99 gives only 91.2x, which is under 9% efficiency. Put plainly, you would pay for 1,024 processors and use fewer than 100 of them.
 
-Before you add nodes to a fixed-size job, profile it and shrink its serial bottlenecks. The serial fraction sets an absolute ceiling on speedup, and no added hardware removes it.
+Before you add nodes to a fixed-size job, profile it and shrink its serial bottlenecks. The serial fraction sets an absolute ceiling on speedup, and no added hardware removes it. The fix is in the software, not in the purchase order.
+
+In practice you find the serial share by profiling. Measure the time that the job spends in the parts that stay sequential, such as reading files, setting up data structures, and waiting at barriers. Divide that time by the total run time, and the result is the value of `1 - p` that you plug into the law. If you cannot measure it cleanly, the Karp-Flatt metric in section 4 can estimate it from a benchmark instead.
 
 > **In one minute:**
 > - Amdahl's law models **strong scaling**, where fixed total work is split across n processors: `S(n) = 1 / ((1 - p) + p / n)`.
@@ -73,7 +74,11 @@ Before you add nodes to a fixed-size job, profile it and shrink its serial bottl
 
 ## 3. Gustafson's law (weak scaling)
 
-If Amdahl's law were the whole story, nobody would build 10,000-GPU clusters. Yet in 1988, John Gustafson noticed that people who get a machine ten times larger rarely run the same small problem ten times faster. Instead, they **grow the problem size to match the machine**. They use a finer weather grid, a larger dataset, or a proportionally larger global batch size, so the work per processor stays constant.
+If Amdahl's law were the whole story, nobody would build 10,000-GPU clusters. Yet in 1988, John Gustafson noticed that people who get a machine ten times larger rarely run the same small problem ten times faster. Instead, they **grow the problem size to match the machine**. They use a finer weather grid, a larger dataset, or a proportionally larger global batch size, so the work per processor stays constant. The question changes from "how fast can I finish this?" to "how much more can I solve in the same time?"
+
+That change of question is the whole idea.
+
+A quick check helps you pick the right goal. Ask whether the scientist's question has a fixed size, such as "simulate this protein", or a growing size, such as "simulate a bigger protein with more atoms". The first question points to strong scaling, and the second points to weak scaling. Most AI training questions are the second kind, which is why bigger clusters so often come with bigger batches. A team that trains a language model on more GPUs usually does not keep the old batch size and hope for the best. It grows the batch, the data and the model along with the cluster. In that case the time per step stays about the same, and the team gets to train a bigger model or see more data.
 
 Suppose the parallel work grows linearly with processor count while the serial setup fraction stays fixed in wall-clock time. The **scaled speedup** then follows Gustafson's law for **weak scaling**.
 
@@ -81,7 +86,7 @@ Suppose the parallel work grows linearly with processor count while the serial s
 S_scaled(n) = (1 - p) + p * n
 ```
 
-Take p = 0.99 on 1,024 processors. The scaled speedup is `0.01 + 0.99 * 1024 = 1013.77x`, compared with the 91.2x that Amdahl's law gives for the same fraction. Both laws are mathematically exact. They simply answer two different operational questions.
+Take p = 0.99 on 1,024 processors. The scaled speedup is `0.01 + 0.99 * 1024 = 1013.77x`, compared with the 91.2x that Amdahl's law gives for the same fraction. Both laws are mathematically exact. They simply answer two different operational questions. Amdahl asks how to shorten a fixed job, and Gustafson asks how big a job the cluster can take in the same time.
 
 The table below sets the two goals side by side. Read across a row to see what changes when you pick one goal over the other.
 
@@ -93,9 +98,11 @@ The table below sets the two goals side by side. Read across a row to see what c
 | **Typical AI example** | Decreasing time-to-train on a fixed global batch size, or lowering single-request inference latency via tensor parallelism | Scaling LLM pre-training to more GPUs by growing the global batch size or expert count proportionally |
 | **Efficiency formula** | `E_strong(n) = T(1) / (n * T(n))` | `E_weak(n) = T(1) / T(n)` at constant work per GPU |
 
-Under strong scaling, every doubling of processor count halves the compute work per GPU. Inter-node communication volume often stays constant, though. So the communication-to-computation ratio doubles at each step, until the scaling curve flattens out.
+Under strong scaling, every doubling of processor count halves the compute work per GPU. Inter-node communication volume often stays constant, though. So the communication-to-computation ratio doubles at each step, until the scaling curve flattens out. That is the moment when adding more GPUs stops paying back, and it is the point where a sensible team stops and asks whether a bigger batch would be a better use of the hardware.
 
-Before you judge a multi-node efficiency curve, ask whether the workload is strong-scaling a fixed problem or weak-scaling a growing one.
+Before you judge a multi-node efficiency curve, ask whether the workload is strong-scaling a fixed problem or weak-scaling a growing one. The same graph can look terrible for one goal and healthy for the other.
+
+One more habit helps. Write down the goal before you look at the curve. A flat strong-scaling curve is a disaster for a team that needs a faster answer, but it can be a fine result for a team that only needed a larger model in the same week.
 
 > **In one minute:**
 > - Strong scaling holds total problem size fixed, whereas weak scaling holds work per processor fixed (`S_scaled(n) = (1 - p) + p * n`).
@@ -104,18 +111,20 @@ Before you judge a multi-node efficiency curve, ask whether the workload is stro
 
 ## 4. Karp-Flatt: diagnosing why scaling stops
 
-Suppose a job's measured speedup on n processors falls short of n. Is a fixed serial section to blame? Or are communication and synchronization costs growing as the cluster grows? In 1990, Alan Karp and Horace Flatt rearranged Amdahl's equation. They solved it for the **experimentally determined serial fraction `e`** at each processor count.
+Suppose a job's measured speedup on n processors falls short of n. You know it is not ideal, but you do not yet know why. Is a fixed serial section to blame? Or are communication and synchronization costs growing as the cluster grows? The two causes look the same on a single graph, and they need opposite fixes. That is the problem the Karp-Flatt metric solves. In 1990, Alan Karp and Horace Flatt rearranged Amdahl's equation. They solved it for the **experimentally determined serial fraction `e`** at each processor count, so you can read a benchmark and see what kind of slowdown it contains.
 
 ```text
 e = (1 / S - 1 / n) / (1 - 1 / n)
 ```
 
-Compute the Karp-Flatt value at each node count from your benchmark timings, then read the trend:
+Compute the Karp-Flatt value at each node count from your benchmark timings, then read the trend. The number itself is less important than the direction it moves in as you add processors.
 
-- **If the value stays roughly constant as processor count increases:** the slowdown comes from a fixed serial section, such as single-threaded startup or rank-0 file I/O.
+- **If the value stays roughly constant as processor count increases:** the slowdown comes from a fixed serial section, such as single-threaded startup or rank-0 file I/O. Those problems do not get worse with scale, so you fix the serial code.
 - **If the value increases steadily as processor count increases:** parallel overhead is growing with scale. The overhead can come from network collective latency, barrier synchronization, lock contention, or load imbalance across heterogeneous or throttled cores. This is the most common situation on real clusters, and it points directly to fabric, placement, or load-balance tuning.
 
-A constant value across node counts means a fixed serial bottleneck. A rising value means communication, synchronization, or load imbalance is growing with scale.
+A constant value across node counts means a fixed serial bottleneck. A rising value means communication, synchronization, or load imbalance is growing with scale. Read the trend first, and only then go looking for the culprit.
+
+Now apply that reading to the run from section 5. The serial fraction climbs as workers are added, and that climb is the signature of overhead that grows with scale. If the values had stayed flat, the right move would have been to optimize the startup code. Because they rose, the right move is to look at the way the work is spread and shared, which is a very different investigation.
 
 > **In one minute:**
 > - The Karp-Flatt metric `e = (1/S - 1/n) / (1 - 1/n)` extracts the effective serial fraction from any measured speedup at processor count n.
@@ -123,7 +132,7 @@ A constant value across node counts means a fixed serial bottleneck. A rising va
 
 ## 5. A scaling script you can run
 
-The repository script `code/part06/scaling.py` does two things. It tabulates Amdahl's law, and it runs a live multi-process strong-scaling experiment using Python's `multiprocessing.Pool`.
+Reading about scaling is not the same as watching it happen. The repository script `code/part06/scaling.py` does two things. It tabulates Amdahl's law, and it runs a live multi-process strong-scaling experiment using Python's `multiprocessing.Pool`. The first part gives you the theory, and the second part gives you a measurement that you can compare against that theory.
 
 ```python
 import math, os, time
@@ -141,7 +150,7 @@ def work(args):
     return s
 ```
 
-Running `code/part06/scaling.py` prints the theoretical Amdahl table first. You can compare its columns with the limits in the last column.
+Running `code/part06/scaling.py` prints the theoretical Amdahl table first. Each row is a parallel fraction p, each column is a processor count n, and the last column is the limit that the law approaches as n grows. You can compare the columns with the limits in the last column, and you will see how quickly the speedup flattens for the lower parallel fractions.
 
 ```text
 p     n=8   n=64  n=1024  limit
@@ -151,7 +160,7 @@ p     n=8   n=64  n=1024  limit
 0.999   7.9  60.2   506.2   1000
 ```
 
-Next, the script ran a fixed problem of 40,000,000 loop iterations, or 40 million. It ran on an 8-core Apple M3 laptop with 4 performance cores and 4 efficiency cores, and it produced these timings.
+Next, the script ran a fixed problem of 40,000,000 loop iterations, or 40 million. It ran on an 8-core Apple M3 laptop with 4 performance cores and 4 efficiency cores, and it produced these timings. Because the problem is fixed, this is a strong-scaling test, and it is the kind of run you would do on a real cluster before you ask for more nodes.
 
 ```text
 workers  time_s  speedup  efficiency  karp_flatt
@@ -161,13 +170,19 @@ workers  time_s  speedup  efficiency  karp_flatt
       8    0.76     3.37        0.42  0.196
 ```
 
-Look at what happens as you add workers. Efficiency falls from 0.92 at 2 workers to 0.71 at 4, and to 0.42 at 8. At the same time, the Karp-Flatt serial fraction rises from 0.083 to 0.135 to 0.196. That rising value shows the loss is not a fixed Amdahl serial section. The loss comes from growing process-spawn and IPC overhead, memory-bus contention, and **load imbalance** once work spills onto the 4 slower efficiency cores. Eight equal-sized chunks finish at different times, so the fast performance cores sit idle while they wait for the efficiency cores.
+Look at what happens as you add workers. Efficiency falls from 0.92 at 2 workers to 0.71 at 4, and to 0.42 at 8. At the same time, the Karp-Flatt serial fraction rises from 0.083 to 0.135 to 0.196. That rising value shows the loss is not a fixed Amdahl serial section. The loss comes from growing process-spawn and IPC overhead, memory-bus contention, and **load imbalance** once work spills onto the 4 slower efficiency cores. Eight equal-sized chunks finish at different times, so the fast performance cores sit idle while they wait for the efficiency cores. The lesson for a cluster is the same. A slow node in a fast pool looks exactly like this.
 
-An earlier test with only 6 million iterations showed almost no speedup on 2 workers. Creating the processes took longer than the math itself. A problem too small for the machine measures launch overhead, not scaling.
+Think about what that means for a production pool. If one node in a group runs a little slower than the others, the group still finishes only when that node finishes. The fast nodes wait, and the wait shows up as lost efficiency on the dashboard, even though no single node looks broken.
+
+An earlier test with only 6 million iterations showed almost no speedup on 2 workers. Creating the processes took longer than the math itself. A problem too small for the machine measures launch overhead, not scaling. Always make the problem big enough that the work, not the startup, dominates the timing.
+
+A practical routine follows from this. Run the script on a laptop first, so you learn the shape of the curve for free. Then run the same kind of test on one cluster node, and compare the two tables. Only after the shape makes sense should you spend cluster time on a multi-node sweep.
 
 ## 6. Why real-world scaling stops
 
-Scaling stops for a handful of reasons, and each one has its own fix. The table lists them, along with what each one does to the cluster.
+Scaling stops for a handful of reasons, and each one has its own fix. The trick is to recognize which one you are looking at, because a fix for one reason does nothing for another.
+
+Think of a relay team that runs slower with every extra runner. The problem might be the starting gun, which is the serial section. It might be the handoffs, which are the communication. It might be one runner who is tired, which is the load imbalance. Each cause has its own repair, and buying faster shoes does not help with a slow handoff. That is why the table is organized by cause. The table lists the common causes, along with what each one does to the cluster and what you can do about it.
 
 | Bottleneck | What happens in the cluster | Operational or algorithmic fix |
 |---|---|---|
@@ -180,13 +195,17 @@ Scaling stops for a handful of reasons, and each one has its own fix. The table 
 | **OS and daemon jitter** | Background daemons, cron jobs, or interrupts steal a core for milliseconds, delaying every rank at the next barrier | Strip compute-node daemons, reserve sibling HT threads for OS work (Chapter 6.2), pin processes |
 | **Fabric congestion** | Neighboring jobs or oversubscribed spine links delay collective packets | Use rail-optimized fat-trees, QoS and adaptive routing, and compact switch placement (Part 12) |
 
-At scale, tail latency and node variability govern job speed. Every synchronous collective waits for the single slowest rank.
+At scale, tail latency and node variability govern job speed. Every synchronous collective waits for the single slowest rank, so one unhealthy node can hold back thousands of healthy ones.
+
+A helpful habit is to look at the distribution of step times across the ranks, not just the average. A healthy job has a tight spread, and a job with a long tail has a rank that is quietly holding everyone else back. That is why operators care so much about the slowest node in a pool, and not only about the average node.
 
 > **In one minute:**
 > - Real scaling stops because of serial sections, communication latency and bandwidth, load imbalance, barriers, memory-bus saturation, storage I/O stalls, OS jitter, and fabric congestion.
 > - In a synchronous 1,000-GPU job, a 10-millisecond OS jitter hiccup on one node delays all 999 other GPUs at the next AllReduce barrier.
 
 ## 7. Parallel programming models and technologies (*Supercomputers for Linux Sysadmins* Chapter 21)
+
+Before you can debug a parallel job, you need a rough map of the ways people write one. The diagram below groups the models by where the memory lives. Shared-memory models sit inside one node. Distributed-memory models span many nodes. Accelerator models run kernels on GPUs, and the substrates underneath move the data. Hybrid programs combine several of these at once.
 
 ```mermaid
 flowchart TB
@@ -208,11 +227,11 @@ flowchart TB
   COLL --> HYB
 ```
 
-In Chapter 21 of *Supercomputers for Linux SysAdmins*, Zhumatiy explains why administrators need to understand how parallel programming models work. You may never write a fluid-dynamics solver. You will still install the compilers and MPI stacks, and you will read the error logs when a user's job fails to launch.
+In Chapter 21 of *Supercomputers for Linux SysAdmins*, Zhumatiy explains why administrators need to understand how parallel programming models work. You may never write a fluid-dynamics solver. You will still install the compilers and MPI stacks, and you will read the error logs when a user's job fails to launch. Knowing the model tells you which library to look for in the log.
 
 ### Message passing (MPI) and the parallel pi example
 
-At the time of writing in 2025, the de facto standard for distributed-memory programs in HPC is **MPI**, the Message Passing Interface. MPI defines library procedures for C, C++, and Fortran. Those procedures launch separate processes across nodes and let them exchange messages. Chapter 21 walks through a classic C program that computes $\pi$ by numerical integration of $f(a) = 4.0 / (1.0 + a^2)$. The program integrates across `NINT = 1000000` intervals, repeated `COUNT = 100000` times, with `PI25DT = 3.141592653589793238462643`. It relies on seven core MPI calls, shown in the table below.
+At the time of writing in 2025, the de facto standard for distributed-memory programs in HPC is **MPI**, the Message Passing Interface. MPI defines library procedures for C, C++, and Fortran. Those procedures launch separate processes across nodes and let them exchange messages, so each process keeps its own memory and asks for data from its neighbors when it needs it. Chapter 21 walks through a classic C program that computes $\pi$ by numerical integration of $f(a) = 4.0 / (1.0 + a^2)$. The program integrates across `NINT = 1000000` intervals, repeated `COUNT = 100000` times, with `PI25DT = 3.141592653589793238462643`. It relies on seven core MPI calls, shown in the table below.
 
 | Step | Call | What it does |
 |---|---|---|
@@ -224,29 +243,33 @@ At the time of writing in 2025, the de facto standard for distributed-memory pro
 | 6 | `MPI_Reduce(&mypi, &pi, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD)` | A collective reduction that sums every rank's partial integral `mypi` into `pi` on rank 0. The reduction is timed with `MPI_Wtime()`. |
 | 7 | `MPI_Finalize()` | Shuts down MPI cleanly. No MPI calls are permitted afterward. |
 
-The first four calls set up the job. The broadcast and reduction do the shared work across ranks. The last call tears everything down.
+The first four calls set up the job. They start MPI, ask how many processes there are, ask which one this process is, and ask which node it runs on. The broadcast and reduction do the shared work across ranks, with one rank sending the interval count out and the partial answers coming back in. The last call tears everything down. If you read the program in that order, the MPI calls stop looking like a random list and start looking like a short story.
 
 ### Shared memory (OpenMP) and hybrid MPI + X programming
 
-Unlike MPI, where each process has its own private memory, **OpenMP** runs loop iterations across threads that share one address space. Those threads live inside a single process on a single node. You mark the parallel parts with compiler directives such as `#pragma omp` in C and C++, or `!$omp` in Fortran. Without OpenMP enabled, the same source stays a valid sequential program, as covered in Chapter 6.5. Access inside a node is cheaper and simpler than message passing between nodes. Modern supercomputer codes therefore use **hybrid programming**, often written **MPI+X**, where X stands for OpenMP, CUDA, OpenACC, or OpenCL. A typical job launches **one MPI process per node**, or per socket or GPU. Inside the node, OpenMP or CUDA spreads the work, and MPI or NCCL moves data between nodes.
+Unlike MPI, where each process has its own private memory, **OpenMP** runs loop iterations across threads that share one address space. Those threads live inside a single process on a single node. You mark the parallel parts with compiler directives such as `#pragma omp` in C and C++, or `!$omp` in Fortran. Without OpenMP enabled, the same source stays a valid sequential program, as covered in Chapter 6.5. Access inside a node is cheaper and simpler than message passing between nodes, because the threads can read the same array without sending it anywhere. Modern supercomputer codes therefore use **hybrid programming**, often written **MPI+X**, where X stands for OpenMP, CUDA, OpenACC, or OpenCL. A typical job launches **one MPI process per node**, or per socket or GPU. Inside the node, OpenMP or CUDA spreads the work, and MPI or NCCL moves data between nodes. The result is fewer, fatter processes, which means fewer messages crossing the fabric.
 
 ### PGAS and the SHMEM / OpenSHMEM standard
 
-**PGAS**, or Partitioned Global Address Space, sits between MPI's distributed memory and OpenMP's shared memory. Cray Research developed the first version, **SHMEM**, in 1999. It ran on proprietary Cray, Silicon Graphics, and Quadrics MPP interconnects. Vendor versions differed slightly in their call formats. So a community initiative standardized the library from 2009 onward as **OpenSHMEM**, at `http://www.openshmem.org`. Implementations exist in Open MPI and MVAPICH2-X. In PGAS, each node keeps local memory and gets **one-sided direct remote memory access** to symmetric memory on any node in the system.
+**PGAS**, or Partitioned Global Address Space, sits between MPI's distributed memory and OpenMP's shared memory. Each process owns a slice of a big logical address space, and it can reach into another process's slice directly. Cray Research developed the first version, **SHMEM**, in 1999. It ran on proprietary Cray, Silicon Graphics, and Quadrics MPP interconnects. Vendor versions differed slightly in their call formats. So a community initiative standardized the library from 2009 onward as **OpenSHMEM**, at `http://www.openshmem.org`. Implementations exist in Open MPI and MVAPICH2-X. In PGAS, each node keeps local memory and gets **one-sided direct remote memory access** to symmetric memory on any node in the system. "One-sided" means the reader or writer does not need the other side to post a matching call at the same moment.
 
-So why not stretch OpenMP across several nodes? Zhumatiy explains that remote memory access over a network is much slower than local RAM access. Separate nodes also lack hardware cache-coherent shared memory. Intel Cluster OpenMP and ScaleMP vSMP both tried to run OpenMP across distributed memory, and both attempts were unsuccessful. Unlike OpenMP, where you only slice the computation, and unlike implicit PGAS languages such as UPC, SHMEM makes you distribute both data and computation explicitly. Nonlocal accesses go through explicit functions, so transfers can be grouped and optimized in hardware. Operational details for OpenSHMEM follow (**untested** here).
+So why not stretch OpenMP across several nodes? Zhumatiy explains that remote memory access over a network is much slower than local RAM access. Separate nodes also lack hardware cache-coherent shared memory, which is the feature that keeps every core's view of memory consistent. Intel Cluster OpenMP and ScaleMP vSMP both tried to run OpenMP across distributed memory, and both attempts were unsuccessful. Unlike OpenMP, where you only slice the computation, and unlike implicit PGAS languages such as UPC, SHMEM makes you distribute both the data and the computation explicitly. Nonlocal accesses go through explicit functions, so the transfers can be grouped and optimized in hardware. Operational details for OpenSHMEM follow, and they were not run on a cluster for this chapter.
 
 - **Compilation and GASNet dependency:** Compile C and Fortran programs with `oshc` and `oshfort`. An MPI implementation is required underneath, because it builds and runs the GASNet library that OpenSHMEM uses.
 - **Launching and tuning:** Launch programs with `oshrun`, which invokes `mpirun` under the hood on a multiprocessor machine, or use standard MPI startup commands. You set the symmetric heap size at startup with the `SHMEM_SYMMETRIC_HEAP_SIZE` environment variable. Check `oshconfig` help for controls over collective operation algorithms such as barriers. On NVIDIA GPUs, **NVSHMEM** applies this symmetric-heap one-sided model directly across NVLink and InfiniBand GPUDirect RDMA, as Parts 10 and 12 describe.
 
 ### Accelerators (CUDA, OpenCL, OpenACC) and substrates (UCX, NCCL, PMIx)
 
-- **CUDA:** NVIDIA's parallel computing platform and programming model for NVIDIA GPUs. It uses the `nvcc` compiler for `.cu` files. It provides two main libraries, `libcuda` for basic GPU driver operations and `libcudart` for CUDA API calls. High-level libraries such as cuBLAS, cuFFT, cuRAND, and cuSPARSE sit on top.
+Accelerators are the models that run the heavy loops on GPUs. The bullets below describe the main ones, and the three substrate tools that carry the messages underneath them.
+
+- **CUDA:** NVIDIA's parallel computing platform and programming model for NVIDIA GPUs. It uses the `nvcc` compiler for `.cu` files. It provides two main libraries, `libcuda` for basic GPU driver operations and `libcudart` for CUDA API calls. High-level libraries such as cuBLAS, cuFFT, cuRAND, and cuSPARSE sit on top, so most users never call the low-level API directly.
 - **OpenCL:** The Open Computing Language is an open standard based on C99, for heterogeneous devices such as CPUs, GPUs, and FPGAs. Unlike ordinary C, the OpenCL C99 dialect omits function pointers, header files, bit fields, and recursion, and it adds memory qualifiers. The payoff is uniformity: the same code can run across CPU cores, graphics cards, and FPGAs. The cost is lower flexibility and optimization than CUDA gives, and the standard has no distributed multi-node support.
 - **OpenACC:** A directive-based standard developed by CAPS, Cray, NVIDIA, and the Portland Group for C, C++, and Fortran. Like OpenMP, it uses directive comments (`#pragma acc`), so a modified program still runs sequentially without accelerators. OpenACC directives can sit in the same program as OpenMP, and NVIDIA, GCC, and Intel compilers support them.
 - **PMIx, UCX, and NCCL:** **PMIx**, the Process Management Interface for Exascale, replaces PMI-1 and PMI-2. You can list its options with `srun --mpi=list`. It lets Slurm bootstrap MPI ranks quickly, and it passes topology maps through `openpmix-mca-params.conf` and `prte-mca-params.conf`. **UCX**, or Unified Communication X, supports RoCE, InfiniBand, TCP, shared memory, and Cray `ugni` underneath Open MPI, MPICH, and NCCL. You inspect it with `ucx_info -c -f`. **NCCL**, pronounced "Nickel", provides topology-aware GPU collectives over NVLink, PCIe, and InfiniBand or RoCE. Chapter 6.4 and Part 12 cover it in detail.
 
-Match the programming model to the hardware boundary. Use OpenMP or CUDA threads inside a node, NVLink or NVSHMEM across local GPUs, and MPI or NCCL across the multi-node RDMA fabric.
+Match the programming model to the hardware boundary.
+
+A simple way to keep the models straight is to ask where the data lives when a process needs it. In MPI, the data lives in another process, so you have to send it. In OpenMP, the data lives in shared memory, so a thread can read it directly. In PGAS, the data lives in a shared address space that is split across nodes, and one side can reach across. In CUDA and NCCL, the data lives on a GPU, and the copies happen across PCIe, NVLink, or the fabric. Use OpenMP or CUDA threads inside a node, NVLink or NVSHMEM across local GPUs, and MPI or NCCL across the multi-node RDMA fabric. When a job is slow, the question "which boundary is it crossing?" usually points straight at the cause.
 
 > **In one minute:**
 > - MPI (`MPI_Init`, `MPI_Comm_size`, `MPI_Comm_rank`, `MPI_Bcast`, `MPI_Reduce`, `MPI_Finalize`) passes explicit messages across nodes, while OpenMP shares memory across threads on one node; hybrid MPI+X combines both.
@@ -255,19 +278,21 @@ Match the programming model to the hardware boundary. Use OpenMP or CUDA threads
 
 ## 8. A communication cost model (Hockney model and ring AllReduce)
 
-Why does message size decide whether your job waits on network latency or on network bandwidth? Roger Hockney's classic point-to-point cost model answers that. Sending a message of m bytes between two processes takes time T(m):
+Why does message size decide whether your job waits on network latency or on network bandwidth? Think about two kinds of traffic. One kind is a stream of tiny control messages, where each message is short and the wait for the first byte dominates. The other kind is a huge gradient tensor, where the bytes take a long time to flow through the wire. Roger Hockney's classic point-to-point cost model explains when each one dominates. Sending a message of m bytes between two processes takes time T(m):
 
 ```text
 T(m) = alpha + m / beta
 ```
 
-In this model, `alpha` is the startup **latency** for each message. It is roughly 1 to 3 microseconds on InfiniBand or 100 GbE. On 1 to 10 GbE it rises to 25 to 50 microseconds, as Chapter 6.2 shows. The value `beta` is the asymptotic link **bandwidth**, measured in bytes per second.
+In this model, `alpha` is the startup **latency** for each message. It is roughly 1 to 3 microseconds on InfiniBand or 100 GbE. On 1 to 10 GbE it rises to 25 to 50 microseconds, as Chapter 6.2 shows. The value `beta` is the asymptotic link **bandwidth**, measured in bytes per second. Latency is the fixed toll you pay at the gate, and bandwidth is how fast the road carries the traffic once you are through.
 
-- **Small messages:** When message size is much smaller than `alpha * beta`, transfer time is completely dominated by latency. Sending a thousand separate 100-byte messages pays a thousand times `alpha` in startup overhead.
-- **Large messages:** When message size is much larger than `alpha * beta`, transfer time is dominated by link bandwidth.
+A quick example shows why this matters. Suppose a job sends a very large gradient bucket once per step. The toll is paid only once, and the road speed decides the step time, so a faster link helps directly. Now suppose the same job sends thousands of tiny control messages per step. Each message pays the toll, and a faster road does almost nothing. The fix in that second case is to combine the messages, not to buy a faster network.
+
+- **Small messages:** When message size is much smaller than `alpha * beta`, transfer time is completely dominated by latency. Sending a thousand separate 100-byte messages pays a thousand times `alpha` in startup overhead. The fix is to send fewer, larger messages.
+- **Large messages:** When message size is much larger than `alpha * beta`, transfer time is dominated by link bandwidth. Adding more latency-hiding tricks does little here, and the speed is set by the wire.
 - **The crossover size (`m_half = alpha * beta`):** This is the payload size where latency time equals wire transfer time, so the link delivers half of its peak bandwidth. The function `hockney_message_time_us()` in `code/part06/scaling.py` models it. Take a link with a 2.0 us latency and 50 GB/s bandwidth. That bandwidth is 50,000 bytes per microsecond, so the crossover is 2.0 times 50,000, or 100,000 bytes, which is 100 KB. Any message smaller than 100 KB spends more than half its time on latency overhead.
 
-What about collectives across n GPUs? In a **ring AllReduce** of an M-byte tensor, the tensor is split into n chunks. The chunks circulate around a logical ring in two phases, ReduceScatter and then AllGather. The whole exchange takes `2 * (n - 1)` steps. Each rank sends and receives this total volume:
+What about collectives across n GPUs? In a **ring AllReduce** of an M-byte tensor, the tensor is split into n chunks. The chunks circulate around a logical ring in two phases, ReduceScatter and then AllGather. Think of it as a relay where every runner passes a baton-sized piece to the next runner until everyone holds the full answer. The whole exchange takes `2 * (n - 1)` steps. Each rank sends and receives this total volume:
 
 ```text
 Volume per rank (ring AllReduce) = 2 * ((n - 1) / n) * M
@@ -275,10 +300,10 @@ Volume per rank (ring AllReduce) = 2 * ((n - 1) / n) * M
 
 The function `ring_allreduce_volume_per_rank()` in `code/part06/scaling.py` models two properties you should notice.
 
-1. **The bandwidth term barely depends on rank count.** As n grows, `2(n-1)/n` approaches 2M. For a 1 GB tensor on 8 GPUs, each GPU sends 1.75 GB. That makes ring AllReduce bandwidth-optimal for large tensors.
+1. **The bandwidth term barely depends on rank count.** As n grows, `2(n-1)/n` approaches 2M. For a 1 GB tensor on 8 GPUs, each GPU sends 1.75 GB. That makes ring AllReduce bandwidth-optimal for large tensors, because no rank ever sends more than about twice the tensor.
 2. **The latency term grows linearly with rank count.** At hundreds or thousands of GPUs, the `2(n - 1)` hops of latency add up. That is why NCCL switches from ring algorithms to double-binary **tree** algorithms, which need only logarithmic latency steps. Part 12 covers the SHARP in-network reductions that tree algorithms use at scale.
 
-Group small messages into buckets above the crossover size, as PyTorch DDP gradient bucketing does. Switch from ring to tree collectives when GPU count grows large.
+The practical result is simple. Group small messages into buckets above the crossover size, as PyTorch DDP gradient bucketing does. Switch from ring to tree collectives when the GPU count grows large.
 
 > **In one minute:**
 > - Point-to-point message time is `T(m) = alpha + m / beta`, with latency-to-bandwidth crossover at `m = alpha * beta` (100 KB at 2 us and 50 GB/s).
@@ -286,13 +311,15 @@ Group small messages into buckets above the crossover size, as PyTorch DDP gradi
 
 ## 9. Load balance, domain decomposition, and halo exchanges
 
-How do simulations and distributed AI models split their data across ranks? Most 3D physical simulations, such as weather, CFD, and molecular dynamics, use **domain decomposition**. The grid is cut into smaller cubic subdomains, each with edge length d, and each rank owns one. In every timestep, a rank computes the interior of its cube, which holds `d^3` grid points. It then swaps boundary **halo (ghost) cells** with its 6 neighboring ranks across the 6 faces of its cube. Those faces hold `6 * d^2` surface points.
+How do simulations and distributed AI models split their data across ranks? Picture a weather model covering a whole continent. You cannot hand the whole map to one machine, so you cut it into blocks and give each block to a rank. Most 3D physical simulations, such as weather, CFD, and molecular dynamics, use **domain decomposition** for exactly this reason. The grid is cut into smaller cubic subdomains, each with edge length d, and each rank owns one. In every timestep, a rank computes the interior of its cube, which holds `d^3` grid points. It then swaps boundary **halo (ghost) cells** with its 6 neighboring ranks across the 6 faces of its cube. Those faces hold `6 * d^2` surface points. The halo is a thin border copied from the neighbor, so the computation at the edge of each block can see the values on the other side.
 
-Here is the trap you fall into when you **strong-scale** a fixed grid onto more processors. As the edge length d shrinks, computation follows the **volume** of each cube, while communication follows its **surface area**. So the communication-to-computation ratio tracks the **surface-to-volume ratio (`6 / d`)**, and it climbs steadily as subdomains get smaller.
+Here is the trap you fall into when you **strong-scale** a fixed grid onto more processors. As the edge length d shrinks, computation follows the **volume** of each cube, while communication follows its **surface area**. A small cube has less interior to compute and about the same amount of boundary to send, which means the boundary starts to dominate. So the communication-to-computation ratio tracks the **surface-to-volume ratio (`6 / d`)**, and it climbs steadily as the subdomains get smaller.
 
-Load balance adds a second problem. When subdomains carry unequal work, such as adaptive meshes or clusters of particles, static partitioning leaves ranks waiting at barriers. Those cases call for dynamic load balancing, or for graph partitioners such as METIS and ParMETIS. Distributed LLM training faces the same surface-to-volume and load-balance trade-offs. They show up in Tensor Parallelism, Pipeline Parallelism micro-batch bubbles, and Mixture-of-Experts token routing, which Part 14 covers.
+Load balance adds a second problem. When subdomains carry unequal work, such as adaptive meshes or clusters of particles, static partitioning leaves ranks waiting at barriers. Those cases call for dynamic load balancing, or for graph partitioners such as METIS and ParMETIS, which cut the work so each part costs about the same. Distributed LLM training faces the same surface-to-volume and load-balance trade-offs. They show up in Tensor Parallelism, Pipeline Parallelism micro-batch bubbles, and Mixture-of-Experts token routing, which Part 14 covers.
 
-When you strong-scale a domain-decomposed or model-parallel job, watch the surface-to-volume ratio. Halving shard dimensions raises the communication share relative to compute.
+When you strong-scale a domain-decomposed or model-parallel job, watch the surface-to-volume ratio. Halving the shard dimensions raises the communication share relative to compute, and that is the first place a good speedup starts to fade.
+
+Picture the simplest case, a weather model that covers a whole region. Each rank owns one block of the map, and each timestep it sends the edges of its block to the neighbors on each side. At the start of the run, the blocks are large, and most of the work happens inside them. As you add ranks and the blocks shrink, the edges become a bigger share of each block, and the neighbors spend more of their time talking. The model did not get slower on purpose. It simply ran out of interior work to hide the talking behind.
 
 > **In one minute:**
 > - In 3D domain decomposition, compute scales with subdomain volume (`d^3`) while halo-exchange communication scales with surface area (`6 * d^2`), so communication-to-compute grows as `6 / d` under strong scaling.
@@ -300,16 +327,20 @@ When you strong-scale a domain-decomposed or model-parallel job, watch the surfa
 
 ## 10. Parallel computing support libraries, debuggers, and profilers (*Supercomputers for Linux Sysadmins* Chapter 22)
 
-You might hear that libraries are for users, not for sysadmins. Zhumatiy argues in Chapter 22 of *Supercomputers for Linux SysAdmins* that sysadmins cannot ignore them. Even if you never write a PDE solver, users will ask you to build custom versions of these libraries. They will also paste crash logs into tickets. Knowing the four core numerical libraries, ScaLAPACK, PETSc, FFTW, and Intel TBB, along with the parallel debugger and profiler ecosystem, lets you separate cluster bugs from application bugs right away.
+You might hear that libraries are for users, not for sysadmins. Zhumatiy argues in Chapter 22 of *Supercomputers for Linux SysAdmins* that sysadmins cannot ignore them. Even if you never write a PDE solver, users will ask you to build custom versions of these libraries. They will also paste crash logs into tickets at the worst possible time. Knowing the four core numerical libraries, ScaLAPACK, PETSc, FFTW, and Intel TBB, along with the parallel debugger and profiler ecosystem, lets you separate cluster bugs from application bugs right away.
+
+A good habit is to keep a short list of the library versions that each important application uses. When a crash appears, the list tells you whether the build changed. That single step often ends a long argument between the user and the operations team. A library error that mentions a missing symbol is a build problem, while a hang in the middle of a collective is a fabric or rank problem.
 
 ### ScaLAPACK (`BLAS`, `PBLAS`, `BLACS`, `SLmake.inc`, and `PTXXYYYY` naming)
 
-Linear algebra sits at the heart of numerical methods. On a single node, the standard open-source libraries are **BLAS**, **LINPACK**, and **LAPACK**, originally developed by Jack Dongarra, Jeremy Du Croz, Sven Hammarling, and colleagues. Vendor-optimized versions ship in **Intel MKL** and **AMD ACML**. When distributed-memory multiprocessor systems appeared, US scientific and supercomputer centers ported the cache-optimized LAPACK to distributed memory. The result was **ScaLAPACK**, or Scalable LAPACK. It kept LAPACK's structure and top-level calls because of two design decisions:
+Linear algebra sits at the heart of numerical methods. Solving a large system of equations, or finding the eigenvalues of a matrix, usually comes down to linear algebra underneath. On a single node, the standard open-source libraries are **BLAS**, **LINPACK**, and **LAPACK**, originally developed by Jack Dongarra, Jeremy Du Croz, Sven Hammarling, and colleagues. Vendor-optimized versions ship in **Intel MKL** and **AMD ACML**. When distributed-memory multiprocessor systems appeared, US scientific and supercomputer centers ported the cache-optimized LAPACK to distributed memory. The result was **ScaLAPACK**, or Scalable LAPACK. It kept LAPACK's structure and top-level calls because of two design decisions:
 
-1. **PBLAS:** Parallel BLAS, including PTOOLS, runs distributed-memory Level 2 and Level 3 BLAS vector and matrix operations on top of fast single-node BLAS and LAPACK libraries. Always pick an optimized local BLAS, such as MKL, ACML, GotoBLAS, or OpenBLAS.
+1. **PBLAS:** Parallel BLAS, including PTOOLS, runs distributed-memory Level 2 and Level 3 BLAS vector and matrix operations on top of fast single-node BLAS and LAPACK libraries. Always pick an optimized local BLAS, such as MKL, ACML, GotoBLAS, or OpenBLAS, because the layer above it is only as fast as the one below.
 2. **BLACS:** Basic Linear Algebra Communication Subprograms handle all inter-processor communication over MPI, using `-lblacs`, `-lblacsC`, and `-lblacsF`. Because of that layering, porting ScaLAPACK to a new platform only requires setting up BLACS.
 
-To build ScaLAPACK from source, download it from `http://www.netlib.org/scalapack/` and unpack it in a shared directory. Then edit `SLmake.inc` before you run `make`. Point the compilers at `mpicc` and `mpif77` so MPI links cleanly (**untested** here).
+Layering is also a practical gift to the administrator. When a new interconnect arrives, most of the work sits in the communication layer, and the math code above it can stay the same. Knowing where the layers meet tells you where to look when a port fails. The math stays the same, and only the communication layer changes.
+
+To build ScaLAPACK from source, download it from `http://www.netlib.org/scalapack/` and unpack it in a shared directory. Then edit `SLmake.inc` before you run `make`. Point the compilers at `mpicc` and `mpif77` so MPI links cleanly. These build steps were not run on a live cluster for this chapter, so treat the file below as a template to check against your own site.
 
 ```makefile
 # SLmake.inc excerpt (untested here)
@@ -343,7 +374,7 @@ RLIBS = $(SCALAPACKLIB) $(FBLACSLIB) $(LAPACKLIB) $(BLASLIB) $(SMPLIB)
 LIBS = $(PBLIBS)
 ```
 
-ScaLAPACK has **530 subroutines**, sorted into **driver**, **computational**, and **service** groups. Each data type gets 14 driver subroutines, which solve a complete linear system or eigenvalue problem. Computational subroutines handle smaller pieces, such as LU decomposition or tridiagonal reduction. Subroutine names follow LAPACK with a leading P, in the form **`PTXXYYYY`** or `PTXXYYY`. The table below decodes each position of the name.
+ScaLAPACK has **530 subroutines**, sorted into **driver**, **computational**, and **service** groups. Each data type gets 14 driver subroutines, which solve a complete linear system or eigenvalue problem. Computational subroutines handle smaller pieces, such as LU decomposition or tridiagonal reduction. Subroutine names follow LAPACK with a leading P, in the form **`PTXXYYYY`** or `PTXXYYY`. The table below decodes each position of the name, so you can read a name in a log and know what it does before you look it up.
 
 | Position | Code options | Meaning in ScaLAPACK (Supercomputers for Linux SysAdmins, Chapter 22) |
 |---|---|---|
@@ -352,13 +383,13 @@ ScaLAPACK has **530 subroutines**, sorted into **driver**, **computational**, an
 | **XX** (matrix type) | `DB`, `DT`, `GB`, `GE`, `GT`, `HE`, `PB`, `PO`, `PT`, `ST`, `SY`, `TR`, `TZ`, `UN` | Banded general appearance with predominantly diagonal elements (`DB`), tridiagonal of general form with predominant diagonal elements (`DT`), general view ribbons (`GB`), general view (`GE`), tridiagonal of general form (`GT`), Hermite (`HE`), band symmetric or Hermite positively definite (`PB`), symmetric or Hermite positively definite (`PO`), tridiagonal symmetric or Hermite positively definite (`PT`), symmetric tridiagonal (`ST`), symmetrical (`SY`), triangular (`TR`), trapezoidal (`TZ`), unitarian (`UN`) |
 | **YYY / YYYY** (action) | `TRF`, `TRS`, `CON`, `SV`, `SVX`, `EV`/`EVX`, `GVX`, `SVD`, `RFS`, `LS` | Matrix factorization (`TRF`), solution of SLAU after factorization (`TRS`), estimation of matrix conditioning number (`CON`), solution of SLAU (`SV`) or with additional studies (`SVX`), computation of eigenvalues and eigenvectors (`EV`, `EVX`), generalized eigenvalue problem (`GVX`), singular value calculation (`SVD`), refinement of solution (`RFS`), least squares finding (`LS`) |
 
-Once you know this table, you can decode any ScaLAPACK name one position at a time.
+Once you know this table, you can decode any ScaLAPACK name one position at a time. Start with the P, then the data type, then the matrix shape, and finally the action.
 
 ### PETSc (`PETSC_ARCH`, `PETSC_DIR`, and runtime diagnostic flags)
 
 **PETSc**, pronounced "petsy", is a hierarchical toolkit of parallel linear and nonlinear equation solvers and time integrators for partial differential equations. You can use it from C, C++, Fortran, and Python. Its home page is `https://petsc.org/release/`. PETSc supports the MPI standard. It also supports a hybrid MPI and thread model through `--with-pthreadclasses`, and an MPI plus GPU model that uses CUDA driver 4.1 or higher with the Cusp package.
 
-You configure PETSc with `./configure`. Pass the MPI compilers with `--with-cc=mpicc`, `--with-fc=mpifort`, and `--with-cxx=mpicxx`. Set optimization flags with `COPTFLAGS`, `FOPTFLAGS='-O5'`, and `CXXOPTFLAGS`, and set libraries with `LIBS='...'`. External solver packages come in through `--with-PACKAGE-include` or `--download-PACKAGE`, for BLAS and LAPACK, Hypre, MUMPS, and Parmetis. Setting `PETSC_DIR` and `PETSC_ARCH` lets you keep several build profiles side by side. You can then expose them through Environment Modules or Lmod (**untested** here). The block below shows one profile build, and its comment marks it as untested here.
+You configure PETSc with `./configure`. Pass the MPI compilers with `--with-cc=mpicc`, `--with-fc=mpifort`, and `--with-cxx=mpicxx`. Set optimization flags with `COPTFLAGS`, `FOPTFLAGS='-O5'`, and `CXXOPTFLAGS`, and set libraries with `LIBS='...'`. External solver packages come in through `--with-PACKAGE-include` or `--download-PACKAGE`, for BLAS and LAPACK, Hypre, MUMPS, and Parmetis. Setting `PETSC_DIR` and `PETSC_ARCH` lets you keep several build profiles side by side, so one site can have an Intel build and a GCC build without them overwriting each other. You can then expose those profiles through Environment Modules or Lmod. The block below shows one profile build. Its comment says the build was not run, so treat it as a pattern to check against your own site.
 
 ```bash
 # (untested here)
@@ -368,7 +399,7 @@ make PETSC_ARCH=linux-intel all test
 sudo make install
 ```
 
-When a PETSc program misbehaves, you can add these runtime options on the command line. You do not need to recompile.
+When a PETSc program misbehaves, you can add these runtime options on the command line. You do not need to recompile, which matters when the bug only shows up in a production run.
 
 - `-log_summary` — provides a performance summary at the end of the program.
 - `-fp_trap` — stops immediately on floating-point operation exceptions.
@@ -378,12 +409,12 @@ When a PETSc program misbehaves, you can add these runtime options on the comman
 
 ### FFTW (versions 2 and 3) and Intel TBB
 
-- **FFTW:** Fastest Fourier Transform in the West, hosted at `http://fftw.org/`, is a C and Fortran library. It computes the fast discrete Fourier transform for real and complex numbers. The input size N can be any value, not only a power of two. FFTW includes parallel FFT modules for shared and distributed memory. They cover four variants: 1D complex, multivariate complex, 1D real, and multivariate real transformations. Link against `-lfftw` or `-lttfw`, and add `-lfftw_mpi` for MPI builds. Version 3 uses `-lfftw3` and `-lfftw3_mpi`. You also add `-I` and `-L` for your directory paths. Compile FFTW from source with optimizations for your target processor, instead of relying on a generic OS package. If applications need them, install **both incompatible versions 2 and 3**. If Intel MKL or AMD ACML is already installed, each one ships an optimized FFTW, so you can skip the manual build.
-- **Intel TBB:** Threading Building Blocks is a C++ template library that works with POSIX threads, Windows threads, and Boost threads. Instead of raw threads, it builds the program from task blocks. Those tasks link into a dynamically generated graph, tuned for cache and CPU use. TBB supports only node-level threads, and it hides thread synchronization inside. So if you combine TBB with asynchronous MPI calls, take care. The errors that result are hard to diagnose.
+- **FFTW:** Fastest Fourier Transform in the West, hosted at `http://fftw.org/`, is a C and Fortran library. It computes the fast discrete Fourier transform for real and complex numbers. The input size N can be any value, not only a power of two. FFTW includes parallel FFT modules for shared and distributed memory. They cover four variants: 1D complex, multivariate complex, 1D real, and multivariate real transformations. Link against `-lfftw` or `-lttfw`, and add `-lfftw_mpi` for MPI builds. Version 3 uses `-lfftw3` and `-lfftw3_mpi`. You also add `-I` and `-L` for your directory paths. Compile FFTW from source with optimizations for your target processor, instead of relying on a generic OS package. If applications need them, install **both incompatible versions 2 and 3**, because the two APIs do not work with each other. If Intel MKL or AMD ACML is already installed, each one ships an optimized FFTW, so you can skip the manual build.
+- **Intel TBB:** Threading Building Blocks is a C++ template library that works with POSIX threads, Windows threads, and Boost threads. Instead of raw threads, it builds the program from task blocks. Those tasks link into a dynamically generated graph, tuned for cache and CPU use. TBB supports only node-level threads, and it hides thread synchronization inside. So if you combine TBB with asynchronous MPI calls, take care. The errors that result are hard to diagnose, because the synchronization that would reveal them is out of sight.
 
 ### Parallel debuggers, profilers, tracers, and PMPI trace formats
 
-Picture a parallel application running hundreds of processes across several nodes. A traditional `gdb` session, compiled with `-g`, is of very limited use there. It inspects one process at a time, and output from hundreds of ranks arrives at once and cannot be read. Dedicated parallel debuggers and tracers solve this problem. Each row of the table below names a tool, its origin, and what it does for cluster debugging.
+Picture a parallel application running hundreds of processes across several nodes. A traditional `gdb` session, compiled with `-g`, is of very limited use there. It inspects one process at a time, and output from hundreds of ranks arrives at once and cannot be read. Dedicated parallel debuggers and tracers solve this problem. They show the stacks and variables of all the ranks together, and they record what each rank did, so you can see the one rank that went quiet. Each row of the table below names a tool, its origin, and what it does for cluster debugging.
 
 | Tool | Category & origin | Key capabilities for cluster debugging (Supercomputers for Linux SysAdmins, Chapter 22) |
 |---|---|---|
@@ -395,7 +426,7 @@ Picture a parallel application running hundreds of processes across several node
 | **Intel ITAC, VTune, Advisor & Inspector** | Intel oneAPI HPC Toolkit | **Intel Trace Collector and Analyzer (ITAC)** records full or sampled **`STF`** traces (collected automatically via a startup key with Intel MPI); paired with **VTune**, **Advisor**, and **Inspector** for deep efficiency analysis |
 | **TAU** (Tuning and Analysis Utilities) | Open-source profiling & tracing suite (Univ. of Oregon) | Open-source toolkit for collecting and analyzing traces, with JumpShot integration and native graphical tools |
 
-Install and expose ScaLAPACK over vendor MKL or OpenBLAS, PETSc, FFTW v2 and v3, and PMPI-capable tracers through environment modules. Then users can diagnose scaling and crash bugs without guessing.
+Install and expose ScaLAPACK over vendor MKL or OpenBLAS, PETSc, FFTW v2 and v3, and the PMPI-capable tracers through environment modules. Then users can diagnose scaling and crash bugs without guessing, and you can see which library version a crash came from.
 
 > **In one minute:**
 > - ScaLAPACK (530 routines named `PTXXYYYY`) layers PBLAS and BLACS over single-node BLAS/LAPACK and MPI; PETSc manages builds via `PETSC_DIR` and `PETSC_ARCH` and diagnoses runs via `-log_summary`, `-fp_trap`, `-trdump`, `-trmalloc`, and `-on_error_attach_debugger`.
@@ -404,19 +435,21 @@ Install and expose ScaLAPACK over vendor MKL or OpenBLAS, PETSc, FFTW v2 and v3,
 
 ## 11. Five canonical communication patterns to recognize
 
-Most distributed jobs fall into one of five communication patterns. Learn to recognize them, because each pattern hits its limit in a different place.
+Most distributed jobs fall into one of five communication patterns. Learn to recognize them, because each pattern hits its limit in a different place. When a job slows down, the pattern tells you where to look first, which saves hours of guessing.
 
-1. **Embarrassingly parallel:** Workers never talk to each other, so the job scales linearly until storage I/O saturates.
+1. **Embarrassingly parallel:** Workers never talk to each other, so the job scales linearly until storage I/O saturates. A parameter sweep over many independent inputs is the classic example. The only shared resource is the disk, so the disk is where the limit shows up.
 2. **Nearest-neighbor stencil / halo exchange:** Grid simulations and pipeline parallelism pass data to adjacent ranks. This scales well until subdomain surface-to-volume (`6 / d`) dominates.
-3. **Global AllReduce every step:** Data-parallel gradient averaging is bandwidth-bound for large buckets and latency-bound for small tensors.
-4. **All-to-All transpose:** Distributed 3D FFTW and Mixture-of-Experts token dispatch stress the full fabric bisection bandwidth and adaptive routing.
-5. **Master-worker dynamic queue:** A central coordinator hands irregular tasks to workers. The pattern scales until the single master process saturates.
+3. **Global AllReduce every step:** Data-parallel gradient averaging is bandwidth-bound for large buckets and latency-bound for small tensors. Every rank waits for the sum, so one slow rank holds up the whole step.
+4. **All-to-All transpose:** Distributed 3D FFTW and Mixture-of-Experts token dispatch stress the full fabric bisection bandwidth and adaptive routing. Every rank talks to every other rank, so the fabric's total capacity is what matters.
+5. **Master-worker dynamic queue:** A central coordinator hands irregular tasks to workers. The pattern scales until the single master process saturates. The master is the bottleneck by design, so watch its CPU and its message rate.
 
 Name the pattern first, and you know which limit to check.
 
+Try this when a new job arrives. Before you open any profiler, ask which of the five patterns the code follows. The answer gives you a short list of limits to check, and it stops you from tuning the wrong layer for an hour.
+
 ## 12. Lab: Amdahl, Gustafson, Karp-Flatt, and Hockney cost models
 
-Start with the self-checking Python lab, `code/part06/scaling_lab.py`, and run it locally. It verifies Amdahl's and Gustafson's laws. It also checks the rising Karp-Flatt serial fraction from the 8-core Apple M3 strong-scaling run. Finally, it checks the Hockney message crossover size and the ring AllReduce per-rank byte volume:
+Nothing in this section was run on a cluster. Start with the self-checking Python lab, `code/part06/scaling_lab.py`, and run it locally. It verifies Amdahl's and Gustafson's laws. It also checks the rising Karp-Flatt serial fraction from the 8-core Apple M3 strong-scaling run. Finally, it checks the Hockney message crossover size and the ring AllReduce per-rank byte volume. Passing the lab tells you the formulas agree with the code. It does not tell you how your own cluster behaves, which is why the full benchmark comes next.
 
 ```bash
 python3 code/part06/scaling_lab.py
@@ -428,15 +461,15 @@ Then run the full benchmark on your own machine:
 python3 code/part06/scaling.py
 ```
 
-Work through these three analysis steps:
+Work through these three analysis steps. Each step uses one function, and each one asks one question.
 
-1. Compare `amdahl(0.99, 1024)`, which gives a 91.2x speedup and 8.9% efficiency, with `gustafson(0.99, 1024)`, which gives a 1013.77x scaled speedup. Explain why growing the problem size changes the scaling curve.
+1. Compare `amdahl(0.99, 1024)`, which gives a 91.2x speedup and 8.9% efficiency, with `gustafson(0.99, 1024)`, which gives a 1013.77x scaled speedup. Why does growing the problem size change the scaling curve?
 2. Look at the Karp-Flatt column from `python3 code/part06/scaling.py` on your own CPU. As the worker count reaches your total logical core count, does the serial fraction stay flat or rise?
-3. Call `hockney_message_time_us(100_000, 2.0, 50.0)` and check that a 100,000-byte message, or 100 KB, sits at the crossover. There, 2.0 us of latency plus 2.0 us of transfer equals 4.0 us total.
+3. Call `hockney_message_time_us(100_000, 2.0, 50.0)` and check that a 100,000-byte message, or 100 KB, sits at the crossover. Why do 2.0 us of latency and 2.0 us of transfer add up to 4.0 us total?
 
 ## 13. Interview angles
 
-Each question below asks you to apply one idea from this chapter.
+Each question below asks you to apply one idea from this chapter. Answer them the way you would explain the idea to a colleague at a whiteboard.
 
 - State Amdahl's law and Gustafson's law. If a program is 99 percent parallel, what is its maximum strong-scaling speedup on 1,024 GPUs and on infinite GPUs?
 - You measure speedups of 1.85x on 2 nodes, 2.84x on 4 nodes, and 3.37x on 8 nodes. How do you use the Karp-Flatt metric to show whether the bottleneck is a fixed serial step or growing communication and imbalance overhead?
@@ -446,14 +479,14 @@ Each question below asks you to apply one idea from this chapter.
 
 ## Exercises
 
-The exercises reuse the functions and measurements from the chapter, so you can check each answer against the text.
+The exercises reuse the functions and measurements from the chapter, so you can check each answer against the text. Work through them in order, because later exercises build on the numbers in earlier ones.
 
-1. Using `amdahl()` and `gustafson()` in `code/part06/scaling.py`, calculate the strong-scaling speedup, parallel efficiency, Amdahl ceiling, and Gustafson scaled speedup for parallel fractions of 0.99 and 0.999 on 1,024 GPUs.
-2. Take the 8-core strong-scaling run from Section 5. Its speedups are 1.85, 2.84, and 3.37 on 2, 4, and 8 workers. Use `karp_flatt()` to compute the experimental serial fraction for each, which should give 0.083, 0.135, and 0.196. Then explain why a rising value rules out a pure Amdahl serial bottleneck and points to parallel overhead and load imbalance.
-3. Using `hockney_message_time_us()` and `ring_allreduce_volume_per_rank()`, compute the crossover message size for an InfiniBand link with 2.0 us latency and 50.0 GB/s bandwidth. The answer is 100,000 bytes. Then compute the per-rank data volume for a ring AllReduce of a 1 GB gradient tensor, which is 1,000,000,000 B, across 8 GPUs. The answer is 1.75 GB.
-4. Trace the 7 MPI calls in Zhumatiy's $\pi$-integration C program. They are `MPI_Init`, `MPI_Comm_size`, `MPI_Comm_rank`, `MPI_Get_processor_name`, `MPI_Bcast`, `MPI_Reduce`, and `MPI_Finalize`. Then explain why OpenSHMEM (`oshc`, `oshfort`, `oshrun`, `SHMEM_SYMMETRIC_HEAP_SIZE`, `oshconfig`) requires explicit remote access allocation, while Intel Cluster OpenMP and ScaleMP vSMP struggled across nodes. Finally, compare CUDA, OpenCL, and OpenACC.
-5. Decode the ScaLAPACK routine names `PDGETRF`, `PSPOTRS`, and `PZHEEVX` using the `PTXXYYYY` table. Explain the roles of PBLAS and BLACS in `SLmake.inc`. List the five PETSc runtime diagnostic flags, which are `-log_summary`, `-fp_trap`, `-trdump`, `-trmalloc`, and `-on_error_attach_debugger`. Last, state why clusters install both FFTW v2 and v3 unless they use MKL or ACML.
-6. Compare TotalView, with its reverse debugging and ThreadSpotter, against Arm DDT and its `ddt --offline` batch reports. Then explain how the PMPI profiling interface lets MPE and JumpShot (`CLOG` and `SLOG2`), Vampir and VampirTrace (`OTF` and `OTF2`), Intel ITAC (`STF`), and TAU trace MPI communication without changes to the application source code.
+1. Use `amdahl()` and `gustafson()` in `code/part06/scaling.py` to calculate the strong-scaling speedup, the parallel efficiency, the Amdahl ceiling, and the Gustafson scaled speedup. Use parallel fractions of 0.99 and 0.999 on 1,024 GPUs.
+2. Take the 8-core strong-scaling run from Section 5. Its speedups are 1.85, 2.84, and 3.37 on 2, 4, and 8 workers. Use `karp_flatt()` to compute the experimental serial fraction for each one. The values should be 0.083, 0.135, and 0.196. Why does a rising value rule out a pure Amdahl serial bottleneck?
+3. Use `hockney_message_time_us()` and `ring_allreduce_volume_per_rank()` to compute the crossover message size. The link has 2.0 us latency and 50.0 GB/s bandwidth, and the answer is 100,000 bytes. Then compute the per-rank volume for a ring AllReduce of a 1 GB gradient tensor across 8 GPUs. The tensor is 1,000,000,000 B, and the answer is 1.75 GB.
+4. Trace the 7 MPI calls in Zhumatiy's $\pi$-integration C program. They are `MPI_Init`, `MPI_Comm_size`, `MPI_Comm_rank`, `MPI_Get_processor_name`, `MPI_Bcast`, `MPI_Reduce`, and `MPI_Finalize`. Why does OpenSHMEM (`oshc`, `oshfort`, `oshrun`, `SHMEM_SYMMETRIC_HEAP_SIZE`, `oshconfig`) need explicit remote access, while Intel Cluster OpenMP and ScaleMP vSMP struggled across nodes? How do CUDA, OpenCL, and OpenACC compare?
+5. Decode the ScaLAPACK routine names `PDGETRF`, `PSPOTRS`, and `PZHEEVX` with the `PTXXYYYY` table. What roles do PBLAS and BLACS play in `SLmake.inc`? List the five PETSc runtime diagnostic flags, which are `-log_summary`, `-fp_trap`, `-trdump`, `-trmalloc`, and `-on_error_attach_debugger`. Why do clusters install both FFTW v2 and v3 unless they use MKL or ACML?
+6. Compare TotalView, with its reverse debugging and ThreadSpotter, against Arm DDT and its `ddt --offline` batch reports. How does the PMPI profiling interface let MPE and JumpShot (`CLOG` and `SLOG2`), Vampir and VampirTrace (`OTF` and `OTF2`), Intel ITAC (`STF`), and TAU trace MPI communication without changes to the application source code?
 
 ## Checkpoint questions (20)
 
