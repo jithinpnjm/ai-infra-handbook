@@ -22,13 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose a training job runs for an hour, and then one worker is evicted for no obvious reason. Or an inference server sits in a restart loop while its model loads. In AI infrastructure, problems like these usually trace back to a pod. Every AI workload ends up as pods. A training worker with eight GPUs needs a large shared-memory volume. An inference server needs probes tuned for slow model loads. A data-preparation Job and a node agent DaemonSet also run as pods.
+Suppose a training job has been running for an hour, and then one of its workers is evicted for no obvious reason. Nothing in the training code failed. The node came under memory pressure, and the pod was the thing that gave way. Or suppose an inference server sits in a restart loop. Each time it starts, it begins loading a large model, and then something stops it before the model is ready. Neither problem is really about the model or the code. Both trace back to the pod.
 
-The pod spec holds the decisions that make a job fast, make it fail mysteriously, get it evicted under memory pressure, or leave GPUs idle. You make those decisions in resource requests and limits, the QoS class, the security context, volumes, lifecycle hooks, termination grace and scheduling constraints. The workload controllers add replica management, identity, per-node placement and run-to-completion behavior: Deployment, StatefulSet, DaemonSet, Job and CronJob. This chapter is the practical reference for writing those objects correctly.
+Every AI workload in this handbook ends up as one or more pods. A training worker that uses eight GPUs needs a large shared-memory volume, or its data loaders will crash. An inference server needs probes that allow for a slow model load, because a probe that gives up too early will restart a server that was doing exactly what it should. A data-preparation Job and a node agent DaemonSet also run as pods, so the same settings apply to them too.
+
+It helps to think of the pod spec as a list of decisions. Some decisions make a job fast. Others make it fail in a way that looks random, get it evicted under memory pressure, or leave expensive GPUs sitting idle. You make those decisions in the resource requests and limits, the QoS class, the security context, the volumes, the lifecycle hooks, the termination grace period and the scheduling constraints. The workload controllers add the rest: replica management, stable identity, one-pod-per-node placement and run-to-completion behavior. Those controllers are Deployment, StatefulSet, DaemonSet, Job and CronJob. This chapter is a working reference for writing those objects correctly, so that when something goes wrong you already know which field to read first.
+
+Here is a way to read the rest of this chapter. Each section opens with a situation, asks which part of the pod is responsible, and then shows the fields that control that part. When you meet a field you do not recognize, ask yourself what situation it protects against. Most of the fields here exist because a real workload needed them, and the field is the cleanest way to ask the cluster for that behavior.
 
 ## Prerequisites and outcomes
 
-Before you start, read 5.3 and 5.6. When you finish this chapter, you should be able to do the following.
+Read 5.3 and 5.6 first. This chapter assumes the cluster vocabulary they introduce, and it will not stop to define every object again.
+
+The checklist below is a self-test, not a course outline. Each line names one skill that a platform engineer uses every week. If a line feels unfamiliar when you reach the end, go back to the section that covers it and read slowly, ideally with a practice cluster open in another window.
 
 - Read and write complete pod specs, including init containers, native sidecars, volumes, projected volumes, environment variables and security contexts.
 - Set resources correctly. That covers requests, limits, extended resources such as `nvidia.com/gpu`, and hugepages. You should also predict the QoS class and know how limits become cgroups and OOM behavior.
@@ -39,13 +45,19 @@ Before you start, read 5.3 and 5.6. When you finish this chapter, you should be 
 
 ## 1. The pod
 
-When a node dies, the pods on it do not move to another node by themselves. Controllers create replacements, but the old pod is gone. Keep that in mind as you read the rest of this section.
+Imagine you are on call and a node disappears at two in the morning. The pods that ran on it disappear with it. Nothing carries them to a healthy machine on their own. A controller can create replacements, but the original pod does not come back. Keep that picture in mind as you read this section, because almost every decision about pods is really a decision about what happens after something like this.
 
-A pod is the smallest schedulable unit. It holds one or more containers that share a network namespace, so they get one IP address and shared ports. Pods can optionally share IPC and PID namespaces as well. They also hold a set of volumes and a cgroup parent. The containers in a pod are scheduled together on one node, and they talk to each other over `localhost` and shared volumes.
+A pod is the smallest unit that Kubernetes schedules. It holds one or more containers that share a network namespace, so they get one IP address and one set of ports. Pods can optionally share IPC and PID namespaces as well. They also hold a set of volumes and a cgroup parent. The containers in a pod are scheduled together onto one node, and they talk to each other over `localhost` and through shared volumes.
 
-Pods are ephemeral. If a node fails, the pods on it are not rescheduled to another node, and their IPs change. Treat pods as cattle, not pets.
+A useful way to picture a pod is a small team that shares one desk, one phone number and one filing cabinet. Each member does a different job, and they can hand work to each other quickly because they are in the same place. A team member who works across the building is not part of the same pod. That is the core idea: put together the things that must live and die on the same machine, and separate the things that can live anywhere.
 
-*Kubernetes: Up and Running*, Chapter 5 (*Pods*), by Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, asks the design question "What should I put in a Pod?" The test is to ask yourself, "Will these containers work correctly if they land on different machines?" If the answer is no, group the containers in one Pod. A web or inference server paired with a local Git or model-weight synchronizer shares an `emptyDir` volume, so those two belong together. If the answer is yes, put the containers in separate Pods and connect them with a Kubernetes `Service`. A WordPress frontend and a MySQL database are an example of the second case. The same chapter also warns about a common typo in resource units. A lowercase `m` means milli, so `400m` is `0.4` CPU cores. An uppercase `Mi` is a memory unit, so `400Mi` is `400` mebibytes of RAM.
+Pods are ephemeral. If a node fails, the pods on it are not rescheduled to another node, and their IPs change. That is why the usual advice is to treat pods as cattle, not pets. A pet gets a name and nursing when it is sick. Cattle are counted, and a sick one is replaced. Your workloads should be built so that losing any single pod is a routine event.
+
+Here is what that means for a training run. Suppose a worker pod is lost in the middle of a long job. A well-built job notices the missing worker, restarts from its last checkpoint and carries on. A fragile job treats the loss as the failure of the whole run. The difference does not come from the cluster. It comes from whether the job was written to expect that a pod can disappear at any moment.
+
+The stable part of this picture is the Service. Clients should call the Service name, not a pod IP. The Service keeps track of the pods that are ready and sends traffic to them. When a pod is replaced, the replacement joins that list and the old address drops out. That is why the changing IPs described above do not break the callers, as long as they go through the Service and not straight to a pod.
+
+*Kubernetes: Up and Running* asks a design question in its chapter on pods: "What should I put in a Pod?" The test it gives is a single question you can ask yourself: "Will these containers work correctly if they land on different machines?" If the answer is no, group the containers in one pod. A web or inference server paired with a local Git or model-weight synchronizer shares an `emptyDir` volume, so those two belong together. If the answer is yes, put the containers in separate pods and connect them with a Kubernetes `Service`. A WordPress frontend and a MySQL database are an example of the second case. The same chapter also warns about a common typo in resource units. A lowercase `m` means milli, so `400m` is `0.4` CPU cores. An uppercase `Mi` is a memory unit, so `400Mi` is `400` mebibytes of RAM.
 
 ```mermaid
 flowchart TD
@@ -55,7 +67,9 @@ flowchart TD
     App --> Term["4. Termination sequence<br/>deletionTimestamp + EndpointSlice removal ||<br/>preStop hook -> SIGTERM -> gracePeriod -> SIGKILL"]
 ```
 
-The next manifest shows what a full pod spec looks like. It is a training pod with an init container, several volumes and a `preStop` hook. Read it from the top to see each part of the pod.
+Read the diagram from the top. A pod starts with a sandbox that holds the shared network and volumes. Init containers run first and one after another. Native sidecars start next and keep running alongside the app. The app containers then run side by side, and the termination sequence runs when the pod is deleted.
+
+The next manifest shows what a full pod spec looks like. It is a training pod with an init container, several volumes and a `preStop` hook. Read it from the top, one section at a time, and ask what each section is for before you look at the values.
 
 ```yaml
 apiVersion: v1
@@ -122,11 +136,15 @@ spec:
     - { name: ckpt, persistentVolumeClaim: { claimName: checkpoints-team-a } }
 ```
 
+Walk through the manifest in the order the kubelet will meet it. The `restartPolicy` and the grace period tell the node what to do when the pod ends. The `serviceAccountName` and `automountServiceAccountToken` lines decide what identity the pod carries. The `nodeSelector` and `tolerations` decide where the pod may run. The pod-level `securityContext` applies to every container. Then come the init container, which fetches a config file before the trainer starts, and the trainer container itself. The trainer's `resources` block is where the GPU count and memory are declared. Its `volumeMounts` attach the shared memory, the datasets and the checkpoint store. Last, the `preStop` hook asks the trainer to checkpoint before the pod goes away. Each part answers one question about how the pod should behave.
+
+A manifest like this is easy to misread as a wish list. It is not. Each field is a rule that the cluster will try to enforce. If a field asks for eight GPUs and the node has only four free, the pod waits in `Pending` until the GPUs are available. If the security context forbids running as root and the image expects root, the container will not start the way its author intended. Read each line as a promise the cluster is going to check, because that habit catches most mistakes before you apply the file.
+
 ### Labels and annotations: syntax rules and selector queries
 
-Once a cluster runs more than a handful of pods, you need a way to find the ones you care about. Labels and annotations solve that problem. Labels are identifying key/value pairs. ReplicaSets, Services, NetworkPolicies and node selectors use them to group objects and run selector queries. Annotations are non-identifying key/value metadata. Tools and controllers read them, for example `deployment.kubernetes.io/revision`, `kubernetes.io/change-cause` or `kubectl.kubernetes.io/last-applied-configuration`.
+Once a cluster runs more than a handful of pods, you need a reliable way to find the ones you care about. Labels and annotations solve that problem, but they do it in different ways. Labels are identifying key/value pairs. ReplicaSets, Services, NetworkPolicies and node selectors use them to group objects and run selector queries. Annotations are non-identifying key/value metadata. Tools and controllers read them, for example `deployment.kubernetes.io/revision`, `kubernetes.io/change-cause` or `kubectl.kubernetes.io/last-applied-configuration`.
 
-As *Kubernetes: Up and Running* (3rd edition, Chapter 6) explains, Kubernetes enforces strict syntax rules on label keys and values. A label key has two parts, separated by a slash, `/`. The prefix is optional. When you use one, it must be a valid DNS subdomain of up to `253` characters, such as `acme.com/app-version` or `kubernetes.io/cluster-service`. The key name is required. It can be up to `63` characters long and may contain alphanumeric characters (`[a-zA-Z0-9]`), dashes (`-`), underscores (`_`) and dots (`.`). It must start and end with an alphanumeric character.
+*Kubernetes: Up and Running* explains that Kubernetes enforces strict syntax rules on label keys and values. A label key has two parts, separated by a slash, `/`. The prefix is optional. When you use one, it must be a valid DNS subdomain of up to `253` characters, such as `acme.com/app-version` or `kubernetes.io/cluster-service`. The key name is required. It can be up to `63` characters long and may contain alphanumeric characters (`[a-zA-Z0-9]`), dashes (`-`), underscores (`_`) and dots (`.`). It must start and end with an alphanumeric character.
 
 A label value follows the same character rules as a key name. It also has a limit of `63` characters.
 
@@ -141,6 +159,8 @@ kubectl label deployments alpaca-test "canary=true"    # add or update (--overwr
 kubectl label deployments alpaca-test "canary-"        # remove the 'canary' label with a trailing dash
 ```
 
+Notice that the commands read like questions. `kubectl get pods --show-labels` asks "what labels does each pod have?" The filter `-l 'ver=2,!canary'` asks "which pods are version 2 and not marked as canary?" Once you read the flags that way, the syntax stops looking arbitrary.
+
 The table below gives some valid label keys and values that follow these rules.
 
 | Key | Value |
@@ -150,7 +170,7 @@ The table below gives some valid label keys and values that follow these rules.
 | `app.version` | `1.0.0` |
 | `kubernetes.io/cluster-service` | `true` |
 
-When a domain name appears in a label or annotation key, it should match the entity it names. A project might define one set of labels for deployment stages, such as staging, canary and production. A cloud provider might define annotations that switch on features for its own service.
+When a domain name appears in a label or annotation key, it should match the entity it names. A project might define one set of labels for deployment stages, such as staging, canary and production. A cloud provider might define annotations that switch on features for its own service. The domain part keeps those names from colliding with the labels that other people chose.
 
 In API objects such as `Deployment` and `Job`, you write a selector such as `app=alpaca,ver in (1, 2)` with `matchLabels` and `matchExpressions`. The two fields combine with a logical AND, so an object must match both.
 
@@ -164,7 +184,7 @@ selector:
 
 ### Why labels exist
 
-A team usually starts with one copy of a program. As the app matures, that single copy multiplies into a set of objects. Kubernetes uses labels so you can work with sets of objects, not single ones. The second lesson is that a fixed hierarchy eventually falls short. A team may decide that every app is made of several services. Later, one service may be shared by several apps, and the tidy tree no longer fits. Labels stay flexible enough for this, because you can attach any grouping you need and change it later. For background on how Google approaches production systems, *Site Reliability Engineering* by Betsy Beyer et al. (O'Reilly).
+A team usually starts with one copy of a program. As the app matures, that single copy multiplies into a set of objects. Kubernetes uses labels so you can work with sets of objects, not single ones. The second lesson is that a fixed hierarchy eventually falls short. A team may decide that every app is made of several services. Later, one service may be shared by several apps, and the tidy tree no longer fits. Labels stay flexible enough for this, because you can attach any grouping you need and change it later. For background on how Google approaches production systems, see *Site Reliability Engineering* by Betsy Beyer et al. (O'Reilly).
 
 ### Applying and changing labels
 
@@ -212,7 +232,7 @@ bandicoot-prod ... app=bandicoot,env=prod,ver=2
 bandicoot-staging ... app=bandicoot,env=staging,ver=2
 ```
 
-Drawn as a Venn diagram, these labels overlap as sets.
+Drawn as a Venn diagram, these labels overlap as sets. `ver=2` picks out a slice that cuts across both apps, and `app=alpaca` picks out a slice that cuts across both versions. A single label gives you a new way to group the same objects without renaming anything.
 
 You can add or change labels after an object exists. This command adds a `canary` label to `alpaca-test`.
 
@@ -243,7 +263,7 @@ $ kubectl label deployments alpaca-test "canary-"
 
 A selector is a simple Boolean expression. It filters Kubernetes objects by their labels. People use selectors through tools such as `kubectl`, and objects use them too. Each Deployment creates Pods with the labels in the template embedded in the Deployment. The `kubectl run` command configures that template.
 
-Running `kubectl get pods --show-labels` should list every Pod in the cluster. The book expects six `kuard` Pods across its three environments.
+Running `kubectl get pods --show-labels` should list every Pod in the cluster. You should see six `kuard` Pods across the three environments.
 
 ```
 $ kubectl get pods --show-labels
@@ -256,7 +276,7 @@ bandicoot-prod-373860099-k2wcf ... app=bandicoot,env=prod,ver=2,...
 bandicoot-staging-1839769971-3ndv ... app=bandicoot,env=staging,ver=2,...
 ```
 
-You may see a label you have not seen before, `pod-template-hash`. The Deployment applies it to track which Pods came from which template version. That lets the Deployment manage updates cleanly.
+You may see a label you have not seen before, `pod-template-hash`. The Deployment applies it to track which Pods came from which template version. That lets the Deployment manage updates cleanly, because old and new Pods never get mixed up in its count.
 
 To list only Pods whose `ver` label is `2`, use the `--selector` flag.
 
@@ -270,6 +290,8 @@ bandicoot-staging-1839769971-3ndv5 1/1 Running 0 3m
 ```
 
 Separate two selectors with a comma to require both. This is a logical AND.
+
+Think of each comma as a filter on a shopping site. Every filter removes the items that do not fit, and what remains must pass all of them. Adding a filter never adds results. It only narrows them. That is why a query that returns nothing is so often one filter too strict. Remove the last filter, see what comes back, and add the filters again one at a time until you find the one that removes too much.
 
 ```
 $ kubectl get pods --selector="app=bandicoot,ver=2"
@@ -337,7 +359,9 @@ In the newer form, a `!=` test is written as a `NotIn` expression with a single 
 
 Kubernetes has no fixed hierarchy. Each component works on its own, so objects that need to relate to one another do so through labels and label selectors. A ReplicaSet finds the Pods it manages with a selector. A Service load balancer finds the Pods that should receive traffic with a selector. A Pod can use a node selector to choose the nodes it may run on. To restrict network traffic, you combine Network Policy with specific labels that mark which Pods may talk to each other.
 
-Labels are the glue that holds a Kubernetes application together. Your application will likely start with a few simple labels and queries. Expect the set to grow in size and sophistication over time.
+Labels are the glue that holds a Kubernetes application together. Your application will likely start with a few simple labels and queries. Expect the set to grow in size and sophistication over time, as more teams and more tools start to rely on the same labels.
+
+A practical habit helps here. Choose a small, fixed set of label keys for the whole cluster, such as `app`, `team` and `env`, and use them everywhere. A query is only as good as the labels behind it. If one team writes `env=prod` and another writes `environment=production`, a single selector will miss half of the objects, and nothing will warn you that it did. Agreeing on the keys before the first deployment costs very little. Renaming them later across hundreds of objects costs a great deal.
 
 ### Annotations
 
@@ -349,9 +373,11 @@ Annotations record the reason for the latest update to an object. They can also 
 
 Rolling deployments are the main case in Kubernetes. Annotations track the rollout status and keep the information needed to roll back to a previous state.
 
+In practice, you rarely write most annotations by hand. Tools write them while they work, and reading them later tells you the story of the object. Looking at an object's annotations is often the fastest way to learn who changed it, what the change was for, and which tool made it. That history is hard to recover from labels alone.
+
 Annotation keys use the same format as label keys. Because tools use them to talk to each other, the prefix part of the key matters more. Examples include `deployment.kubernetes.io/revision` and `kubernetes.io/change-cause`.
 
-An annotation value is a free-form string. That gives you room to store anything, but the server does not check it. People often store a JSON document as a string in an annotation. The Kubernetes server has no idea what format the value should follow, so the data may not be valid. That makes errors harder to track down.
+An annotation value is a free-form string. That gives you room to store anything, but the server does not check it. People often store a JSON document as a string in an annotation. The Kubernetes server has no idea what format the value should follow, so the data may not be valid. That makes errors harder to track down, because the failure shows up later, in whatever tool tries to read the value.
 
 Every Kubernetes object has a `metadata` section, and annotations sit there.
 
@@ -389,7 +415,7 @@ The test to use is a single question: "Will these containers work correctly if t
 
 ### Declarative configuration and Pod manifests
 
-Suppose a teammate asks what the cluster should look like after a deploy. A Pod manifest answers that question. A Pod manifest is a text file that describes the Kubernetes API object. Kubernetes favors declarative configuration. You write down the desired state of the world, submit the file, and Kubernetes takes the actions needed to make that state real. That is different from imperative configuration, where you run a series of steps, such as `apt-get install foo`, to change a system.
+Suppose a teammate asks what the cluster should look like after a deploy. A Pod manifest answers that question. A Pod manifest is a text file that describes the Kubernetes API object. Kubernetes favors declarative configuration. You write down the desired state of the world, submit the file, and Kubernetes takes the actions needed to make that state real. That is different from imperative configuration, where you run a series of steps, such as `apt-get install foo`, to change a system. A step-by-step script works only if the machine starts in exactly the state the author assumed. A desired-state file works from wherever the machine happens to be.
 
 Years of production use have shown that a written record of desired state is easier to manage. You can review it in code, and it documents the system for a distributed team. It is also the base of the self-healing behavior that keeps applications running without anyone acting.
 
@@ -397,13 +423,13 @@ The API server accepts a Pod manifest and stores it in `etcd`. The scheduler loo
 
 ### Creating a Pod
 
-The quickest way to start a pod is the imperative `kubectl run` command. The book uses it to start the `kuard` demo server.
+The quickest way to start a pod is the imperative `kubectl run` command. *Kubernetes: Up and Running* uses it to start the `kuard` demo server.
 
 ```
 $ kubectl run kuard --image=gcr.io/kuar-demo/kuard-amd64:blue
 ```
 
-The book's printed command also carries `--generator=run-pod/v1`. Current `kubectl` releases removed that flag, and `kubectl run` now creates a bare Pod by default, so leave it out. If you copy older tutorials and see an error about `--generator`, that is why.
+The printed command in that book also carries `--generator=run-pod/v1`. Current `kubectl` releases removed that flag, and `kubectl run` now creates a bare Pod by default, so leave it out. If you copy older tutorials and see an error about `--generator`, that is the reason.
 
 Run `kubectl get pods` to watch its status. The container may show `Pending` at first, then `Running` once the Pod and its containers exist. Remove it with `kubectl delete pods/kuard` when you are done.
 
@@ -424,7 +450,7 @@ spec:
           protocol: TCP
 ```
 
-Submit it with `kubectl apply -f kuard-pod.yaml`. The API server receives the manifest, the scheduler picks a healthy node, and the `kubelet` on that node watches over the Pod. Writing it out may feel like more work than a single command. The written record is still the better habit for large teams with many applications.
+Submit it with `kubectl apply -f kuard-pod.yaml`. The API server receives the manifest, the scheduler picks a healthy node, and the `kubelet` on that node watches over the Pod. Writing it out may feel like more work than a single command. The written record is still the better habit for large teams with many applications, because anyone can read the file and see exactly what is running.
 
 ## 2. Pod spec anatomy
 
@@ -432,9 +458,13 @@ Submit it with `kubectl apply -f kuard-pod.yaml`. The API server receives the ma
 
 A pod can fail at startup while its events point to an init container that never finished. To read those events, you need to know what each container type does. Every entry in `containers[]` has an image, `command` and `args`, a `workingDir`, environment settings, ports, resources, volume mounts, probes, a lifecycle, a security context and an image pull policy. Pin the image by digest in production. Use exec-form lists for `command` and `args`, because they override the image's ENTRYPOINT and CMD. The `imagePullPolicy` defaults to `IfNotPresent` for tagged images and to `Always` for `:latest`. The `terminationMessagePath/Policy` fields control the failure message, and `stdin/tty` controls interactive input.
 
-Init containers, listed under `initContainers`, run one after another, and each must finish before the app containers start. Use them to wait for dependencies, fetch config or model files, fix permissions and run schema migrations. They share volumes with the pod. For scheduling, their resource requests count as max(init max, sum(app)). A failing init container restarts according to `restartPolicy`. Until it succeeds, it blocks the pod in `Init:Error` or `Init:CrashLoopBackOff`.
+Init containers, listed under `initContainers`, run one after another, and each must finish before the app containers start. Use them to wait for dependencies, fetch config or model files, fix permissions and run schema migrations. They share volumes with the pod. For scheduling, their resource requests count as max(init max, sum(app)). A failing init container restarts according to `restartPolicy`. Until it succeeds, it blocks the pod in `Init:Error` or `Init:CrashLoopBackOff`. A useful way to picture this is a row of checkpoints at a border. Every traveler must clear each checkpoint in order before the group is allowed into the main hall.
+
+Here is how that plays out for a training pod. Suppose the trainer needs a configuration file that a separate tool generates from a shared bucket. The init container runs that tool and writes the file into a shared `emptyDir`. Only when the init container exits successfully does the trainer start, so the trainer never reads a missing or half-written config. If the download fails, the init container retries under its restart policy, and the pod shows an init status instead of a trainer that crashes on startup. The trainer's logs stay clean, and the events point at the step that actually failed.
 
 Native sidecars are init containers with `restartPolicy: Always`, which are stable in recent releases. They start before the app containers and stay running for as long as those containers run. Their probes are honored, and they terminate after the main containers exit. They suit log shippers, proxies, credential refreshers and metrics exporters. They also avoid an old problem, where a sidecar kept Jobs from completing.
+
+A helpful picture is a stagehand. The sidecar is set up before the show, stays backstage while the performers work, and leaves only after the last performer exits. Before native sidecars, nobody could promise that order. The helper was just another container in the same list, and it could keep running long after the real work was done. Native sidecars give the helper a defined place in the sequence, which is why they matter for Jobs.
 
 Ephemeral containers are added to a running pod with `kubectl debug`. They help you debug, for example by giving you a shell in a distroless image. They share namespaces with the pod. You cannot remove them, and they cannot have resources.
 
@@ -448,7 +478,11 @@ Extended resources such as `nvidia.com/gpu`, `rdma/hca_shared_devices_a`, `hugep
 
 QoS classes are derived, not set. **Guaranteed** means every container has CPU and memory requests equal to its limits. **Burstable** means some requests or limits are set, but the pod does not meet the Guaranteed rules. **BestEffort** means no requests or limits are set at all. QoS decides the cgroup placement under `kubepods.slice/guaranteed`, `burstable` or `besteffort`. It also sets the `oom_score_adj` value, which is -997 for Guaranteed and 1000 for BestEffort, and scaled for Burstable. Finally, QoS sets the eviction order under node pressure, which 5.9 covers. Training and inference pods that must not be evicted should be Guaranteed. Guaranteed is also required for the CPU Manager static policy, which gives exclusive cores for integer CPU requests. It is needed for Topology Manager alignment too, covered in 5.18.
 
+Think of the three classes as three seating tiers at a sold-out event. Guaranteed seats are reserved and paid for in full. Burstable seats are reserved in part, and you may sit in a spare seat when one is free. BestEffort guests take whatever is left, and they are the first asked to leave when the room gets crowded. The comparison is loose, but it holds the main idea: the more you reserve up front, the more the kernel and the kubelet leave you alone under pressure.
+
 CFS throttling hurts latency-sensitive servers and data loaders that burst. Many teams therefore set CPU requests but no CPU limits on GPU pods. They rely on node dedication to avoid noisy neighbors. Others use the static CPU manager to get exclusive cores. Memory limits equal to requests are recommended, which avoids a surprising node-level OOM.
+
+The trade-off is easy to state and hard to live with. A CPU limit protects other tenants from a noisy pod, but it also slows the pod itself during bursts. A memory limit protects the node from a runaway process, but a limit set too low kills a healthy job at its busiest moment. When you set a limit, ask which of those two harms you are guarding against, and accept the other one on purpose rather than by accident.
 
 The container limit covers more than the process. It includes the page cache attributable to the cgroup, pinned memory and shared memory at `/dev/shm`. Shared memory counts because tmpfs pages are charged to the cgroup. A large DataLoader, NCCL buffers and `/dev/shm` together can trigger OOM kills, even when the process itself seems small. Size `emptyDir.medium: Memory` volumes, and include them in the limits.
 
@@ -458,7 +492,7 @@ Ephemeral storage requests and limits cover the container's writable layers, its
 
 Most people adopt containers and Kubernetes for better packaging and reliable deploys. Utilization is another gain. Utilization is the amount of a resource actively in use, divided by the amount you bought. A one-core machine running an app that uses a tenth of a core sits at 10%. Kubernetes can push utilization above 50%, but only when you tell it what each app needs.
 
-Kubernetes has two settings for this. A resource request is the minimum an application needs. A resource limit is the most it may use. Kubernetes accepts many notations, from plain numbers such as `12345` to millicores such as `100m`. A lowercase `m` means milli, while an uppercase `M` means mega. So `400m` and `400M` differ by a factor of a thousand. Mixing them up is a common and costly error. The book also explains the binary units, such as `MiB` and `GiB`. Its sentence on this swaps the two families, so check the definitions yourself before you size anything.
+Kubernetes has two settings for this. A resource request is the minimum an application needs. A resource limit is the most it may use. Kubernetes accepts many notations, from plain numbers such as `12345` to millicores such as `100m`. A lowercase `m` means milli, while an uppercase `M` means mega. So `400m` and `400M` differ by a factor of a thousand. Mixing them up is a common and costly error. The same chapter of *Kubernetes: Up and Running* also explains the binary units, such as `MiB` and `GiB`. Its sentence on this swaps the two families, so check the definitions yourself before you size anything.
 
 A request guarantees that the resource is there for the Pod. CPU and memory are the most common, though GPUs and other types also count. Requests belong to each container, not to the whole Pod. The Pod's total is the sum of all its containers' requests, because a web server and a data synchronizer need very different CPU. The next manifest asks for half a CPU and 128 MiB of memory.
 
@@ -481,9 +515,11 @@ spec:
           protocol: TCP
 ```
 
-The scheduler uses requests to place Pods. It makes sure the sum of all requests on a node stays within the node's capacity. A request is a minimum, not a cap, and a worked example shows what that means. Picture a container that tries to use every core, with a request of 0.5 CPU, on a machine with 2 cores. Alone on the machine, it uses all 2.0 cores. A second identical Pod brings each one to 1.0 core, and a third brings each to about 0.66 core. A fourth brings each to the 0.5 it asked for, and the node is full. CPU requests are carried out with the `cpu-shares` feature of the Linux kernel.
+The scheduler uses requests to place Pods. It makes sure the sum of all requests on a node stays within the node's capacity. A request is a minimum, not a cap, and a worked example shows what that means. Picture a container that tries to use every core, with a request of 0.5 CPU, on a machine with 2 cores. Alone on the machine, it uses all 2.0 cores. A second identical Pod brings each one to 1.0 core, and a third brings each to about 0.66 core. A fourth brings each to the 0.5 it asked for, and the node is full. Each container gets a share in proportion to its request, so the requests are what decide who gets what when the node is busy. CPU requests are carried out with the `cpu-shares` feature of the Linux kernel.
 
 Memory works differently. Memory a process already holds cannot be taken back as easily. When a node runs out, the `kubelet` terminates containers that use more memory than they requested. Those containers restart automatically, but the node then has less memory to give them.
+
+The contrast is the main lesson. Engineers call CPU compressible, because when the node is busy, a process simply runs more slowly. Memory is not compressible. A process either keeps its pages or loses them, and the kernel's main tool is to stop something. That is why memory requests and limits decide survival, while CPU requests mostly decide speed.
 
 A limit is a ceiling. The manifest after it keeps the same request and adds a limit of 1.0 CPU and 256 MiB of memory.
 
@@ -517,9 +553,13 @@ You will meet several volume types. `emptyDir` is per-pod scratch space. Set `me
 
 Several mount options matter. `readOnly` makes the mount read-only, and `subPath` mounts one path inside the volume. A `subPath` mount does not receive ConfigMap updates. Other options are `mountPropagation` and `subPathExpr`. `fsGroup` in the security context changes the ownership of volumes. That can be slow on huge volumes, so use `fsGroupChangePolicy: OnRootMismatch` there.
 
+A simple way to hold the mount options in your head is to think of a mount as a window into a room. `readOnly` makes the window one-way glass, so you can look but not change anything. `subPath` puts the window on one drawer in a cabinet instead of on the whole cabinet. The drawer does not change when the cabinet is reorganized, which is why a `subPath` mount does not see later ConfigMap updates.
+
 ### Persisting data and volume patterns
 
 A container's filesystem disappears when its Pod is deleted or the container restarts. That is often a good thing, because stale files from a stateless web app should not pile up. Some data must survive, though, and Kubernetes models that with volumes. A manifest needs two additions. The `spec.volumes` list defines every volume the Pod may use. Each container's `volumeMounts` list says which volumes it mounts and where. Not every container must mount every volume, and two containers can mount the same volume at different paths.
+
+Think about what a restart means to each kind of data. A cache can be lost without much pain, because it will be rebuilt. A checkpoint cannot be lost, because the whole training run depends on it. Choosing the volume type is really choosing how much pain a restart causes. That is a better question to ask than asking which volume type is fastest.
 
 The next manifest defines one volume named `kuard-data` and mounts it at `/data` in the `kuard` container.
 
@@ -545,7 +585,7 @@ spec:
           protocol: TCP
 ```
 
-The book lists four common patterns for using volumes in a Pod. The first is communication and synchronization. The Git example uses an `emptyDir` volume. It lasts as long as the Pod, but two containers can share it. That makes it the link between the Git sync container and the web server.
+*Kubernetes: Up and Running* lists four common patterns for using volumes in a Pod. The first is communication and synchronization. The Git example uses an `emptyDir` volume. It lasts as long as the Pod, but two containers can share it. That makes it the link between the Git sync container and the web server.
 
 The second pattern is caching. Some apps keep data that speeds things up but that they can rebuild, such as prerendered image thumbnails. Rebuilding is possible, but serving the thumbnails then costs more. You want that cache to survive a restart caused by a failed health check, so `emptyDir` fits here too.
 
@@ -561,13 +601,15 @@ volumes:
       path: "/exports"
 ```
 
-Persistent volumes are a deep topic. The book's Chapter 16 has a longer look at them, and this handbook covers durable storage in 5.17.
+Persistent volumes are a deep topic. The longer look at them in *Kubernetes: Up and Running* is worth reading, and this handbook covers durable storage in 5.17.
 
 The fourth pattern is mounting the host filesystem. Some apps need the node's own files. A tool might need `/dev` to reach a device directly. `hostPath` mounts any location on the worker node into the container. Use it with care, because it gives the container access to the host.
 
 ### Environment and configuration
 
 Use `env` for literal values. Use `valueFrom` for field references such as `status.podIP` and `spec.nodeName`, for resource field references, and for ConfigMap or Secret keys. Use `envFrom` to load a whole ConfigMap or Secret. Environment variables are fixed when the container starts. Volume-mounted ConfigMaps and Secrets update eventually, after the kubelet sync of about 1 minute, unless you mount them with `subPath`. Prefer mounted files for secrets. Environment variables leak into `ps`, crash dumps and child processes. Service discovery variables such as `MYSVC_SERVICE_HOST` are legacy. Use DNS instead, which 5.11 covers. In namespaces with many Services, set `enableServiceLinks: false`.
+
+A simple rule keeps this manageable. Literal settings that never change can go in `env`. Anything that a tool or a person might rotate, such as a token, belongs in a mounted file. The file can be replaced without rebuilding the image, and it is less likely to be printed by accident.
 
 ### Security context
 
@@ -577,7 +619,7 @@ Enforce these rules with Pod Security Admission, covered in 5.21. It offers the 
 
 ### Reading a SecurityContext in a running Pod
 
-A manifest shows what you asked for. Checking the running process shows what you actually got. *Kubernetes: Up and Running* (3rd edition, Chapter 19) uses one Pod to show both. The Pod sets a `securityContext` at the Pod level and again at the container level. When the same field appears in both places, the container-level value wins.
+A manifest shows what you asked for. Checking the running process shows what you actually got. *Kubernetes: Up and Running* uses one Pod to show both. The Pod sets a `securityContext` at the Pod level and again at the container level. When the same field appears in both places, the container-level value wins.
 
 ```yaml
 apiVersion: v1
@@ -605,6 +647,8 @@ spec:
 
 The `runAsNonRoot` field stops a container from starting as the root user. Running as a nonroot user is best practice. Many misconfigurations and exploits depend on the container runtime mixing up the container's root user with the host's root user. The `kuard` image runs as the user `nobody`, set in its Dockerfile. Many images from other sources do not set a user. You may need to extend their Dockerfile, and that does not always work, because the application may need more privileges.
 
+Why does it matter that root inside a container and root on the host can be the same user number? The picture from the first section answers that. A container runs on the host's kernel as an ordinary process. A process that believes it is root has a path toward the same kernel and the same numbering, unless the runtime and the security settings keep those apart. Running as a nonroot user shrinks what a mistake or an attack can reach, which is why the field is worth setting even when the app seems harmless.
+
 Save the manifest as `kuard-pod-securitycontext.yaml`, create the Pod, and open a shell inside the container:
 
 ```bash
@@ -622,13 +666,17 @@ PID   USER     TIME  COMMAND
 touch: file: Read-only file system
 ```
 
-The shell runs as user ID `1000` and group ID `3000`, and it belongs to group `2000`. The `kuard` process runs as user `1000`, as the Pod specification asked. Creating a file fails because the container's root filesystem is read-only. If you only add these few fields to your workloads, you have made a good start.
+The shell runs as user ID `1000` and group ID `3000`, and it belongs to group `2000`. The `kuard` process runs as user `1000`, as the Pod specification asked. Creating a file fails because the container's root filesystem is read-only. Read the output as a small experiment with a clear answer. Each line confirms one field you set, and the failed `touch` confirms the read-only setting. If you only add these few fields to your workloads, you have made a good start.
 
 ### Lifecycle, termination and restart policy
 
 Pod termination runs as a sequence. The API sets `deletionTimestamp`. The endpoints controller removes the pod from Service endpoints, in parallel with the next step. The kubelet runs `preStop` hooks, sends `SIGTERM` to PID 1 of each container, and waits up to `terminationGracePeriodSeconds`. After that it sends `SIGKILL`.
 
 Endpoint removal and `SIGTERM` race each other. So a server should keep serving for a few seconds while it drains. A `preStop` hook with `sleep 5-10` gives that time. After the drain, the server shuts down gracefully. For training, the process should handle `SIGTERM` by writing a checkpoint and flushing logs. It should then exit with 0 or a distinctive code. Set the grace period to cover the checkpoint time. Pods preempted by higher-priority workloads, or evicted, get the same treatment.
+
+Think of it the way a shop closes at the end of the day. First the sign comes off the door, so new customers stop arriving. Then the people already inside finish their purchases. Only after that does anyone turn off the lights. A `preStop` sleep is the pause between the sign coming down and the lights going out, and it gives the rest of the cluster time to notice the change.
+
+Consider what a checkpoint costs. Suppose writing the model state takes several minutes, and the grace period is shorter than that. The kubelet sends `SIGKILL` in the middle of the write, and the checkpoint on disk is corrupt. The next run then starts from scratch, or worse, from a broken file that looks valid. The grace period is therefore a promise about how long the trainer needs to finish its last save. It is not a generic timeout to set and forget.
 
 The `restartPolicy` sets restart behavior. Use `Always` for Deployments and similar workloads. Use `OnFailure` or `Never` for Jobs. Container restarts use exponential backoff, from 10 s up to 5 min, and the pod shows `CrashLoopBackOff` while it waits. A container can leave a short failure reason through `terminationMessagePath`, which defaults to `/dev/termination-log`. That reason then appears in `kubectl describe`.
 
@@ -637,6 +685,8 @@ The `restartPolicy` sets restart behavior. Use `Always` for Deployments and simi
 ### Scheduling-related fields
 
 Several fields control where a pod lands. `nodeName` bypasses the scheduler, so avoid it. `nodeSelector` picks nodes by label. `affinity` covers node, pod and anti-affinity, each either required or preferred, along with topology keys. `tolerations` let a pod run on tainted nodes. `topologySpreadConstraints` spread pods across the topology. `priorityClassName` and `preemptionPolicy` set priority. `schedulerName` selects a scheduler, and `runtimeClassName` selects a runtime. `resourceClaims` covers Dynamic Resource Allocation (DRA). See 5.18 for the details.
+
+A useful rule is to begin with the simplest tool that works. A `nodeSelector` covers most GPU placement. Reach for `affinity` or `topologySpreadConstraints` when you need a rule that depends on other pods or on zones, and keep `nodeName` out of your manifests entirely. Each step up in complexity makes the scheduling decision harder to predict, so the simplest rule that does the job is usually the one to keep.
 
 ### Putting it all together
 
@@ -688,13 +738,13 @@ spec:
         failureThreshold: 3
 ```
 
-The Pod definition grows as the chapter goes on. Each new capability you give the application adds a new section to it.
+The Pod definition grows as the chapter goes on. Each new capability you give the application adds a new section to it. Read the finished manifest as a checklist. It has storage that survives, a request and limit pair, and two probes, each doing a different job.
 
 ## 3. Workload controllers: choosing
 
 ### Why a bare Pod is not enough
 
-A Pod that is scheduled to a node stays on that node. If the node fails, nothing reschedules the Pod. To run several copies, you would have to create and name each one by hand. Controllers automate that work. The book's Chapter 9 introduces ReplicaSets, which create multiple identical Pods and re-create them after a node failure. The table below compares the controllers this chapter covers.
+A Pod that is scheduled to a node stays on that node. If the node fails, nothing reschedules the Pod. To run several copies, you would have to create and name each one by hand. Controllers automate that work. *Kubernetes: Up and Running* introduces ReplicaSets in its chapter on replicated pods, which create multiple identical Pods and re-create them after a node failure. The table below compares the controllers this chapter covers.
 
 | Controller | Identity | Storage | Typical use | Notes |
 |---|---|---|---|---|
@@ -706,7 +756,9 @@ A Pod that is scheduled to a node stays on that node. If the node fails, nothing
 | **JobSet / MPIJob / PyTorchJob / RayJob** (operators) | Gang of heterogeneous pods with startup ordering and failure policies | Any | Multi-node training/inference | Prefer these (plus Kueue) over hand-rolled Jobs for distributed workloads (Part 14) |
 | **Bare Pod** | None | | Debugging only | Not rescheduled if the node dies |
 
-Match each workload to the controller whose identity and storage rules fit it, as the table shows.
+Match each workload to the controller whose identity and storage rules fit it, as the table shows. Read the Identity column first, because it decides almost everything else. Replicas that are interchangeable can be replaced freely. Replicas that need a stable name and their own disk cannot be treated that way.
+
+Work through three questions for any workload. Does the program care which replica it is? Does it need its own disk that follows its name? Should it run once to completion, or keep running? The answers point toward Deployment, StatefulSet or Job. The DaemonSet question is different. It asks whether exactly one copy should live on every node, and that is a question about the machine rather than the service.
 
 ### ReplicaSets: one object for a group of identical Pods
 
@@ -714,9 +766,13 @@ Suppose you need three copies of the same web server. You could manually write s
 
 Use a ReplicaSet when you want a group of replicas rather than one Pod. Its pods are interchangeable, so you can treat the group as a single service. The rest of this chapter builds on that idea.
 
+It is worth pausing on why a group matters at all. One pod is one bet on one machine. If that machine has a bad disk, a noisy neighbor or a kernel problem, the service is down until someone notices. A group of identical pods spreads the same bet across several machines. The group also gives the controller a count to maintain. When a pod disappears, the count is wrong, and the controller starts a replacement without waiting for a human to act.
+
 ### Deployment patterns for inference
 
 Suppose you run an inference server that takes many minutes to load its model. It needs long probe windows and careful rollout settings. The manifest below runs three replicas of such a server and adds a PodDisruptionBudget. Read the comments on the rolling update settings, because GPUs are scarce.
+
+Before you read the manifest, picture what happens during a rollout of a model server. The new pod must download weights, load them into GPU memory and capture its execution graphs before it can answer a single request. While that happens, the old pod is still serving traffic. The rolling update settings decide how many old pods may be removed while the new ones are still warming up. Those settings are a trade between speed and capacity, and on a scarce GPU pool they matter a great deal.
 
 ```yaml
 apiVersion: apps/v1
@@ -762,9 +818,13 @@ spec:
 
 PodDisruptionBudgets limit voluntary disruptions, such as drains, upgrades and autoscaler scale-down. They work through the Eviction API. You set either `minAvailable` or `maxUnavailable`. They do not stop involuntary failures. A PDB that allows zero disruptions blocks node drains, which is a common stall during upgrades. Pair such a PDB with enough capacity to place replacements.
 
+Here is a concrete way to think about a PDB. Imagine three replicas and a PDB that requires two of them to stay available. A drain can remove one replica at a time, because two would still be serving. If the PDB required all three, no drain could ever remove a replica, and the node could never be upgraded. The budget is a rule about how many pods must stay up while maintenance happens, and it should match the capacity you actually have.
+
 ### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`
 
-During a `Deployment` rollout, the Deployment controller scales up the new `ReplicaSet` (`NewReplicaSet`) and scales down the old `ReplicaSet`s (`OldReplicaSets`). It keeps up to `spec.revisionHistoryLimit` old ReplicaSets, which default to `10`, scaled to `0` so you can roll back. *Kubernetes: Up and Running* (3rd edition, Chapter 10) shows how to record the reason for an update. Set the `kubernetes.io/change-cause` annotation inside `spec.template.metadata.annotations`. Put it on the Pod template, not on the top-level Deployment metadata. Add it only when you change the template, because any change to `spec.template` triggers a new rollout.
+During a `Deployment` rollout, the Deployment controller scales up the new `ReplicaSet` (`NewReplicaSet`) and scales down the old `ReplicaSet`s (`OldReplicaSets`). It keeps up to `spec.revisionHistoryLimit` old ReplicaSets, which default to `10`, scaled to `0` so you can roll back. *Kubernetes: Up and Running* shows how to record the reason for an update. Set the `kubernetes.io/change-cause` annotation inside `spec.template.metadata.annotations`. Put it on the Pod template, not on the top-level Deployment metadata. Add it only when you change the template, because any change to `spec.template` triggers a new rollout.
+
+Here is the rollout in plain steps. The controller creates or scales the new ReplicaSet a little. It waits for the new pods to report ready. Then it scales the old ReplicaSet down by the same amount. It repeats this until the new ReplicaSet holds every replica. If something goes wrong in the middle, the old ReplicaSet still exists at a nonzero count or at zero with its template saved, so you can go back. Each revision is a snapshot of the pod template, and the history is simply the list of those snapshots.
 
 ```yaml
 spec:
@@ -800,6 +860,8 @@ kuard-2738859366 3 3 3 ... gcr.io/kuar-demo/ ...
 
 Be careful with undo in a declarative setup. When you manage production from files, the manifests in source control should match what runs in the cluster. A `kubectl rollout undo` changes production in a way your source control does not show. An alternative, and perhaps the better choice, is to revert your YAML file and run `kubectl apply` on the previous version. In this way, your "change tracked configuration" more closely tracks what is really running in your cluster. Let's look at the Deployment history again after you do this, so you can check the result.
 
+A short story shows why this matters. On a Friday evening, someone runs `kubectl rollout undo` to stop an error rate from climbing. The cluster is healthy again within minutes. On Monday, a teammate applies the manifests from source control, which still describe the broken version, and the error comes back. Nobody made a mistake on purpose. The fix lived only in the cluster, and the files never caught up. Reverting the file first avoids that surprise, because the file and the cluster stay the same thing.
+
 ### Rolling updates and version compatibility
 
 A rolling update means two versions of your service answer requests at the same time. Imagine a frontend rollout that is halfway done. Half your servers run version 1 and half run version 2. A user's first request reaches a version 1 server and downloads the version 1 client library. That library then calls your API, and the call may reach a version 2 server.
@@ -813,6 +875,8 @@ Before you roll out a version, ask whether it can talk to the version before it 
 ### StatefulSet example (vector database)
 
 Suppose a vector database runs three replicas, and each one must keep its own data across restarts. A `StatefulSet` gives each replica a stable name and its own storage. The manifest below sets that up, with a headless Service in front.
+
+It helps to contrast this with a Deployment. In a Deployment, any replica can serve any request, and a replacement pod is just another copy. In a StatefulSet, replica number 0 is special to the application, because it has its own data and its own name. If you replaced replica 0 with a new pod that had an empty disk, the database would treat it as a new member with no history. The stable name and the stable disk together are what let the database trust that the replica is the same member as before.
 
 ```yaml
 apiVersion: v1
@@ -845,7 +909,7 @@ spec:
         resources: { requests: { storage: 200Gi } }
 ```
 
-Each pod gets a DNS name such as `qdrant-0.qdrant.data.svc.cluster.local`. The PVCs `storage-qdrant-0..2` persist across pod deletion. Scaling down leaves those PVCs in place, which protects your data. A pod is re-attached to the same PVC. For local volumes, that ties the pod to its zone or node topology.
+Each pod gets a DNS name such as `qdrant-0.qdrant.data.svc.cluster.local`. The PVCs `storage-qdrant-0..2` persist across pod deletion. Scaling down leaves those PVCs in place, which protects your data. A pod is re-attached to the same PVC. For local volumes, that ties the pod to its zone or node topology. The name stays with the replica, and so does the disk. That pairing is what makes a StatefulSet suitable for a database, and it is also why a careless delete can be expensive.
 
 ### DaemonSet example (GPU telemetry agent)
 
@@ -875,6 +939,8 @@ spec:
 ### DaemonSets: one Pod on every node
 
 Sometimes you want exactly one Pod on every node in the cluster. Most Deployments and ReplicaSets exist for the opposite reason. They run several replicas so that one failure does not take the service down. Replication has another use, though. That one-Pod-per-node case is the usual one when you need to place an agent or daemon on each machine. The Kubernetes object built for this job is the DaemonSet.
+
+A useful test is to ask what would go wrong if you ran two copies on one machine. For a web server, two copies on one machine is fine and often wasteful in the good way, since they share the load. For a log shipper, two copies on one machine would read the same files twice and send duplicate lines. The DaemonSet exists for the second kind of workload, where the right number of copies per machine is exactly one.
 
 A `DaemonSet` makes sure a copy of a Pod runs across a set of nodes. Teams use DaemonSets to deploy system daemons such as log collectors and monitoring agents. These daemons typically have to run on every node. DaemonSets and ReplicaSets share a lot of behavior. Both create Pods that are expected to run for a long time, and both keep the desired state and the observed state in agreement.
 
@@ -1103,7 +1169,7 @@ That matters most in an autoscaled cluster, where nodes come and go without anyo
 
 ### Job patterns for batch and distributed work
 
-A Job is batch work. It runs to completion, and then it stops. The manifest below defines an indexed Job with 16 completions, a Kueue queue label and a pod failure policy.
+A Job is batch work. It runs to completion, and then it stops. The manifest below defines an indexed Job with 16 completions, a Kueue queue label and a pod failure policy. Read the comments on the `podFailurePolicy` rules first. They explain which failures count against retries and which do not.
 
 ```yaml
 apiVersion: batch/v1
@@ -1134,6 +1200,8 @@ spec:
 ```
 
 For tightly coupled multi-node training, use JobSet, MPIJob or PyTorchJob with gang admission from Kueue or Volcano. A plain Job with `parallelism: N` can start some pods while others wait. That wastes GPUs and can deadlock collective initialisation. Part 14 covers these tools. Choose between a plain Job and gang-scheduled tools before you launch distributed training, because the wrong choice wastes GPUs.
+
+A simple picture helps here. A plain Job is like a group of runners who each start the moment they reach the track. A gang-scheduled job is like a relay team that starts only when every runner is on the track. Distributed training is a relay, because no one can take the first step until everyone is present. Starting part of the team early leaves the early runners standing still and still paying for their place.
 
 ### Job patterns: completions and parallelism
 
@@ -1166,6 +1234,8 @@ $ kubectl run -i oneshot \
 ```
 
 A few details matter here. The `-i` flag makes the command interactive, so `kubectl` waits until the Job runs and then prints the log of its one Pod. Everything after `--` goes to the container as arguments. Your output may start a little late, because `kubectl` often misses the first lines when `-i` is set.
+
+If you have ever run a command in a terminal and then wanted its result later, you already understand the idea. A Job is the same thing made durable. It keeps trying until one attempt succeeds, and it keeps the record of what happened afterward, so you can read the output long after the Pod is gone.
 
 When the run ends, the Job object and its Pod stay on the cluster, so you can read the logs. A completed Job is hidden from `kubectl get jobs` unless you add `-a`. Delete the Pod before you go on.
 
@@ -1316,7 +1386,7 @@ Apply it with `kubectl apply -f rs-queue.yaml`. To reach the queue from your lap
 $ kubectl port-forward rs/queue 8080:8080
 ```
 
-Open http://localhost:8080 in a browser to see the `kuard` interface. The “MemQ Server” tab shows what is happening in the queue. Next, expose the queue with a Service, as the next manifest shows. The Service gives producers and consumers a stable DNS name for the queue. Create it with `kubectl apply -f service-queue.yaml`.
+Open http://localhost:8080 in a browser to see the `kuard` interface. The "MemQ Server" tab shows what is happening in the queue. Next, expose the queue with a Service, as the next manifest shows. The Service gives producers and consumers a stable DNS name for the queue. Create it with `kubectl apply -f service-queue.yaml`.
 
 Now load the queue. The simplest way is `curl`, which talks to the queue API through the port forward. The script creates a queue named `keygen` and adds 100 work items to it.
 
@@ -1330,7 +1400,7 @@ curl -X POST localhost:8080/memq/server/queues/keygen/enqueue \
 done
 ```
 
-Running the script prints 100 JSON objects, one per work item, each with a unique message identifier. You can check the queue in the “MemQ Server” tab, or ask the API directly.
+Running the script prints 100 JSON objects, one per work item, each with a unique message identifier. You can check the queue in the "MemQ Server" tab, or ask the API directly.
 
 ```
 $ curl 127.0.0.1:8080/memq/server/stats
@@ -1339,6 +1409,8 @@ $ curl 127.0.0.1:8080/memq/server/stats
 The stats show a `depth` of 100 and an `enqueued` count of 100, with nothing dequeued yet.
 
 Consumers are the last piece. The `kuard` image can also act as a consumer. In this mode it takes an item from the queue, makes a key, and exits when the queue is empty. The next manifest starts five of these workers in parallel.
+
+Notice how the parts divide the work. The producer knows nothing about the workers, and the workers know nothing about one another. The queue sits in the middle and keeps the two sides independent. You can add or remove workers without touching the producer, and you can change how the producer builds its items without touching the workers, as long as the item format stays the same.
 
 ```yaml
 apiVersion: batch/v1
@@ -1494,17 +1566,25 @@ func main() {
 
 Handle `SIGTERM` even if your app has nothing to clean up. The handler makes the process stop sooner, and that frees the node's resources for other workloads.
 
+Walk through one request to see why the order matters. A client sends a request just as the pod starts shutting down. If the server closes its door at once, that request gets a connection error. If the server keeps the door open for a few seconds while the load balancers learn that the pod is leaving, the request is served normally. The `preStop` hook buys that time for the rest of the cluster to catch up, and the signal handler makes sure the server finishes what it already accepted.
+
 ### Resource limits and runtimes such as the JVM
 
 Limits stop one workload from taking everything. Without a limit, a Pod gets extra resources when they are free and loses them when other Pods need them. Performance then varies from run to run. Memory is worse. You cannot take memory back from a process without ending it, so the platform kills Pods that have grown past what they were allowed when it needs the memory back.
+
+A simple example shows how limits protect other workloads. Imagine two jobs on the same node. The first is a steady inference server with a steady load. The second is a batch job that sometimes spikes in memory use. With no limits, the spike can take memory the server needs, and the server slows or fails at exactly the wrong time. With a limit on the batch job, the spike ends at the limit, and the batch job is the one that suffers. The limit moves the damage to the workload that caused it.
 
 Some runtimes do not see the container's limit on their own. Java is the classic case. Older JVMs, JDK 8u131 and earlier, read the host's memory rather than the container limit. They then try to use more memory than the container allows. Pass the limit to the JVM through the `JAVA_OPTIONS` environment variable. Newer JVM versions detect container limits by themselves, so upgrading is the other fix when it is possible.
 
 Limits also matter for benchmarks. If a workload can burst into idle capacity, each test run may land on a different node with different free resources, and the results swing widely. Set limits equal to requests for a steady result. Then the application gets the same resources no matter what runs next to it.
 
+A benchmark is only useful if you can repeat it. Suppose you measure a model's throughput twice, and the second run is ten percent faster. Before you celebrate, check what else was running on the node each time. Shared resources change the answer from run to run, and a fixed set of limits removes one of the sources of that change. Record the limits alongside the results, so the next person can reproduce what you measured.
+
 ## 4. Operating pods
 
-A pod is in a state you do not understand, and a job is waiting on it. You need to find out why. When a pod misbehaves, these commands show its state, its events and its logs.
+A pod is in a state you do not understand, and a job is waiting on it. You need to find out why. When a pod misbehaves, the commands below show its state, its events and its logs. Work through them in order, because each one narrows the question for the next.
+
+Think of this section as a set of questions to ask a pod in order. What state is it in? What did the cluster do to it, and when? What did the application say before it stopped? Each command below answers one of those questions, and the early commands are the cheapest, so they come first.
 
 ### Reading state
 
@@ -1527,6 +1607,8 @@ kubectl get events --field-selector involvedObject.name=trainer-0 --sort-by=.las
 ```
 
 Read the events and the last container state first, because they usually name the failure.
+
+Here is a typical order for a pod that will not start. First, run `kubectl get pod` and read the status column, which tells you roughly which phase the pod is stuck in. Next, run `kubectl describe pod` and read the events from the bottom up, because the newest event is usually the most useful. Last, if a container did start and then failed, read its previous logs. Each step narrows the question, and you rarely need the next step once the events have named the problem.
 
 ### Listing and describing Pods
 
@@ -1565,6 +1647,8 @@ Delete a Pod by name with `kubectl delete pods/kuard`, or with the manifest it c
 
 A pod's `phase` is one of Pending, Running, Succeeded, Failed or Unknown. Pending means the Pod has been accepted, but not all of its containers are running yet. It may still be scheduling, pulling images or running init containers. Each container is in a Waiting, Running or Terminated state. A waiting container gives a reason such as `ContainerCreating`, `ImagePullBackOff`, `CrashLoopBackOff` or `CreateContainerConfigError`. A terminated container gives a reason such as `Completed`, `Error` or `OOMKilled`, along with an exit code. Conditions include `PodScheduled`, `Initialized`, `ContainersReady`, `Ready` and `DisruptionTarget`.
 
+Phases are a coarse summary. They describe the broad state of the pod, but the reason and the exit code tell you why. Two pods can both show `Pending` for completely different reasons, one waiting for a GPU and one waiting for an image to download. That is why the reasons matter more than the phase name when you are debugging.
+
 Use the table below to match a symptom to its likely cause and fix.
 
 | Symptom | Likely cause | Fix |
@@ -1584,17 +1668,21 @@ For most of these symptoms, start with `describe`, because its events usually po
 
 ## 5. Sizing and placement guidelines for GPU workloads
 
-A GPU node has a fixed number of GPUs and CPU cores. A pod that claims the wrong share of them leaves the rest of the node idle or fragmented. The guidelines below cover the sizing choices that matter most.
+A GPU node has a fixed number of GPUs and CPU cores. A pod that claims the wrong share of them leaves the rest of the node idle or fragmented. Think of the node as a fixed-size parking garage. Oversized cars waste spaces, and undersized cars block the lanes. The guidelines below cover the sizing choices that matter most.
 
 Request all the GPUs of a node for a multi-GPU training pod, which is 8 on an HGX node. Add CPU and memory in proportion, so the pod is Guaranteed and small CPU-only pods do not fragment the node. Match CPU requests to the data-loading work. Heavy augmentation may need 8 to 16 cores per GPU. Leave headroom for system daemons through kube and system reserved settings.
 
-Memory and storage need the same care. Set `/dev/shm` explicitly with a memory-backed `emptyDir` and a `sizeLimit`, and count it in the memory accounting. Mount datasets read-only from shared storage. Write checkpoints to durable storage with an atomic rename. Use local NVMe `emptyDir` volumes or local PVs for scratch space and caching.
+Memory and storage need the same care. Set `/dev/shm` explicitly with a memory-backed `emptyDir` and a `sizeLimit`, and count it in the memory accounting. Mount datasets read-only from shared storage. Write checkpoints to durable storage with an atomic rename, so a crash in the middle of a write never leaves a half-written file that looks valid. Use local NVMe `emptyDir` volumes or local PVs for scratch space and caching.
 
 Priority and shutdown need deliberate choices. Set `priorityClassName` and preemption policies on purpose, separating interactive work, training and best-effort jobs. Handle SIGTERM so a training job can write its checkpoint. Set `terminationGracePeriodSeconds` to at least the checkpoint duration plus a margin.
 
+Think of priority as a seating plan. If interactive notebooks and a long training run compete for the same GPUs, the plan decides who gets moved when space runs out. Without a plan, the scheduler decides by default, and the outcome may not match what you wanted when a deadline is close.
+
 Spread inference replicas with `topologySpreadConstraints` or anti-affinity, across nodes and zones. Training pods that need locality can use pod affinity or rack and rail labels instead, which 5.18 and Part 12 cover.
 
-Pin images by digest. Prefer images built for a matching CUDA and driver version, which 5.1 covers, and pre-pull them on the nodes. Set `automountServiceAccountToken: false` on any pod that does not call the API. Finally, label every pod for cost allocation and ownership, using the team, project and run ID consistently.
+Pin images by digest. Prefer images built for a matching CUDA and driver version, which 5.1 covers, and pre-pull them on the nodes. Set `automountServiceAccountToken: false` on any pod that does not call the API. Finally, label every pod for cost allocation and ownership, using the team, project and run ID consistently. A label that nobody fills in is the same as no label, so make the labels part of the template rather than an afterthought.
+
+A checklist helps when a new team starts on the cluster. Before the first production pod goes live, check the image is pinned, the requests and limits are set, the probes match the startup time, the grace period covers the checkpoint, the security context is restrictive, and the labels are present. Each item on the list maps to a section above, so a missing item tells you exactly where to go back.
 
 Four application-level contracts with Kubernetes come from *Production Kubernetes*, Chapter 14 (*Application Considerations*). Josh Rosso and his co-authors describe them. The first is propagating cgroup limits through the Downward API. Runtimes such as older JVMs, or multi-worker Python and C++ allocators, can read the host `/proc/meminfo` rather than the cgroup limits. They may then allocate beyond the container's limit and get `OOMKilled`. To prevent that, expose `resources.limits.memory` as `MEM_LIMIT` through the Downward API, using `resourceFieldRef: { containerName: my-app, resource: limits.memory }`.
 
@@ -1610,11 +1698,15 @@ Start with the first guideline for any multi-GPU pod: request every GPU on the n
 
 Start on your own machine. The self-checking Python lab at `code/part05/pod_qos_workload_validator_lab.py` needs no cluster. It checks the Pod QoS class (`Guaranteed`, `Burstable` or `BestEffort`) and `oom_score_adj`. It also checks the init-container effective scheduling request calculator, `compute_pod_qos_and_effective_requests`, which computes `max(max_init, sum_app)`. Last, it checks the Kubernetes label key and value validator, `validate_k8s_label`, from *Kubernetes: Up and Running*, Chapter 6.
 
+A good first habit is to run the lab before you open a cluster. The lab gives you a quick, safe place to test your reasoning. If your prediction about a QoS class or a request total is wrong, you find out in seconds and without touching anything real.
+
 ```bash
 python3 code/part05/pod_qos_workload_validator_lab.py
 ```
 
-Next, move to a `kind` or GPU cluster and work through these exercises. The interactive shell steps below were not run on live hardware.
+Next, move to a `kind` or GPU cluster and work through these exercises. The interactive shell steps below were not run on live hardware. Treat each one as a first attempt, and write down what you saw so you can compare it with the next run.
+
+The Python lab checks the logic you will meet in the cluster, such as how QoS classes and effective requests are computed. Passing it does not prove that a cluster will behave the same way. It proves that your reading of the rules matches the rules the lab encodes, which is still worth knowing before you spend time on a live cluster.
 
 1. Start with pod anatomy. Write a pod with an init container, a native sidecar, a shared `emptyDir`, and environment taken from a ConfigMap, a Secret and the Downward API. View it with `kubectl get -o yaml`, then read its `status` fields and conditions.
 2. Compare QoS and OOM. Create pods with Guaranteed, Burstable and BestEffort QoS. Inspect `/proc/<pid>/oom_score_adj` through `crictl` or the node. Run a memory hog beyond its limit and observe `OOMKilled`. In a lab only, fill node memory to see the eviction order.
@@ -1632,19 +1724,21 @@ Next, move to a `kind` or GPU cluster and work through these exercises. The inte
 
 ## 7. Common mistakes
 
-Some of the most expensive mistakes take only one line to make. The first group is about resources. Important pods with no resource requests end up as BestEffort. Memory limits set far above requests invite trouble. Teams also forget `/dev/shm` when they size memory.
+Some of the most expensive mistakes take only one line to make. The first group is about resources. Important pods with no resource requests end up as BestEffort, which is the first class the node sacrifices under pressure. Memory limits set far above requests invite trouble, because the scheduler packs the node by requests and then the limits come due all at once. Teams also forget `/dev/shm` when they size memory.
 
-The second group is about probes and images. A liveness probe on a slow-starting model server, with no startup probe, creates a restart loop. Using `latest` tags, `hostPath` for convenience, or `privileged` to "make GPUs work" are all common shortcuts. Each one hides a problem that shows up later.
+The second group is about probes and images. A liveness probe on a slow-starting model server, with no startup probe, creates a restart loop. Using `latest` tags, `hostPath` for convenience, or `privileged` to "make GPUs work" are all common shortcuts. Each one hides a problem that shows up later, usually at the worst possible time.
 
 The third group is about shutdown and workload choice. A shell-form entrypoint can make the container ignore SIGTERM. A grace period that is too short cuts off a checkpoint. Teams also use Deployments for training jobs that should be Jobs or JobSet, and plain Jobs for gang workloads.
 
 Maintenance causes its own trouble. A StatefulSet with a PDB or update strategy can block maintenance, and PVCs get deleted by accident. A PDB that forbids all disruption blocks drains. DaemonSets without tolerations for tainted GPU nodes leave agents missing exactly where they are needed.
 
+The common thread is that each shortcut moves a cost from today to a later day. A `latest` tag saves a version decision now and costs a surprise change later. A `privileged` container saves an hour now and costs the isolation you depend on later. When you feel tempted by a shortcut, write down the day when it will cost you, and decide whether you are willing to pay then.
+
 Last, watch for secrets and tokens. Secrets in env vars can end up printed in logs. Service account tokens get auto-mounted into pods that do not need them. And assuming CPU limits are harmless is a mistake for latency-sensitive services.
 
 ## 8. Interview angles
 
-Interviewers often start with pods, because the answers reveal how much you understand about the runtime. Expect questions like these.
+Interviewers often start with pods, because the answers reveal how much you understand about the runtime. Expect questions like these. Try answering each one out loud in two or three sentences before you read on. If you cannot, the matching section above is the place to go back to.
 
 - "What is a pod and why not just containers? What do containers in a pod share?"
 - "Explain QoS classes and how they affect eviction and OOM."

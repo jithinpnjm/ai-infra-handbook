@@ -26,6 +26,8 @@ Picture a GPU server with 8 GPUs, dual-socket CPUs, multiple NICs and NVMe drive
 
 Two more decisions sit with the kubelet: how long a node can lose connectivity before its pods are rescheduled, and how containers are killed on shutdown. Left at defaults, these settings leave a lot of performance and reliability on the table. You will see the symptoms as cross-NUMA traffic, CPU throttling, noisy neighbours, nodes that die from OOM because nothing was reserved for the OS, and long recovery times after failures. This chapter explains the kubelet's responsibilities and how to tune them for AI nodes.
 
+Put simply, these are the settings that decide how the node behaves when the world goes wrong. A node that loses its network, or that runs out of memory, is not the exception on a large GPU fleet. It is a regular event, and the settings in this chapter decide whether the event is a short inconvenience or a long outage. Reading the settings with that in mind makes each one easier to justify.
+
 ## Prerequisites and outcomes
 
 This chapter builds on 5.2, 5.7 and 5.8. When you finish it, you should be able to explain why a node behaves the way it does, and tune it on purpose. You will describe the kubelet's responsibilities, its configuration sources and its APIs. You will also write a production `KubeletConfiguration`.
@@ -61,15 +63,25 @@ flowchart TB
 
 The diagram shows the kubelet as a hub. Pods reach the node from three sources, shown at the top. Most come from the API server, which the kubelet watches for pods whose `spec.nodeName` is this node. The pod manager merges the sources and hands each pod to a worker. That worker drives everything else on the node: volumes, resource managers, the container runtime through CRI, and probes.
 
+A useful way to hold the diagram in mind is a hotel front desk. Guests arrive from several entrances, which are the three pod sources. The desk checks each arrival, assigns a room and passes the job to a housekeeper for that room. Each housekeeper then calls on the laundry, the maintenance team and the phone system as needed. Every box in the diagram is a specialist that the pod workers call on. Nothing on the node reaches a pod except through this hub, which is why the kubelet is the first place to look when a pod on the node behaves strangely.
+
 The kubelet has a long list of jobs. It registers the Node with its labels, capacity, allocatable, conditions, addresses and daemon endpoints. It runs the pods assigned to it through CRI, and it manages their cgroups and QoS. It mounts volumes, runs probes and reports status. It garbage-collects containers, images and logs, and it enforces eviction under pressure. It also exposes metrics and APIs, handles graceful node shutdown, and rotates its client and serving certificates.
+
+Think of the kubelet as the building superintendent for one floor of a large office block. The superintendent does not own the tenants, and the head office sets the rules. The superintendent makes sure each tenant has power, water and a working lock, reports problems upward, and clears out old boxes from the hallways when space runs low. The job description is long because a node has many small duties that all have to be done on time.
 
 Set the kubelet's behaviour in a `KubeletConfiguration` file rather than in flags. The kubelet reads that file through `--config`, and kubeadm typically writes it to `/var/lib/kubelet/config.yaml`. kubeadm also keeps a cluster-wide copy in the ConfigMap `kube-system/kubelet-config`. Per-node overrides arrive through `--config` or the drop-ins in `/etc/kubernetes/kubelet.conf.d/*.conf` in newer releases, and through `KUBELET_EXTRA_ARGS`. Dynamic kubelet config was removed, so you roll changes out with restarts. Inspect the live config with `kubectl get --raw "/api/v1/nodes/<node>/proxy/configz" | jq .kubeletconfig`.
 
+A file is easier to review than a list of flags. You can read it in a pull request, compare two nodes with a diff, and keep it in version control next to the rest of the cluster's settings. Flags tend to scatter across unit files and scripts, and a setting that lives in three places is a setting that drifts. Using one file gives each node a single answer to the question of how it is configured.
+
 For any change that disrupts running pods, drain the node before you restart the kubelet.
+
+Draining first is the same courtesy you would extend to a colleague before you switch off the power in their office. The pods are moved to other nodes in an orderly way, and the restart then affects nothing that is still running. Skipping the drain turns a routine configuration change into an unplanned interruption for the workloads that happen to be on the node.
 
 ## 2. A production KubeletConfiguration for GPU nodes
 
 The file below is the kind of configuration a GPU node needs. Several of its settings depend on other parts of the cluster, and the comments mark those spots. Read it as a starting point for your own nodes.
+
+Read the file in groups rather than line by line. The top block covers who may talk to the kubelet and how. The cgroup and kernel block covers how the kubelet and the kernel are expected to cooperate. The next block covers how many pods and images the node handles at once. Then comes the block for GPU and NUMA placement, followed by reservations and eviction. Grouping the file this way makes it much easier to see which change affects which behavior.
 
 ```yaml
 apiVersion: kubelet.config.k8s.io/v1beta1
@@ -134,9 +146,13 @@ featureGates: {}                          # avoid alpha gates in production
 
 A few settings need a closer look. `cgroupDriver: systemd` must match the runtime described in 5.2, because a mismatch destabilises the node. `protectKernelDefaults` makes the kubelet fail on start if the required sysctls are missing. Those are `vm.overcommit_memory=1`, `kernel.panic=10` and `kernel.panic_on_oops=1`. Set them during node bootstrap, as covered in 4.17, so behaviour stays consistent.
 
+The reason the driver matters is that the kubelet and the container runtime each manage cgroups, and they must agree about who is in charge. If they disagree, the node can end up with two sets of limits pulling in different directions. The symptom is usually a node that starts and then becomes unstable, which is harder to diagnose than a node that refuses to start. Checking the driver first saves a long investigation later.
+
 `seccompDefault` applies the runtime's default seccomp profile to every pod. Some GPU and RDMA tools need exceptions, so check that your workloads work with it. `serverTLSBootstrap` and `rotateCertificates` let the kubelet get and rotate its certificates through CSRs, which 5.21 describes. You approve the serving CSRs with an approver. The default `maxPods` is 110, but the pod CIDR size on each node and the CNI also limit it. A `/24` pod CIDR gives about 254 IPs. GPU nodes rarely need 110 pods, so lowering the value can leave headroom.
 
 For image pulls, `serializeImagePulls: false` with `maxParallelImagePulls` speeds up starts when one node pulls several large images. `registryPullQPS` keeps the kubelet from hammering a registry.
+
+Serial pulls work like a single checkout lane at a store. Everyone waits for the person in front to finish, even if the person in front has a single small item. Parallel pulls open more lanes, so a small image is not stuck behind a large one. The cap on parallel pulls matters because too many lanes can saturate the disk and the network, and then every lane slows down.
 
 Get the cgroup driver and the kernel defaults right first, because those mismatches are the ones that destabilise a node or stop it from starting.
 
@@ -159,9 +175,13 @@ Get the cgroup driver and the kernel defaults right first, because those mismatc
 
 Every pod on the node sits somewhere in this tree. The kubelet builds the `kubepods` cgroup and the QoS sub-slices when `cgroupsPerQOS` is on. It gives each pod a CPU weight in proportion to its requests (`cpu.weight`). It also enforces the **node allocatable** limit on the `kubepods` cgroup. Non-Guaranteed pods get pod-level cgroup limits, which are the sum of their container limits. With cgroup v2 and the MemoryQoS feature, `memory.min/memory.high` give soft protection and throttling before a pod reaches its hard limits. Check your release's status for that feature.
 
+Read the tree as the floor plan of a building. The top level holds the rooms for the operating system and for all the pods. Under the pod room are separate wings for each quality class, and each pod gets its own small room inside its wing. The kubelet decides which wing a pod goes in, based on its QoS class, and the kernel then applies the limits for that room. That layout is why the tree matters when you debug: the path to a pod's cgroup tells you its class immediately.
+
 ### Node capacity and allocatable
 
 The scheduler places pods against allocatable, not raw capacity. The kubelet gets allocatable by subtracting the reservations and the hard eviction threshold from capacity.
+
+Think of capacity as the total size of a fridge and allocatable as the space left after you reserve shelves for the milk, the eggs and the cleaning supplies that must always be there. The scheduler only fills the space that is left. If the reservations are too big, the node looks full while it is actually half empty for pods. If they are too small, the node accepts more pods than the system daemons can tolerate, and the daemons are the first things to suffer.
 
 ```text
 Capacity (reported by kubelet: cpu, memory, ephemeral-storage, pods, hugepages-*, extended resources)
@@ -175,15 +195,23 @@ Capacity (reported by kubelet: cpu, memory, ephemeral-storage, pods, hugepages-*
 
 `enforceNodeAllocatable: ["pods"]` is the default, and it enforces only the pods limit. Enforcing `system-reserved` or `kube-reserved` requires dedicated cgroups and carefully sized values. Misconfigured enforcement kills system daemons.
 
+The distinction matters because enforcement is a hard wall. Reserved memory is normally a promise the scheduler keeps, not a limit the kernel enforces on the system services. Turning on enforcement for the system services turns that promise into a wall around them. A wall set too low will kill a daemon that needed more room, so enforce only after you have measured what the daemons really use.
+
 ### QoS recap (details in 5.7)
 
 Guaranteed, Burstable and BestEffort decide three things: cgroup placement, OOM score and eviction order. The kernel OOM killer picks its victims by `oom_score`, which includes `oom_score_adj`. The kubelet sets -997 for Guaranteed pods and 1000 for BestEffort pods. Burstable pods land between those two values, in proportion to request and capacity. Critical kubelet and runtime processes have -999. System daemons without protection can still be killed if the node runs out of memory outside the pods cgroup.
 
+A helpful picture is a set of lifeboats on a ship. The Guaranteed pods have the best seats and are the last to be asked to leave. Burstable pods have seats with conditions, and they leave before the Guaranteed ones when the boats are full. BestEffort pods have no reserved seat at all, so they are first in line when space is needed. The three classes are the same idea repeated across cgroups, OOM scores and eviction, which is why they are worth learning as one concept.
+
 Size your reservations before you turn on enforcement, because a bad value kills system daemons.
+
+A practical way to size reservations is to measure before you enforce. Run the node with enforcement off for a while, watch what the system daemons actually use under load, and set the reservation a comfortable margin above that peak. Only then turn enforcement on, and watch the daemons again. Measuring first turns a guess into a number you can defend in a review.
 
 ### CPU limits and throttling in multithreaded code
 
 CPU limits can behave in ways that surprise you. Take a container with a limit of 1 CPU. It gets 100 ms of CPU time in every 100 ms period, no matter how many threads it runs. A program with 5 busy threads can spend that whole 100 ms budget in its first 20 ms. The container is then throttled for the remaining 80 ms, even though the node may have idle CPU.
+
+The way to picture a CPU limit is as a budget that refreshes every period. Each period the container gets a fixed amount of CPU time, and when the budget runs out, the container waits until the next period starts. With one thread, the budget lasts a long time. With several busy threads, the budget can run out early in the period, and every thread then waits in silence. The average looks fine, but the tail of the latency distribution grows, and those tail requests are often what users notice.
 
 The effect shows up as latency that comes and goes. The application looks fine on average, but requests that arrive late in a period wait longer. Keep this in mind when you set a low CPU limit on a multithreaded service, and test its latency under load before you ship it.
 
@@ -192,6 +220,8 @@ The effect shows up as latency that comes and goes. The application looks fine o
 ### CPU Manager
 
 The CPU Manager has two policies that matter for AI nodes. With `none`, the default, pods share all CPUs through CFS, and limits cause throttling.
+
+The difference between the two policies is the difference between a shared kitchen and a private one. With the shared policy, every pod cooks in the same kitchen and waits its turn for the stove. With the static policy, a Guaranteed pod that asks for whole cores gets its own stove that nobody else uses. For a latency-sensitive inference server, the private stove removes most of the waiting. For a batch job that does not mind waiting, the shared kitchen is usually fine.
 
 With `static`, a Guaranteed pod that requests integer CPUs gets exclusive cores. The kubelet removes those cores from the shared pool and pins the pod to them with `cpuset`. For AI work that means no CFS throttling, no cache or scheduler noise for data-loading threads, NUMA-local placement and deterministic latency for inference. The static policy needs Guaranteed QoS, integer CPU requests and reserved CPUs, set through `reservedSystemCPUs` or the CPU in `kubeReserved/systemReserved`. Its policy options include `full-pcpus-only`, which avoids sharing hyperthread siblings, plus `distribute-cpus-across-numa` and `align-by-socket`. Changing the policy means draining the node and deleting `/var/lib/kubelet/cpu_manager_state`.
 
@@ -205,6 +235,8 @@ The `Static` policy with `reservedMemory` lets Guaranteed pods get NUMA-pinned m
 
 The Topology Manager acts as a broker. It collects NUMA hints from the CPU Manager, the Memory Manager and the Device Manager, then enforces a policy. Device plugins report topology, such as the NUMA node of a GPU or a NIC.
 
+A broker is useful because each device and resource speaks only for itself. The GPU knows which NUMA node it sits on, the NIC knows its own node, and the CPU manager knows which cores are free. None of them knows the full picture. The Topology Manager gathers their preferences and decides whether a single placement can satisfy all of them. If it cannot, the policy decides whether to reject the pod or admit it with the misalignment.
+
 | Policy | Behaviour |
 |---|---|
 | `none` | No alignment (default) |
@@ -215,6 +247,8 @@ The Topology Manager acts as a broker. It collects NUMA hints from the CPU Manag
 The policies differ in how strictly they treat misalignment, as the table shows. Scope `container` aligns each container alone, while scope `pod` aligns all containers of a pod together.
 
 For AI nodes, the question is how many GPUs a pod needs. An 8-GPU training pod spans both sockets by design, so its hints would not be preferred. Use `best-effort` or `none` for it, or per-pod relaxations. A 1 to 4 GPU inference pod benefits from `single-numa-node` or `restricted`. Its CPUs, memory, GPU and NIC then share one NUMA node and PCIe root. Misalignment shows up as lower DataLoader throughput, or as GPUDirect RDMA falling back through the CPU interconnect. If alignment cannot be satisfied, the pod fails at admission after it has been scheduled. The scheduler is not topology-aware by default. To avoid that, use NFD or topology-aware scheduling (the NodeResourceTopology plugin), or DRA (5.18).
+
+Here is the reasoning in plain terms. A pod that uses all the GPUs on a dual-socket server must touch both sockets anyway, so insisting on one NUMA node would reject it every time. A small inference pod that uses one or two GPUs can comfortably sit on one socket, and keeping it there keeps the memory traffic local. The policy should match the shape of the pod, not a single rule applied to every pool.
 
 ### Device Manager and Pod Resources API
 
@@ -227,6 +261,8 @@ For multi-GPU AI nodes, decide which pods need NUMA alignment before you pick a 
 ## 5. Probes
 
 Picture a container that is up but still loading its model. Until it finishes, a check against its port tells you nothing useful. The kubelet runs three kinds of probe for each container, on a timer. Each one asks a different question, and each failure leads to a different action. The table shows what each probe asks and what happens when it fails.
+
+Think of the three probes as three different questions a receptionist might ask a visitor. The startup probe asks whether the visitor has finished arriving, and nobody else is asked anything until the answer is yes. The readiness probe asks whether the visitor is ready to take a call right now, and a no means the call is sent elsewhere for the moment. The liveness probe asks whether the visitor has fainted, and a no means someone must help them up. Each question has a different consequence, so each probe needs its own design.
 
 | Probe | Question | On failure |
 |---|---|---|
@@ -242,7 +278,11 @@ A startup probe handles slow starts, such as LLM weights loading, CUDA graph cap
 
 Liveness probes must be local and cheap. Check that the process is not deadlocked, and do not check external dependencies. A database outage must not restart every app pod. For stateful or long-running training workers, consider omitting the liveness probe, because a restart is destructive for them.
 
+A liveness probe that checks a database is like a receptionist who calls the bank whenever a visitor asks a question. If the bank is slow, every visitor gets flagged as broken at once, and they are all sent home together. The safer design checks only what the process itself controls, so a failure means the process really is stuck and a restart will help.
+
 Readiness probes should pass only when the model is loaded and a tiny inference works. Flip the probe to not-ready during graceful shutdown or drain, and keep the endpoint cheap. Timeouts deserve attention too. The default 1 s is often too short on busy nodes. CFS throttling can fail the probes of otherwise healthy pods that have CPU limits, so set a realistic `timeoutSeconds`.
+
+A readiness probe that passes too early sends traffic to a server that cannot answer. A readiness probe that fails too often takes a working server out of rotation for no good reason. The balance is to make the probe reflect the work the server must do, and to keep it cheap enough to run often without adding load.
 
 Probe results appear in events, such as `Unhealthy: Readiness probe failed: ...`, and in the `prober_probe_total` metric. **Readiness gates** (`readinessGates`) let external controllers add conditions that must be true, such as load balancer registration for cloud LBs.
 
@@ -302,6 +342,8 @@ Use a startup probe when the container needs a long time to start, a readiness p
 
 Picture a node whose memory use creeps upward. Nothing has crashed yet, but the eviction manager is already watching. It reads node signals from cAdvisor and cgroup stats on the kubelet's housekeeping cycle, about every 10 seconds, and compares them with thresholds. The setting `evictionPressureTransitionPeriod`, 5 minutes by default, does not control sampling. It is how long the node waits after a signal recovers before it clears the pressure condition. The table lists those signals and what each one measures.
 
+The creeping case is the most dangerous because nothing looks wrong until it is too late. A node that jumps from calm to full in one step gives the kubelet no time to act. A node that climbs slowly gives the eviction manager many samples to notice the trend, and soft thresholds let it act before the situation becomes urgent. That is why the soft and hard thresholds exist as two separate lines.
+
 | Signal | Meaning |
 |---|---|
 | `memory.available` | `capacity − working set` on the node (excluding reclaimable page cache accounted into inactive file) |
@@ -314,15 +356,21 @@ Hard thresholds evict immediately, with grace 0 and a `SIGKILL`-like short grace
 
 When memory runs short, the kubelet picks victims in a fixed order. It starts with pods whose usage exceeds their requests, and BestEffort counts as request 0. Among those, lower priority goes first, then the pods furthest over their requests. For disk pressure, the order uses ephemeral storage usage over request, and then priority. Guaranteed pods are evicted last, and only if system daemons are the problem and nothing else is left. Evicted pods end `Failed` with the reason `Evicted`, and controllers recreate them elsewhere. Critical pods, meaning pods with priority `system-node-critical`/`system-cluster-critical` and static pods, are protected.
 
+The order makes sense once you see the goal. The kubelet wants to free memory with the least harm to the work that matters most. Pods that are already over their request have, in a sense, borrowed memory they never reserved, so they are the first to return it. Within that group, lower priority goes first. Pods within their requests and Guaranteed pods are protected because the node promised them that memory.
+
 Keep three kill mechanisms apart. The first is the **kernel OOM killer**, which acts inside a cgroup. It fires when a container exceeds its memory limit, or when the node runs out of memory faster than the kubelet can react. The process is killed, the container restarts according to policy, and the reason shows as `OOMKilled`. The second is *kubelet eviction*. It is graceful, works at pod level under node pressure, and ignores PDBs. The third is *API-initiated eviction/preemption/drain*, which respects PDBs and priority.
 
 For AI nodes, set `evictionHard memory.available` large enough, several GiB, so the kubelet acts before the kernel OOM killer picks processes at random. Workloads with huge page cache and pinned memory can consume memory faster than the kubelet's housekeeping sample, which runs every 10 s. Prefer Guaranteed pods for important jobs. Keep `ephemeral-storage` requests on pods that write scratch data, so disk pressure does not arrive as a surprise.
 
 Pick the `evictionHard` memory value before a training job fills the node, not after the first OOM.
 
+The reason to choose the value early is that the first OOM is the most expensive teacher. By then the job has lost its progress and the node has already made a choice on your behalf. Picking the threshold while the node is calm lets you reason about it with a clear head, and it gives the kubelet room to act while there is still time for an orderly eviction.
+
 ### Reading an OOMKilled container
 
 Memory cannot be throttled the way CPU can. When a container uses more memory than its limit, the kernel has to stop the process. The container then restarts under its restart policy, and the pod records why. You can see that record with `kubectl describe pod`, in the `Last State` section.
+
+The contrast with CPU is the key idea. A process that runs out of CPU time simply waits, and it can wait for a while without harm. A process that runs out of memory has no such option, because the memory it asked for is already in use. The kernel must therefore stop something, and the container restart is the quickest way to recover the memory. Setting the limit well above the real peak is the only way to avoid that stop.
 
 The output below comes from a container with a memory limit of 100Mi. Look at `Reason: OOMKilled` and the exit code. The kernel kills the process with SIGKILL, so containers killed this way normally report exit code 137, which is 128 plus signal 9. The `Restart Count` shows how many times the container has restarted.
 
@@ -354,6 +402,8 @@ When you see this reason, compare the memory limit with what the workload really
 
 Disks on a GPU node fill up quietly. Old containers, unused images and chatty logs all take space, and the kubelet has to clean them up. Container GC removes exited containers beyond `maxPerPodContainer` or `maxContainers`, and older than `minimumContainerTTL`-like behaviour. The flags `--maximum-dead-containers*` were deprecated in favour of eviction-based cleaning. Dead containers keep consuming writable layer space until something removes them.
 
+Disk pressure is harder to notice than memory pressure, because nothing crashes at first. Logs grow a few megabytes at a time, old images stay on disk until someone asks for space, and dead containers hold on to their writable layers. One day a pull fails because the disk is full, and the cause turns out to be weeks of quiet growth. Watching the disk trend, and setting the thresholds early, prevents that kind of surprise.
+
 Image GC starts when image filesystem usage exceeds `imageGCHighThresholdPercent`. It then removes the least recently used unused images until usage falls to `imageGCLowThresholdPercent`. It skips any image younger than `imageMinimumGCAge`. Take an ML image of 20 to 50 GB on a 1 TB disk. An 85% high threshold lets hundreds of GB fill before GC starts. GC may then delete the image you need next, which triggers a long re-pull. Use bigger disks, `imageMaximumGCAge` (newer), and pre-pull policies to avoid that cycle.
 
 Log rotation works on a different axis. The kubelet rotates CRI logs at `containerLogMaxSize`, and it keeps `containerLogMaxFiles` of them. Training jobs that print per-step logs at a high rate can fill disks and add CPU overhead. Log to stdout moderately, ship metrics separately, or write detailed logs to a PVC or object storage.
@@ -365,6 +415,8 @@ Size the disks and set the GC thresholds before you start pulling large ML image
 ## 8. Node status, leases and failure behaviour
 
 Picture a node that stops answering. The control plane has to decide whether the node is gone, and how long to wait before it moves the node's pods. Leases and status updates answer that question.
+
+A useful analogy is a receptionist who stops calling in. The office keeps running for a while, because the staff know their jobs. But the manager eventually notices the silence and reassigns the visitors. The grace periods in this section are the time the manager waits before reassigning, and choosing them is a trade between patience and speed of recovery.
 
 The kubelet renews a Lease named `kube-node-lease/<node>` every `nodeLeaseDurationSeconds/4`, which is 10 s. That is cheap. The kubelet also updates `Node.status` when something changes, or every `nodeStatusReportFrequency`, which is 5 min. The node controller waits for `--node-monitor-grace-period` after the last lease or status update, and then marks the node `Ready=Unknown`. That grace period was 40 s in older releases, and recent kube-controller-manager references list 50 s, so check the default for your Kubernetes version.
 
@@ -382,7 +434,11 @@ Decide how long each workload should tolerate a NotReady node before its pods mo
 
 Static pods are the pods the kubelet runs without the API server asking for them. Manifests in `staticPodPath` (`/etc/kubernetes/manifests`) are run directly by the kubelet. The kubelet also mirrors each one into the API as a read-only mirror pod, with the suffix `-<nodename>`. kubeadm uses static pods for the control-plane components, and node-critical agents use them too. Editing a file reconfigures the pod immediately, and deleting the file removes the pod. Static pods cannot use ConfigMaps or Secrets from the API, because they are file-based only. Controllers do not control them.
 
+Static pods solve a chicken-and-egg problem. The control plane runs as pods, but the scheduler and the API server need some pods to exist before they can schedule anything. The kubelet reads those pods from files on disk, so it can start them without any API at all. The mirror pod is just a read-only view that lets you see the static pod with ordinary tools.
+
 The kubelet API on port 10250 authenticates with x509 certificates or bearer tokens through a webhook. Authorisation also goes through a webhook, using the `nodes/proxy`, `nodes/stats`, `nodes/log` and `nodes/metrics` subresources. Granting `nodes/proxy` is effectively `exec` rights on every pod on the node. Audit any RBAC that includes it, because many monitoring roles do. The endpoints are `/pods`, `/runningpods`, `/stats/summary`, `/metrics`, `/metrics/cadvisor`, `/metrics/resource`, `/metrics/probes`, `/logs/`, `/exec`, `/attach`, `/portForward`, `/configz` and `/healthz`. Disable the read-only port 10255 and anonymous auth, and keep `authorization.mode: Webhook`.
+
+Think of the kubelet API as a service entrance that opens onto every room in the building. Each door has its own lock, but the entrance itself must be guarded. Authentication checks who is at the door, and authorization checks which rooms that person may enter. The subresources listed in the next sentences are the rooms, and some of them, like the proxy, open onto everything at once.
 
 The Node authorizer and NodeRestriction admission limit what a kubelet can read and modify. A kubelet can touch only its own node and the pods bound to it. It also cannot set certain labels, such as `node-role.*` or `node-restriction.kubernetes.io/*`.
 
@@ -403,6 +459,8 @@ Use `journalctl -u kubelet -f` to follow kubelet logs. The default verbosity is 
 ## 11. Troubleshooting guide
 
 Read the table from left to right. The first column is the symptom you see. The second is the most likely cause, and the third is the command or log that confirms it.
+
+The table works best as a conversation. Start with the symptom you see on the node, find the cause in the middle column that fits it, and then run the check on the right to confirm. Several rows share a root cause, such as the probes row and the throttling row, so once you have confirmed one, the others are often explained too.
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
@@ -427,6 +485,8 @@ When a node turns NotReady, start with the kubelet journal. The probe and evicti
 
 Start with the foundation. Use the systemd cgroup driver, cgroup v2, and a kernel and runtime that are up to date and consistent across nodes (4.17). Reserve CPU for kube and system daemons with dedicated cores through `reservedSystemCPUs`, and reserve memory and ephemeral-storage the same way. Set meaningful hard eviction thresholds.
 
+A good order for a new GPU node is foundation first, then placement, then images, then failures, then security, then observability. Each layer depends on the one before it. A carefully tuned scheduler cannot help a node whose cgroup driver disagrees with its runtime, and a fine eviction policy cannot protect a node that was never reserved. Tuning in this order means each change rests on something solid.
+
 Next, place the workloads. Use the CPU Manager `static` policy with `full-pcpus-only`. Choose the Topology Manager policy per node pool: relaxed for 8-GPU training pools, and strict for small-GPU inference pools. Use the Memory Manager only if hugepage or NUMA pinning is required. Use Guaranteed QoS for GPU pods, and set explicit shm and ephemeral storage. Keep the PID limit adequate for multi-process training, with `podPidsLimit` at thousands or more.
 
 For images, use a large dedicated NVMe image filesystem, parallel pulls, careful GC thresholds and a pre-pull DaemonSet. For failures, run node problem detector with remediation, shorten taint tolerations for elastic jobs, and set `shutdownGracePeriod` for planned reboots.
@@ -436,6 +496,8 @@ For security, use webhook authn and authz, rotate certificates, approve serving 
 ## 13. Lab
 
 Start with the self-checking Python lab, which runs on your own machine. The script at `code/part05/kubelet_node_managers_lab.py` checks three things. It verifies the CPU Manager through `evaluate_cpu_manager_static`, with `full-pcpus-only: "true"`. It tests the Topology Manager NUMA hint intersection evaluator, `evaluate_topology_manager`, which compares the `single-numa-node`, `restricted` and `best-effort` policies. It also checks the node-pressure memory eviction victim selector, `rank_memory_eviction_victims`.
+
+The lab lets you test your understanding before the node is involved. If you can predict the CPU Manager's answer and the Topology Manager's answer on paper, you know the rules well enough to move on. If the lab disagrees with your prediction, the disagreement is the lesson. Work out which rule you misread, then try the next exercise.
 
 ```bash
 python3 code/part05/kubelet_node_managers_lab.py
@@ -472,7 +534,7 @@ Each of these is cheaper to catch on one canary node than across a full GPU pool
 
 ## 15. Interview angles
 
-These are the questions a interviewer tends to ask about the kubelet. Be ready to answer each one in your own words.
+These are the questions an interviewer tends to ask about the kubelet. Be ready to answer each one in your own words.
 
 - "What does the kubelet do? Walk through its main loops and managers."
 - "How is node allocatable computed? Why reserve resources?"

@@ -20,33 +20,31 @@ lab_venue: "GCP / GKE"
 | Part | Part 5: Kubernetes |
 | Status | Drafted; key listings compile and unit-test (Go 1.23.2, client-go v0.31.0); live-cluster labs **untested** |
 
+
 ## Why this matters for AI infrastructure
 
-Suppose a controller pod crashes and its logs contain a Go stack trace. If you can read Go, that trace leads you straight into the source code. Kubernetes and most of its ecosystem are written in Go. That includes containerd, etcd, Prometheus, Terraform providers, the NVIDIA GPU Operator, device plugins, CSI drivers, Kueue, Argo and Cilium.
+Suppose a controller pod crashes, and its logs end with a Go stack trace. If you can read Go, that trace leads you straight into the source code, and you can see which line failed and why. If you cannot read Go, the trace is noise. Kubernetes and most of its ecosystem are written in Go. That includes containerd, etcd, Prometheus, Terraform providers, the NVIDIA GPU Operator, device plugins, CSI drivers, Kueue, Argo and Cilium. So a large share of the software you will operate on a GPU platform is Go code, whether or not you ever write any yourself.
 
-Platform engineers who read Go can debug operator behaviour from source. They can patch or extend components. They can also write small controllers and CLI tools, such as a node-health remediator, a quota reporter or an admission webhook.
+Platform engineers who read Go can debug operator behaviour from source. When the documentation is silent, the source code is the final word on what a component does. They can also patch or extend components when a fix has not shipped yet. And they can write small controllers and CLI tools of their own, such as a node-health remediator, a quota reporter or an admission webhook. Those tools are often where an AI platform team gets the most value, because they fit the platform exactly.
 
-You do not need to be a Go expert. You do need fluency with the language subset and the client libraries that Kubernetes tooling uses. This chapter teaches that subset with Kubernetes examples. It also sets up 5.31 (operators with controller-runtime), 5.32 (a GPU node health operator) and 5.33 (reading the GPU and Network Operator source).
+You do not need to be a Go expert to get value from this chapter. You do need fluency with the language subset and the client libraries that Kubernetes tooling uses. This chapter teaches that subset with Kubernetes examples, so each new Go idea arrives with a reason you can see. It also sets up 5.31 (operators with controller-runtime), 5.32 (a GPU node health operator) and 5.33 (reading the GPU and Network Operator source).
 
 ## Prerequisites and outcomes
 
-You need programming experience (Part 3 Python) and the material in 5.3 to 5.6 before you start. Once you finish this chapter, you should be able to do the following.
+You need programming experience before you start. Part 3 covers Python, and that is enough to follow the ideas here, because Go and Python share most of the same concepts. You should also have read 5.3 to 5.6, which cover the API server, the object model and controllers. Those chapters explain what the Go code is trying to do, so the code is easier to read once you know the goal.
 
-You can set up a Go module, use the toolchain (`go build/test/vet/fmt/mod`, `gopls`, `golangci-lint`), and find your way around a large Go repository.
+The list below is a self-check. Each line asks a question that you should be able to answer when you finish. Read them now to see where you are starting, and read them again at the end to see how far you have come.
 
-You can use Go's core features correctly. That covers types, structs, methods, interfaces with implicit satisfaction, embedding, pointers versus values, slices and maps, and errors with wrapping, `errors.Is/As`. It also covers `defer`, `panic/recover` and generics.
-
-You can write concurrent programs with goroutines, channels, `sync` primitives and `context`. Your goal is to avoid leaks and races, and you will use the race detector to check your work.
-
-You can handle JSON, YAML and Kubernetes types, including struct tags, `metav1.ObjectMeta`, `runtime.Object` and `unstructured`.
-
-You can use client-go to build a client from a kubeconfig or in-cluster config. You can list, get, create, patch and delete objects, and you can watch them with informers, listers, work queues, leader election, the dynamic client and discovery. You also know how to apply the best practices for rate limits and retries.
-
-Finally, you can write table-driven tests and fake clients, use `envtest`, structure a CLI with cobra, and produce small static container images.
+- Can you set up a Go module and use the toolchain (`go build/test/vet/fmt/mod`, `gopls`, `golangci-lint`)? Can you find your way around a large Go repository?
+- Can you use Go's core features correctly? That covers types, structs, methods, interfaces that a type satisfies without declaring it, embedding, pointers versus values, slices and maps, and errors with wrapping, `errors.Is/As`. It also covers `defer`, `panic/recover` and generics.
+- Can you write concurrent programs with goroutines, channels, `sync` primitives and `context`? Can you avoid leaks and races, and can you use the race detector to check your work?
+- Can you handle JSON, YAML and Kubernetes types, including struct tags, `metav1.ObjectMeta`, `runtime.Object` and `unstructured`?
+- Can you use client-go to build a client from a kubeconfig or from inside a cluster? Can you list, get, create, patch and delete objects? Can you watch them with informers, listers, work queues, leader election, the dynamic client and discovery? Do you know the best practices for rate limits and retries?
+- Can you write table-driven tests and fake clients, use `envtest`, structure a CLI with cobra, and produce small static container images?
 
 ## 1. Toolchain and project layout
 
-Start with the toolchain and a module before you write any Go code. The commands below create a project called `nodectl`, add the Kubernetes libraries, and run the checks you will repeat on every change.
+Start with the toolchain and a module before you write any Go code. Think of a Go module as the folder that holds one project's name, its dependencies and its version rules. The commands below create a project called `nodectl`, add the Kubernetes libraries, and run the checks you will repeat on every change. You will type these commands often, so it helps to know what each one is for.
 
 ```bash
 go version                                  # 1.22+ recommended; check go.mod 'go' directive and toolchain line
@@ -61,9 +59,9 @@ GOFLAGS=-mod=readonly go build -trimpath -ldflags='-s -w' -o bin/nodectl ./cmd/n
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ...        # static binary for scratch/distroless images
 ```
 
-The client-go version has to follow your Kubernetes minor version, so client-go v0.N pairs with Kubernetes 1.N. The last build line produces a static binary for scratch or distroless images.
+The client-go version has to follow your Kubernetes minor version, so client-go v0.N pairs with Kubernetes 1.N. The first version line in the block is a reminder to check your Go version against the `go` line in `go.mod`. The last build line produces a static binary for scratch or distroless images. A static binary carries its own libraries, so it can run in a nearly empty container.
 
-The standard repository shape, the one kubebuilder projects use, looks like this:
+The standard repository shape, the one kubebuilder projects use, looks like this. Read it as a map of where things go, so that you know where to put a new file before you create it.
 
 ```text
 nodectl/
@@ -78,19 +76,21 @@ nodectl/
 └── hack/                        # scripts (codegen, tools)
 ```
 
-Keep `cmd/nodectl/main.go` thin, so it only parses flags and wires dependencies. Put the domain logic in `internal/health/`, where it stays pure and easy to test.
+Keep `cmd/nodectl/main.go` thin, so it only parses flags and wires dependencies. Wiring means connecting the parts together, such as passing the client into the code that needs it. Put the domain logic in `internal/health/`, where it stays pure and easy to test. Pure here means the functions take inputs and return outputs, without reaching out to the network or the clock. A pure function is the easiest kind to test.
 
-Modules bring a few rules of their own. Semantic import versioning uses a `/v2` suffix. Use `replace` for a local fork, `go.work` for multi-module work, and `go mod vendor` if you choose vendoring, which is optional.
+Modules bring a few rules of their own. Semantic import versioning uses a `/v2` suffix, so a new major version of a library gets a new import path. Use `replace` for a local fork, `go.work` for multi-module work, and `go mod vendor` if you choose vendoring, which is optional. Vendoring copies your dependencies into the project, so a build does not need the network.
 
-The Kubernetes libraries are tightly coupled. client-go, apimachinery, api and controller-runtime must be compatible with one another, so check the compatibility matrix before you upgrade any of them. `go.sum` verifies the hashes of your dependencies.
+The Kubernetes libraries are tightly coupled. client-go, apimachinery, api and controller-runtime must be compatible with one another, so check the compatibility matrix before you upgrade any of them. Upgrading one library while the others stay behind is a common way to get confusing compile errors. `go.sum` verifies the hashes of your dependencies, so you can tell that the code you downloaded is the code you tested.
 
-For private modules, configure `GOPROXY` and `GOFLAGS` together with `GOPRIVATE`.
+For private modules, configure `GOPROXY` and `GOFLAGS` together with `GOPRIVATE`. `GOPROXY` says where modules are downloaded from, and `GOPRIVATE` tells Go which modules should skip the public proxy.
 
 ## 2. Language essentials (the subset Kubernetes code uses)
 
+You do not need all of Go to read Kubernetes code. You need a small set of features that appear again and again. This section covers that set, and it introduces each feature through a small example from a GPU health tool.
+
 ### Types, structs, methods
 
-Most Kubernetes controllers rely on the same handful of language features. The example below models a GPU error event as a struct and maps its error code to a severity.
+Most Kubernetes controllers rely on the same handful of language features. The example below models a GPU error event as a struct and maps its error code to a severity. A struct is a named bundle of fields, a bit like a form with labelled boxes. Here the form records which node, which GPU, which code and when.
 
 ```go
 package health
@@ -138,15 +138,19 @@ func (e XIDEvent) Classify() Severity {
 }
 ```
 
-Go decides what other packages can see from the first letter of each name. An exported identifier starts with a capital letter. Packages are the unit of encapsulation, and Go has no classes and no inheritance. Methods take a receiver, which can be a value or a pointer. Use a pointer receiver when the method mutates the struct, when the struct is large, or for consistency, and do not mix the two on one type.
+Read the example from the top. The first block declares a struct named `XIDEvent`. Its fields are the node name, the GPU index, the error code and the time it was seen. The `Severity` type is an integer with three named values, and `iota` is a counter that gives each name the next number, starting from zero. The `String` method turns a severity into a readable word, so that printing it shows `critical` instead of a bare number. The `Classify` method at the end looks up the code in a `switch` and returns a severity. Notice that the mapping lives in one place, which makes it easy to review.
 
-Zero values are useful. `var s []int` is a nil slice that you can append to, and `var mu sync.Mutex` is ready to use without setup.
+Go decides what other packages can see from the first letter of each name. An exported identifier starts with a capital letter, so `Classify` is visible to other packages and `classify` would not be. Packages are the unit of encapsulation, and Go has no classes and no inheritance. Methods take a receiver, which can be a value or a pointer. Use a pointer receiver when the method changes the struct, when the struct is large, or for consistency. Do not mix the two on one type, because mixing them makes the rules for when a value satisfies an interface harder to remember.
 
-Struct tags control marshalling. Kubernetes types use `json` tags, and some also carry `protobuf` tags. YAML is handled by `sigs.k8s.io/yaml`, which converts YAML to JSON and then into the struct. That means only `json` tags matter, as in `json:"name,omitempty"`.
+Zero values are useful. `var s []int` is a nil slice that you can append to, and `var mu sync.Mutex` is ready to use without setup. Go gives every variable a default value, so you rarely need a constructor just to get a usable object.
 
-Composition works through embedding. A struct such as `type Node struct { metav1.TypeMeta; metav1.ObjectMeta; Spec NodeSpec; Status NodeStatus }` picks up the fields and methods of its embedded types. That is how every Kubernetes object gets `GetName()` and `GetLabels()`.
+Struct tags control marshalling. Marshalling means turning a struct into bytes, such as JSON, and back again. Kubernetes types use `json` tags, and some also carry `protobuf` tags. YAML is handled by `sigs.k8s.io/yaml`, which converts YAML to JSON and then into the struct. That means only `json` tags matter, as in `json:"name,omitempty"`. The `omitempty` part tells the encoder to leave the field out when it holds its zero value.
+
+Composition works through embedding. A struct such as `type Node struct { metav1.TypeMeta; metav1.ObjectMeta; Spec NodeSpec; Status NodeStatus }` picks up the fields and methods of its embedded types. That is how every Kubernetes object gets `GetName()` and `GetLabels()`. Embedding is not inheritance. The outer struct does not become the inner type. It simply gets the inner type's fields and methods as a convenience.
 
 ### Interfaces (implicit) and polymorphism
+
+An interface is a list of method names. Any type that has all of those methods satisfies the interface. The next example defines one for node remediation, which means fixing a node that has gone bad.
 
 ```go
 type Remediator interface {
@@ -159,11 +163,15 @@ type kubeRemediator struct{ cs kubernetes.Interface }       // *kubeRemediator s
 var _ Remediator = (*kubeRemediator)(nil)                   // compile-time assertion
 ```
 
-Go satisfies interfaces implicitly, so a type never declares that it implements one. The common idiom is to accept interfaces and return structs. Define small interfaces at the consumer. For example, `kubernetes.Interface` lets you pass `fake.NewSimpleClientset()` in tests.
+Go satisfies interfaces implicitly, so a type never declares that it implements one. This is different from Java or C#, where a class names the interfaces it implements. In Go, the compiler checks the method set when a value is used where the interface is expected. The line `var _ Remediator = (*kubeRemediator)(nil)` is a compile-time check. It costs nothing at run time, and it fails the build if the type ever stops matching the interface.
 
-`any` is an alias for `interface{}`, and it holds a value of any type. You recover the concrete type with a type assertion, `v, ok := x.(T)`, or with a type switch, `switch t := x.(type)`. Kubernetes uses `runtime.Object` as the common supertype of API objects. It is an interface with `GetObjectKind()` and `DeepCopyObject()`. controller-runtime also has `client.Object`.
+The common idiom is to accept interfaces and return structs. Define small interfaces at the consumer, which means the code that uses the interface defines it, so it asks for only the methods it needs. For example, `kubernetes.Interface` lets you pass `fake.NewSimpleClientset()` in tests. A fake is a stand-in client that keeps its data in memory, so a test does not need a live cluster.
+
+`any` is an alias for `interface{}`, and it holds a value of any type. You recover the concrete type with a type assertion, `v, ok := x.(T)`, or with a type switch, `switch t := x.(type)`. The `ok` in a type assertion tells you whether the guess was right, so you can handle the wrong case without a crash. Kubernetes uses `runtime.Object` as the common supertype of API objects. It is an interface with `GetObjectKind()` and `DeepCopyObject()`, so any API object can be handled through it. controller-runtime also has `client.Object`, which is a similar interface for the controller framework.
 
 ### Errors
+
+Errors are ordinary values in Go. There is no exception that jumps over your code. A function that can fail returns an error as its last result, and the caller checks it. The example below shows the usual pattern for cordoning a node, which is marking it so that no new pods land on it.
 
 ```go
 var ErrNoSuchNode = errors.New("no such node")
@@ -189,13 +197,15 @@ var se *apierrors.StatusError
 if errors.As(err, &se) && se.ErrStatus.Code == http.StatusConflict { ... }
 ```
 
-Errors are ordinary values, returned as the last result of a function. Check them right away with `if err != nil`. Wrap each one with context using `fmt.Errorf("...: %w", err)`, so the caller can still reach the original cause. Compare with `errors.Is`, and pull out a typed error with `errors.As`. Kubernetes API errors come with helpers such as `apierrors.IsNotFound/IsConflict/IsAlreadyExists/IsForbidden/IsTimeout/IsServerTimeout`. Never ignore an error silently, because the `errcheck` linter flags it.
+Read the example as a story of one function. It asks the API server for the node. If the node does not exist, it wraps a named error with the node's name, so a caller can recognize the case later. If the request fails for any other reason, it wraps the error with a short description of the step. If the node is already cordoned, it returns nil, which in Go means "no error." Otherwise it sends a patch that sets `unschedulable` to true. The last two lines show the caller's side. The caller checks the wrapped error with `errors.Is` or pulls out the typed error with `errors.As`.
 
-Reserve `panic` for programmer errors and initialisation. Use `defer` for cleanup, as in `defer resp.Body.Close()`, `defer cancel()` and `defer mu.Unlock()`. `recover` is rare and mostly appears in HTTP servers. When several errors belong together, combine them with `errors.Join`, or with the aggregate helper `utilerrors.NewAggregate` from apimachinery.
+Errors are ordinary values, returned as the last result of a function. Check them right away with `if err != nil`. Wrap each one with context using `fmt.Errorf("...: %w", err)`, so the caller can still reach the original cause. The `%w` verb is the piece that makes wrapping work. A plain `%v` would print the message but lose the link to the original error. Compare with `errors.Is/As`, and pull out a typed error with `errors.As`. Kubernetes API errors come with helpers such as `apierrors.IsNotFound/IsConflict/IsAlreadyExists/IsForbidden/IsTimeout/IsServerTimeout`. Never ignore an error silently, because the `errcheck` linter flags it, and a silent failure is hard to find later.
+
+Reserve `panic` for programmer errors and initialisation. A panic stops the program unless something recovers it, so it is for bugs that should never happen, not for expected failures such as a missing node. Use `defer` for cleanup, as in `defer resp.Body.Close()`, `defer cancel()` and `defer mu.Unlock()`. A `defer` runs when the function returns, so cleanup sits next to the code that needs it. `recover` is rare and mostly appears in HTTP servers. When several errors belong together, combine them with `errors.Join`, or with the aggregate helper `utilerrors.NewAggregate` from apimachinery.
 
 ### Slices, maps, strings, generics
 
-Most people first trip over a map. Writing to a nil map panics, so a program that writes into a map nobody created stops on the first write. Build the collections your code needs with `make` and the standard `slices` and `maps` packages, as the example below shows.
+Most people first trip over a map. Writing to a nil map panics, so a program that writes into a map nobody created stops on the first write. A nil map is one that was declared but never made, and it can be read but not written. Build the collections your code needs with `make` and the standard `slices` and `maps` packages, as the example below shows. The example collects the names of nodes that advertise a GPU, counts pods per node, and includes a small generic filter.
 
 ```go
 gpuNodes := make([]string, 0, len(nodes))                          // len 0, cap hint
@@ -218,25 +228,29 @@ func Filter[T any](in []T, keep func(T) bool) []T {                // generics (
 }
 ```
 
-A few gotchas are worth knowing. Slices share backing arrays, so `append` may or may not reallocate. Since Go 1.22, each loop iteration has its own loop variable, which changed how closures capture it. Iterating over a string yields runes. Know the difference between `copy` and plain assignment. `for range n` arrived in Go 1.22, and range-over-func iterators arrived in Go 1.23. For building strings, use `strings.Builder` or `bytes.Buffer`, and use `fmt.Sprintf` with verbs such as `%v`, `%+v`, `%#v`, `%T`, `%w` and `%q`.
+Walk through the first part slowly, because it shows a common pattern. The code starts with an empty slice that has room for as many names as there are nodes. The loop checks each node's allocatable resources for a GPU count that is not zero. When it finds one, it appends the node's name. The `ok` check in the `if` tells you whether the key exists in the map, so a missing key does not look like a zero count. Then the names are sorted, and a binary search finds one name quickly. The second part counts pods per node with a map. A map's iteration order is random, which is why the example sorts the keys before it prints them. The `Filter` function at the end uses a type parameter, `T`, so one function works for any element type.
+
+A few gotchas are worth knowing. Slices share backing arrays, so `append` may or may not reallocate. That means two slices can quietly share memory, and a change through one can show up in the other. Since Go 1.22, each loop iteration has its own loop variable, which changed how closures capture it. Before that change, a closure created inside a loop often saw only the last value. Iterating over a string yields runes, which are Unicode code points, not bytes. Know the difference between `copy` and plain assignment, because assignment copies the slice header and not the elements. `for range n` arrived in Go 1.22, and range-over-func iterators arrived in Go 1.23. For building strings, use `strings.Builder` or `bytes.Buffer`, which avoid making a new string for every piece you add. Use `fmt.Sprintf` with verbs such as `%v`, `%+v`, `%#v`, `%T`, `%w` and `%q`. Each verb controls how a value is printed, and `%+v` in particular shows field names, which helps when you are debugging a struct.
 
 ### Pointers and values
 
-Go passes everything by value, which means it copies. Pointers are how you share. Kubernetes API types use pointers for optional fields, such as `*int32 Replicas`, so a program can tell an unset field from a zero value. The `k8s.io/utils/ptr` helpers make this easier. `ptr.To(int32(3))` builds a pointer, and `ptr.Deref(p, default)` reads one safely.
+Go passes everything by value, which means it copies. Pointers are how you share. A pointer holds the address of a value, so changing through the pointer changes the original. Kubernetes API types use pointers for optional fields, such as `*int32 Replicas`, so a program can tell an unset field from a zero value. Zero is a real number, so if the field were a plain integer, you could not tell "set to zero" from "not set at all." The `k8s.io/utils/ptr` helpers make this easier. `ptr.To(int32(3))` builds a pointer to the value 3, and `ptr.Deref(p, default)` reads one safely, returning the default when the pointer is nil.
 
-Objects returned from listers are shared cache objects, so never mutate them. Call `DeepCopy()` before you change anything. Struct comparison with `==` works only when every field is comparable, so use `reflect.DeepEqual` or apimachinery's `equality.Semantic.DeepEqual` instead. The Semantic version handles `resource.Quantity` and `metav1.Time` correctly.
+Objects returned from listers are shared cache objects, so never mutate them. A lister is a read-only view of a local cache, and other code may be reading the same object at the same moment. Call `DeepCopy()` before you change anything. A deep copy gives you a fresh object that you can change without affecting the cache. Struct comparison with `==` works only when every field is comparable, so use `reflect.DeepEqual` or apimachinery's `equality.Semantic.DeepEqual` instead. The Semantic version handles `resource.Quantity` and `metav1.Time` correctly, because those types can hold the same value in more than one form.
 
 ### Packages, visibility, init, build tags
 
-One directory holds one package, and `internal/` restricts which packages can import it. Avoid side effects in `init()`, because it runs whenever the package is imported. Kubernetes API groups register their types through explicit `AddToScheme` functions. Build constraints such as `//go:build linux` decide which files compile for which platform. `go:embed` handles static assets, and `go:generate` runs code generators such as deepcopy-gen, controller-gen and mockgen.
+One directory holds one package, and `internal/` restricts which packages can import it. Think of `internal/` as a private drawer. Code outside your module cannot open it. Avoid side effects in `init()`, because it runs whenever the package is imported, and that makes the program's behaviour harder to predict. Kubernetes API groups register their types through explicit `AddToScheme` functions, so the registration happens where you can see it. Build constraints such as `//go:build linux` decide which files compile for which platform. `go:embed` handles static assets, such as a template file that you want inside the binary. `go:generate` runs code generators such as deepcopy-gen, controller-gen and mockgen, so generated code is produced from a single command.
 
-When you read the controller code in the next sections, keep two rules in mind. Wrap errors with `%w`, and call `DeepCopy()` before you mutate anything that came from a lister.
+When you read the controller code in the next sections, keep two rules in mind. Wrap errors with `%w`, and call `DeepCopy()` before you mutate anything that came from a lister. Most of the bugs in Kubernetes controllers come from breaking one of those two rules.
 
 ## 3. Concurrency
 
+Go makes concurrency cheap enough to use everywhere, and that is both its strength and its trap. A goroutine is a function that runs alongside other code. You start one with the word `go`. The examples in this section show how to run work in parallel without losing control of it.
+
 ### Goroutines, channels, sync
 
-Suppose you must probe every node in a large cluster. The example below runs the probes concurrently and stops the whole run when a context timeout expires.
+Suppose you must probe every node in a large cluster. Probing one node takes a moment, so doing them one at a time would be slow. The example below runs the probes concurrently, limits how many run at once, and stops the whole run when a context timeout expires.
 
 ```go
 func probeAll(ctx context.Context, nodes []string, probe func(context.Context, string) (bool, error)) map[string]bool {
@@ -272,25 +286,27 @@ func probeAll(ctx context.Context, nodes []string, probe func(context.Context, s
 }
 ```
 
-Goroutines are cheap, but every goroutine needs a clear way to exit, such as a context cancel or a channel close. The Go proverb says, "don't communicate by sharing memory; share memory by communicating." When the state is simple, a mutex is the better tool, using `sync.Mutex/RWMutex`.
+Read the example in the order its work happens. The function sets a 30-second deadline with a context, and it makes a channel to collect results. A channel is a typed pipe that one goroutine can send into and another can read from. The `sem` channel acts as a counting gate. Each probe must put a value in before it starts and take it out when it ends, so no more than 16 probes run at once. Each probe is a goroutine. It runs its check, then sends its result, unless the context has already ended. The `WaitGroup` counts running goroutines, and a separate goroutine closes the results channel after they all finish. The loop at the bottom reads results until the channel closes, and it fills in a map. Notice the `select` in the probe. It lets the goroutine give up cleanly if the deadline passes while it is trying to send.
 
-The rest of the `sync` family covers the other cases. `sync.WaitGroup` waits for a set of goroutines, `sync.Once` runs something exactly once, and `sync/atomic` handles single values. `sync.Map` is rare. `errgroup.Group` from `golang.org/x/sync/errgroup` combines waiting, the first error, context cancellation and `SetLimit`.
+Goroutines are cheap, but every goroutine needs a clear way to exit, such as a context cancel or a channel close. A goroutine that never exits is a leak, and leaks add up in a long-running controller. The Go proverb says, "don't communicate by sharing memory; share memory by communicating." It means that passing values through channels is often clearer than locking shared data. When the state is simple, a mutex is the better tool, using `sync.Mutex/RWMutex`. A mutex is a lock that only one goroutine can hold at a time. An RWMutex allows many readers or one writer.
 
-Channels come in two forms. An unbuffered channel makes the sender and receiver meet, while a buffered channel holds values until someone takes them. Only the sender should close a channel. Receiving from a closed channel yields zero values.
+The rest of the `sync` family covers the other cases. `sync.WaitGroup` waits for a set of goroutines, `sync.Once` runs something exactly once, and `sync/atomic` handles single values. `sync.Map` is rare. `errgroup.Group` from `golang.org/x/sync/errgroup` combines waiting, the first error, context cancellation and `SetLimit`. `SetLimit` is the same idea as the semaphore in the example, built into the group.
 
-Use `select` to wait on several channel operations at once. A `default` case makes the wait non-blocking, and a timeout or `ctx.Done()` case stops it when time runs out. Avoid `time.After` inside loops, because it leaked timers before Go 1.23. Use `time.NewTimer` instead.
+Channels come in two forms. An unbuffered channel makes the sender and receiver meet, so each send waits for a receive. A buffered channel holds values until someone takes them. Only the sender should close a channel, because a send on a closed channel panics. Receiving from a closed channel yields zero values, so a loop that reads from one needs to know when the channel closed.
 
-Two failures are common. A goroutine that waits on a send or receive with no reader is leaked. A data race is undefined behaviour, so run your tests with `-race`. A deadlock shows up as `all goroutines are asleep`. Kubernetes code uses `wait.Until`, `wait.PollUntilContextTimeout` (from apimachinery/util/wait) and rate-limited work queues in controllers, rather than raw goroutines. Check that every goroutine you start has a way to stop.
+Use `select` to wait on several channel operations at once. A `default` case makes the wait non-blocking, so the code moves on if nothing is ready. A timeout or `ctx.Done()` case stops the wait when time runs out. Avoid `time.After` inside loops, because it leaked timers before Go 1.23. Use `time.NewTimer` instead, and stop the timer when you no longer need it.
+
+Two failures are common. A goroutine that waits on a send or receive with no reader is leaked. A data race is undefined behaviour, which means the program may do anything, so run your tests with `-race`. A deadlock shows up as `all goroutines are asleep`, which means every goroutine is waiting and none can make progress. Kubernetes code uses `wait.Until`, `wait.PollUntilContextTimeout` (from apimachinery/util/wait) and rate-limited work queues in controllers, rather than raw goroutines. Those helpers already handle stopping and retrying. Check that every goroutine you start has a way to stop.
 
 ### context.Context
 
-A context carries cancellation, deadlines and request-scoped values across API boundaries. By convention it is the first parameter, written `ctx context.Context`. Derive a child with `WithCancel/WithTimeout/WithDeadline/WithValue`, and always `defer cancel()` after you derive one.
+A context carries cancellation, deadlines and request-scoped values across API boundaries. Think of it as a note that travels with a request, saying "give up after this time" or "the user has left, stop working." By convention it is the first parameter, written `ctx context.Context`. Derive a child with `WithCancel/WithTimeout/WithDeadline/WithValue`, and always `defer cancel()` after you derive one. The `cancel` function releases resources even when the work finishes early, so skipping it leaks memory.
 
-Do not store a context in a struct for long-lived use. Pass `ctx` to every client-go call, as in `Get(ctx, name, opts)`, and check `ctx.Err()` inside loops. controller-runtime passes a context into each reconcile.
+Do not store a context in a struct for long-lived use. A context belongs to one request or one operation, and a struct that outlives that request would keep an expired context. Pass `ctx` to every client-go call, as in `Get(ctx, name, opts)`, and check `ctx.Err()` inside loops. That way, a cancelled run stops at the next check instead of finishing a long job for nobody. controller-runtime passes a context into each reconcile, so your reconcile code can honour cancellation without extra setup.
 
 ## 4. JSON, YAML and Kubernetes types
 
-Suppose you need to build a test pod in code and print it as YAML. Kubernetes types make that a short job, and the example below does exactly that.
+Suppose you need to build a test pod in code and print it as YAML. Kubernetes types make that a short job, and the example below does exactly that. It creates a pod with one GPU limit, writes it out as YAML, and reads the YAML back into a typed object. This round trip is a useful check that your types and your YAML agree.
 
 ```go
 import (
@@ -318,30 +334,30 @@ var p2 corev1.Pod
 _ = yaml.Unmarshal(b, &p2)
 ```
 
-The program builds a pod in memory, marshals it to YAML, and then reads the YAML back into a typed object. The `sigs.k8s.io/yaml` package goes from struct to JSON to YAML, so the same struct works in both directions.
+The program builds a pod in memory, marshals it to YAML, and then reads the YAML back into a typed object. The `sigs.k8s.io/yaml` package goes from struct to JSON to YAML, so the same struct works in both directions. Notice how the pod is built from nested structs. The `Pod` holds an `ObjectMeta` for its name and labels, and a `PodSpec` for what runs. The `Containers` field is a list of containers, and each container has its own resource requirements. Once you can read that nesting, you can read almost any Kubernetes object in Go.
 
-Several helper types appear again and again. `resource.Quantity` holds CPU, memory and GPU counts. Build one with `resource.MustParse("100Mi")`, then read it with `.Value()`, `.MilliValue()` or `.Cmp()`. `metav1.Time` and `metav1.Duration` cover timestamps and durations. `intstr.IntOrString` holds an integer or a string. To turn a `metav1.LabelSelector` into a `labels.Selector`, use `metav1.LabelSelectorAsSelector`.
+Several helper types appear again and again. `resource.Quantity` holds CPU, memory and GPU counts. Build one with `resource.MustParse("100Mi")`, then read it with `.Value()`, `.MilliValue()` or `.Cmp()`. `.Cmp()` compares two quantities, which is safer than comparing the raw numbers yourself. `metav1.Time` and `metav1.Duration` cover timestamps and durations. `intstr.IntOrString` holds an integer or a string. To turn a `metav1.LabelSelector` into a `labels.Selector`, use `metav1.LabelSelectorAsSelector`.
 
-Sometimes you have no Go type at all, for example a CRD without generated types. Then `unstructured.Unstructured` wraps a `map[string]interface{}`. Helpers such as `unstructured.NestedString/NestedSlice/SetNestedField` read and write fields, and `runtime.DefaultUnstructuredConverter.FromUnstructured` converts the object into a typed one.
+Sometimes you have no Go type at all, for example a CRD without generated types. Then `unstructured.Unstructured` wraps a `map[string]interface{}`. A map of this kind holds any fields in any shape, so you lose the compile-time checks. Helpers such as `unstructured.NestedString/NestedSlice/SetNestedField` read and write fields, and they tell you when a field is missing. `runtime.DefaultUnstructuredConverter.FromUnstructured` converts the object into a typed one, once you have a type to convert into.
 
-The scheme tells Kubernetes how Go types map to kinds. `runtime.Scheme` maps Go types to GroupVersionKind values, and `scheme.AddToScheme` registers types. Serializers decode and encode the data. Use `client-go/kubernetes/scheme` for built-in types, and remember that custom types need their group's `AddToScheme`. Metadata helpers handle ownership and selectors: `metav1.NewControllerRef`, `controllerutil.SetControllerReference`, `metav1.IsControlledBy`, `labels.Set` and `fields.OneTermEqualSelector("spec.nodeName", n)`.
+The scheme tells Kubernetes how Go types map to kinds. A kind is the name of an API type, such as `Pod`. `runtime.Scheme` maps Go types to GroupVersionKind values, and `scheme.AddToScheme` registers types. Serializers decode and encode the data. Use `client-go/kubernetes/scheme` for built-in types, and remember that custom types need their group's `AddToScheme`. If a custom type is not registered, the client does not know how to read or write it, and the error can be confusing. Metadata helpers handle ownership and selectors: `metav1.NewControllerRef`, `controllerutil.SetControllerReference`, `metav1.IsControlledBy`, `labels.Set` and `fields.OneTermEqualSelector("spec.nodeName", n)`. An owner reference is the link that tells the garbage collector who owns a child object.
 
-Generated `DeepCopy()` methods exist for the API types. Never share an object and mutate it, so call `DeepCopy()` first.
+Generated `DeepCopy()` methods exist for the API types. Never share an object and mutate it, so call `DeepCopy()` first. The copy costs little next to the bugs that a shared, changed object causes.
 
-*Kubernetes Programming with Go*, Chapters 4 and 5, and *Network Programmability and Automation*, Chapter 7, by Philippe Martin and Jason Edelman et al., explain the inner mechanics of `apimachinery` and Go type conventions. Three of those mechanics are worth knowing.
+Two books explain the inner mechanics of `apimachinery` and Go type conventions. *Kubernetes Programming with Go*, Chapters 4 and 5, covers the types and the scheme. *Network Programmability and Automation*, Chapter 7, covers Go's core features in a network setting. Three of those mechanics are worth knowing.
 
-The first is quantities and `intstr.IntOrString` (*Kubernetes Programming with Go*, Chapter 4). `resource.Quantity` lives in `k8s.io/apimachinery/pkg/api/resource`. It stores numbers as exact fixed-point values, so you never get floating-point rounding errors such as `0.1 + 0.2` not equalling `0.3`. A quantity can be written in two suffix families.
+The first is quantities and `intstr.IntOrString` (*Kubernetes Programming with Go*, Chapter 4). `resource.Quantity` lives in `k8s.io/apimachinery/pkg/api/resource`. It stores numbers as exact fixed-point values, so you never get floating-point rounding errors such as `0.1 + 0.2` not equalling `0.3`. Floating-point numbers store values in binary, which cannot represent many decimal fractions exactly. A quantity can be written in two suffix families. Read the table as a choice of units, the way you might write one gigabyte as 1 GB or as 1024 MiB, depending on which tool you are reading.
 
 | Family | Step size | Suffixes | Example |
 |---|---|---|---|
 | `BinarySI` | powers of 1024 | `Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei` | `1Ki` is 1024 |
 | `DecimalSI` | powers of 1000 | `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E` | `1k` is 1000, and `2500m` is 2.5 |
 
-`intstr.IntOrString`, from `k8s.io/apimachinery/pkg/util/intstr`, appears in `ServicePort.TargetPort`, `RollingUpdateDeployment.MaxSurge`/`MaxUnavailable` and `PodDisruptionBudget`. It holds either an `IntVal` or a `StrVal`, such as `"25%"`. You evaluate it with `intstr.GetScaledValueFromIntOrPercent(&intOrStr, totalReplicas, roundUp)`. This behaviour is modeled in `code/part05/client_go_mechanics_sim.py`.
+`intstr.IntOrString`, from `k8s.io/apimachinery/pkg/util/intstr`, appears in `ServicePort.TargetPort`, `RollingUpdateDeployment.MaxSurge`/`MaxUnavailable` and `PodDisruptionBudget`. It holds either an `IntVal` or a `StrVal`, such as `"25%"`. A value like `"25%"` depends on the total number of replicas, so it has to be worked out at run time. You evaluate it with `intstr.GetScaledValueFromIntOrPercent(&intOrStr, totalReplicas, roundUp)`. The `roundUp` flag decides how a fraction turns into a whole number of pods. This behaviour is modeled in `code/part05/client_go_mechanics_sim.py`.
 
-The second is the scheme and the `RESTMapper` (*Kubernetes Programming with Go*, Chapter 5). `runtime.Scheme` is an in-memory registry. It maps Go `reflect.Type` structs $\leftrightarrow$ `schema.GroupVersionKind` (`GVK`, via `AddKnownTypes`, `ObjectKinds`, `New`), and it performs defaulting (`Default`) and version conversion (`Convert`).
+The second is the scheme and the `RESTMapper` (*Kubernetes Programming with Go*, Chapter 5). `runtime.Scheme` is an in-memory registry. It maps Go `reflect.Type` structs to a `schema.GroupVersionKind` (`GVK`, via `AddKnownTypes`, `ObjectKinds`, `New`). It also performs defaulting (`Default`) and version conversion (`Convert`). In plain words, the scheme knows that a Go type called `Deployment` belongs to a group, a version and a kind, and it knows how to turn one version into another.
 
-Go code names an object type by its group, version and kind, written `GVK`, such as `apps/v1, Kind=Deployment`. The HTTP API names the same thing by group, version and resource, written `GVR`, such as `/apis/apps/v1/namespaces/{ns}/deployments`. A `RESTMapper` converts between the two. It also tells you whether the resource lives inside a namespace or at cluster level.
+Go code names an object type by its group, version and kind, written `GVK`, such as `apps/v1, Kind=Deployment`. The HTTP API names the same thing by group, version and resource, written `GVR`, such as `/apis/apps/v1/namespaces/{ns}/deployments`. The kind is the name a human uses, and the resource is the name in the URL. A `RESTMapper` converts between the two. It also tells you whether the resource lives inside a namespace or at cluster level. Without that conversion, a client could not find the URL for a kind it has only seen in a YAML file.
 
 | Piece | What it does |
 |---|---|
@@ -350,11 +366,11 @@ Go code names an object type by its group, version and kind, written `GVK`, such
 | `meta.DefaultRESTMapper` | A mapper you fill in yourself |
 | `restmapper.NewDeferredDiscoveryRESTMapper` | Asks the API server at run time through `/apis` and caches the answers in memory |
 
-The deferred form is built with `NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))`.
+The deferred form is built with `NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))`. The deferred mapper asks the API server when it first needs an answer, using the discovery endpoint `/apis`, and it keeps the answers in memory after that. That means it knows about custom resources installed after your program started, as long as they are installed before the question is asked.
 
-Serializers live in `k8s.io/apimachinery/pkg/runtime/serializer`. `json.NewSerializerWithOptions` handles both JSON and YAML. `protobuf.NewSerializer` uses `application/vnd.kubernetes.protobuf`, which suits high-throughput native core types.
+Serializers live in `k8s.io/apimachinery/pkg/runtime/serializer`. A serializer turns objects into bytes and back. `json.NewSerializerWithOptions` handles both JSON and YAML. `protobuf.NewSerializer` uses `application/vnd.kubernetes.protobuf`, which suits high-throughput native core types. Protobuf is a compact binary format, and it is faster to parse than JSON, which is why it suits busy core types.
 
-The third is pointer versus value receivers, and `net/netip` (*Network Programmability and Automation*, Chapter 7). A type `T` with a pointer receiver method, `func (r *Router) Trim()`, satisfies an interface only when you pass a pointer, `*Router`. Pass a plain `Router` and the compiler stops you with `Router does not implement Trimmable (method has pointer receiver)`. For IP and CIDR work in Kubernetes network controllers, Go 1.18 and later offer `net/netip`, with `netip.ParseAddr` and `netip.ParsePrefix`. It is an immutable, comparable, allocation-free value type that replaces the legacy `net.IP` slices.
+The third is pointer versus value receivers, and `net/netip` (*Network Programmability and Automation*, Chapter 7). A type `T` with a pointer receiver method, `func (r *Router) Trim()`, satisfies an interface only when you pass a pointer, `*Router`. Pass a plain `Router` and the compiler stops you with `Router does not implement Trimmable (method has pointer receiver)`. The fix is almost always to pass the address of the value, or to change the receiver. For IP and CIDR work in Kubernetes network controllers, Go 1.18 and later offer `net/netip`, with `netip.ParseAddr` and `netip.ParsePrefix`. It is an immutable, comparable, allocation-free value type that replaces the legacy `net.IP` slices. Immutable means a value cannot change after it is made, which makes it safe to share.
 
 ```mermaid
 flowchart LR
@@ -364,13 +380,15 @@ flowchart LR
     WQ -->|"Get() -> Reconcile -> Done()/Forget()<br/>or AddRateLimited() on err"| Worker["Worker Goroutines<br/>(Apply / Patch via Clientset)"]
 ```
 
-Read the diagram from left to right. The reflector feeds the queue, and the work queue carries `namespace/name` keys rather than whole objects.
+Read the diagram from left to right. The reflector feeds the queue, and the work queue carries `namespace/name` keys rather than whole objects. The reflector is the part that lists and watches the API server. The queue holds the work to do, and the indexer is the local store that the lister reads from. Keep the picture in mind when the informer code appears in section 5, because each piece in that code matches a box here.
 
 ## 5. client-go
 
+client-go is the official Go library for talking to the Kubernetes API. It has a typed client for each group, a dynamic client for anything untyped, and the informer machinery that controllers depend on. This section shows how to build a client, change objects safely, watch for changes and write a controller loop.
+
 ### Building clients
 
-Your tool may run inside a pod one day and on a laptop the next. The function below works in both places. It tries the in-cluster config first, then falls back to a kubeconfig found through `KUBECONFIG` or `~/.kube/config`.
+Your tool may run inside a pod one day and on a laptop the next. The function below works in both places. It tries the in-cluster config first, then falls back to a kubeconfig found through `KUBECONFIG` or `~/.kube/config`. The in-cluster config is the one a pod uses with its own service account, and a kubeconfig is the file a person uses from a workstation.
 
 ```go
 func newClient() (kubernetes.Interface, *rest.Config, error) {
@@ -388,13 +406,13 @@ func newClient() (kubernetes.Interface, *rest.Config, error) {
 }
 ```
 
-The default 5/10 is far too low for controllers. See 5.5 for API Priority and Fairness, the server-side limit on request rates.
+The default 5/10 is far too low for controllers. Those numbers are the request rate and the burst size, and a controller that makes many calls will hit them quickly. Raising them lets the controller keep up, but the API server still limits requests with its own fairness rules. See 5.5 for API Priority and Fairness, the server-side limit on request rates.
 
-The typed clientset, `kubernetes.Interface`, exposes `CoreV1()`, `AppsV1()`, `BatchV1()`, `RbacV1()` and more. The dynamic client, created with `dynamic.NewForConfig`, returns unstructured objects through `Resource(gvr).Namespace(ns).List(...)`, which suits CRDs without generated types. The discovery client lists API groups and resources, and the REST client is low-level. The metadata client returns `PartialObjectMetadata` cheaply. The scale client and generated clientsets (`client-gen`) complete the set. controller-runtime's `client.Client` adds a cache, as chapter 5.31 covers.
+The typed clientset, `kubernetes.Interface`, exposes `CoreV1()`, `AppsV1()`, `BatchV1()`, `RbacV1()` and more. Each method returns the client for one API group, so you pick the group first and the resource second. The dynamic client, created with `dynamic.NewForConfig`, returns unstructured objects through `Resource(gvr).Namespace(ns).List(...)`, which suits CRDs without generated types. The discovery client lists API groups and resources, and the REST client is low-level. The metadata client returns `PartialObjectMetadata` cheaply, which is useful when you only need names and labels. The scale client and generated clientsets (`client-gen`) complete the set. controller-runtime's `client.Client` adds a cache, as chapter 5.31 covers.
 
 ### CRUD, patch, apply
 
-Two controllers may change the same node at once.
+CRUD stands for create, read, update and delete. Those four operations cover most of what a controller does, but the update step is where most of the trouble starts. Two controllers may change the same node at once. If each one reads, changes and writes the whole node, the second write can silently undo the first. The example below shows the safer ways to make the same change.
 
 ```go
 ctx := context.Background()
@@ -428,15 +446,15 @@ ev := &policyv1.Eviction{ObjectMeta: metav1.ObjectMeta{Name: pod.Name, Namespace
 err = cs.CoreV1().Pods(pod.Namespace).EvictV1(ctx, ev)   // returns 429 if a PDB disallows; retry later
 ```
 
-The first block pages through a filtered node list with `Limit` and `opts.Continue`. Get-modify-update is a common trap. A full `Update` fails with a conflict when your copy is stale, so wrap the read and write in `retry.RetryOnConflict` and read again on each attempt. A merge patch needs no read, and server-side apply, with typed apply configurations, records field ownership and is idempotent.
+The first block pages through a filtered node list with `Limit` and `opts.Continue`. Paging means the server returns the list in chunks, and `Continue` is the token that asks for the next chunk. Get-modify-update is a common trap. A full `Update` fails with a conflict when your copy is stale, which means someone else wrote the object after you read it. So wrap the read and write in `retry.RetryOnConflict` and read again on each attempt. A merge patch needs no read, because you send only the part you want to change. Server-side apply, with typed apply configurations, records field ownership and is idempotent. Idempotent means that applying the same change twice gives the same result as applying it once.
 
-Eviction is the preferred way to drain a pod, because it respects PDBs. `EvictV1` returns 429 when a PDB disallows the eviction, so retry later.
+Eviction is the preferred way to drain a pod, because it respects PDBs. A PDB, or PodDisruptionBudget, is a rule that limits how many pods of an app may be down at once. `EvictV1` returns 429 when a PDB disallows the eviction, so retry later. A 429 is the server's way of saying "not now," so the right response is to wait and try again.
 
-Prefer patch or apply over get-modify-update. Use `Update` only when you handle `resourceVersion` and retry. For deletes, `DeleteOptions{PropagationPolicy: &fg, GracePeriodSeconds: &g}` sets the propagation. `Create` returns `AlreadyExists` when the object exists, and `DryRun: []string{metav1.DryRunAll}` validates a request without changing anything.
+Prefer patch or apply over get-modify-update. Use `Update` only when you handle `resourceVersion` and retry. The resource version is a version marker the server attaches to each object. Treat it as an opaque value, and refuse to guess at its meaning. An update that carries an old marker is refused. For deletes, `DeleteOptions{PropagationPolicy: &fg, GracePeriodSeconds: &g}` sets the propagation, which controls what happens to the children of the deleted object, and the grace period, which gives the object time to shut down cleanly. `Create` returns `AlreadyExists` when the object exists, and `DryRun: []string{metav1.DryRunAll}` validates a request without changing anything. A dry run is a good first step before a risky change.
 
 ### Watching
 
-The loop below handles added, modified, deleted and error events.
+Watching is how a program hears about changes without asking over and over. The loop below handles added, modified, deleted and error events. Each event has a type, and the switch decides what to do with it.
 
 ```go
 w, err := cs.CoreV1().Nodes().Watch(ctx, metav1.ListOptions{ResourceVersion: list.ResourceVersion, AllowWatchBookmarks: true})
@@ -450,11 +468,13 @@ for ev := range w.ResultChan() {
 }
 ```
 
-A `watch.Error` with 410 Gone means you must relist. Raw watches also need reconnection, bookmark and resource version handling, and backoff. For most code, use `watchtools.NewRetryWatcher` or, almost always, informers.
+Read the loop as a list of cases. A new or changed node arrives as an `Added` or `Modified` event, and the code casts the object back to a `Node` pointer. A `Deleted` event means the node is gone. An `Error` event can carry the status 410 Gone. That status means the resource version the watch started from is too old, so the server no longer remembers the changes. The only fix is to relist and start a fresh watch.
+
+A `watch.Error` with 410 Gone means you must relist. Raw watches also need reconnection, bookmark and resource version handling, and backoff. Bookmarks are periodic markers that let the watch remember its position without a real change. Backoff means waiting longer after each failed attempt. For most code, use `watchtools.NewRetryWatcher` or, almost always, informers. Informers do the relisting and reconnecting for you, which is why most controllers use them.
 
 ### Informers, listers and work queues
 
-Suppose a controller must react to every GPU node that joins, leaves or changes.
+Suppose a controller must react to every GPU node that joins, leaves or changes. Doing that with raw watches would mean writing the reconnection logic yourself. An informer does that work and keeps a local copy of the objects. The example below sets up an informer, a lister that reads from the local copy, and a work queue that feeds a few worker goroutines.
 
 ```go
 factory := informers.NewSharedInformerFactoryWithOptions(cs, 10*time.Hour,
@@ -501,17 +521,19 @@ func processNext(ctx context.Context, q workqueue.TypedRateLimitingInterface[str
 }
 ```
 
-The lister reads from the local cache and serves `Get(name)` and `List(selector)`. The work queue holds keys, and its rate limiter spaces out retries. The event handlers only add keys. Each `DeletedFinalStateUnknown` tombstone needs handling, because a delete can arrive without the final object.
+Think of the informer as a local notebook. It copies every GPU node into the notebook when it starts, then keeps the copy up to date from the watch. The lister is the page you read from, so reading a node costs nothing on the network. The work queue is an inbox of keys. The event handlers only put a key into the inbox, and the workers take keys out and do the real work. That separation keeps the handlers fast.
 
-The code waits for cache sync before the workers start. Each worker runs `processNext` in a loop. On an error, the key goes back in the queue with `AddRateLimited`, which applies backoff. On success, `Forget` resets the backoff.
+The lister reads from the local cache and serves `Get(name)` and `List(selector)`. The work queue holds keys, and its rate limiter spaces out retries. The event handlers only add keys. Each `DeletedFinalStateUnknown` tombstone needs handling, because a delete can arrive without the final object. A tombstone is a marker that says "this object was deleted, and here is the last state we knew." The `DeletionHandlingMetaNamespaceKeyFunc` unwraps it so the key can still be built.
 
-Wait for cache sync, read from the lister and write through the client. Never mutate cached objects, so call `DeepCopy()` first. Enqueue keys, not objects. The resync period is a safety net, and one worker handles a given key at a time. Call `Forget` on success, and shut down cleanly on SIGTERM.
+The code waits for cache sync before the workers start. Cache sync means the notebook has finished its first full copy. Each worker runs `processNext` in a loop. On an error, the key goes back in the queue with `AddRateLimited`, which applies backoff. On success, `Forget` resets the backoff. Backoff here means the wait before a retry grows after repeated failures, so a broken object does not get retried in a tight loop.
 
-With several resource types, create one factory for all of them. Add indexers, such as `cache.Indexers{"byNode": func(...)}`, for efficient lookups like pods by node.
+Wait for cache sync, read from the lister and write through the client. Never mutate cached objects, so call `DeepCopy()` first. Enqueue keys, not objects. The resync period is a safety net, and one worker handles a given key at a time. A resync is a periodic pass that re-delivers every object, in case an event was lost. Call `Forget` on success, and shut down cleanly on SIGTERM. SIGTERM is the signal Kubernetes sends before it stops a container, so the program has a chance to finish its work.
+
+With several resource types, create one factory for all of them. Add indexers, such as `cache.Indexers{"byNode": func(...)}`, for efficient lookups like pods by node. An indexer builds a second lookup table inside the cache, so a question such as "which pods run on this node" does not have to scan every pod.
 
 ### Leader election
 
-Only one replica should act, so the replicas take turns holding a lease.
+Only one replica should act, so the replicas take turns holding a lease. If two replicas both acted on the same nodes, they could cordon the same node twice or fight over the same change. A lease is a small object that records which replica currently holds the job.
 
 ```go
 lock := &resourcelock.LeaseLock{
@@ -529,11 +551,11 @@ leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 })
 ```
 
-The lock is a Lease in the `platform` namespace, and each replica identifies itself with its hostname. `RunOrDie` runs the work only while this replica holds the lease. `ReleaseOnCancel` lets the replica give the lease up when its context is cancelled. If the replica loses leadership, it logs the event and exits, so a restart can rejoin the election cleanly.
+The lock is a Lease in the `platform` namespace, and each replica identifies itself with its hostname. `RunOrDie` runs the work only while this replica holds the lease. `ReleaseOnCancel` lets the replica give the lease up when its context is cancelled, so a standby can take over quickly. If the replica loses leadership, it logs the event and exits, so a restart can rejoin the election cleanly. Exiting is a deliberate choice here. A replica that lost the lease should not keep acting, and a fresh start is the simplest way to be sure it does not.
 
 ### Dynamic client for CRDs
 
-A CRD may have no generated Go types, yet you still need its spec. The dynamic client works from a GroupVersionResource alone.
+A CRD may have no generated Go types, yet you still need its spec. The dynamic client works from a GroupVersionResource alone. A GroupVersionResource, or GVR, is the three-part address of a resource: its group, its version and its plural name. You do not need a compiled type for it.
 
 ```go
 gvr := schema.GroupVersionResource{Group: "kueue.x-k8s.io", Version: "v1beta1", Resource: "clusterqueues"}
@@ -545,17 +567,17 @@ for _, item := range list.Items {
 }
 ```
 
-The code lists `clusterqueues` through the dynamic client, then reads each item's `spec.resourceGroups` slice with `unstructured.NestedSlice`.
+The code lists `clusterqueues` through the dynamic client, then reads each item's `spec.resourceGroups` slice with `unstructured.NestedSlice`. The second return value tells you whether the field was found, and the example ignores it, which is fine only for a sketch. In production code, check that flag, so a missing field becomes a clear error and not a silent empty result.
 
 ### Logging, metrics, flags
 
-Kubernetes code logs with `klog`, which supports `-v` levels and structured calls such as `klog.InfoS("msg", "key", val)`. The standard library's `log/slog` is the other option. controller-runtime uses `logr`, typically through `ctrl.Log.WithName`. Metrics come from `prometheus/client_golang`, which provides counters, gauges and histograms. Keep label values bounded.
+Kubernetes code logs with `klog`, which supports `-v` levels and structured calls such as `klog.InfoS("msg", "key", val)`. A `-v` level sets how much detail is printed, so you can turn on more logs when you need them. Structured calls put key and value pairs in the log line, which makes the logs easier to search. The standard library's `log/slog` is the other option. controller-runtime uses `logr`, typically through `ctrl.Log.WithName`, which gives each controller its own name in the log. Metrics come from `prometheus/client_golang`, which provides counters, gauges and histograms. Keep label values bounded, because every new value of a label creates a new time series.
 
-Flags use `flag`, `pflag` or cobra. Health endpoints use `net/http`, and graceful shutdown uses `signal.NotifyContext`. For anything long-running, prefer informers over raw watches.
+Flags use `flag`, `pflag` or cobra. Health endpoints use `net/http`, and graceful shutdown uses `signal.NotifyContext`. Graceful shutdown means stopping new work, finishing what is in progress, and then exiting. For anything long-running, prefer informers over raw watches. The informer pattern already handles the hard parts, and writing it yourself is a common source of bugs.
 
 ## 6. A small CLI: cordon nodes on XID events (walkthrough)
 
-Suppose a GPU reports an unhealthy condition overnight, and you want its node cordoned before more jobs land on it. The small CLI below does that. It is a dry run unless you turn the dry run off.
+Suppose a GPU reports an unhealthy condition overnight, and you want its node cordoned before more jobs land on it. Cordoning is the step that marks a node as unschedulable, so new pods stop arriving while the existing ones keep running. The small CLI below does that. It is a dry run unless you turn the dry run off, which means it prints what it would do and changes nothing by default.
 
 ```go
 // cmd/nodectl/main.go (condensed)
@@ -624,15 +646,13 @@ func client(path string) (kubernetes.Interface, error) {
 }
 ```
 
-Read the flags first. `--dry-run` defaults to true, so the tool only prints the nodes it would cordon. The tool collects failures as it goes and returns one error at the end, instead of stopping at the first bad node.
+Read the flags first. `--dry-run` defaults to true, so the tool only prints the nodes it would cordon. The tool collects failures as it goes and returns one error at the end, instead of stopping at the first bad node. That way one broken node does not hide the status of the others. The `unhealthy` function checks the node's conditions for a `GPUHealthy` entry, and it treats `False` as unhealthy. The cordon itself is a merge patch that sets `unschedulable` and adds an annotation with the reason, so a person reading the node later can see why it was cordoned.
 
-The listing, the informer program of section 5 (with imports `k8s.io/client-go/informers`, `listers/core/v1`, `tools/cache`, `util/workqueue`, `apimachinery/pkg/util/wait`, `k8s.io/klog/v2`) and the `health` package tests of section 7 were compiled and the unit tests run with Go 1.23.2 and client-go/apimachinery/api v0.31.0. `go vet` was clean and `go test` passed. The live-cluster behaviour was not exercised.
-
-The CLI follows the principles from 3.8: a dry-run default, explicit exit codes, aggregated errors, selectors and an idempotent patch.
+Two other facts about this program are worth stating. The listing, the informer program of section 5 (with imports `k8s.io/client-go/informers`, `listers/core/v1`, `tools/cache`, `util/workqueue`, `apimachinery/pkg/util/wait`, `k8s.io/klog/v2`) and the `health` package tests of section 7 were compiled, and their unit tests passed, with Go 1.23.2 and client-go, apimachinery and api at v0.31.0. `go vet` was clean and `go test` passed. The CLI follows the principles from 3.8: a dry-run default, explicit exit codes, aggregated errors, selectors and an idempotent patch.
 
 ## 7. Testing
 
-Suppose a small edit moves a critical XID code to the warn level. A table-driven test catches that change before it reaches a cluster. The first example checks the classifier with one row per case, and the second checks cordoning against the client-go fake clientset.
+Suppose a small edit moves a critical XID code to the warn level. A table-driven test catches that change before it reaches a cluster. A table-driven test lists the inputs and the expected outputs as rows in one table, then runs the same check on every row. The first example checks the classifier with one row per case, and the second checks cordoning against the client-go fake clientset.
 
 ```go
 // internal/health/classify_test.go
@@ -666,15 +686,17 @@ func TestCordon(t *testing.T) {
 }
 ```
 
-Table-driven tests use `t.Run`, and you can add `t.Parallel()` and `t.Helper()` where they fit. Helpers can take `testing.TB`. `cmp.Diff` from go-cmp compares values, and `testify` with `require` and `assert` is optional. Run the suite with `go test -race -cover ./...`. Fuzzing uses `func FuzzParse(f *testing.F)`, and benchmarks use `func BenchmarkX(b *testing.B)`.
+In the first test, each row is a case with a name, an input and the expected severity. The loop runs each row as a subtest, so a failure names the case that broke. In the second test, the fake clientset stands in for a real API server. The test creates a node, calls `cordon`, then reads the node back to check that it is now unschedulable. The comment at the end points to reactors, which let a test inject an error on purpose. Injecting errors is how you test the failure paths, which are the ones that usually break first.
 
-Fakes are not a real server. `k8s.io/client-go/kubernetes/fake` uses an object tracker, which lacks server behaviour such as admission, defaulting, field validation and resourceVersion conflicts. The same applies to `dynamic/fake` and controller-runtime's `fake.NewClientBuilder()`. For integration tests, `sigs.k8s.io/controller-runtime/pkg/envtest` runs a real kube-apiserver and etcd binaries, which covers CRDs, webhooks and status subresources. For e2e tests, run on kind with kuttl, chainsaw or Ginkgo.
+Table-driven tests use `t.Run`, and you can add `t.Parallel()` and `t.Helper()` where they fit. `t.Parallel()` lets subtests run at the same time, and `t.Helper()` makes a failure point at the caller's line instead of the helper's. Helpers can take `testing.TB`, which covers both tests and benchmarks. `cmp.Diff` from go-cmp compares values, and it prints the difference when they do not match, which is far more useful than a bare "not equal." `testify` with `require` and `assert` is optional. `require` stops the test on the first failure, and `assert` keeps going. Run the suite with `go test -race -cover ./...`. Fuzzing uses `func FuzzParse(f *testing.F)`, which feeds the function random inputs to find crashes, and benchmarks use `func BenchmarkX(b *testing.B)`.
 
-Design the code so it is easy to test. Keep pure domain logic apart from I/O, use small interfaces, and inject clients and clocks through `k8s.io/utils/clock` and `clock/testing`.
+Fakes are not a real server. `k8s.io/client-go/kubernetes/fake` uses an object tracker, which lacks server behaviour such as admission, defaulting, field validation and resourceVersion conflicts. A fake accepts changes that a real server would refuse, so a passing fake test is necessary but not sufficient. The same applies to `dynamic/fake` and controller-runtime's `fake.NewClientBuilder()`. For integration tests, `sigs.k8s.io/controller-runtime/pkg/envtest` runs a real kube-apiserver and etcd binaries, which covers CRDs, webhooks and status subresources. For e2e tests, run on kind with kuttl, chainsaw or Ginkgo. End-to-end tests run the whole system the way a user would, so they are the slowest and the most convincing.
+
+Design the code so it is easy to test. Keep pure domain logic apart from I/O, use small interfaces, and inject clients and clocks through `k8s.io/utils/clock` and `clock/testing`. A clock you can inject lets a test move time forward on purpose, instead of waiting for real seconds to pass.
 
 ## 8. Packaging
 
-Once the binary works, it needs a container image. The multi-stage Dockerfile below builds a static binary in one stage and copies only that file into a minimal image.
+Once the binary works, it needs a container image. The multi-stage Dockerfile below builds a static binary in one stage and copies only that file into a minimal image. A multi-stage build uses one image to compile and a second, smaller image to run, so the compiler and the source code never reach production.
 
 ```dockerfile
 FROM golang:1.23 AS build
@@ -690,9 +712,13 @@ USER 65532:65532
 ENTRYPOINT ["/nodectl"]
 ```
 
-`ko` builds images from Go without a Dockerfile, using `ko build ./cmd/nodectl`. GoReleaser creates the releases and the SBOMs and signatures. When you package it, embed the version with `-ldflags -X`. Run the container as non-root, set resource requests, and expose `/healthz` and `/metrics`.
+Read the Dockerfile as two stages. The first stage starts from a Go image, downloads the modules, copies the source and builds the binary. The second stage starts from a distroless image, which contains the minimum a program needs and no shell. It copies in only the binary, runs as a non-root user with a fixed numeric ID, and sets the binary as the entry point. Each `RUN` line uses a cache mount, so repeated builds reuse the downloaded modules and the build cache.
+
+`ko` builds images from Go without a Dockerfile, using `ko build ./cmd/nodectl`. GoReleaser creates the releases and the SBOMs and signatures. When you package it, embed the version with `-ldflags -X`. Run the container as non-root, set resource requests, and expose `/healthz` and `/metrics`. Those two endpoints let the kubelet check health and let Prometheus collect metrics, so they are part of running the tool well, not an extra.
 
 ## 9. Idioms and pitfalls checklist
+
+An idiom is a Go habit that experienced engineers use without thinking. A pitfall is the mistake that habit prevents. Read each row as a pair. The left column is the habit to build, and the right column is the mistake to avoid.
 
 | Idiom | Pitfall |
 |---|---|
@@ -713,32 +739,36 @@ ENTRYPOINT ["/nodectl"]
 | Match client-go and Kubernetes versions | Mixed versions causing type or API mismatches |
 | `ptr.To` for optional fields; check nil before dereferencing | Nil pointer panics on optional API fields |
 
+Use this table as a review checklist before you merge code. Pick three rows that match the change in front of you, and check them against the diff. Most controller bugs are on this list, and the most common ones are the cache mutation and the missing retry on conflict.
+
 ## 10. Lab
 
-Start with the self-checking Python lab, which you can run locally. Run `code/part05/client_go_mechanics_sim_lab.py` and it checks three things. It verifies the `resource.Quantity` rules from *Kubernetes Programming with Go*, Chapter 4, where `BinarySI` (`Ki..Ei`) is compared with `DecimalSI` (`m..T`). It also verifies the `intstr.GetScaledValueFromIntOrPercent` calculator. Then it checks the `DefaultRESTMapper` from Chapter 5, which covers `GVK <-> GVR` pluralization and scope mapping.
+The lab starts with a Python file, which you can run on your own machine. Start with the self-checking Python lab, and run `code/part05/client_go_mechanics_sim_lab.py`. It checks three things. It verifies the `resource.Quantity` rules from *Kubernetes Programming with Go*, Chapter 4, where `BinarySI` (`Ki..Ei`) is compared with `DecimalSI` (`m..T`). It also verifies the `intstr.GetScaledValueFromIntOrPercent` calculator. Then it checks the `DefaultRESTMapper` from Chapter 5, which covers `GVK <-> GVR` pluralization and scope mapping.
 
-The lab also covers Chapters 6 and 7. It checks the `Lister` `DeepCopy()` cache safety guard, and the `fake.NewSimpleClientset` `PrependReactor` and `Actions()` verifier.
+The lab also covers Chapters 6 and 7. It checks the `Lister` `DeepCopy()` cache safety guard, and the `fake.NewSimpleClientset` `PrependReactor` and `Actions()` verifier. Each check mirrors a rule from this chapter, so a passing run means the rule is at least consistent with the model.
 
 ```bash
 python3 code/part05/client_go_mechanics_sim_lab.py
 ```
 
-Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through these exercises. The cluster steps below have not been run against live hardware.
+Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through these exercises. The cluster steps below have not been run against live hardware, so treat them as a plan to check against your own cluster. Work through them in order, because the later steps reuse the `nodectl` project from section 1.
 
-1. Install Go, create the module, and add client-go dependencies that match your kind cluster version. Then build and run a program that lists nodes with GPU labels, using fake labels on the kind nodes.
-2. Implement `Classify`, a generic `Filter/Map/GroupBy`, and an `errors.Is/As` example with a custom error type. Add a bounded-concurrency prober that uses `errgroup`, and finish by running `go vet` and `go test -race`.
-3. Write the node informer and work queue example, and log each reconcile. Kill and restart the program, then observe resync and cache behaviour. Add an indexer for pods by node, and print the pod counts per node.
-4. Write two goroutines that update the same annotations. First use `Update` and observe the conflicts. Then switch to `Patch` or SSA, which shows no conflicts, and inspect field ownership with `--show-managed-fields`.
-5. Implement a raw watch and force a 410 by delaying. Add a `RetryWatcher`, and then compare it with an informer.
+1. Install Go, create the module, and add client-go dependencies that match your kind cluster version. Then build and run a program that lists nodes with GPU labels. Use fake labels on the kind nodes, since kind nodes have no real GPUs.
+2. Implement `Classify`, a generic `Filter/Map/GroupBy`, and an `errors.Is` and `errors.As` example with a custom error type. Add a bounded-concurrency prober that uses `errgroup`. Finish by running `go vet` and `go test -race`.
+3. Write the node informer and work queue example, and log each reconcile. Kill and restart the program. Then observe the resync and cache behaviour. Add an indexer for pods by node, and print the pod counts per node.
+4. Write two goroutines that update the same annotations. First use `Update` and observe the conflicts. Then switch to `Patch` or SSA, which shows no conflicts. Inspect field ownership with `--show-managed-fields`.
+5. Implement a raw watch, and force a 410 by delaying the restart. Add a `RetryWatcher`. Then compare it with an informer.
 6. Implement `cordon` with an eviction loop that respects PDBs, using retries and backoff. Test it against kind with a PDB that blocks evictions. Add `--timeout` and context cancellation.
-7. Write a tool that prints Kueue ClusterQueue usage with unstructured access. Then generate typed structs by importing Kueue's API module, and compare the two.
-8. Build the `nodectl cordon-unhealthy` command with cobra, and add tests with the fake clientset. Add `--output json`, cross-compile, and package the binary in a distroless image. Run it as a Job with a ServiceAccount and RBAC, following least privilege with nodes `get/list/patch`.
-9. Run two replicas of an informer program with a Lease, then kill the leader and measure the failover.
-10. Clone `kubernetes/kubernetes` or `kubernetes/sample-controller`. Trace `pkg/controller/replicaset`'s `syncReplicaSet`, map it to the reconcile pattern in 5.6, and find where the informers are wired.
+7. Write a tool that prints Kueue ClusterQueue usage with unstructured access. Then generate typed structs by importing Kueue's API module. Compare the two approaches.
+8. Build the `nodectl cordon-unhealthy` command with cobra, and add tests with the fake clientset. Add `--output json`, cross-compile, and package the binary in a distroless image. Run it as a Job with a ServiceAccount and RBAC. Follow least privilege, so the role allows only nodes `get/list/patch`.
+9. Run two replicas of an informer program with a Lease. Then kill the leader and measure the failover.
+10. Clone `kubernetes/kubernetes` or `kubernetes/sample-controller`. Trace `pkg/controller/replicaset`'s `syncReplicaSet`, and map it to the reconcile pattern in 5.6. Then find where the informers are wired.
 11. Write one envtest integration test that installs a CRD and verifies status subresource behaviour.
 12. Clean up.
 
 ## 11. Interview angles
+
+Go questions in platform interviews usually test whether you understand the mechanisms behind the Kubernetes libraries. Answer with the mechanism and the trade-off, the same way you would for a design question.
 
 - "Why is Go used for Kubernetes? What Go features matter (interfaces, goroutines, static binaries)?"
 - "How do informers work and why must you not mutate objects from a lister?"
@@ -750,16 +780,16 @@ Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster, you work through th
 
 ## Exercises
 
-Each exercise is one Go skill that Kubernetes code needs. The simulators live in `code/part05/client_go_mechanics_sim.py`.
+Each exercise asks for one Go skill that Kubernetes code needs. Work through them in order, because later exercises assume the earlier ideas. The simulators live in `code/part05/client_go_mechanics_sim.py`.
 
-1. Explain why optional fields in Kubernetes Go structs are pointers. Show how `ptr.To` and `ptr.Deref` help.
+1. Explain why optional fields in Kubernetes Go structs are pointers. Then show how `ptr.To` and `ptr.Deref` help.
 2. Explain why a method with a pointer receiver does not satisfy an interface when you pass the value. Network Programmability and Automation, Chapter 7, shows the case.
-3. Wrap an error with `%w`, then test it with `errors.Is`. Then use `apierrors.IsNotFound` and `apierrors.IsConflict` on a Kubernetes API error.
+3. Wrap an error with `%w`, and test it with `errors.Is`. Then use `apierrors.IsNotFound` and `apierrors.IsConflict` on a Kubernetes API error.
 4. Trace the node prober in Section 3, which uses `errgroup` with `g.SetLimit(16)`. Say how context cancellation reaches the other workers when one fails. Then say why concurrent map writes panic.
-5. Run `parse_k8s_quantity_milli()` and `get_scaled_value_from_int_or_percent()`. Contrast `1Ki` at 1024 with `1k` at 1000, and say what `2500m` means. Kubernetes Programming with Go, Chapters 4 and 5, covers the types.
-6. Use `DefaultRESTMapperSim` to show how a Go struct maps to a group-version-kind and then to a group-version-resource.
+5. Run `parse_k8s_quantity_milli()` and `get_scaled_value_from_int_or_percent()`. Contrast `1Ki` at 1024 with `1k` at 1000. Then say what `2500m` means. Kubernetes Programming with Go, Chapters 4 and 5, covers the types.
+6. Use `DefaultRESTMapperSim` to show how a Go struct maps to a group-version-kind. Then show how that maps to a group-version-resource.
 7. Compare `Update` with `RetryOnConflict`, `Patch`, and Server-Side Apply for changing a node label. Then say why draining uses an Eviction and not `Delete`. Kubernetes Programming with Go, Chapter 6, covers the clients.
-8. Trace the informer program in Section 5 from the reflector to the worker. Say why handlers enqueue only `namespace/name` keys, and why a tombstone must be unwrapped in `DeleteFunc`.
+8. Trace the informer program in Section 5 from the reflector to the worker. Say why handlers enqueue only `namespace/name` keys. Then say why a tombstone must be unwrapped in `DeleteFunc`.
 9. Explain why changing an object from a lister without `DeepCopy()` corrupts the shared cache.
 10. Use `FakeClientsetWithCacheSim` to inject a 409 Conflict with `cs.PrependReactor("patch", "nodes", ...)`. Check the calls with `cs.Actions()`. Then compare the fake clientset with `envtest`, which Kubernetes Programming with Go, Chapter 7, covers.
 

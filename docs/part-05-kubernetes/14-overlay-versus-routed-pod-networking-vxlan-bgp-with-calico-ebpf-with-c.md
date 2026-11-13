@@ -26,11 +26,11 @@ Your GPU cluster's primary pod network carries more traffic than most people exp
 
 The design of this network decides several things at once. It sets the failure domains, which can be a flat L2 network or a routed L3 network. It decides whether you can see which pod talked to which, how security policy is enforced, and how much throughput each core delivers. It also decides how the network fits the datacentre fabric that Part 2 and Part 12 describe, a leaf-spine design running eBPF and BGP.
 
-Choosing and tuning Calico, Cilium or a cloud-native CNI is a platform architecture decision, and it is hard to reverse. This chapter gives you a framework for that choice, shows how each mode works on the wire, and explains how to verify and tune it.
+Choosing and tuning Calico, Cilium or a cloud-native CNI is a platform architecture decision, and it is hard to reverse. Think of it like choosing the road layout for a new city. Once the streets are laid and the houses are built, moving a main road is expensive, and every neighbourhood feels the change. This chapter gives you a framework for that choice, shows how each mode works on the wire, and explains how to verify and tune it.
 
 ## Prerequisites and outcomes
 
-Before you start, you need chapter 5.13, plus BGP and VXLAN from Part 2 (2.15 to 2.17), and the Linux networking and eBPF material from Part 1 and Part 2. By the end of this chapter, you will be able to:
+Before you start, you need chapter 5.13, plus BGP and VXLAN from Part 2 (2.15 to 2.17), and the Linux networking and eBPF material from Part 1 and Part 2. Use the list below as a self-check. Each line names one thing a platform engineer should be able to do with these tools, and each one maps to a section of this chapter.
 
 - Explain how VXLAN, Geneve and IP-in-IP overlays forward pod traffic, covering the forwarding database (FDB) that maps pod addresses to node addresses, route programming, encapsulation and MTU, and what each one costs and gives you.
 - Explain native routing with BGP (Calico, Cilium BGP Control Plane, kube-router), and connect pod CIDRs to top-of-rack (ToR) switches in a leaf-spine fabric using eBGP per node or rack, route reflectors, ECMP, graceful restart and BFD.
@@ -39,9 +39,11 @@ Before you start, you need chapter 5.13, plus BGP and VXLAN from Part 2 (2.15 to
 - Compare the modes on performance, operational complexity, debuggability, policy features and kernel dependency, and choose one for GPU clusters, including how it coexists with Multus and SR-IOV.
 - Migrate or replace a CNI safely.
 
-The outcomes above are the checklist for the rest of the chapter.
+If a line feels unfamiliar when you reach its section, slow down there and read again. Running the commands on a cluster of your own is the best way to make the line stick.
 
 ## 1. Decision frame
+
+Suppose your team must build a GPU cluster on racks that the network engineers already manage. Before anyone opens a Helm chart, the team needs to know what the fabric can do. This table turns that conversation into a checklist.
 
 Before you read about any mode in detail, answer the questions in this table. Each row exposes a constraint that can rule a mode in or out. Read the right-hand column as the reason behind each question.
 
@@ -58,6 +60,8 @@ Before you read about any mode in detail, answer the questions in this table. Ea
 | Performance goals for the primary network? | If bulk traffic stays on RDMA secondary networks, primary CNI performance is secondary to reliability and policy |
 
 Notice that the scale, MTU and kernel rows often decide the datapath, while the operations row decides how much complexity your team can carry. Answer every row before you pick a mode.
+
+Here is one way to read the table. Suppose the fabric cannot learn pod routes, and the MTU is 1500 bytes. The first row then points you to an overlay, because native routing needs the fabric's help. The MTU row tells you that every pod packet gives up 50 bytes to the tunnel header. If your team also runs a small cluster with a tight budget, the operations row tells you that a simple overlay is easier to carry than a BGP design. Each row narrows the list, and the answers together settle the choice.
 
 ## 2. Overlay networks
 
@@ -79,6 +83,8 @@ sequenceDiagram
 
 Read the diagram as one packet's trip. The packet leaves Pod A, and the Node A device looks up which VTEP, the tunnel endpoint that does the wrapping, owns the destination subnet. It then wraps the packet in an outer UDP packet addressed from Node A to Node B. Node B strips the outer layer and hands the inner packet to Pod B.
 
+Think of an overlay as a courier box. The pod packet is a letter sealed inside the box. The label on the box carries only the node addresses, so the courier needs to know how to reach each building and nothing more. The receiving node opens the box and passes the letter on unchanged. The letter itself is the same, but the box makes the whole parcel heavier, which is the same as the MTU cost in the next paragraphs.
+
 VXLAN runs over UDP port `4789`, while Flannel uses `8472` by default. It carries layer 2 traffic over UDP, identified by a 24-bit VNI, the VXLAN network identifier. The VTEP learns its MAC-to-VTEP mappings through control-plane programming. Flannel and Calico program the forwarding database (FDB) and neighbor entries, so the network does not need flooding. VXLAN adds 50 bytes of overhead.
 
 Geneve runs over UDP port `6081`. It is an extensible encapsulation, and its TLV options, short for type-length-value, let Cilium and OVN-Kubernetes carry identity and metadata inside the tunnel. Its overhead is ~50+ bytes.
@@ -89,7 +95,9 @@ WireGuard can act as an encrypting overlay in both Calico and Cilium. It adds 60
 
 Overlays come with costs you have to plan for. The MTU shrinks, so set the pod MTU to the underlay MTU minus the overhead. Encapsulation and decapsulation also use CPU. UDP tunnel offloads reduce that cost on modern NICs, named `tx-udp_tnl-segmentation` and `rx-udp_tunnel-port-offload`, and you can check them with `ethtool -k`.
 
-Overlays also change what the fabric can see. Flows are node-to-node UDP, so the fabric sees nodes rather than pods. ECMP hashing on the outer UDP source port, which is derived from the inner flow, helps spread traffic, and some fabrics need `ecmp hash` on UDP ports. Firewalls must allow the UDP port. The overlay hides pod IPs from the fabric, so you cannot write ACLs on pod IPs or attribute flows at the network level. Troubleshooting is harder as well, because you have to capture traffic inside the tunnels.
+Overlays also change what the fabric can see. Think of the fabric as a postal service that reads only the outside of each envelope. With an overlay, every envelope is addressed from one node to another, and the postal service cannot read the names of the people inside. Flows are node-to-node UDP, so the fabric sees nodes rather than pods. ECMP hashing on the outer UDP source port, which is derived from the inner flow, helps spread traffic, and some fabrics need `ecmp hash` on UDP ports. Firewalls must allow the UDP port. The overlay hides pod IPs from the fabric, so you cannot write ACLs on pod IPs or attribute flows at the network level. Troubleshooting is harder as well, because you have to capture traffic inside the tunnels.
+
+Picture a team that runs servers from several providers and cannot ask any of them to change their routers. An overlay asks nothing of the network beyond basic node-to-node reachability, which is why it suits that team.
 
 Choose an overlay when you have no control of the underlay, when the environment is mixed, when you run multi-cloud or hybrid setups with simple connectivity, when you need a quick start, or when the cluster is small. Without control of the underlay, an overlay is the mode this list points to.
 
@@ -119,11 +127,15 @@ flowchart TB
 
 The diagram shows one leaf switch per rack. Each node peers over eBGP with its rack's leaf, and every leaf connects to both spines. The leaves use ASNs 65101 and 65102, and node1 uses ASN 65201.
 
+An ASN, or autonomous system number, is the label a BGP speaker uses to identify its routing domain. eBGP runs between different ASNs, such as a node and the leaf switch above it. Follow a pod block up the diagram. Node1 advertises `10.244.1.0/26` to its leaf, and the leaf passes that route up to both spines. Every switch then knows which rack holds that block, so it can forward traffic without any tunnel.
+
 ### Calico in BGP mode
 
 Calico runs Felix, which programs routes and iptables or eBPF policy, and BIRD, the BGP daemon, on each node. It also runs Typha, which fans out datastore updates at scale, together with the controller. IPAM hands out blocks from IP pools. The blocks default to /26 per node and are allocated as needed. Each node advertises its blocks.
 
 You can arrange the BGP sessions in three ways. The default is a node-to-node mesh, a full iBGP mesh among the nodes. That means O(n²) sessions, which is fine below ~100 nodes. Route reflectors are a few nodes, or the ToRs, that reflect routes, and this design scales to thousands of nodes.
+
+Think of a full mesh as a group chat in which everyone messages everyone else. That works for a small group, but the number of conversations grows much faster than the number of people. A route reflector is closer to a single moderator who relays messages for the whole room. Each node talks to a few moderators, and the moderators pass the news along.
 
 The third option peers each node with its ToR switch. Each node runs eBGP with its rack's ToR, and `BGPPeer` resources choose the peer through `nodeSelector`, `peerIP` or `peerSelector`. Use unique or shared ASNs per rack, following your fabric design in the RFC 7938 style from 2.16. The ToRs then propagate pod routes to the spine, and you disable `nodeToNodeMesh`.
 
@@ -163,6 +175,10 @@ spec:
 
 The `IPPool` sets `blockSize: 26`, and it turns off both IPIP and VXLAN, which makes it pure routed. If some paths cross layer 3, use `CrossSubnet` instead.
 
+Read the three manifests in order, because each one answers a different question. `BGPConfiguration` answers how this cluster speaks BGP, including its own ASN and the Service ranges it advertises. `BGPPeer` answers who the rack's switch is. `IPPool` answers which address space the pods draw from, and how each node takes its slice of it.
+
+Think of BFD as a heartbeat monitor. The BGP session itself can take a long time to notice that a neighbour has gone quiet, but BFD checks the link many times a second, so the switch learns about the failure fast. Graceful restart works like a substitute teacher. When the regular teacher steps out for a moment, the class keeps going on the existing plan, and the teacher picks up again without the class being sent home.
+
 Once the sessions are up, run them carefully. Use BFD for sub-second failure detection, and enable graceful restart so routes survive a BIRD restart. Filter routes on the ToR, so it accepts only the pod and service ranges from nodes and enforces a maximum prefix count. Spread traffic across spines with ECMP. Consider `/32` per-pod routes only with eBPF or host-routing designs, because block aggregation keeps routing tables small. Keep in mind the differences between Calico Enterprise and Calico OSS. To check peer state, run `calicoctl node status`, and look for `proto bird` in `ip route`.
 
 Other routed options exist as well. Cilium BGP Control Plane uses `CiliumBGPPeeringPolicy`, or the v2 `CiliumBGPClusterConfig`, to advertise pod CIDRs, Services and LB IPs through GoBGP. kube-router combines BGP, IPVS and network policy in one binary. MetalLB and FRR-K8s handle Service IPs. Flannel host-gw uses static routes and works only for nodes that are adjacent at layer 2. Cloud route tables cover GCE routes, the AWS route table CNI mode, and Azure UDRs.
@@ -170,6 +186,8 @@ Other routed options exist as well. Cilium BGP Control Plane uses `CiliumBGPPeer
 Routed designs have clear benefits. There is no encapsulation overhead and no MTU loss. Pod IPs stay visible to fabric telemetry, ACLs and flow logs. The fabric's native ECMP applies, and a failure stays within the BGP sessions it affects. The costs are real, though. The design depends on network team cooperation and on how the fabric is configured. You must avoid overlapping or ambiguous prefixes, handle route churn, and make sure pods that leave the cluster network are NATed or routable externally by design.
 
 On a fabric that can learn pod routes, a routed design keeps the most visibility.
+
+Routed designs also depend on ECMP, which stands for equal-cost multipath. Picture a supermarket with several checkout lanes of the same length. ECMP sends each flow into one of those lanes, so the load spreads across the spines. Each flow stays in one lane, so its packets arrive in order, and the fabric as a whole uses all of its capacity. That is why the spine layer matters so much in a routed design.
 
 ### Underlay-native / VPC-native
 
@@ -179,19 +197,25 @@ The provider's IP limits decide whether this design fits your cluster.
 
 ## 4. Cilium and eBPF
 
+Picture a Service with many pods behind it, and a firewall rule that lists each pod's IP. Every time a pod restarts, its IP changes, and the rule has to change with it. Cilium's approach avoids that churn by naming the workload instead of its address.
+
 Cilium does most of its networking through eBPF programs attached to kernel hooks. eBPF lets small, verified programs run inside the kernel. Cilium uses them to implement the CNI itself, along with Services, NetworkPolicy, observability and encryption. It can also provide a service mesh and multi-cluster networking, all through the same mechanism.
 
 ### Concepts
 
 Identity-based security gives each pod endpoint a numeric security identity, derived from its labels. Pods with identical labels share an identity. Policy rules become identity-to-identity allow lists, enforced in eBPF maps, and they do not depend on IP addresses. That scales better than IP-based iptables rules and copes well with churn. Identities reach other nodes through a kvstore or CRDs, and they travel in Geneve or VXLAN headers. In native routing, Cilium looks them up by IP in the ipcache instead.
 
+A simple way to hold the idea is a security badge. An IP address is like a street address, which changes when someone moves house. An identity is like the badge the person wears at work, which stays the same no matter where they sit. A policy that says "the badge for frontend may call the badge for backend" still works after every frontend pod has moved to a new address.
+
 Cilium hooks into several points in the kernel. `tc` handles traffic control ingress and egress on pod veth or netkit devices and on node devices. XDP is the earliest packet hook, at the NIC driver, used for load balancing and DDoS filtering. Socket hooks, including `cgroup/connect4`, `sendmsg`, `getpeername` and `bind`, handle socket-level load balancing. `sockops` and `sk_msg` speed up local traffic, and kprobes support tracing in Tetragon.
 
 The datapath keeps its state in BPF maps. Maps hold Service backends (`lb4_services`, `lb4_backends`), endpoints, policy (`cilium_policy_*`), conntrack (`cilium_ct4_*`), NAT, the ipcache and metrics. Updates are incremental atomic map operations, so Cilium never rewrites a whole map.
 
-Cilium offers three datapath modes. Tunnel mode uses a VXLAN or Geneve overlay and is the default. Native routing, set with `routingMode: native` and `ipv4NativeRoutingCIDR`, relies on fabric or cloud routes, or on Cilium BGP or automatic direct node routes when nodes share L2. The ENI, Azure and other cloud-specific IPAM modes cover the cloud cases.
+Cilium offers three datapath modes. Tunnel mode is the overlay from section 2, so it is the mode to pick when the fabric cannot learn pod routes. Native routing is the routed design from section 3, and it needs the fabric or the cloud to know the pod CIDRs. Tunnel mode uses a VXLAN or Geneve overlay and is the default. Native routing, set with `routingMode: native` and `ipv4NativeRoutingCIDR`, relies on fabric or cloud routes, or on Cilium BGP or automatic direct node routes when nodes share L2. The ENI, Azure and other cloud-specific IPAM modes cover the cloud cases.
 
 kube-proxy replacement, enabled with `kubeProxyReplacement: true`, takes over ClusterIP, NodePort, LoadBalancer, externalIPs and hostPort handling. Socket-LB resolves the backend at `connect()` for in-cluster clients, so pod-to-Service traffic needs no per-packet DNAT and no conntrack. External traffic goes through eBPF NAT. The replacement also supports direct server return (DSR), which lets the backend answer the client without sending the reply back through the node that received the request, Maglev hashing, session affinity, graceful backend termination, topology-aware routing and `externalTrafficPolicy`.
+
+Here is how the Socket-LB step reads for a pod that calls a Service. The pod's `connect()` call is rewritten to a backend pod address before the first packet is built. The packet then carries the real destination, so no per-packet translation is needed. With iptables, by contrast, each packet is rewritten as it passes through the rule chains. Socket-LB moves that work to the moment the connection starts.
 
 Host routing bypasses iptables and the host network stack for pod-to-pod and pod-to-external flows. `bpf.hostRouting=true` provides the legacy iptables bypass. Newer kernels can use netkit devices in place of veth, which lowers overhead. BIG TCP is also available. The bandwidth manager limits egress rate with EDT, using the `kubernetes.io/egress-bandwidth` annotation and an optional BBR setting, which helps share NIC bandwidth fairly.
 
@@ -231,6 +255,8 @@ hubble observe --follow --namespace training --verdict DROPPED
 
 The first profile keeps pod traffic in a VXLAN tunnel and runs cluster-pool IPAM over `10.244.0.0/16`. The second profile lets the fabric learn the pod CIDRs through BGP, and it pairs Maglev with DSR for load balancing.
 
+Read the two profiles by their flags, not by their length. The tunnel profile sets `routingMode=tunnel` and `tunnelProtocol=vxlan`, which tells Cilium to wrap pod traffic. It also turns on Hubble, so you can see the flows while you learn. The native profile sets `routingMode=native` and `autoDirectNodeRoutes=false`, which hands routing to the fabric and to BGP. It adds the Maglev and DSR load-balancing flags, and it sets `mtu=9000` for a jumbo underlay. Each flag is a decision, so ask yourself what the flag assumes about the network.
+
 Check the chart version and values against your Cilium release. If you replace kube-proxy from day one, run `kubeadm init --skip-phases=addon/kube-proxy`.
 
 ### Cilium BGP Control Plane example
@@ -255,6 +281,8 @@ spec:
           keepAliveTimeSeconds: 3
 ```
 
+Read the policy from the top down. The `nodeSelector` decides which nodes take part, so only the nodes labelled `rack: rack1` open the session. The `virtualRouters` block sets the local ASN and exports the pod CIDR. The `neighbors` block names the ToR switch, its ASN, and the timers that decide how quickly a silent neighbour is declared dead. The Service selector only advertises Services that carry the `advertise: bgp` label, so a Service without that label stays private.
+
 API versions differ across releases. Newer releases use `CiliumBGPClusterConfig`, `CiliumBGPPeerConfig` and `CiliumBGPAdvertisement` in the v2 API instead.
 
 ## 5. Comparison
@@ -275,6 +303,10 @@ The table below sets the five data-plane options side by side. Use it to rule a 
 
 Notice that the overlay and tunnel rows carry the MTU cost, while the routed rows do not. Scan the Kernel needs row before you choose an eBPF mode, because the requirements differ between the two.
 
+The throughput-per-core row needs a little care. It does not measure the speed of one link. It measures how much work each CPU core must do to move a gigabit of traffic. A design that uses less CPU per gigabit leaves more cores free for training jobs, which is why the row matters on GPU nodes that are also busy with data loading.
+
+Performance figures depend heavily on your hardware, so treat these as rough guidance. The same CNI can look very different on two servers that differ only in NIC firmware, CPU generation or kernel version. Use the figures to decide which modes deserve a real test on your own hardware, and do not use them as a promise.
+
 Performance figures depend heavily on your hardware, so treat these as rough guidance. Take a 100 Gb/s NIC as an example. A tunnelled pod-to-pod TCP stream without tuning often reaches 50 to 80 percent of line rate, which works out to 50 to 80 Gb/s. The limit is usually CPU. A routed or eBPF native setup with GRO and GSO and a suitable MTU approaches line rate.
 
 Latency tells a similar story. Overlay encapsulation, decapsulation and iptables traversal add about 10 to 30 µs, and eBPF host routing adds less. Benchmark on your own hardware using the method in section 7. Neither mode replaces RDMA when collectives run, as chapter 5.13 explains.
@@ -283,9 +315,11 @@ Benchmark on your hardware before you commit to a mode.
 
 ## 6. Choosing for GPU clusters
 
-Consider a GPU node with several networks attached. The primary network carries control and ordinary traffic, while collectives run on secondary RDMA networks. Those secondary networks use SR-IOV, macvlan or host devices, attached through Multus. Because of that split, you should choose the primary CNI for reliability, policy, observability and operability, not for peak throughput.
+Picture a GPU node as a building with several doors. The front door is the primary network, which carries control and ordinary traffic. The loading dock is the RDMA network, which carries the heavy collective traffic. Choosing the front door's lock is a different job from choosing the loading dock's, and this section is about the front door. The primary network carries control and ordinary traffic, while collectives run on secondary RDMA networks. Those secondary networks use SR-IOV, macvlan or host devices, attached through Multus. Because of that split, you should choose the primary CNI for reliability, policy, observability and operability, not for peak throughput.
 
 On bare metal with a BGP fabric, such as NVIDIA Spectrum or Cumulus, Arista or Cisco, Calico BGP or Cilium native routing with BGP integrates cleanly. Avoid overlays there, because they would hide the fabric's ECMP and visibility. Align your ASN scheme with the fabric design in 2.16 and Part 12.
+
+Walk through the choice with three questions. Do you control the fabric? If you do, and it can run BGP, choose routed Calico or Cilium native routing. If you do not, or if the environment is mixed, use VXLAN with jumbo MTU or WireGuard-encrypted tunnels. If the cluster is managed, accept the provider's default unless you have a specific feature to win.
 
 Without control of the fabric, or in mixed environments, use VXLAN with jumbo MTU or WireGuard-encrypted tunnels.
 
@@ -304,6 +338,8 @@ Multi-homed GPU nodes, with management, data and RDMA NICs, can confuse CNIs tha
 GPU nodes usually run only a few pods, tens at most, so a per-node `/26` or `/25` block is usually enough. Plan the cluster CIDR as node count times block size. Avoid wasting space, but leave room to grow.
 
 Choose the primary CNI for reliability, policy and operability, then confirm that the secondary networks are untouched.
+
+A quick check before you sign off on a design is to ask who gets paged. If a routing problem on the primary network wakes the same person who runs the RDMA fabric, the two networks are too tangled. Separating the duties, and making sure each network has its own owner and its own runbook, is as much a design decision as any of the modes above.
 
 ## 7. Verification and benchmarking
 
@@ -333,13 +369,19 @@ mpstat -P ALL 1                                                          # per-c
 ethtool -k <nic> | grep -E 'udp_tnl|gro|gso|tso|rx-udp'                  # offloads
 ```
 
+Run the groups in order. Check routes and peers first, because a broken route makes every later test meaningless. Then check the MTU, and only then measure performance. The jumbo ping uses a payload of 8972 bytes. That is 28 bytes less than a 9000-byte MTU, because the IPv4 header takes 20 bytes and the ICMP header takes 8, the same arithmetic as chapter 5.13 section 7.
+
 The first group checks routes, BGP peers, BPF state and endpoints. The MTU group checks node, tunnel and pod MTUs, and it sends a jumbo-sized ping to test the path. The performance group runs pod-to-pod across nodes, and it records per-core CPU and NIC offloads during the test.
 
 Vary the test along several axes. Compare the same node, a different node and a different rack. Try TCP bulk, small RPCs and UDP. Run with and without policy, and with and without encryption. Measure at 100, 1,000 and 10,000 Services, and during node churn. Record CPU per Gb/s and tail latency, and keep each run with its kernel, CNI and NIC firmware versions so you can compare modes later.
 
+Read the results with the matrix in mind. A single good number is not a result, because a benchmark that passes on one rack can fail on another. Look for the pattern across the axes. If the tunnel is slow only for small RPCs, the cost is per packet and not per byte. If it is slow only for bulk TCP, the cost is in the encapsulation of large buffers. The pattern tells you where to look next.
+
 ## 8. Migration and operations
 
-Suppose your cluster runs fine, and someone proposes a new CNI. Changing the CNI on a live cluster is disruptive, because pods need new networking. You have two methods. You can drain nodes one at a time while you remove the old CNI and install the new one, which is a rolling change. Or you can build a new cluster and move workloads across, which the chapter prefers for large changes. Cilium and Calico both publish migration guides. Cilium's guide covers a dual-overlay migration that uses node labels and `CiliumNodeConfig`.
+Suppose your cluster runs fine, and someone proposes a new CNI. Changing the CNI on a live cluster is disruptive, because pods need new networking. You have two methods. You can drain nodes one at a time while you remove the old CNI and install the new one, which is a rolling change. Or you can build a new cluster and move workloads across, which the chapter prefers for large changes.
+
+Changing a CNI in place is like replacing the plumbing in an occupied building one floor at a time. Each floor is a little disruptive, and for a while the building has a mix of old and new pipes. Building a new block and moving the tenants across takes longer, but nobody lives with the mixed plumbing. Cilium and Calico both publish migration guides. Cilium's guide covers a dual-overlay migration that uses node labels and `CiliumNodeConfig`.
 
 Upgrades need the same care. Follow the upgrade paths one minor version at a time, from n to n+1. Read the release notes for datapath changes. Upgrade agents with `maxUnavailable` limits, and test connectivity with `cilium connectivity test`. Watch for drops during rollouts. Consider pinning eBPF-related options, and test the kernel and CNI version pairs.
 
@@ -349,7 +391,11 @@ Store the CNI configuration as code, with Helm values in Git, as section 4.26 de
 
 Know what each failure does. If the CNI agent goes down, existing pods keep their connectivity, because the datapath is programmed in the kernel. New pods fail to start. If BGP goes down, routes are withdrawn, which is why you use graceful restart. If the policy engine goes down, the default behaviour is fail-open or fail-closed, depending on its configuration.
 
+It helps to say the failure modes out loud before an incident does it for you. Fail-open means traffic keeps flowing while the policy engine is broken, which favours availability and gives up some enforcement. Fail-closed means traffic stops, which favours safety and can take a service down with it. Decide which one you want for each component before you deploy it, and write that decision down.
+
 Security needs attention too. Restrict access to the CNI's CRDs, because they define policy. Enable mTLS for the Hubble and `cilium-agent` APIs. Rotate WireGuard keys automatically, and audit policy changes through GitOps.
+
+Capacity and failure are linked. A full IPAM pool looks like a scheduling problem, because new pods stay pending, but the root cause sits in the network layer. A full conntrack or BPF map looks like random connection drops, because only some flows fail. Keep the capacity dashboards next to the failure dashboards, so that the two can be read together during an incident.
 
 For a large CNI change, plan the new cluster and the workload move before you touch the old CNI.
 
@@ -361,19 +407,21 @@ Start with the self-checking Python lab, which runs locally and needs no cluster
 python3 code/part05/overlay_bgp_cilium_planner_lab.py
 ```
 
-Next, on a 3-node cluster with `calicoctl` or `cilium`/`hubble`, work through the exercises below. The shell steps below have not been run against live hardware.
+The Python lab is worth running first because it checks the arithmetic before you spend cluster time. A wrong session count or a wrong MTU is cheap to find on a laptop and expensive to find during a benchmark. Once the planner's numbers agree with your hand calculation, the cluster steps are much easier to trust.
 
-1. Start with an overlay baseline. Install Flannel (VXLAN) or Calico VXLAN on a 3-node cluster. Capture VXLAN on the underlay, compute the MTU, and run iperf3 pod-to-pod. Then view `bridge fdb` and `ip -d link show flannel.1`.
-2. Build a routed Calico setup with FRR. Create a containerlab topology with two ToRs and a spine (2.27). Run Calico with `ipipMode: Never`, `vxlanMode: Never` and `nodeToNodeMeshEnabled: false`, and peer the nodes to the ToRs. Verify the routes at the spine, run iperf3, and compare the results with the overlay. Then fail a node and a ToR link, and measure convergence with and without BFD.
-3. Switch Calico to route reflectors. Compare the session counts, then add a node and watch block allocation and advertisement.
-4. Move Cilium from tunnel mode to native routing. Install Cilium in tunnel mode with Hubble, and observe the flows. Switch to native routing with the BGP Control Plane, and compare the path, where `tcpdump` shows plain pod IPs. Enable DSR and Maglev, then test NodePort source IP preservation.
-5. Replace kube-proxy. Remove kube-proxy, verify that Services still work, and inspect `cilium bpf lb list`. Compare with iptables on sync latency with 5,000 Services (kube-burner), on CPU, and on connection setup latency.
-6. Test policy and identity. Create a CiliumNetworkPolicy with L7 HTTP rules and `toFQDNs`, and observe the Hubble verdicts. Then compare it with Calico policy for the same intent (5.15).
-7. Enable encryption. Turn on WireGuard, verify it with `cilium encrypt status` and `wg show`, and measure throughput and CPU. Then adjust the MTU.
-8. Run the MTU and PMTUD drill. Misconfigure the MTU on one node, reproduce the stalled transfers, and fix them.
-9. Run the performance matrix. Run the benchmark matrix across modes on the same hardware, and produce a table of Gb/s, CPU cores used and p99 latency.
-10. Test Multus coexistence. Attach a secondary macvlan or SR-IOV network to a pod while Cilium or Calico is the primary. Verify there is no interference, then run `ib_write_bw` or `iperf3` on the secondary network.
-11. Run the failure and upgrade drills. Roll the CNI agent while a connectivity loop runs, kill agents, restart BGP, and upgrade the minor version in a staging cluster. Document the disruptions.
+Next, on a 3-node cluster with `calicoctl` or `cilium`/`hubble`, work through the lab below. The shell steps below have not been run against live hardware, so treat each one as a plan until you have seen it work on your own cluster.
+
+1. Start with an overlay baseline on a 3-node cluster. Install Flannel (VXLAN) or Calico VXLAN. Capture VXLAN on the underlay, compute the MTU, and run iperf3 pod-to-pod. Then view `bridge fdb` and `ip -d link show flannel.1`. What does the FDB tell you about where each pod lives?
+2. Build a routed Calico setup with FRR. Create a containerlab topology with two ToRs and a spine (2.27). Run Calico with `ipipMode: Never`, `vxlanMode: Never` and `nodeToNodeMeshEnabled: false`. Peer the nodes to the ToRs, and verify the routes at the spine. Run iperf3 and compare the results with the overlay. Next, fail a node and a ToR link, and measure convergence with BFD and without it.
+3. Switch Calico to route reflectors. Compare the session counts. Then add a node, and watch the block allocation and the advertisement.
+4. Move Cilium from tunnel mode to native routing. Install Cilium in tunnel mode with Hubble, and observe the flows. Switch to native routing with the BGP Control Plane. Compare the paths, and check whether `tcpdump` shows plain pod IPs. Enable DSR and Maglev, then test NodePort source IP preservation.
+5. Replace kube-proxy. Remove kube-proxy, and verify that Services still work. Inspect `cilium bpf lb list`. Compare with iptables on three measures: sync latency with 5,000 Services (kube-burner), CPU, and connection setup latency.
+6. Test policy and identity. Create a CiliumNetworkPolicy with L7 HTTP rules and `toFQDNs`. Observe the Hubble verdicts. Then compare it with a Calico policy for the same intent (5.15).
+7. Enable encryption. Turn on WireGuard, and verify it with `cilium encrypt status` and `wg show`. Measure throughput and CPU. Then adjust the MTU.
+8. Run the MTU and PMTUD drill. Misconfigure the MTU on one node. Reproduce the stalled transfers, and then fix them.
+9. Run the performance matrix across modes on the same hardware. Produce a table of Gb/s, CPU cores used and p99 latency.
+10. Test Multus coexistence. Attach a secondary macvlan or SR-IOV network to a pod while Cilium or Calico is the primary CNI. Verify that there is no interference. Then run `ib_write_bw` or `iperf3` on the secondary network.
+11. Run the failure and upgrade drills. Roll the CNI agent while a connectivity loop runs. Kill agents, restart BGP, and upgrade the minor version in a staging cluster. Document the disruptions you see.
 12. Clean up.
 
 ## 10. Common mistakes
@@ -388,6 +436,8 @@ Switching CNIs in place without a migration plan leaves rules and interfaces fro
 
 Measure the encryption overhead before you stack a second encryption layer on the first.
 
+The common thread is timing. A choice made early, such as the overlay, the ASN plan or the CNI itself, is expensive to change later, and the cost lands on every node at once. Check the fabric before you design the cluster, and check the kernel before you turn on an eBPF feature. Most of the mistakes above become easy to spot once you ask those two questions in that order.
+
 ## 11. Interview angles
 
 Use these questions to test your understanding. Each one maps to a topic in this chapter.
@@ -401,19 +451,19 @@ Use these questions to test your understanding. Each one maps to a topic in this
 - "How would you measure CNI performance and what would you look at?"
 - "Why not run NCCL over the pod network?"
 
-Each question points back to one of the sections above.
+Each question points back to one of the sections above. Answer each one in two parts. First give the short answer, then name the trade-off that makes it a real decision. Interviewers usually follow up on that trade-off, so have an example ready.
 
 ## Exercises
 
 Each exercise uses a helper function in `code/part05/overlay_bgp_cilium_planner.py`.
 
-1. A packet leaves Pod A on Node A for Pod B on Node B over VXLAN. Trace it with the Section 2 diagram, using the pod addresses and the UDP port given there. Say where the 24-bit VXLAN network identifier (VNI) and the forwarding database (FDB) enter. Production Kubernetes, Chapter 5, gives the background.
-2. Run `select_calico_cross_subnet_mode()`. Explain how Calico `CrossSubnet` routes natively inside a rack and encapsulates between racks.
-3. Run `compute_bgp_session_counts()` for 500 nodes. Check the three results: 124,750 sessions for a full mesh, 1,494 with three route reflectors, and 1,000 with eBGP to dual top-of-rack switches. Then read the `BGPConfiguration`, `BGPPeer` and `IPPool` manifests in Section 3.
-4. Run `compare_policy_scaling_ip_vs_identity()`. Explain how Cilium turns pod labels into numeric security identities. Then explain why an identity-based policy map holds 2 entries where an IP-based one would need 500,000.
+1. A packet leaves Pod A on Node A for Pod B on Node B over VXLAN. Trace it with the Section 2 diagram, using the pod addresses and the UDP port given there. Where does the 24-bit VXLAN network identifier (VNI) enter? Where does the forwarding database (FDB) enter? *Production Kubernetes*, Chapter 5, gives the background.
+2. Run `select_calico_cross_subnet_mode()`. How does Calico `CrossSubnet` route natively inside a rack? How does it encapsulate between racks?
+3. Run `compute_bgp_session_counts()` for 500 nodes. The full mesh should show 124,750 sessions. Route reflectors should show 1,494 sessions with three reflectors. Dual top-of-rack switches should show 1,000 sessions with eBGP. Then read the `BGPConfiguration`, `BGPPeer` and `IPPool` manifests in Section 3.
+4. Run `compare_policy_scaling_ip_vs_identity()`. Explain how Cilium turns pod labels into numeric security identities. Then explain why an identity-based policy map holds 2 entries. An IP-based one would need 500,000.
 5. Read the two Helm profiles in Section 4. One uses VXLAN tunnelling. The other uses native routing with BGP, Direct Server Return (DSR) and Maglev hashing. Explain what DSR removes from the return path, and what it costs in MTU.
-6. Run `select_primary_cni_node_interface()` for a GPU node with one management NIC, one storage NIC and eight RDMA NICs. Say why CNI address autodetection breaks, and how `IP_AUTODETECTION_METHOD` for Calico or `devices` for Cilium fixes it.
-7. Design the benchmark matrix from Section 7 with `iperf3`, `netperf TCP_RR` and `mpstat`. Then outline how you would move a live cluster from Flannel or Calico to Cilium without a cluster-wide outage.
+6. Run `select_primary_cni_node_interface()` for a GPU node with one management NIC, one storage NIC and eight RDMA NICs. Why does CNI address autodetection break on that node? How do `IP_AUTODETECTION_METHOD` for Calico or `devices` for Cilium fix it?
+7. Design the benchmark matrix from Section 7 with `iperf3`, `netperf TCP_RR` and `mpstat`. Then outline how you would move a live cluster from Flannel or Calico to Cilium. How would you avoid a cluster-wide outage?
 
 ## Checkpoint questions (20)
 

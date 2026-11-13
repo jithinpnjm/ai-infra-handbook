@@ -26,13 +26,15 @@ Suppose your team has just put a model behind an endpoint, and users report that
 
 It also splits traffic between model versions for canary and A/B tests. Long-running answers need long timeouts and streaming. Token streaming can use Server-Sent Events, WebSockets or gRPC. The edge also applies rate limiting per API key and exposes metrics.
 
-The edge is also where AI-specific problems appear. A default 60-second proxy timeout can kill a long generation. Request buffering can break token streaming. Body size limits can reject large prompts or image batches. HTTP/2 connection reuse can produce uneven load. Cache-/KV-aware routing needs go beyond what classic L7 balancers can meet.
+The edge is also where AI-specific problems appear. A default 60-second proxy timeout can kill a long generation. Request buffering can break token streaming. Body size limits can reject large prompts or image batches. HTTP/2 connection reuse can produce uneven load. Cache-/KV-aware routing needs go beyond what classic L7 balancers can meet. Put simply, a balancer that only counts requests cannot tell that one backend already holds the context for a prompt, and that knowledge can save a lot of recomputation.
 
 This chapter covers the Kubernetes mechanisms, Ingress and the newer Gateway API, along with the controllers behind them. It also covers TLS automation and the operational design of an edge for inference traffic.
 
+Think of the edge as the front door of a building. Every visitor passes it, so a small mistake there affects everyone inside. A slow lock or a wrong sign at the door is far easier to fix than a hundred confused visitors deeper in the building.
+
 ## Prerequisites and outcomes
 
-You will need 5.10, 5.11, and the HTTP/TLS fundamentals in 2.10 and 2.20 before you start. After this chapter, you will be able to:
+You will need 5.10, 5.11, and the HTTP/TLS fundamentals in 2.10 and 2.20 before you start. Use the list below as a self-check once you have read the chapter. Each line names a skill you use when an endpoint misbehaves:
 
 - Contrast L4 and L7 load balancing, and place Service types, Ingress, the Gateway API and external load balancers in the right layer.
 - Write Ingress resources with hosts, paths, TLS, annotations and IngressClass, and operate popular controllers such as ingress-nginx, Traefik, HAProxy, Envoy-based controllers and cloud controllers.
@@ -56,23 +58,25 @@ flowchart LR
   GW -.->|"canary 5%"| SVC2["Service model-v2"]
 ```
 
-Notice that the 5% canary branch leaves the gateway for a separate Service, model-v2.
+Notice that the 5% canary branch leaves the gateway for a separate Service, model-v2. Think of the edge as a building's security desk. The outer door only checks that someone is entering. The reception desk reads the name on the visitor's badge and sends them to the right office.
 
 L4 (TCP/UDP) balancing spreads connections without looking at the protocol. Services covered in 5.10, `type: LoadBalancer`, cloud NLBs, MetalLB and IPVS all work this way. It is fast and protocol-agnostic. However, it cannot route by URL or retry a single request, and long-lived connections stick.
 
-L7 (HTTP and gRPC) balancing terminates the protocol and makes a decision for each request. It can route by host, path or header, retry, set timeouts, apply circuit breaking, rate limit, authenticate and rewrite. It can even balance individual requests over HTTP/2.
+Here is a worked example. A client opens one connection to the stable IP and sends three chat requests over it. An L4 balancer picks a backend once, for the whole connection, so all three requests land on the same pod. An L7 gateway reads each request separately, so it can send each one to whichever backend is best. That difference is why uneven load shows up so often with HTTP/2 and gRPC.
 
-A typical stack has three parts. An external L4 load balancer gives you one stable IP. Behind it sits an L7 gateway Deployment or DaemonSet, which forwards to Services and then to pods. Cloud L7 load balancers, such as ALB or the GCP HTTP(S) LB, can skip the node hops by routing straight to pods with NEG/IP targets.
+L7 (HTTP and gRPC) balancing terminates the protocol and makes a decision for each request. It can route by host, path or header, retry, set timeouts, apply circuit breaking, rate limit, authenticate and rewrite. It can even balance individual requests over HTTP/2. Put simply, an L7 gateway is the part that reads the request, and most of the useful routing features live there.
 
-When traffic goes wrong, decide first whether the L4 layer or the L7 layer made the decision.
+A typical stack has three parts. An external L4 load balancer gives you one stable IP. Behind it sits an L7 gateway Deployment or DaemonSet, which forwards to Services and then to pods. Cloud L7 load balancers, such as ALB or the GCP HTTP(S) LB, can skip the node hops by routing straight to pods with NEG/IP targets. Put simply, a request in that layout makes fewer stops, and each stop removed is one less place for delay or failure to hide.
+
+When traffic goes wrong, decide first whether the L4 layer or the L7 layer made the decision. Think of it as checking a building from the lobby upward. If the lobby door is locked, nothing upstairs matters.
 
 ## 2. Ingress
 
 Suppose one hostname has to reach a chat model while a second hostname reaches a different service. Something must read each request's host and path, then pick the right backend. In Kubernetes, that job belongs to an Ingress.
 
-An **Ingress** declares L7 routing rules, and its API group and version is `networking.k8s.io/v1`. An **Ingress controller** does the actual work. It is a separate deployment that you install. The controller watches Ingress objects and configures a proxy from them. Kubernetes ships no controller by default. `IngressClass` selects which controller handles an Ingress, through `spec.ingressClassName`.
+An **Ingress** declares L7 routing rules, and its API group and version is `networking.k8s.io/v1`. An **Ingress controller** does the actual work. It is a separate deployment that you install. The controller watches Ingress objects and configures a proxy from them. Kubernetes ships no controller by default. `IngressClass` selects which controller handles an Ingress, through `spec.ingressClassName`. Think of an Ingress as a list of instructions pinned to a board. The board does nothing by itself. The controller is the staff member who reads the board and acts on it.
 
-Read the example below as a whole. The annotations tune timeouts, body size and rate limits, and the `tls` block points at a Secret that cert-manager creates and renews.
+Read the example below as a whole. The annotations tune timeouts, body size and rate limits, and the `tls` block points at a Secret that cert-manager creates and renews. The first half of the manifest is routing. The annotations are tuning, and each one is specific to ingress-nginx, so another controller may not understand it.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -106,29 +110,31 @@ spec:
               service: { name: embeddings, port: { name: http } }
 ```
 
-Ingress itself covers virtual hosting by `Host`, path routing with `Exact` and `Prefix` matches, and TLS termination through Secrets that hold `tls.crt` and `tls.key`. It also has a default backend. Everything else, such as rewrites, redirects, auth, rate limits, timeouts, canary, CORS and WAF, is a controller-specific annotation. Annotations are not portable and carry no types. That is the main reason the Gateway API exists. The Ingress API is frozen, so it gets no new features.
+Walk through the two `paths` entries. A request for `llm.example.com/v1/chat/completions` matches the first prefix, so it goes to `vllm`. A request for `llm.example.com/v1/embeddings` matches the second, so it goes to `embeddings`.
+
+Ingress itself covers virtual hosting by `Host`, path routing with `Exact` and `Prefix` matches, and TLS termination through Secrets that hold `tls.crt` and `tls.key`. It also has a default backend. Everything else, such as rewrites, redirects, auth, rate limits, timeouts, canary, CORS and WAF, is a controller-specific annotation. Annotations are not portable and carry no types. Put simply, an annotation is a string that the controller may or may not read. A typo in one fails quietly, and nothing tells you that the timeout you wrote never took effect. That is the main reason the Gateway API exists. The Ingress API is frozen, so it gets no new features.
 
 Four operational details of Ingress routing matter in practice. *Kubernetes: Up and Running*, Chapter 8, and *Networking and Kubernetes*, Chapters 5 & 6, both describe them.
 
-The first detail is that paths reach the backend unmodified by default. Suppose a client requests `bandicoot.example.com/a/` and that matches the Ingress path rule `path: /a`. The proxy forwards the request with the `/a/` path intact, as `GET /a/ HTTP/1.1`. If the backend expects requests at `/` instead of `/a/`, it returns `404 Not Found`. The fix is path rewriting, set with an Ingress controller annotation such as `nginx.ingress.kubernetes.io/rewrite-target` or a Gateway API `URLRewrite` filter.
+The first detail is that paths reach the backend unmodified by default. Suppose a client requests `bandicoot.example.com/a/` and that matches the Ingress path rule `path: /a`. The proxy forwards the request with the `/a/` path intact, as `GET /a/ HTTP/1.1`. If the backend expects requests at `/` instead of `/a/`, it returns `404 Not Found`. The fix is path rewriting, set with an Ingress controller annotation such as `nginx.ingress.kubernetes.io/rewrite-target` or a Gateway API `URLRewrite` filter. Put simply, the proxy passes the address on as written, so the backend has to recognize that address or the proxy has to change it first.
 
-The second detail is precedence between path rules. Suppose an Ingress or `HTTPRoute` has a `Prefix` rule for `/v1` and an `Exact` rule for `/v1/health`, and both match a request. The `Exact` match always wins. Among `Prefix` rules, the longest matching prefix wins, as the model in `evaluate_httproute_and_reference_grant()` in `code/part05/gateway_llm_router.py` shows.
+The second detail is precedence between path rules. Suppose an Ingress or `HTTPRoute` has a `Prefix` rule for `/v1` and an `Exact` rule for `/v1/health`, and both match a request. The `Exact` match always wins. Among `Prefix` rules, the longest matching prefix wins, as the model in `evaluate_httproute_and_reference_grant()` in `code/part05/gateway_llm_router.py` shows. Put simply, the most specific rule wins. An exact path is the most specific match, and the longest prefix comes next.
 
-The third detail concerns defaults. Marking an `IngressClass` with `ingressclass.kubernetes.io/is-default-class: "true"` makes it handle any Ingress that omits `spec.ingressClassName`. Setting `spec.defaultBackend` handles requests that match no `rules` host or path.
+The third detail concerns defaults. Marking an `IngressClass` with `ingressclass.kubernetes.io/is-default-class: "true"` makes it handle any Ingress that omits `spec.ingressClassName`. Setting `spec.defaultBackend` handles requests that match no `rules` host or path. Put simply, the default class is the fallback when an Ingress does not name its controller, and the default backend is the fallback when no rule matches.
 
-The fourth detail is cloud container-native load balancing. On GKE, Network Endpoint Groups, or NEGs, let the cloud load balancer watch Pod IPs directly. On AWS EKS, the AWS Load Balancer Controller does the same when you set `alb.ingress.kubernetes.io/target-type: ip`. Traffic then runs from the cloud edge straight to Pod IPs, skipping `NodePort` and `kube-proxy` hops. The cloud load balancer also integrates with Google Cloud Armor, Cloud CDN and IAP, or with AWS WAF.
+The fourth detail is cloud container-native load balancing. On GKE, Network Endpoint Groups, or NEGs, let the cloud load balancer watch Pod IPs directly. On AWS EKS, the AWS Load Balancer Controller does the same when you set `alb.ingress.kubernetes.io/target-type: ip`. Traffic then runs from the cloud edge straight to Pod IPs, skipping `NodePort` and `kube-proxy` hops. Put simply, the cloud load balancer keeps a list of pod addresses and sends traffic to them directly, with no node in between. The cloud load balancer also integrates with Google Cloud Armor, Cloud CDN and IAP, or with AWS WAF.
 
 ### The case for Ingress
 
 Services already route traffic to pods, so why add another mechanism? Services have two important limits. The first is routing. A Service routes by destination IP and port. That is enough for a small application, but it breaks down for a large set of microservices that need smarter rules. The second is cost. In a cloud, each `LoadBalancer` Service creates its own external load balancer, such as an ELB on AWS. Running one per Service gets expensive fast.
 
-Ingress solves both limits. It works at layer 7, the application layer, instead of layer 3 and 4. It can read the HTTP `Host` header and route on it. One entry point can then serve many applications, and the Ingress controller sorts the traffic to the right place. That also cuts the cost of bringing traffic into the platform. In a non-cloud setup, you can run one external load balancer in front of the Ingress controllers, instead of managing many NodePort Services.
+Ingress solves both limits. Think of the two limits as two separate complaints. One is that the Service cannot read the request. The other is that every Service costs a new external balancer. It works at layer 7, the application layer, instead of layer 3 and 4. It can read the HTTP `Host` header and route on it. One entry point can then serve many applications, and the Ingress controller sorts the traffic to the right place. That also cuts the cost of bringing traffic into the platform. In a non-cloud setup, you can run one external load balancer in front of the Ingress controllers, instead of managing many NodePort Services. Think of it as one reception desk for a building with many offices, instead of one front door for each office.
 
-Ingress does not replace Services. The Ingress controller runs inside the cluster, so clients outside it still need a NodePort or LoadBalancer Service to reach it. Ingress controllers are also strongest with HTTP. Other protocols may need a Service alongside Ingress, depending on what your controller supports. Many off-the-shelf applications and cluster add-ons expect an Ingress controller to be running. Your developers will need one as well.
+Ingress does not replace Services. Put simply, Ingress is the reception desk, and a Service is still the room behind it. The Ingress controller runs inside the cluster, so clients outside it still need a NodePort or LoadBalancer Service to reach it. Ingress controllers are also strongest with HTTP. Other protocols may need a Service alongside Ingress, depending on what your controller supports. Many off-the-shelf applications and cluster add-ons expect an Ingress controller to be running. Your developers will need one as well.
 
 ### Host-based routing with Ingress
 
-Host-based routing is the simplest useful Ingress pattern. The next configuration sends requests with the `Host` header set to `bookhotels.com` to one service. Requests for `bookflights.com` go to another:
+Host-based routing is the simplest useful Ingress pattern. The next configuration sends requests with the `Host` header set to `bookhotels.com` to one service. Requests for `bookflights.com` go to another. Read the two manifests side by side. Each one names a host, and the proxy checks the Host header to choose between them. Each Ingress is a separate object, so each one can change on its own.
 
 ```
 ---
@@ -163,17 +169,17 @@ spec:
 
 This listing keeps the older field names from *Kubernetes: Up and Running*, `serviceName` and `servicePort`. Check the current Ingress reference before you copy it into a cluster.
 
-A common follow-on is subdomain-based routing. You assign one domain name to the platform, and each application gets a subdomain. A travel platform could use `hotels.cluster1.useast.example.com` and `flights.cluster1.useast.example.com`. The same idea supports SaaS tenants, with names such as `tenantA.example.com` and `tenantB.example.com`. Subdomain-based routing is one of the best strategies available here.
+A common follow-on is subdomain-based routing. You assign one domain name to the platform, and each application gets a subdomain. A travel platform could use `hotels.cluster1.useast.example.com` and `flights.cluster1.useast.example.com`. The same idea supports SaaS tenants, with names such as `tenantA.example.com` and `tenantB.example.com`. Subdomain-based routing is one of the best strategies available here. Think of subdomains as street addresses within one city. The city name stays the same, and each business gets its own street number.
 
 ### Why Ingress has no default controller
 
-Ingress works differently from most Kubernetes objects. The object is only a specification, and a separate controller implements it. You can create and change Ingress objects like any other object. By default, though, no code acts on them. So you or your distribution must install and manage a controller. That split is what makes the controller pluggable.
+Ingress works differently from most Kubernetes objects. A useful picture is a restaurant order slip. The slip describes what the customer wants, and the kitchen is the controller that does the cooking. The object is only a specification, and a separate controller implements it. You can create and change Ingress objects like any other object. By default, though, no code acts on them. So you or your distribution must install and manage a controller. That split is what makes the controller pluggable. A useful test is to ask who acts when an object changes. If no controller is listening, the object sits there unchanged.
 
 Kubernetes leaves the choice open because no single HTTP load balancer suits every setup. Teams run open source proxies, cloud load balancers such as ELB on AWS, and hardware appliances. The Ingress object also arrived before Kubernetes had its common extension features, which are covered in Chapter 17. It will likely change to use them over time.
 
 ### Installing Contour
 
-The examples in this chapter use Contour. It configures Envoy, an open source CNCF load balancer that you can change on the fly through an API. Contour translates Ingress objects into a form Envoy understands. The project began at Heptio with real customers and runs in production today. It is now an independent open source project.
+The examples in this chapter use Contour. It configures Envoy, an open source CNCF load balancer that you can change on the fly through an API. Contour translates Ingress objects into a form Envoy understands. Contour is a good teaching choice because its pieces are easy to see: a controller that reads the objects, and an Envoy proxy that carries the traffic. The project began at Heptio with real customers and runs in production today. It is now an independent open source project.
 
 You can install Contour with one line:
 
@@ -181,7 +187,7 @@ You can install Contour with one line:
 $ kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
 ```
 
-Run the install as a user with `cluster-admin` permissions. The single line works for most configurations. It creates a namespace called `projectcontour` and a Deployment with two replicas. It also creates an external-facing Service of `type: LoadBalancer`, sets up permissions through a service account, and installs a CustomResourceDefinition for the extra features covered in "The Future of Ingress."
+Run the install as a user with `cluster-admin` permissions. Put simply, that role can change anything in the cluster, so treat the install like any other cluster-wide change. The single line works for most configurations. It creates a namespace called `projectcontour` and a Deployment with two replicas. It also creates an external-facing Service of `type: LoadBalancer`, sets up permissions through a service account, and installs a CustomResourceDefinition for the extra features covered in "Where Ingress is heading" below.
 
 Because the install is global, it needs wide admin rights on the cluster. When it finishes, look up the external address of Contour:
 
@@ -191,21 +197,21 @@ NAME CLUSTER-IP EXTERNAL-IP PORT(S) ...
 contour 10.106.53.14 a477...amazonaws.com 80:30274/TCP ...
 ```
 
-Look at the `EXTERNAL-IP` column. On GCP and Azure it holds an IP address, and on AWS it holds a hostname. Other clouds may differ. If your cluster does not support `type: LoadBalancer`, change the Contour YAML to use `type: NodePort`, and send traffic to the cluster machines another way.
+Look at the `EXTERNAL-IP` column. On GCP and Azure it holds an IP address, and on AWS it holds a hostname. Other clouds may differ. Think of the EXTERNAL-IP as the address printed on the building's front door. Every route you define later starts from that address. If your cluster does not support `type: LoadBalancer`, change the Contour YAML to use `type: NodePort`, and send traffic to the cluster machines another way. Put simply, `NodePort` makes the cluster machines the entry point, so you need another way to reach them, such as a firewall rule or a hardware balancer.
 
-With `minikube`, the `EXTERNAL-IP` column will probably stay empty. Open a second terminal and run `minikube tunnel`. The tunnel sets up network routes, so every Service of `type: LoadBalancer` gets its own unique IP address.
+With `minikube`, the `EXTERNAL-IP` column will probably stay empty. Open a second terminal and run `minikube tunnel`. The tunnel sets up network routes, so every Service of `type: LoadBalancer` gets its own unique IP address. Keep the tunnel running while you test, because it stops when its terminal closes.
 
 ### Pointing DNS names at the controller
 
-People reach sites by name, not by IP address, and many hostnames can share one external endpoint. The Ingress controller then uses the hostname to send each request to the right upstream service.
+People reach sites by name, not by IP address, and many hostnames can share one external endpoint. Put simply, one IP address can serve many names, and the name in each request decides where that request goes. The Ingress controller then uses the hostname to send each request to the right upstream service.
 
-The examples assume a domain called `example.com`. You need two DNS entries, `alpaca.example.com` and `bandicoot.example.com`. If the external load balancer gives you an IP address, create A records. If it gives you a hostname instead, create CNAME records.
+The examples assume a domain called `example.com`. Why the record type matters: an A record must hold an IP address, while a CNAME points to another name. If the load balancer gives you a hostname, an A record has nothing to hold, so a CNAME is the correct choice. You need two DNS entries, `alpaca.example.com` and `bandicoot.example.com`. If the external load balancer gives you an IP address, create A records. If it gives you a hostname instead, create CNAME records.
 
-ExternalDNS can manage these records for you. It is a cluster add-on that keeps the IP addresses of Kubernetes Service resources in sync with an external DNS provider. It works with traditional domain registrars as well as public cloud providers.
+Think of DNS as the sign on the street, and the Ingress controller as the doorman who reads the name on each visitor's card. ExternalDNS can manage these records for you. It is a cluster add-on that keeps the IP addresses of Kubernetes Service resources in sync with an external DNS provider. It works with traditional domain registrars as well as public cloud providers.
 
 ### Testing with a local hosts file
 
-If you have no domain, or you use a local tool such as `minikube`, you can point the names at the controller in your hosts file. Editing that file needs admin or root rights. Its location differs by platform, and the change may need extra steps to take effect. On Windows the file is usually at `C:\Windows\System32\drivers\etc\hosts`. On recent versions of macOS, run `sudo killall -HUP mDNSResponder` after you change it.
+If you have no domain, or you use a local tool such as `minikube`, you can point the names at the controller in your hosts file. Editing that file needs admin or root rights. Its location differs by platform, and the change may need extra steps to take effect. On Windows the file is usually at `C:\Windows\System32\drivers\etc\hosts`. On recent versions of macOS, run `sudo killall -HUP mDNSResponder` after you change it. Think of the hosts file as a personal address book that your laptop checks before it asks the internet. An entry you add wins over the public DNS answer for that name, which makes it useful for testing and easy to forget.
 
 Add a line like this one, with the external IP address of Contour:
 
@@ -213,11 +219,11 @@ Add a line like this one, with the external IP address of Contour:
 <ip-address> alpaca.example.com bandicoot.example.com
 ```
 
-If all you have is a hostname, as on AWS, run `host -t a <address>` to get an IP address. That address may change later, so remove the line when you are done.
+If all you have is a hostname, as on AWS, run `host -t a <address>` to get an IP address. That address may change later, so remove the line when you are done. Put simply, the IP that `host` returns is a snapshot. If the cloud changes the address, your hosts file goes stale.
 
 ### Creating three sample services
 
-Before you route anything, you need upstream services to send traffic to. These are the backends. The next commands create three Deployments of the same `kuard` app. Each one runs three replicas on port 8080. The images differ only by tag: `blue`, `green` and `purple`. Each Deployment also gets a Service.
+Before you route anything, you need upstream services to send traffic to. Think of these three Deployments as three shops in one mall. Each shop has its own sign, and the Ingress is the mall directory that sends visitors to the right shop. These are the backends. The next commands create three Deployments of the same `kuard` app. Each one runs three replicas on port 8080. The images differ only by tag: `blue`, `green` and `purple`. Each Deployment also gets a Service.
 
 ```
 $ kubectl create deployment be-default \
@@ -245,7 +251,7 @@ kubernetes 10.115.240.1 ... 443/TCP ... <none>
 
 ### Simplest Ingress: send everything to one service
 
-The simplest use of Ingress is to pass everything it sees to one upstream service. `kubectl` has only limited commands for Ingress, so you start with a YAML file.
+The simplest use of Ingress is to pass everything it sees to one upstream service. Put simply, this is the catch-all rule. Every request that reaches the controller gets the same answer, which makes it useful for a quick test. `kubectl` has only limited commands for Ingress, so you start with a YAML file.
 
 The `simple-ingress.yaml` manifest:
 
@@ -290,11 +296,13 @@ Annotations:
 Events: <none>
 ```
 
+Read the `describe` output from the top. The `Default backend` line names the service that catches everything. The `Rules` table shows a host of `*`, which means any host.
+
 With this file, every HTTP request that reaches the controller goes to the `alpaca` service. You can reach it through any of the raw IPs or CNAMEs, which here means either `alpaca.example.com` or `bandicoot.example.com`. On its own, this adds little over a plain Service of `type: LoadBalancer`. The next sections try more complex setups.
 
 ### Routing by hostname
 
-Ingress gets useful when it routes on something in the request. The most common case is the HTTP `Host` header, which carries the DNS name from the original URL. The `host-ingress.yaml` manifest adds a second Ingress that sends traffic for `alpaca.example.com` to the `alpaca` service.
+Ingress gets useful when it routes on something in the request. Think of the Host header as the name written on an envelope. The proxy reads that name, then decides which room gets the letter. The most common case is the HTTP `Host` header, which carries the DNS name from the original URL. The `host-ingress.yaml` manifest adds a second Ingress that sends traffic for `alpaca.example.com` to the `alpaca` service.
 
 The `host-ingress.yaml` manifest:
 
@@ -353,11 +361,11 @@ Events: <none>
 
 Two things in this output look odd. The first is the reference to `default-http-backend`. Some Ingress controllers send any request they cannot handle elsewhere to a service with that name in the `kube-system` namespace. `kubectl` simply shows you that convention. The second is that no endpoints appear for the `alpaca` backend. That is a `kubectl` bug, fixed in Kubernetes v1.14.
 
-You should now reach the `alpaca` service at `http://alpaca.example.com`. Reach it by any other method, and you get the default service instead.
+You should now reach the `alpaca` service at `http://alpaca.example.com`. Reach it by any other method, and you get the default service instead. Think of the default backend as the lost-and-found desk. Anything that does not match a named rule lands there.
 
 ### Routing by path
 
-Routing on the path as well as the hostname comes next. You add a `path` to the `paths` entry. The `path-ingress.yaml` manifest sends everything for `bandicoot.example.com` to the `bandicoot` service, and it sends `bandicoot.example.com/a` to the `alpaca` service. You can use this to host several services on different paths of one domain.
+Routing on the path as well as the hostname comes next. Think of the host as choosing the building and the path as choosing the floor. You add a `path` to the `paths` entry. The `path-ingress.yaml` manifest sends everything for `bandicoot.example.com` to the `bandicoot` service, and it sends `bandicoot.example.com/a` to the `alpaca` service. You can use this to host several services on different paths of one domain.
 
 The `path-ingress.yaml` manifest:
 
@@ -387,11 +395,13 @@ port:
 number: 8080
 ```
 
-When several paths on the same host match, the longest prefix wins. Here, traffic that starts with `/a/` goes to the `alpaca` service. All other traffic, which starts with `/`, goes to the `bandicoot` service.
+When several paths on the same host match, the longest prefix wins. Put simply, the longer and more specific path wins, so `/a/` beats `/`. Here, traffic that starts with `/a/` goes to the `alpaca` service. All other traffic, which starts with `/`, goes to the `bandicoot` service.
 
 The proxy does not change the path as it forwards the request. A request to `bandicoot.example.com/a/` therefore reaches the upstream server with the same path, so the upstream service must be ready to serve that subpath. The `kuard` app has special test code for this. It answers on the root path, `/`, and on a fixed set of subpaths: `/a/`, `/b/` and `/c/`.
 
 ### Cleaning up the sample
+
+Clean up after each lab step. Leftover Ingress objects keep claiming hosts, and a later test can then look as if it has failed.
 
 To remove the sample objects, run:
 
@@ -403,25 +413,25 @@ $ kubectl delete deployment alpaca bandicoot be-default
 
 ### Annotations and gotchas
 
-Ingress supports other advanced features too. How well each one works depends on the controller, and two controllers may implement the same feature in slightly different ways. Many of these features are set through annotations on the Ingress object. Annotations are easy to get wrong and hard to validate, and they apply to the whole object, so they can reach further than you intended. To narrow their scope, split one Ingress object into several. The controller reads them all and merges them together.
+Ingress supports other advanced features too. Think of annotations as sticky notes attached to the Ingress object. Each note is read by one controller, and two controllers may write the same idea in different words. How well each one works depends on the controller, and two controllers may implement the same feature in slightly different ways. Many of these features are set through annotations on the Ingress object. Annotations are easy to get wrong and hard to validate, and they apply to the whole object, so they can reach further than you intended. To narrow their scope, split one Ingress object into several. The controller reads them all and merges them together.
 
 When you create more than one Ingress object, the controllers should read them all and merge them into one config. Duplicate or conflicting settings, however, have undefined behavior. Different controllers may handle the same conflict differently. Even one controller may behave differently depending on factors that are not obvious.
 
 ### Ingress and namespaces
 
-Ingress interacts with namespaces in a few non-obvious ways. For security reasons, an Ingress object can point only at an upstream service in its own namespace. So one Ingress object cannot send a subpath to a service in another namespace.
+Ingress interacts with namespaces in a few non-obvious ways. For security reasons, an Ingress object can point only at an upstream service in its own namespace. So one Ingress object cannot send a subpath to a service in another namespace. Put simply, an Ingress can only name services that live beside it, so cross-namespace routing needs a different mechanism.
 
-Ingress objects in different namespaces can, however, define subpaths for the same host. The controller merges them into one final config. Ingress therefore has to be coordinated across the whole cluster. If one namespace is careless, its Ingress object can cause problems, or undefined behavior, in the others.
+Ingress objects in different namespaces can, however, define subpaths for the same host. The controller merges them into one final config. Ingress therefore has to be coordinated across the whole cluster. Think of a shared Ingress as a shared kitchen. One careless cook can spoil the dishes of every other cook, even when each one followed a recipe. If one namespace is careless, its Ingress object can cause problems, or undefined behavior, in the others.
 
 By default, the Ingress controller does not restrict which namespaces may claim which hostnames and paths. Advanced users may try to enforce a policy with a custom admission controller. The evolutions of Ingress covered in "The Future of Ingress" also address this problem.
 
 ### Path rewriting
 
-Some Ingress controllers can rewrite the path while they proxy a request. You usually set this with an annotation on the Ingress object, and it applies to every request that object handles. With the NGINX Ingress controller, for example, you set `nginx.ingress.kubernetes.io/rewrite-target: /`. Rewriting lets an upstream service work on a subpath, even when the service was not built for one.
+Some Ingress controllers can rewrite the path while they proxy a request. You usually set this with an annotation on the Ingress object, and it applies to every request that object handles. With the NGINX Ingress controller, for example, you set `nginx.ingress.kubernetes.io/rewrite-target: /`. Rewriting lets an upstream service work on a subpath, even when the service was not built for one. Think of the rewrite as changing the address on an envelope before the courier leaves. The receiver sees the new address, and the sender's copy keeps the old one.
 
 Several implementations go further and accept regular expressions in the path. The NGINX controller, for instance, can capture parts of the path and reuse them when it rewrites. How that works, and which regular expression variant it uses, depends on the implementation.
 
-Rewriting is not a silver bullet, though, and it often causes bugs. Many web apps link to themselves with absolute paths. Suppose an app served on `/subpath` receives its requests on `/`, then sends a user to `/app-path`. It is unclear whether that link is internal, and if it is, it should be `/subpath/app-path`. It could also point to a different app. For that reason, avoid subpaths for complicated applications when you can.
+Rewriting is not a silver bullet, though, and it often causes bugs. Many web apps link to themselves with absolute paths. Suppose an app served on `/subpath` receives its requests on `/`, then sends a user to `/app-path`. It is unclear whether that link is internal, and if it is, it should be `/subpath/app-path`. It could also point to a different app. For that reason, avoid subpaths for complicated applications when you can. Put simply, an app that thinks it lives at the root builds every link from the root, and a subpath breaks those links.
 
 ### Serving TLS
 
@@ -441,7 +451,7 @@ tls.crt: <base64 encoded certificate>
 tls.key: <base64 encoded private key>
 ```
 
-Once the Secret exists, an Ingress object references it. The Ingress lists each certificate together with the hostnames it should serve, as the `tls-ingress.yaml` manifest shows. If several Ingress objects name certificates for the same hostname, the behavior is undefined.
+Once the Secret exists, an Ingress object references it. Put simply, the Ingress points at the Secret by name, and the controller loads the certificate from that Secret. The Ingress lists each certificate together with the hostnames it should serve, as the `tls-ingress.yaml` manifest shows. If several Ingress objects name certificates for the same hostname, the behavior is undefined.
 
 The `tls-ingress.yaml` manifest:
 
@@ -464,11 +474,11 @@ serviceName: alpaca
 servicePort: 8080
 ```
 
-Uploading and managing TLS secrets by hand is hard, and certificates can cost a lot. Let's Encrypt helps here. It is a nonprofit that runs a free, API-driven Certificate Authority, so a cluster can fetch and install certificates automatically. Setup is tricky, but it is very simple to use once it works. The missing piece is cert-manager, an open source project created by Jetstack, a UK startup, and since onboarded to the CNCF. The cert-manager.io website and GitHub repository explain how to install it.
+Uploading and managing TLS secrets by hand is hard, and certificates can cost a lot. Let's Encrypt helps here. It is a nonprofit that runs a free, API-driven Certificate Authority, so a cluster can fetch and install certificates automatically. Setup is tricky, but it is very simple to use once it works. The missing piece is cert-manager, an open source project created by Jetstack, a UK startup, and since onboarded to the CNCF. The cert-manager.io website and GitHub repository explain how to install it. Think of cert-manager as a renewal clerk. It watches the expiry dates, asks the certificate authority for a fresh certificate before the old one runs out, and stores the result in the same Secret.
 
 ### Where Ingress is heading
 
-Ingress is a useful abstraction for configuring L7 load balancers, but it has not grown to cover every feature users want. Various implementations want to offer more. Many Ingress features are underdefined, so each implementation may expose them differently. That lowers the portability of configurations between implementations.
+Ingress is a useful abstraction for configuring L7 load balancers, but it has not grown to cover every feature users want. Put simply, the Ingress API works well for the common case, and it stops there. Each controller then stretches it in its own way. Various implementations want to offer more. Many Ingress features are underdefined, so each implementation may expose them differently. That lowers the portability of configurations between implementations.
 
 Ingress is also easy to misconfigure. Multiple objects can combine into conflicts, and implementations resolve those conflicts differently. Merging objects across namespaces also breaks the idea of namespace isolation.
 
@@ -490,9 +500,9 @@ The table lists the common controllers and the proxy each one uses.
 | **Cloud**: AWS Load Balancer Controller (ALB/NLB), GKE Ingress/Gateway, AGIC (Azure) | Cloud LB | Managed, integrates with WAF/IAM; may route to pod IPs |
 | **Kong, Apache APISIX, Ambassador** | Envoy/NGINX | API gateway features: plugins, auth, rate limiting, developer portals |
 
-Read the Notes column before you pick one. It flags risky snippet annotations and maintenance status.
+Read the Notes column before you pick one. It flags risky snippet annotations and maintenance status. Think of the table as a menu of kitchens. Several can serve the same dish, but each has its own recipe and its own rules about what it will cook.
 
-You can run the controller as an autoscaled Deployment, or as a DaemonSet that uses `hostNetwork` or a NodePort with an external load balancer. Give it dedicated nodes when traffic is heavy. Set resource requests, a PDB, anti-affinity, `terminationGracePeriodSeconds` and a lifecycle so the controller drains gracefully. Finally, expose metrics for Prometheus and write access logs as structured JSON to stdout.
+You can run the controller as an autoscaled Deployment, or as a DaemonSet that uses `hostNetwork` or a NodePort with an external load balancer. Give it dedicated nodes when traffic is heavy. Put simply, a Deployment scales by adding replicas, while a DaemonSet places one copy on each chosen node. The DaemonSet fits edge nodes, because each node then has its own proxy ready to take traffic. Set resource requests, a PDB, anti-affinity, `terminationGracePeriodSeconds` and a lifecycle so the controller drains gracefully. Finally, expose metrics for Prometheus and write access logs as structured JSON to stdout.
 
 ### Multi-team Ingress collisions and Contour's `HTTPProxy` root inclusion
 
@@ -500,9 +510,9 @@ In a multi-tenant cluster, the standard `Ingress` API does not stop two teams in
 
 The first way is validating admission control. An Open Policy Agent or Gatekeeper policy, for example, checks existing `Ingress` objects across the cluster and rejects duplicate hostnames.
 
-The second way is delegated routing with a custom resource such as Contour's `HTTPProxy`. Contour replaces flat `Ingress` objects with a root `HTTPProxy` custom resource that uses inclusion, set with `includes`. A platform administrator creates a root `HTTPProxy` in an administrative namespace. That root owns a domain, such as `app1.bearcanoe.com`, and delegates routing for that domain or path prefix by including `HTTPProxy` resources from the `app1` team's namespace. Only the root namespace can define top-level virtual hosts, so teams cannot collide with another team's hostname.
+The second way is delegated routing with a custom resource such as Contour's `HTTPProxy`. Contour replaces flat `Ingress` objects with a root `HTTPProxy` custom resource that uses inclusion, set with `includes`. A platform administrator creates a root `HTTPProxy` in an administrative namespace. That root owns a domain, such as `app1.bearcanoe.com`, and delegates routing for that domain or path prefix by including `HTTPProxy` resources from the `app1` team's namespace. Only the root namespace can define top-level virtual hosts, so teams cannot collide with another team's hostname. Think of the root HTTPProxy as the owner of a street. The owner decides which neighbors may build on it, and a neighbor cannot paint over the owner's sign.
 
-Contour's `HTTPProxy` also supports layer 3/4 TCP proxying through TLS Server Name Indication (`SNI`). The example below comes from *Production Kubernetes* and has not been run here:
+Contour's `HTTPProxy` also supports layer 3/4 TCP proxying through TLS Server Name Indication (`SNI`). The example below comes from *Production Kubernetes*:
 
 ```yaml
 apiVersion: projectcontour.io/v1
@@ -522,11 +532,11 @@ spec:
 
 ### Dedicated Ingress node pool and DaemonSet edge pattern
 
-Kubernetes does not isolate network I/O or file descriptors with cgroups. So a noisy application pod can contend with Ingress proxies when both share general worker nodes. *Production Kubernetes*, Chapter 6, recommends reserving a dedicated set of edge nodes for the Ingress tier. It uses four settings together.
+Kubernetes does not isolate network I/O or file descriptors with cgroups. Put simply, a busy application can slow the proxy on the same node, because Kubernetes does not reserve network capacity for each pod. So a noisy application pod can contend with Ingress proxies when both share general worker nodes. *Production Kubernetes*, Chapter 6, recommends reserving a dedicated set of edge nodes for the Ingress tier. It uses four settings together.
 
-The first setting is node labels, taints and a `DaemonSet`. Label and taint the dedicated ingress nodes, then deploy the Ingress controller as a `DaemonSet` with a matching `nodeSelector` and taint `tolerations`. A small, fixed set of edge nodes also simplifies firewall exceptions and static backend pools on hardware load balancers.
+The first setting is node labels, taints and a `DaemonSet`. Label and taint the dedicated ingress nodes, then deploy the Ingress controller as a `DaemonSet` with a matching `nodeSelector` and taint `tolerations`. Think of a taint as a sign on the door that says only authorized guests may enter. The toleration is the ticket that lets the Ingress pods in. A small, fixed set of edge nodes also simplifies firewall exceptions and static backend pools on hardware load balancers.
 
-The second setting is host networking with `hostNetwork: true` and `ClusterFirstWithHostNet`. Binding the Ingress proxy container directly to the node's network namespace lets incoming packets reach the proxy without traversing the Kubernetes Service `iptables`/`IPVS` fabric. When `hostNetwork: true` is enabled, you must set `dnsPolicy: ClusterFirstWithHostNet`. That lets the proxy still resolve in-cluster `*.svc.cluster.local` Service names through CoreDNS, as in this Pod template snippet:
+The second setting is host networking with `hostNetwork: true` and `ClusterFirstWithHostNet`. Binding the Ingress proxy container directly to the node's network namespace lets incoming packets reach the proxy without traversing the Kubernetes Service `iptables`/`IPVS` fabric. Put simply, the proxy listens on the node's own address, so a packet reaches it directly. Two such pods on one node compete for the same ports. When `hostNetwork: true` is enabled, you must set `dnsPolicy: ClusterFirstWithHostNet`. That lets the proxy still resolve in-cluster `*.svc.cluster.local` Service names through CoreDNS, as in this Pod template snippet:
 
 ```yaml
 spec:
@@ -537,25 +547,25 @@ spec:
   hostNetwork: true
 ```
 
-The third setting is `externalTrafficPolicy: Local` on the Service. Use it when the Ingress controller is exposed through a `NodePort` or `LoadBalancer` Service rather than direct host ports. External load balancers then send traffic only to nodes that run a local Ingress proxy replica. That avoids an extra cross-node hop, and the client's source IP address is preserved with no SNAT.
+The third setting is `externalTrafficPolicy: Local` on the Service. Use it when the Ingress controller is exposed through a `NodePort` or `LoadBalancer` Service rather than direct host ports. External load balancers then send traffic only to nodes that run a local Ingress proxy replica. That avoids an extra cross-node hop, and the client's source IP address is preserved with no SNAT. Put simply, `Local` keeps the traffic on the node that received it, so the proxy sees the client's real address.
 
-The fourth setting is spreading the replicas across failure domains. When you run a `Deployment`, or select nodes across zones, use Pod anti-affinity rules to spread Ingress controller replicas across availability zones or racks.
+The fourth setting is spreading the replicas across failure domains. When you run a `Deployment`, or select nodes across zones, use Pod anti-affinity rules to spread Ingress controller replicas across availability zones or racks. Think of anti-affinity as a seating rule that keeps two members of the same team out of the same room.
 
 If heavy traffic shares nodes with application pods, give the Ingress tier its own nodes first.
 
 ### Trade-offs of dedicated and host-network Ingress nodes
 
-Dedicating nodes to Ingress can look wasteful at first. The reasoning is simple, though. If you can afford dedicated control plane nodes, you can probably afford dedicated nodes for the layer that every workload's traffic passes through. The main gains are resource isolation, compliance and simpler external load balancers.
+Dedicating nodes to Ingress can look wasteful at first. Put simply, the question to ask is what the shared edge costs when it fails, not what the spare nodes cost while they sit idle. The reasoning is simple, though. If you can afford dedicated control plane nodes, you can probably afford dedicated nodes for the layer that every workload's traffic passes through. The main gains are resource isolation, compliance and simpler external load balancers.
 
 Resource isolation matters because Kubernetes resource requests and limits are hard to tune well. Platform teams new to Kubernetes often get them wrong. Kubernetes also does not isolate network I/O or file descriptors. Fair sharing of those resources is hard to guarantee on shared nodes. Compliance is the second gain. Many organizations have firewall rules that conflict with Ingress controllers. Exceptions are easier to get for a small subset of nodes than for the whole fleet. On bare metal, the Ingress tier sits behind a hardware load balancer, which often has no API and must be configured statically. A small set of ingress nodes makes that configuration easier to manage.
 
-Host networking adds speed, but it costs isolation. Binding the controller to the host network lets requests skip the Service fabric. The controller then has full access to the node's interfaces and network services. That lowers the bar for an attacker who exploits a proxy bug and tries to move sideways. Host networking is also a privileged operation, so the controller needs elevated privileges or an exception. Even so, the authors have found the trade-off worth it. Ingress traffic reaches the controller directly.
+Host networking adds speed, but it costs isolation. Think of it as opening a side door in the building. Visitors arrive faster, and the side door is also a way in for anyone who should not be there. Binding the controller to the host network lets requests skip the Service fabric. The controller then has full access to the node's interfaces and network services. That lowers the bar for an attacker who exploits a proxy bug and tries to move sideways. Host networking is also a privileged operation, so the controller needs elevated privileges or an exception. Even so, the authors have found the trade-off worth it. Ingress traffic reaches the controller directly.
 
 If you use dedicated ingress nodes, plan for node failures. Ingress controllers only run on the reserved nodes, so a failed node leaves the edge short-handed. Ideally, a replacement node joins and takes over the Ingress traffic.
 
 ### DNS for Ingress: a wildcard record or external-dns
 
-Ingress routes by hostname, so DNS is a central part of the design. One common pattern is a wildcard DNS record, such as `*.bearcanoe.com`. The record resolves to the Ingress tier, which is usually a load balancer in front of the Ingress controllers. Each application then gets its own subdomain.
+Ingress routes by hostname, so DNS is a central part of the design. One common pattern is a wildcard DNS record, such as `*.bearcanoe.com`. Think of a wildcard record as a catch-all mailbox for a whole street. Any name under the street reaches the same building, and the proxy sorts the mail inside. The record resolves to the Ingress tier, which is usually a load balancer in front of the Ingress controllers. Each application then gets its own subdomain.
 
 A wildcard record has three benefits. Applications can use any path under their subdomain, including the root path (`/`). Developers do not need to rework their apps to run on a subpath, and some apps only work at the root. The DNS setup is also simple, because Kubernetes and the DNS provider need no integration. Finally, one wildcard record avoids the propagation delays that come with adding a new record for each application.
 
@@ -565,7 +575,7 @@ Integration suits platforms that need many domain names. It has trade-offs, thou
 
 ## 3. Gateway API
 
-The Gateway API is the successor to Ingress. It is role-oriented, expressive, portable and extensible. It covers L4 and L7 traffic, and it also covers gateways for service meshes, which the project calls GAMMA. Its HTTP features reached GA in v1. The table lists each resource and the person who usually owns it.
+The Gateway API is the successor to Ingress. Think of it as the Ingress idea split into roles, so that each team edits only its own part. It is role-oriented, expressive, portable and extensible. It covers L4 and L7 traffic, and it also covers gateways for service meshes, which the project calls GAMMA. Its HTTP features reached GA in v1. The table lists each resource and the person who usually owns it. Put simply, the GatewayClass is the template, the Gateway is the building, and the routes are the signs that point visitors to rooms inside it.
 
 | Resource | Owner persona | Purpose |
 |---|---|---|
@@ -576,7 +586,7 @@ The Gateway API is the successor to Ingress. It is role-oriented, expressive, po
 | **ReferenceGrant** | Namespace owner | Permit cross-namespace references (route → Service in another namespace; Gateway → Secret) |
 | **BackendTLSPolicy, BackendLBPolicy, policy attachment** | Operator/developer | Backend TLS, load balancing policy, timeouts (via policy attachment pattern; evolving) |
 
-Notice that each resource has a different owner. The infrastructure provider names the controller, the cluster operator defines the Gateway, and the app developer writes the routes. The example below shows how these pieces fit together in a canary split and a redirect.
+Notice that each resource has a different owner. Put simply, the operator decides where traffic enters, and the developer decides where a request goes. Neither has to edit the other's object. The infrastructure provider names the controller, the cluster operator defines the Gateway, and the app developer writes the routes. The example below shows how these pieces fit together in a canary split and a redirect.
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -623,25 +633,27 @@ spec:
           requestRedirect: { scheme: https, statusCode: 301 }
 ```
 
+Read the HTTPRoute from the top. `parentRefs` attaches the route to the Gateway. `hostnames` limits it to one name. `matches` picks the path and the header. `backendRefs` splits the traffic, and `timeouts` and `filters` apply to the matched requests.
+
 The Gateway sits in the `edge` namespace and accepts HTTPS for `*.ai.example.com`. The `chat` route in the `serving` namespace attaches to it. It sends `/v1` traffic 95/5 between two model versions, and it adds a header to each request. It also redirects `/healthz` to HTTPS with status 301.
 
-Compared with Ingress, the Gateway API replaces annotations with typed fields. Header matches, weights, redirects, mirroring and timeouts are all fields you can read and check. Roles are separated as well. Cluster operators own Gateways, and teams own Routes under RBAC. Cross-namespace references need a ReferenceGrant, which keeps them safe. Gateways and Routes also report status conditions, `Accepted`, `ResolvedRefs` and `Programmed`, that tell you why a route is not working. The same API runs on many implementations, including Envoy Gateway, Istio, Cilium, Contour, NGINX Gateway Fabric, Traefik, Kong, and the GKE, AWS and Azure offerings.
+Compared with Ingress, the Gateway API replaces annotations with typed fields. Put simply, a reviewer can read a field and know what it does, instead of decoding a string inside an annotation. Header matches, weights, redirects, mirroring and timeouts are all fields you can read and check. Roles are separated as well. Cluster operators own Gateways, and teams own Routes under RBAC. Cross-namespace references need a ReferenceGrant, which keeps them safe. Gateways and Routes also report status conditions, `Accepted`, `ResolvedRefs` and `Programmed`, that tell you why a route is not working. The same API runs on many implementations, including Envoy Gateway, Istio, Cilium, Contour, NGINX Gateway Fabric, Traefik, Kong, and the GKE, AWS and Azure offerings.
 
-Migration can start with a tool such as `ingress2gateway`, which converts Ingresses. Run both in parallel during migration, using different IPs or hostnames. Map annotations to filters and policies, and note the features that remain implementation-specific.
+Migration can start with a tool such as `ingress2gateway`, which converts Ingresses. Think of migration as running two doors at once. You move traffic to the new door in steps, and you close the old door only after the new one has proven itself. Run both in parallel during migration, using different IPs or hostnames. Map annotations to filters and policies, and note the features that remain implementation-specific.
 
-The Gateway API Inference Extension adds concepts for LLM serving. An InferencePool groups a set of model-server pods, and InferenceModel and Objective objects describe the models. An endpoint picker routes requests by reading model-server metrics, such as queue depth, KV-cache utilisation, active LoRA adapters and prefix cache, instead of round-robin. This is directly relevant to LLM serving, which Part 15 covers. The project is still evolving, so verify its maturity before you rely on it.
+The Gateway API Inference Extension adds concepts for LLM serving. An InferencePool groups a set of model-server pods, and InferenceModel and Objective objects describe the models. An endpoint picker routes requests by reading model-server metrics, such as queue depth, KV-cache utilisation, active LoRA adapters and prefix cache, instead of round-robin. This is directly relevant to LLM serving, which Part 15 covers. The project is still evolving, so verify its maturity before you rely on it. Put simply, the endpoint picker chooses the pod with the most room for the next request, rather than the next pod in a fixed order.
 
 Before you migrate, list the annotations your Ingresses use and map each one to a filter or policy.
 
 ## 4. TLS and cert-manager
 
-Suppose a certificate expires on a Friday night and the site goes down. cert-manager prevents that. It automates certificate issuance and renewal through custom resources. An `Issuer` or `ClusterIssuer` says where certificates come from, such as ACME and Let's Encrypt, Vault PKI, an internal CA, Venafi, or self-signed. A `Certificate` describes the certificate you want, and cert-manager stores the result in a Secret. An annotation on an Ingress or Gateway, like `cert-manager.io/cluster-issuer`, creates the Certificate for you.
+Suppose a certificate expires on a Friday night and the site goes down. Think of cert-manager as the reminder system that prevents that night from happening. cert-manager prevents that. It automates certificate issuance and renewal through custom resources. An `Issuer` or `ClusterIssuer` says where certificates come from, such as ACME and Let's Encrypt, Vault PKI, an internal CA, Venafi, or self-signed. A `Certificate` describes the certificate you want, and cert-manager stores the result in a Secret. Think of the Certificate as an order form and the Issuer as the shop. cert-manager fills in the form, collects the goods and puts them in the Secret. An annotation on an Ingress or Gateway, like `cert-manager.io/cluster-issuer`, creates the Certificate for you.
 
-ACME gives you two ways to prove that you control a domain. HTTP-01 needs public reachability on port 80, works per host, and cannot issue wildcards. DNS-01 needs API credentials for your DNS provider. It supports wildcards and private clusters.
+ACME gives you two ways to prove that you control a domain. HTTP-01 needs public reachability on port 80, works per host, and cannot issue wildcards. DNS-01 needs API credentials for your DNS provider. It supports wildcards and private clusters. Put simply, HTTP-01 proves control by serving a file on port 80, while DNS-01 proves control by writing a record in the domain's DNS.
 
-Renewal starts at about 2/3 of the lifetime by default. For 90-day certificates, that means renewal 30 days before expiry.
+Renewal starts at about 2/3 of the lifetime by default. Think of the renewal window as an early reminder before a passport expires, so you never travel with an expired document. For 90-day certificates, that means renewal 30 days before expiry.
 
-The example uses a DNS-01 solver with `cloudDNS`.
+The example uses a DNS-01 solver with `cloudDNS`. Put simply, the solver proves control of the domain through the Google Cloud DNS API.
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -657,33 +669,35 @@ spec:
           cloudDNS: { project: my-dns-project, serviceAccountSecretRef: { name: clouddns-sa, key: key.json } }   # prefer workload identity
 ```
 
-The solver reads a service account key from a Secret, and the comment prefers workload identity.
+The solver reads a service account key from a Secret, and the comment prefers workload identity. Put simply, a key file in a Secret must be rotated and guarded. Workload identity avoids the file altogether, which is why the comment prefers it.
 
-To operate this, monitor `certmanager_certificate_expiration_timestamp_seconds` and alert on issuance failures. When something fails, run `kubectl describe certificate/order/challenge` to see why. Watch public CA rate limits, and secure the issuer credentials. For private and internal domains, including mTLS between services, use an internal CA such as Vault, step-ca or the cert-manager CA issuer.
+To operate this, monitor `certmanager_certificate_expiration_timestamp_seconds` and alert on issuance failures. Think of the expiry metric as the fuel gauge for each certificate. A gauge that nobody reads is no gauge at all. When something fails, run `kubectl describe certificate/order/challenge` to see why. Watch public CA rate limits, and secure the issuer credentials. For private and internal domains, including mTLS between services, use an internal CA such as Vault, step-ca or the cert-manager CA issuer.
 
-At the edge, accept TLS 1.2 or newer, and prefer 1.3. Use modern cipher suites, HSTS, OCSP stapling and an HTTP-to-HTTPS redirect. Keep separate certificates for each environment, rotate secrets on a schedule, and restrict who can read TLS Secrets with RBAC.
+Put simply, these settings protect the connection between a visitor and the edge. The certificate proves who the server is, and the TLS version and cipher choices decide how well the traffic is protected.
 
-You can terminate at the L4 load balancer for passthrough, or at the gateway. End-to-end encryption to pods with mTLS in a mesh is covered in 5.28. SNI routing with TLS passthrough suits backends that must keep their own certificates.
+At the edge, accept TLS 1.2 or newer, and prefer 1.3. Use modern cipher suites, HSTS, OCSP stapling and an HTTP-to-HTTPS redirect. Keep separate certificates for each environment, rotate secrets on a schedule, and restrict who can read TLS Secrets with RBAC. Put simply, a leaked staging key should never open production, and anyone who can read a TLS Secret can copy its private key.
+
+You can terminate at the L4 load balancer for passthrough, or at the gateway. Put simply, termination means the proxy opens the encrypted connection and reads the request. Passthrough means the proxy forwards encrypted bytes it cannot read, so the backend must hold the certificate. End-to-end encryption to pods with mTLS in a mesh is covered in 5.28. SNI routing with TLS passthrough suits backends that must keep their own certificates.
 
 Choose HTTP-01 or DNS-01 for each domain before creating the issuer.
 
 ## 5. Bare-metal and GPU-cloud load balancers
 
-Without a cloud provider, a `type: LoadBalancer` Service stays `<pending>` until you install a controller.
+Without a cloud provider, a `type: LoadBalancer` Service stays `<pending>` until you install a controller. Think of a bare-metal cluster as a building with no front desk. A `LoadBalancer` Service asks for a front desk, and nothing answers until you hire one, which is what MetalLB or kube-vip does.
 
-MetalLB assigns IP addresses from pools you configure. In L2 mode, one node answers ARP or NDP for the IP. Failover takes seconds, but that single node is a bandwidth bottleneck, and all nodes must share one L2 domain. If you run kube-proxy in IPVS mode, set `strictARP`. In BGP mode, the speakers peer with the ToR switches or routers and advertise /32 routes. Traffic then spreads across nodes with ECMP, which helps at scale. BGP needs router configuration, and it fits the leaf-spine fabrics covered in 2.15 to 2.16. You configure MetalLB with the `IPAddressPool`, `L2Advertisement`, `BGPPeer` and `BGPAdvertisement` CRDs. Service annotations such as `metallb.universe.tf/address-pool` and `loadBalancerIPs` select the pool and the address.
+MetalLB assigns IP addresses from pools you configure. In L2 mode, one node answers ARP or NDP for the IP. Failover takes seconds, but that single node is a bandwidth bottleneck, and all nodes must share one L2 domain. Think of it as one doorman who answers the phone for the whole building, so every call passes through that one person. If you run kube-proxy in IPVS mode, set `strictARP`. In BGP mode, the speakers peer with the ToR switches or routers and advertise /32 routes. Put simply, L2 mode is one doorman who answers for the address, while BGP mode is many doormen who each announce it to the router, so the router can share visitors among them. Traffic then spreads across nodes with ECMP, which helps at scale. BGP needs router configuration, and it fits the leaf-spine fabrics covered in 2.15 to 2.16. You configure MetalLB with the `IPAddressPool`, `L2Advertisement`, `BGPPeer` and `BGPAdvertisement` CRDs. Service annotations such as `metallb.universe.tf/address-pool` and `loadBalancerIPs` select the pool and the address.
 
 kube-vip provides a VIP for the control plane and for Services, using ARP or BGP, and it is lightweight. Cilium LB IPAM, with its BGP Control Plane or with L2 announcements, is integrated with the CNI. It can use Maglev hashing and DSR with an eBPF datapath. Calico advertises Service and cluster IPs through BGP.
 
-Hardware and virtual appliances fill the same role. Examples include F5, A10, NetScaler, HAProxy with keepalived pairs, and NVIDIA or Cumulus anycast designs. Anycast also gives you one entry point across multiple sites.
+Hardware and virtual appliances fill the same role. Put simply, anycast means several machines share one address, and the network delivers each visitor to the nearest one. Examples include F5, A10, NetScaler, HAProxy with keepalived pairs, and NVIDIA or Cumulus anycast designs. Anycast also gives you one entry point across multiple sites.
 
-Cloud providers offer a Network LB at L4 and an Application LB at L7. Use annotations to configure internal LBs, health check paths, target types (instance or IP) and idle timeouts. Idle timeouts need attention. The AWS NLB default is 350 s, the ALB default is 60 s, and the GCP backend timeout default is 30 s. Raise these for streaming and LLM endpoints.
+Cloud providers offer a Network LB at L4 and an Application LB at L7. Use annotations to configure internal LBs, health check paths, target types (instance or IP) and idle timeouts. Idle timeouts need attention. Think of an idle timeout as a patience limit. A connection that stays quiet longer than the limit gets closed, even when a token is about to arrive. The AWS NLB default is 350 s, the ALB default is 60 s, and the GCP backend timeout default is 30 s. Raise these for streaming and LLM endpoints. Put simply, a streaming answer sends small pieces over a long time, and a short idle limit reads the pauses between pieces as a dead connection.
 
-Raise the idle timeouts on any load balancer that fronts streaming endpoints before you send it real traffic.
+Raise the idle timeouts on any load balancer that fronts streaming endpoints before you send it real traffic. Put simply, find the limits in a test, so that a real user does not find them first.
 
 ## 6. Designing the edge for AI/LLM traffic
 
-An LLM edge fails in different ways from a web edge. Generations run for minutes, prompts can be large, and one slow backend can hold many requests. The table covers each concern, and you can read the guidance on the same row.
+An LLM edge fails in different ways from a web edge. Think of a web request as a letter that arrives in a second. A generation is closer to a phone call that lasts several minutes, and the line stays busy the whole time. Generations run for minutes, prompts can be large, and one slow backend can hold many requests. The table covers each concern, and you can read the guidance on the same row.
 
 | Concern | Guidance |
 |---|---|
@@ -702,7 +716,7 @@ An LLM edge fails in different ways from a web edge. Generations run for minutes
 | **Availability** | ≥3 gateway replicas across zones, PDB, anti-affinity, HPA on connections/CPU, graceful shutdown (drain connections, `lameduck`), multiple LB IPs, DNS failover, health checks that reflect model readiness |
 | **Cost/egress** | Keep gateways in the same zone/region as model servers; avoid hairpinning through the Internet; compress responses where not streaming |
 
-Start with timeouts and streaming, because the first rows decide whether a long answer reaches your users at all. The rows after them handle load, security and cost.
+Start with timeouts and streaming, because the first rows decide whether a long answer reaches your users at all. Put simply, read the table as a checklist. Each row is a question you can answer with a setting or a diagram. The rows after them handle load, security and cost.
 
 ### Example: nginx-ingress tuned for streaming inference (annotations)
 
@@ -724,7 +738,7 @@ metadata:
 
 ### Example: Envoy Gateway policies (Gateway API attachments)
 
-The second example applies the same ideas as a Gateway API policy in Envoy Gateway.
+The second example applies the same ideas as a Gateway API policy in Envoy Gateway. Put simply, the policy attaches to the route by name, and the route carries the rules with it.
 
 ```yaml
 apiVersion: gateway.envoyproxy.io/v1alpha1
@@ -738,15 +752,15 @@ spec:
   circuitBreaker: { maxPendingRequests: 200, maxParallelRequests: 400 }
 ```
 
-Resource kinds and fields vary by implementation and version. This example illustrates the attachment pattern.
+Resource kinds and fields vary by implementation and version. This example illustrates the attachment pattern. Put simply, both examples aim at the same goal, a long timeout with no blind retries and a limit on how many requests can queue. Only the syntax differs, so the same review questions apply to either one.
 
 Set the timeouts and body size on the edge before you tune anything else.
 
 ## 7. Operating and debugging
 
-When an on-call page says users see errors, start with the status code. Each code points at a different layer of the request path. A request travels from DNS to an LB IP, through a node or load balancer, into a gateway pod, then to a Service and its endpoints, and finally to an app pod.
+When an on-call page says users see errors, start with the status code. Think of a request as a parcel on a route with several stops. The status code tells you which stop reported the problem. Each code points at a different layer of the request path. A request travels from DNS to an LB IP, through a node or load balancer, into a gateway pod, then to a Service and its endpoints, and finally to an app pod.
 
-The table maps each status to its likely meaning and to the first thing you should check.
+The table maps each status to its likely meaning and to the first thing you should check. Read the status code as a pointer to a layer, not as a diagnosis. A 502 says the backend answered badly, and it says nothing yet about why.
 
 | Status | Meaning | Check |
 |---|---|---|
@@ -761,7 +775,7 @@ The table maps each status to its likely meaning and to the first thing you shou
 | **Wrong client IP** | SNAT / `externalTrafficPolicy: Cluster` / proxy protocol missing | `Local` policy, PROXY protocol, `X-Forwarded-For` handling and trusted proxies |
 | **Uneven load** | HTTP/2 connection pinning, L4 balancing, sticky hash | Per-request L7 balancing, max connection age |
 
-The commands below let you check each layer in turn, from the Ingress and Gateway objects down to the logs and the TLS certificate.
+The commands below let you check each layer in turn, from the Ingress and Gateway objects down to the logs and the TLS certificate. Run them in the order they appear. The first ones show the objects you declared, and the later ones show what the controller built from them.
 
 ```bash
 kubectl get ingressclass,ingress -A
@@ -777,15 +791,19 @@ openssl s_client -connect <LB-IP>:443 -servername llm.example.com </dev/null | o
 kubectl get certificate,certificaterequest,order,challenge -A
 ```
 
-For a 504, check the timeouts and the model's latency before you change anything else.
+Run the commands from the top when you are unsure. Each one narrows the search, and the last ones confirm the certificate.
+
+For a 504, check the timeouts and the model's latency before you change anything else. Put simply, a 504 means the gateway waited and gave up, so the question is how long the slow part takes, not whether the route exists.
 
 ## 8. Lab
 
-Start with the self-checking Python lab. You can run it locally before you touch a cluster. It checks the Gateway API `HTTPRoute` matcher, `evaluate_httproute_and_reference_grant`, covering `Exact` versus `PathPrefix` precedence, `x-model` header matching and cross-namespace `ReferenceGrant` enforcement. It also checks the LLM streaming gateway validator, `validate_llm_streaming_gateway_config`, and the KV-cache and queue-aware `InferencePool` endpoint picker, `pick_llm_inference_endpoint`.
+Start with the self-checking Python lab. You can run it locally before you touch a cluster. Think of the lab script as a dry run of the routing logic. It shows whether the rules agree with each other before any cluster sees them. It checks the Gateway API `HTTPRoute` matcher, `evaluate_httproute_and_reference_grant`, covering `Exact` versus `PathPrefix` precedence, `x-model` header matching and cross-namespace `ReferenceGrant` enforcement. It also checks the LLM streaming gateway validator, `validate_llm_streaming_gateway_config`, and the KV-cache and queue-aware `InferencePool` endpoint picker, `pick_llm_inference_endpoint`.
 
 ```bash
 python3 code/part05/gateway_llm_router_lab.py
 ```
+
+Think of these steps as a ladder. Each rung uses the setup from the rung below it, so skipping ahead leaves gaps.
 
 Next, move to a cluster that has a LoadBalancer implementation and Helm. The shell steps below were not run on live hardware. You work through these exercises in order.
 
@@ -804,19 +822,23 @@ Next, move to a cluster that has a LoadBalancer implementation and Helm. The she
 
 ## 9. Common mistakes
 
-Default proxy timeouts of 60 s and default buffering kill long generations and token streams. Relying on controller-specific annotations is another trap. An annotation can silently do nothing under another controller or version, and nothing validates it. Enabling snippet annotations for untrusted tenants is a related risk.
+Most edge incidents come back to a few habits, and most of them are cheap to avoid. The first one is a default that was never chosen on purpose.
 
-Exposing model server ports through a NodePort or an LB, without auth and rate limiting, leaves the model open. Using `externalTrafficPolicy: Cluster` means you may later wonder where client IPs went. Setting `Local` with too few pods creates its own gaps.
+Default proxy timeouts of 60 s and default buffering kill long generations and token streams. Put simply, a default timeout was set for web pages, and a model's answer can run far longer than a web page ever does. Relying on controller-specific annotations is another trap. An annotation can silently do nothing under another controller or version, and nothing validates it. Enabling snippet annotations for untrusted tenants is a related risk.
 
-Running one gateway replica, or running without a PDB, leaves you no graceful drain. DNS TTLs that are too long also slow failover. Not allowing the gateway namespace in NetworkPolicies, or not restricting backends to gateway-only ingress, is another gap.
+Exposing model server ports through a NodePort or an LB, without auth and rate limiting, leaves the model open. Put simply, the model server should sit behind the gateway, and the gateway should be the only way in. Using `externalTrafficPolicy: Cluster` means you may later wonder where client IPs went. Setting `Local` with too few pods creates its own gaps.
 
-Ignoring certificate expiry monitoring is risky. So are ACME rate limits, and HTTP-01 challenges behind a firewall. Assuming L7 gateways balance HTTP/2 evenly without configuration is a mistake. Round-robin is also a poor fit for LLM traffic when load- and cache-aware routing matters.
+Running one gateway replica, or running without a PDB, leaves you no graceful drain. Put simply, a single replica means any restart is a full outage for the edge. DNS TTLs that are too long also slow failover. Not allowing the gateway namespace in NetworkPolicies, or not restricting backends to gateway-only ingress, is another gap.
+
+Ignoring certificate expiry monitoring is risky. Put simply, an expired certificate fails the whole site at once, and the alert is the only early warning you get. So are ACME rate limits, and HTTP-01 challenges behind a firewall. Assuming L7 gateways balance HTTP/2 evenly without configuration is a mistake. Round-robin is also a poor fit for LLM traffic when load- and cache-aware routing matters. Put simply, round-robin sends the next request to the next pod in line, even when that pod is busy with a long prompt. Round-robin is also a poor fit for LLM traffic when load- and cache-aware routing matters.
 
 Retrying non-idempotent generation requests is dangerous. Running Ingress and Gateway controllers that both claim the same class or hosts causes conflicts.
 
 Check your edge against this list before the next rollout.
 
 ## 10. Interview angles
+
+Interviewers want the reasoning behind each answer, not a list of names. Answer by following the request through the layers.
 
 - Explain the difference between a Service of type LoadBalancer, an Ingress and the Gateway API.
 - Why was the Gateway API created, and what do GatewayClass, Gateway, HTTPRoute and ReferenceGrant each do?
@@ -829,17 +851,17 @@ Check your edge against this list before the next rollout.
 
 ## Exercises
 
-Each exercise is a question about the edge of the cluster. The helper functions live in `code/part05/gateway_llm_router.py`.
+Each exercise is a question about the edge of the cluster. Answer in the order the question asks, and check your answer against the helper functions where a function is named. The helper functions live in `code/part05/gateway_llm_router.py`.
 
-1. Contrast L4 load balancing through `Service type: LoadBalancer` with L7 load balancing through Ingress and Gateway API. Explain why a request for `bandicoot.example.com/a/` reaches the backend as `/a/` unless you rewrite it. Kubernetes: Up and Running, Chapter 8, describes the case.
-2. Two teams claim the same hostname on one Ingress controller. Show how Contour `HTTPProxy` root inclusion stops the collision. Production Kubernetes, Chapter 6, explains the pattern.
-3. Isolate an Ingress controller on dedicated edge nodes. Say what each of `hostNetwork: true`, `dnsPolicy: ClusterFirstWithHostNet` and `externalTrafficPolicy: Local` contributes.
-4. Run `evaluate_httproute_and_reference_grant()`. Match the three Gateway API roles to the infrastructure provider, the cluster operator and the application developer. Then explain why a cross-namespace backend reference fails with `RefNotPermitted` until a `ReferenceGrant` exists.
-5. Write an `HTTPRoute` that matches the header `x-model: llama-70b` and sends 95 percent of traffic to one backend and 5 percent to a canary.
-6. Compare ACME HTTP-01 and DNS-01 challenges for a wildcard certificate and for a private cluster. Say when cert-manager renews, which is at two thirds of the certificate lifetime.
-7. Compare MetalLB in Layer 2 mode with MetalLB in BGP mode. Then say how GKE container-native load balancing and AWS ALB IP target mode reach pods directly. Networking and Kubernetes, Chapter 6, covers the cloud side.
-8. Run `validate_llm_streaming_gateway_config()`. Say why a 60-second idle timeout returns a 504 and why proxy buffering stalls streamed tokens. Then explain why a 1 MB body limit returns a 413 and why automatic POST retries multiply GPU load.
-9. Run `pick_llm_inference_endpoint()` for an `InferencePool`. Explain why round-robin does poorly for long prompts, and how KV-prefix-cache and queue-depth routing do better. Finish with the first command you would run for each of 404, 413, 429, 502, 503 and 504.
+1. Contrast L4 load balancing through `Service type: LoadBalancer` with L7 load balancing through Ingress and Gateway API. Why does a request for `bandicoot.example.com/a/` reach the backend as `/a/`? What would change that? Kubernetes: Up and Running, Chapter 8, describes the case.
+2. Two teams claim the same hostname on one Ingress controller. How does Contour `HTTPProxy` root inclusion stop the collision? Production Kubernetes, Chapter 6, explains the pattern.
+3. Isolate an Ingress controller on dedicated edge nodes. What does `hostNetwork: true` contribute? What does `dnsPolicy: ClusterFirstWithHostNet` contribute? What does `externalTrafficPolicy: Local` contribute?
+4. Run `evaluate_httproute_and_reference_grant()`. Match each Gateway API role to its owner: the infrastructure provider, the cluster operator or the application developer. Why does a cross-namespace backend reference fail with `RefNotPermitted`? Explain what changes once a `ReferenceGrant` exists.
+5. Write an `HTTPRoute` that matches the header `x-model: llama-70b`. Send 95 percent of traffic to one backend. Send the other 5 percent to a canary.
+6. Compare ACME HTTP-01 and DNS-01 challenges for a wildcard certificate. Then compare them for a private cluster. When does cert-manager renew? The answer is at two thirds of the certificate lifetime.
+7. Compare MetalLB in Layer 2 mode with MetalLB in BGP mode. How does GKE container-native load balancing reach pods directly? How does AWS ALB IP target mode do the same? Networking and Kubernetes, Chapter 6, covers the cloud side.
+8. Run `validate_llm_streaming_gateway_config()`. Why does a 60-second idle timeout return a 504? Why does proxy buffering stall streamed tokens? Why does a 1 MB body limit return a 413? Last, why do automatic POST retries multiply GPU load?
+9. Run `pick_llm_inference_endpoint()` for an `InferencePool`. Why does round-robin do poorly for long prompts? How do KV-prefix-cache and queue-depth routing do better? Finish by naming the first command you would run for each status code in the section 7 table.
 
 ## Checkpoint questions (20)
 

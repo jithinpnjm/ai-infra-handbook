@@ -22,13 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-DNS is the first dependency of almost every pod. A training worker resolves its rendezvous address, a data loader resolves object-store endpoints, and an inference gateway resolves model servers. MPI and PyTorch use headless Services for peer discovery. Every external API call, to registries, Hugging Face or telemetry, begins with a lookup too. If you run training jobs, you will meet these names every day.
+DNS is the first dependency of almost every pod. A training worker resolves its rendezvous address, a data loader resolves object-store endpoints, and an inference gateway resolves model servers. MPI and PyTorch use headless Services for peer discovery. Every external API call, to registries, Hugging Face or telemetry, begins with a lookup too. If you run training jobs, you will meet these names every day. If a job is stuck at startup, check DNS before you check the GPUs.
 
 Cluster DNS is also a classic hidden bottleneck. Kubernetes' default `ndots:5` multiplies queries, and UDP conntrack races add 5-second stalls. One CoreDNS pod serving a 2,000-pod job start causes timeouts. When DNS fails, the whole platform can look as if the network is down. Knowing how records are generated, how resolvers behave inside pods, how CoreDNS is configured, and how to scale and debug it is basic platform hygiene.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 5.8, 5.10 and the DNS fundamentals in 2.8. Once you finish it, you should be able to list the DNS records Kubernetes creates. Those cover Services, headless Services, SRV records, Pods and ExternalName Services, along with the naming scheme.
+This chapter builds on 5.8, 5.10 and the DNS fundamentals in 2.8. Use the list below as a self-check. Can you list the DNS records Kubernetes creates? Those cover Services, headless Services, SRV records, Pods and ExternalName Services, along with the naming scheme.
 
 You should also be able to read `/etc/resolv.conf` inside a pod, including `nameserver`, `search`, `ndots` and `options`. You should know the `dnsPolicy` values and `dnsConfig`, and you should understand the query amplification that `ndots:5` causes.
 
@@ -40,7 +40,7 @@ Then you can scale and harden CoreDNS with replicas, autoscaling, resources, ant
 
 Your application rarely works with raw IP addresses. It asks for a name such as `alpaca-prod`, and something has to turn that name into an address. DNS names follow `<name>.<namespace>.svc.<cluster-domain>`, and the cluster domain defaults to `cluster.local`. The DNS server is **CoreDNS**, the default since 1.13. It runs as a Deployment named `coredns` in `kube-system`, behind a Service named `kube-dns` whose ClusterIP is usually `10.96.0.10`. The name `kube-dns` is a legacy name that was kept on purpose.
 
-CoreDNS watches the Kubernetes API for Services, `EndpointSlices`, Namespaces and, optionally, Pods. It answers authoritatively for the cluster domain, so it is the single source of truth for those names.
+CoreDNS watches the Kubernetes API for Services, `EndpointSlices`, Namespaces and, optionally, Pods. It answers authoritatively for the cluster domain, so it is the single source of truth for those names. Think of CoreDNS as a receptionist who keeps a copy of the company directory and updates it whenever someone joins or moves desks. Callers ask the receptionist, not the people themselves, and the receptionist's copy is what they get back.
 
 The table shows which record each kind of object produces. Read it as a lookup: find the object you have, then check the record you will get back.
 
@@ -55,9 +55,11 @@ The table shows which record each kind of object produces. Read it as a lookup: 
 | Pod with `hostname`/`subdomain` set and matching headless Service | `hostname.subdomain.ns.svc.cluster.local.` |
 | Reverse lookups | PTR for Service IPs and pod IPs (via `kubernetes` plugin `PTR`) |
 
+Record types are short labels for the kind of answer. An A record returns an IPv4 address, and an AAAA record returns an IPv6 address. An SRV record returns a host and a port, a CNAME returns another name, and a PTR record runs the other way, from an address back to a name.
+
 Short names work through the pod's search path. From namespace `ns`, `svc` resolves through `svc.ns.svc.cluster.local`, while `svc.other-ns` resolves through `svc.cluster.local`. For cross-namespace access, use at least `svc.ns` or the full name.
 
-A temporary pod is the easiest place to check these names. The commands below start one and then query the names from inside it.
+A temporary pod is the easiest place to check these names. The commands below start one and then query the names from inside it. Think of the temporary pod as a visitor's badge. It lets you into the cluster's network for a short visit, and `--rm` removes it when you exit, so nothing is left behind.
 
 ```bash
 kubectl run -it --rm dns --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3 --restart=Never -- sh
@@ -68,6 +70,8 @@ dig +short my-headless.ns.svc.cluster.local          # multiple A records
 dig +short pod-0.my-headless.ns.svc.cluster.local
 cat /etc/resolv.conf
 ```
+
+Each command asks a different question, but `nslookup` and `dig` both ask the same DNS server, so their answers should agree.
 
 Compare the single answer for `kubernetes.default` with the several answers for the headless name. The `resolv.conf` file at the end shows the search path that made the short names work.
 
@@ -91,7 +95,7 @@ The answer gives the Service's cluster IP, 10.115.245.13. The full DNS name is `
 - `svc` says this is a Service. It leaves room for Kubernetes to expose other types of objects as DNS names later.
 - `cluster.local.` is the base domain for the cluster. It is the default, and most clusters show it. Administrators can change it so that names stay unique across several clusters.
 
-Inside your own namespace, the service name `alpaca-prod` is enough. To reach a Service in another namespace, add the namespace, as in `alpaca-prod.default`. You can also use the fully qualified name, `alpaca-prod.default.svc.cluster.local.` Try all three in the DNS Query section of kuard. Use the short name inside your own namespace, and the namespace-qualified name when you cross into another one.
+Inside your own namespace, the service name `alpaca-prod` is enough. To reach a Service in another namespace, add the namespace, as in `alpaca-prod.default`. You can also use the fully qualified name, `alpaca-prod.default.svc.cluster.local.` Try all three in the DNS Query section of kuard. Use the short name inside your own namespace, and the namespace-qualified name when you cross into another one. A useful habit is to write the namespace into every cross-namespace reference. A name like `alpaca-prod.default` reads clearly in a config file, and a reviewer can see where it points without working out the search path.
 
 ## 2. Resolver behaviour inside pods
 
@@ -104,7 +108,7 @@ A pod that looks up `api.example.com` can send 8 or more queries before it gets 
 | `ClusterFirstWithHostNet` | For `hostNetwork: true` pods that still want cluster DNS |
 | `None` | Use only `dnsConfig` (custom nameservers, searches, options) |
 
-`Default` is the one that surprises you, because it does not mean the default. It hands the pod the node's own resolver settings.
+`Default` is the one that surprises you, because it does not mean the default. It hands the pod the node's own resolver settings. Think of the policy name as a job title. `Default` sounds like the standard choice, but its job is narrower. The usual choice for a pod on the cluster network is `ClusterFirst`, which is the one the default setting gives you.
 
 The snippet below sets the resolver options and an extra search domain in the pod spec.
 
@@ -120,7 +124,7 @@ spec:
     searches: ["extra.example.com"]
 ```
 
-Each `options` entry tunes the resolver, and `searches` adds one more domain to the search path. The `ndots` value here is 2, not 5, which changes how many lookups go through the search list.
+Each `options` entry tunes the resolver, and `searches` adds one more domain to the search path. Think of the options as dials on a radio. Each one changes how the resolver tunes in to the answer, and none of them changes which names exist. The `ndots` value here is 2, not 5, which changes how many lookups go through the search list. Read the snippet line by line. `dnsPolicy: ClusterFirst` keeps the pod on the cluster resolver. `dnsConfig` then adds tuning on top of that policy, so the pod stays inside the cluster and only its settings change. The `single-request-reopen` option comes back in the race section below.
 
 ### The ndots:5 problem
 
@@ -132,23 +136,25 @@ Here is the problem in plain words. `ndots:5` means that if a name has fewer tha
 4. `api.example.com.<node-search>` returns NXDOMAIN, once for each node search domain.
 5. Finally, `api.example.com.` gets an answer.
 
-That is 8 or more queries for one hostname. For workloads that call external services often, such as downloading datasets or calling APIs, this multiplies CoreDNS load and latency. Each failed lookup also shows up as an NXDOMAIN in the CoreDNS logs.
+Walk the list once more with the reason in mind. The resolver does not know that `api.example.com` lives outside the cluster, so it assumes the name might be a Service and tries each search domain first. Each try costs a round trip, and each try fails for a name that is not in the cluster.
+
+That is 8 or more queries for one hostname. For workloads that call external services often, such as downloading datasets or calling APIs, this multiplies CoreDNS load and latency. Each failed lookup also shows up as an NXDOMAIN in the CoreDNS logs. Put simply, every name that is not inside the cluster pays a toll of wasted lookups before it gets the answer it needed.
 
 You have several ways to cut this down:
 
-- Use fully qualified names with a trailing dot, such as `api.example.com.`, in configs for external endpoints. The dot tells the resolver to skip the search list.
+- Use fully qualified names with a trailing dot, such as `api.example.com.`, in configs for external endpoints. The dot tells the resolver to skip the search list. Think of the trailing dot as writing the full street address on an envelope. The post office does not have to guess the city.
 - Lower `ndots` to 2 with `dnsConfig` for pods that mostly call external names. 2 is a common compromise. With `ndots:2`, a name such as `api.example.com`, which has 2 dots, is tried as an absolute name first. One-dot in-cluster names like `svc.ns` still go through the search path, and names with no dot (`svc`) always use it.
 - Use the CoreDNS `autopath` plugin to complete the search path on the server side. It needs pod mode `verified` and adds load on the API server.
 - Turn on NodeLocal DNSCache, so that repeated NXDOMAINs are cached on each node.
-- Avoid musl-libc quirks. Alpine's resolver, in older versions, queries all nameservers in parallel. It also does not support the full search semantics reliably, with known issues around `ndots` and TCP fallback. That is one more reason to avoid Alpine in ML containers.
+- Avoid musl-libc quirks. Alpine's resolver, in older versions, queries all nameservers in parallel. Put simply, its lookups can behave differently from glibc, so test the image before you rely on it for name-heavy work. It also does not support the full search semantics reliably, with known issues around `ndots` and TCP fallback. That is one more reason to avoid Alpine in ML containers.
 
-glibc also sends A and AAAA queries in parallel from the same socket, which is the source of the conntrack race described below. The options `single-request` and `single-request-reopen` serialize those queries. The second one also reopens the socket, at some latency cost. `use-vc` forces TCP.
+glibc also sends A and AAAA queries in parallel from the same socket, which is the source of the conntrack race described below. The options `single-request` and `single-request-reopen` serialize those queries. The second one also reopens the socket, at some latency cost. `use-vc` forces TCP. Put simply, when two questions leave the same socket at the same moment, they can collide inside the kernel. The serialize options make the pod ask one question, wait for the answer, and only then ask the second.
 
 For most external calls, the trailing dot is the first change you should make.
 
 ## 3. CoreDNS architecture
 
-A single DNS query from a pod passes through several components before it gets an answer. The diagram shows that path, from the pod's resolver through NodeLocal DNSCache to CoreDNS and then to the upstream resolver.
+A single DNS query from a pod passes through several components before it gets an answer. The diagram shows that path, from the pod's resolver through NodeLocal DNSCache to CoreDNS and then to the upstream resolver. Follow one lookup of `alpaca-prod` from a pod to see how the parts work together. The resolver appends search domains. The query goes to the node-local cache if one exists, and a miss goes on to CoreDNS. The `kubernetes` plugin answers cluster names from its copy of the API data. Any other name goes to the `forward` plugin, which asks the upstream resolver.
 
 ```mermaid
 flowchart LR
@@ -158,7 +164,7 @@ flowchart LR
     CDNS --> FWD["cache 30 -> forward plugin<br/>(External queries to<br/>upstream /etc/resolv.conf)"]
 ```
 
-CoreDNS is a chain of plugins. Each server block in the Corefile, which lives in the ConfigMap `kube-system/coredns`, defines zones and plugins. The plugins run in a fixed order that is set when CoreDNS is compiled. The order you write them in the file does not change that order.
+CoreDNS is a chain of plugins. Each server block in the Corefile, which lives in the ConfigMap `kube-system/coredns`, defines zones and plugins. The plugins run in a fixed order that is set when CoreDNS is compiled. The order you write them in the file does not change that order. Think of the Corefile as a row of stations on a conveyor belt. A query moves through the stations in a fixed order, and each station either answers, passes the query on or leaves it alone.
 
 ```text
 .:53 {
@@ -182,7 +188,7 @@ CoreDNS is a chain of plugins. Each server block in the Corefile, which lives in
 }
 ```
 
-Read the block as a list of features rather than a sequence of steps. The table below is a lookup for the plugins you are most likely to meet when you read a Corefile.
+The first line, `.:53`, says this block answers every zone on port 53. The braces hold the plugins for that zone. Read the block as a list of features rather than a sequence of steps. The `fallthrough` setting is the one to notice. It lets the `kubernetes` plugin hand a query to the next plugin when it has no record, which the block above uses for reverse lookups. The table below is a lookup for the plugins you are most likely to meet when you read a Corefile.
 
 | Plugin | Function |
 |---|---|
@@ -204,9 +210,9 @@ Read the block as a list of features rather than a sequence of steps. The table 
 
 ### Customisation recipes
 
-Most changes come from one of three needs: an internal zone, a renamed or redirected name, or a different upstream. The recipes below cover each of them.
+Most changes come from one of three needs: an internal zone, a renamed or redirected name, or a different upstream. The recipes below cover each of them. Each recipe is a whole server block or one line inside a block. You can copy a block, change the zone name and the upstream, and leave the rest alone.
 
-Say your company keeps an internal zone, `corp.example.com`, on its own resolver. A stub domain sends queries for that zone to that resolver and leaves the rest alone.
+Say your company keeps an internal zone, `corp.example.com`, on its own resolver. A stub domain sends queries for that zone to that resolver and leaves the rest alone. Think of it as a sticky note on the front desk that says, for this zone, ask that resolver instead.
 
 ```text
 corp.example.com:53 {
@@ -216,7 +222,7 @@ corp.example.com:53 {
 }
 ```
 
-Next, suppose a model mirror is reachable under a local name. A `rewrite` changes the query name, and a `hosts` entry answers a name directly.
+Next, suppose a model mirror is reachable under a local name. A `rewrite` changes the query name, and a `hosts` entry answers a name directly. The rewrite changes the name before the lookup happens. The hosts entry answers from a small local table, so it needs no upstream at all. Use `rewrite` when the name is wrong, and `hosts` when you only need an address.
 
 ```text
 .:53 {
@@ -230,7 +236,9 @@ Next, suppose a model mirror is reachable under a local name. A `rewrite` change
 }
 ```
 
-To send external queries to a specific resolver over DNS over TLS (DoT), change the `forward` line, as in `forward . tls://1.1.1.1 { tls_servername cloudflare-dns.com; health_check 5s }`. To rate-limit abusive clients, use the `acl` plugin or a NetworkPolicy that restricts DNS.
+To send external queries to a specific resolver over DNS over TLS (DoT), change the `forward` line, as in `forward . tls://1.1.1.1 { tls_servername cloudflare-dns.com; health_check 5s }`. Think of DoT as the same question sent inside a sealed envelope, so people on the network path cannot read it. To rate-limit abusive clients, use the `acl` plugin or a NetworkPolicy that restricts DNS.
+
+Editing the Corefile changes the shared DNS for the whole cluster, so one typo can affect every pod. Keep a copy of the old file before you edit, so you can put it back quickly.
 
 Open the Corefile with `kubectl -n kube-system edit cm coredns`. The `reload` plugin picks up the change within about 30 s, so check the logs to confirm it. Managed clusters have their own route. On GKE and EKS, use the provider's CoreDNS customisation path. On AKS and on the EKS add-on, the `coredns-custom` ConfigMap imports `*.override` and `*.server` files. On GKE, kube-dns reads the `stubDomains` and `upstreamNameservers` settings in its `kube-dns` ConfigMap.
 
@@ -238,21 +246,23 @@ Test each Corefile change in staging before it reaches a managed cluster.
 
 ## 4. Scaling and hardening
 
+The first DNS outage many teams see happens when a big job starts. Thousands of pods begin together, each one looking up names, and CoreDNS, which was sized for normal traffic, falls behind. The fix is to plan that load before the job starts.
+
 ### Capacity
 
-Picture a 5,000-pod job that starts all at once, with every pod calling `getaddrinfo` for each connection. That job can easily generate 100k+ queries in seconds. The query rate grows with pod count × lookup rate × ndots amplification, so each factor multiplies the load.
+Picture a 5,000-pod job that starts all at once, with every pod calling `getaddrinfo` for each connection. That job can easily generate 100k+ queries in seconds. The query rate grows with pod count × lookup rate × ndots amplification, so each factor multiplies the load. Put simply, the total is the product of those factors, so trimming any one of them cuts the whole load. Each factor is a lever you can pull without adding replicas, which makes the ndots setting one of the cheapest changes to test first.
 
-As a rule of thumb, CoreDNS handles about 10-20k QPS per CPU core when caching is on. Its pods hold no state, so you add capacity by adding replicas. Defaults ship with 2 replicas. The recommendation is replicas ≈ nodes/100 to nodes/20, with a minimum of 3 for high availability. Spread the replicas across nodes and zones with anti-affinity, and protect them with a PDB, such as `minAvailable: 1` or 50%.
+As a rule of thumb, CoreDNS handles about 10-20k QPS per CPU core when caching is on. Its pods hold no state, so you add capacity by adding replicas. Defaults ship with 2 replicas. Two replicas can survive a single restart, but they are often not enough for a large job start. The recommendation is replicas ≈ nodes/100 to nodes/20, with a minimum of 3 for high availability. Spread the replicas across nodes and zones with anti-affinity, and protect them with a PDB, such as `minAvailable: 1` or 50%. Treat these numbers as starting points and measure your own cluster. The `dnsperf` run in section 6 is the way to find your own numbers.
 
-Size the requests and limits too. For example, at modest scale you might request 100m CPU and 70 Mi of memory, with a memory limit of about 170 Mi. Raise the memory limit as the cache grows. Set `priorityClassName: system-cluster-critical` on the pods. Align `GOMAXPROCS` with the CPU limit, because CPU throttling adds latency.
+Size the requests and limits too. For example, at modest scale you might request 100m CPU and 70 Mi of memory, with a memory limit of about 170 Mi. Raise the memory limit as the cache grows. Think of the memory limit as a budget for the cache. A bigger cache answers more names from memory, and a limit that is set too low can get the pod killed by the kernel. Set `priorityClassName: system-cluster-critical` on the pods. Put simply, that setting tells the scheduler that DNS matters more than ordinary workloads when the cluster runs short of room. Align `GOMAXPROCS` with the CPU limit, because CPU throttling adds latency.
 
-**Autoscaling** is the next step. The cluster-proportional-autoscaler scales CoreDNS replicas by node and core counts, using `linear` or `ladder` parameters. A CPU-based HPA can lag behind a sudden burst, so keep a floor sized for that burst.
+**Autoscaling** is the next step. The cluster-proportional-autoscaler scales CoreDNS replicas by node and core counts, using `linear` or `ladder` parameters. A CPU-based HPA can lag behind a sudden burst, so keep a floor sized for that burst. Put simply, the proportional scaler adds CoreDNS pods as the cluster grows, while the HPA reacts to load after it arrives. A burst that starts in seconds is faster than either reaction, which is why the floor matters.
 
 ### NodeLocal DNSCache
 
-NodeLocal DNSCache runs a caching CoreDNS, `node-local-dns`, as a `DaemonSet` on every node. It listens on a link-local address, `169.254.20.10`, and on the `kube-dns` ClusterIP, through a dummy interface and NOTRACK iptables rules. Pods query the local cache with no DNAT, no conntrack and no cross-node hop.
+NodeLocal DNSCache runs a caching CoreDNS, `node-local-dns`, as a `DaemonSet` on every node. It listens on a link-local address, `169.254.20.10`, and on the `kube-dns` ClusterIP, through a dummy interface and NOTRACK iptables rules. Pods query the local cache with no DNAT, no conntrack and no cross-node hop. Think of the node-local cache as a small shop on every street corner. Most requests are answered at the corner, and only new questions travel to the main warehouse.
 
-Cache misses go over TCP to the upstream `kube-dns` Service. That avoids the UDP conntrack race and spreads the load. Negative caching also reduces NXDOMAIN storms. To install it, take the manifest from the Kubernetes repository and set `__PILLAR__LOCAL__DNS__`, `__PILLAR__DNS__SERVER__` and `__PILLAR__DNS__DOMAIN__`. Then point the kubelet `clusterDNS` at the link-local IP. You can also leave `clusterDNS` alone and use the dummy-interface binding in iptables mode.
+Cache misses go over TCP to the upstream `kube-dns` Service. That avoids the UDP conntrack race and spreads the load. Negative caching also reduces NXDOMAIN storms. Put simply, the node remembers that a name does not exist, so the next pod that asks gets the same answer from the node instead of from CoreDNS. To install it, take the manifest from the Kubernetes repository and set `__PILLAR__LOCAL__DNS__`, `__PILLAR__DNS__SERVER__` and `__PILLAR__DNS__DOMAIN__`. Then point the kubelet `clusterDNS` at the link-local IP. You can also leave `clusterDNS` alone and use the dummy-interface binding in iptables mode. Install steps change between releases, so read the manifest that matches your Kubernetes version before you apply it.
 
 Run it as a critical `DaemonSet`. If one node's cache fails, that node's pods lose DNS until the cache restarts. The cache uses `hostNetwork` and a dedicated interface, so set rollout limits such as `maxUnavailable: 10%`, add readiness checks, and consider a fallback to the cluster DNS Service with the search order. For Cilium, local DNS can be handled by its DNS proxy or by `localRedirectPolicy`.
 
@@ -260,17 +270,17 @@ Decide how each node falls back if its cache is down before you roll NodeLocal D
 
 ### The conntrack/UDP race and 5-second delays
 
-The symptom is a lookup that takes exactly 5 s, which is the default resolver timeout, or an intermittent `EAI_AGAIN`. The cause sits in the kernel. glibc sends the A and AAAA queries from the same UDP socket at the same time. Both packets hit netfilter `conntrack` together. The DNAT that kube-proxy applies, to reach the kube-dns ClusterIP, creates entries, and one of those insertions races with the other. The packet loses the race and is dropped. The resolver then waits, times out and retries.
+The symptom is a lookup that takes exactly 5 s, which is the default resolver timeout, or an intermittent `EAI_AGAIN`. A short picture helps. Two people try to write their names on the same guest book page at the same instant, and one pen stroke lands on top of the other. The second entry is lost, and the person who wrote it waits for a confirmation that never comes. The cause sits in the kernel. glibc sends the A and AAAA queries from the same UDP socket at the same time. Both packets hit netfilter `conntrack` together. The DNAT that kube-proxy applies, to reach the kube-dns ClusterIP, creates entries, and one of those insertions races with the other. The packet loses the race and is dropped. The resolver then waits, times out and retries.
 
-Several fixes address this. NodeLocal DNSCache removes the DNAT. The `single-request-reopen` option separates the two queries. Sending DNS over TCP avoids the race as well. Newer kernels help, because the races are mostly fixed in 5.0+ with later patches. An eBPF kube-proxy replacement avoids conntrack for socket load balancing. Reducing simultaneous lookups helps too, through connection pooling and caching in the application. Keep the Alpine-specific caveats in mind as well.
+Each fix removes one ingredient of the race: the shared socket, the DNAT, or the UDP path. Several fixes address this. NodeLocal DNSCache removes the DNAT. The `single-request-reopen` option separates the two queries. Sending DNS over TCP avoids the race as well. Newer kernels help, because the races are mostly fixed in 5.0+ with later patches. An eBPF kube-proxy replacement avoids conntrack for socket load balancing. Reducing simultaneous lookups helps too, through connection pooling and caching in the application. Keep the Alpine-specific caveats in mind as well.
 
 If you see exact 5-second delays, check the conntrack counters before you change the application.
 
 ### Other hardening and operations
 
-A few smaller habits keep DNS healthy over time. Keep CoreDNS and the Corefile in GitOps, and test changes in staging first. Check version skew against Kubernetes releases, and watch for the `loop` plugin crash.
+A few smaller habits keep DNS healthy over time. Think of these as the small habits of a tidy kitchen. None of them looks urgent, and each one prevents a late-night problem. Keep CoreDNS and the Corefile in GitOps, and test changes in staging first. Check version skew against Kubernetes releases, and watch for the `loop` plugin crash.
 
-Each default-deny namespace needs a NetworkPolicy that allows DNS egress, UDP and TCP port 53, to `kube-dns` and to the node-local IP, as covered in 5.15.
+Each default-deny namespace needs a NetworkPolicy that allows DNS egress, UDP and TCP port 53, to `kube-dns` and to the node-local IP, as covered in 5.15. Think of a default-deny policy as a building that locks every door. DNS needs its own open door, or no pod in the namespace can look up a name.
 
 Limit the damage from abusive clients. `ratelimit` through external proxies is limited, so rely on pod quotas and on alerts for per-pod QPS. Metrics by client IP need query logging.
 
@@ -284,31 +294,33 @@ Put the Corefile under GitOps and test each change in staging before it reaches 
 
 ## 5. DNS-based discovery for distributed AI workloads
 
-Distributed training depends on DNS more than most workloads do. Every worker needs the addresses of its peers before it can start, so one missing name can stall the whole job.
+Distributed training depends on DNS more than most workloads do. Every worker needs the addresses of its peers before it can start, so one missing name can stall the whole job. A small job shows the pattern. Worker 0 acts as the rendezvous point, and each of the other workers asks for its name before it can join. If that name does not resolve, the worker waits, and the whole job waits with it.
 
-A StatefulSet behind a headless Service gives each worker a stable name. Workers address their peers as `trainer-0.trainer.ml.svc.cluster.local`. When a pod is rescheduled, its IP changes but the name stays the same. PyTorch uses `torchrun --rdzv_backend=c10d --rdzv_endpoint=trainer-0.trainer:29500`, Ray uses `ray-head.ray.svc:6379` for its head, and MPI hostfiles are generated from pod names. Operators such as the Kubeflow Training Operator, the MPI Operator, JobSet and KubeRay create the headless Services and set the environment variables or hostfiles for you.
+A StatefulSet behind a headless Service gives each worker a stable name. Workers address their peers as `trainer-0.trainer.ml.svc.cluster.local`. When a pod is rescheduled, its IP changes but the name stays the same. The stable name is what makes restarts safe. The pod may move to another node, but the name still points at it. PyTorch uses `torchrun --rdzv_backend=c10d --rdzv_endpoint=trainer-0.trainer:29500`, Ray uses `ray-head.ray.svc:6379` for its head, and MPI hostfiles are generated from pod names. Operators such as the Kubeflow Training Operator, the MPI Operator, JobSet and KubeRay create the headless Services and set the environment variables or hostfiles for you. You do not have to build these names by hand, but you should still know what they are, because a broken name is the first thing to check when a job hangs.
 
-Readiness changes what DNS returns. Headless Services publish only ready pods by default. If peers must find each other before they are ready, during rendezvous at startup, set `publishNotReadyAddresses: true` on the headless Service, or avoid readiness probes on worker pods. Without one of these, pods can deadlock while they wait for each other's DNS names.
+Readiness changes what DNS returns. A simple test is to ask whether a peer must be reachable before the peer can say it is ready. If the answer is yes, the readiness probe and the DNS records need to agree. Headless Services publish only ready pods by default. If peers must find each other before they are ready, during rendezvous at startup, set `publishNotReadyAddresses: true` on the headless Service, or avoid readiness probes on worker pods. Without one of these, pods can deadlock while they wait for each other's DNS names. Put simply, DNS answers only for pods the cluster considers ready. A worker that waits for its peers before it becomes ready can then wait forever, and that is the deadlock.
 
-Negative caching can slow a startup. A lookup that returned NXDOMAIN for a peer, before that peer's pod existed, can stay in the cache for the negative TTL. That TTL defaults to the SOA minimum of 30 s in CoreDNS `cache denial` settings. Workers should therefore retry with backoff and bounded timeouts. Applications should also avoid caching failures. The JVM has the `networkaddress.cache.negative.ttl` setting for this. Python's `socket.getaddrinfo` does not cache, but some libraries do.
+Negative caching can slow a startup. A lookup that returned NXDOMAIN for a peer, before that peer's pod existed, can stay in the cache for the negative TTL. That TTL defaults to the SOA minimum of 30 s in CoreDNS `cache denial` settings. Workers should therefore retry with backoff and bounded timeouts. Applications should also avoid caching failures. Think of negative caching as a sticky note that says no such person is here. The note stays on the desk after the person arrives, and it comes off only when its timer runs out. The JVM has the `networkaddress.cache.negative.ttl` setting for this. Python's `socket.getaddrinfo` does not cache, but some libraries do. When a job hangs at startup, check the application's own cache before you blame CoreDNS.
 
-Job start storms happen when thousands of workers resolve the same few names at once. Before you launch a large job, give CoreDNS generous replicas and NodeLocal caches. Stagger the startup, and avoid resolving names on every iteration.
+Job start storms happen when thousands of workers resolve the same few names at once. Put simply, a storm is many workers asking the same question at the same moment. A cache answers most of those questions from memory, so far fewer questions reach CoreDNS. Before you launch a large job, give CoreDNS generous replicas and NodeLocal caches. Stagger the startup, and avoid resolving names on every iteration.
 
-JVM and other long-lived clients can hold on to old addresses. By default, the JVM caches successful lookups indefinitely with a security manager, or for 30 s without one. After a failover, clients keep the old IPs, so set the TTL properties. gRPC's `dns:///svc.ns:443` re-resolves periodically, at a 30 s minimum in some implementations. For balancing across a headless Service, use the `round_robin` policy.
+JVM and other long-lived clients can hold on to old addresses. By default, the JVM caches successful lookups indefinitely with a security manager, or for 30 s without one. After a failover, clients keep the old IPs, so set the TTL properties. A failover is where this hurts most. Clients that cached the old address keep calling it until their cache expires, however quickly the Service has moved. gRPC's `dns:///svc.ns:443` re-resolves periodically, at a 30 s minimum in some implementations. For balancing across a headless Service, use the `round_robin` policy.
 
 External dependencies such as object stores, registries and model hubs are a risk too. Pin them to IP-addressed mirrors or internal resolvers for stability, and consider a local caching proxy. When external DNS fails, the symptom is a training job that hangs at startup. Add DNS health to your preflight checks in Part 17.
 
-For discovery across clusters, you can use the Multicluster Services API, with `ServiceExport` and `ServiceImport` and the `clusterset.local` domain. Cilium ClusterMesh and Istio multi-cluster DNS proxying are other options. ExternalDNS publishes Service and Ingress records to Route53, CloudDNS or Cloudflare, as covered in 5.35.
+For discovery across clusters, you can use the Multicluster Services API, with `ServiceExport` and `ServiceImport` and the `clusterset.local` domain. Put simply, the Multicluster Services API lets you name a Service in another cluster the same way you name one here, with the extra clusterset part. Cilium ClusterMesh and Istio multi-cluster DNS proxying are other options. ExternalDNS publishes Service and Ingress records to Route53, CloudDNS or Cloudflare, as covered in 5.35.
 
 Choose the discovery method that matches how far your workloads must reach, whether that is inside one cluster or across several.
 
 ## 6. Observability
 
-CoreDNS exposes its metrics on port 9153. Watch `coredns_dns_requests_total{type,proto,zone}` for traffic, and `coredns_dns_responses_total{rcode}` for the NXDOMAIN and SERVFAIL rates. Latency shows up in `coredns_dns_request_duration_seconds_bucket`. The cache is visible in `coredns_cache_hits_total` and `coredns_cache_misses_total`, and forwarding in `coredns_forward_requests_total`.
+DNS problems rarely announce themselves. Applications report timeouts, and the pods look healthy. Metrics show the problem before the users do.
 
-Also watch `coredns_forward_healthcheck_failures_total`, `coredns_panics_total`, `coredns_health_request_failures_total` and `coredns_kubernetes_rest_client_requests_total`.
+CoreDNS exposes its metrics on port 9153. Watch `coredns_dns_requests_total{type,proto,zone}` for traffic, and `coredns_dns_responses_total{rcode}` for the NXDOMAIN and SERVFAIL rates. Latency shows up in `coredns_dns_request_duration_seconds_bucket`. Think of these metrics as a car dashboard. Requests are the speedometer, the response codes are the warning lights, and latency is the engine temperature. The cache is visible in `coredns_cache_hits_total` and `coredns_cache_misses_total`, and forwarding in `coredns_forward_requests_total`.
 
-For alerts, use these thresholds: a SERVFAIL ratio above 1%, p99 latency above 100 ms, forward healthcheck failures, CoreDNS restarts, a falling cache hit ratio, and CPU throttling. For debugging, turn on the `log` plugin briefly, or rely on `errors`. Use `dnstap` or a packet capture for forensics. The `node-local-dns` cache exposes its own metrics on port 9253.
+Also watch `coredns_forward_healthcheck_failures_total`, `coredns_panics_total`, `coredns_health_request_failures_total` and `coredns_kubernetes_rest_client_requests_total`. In plain words, the first one says the upstream resolvers are failing their checks, the second says CoreDNS itself crashed while handling a query, and the last two say the health endpoint or the API client is struggling.
+
+Thresholds are starting points. A cluster that always runs a slightly high NXDOMAIN rate, because of its search lists, needs its own baseline measured before an alert fires. For alerts, use these thresholds: a SERVFAIL ratio above 1%, p99 latency above 100 ms, forward healthcheck failures, CoreDNS restarts, a falling cache hit ratio, and CPU throttling. For debugging, turn on the `log` plugin briefly, or rely on `errors`. Use `dnstap` or a packet capture for forensics. The `node-local-dns` cache exposes its own metrics on port 9253. Compare the two sets of numbers when you read them, so you know which layer a problem belongs to.
 
 Start with these commands to see the state of CoreDNS.
 
@@ -326,29 +338,29 @@ Before you rely on these alerts, run the load test and confirm that the numbers 
 
 ## 7. Debugging method
 
-A pod reports that a name will not resolve. Before you change any config, work through the steps below in order, and stop at the first step that shows a fault.
+A pod reports that a name will not resolve. Before you change any config, work through the steps below in order, and stop at the first step that shows a fault. The order matters because each step rules out one layer. You start with the client's view, move toward the server, and only then look at the network and the kernel.
 
 Step 1: begin by asking whether you are looking at a DNS failure at all. From the failing pod, run `getent hosts svc.ns` and `dig`. If `curl` works by IP while the name fails, the problem is DNS.
 
-Step 2: next, find out which resolver the pod uses. Run `cat /etc/resolv.conf`. The nameserver IP should match `kube-dns` or the node-local cache. Note the `ndots` value, the search list and the `dnsPolicy`.
+Step 2: next, find out which resolver the pod uses. Think of this step as checking the address book the pod carries with it. Run `cat /etc/resolv.conf`. The nameserver IP should match `kube-dns` or the node-local cache. Note the `ndots` value, the search list and the `dnsPolicy`.
 
 Step 3: then check whether you can see that CoreDNS itself is healthy. Its pods should be Running and Ready, the endpoints should be present, and the logs should show no `loop`, `SERVFAIL` or forward errors. To test the CoreDNS pod directly, query its IP with `dig @<coredns-pod-ip> kubernetes.default.svc.cluster.local`.
 
-Step 4: compare the paths. Querying through the ClusterIP tests kube-proxy and the CNI. Querying the pod IP tests CoreDNS alone. Querying the node-local cache tests that layer.
+Step 4: compare the paths. Put the three paths side by side, and the slow or failing one shows you the layer to inspect. Querying through the ClusterIP tests kube-proxy and the CNI. Querying the pod IP tests CoreDNS alone. Querying the node-local cache tests that layer.
 
-Step 5: check the upstream. Run `dig @<upstream> example.com` from the CoreDNS pod or the node. Then check `forward` health, the firewall or security group for UDP and TCP 53, and the node's `resolv.conf`.
+Step 5: check the upstream. Put simply, CoreDNS can be healthy and still fail every external name when its own upstream is cut off. Run `dig @<upstream> example.com` from the CoreDNS pod or the node. Then check `forward` health, the firewall or security group for UDP and TCP 53, and the node's `resolv.conf`.
 
 Step 6: confirm that the records exist. An empty headless Service returns no A records, so check the Service selectors and endpoints first. Also check the namespace spelling, the `fallthrough` setting and the `pods` mode.
 
-Step 7: if the answers are still unclear, capture packets. Run `tcpdump -ni any port 53` on the node or in the pod's network namespace. Look for unanswered queries, retransmits at 5 s, and truncated UDP responses with the TC bit set. Those fall back to TCP, and blocked TCP/53 breaks large responses.
+Step 7: if the answers are still unclear, capture packets. Packet captures are slower to read than logs, so save them for the cases where the first six steps leave you guessing. Run `tcpdump -ni any port 53` on the node or in the pod's network namespace. Look for unanswered queries, retransmits at 5 s, and truncated UDP responses with the TC bit set. Those fall back to TCP, and blocked TCP/53 breaks large responses.
 
-Step 8: measure the timing. Use `dig +stats`, `time getent hosts` and `strace -T` on the client to find the slow query. The CoreDNS request duration histogram shows the same thing from the server side.
+Step 8: measure the timing. A slow answer and a wrong answer look different, so measure before you guess. Use `dig +stats`, `time getent hosts` and `strace -T` on the client to find the slow query. The CoreDNS request duration histogram shows the same thing from the server side.
 
-Step 9: compare the search path. Run `dig name.`, with the trailing dot, which is absolute. Then run `dig name`, which uses the search list. Count the NXDOMAINs in each case.
+Step 9: compare the search path. Put simply, the search list is tried in order, so a name can resolve under the wrong suffix first. Run `dig name.`, with the trailing dot, which is absolute. Then run `dig name`, which uses the search list. Count the NXDOMAINs in each case.
 
 Step 10: last, check conntrack. Run `conntrack -S` and `conntrack -L -p udp --dport 53 | wc -l`, and look at the `insert_failed` counters. Also note the kernel version.
 
-The table matches common symptoms to their likely causes and fixes. Match the symptom first, then read the cause column before you change anything.
+The table matches common symptoms to their likely causes and fixes. Match the symptom first, then read the cause column before you change anything. If two rows seem to fit, follow the step order in section 7 and let the first failing check decide.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
@@ -364,13 +376,13 @@ The table matches common symptoms to their likely causes and fixes. Match the sy
 
 ## 8. Lab
 
-Start on your own machine with the self-checking Python lab, which you run locally before you touch a cluster. It checks three things. First, `expand_dns_search_queries` compares `ndots:5`, `ndots:2` and a trailing-dot FQDN on `api.huggingface.co`, and on the in-cluster name `vllm.serving`. That draws on Networking and Kubernetes, chapter 5, and Production Kubernetes, chapter 6. Second, `resolve_headless_service_records` generates the DNS records for a headless Service and a StatefulSet, including the `publishNotReadyAddresses` case. That draws on Kubernetes: Up and Running, chapter 7. Third, `detect_coredns_forwarding_loop` looks for the CoreDNS `loop` plugin's forwarding loop on `127.0.0.53`.
+Start on your own machine with the self-checking Python lab, which you run locally before you touch a cluster. Running it first costs nothing and shows you the logic before any cluster state is at stake. It checks three things. First, `expand_dns_search_queries` compares `ndots:5`, `ndots:2` and a trailing-dot FQDN on `api.huggingface.co`, and on the in-cluster name `vllm.serving`. That draws on Networking and Kubernetes, chapter 5, and Production Kubernetes, chapter 6. Second, `resolve_headless_service_records` generates the DNS records for a headless Service and a StatefulSet, including the `publishNotReadyAddresses` case. That draws on Kubernetes: Up and Running, chapter 7. Third, `detect_coredns_forwarding_loop` looks for the CoreDNS `loop` plugin's forwarding loop on `127.0.0.53`.
 
 ```bash
 python3 code/part05/coredns_ndots_resolver_lab.py
 ```
 
-A passing run means the three checks agree with the behaviour described in this chapter. All interactive shell steps below are `untested here`, so treat them as a plan until you run them yourself. On a Kubernetes cluster, work through these exercises:
+A passing run means the three checks agree with the behaviour described in this chapter. Read the output with those three checks in mind, and match each one to the section of the chapter that explains it. The interactive shell steps below have not been run against a live cluster, so treat them as a plan until you run them yourself. On a Kubernetes cluster, work through these exercises:
 
 1. Take a tour of the records. Create a ClusterIP Service, a headless Service with named ports, a StatefulSet with `serviceName`, and an ExternalName Service. Query A, AAAA, SRV and PTR records for each, and watch how readiness changes the answers for the headless Service.
 2. Inspect `/etc/resolv.conf` under each `dnsPolicy`. Then turn on the CoreDNS `log` plugin, resolve `api.github.com`, and count the queries for `ndots:5`, `ndots:2` and a trailing dot. Finally, measure the latency difference across a loop of 1,000 lookups.
@@ -385,7 +397,7 @@ A passing run means the three checks agree with the behaviour described in this 
 11. Build observability. Scrape the CoreDNS and node-local metrics, build a dashboard for QPS, rcode ratios, latency and cache hits, and define alerts.
 12. Clean up when you are done.
 
-Write down what each drill showed, because the debugging method depends on those measurements.
+Write down what each drill showed, because the debugging method depends on those measurements. A drill that you cannot describe in writing is a drill you will have to repeat during a real outage.
 
 ## 9. Common mistakes
 
@@ -395,7 +407,9 @@ These mistakes come up again and again, so check your own cluster against them.
 - Forgetting `ClusterFirstWithHostNet` for pods that use host networking.
 - Leaving `ndots:5` on workloads that make many external calls, then wondering why CoreDNS is saturated.
 - Running two CoreDNS replicas for a 2,000-node cluster, with no PDB or lameduck and CPU-throttled pods.
-- Pointing the CoreDNS upstream at the systemd-resolved stub, which causes a loop.
+- Pointing the CoreDNS upstream at the systemd-resolved stub, which causes a loop. Put simply, the question is handed to a resolver that hands it back, so it circles forever.
+
+Each item in the first group looks harmless in a manifest, and each one shows up later as a slow or failing lookup.
 
 The second group is just as easy to fall into.
 
@@ -405,11 +419,11 @@ The second group is just as easy to fall into.
 - Forgetting to allow DNS egress in default-deny NetworkPolicies.
 - Making Corefile changes by hand in production, where they are lost on upgrade. Using Pod DNS A records, such as `10-0-0-1.ns.pod...`, as a workload's identity is a mistake too.
 
-Compare your manifests with this list before the next rollout.
+Compare your manifests with this list before the next rollout. Each item is cheap to check in a pull request and expensive to discover during an outage.
 
 ## 10. Interview angles
 
-These questions test whether you can explain the mechanism, not just name a setting.
+These questions test whether you can explain the mechanism, not just name a setting. A strong answer walks the path in order, from the pod's resolver to the answer that comes back. Name the search list, the ndots setting and the CoreDNS plugin that answers, and say which one you would check first. Interviewers mostly listen for that order of reasoning.
 
 - What happens when a pod resolves `my-service`? Walk through `resolv.conf`, the search domains and CoreDNS.
 - What is `ndots:5`? What problems does it cause, and how do you fix them?
@@ -424,12 +438,12 @@ These questions test whether you can explain the mechanism, not just name a sett
 
 Work through these after you have read the chapter. Each one asks you to trace a mechanism, not just repeat a setting.
 
-1. Start with the record types and the `dnsPolicy` modes. List the exact DNS record formats, including the `CNAME`, `PTR` and `SRV` records, for a `ClusterIP` Service, a headless Service (`clusterIP: None`), a `StatefulSet` pod (`pod-0.svc.ns.svc.cluster.local`), a named port (`_http._tcp.svc.ns.svc.cluster.local`) and an `ExternalName` Service. Then compare the four `dnsPolicy` values: `ClusterFirst`, `Default`, `ClusterFirstWithHostNet` and `None`. The background is in Kubernetes: Up and Running, chapter 7, and Networking and Kubernetes, chapters 4 and 5.
-2. Trace the `ndots:5` problem in code. Using `expand_dns_search_queries()` in `code/part05/coredns_ndots_resolver.py`, follow every `A` and `AAAA` query sent when a pod in namespace `ml` resolves `api.huggingface.co` under `ndots: 5`. You should count 8 queries, 6 `NXDOMAIN` and 2 answers. Then compare that with `ndots: 2` and with a trailing dot (`api.huggingface.co.`). Finally, show why `ndots: 2` still resolves 1-dot cross-namespace names, such as `vllm.serving`, through the search domains. The background is in Networking and Kubernetes, chapter 5, and Production Kubernetes, chapter 6.
-3. Study the Corefile. Using `detect_coredns_forwarding_loop()` in `code/part05/coredns_ndots_resolver.py`, explain what each plugin in the default `Corefile` does. Those plugins are `errors`, `health { lameduck 5s }`, `ready`, `kubernetes`, `prometheus :9153`, `forward`, `cache 30`, `loop`, `reload` and `loadbalance`. Then write a `Corefile` snippet that routes `corp.example.com` to internal DNS at `10.1.0.53`, and rewrites `huggingface.mirror.local` to `huggingface-proxy.registry.svc.cluster.local`. For background, see Networking and Kubernetes, chapter 4, Table 4-5.
-4. Work through scaling and the 5-second race. Explain the root cause of the 5-second DNS timeout, which comes from parallel `A` and `AAAA` UDP queries from the same socket racing `conntrack` DNAT insertion. Then explain how `NodeLocal DNSCache` at `169.254.20.10` removes it, using `NOTRACK` iptables rules and TCP upstream forwarding. Finally, explain how the `cluster-proportional-autoscaler` scales CoreDNS with cluster size. Production Kubernetes, chapter 6, covers the background.
-5. Look at rendezvous and negative caching, which also appears in `MPI` and `Ray` setups. Using `resolve_headless_service_records()` in `code/part05/coredns_ndots_resolver.py`, explain why a multi-node `StatefulSet` or `Indexed` Job deadlocks. The job uses `torchrun --rdzv_endpoint=trainer-0.trainer:29500`, its `readinessProbe` depends on peer rendezvous, and `publishNotReadyAddresses: true` is omitted. Then explain how CoreDNS negative caching, governed by the `cache denial` SOA TTL, affects worker startup retries.
-6. Finish with the full debugging method. Walk through the 10 steps of the checklist in section 7, and use them to tell apart five faults: a broken pod `/etc/resolv.conf`, a `kube-proxy` datapath failure at `10.96.0.10`, a CoreDNS pod crash or RBAC error, a blocked TCP port 53 firewall rule that shows up as `TC` bit truncation, and an upstream resolver outage.
+1. Start with the record types and the `dnsPolicy` modes. Which exact DNS record formats apply to a `ClusterIP` Service? Write them out, including the `CNAME`, `PTR` and `SRV` records. Now do the same for a headless Service (`clusterIP: None`). What does a `StatefulSet` pod get, such as `pod-0.svc.ns.svc.cluster.local`? What does a named port get, such as `_http._tcp.svc.ns.svc.cluster.local`? What does an `ExternalName` Service get? Then compare the four `dnsPolicy` values: `ClusterFirst`, `Default`, `ClusterFirstWithHostNet` and `None`. The background is in Kubernetes: Up and Running, chapter 7, and Networking and Kubernetes, chapters 4 and 5.
+2. Trace the `ndots:5` problem in code. Use `expand_dns_search_queries()` in `code/part05/coredns_ndots_resolver.py`. Follow every `A` and `AAAA` query that a pod in namespace `ml` sends when it resolves `api.huggingface.co` with `ndots: 5`. How many queries do you count? You should count 8. How many come back `NXDOMAIN`? The answer is 6. How many get an answer? The answer is 2. Repeat the trace with `ndots: 2` and then with a trailing dot, `api.huggingface.co.`. Finally, explain why `ndots: 2` still sends the one-dot cross-namespace name `vllm.serving` through the search domains. The background is in Networking and Kubernetes, chapter 5, and Production Kubernetes, chapter 6.
+3. Study the Corefile. Use `detect_coredns_forwarding_loop()` in `code/part05/coredns_ndots_resolver.py`. Explain what each plugin in the default `Corefile` does. Go through `errors`, `health { lameduck 5s }`, `ready`, `kubernetes`, `prometheus :9153`, `forward`, `cache 30`, `loop`, `reload` and `loadbalance`. Then write a `Corefile` snippet that routes `corp.example.com` to internal DNS at `10.1.0.53`. Add a rewrite that maps `huggingface.mirror.local` to `huggingface-proxy.registry.svc.cluster.local`. For background, see Networking and Kubernetes, chapter 4.
+4. Work through scaling and the 5-second race. What is the root cause of the 5-second DNS timeout? Start with parallel `A` and `AAAA` UDP queries from the same socket, which race the `conntrack` DNAT insertion. Then explain how `NodeLocal DNSCache` at `169.254.20.10` removes the race. Use the `NOTRACK` iptables rules and the TCP upstream forwarding in your answer. Finally, explain how the `cluster-proportional-autoscaler` scales CoreDNS as the cluster grows. Production Kubernetes, chapter 6, covers the background.
+5. Look at rendezvous and negative caching, which also shows up in `MPI` and `Ray` setups. Use `resolve_headless_service_records()` in `code/part05/coredns_ndots_resolver.py`. Why does a multi-node `StatefulSet` or `Indexed` Job deadlock? Assume the job uses `torchrun --rdzv_endpoint=trainer-0.trainer:29500`. Assume its `readinessProbe` depends on peer rendezvous, and that `publishNotReadyAddresses: true` is omitted. Then explain how CoreDNS negative caching affects worker startup retries. The `cache denial` setting, which follows the SOA TTL, decides how long a negative answer stays.
+6. Finish with the full debugging method. Walk through the ten steps of the checklist in section 7. Then use those steps to tell apart five faults. The first is a broken pod `/etc/resolv.conf`. The second is a `kube-proxy` datapath failure at `10.96.0.10`. The third is a CoreDNS pod crash or RBAC error. The fourth is a blocked TCP port 53 firewall rule that shows up as `TC` bit truncation. The fifth is an upstream resolver outage.
 
 ## Checkpoint questions (20)
 

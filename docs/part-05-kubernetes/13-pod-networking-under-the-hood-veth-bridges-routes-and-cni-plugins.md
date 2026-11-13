@@ -24,13 +24,15 @@ lab_venue: "GCP / GKE"
 
 A distributed training job is only as fast as its network. Collective operations move gigabytes on every step. How each pod attaches to the network decides whether it gets line rate or only a fraction of it.
 
+Think about what happens inside one training step. Each GPU finishes its share of the math, and then the GPUs trade their results so that all of them end up with the same updated weights. That exchange is the collective. If one GPU's network path is slow, every other GPU waits for it at the end of the step. The fast GPUs sit idle while the slow link finishes, so one weak path slows the whole job. That is why a pod's network path is a training question, and not only a platform question.
+
 The default pod network relies on veth, bridge or overlay devices, and on iptables or eBPF. It is built for general microservices connectivity and policy, not for 400 Gb/s RDMA. So GPU clusters use a layered design. A CNI handles the control and general traffic. Secondary high-performance interfaces, such as SR-IOV VFs, macvlan on RDMA NICs or host networking, carry the NCCL traffic.
 
 You cannot debug connectivity problems or design GPU network attachments well without understanding three things. You need to know how a pod's interface is created and how packets leave the node. You also need to know where MTU is lost and how to inspect all of it. Decide early which traffic goes through the CNI and which goes through a secondary interface.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 5.8, 5.10 and Part 2. From Part 2 you need Ethernet, IP routing, network namespaces (2.25), Linux networking (2.22 to 2.24) and VLANs and bridges (2.11). The rest of the chapter assumes these, so review them first. When you finish, you should be able to do the following.
+This chapter builds on 5.8, 5.10 and Part 2. From Part 2 you need Ethernet, IP routing, network namespaces (2.25), Linux networking (2.22 to 2.24) and VLANs and bridges (2.11). The rest of the chapter assumes these, so review them first. The list below is a self-check, not a test you must pass in order. Each line names one ability that a platform engineer uses when a pod cannot reach something.
 
 - State the Kubernetes network model and what it requires from a CNI. The model says every pod has its own IP, that pods communicate without NAT, and that nodes and pods communicate without NAT.
 - Reproduce a pod network by hand with `ip netns`, veth pairs, bridges and routes. Then map each primitive to what a CNI plugin does.
@@ -48,7 +50,9 @@ Imagine a cluster where pods run on many nodes. Any pod still needs to reach any
 3. Agents on a node, such as the kubelet and system daemons, can reach all pods on that node. Pods in the host network namespace can talk to all pods without NAT.
 4. Services are virtual IPs layered on top, through kube-proxy or the CNI datapath (5.10). NetworkPolicy is optional, and the CNI implements it (5.15).
 
-Kubernetes itself implements none of this. The **container runtime** invokes a **CNI plugin** when it creates the pod sandbox (5.8), and the plugin builds the connectivity. Something must also route pod CIDRs between nodes: the CNI, the cloud or your network fabric. Settle early which of these does that job.
+The no-NAT rule is easier to see with an example. Suppose pod `10.244.1.12` on Node A calls pod `10.244.2.7` on Node B. The request carries `10.244.1.12` as its source address. Because nothing rewrites that address on the way, Pod B's logs show the real caller, and Pod B's replies go straight back to `10.244.1.12`. If a NAT step rewrote the source to the node's own IP, both of those things would change, and the caller would be hidden behind the node.
+
+Kubernetes itself implements none of this. Kubernetes describes what should be true, and the node does the work. When the kubelet starts a pod, it asks the **container runtime** to create the pod sandbox, which is the network namespace that the pod's containers will share. The runtime then invokes a **CNI plugin** (5.8), and the plugin builds the connectivity. Something must also route pod CIDRs between nodes: the CNI, the cloud or your network fabric. Settle early which of these does that job, because if nobody does it, pods on different nodes cannot reach each other.
 
 ## 2. Building pod networking by hand
 
@@ -73,6 +77,10 @@ sudo sysctl -w net.ipv4.ip_forward=1
 sudo iptables -t nat -A POSTROUTING -s 10.244.1.0/24 ! -o cni0 -j MASQUERADE     # egress SNAT to the node IP
 sudo ip netns exec pod1 ping -c2 8.8.8.8
 ```
+
+Before you read the table, walk through the script once in your head. The first line builds the rooms. `ip netns add` makes two network namespaces, which are separate copies of the network stack, and `cni0` is the switch that they will share. The loop then does the same work for each pod. It creates a veth pair, plugs the host end into the bridge, names the pod end `eth0` inside the pod's namespace, and sets the pod's address and default gateway. The gateway is the bridge's own address, `10.244.1.1`, so every packet a pod sends outside its own subnet goes to the bridge first.
+
+Follow one ping to see what happens. When `pod1` (`10.244.1.11`) pings `10.244.1.12`, the destination sits in the same /24, so `pod1` sends the frame directly. It first needs the other pod's MAC address, which it gets through ARP on the local link. The bridge then passes the frame out the other pod's veth, and no routing or NAT is involved. When `pod1` pings `8.8.8.8`, the destination is outside the subnet. The packet therefore goes to the gateway, `cni0`. The MASQUERADE rule rewrites the source address from `10.244.1.11` to the node's own address on the way out. Replies come back to the node, and the connection tracking entry sends them on to `pod1`.
 
 This is what the simple `bridge` CNI plugin does for a single node. The table below lists each primitive and its role. Notice that the bridge handles traffic between local pods, while routing and overlay devices take over once pods on different nodes must talk.
 
@@ -109,6 +117,8 @@ flowchart TB
 2. **Routed (L3, no encapsulation)**. Nodes learn pod CIDR routes in one of three ways: BGP, from Calico, Cilium BGP or kube-router; static routes; or cloud route tables. The `host-gw` option in Flannel works only when nodes share L2. This design gives the best performance and clean traceability. It does require control of the underlay, or BGP peering with ToR switches. It fits leaf-spine fabrics that run BGP to hosts, as covered in 2.15 and 2.16.
 3. **VPC-native or underlay IPs**. Pods get routable IPs straight from the fabric. Examples are the AWS VPC CNI with ENI secondary IPs, GKE alias IPs, Azure CNI, and SR-IOV or macvlan on a physical NIC. There is no overlay and no NAT. The limits are NIC and IP quotas, and how far IPAM scales.
 
+Notice what each family does to the same packet. In the overlay case, the pod packet is wrapped inside an outer packet between node addresses, and the wrapper is removed on arrival. In the routed case, the packet travels unchanged, and the route table on each node picks the next hop. In the underlay-native case, the fabric already knows the pod's address, so the node does nothing special. Each family moves the complexity to a different place: the tunnel, the routing protocol, or the cloud's IP plan.
+
 Chapter 5.14 covers each family in detail.
 
 James Strong and Vallery Lancey show in *Networking and Kubernetes*, chapter 6, *Kubernetes and Cloud Networking*, that subnet sizing must be planned before cluster creation. Josh Rosso and co-authors make the same point about workload routability in *Production Kubernetes*, chapter 5, *Pod Networking*. Two rules follow from this.
@@ -120,9 +130,13 @@ James Strong and Vallery Lancey show in *Networking and Kubernetes*, chapter 6, 
 
 Decide which family fits your fabric before you size the pod CIDRs.
 
+The order matters because the family changes what the CIDR has to hold. An overlay can hide a large pod range inside a small underlay, since only node addresses cross the network. A routed design makes every pod block a route that the fabric must learn, so the block sizes show up in the routing tables. A VPC-native design takes each pod address from the cloud's subnet, so the subnet size becomes the pod limit. Sizing the CIDR before you choose the family means guessing at one of those three limits.
+
 ## 3. The CNI specification
 
-CNI, the Container Network Interface, is a CNCF project. It is a minimal contract between a container runtime and a plugin executable. The runtime hands the plugin a network config and a set of environment variables. The plugin then sets up the network and reports back what it built.
+Suppose a new node joins the cluster and stays `NotReady`, with a message that the CNI plugin is not initialized. The kubelet is running, and so is the runtime. What is missing is the piece that wires pods into the network. To know where to look, you need to understand the contract the runtime uses to call that piece.
+
+CNI, the Container Network Interface, is a CNCF project. It is a minimal contract between a container runtime and a plugin executable. Think of the runtime as a building manager who calls in an electrician. The manager hands over a work order, which is the network config, along with a few labelled notes, which are the environment variables. The electrician does the wiring and then writes back a receipt that says what was installed. The plugin sets up the network and reports back what it built, in the same way.
 
 The runtime reads its network config from `/etc/cni/net.d/*.conflist`. The first file in lexicographic order wins for the primary network. The example below chains three plugins in one config: calico, portmap and bandwidth.
 
@@ -142,9 +156,11 @@ The runtime reads its network config from `/etc/cni/net.d/*.conflist`. The first
 }
 ```
 
+Read the JSON as a pipeline. The first plugin, `calico`, creates the pod's interface and asks `calico-ipam` for an address. Its `mtu` of 1450 is the value the chapter's MTU arithmetic gives for a 1500-byte underlay with VXLAN overhead (section 5). The next two plugins, `portmap` and `bandwidth`, run after it and read what it produced. That is why the order in the list matters. Each plugin builds on the result of the one before it.
+
 The plugin executables live in `/opt/cni/bin`. That directory holds bridge, host-local, loopback, portmap, bandwidth, tuning, macvlan, ipvlan, vlan, ptp, sbr, vrf, static, dhcp and firewall. It also holds vendor binaries: calico, cilium-cni, flannel, aws-cni, multus, sriov and rdma.
 
-The runtime runs the plugin with environment variables and passes the network config on stdin. The table below lists those variables. You can read them as the plugin's inputs.
+The runtime runs the plugin with environment variables and passes the network config on stdin. You can think of the environment variables as the header on the work order. They say which command to run, which sandbox to wire, and which namespace to wire it into. The table below lists those variables. You can read them as the plugin's inputs.
 
 | Env var | Meaning |
 |---|---|
@@ -170,9 +186,13 @@ journalctl -u containerd -u kubelet | grep -i cni
 
 The `cat` line shows the IPs that host-local has allocated, with one file per IP that holds the container ID. The `journalctl` line pulls the CNI messages from the containerd and kubelet logs.
 
-You will meet several failures again and again. A missing or invalid config produces "cni plugin not initialized" and leaves the node NotReady. Stale IPAM allocations after crashes cause IP exhaustion, and the fix is to clean `/var/lib/cni/networks`. A CNI binary that is not executable, or that uses the wrong spec version, also fails. So do plugin timeouts under load, and conflicting configs: when two `*.conflist` files exist, the first one in sort order wins. Leftover interfaces and netns after a runtime crash round out the list. When a pod fails to start, check the config files and the IPAM state first.
+You will meet several failures again and again. A missing or invalid config produces "cni plugin not initialized" and leaves the node NotReady. Stale IPAM allocations after crashes cause IP exhaustion, and the fix is to clean `/var/lib/cni/networks`. A CNI binary that is not executable, or that uses the wrong spec version, also fails. So do plugin timeouts under load, and conflicting configs: when two `*.conflist` files exist, the first one in sort order wins. Leftover interfaces and netns after a runtime crash round out the list. Take the IP exhaustion case as an example. A crash leaves a file behind in `/var/lib/cni`, and `host-local` still counts that address as taken. After enough crashes, the node runs out of addresses even when only a few pods are running. The pods look healthy in the list, but the allocator has no free address to give. That is why the first check is the IPAM state, and not the pod itself.
+
+When a pod fails to start, check the config files and the IPAM state first.
 
 ## 4. Implementation families (overview)
+
+Suppose you are building a bare-metal GPU cluster on a leaf-spine fabric that your team controls. Nobody on the team has run a CNI before, and the network team wants to know which option to choose. The table below is the starting point for that conversation.
 
 Every CNI makes different trade-offs, and the table compares them. Read across a row to see what a plugin gives you and what it leaves to you. Flannel is the simplest option and has no policy of its own. Calico and Cilium add rich policy, and Cilium needs a modern kernel to run.
 
@@ -191,21 +211,29 @@ The next chapter, 5.14, goes deeper on overlay and routed designs and on eBPF. C
 
 ## 5. MTU, performance and offloads
 
-MTU, the maximum transmission unit, is the largest packet a link can carry. An encapsulated pod packet needs room for its outer headers. So the inner pod MTU equals the underlay MTU minus the encapsulation overhead. The overhead depends on the tunnel: VXLAN 50 bytes, Geneve about 50 or more, IPIP 20, WireGuard 60, and IPsec ESP about 50 to 70.
+A common surprise goes like this. Pods can ping each other, and short API calls succeed, but a large image pull or a `git clone` hangs halfway through. The cause is almost always MTU.
+
+MTU, the maximum transmission unit, is the largest packet a link can carry. Think of it as the width of a doorway. A tunnel wraps each parcel in an extra layer of packaging, so a parcel that fits through an empty doorway may no longer fit once it is boxed. An encapsulated pod packet needs room for its outer headers. So the inner pod MTU equals the underlay MTU minus the encapsulation overhead. The overhead depends on the tunnel: VXLAN 50 bytes, Geneve about 50 or more, IPIP 20, WireGuard 60, and IPsec ESP about 50 to 70.
 
 If you run a 1500-byte underlay, subtract the 50 bytes of VXLAN overhead and the pods get 1450 bytes. With a jumbo underlay of 9000 bytes, the same subtraction gives 8950 bytes for pods.
 
-A mismatch does not fail loudly. It blackholes large packets, which shows up as PMTUD failures. Small requests still work, so the symptoms look strange: TLS handshakes hang, large HTTP responses stall, and `ping -s` shows a size threshold. Set the MTU consistently in the CNI config or Helm values. Then verify it end-to-end with `ping -M do -s <size>` across nodes (2.7). If your GPU nodes use 9000-byte frames on the data network, you configure the MTU of the secondary interfaces separately.
+The arithmetic is simple, but it is easy to run backwards. You subtract the overhead from the underlay to get the pod MTU. You never add the overhead to the pod's size. A pod set to 1500 on a VXLAN network has an outer packet of 1550 bytes, and the underlay does not carry packets that large.
+
+A mismatch does not fail loudly. It blackholes large packets, which shows up as PMTUD failures. PMTUD, Path MTU Discovery, is the normal way a sender learns the smallest MTU along a path. A router that cannot forward a packet sends back an ICMP "fragmentation needed" message, and the sender shrinks its packets. When a firewall blocks that message, the sender never learns, and it keeps sending packets that are silently dropped. Small requests still work, so the symptoms look strange: TLS handshakes hang, large HTTP responses stall, and `ping -s` shows a size threshold. Set the MTU consistently in the CNI config or Helm values. Then verify it end-to-end with `ping -M do -s <size>` across nodes (2.7). If your GPU nodes use 9000-byte frames on the data network, you configure the MTU of the secondary interfaces separately.
 
 Overhead is the next concern. Each veth traversal adds CPU per packet, costing two extra softirq contexts. A bridge with iptables conntrack adds latency, and kernel TCP tuning matters too. eBPF host routing (`bpf.hostRouting`, or "netkit" devices) skips iptables and the upper stack, which lowers latency. Offloads matter as well: GRO, GSO and TSO on veth and NICs, UDP segmentation offload for VXLAN (`tx-udp_tnl-segmentation`), and checksum offload. For multi-queue scale, tune RPS, RFS and XPS, and set IRQ affinity.
 
 Throughput sets expectations. Pod-to-pod traffic over VXLAN on 25 to 100 Gb/s NICs often reaches only a fraction of line rate without tuning. Routed or eBPF native routing approaches line rate for large flows. None of these match RDMA's latency and CPU efficiency, which is why GPU collectives use secondary RDMA networks.
 
+The reason lies in the path a packet takes. On a normal TCP connection, every packet passes through the kernel's network stack on both ends, and each pass costs CPU time. RDMA hands the network card a request and lets the card move the data directly, so the CPU stays out of the loop for most of the work. The CNI path, with its veth, bridge and encapsulation steps, keeps the kernel in the middle of every packet. That is fine for web traffic and too slow for the synchronised bursts that a training step produces.
+
 Separate control-plane traffic from bulk traffic. Keep storage and collective traffic off the CNI where possible. Set the MTU consistently before you tune anything else.
+
+Think of the traffic on a node as a road system. Control traffic is like the ambulance lane, which must never be blocked, and bulk traffic is the freight lane, which can be busy. Mixing them on one lane means a large freight burst can delay the ambulance. Separating them keeps the critical path predictable, and it makes each network easier to measure.
 
 ## 6. Secondary networks, SR-IOV and RDMA for AI
 
-A training pod often needs a second network, faster than the general-purpose CNI network, for its NCCL traffic. Kubernetes gives you that through Multus and a few related pieces.
+Picture a training pod that must send gradients to its peers many times a minute. The general-purpose network is built for ordinary service traffic, so the pod needs a second, faster path for its NCCL traffic. Kubernetes gives you that through Multus and a few related pieces.
 
 ### Multus and NetworkAttachmentDefinition
 
@@ -248,6 +276,8 @@ spec:
           nvidia.com/rdma_shared_device_b: 1
 ```
 
+Read the pod's annotation as a request list. Multus does not invent networks. It looks up each name in the annotation, finds the matching NetworkAttachmentDefinition, and attaches one interface per name. The `resources` limits do a different job. They ask the scheduler to place the pod on a node that has a free RDMA device, so the pod never lands on a node that has the network but no device left to give it.
+
 The NetworkAttachmentDefinition describes a macvlan network on `ens1f0np0` with a 9000-byte MTU. The pod asks for `rdma-net-a` and `rdma-net-b`, and Multus attaches them as `net1` and `net2`. The resource limits ask for 8 GPUs and one device from each of the two RDMA pools.
 
 Secondary interfaces come in several types, and each suits a different job.
@@ -264,6 +294,8 @@ Secondary interfaces come in several types, and each suits a different job.
 BlueField DPUs can run OVS or OVN-Kubernetes datapaths in hardware. With switchdev and hardware flow offload, pods get VF representors. Policy and encapsulation then run on the DPU instead of the host CPUs. This matters for multi-tenant AI clouds, which Parts 9 and 12 cover.
 
 Decide which secondary interface type each workload needs before you write its pod spec.
+
+A simple way to choose is to ask three questions in order. Does the workload need isolation from other tenants? If yes, SR-IOV is the strongest option, because each pod gets its own hardware function. Does it need RDMA but can share the NIC with its neighbours? Then macvlan with the shared device plugin is usually enough. Is it a single-tenant node that owns all eight GPUs? Then host networking is the simplest path, and it accepts the weaker isolation that comes with it.
 
 ## 7. Inspecting pod networking on a node
 
@@ -295,11 +327,13 @@ sudo ip netns exec cni-xxxx tcpdump -ni eth0
 ping -M do -s 1422 10.244.2.7                        # MTU test for 1450 path
 ```
 
+Here is how the first block reads in practice. Suppose `my-pod` cannot reach a pod on another node. The first command gives you the path of the pod's network namespace. You then run `ip -br addr` inside that namespace to check that `eth0` has the address you expect. Next you find the host side of the veth by matching the `ifindex` and `iflink` numbers. Each command answers one question: which namespace, which address, which host interface, which route, and where the packet goes next.
+
 If you run Cilium, check its state with `cilium status`, `cilium endpoint list`, `cilium bpf endpoint list`, `hubble observe --pod ns/pod` and `cilium monitor --type drop`. If you run Calico, use `calicoctl node status` to see the BGP peers, then `calicoctl get workloadendpoint -o wide`, `ip route` to find `proto bird` routes, and the Felix logs. Find the pod's namespace before anything else, because every other command depends on it.
 
 ## 8. Troubleshooting matrix
 
-Pod networking problems look alike from the outside, so start from the symptom you can see. Find the row that matches it, then run the check in the last column. The rows below cover the failures you are most likely to meet.
+Pod networking problems look alike from the outside, so start from the symptom you can see. Find the row that matches it, then run the check in the last column. A single symptom can have more than one cause, so the last column gives you the first check to run, not the only one. Work through the row, and if the check comes back clean, move to the next likely cause. Find the row that matches it, then run the check in the last column. The rows below cover the failures you are most likely to meet.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -318,6 +352,8 @@ Pod networking problems look alike from the outside, so start from the symptom y
 
 Match the symptom first, and only then run the check in the last column. If a large transfer stalls while small requests work, the MTU row is the one you should test first.
 
+Here is how the matrix works during an incident. A team reports that `pip install` hangs on a training pod, but a health check on the same pod responds at once. The symptom says small packets work and large ones do not. That points at the MTU row, so the first check is `ping -M do` at increasing sizes. When the largest size that succeeds matches the MTU you computed, the problem is confirmed, and the fix is to set the CNI MTU consistently. The matrix saves time because it narrows the search before you touch anything.
+
 ## 9. Lab
 
 Start with the self-checking Python lab, which you can run locally: `code/part05/cni_pod_networking_sim_lab.py`. Run it as shown below. The lab checks three things. First, the CNI encapsulation MTU and the `ping -M do -s` DF payload calculator, through `compute_pod_mtu_and_df_ping` and `compute_subnet_prefix_for_nodes`, which follow *Networking and Kubernetes* chapter 6 and *Production Kubernetes* chapter 5. Second, the `host-local` and `Whereabouts` IPAM allocator, `CNIHostLocalIPAM`, covering excluded ranges, exhaustion and `DEL` cleanup. Third, the Multus secondary RDMA rail interface planner, `plan_multus_pod_interfaces`.
@@ -326,18 +362,20 @@ Start with the self-checking Python lab, which you can run locally: `code/part05
 python3 code/part05/cni_pod_networking_sim_lab.py
 ```
 
-Next, take the exercises below to a Linux VM or a Kubernetes cluster. Every interactive shell step is `untested here`, so confirm each result on your own machine.
+The lab is the place where the chapter becomes concrete. Reading that a veth pair connects two namespaces is one thing. Running the commands and watching a ping cross the bridge is another, and most engineers remember the second far better than the first. Start with the simulated node, then move to a real VM when you are comfortable with each step.
 
-1. Reproduce the bridge example with two namespaces. Then add a third namespace on a second "node", a second VM, using static routes with no overlay. Repeat with VXLAN, using `ip link add vxlan0 type vxlan id 42 remote <peer> dev eth0 dstport 4789`. Verify with `tcpdump` on the underlay and show the encapsulation. Measure the MTU effects with `iperf3`.
-2. Read a real CNI on a kubeadm cluster. List `/etc/cni/net.d`, the binaries, and `/var/lib/cni`. Call the `bridge` plugin by hand with `CNI_COMMAND=ADD` for a test namespace. Inspect the veth, the routes and the IPAM files, then run `DEL`.
-3. Trace a packet between pods on different nodes under Flannel VXLAN, Calico IPIP or VXLAN, and Calico BGP. If you can peer with FRR containers or VMs, do that too (2.27). Record the headers at each hop: the pod veth, the node interface and the underlay. Then compare the MTU and encapsulation.
-4. Set the CNI MTU too high and reproduce the stalled transfers. Diagnose them with `ping -M do`. Fix the MTU, then verify with iperf at various sizes.
-5. Shrink the per-node pod CIDR, or create many pods, and watch for `failed to allocate for range`. Then recover.
-6. Install Multus. Create two NetworkAttachmentDefinitions, one macvlan on a spare NIC or VLAN and one `ipvlan`. Attach them to a pod. Verify `net1`, the IP from Whereabouts, and connectivity between pods on different nodes. Read the `network-status` annotation.
-7. On hardware with a ConnectX NIC, enable VFs and deploy the SR-IOV network operator or device plugin. Attach a VF to a pod. Run `ib_write_bw` between two pods, and compare with the primary CNI using `iperf3`. Then run `all_reduce_perf` with `NCCL_IB_HCA` set to the pod's device.
-8. Measure pod-to-pod throughput and latency with `iperf3`, `netperf` and `sockperf` over each CNI mode. Toggle offloads, RPS and MTU as you go. Record the CPU usage per Gb/s.
-9. Break each of these in turn: the CNI config file, the overlay UDP port, a node route, an IPAM file and the MTU. Use the matrix above to diagnose each one.
-10. Clean up at the end. Remove the namespaces, bridges and VXLAN devices, and restore the CNI config.
+Next, take the exercises below to a Linux VM or a Kubernetes cluster. The interactive steps were not run on live hardware while this chapter was written, so treat each result as something to confirm on your own machine.
+
+1. Reproduce the bridge example with two namespaces. Which step gives each pod its gateway?
+2. Add a third namespace on a second "node", which is a second VM. Connect the two nodes with static routes and no overlay. Repeat with VXLAN, using `ip link add vxlan0 type vxlan id 42 remote <peer> dev eth0 dstport 4789`. Verify with `tcpdump` on the underlay and show the encapsulation. Measure the MTU effects with `iperf3`.
+3. Read a real CNI on a kubeadm cluster. List `/etc/cni/net.d`, the binaries, and `/var/lib/cni`. Call the `bridge` plugin by hand with `CNI_COMMAND=ADD` for a test namespace. Inspect the veth, the routes and the IPAM files, then run `DEL`.
+4. Trace a packet between pods on different nodes under Flannel VXLAN, Calico IPIP or VXLAN, and Calico BGP. If you can peer with FRR containers or VMs, do that too (2.27). Record the headers at each hop: the pod veth, the node interface and the underlay. Then compare the MTU and encapsulation.
+5. Set the CNI MTU too high and reproduce the stalled transfers. Diagnose them with `ping -M do`. Fix the MTU, then verify with iperf at various sizes.
+6. Shrink the per-node pod CIDR, or create many pods, and watch for `failed to allocate for range`. Then recover.
+7. Install Multus. Create two NetworkAttachmentDefinitions, one macvlan on a spare NIC or VLAN and one `ipvlan`. Attach them to a pod. Verify `net1`, the IP from Whereabouts, and connectivity between pods on different nodes. Read the `network-status` annotation.
+8. On hardware with a ConnectX NIC, enable VFs and deploy the SR-IOV network operator or device plugin. Attach a VF to a pod. Run `ib_write_bw` between two pods, and compare with the primary CNI using `iperf3`. Then run `all_reduce_perf` with `NCCL_IB_HCA` set to the pod's device.
+9. Measure pod-to-pod throughput and latency with `iperf3`, `netperf` and `sockperf` over each CNI mode. Toggle offloads, RPS and MTU as you go. Record the CPU usage per Gb/s.
+10. Break each of these in turn: the CNI config file, the overlay UDP port, a node route, an IPAM file and the MTU. Use the matrix above to diagnose each one. Then clean up at the end. Remove the namespaces, bridges and VXLAN devices, and restore the CNI config.
 
 ## 10. Common mistakes
 
@@ -351,9 +389,11 @@ Next, take the exercises below to a Linux VM or a Kubernetes cluster. Every inte
 - Using hostNetwork widely for convenience, and losing policy and isolation as a result.
 - Not monitoring IPAM utilisation and per-node IP limits, especially with cloud VPC CNIs.
 
+Most of these mistakes share one root. A pod network has several layers, and people tend to fix the layer they can see, such as the pod spec, while the fault sits in the bridge, the route or the MTU underneath it. When you feel stuck, go back to the layer list in section 2 and check each one in order.
+
 ## 11. Interview angles
 
-Expect questions like these in an interview.
+Expect questions like these in an interview. A good answer starts from the layer the question names, then moves one level down at a time. Interviewers listen for a clear path from the pod to the node and from the node to the fabric, and they are less impressed by a list of tool names.
 
 - "What is the Kubernetes network model? What does a CNI plugin actually do?"
 - "Walk through pod-to-pod traffic across nodes with VXLAN vs BGP routing."
@@ -366,12 +406,12 @@ Expect questions like these in an interview.
 
 ## Exercises
 
-1. Start with the Kubernetes IP-per-Pod network model and the hand-built pod network, drawn from *Networking and Kubernetes* chapter 3 and *Production Kubernetes* chapter 5. State the 4 requirements of the Kubernetes network model (Section 1). Then trace every `ip netns`, `ip link` (`veth` pair + `cni0` bridge), `ip addr`, `ip route`, `sysctl`, and `iptables -t nat MASQUERADE` command in Section 2. You can use them to wire two Pods on one node with internet egress.
-2. Study the CNI specification: `.conflist` chaining, `ADD`/`DEL`/`CHECK`/`VERSION`, and IPAM plugins, using *Networking and Kubernetes* chapter 4. Use `CNIHostLocalIPAM` in `code/part05/cni_pod_networking_sim.py`. Explain how `/etc/cni/net.d/10-calico.conflist` chains `calico` + `portmap` + `bandwidth` using `prevResult`. Explain which environment variables the runtime passes to `/opt/cni/bin/*`. Finally, explain how `host-local`, `calico-ipam` and `whereabouts` track IP allocations and exclusions.
-3. Compare the implementation families: Flannel, Calico, Cilium, and the cloud VPC-native options (AWS ENI and GKE Alias IP). Then work through subnet sizing from *Networking and Kubernetes* chapter 6. Use `compute_subnet_prefix_for_nodes()` in `code/part05/cni_pod_networking_sim.py` to derive the subnet prefix for $N$ nodes, using $S = 32 - \lceil \log_2(N + 4) \rceil$. Then compare overlay (`VXLAN`/`Geneve`), routed (`Calico`/`Cilium` BGP) and underlay-native (`AWS VPC CNI` / `GKE Alias IPs`).
-4. Work through the MTU math for IPIP, VXLAN, Geneve and WireGuard, drawing on *Production Kubernetes* chapter 5. Use the overheads IPIP (-20B), VXLAN (-50B) and WireGuard (-60B). Use `compute_pod_mtu_and_df_ping()` in `code/part05/cni_pod_networking_sim.py` to calculate the exact inner Pod MTU on a 1,500-byte and a 9,000-byte underlay. Then explain why `ping -M do -s 1422` succeeds on a 1,450-MTU VXLAN path, and why you see `-s 1423` fail.
-5. Trace multi-network pods for GPU collectives, covering Multus, `NetworkAttachmentDefinition`, macvlan, SR-IOV, the RDMA shared device plugin and rail alignment. Use `plan_multus_pod_interfaces()` in `code/part05/cni_pod_networking_sim.py`. Trace `NetworkAttachmentDefinition/rdma-net-a` and `Pod/nccl-worker` from Section 6. Then contrast macvlan with the RDMA shared device plugin, SR-IOV VFs and `hostNetwork: true`, for 8-rail 400 Gb/s RoCEv2 or InfiniBand NCCL collectives.
-6. Inspect the node-level pod network. You need the exact commands from Section 7 to map a running Pod to its network namespace. Then find the host-side `veth` interface that matches the Pod's `eth0`, using `iflink` and `ifindex`. Inspect the routing and FDB tables, and diagnose the top failure modes in Section 8.
+1. Start with the Kubernetes IP-per-Pod network model and the hand-built pod network. Use *Networking and Kubernetes* chapter 3 and *Production Kubernetes* chapter 5 as background. State the four requirements of the Kubernetes network model from Section 1. Then trace each command in Section 2: `ip netns`, `ip link` for the veth pair and the `cni0` bridge, `ip addr`, `ip route`, `sysctl`, and `iptables -t nat MASQUERADE`. Which command gives a pod its address? Which command gives it internet egress?
+2. Study the CNI specification, covering `.conflist` chaining, `ADD`, `DEL`, `CHECK` and `VERSION`, and the IPAM plugins. Use *Networking and Kubernetes* chapter 4 as the reference. Run `CNIHostLocalIPAM` from `code/part05/cni_pod_networking_sim.py`. Then explain how `/etc/cni/net.d/10-calico.conflist` chains `calico`, `portmap` and `bandwidth` through `prevResult`. Name the environment variables that the runtime passes to `/opt/cni/bin/*`. Last, explain how `host-local`, `calico-ipam` and `whereabouts` track allocations and exclusions.
+3. Compare the implementation families: Flannel, Calico, Cilium, and the cloud VPC-native options (AWS ENI and GKE Alias IP). Then work through subnet sizing from *Networking and Kubernetes* chapter 6. Use `compute_subnet_prefix_for_nodes()` in `code/part05/cni_pod_networking_sim.py` to derive the subnet prefix for $N$ nodes. The formula is $S = 32 - \lceil \log_2(N + 4) \rceil$. Last, compare the overlay (`VXLAN`, `Geneve`), the routed option (`Calico` or `Cilium` BGP) and the underlay-native option (`AWS VPC CNI` or `GKE Alias IPs`). Which one would you pick for a bare-metal fabric?
+4. Work through the MTU math for IPIP, VXLAN, Geneve and WireGuard, drawing on *Production Kubernetes* chapter 5. The overheads are IPIP at 20 bytes, VXLAN at 50 bytes and WireGuard at 60 bytes. Use `compute_pod_mtu_and_df_ping()` in `code/part05/cni_pod_networking_sim.py` to calculate the inner Pod MTU on a 1,500-byte underlay. Repeat the calculation for a 9,000-byte underlay. Then explain why `ping -M do -s 1422` succeeds on a 1,450-MTU VXLAN path. Explain also why `-s 1423` fails.
+5. Trace the multi-network pods that GPU collectives use. Cover Multus, `NetworkAttachmentDefinition`, macvlan, SR-IOV, the RDMA shared device plugin and rail alignment. Run `plan_multus_pod_interfaces()` in `code/part05/cni_pod_networking_sim.py`. Then trace `NetworkAttachmentDefinition/rdma-net-a` and `Pod/nccl-worker` from Section 6. Last, contrast macvlan, the RDMA shared device plugin, SR-IOV VFs and `hostNetwork: true` for 8-rail, 400 Gb/s NCCL collectives over RoCEv2 or InfiniBand. Which one fits a multi-tenant cluster?
+6. Inspect the node-level pod network. Use the exact commands from Section 7 to map a running Pod to its network namespace. Then find the host-side `veth` interface that matches the Pod's `eth0`, using `iflink` and `ifindex`. Inspect the routing and FDB tables. Last, diagnose the top failure modes in Section 8. Which row matches the failure you see first?
 
 ## Checkpoint questions (20)
 

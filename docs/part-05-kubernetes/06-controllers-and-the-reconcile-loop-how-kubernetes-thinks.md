@@ -22,11 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture an inference server that crashes at 2 a.m. and comes back on its own. Something noticed the failure and fixed it. In Kubernetes, that something is a controller. Deployments keep inference servers at the right replica count. Jobs retry failed training pods, and StatefulSets give distributed workers stable identities. The node controller evicts pods from dead GPU nodes, and the Endpoints controller keeps load balancers pointed at ready replicas. The GPU Operator, Kueue, KubeRay and the Training Operator are controllers too, and you will install, debug and sometimes write them. If you understand the reconcile loop deeply, you can predict what the system will do after a failure. You can explain "why did it restart my pod?", read operator logs, and design custom controllers (5.29 to 5.33) that behave well at scale.
+Picture an inference server that crashes at 2 a.m. and comes back on its own. Nobody was paged, and nobody typed a command. Something noticed the failure and fixed it. In Kubernetes, that something is a controller. Deployments keep inference servers at the right replica count. Jobs retry failed training pods, and StatefulSets give distributed workers stable identities. The node controller evicts pods from dead GPU nodes, and the Endpoints controller keeps load balancers pointed at ready replicas. The GPU Operator, Kueue, KubeRay and the Training Operator are controllers too, and you will install, debug and sometimes write them.
+
+If you understand the reconcile loop deeply, you can predict what the system will do after a failure. You can explain "why did it restart my pod?", read operator logs without panic, and design custom controllers (5.29 to 5.33) that behave well at scale. This chapter builds that understanding one piece at a time. You will see the loop itself, the machinery that feeds it, the built-in controllers that run every cluster, and the habits that keep your own automation safe.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 5.3 and 5.5, so review those first. When you finish, you should be able to do the following.
+This chapter builds on 5.3 and 5.5, so review those first. The list below is a self-check, not a test in order. Each line names one ability you will use when a controller misbehaves. If a line feels unfamiliar, read the matching section again, and try the command on a cluster you own.
 
 - Define a controller precisely as a loop that observes cluster state, compares it with desired state, and acts to shrink the difference. Contrast that loop with imperative orchestration and event-driven scripts.
 - Explain level-triggered and edge-triggered logic, and why idempotent reconciliation matters.
@@ -38,21 +40,21 @@ This chapter builds on 5.3 and 5.5, so review those first. When you finish, you 
 
 ## 1. The controller pattern
 
-You delete a pod that belongs to a Deployment, and a replacement appears within moments. Nobody typed a command to create it. That behavior comes from the controller pattern, and it is the idea behind everything else in this chapter.
+You delete a pod that belongs to a Deployment, and a replacement appears within moments. Nobody typed a command to create it. That behavior comes from the controller pattern, and it is the idea behind everything else in this chapter. Once you see it, a lot of surprising cluster behavior stops being surprising.
 
 > A controller watches the state of the cluster and makes or requests changes where needed. Each controller tries to move the current cluster state closer to the desired state.
 
-Think of a thermostat. You set the desired temperature, which plays the role of the `spec`. The sensor reading plays the role of the `status`. The loop switches the heater on or off based on the difference, not on a button press. Five properties make this pattern robust.
+Think of a thermostat. You set the desired temperature, which plays the role of the `spec`. The sensor reading plays the role of the `status`. The loop switches the heater on or off based on the difference, not on a button press. Nobody tells the heater "turn on because the window opened." The thermostat just looks at the gap and closes it. Five properties make this pattern robust.
 
-The first property is declarative input. You state *what* you want, and controllers decide *how*. They keep deciding for as long as the object exists.
+The first property is declarative input. You state *what* you want, and controllers decide *how*. They keep deciding for as long as the object exists. You never tell the cluster "start three pods, then if one dies start another." You say "three replicas," and the controller handles every case, including the ones you did not think of.
 
-The second property is **level-triggered** logic. The reconcile function takes the current world and the desired spec, computes the difference, and acts on it. It never depends on having seen every event. Missed events, restarts and duplicated events are all harmless, because the next pass recomputes the same difference. Edge-triggered systems react to events such as "pod died," so they fail when such an event is lost.
+The second property is **level-triggered** logic. The reconcile function takes the current world and the desired spec, computes the difference, and acts on it. It never depends on having seen every event. Missed events, restarts and duplicated events are all harmless, because the next pass recomputes the same difference. Edge-triggered systems react to events such as "pod died," so they fail when such an event is lost. A level is a state, such as "the pod count is wrong," while an edge is a moment of change, such as "a pod just died." A controller that looks at levels can catch up after any outage. A controller that only reacts to edges has to remember everything it missed.
 
-The third property is idempotence and convergence. Acting twice leaves the same result. Repeated reconciliation either converges to the desired state or reports why it cannot.
+The third property is idempotence and convergence. Acting twice leaves the same result. Repeated reconciliation either converges to the desired state or reports why it cannot. Idempotence is what makes retries safe. If a call fails halfway, the controller can run the whole reconcile again without making a mess.
 
-The fourth property is single responsibility with loose coupling. Each controller owns one concern and talks to the others only through the API, by writing child objects and updating status. Simple controllers chain together to produce complex behavior. A Deployment creates a ReplicaSet, which creates Pods. The scheduler binds those Pods, and the kubelet runs them.
+The fourth property is single responsibility with loose coupling. Each controller owns one concern and talks to the others only through the API, by writing child objects and updating status. Simple controllers chain together to produce complex behavior. A Deployment creates a ReplicaSet, which creates Pods. The scheduler binds those Pods, and the kubelet runs them. No single component knows the whole story, and that is the point. Each one stays small enough to reason about.
 
-The fifth property is self-healing and drift correction. Manual changes to controller-owned objects get reverted. If you delete a ReplicaSet's pod, a new one is created. If you edit a pod template that a Deployment manages, the Deployment overwrites your edit.
+The fifth property is self-healing and drift correction. Manual changes to controller-owned objects get reverted. If you delete a ReplicaSet's pod, a new one is created. If you edit a pod template that a Deployment manages, the Deployment overwrites your edit. This feels annoying the first time it happens to you, but it is the feature that keeps a fleet honest.
 
 ```mermaid
 flowchart LR
@@ -65,39 +67,43 @@ flowchart LR
   R -->|"requeue on error / after delay"| Q
 ```
 
-The reconcile function is deliberately small. Given an object key, it returns nil, returns an error (which triggers a retry with backoff), or asks to requeue after a delay. Inside, it re-reads the object, computes the desired children, compares them with the observed children, and makes minimal changes. When a controller undoes a change you made by hand, edit the object that owns it instead.
+Here is the loop in slow motion. Suppose a worker pod on a GPU node is killed at 2 a.m. The Deployment's ReplicaSet has its pod count in the informer cache, and the kubelet has already reported the pod gone. The informer sees the Pod delete event, and the handler looks up the Pod's owner, which is the ReplicaSet. It puts that ReplicaSet's key on the work queue. A worker picks up the key and calls `Reconcile`. The function reads the ReplicaSet from the cache, counts the matching pods, sees one fewer than the spec asks for, and creates one new Pod. It then returns nil, and the key is forgotten until the next event. Nobody remembered "the pod died at 2 a.m." The loop only ever compared the spec with what it could see.
+
+The reconcile function is deliberately small. Given an object key, it returns nil, returns an error (which triggers a retry with backoff), or asks to requeue after a delay. Inside, it re-reads the object, computes the desired children, compares them with the observed children, and makes minimal changes. When a controller undoes a change you made by hand, edit the object that owns it instead. The controller is not fighting you. It is doing exactly what its spec tells it to do, and the spec is where you need to make the change.
 
 ## 2. The machinery: informers and work queues
 
-Hundreds of controllers in a large cluster all need to know about the same objects. If each one asked the API server for a full list on every decision, the API server would carry an enormous load. The machinery below exists to prevent that.
+Hundreds of controllers in a large cluster all need to know about the same objects. If each one asked the API server for a full list on every decision, the API server would carry an enormous load. The machinery below exists to prevent that. It turns many small questions into one long conversation, and it keeps a local copy of the answers so that every decision is a fast lookup.
 
-Controllers use `client-go`, and `controller-runtime` builds on top of it (see 5.31). The reflector performs a LIST of a resource, then a WATCH that starts from the returned resourceVersion. It handles reconnects, and it relists when it receives `410 Gone` (covered in 5.5). Its changes flow into a DeltaFIFO.
+Controllers use `client-go`, and `controller-runtime` builds on top of it (see 5.31). The reflector performs a LIST of a resource, then a WATCH that starts from the returned resourceVersion. It handles reconnects, and it relists when it receives `410 Gone` (covered in 5.5). Its changes flow into a DeltaFIFO. A DeltaFIFO is a queue of changes, where each item says what happened, such as added, updated or deleted, and what the object looked like.
 
-The informer consumes those deltas and updates an in-memory indexer. An indexer is a thread-safe store with optional indexes, such as pods by node name. The informer then invokes event handlers: `OnAdd`, `OnUpdate` and `OnDelete`. Shared informers are created once per resource type per process. Many controllers share them, so one watch connection serves all of them.
+The informer consumes those deltas and updates an in-memory indexer. An indexer is a thread-safe store with optional indexes, such as pods by node name. An index is a second lookup table, so asking "which pods run on node w1" does not require scanning every pod. The informer then invokes event handlers: `OnAdd`, `OnUpdate` and `OnDelete`. Shared informers are created once per resource type per process. Many controllers share them, so one watch connection serves all of them.
 
-A lister gives read-only access to that local cache. Reconcile logic reads from listers, which are cheap and may be slightly stale, and it writes to the API server directly. Stale reads are tolerated because writes are conditional on `resourceVersion`, and reconciliation repeats.
+A lister gives read-only access to that local cache. Reconcile logic reads from listers, which are cheap and may be slightly stale, and it writes to the API server directly. Stale reads are tolerated because writes are conditional on `resourceVersion`, and reconciliation repeats. If the controller reads an old copy, its write is rejected with a conflict, and the next pass reads the fresh copy and tries again.
 
-Resync is a safety net. It periodically re-delivers every cached object as an update event, even when nothing changed. In kube-controller-manager's informers, the default period is 10 hours, and you can configure it.
+Resync is a safety net. It periodically re-delivers every cached object as an update event, even when nothing changed. In kube-controller-manager's informers, the default period is 10 hours, and you can configure it. Resync exists for the rare case where a watch missed something, so the controller gets a second chance to notice drift.
 
-Event handlers enqueue the key of the affected object, written `namespace/name`, or the key of its owner. They do not enqueue the object itself. The work queue deduplicates keys, so many events for one object collapse into one pending key. It also keeps one worker per key at a time. It supports rate-limited requeues, with exponential backoff on error, bucket limiters and delayed adds.
+Event handlers enqueue the key of the affected object, written `namespace/name`, or the key of its owner. They do not enqueue the object itself. The work queue deduplicates keys, so many events for one object collapse into one pending key. It also keeps one worker per key at a time. It supports rate-limited requeues, with exponential backoff on error, bucket limiters and delayed adds. Exponential backoff means each failed retry waits longer than the one before it, so a broken object does not hammer the API.
 
-Workers run as N goroutines. Each one pops a key, calls `Reconcile`, and then calls `Forget` or `AddRateLimited`, depending on the result. Event handlers also map secondary resources to their owners. When a Pod changes, the handler enqueues its owning ReplicaSet. When a Node changes, it enqueues the pods or DaemonSets that node affects. This watch-children, reconcile-parent pattern sits at the center of every operator.
+Workers run as N goroutines. A goroutine is a lightweight thread of execution in Go. Each worker pops a key, calls `Reconcile`, and then calls `Forget` or `AddRateLimited`, depending on the result. Event handlers also map secondary resources to their owners. When a Pod changes, the handler enqueues its owning ReplicaSet. When a Node changes, it enqueues the pods or DaemonSets that node affects. This watch-children, reconcile-parent pattern sits at the center of every operator. You watch the small objects that change often, and you reconcile the big object that cares about them.
 
-Local caches matter for scale. With 5,000 nodes and 150,000 pods, hundreds of controllers cannot each issue LIST calls for every decision. The informer pattern keeps one watch per type per process, and each read from the local cache costs O(1). Your own controllers should follow the same split: read from listers, and write to the API server. As you read the rest of this section, keep that split in mind.
+Local caches matter for scale. With 5,000 nodes and 150,000 pods, hundreds of controllers cannot each issue LIST calls for every decision. The informer pattern keeps one watch per type per process, and each read from the local cache costs O(1). In plain words, the time to read one object does not grow as the cluster grows. Your own controllers should follow the same split: read from listers, and write to the API server. As you read the rest of this section, keep that split in mind, because almost every controller bug traces back to breaking it.
 
 ## 3. Built-in controllers (a tour)
 
+Every cluster ships with a set of controllers that already run your workloads. You do not install them. They are part of kube-controller-manager and the cloud controller manager. Knowing what each one owns tells you where to look when an object changes without your input. The tour below goes through the ones you will meet most often.
+
 ### Deployment → ReplicaSet → Pod
 
-When you roll out a new image, old pods disappear while new ones come up. The chain from Deployment to ReplicaSet to Pod does that work, and it is worth knowing well.
+When you roll out a new image, old pods disappear while new ones come up. The chain from Deployment to ReplicaSet to Pod does that work, and it is worth knowing well. Each link has one job. The Deployment decides which version should exist and how fast to change. The ReplicaSet keeps a fixed number of identical pods alive. The Pod is the unit that actually runs. Splitting the work this way is why a rollback is fast. The old ReplicaSet still exists, and the Deployment can simply scale it back up.
 
-The Deployment controller owns ReplicaSets. For each unique pod template hash, it keeps one ReplicaSet named `<deployment>-<hash>`. When the template changes, it creates a new ReplicaSet and shifts replicas between the old and new ones. The shift follows the strategy. `RollingUpdate` uses `maxSurge` and `maxUnavailable`, given as percentages or counts. `Recreate` replaces the pods instead. The controller tracks `progressDeadlineSeconds` and sets conditions named `Progressing`, `Available` and `ReplicaFailure`. The `revisionHistoryLimit` setting keeps old ReplicaSets, so you can roll back with `kubectl rollout undo`. The `minReadySeconds` setting delays counting a pod as available.
+The Deployment controller owns ReplicaSets. For each unique pod template hash, it keeps one ReplicaSet named `<deployment>-<hash>`. The hash is a fingerprint of the pod template, so a changed template gets a new fingerprint and a new ReplicaSet. When the template changes, it creates a new ReplicaSet and shifts replicas between the old and new ones. The shift follows the strategy. `RollingUpdate` uses `maxSurge` and `maxUnavailable`, given as percentages or counts. `maxSurge` is how many extra pods may exist during the change, and `maxUnavailable` is how many may be missing. `Recreate` replaces the pods instead. The controller tracks `progressDeadlineSeconds` and sets conditions named `Progressing`, `Available` and `ReplicaFailure`. The `revisionHistoryLimit` setting keeps old ReplicaSets, so you can roll back with `kubectl rollout undo`. The `minReadySeconds` setting delays counting a pod as available, so a pod that crashes after one second is not treated as healthy.
 
-The ReplicaSet controller makes the number of pods that match its selector equal to `spec.replicas`. It creates pods from its template and deletes the extras. When it has to choose, it prefers pods that are unscheduled, not ready, recently created, or on nodes with more replicas. It uses ownerReferences to adopt or orphan pods.
+The ReplicaSet controller makes the number of pods that match its selector equal to `spec.replicas`. It creates pods from its template and deletes the extras. When it has to choose, it prefers pods that are unscheduled, not ready, recently created, or on nodes with more replicas. It uses ownerReferences to adopt or orphan pods. Adoption and orphaning are covered in section 4.
 
-Creating a pod is just writing a Pod object. The scheduler and kubelet take it from there.
+Creating a pod is just writing a Pod object. The scheduler and kubelet take it from there. That is a key point. The ReplicaSet controller never talks to a node. It writes an object to the API, and the rest of the system responds to that object.
 
-Try these commands to watch the chain at work.
+Try these commands to watch the chain at work. Each one shows a different link. Run them in order, and keep a second terminal open for the watch commands.
 
 ```bash
 kubectl create deployment web --image=nginx:1.27 --replicas=3
@@ -108,47 +114,47 @@ kubectl rollout status deploy/web; kubectl rollout history deploy/web; kubectl r
 kubectl delete pod -l app=web --wait=false           # ReplicaSet recreates them
 ```
 
-Notice that the image change creates a new ReplicaSet, while the Deployment keeps its name.
+Notice that the image change creates a new ReplicaSet, while the Deployment keeps its name. The old ReplicaSet does not disappear. It is scaled to zero and kept, which is what makes `rollout undo` work.
 
 ### StatefulSet
 
-A StatefulSet suits workloads where each replica needs its own identity, network address and storage. Pods are named `<name>-0` through `<name>-N-1`. Each one keeps a stable network ID through a headless Service. Each pod gets its own PVCs from `volumeClaimTemplates`, and those claims survive pod deletion.
+A StatefulSet suits workloads where each replica needs its own identity, network address and storage. Think of a database cluster, where the primary is always node zero and each replica must find its own data again after a restart. Pods are named `<name>-0` through `<name>-N-1`. Each one keeps a stable network ID through a headless Service. A headless Service has no virtual IP, so DNS returns the address of each pod directly. Each pod gets its own PVCs from `volumeClaimTemplates`, and those claims survive pod deletion. The data stays with the identity, even when the pod moves to another node.
 
-The `podManagementPolicy` sets the order. `OrderedReady` creates and scales pods in order, and it waits for each pod to become Ready. `Parallel` starts pods without that wait. Updates use `RollingUpdate`, which goes in reverse ordinal order and can use `partition` for canaries, or they use `OnDelete`.
+The `podManagementPolicy` sets the order. `OrderedReady` creates and scales pods in order, and it waits for each pod to become Ready. `Parallel` starts pods without that wait. Updates use `RollingUpdate`, which goes in reverse ordinal order and can use `partition` for canaries, or they use `OnDelete`. A `partition` value means only pods with an ordinal at or above that number receive the new version, which lets you test a change on a few replicas first.
 
 The controller never runs two pods with the same ordinal. It never deletes PVCs automatically, unless `persistentVolumeClaimRetentionPolicy` says so. Teams use StatefulSets for databases, Zookeeper and etcd, and for some distributed training coordinators.
 
 ### DaemonSet
 
-A DaemonSet ensures one pod per eligible node. Eligibility comes from `nodeSelector` or affinity, together with tolerations. The controller creates pods with node affinity for each node, and the default scheduler places them, as it has since 1.12. The controller also handles nodes being added and removed, and it does rolling updates with `maxUnavailable` and `maxSurge`. In GPU clusters, the DaemonSets you will meet include the NVIDIA device plugin, the DCGM exporter, GPU feature discovery, CNI agents, log shippers and node-problem-detector.
+A DaemonSet ensures one pod per eligible node. Eligibility comes from `nodeSelector` or affinity, together with tolerations. The controller creates pods with node affinity for each node, and the default scheduler places them, as it has since 1.12. The controller also handles nodes being added and removed, and it does rolling updates with `maxUnavailable` and `maxSurge`. In GPU clusters, the DaemonSets you will meet include the NVIDIA device plugin, the DCGM exporter, GPU feature discovery, CNI agents, log shippers and node-problem-detector. Each one is a per-node agent, so each one belongs on every GPU node, and none of them should run once for the whole cluster.
 
 ### Job and CronJob
 
-The Job controller runs pods to completion. Its settings include `completions`, `parallelism`, `backoffLimit`, `activeDeadlineSeconds` and `ttlSecondsAfterFinished`. With `completionMode: Indexed`, each pod gets a `JOB_COMPLETION_INDEX`, which suits sharded work and distributed training workers. The `podFailurePolicy` setting treats specific exit codes or disruptions differently. For example, you can keep node-drain evictions from counting toward the backoff. The `suspend` setting lets queue managers such as Kueue create Jobs in a suspended state and unsuspend them on admission. `managedBy` and elastic scaling appear in newer releases.
+The Job controller runs pods to completion. A Job is for work that ends, such as a training run or a data migration, unlike a Deployment that runs forever. Its settings include `completions`, `parallelism`, `backoffLimit`, `activeDeadlineSeconds` and `ttlSecondsAfterFinished`. With `completionMode: Indexed`, each pod gets a `JOB_COMPLETION_INDEX`, which suits sharded work and distributed training workers. The index works like a seat number, so each worker knows which slice of the data is its own. The `podFailurePolicy` setting treats specific exit codes or disruptions differently. For example, you can keep node-drain evictions from counting toward the backoff, so a planned maintenance window does not fail a training run. The `suspend` setting lets queue managers such as Kueue create Jobs in a suspended state and unsuspend them on admission. `managedBy` and elastic scaling appear in newer releases.
 
-The CronJob controller creates Jobs on a schedule. Its `concurrencyPolicy` takes `Allow`, `Forbid` or `Replace`. You also set `startingDeadlineSeconds`, history limits and time zones. Training operators such as PyTorchJob, MPIJob, RayJob and JobSet build on the same ideas, with gang semantics.
+The CronJob controller creates Jobs on a schedule. Its `concurrencyPolicy` takes `Allow`, `Forbid` or `Replace`. `Forbid` skips a run when the previous one is still going, and `Replace` cancels the old run in favor of the new one. You also set `startingDeadlineSeconds`, history limits and time zones. Training operators such as PyTorchJob, MPIJob, RayJob and JobSet build on the same ideas, with gang semantics. Gang semantics means all the workers of one job start together or not at all, because a distributed run with half its workers is useless.
 
 ### Node lifecycle and eviction
 
-The node lifecycle controller watches Node leases and status. If heartbeats stop for `node-monitor-grace-period`, which defaults to 40 s, the controller sets the Node `Ready` condition to `Unknown`. It also adds the taint `node.kubernetes.io/unreachable:NoExecute`, or `not-ready`.
+The node lifecycle controller watches Node leases and status. A lease is a small object that each kubelet renews regularly, like a heartbeat. If heartbeats stop for `node-monitor-grace-period`, which defaults to 40 s, the controller sets the Node `Ready` condition to `Unknown`. It also adds the taint `node.kubernetes.io/unreachable:NoExecute`, or `not-ready`. A taint marks a node as unwelcome, and `NoExecute` goes further than `NoSchedule` by also evicting pods that do not tolerate it.
 
-Pods tolerate those taints for `tolerationSeconds`, which defaults to 300 s. The `DefaultTolerationSeconds` admission plugin adds that toleration automatically. When the period ends, taint-based eviction deletes the pods, so controllers can recreate them elsewhere. The NoExecute manager carries out this eviction.
+Pods tolerate those taints for `tolerationSeconds`, which defaults to 300 s. The `DefaultTolerationSeconds` admission plugin adds that toleration automatically. Toleration here means "I can wait this long before I must leave." When the period ends, taint-based eviction deletes the pods, so controllers can recreate them elsewhere. The NoExecute manager carries out this eviction.
 
-For GPU training, you often change these values. Elastic jobs may use shorter tolerations for quick recovery. Longer tolerations ride out brief network flaps. Pods with local state need explicit handling.
+For GPU training, you often change these values. Elastic jobs may use shorter tolerations for quick recovery. Longer tolerations ride out brief network flaps, so a switch reboot does not kill a three-day run. Pods with local state need explicit handling, because an eviction deletes whatever is local to the pod.
 
-A deleted pod on an unreachable node stays stuck in `Terminating` until the kubelet returns, the node object is deleted, or someone force deletes the pod. StatefulSets do not replace pods that are stuck terminating, because that would risk split-brain, unless the node is confirmed gone. Newer releases handle non-graceful shutdowns with the `node.kubernetes.io/out-of-service` taint.
+A deleted pod on an unreachable node stays stuck in `Terminating` until the kubelet returns, the node object is deleted, or someone force deletes the pod. StatefulSets do not replace pods that are stuck terminating, because that would risk split-brain, unless the node is confirmed gone. Newer releases handle non-graceful shutdowns with the `node.kubernetes.io/out-of-service` taint. Section 7 explains why this is the right safety choice.
 
 ### EndpointSlice and Service controllers
 
-The EndpointSlice controller watches Services and Pods. For each Service, it maintains EndpointSlices that list ready pod IPs, along with `serving` and `terminating` states. It updates them when pods become Ready or NotReady, so readiness probes decide where traffic goes. `kube-proxy` consumes these slices (see 5.10). The Service controller, which runs in cloud-controller-manager, provisions cloud load balancers for `type: LoadBalancer`.
+The EndpointSlice controller watches Services and Pods. For each Service, it maintains EndpointSlices that list ready pod IPs, along with `serving` and `terminating` states. It updates them when pods become Ready or NotReady, so readiness probes decide where traffic goes. A pod that fails its readiness check is removed from the list, but it is not killed. That is the difference between readiness and liveness, and it matters during a slow model load. `kube-proxy` consumes these slices (see 5.10). The Service controller, which runs in cloud-controller-manager, provisions cloud load balancers for `type: LoadBalancer`.
 
 ### Namespace, garbage collector, TTL, PV/PVC, HPA and others
 
-The namespace controller deletes all content when a namespace is deleted. That is why a namespace can stay stuck in `Terminating` when finalizers or unavailable APIs block it. The garbage collector deletes dependents whose owners are gone, following `ownerReferences` and `blockOwnerDeletion`. TTL-after-finished removes completed Jobs and Pods.
+The namespace controller deletes all content when a namespace is deleted. That is why a namespace can stay stuck in `Terminating` when finalizers or unavailable APIs block it. The garbage collector deletes dependents whose owners are gone, following `ownerReferences` and `blockOwnerDeletion`. TTL-after-finished removes completed Jobs and Pods, so a cluster does not fill up with the record of last month's batch runs.
 
 The PersistentVolume controller binds PVCs to PVs, provisions volumes through external provisioners, and handles reclaim policies. The attach/detach controller and the expand controller coordinate with CSI (5.17). The HorizontalPodAutoscaler controller polls metrics every 15 s by default, and it adjusts the `scale` subresource of Deployments, StatefulSets and CRDs (5.23). Many other controllers exist too, including the ResourceQuota controller, the ServiceAccount and token controllers, CSR approving and signing, ClusterRole aggregation and Lease garbage collection.
 
-To list them, run `kube-controller-manager --help | grep -A100 controllers`, or read the startup log lines that say "Started ... controller". When an object changes without your input, first check which controller in this list owns it.
+To list them, run `kube-controller-manager --help | grep -A100 controllers`, or read the startup log lines that say "Started ... controller". When an object changes without your input, first check which controller in this list owns it. That single question often solves the mystery.
 
 ## 4. Owners, selectors, finalizers, conditions
 
@@ -156,13 +162,13 @@ To list them, run `kube-controller-manager --help | grep -A100 controllers`, or 
 
 A reconciliation loop compares two things. The desired state is what you asked for, such as three replicas of a `kuard` Pod. The current state is what the cluster shows right now, such as two running `kuard` Pods. The loop keeps observing and acts to close the gap, here by creating one more `kuard` Pod.
 
-The same single loop also handles a manual scale up or down, a node failure, and a node that rejoins the cluster after being absent. That is why this pattern is so useful. It is goal driven and self-healing, yet it fits in a few lines of logic. Reconciliation loops appear all over Kubernetes, including the built-in controllers in this chapter.
+The same single loop also handles a manual scale up or down, a node failure, and a node that rejoins the cluster after being absent. A node that comes back after an hour does not need a special rule. The loop simply sees the current state and the desired state, and it closes whatever gap is left. That is why this pattern is so useful. It is goal driven and self-healing, yet it fits in a few lines of logic. Reconciliation loops appear all over Kubernetes, including the built-in controllers in this chapter.
 
-Decoupling is a key theme in Kubernetes. The core concepts are modular, so each one can be swapped or replaced with another component. The link between a ReplicaSet and its Pods is loosely coupled. The ReplicaSet creates and manages the Pods, but the two remain decoupled objects. It identifies its Pods with label queries, and it creates them through the same Pod API you use directly. Decoupling enables several important behaviors, covered in the subsections that follow.
+Decoupling is a key theme in Kubernetes. The core concepts are modular, so each one can be swapped or replaced with another component. The link between a ReplicaSet and its Pods is loosely coupled. The ReplicaSet creates and manages the Pods, but the two remain decoupled objects. It identifies its Pods with label queries, and it creates them through the same Pod API you use directly. Because the link is loose, you can move a pod out of the ReplicaSet's care without deleting it. Decoupling enables several important behaviors, covered in the subsections that follow.
 
 ### ownerReferences and adoption
 
-Child objects carry `ownerReferences`, a list of entries with `apiVersion`, `kind`, `name`, `uid`, `controller: true` and `blockOwnerDeletion: true`. Each object has exactly one controller owner. A controller manages objects it owns. It can also adopt objects that match its selector, provided those objects have no other controller owner.
+Child objects carry `ownerReferences`, a list of entries with `apiVersion`, `kind`, `name`, `uid`, `controller: true` and `blockOwnerDeletion: true`. Think of an owner reference as a name tag on a child object. It says which parent is responsible for it, and the UID makes sure the tag points to this exact parent, not a parent with the same name created later. Each object has exactly one controller owner. A controller manages objects it owns. It can also adopt objects that match its selector, provided those objects have no other controller owner.
 
 Deleting an owner triggers garbage collection of its dependents, depending on `propagationPolicy`. If you change a Deployment's selector labels, or relabel pods, you can orphan pods or set two controllers fighting over them. The selector of an `apps/v1` Deployment is immutable after creation. Running `kubectl delete rs web-abc --cascade=orphan` leaves the pods running and without an owner. `ReplicaSet` controllers then re-adopt any matching pods.
 
@@ -173,53 +179,53 @@ kubectl get pod web-xxxx -o jsonpath='{.metadata.ownerReferences}' | jq
 kubectl label pod web-xxxx app-                # remove the label: ReplicaSet no longer matches it → orphaned and replaced (a debugging trick: isolate a bad pod without deleting it)
 ```
 
-Removing the label orphans the pod, and the `ReplicaSet` replaces it. You can isolate a bad pod this way without deleting it.
+Removing the label orphans the pod, and the `ReplicaSet` replaces it. You can isolate a bad pod this way without deleting it. The first command answers "who owns this pod?" The second removes the pod from its owner's view, so the owner stops caring about it.
 
 *Kubernetes: Up and Running*, Chapters 9 to 12, cover ReplicaSets, Deployments, DaemonSets and Jobs. *Kubernetes Programming with Go* covers the same ground in Chapters 3 and 6. Together they describe four practical mechanics for how built-in controllers use labels and `ownerReferences`.
 
 The first mechanic is quarantining and adopting pods, from *Kubernetes: Up and Running*, Chapter 9. A `ReplicaSet` finds its pods by evaluating its `spec.selector` label query against the informer cache. Removing the matching label from a misbehaving pod, with `kubectl label pod kuard-xxxx app-`, makes the `ReplicaSet` controller release that pod. The pod is orphaned, so it keeps running in isolation. You can `kubectl exec` into it or capture a core dump or GPU memory dump. At the same time, the controller creates a fresh replacement, which keeps `replicas` at the target. The reverse also holds. If a bare pod carries labels that match an active `ReplicaSet` and has no controller `ownerReference`, the `ReplicaSet` controller adopts it by patching `metadata.ownerReferences`. Adoption sets `Controller: pointer.BoolPtr(true)` and `BlockOwnerDeletion: pointer.BoolPtr(true)`, which live in `k8s.io/apimachinery/pkg/apis/meta/v1`. *Kubernetes Programming with Go* covers these types in Chapter 3. The repository models this behavior in `reconcile_replicaset()`, in `code/part05/controller_reconcile_simulator.py`.
 
-The second mechanic is client compatibility during a `RollingUpdate`, from *Kubernetes: Up and Running*, Chapter 10. During a Deployment `RollingUpdate` with `25% max unavailable, 25% max surge`, both `v1` and `v2` `ReplicaSet` pods serve traffic at the same time. Even after the `v1` pods terminate, external clients, mobile clients or JavaScript clients may still run `v1` code. Every service API and database schema must therefore stay backward compatible across adjacent versions. `kubectl rollout undo` works in an emergency. You can also inspect a revision with `kubectl rollout history deployment kuard --revision=2`. Reverting the YAML in Git and running `kubectl apply` keeps source control aligned with the live cluster.
+The second mechanic is client compatibility during a `RollingUpdate`, from *Kubernetes: Up and Running*, Chapter 10. During a Deployment `RollingUpdate` with `25% max unavailable, 25% max surge`, both `v1` and `v2` `ReplicaSet` pods serve traffic at the same time. Even after the `v1` pods terminate, external clients, mobile clients or JavaScript clients may still run `v1` code. Every service API and database schema must therefore stay backward compatible across adjacent versions. `kubectl rollout undo` works in an emergency. You can also inspect a revision with `kubectl rollout history deployment kuard --revision=2`. Reverting the YAML in Git and running `kubectl apply` keeps source control aligned with the live cluster. The lesson is that a rollout is a period of mixed versions, not a single switch, so your API changes must survive that period.
 
-The third mechanic is node-label driven DaemonSet reconciliation, from *Kubernetes: Up and Running*, Chapter 11. Instead of using pod anti-affinity hacks on a `ReplicaSet` to place one agent per node, a DaemonSet such as `fluentd`, `nvidia-device-plugin` or `dcgm-exporter` reconciles node additions and label changes on its own. Suppose a DaemonSet specifies `nodeSelector: { ssd: "true" }`, or `nvidia.com/gpu.present: "true"`. Labeling a node with `kubectl label nodes node01 ssd=true` makes the DaemonSet controller schedule the daemon pod onto that node right away. Removing the label terminates the pod.
+The third mechanic is node-label driven DaemonSet reconciliation, from *Kubernetes: Up and Running*, Chapter 11. Instead of using pod anti-affinity hacks on a `ReplicaSet` to place one agent per node, a DaemonSet such as `fluentd`, `nvidia-device-plugin` or `dcgm-exporter` reconciles node additions and label changes on its own. Suppose a DaemonSet specifies `nodeSelector: { ssd: "true" }`, or `nvidia.com/gpu.present: "true"`. Labeling a node with `kubectl label nodes node01 ssd=true` makes the DaemonSet controller schedule the daemon pod onto that node right away. Removing the label terminates the pod. The label is the switch, and the controller flips it for every node.
 
 The fourth mechanic covers the Job patterns, from *Kubernetes: Up and Running*, Chapter 12 (Table 12-1), and the restart policy.
 
 - One-shot (`completions: 1, parallelism: 1`) runs database migrations or smoke tests, such as `--keygen-enable --keygen-exit-on-complete --keygen-num-to-gen=3`.
 - Parallel fixed completions (`completions: 10, parallelism: 5`) processes a fixed batch. Five pods run at a time until 10 total completions succeed.
 - Work queue with parallel consumers (`completions` unset, `parallelism: 5`) has workers pull items from a queue service, `memq` at `/memq/server/queues/keygen`, until the queue is empty and the workers exit `0`.
-- `restartPolicy: OnFailure` and `Never` behave differently. Pods inside a Job cannot use `restartPolicy: Always`. With `OnFailure`, a crashing container, such as one run with `--keygen-exit-code=1`, is restarted in place on the same node by the `kubelet`. The `RESTARTS` counter increments on the same Pod. With `Never`, the failed Pod stays intact (`Status: Error`) for log inspection. The Job controller creates a brand-new replacement Pod instead. The replacements appear with names such as `oneshot-4kfdt` and `oneshot-8x2p1`, and the Job controller keeps creating them until `backoffLimit` is reached.
+- `restartPolicy: OnFailure` and `Never` behave differently. Pods inside a Job cannot use `restartPolicy: Always`. With `OnFailure`, a crashing container, such as one run with `--keygen-exit-code=1`, is restarted in place on the same node by the `kubelet`. The `RESTARTS` counter increments on the same Pod. With `Never`, the failed Pod stays intact (`Status: Error`) for log inspection. The Job controller creates a brand-new replacement Pod instead. The replacements appear with names such as `oneshot-4kfdt` and `oneshot-8x2p1`, and the Job controller keeps creating them until `backoffLimit` is reached. Choose `OnFailure` when a restart on the same node is cheap, and `Never` when you want a clean record of each failure.
 
 ### Finalizers
 
-Strings in `metadata.finalizers` block deletion. The API server sets `deletionTimestamp` and keeps the object until its owning controller removes each finalizer after cleanup. Examples include `kubernetes.io/pv-protection`, `foregroundDeletion`, `batch.kubernetes.io/job-tracking`, and your operator's `example.com/cleanup`.
+Strings in `metadata.finalizers` block deletion. The API server sets `deletionTimestamp` and keeps the object until its owning controller removes each finalizer after cleanup. A finalizer is a sticky note that says "do not finish deleting me yet, because cleanup is still pending." Examples include `kubernetes.io/pv-protection`, `foregroundDeletion`, `batch.kubernetes.io/job-tracking`, and your operator's `example.com/cleanup`.
 
-A resource stuck in `Terminating` almost always has an unfulfilled finalizer. Fix the controller that should remove it, not only the finalizer list. Removing a finalizer by hand skips the cleanup, which can leak cloud disks, IPs and load balancers.
+A resource stuck in `Terminating` almost always has an unfulfilled finalizer. Fix the controller that should remove it, not only the finalizer list. Removing a finalizer by hand skips the cleanup, which can leak cloud disks, IPs and load balancers. The cleanup was there for a reason, so removing the note only hides the work that never happened.
 
 ### Status and conditions
 
-By convention, `status.conditions[]` entries carry `type`, `status` (`True`, `False` or `Unknown`), `reason` (a CamelCase, machine-readable value), `message`, `lastTransitionTime` and `observedGeneration`. Consumers such as `kubectl wait --for=condition=Available`, GitOps health checks and Kueue rely on them.
+By convention, `status.conditions[]` entries carry `type`, `status` (`True`, `False` or `Unknown`), `reason` (a CamelCase, machine-readable value), `message`, `lastTransitionTime` and `observedGeneration`. Consumers such as `kubectl wait --for=condition=Available`, GitOps health checks and Kueue rely on them. A condition is a small, structured answer to a yes-or-no question, such as "is this Deployment available?" Tools can read it without understanding the rest of the object.
 
-A good controller sets Ready, Progressing or Degraded style conditions, each with an actionable reason. It writes `status` through the `/status` subresource, so spec edits and status writes do not conflict. When you build your own controller, use `/status` for status writes from the start.
+A good controller sets Ready, Progressing or Degraded style conditions, each with an actionable reason. It writes `status` through the `/status` subresource, so spec edits and status writes do not conflict. When you build your own controller, use `/status` for status writes from the start. Writing to the whole object would let a status update and a spec edit collide, and it would make the controller respond to its own writes.
 
 ## 5. Leader election and HA
 
-Controller managers, schedulers and most operators run several replicas, but only one instance is active at a time. A Lease object (`coordination.k8s.io/v1`) decides which instance that is. Candidates try to acquire or renew the lease by updating `holderIdentity` and `renewTime`.
+Controller managers, schedulers and most operators run several replicas, but only one instance is active at a time. The others wait on standby, ready to take over. Running several copies gives you a backup, and running only one active copy avoids two controllers making conflicting decisions. A Lease object (`coordination.k8s.io/v1`) decides which instance that is. Candidates try to acquire or renew the lease by updating `holderIdentity` and `renewTime`. Whoever holds the lease is the leader, and the lease is the single written record of that fact.
 
-The defaults are `leaseDuration` 15 s, `renewDeadline` 10 s and `retryPeriod` 2 s. Failover therefore takes roughly 15 to 30 s. If the leader cannot renew, because of API or etcd slowness, CPU starvation or network trouble, it exits on purpose so that another replica can take over. Frequent restarts with "leaderelection lost" messages point to API or etcd latency, which is covered in 5.5.
+The defaults are `leaseDuration` 15 s, `renewDeadline` 10 s and `retryPeriod` 2 s. Failover therefore takes roughly 15 to 30 s. The leader renews the lease every couple of seconds, so a healthy leader never lets it expire. If the leader cannot renew, because of API or etcd slowness, CPU starvation or network trouble, it exits on purpose so that another replica can take over. Exiting on purpose sounds drastic, but it is the safe choice. A leader that keeps working after it lost the lease would share control with the new leader, which is the split-brain problem covered in checkpoint 16. Frequent restarts with "leaderelection lost" messages point to API or etcd latency, which is covered in 5.5.
 
-Sharding controllers across replicas is possible, but you have to design it, for example with consistent hashing of keys. To check the current leader, list the leases and read the holder of the controller manager lease.
+Sharding controllers across replicas is possible, but you have to design it, for example with consistent hashing of keys. Consistent hashing gives each replica a stable share of the keys, so adding a replica moves only a few keys. To check the current leader, list the leases and read the holder of the controller manager lease.
 
 ```bash
 kubectl get lease -n kube-system
 kubectl get lease kube-controller-manager -n kube-system -o jsonpath='{.spec.holderIdentity}{"\n"}'
 ```
 
-If your controller runs with several replicas, stop the leader and confirm that the lease holder changes.
+If your controller runs with several replicas, stop the leader and confirm that the lease holder changes. The test is simple, and it proves the failover path you are counting on. A standby that has never been tested is only a hope.
 
 ## 6. Failure modes and diagnostics
 
-A controller problem usually shows up as a symptom on an object: a rollout that stalls, a pod that keeps coming back, or a namespace that never finishes deleting. The table below maps each symptom to its likely cause and to the check that confirms it.
+A controller problem usually shows up as a symptom on an object: a rollout that stalls, a pod that keeps coming back, or a namespace that never finishes deleting. The symptom is what you see first, and the cause hides behind it. The table below maps each symptom to its likely cause and to the check that confirms it. Start with the symptom you see, and work through the checks in order.
 
 | Symptom | Likely cause | How to check |
 |---|---|---|
@@ -234,24 +240,26 @@ A controller problem usually shows up as a symptom on an object: a rollout that 
 | Replicas flap after HPA | HPA and manifest both set replicas (GitOps) | Omit `replicas` in GitOps manifests, or `ignoreDifferences` |
 | Orphans after delete | `--cascade=orphan`, missing ownerRefs in custom controllers | GC rules |
 
-You can use the table as a starting point, because some symptoms have more than one possible cause. Start with the row that matches your symptom. If the controller uses controller-runtime, it exposes metrics you can chart. These include `controller_runtime_reconcile_total{result}`, `controller_runtime_reconcile_time_seconds`, `controller_runtime_active_workers`, `workqueue_*` and `rest_client_requests_total`, along with the leader election gauges.
+You can use the table as a starting point, because some symptoms have more than one possible cause. Start with the row that matches your symptom. If several rows seem to fit, check the cheapest one first, usually the controller logs or the lease holder, because those take seconds to read. If the controller uses controller-runtime, it exposes metrics you can chart. These include `controller_runtime_reconcile_total{result}`, `controller_runtime_reconcile_time_seconds`, `controller_runtime_active_workers`, `workqueue_*` and `rest_client_requests_total`, along with the leader election gauges.
 
 ## 7. Designing safe automation with the controller mindset
 
-Suppose you write a script that cordons a node every time an alert fires. One false alarm could then take down the cluster. The principles below apply when you write a controller or an automation script, including remediation of GPU faults.
+Suppose you write a script that cordons a node every time an alert fires. One false alarm could then take down the cluster, because a flaky monitor can fire for every node at once. The principles below apply when you write a controller or an automation script, including remediation of GPU faults. They are the habits that turn a risky script into a controller you can trust at night.
 
 1. Observe the current state, compare it with the desired state, and act minimally. Never assume your last action succeeded. Recompute from the current state each time.
 2. Make actions idempotent. Cordon a node only if it is not already cordoned, label with a stable key, and create objects only if they are missing.
-3. Rate-limit and back off, so you avoid tight loops against the API or external systems. Use jitter.
+3. Rate-limit and back off, so you avoid tight loops against the API or external systems. Use jitter, which means a small random delay, so many controllers do not retry at the same instant.
 4. Bound the blast radius. Cap how many nodes you will cordon, drain or reboot at once, because a controller reacting to a fleet-wide false alarm can take down the cluster. Implement budgets, and require health signals from multiple sources.
-5. Record intent in the API, using annotations or conditions, so humans and other controllers can see it. Avoid hidden state.
+5. Record intent in the API, using annotations or conditions, so humans and other controllers can see it. Avoid hidden state. A condition on the node tells the next person why it is cordoned, and a variable in memory tells nobody anything.
 6. Fail safe. When you are uncertain, do nothing, and surface a condition or event instead of making destructive changes.
 7. Respect ownership. Do not modify objects that other controllers own. Modify their inputs instead.
 8. Use finalizers for external cleanup, with timeouts and metrics, so they cannot wedge deletion forever.
 9. Use leader election and graceful shutdown for HA.
 10. Test with chaos. Kill the controller mid-action, drop events, delay the API, and confirm that the system converges.
 
-Consider a GPU node health controller, covered in 5.32. It watches Node conditions published by node-problem-detector and DCGM. After sustained Xid errors, it cordons the node. It then creates a drain request, which PodDisruptionBudgets and a global concurrency budget limit. It annotates the node with the reason, and it uncordons the node only after a health-check Job passes. Every step is an idempotent reconcile based on observed conditions. It is not a script that reacts to an alert once.
+Consider a GPU node health controller, covered in 5.32. It watches Node conditions published by node-problem-detector and DCGM. After sustained Xid errors, it cordons the node. Xid errors are NVIDIA's way of reporting GPU faults in the driver log. The controller then creates a drain request, which PodDisruptionBudgets and a global concurrency budget limit. It annotates the node with the reason, and it uncordons the node only after a health-check Job passes. Every step is an idempotent reconcile based on observed conditions. It is not a script that reacts to an alert once. Walk through one case. Node `gpu7` reports Xid errors for several minutes in a row, which is a sustained signal rather than a single blip. The controller checks the global budget first. If other nodes are already cordoned up to the limit, it records a condition on `gpu7` that says it is waiting for budget, and it stops there. If budget is free, it cordons the node, marks the reason on the node, and creates the drain request. Each later pass starts from the cluster as it is now. If the cordon already exists, it does nothing new. If the drain is blocked by a PodDisruptionBudget, it waits and reports that instead of forcing the eviction. The same logic handles a restart of the controller halfway through, because it never relies on what it did before.
+
+Keep one more habit in mind. A remediation controller should be easy to switch off. A single flag or a label that stops all automated cordons is worth more than any amount of clever logic when a false alarm fires at 3 a.m. If the alert fires again in the middle of the drain, the controller simply reconciles again from the current state and does not start over blindly.
 
 Before you let a remediation controller act on alerts, give it a budget and multiple independent health signals.
 
@@ -263,7 +271,7 @@ Start with the self-checking Python lab. You can run it locally, before you touc
 python3 code/part05/controller_reconcile_simulator_lab.py
 ```
 
-Next, work through these exercises on a `kind` or `kubeadm` cluster. All interactive shell steps below are `untested here`.
+Next, work through these exercises on a `kind` or `kubeadm` cluster. The interactive shell steps below are not run as part of this chapter, so check each result yourself before you trust it. Work through them in order, because later steps build on the earlier ones.
 
 1. Create a Deployment. List its owned ReplicaSet and Pods with their ownerReferences. Delete a pod, scale the Deployment, and change the image, while you watch `kubectl get rs,pods -w`. Match the events from `kubectl describe` to the controllers that produced them. Read the `kube-controller-manager` logs at `-v=4` for the deployment and replicaset controllers. On kubeadm, you enable that by editing the static pod flag.
 2. Test level- versus edge-triggered behavior. Stop the controller manager by moving its static pod manifest away. Delete some pods and scale the Deployment. Restore the controller manager, and watch it converge even though it never saw those events.
@@ -281,7 +289,7 @@ Next, work through these exercises on a `kind` or `kubeadm` cluster. All interac
 
 ## 9. Common mistakes
 
-Watch for these mistakes in your own controllers and in your manifests.
+Watch for these mistakes in your own controllers and in your manifests. Most of them come from one of two habits. Either a controller remembers things instead of recomputing them, or a human edits the wrong object.
 
 - Writing controllers that react to events (edge-triggered) and keep internal state, instead of recomputing from the API.
 - Updating status in a way that triggers another reconcile of the same object endlessly, with no predicates or change detection.
@@ -296,6 +304,8 @@ Watch for these mistakes in your own controllers and in your manifests.
 
 ## 10. Interview angles
 
+Use these questions to test yourself. Answer each one in your own words, out loud, before you read the matching section.
+
 - What is a Kubernetes controller? Explain the reconcile loop, and why it is level-triggered.
 - How do informers, caches and work queues reduce load on the API server?
 - Walk through what happens when you delete a pod owned by a ReplicaSet. What happens when a node dies?
@@ -307,12 +317,14 @@ Watch for these mistakes in your own controllers and in your manifests.
 
 ## Exercises
 
+These exercises connect the chapter's ideas to the code. Each one gives you a situation and a question. Use the simulator and the cluster to check your answers, and write down what you observe.
+
 1. In your own words, explain why Kubernetes controllers are level-triggered reconcile loops, not edge-triggered event handlers. Describe how the loop compares observed cluster state against `spec` in `Reconcile(namespace/name)`. Then trace how a controller converges after it was stopped while 3 pods were deleted and `replicas` was scaled.
 2. Trace the client-go path through `Reflector`, `DeltaFIFO`, `SharedInformer`, `Indexer`/`Lister` and `WorkQueue`. Using `DeduplicatingWorkQueue` in `code/part05/controller_reconcile_simulator.py`, explain how `SharedInformer`s share a single watch stream across controllers. Explain why `Reconcile` reads from local `Lister` caches (`O(1)`) but writes directly to `kube-apiserver`. Then explain how the `dirty` and `processing` sets inside the work queue deduplicate keys and stop two workers from reconciling the same key at once. Use the client-go internals in *Kubernetes Programming with Go*, Chapter 6, as your reference for the machinery.
 3. Compare, in your own words, how each workload reconciles Pods. Cover `Deployment` with `RollingUpdate` (`maxSurge`/`maxUnavailable`) against `Recreate`. Cover `StatefulSet` with `OrderedReady` against `Parallel`, along with `volumeClaimTemplates`, the headless Service and `partition` canaries. Cover `DaemonSet` driven by node labels, such as `fluentd` and `dcgm-exporter`. Finally, cover `Job` and `CronJob`, using the three patterns from *Kubernetes: Up and Running*, Chapter 12, plus `Indexed` completion mode, `podFailurePolicy`, `suspend`, and `restartPolicy: OnFailure` against `Never`.
 4. Cover `ownerReferences`, label quarantining versus adoption (*Kubernetes: Up and Running*, Chapter 9, and *Kubernetes Programming with Go*, Chapter 3), `finalizers` and `status.conditions`. Using `reconcile_replicaset()` in `code/part05/controller_reconcile_simulator.py`, trace what happens in two cases. In the first, an engineer removes `app=web` from a misbehaving Pod with `kubectl label pod web-xxxx app-`. In the second, someone creates an ownerless Pod with `app=web`. Then explain why `status.conditions` (`observedGeneration`) is written through the `/status` subresource.
-5. Trace the `node-lifecycle-controller` timeline. It starts with the `40s` `node-monitor-grace-period`, moves to the `node.kubernetes.io/unreachable:NoExecute` taint, and ends with the `300s` `tolerationSeconds` eviction. Explain why Pods on an unreachable node stay stuck in `Terminating`, which blocks StatefulSet replacement until the node returns or carries `node.kubernetes.io/out-of-service`. Then trace `Lease` leader election with its `15s` `leaseDuration`, `10s` `renewDeadline` and `2s` `retryPeriod`.
-6. Using `reconcile_gpu_node_remediation()` in `code/part05/controller_reconcile_simulator.py`, explain what causes a reconcile hot loop, and how `GenerationChangedPredicate` and `/status` subresources prevent one. Explain how to unstick a `Terminating` namespace. Then explain how to design a safe GPU fault remediation controller with a global concurrency budget (`max_concurrent_cordons`).
+5. Trace the `node-lifecycle-controller` timeline. It starts with the `40s` `node-monitor-grace-period`, moves to the `node.kubernetes.io/unreachable:NoExecute` taint, and ends with the `300s` `tolerationSeconds` eviction. Explain why Pods on an unreachable node stay stuck in `Terminating`. Explain why that blocks StatefulSet replacement until the node returns or carries `node.kubernetes.io/out-of-service`. Then trace `Lease` leader election with its `15s` `leaseDuration`, `10s` `renewDeadline` and `2s` `retryPeriod`.
+6. Using `reconcile_gpu_node_remediation()` in `code/part05/controller_reconcile_simulator.py`, explain what causes a reconcile hot loop. Explain how `GenerationChangedPredicate` and `/status` subresources prevent one. Explain how to unstick a `Terminating` namespace. Then explain how to design a safe GPU fault remediation controller with a global concurrency budget (`max_concurrent_cordons`).
 
 ## Checkpoint questions (20)
 
@@ -368,7 +380,7 @@ On its next reconcile pass, the `ReplicaSet` controller sees that `web-xxxx` no 
 <details>
 <summary>7. When a `ReplicaSet` scales down (for example, from 5 replicas to 3), how does the `ReplicaSet` controller choose which 2 Pods to delete first?</summary>
 
-The controller does not delete pods at random. It sorts the candidates and deletes the least valuable or most problematic pods first, in this order:
+The controller does not delete pods at random. The order matters for a service that is already serving traffic. Deleting a pod that has not finished starting costs you nothing, while deleting a healthy, busy pod costs you a request. It sorts the candidates and deletes the least valuable or most problematic pods first, in this order:
 1. Unscheduled (`Pending`) pods, where `spec.nodeName == ""`, go before scheduled pods.
 2. Pods with the annotation `controller.kubernetes.io/pod-deletion-cost` go next, lowest integer cost first.
 3. Pods on nodes with more replicas of this ReplicaSet go next, which keeps the surviving replicas spread across nodes.

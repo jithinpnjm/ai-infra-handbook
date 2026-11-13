@@ -22,17 +22,25 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Kubernetes failures on GPU platforms rarely show up in `kubectl describe`. The pod reports `Running`, the GPU sits idle, and the cause could be almost anything: a mount namespace, a missing device node, a NIC that negotiated the wrong speed, a conntrack table full of stale entries, an IB link that keeps flapping, or a process stuck in uninterruptible I/O on a parallel filesystem. Speed matters here, because each minute a 1,000-GPU job stays stalled costs real money. This chapter gives you a repeatable method: isolate the layer, gather evidence, and then reduce the problem. It also covers the tools that work when Kubernetes' own abstractions are not enough. Those are node-level tools that inspect the pod's namespaces. The chapter ends with playbooks for the commonly seen failures.
+It is the middle of the night, and a training job has stopped moving forward. The pod shows `Running`, and `kubectl describe` shows no warnings. The GPU graphs, however, are flat, and nobody can say why yet. Failures like this rarely show up in `kubectl describe`. The pod says `Running` because its main process is alive. That tells you nothing about whether traffic reaches it, whether it can see the device it was given, or whether it is waiting on a disk.
+
+The cause could be almost anything. It could be a mount namespace that does not contain the dataset, a missing device node, a NIC that negotiated the wrong speed, a conntrack table full of stale entries, an IB link that keeps flapping, or a process stuck in uninterruptible I/O on a parallel filesystem. Speed matters here, because each minute a 1,000-GPU job stays stalled costs real money.
+
+Kubernetes reports on the pod as an object. The fault often lives one layer lower, on the node, inside the namespaces the pod uses. This chapter gives you a repeatable method for that situation: isolate the layer, gather evidence, and then reduce the problem. It also covers the tools that still work when Kubernetes' own abstractions run out. Those are node-level tools that look inside the pod's namespaces. The chapter ends with playbooks for the failures you are most likely to meet.
 
 ## Prerequisites and outcomes
 
-Before you start, you should have worked through the whole of Part 5 so far, especially 5.8, 5.9, 5.10 and 5.13, along with the Linux and networking material in Parts 1 and 2. When you finish, you will be able to apply a layered method. It runs from symptom to layer to hypothesis to test. You will also know which troubleshooting traps to avoid. For diagnosis, you will use kubectl, including `describe`, events, `logs`, `get -o yaml`, `jsonpath`, `top`, `debug`, `auth can-i`, `explain`, `diff`, `rollout` and `get --raw`.
+This chapter assumes you have read Part 5 up to this point, especially 5.8, 5.9, 5.10 and 5.13. It also assumes the Linux and networking material in Parts 1 and 2 feels familiar. If a word such as namespace or veth feels loose, pause and reread the chapter that covers it before you go on.
 
-On the node, you will read runtime state with `crictl`, enter container namespaces with `nsenter`, and check networking with `ip`, `ss`, `tcpdump`, `conntrack`, and `iptables/nft`. You will also inspect storage mounts, cgroups, processes with `strace`, `perf` and `bpftrace`, and kernel logs. Distroless and minimal pods need their own approach, through ephemeral containers and node debug pods. The playbooks cover Pending pods, `CrashLoopBackOff`, `ImagePullBackOff`, network failures, DNS, Service issues, storage mount failures, node `NotReady`, OOM/eviction, GPUs that are not visible, NCCL hangs, API slowness and Terminating pods. Finally, you will collect evidence such as support bundles, `sosreport` and `nvidia-bug-report`, and you will run blameless post-incident reviews that improve automation.
+The sections below work as a self-check. Each one names an ability that a platform engineer uses every week. If something feels unfamiliar when you reach it, go back to that section and read it again slowly, ideally with a container running on your own machine.
+
+The method runs from symptom to layer to hypothesis to test. The method also depends on knowing which traps to avoid. For diagnosis, the toolkit uses kubectl, including `describe`, events, `logs`, `get -o yaml`, `jsonpath`, `top`, `debug`, `auth can-i`, `explain`, `diff`, `rollout` and `get --raw`.
+
+On the node, the toolkit reads runtime state with `crictl`, enters container namespaces with `nsenter`, and checks networking with `ip`, `ss`, `tcpdump`, `conntrack`, and `iptables/nft`. It also reads storage mounts, cgroups, processes with `strace`, `perf` and `bpftrace`, and kernel logs. Distroless and minimal pods need their own approach through ephemeral containers and node debug pods. The playbooks cover Pending pods, `CrashLoopBackOff`, `ImagePullBackOff`, network failures, DNS, Service issues, storage mount failures, node `NotReady`, OOM and eviction, GPUs that are not visible, NCCL hangs, API slowness and Terminating pods. Finally, the chapter shows how to collect evidence with support bundles, `sosreport` and `nvidia-bug-report`, and how to run blameless post-incident reviews that improve automation.
 
 ## 1. Method
 
-A failing workload rarely tells you where the fault is. Before you touch anything, define how wide the failure is: one pod, one node, one namespace, or the whole cluster. The diagram below turns that scope into a choice of layer, and each layer has its own first checks.
+A doctor facing a patient with chest pain does not start with surgery. The doctor asks where the pain is, how long it has lasted and who else feels it, and each answer removes some causes from the list. Debugging a cluster works the same way. A failing workload rarely tells you where the fault is, so the first job is to measure how wide the failure is. Before you touch anything, define how wide the failure is: one pod, one node, one namespace, or the whole cluster. The diagram below turns that scope into a choice of layer, and each layer has its own first checks.
 
 ```mermaid
 flowchart TD
@@ -50,22 +58,22 @@ flowchart TD
   H --> F["Fix or mitigate → verify → document"]
 ```
 
-Read the diagram from the top. Scope comes first, then recent changes, and then you pick the layer the symptom points to. Form a hypothesis, and run the cheapest test that can tell it apart from the alternatives.
+Read the diagram from the top. Scope comes first because it cuts the list fastest. If only one pod fails, the cause is probably in that pod, its app or its node. If every pod on one node fails, the node is the suspect. If the failures began right after a deploy, the deploy is the suspect. Recent changes come next, because most incidents follow a change. Then you pick the layer the symptom points to, form a hypothesis, and run the cheapest test that can tell it apart from the alternatives. That test is often one command, not a long investigation.
 
 Keep these principles in mind at every step.
 
-1. Scope first. Is this one pod, a replica set, all pods on one node, all pods in one zone, or everything that broke after a change? The differences between failing and healthy instances are the most informative clue. If only one node is failing, you are probably looking at a node problem.
-2. Observe before you change anything. Capture state with `describe`, logs, events, metrics, `crictl` and `dmesg` before you restart anything. A restart destroys evidence such as previous logs, process state and stuck I/O.
-3. Bisect the path. Test each hop on its own: a pod IP against a Service IP against a DNS name, same node against cross-node, pod namespace against host namespace, and inside the cluster against outside it.
-4. Change one thing at a time, keep each change reversible, and note the timestamp of every change.
-5. Prefer reproducible minimal tests, such as a netshoot pod, `curl`, `nc`, `dig`, `iperf3`, `fio` or `nccl-tests`, over reasoning from theory alone.
-6. Keep the symptom separate from the cause. `CrashLoopBackOff` is a symptom, and the cause is in the logs or the exit code. `OOMKilled` might be a leak, a limit that is too small, or `/dev/shm` pressure.
-7. Know the baseline. What does healthy look like for latency, throughput and utilisation? Dashboards and a documented known-good benchmark, such as iperf, fio or NCCL, make diagnosis much shorter.
-8. Time-box your work and escalate with evidence. Keep the status communicated as you go, so the people waiting on the fix know where things stand. Pick the layer, test the cheapest hypothesis first, and change one thing at a time.
+1. Scope first. Is this one pod, a replica set, all pods on one node, all pods in one zone, or everything that broke after a change? The differences between failing and healthy instances are the most informative clue. Think of a power cut: if one apartment is dark, you check its fuse box, but if the whole street is dark, you check the substation. If only one node is failing, you are probably looking at a node problem.
+2. Observe before you change anything. Capture state with `describe`, logs, events, metrics, `crictl` and `dmesg` before you restart anything. A restart destroys evidence such as previous logs, process state and stuck I/O. Restarting a pod is a bit like rebooting a car that is making a strange noise. The noise may stop, and so does the clue.
+3. Bisect the path. Test each hop on its own: a pod IP against a Service IP against a DNS name, same node against cross-node, pod namespace against host namespace, and inside the cluster against outside it. Bisect means cut in half. If a letter never arrives, you check the mailbox, then the post office, then the sorting centre, instead of asking everyone at once.
+4. Change one thing at a time, keep each change reversible, and note the timestamp of every change. If you change three settings and the problem goes away, you do not know which one fixed it. The next incident then starts from zero.
+5. Prefer reproducible minimal tests, such as a netshoot pod, `curl`, `nc`, `dig`, `iperf3`, `fio` or `nccl-tests`, over reasoning from theory alone. A small test you can run again is worth more than a long argument about what should happen.
+6. Keep the symptom separate from the cause. `CrashLoopBackOff` is a symptom, and the cause is in the logs or the exit code. `OOMKilled` might be a leak, a limit that is too small, or `/dev/shm` pressure. A fever tells a doctor that something is wrong, but it does not name the infection.
+7. Know the baseline. What does healthy look like for latency, throughput and utilisation? A GPU at a given level of use means nothing until you know what this job normally shows. Dashboards and a documented known-good benchmark, such as iperf, fio or NCCL, make diagnosis much shorter.
+8. Time-box your work and escalate with evidence. Keep the status communicated as you go, so the people waiting on the fix know where things stand. A debugging session with no time limit tends to drift, and drift is expensive when GPUs are idle. Pick the layer, test the cheapest hypothesis first, and change one thing at a time.
 
 ## 2. kubectl toolkit
 
-When a pod misbehaves, kubectl is usually the first tool you reach for. The commands below move from a cluster-wide overview to a single pod, then to debugging, and finally to API-level checks.
+When a pod misbehaves, kubectl is usually the first tool you reach for. Think of it as the front desk of the cluster. It tells you what the API server believes is true, which is useful, but the answer can lag behind reality. The commands below move from a cluster-wide overview to a single pod, then to debugging, and finally to API-level checks.
 
 ```bash
 # Orientation
@@ -99,13 +107,15 @@ kubectl get pods -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,IP:.s
 kubectl get pod -A -o json | jq -r '.items[] | select(.status.containerStatuses[]?.lastState.terminated.reason=="OOMKilled") | .metadata.namespace+"/"+.metadata.name'
 ```
 
-Reading `describe` comes down to three things: the events, the state and the exit code. Events run in time order, starting with Scheduled and then Pulling, Pulled, Created and Started. Warnings such as FailedScheduling, FailedMount, Unhealthy, BackOff, Evicted and Killing show where things went wrong. The State and Last State fields hold the exit code and the reason. Exit code 137 means SIGKILL, which covers OOM kills. Exit code 143 means SIGTERM. Exit codes 1 and 2 point to an application error, and exit codes 126 and 127 mean the command could not be executed or was not found. The Conditions list shows PodScheduled, Initialized, ContainersReady and Ready, and the QoS, Node, IPs, Volumes and Tolerations fields complete the picture.
+Reading `describe` comes down to three things: the events, the state and the exit code. Events run in time order, so the newest one sits at the bottom. A normal start reads Scheduled, then Pulling, Pulled, Created and Started. Warnings such as FailedScheduling, FailedMount, Unhealthy, BackOff, Evicted and Killing show where things went wrong. Here is a short example. Suppose the events end with a FailedMount warning. You now know the pod was scheduled and the image was pulled, so the problem lies in the volume, not in the image or the scheduler.
 
-Plan your debug image before you need it. Keep a team-approved toolbox image, such as `netshoot`, `busybox`, or your own image with `curl`, `dig`, `nc`, `tcpdump`, `iperf3`, `strace`, `perf`, `nvidia-smi` and `ibstat`. Ephemeral containers need the EphemeralContainers feature, which is GA, plus RBAC for `pods/ephemeralcontainers`, and once added they cannot be removed. A `kubectl debug node/...` session runs a privileged pod with host namespaces, so restrict it with RBAC and policy, as covered in 5.16 and 5.21, and clean it up when you finish. Decide on the toolbox image before the next incident, not during it.
+The State and Last State fields hold the exit code and the reason. Exit code 137 means SIGKILL, which covers OOM kills. A signal is a short message the kernel sends to a process, and SIGKILL is the one a process cannot catch or ignore. Exit code 143 means SIGTERM, a polite request to stop. Exit codes 1 and 2 point to an application error, and exit codes 126 and 127 mean the command could not be executed or was not found. The Conditions list shows PodScheduled, Initialized, ContainersReady and Ready. The QoS, Node, IPs, Volumes and Tolerations fields complete the picture.
+
+Plan your debug image before you need it. Keep a team-approved toolbox image, such as `netshoot`, `busybox`, or your own image with `curl`, `dig`, `nc`, `tcpdump`, `iperf3`, `strace`, `perf`, `nvidia-smi` and `ibstat`. Ephemeral containers need the EphemeralContainers feature, which is GA, plus RBAC for `pods/ephemeralcontainers`. Once added, they cannot be removed. A `kubectl debug node/...` session runs a privileged pod with host namespaces, so restrict it with RBAC and policy, as covered in 5.16 and 5.21, and clean it up when you finish. Decide on the toolbox image before the next incident, not during it. Teams that wait until an outage to pick a toolbox end up debating image names while the GPUs sit idle.
 
 ## 3. Node-level toolkit
 
-Some problems only show up on the worker node. Picture a pod that reports `Running` while its traffic never arrives. kubectl cannot show you the packets, the namespaces or the runtime state, so you need to look at the node itself. The tools below cover those layers one at a time.
+Some problems only show up on the worker node. Picture a pod that reports `Running` while its traffic never arrives. kubectl talks to the API server, which stores what should exist. The node is where things actually run, so kubectl cannot show you the packets, the namespaces or the runtime state. You need to look at the node itself. The tools below cover those layers one at a time.
 
 ### 3.1 Container runtime state (crictl / ctr)
 
@@ -119,7 +129,7 @@ journalctl -u kubelet -u containerd --since "-30 min" | grep -E "error|fail|time
 ctr -n k8s.io tasks ls; ctr -n k8s.io containers info <id>
 ```
 
-Kubernetes names things by pod and container, but the node knows them by directory and ID. A pod's UID maps to `/var/log/pods/<ns>_<name>_<uid>/`. To find the container ID, run `kubectl get pod -o jsonpath='{.status.containerStatuses[0].containerID}'`, which returns a value like `containerd://<id>`. Use the `--name` and `--namespace` filters on `crictl pods` to narrow the list.
+Kubernetes names things by pod and container, but the node knows them by directory and ID. Walk the chain once, and it becomes easy to repeat. Say you have a pod called `trainer-0` in the `training` namespace. kubectl gives you that name. The node stores its logs in a directory built from the namespace, the name and the pod UID, so a pod's UID maps to `/var/log/pods/<ns>_<name>_<uid>/`. The runtime keeps a separate container ID, and the process table has a host process ID for the container's main process. To find the container ID, run `kubectl get pod -o jsonpath='{.status.containerStatuses[0].containerID}'`, which returns a value like `containerd://<id>`. Use the `--name` and `--namespace` filters on `crictl pods` to narrow the list when several pods share a name.
 
 ### 3.2 Namespaces: nsenter, lsns, unshare
 
@@ -135,7 +145,9 @@ ls -l /proc/$PID/ns; cat /proc/$PID/cgroup; cat /proc/$PID/status | grep -E 'Cap
 sudo ls -l /proc/$PID/fd | head; sudo cat /proc/$PID/limits; sudo cat /proc/$PID/stack  # kernel stack (D-state)
 ```
 
-The `nsenter -n` command runs host tools inside the pod's network namespace. Host `tcpdump`, `ip`, `ss` and `curl` binaries work this way, so the image does not need them. Use `nsenter -m` with `-r`, or with chroot-style paths, to see the container filesystem the way the container sees it.
+The `nsenter -n` command runs host tools inside the pod's network namespace. Think of it as opening the door of a room and standing inside with your own tools. The room is the pod's network, and your tools are the host's copies of `tcpdump`, `ip`, `ss` and `curl`. Those binaries work this way, so the image does not need them. The pod never has to carry a debugging kit of its own, and the host binaries stay under your control, not the app team's. Use `nsenter -m` with `-r`, or with chroot-style paths, to see the container filesystem the way the container sees it. The mount namespace is where the container's files live, so this is the view to use when a file looks missing from inside the pod but present on the node.
+
+The `-a` flag enters every namespace at once, and it changes the root filesystem too. Read the warning in the code comment before you use it. Only the host's trusted tools should run in that context, a point the checkpoint answers below return to.
 
 ### 3.3 Networking tools
 
@@ -158,11 +170,13 @@ ethtool eth0; ethtool -S eth0 | grep -iE 'err|drop|discard'; ethtool -k eth0 | g
 ibstat; ibv_devinfo; rdma link; ibdev2netdev; perfquery; ib_write_bw -d mlx5_0 <peer>   # RDMA (Part 12)
 ```
 
-To test pod connectivity, work from the client pod in a fixed order. Check DNS first, then the ClusterIP, then a specific backend pod IP, which bypasses kube-proxy. Finally, run the same test from the node in the host namespace and from inside the pod namespace. Capture packets on the client veth, the node uplink and the server veth to see where they disappear. Then check policy counters (`iptables -L -nv`, `cilium monitor --type drop`, `hubble observe --verdict DROPPED`), conntrack (`conntrack -E` for live events), MTU, and ARP and neigh state.
+To test pod connectivity, work from the client pod in a fixed order. Think of it as walking a pipe from the tap toward the main. You check the first junction before you open the valve in the middle. Check DNS first, then the ClusterIP, then a specific backend pod IP, which bypasses kube-proxy. Finally, run the same test from the node in the host namespace and from inside the pod namespace. Capture packets on the client veth, the node uplink and the server veth to see where they disappear. Then check policy counters (`iptables -L -nv`, `cilium monitor --type drop`, `hubble observe --verdict DROPPED`), conntrack (`conntrack -E` for live events), MTU, and ARP and neighbour state.
+
+Here is how that order plays out. Suppose a client pod cannot reach a Service by name. A DNS lookup by name fails, but the same Service answers when you use its ClusterIP. The fault must sit in DNS, not in the Service itself. Now suppose the ClusterIP fails too, while a direct backend pod IP works. Then kube-proxy or the rules that route Service traffic are the suspects. Each test removes one layer, so the last test that fails points at the layer that broke.
 
 ### 3.4 Storage and filesystem
 
-Storage faults often look like a stuck pod. Start with the mount, then the filesystem, then the I/O latency.
+Storage faults often look like a stuck pod. Start with the mount, then the filesystem, then the I/O latency. A mount that is missing, read-only or hung blocks the app before it reads a single byte, and the app then looks broken from the outside.
 
 ```bash
 findmnt -T /var/lib/kubelet/pods/<uid>/volumes/kubernetes.io~csi/<pv>/mount; findmnt -R /var/lib/kubelet | head -40
@@ -175,9 +189,11 @@ ps -eo pid,stat,wchan:30,cmd | awk '$2 ~ /D/'                                   
 kubectl get volumeattachment; kubectl get pv,pvc -A | grep -v Bound
 ```
 
+Work through these in order. `findmnt` tells you whether the volume is mounted where the pod expects it. `df` and `df -i` show whether the filesystem is full, either by bytes or by inodes, which are the records that name each file. `dmesg` shows whether the kernel has logged I/O errors. `iostat` and `fio` then measure how long each read and write takes. The `D` state in the `ps` output means a process is waiting on I/O and cannot be interrupted, even by a kill. That state is the classic sign of a hung network mount.
+
 ### 3.5 Processes and performance
 
-When the process itself is the problem, you need to see what it is doing. The commands below sample CPU, memory and I/O first, then stacks, then the cgroup limits.
+When the process itself is the problem, you need to see what it is doing. The commands below sample CPU, memory and I/O first, then stacks, then the cgroup limits. Start broad and get narrower. A stack shows where a thread stopped, and a cgroup file shows whether the kernel was holding the process back.
 
 ```bash
 top -H; htop; pidstat -u -r -w 1; mpstat -P ALL 1; vmstat 1; sar -n DEV 1
@@ -191,9 +207,11 @@ cat /sys/fs/cgroup$(cut -d: -f3 /proc/$PID/cgroup)/{memory.events,cpu.stat,memor
 dmesg -T | tail -100; journalctl -k --since "-1h" | grep -iE 'oom|xid|nvrm|mlx|error|fail'
 ```
 
+Each tool answers a different question. `top -H` and `pidstat` ask which threads are busy. `perf` and `bpftrace` ask which kernel and user code is burning time. `strace` asks which system calls the process makes, and it slows the process down, so use it with care. `py-spy` and `gdb` ask where the code currently sits, and `py-spy` is safe for Python because it reads the process from outside. The `cgroup` files ask whether the kernel has been throttling or limiting the process, and the kernel log asks whether it has killed anything.
+
 ### 3.6 GPU and fabric hardware
 
-When a GPU or a fabric link misbehaves, the hardware tools and the kernel log are where you look first.
+When a GPU or a fabric link misbehaves, the hardware tools and the kernel log are where you look first. A GPU can run hot, throttle its clocks, or drop off the PCIe bus, and none of those events show up as a Kubernetes error. The kernel log is the one place where the hardware reports its own faults.
 
 ```bash
 nvidia-smi; nvidia-smi -q | less; nvidia-smi topo -m; nvidia-smi nvlink -s; nvidia-smi -q -d ECC,PAGE_RETIREMENT,PERFORMANCE,CLOCK
@@ -207,62 +225,76 @@ all_reduce_perf -b 8 -e 1G -f 2 -g 8                                            
 NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=INIT,NET,GRAPH ...                                         # inside the job
 ```
 
-Before you remediate, copy the evidence to an incident folder with timestamps: `dmesg`, journal ranges, `nvidia-bug-report`, `sosreport` or `kubectl cluster-info dump`, pcaps and metric screenshots.
+The first line asks the driver what it sees and how the GPUs are configured. The second line is the health dashboard in one row. It shows throttling reasons and link state, so you can tell a slow GPU from a GPU that is working as designed. The `dcgmi` lines ask the monitoring stack for a health check and a short diagnostic. The Xid lines search the kernel log for error codes that the NVIDIA driver writes when the hardware reports a fault. The `lspci` line checks the PCIe link, which can silently run at a lower speed or width than the hardware supports. The NCCL lines test the fabric itself and then show what the training job sees while it runs.
+
+Before you remediate, copy the evidence to an incident folder with timestamps: `dmesg`, journal ranges, `nvidia-bug-report`, `sosreport` or `kubectl cluster-info dump`, pcaps and metric screenshots. A fix that erases the fault makes the next incident harder to explain, so the evidence comes first.
 
 ## 4. Failure playbooks
 
-Most failures in this section follow one pattern. An event or a log names the layer, and the checks for that layer confirm it.
+Most failures in this section follow one pattern. An event or a log names the layer, and the checks for that layer confirm it. Read each playbook as a short story. It starts with what you see, then names the layer, then lists the checks in the order that narrows the list fastest.
 
 ### 4.1 Pod Pending
 
-Suppose your pod has been Pending for a while and nothing is running yet.
+Suppose your pod has been Pending for a while and nothing is running yet. Pending means the scheduler has not placed the pod on a node yet, so the problem is before the node, not on it.
 
-1. Start with `kubectl describe pod` and read the `FailedScheduling` message, which counts the nodes by reason.
-2. Resource: if it says `Insufficient nvidia.com/gpu`, check `kubectl describe nodes | grep -A8 Allocated`, fragmentation, taints, device plugin health (`kubectl get nodes -o json | jq ... allocatable`) and pending Kueue admission (`kubectl get workload`).
-3. Placement: relax affinity, selectors, taints or topology spread, or fix the labels.
-4. Volume: an unbound PVC, a zone conflict or attach limits (5.17).
-5. Quota: `exceeded quota` at creation means the pod is rejected, not Pending. A Kueue job that is not admitted leaves the pod Pending with no pods.
+1. Start with `kubectl describe pod` and read the `FailedScheduling` message, which counts the nodes by reason. Each count tells you how many nodes rejected the pod for one cause.
+2. Resource: if it says `Insufficient nvidia.com/gpu`, check `kubectl describe nodes | grep -A8 Allocated`, fragmentation, taints, device plugin health (`kubectl get nodes -o json | jq ... allocatable`) and pending Kueue admission (`kubectl get workload`). Fragmentation means the free GPUs exist, but they are spread across nodes in pieces too small for this pod.
+3. Placement: relax affinity, selectors, taints or topology spread, or fix the labels. A label typo is a common cause, and it looks exactly like a capacity problem.
+4. Volume: an unbound PVC, a zone conflict or attach limits (5.17). A volume in one zone cannot follow a pod into another zone.
+5. Quota: `exceeded quota` at creation means the pod is rejected, not Pending. A Kueue job that is not admitted leaves the pod Pending with no pods to show for it.
 6. Scheduler: check its logs with `kubectl logs`, the leader lease and API latency.
 
-Find the layer that holds the pod before you change any labels or limits.
+Find the layer that holds the pod before you change any labels or limits. Changing a label to fix a quota problem only moves the queue somewhere else.
 
 ### 4.2 `ContainerCreating` for a long time
 
-A pod that stays in `ContainerCreating` is waiting for something before its container can start, and the event usually names it. `FailedMount` points to CSI or the volume, where you check `kubectl get volumeattachment`, the driver logs and `findmnt`. `FailedCreatePodSandBox` points to CNI, where you look at `/etc/cni/net.d`, IPAM, MTU and the runtime logs. `Pulling` means a large image, so check registry bandwidth, `crictl images` and the mirror. `FailedAttachVolume`, device plugin allocation errors and `ErrImagePull` each have their own layer.
+A pod that stays in `ContainerCreating` is waiting for something before its container can start, and the event usually names what it is waiting for. Picture a restaurant where the kitchen is ready, but the table is not set. The meal cannot start until the table is ready, and the event is the waiter who tells you which part is missing.
+
+`FailedMount` points to CSI or the volume. Check `kubectl get volumeattachment`, the driver logs and `findmnt`. `FailedCreatePodSandBox` points to CNI, the plugin that wires the pod into the network. There you look at `/etc/cni/net.d`, IPAM, MTU and the runtime logs. `Pulling` means a large image is still downloading, so check registry bandwidth, `crictl images` and the mirror. `FailedAttachVolume`, device plugin allocation errors and `ErrImagePull` each have their own layer, and each one sends you to a different place.
 
 ### 4.3 `CrashLoopBackOff`
 
-Start with `kubectl logs --previous`, then let the exit code guide you. Exit code 137 is an OOM kill or SIGKILL, so check `OOMKilled`, node pressure, and the memory limit against `/dev/shm` and page cache. Exit code 139 is a segfault, which points to an image or driver mismatch or a bad CUDA library. Exit codes 126 and 127 mean the entrypoint is missing or not executable. Exit codes 1 and 2 are application errors, often caused by config, a missing secret or env var, a dependency that is down, or a model path. Exit code 143 is SIGTERM, which may come from a probe kill or an eviction.
+Start with `kubectl logs --previous`, then let the exit code guide you. An exit code is a clue about who ended the process. Code 137 means something forced it to stop, most often the memory limit or a kill from the runtime. Code 143 means something asked it to stop politely, most often the kubelet during shutdown or a probe failure. Codes 1 and 2 mean the app stopped itself because of an error it chose to report.
 
-To reproduce the crash, run `kubectl debug --copy-to` and override the command to `sleep infinity`. Then check mounts, env, DNS, GPU visibility with `nvidia-smi`, and permissions.
+Exit code 137 is an OOM kill or SIGKILL, so check `OOMKilled`, node pressure, and the memory limit against `/dev/shm` and page cache. Exit code 139 is a segfault, which points to an image or driver mismatch or a bad CUDA library. Exit codes 126 and 127 mean the entrypoint is missing or not executable. Exit codes 1 and 2 are application errors, often caused by config, a missing secret or env var, a dependency that is down, or a model path. Exit code 143 is SIGTERM, which may come from a probe kill or an eviction.
+
+To reproduce the crash, run `kubectl debug --copy-to` and override the command to `sleep infinity`. The copy keeps the volumes, environment and labels, but it does not exit, so you can look around. Then check mounts, env, DNS, GPU visibility with `nvidia-smi`, and permissions. Most crashes that look mysterious are a missing file or a wrong path, and the sleeping copy shows you that in seconds.
 
 ### 4.4 Network and Service failures
 
-When a Service fails, traffic passes through DNS, endpoints, rules and the datapath. Use the 5.10 flow (DNS → endpoints → rules → datapath → backend) with these checks. Look at pod egress to the Internet, which may depend on SNAT or a NAT gateway. Cross-node pods point to CNI, the underlay or MTU. Policy drops show up in Hubble or Calico. Check conntrack exhaustion, `nf_conntrack` insert failures, a kube-proxy not running on a node, stale IPVS entries, NodePort source IP and traffic policy, and ingress or gateway 502 and 504 errors (5.12). DNS 5 s delays are covered in 5.11. Asymmetric routing with multiple NICs ties to rp_filter, so check `sysctl net.ipv4.conf.all.rp_filter`. Work from the first hop outward.
+When a Service fails, traffic passes through DNS, endpoints, rules and the datapath. The datapath is the path the packets physically take through the kernel. Use the 5.10 flow (DNS → endpoints → rules → datapath → backend) with these checks. Look at pod egress to the Internet, which may depend on SNAT or a NAT gateway. Cross-node pods point to CNI, the underlay or MTU. Policy drops show up in Hubble or Calico. Check conntrack exhaustion, `nf_conntrack` insert failures, a kube-proxy that is not running on a node, stale IPVS entries, NodePort source IP and traffic policy, and ingress or gateway 502 and 504 errors (5.12). DNS 5 s delays are covered in 5.11.
+
+Asymmetric routing with multiple NICs ties to reverse path filtering, which checks that a reply could leave by the same interface the request arrived on. Check it with `sysctl net.ipv4.conf.all.rp_filter`. Work from the first hop outward, because a fault near the pod can hide the faults further away.
 
 ### 4.5 Node `NotReady`
 
-Run `kubectl describe node` for the reason and message. On the node, check `systemctl status kubelet containerd`, `journalctl -u kubelet -n 200`, disk use under `/var/lib/kubelet` and `/var/lib/containerd`, `free -h`, and `dmesg -T | tail`. Then check the kubelet client certificate with `openssl x509 -in /var/lib/kubelet/pki/kubelet-client-current.pem -noout -dates`, clock sync with `chronyc tracking`, and API reachability with `curl -k https://<api>:6443/healthz`. Check CNI readiness, PLEG (the Pod Lifecycle Event Generator), and how quickly `crictl ps` answers. The usual causes are kubelet certificate expiry, a runtime hang, a full disk, OOM of system daemons, a NIC that is down, time skew, or a firewall change. Confirm each suspect on the node before you restart anything.
+When a node is `NotReady`, the control plane has stopped hearing a heartbeat from it. Run `kubectl describe node` for the reason and message. On the node, check `systemctl status kubelet containerd`, `journalctl -u kubelet -n 200`, disk use under `/var/lib/kubelet` and `/var/lib/containerd`, `free -h`, and `dmesg -T | tail`. Then check the kubelet client certificate with `openssl x509 -in /var/lib/kubelet/pki/kubelet-client-current.pem -noout -dates`, clock sync with `chronyc tracking`, and API reachability with `curl -k https://<api>:6443/healthz`. Check CNI readiness, PLEG (the Pod Lifecycle Event Generator, the part of the kubelet that notices when containers change state), and how quickly `crictl ps` answers.
+
+The usual causes are kubelet certificate expiry, a runtime hang, a full disk, OOM of system daemons, a NIC that is down, time skew, or a firewall change. Confirm each suspect on the node before you restart anything. A restart can make the node look healthy for a while, and the cause will come back on the next busy hour.
 
 ### 4.6 OOM and eviction
 
-Suppose a pod is `OOMKilled`, or the node is evicting pods. Separate the container's cgroup limit from the node's memory use before you change anything. For a pod, check `memory.events oom_kill`, the working set against the limit, and `df -h /dev/shm`. Page cache is counted but reclaimable, GPU pinned memory counts too, and dataloader workers multiply the memory each one uses. Memory leaks show up with `tracemalloc` or `memray`. For a node-level kill, `dmesg | grep -i 'out of memory'` names the victim and the constraint, which is `CONSTRAINT_MEMCG` or `CONSTRAINT_NONE`. Kubelet eviction shows as `Evicted`, and reservations are covered in 5.9. Fix the limits and requests, reserve system memory, reduce workers, and enforce Guaranteed QoS.
+Suppose a pod is `OOMKilled`, or the node is evicting pods. Separate the container's cgroup limit from the node's memory use before you change anything. A container can be killed while the node still has plenty of free memory, because the container hit its own ceiling. A node can also run short while every container stays under its limit.
+
+For a pod, check `memory.events oom_kill`, the working set against the limit, and `df -h /dev/shm`. Page cache is counted but reclaimable, GPU pinned memory counts too, and dataloader workers multiply the memory each one uses. Memory leaks show up with `tracemalloc` or `memray`. For a node-level kill, `dmesg | grep -i 'out of memory'` names the victim and the constraint, which is `CONSTRAINT_MEMCG` or `CONSTRAINT_NONE`. Kubelet eviction shows as `Evicted`, and reservations are covered in 5.9. Fix the limits and requests, reserve system memory, reduce workers, and enforce Guaranteed QoS.
 
 ### 4.7 Terminating pods that never finish
 
-On the API side, check `deletionTimestamp` and `finalizers` in `kubectl get pod -o yaml`. On the node, check whether the container still runs with `crictl ps`, and look for a D-state process through `/proc/PID/stack` and `wchan`, where NFS and Lustre hangs usually appear. Check stuck unmounts with `lsof +D` and `fuser -vm`. Also look for an unresponsive kubelet (NotReady), a hung runtime shim, or failing CNI DEL. To mitigate, fix the underlying I/O, then restart kubelet or the runtime. If the node is gone, delete the node object with `kubectl delete node`. Use `--force --grace-period=0` only as a last resort, and only after you confirm that no process can still write to RWO storage.
+A pod in Terminating has been asked to stop, but something is still holding it. On the API side, check `deletionTimestamp` and `finalizers` in `kubectl get pod -o yaml`. A finalizer is a marker that tells the API server to wait until some controller finishes its cleanup. A finalizer whose controller is dead will hold the pod forever.
+
+On the node, check whether the container still runs with `crictl ps`, and look for a D-state process through `/proc/PID/stack` and `wchan`, where NFS and Lustre hangs usually appear. Check stuck unmounts with `lsof +D` and `fuser -vm`. Also look for an unresponsive kubelet (NotReady), a hung runtime shim, or failing CNI DEL. To mitigate, fix the underlying I/O, then restart kubelet or the runtime. If the node is gone, delete the node object with `kubectl delete node`. Use `--force --grace-period=0` only as a last resort, and only after you confirm that no process can still write to RWO storage. RWO means a volume that one node can write at a time, and a forced delete while a process still writes to it can corrupt data.
 
 ### 4.8 DNS issues
 
-When a name does not resolve, test from inside the pod first. Check `/etc/resolv.conf`, `dig @kube-dns`, and the search path. Then check the CoreDNS pods, endpoints, logs and metrics, NodeLocal cache, upstream resolvers, conntrack races, a NetworkPolicy that blocks UDP or TCP 53, and headless readiness (5.11).
+When a name does not resolve, test from inside the pod first. Check `/etc/resolv.conf`, `dig @kube-dns`, and the search path. The search path is the list of suffixes the resolver tries, and a long list can make every lookup slow. Then check the CoreDNS pods, endpoints, logs and metrics, NodeLocal cache, upstream resolvers, conntrack races, a NetworkPolicy that blocks UDP or TCP 53, and headless readiness (5.11).
 
 ### 4.9 Storage problems
 
-A storage fault often looks like a slow job or a pod that never starts. Use the 5.17 playbook for PVC Pending, Multi-Attach and FailedMount. For a full or read-only filesystem, check `dmesg` for remount-ro, then inodes and quotas. For slow I/O, use iostat, fio and backend metrics, and look for D-state processes. A crashed CSI node plugin or a broken FUSE mount belongs on the list too. Check whether the volume is full, slow or unmounted before you touch the workload.
+A storage fault often looks like a slow job or a pod that never starts. Use the 5.17 playbook for PVC Pending, Multi-Attach and FailedMount. For a full or read-only filesystem, check `dmesg` for remount-ro, then inodes and quotas. A filesystem can turn read-only after the kernel detects errors, and the app then reports odd write failures. For slow I/O, use iostat, fio and backend metrics, and look for D-state processes. A crashed CSI node plugin or a broken FUSE mount belongs on the list too. Check whether the volume is full, slow or unmounted before you touch the workload.
 
 ### 4.10 GPU workloads
 
-GPU workloads fail in ways Kubernetes does not report directly. The table pairs each symptom with its checks.
+GPU workloads fail in ways Kubernetes does not report directly. The GPU is a device that the driver, the runtime and the scheduler each handle a little. Any one of them can fail quietly. The table pairs each symptom with the checks that narrow it down.
 
 | Symptom | Checks |
 |---|---|
@@ -276,69 +308,71 @@ GPU workloads fail in ways Kubernetes does not report directly. The table pairs 
 | MIG/profile mismatches | `nvidia-smi mig -lgi`, MIG manager logs, node labels vs requested resource names |
 | Training hung with all ranks idle | Deadlock in collective ordering/data loader; `py-spy dump` on each rank; `torch.distributed` timeouts; NCCL flight recorder |
 
-Find the row that matches your symptom, and work through its checks before you change the job.
+Find the row that matches your symptom, and work through its checks before you change the job. A straggler is one slow rank that holds up every other rank at each synchronisation point. In a healthy job, the slowest rank sets the pace for all of them, so one weak GPU can make a whole cluster look slow.
 
 ### 4.11 Control-plane slowness
 
-When every kubectl command feels slow, the control plane may be the problem. Check API latency by verb and resource with `apiserver_request_duration_seconds`. Then look at APF rejections, etcd fsync and database size, controller queue depth, webhook latency, noisy clients in audit logs, and node count and watch load (5.5). The fixes are to throttle clients, repair webhooks, defragment etcd, or add resources.
+When every kubectl command feels slow, the control plane may be the problem. The API server is the front door for every component, so when it is slow, everything else looks slow too. Check API latency by verb and resource with `apiserver_request_duration_seconds`. A verb is the kind of request, such as a list or a watch. Then look at APF rejections, etcd fsync and database size, controller queue depth, webhook latency, noisy clients in audit logs, and node count and watch load (5.5). APF is the priority and fairness system that queues or rejects requests when the server is busy. The fixes are to throttle clients, repair webhooks, defragment etcd, or add resources.
 
 ### 4.12 Cluster-wide incidents after change
 
-When many things break at once, look for a change that landed just before the failures began. Review GitOps commits, Helm upgrades, node pool updates, certificate renewals, webhook or policy changes and CRD upgrades. Roll back the most recent risky change, and compare working and failing zones or pools. Check shared dependencies too: DNS, the registry, the identity provider, the storage backend, the time source and license servers.
+When many things break at once, look for a change that landed just before the failures began. Most large incidents have a change behind them, and the timing of the first failure is the strongest clue. Review GitOps commits, Helm upgrades, node pool updates, certificate renewals, webhook or policy changes and CRD upgrades. Roll back the most recent risky change, and compare working and failing zones or pools. Check shared dependencies too: DNS, the registry, the identity provider, the storage backend, the time source and license servers. A single shared dependency can break many unrelated services at once.
 
 ## 5. Chaos and game days
 
-Playbooks only earn trust when they have been run against real faults, so test them in staging first. You can kill pods and nodes, delay or drop packets with `tc netem` or Chaos Mesh NetworkChaos, and fill disks. You can also corrupt DNS, stop kubelet, break CNI, throttle CPU, and inject GPU Xid events through simulators where those are available. In a lab, you can expire a certificate, revoke registry credentials, or take down an etcd member. Measure time-to-detect and time-to-recover for each fault, then update runbooks and alerts to match (5.19, 5.24).
+Playbooks only earn trust when they have been run against real faults, so test them in staging first. A game day is a planned drill in which a team gets a fault it has not seen and has to find it. It works like a fire drill. You do not want the first fire to be the real one.
+
+You can kill pods and nodes, delay or drop packets with `tc netem` or Chaos Mesh NetworkChaos, and fill disks. You can also corrupt DNS, stop kubelet, break CNI, throttle CPU, and inject GPU Xid events through simulators where those are available. In a lab, you can expire a certificate, revoke registry credentials, or take down an etcd member. Measure time-to-detect and time-to-recover for each fault, then update runbooks and alerts to match (5.19, 5.24). Time-to-detect shows how fast your monitoring noticed the fault. Time-to-recover shows how fast the team restored service. Both numbers tell you where the next improvement should go.
 
 ## 6. Evidence, communication and learning
 
-Incidents leave evidence behind, but only if someone collects it and writes down what happened in time order. Keep an incident log. It holds a timeline in UTC, the observations, the commands you ran, the changes you made, and who did what. Record the exact error strings.
+Incidents leave evidence behind, but only if someone collects it and writes down what happened in time order. Keep an incident log. It holds a timeline in UTC, the observations, the commands you ran, the changes you made, and who did what. Record the exact error strings, because a search for an exact message later can find the same fault in another incident.
 
-Collect the artifacts as you go: `kubectl get ... -o yaml` snapshots, `kubectl describe` output, pod logs (including `--previous`), node journals, `dmesg`, pcaps, and metric screenshots or links with their time ranges. Also keep `nvidia-bug-report`, Hubble flows and audit log excerpts. For support cases, add `kubectl cluster-info dump`, `sosreport` and vendor bundles.
+Collect the artifacts as you go: `kubectl get ... -o yaml` snapshots, `kubectl describe` output, pod logs (including `--previous`), node journals, `dmesg`, pcaps, and metric screenshots or links with their time ranges. Also keep `nvidia-bug-report`, Hubble flows and audit log excerpts. For support cases, add `kubectl cluster-info dump`, `sosreport` and vendor bundles. Snapshots taken during the incident are worth far more than a memory of it written down a week later.
 
-Send status updates at fixed intervals, state the impact clearly, and give an ETA only when you have a basis for it.
+Send status updates at fixed intervals, state the impact clearly, and give an ETA only when you have a basis for it. A steady stream of short, honest updates calms people who are waiting, and a guessed ETA that slips breaks their trust.
 
-The post-incident review is blameless. It covers the timeline, the contributing factors (not one single "root cause"), detection gaps, how well the mitigation worked, and action items with owners for automation, alerts, guardrails, docs and tests. Turn recurring manual diagnosis into automated checks, such as preflight checks, node problem detector rules and health probes.
+The post-incident review is blameless. It covers the timeline, the contributing factors (not one single "root cause"), detection gaps, how well the mitigation worked, and action items with owners for automation, alerts, guardrails, docs and tests. Blameless means the review asks why the system allowed the mistake, not who made it. Turn recurring manual diagnosis into automated checks, such as preflight checks, node problem detector rules and health probes. Every command you typed by hand during the incident is a candidate for a check that runs on its own next time.
 
 ## 7. Lab
 
-Start with the self-checking Python lab, which you can run on your own machine. It verifies the container exit-code and OOM classifier, `classify_container_exit_code`, which decodes exit codes `137`, `139`, `143`, `126` and `127`, along with the `/dev/shm` cgroup OOM. It also verifies the 4-hop Pod connectivity bisection engine, `diagnose_pod_connectivity_bisection`, which isolates Pod/App, Cross-Node CNI, Service/kube-proxy and CoreDNS. Finally, it checks the GPU, PCIe and Xid hardware triager, `triage_gpu_node_symptoms`.
+Start with the self-checking Python lab, which you can run on your own machine. It verifies the container exit-code and OOM classifier, `classify_container_exit_code`, which decodes exit codes `137`, `139`, `143`, `126` and `127`, along with the `/dev/shm` cgroup OOM. It also verifies the 4-hop Pod connectivity bisection engine, `diagnose_pod_connectivity_bisection`, which isolates Pod/App, Cross-Node CNI, Service/kube-proxy and CoreDNS. Finally, it checks the GPU, PCIe and Xid hardware triager, `triage_gpu_node_symptoms`. Running it first gives you a feel for the classifiers before you point the same logic at a real node.
 
 ```bash
 python3 code/part05/k8s_node_troubleshooter_lab.py
 ```
 
-Next, move to a multi-node Kubernetes cluster with node root access. Every interactive shell step below is `untested here`, so check each result yourself as you go. Work through these exercises:
+Next, move to a multi-node Kubernetes cluster with node root access. The interactive shell steps below were not run on live hardware, so check each result yourself as you go. Work through these exercises in order.
 
-1. Build a debug image from netshoot, adding nvidia-smi, ibstat, perftest, py-spy and fio. Practise `kubectl debug` in ephemeral, copy and node modes. Then write the RBAC and policy that lets only the platform team use it.
-2. Trace traffic from a client pod to a server pod on another node. Capture at the client veth (using `nsenter -n tcpdump` from the host), at the node uplink, and at the server veth. Induce loss with `tc netem`, then again with a NetworkPolicy drop. Use the three captures and the policy counters to find where packets vanish.
-3. Break a Service in five ways: a selector typo, a wrong targetPort, a failing readiness check, a kube-proxy rule flush, and stale UDP in conntrack. Diagnose each one with the method from this chapter, and record how long each diagnosis takes.
-4. Take a tour of the namespaces. For a running pod, use host `nsenter` to enter the net, mnt and pid namespaces one at a time. Run host `ss`, `tcpdump` and `lsof` in each, compare the output with `kubectl exec`, and find the pod's veth and cgroup.
-5. Create pods that exit with codes 1, 127, 137, 139 and 143. Code 137 is an OOM kill, and code 139 is a segfault, which you can trigger with `kill -SEGV`. Interpret each pod with `describe`, `--previous`, `dmesg` and cgroup events. Then reproduce an OOM with `/dev/shm` pressure.
-6. Run a node NotReady drill. Fill the disk, kill containerd, expire a kubelet client certificate in the lab, block API access with iptables, and skew the clock. Diagnose each one from its symptoms alone, and time each diagnosis.
-7. Mount an NFS export, block the server with a firewall, run a pod that writes to it, and then delete the pod. Watch it sit in Terminating, find the D-state processes through `/proc/PID/stack`, and recover.
-8. On GPU nodes, run a pod that cannot see the GPUs because its runtime class is set wrong. Throttle the clocks with `nvidia-smi -lgc` or a power cap, and detect it through DCGM throttle reasons and step time. If you can, downtrain a PCIe link in a lab; otherwise, use fake exporters. Practise the table in 4.10.
-9. Run a 2-node nccl-tests job. Block a peer with a NetworkPolicy or an iptables rule, and watch the hang pattern and NCCL debug output. Fix the problem, then compare the result with a wrong `NCCL_SOCKET_IFNAME`.
-10. Create a noisy client that loops `kubectl get pods -A -w`, plus a slow webhook. Find the sources through metrics and audit logs, then remediate with APF and webhook fixes.
-11. Run a 60-minute exercise with 3 injected faults that the responders do not know about. Score detection, diagnosis and recovery. Then write the post-incident review and update the runbooks.
-12. Turn two playbooks into scripts or node-problem-detector custom plugins that run checks and publish node conditions and metrics.
-13. Clean up everything the exercises left behind.
+1. Build a debug image from netshoot, and add nvidia-smi, ibstat, perftest, py-spy and fio to it. Practise `kubectl debug` in ephemeral, copy and node modes. Then write the RBAC and policy that lets only the platform team use the image.
+2. Trace traffic from a client pod to a server pod on another node. Capture at the client veth (using `nsenter -n tcpdump` from the host), at the node uplink and at the server veth. Induce loss with `tc netem`, then again with a NetworkPolicy drop. Where do the packets vanish, given the three captures and the policy counters?
+3. Break a Service in five ways: a selector typo, a wrong targetPort, a failing readiness check, a kube-proxy rule flush, and stale UDP in conntrack. Diagnose each one with the method from this chapter. Record how long each diagnosis takes.
+4. Take a tour of the namespaces for a running pod. Use host `nsenter` to enter the net, mnt and pid namespaces one at a time. Run host `ss`, `tcpdump` and `lsof` in each one, and compare the output with `kubectl exec`. Where are the pod's veth and cgroup?
+5. Create pods that exit with codes 1 and 127. Create pods that exit with codes 137 and 139. Create a pod that exits with code 143. Code 137 is an OOM kill, and code 139 is a segfault, which you can trigger with `kill -SEGV`. Interpret each pod with `describe`, `--previous`, `dmesg` and cgroup events. Then reproduce an OOM with `/dev/shm` pressure.
+6. Run a node NotReady drill. Fill the disk. Kill containerd. Expire a kubelet client certificate in the lab. Block API access with iptables. Skew the clock. Diagnose each fault from its symptoms alone, and time each diagnosis.
+7. Mount an NFS export. Block the server with a firewall. Run a pod that writes to the export, then delete the pod. Watch the pod sit in Terminating. Find the D-state processes through `/proc/PID/stack`, and recover.
+8. On GPU nodes, run a pod that cannot see the GPUs because its runtime class is set wrong. Throttle the clocks with `nvidia-smi -lgc` or a power cap. Detect the throttling through DCGM throttle reasons and step time. If you can, downtrain a PCIe link in a lab. If you cannot, use fake exporters. Practise the table in 4.10.
+9. Run a 2-node nccl-tests job. Block a peer with a NetworkPolicy or an iptables rule. Watch the hang pattern and the NCCL debug output. Fix the problem. Then compare the result with a wrong `NCCL_SOCKET_IFNAME`.
+10. Create a noisy client that loops `kubectl get pods -A -w`. Add a slow webhook. Find the sources through metrics and audit logs. Then remediate with APF and webhook fixes.
+11. Run a 60-minute exercise with three injected faults that the responders do not know about. Score detection, diagnosis and recovery. Then write the post-incident review and update the runbooks.
+12. Turn two playbooks into scripts or node-problem-detector custom plugins. The scripts should run checks and publish node conditions and metrics.
+13. Clean up everything the exercises left behind. Check for privileged debug pods, ephemeral containers and test namespaces before you finish.
 
 ## 8. Common mistakes
 
-Troubleshooting goes wrong in predictable ways, and many of the mistakes come from habits that feel reasonable at 3 a.m. Restarting before you diagnose loses the evidence, and so does deleting a crashing pod instead of reading its `--previous` logs. Trusting `Running` status, and ignoring readiness and events, leads to the same trap.
+Troubleshooting goes wrong in predictable ways, and many of the mistakes come from habits that feel reasonable at 3 a.m. Restarting before you diagnose loses the evidence, and so does deleting a crashing pod instead of reading its `--previous` logs. Trusting `Running` status, and ignoring readiness and events, leads to the same trap. A pod can be Running, Ready in name, and still broken, because the process is alive but serving nothing.
 
-Scope mistakes are common too. You can debug the application when the node, network or storage is at fault, or the other way round, if you never narrow the scope. Testing only through Service names adds DNS, NAT and policy to the test, when a direct pod IP test would localise the fault faster.
+Scope mistakes are common too. You can debug the application when the node, network or storage is at fault, or the other way round, if you never narrow the scope. Testing only through Service names adds DNS, NAT and policy to the test, when a direct pod IP test would localise the fault faster. Each extra layer in a test is another place the test can fail for an unrelated reason.
 
-Packet capture has its own traps. Running `tcpdump` only on the node's primary interface misses the veth and bridge hops, because tools in the host namespace see different interfaces than the pod does.
+Packet capture has its own traps. Running `tcpdump` only on the node's primary interface misses the veth and bridge hops, because tools in the host namespace see different interfaces than the pod does. A capture at the wrong point looks like a clean network, and that false comfort wastes hours.
 
-Changing several things at once, or leaving fixes undocumented, makes it impossible to tell which change helped. Two other habits cause trouble: `kubectl delete pod --force` on stateful workloads, and removing finalizers without understanding the cleanup they do. Ignoring kernel logs such as Xid, OOM and I/O errors hides the hardware and memory evidence. Leaving privileged debug pods and ephemeral containers running means the cleanup never happens.
+Changing several things at once, or leaving fixes undocumented, makes it impossible to tell which change helped. Two other habits cause trouble: `kubectl delete pod --force` on stateful workloads, and removing finalizers without understanding the cleanup they do. A finalizer that is removed too early can skip a cleanup step that the storage or the network still needs. Ignoring kernel logs such as Xid, OOM and I/O errors hides the hardware and memory evidence. Leaving privileged debug pods and ephemeral containers running means the cleanup never happens, and a forgotten privileged pod is a security hole that stays open.
 
-Alerts that repeat a manual check but come without the context links make the engineer do the same work anyway. Write down what you know before you change anything.
+Alerts that repeat a manual check but come without the context links make the engineer do the same work anyway. A good alert links to the playbook, the dashboard and the command that confirms the cause. Write down what you know before you change anything, even if the note is only a few lines in the incident log.
 
 ## 9. Interview angles
 
-These questions test the method in this chapter. Each one can be answered with the playbooks and tools above.
+These questions test the method in this chapter. Each one can be answered with the playbooks and tools above. Try to answer out loud, in the order you would act, rather than listing every tool you know.
 
 - "A pod is stuck in ContainerCreating. Walk me through diagnosing it."
 - "A service is intermittently failing. How do you localise whether it's DNS, kube-proxy, CNI or the app?"
@@ -355,12 +389,12 @@ Practise the first question out loud, using the layered method from the start of
 
 Each exercise below asks you to put one part of this chapter into practice. Work through them in order, because the first one sets up the method the others rely on.
 
-1. Work through the layered diagnostic method (`Scope -> Recent Changes -> Bisect Layer -> Hypothesis -> Test`) and the kubectl power diagnostics from *Kubernetes: Up and Running*, Chapter 4. Explain why you must capture evidence before restarting a failing Pod or node. Compare the three `kubectl debug` modes: an ephemeral container with `--target`, a Pod copy with `--copy-to`, and node debug with `node/<n>`. Then write the kubectl commands that list all `OOMKilled` Pods across the cluster and inspect their `--previous` logs.
-2. Learn runtime and namespace inspection from the node, using `crictl`, `ctr`, `nsenter`, `lsns` and `/proc/$PID`. Trace the exact commands that map a Kubernetes Pod or container to its host PID with `crictl inspect`. Run host `tcpdump` and `ss -tnap` inside a distroless container's network namespace with `sudo nsenter -t $PID -n`. Then inspect `/proc/$PID/stack`, `/proc/$PID/cgroup`, and `/sys/fs/cgroup/.../memory.events`.
-3. Run the 4-hop pod network bisection with `ip`, `ss -tin`, `conntrack`, `iptables-save`, `tcpdump`, `ethtool` and `ibstat`. Use `diagnose_pod_connectivity_bisection()` from `code/part05/k8s_node_troubleshooter.py`. Trace how each test isolates a network failure to one layer. Start with the same-node pod IP, then the cross-node pod IP, then the Service ClusterIP, and finally the Service DNS name. Then show where to run `tcpdump` to catch dropped packets: the client veth, the node uplink and the server veth.
-4. Practise exit code triage with `classify_container_exit_code()` in `code/part05/k8s_node_troubleshooter.py`. Explain the exact Linux signal or error behind exit codes 137, 139, 143, 126 and 127. Show how to tell a container cgroup OOM from a host-wide OOM in `dmesg`, which means reading `CONSTRAINT_MEMCG` against `CONSTRAINT_NONE`. Then explain how to diagnose a Pod stuck in Terminating with D-state processes.
-5. Walk through the GPU, PCIe, NVLink and distributed NCCL hang playbooks with `triage_gpu_node_symptoms()` from `code/part05/k8s_node_troubleshooter.py`. Cover four cases. The first is `nvidia-smi` missing inside a Pod. The second is NCCL hanging at `init_process_group` rendezvous, compared with NCCL timing out mid-training. The third is hung training ranks, where you run `py-spy dump --pid $PID` and `gdb -p $PID -batch -ex 'thread apply all bt'`. The fourth is Xid 79 together with PCIe link downtraining, checked with `lspci -vv`.
-6. Work out the exact artifacts to collect with `nvidia-bug-report.sh`, `sosreport` and `cluster-info dump` before you remediate a 1,000-GPU training incident. Then design a 60-minute game day drill with three injected faults, covering node, network and storage faults.
+1. A pod is Running, but its behaviour looks wrong, and you have to choose how to look at it. Work through the layered diagnostic method (`Scope -> Recent Changes -> Bisect Layer -> Hypothesis -> Test`) and the kubectl power diagnostics from *Kubernetes: Up and Running*, Chapter 4. Why must you capture evidence before you restart a failing Pod or node? Compare the three `kubectl debug` modes: an ephemeral container with `--target`, a Pod copy with `--copy-to`, and node debug with `node/<n>`. Then write the kubectl commands that list all `OOMKilled` Pods across the cluster and inspect their `--previous` logs.
+2. You need to find a Pod's host PID and then look inside its network. Learn runtime and namespace inspection from the node, using `crictl`, `ctr`, `nsenter`, `lsns` and `/proc/$PID`. Trace the exact commands that map a Kubernetes Pod or container to its host PID with `crictl inspect`. Run host `tcpdump` and `ss -tnap` inside a distroless container's network namespace with `sudo nsenter -t $PID -n`. Then inspect `/proc/$PID/stack`, `/proc/$PID/cgroup`, and `/sys/fs/cgroup/.../memory.events`.
+3. Pod A cannot reach a Service, and you want to find the failing layer. Run the 4-hop pod network bisection with `ip`, `ss -tin`, `conntrack`, `iptables-save`, `tcpdump`, `ethtool` and `ibstat`. Use `diagnose_pod_connectivity_bisection()` from `code/part05/k8s_node_troubleshooter.py`. Start with the same-node pod IP, then the cross-node pod IP, then the Service ClusterIP, and finally the Service DNS name. Which test isolates the failure to one layer at each step? Show where to run `tcpdump` to catch dropped packets: the client veth, the node uplink and the server veth.
+4. A pod exits with a code you do not recognise, and you need to triage it. Practise exit code triage with `classify_container_exit_code()` in `code/part05/k8s_node_troubleshooter.py`. Explain the exact Linux signal or error behind exit code 137 and exit code 139. Explain the same for exit code 143, exit code 126 and exit code 127. Show how to tell a container cgroup OOM from a host-wide OOM in `dmesg`, by reading `CONSTRAINT_MEMCG` against `CONSTRAINT_NONE`. Then explain how to diagnose a Pod stuck in Terminating with D-state processes.
+5. A GPU job is failing in one of four ways, and you need to tell them apart. Walk through the GPU, PCIe, NVLink and distributed NCCL hang playbooks with `triage_gpu_node_symptoms()` from `code/part05/k8s_node_troubleshooter.py`. The first case is `nvidia-smi` missing inside a Pod. The second case is NCCL hanging at `init_process_group` rendezvous, which you compare with NCCL timing out mid-training. The third case is hung training ranks, where you run `py-spy dump --pid $PID` and `gdb -p $PID -batch -ex 'thread apply all bt'`. The fourth case is Xid 79 together with PCIe link downtraining, which you check with `lspci -vv`.
+6. A 1,000-GPU training job has failed, and you must gather evidence before you fix anything. Work out the exact artifacts to collect with `nvidia-bug-report.sh`, `sosreport` and `cluster-info dump`. Then design a 60-minute game day drill with three injected faults that cover node, network and storage faults. Which fault should the drill inject first, and why?
 
 ## Checkpoint questions (20)
 

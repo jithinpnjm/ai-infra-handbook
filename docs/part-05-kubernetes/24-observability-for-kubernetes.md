@@ -22,13 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU platform is only as reliable as your ability to see inside it. Picture a training job that silently runs at 40% of its expected throughput. The cause turns out to be one node's NIC, which negotiated a lower speed. Other failures hide in the same way. An inference service's p99 latency can double when its KV-cache fills. A node's GPU can throw Xid errors for days before the job finally fails. A runaway controller can slow the whole control plane.
+A GPU platform is only as reliable as your ability to see inside it. Picture a training job that silently runs at 40% of its expected throughput. Nothing crashes, and the loss curve looks normal. The cause turns out to be one node's NIC, which negotiated a lower link speed than the others. The job still finishes, but it takes far longer and costs far more than it should. Other failures hide in the same way. An inference service's p99 latency can double when its KV-cache fills. A node's GPU can throw Xid errors for days before the job finally fails. A runaway controller can slow the whole control plane, and every team blames its own code.
 
-Observability turns these mysteries into dashboards and alerts. The Kubernetes ecosystem has now largely converged on a common toolkit. It uses Prometheus-compatible metrics, structured logs shipped to a central store, OpenTelemetry for traces, and Grafana for visualisation. This chapter walks through the architecture and the exporters that matter. It then shows how to design alerts you can act on, and how to scale and secure the stack. GPU-specific signals appear along the way, and Part 17 covers them in more depth.
+Observability turns these mysteries into dashboards and alerts. Think of it as the instrument panel of a car. A speedometer alone does not tell you the engine is overheating. You need the temperature gauge, the oil light and the fuel level, and each one answers a different question. A platform needs the same mix of instruments, so that a problem is visible from more than one angle.
+
+The Kubernetes ecosystem has now largely converged on a common toolkit. It uses Prometheus-compatible metrics, structured logs shipped to a central store, OpenTelemetry for traces, and Grafana for visualisation. This chapter walks through the architecture and the exporters that matter. It then shows how to design alerts you can act on, and how to scale and secure the stack. GPU-specific signals appear along the way, and Part 17 covers them in more depth.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 5.3, 5.9 and 5.19, so read those first. When you finish, you should be able to do the following.
+This chapter builds on 5.3, 5.9 and 5.19, so read those first. The list below is a self-check. Each line is an ability you will use in a real on-call shift. If a line feels unfamiliar, go back to the matching section and read it slowly, ideally with a small test cluster open next to you.
 
 - Describe the Prometheus data model and scrape architecture. Install and operate kube-prometheus-stack, including the Prometheus Operator CRDs ServiceMonitor, PodMonitor, PrometheusRule, Probe and AlertmanagerConfig.
 - Name the key metric sources, such as kube-state-metrics, cAdvisor and kubelet, node-exporter, the API server, etcd, the scheduler and controller metrics, CoreDNS, ingress, the DCGM exporter and application metrics. Know the most useful PromQL for each.
@@ -40,7 +42,7 @@ This chapter builds on 5.3, 5.9 and 5.19, so read those first. When you finish, 
 
 ## 1. The observability signals
 
-Each signal answers a different question, so you rarely get the whole story from one. The table lists each signal, the question it answers and where its data comes from.
+Each signal answers a different question, so you rarely get the whole story from one. A metric tells you that something is changing. A log tells you what happened at one moment. A trace tells you where the time went. Use the table to see which signal to reach for first, and where its data comes from.
 
 | Signal | Question answered | Kubernetes sources |
 |---|---|---|
@@ -51,11 +53,15 @@ Each signal answers a different question, so you rarely get the whole story from
 | **Profiles** | Where is CPU/memory spent in code? | Pyroscope/Parca, `py-spy`, Nsight (Part 10) |
 | **Health checks/synthetics** | Does it work from the outside? | Blackbox exporter, probes, synthetic requests |
 
-Three methods help you choose what to measure. RED stands for Rate, Errors and Duration, and it suits request-driven services. USE stands for Utilisation, Saturation and Errors, and it suits resources such as CPU, memory, disk, network and GPU. The Four Golden Signals are latency, traffic, errors and saturation. For ML workloads, also track throughput in tokens/s and samples/s, step time, loss and gradient health, MFU, checkpoint age and data-loader wait.
+Think of the signals as different witnesses to the same event. The metric is the security camera that shows the crowd growing. The log is the guard's notebook with the time and the incident. The trace is the route map that shows which door the visitor went through. You need all three to reconstruct a bad night, and you should learn which witness to call first.
+
+Three methods help you choose what to measure. RED stands for Rate, Errors and Duration, and it suits request-driven services. USE stands for Utilisation, Saturation and Errors, and it suits resources such as CPU, memory, disk, network and GPU. The Four Golden Signals are latency, traffic, errors and saturation. For ML workloads, also track throughput in tokens/s and samples/s, step time, loss and gradient health, MFU, checkpoint age and data-loader wait. MFU means model FLOPs utilisation, the share of the hardware's peak arithmetic that the training run actually uses.
+
+The three methods overlap on purpose. RED is the view from a customer standing at the counter. USE is the view from the engineer in the back room who checks the ovens. The golden signals are the short list that a manager wants on one screen. When a service is slow, RED tells you the customer is waiting. USE tells you which oven is saturated.
 
 ## 2. Prometheus and the Operator
 
-The diagram shows the pipeline on a GPU worker node. Exporters and application endpoints feed Prometheus, Fluent Bit or Alloy feeds Loki, and Prometheus sends alerts to Alertmanager.
+The diagram shows the pipeline on a GPU worker node. Exporters and application endpoints feed Prometheus, Fluent Bit or Alloy feeds Loki, and Prometheus sends alerts to Alertmanager. Follow the arrows from left to right. Each arrow is a separate job, and each job can fail on its own.
 
 ```mermaid
 flowchart LR
@@ -78,9 +84,9 @@ flowchart LR
 
 Think of a metric as a measurement taken again and again over time. Plotted on a timeline, it shows the moment behavior drifts away from normal. The same data can also drive an alert, so you hear about a failure early, or before it happens. For this job on Kubernetes, Prometheus is the common open source choice.
 
-Control plane components already expose Prometheus metrics. Nearly every production cluster also runs exporters that pull metrics from its nodes. That shared format is why commercial tools such as Datadog, New Relic, and VMware Tanzu Observability can read Prometheus metrics too.
+Control plane components already expose Prometheus metrics. Nearly every production cluster also runs exporters that pull metrics from its nodes. That shared format is why commercial tools such as Datadog, New Relic, and VMware Tanzu Observability can read Prometheus metrics too. A shared format means you can change the dashboard tool without rewriting the apps.
 
-Prometheus works by scraping. On a schedule, it visits each target and collects its metrics. Your application never pushes metrics anywhere. It only exposes an endpoint, and Prometheus does the rest. The app needs to know one thing, the output format, and nothing about metrics plumbing.
+Prometheus works by scraping. On a schedule, it visits each target and collects its metrics. Your application never pushes metrics anywhere. It only exposes an endpoint, and Prometheus does the rest. The app needs to know one thing, the output format, and nothing about metrics plumbing. A useful comparison is a nurse doing rounds. The nurse walks to each bed, takes the readings and writes them down. The patient does not need to remember to report anything, and a patient who stops answering is noticed on the next round.
 
 Prometheus takes on several jobs:
 
@@ -96,23 +102,25 @@ Metrics and alerts decide how useful a platform is. A warning about a coming fai
 
 ### Prometheus model
 
-A time series is identified by a metric name and a set of labels. For example, `http_requests_total{job="api",code="200"}` names one series. Prometheus has four metric types. A counter only goes up, so you read it with `rate()` or `increase()`. A gauge can go up and down. A histogram stores cumulative buckets, which `histogram_quantile` turns into percentiles. A summary is the fourth type.
+A time series is identified by a metric name and a set of labels. For example, `http_requests_total{job="api",code="200"}` names one series. Prometheus has four metric types. A counter only goes up, so you read it with `rate()` or `increase()`. A counter is like a car's odometer. The number itself matters less than how fast it climbs. A gauge can go up and down, like a thermometer. A histogram stores cumulative buckets, which `histogram_quantile` turns into percentiles. A histogram is like a grade sheet that counts how many students fell into each score band, so you can estimate the middle score or the top tenth. A summary is the fourth type. A summary computes its quantiles inside the app, which is why it is hard to combine across replicas.
 
-Prometheus pulls. It scrapes each target at an interval, typically every 15–30 s. Samples go into a local time series database. That database writes 2 h blocks, compacts them, and applies retention by time or size. Prometheus also evaluates recording and alerting rules, and it sends firing alerts to **Alertmanager**.
+Prometheus pulls. It scrapes each target at an interval, typically every 15–30 s. Samples go into a local time series database. That database writes 2 h blocks, compacts them, and applies retention by time or size. Prometheus also evaluates recording and alerting rules, and it sends firing alerts to **Alertmanager**. A recording rule saves a slow query as a new, cheap series. An alerting rule checks a condition and sends an alert when the condition holds.
 
-To find targets, Prometheus asks the Kubernetes API. Its `kubernetes_sd_configs` can list pods, endpoints, services, nodes and ingresses. Relabelling then picks which targets to scrape and attaches labels to them.
+To find targets, Prometheus asks the Kubernetes API. Its `kubernetes_sd_configs` can list pods, endpoints, services, nodes and ingresses. Relabelling then picks which targets to scrape and attaches labels to them. Service discovery is what lets a new pod appear in the dashboard without anyone editing a config file.
 
 *Production Kubernetes*, Chapter 9 (*Observability*), by Josh Rosso et al., covers three more architectural patterns for metrics, showback and distributed tracing.
 
-1. **Pull scraping vs. Pushgateway for short batch jobs (Production Kubernetes, Chapter 9).** Prometheus's pull model suits long-lived services and DaemonSets. A short batch `Job` is different. It can run for 8 seconds and exit before the 15–30s scrape interval comes around. A database migration or checkpoint validator may finish that quickly. Such a job can push its completion metrics to a Prometheus `Pushgateway`, and Prometheus then scrapes the gateway. Group the metrics by job or role rather than by unique Pod names, so stale series do not accumulate forever.
+1. **Pull scraping vs. Pushgateway for short batch jobs (Production Kubernetes, Chapter 9).** Prometheus's pull model suits long-lived services and DaemonSets. A short batch `Job` is different. It can run for 8 seconds and exit before the 15–30s scrape interval comes around. A database migration or checkpoint validator may finish that quickly. Such a job can push its completion metrics to a Prometheus `Pushgateway`, and Prometheus then scrapes the gateway. Group the metrics by job or role rather than by unique Pod names, so stale series do not accumulate forever. A stale series is a metric that no longer updates but stays in storage, which slowly fills the database.
 2. **Federation vs. Thanos and showback models.**
-   - *Federation vs. Thanos:* Hierarchical `/federate` scraping works for aggregating low-cardinality recording rules across clusters. It struggles to keep full historical series. Thanos takes a different approach. It attaches a `thanos-sidecar` to each Prometheus pod, and that sidecar uploads 2-hour TSDB blocks to S3 or GCS object storage. A `Store Gateway` and a `Compactor` handle history, and the Compactor does downsampling to 5m and 1h resolutions. A global `Querier` deduplicates HA Prometheus pairs labelled `replica="a"` and `replica="b"`.
+   - *Federation vs. Thanos:* Hierarchical `/federate` scraping works for aggregating low-cardinality recording rules across clusters. It struggles to keep full historical series. Thanos takes a different approach. It attaches a `thanos-sidecar` to each Prometheus pod, and that sidecar uploads 2-hour TSDB blocks to S3 or GCS object storage. A `Store Gateway` and a `Compactor` handle history, and the Compactor does downsampling to 5m and 1h resolutions. A global `Querier` deduplicates HA Prometheus pairs labelled `replica="a"` and `replica="b"`. Downsampling keeps fewer points for old data, so long history stays cheap to query.
    - *Requests vs. consumption showback:* Production Kubernetes, Chapter 9, contrasts requests-based showback with consumption-based showback. Requests-based showback charges a team for what its Pods requested. Consumption-based showback charges for `max(resource_request, actual_usage)`. That way a team answers both for idle capacity it over-reserved and for Burstable usage spikes above its requests. The model is `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`.
 3. **Distributed tracing concepts (OpenTracing and OpenCensus to OpenTelemetry and Jaeger, Production Kubernetes, Chapter 9).** A distributed `Trace` shows the end-to-end path of one request across microservices. It is built from timed `Span`s, one per service or operation. Spans link to their parents through span IDs, and each carries key-value `Tags`, `Baggage` and logs. Node-local tracing `Agents` collect the spans, and `Collectors` sample and process them before storage.
 
 ### kube-prometheus-stack
 
 The kube-prometheus-stack is a Helm chart. It bundles the Prometheus Operator, Prometheus, Alertmanager, Grafana, kube-state-metrics and node-exporter. It also ships default dashboards and rules for Kubernetes components. Install it with the Helm commands below. The storage and retention flags set how long Prometheus keeps data and how much disk it gets, and the three `NilUsesHelmValues=false` flags let Prometheus discover every ServiceMonitor, PodMonitor and rule, not only the ones tagged with the Helm release.
+
+Read the command line by line. The first line adds the chart repository. The `upgrade --install` line installs the release if it is missing, or upgrades it if it exists. The `retention` flag says how long local data stays. The `storageSpec` flag asks for a persistent disk, so the data survives a pod restart. The three `NilUsesHelmValues=false` flags are the ones that prevent the release-label trap described later in this section.
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -161,9 +169,13 @@ spec:
             runbook_url: https://runbooks.example.com/gpu-xid
 ```
 
+Walk through the ServiceMonitor first. The `selector` finds Services with the label `app: vllm`, and the `namespaceSelector` limits the search to one namespace. The `endpoints` block says which port to read and how often. The `relabelings` line copies the node name onto every series, which helps when you want to group by machine. The `metricRelabelings` line is the filter. It keeps only the vLLM series that the dashboards need, and it drops the rest before they are stored.
+
+Then read the PrometheusRule. The `record` line creates a new, cheap series that averages GPU utilisation per node. The `alert` line fires when any Xid error appears in the last ten minutes. The `for` line says how long the condition must hold, and zero means fire at once. The `labels` line tells Alertmanager where to route it. The `annotations` line gives the on-call engineer the summary and a link to the runbook.
+
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-The other monitor types cover other cases. A `PodMonitor` handles pod endpoints that have no Service. A `Probe` handles blackbox targets. An `AlertmanagerConfig` sets namespaced routing, and a `ScrapeConfig` covers static or external targets. Watch the selectors, though. The `serviceMonitorSelector` on a Prometheus decides which monitors it picks up, and a missing `release: kps` label is a common trap.
+The other monitor types cover other cases. A `PodMonitor` handles pod endpoints that have no Service. A `Probe` handles blackbox targets. An `AlertmanagerConfig` sets namespaced routing, and a `ScrapeConfig` covers static or external targets. Watch the selectors, though. The `serviceMonitorSelector` on a Prometheus decides which monitors it picks up, and a missing `release: kps` label is a common trap. The monitor exists, the scrape config is never built, and the target simply does not appear. Nothing errors, so the trap is easy to miss.
 
 ### Prometheus servers as custom resources
 
@@ -206,13 +218,13 @@ spec:
       monitor: platform
 ```
 
-Read the manifest from top to bottom. The `alerting` block tells Prometheus where to send alerts. The `image` field picks the container image. The `ruleSelector` decides which PrometheusRules apply to this server, and any rule carrying the labels shown is applied here. The `serviceMonitorSelector` does the same for ServiceMonitors, and those feed this server's scrape configuration.
+Read the manifest from top to bottom. The `alerting` block tells Prometheus where to send alerts. The `image` field picks the container image. The `ruleSelector` decides which PrometheusRules apply to this server, and any rule carrying the labels shown is applied here. The `serviceMonitorSelector` does the same for ServiceMonitors, and those feed this server's scrape configuration. The `securityContext` block runs the server as a non-root user, which limits the damage if the server is ever compromised.
 
 Metric processing is compute-heavy, so you can split the load across several servers. One server can collect the platform's metrics while others collect application or node metrics. Tenants benefit too. A team that emits a large volume of metrics may need its own server in its namespace, and that cost can count against the team's resource budget. The trade-off is more work for dashboards, alerting, federation and long-term storage. Many teams prefer a simpler layer on top, but the option is worth knowing about.
 
 ### Reading a ServiceMonitor
 
-When you create a ServiceMonitor, the operator updates the scrape configuration of the matching Prometheus server. The manifest below points Prometheus at the Kubernetes API server.
+When you create a ServiceMonitor, the operator updates the scrape configuration of the matching Prometheus server. The manifest below points Prometheus at the Kubernetes API server. It is a useful example to read slowly, because it uses almost every field you will meet in a real ServiceMonitor.
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -242,15 +254,15 @@ spec:
       provider: kubernetes
 ```
 
-Notice the `monitor: platform` label. The Prometheus server's `serviceMonitorSelector` looks for exactly that label. The `endpoints` block sets the port and the way to connect to each instance. This example uses HTTPS, and it checks the endpoint against a Certificate Authority and a server name.
+Notice the `monitor: platform` label. The Prometheus server's `serviceMonitorSelector` looks for exactly that label. The `endpoints` block sets the port and the way to connect to each instance. This example uses HTTPS, and it checks the endpoint against a Certificate Authority and a server name. The token file is the identity that Prometheus presents, so the API server knows who is asking.
 
-In Prometheus terms, a job is a group of instances of one service. One API server is an instance, and all the API servers together form the job. The `jobLabel` field names the label that supplies the job name, and here that job is `apiserver`.
+In Prometheus terms, a job is a group of instances of one service. One API server is an instance, and all the API servers together form the job. The `jobLabel` field names the label that supplies the job name, and here that job is `apiserver`. A job name matters because every dashboard and alert filters on it.
 
-The `namespaceSelector` picks the namespaces to search for Services. The `selector` then matches Services by label. Any Service in the `default` namespace with those labels becomes a scrape target.
+The `namespaceSelector` picks the namespaces to search for Services. The `selector` then matches Services by label. Any Service in the `default` namespace with those labels becomes a scrape target. If the selector finds nothing, the first place to check is the labels on the Service, not the labels on the pods behind it.
 
 ### Recording and alerting rules with PrometheusRule
 
-A PrometheusRule asks the operator to generate a rule file for Prometheus. Rules can record new metrics or raise alerts. The operator stores the rules in a ConfigMap and mounts that ConfigMap into the Prometheus Pods.
+A PrometheusRule asks the operator to generate a rule file for Prometheus. Rules can record new metrics or raise alerts. The operator stores the rules in a ConfigMap and mounts that ConfigMap into the Prometheus Pods. A rule file is evaluated on a schedule, so the results are always a little behind the raw data.
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -292,15 +304,15 @@ spec:
         severity: warning
 ```
 
-The first group holds a recording rule. It adds up the LIST and GET requests across all API server instances over a 5-minute window. The result is saved as a new metric named `code_resource:apiserver_request_total:rate5m`.
+The first group holds a recording rule. It adds up the LIST and GET requests across all API server instances over a 5-minute window. The result is saved as a new metric named `code_resource:apiserver_request_total:rate5m`. Dashboards can then read the saved series directly, instead of recalculating the sum every time someone opens the page.
 
-The second group holds an alerting rule. It raises a warning when a Pod stays not-ready for more than 15 minutes. With the Operator and these custom resources, the pattern is easy to repeat. Production Kubernetes strongly recommends it if Prometheus is your main metrics tool.
+The second group holds an alerting rule. It raises a warning when a Pod stays not-ready for more than 15 minutes. The `for` line is what turns a passing blip into a real alert. Without it, every short restart would page someone. With the Operator and these custom resources, the pattern is easy to repeat. Production Kubernetes strongly recommends it if Prometheus is your main metrics tool.
 
 ### Instrumenting your own software
 
 The best metrics come from the application itself. Many apps built for Kubernetes expose Prometheus metrics natively, helped by official and community client libraries. Production Kubernetes covers this in depth in its Chapter 14.
 
-Sometimes an app or system does not expose Prometheus metrics at all. An exporter fills that gap. It collects data points from the system and republishes them as Prometheus metrics. The Node Exporter is the common example, gathering hardware and operating system metrics for Prometheus to scrape. Community exporters exist for many popular tools.
+Sometimes an app or system does not expose Prometheus metrics at all. An exporter fills that gap. It collects data points from the system and republishes them as Prometheus metrics. The Node Exporter is the common example, gathering hardware and operating system metrics for Prometheus to scrape. Community exporters exist for many popular tools. An exporter is like a translator at a meeting. The system speaks its own language, and the exporter restates what it says in the format Prometheus understands.
 
 Once an app exposes metrics, it needs a place in the scrape configuration. A ServiceMonitor handles that for you. The Operator auto-discovers Services by namespace and labels, so you never edit scrape configs by hand.
 
@@ -328,7 +340,7 @@ func main() {
 }
 ```
 
-Second, create the metric and register it. The Counter below counts the queue items the service handles:
+Second, create the metric and register it. The Counter below counts the queue items the service handles. Registration tells the library to include the counter in the output of `/metrics`. A metric that is created but never registered is invisible, and that mistake is easy to make and hard to notice.
 
 ```go
 // create the counter
@@ -364,7 +376,7 @@ App-specific metrics form the last category. They measure things only your app c
 
 ### Key exporters and sources
 
-The table lists the main metric sources, what each one exposes and the points you need. Use it as a lookup when you wire up a new component.
+The table lists the main metric sources, what each one exposes and the points you need. Use it as a lookup when you wire up a new component. Read the Notes column as a pointer back to the chapter that explains the component in depth.
 
 | Source | Metrics | Notes |
 |---|---|---|
@@ -385,11 +397,13 @@ The table lists the main metric sources, what each one exposes and the points yo
 | **Blackbox probes** | HTTP/TCP/ICMP/DNS from inside/outside | Synthetic checks for endpoints and DNS |
 | **Node problem detector** | Conditions/events for kernel/runtime/hardware problems | Exposes as node conditions → KSM metric |
 
-The GPU row needs extra care. Profile metrics appear only after DCGM profiling is enabled.
+The GPU row needs extra care. Profile metrics appear only after DCGM profiling is enabled. If you query `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` and get nothing, the series is usually missing because profiling is off, not because the GPU is idle. Check that before you trust a flat line.
+
+The KSM row is one of the most useful. It turns the desired state and the current status of Kubernetes objects into numbers. Those numbers tell you what the cluster believes, which is different from what the hardware is doing. Pair KSM with cAdvisor, and you can compare the two views directly.
 
 ### Essential PromQL
 
-The queries below cover node health, scheduling, CPU and memory, the API server and GPUs. Each comment says what the query tells you.
+The queries below cover node health, scheduling, CPU and memory, the API server and GPUs. Each comment says what the query tells you. Read them as questions. For example, the first query asks how many nodes report NotReady, and the restart query asks which pods are restarting quickly enough to matter.
 
 ```promql
 # Node and pod health
@@ -425,17 +439,21 @@ DCGM_FI_DEV_GPU_TEMP > 85
 
 Start with the `release` label when a new target never appears. A missing label is one of the first things to check.
 
+Read a PromQL line in three steps. Find the metric name. Find the filters in the braces. Then find the arithmetic that combines the series. The `on` and `group_left` words are the join rules. They tell Prometheus how to match two series that carry different labels, such as a usage series and a limit series.
+
 ## 3. Alerting design
+
+An alert is a promise that a human will act. Every alert you add spends some of that promise. A platform with a hundred noisy alerts teaches its on-call engineers to ignore all of them. Treat each alert as a small, expensive interruption, and make sure it earns its place.
 
 ### Principles
 
-1. **Page on symptoms, ticket on causes.** Page someone when users or SLOs are affected, such as API errors, inference latency or availability problems, jobs that fail to start, or many nodes lost. Notify through a ticket or chat for causes and capacity warnings, such as a disk 80% full or a certificate that expires in 14 days.
-2. **Every alert is actionable.** Each alert needs a clear summary of what is wrong and where, a severity, an owner or team, a runbook link and a dashboard link. Set a `for:` duration so the alert does not flap. Delete alerts that nobody acts on.
-3. **SLO-based alerting** uses multiwindow, multi-burn-rate rules from the Google SRE workbook. A page fires when 2% of a 30-day error budget burns in 1 hour, which is a burn rate of 14.4. The same condition must also hold over 5 minutes. A ticket fires when 5% burns in 6 hours, a burn rate of 6, and that must also hold over 30 minutes. Use recording rules for SLI ratios.
+1. **Page on symptoms, ticket on causes.** Page someone when users or SLOs are affected, such as API errors, inference latency or availability problems, jobs that fail to start, or many nodes lost. Notify through a ticket or chat for causes and capacity warnings, such as a disk 80% full or a certificate that expires in 14 days. A symptom is what the user feels. A cause is what might produce the symptom later. The page should wake someone for the symptom, and the ticket can wait for the cause.
+2. **Every alert is actionable.** Each alert needs a clear summary of what is wrong and where, a severity, an owner or team, a runbook link and a dashboard link. Set a `for:` duration so the alert does not flap. Delete alerts that nobody acts on. An alert that always fires and always gets ignored is worse than no alert, because it trains people to stop listening.
+3. **SLO-based alerting** uses multiwindow, multi-burn-rate rules from the Google SRE workbook. A page fires when 2% of a 30-day error budget burns in 1 hour, which is a burn rate of 14.4. The same condition must also hold over 5 minutes. A ticket fires when 5% burns in 6 hours, a burn rate of 6, and that must also hold over 30 minutes. Use recording rules for SLI ratios. An SLI is the measurement of the service, and an SLO is the target that the measurement must meet.
 4. **Routing and noise control** happen in Alertmanager. Group alerts by `alertname`, `cluster` and `namespace`. Tune `group_wait`, `group_interval` and `repeat_interval` to set the timing. Inhibition suppresses downstream alerts when a node or the control plane is down. Silences cover planned maintenance. Time-based routing can send low-severity alerts only during office hours, and label-based routing sends alerts to teams through PagerDuty, Opsgenie, Slack, email or webhooks.
-5. **Watchdog, or dead man's switch.** An alert that always fires and is sent to an external service proves the pipeline still works. If that heartbeat stops arriving, the pipeline is broken.
-6. **Alert on absence.** Missing data is a signal too. Use `absent()` or `up == 0` for critical exporters. Also alert on the health of the observability stack itself, including the Prometheus WAL, scrape failures, rule evaluation failures and disk.
-7. **Test alerts before you trust them.** Run `promtool test rules` and inject synthetic failures. Review alerts again after every incident.
+5. **Watchdog, or dead man's switch.** An alert that always fires and is sent to an external service proves the pipeline still works. If that heartbeat stops arriving, the pipeline is broken. The switch works in reverse. Silence is the alarm, so the absence of the heartbeat is what wakes someone.
+6. **Alert on absence.** Missing data is a signal too. Use `absent()` or `up == 0` for critical exporters. Also alert on the health of the observability stack itself, including the Prometheus WAL, scrape failures, rule evaluation failures and disk. The WAL is the write-ahead log, a safety file that lets Prometheus recover after a crash. A broken WAL means the most recent data may be lost.
+7. **Test alerts before you trust them.** Run `promtool test rules` and inject synthetic failures. Review alerts again after every incident. An alert that did not fire during an outage needs a rule change, and one that fired for no reason needs a threshold change.
 
 Here is an SLO example for inference availability, where non-5xx responses must reach 99.5% over 30 days.
 
@@ -450,6 +468,8 @@ Here is an SLO example for inference availability, where non-5xx responses must 
 ```
 
 The alert fires only when both the 1-hour and the 5-minute error ratios exceed 14.4 times the 0.5% budget. A brief blip stays quiet, and a fixed outage clears quickly.
+
+Here is how to read the burn-rate idea in plain words. The error budget is the amount of failure the SLO allows over a month. A burn rate says how fast you are using that allowance. A rate of one uses the whole budget by the end of the month. A rate of 14.4 uses it far faster, so a short period at that pace is already a serious problem. The long window confirms that the problem is real and not a blip. The short window confirms that the problem is still happening, so the alert clears soon after a fix.
 
 ### Alertmanager
 
@@ -480,49 +500,51 @@ spec:
 
 Setting `replicas` to more than one gives you a highly available Alertmanager. You rarely need several separate Alertmanagers in one cluster, because one HA deployment usually does the job. Some teams run a central Alertmanager for many clusters. Most prefer one per cluster, since each cluster then has fewer external dependencies. A shared Alertmanager also lets tenants add their own alerting rules through a single PrometheusRule.
 
+Think of Alertmanager as the switchboard operator in an old office. Calls (alerts) come in from many extensions. The operator combines the calls about the same fire, decides which person to ring, and holds back calls that are only echoes of a bigger problem. A good switchboard makes one call about one fire, not forty.
+
 ### GPU-fleet specific alerts
 
-Start with the hardware on each node. Xid errors deserve the closest watch, especially code 79, which means the GPU fell off the bus, code 48, a double-bit ECC error (DBE), and code 74 for NVLink. Also watch uncorrectable ECC, retired pages pending, GPU temperature and power throttling (`DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`), NVLink errors and down links, PCIe replay counters, the lost GPU count against the expected count, and an `nvidia-smi` that hangs. Decide for each one whether it pages someone or opens a ticket.
+Start with the hardware on each node. Xid errors deserve the closest watch, especially code 79, which means the GPU fell off the bus, code 48, a double-bit ECC error (DBE), and code 74 for NVLink. An Xid is a numbered error that the NVIDIA driver writes to the kernel log when the GPU reports a fault. Also watch uncorrectable ECC, retired pages pending, GPU temperature and power throttling (`DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`), NVLink errors and down links, PCIe replay counters, the lost GPU count against the expected count, and an `nvidia-smi` that hangs. Decide for each one whether it pages someone or opens a ticket.
 
-On the network side, watch for IB or RoCE link-down events, symbol errors, PFC storms, ECN marks, and any port running slower than expected. For storage, alert on mount errors and throughput drops. At the job level, alert when training throughput falls below baseline, when loss turns NaN, when step-time skew across ranks points to stragglers, or when a checkpoint fails or goes stale. Finally, watch the platform itself: queue wait time at p95, pending reasons, and GPU allocation efficiency. Part 17 covers these in detail.
+On the network side, watch for IB or RoCE link-down events, symbol errors, PFC storms, ECN marks, and any port running slower than expected. PFC is a pause signal that stops traffic on one priority class, and a storm of pause frames means traffic is being held up across the fabric. ECN marks are an early warning that a queue is filling. For storage, alert on mount errors and throughput drops. At the job level, alert when training throughput falls below baseline, when loss turns NaN, when step-time skew across ranks points to stragglers, or when a checkpoint fails or goes stale. A straggler is one slow rank that holds back every other rank at each synchronisation point. Finally, watch the platform itself: queue wait time at p95, pending reasons, and GPU allocation efficiency. Part 17 covers these in detail.
 
-Start with the node hardware alerts, because one bad GPU can hold back an entire job.
+Start with the node hardware alerts, because one bad GPU can hold back an entire job. A single failing GPU in a large training run can make the whole run crawl, and the job's own logs may only say that it is slow. The hardware alert is the one that explains why.
 
 ## 4. Logs
 
 ### Why logs need a central place
 
-Picture a workload with dozens of replicas. A user reports an error, and you must find the one log line behind it. Opening each replica's logs by hand is slow, and it is easy to miss the line. A central collection point lets you search every replica at once.
+Picture a workload with dozens of replicas. A user reports an error, and you must find the one log line behind it. Opening each replica's logs by hand is slow, and it is easy to miss the line. A central collection point lets you search every replica at once. It is the difference between checking every filing cabinet in a building and searching one index.
 
-Logs once lived in a file on a server's disk. That worked when there were fewer workloads and fewer instances. Today, applications usually write to standard out and standard error, the same way a command-line tool prints. Workloads are ephemeral and often have no disk to keep logs, so the logs must leave the workload as they are written.
+Logs once lived in a file on a server's disk. That worked when there were fewer workloads and fewer instances. Today, applications usually write to standard out and standard error, the same way a command-line tool prints. Workloads are ephemeral and often have no disk to keep logs, so the logs must leave the workload as they are written. A pod that is deleted takes its local files with it, so a log that stayed inside the pod is a log that will be lost.
 
 This section follows logs from the platform and its tenant workloads to a storage backend. Most companies already run a log backend. The platform's job is to capture, process and forward logs to it, and storage itself is usually not the platform's concern.
 
 ### What your application should log
 
-Write logs to standard out and standard error. That keeps the app simple, and the platform can ship those streams with the least work. The harder question is what to write. Teams often log too much, and the one line that matters gets buried. Log too little, and you are blind during an incident. The book's rule of thumb is to ask whether the message is actionable. If someone could act on it, log it. If not, it probably adds noise.
+Write logs to standard out and standard error. That keeps the app simple, and the platform can ship those streams with the least work. The harder question is what to write. Teams often log too much, and the one line that matters gets buried. Log too little, and you are blind during an incident. The rule of thumb in *Production Kubernetes* is to ask whether the message is actionable. If someone could act on it, log it. If not, it probably adds noise.
 
-Logs come in two styles. Unstructured logs are plain strings with no fixed format. They need no planning, which is why they are so common. Structured logs have fixed fields that you fill in every time, usually as JSON lines or key-value pairs. A structured line can look like `time="2015-08-09T03:41:12-03:21" msg="hello world!" thread="13" batchId="5"`. Machines can query structured logs far more easily, while people often find them harder to read. Pick the style that fits how your team works.
+Logs come in two styles. Unstructured logs are plain strings with no fixed format. They need no planning, which is why they are so common. Structured logs have fixed fields that you fill in every time, usually as JSON lines or key-value pairs. A structured line can look like `time="2015-08-09T03:41:12-03:21" msg="hello world!" thread="13" batchId="5"`. Machines can query structured logs far more easily, while people often find them harder to read. Pick the style that fits how your team works. A good compromise is structured lines that a person can still read at a glance.
 
 Context is what makes a log line useful. Take a payment service. When a payment fails because the payee is not found, the error alone is not enough. Add the payee name or ID, the ID of the user who tried to pay, and the payment amount. That context helps you troubleshoot and prevent the next failure. Keep sensitive data out, though. A password or card number should never appear in a log.
 
 ### Architecture
 
-Follow a log line through the stack. A container writes to stdout or stderr. The runtime saves that output to files under `/var/log/pods/...`, which chapter 5.9 describes. A node agent runs as a DaemonSet on every node. Fluent Bit, Vector, Promtail/Grafana Alloy, Fluentd and Filebeat all do this job. The agent tails those files, parses them as JSON or CRI, and adds Kubernetes metadata such as namespace, pod, labels and node. It then filters or redacts what it finds before it ships the lines onward.
+Follow a log line through the stack. A container writes to stdout or stderr. The runtime saves that output to files under `/var/log/pods/...`, which chapter 5.9 describes. A node agent runs as a DaemonSet on every node. Fluent Bit, Vector, Promtail/Grafana Alloy, Fluentd and Filebeat all do this job. The agent tails those files, parses them as JSON or CRI, and adds Kubernetes metadata such as namespace, pod, labels and node. It then filters or redacts what it finds before it ships the lines onward. CRI is the container runtime's own log format, and the agent must understand it to read the lines correctly.
 
-The backend stores the logs. Loki is label-indexed, cheap and backed by object storage. Elasticsearch and OpenSearch offer full-text search. ClickHouse, cloud logging services such as Cloud Logging or CloudWatch, and Splunk are other options. Node-level logs include journald output from `kubelet` and `containerd`, the kernel `dmesg` output with Xid messages, and audit logs from the API server. Application files live in volumes.
+The backend stores the logs. Loki is label-indexed, cheap and backed by object storage. Elasticsearch and OpenSearch offer full-text search. ClickHouse, cloud logging services such as Cloud Logging or CloudWatch, and Splunk are other options. The choice depends on the questions you ask most. If you mostly filter by namespace and then search text, a label-indexed store is cheap. If you search every word in every field, a full-text index is worth its cost. Node-level logs include journald output from `kubelet` and `containerd`, the kernel `dmesg` output with Xid messages, and audit logs from the API server. Application files live in volumes.
 
 Several practices keep this pipeline healthy.
 
 - Write structured JSON logs with consistent fields such as `timestamp`, `level`, `msg`, `trace_id`, `request_id`, `job` and `rank`. Avoid free text. Keep multi-line stack traces out, or parse them with a multiline parser.
-- Control the volume. Training frameworks can log every step on every rank, which floods storage. Sample or aggregate those lines. Send numeric series as metrics instead of logs. Set log levels, rotate logs with the kubelet `containerLogMaxSize` setting, and drop noisy lines at the agent.
+- Control the volume. Training frameworks can log every step on every rank, which floods storage. Sample or aggregate those lines. Send numeric series as metrics instead of logs. Set log levels, rotate logs with the kubelet `containerLogMaxSize` setting, and drop noisy lines at the agent. A step counter in a log line is a metric in disguise, and metrics are far cheaper to keep.
 - Labels in Loki must stay low-cardinality, such as namespace, app, container and cluster. Put high-cardinality data inside the log line, and use LogQL filters and parsers to find it.
 - Retention and tiering. Keep hot logs for days in the log store, and move cold logs to object storage. Audit logs follow your compliance rules.
-- Security. Logs can contain secrets or PII, so redact them at the agent. Use RBAC and tenant separation, including Loki multi-tenancy with `X-Scope-OrgID`, and protect access to node logs.
+- Security. Logs can contain secrets or PII, so redact them at the agent. Use RBAC and tenant separation, including Loki multi-tenancy with `X-Scope-OrgID`, and protect access to node logs. PII means personal information, such as names, emails or account numbers.
 - Correlation. Include trace IDs. Grafana Explore lets you jump between metrics, logs and traces, and Loki `derived fields` help with the links.
 - Kubernetes events are not logs. Export them with `kubernetes-event-exporter` or Grafana Alloy `loki.source.kubernetes_events` so you keep them for longer than 1 hour. Alert on repeated `FailedScheduling`, `FailedMount`, `BackOff`, `Unhealthy` and `NodeNotReady`.
 
-The Fluent Bit ConfigMap below shows the essentials. It tails container logs, drops health-check lines, and sends the rest to Loki.
+The Fluent Bit ConfigMap below shows the essentials. It tails container logs, drops health-check lines, and sends the rest to Loki. Read it as a pipeline of four stages. The `INPUT` stage opens the files. The first `FILTER` stage adds the Kubernetes labels. The second `FILTER` stage throws away the health checks. The `OUTPUT` stage ships what is left.
 
 ```yaml
 # Fluent Bit essentials (ConfigMap excerpt)
@@ -550,13 +572,15 @@ The Fluent Bit ConfigMap below shows the essentials. It tails container logs, dr
     Labels job=fluentbit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name']
 ```
 
-Once the logs reach Loki, you query them with LogQL. For example: `{namespace="training"} |= "NCCL WARN"`; `sum by (pod) (rate({namespace="serving"} |= "ERROR" [5m]))`; `{app="vllm"} | json | latency_ms > 2000`.
+Notice the `Labels` line in the output. It takes only four values as labels: the job, the namespace, the pod and the container. Those are low-cardinality choices that Loki can index cheaply. Everything else stays inside the log line.
+
+Once the logs reach Loki, you query them with LogQL. For example: `{namespace="training"} |= "NCCL WARN"`; `sum by (pod) (rate({namespace="serving"} |= "ERROR" [5m]))`; `{app="vllm"} | json | latency_ms > 2000`. The first query finds NCCL warnings in the training namespace. The second counts error lines per pod over five minutes. The third parses each line as JSON and keeps only the slow requests.
 
 ### Kubernetes Events
 
 Logs record what an app did. Events record what the platform did to an object. Events are a native Kubernetes resource that platform components create to report actions, such as a Pod being scheduled or an image being pulled. They work like a platform log, but they are not usually sent to a logging backend.
 
-Events are stored in etcd and kept for one hour by default. That short life is the reason to export them if you may need them later. To see the Events for one object, run `kubectl describe`. The output below shows the Events for a newly created Pod.
+Events are stored in etcd and kept for one hour by default. That short life is the reason to export them if you may need them later. A post-mortem on a Monday morning may need an event from Sunday night, and by then the event is gone. To see the Events for one object, run `kubectl describe`. The output below shows the Events for a newly created Pod.
 
 ```text
 $ kubectl describe pod nginx-6db489d4b7-q8ppw
@@ -573,6 +597,8 @@ Events:
   Normal  Started    30s        kubelet, ip-10-0-0-229.us-east-2.compute.internal   Started container nginx
 ```
 
+Read the Events block as a story in time order. The scheduler assigned the pod to a node. The kubelet then pulled the image, created the container and started it. If a pod is stuck, the story stops at the step that never happened. A pod stuck at Pulling tells you about the registry, and a pod that never reaches Scheduled tells you about the cluster's capacity.
+
 To list Events for a whole namespace, run `kubectl get events -n default`. The output includes Events for the ReplicaSet and the Deployment, not just the Pod.
 
 ```text
@@ -587,15 +613,19 @@ LAST SEEN   TYPE     REASON                OBJECT                              M
 2m6s        Normal   ScalingReplicaSet     deployment/nginx                    Scaled up replica set nginx-6db489d4b7 to 1
 ```
 
+The namespace view adds the parent objects. The ReplicaSet created the pod, and the Deployment scaled the ReplicaSet. Reading both levels together tells you which controller made the decision, which is often the first question in an incident.
+
 Because Events live in the API, you could write automation that watches for specific Events and reacts to them. In practice, teams rarely do this. A more useful option is an Event exporter, which turns Events into metrics that Prometheus can scrape. Export the Events you may need later, since the default one-hour retention will not keep them for you.
 
 ## 5. Traces and OpenTelemetry
 
-**OpenTelemetry (OTel)** standardises how telemetry is produced. SDKs and auto-instrumentation create traces, metrics and logs. The **OpenTelemetry Collector** receives that data over OTLP, through an agent DaemonSet, a gateway Deployment or both. It processes the data with steps such as batching, a memory limiter, attributes, tail sampling and k8sattributes enrichment. Then it exports the data to backends such as Tempo, Jaeger, Prometheus remote write, Loki or cloud APIs. The **OpenTelemetry Operator** manages Collector instances, and it auto-instruments workloads through annotations such as `instrumentation.opentelemetry.io/inject-python: "true"`.
+**OpenTelemetry (OTel)** standardises how telemetry is produced. SDKs and auto-instrumentation create traces, metrics and logs. The **OpenTelemetry Collector** receives that data over OTLP, through an agent DaemonSet, a gateway Deployment or both. It processes the data with steps such as batching, a memory limiter, attributes, tail sampling and k8sattributes enrichment. Then it exports the data to backends such as Tempo, Jaeger, Prometheus remote write, Loki or cloud APIs. The **OpenTelemetry Operator** manages Collector instances, and it auto-instruments workloads through annotations such as `instrumentation.opentelemetry.io/inject-python: "true"`. OTLP is the standard wire format that OpenTelemetry uses to send data between its parts.
 
-For AI services, a trace can follow a request through gateway → auth → router → model server, and show tokenizer, KV-cache and GPU kernel spans along the way. In RAG pipelines, it reveals retrieval latency from the vector database. In agent workflows, it shows each tool call. LLM-specific tools such as OpenLLMetry, Langfuse, Arize Phoenix and LangSmith add prompt, response, token and cost spans.
+Think of the Collector as a sorting office in a postal network. Letters arrive from many senders in many formats. The office stamps them, groups them, drops the duplicates and sends each bundle to the right destination. Your apps do not need to know where the traces are finally stored. They only need to hand their letters to the office.
 
-Three habits make this work. Propagate the W3C `traceparent` through gateways and meshes. Sample intelligently, using head sampling to control volume and tail sampling to keep errors and slow traces. Avoid storing prompts and PII in spans unless a policy allows it.
+For AI services, a trace can follow a request through gateway → auth → router → model server, and show tokenizer, KV-cache and GPU kernel spans along the way. In RAG pipelines, it reveals retrieval latency from the vector database. In agent workflows, it shows each tool call. RAG means retrieval-augmented generation, where the system looks up documents before it asks the model to answer. LLM-specific tools such as OpenLLMetry, Langfuse, Arize Phoenix and LangSmith add prompt, response, token and cost spans.
+
+Three habits make this work. Propagate the W3C `traceparent` through gateways and meshes. The `traceparent` header is the small piece of text that carries the trace ID from one service to the next, and a gateway that drops it breaks the trace in two. Sample intelligently, using head sampling to control volume and tail sampling to keep errors and slow traces. Avoid storing prompts and PII in spans unless a policy allows it.
 
 ### Tracing vocabulary
 
@@ -605,9 +635,11 @@ Distributed tracing follows one request across several services. The OpenTracing
 - **Span:** the work one service does for that request. The operations inside one workload's boundaries form a single span.
 - **Tag:** metadata attached to a span. Tags add context inside the trace and give you searchable indexes.
 
+Think of a trace as a parcel's tracking history. The parcel is the request. Each scan at a depot is a span, with a time and a place. The tags are the notes on each scan, such as the weight or the courier's name. Looking at the whole history tells you where the parcel waited.
+
 When you visualise a trace, you see the full path of one request. That view shows which components slow things down most. It also shows where errors start and how they spread to other parts of the application.
 
-OpenTracing merged with OpenCensus to form OpenTelemetry. The book notes that Jaeger's OpenTelemetry support was still experimental when it was written, and it expects OpenTelemetry to become the de facto standard.
+OpenTracing merged with OpenCensus to form OpenTelemetry. *Production Kubernetes* notes that Jaeger's OpenTelemetry support was still experimental when it was written, and it expects OpenTelemetry to become the de facto standard.
 
 ### Tracing components
 
@@ -619,11 +651,11 @@ A platform that offers tracing needs a few components. The models below come fro
 - **API:** exposes stored traces and spans to other workloads and to visualization layers.
 - **User interface:** the layer app developers use. It queries the API and shows the data in charts they can use to study their systems.
 
-Tracing only works when applications send the data. Win over the application teams early, because even the best platform cannot trace what the apps never send.
+Tracing only works when applications send the data. Win over the application teams early, because even the best platform cannot trace what the apps never send. A platform that offers tracing with no instrumented apps is like a fire alarm with no sensors.
 
 ### Instrumenting services for distributed tracing
 
-Tracing shows how one request moves across several services. The platform can offer tracing with Jaeger or Zipkin, but each service must still be instrumented to produce useful traces. The book works through Jaeger with OpenTracing, using Go. A span is one named, timed operation, and spans make up a trace. The work has three parts: initialize a tracer, create spans, and pass the span context to the next service.
+Tracing shows how one request moves across several services. The platform can offer tracing with Jaeger or Zipkin, but each service must still be instrumented to produce useful traces. *Production Kubernetes* works through Jaeger with OpenTracing, using Go. A span is one named, timed operation, and spans make up a trace. The work has three parts: initialize a tracer, create spans, and pass the span context to the next service.
 
 Start with the tracer. Read its configuration from the environment, using settings such as `JAEGER_SERVICE_NAME` for the service name, instead of hardcoding values. The tracer can also report to your metrics library and your logger. It emits metrics about sampled traces and reported spans, and it logs errors. A logger that prints spans is handy in development. The Go service below does this with Prometheus and the standard logger:
 
@@ -654,7 +686,7 @@ func main() {
 }
 ```
 
-The code creates a Prometheus metrics factory for Jaeger. It then builds a default configuration with no hardcoded values, and creates the tracer from it with the factory and the standard logger.
+The code creates a Prometheus metrics factory for Jaeger. It then builds a default configuration with no hardcoded values, and creates the tracer from it with the factory and the standard logger. The `defer closer.Close()` line matters. It flushes any spans still waiting in memory when the program exits, so the last request is not lost.
 
 When a request arrives, the service must read the span context the previous service sent. In an HTTP service, that context travels in headers. The handler extracts it and starts a child span. The tracer from the previous step must be in scope:
 
@@ -675,6 +707,8 @@ func (s server) handleListPayments(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
+Read the handler as a handoff. The extract step reads the parent's identity from the incoming headers. The start step creates a span that belongs to that parent, so the trace stays connected. The deferred finish step closes the span when the handler returns, however it returns. If the extract step fails, the span becomes a new root, and the trace breaks at this service. That is why the error handling matters even though the example leaves it empty.
+
 Inside the request, the service can add child spans. If a function runs a SQL query, that function can start its own span and name it:
 
 ```go
@@ -684,6 +718,8 @@ func listPayments(ctx context.Context) ([]Payment, error) {
     // run sql query
 }
 ```
+
+The child span shows up nested inside the request span. In the trace view, the database time becomes visible as its own bar, separate from the handler's other work. That separation is the main reason to add child spans. Without them, a slow query looks like a slow handler, and the fix is harder to find.
 
 When this service calls another one, it must pass the trace context along. The OpenTracing helpers inject the context into the outgoing HTTP headers. The client side marks the span as an RPC client call, records the URL and method, and then injects the context into the request:
 
@@ -705,46 +741,48 @@ span.Tracer().Inject(
 resp, err := http.DefaultClient.Do(req)
 ```
 
-The `ext.SpanKindRPCClient.Set` call tags the span as the client side of a service call. The `Inject` call writes the span context into the request headers. Tagging, logging and baggage come after these basics. If your platform team offers tracing as a service, these three steps are all your app needs to join in.
+The `ext.SpanKindRPCClient.Set` call tags the span as the client side of a service call. The `Inject` call writes the span context into the request headers. Tagging, logging and baggage come after these basics. If your platform team offers tracing as a service, these three steps are all your app needs to join in. Missing the inject step is the most common reason a trace stops at a service boundary, so check it first when a trace looks cut short.
 
 ## 6. Dashboards
 
-If you provision Grafana from Git, keep dashboards as code with Jsonnet, Grafonnet or Terraform. The recommended set has eight dashboards that show you what to watch.
+If you provision Grafana from Git, keep dashboards as code with Jsonnet, Grafonnet or Terraform. Dashboards in Git can be reviewed, rolled back and rebuilt after a failure. A dashboard edited by hand in the browser disappears on the next upgrade. The recommended set has eight dashboards that show you what to watch.
 
 1. **Cluster overview** shows node readiness, pod phases, pending and unschedulable pods, API latency and errors, etcd health, the scheduler queue, certificate expiry and GitOps sync status.
-2. **Capacity and allocation** compares allocatable, requested and used CPU, memory and GPU per pool and namespace. It also tracks fragmentation through the largest free GPU block, quota usage, and queue depth and wait time from Kueue metrics.
-3. **Node and GPU health** shows per-node GPU utilisation, memory, power, temperature and clocks. It adds throttle reasons, an ECC and Xid timeline, NVLink and PCIe errors, NIC throughput and errors, and disk and inode use. Heatmaps across the fleet make outliers stand out, since one hot or one slow GPU shows up clearly.
+2. **Capacity and allocation** compares allocatable, requested and used CPU, memory and GPU per pool and namespace. It also tracks fragmentation through the largest free GPU block, quota usage, and queue depth and wait time from Kueue metrics. Fragmentation here means free GPUs that are scattered across nodes, so no single job can use them.
+3. **Node and GPU health** shows per-node GPU utilisation, memory, power, temperature and clocks. It adds throttle reasons, an ECC and Xid timeline, NVLink and PCIe errors, NIC throughput and errors, and disk and inode use. Heatmaps across the fleet make outliers stand out, since one hot or one slow GPU shows up clearly. A heatmap colours each cell by its value, so the bad node is visible at a glance.
 4. **Training job view** tracks GPU utilisation and tensor activity, step time, tokens/s, loss, data-loader wait, checkpoint duration and age, per-rank skew and network bandwidth per node. It also links to logs and pods.
-5. **Inference service view** follows RED plus saturation. It shows RPS, error rate, TTFT, ITL and latency percentiles, queue depth, batch size and KV-cache usage. It also tracks GPU utilisation and SM activity, replicas against the desired count, cold starts, and a breakdown per model and tenant.
+5. **Inference service view** follows RED plus saturation. It shows RPS, error rate, TTFT, ITL and latency percentiles, queue depth, batch size and KV-cache usage. It also tracks GPU utilisation and SM activity, replicas against the desired count, cold starts, and a breakdown per model and tenant. TTFT is time to first token, and ITL is inter-token latency, the gap between tokens after the first.
 6. **Platform and tenant view** shows GPU-hours by team, utilisation against allocation, idle waste and budget burn.
-7. **Network and storage** covers CoreDNS, ingress, CNI drops and conntrack, plus PVC usage, CSI latency and storage throughput.
+7. **Network and storage** covers CoreDNS, ingress, CNI drops and conntrack, plus PVC usage, CSI latency and storage throughput. Conntrack is the kernel table that tracks open network connections, and a full table silently drops new ones.
 8. **Observability stack health** tracks Prometheus ingestion, series count and cardinality, scrape failures, rule evaluation time and Alertmanager notifications. It also covers Loki ingestion and query errors, and storage growth.
 
-A few design rules help you read them all. Put SLO panels at the top, and add drill-down links. Use consistent time ranges and variables such as cluster, namespace, node and job. Show units and thresholds, avoid walls of graphs, and annotate deployments and maintenance events.
+A few design rules help you read them all. Put SLO panels at the top, and add drill-down links. Use consistent time ranges and variables such as cluster, namespace, node and job. Show units and thresholds, avoid walls of graphs, and annotate deployments and maintenance events. An annotation is a marker on the graph that says "a deploy happened here," so a change in the line has a visible cause.
+
+Read a dashboard from the top down, the same way you read an alert. Start with the SLO panel. If it is green, you are looking at a healthy service and the other panels are for curiosity. If it is red, move down to the panel that matches the symptom, and use the drill-down link to reach the detail.
 
 ## 7. Scaling, retention and cost
 
-**Cardinality** is the main scaling problem. Every unique label set becomes a series, and each series costs memory, roughly a few KB. Avoid unbounded labels such as user IDs, request IDs, full URLs and pod UIDs in app metrics. Use `metricRelabelings` to drop heavy series, and check the largest offenders with `topk(10, count by (__name__)({__name__=~".+"}))`. Per-pod histograms with many buckets multiply the problem. DCGM exports many fields per GPU, so restrict the counters CSV to the fields you actually use.
+**Cardinality** is the main scaling problem. Every unique label set becomes a series, and each series costs memory, roughly a few KB. Avoid unbounded labels such as user IDs, request IDs, full URLs and pod UIDs in app metrics. Use `metricRelabelings` to drop heavy series, and check the largest offenders with `topk(10, count by (__name__)({__name__=~".+"}))`. Per-pod histograms with many buckets multiply the problem. DCGM exports many fields per GPU, so restrict the counters CSV to the fields you actually use. Cardinality is multiplicative, so each new label multiplies the total instead of adding to it. That is why one careless label can turn a small system into a large one overnight.
 
-**Prometheus sizing** depends on two things. On disk, expect roughly 1–2 bytes per sample. In memory, the head series dominate, so 1M series take several GB. To spread the load, shard by scrape target with the Operator's `shards` setting, or split by function, with separate Prometheus servers for infrastructure, GPU and applications. Edge clusters can use `agent` mode with remote write.
+**Prometheus sizing** depends on two things. On disk, expect roughly 1–2 bytes per sample. In memory, the head series dominate, so 1M series take several GB. The head is the part of the database that holds the newest series in memory before they are written to disk. To spread the load, shard by scrape target with the Operator's `shards` setting, or split by function, with separate Prometheus servers for infrastructure, GPU and applications. Edge clusters can use `agent` mode with remote write. Agent mode collects and forwards data without keeping a local history, which saves disk on small clusters.
 
-**Long-term storage and a global view** can come from Thanos (sidecar or receive, object storage, a global querier, compaction and downsampling), Grafana Mimir, Cortex, VictoriaMetrics in single or cluster form, or managed Prometheus such as GMP or AMP. For many clusters, each cluster runs Prometheus in agent mode and uses remote write to a central TSDB. Each series carries a `cluster` external label. A central Alertmanager and ruler handle the global rules.
+**Long-term storage and a global view** can come from Thanos (sidecar or receive, object storage, a global querier, compaction and downsampling), Grafana Mimir, Cortex, VictoriaMetrics in single or cluster form, or managed Prometheus such as GMP or AMP. For many clusters, each cluster runs Prometheus in agent mode and uses remote write to a central TSDB. Each series carries a `cluster` external label. A central Alertmanager and ruler handle the global rules. An external label is a tag that Prometheus adds to everything it sends out, so the central system can tell which cluster each series came from.
 
-**High availability** comes from two Prometheus replicas that scrape the same targets. Each replica gets a different external label (`replica`), and Thanos or Mimir queriers deduplicate the results. Run Alertmanager as an HA cluster that uses gossip. Put Prometheus on persistent volumes on fast disks, and protect the WAL.
+**High availability** comes from two Prometheus replicas that scrape the same targets. Each replica gets a different external label (`replica`), and Thanos or Mimir queriers deduplicate the results. Run Alertmanager as an HA cluster that uses gossip. Gossip means the Alertmanager instances share state with each other directly, so a single instance can fail without losing the alert history. Put Prometheus on persistent volumes on fast disks, and protect the WAL.
 
-**Retention** is a set of trade-offs. Keep 7–15 days locally, and 6–13 months remotely with downsampling to 5 m and 1 h. Logs stay hot for 7–30 days. Traces last 3–7 days when you use tail sampling. Audit logs follow your compliance rules. To estimate costs, multiply series by samples/s by retention, and for logs multiply GB/day by retention.
+**Retention** is a set of trade-offs. Keep 7–15 days locally, and 6–13 months remotely with downsampling to 5 m and 1 h. Logs stay hot for 7–30 days. Traces last 3–7 days when you use tail sampling. Audit logs follow your compliance rules. To estimate costs, multiply series by samples/s by retention, and for logs multiply GB/day by retention. Work the estimate out before you ask for the disk. A surprise bill is much harder to explain than a planned one.
 
-**Multi-tenancy** starts with tenant IDs in Mimir, Loki and Tempo. Grafana organisations, teams and folders take RBAC. Label-based enforcement with prom-label-proxy means each team sees only its own namespaces. For strict isolation, give each tenant a separate datasource.
+**Multi-tenancy** starts with tenant IDs in Mimir, Loki and Tempo. Grafana organisations, teams and folders take RBAC. Label-based enforcement with prom-label-proxy means each team sees only its own namespaces. For strict isolation, give each tenant a separate datasource. A datasource is the connection from Grafana to one store, so separate datasources keep the data physically apart as well as logically apart.
 
-**Security** covers several parts. Put TLS and authentication on metrics endpoints where they are exposed, using kube-rbac-proxy or the ServiceMonitor `tlsConfig` and `bearerTokenFile` settings. Add a NetworkPolicy so the monitoring namespace can scrape pods and reach node ports 9100/9400/10250. Secure Grafana with SSO and no anonymous access. Restrict the Alertmanager and Prometheus UIs, guard against metric and label injection by tenants, and keep the monitoring stack's own credentials minimal.
+**Security** covers several parts. Put TLS and authentication on metrics endpoints where they are exposed, using kube-rbac-proxy or the ServiceMonitor `tlsConfig` and `bearerTokenFile` settings. Add a NetworkPolicy so the monitoring namespace can scrape pods and reach node ports 9100/9400/10250. Secure Grafana with SSO and no anonymous access. Restrict the Alertmanager and Prometheus UIs, guard against metric and label injection by tenants, and keep the monitoring stack's own credentials minimal. A metrics endpoint with no authentication can leak internal names, versions and paths to anyone on the network.
 
-**Reliability of the monitoring stack** matters, because monitoring that fails with the system is no help. Run it with priority, resource requests and anti-affinity. Where possible, keep it outside the failure domain it watches. A separate management cluster or external SaaS can host the critical alerting path. Include a Watchdog as well.
+**Reliability of the monitoring stack** matters, because monitoring that fails with the system is no help. Run it with priority, resource requests and anti-affinity. Where possible, keep it outside the failure domain it watches. A separate management cluster or external SaaS can host the critical alerting path. Include a Watchdog as well. The worst outage is the one that breaks the system and the monitor together, because then nobody sees it happen.
 
 Start by finding your largest series, because cardinality is the main scaling problem.
 
 ## 8. Practical diagnosis flows
 
-When a symptom appears, these flows point you to the first thing to check.
+When a symptom appears, these flows point you to the first thing to check. Each flow is a short decision tree. Start at the left, answer the question at each arrow, and follow the branch that matches what you see. Work through the checks in order, because the early ones are cheap and the later ones are expensive.
 
 ```text
 Job slow →  Grafana job view: GPU util low?  yes → data-loader wait / storage throughput / CPU throttling (cAdvisor) / network
@@ -755,7 +793,7 @@ API slow → apiserver_request_duration by verb/resource, APF queues, etcd fsync
 Node flapping → NotReady condition history, kubelet PLEG, runtime errors, disk pressure, kernel logs (Loki: Xid), temperature
 ```
 
-Pick the flow that matches your symptom, and work through its checks in order.
+Pick the flow that matches your symptom, and work through its checks in order. The "Job slow" flow is the most common, and it begins with one question about GPU utilisation. A low answer points to the inputs of the GPU, such as the data loader and storage. A high answer points to the communication between GPUs, where a single slow node can hold everyone back.
 
 ## 9. Lab
 
@@ -765,37 +803,39 @@ Start with the self-checking Python lab, which runs locally. The lab checks thre
 python3 code/part05/k8s_observability_slo_sim_lab.py
 ```
 
-Next, work through these exercises on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware.
+Next, work through these exercises on a `kind` or `kubeadm` cluster. The interactive shell steps below were not run on live hardware. Treat each step as a plan until you have run it yourself. Each step has one goal and one thing to check when you finish.
 
-1. Install kube-prometheus-stack with persistent storage. Explore its default dashboards and rules, and find a control-plane metric for each component. Confirm that the Watchdog alert is firing.
-2. Instrument a small FastAPI app (3.7) with `prometheus-fastapi-instrumentator`. Create a Service and a ServiceMonitor, then verify the target, labels and queries. Deliberately fall into the `release` label mismatch trap, and then fix it.
-3. Write the queries from section 2 against your cluster. Build recording rules, and test them with `promtool test rules` using synthetic series.
-4. Deploy the DCGM exporter, or the one that comes with the GPU Operator. Enable the profiling fields and customise the counters CSV. Build a per-pod GPU panel with the pod-resources mapping. Then simulate Xid events, either directly or with `dcgmi` health injection in the lab, and fire the alert.
-5. Implement a fast and slow burn SLO alert pair for a synthetic service. Trigger failures with fault injection, then test routing, grouping, inhibition and silences. Confirm that a node going down inhibits the pod alerts. Deliver alerts to a webhook receiver, and write the runbook.
+1. Install kube-prometheus-stack with persistent storage. Explore its default dashboards and rules. Find one control-plane metric for each component. Then confirm that the Watchdog alert is firing.
+2. Instrument a small FastAPI app (3.7) with `prometheus-fastapi-instrumentator`. Create a Service and a ServiceMonitor. Then verify the target, the labels and the queries. Next, fall into the `release` label mismatch trap on purpose, and then fix it.
+3. Write the queries from section 2 against your cluster. Build recording rules. Test them with `promtool test rules` using synthetic series.
+4. Deploy the DCGM exporter, or the one that comes with the GPU Operator. Enable the profiling fields and customise the counters CSV. Build a per-pod GPU panel with the pod-resources mapping. Then simulate Xid events, either directly or with `dcgmi` health injection in the lab. Fire the alert.
+5. Implement a fast and slow burn SLO alert pair for a synthetic service. Trigger failures with fault injection. Test routing, grouping, inhibition and silences. Confirm that a node going down inhibits the pod alerts. Deliver alerts to a webhook receiver, and write the runbook.
 6. Deploy Loki with Promtail, Alloy or Fluent Bit. Ship container logs and journald, and ship audit logs if your environment allows it. Build LogQL queries for NCCL warnings, OOM kills and Xid kernel messages. Then create a log-based alert.
-7. Export Kubernetes events to Loki. Build an "events timeline" dashboard, and alert on repeated `FailedScheduling` and `FailedMount` events.
-8. Deploy the OTel Collector and Tempo. Auto-instrument the FastAPI app and a client, then view a trace. Add exemplars that link metrics to traces, and configure tail sampling for errors.
-9. Introduce a high-cardinality label, such as user id, into app metrics. Watch series growth and Prometheus memory, then find the label on the TSDB status page. Fix it with relabeling and a code change.
-10. Add remote write to a central Mimir, VictoriaMetrics or Thanos setup in the lab, using external `cluster` labels. Query across two clusters, and compare costs and retention settings.
-11. Provision a dashboard from Git, through a ConfigMap or Grafana provisioning. Add deployment annotations, and build the training job and inference views.
+7. Export Kubernetes events to Loki. Build an "events timeline" dashboard. Alert on repeated `FailedScheduling` and `FailedMount` events.
+8. Deploy the OTel Collector and Tempo. Auto-instrument the FastAPI app and a client, then view a trace. Add exemplars that link metrics to traces. Configure tail sampling for errors.
+9. Introduce a high-cardinality label, such as user id, into app metrics. Watch the series growth and Prometheus memory. Then find the label on the TSDB status page. Fix it with relabeling and a code change.
+10. Add remote write to a central Mimir, VictoriaMetrics or Thanos setup in the lab, using external `cluster` labels. Query across two clusters. Compare costs and retention settings.
+11. Provision a dashboard from Git, through a ConfigMap or Grafana provisioning. Add deployment annotations. Build the training job and inference views.
 12. Run failure drills. Kill Prometheus with its PVC retained, and check recovery. Fill the disk. Stop an exporter, and verify the `absent` and `up==0` alerts. Make Alertmanager unreachable, and confirm that the Watchdog or DMS alert fires externally.
 13. Clean up when you finish.
+
+Read your lab notes in the same order as the exercises. Steps 1 to 3 show whether your data is right. Steps 4 to 8 show whether your alerts and traces are right. Steps 9 to 12 show whether the stack holds up when things go wrong. A stack that is correct but fragile will still fail the first time someone breaks it on purpose, which is why the failure drills are worth the time.
 
 ## 10. Common mistakes
 
 Watch for these mistakes as you set up monitoring, and check your own setup against each one.
 
-- Shipping dashboards without alerts, or alerts without runbooks.
-- Paging people on CPU percentage or on a single pod restarting.
-- Using high-cardinality labels and per-request IDs in metrics, or scraping everything every 5 s.
-- Relying on GPU utilisation as the only GPU health metric, with no Xid, ECC or throttle alerts and no per-pod mapping.
-- Running a single Prometheus with no HA or remote storage, or keeping monitoring in the same failure domain as the system, with no Watchdog.
-- Leaving logs unstructured and unbounded, letting training frameworks log every step from every rank, or putting secrets in logs.
-- Sampling traces at 100% in production, or having no sampling policy, and putting prompts or PII in spans.
-- Ignoring Kubernetes events, which expire in an hour, and ignoring audit logs.
-- Not versioning dashboards and rules, so manual edits get lost on upgrade.
-- Writing ServiceMonitor selectors that do not match the Prometheus instance, so nothing is scraped.
-- Running shared monitoring with no tenant separation.
+- Shipping dashboards without alerts, or alerts without runbooks. A dashboard nobody watches and an alert nobody can act on are both wasted effort.
+- Paging people on CPU percentage or on a single pod restarting. Those are causes or noise, not symptoms that users feel.
+- Using high-cardinality labels and per-request IDs in metrics, or scraping everything every 5 s. Both make storage and memory costs climb without adding insight.
+- Relying on GPU utilisation as the only GPU health metric, with no Xid, ECC or throttle alerts and no per-pod mapping. A GPU can read 100% while doing almost no useful math.
+- Running a single Prometheus with no HA or remote storage, or keeping monitoring in the same failure domain as the system, with no Watchdog. The monitor then fails silently with the thing it was meant to watch.
+- Leaving logs unstructured and unbounded, letting training frameworks log every step from every rank, or putting secrets in logs. Each of these makes logs expensive to keep and dangerous to share.
+- Sampling traces at 100% in production, or having no sampling policy, and putting prompts or PII in spans. Full sampling costs money, and prompts in spans can leak personal data.
+- Ignoring Kubernetes events, which expire in an hour, and ignoring audit logs. The evidence of a problem often disappears before anyone looks.
+- Not versioning dashboards and rules, so manual edits get lost on upgrade. The next upgrade quietly removes the fix someone made by hand.
+- Writing ServiceMonitor selectors that do not match the Prometheus instance, so nothing is scraped. The dashboards then show no data, which looks like a healthy quiet system.
+- Running shared monitoring with no tenant separation. One team then sees another team's metrics, names and logs.
 
 ## 11. Interview angles
 
@@ -808,16 +848,18 @@ Watch for these mistakes as you set up monitoring, and check your own setup agai
 - "How would you scale Prometheus across many clusters?"
 - "How do you diagnose a slow training job using observability data?"
 
+When you answer the diagnosis question, follow the same path as the decision tree in Section 8. Name the symptom first, then the first metric you check, then the second. Interviewers listen for a method, not a memorised list of metrics.
+
 ## Exercises
 
-Each exercise asks you to write, trace or explain something in your own cluster, so keep notes as you go.
+Each exercise asks you to write, trace or explain something in your own cluster, so keep notes as you go. Write the answer in your own words first. Then check it against the section it names.
 
-1. Work through the observability methods, RED, USE, the Four Golden Signals and ML metrics, along with the three core Kubernetes exporters. Contrast RED and USE. Explain the exact difference between what `cAdvisor` (`/metrics/cadvisor`), `kube-state-metrics` (`KSM`), `node-exporter` and `dcgm-exporter` measure. Then write PromQL queries that join `cAdvisor` usage with `KSM` resource limits and requests.
-2. Work through the Prometheus Operator CRDs, `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `AlertmanagerConfig`, along with the `release` label trap in Production Kubernetes, Chapter 9. Trace the `vllm` ServiceMonitor and the `gpu-alerts` PrometheusRule in section 2. Explain why setting `serviceMonitorSelectorNilUsesHelmValues: false` avoids the `release: kps` label-matching trap. Then contrast `relabelings`, which run before the scrape for target discovery, with `metricRelabelings`, which filter series after the scrape.
-3. Cover SLO-driven alerting with multi-window, multi-burn-rate rules, Alertmanager inhibition, and the dead man's switch, which is the Watchdog alert in Production Kubernetes, Chapter 9. Using `evaluate_slo_multiwindow_burn_rate()` in `code/part05/k8s_observability_slo_sim.py`, derive the `14.4x` fast-burn page threshold for `1h` and `5m`. Then derive the `6.0x` slow-burn ticket threshold for `6h` and `30m`. Both apply to a `99.5%` 30-day availability SLO. Explain why pairing a long window (`1h`) with a short window (`5m`) stops alerts from staying firing for 55 minutes after recovery. Finally, explain Alertmanager inhibition and the Watchdog alert.
-4. Compare the standard DCGM gauges, `DCGM_FI_DEV_GPU_UTIL`, `FB_USED`, `GPU_TEMP`, `XID_ERRORS`, `ECC_DBE_VOL_TOTAL` and `CLOCK_THROTTLE_REASONS`, with the DCGM hardware profiling counters, `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `DRAM_ACTIVE` and `NVLINK_TX_BYTES`. Then trace the decision tree in Section 8 to decide whether a slow 1,000-GPU training job is bottlenecked by CPU data loading, storage I/O, or a single straggler rank or NIC.
-5. Cover logging with Fluent Bit and Loki, Kubernetes `Events` with their `1h` TTL, audit logs, and distributed tracing with the OpenTelemetry Collector and Tempo or Jaeger (Production Kubernetes, Chapter 9). Trace the `Fluent Bit` ConfigMap in Section 4. Explain why Loki index labels must stay low-cardinality, while high-cardinality fields stay in JSON log lines and are queried with LogQL. Explain why Kubernetes `Events` must be exported before their `1h` TTL expires. Then explain how OpenTelemetry (`Trace -> Span -> Tags`, `traceparent`, tail sampling) traces RAG and LLM pipelines.
-6. Work through cardinality control, long-term storage with Thanos, Mimir or VictoriaMetrics, and showback models in Production Kubernetes, Chapter 9. Using `estimate_prometheus_series_cardinality()` and `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`, show how adding a 50,000-value `user_id` label explodes 10,000 series into 500,000,000 series. Compare Prometheus federation with Thanos or Mimir remote write. Then compare requests-based and consumption-based showback, where consumption uses `max(request, usage)`.
+1. Work through the observability methods. Cover RED, USE, the Four Golden Signals and the ML metrics. Then work through the three core Kubernetes exporters. Contrast RED with USE. Explain what `cAdvisor` (`/metrics/cadvisor`) measures. Then explain what `kube-state-metrics` (`KSM`) measures. Then explain what `node-exporter` and `dcgm-exporter` measure. Last, write PromQL queries that join `cAdvisor` usage with `KSM` resource limits and requests.
+2. Work through the Prometheus Operator CRDs: `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `AlertmanagerConfig`. Include the `release` label trap from *Production Kubernetes*, Chapter 9. Trace the `vllm` ServiceMonitor and the `gpu-alerts` PrometheusRule in Section 2. Explain why `serviceMonitorSelectorNilUsesHelmValues: false` avoids the `release: kps` trap. Then contrast `relabelings` with `metricRelabelings`. Say which one runs before the scrape and which one filters series after it.
+3. Study SLO-driven alerting. Cover multi-window, multi-burn-rate rules, Alertmanager inhibition, and the dead man's switch, which is the Watchdog alert in *Production Kubernetes*, Chapter 9. Use `evaluate_slo_multiwindow_burn_rate()` in `code/part05/k8s_observability_slo_sim.py`. Derive the `14.4x` fast-burn page threshold for the long window. Use `1h` as the long window, paired with the short `5m` window. Then derive the slow-burn ticket threshold, the `6.0x` rate, for the `6h` and `30m` windows. Both apply to one availability SLO, set at `99.5%` over 30 days. Explain why the long window pairs with a short window. Stop the alert from firing for 55 minutes after recovery. Finally, explain Alertmanager inhibition and the Watchdog alert.
+4. Compare the standard DCGM gauges with the DCGM hardware profiling counters. The gauges are `DCGM_FI_DEV_GPU_UTIL`, `FB_USED`, `GPU_TEMP`, `XID_ERRORS`, `ECC_DBE_VOL_TOTAL` and `CLOCK_THROTTLE_REASONS`. The profiling counters are `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `DRAM_ACTIVE` and `NVLINK_TX_BYTES`. Then trace the decision tree in Section 8. Use it to decide whether a slow 1,000-GPU training job is limited by CPU data loading, by storage I/O, or by one straggler rank or NIC.
+5. Cover logging with Fluent Bit and Loki, Kubernetes `Events` with their one-hour TTL, audit logs, and distributed tracing with the OpenTelemetry Collector and Tempo or Jaeger. Include *Production Kubernetes*, Chapter 9. Trace the Fluent Bit ConfigMap in Section 4. Explain why Loki index labels must stay low-cardinality. Explain where high-cardinality fields belong instead. Explain why Kubernetes `Events` must be exported before the TTL expires. Then trace a RAG or LLM request through `Trace -> Span -> Tags`, `traceparent` and tail sampling.
+6. Work through cardinality control, long-term storage with Thanos, Mimir or VictoriaMetrics, and the showback models in *Production Kubernetes*, Chapter 9. Use `estimate_prometheus_series_cardinality()` and `compute_showback_requests_vs_consumption()` in `code/part05/k8s_observability_slo_sim.py`. Show how one unbounded label changes the series count. Use a `user_id` label with 50,000 values, applied to a metric that starts at 10,000 series. The result is 500,000,000 series. Compare Prometheus federation with Thanos or Mimir remote write. Then compare requests-based and consumption-based showback, where consumption uses `max(request, usage)`.
 
 ## Checkpoint questions (20)
 

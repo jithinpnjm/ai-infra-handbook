@@ -22,30 +22,30 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU that starts throwing errors while its node stays schedulable. The scheduler keeps sending work to that node, and nothing announces the problem. Xid errors, ECC faults, NVLink faults and thermal throttling can all look like this. A failing GPU that stays in the pool silently ruins training jobs. A multi-hundred-GPU job may restart, or worse, slow down because one rank is degraded.
+Picture a GPU that starts throwing errors while its node stays schedulable. "Schedulable" means the scheduler is still willing to place new Pods on that node. The scheduler keeps sending work to that node, and nothing announces the problem. Xid errors, ECC faults, NVLink faults and thermal throttling can all look like this. Xid is the error code the NVIDIA driver writes to the kernel log when a GPU misbehaves, and ECC is the memory check that catches bit errors in GPU memory. A failing GPU that stays in the pool silently ruins training jobs. A multi-hundred-GPU job may restart, or worse, slow down because one rank is degraded. In a distributed training job, every GPU waits for the slowest one at each step, so one weak GPU can drag the whole job down without ever crashing it.
 
 Large operators automate remediation to deal with this. The dangerous failure then becomes the remediator itself. A bad signal can mark every node unhealthy and drain the fleet. This project builds the small, safe version of that controller. Its decisions are pure and tested. Its destructive actions are budgeted. It only undoes what it did itself, and every refusal is visible.
 
-As you read the requirements below, keep the remediator's own failures in mind.
+Think of this operator as a smoke detector with a fire extinguisher attached. A detector that sprays at every burnt piece of toast would empty the building. So this one checks for a sustained signal before it acts, it only sprays a limited area, and it logs every time it decides not to spray. Keep that picture in mind as you read the requirements below, and keep the remediator's own failures in mind too.
 
 ## Requirements
 
-Start with the boundary between detection and remediation. This project draws that line on purpose, and the operator does not detect faults itself.
+Start with the boundary between detection and remediation. This project draws that line on purpose, and the operator does not detect faults itself. Detection is hard and changes often, while the remediation rules should stay stable. Splitting the two lets you swap the detector without rewriting the operator.
 
-1. Something else publishes a **node condition** such as `GPUHealthy=False`, for example a DCGM exporter with a small agent, node-problem-detector, or a vendor health agent. The operator only reacts to that condition, so either side can be swapped.
-2. A cluster-scoped `GPUHealthPolicy` selects nodes by label and says what to do with them.
-3. A node must stay unhealthy for a **stabilisation window** (default `2m`) before any action, and healthy for a **recovery window** (default `5m`) before it returns to service. That stops a flapping condition from thrashing the node.
-4. The **budget** caps the damage. The operator never takes more than `maxUnavailableNodes`, an integer or a percentage, of the matching nodes out of service.
-5. Modes control how far the operator goes. `Ignore` observes and reports, `Cordon` is the default, and `CordonAndDrain` needs a budget, enforced by a CEL rule. A `dryRun` setting sits on top of these modes.
+1. Something else publishes a node condition such as `GPUHealthy=False`, for example a DCGM exporter with a small agent, node-problem-detector, or a vendor health agent. A node condition is a status field on the Node object that says what some agent has observed. The operator only reacts to that condition, so either side can be swapped.
+2. A cluster-scoped `GPUHealthPolicy` selects nodes by label and says what to do with them. Cluster-scoped means one policy covers nodes across all namespaces, which fits Nodes because Nodes belong to no namespace.
+3. A node must stay unhealthy for a stabilisation window (default `2m`) before any action, and healthy for a recovery window (default `5m`) before it returns to service. That stops a flapping condition from thrashing the node. A flapping condition is one that switches between healthy and unhealthy every few moments. Without windows, the operator would cordon and uncordon the same node again and again.
+4. The budget caps the damage. The operator never takes more than `maxUnavailableNodes`, an integer or a percentage, of the matching nodes out of service. The budget is the brake that stops a bad signal from taking down the whole pool at once.
+5. Modes control how far the operator goes. `Ignore` observes and reports, `Cordon` is the default, and `CordonAndDrain` needs a budget, enforced by a CEL rule. A `dryRun` setting sits on top of these modes. Cordon marks a node so that new Pods avoid it, and drain also moves the existing Pods off it. Drain is the riskier action, so it is the one that must have a budget.
 6. The operator only uncordons nodes that this policy cordoned. It never touches a human's cordon.
 7. Deleting the policy releases its cordons.
 8. Every action and refusal produces an event, and status counters and conditions show the current state.
 
-Decide how long your windows should be before you enable any action, because they set how quickly the operator reacts.
+Decide how long your windows should be before you enable any action, because they set how quickly the operator reacts. A short window reacts fast but may act on noise. A long window is calmer but leaves a bad GPU in service for longer. The defaults in the list are a starting point, not a verdict.
 
 ## Architecture
 
-Before you read the code, look at how the pieces talk to each other. The diagram shows that detection sits outside this operator. It also shows that the reconcile loop does all the work.
+Before you read the code, look at how the pieces talk to each other. The diagram shows that detection sits outside this operator. It also shows that the reconcile loop does all the work. Follow the arrows in order. The Node carries the signal in, the reconciler reads it together with the policy, and then the reconciler writes back to the Node, the Pods, the policy and the event stream.
 
 ```mermaid
 flowchart LR
@@ -62,7 +62,9 @@ flowchart LR
   R -- RequeueAfter for time windows --> R
 ```
 
-The layout of `code/gpuhealth/` below maps each part of the diagram to a file. Use it to find the file behind each step in the rest of this chapter.
+The diagram has a loop at the bottom: the reconciler asks to be woken up again for the time windows. That is how the operator waits for a condition to last without polling forever. The reconciler does not sleep. It returns, and the queue calls it again when the window has passed.
+
+The layout of `code/gpuhealth/` below maps each part of the diagram to a file. Use it to find the file behind each step in the rest of this chapter. The first two lines are the types, the next two are the generated files, and the rest is the logic and the entry point.
 
 ```text
 api/v1alpha1/                  types, markers, generated deepcopy
@@ -77,7 +79,7 @@ cmd/main.go                    manager, flags, health probes
 
 ## The API
 
-A policy is a small object that you apply to the cluster, and the API server checks it before saving it. Here is a complete example.
+A policy is a small object that you apply to the cluster, and the API server checks it before saving it. Here is a complete example. Read it as a plain description of what you want. You name the pool, say which nodes belong to it, and say how far the operator may go.
 
 ```yaml
 apiVersion: platform.example.com/v1alpha1
@@ -95,11 +97,11 @@ spec:
   dryRun: false
 ```
 
-Each field maps to a rule from the requirements. `nodeSelector` picks the nodes, `unhealthyFor` and `healthyFor` set the two windows, and `maxUnavailableNodes` sets the budget. The comment after `action` lists the three modes.
+Each field maps to a rule from the requirements. `nodeSelector` picks the nodes, `unhealthyFor` and `healthyFor` set the two windows, and `maxUnavailableNodes` sets the budget. The comment after `action` lists the three modes. The `dryRun: false` line means the operator really acts. Setting it to `true` would make the operator log what it would do and change nothing.
 
-Some rules are enforced by the API server itself, so they need no webhook. Defaults for `conditionType`, the durations and `action` come from markers, and the enum on `action` is enforced the same way. The rule that `CordonAndDrain` requires `maxUnavailableNodes` is a CEL expression in the schema. An invalid policy is therefore rejected at admission with a clear message. Status carries `observedGeneration`, `matchedNodes`, `unhealthyNodes` and `cordonedNodes`, plus two conditions, `Ready` and `BudgetExhausted`.
+Some rules are enforced by the API server itself, so they need no webhook. Defaults for `conditionType`, the durations and `action` come from markers, and the enum on `action` is enforced the same way. The rule that `CordonAndDrain` requires `maxUnavailableNodes` is a CEL expression in the schema. An invalid policy is therefore rejected at admission with a clear message. Status carries `observedGeneration`, `matchedNodes`, `unhealthyNodes` and `cordonedNodes`, plus two conditions, `Ready` and `BudgetExhausted`. The status is the operator's report card. `matchedNodes` counts the nodes the selector found, `unhealthyNodes` counts the ones showing the bad condition, and `cordonedNodes` lists the ones this policy has actually cordoned. `BudgetExhausted` tells you the budget is full and further actions are being refused.
 
-Here is the complete Go API type definition from `code/gpuhealth/api/v1alpha1/gpuhealthpolicy_types.go`. The `controller-gen` markers in it encode the enum, the defaults, CEL cross-field validation (`XValidation`), the status subresource, cluster scope (`shortName=ghp`), and the `kubectl get ghp` printer columns.
+Here is the complete Go API type definition from `code/gpuhealth/api/v1alpha1/gpuhealthpolicy_types.go`. The `controller-gen` markers in it encode the enum, the defaults, CEL cross-field validation (`XValidation`), the status subresource, cluster scope (`shortName=ghp`), and the `kubectl get ghp` printer columns. Each marker produces one piece of the CRD YAML, so the Go file is the single place you edit.
 
 ```go
 package v1alpha1
@@ -159,11 +161,13 @@ type GPUHealthPolicy struct {
 }
 ```
 
-Before you write a policy for a pool, decide which mode it should run in. The schema rejects a `CordonAndDrain` policy that has no budget.
+Read the Go type in three layers. The enum block at the top defines the three modes as a named string type. The spec struct holds what the user writes. Each field has a Go type, a JSON name and often a default marker. The `GPUHealthPolicy` struct at the bottom ties everything together with the type and metadata fields, plus the `Spec` and `Status` parts that every Kubernetes object has. The `json` tags decide the names in YAML, so `MaxUnavailableNodes` appears as `maxUnavailableNodes` in the manifest.
+
+Before you write a policy for a pool, decide which mode it should run in. The schema rejects a `CordonAndDrain` policy that has no budget. Start with `Ignore` on a new pool, watch the events over several days of real signals, and only then move up. That order lets you see what the operator would have done before it does anything.
 
 ## The decision core (pure)
 
-The decisions are where remediators go wrong, so this project keeps them in three pure functions. Each one takes data in and returns an answer, with no I/O. `Judge` classifies one node, `Budget` turns the budget into a node count, and `Plan` picks the nodes to act on. Because none of them touches the cluster, you can test them with ordinary table tests.
+The decisions are where remediators go wrong, so this project keeps them in three pure functions. A pure function gives the same answer for the same inputs and touches nothing outside itself. Each one takes data in and returns an answer, with no I/O. `Judge` classifies one node, `Budget` turns the budget into a node count, and `Plan` picks the nodes to act on. Because none of them touches the cluster, you can test them with ordinary table tests. A table test is a list of input and expected-output rows that one test function walks through.
 
 ```go
 // Judge classifies one node at time now.
@@ -176,7 +180,9 @@ func Budget(max *intstr.IntOrString, matched int) int
 func Plan(verdicts []NodeVerdict, budget int) (act, blocked []string)
 ```
 
-The table below lists the cases that matter most. The Why column carries the reasoning, and that is the part you are most likely to forget.
+These three signatures are the whole contract. `Judge` takes one policy, one node and the current time, and it returns a verdict about that node. `Budget` takes the raw budget value and the number of matched nodes, and it returns a count. `Plan` takes all the verdicts plus the count, and it returns two lists: the names to act on and the names it had to refuse. Notice that `Plan` gets the list of verdicts rather than the cluster. That is why its behavior is so easy to pin down in a test.
+
+The table below lists the cases that matter most. The Why column carries the reasoning, and that is the part you are most likely to forget. Read each row as a situation from a real pool, then ask what the operator should do and why.
 
 | Situation | Decision | Why |
 |---|---|---|
@@ -189,13 +195,13 @@ The table below lists the cases that matter most. The Why column carries the rea
 | Budget missing | No limit | Explicit opt-in to unlimited; CordonAndDrain forbids it |
 | Budget invalid (negative, unparsable) | 0 | Fail safe: do nothing |
 
-The absent condition deserves a closer look. It is handled exactly like Unknown: no action and no release. A detector outage removes the condition from every node at once. If an absent condition counted as healthy, the next reconcile would uncordon every node the policy had cordoned, just when the signal is gone. If it counted as unhealthy, the same outage would cordon the fleet. Treating it as no evidence either way keeps both mistakes out. The cost is that a node cordoned by the policy stays cordoned if the detector never returns. A human must then remove it, or delete the policy, which releases the policy's own cordons.
+The absent condition deserves a closer look. It is handled exactly like Unknown: no action and no release. A detector outage removes the condition from every node at once. If an absent condition counted as healthy, the next reconcile would uncordon every node the policy had cordoned, just when the signal is gone. If it counted as unhealthy, the same outage would cordon the fleet. Treating it as no evidence either way keeps both mistakes out. The cost is that a node cordoned by the policy stays cordoned if the detector never returns. A human must then remove it, or delete the policy, which releases the policy's own cordons. That cost is deliberate. A stuck cordon is easy to see and easy to undo, while a fleet-wide uncordon or cordon on bad data is neither.
 
-`Plan` counts nodes that are already unschedulable against the budget, whatever the reason. A human's maintenance cordon is capacity that is already gone, so it uses up part of the budget. Candidates beyond the remaining room go into `blocked`. Those surface as the `BudgetExhausted` condition and a Warning event.
+`Plan` counts nodes that are already unschedulable against the budget, whatever the reason. A human's maintenance cordon is capacity that is already gone, so it uses up part of the budget. Candidates beyond the remaining room go into `blocked`. Those surface as the `BudgetExhausted` condition and a Warning event. The budget is a shared room, and anything that takes a seat counts, including a seat taken by someone who did not ask the operator for help.
 
-Passing `now` in, instead of calling `time.Now()`, makes the windows testable. The reconciler passes a `clock.Clock`, and the envtest scenarios back-date `lastTransitionTime` rather than sleeping.
+Passing `now` in, instead of calling `time.Now()`, makes the windows testable. The reconciler passes a `clock.Clock`, and the envtest scenarios back-date `lastTransitionTime` rather than sleeping. If `Judge` read the real clock itself, a test would need to wait two real minutes to check the rule. With an injected time, the test can say "pretend it is now" and get the answer at once.
 
-Work one case through. A node whose condition has just turned False has an age of zero. With `unhealthyFor: 2m`, `Judge` returns Pending with a `WaitFor` of 2m, which is `unhealthyFor` minus the zero age. The same node, after 2m of False, is Unhealthy and eligible for action.
+Work one case through. A node whose condition has just turned False has an age of zero. With `unhealthyFor: 2m`, `Judge` returns Pending with a `WaitFor` of 2m, which is `unhealthyFor` minus the zero age. The same node, after 2m of False, is Unhealthy and eligible for action. Notice that the operator never guesses. It always computes the exact time left, then asks to be woken up at that moment.
 
 Here is the full pure-function implementation from `code/gpuhealth/internal/controller/evaluate.go` (mirrored in `code/part05/gpu_health_operator_sim.py`):
 
@@ -300,28 +306,34 @@ func Plan(verdicts []NodeVerdict, budget int) (act []string, blocked []string) {
 }
 ```
 
+Read `Judge` from the top. It builds a verdict with the node name, whether the node is already unschedulable, and whether this policy owns the cordon. It then looks for the condition named in the policy. If the condition is False, it measures how long ago that flip happened. Past the window, the node is Unhealthy. Before the window, it is Pending, and `WaitFor` says how long to wait. If the condition is True, the same timing logic applies with the healthy window. If the condition is missing, the function returns with no verdict at all. Each branch answers one row of the table above.
+
+Read `Budget` as a conversion. The budget may be a plain number such as `2`, or a percentage such as `10%`. The call to `GetScaledValueFromIntOrPercent` turns a percentage into a count of the matched nodes. Then the function clamps the answer, so it can never exceed the number of matched nodes. A missing budget returns every matched node, which is the explicit unlimited choice from the table. Any error returns zero, which is the fail-safe choice.
+
+Read `Plan` as a room count. First it counts the nodes that are already unschedulable, whatever the reason. It subtracts that count from the budget to find the room left. It sorts the candidate names so that the same input always gives the same output, which keeps tests and logs stable. Then it fills the room in order, and it puts any extra candidates into the blocked list. A sorted order means the operator does not pick a different node each time it runs.
+
 Before you change a pool's budget, check which nodes are already unschedulable. They count against the budget before the operator acts.
 
 ## The reconciler
 
-When a node's condition flips, the reconciler has to decide what to do without anyone asking it. It runs the same steps every time. When you read it, follow the same order the code does: observe, decide, act, then report. The reading order for `Reconcile` is below.
+When a node's condition flips, the reconciler has to decide what to do without anyone asking it. Nobody is watching the screen at 3 a.m. when the flip happens, so the reconciler must run the same safe steps every time, whether the trigger is a real fault, a restart or a duplicate event. When you read it, follow the same order the code does: observe, decide, act, then report. The reading order for `Reconcile` is below. Each numbered step answers one question. Is the policy still here? Should it be cleaned up? Which nodes are in scope? Which of them should change? What should the operator say about itself?
 
-1. **Get** the policy. If it is not found, it was deleted, so return.
-2. **Deletion path:** if `DeletionTimestamp` is set and our finalizer is present, uncordon every node whose owner annotation equals this policy's name, remove the finalizer, and update. Retry on error.
-3. **Ensure finalizer** before any action.
-4. **List** nodes with the policy's label selector, from the cache.
-5. **Judge** each node, and track the smallest time-to-next-transition across nodes for `RequeueAfter`.
-6. **Budget and Plan.**
-7. **Act** unless the action is `Ignore`:
+1. Get the policy. If it is not found, it was deleted, so return.
+2. Deletion path: if `DeletionTimestamp` is set and our finalizer is present, uncordon every node whose owner annotation equals this policy's name, remove the finalizer, and update. Retry on error.
+3. Ensure finalizer before any action.
+4. List nodes with the policy's label selector, from the cache.
+5. Judge each node, and track the smallest time-to-next-transition across nodes for `RequeueAfter`.
+6. Budget and Plan.
+7. Act unless the action is `Ignore`:
    - In `dryRun`, emit a `DryRunCordon` event only.
-   - Cordon with a **merge patch** that sets `spec.unschedulable=true` and three annotations: `cordoned-by` (policy name), `cordon-reason`, `cordoned-at`.
+   - Cordon with a merge patch that sets `spec.unschedulable=true` and three annotations: `cordoned-by` (policy name), `cordon-reason`, `cordoned-at`.
    - For `CordonAndDrain`, evict evictable pods through the `eviction` subresource, which honours PodDisruptionBudgets. A `429 TooManyRequests` is an expected, retried condition (reported as an `EvictionBlocked` event), not an error. DaemonSet pods, mirror pods and finished pods are skipped.
-   - **Uncordon** only nodes that are healthy long enough **and** carry our owner annotation.
-8. **Emit BudgetExhausted events** for blocked nodes.
-9. **Update status** with a patch, skipped when equal to the previous status.
-10. If any action failed, **return an aggregated error** after attempting the others, so backoff and metrics see it. Otherwise return `RequeueAfter` with a one-second margin if a window is pending.
+   - Uncordon only nodes that are healthy long enough and carry our owner annotation.
+8. Emit BudgetExhausted events for blocked nodes.
+9. Update status with a patch, skipped when equal to the previous status.
+10. If any action failed, return an aggregated error after attempting the others, so backoff and metrics see it. Otherwise return `RequeueAfter` with a one-second margin if a window is pending.
 
-The sequence matters because each step depends on the one before it. If you follow one node through these steps, you will see it cordoned, held, and then released, in that order. The key snippets below come from the verified code.
+Steps 1 to 4 gather the picture. Steps 5 and 6 decide. Step 7 acts, and steps 8 to 10 report and decide what comes next. The sequence matters because each step depends on the one before it. If you follow one node through these steps, you will see it cordoned, held, and then released, in that order. The key snippets below come from the verified code.
 
 ```go
 func (r *GPUHealthPolicyReconciler) cordon(ctx context.Context, p *v1alpha1.GPUHealthPolicy, n *corev1.Node) error {
@@ -341,7 +353,9 @@ func (r *GPUHealthPolicyReconciler) cordon(ctx context.Context, p *v1alpha1.GPUH
 }
 ```
 
-The `cordon` function sets the unschedulable flag and the three annotations in one patch, then records a Warning event. Next, the controller's watches decide when a node change should trigger a reconcile at all. `policiesForNode` returns every policy whose selector matches the node's labels, **or** that owns a cordon on it, so a node that lost its label is still released. When you read `policiesForNode`, notice its second condition. It is what keeps a released node tracked. `nodeChanged` ignores Node updates unless `unschedulable`, labels, annotations or a condition's type, status, reason or transition time changed, because kubelets update heartbeat fields constantly.
+The `cordon` function sets the unschedulable flag and the three annotations in one patch, then records a Warning event. Read the first line closely. It takes a copy of the node before any change, so the patch sends only the difference. The `nil` check on the annotation map protects against a write to an empty map, which would panic. The three annotations answer three questions later on: who cordoned this node, why, and when. The event at the end is what a person sees in `kubectl describe`.
+
+Next, the controller's watches decide when a node change should trigger a reconcile at all. `policiesForNode` returns every policy whose selector matches the node's labels, or that owns a cordon on it. The second condition is the important one. It means a node that lost its label is still released, because the policy still owns its cordon. When you read `policiesForNode`, notice that second condition. It is what keeps a released node tracked. `nodeChanged` ignores Node updates unless `unschedulable`, labels, annotations or a condition's type, status, reason or transition time changed, because kubelets update heartbeat fields constantly. A kubelet is the agent on each node that reports its health, and a heartbeat is the regular report it sends. Without this filter, the reconciler would run on every heartbeat and do nothing useful.
 
 ```go
 // SetupWithManager wires watches and the pod index.
@@ -351,6 +365,8 @@ return ctrl.NewControllerManagedBy(mgr).
 	Watches(&corev1.Node{}, handler.EnqueueRequestsFromMapFunc(r.policiesForNode), builder.WithPredicates(nodeChanged())).
 	Complete(r)
 ```
+
+This setup has two watches. The `For` line watches the policy, and the `GenerationChangedPredicate` skips changes that only touch status, which stops the self-trigger loop from the previous chapter. The `Watches` line watches Nodes, maps each Node event to the right policies, and runs the `nodeChanged` filter first. Together they mean the reconciler wakes up for three reasons only: the policy changed, a relevant node field changed, or a time window came due.
 
 The drain path needs three helpers from `code/gpuhealth/internal/controller/gpuhealthpolicy_controller.go`. `releaseAll` walks every node and uncordons the ones this policy owns. `drain` lists the pods on one node and asks the eviction subresource to remove each evictable one. A pod that is already terminating is counted but not evicted again. `evictable` decides which pods are eligible in the first place.
 
@@ -419,11 +435,17 @@ func evictable(pod *corev1.Pod) bool {
 }
 ```
 
+Read `releaseAll` as the cleanup crew. It lists every node, and it skips any node whose owner annotation names someone else. Only the nodes this policy cordoned get uncordoned. That rule is what makes deletion safe for a person's maintenance cordon.
+
+Read `drain` as a careful removal. It asks the cache only for Pods on the one node, using the field index from the previous chapter. For each Pod it asks `evictable` whether to bother. Then it uses the eviction subresource, not a plain delete, so a PodDisruptionBudget can say no. A 429 from the server means the budget said not yet, so the code records an event and moves on. Any other error is kept as the first failure and returned at the end. The function counts the remaining Pods, so the reconciler knows when the node is empty.
+
+Read `evictable` as a filter with four exits. Finished Pods are left alone, since they hold no work. Mirror Pods are created by the kubelet itself from a manifest on the node, so evicting them would be pointless. DaemonSet Pods are meant to run on every node, so the operator leaves them in place. Everything else is eligible.
+
 ### Where this operator fits
 
-Three layers sit around the operator. Detection runs on each node: a DCGM exporter with a small agent, or node-problem-detector, watches for Xid faults, ECC errors and NVLink failures and writes the `GPUHealthy` node condition. Part 10 and Part 11 cover that tooling, along with the GPU Operator that installs drivers and the device plugin. Scheduling places multi-GPU workloads on schedulable nodes, which Part 11 also covers. Remediation, the cordon and drain this chapter builds, is the last step, and the operations part of the handbook covers running such remediation across a fleet.
+Three layers sit around the operator. Detection runs on each node: a DCGM exporter with a small agent, or node-problem-detector, watches for Xid faults, ECC errors and NVLink failures and writes the `GPUHealthy` node condition. DCGM is NVIDIA's data center GPU manager, which exports health and usage numbers. Part 10 and Part 11 cover that tooling, along with the GPU Operator that installs drivers and the device plugin. Scheduling places multi-GPU workloads on schedulable nodes, which Part 11 also covers. Remediation, the cordon and drain this chapter builds, is the last step, and the operations part of the handbook covers running such remediation across a fleet.
 
-The operator's job is narrow. It acts on the condition that the detection layer writes, and on nothing else.
+The operator's job is narrow. It acts on the condition that the detection layer writes, and on nothing else. If you find yourself wanting the operator to read GPU counters directly, stop and ask whether that logic belongs in the detector instead. Keeping the boundary narrow is what lets you replace either side later without a rewrite.
 
 ## Design decisions and why
 
@@ -431,23 +453,23 @@ Each rule in this design answers a specific way that a remediator can do harm. Y
 
 The operator reacts to a condition, and it does not detect faults. Detection logic changes with each hardware generation, so it belongs in the detector. See Part 10 and 11 for DCGM and the GPU Operator's health pieces. This keeps the operator small and easy to swap.
 
-The controller keeps no in-memory state that it needs after a restart. Everything it needs lives on the objects: the owner annotation on the Node and the policy status. A new leader therefore makes the same decisions.
+The controller keeps no in-memory state that it needs after a restart. Everything it needs lives on the objects: the owner annotation on the Node and the policy status. A new leader therefore makes the same decisions. If the operator crashed in the middle of a cordon, the next run reads the annotations from the Nodes and carries on from there.
 
-Provenance matters more than assumption. The owner annotation prevents the classic bug in which automation undoes a person's deliberate cordon.
+Provenance matters more than assumption. The owner annotation prevents the classic bug in which automation undoes a person's deliberate cordon. Without the annotation, the operator would see a cordoned node and have no way to know whose cordon it was.
 
-The budget counts all unavailable nodes, not only the ones this operator cordoned. An ongoing maintenance window therefore reduces what automation may take.
+The budget counts all unavailable nodes, not only the ones this operator cordoned. An ongoing maintenance window therefore reduces what automation may take. This is the safe choice, because a maintenance window already uses up capacity, and the operator should respect that.
 
-Dry-run and `Ignore` are first-class modes. You can roll out on a production pool in observe-only mode, check events and status against reality, and then enable `Cordon`.
+Dry-run and `Ignore` are first-class modes. You can roll out on a production pool in observe-only mode, check events and status against reality, and then enable `Cordon`. First-class means they are real features with their own tests, not hacks you remove later.
 
-Cordon comes first, and drain is optional. Cordon is cheap and reversible. Drain kills running work, which can be an expensive training job, so it should be a deliberate opt-in per pool. Checkpointing and PodDisruptionBudgets should be in place first. See Parts 14 and 17.
+Cordon comes first, and drain is optional. Cordon is cheap and reversible. Drain kills running work, which can be an expensive training job, so it should be a deliberate opt-in per pool. Checkpointing and PodDisruptionBudgets should be in place first. A checkpoint is a saved copy of training progress, so a drained job can resume instead of starting over. See Parts 14 and 17.
 
-Uncertain input gets conservative handling. An absent or Unknown condition neither triggers action nor releases a cordon, and an invalid budget means zero.
+Uncertain input gets conservative handling. An absent or Unknown condition neither triggers action nor releases a cordon, and an invalid budget means zero. When the operator does not know, it does nothing, and that is the right default for a tool that can take capacity away.
 
 Before you enable `Cordon` on a pool, run it in `dryRun` or `Ignore` first, and compare its events and status with what is really happening.
 
 ## What the tests prove
 
-The envtest suite runs the real manager against a real kube-apiserver and etcd. There is no kubelet and no node controller in that setup. The table below lists what the suite exercised and whether each scenario passed.
+The envtest suite runs the real manager against a real kube-apiserver and etcd. There is no kubelet and no node controller in that setup. That means the suite can check the API behavior the operator depends on, such as patches, finalizers and status writes, but it cannot check what a real node does. The table below lists what the suite exercised and whether each scenario passed.
 
 | Scenario | Result |
 |---|---|
@@ -457,29 +479,31 @@ The envtest suite runs the real manager against a real kube-apiserver and etcd. 
 | Node just turned unhealthy: not cordoned immediately; cordoned after the window with no further node event (proves `RequeueAfter`) | Passed |
 | Deleting the policy: its own cordon released, a human-applied cordon on another node left in place, policy actually disappears (finalizer removed) | Passed |
 
-If you read the budget row closely, you can see the arithmetic at work. With `maxUnavailableNodes: 1`, the budget leaves room for one cordon. Three nodes are unhealthy, so one is cordoned and the other two are blocked, and `BudgetExhausted=True` appears in status.
+Each row is a promise the operator makes to a user. The first row says a bad node gets cordoned and a good node is left alone. The second row says the budget holds even when every node is bad. The third row says dry run really is dry. The fourth row says the window is honored without a fresh event to wake the reconciler, which is the `RequeueAfter` behavior. The fifth row says deleting the policy cleans up only its own work.
 
-Two groups of unit tests sit alongside these scenarios. Table tests cover `Judge` with the six node rows of the decision table, and separate tests cover the two budget rows and `Plan`. All of them ran with `-race` and `-count=1`, and `go vet` was clean.
+If you read the budget row closely, you can see the arithmetic at work. With `maxUnavailableNodes: 1`, the budget leaves room for one cordon. Three nodes are unhealthy, so one is cordoned and the other two are blocked, and `BudgetExhausted=True` appears in status. Notice that the two blocked nodes are not forgotten. They stay in the candidate list, so when the cordoned node recovers, the operator can take the next one.
+
+Two groups of unit tests sit alongside these scenarios. Table tests cover `Judge` with the six node rows of the decision table, and separate tests cover the two budget rows and `Plan`. All of them ran with `-race` and `-count=1`, and `go vet` was clean. The `-count=1` flag turns off the test cache, so the results come from a fresh run.
 
 Anything outside this table stays untested.
 
 ## What the tests do not prove
 
-The passing tests cover a lot, but several paths were never exercised. These are the gaps you should know about.
+The passing tests cover a lot, but several paths were never exercised. These are the gaps you should know about. A gap you know about is much safer than one you discover during an incident, so read each one as a warning sign for a real rollout.
 
-Eviction and drain are untested. envtest has no kubelet or disruption controller, so this path was reviewed but never run. Before you enable `CordonAndDrain`, test on a kind cluster. Include a PodDisruptionBudget, a DaemonSet pod, a bare pod without an owner, and a pod stuck terminating. Evicting the bare pod deletes it permanently.
+Eviction and drain are untested. envtest has no kubelet or disruption controller, so this path was reviewed but never run. Before you enable `CordonAndDrain`, test on a kind cluster. Include a PodDisruptionBudget, a DaemonSet pod, a bare pod without an owner, and a pod stuck terminating. Evicting the bare pod deletes it permanently, because nothing will recreate it. That is the reason to test this case first.
 
-RBAC is also unchecked. envtest runs as admin, so the generated ClusterRole was never tested against a real ServiceAccount. Run `kubectl auth can-i --as=system:serviceaccount:NS:SA` for each verb to check it yourself.
+RBAC is also unchecked. envtest runs as admin, so the generated ClusterRole was never tested against a real ServiceAccount. Run `kubectl auth can-i --as=system:serviceaccount:NS:SA` for each verb to check it yourself. A ServiceAccount is the identity the operator's Pod runs under, so the check answers "can this operator really do its job, and nothing more?"
 
 Scale and timing are not covered either. The suite does not test 1,000 nodes, API server throttling, or cache memory. Leader election, the image build and the deployment manifests are not exercised.
 
-Finally, the suite assumes the condition source. It does not test detection, so the operator's behaviour on real faults is still an open question.
+Finally, the suite assumes the condition source. It does not test detection, so the operator's behaviour on real faults is still an open question. The suite only proves the operator reacts correctly to a condition that someone set by hand.
 
-State these limits in the project README. Tests that sound broader than they are produce misplaced confidence.
+State these limits in the project README. Tests that sound broader than they are produce misplaced confidence. A reader who sees a green test suite should know exactly what that green means.
 
 ## Failure modes to rehearse
 
-Rehearse these failures before you rely on the operator. Each row says what the operator should do when that failure happens.
+Rehearse these failures before you rely on the operator. Each row says what the operator should do when that failure happens. Rehearsing means you cause the failure on purpose, in a test cluster, and watch the operator respond.
 
 | Failure | Expected behaviour |
 |---|---|
@@ -492,31 +516,31 @@ Rehearse these failures before you rely on the operator. Each row says what the 
 | Policy edited to `Ignore` | No new actions; existing cordons remain until you delete the policy or the nodes recover. Decide and document whether `Ignore` should release |
 | Eviction blocked by PDB | `EvictionBlocked` event, requeue every 15 seconds, no error storm |
 
-Two rows ask you to make a decision. The detector crash row leaves open whether you want a safeguard timeout. The `Ignore` row asks whether that mode should release cordons. Decide both questions and write down the answers.
+Two rows ask you to make a decision. The detector crash row leaves open whether you want a safeguard timeout. The `Ignore` row asks whether that mode should release cordons. Decide both questions and write down the answers. The operator will not answer them for you, and the right answer depends on how your team wants to be paged.
 
 ## Extension ideas
 
-The operator as built is deliberately small. These are directions you could take it next. None of them is built in this chapter.
+The operator as built is deliberately small. These are directions you could take it next. None of them is built in this chapter, so treat each one as a design question you would need to answer first.
 
 1. Add Prometheus metrics, such as `gpuhealth_cordoned_nodes` and `gpuhealth_blocked_total`, so the cordon count and the blocked count can be graphed.
-2. Add a **taint** option, `NoSchedule` or `NoExecute`, in place of cordon, with tolerations for diagnostics.
+2. Add a taint option, `NoSchedule` or `NoExecute`, in place of cordon, with tolerations for diagnostics. A taint is a label on a node that repels Pods, and a toleration is what lets a Pod ignore it. A `NoExecute` taint also evicts Pods that do not tolerate it, so it is closer to drain than cordon.
 3. Add a per-node cooldown to stop a flapping node from cycling between cordon and uncordon. You would store the last-action time as an annotation.
-4. Add a node **reboot or reset** action through a separate, more strictly budgeted controller (Part 7/17).
-5. Add a global **circuit breaker**. If more than X percent of matched nodes turn unhealthy within Y minutes, the operator stops acting and pages someone, on the theory that the signal is broken.
+4. Add a node reboot or reset action through a separate, more strictly budgeted controller (Part 7/17).
+5. Add a global circuit breaker. If more than X percent of matched nodes turn unhealthy within Y minutes, the operator stops acting and pages someone, on the theory that the signal is broken.
 6. Integrate with Slurm or Run:ai-style schedulers, so that draining coordinates with job checkpoints.
 7. Package the operator with Helm or kustomize, sign the image, and attach an SBOM (5.27).
 
-If you extend the operator only once, start with the circuit breaker. It guards against the failure this chapter began with.
+If you extend the operator only once, start with the circuit breaker. It guards against the failure this chapter began with. A circuit breaker here means a switch that opens when too many nodes fail at once, and stops the operator from acting until a person looks.
 
 ## Lab
 
-Start with the self-checking Python lab. Run it locally to confirm the pure logic before you touch a cluster. It checks the `judge_node` state machine across all 6 condition states, `compute_budget` with `plan_remediation` (which counts human maintenance cordons against `maxUnavailableNodes`), and `is_pod_evictable`, which skips `DaemonSet`, mirror and terminal pods.
+Start with the self-checking Python lab. Run it locally to confirm the pure logic before you touch a cluster. It checks the `judge_node` state machine across all 6 condition states, `compute_budget` with `plan_remediation` (which counts human maintenance cordons against `maxUnavailableNodes`), and `is_pod_evictable`, which skips `DaemonSet`, mirror and terminal pods. A state machine here is simply the set of states a node can be in, and the rules for moving between them.
 
 ```bash
 python3 code/part05/gpu_health_operator_sim_lab.py
 ```
 
-Next, run the Go unit and `envtest` suites in `code/gpuhealth/`. These commands were verified here, and they install the two tools they need first.
+Next, run the Go unit and `envtest` suites in `code/gpuhealth/`. These commands were verified here, and they install the two tools they need first. Run them in order. The first two lines install the generators, the next two generate the code, and the last line runs the checks.
 
 ```bash
 cd code/gpuhealth
@@ -530,14 +554,16 @@ go vet ./... && go test -race -count=1 -v ./internal/controller/
 
 The cluster step was not run on a live cluster, on kind or GKE. When you run it on your own cluster, follow these steps in order.
 
-1. Apply the CRD with `kubectl apply -f config/crd/`, then run the manager locally against your kubeconfig with `go run ./cmd --leader-elect=false`.
-2. Create a policy with `dryRun: true`. To simulate a fault, run `kubectl proxy` and PATCH the node's status subresource to add `GPUHealthy=False` with an old `lastTransitionTime`. A kubelet overwrites the conditions it owns, so use a custom condition type that only you set.
+1. Apply the CRD with `kubectl apply -f config/crd/`. Then run the manager locally against your kubeconfig with `go run ./cmd --leader-elect=false`.
+2. Create a policy with `dryRun: true`. To simulate a fault, run `kubectl proxy`. Then PATCH the node's status subresource to add `GPUHealthy=False` with an old `lastTransitionTime`. An old timestamp makes the window look already passed. A kubelet overwrites the conditions it owns, so use a custom condition type that only you set.
 3. Check the events and status, and confirm that nothing is cordoned. Then turn `dryRun` off and watch the cordon and its annotations. Restore the condition and watch the uncordon after the window.
 4. Build and push the image, apply RBAC, and deploy with 2 replicas and `--leader-elect`. Then kill the leader.
 
+Each step answers one question. Step 1 asks whether the manager starts. Step 2 asks whether the dry run reports without acting. Step 3 asks whether the real action and the real release both happen. Step 4 asks whether a second replica takes over. Write down what you expect before each step.
+
 ## Interview angles
 
-You can use these questions to check that you can explain the reasoning behind this project, not only its code.
+You can use these questions to check that you can explain the reasoning behind this project, not only its code. A strong answer explains the rule first, then the failure it prevents.
 
 - Design a node-remediation controller for a GPU cluster. What are the safety properties you insist on?
 - How do you prevent it from draining an entire fleet on a bad signal?
@@ -550,14 +576,14 @@ You can use these questions to check that you can explain the reasoning behind t
 
 ## Exercises
 
-Keep the code open while you work through these, because each exercise names the files and functions you will need.
+Keep the code open while you work through these. Each exercise names the files and functions you will need, and each one starts from a situation a platform team could face.
 
-1. Start with the boundary between fault detection (`DCGM` / `NPD`) and budgeted remediation (`GPUHealthPolicy`) across the GPU platform layers. Explain why `GPUHealthPolicy` reacts to a `NodeCondition` (`GPUHealthy=False`) instead of polling `nvidia-smi` or DCGM directly inside the operator. Then trace how NFD/GFD (`nvidia.com/gpu.present: "true"`), DCGM exporter/NPD, and `GPUHealthPolicy` interact.
-2. Work with `Judge`, `Budget` and `Plan` in `code/gpuhealth/internal/controller/evaluate.go`. Using `judge_node()`, `compute_budget()` and `plan_remediation()` in `code/part05/gpu_health_operator_sim.py`, trace all 8 rows of the decision table: False `>=` `unhealthyFor`, False `<` `unhealthyFor`, True `>=` `healthyFor`, True `<` `healthyFor`, absent, `Unknown`, missing budget, and invalid budget. Then explain why `Plan` counts already-unschedulable nodes, including human cordons, against `budget`.
-3. Trace how `Reconcile` implements `unhealthyFor: 2m` and `healthyFor: 5m` in a stateless, level-triggered controller. Do it without spawning background `time.Sleep` goroutines. Show how `Judge` computes `WaitFor = unhealthyFor - age` and `HealthyWaitFor = healthyFor - age`, and how the reconciler returns `ctrl.Result{RequeueAfter: minWait + time.Second}`.
-4. Work through provenance annotations (`platform.example.com/cordoned-by`), finalizer release (`releaseAll`), and human maintenance safety. Trace what happens when (a) a human SRE runs `kubectl cordon gpu-01`, (b) `gpu-02` turns unhealthy and is cordoned by `GPUHealthPolicy/h100-pool`, and (c) an admin runs `kubectl delete gpuhealthpolicy h100-pool`. Then prove from `releaseAll` and `uncordon` why `gpu-02` is uncordoned while `gpu-01` remains cordoned.
-5. Trace safe node draining through `drain` and `evictable`, and through the `FieldIndexer` lookup and the PodDisruptionBudget backoff. Using `is_pod_evictable()` in `code/part05/gpu_health_operator_sim.py` and `drain()` in `gpuhealthpolicy_controller.go`, explain which Pods are skipped (`Succeeded`/`Failed`, mirror pods, `DaemonSet` pods). Explain how `r.SubResource("eviction").Create(ctx, pod, ev)` interacts with `PodDisruptionBudget`s (`429 TooManyRequests`), and why `setMin(15 * time.Second)` re-polls until all pods terminate.
-6. Walk through the 5 `envtest` scenarios in `suite_test.go`, verified in `code/gpuhealth/`. Explain why `drain()` and RBAC require a real `kind`/GKE cluster test. Then design an extension that trips a fleet-wide circuit breaker if more than 25 percent of nodes turn `GPUHealthy=False` within 3 minutes.
+1. A new pool is being planned, and someone asks why the operator does not poll the GPU tools directly. Start with the boundary between fault detection (`DCGM` / `NPD`) and budgeted remediation (`GPUHealthPolicy`) across the GPU platform layers. Explain why `GPUHealthPolicy` reacts to a `NodeCondition` (`GPUHealthy=False`). Explain why it does not poll `nvidia-smi` or DCGM directly inside the operator. Then trace how NFD/GFD (`nvidia.com/gpu.present: "true"`), DCGM exporter/NPD, and `GPUHealthPolicy` interact.
+2. A reviewer wants proof that every decision row is covered. Work with `Judge`, `Budget` and `Plan` in `code/gpuhealth/internal/controller/evaluate.go`. Use `judge_node()`, `compute_budget()` and `plan_remediation()` in `code/part05/gpu_health_operator_sim.py`. Trace all 8 rows of the decision table. The rows are False `>=` `unhealthyFor`, False `<` `unhealthyFor`, True `>=` `healthyFor`, True `<` `healthyFor`, absent, `Unknown`, missing budget, and invalid budget. Then explain why `Plan` counts already-unschedulable nodes, including human cordons, against `budget`.
+3. A teammate asks how a stateless controller can wait two minutes without spawning background `time.Sleep` goroutines. Trace how `Reconcile` implements `unhealthyFor: 2m` and `healthyFor: 5m`. Show how `Judge` computes `WaitFor = unhealthyFor - age` and `HealthyWaitFor = healthyFor - age`. Then show how the reconciler returns `ctrl.Result{RequeueAfter: minWait + time.Second}`.
+4. A human engineer cordoned a node by hand, and the operator must not undo it. Work through provenance annotations (`platform.example.com/cordoned-by`), finalizer release (`releaseAll`), and human maintenance safety. Trace three steps in order. First, a human SRE runs `kubectl cordon gpu-01`. Second, `gpu-02` turns unhealthy and is cordoned by `GPUHealthPolicy/h100-pool`. Third, an admin runs `kubectl delete gpuhealthpolicy h100-pool`. Then prove from `releaseAll` and `uncordon` why `gpu-02` is uncordoned while `gpu-01` remains cordoned.
+5. A drain is about to start on a busy node, and you need to know which Pods will be touched. Trace safe node draining through `drain` and `evictable`, through the `FieldIndexer` lookup and the PodDisruptionBudget backoff. Using `is_pod_evictable()` in `code/part05/gpu_health_operator_sim.py` and `drain()` in `gpuhealthpolicy_controller.go`, explain which Pods are skipped. Those are `Succeeded` and `Failed` Pods, mirror Pods and `DaemonSet` Pods. Explain how `r.SubResource("eviction").Create(ctx, pod, ev)` interacts with `PodDisruptionBudget`s (`429 TooManyRequests`). Then explain why `setMin(15 * time.Second)` re-polls until all Pods terminate.
+6. Your manager asks whether the five envtest scenarios are enough for a release. Walk through the 5 `envtest` scenarios in `suite_test.go`, verified in `code/gpuhealth/`. Explain why `drain()` and RBAC require a real `kind`/GKE cluster test. Then design an extension that trips a fleet-wide circuit breaker if more than 25 percent of nodes turn `GPUHealthy=False` within 3 minutes.
 
 ## Checkpoint questions (20)
 

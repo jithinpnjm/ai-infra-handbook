@@ -20,30 +20,33 @@ lab_venue: "GCP / GKE"
 | Part | Part 5: Kubernetes |
 | Status | Drafted, labs **untested** |
 
+
 ## Why this matters for AI infrastructure
 
-Picture an on-call morning. A GPU platform has just been upgraded, and new training jobs no longer start. To find the cause, you need to know which custom resources exist and which controller acts on each one. Almost every AI-specific component on Kubernetes is a custom resource plus an operator.
+Picture an on-call morning. A GPU platform was upgraded overnight, and new training jobs no longer start. The Pods look fine, and the scheduler has not complained. To find the cause, you need to know which custom resources exist, which controller acts on each one, and what state that controller last wrote. Almost every AI-specific component on Kubernetes is a custom resource plus an operator, so this kind of morning comes up often. Each piece has its own resource type, and each type has its own controller.
 
-You will meet these resources. `ClusterPolicy` belongs to the GPU Operator, and `NicClusterPolicy` to the Network Operator. `NetworkAttachmentDefinition` comes from Multus, and `Workload` and `ClusterQueue` come from Kueue. Training runs use `PyTorchJob`, `MPIJob` and `JobSet`, while `RayCluster` and `RayJob` cover Ray. `InferenceService` comes from KServe, and `Application` from Argo. It also includes `Notebook`, `Certificate` and `ServiceMonitor`.
+You will meet these resources. `ClusterPolicy` belongs to the GPU Operator, and `NicClusterPolicy` to the Network Operator. `NetworkAttachmentDefinition` comes from Multus, and `Workload` and `ClusterQueue` come from Kueue. Training runs use `PyTorchJob`, `MPIJob` and `JobSet`, while `RayCluster` and `RayJob` cover Ray. `InferenceService` comes from KServe, and `Application` from Argo. It also includes `Notebook`, `Certificate` and `ServiceMonitor`. Do not try to memorize the whole list. Learn the pattern instead. Find the resource, find its owner, then read the status it reports.
 
-Operating GPU platforms means installing, upgrading, debugging and sometimes writing operators. This chapter explains the extension mechanism from two sides. The API side covers CRDs, their schemas, validation and versioning. The controller side covers the operator pattern, its maturity levels and the tooling choices. Then you can read an operator's design, reason about how it fails, and decide whether to build your own (5.31, 5.32).
+Operating GPU platforms means installing, upgrading, debugging and sometimes writing operators. This chapter explains the extension mechanism from two sides. The API side covers CRDs, their schemas, validation and versioning. The controller side covers the operator pattern, its maturity levels and the tooling choices. With both sides in mind, you can read an operator's design, reason about how it fails, and decide whether to build your own (5.31, 5.32).
 
-When an operator misbehaves, start by reading the custom resources it manages and the design behind them.
+When an operator misbehaves, start by reading the custom resources it manages and the design behind them. The custom resource tells you what someone asked for. The status tells you what the operator believes it has done about that request. The gap between those two is usually where the problem is.
 
 ## Prerequisites and outcomes
 
-This chapter builds on 5.5 and 5.6, which cover API machinery and controllers. Read those first if the terms are new to you. When you finish, you should be able to do the following.
+This chapter builds on 5.5 and 5.6, which cover API machinery and controllers. Read those first if the terms are new to you. The API machinery is how objects are stored and served, and the controller is the loop that makes reality match them. Without those two ideas, the rest of this chapter will feel like a list of YAML fields with no reason behind them.
 
-- Write CRDs with structural schemas. Validate them with OpenAPI v3, `x-kubernetes-validations` CEL rules, enums, formats and defaults. Add printer columns, short names, scope and categories, and understand pruning and `preserveUnknownFields`.
-- Design API versions and conversion, including the storage version, conversion webhooks and deprecation. Add subresources such as `status` and `scale`, and manage field ownership with server-side apply.
-- Design good CRD APIs with spec and status, conditions, immutability, references, references to secrets, idempotent semantics and extensibility. You should also be able to spot and avoid the common anti-patterns.
-- Explain the operator pattern, the capability levels, and how operators manage install, upgrade, backup, scaling and failure recovery. Choose between Helm, Ansible, Go with kubebuilder or Operator SDK, kopf, Metacontroller, Crossplane compositions, Kyverno generate, or a plain controller.
-- Package and distribute operators as a Helm chart, as OLM bundles and catalogs, or with kustomize. Manage CRD upgrades safely, and set least-privilege RBAC.
-- Test and operate operators. That covers observability, leader election, metrics, events, webhooks and failure handling.
+The list below is a self-check, and each line is a question you should be able to answer by the end. If a question feels unfamiliar, go back to the section that covers it.
+
+- Can you write a CRD with a structural schema? Can you validate it with OpenAPI v3, `x-kubernetes-validations` CEL rules, enums, formats and defaults? Can you add printer columns, short names, scope and categories, and explain what pruning and `preserveUnknownFields` do?
+- Can you design API versions and conversion, including the storage version, conversion webhooks and deprecation? Can you add subresources such as `status` and `scale`, and manage field ownership with server-side apply?
+- Can you design a good CRD API with spec and status, conditions, immutability, references, idempotent semantics and room to grow? Can you spot the common anti-patterns?
+- Can you explain the operator pattern and its capability levels, and say how an operator handles install, upgrade, backup, scaling and failure recovery? Can you choose between Helm, Ansible, Go with kubebuilder or Operator SDK, kopf, Metacontroller, Crossplane compositions, Kyverno generate and a plain controller?
+- Can you package and distribute an operator as a Helm chart, as OLM bundles and catalogs, or with kustomize? Can you upgrade CRDs safely and set least-privilege RBAC?
+- Can you test and operate an operator? That covers observability, leader election, metrics, events, webhooks and failure handling.
 
 ## 1. Extension points recap
 
-Before you write a CRD, it helps to know what else Kubernetes lets you extend. Each mechanism changes a different part of the system. Use the table as a quick lookup, and read the Use column to see which mechanism fits the problem in front of you.
+Before you write a CRD, it helps to know what else Kubernetes lets you extend. Think of Kubernetes as a building with many doors. Each extension point is a door that a different kind of change can walk through. Each mechanism changes a different part of the system, so picking the right one saves you from forcing a change through the wrong door. Use the table as a quick lookup, and read the Use column to see which mechanism fits the problem in front of you.
 
 | Mechanism | Extends | Use |
 |---|---|---|
@@ -57,49 +60,49 @@ Before you write a CRD, it helps to know what else Kubernetes lets you extend. E
 
 ### Why Kubernetes made its API extensible
 
-Once an application runs inside a cluster, many more tools want to be API objects too. Monitoring, backups, load tests and policy tools all fit that pattern. The risk is API sprawl: one fixed list of built-in types that grows without bound. Kubernetes answers this by letting cluster operators add the components they need, without waiting for a new Kubernetes release. You can build those extensions yourself, use community add-ons, or install extensions sold as cluster plug-ins. Extensibility also gave rise to whole patterns of management, such as the operator pattern.
+Once an application runs inside a cluster, many more tools want to be API objects too. Monitoring, backups, load tests and policy tools all fit that pattern. Each one wants to say "here is what I want" in the same way a Deployment does. The risk is API sprawl: one fixed list of built-in types that grows without bound and that nobody can keep in their head. Kubernetes answers this by letting cluster operators add the components they need, without waiting for a new Kubernetes release. You can build those extensions yourself, use community add-ons, or install extensions sold as cluster plug-ins. Extensibility also gave rise to whole patterns of management, such as the operator pattern.
 
-Whether you build extensions or consume them, learn how the API server is extended and how those extensions are delivered. Platforms built on these mechanisms behave according to them.
+Whether you build extensions or consume them, learn how the API server is extended and how those extensions are delivered. A platform built on these mechanisms behaves according to them. If you know which door a change went through, you also know where its rules live and who is responsible for them.
 
-CRDs are the dominant approach. They give you the Kubernetes API machinery for free, including REST, watch, RBAC, audit, server-side apply, `kubectl` support and OpenAPI docs. You do not have to build any of that yourself.
+CRDs are the dominant approach. They give you the Kubernetes API machinery for free, including REST, watch, RBAC, audit, server-side apply, `kubectl` support and OpenAPI docs. You do not have to build any of that yourself. A CRD is a short definition, and the API server does the rest, in the same way it does for a built-in type.
 
 ### Platform services and the toil they remove
 
-Platform services are the components you install to add features to your application platform. They usually run as containers in a `*-system` Namespace, and the platform engineering team maintains them. Application teams run their own workloads on top. Keep these two groups separate in your mind, because they have different owners and change at different speeds.
+Platform services are the components you install to add features to your application platform. They usually run as containers in a `*-system` Namespace, and the platform engineering team maintains them. Application teams run their own workloads on top. Keep these two groups separate in your mind, because they have different owners and change at different speeds. A platform service that breaks affects every application team at once, so it deserves the same care you would give a production database.
 
-The cloud native ecosystem offers many projects you can build a platform from. Vendors also sell platform service products. Use them wherever they pass a cost-benefit check, since they may take you all the way to your target platform. Still, enterprise teams often build custom components. You may need to connect to an in-house system, meet an unusual workload need, or handle a business edge case.
+The cloud native ecosystem offers many projects you can build a platform from. Vendors also sell platform service products. Use them wherever they pass a cost-benefit check, since they may take you all the way to your target platform. Still, enterprise teams often build custom components. You may need to connect to an in-house system, meet an unusual workload need, or handle a business edge case that no product covers.
 
-The reason to build these services is to remove human toil. Automation is the keystone, but integration between automated parts is the mortar. Reliable interaction between systems is hard, and it matters a great deal. Kubernetes has spread widely partly because it gives every piece of software an API-driven way to fit in. You do not need to build and expose a new API for each component. Software can manage core resources or add custom resources that describe its own objects. Follow these integrated automation patterns and you remove a great deal of toil.
+The reason to build these services is to remove human toil. Toil is repetitive manual work that adds no lasting value, such as renewing the same certificate by hand every quarter. Automation is the keystone, but integration between automated parts is the mortar. Reliable interaction between systems is hard, and it matters a great deal. Kubernetes has spread widely partly because it gives every piece of software an API-driven way to fit in. You do not need to build and expose a new API for each component. Software can manage core resources or add custom resources that describe its own objects. Follow these integrated automation patterns and you remove a great deal of toil.
 
 ### Points of extension
 
-Kubernetes is extensible by design. Trying to build a feature for every possible use case creates a maze of options. Internal dependencies then grow, fragile links appear, and reliability erodes. The Unix idea of doing one thing well and staying interoperable applies here. Kubernetes cannot meet every requirement, and it does not need to. It offers points of extension, so specialized needs can be met by specialized solutions that plug in. Almost any requirement can be met this way.
+Kubernetes is extensible by design. Trying to build a feature for every possible use case creates a maze of options. Internal dependencies then grow, fragile links appear, and reliability erodes. The Unix idea of doing one thing well and staying interoperable applies here. Kubernetes cannot meet every requirement, and it does not need to. It offers points of extension, so specialized needs can be met by specialized solutions that plug in. Almost any requirement can be met this way, as long as you pick the right point to plug into.
 
 ### Plug-in extensions: network, storage, runtime and devices
 
-Plug-in extensions connect Kubernetes to the systems around it that workloads need. Each one is a specification. Third parties write the implementations that satisfy it.
+Plug-in extensions connect Kubernetes to the systems around it that workloads need. Each one is a specification, and third parties write the implementations that satisfy it. A specification here works like an electrical socket standard. The socket shape is fixed, so any device that matches it will work, whoever made it.
 
-**Network.** The Container Network Interface (CNI) defines what a network plug-in must do to give containers a network. Many plug-ins exist, and every one of them must satisfy the CNI.
+**Network.** The Container Network Interface (CNI) defines what a network plug-in must do to give containers a network. Many plug-ins exist, and every one of them must satisfy the CNI. Because of that shared contract, the kubelet does not need to know which one is installed.
 
-**Storage.** The Container Storage Interface (CSI) exposes storage systems to containerized workloads. Many volume plug-ins expose storage from different providers.
+**Storage.** The Container Storage Interface (CSI) exposes storage systems to containerized workloads. Many volume plug-ins expose storage from different providers. A training job asks for a volume, and the CSI driver behind it decides whether that means a local disk, a network filesystem or an object store.
 
-**Container runtime.** The Container Runtime Interface (CRI) lists the operations a container runtime must expose. Because of it, the kubelet does not care which runtime sits underneath. Docker has historically been the most popular runtime. Other runtimes now have strengths of their own.
+**Container runtime.** The Container Runtime Interface (CRI) lists the operations a container runtime must expose. Because of it, the kubelet does not care which runtime sits underneath. Docker has historically been the most popular runtime. Other runtimes now have strengths of their own, and the kubelet can use any of them that speak the interface.
 
-**Devices.** The device plug-in framework lets workloads use devices on a node. GPUs are the most common case, used by compute-heavy workloads. Teams often add node pools for nodes with these devices, so workloads can be assigned to them.
+**Devices.** The device plug-in framework lets workloads use devices on a node. GPUs are the most common case, used by compute-heavy workloads. Teams often add node pools for nodes with these devices, so workloads can be assigned to them. The device plug-in tells the scheduler which GPUs exist on each node, and the scheduler then places a pod that asks for one.
 
 Vendors usually build these plug-ins, often as part of a product they support or sell. Platform developers rarely write them in-house. Most teams evaluate the options and adopt the ones that meet their requirements.
 
 ### Webhook extensions: authentication, authorization and admission
 
-Webhook extensions are backend servers. The API server calls them to change how it handles core API requests. Each request passes several steps when it reaches the API server. First, the client is authenticated. Second, the API checks that the client is authorized for the action. Third, enabled admission plug-ins mutate the resource. Last, the schema is validated and any custom validation runs.
+Webhook extensions are backend servers. The API server calls them to change how it handles core API requests. Each request passes several steps when it reaches the API server. Think of it as a series of checkpoints at an airport. First, the client is authenticated, which is the passport check. Second, the API checks that the client is authorized for the action, which is the boarding permission. Third, enabled admission plug-ins mutate the resource, which is the step where the system may adjust what you carry. Last, the schema is validated and any custom validation runs, which is the final security scan.
 
 **Authentication.** Extensions such as OpenID Connect (OIDC) let you hand authentication to an outside system. The API server then relies on that system to confirm who each request comes from. Authentication is covered in depth elsewhere in this handbook. You can also have the API server call a webhook to authorize actions. This is uncommon, because Kubernetes already ships with a capable Role-Based Access Control (RBAC) system. Use a webhook only if RBAC falls short for you.
 
-**Admission control.** This is a widely used extension point. When a request arrives, the API server calls the admission webhooks that apply, based on the validating and mutating admission webhook configurations. Admission is covered in 5.21.
+**Admission control.** This is a widely used extension point. When a request arrives, the API server calls the admission webhooks that apply, based on the validating and mutating admission webhook configurations. A mutating webhook can change the object, and a validating one can only accept or refuse it. Admission is covered in 5.21.
 
 ## 2. Custom resources and CRDs
 
-A CustomResourceDefinition, or CRD, tells the API server about a new kind of object. Take a GPU health policy as the running example. The first manifest below registers the new kind, and the second creates one instance of it.
+Picture a platform team that wants a single place to say which GPU faults should trigger which action. Today that policy lives in a script on one engineer's laptop. A CRD lets the team turn the policy into an object that the cluster stores, validates and shows in `kubectl get`. A CustomResourceDefinition, or CRD, tells the API server about a new kind of object. Take a GPU health policy as the running example. The first manifest below registers the new kind, and the second creates one instance of it.
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -192,9 +195,9 @@ spec:
 
 ### Kinds, resources and a WebApp example
 
-Two terms come first. A kind is an API type, such as Pod. A resource is one object of that kind. A Pod you create and name `my-app` is a resource of the Pod kind. A CRD defines a new kind. Once the CRD exists, you create resources of that kind the same way you create Pods.
+Two terms come first. A kind is an API type, such as Pod. A resource is one object of that kind. A Pod you create and name `my-app` is a resource of the Pod kind. A CRD defines a new kind. Once the CRD exists, you create resources of that kind the same way you create Pods, with `kubectl apply` and a YAML file.
 
-Kubernetes does not link objects with foreign keys, as a relational database does. Each object exists on its own. Relationships are built with labels and selectors, and controllers do the work of following those links. You cannot query etcd for related objects with SQL-style queries.
+Kubernetes does not link objects with foreign keys, as a relational database does. Each object exists on its own. Relationships are built with labels and selectors, and controllers do the work of following those links. You cannot query etcd for related objects with SQL-style queries, so if you want "all the Pods for this app," you use a label and ask for the Pods that carry it.
 
 CRDs define fields with the OpenAPI v3 schema language. The schema can mark fields as optional or required, and it can set default values. The API server uses it to validate every create and update request. You can also group your APIs and version them.
 
@@ -207,7 +210,7 @@ Here is a fictional WebApp type to make this concrete. One WebApp describes a we
 - A Service routes traffic to the Deployment's backend Pods.
 - An Ingress holds routing rules, so the Ingress controller can send client requests to the right place.
 
-A WebApp Operator watches for WebApp resources. When one appears, the operator creates these six children, and together they form a working copy of the app for end users.
+A WebApp Operator watches for WebApp resources. When one appears, the operator creates these six children, and together they form a working copy of the app for end users. The WebApp object is the short request. The six children are the long answer that the operator writes for you. Someone who wants a web app writes one short object, and the operator does the rest.
 
 The next manifest is a CRD that defines the WebApp type.
 
@@ -275,9 +278,9 @@ spec:
     storage: true
 ```
 
-Two names matter here. The `metadata.name` of the CRD names the definition itself. The `names` block sets the kind, the list kind, and the plural and singular forms used for the custom resource. The `deploymentTier` field must match one of the values under `enum`, and the API server enforces that on every create or update. The `webAppReplicas` field has a default of 2, which applies when a manifest leaves it out. The `required` list names `deploymentTier`, `webAppHostname` and `webAppImage`. It leaves out `webAppReplicas` because that field has a default.
+Two names matter here. The `metadata.name` of the CRD names the definition itself, and the name has to be the plural form joined to the group. The `names` block sets the kind, the list kind, and the plural and singular forms used for the custom resource. The `deploymentTier` field must match one of the values under `enum`, and the API server enforces that on every create or update. The `webAppReplicas` field has a default of 2, which applies when a manifest leaves it out. The `required` list names `deploymentTier`, `webAppHostname` and `webAppImage`. It leaves out `webAppReplicas` because that field has a default, so a missing value is filled in rather than rejected.
 
-Before you submit a WebApp manifest, the CRD must exist. Otherwise the API server does not know the kind and rejects the request. The next manifest is a WebApp manifest.
+Before you submit a WebApp manifest, the CRD must exist. Otherwise the API server does not know the kind and rejects the request. Think of the CRD as the form printed before anyone can fill it in. The next manifest is a WebApp manifest.
 
 ```yaml
 apiVersion: workloads.apps.acme.com/v1alpha1
@@ -291,89 +294,97 @@ spec:
   deploymentTier: dev
 ```
 
-This manifest sets `webAppReplicas` explicitly, even though the default is 2. That is unnecessary but harmless when you want the value written down. The `deploymentTier` value is one the enum allows. Any value outside the enum gets an error from the API server.
+This manifest sets `webAppReplicas` explicitly, even though the default is 2. That is unnecessary but harmless when you want the value written down, because the reader sees the number without looking up the default. The `deploymentTier` value is one the enum allows. Any value outside the enum gets an error from the API server, and the error arrives before any operator runs.
 
-Submitting this manifest triggers the watch. The WebApp Operator sees a new WebApp and calls the API server to create the six child resources.
+Submitting this manifest triggers the watch. The WebApp Operator sees a new WebApp and calls the API server to create the six child resources. From there, the same reconcile loop from section 5.6 does its work, and each child is created, checked and reported back in the status.
+
+Let us walk through what happens when someone applies a manifest with `deploymentTier: qa`. The first step is the schema check. The API server finds that `qa` is not in the enum, so it refuses the write, and nothing is stored. The operator never hears about the request, because the object never reached etcd. The second case is a manifest that leaves out `webAppReplicas`. The API server fills in the default of 2 before it stores the object, so the operator sees a complete object with two replicas requested. In both cases the schema did its job before any controller ran. That order is why a good schema removes so much work from the controller.
 
 ### Schema and validation
 
-Version 1 CRDs must use structural schemas. Every field needs a type, and no node may be left without one. The exceptions use `x-kubernetes-preserve-unknown-fields`, `x-kubernetes-int-or-string` or `x-kubernetes-embedded-resource`. The API server prunes unknown fields on write by default, because `preserveUnknownFields` is `false`. Any field you did not declare is silently dropped, which is a common surprise.
+Version 1 CRDs must use structural schemas. Every field needs a type, and no node may be left without one. The exceptions use `x-kubernetes-preserve-unknown-fields`, `x-kubernetes-int-or-string` or `x-kubernetes-embedded-resource`. The API server prunes unknown fields on write by default, because `preserveUnknownFields` is `false`. Any field you did not declare is silently dropped, which is a common surprise. Someone types `webAppReplcas` with a typo, the API server accepts the object without a complaint, and the field simply disappears. Pruning is a safety net, but it can hide mistakes if you do not check the object afterwards.
 
-Validation uses OpenAPI v3 keywords. You can write `type`, `required`, `enum`, `minimum/maximum`, `minLength/maxLength`, `pattern`, and `format` for values such as `date-time`, `int64` and `uuid`. You can also use `minItems/maxItems/uniqueItems`, `additionalProperties` and `nullable`. The combinators `oneOf/anyOf/allOf/not` are available too, with some restrictions.
+Validation uses OpenAPI v3 keywords. You can write `type`, `required`, `enum`, `minimum/maximum`, `minLength/maxLength`, `pattern`, and `format` for values such as `date-time`, `int64` and `uuid`. You can also use `minItems/maxItems/uniqueItems`, `additionalProperties` and `nullable`. The combinators `oneOf/anyOf/allOf/not` are available too, with some restrictions. Use the simplest keyword that expresses your rule, because simple rules are easier for the next person to read.
 
-Defaults set with `default:` apply on create and on update. They also apply when the object is read back from etcd, so keep defaults simple. CEL validation rules in `x-kubernetes-validations` are generally available. Immutability uses `self == oldSelf` with `optionalOldSelf` or transition rules. They handle cross-field checks such as `self.a < self.b`, immutability, format checks and cost-limited expressions. The API server enforces a CEL cost budget when the CRD is created, so bound your string and list lengths. For most rules, a CEL rule is a better choice than a validating webhook.
+Defaults set with `default:` apply on create and on update. They also apply when the object is read back from etcd, so keep defaults simple. A default is a value the API server fills in, so it should be something a reader would expect without looking it up. CEL validation rules in `x-kubernetes-validations` are generally available. CEL stands for Common Expression Language, a small language for checks like "this field must be less than that one." Immutability uses `self == oldSelf` with `optionalOldSelf` or transition rules. These rules handle cross-field checks such as `self.a < self.b`, immutability, format checks and cost-limited expressions. The API server enforces a CEL cost budget when the CRD is created, so bound your string and list lengths. For most rules, a CEL rule is a better choice than a validating webhook, because the check runs inside the API server and needs no extra service to be up.
 
-To make a field immutable, add `x-kubernetes-validations: [{rule: "self == oldSelf", message: "immutable"}]` to it. This suits a value such as a storage class or model name that must not change after creation.
+To make a field immutable, add `x-kubernetes-validations: [{rule: "self == oldSelf", message: "immutable"}]` to it. This suits a value such as a storage class or model name that must not change after creation. The rule compares the new value with the old one, and it refuses any update that changes the value.
 
-Lists need extra care when several controllers write to them. `x-kubernetes-list-type` takes `atomic`, `set` or `map`, and `x-kubernetes-list-map-keys` names the key. `x-kubernetes-map-type` takes `granular` or `atomic`. These settings matter for server-side apply, especially for lists of conditions or containers.
+Lists need extra care when several controllers write to them. `x-kubernetes-list-type` takes `atomic`, `set` or `map`, and `x-kubernetes-list-map-keys` names the key. `x-kubernetes-map-type` takes `granular` or `atomic`. These settings matter for server-side apply, especially for lists of conditions or containers. Server-side apply tracks which manager owns each field, so the list type tells the API server how to merge entries that two managers write at the same time.
 
-Printer columns decide what `kubectl get gpuhealthpolicies` shows. Categories group resources together. Adding `categories: [all]` makes the kind appear in `kubectl get all`. Choose the scope carefully. `Namespaced` suits objects that a tenant owns, and `Cluster` suits global policy and infrastructure objects. Name the group with a DNS name you own, and keep the plural lowercase. Avoid `*.k8s.io` groups unless upstream approves them.
+Printer columns decide what `kubectl get gpuhealthpolicies` shows. Categories group resources together. Adding `categories: [all]` makes the kind appear in `kubectl get all`. Choose the scope carefully. `Namespaced` suits objects that a tenant owns, and `Cluster` suits global policy and infrastructure objects. Name the group with a DNS name you own, and keep the plural lowercase. Avoid `*.k8s.io` groups unless upstream approves them, because that name belongs to the Kubernetes project.
 
-Before you publish a CRD, test valid and invalid objects against its schema, because pruning can drop a field without any error.
+Before you publish a CRD, test valid and invalid objects against its schema, because pruning can drop a field without any error. A good test has at least one object that should pass and one that should fail for each rule you wrote.
 
 ### Subresources
 
-The `status` subresource gives the object its own `/status` endpoint. Spec and status updates then go through separate paths and separate RBAC rules. Controllers can write status without bumping `metadata.generation`. When the `status` subresource is enabled, writes to `status` through the main endpoint are ignored, so users cannot spoof it.
+The `status` subresource gives the object its own `/status` endpoint. Spec and status updates then go through separate paths and separate RBAC rules. Think of the spec as the order form and the status as the receipt. The customer fills in the first, and the shop writes the second. Controllers can write status without bumping `metadata.generation`, and `generation` is the counter that tracks changes to the spec. When the `status` subresource is enabled, writes to `status` through the main endpoint are ignored, so users cannot spoof it.
 
-The `scale` subresource maps `specReplicasPath`, `statusReplicasPath` and `labelSelectorPath`. Those mappings let the HPA, `kubectl scale` and Kueue scale your custom resource. Other subresources, such as `exec` and `log`, come from aggregated APIs or controllers. CRDs do not get them.
+The `scale` subresource maps `specReplicasPath`, `statusReplicasPath` and `labelSelectorPath`. Those mappings let the HPA, `kubectl scale` and Kueue scale your custom resource. The mapping tells each tool where to read and write the replica count inside your object. Suppose the WebApp type had a `scale` subresource. Then a command such as `kubectl scale webapp webapp-sample --replicas=4` would write to whichever field the `specReplicasPath` names, and the tool would never need to know your field layout. The mapping is the translation that makes that work. Other subresources, such as `exec` and `log`, come from aggregated APIs or controllers. CRDs do not get them.
 
 ### Versions and conversion
 
-A CRD can serve several versions at the same time, but exactly one of them is the storage version. The conversion strategy decides how objects move between versions. The `None` strategy only rewrites `apiVersion`, so the schemas must already be compatible. The `Webhook` strategy uses a conversion webhook. It converts losslessly in a hub-and-spoke pattern, where every version converts through a hub version. Controller-runtime and kubebuilder scaffold conversion for you.
+A CRD can serve several versions at the same time, but exactly one of them is the storage version. The storage version is the format etcd keeps on disk. The conversion strategy decides how objects move between versions. The `None` strategy only rewrites `apiVersion`, so the schemas must already be compatible. The `Webhook` strategy uses a conversion webhook. It converts losslessly in a hub-and-spoke pattern, where every version converts through a hub version. Think of a hub airport. Every flight goes through the hub, so you need one conversion to and from the hub for each version, not one for every pair of versions. Controller-runtime and kubebuilder scaffold conversion for you.
 
-The upgrade follows four steps. First, add `v1beta1` as a served version that is not the storage version. Second, make `v1beta1` the storage version, but leave existing objects in the old version until something rewrites them. Run a storage-version migration with `kube-storage-version-migrator`, or rewrite every object with `kubectl get ... -o json | kubectl replace`. Third, stop serving the old version once clients have moved to the new one. Fourth, remove the old version from `status.storedVersions` before you drop it from the CRD.
+The upgrade follows four steps. First, add `v1beta1` as a served version that is not the storage version. Second, make `v1beta1` the storage version, but leave existing objects in the old version until something rewrites them. Run a storage-version migration with `kube-storage-version-migrator`, or rewrite every object with `kubectl get ... -o json | kubectl replace`. Third, stop serving the old version once clients have moved to the new one. Fourth, remove the old version from `status.storedVersions` before you drop it from the CRD. The `status.storedVersions` list records every version that may still be sitting in etcd, so the last step is safe only after the list is clean.
 
-Follow the Kubernetes convention for maturity levels: alpha, beta and stable. A `v1alpha1` version may change. Deprecate a version with `deprecated: true` and a `deprecationWarning` in its version spec.
+Think of the upgrade as moving a library's catalogue to a new filing system. For a while, both systems must work. New books go into the new system, old books stay where they are until someone moves them, and nobody stops using the old lookup until every book has been found. The four steps follow that order. Skipping one step is how a cluster ends up with objects that no version can read cleanly.
+
+Follow the Kubernetes convention for maturity levels: alpha, beta and stable. A `v1alpha1` version may change. Deprecate a version with `deprecated: true` and a `deprecationWarning` in its version spec. Clients that still use the old version then see a warning, and you have time to move them.
 
 ### Garbage collection, owner references and finalizers
 
-Operators create child objects with `ownerReferences` that point to the CR. Set a controller reference, and deleting the CR garbage-collects those children. External resources work differently. Cloud load balancers, DNS records, node labels and cordons, and storage buckets live outside the cluster, so garbage collection cannot clean them up. For these, use a finalizer such as `platform.example.com/cleanup`. The controller sees a `deletionTimestamp`, performs the cleanup, and then removes the finalizer.
+Operators create child objects with `ownerReferences` that point to the CR. Set a controller reference, and deleting the CR garbage-collects those children. Garbage collection here means the cluster removes the children automatically, so nothing is left behind. External resources work differently. Cloud load balancers, DNS records, node labels and cordons, and storage buckets live outside the cluster, so garbage collection cannot clean them up. For these, use a finalizer such as `platform.example.com/cleanup`. A finalizer is a marker on an object that says "do not finish deleting me until this step is done." The controller sees a `deletionTimestamp`, which is the mark that deletion has started, performs the cleanup, and then removes the finalizer.
 
-If you uninstall the operator before its CRs are deleted, nobody removes the finalizer. The CRs then stay stuck in Terminating. Uninstall in the right order: delete the CRs first, then the operator, then the CRDs.
+Take a concrete case. A `GPUHealthPolicy` has cordoned three nodes. Deleting that policy removes its own object, but the cordons are not Kubernetes children, so garbage collection cannot lift them. The finalizer makes the deletion wait. The controller sees the deletion mark, uncordons the nodes, and then removes the finalizer. Only after that does the object actually disappear. The finalizer is the only thing that connects the object's deletion to the cleanup of work done outside the cluster.
+
+If you uninstall the operator before its CRs are deleted, nobody removes the finalizer. The CRs then stay stuck in Terminating. It is like a locked door with the only key inside a room nobody can enter. Uninstall in the right order: delete the CRs first, then the operator, then the CRDs.
 
 ### Status and conditions
 
-Follow the conventions for status. Use a `conditions` list where each entry has `type`, `status`, a CamelCase `reason`, `message`, `observedGeneration` and `lastTransitionTime`. Keep a top-level `observedGeneration` as well. Prefer conditions over a `phase` field. Users and automation depend on these fields. GitOps health checks and `kubectl wait --for=condition=Ready` both read them.
+Follow the conventions for status. Use a `conditions` list where each entry has `type`, `status`, a CamelCase `reason`, `message`, `observedGeneration` and `lastTransitionTime`. Keep a top-level `observedGeneration` as well. A condition is a small statement such as "Ready is True" with a reason attached. Prefer conditions over a `phase` field, because one object can be ready for one reason and blocked for another at the same time, and a single phase value cannot show both. Users and automation depend on these fields. GitOps health checks and `kubectl wait --for=condition=Ready` both read them.
 
 ### API design guidance
 
-1. Keep the spec declarative. It describes the desired end state, not a list of actions. Avoid imperative fields such as `restartNow: true`. Model a one-off action as its own resource, such as a `Request` or `Job`-like CR with a status, or as an annotation that the controller handles idempotently.
+Ten rules follow. Each one is a habit that keeps the API easy to change later.
+
+1. Keep the spec declarative. It describes the desired end state, not a list of actions. Avoid imperative fields such as `restartNow: true`. A field like that means something different each time you apply the file, and the API cannot tell whether it was already done. Model a one-off action as its own resource, such as a `Request` or `Job`-like CR with a status, or as an annotation that the controller handles idempotently.
 
 2. Keep the core spec small and stable, and add optional blocks as the API grows. Point to secrets and large data with references such as `secretRef`, `configMapRef` and `targetRef`, rather than embedding them. Use typed references with kind, name and namespace. When a reference is missing, report it through a condition.
 
-3. Make identity fields immutable with CEL rules. If a fundamental field must change, create a new object instead.
+3. Make identity fields immutable with CEL rules. If a fundamental field must change, create a new object instead. Replacing an object is clearer than quietly changing what it is.
 
-4. Make reconcile idempotent, so running it again gives the same result. Status should reflect what was actually observed. Do not keep controller state only in memory. Store it in the status or in child objects.
+4. Make reconcile idempotent, so running it again gives the same result. Status should reflect what was actually observed. Do not keep controller state only in memory, because a restart would lose it. Store it in the status or in child objects.
 
-5. Do not let status grow without limit. Long lists of events or logs belong somewhere else. Use Events for history and metrics for time series. If a list must exist in status, cap it and summarise it.
+5. Do not let status grow without limit. Long lists of events or logs belong somewhere else. Use Events for history and metrics for time series. If a list must exist in status, cap it and summarise it, so the newest facts stay readable.
 
 6. Make additive changes within a version. Put breaking changes into a new version with conversion.
 
-7. Do not hide dangerous behaviour behind a harmless-looking field. Document side effects, defaults and failure behaviour. Write a field `description` so that `kubectl explain` can show it.
+7. Do not hide dangerous behaviour behind a harmless-looking field. Document side effects, defaults and failure behaviour. Write a field `description` so that `kubectl explain` can show it. A reader who runs `kubectl explain` should learn the risk without opening the code.
 
 8. Choose scope with care. Cluster-scoped CRs need strong RBAC. Namespaced CRs that reference objects in other namespaces need explicit allow rules, such as the ReferenceGrant in Gateway API.
 
 9. Watch object size. An object in etcd is limited to about 1.5 MiB. Thousands of CRs with large status can overload the API server and etcd, so keep status small.
 
-10. Generate docs and clients from the types, using controller-gen and crd-ref-docs.
+10. Generate docs and clients from the types, using controller-gen and crd-ref-docs. Generated docs stay correct when the types change, and hand-written docs drift.
 
 ### Custom resources are not a database
 
-The custom resource model is powerful, which makes it tempting to use for everything. Do not use custom resources as the primary data store for an end-user application. Kubernetes is an orchestration system. etcd should hold the state of your software deployments, not your application's own persistent data. Storing that data in etcd puts heavy load on the control plane. Use a relational database, an object store or whatever store fits the application. Leave the control plane to manage deployments.
+The custom resource model is powerful, which makes it tempting to use for everything. Do not use custom resources as the primary data store for an end-user application. Kubernetes is an orchestration system. etcd should hold the state of your software deployments, not your application's own persistent data. Storing that data in etcd puts heavy load on the control plane. Use a relational database, an object store or whatever store fits the application. Leave the control plane to manage deployments. A useful test is to ask whether losing the object would lose user data. If it would, the object belongs in a database.
 
 ## 3. The operator pattern
 
-Imagine an application that needs more than a Deployment. Someone has to install it, upgrade it, back it up and recover it when it fails. An operator is a custom controller that holds this operational knowledge as software. It manages the application through custom resources. Its typical jobs are to install and configure, scale, upgrade with rolling updates and migrations, back up and restore, fail over, remediate health problems, rotate certificates, correct drift, and expose status and metrics.
+Imagine an application that needs more than a Deployment. Someone has to install it, upgrade it, back it up and recover it when it fails. A Deployment keeps the Pods running, but it does not know how to take a backup or pick the right order for a database upgrade. An operator is a custom controller that holds this operational knowledge as software. It manages the application through custom resources. Its typical jobs are to install and configure, scale, upgrade with rolling updates and migrations, back up and restore, fail over, remediate health problems, rotate certificates, correct drift, and expose status and metrics.
 
 Operators are clients of the API server, not backend webhooks for it. Software operators talk to the API the way a human operator would. Their main purpose is to take routine toil off people by performing operations for them. They follow the same engineering principles as the core control plane. Think of an operator you build for your platform as a custom extension of that control plane.
 
-The operator pattern comes down to extending Kubernetes with Kubernetes. You create new resource types with CRDs. You write controllers that reconcile the state those resources describe. The CRD creates the API type and tells the API server how to validate it. The controller applies the same design principles that make built-in controllers effective. Custom resources and controllers are the two core mechanisms of every operator.
+The operator pattern comes down to extending Kubernetes with Kubernetes. You create new resource types with CRDs. You write controllers that reconcile the state those resources describe. The CRD creates the API type and tells the API server how to validate it. The controller applies the same design principles that make built-in controllers effective. Custom resources and controllers are the two core mechanisms of every operator. If you can explain both, you can explain any operator you meet.
 
 The term operator dates to November 2016, when Brandon Phillips, one of the founders of CoreOS, introduced it. His early definition was an app-specific controller that manages a complex stateful application. That definition still helps. Over time, the Kubernetes docs widened it to cover any controller that uses CRDs. This chapter uses the broader meaning. Your platform services may not manage complex stateful applications, but they can still use the pattern.
 
 ### Capability levels (Operator Framework model)
 
-The Operator Framework describes five capability levels. Each level takes on more of the lifecycle work for you. The example column shows what each level means for a GPU operator.
+The Operator Framework describes five capability levels. Each level takes on more of the lifecycle work for you, so you can ask of any operator how far up the ladder it climbs. The example column shows what each level means for a GPU operator.
 
 | Level | Capability | Example for a GPU operator |
 |---|---|---|
@@ -383,11 +394,11 @@ The Operator Framework describes five capability levels. Each level takes on mor
 | 4 | Deep insights: metrics, alerts, log processing, workload analysis | DCGM exporter and ServiceMonitors, health conditions |
 | 5 | Auto pilot: auto-scaling, auto-tuning, abnormality detection, scheduling tuning | Auto-cordon unhealthy GPUs, MIG reconfiguration based on demand |
 
-Notice the progression. Level 1 only installs the software from a CR. Level 5 makes decisions on its own, such as cordoning unhealthy GPUs and reconfiguring MIG profiles based on demand.
+Notice the progression. Level 1 only installs the software from a CR. Level 5 makes decisions on its own, such as cordoning unhealthy GPUs and reconfiguring MIG profiles based on demand. Each step up needs more knowledge of the application, which is why higher levels are rarer and harder to build well.
 
 ### Typical operator reconcile structure
 
-Every reconcile starts from an event. The event can be a CR being created, updated or deleted, a change to an object the operator owns, or a periodic resync. The flowchart shows what happens next.
+Every reconcile starts from an event. The event can be a CR being created, updated or deleted, a change to an object the operator owns, or a periodic resync. A resync is a scheduled pass that re-checks everything, in case an event was missed. The flowchart shows what happens next, and it is worth reading slowly, one box at a time.
 
 ```mermaid
 flowchart TB
@@ -408,29 +419,31 @@ flowchart TB
   RQR -- "done" --> END["return Result{}"]
 ```
 
-Each path through the flowchart ends in one of three places. An error sends the key back to the queue with backoff. A wait on something external schedules a `RequeueAfter`. If the work is finished, the reconcile simply returns `Result{}`.
+Here is one pass through the flowchart for a WebApp. The event is a new WebApp. The reconcile fetches the object from the cache, and it sees that no deletion mark is set. It adds its finalizer, checks the references, and computes the six children the spec asks for. It then creates the children it does not yet have, and it sets an owner reference on each one. Next it looks at what actually exists, and it writes what it found into the status conditions. If a child is not ready yet, the reconcile asks for a later check instead of blocking. Each step is safe to run again, which is why a second pass after a crash produces the same result.
 
-The core rules echo 5.6. Reconciles must be idempotent, and they should be level-triggered. Keep each reconcile short. If you must wait, requeue instead of blocking. Retry on conflicts, and do not assume the cache is current.
+Each path through the flowchart ends in one of three places. An error sends the key back to the queue with backoff, which means the wait between tries grows after each failure. A wait on something external schedules a `RequeueAfter`, so the controller checks again later instead of blocking. If the work is finished, the reconcile simply returns `Result{}`.
 
-Keep each object's reconciliation independent of the others. Watch the children you own with `Owns()`, and watch the objects you reference with `Watches()` and map functions. Predicates prevent hot loops. For example, `GenerationChangedPredicate` ignores status-only changes, so a status write does not trigger another reconcile. Log with the CR key, so each line traces back to one object.
+The core rules echo 5.6. Reconciles must be idempotent, and they should be level-triggered. Level-triggered means the controller looks at the current state each time, rather than reacting only to the change that woke it up. Keep each reconcile short. If you must wait, requeue instead of blocking. Retry on conflicts, and do not assume the cache is current, because the cache can be a few moments behind the API server.
 
-Emit Events for milestones that users should see. Expose Prometheus metrics for reconcile counts, latency, errors and queue depth.
+Keep each object's reconciliation independent of the others. Watch the children you own with `Owns()`, and watch the objects you reference with `Watches()` and map functions. Predicates prevent hot loops. A hot loop is a controller that keeps re-running on its own output. For example, `GenerationChangedPredicate` ignores status-only changes, so a status write does not trigger another reconcile. Log with the CR key, so each line traces back to one object.
+
+Emit Events for milestones that users should see. Expose Prometheus metrics for reconcile counts, latency, errors and queue depth. Those metrics tell you whether the controller is keeping up, and a growing queue depth is often the first sign of trouble.
 
 ### Operator use cases
 
-Operators fit three broad categories. Each one serves a different need.
+Operators fit three broad categories. Each one serves a different need, and the category tells you how much custom logic to expect.
 
-**Platform utilities.** These add features to the cluster itself. Many open source projects provide platform services this way, and you do not have to write them yourself. They still help you build a mental model of how operators work. The Prometheus Operator provides metrics collection, storage and alerting, covered in 5.19. cert-manager provides certificate management. It removes a lot of toil and the risk of downtime from certificate creation and renewal. Rook is a storage operator that integrates with providers such as Ceph to manage block, object and filesystem storage as a service. Vendors offer similar utilities. When none of them fits, an enterprise may build its own. A common custom example is a Namespace operator. Teams often need the same ResourceQuotas, LimitRanges and Roles in every Namespace. A controller can handle that routine setup. The rest of this chapter uses this idea as a running example.
+**Platform utilities.** These add features to the cluster itself. Many open source projects provide platform services this way, and you do not have to write them yourself. They still help you build a mental model of how operators work. The Prometheus Operator provides metrics collection, storage and alerting, covered in 5.19. cert-manager provides certificate management. It removes a lot of toil and the risk of downtime from certificate creation and renewal. Rook is a storage operator that integrates with providers such as Ceph to manage block, object and filesystem storage as a service. Vendors offer similar utilities. When none of them fits, an enterprise may build its own. A common custom example is a Namespace operator. Teams often need the same ResourceQuotas, LimitRanges and Roles in every Namespace. A controller can handle that routine setup for each new Namespace as it appears. The rest of this chapter uses this idea as a running example.
 
-**General-purpose workload operators.** Application developers want to add stability and features to their software. Writing deployment YAML does neither. Setting resource requests and limits, mounting a ConfigMap or Secret, and matching Service labels to Pods are chores that add nothing to the software itself. An organization with common deployment patterns can encode them in a general-purpose operator. This suits teams that run many microservices with similar shapes. Take a workload made of a Deployment, a Service and an Ingress. The Service selects the Deployment's Pods by label, and the Ingress points at the Service by name. An operator can wire all of that up. Getting those details right is exactly the toil it removes.
+**General-purpose workload operators.** Application developers want to add stability and features to their software. Writing deployment YAML does neither. Setting resource requests and limits, mounting a ConfigMap or Secret, and matching Service labels to Pods are chores that add nothing to the software itself. An organization with common deployment patterns can encode them in a general-purpose operator. This suits teams that run many microservices with similar shapes. Take a workload made of a Deployment, a Service and an Ingress. The Service selects the Deployment's Pods by label, and the Ingress points at the Service by name. If one label is spelled differently in one place, traffic silently goes nowhere. An operator can wire all of that up in one place. Getting those details right is exactly the toil it removes.
 
-**App-specific operators.** This category matches the core idea of an operator: custom resources plus a custom controller for a complex stateful application. Each one is built for one application. Database operators are the popular examples. Community operators exist for Cassandra, Elasticsearch, MySQL, MariaDB, PostgreSQL, MongoDB and many more. They handle the first deployment and day 2 concerns, which are the tasks after install, such as configuration changes, backups and upgrades. Operators for community and vendor projects have grown popular over the past few years. Operators for internal enterprise applications are still early. If your company builds a sophisticated stateful system, such as an ecommerce site, a transaction processor or an inventory system, an app-specific operator may pay off. The gains are biggest when the application runs widely and changes often.
+**App-specific operators.** This category matches the core idea of an operator: custom resources plus a custom controller for a complex stateful application. Each one is built for one application. That focus is what lets it know the application's odd corners, such as the order in which replicas must be restarted or the way a backup must be paused before a snapshot. A general tool cannot know those details, so the app-specific operator carries them for you. Database operators are the popular examples. Community operators exist for Cassandra, Elasticsearch, MySQL, MariaDB, PostgreSQL, MongoDB and many more. They handle the first deployment and day 2 concerns, which are the tasks after install, such as configuration changes, backups and upgrades. Operators for community and vendor projects have grown popular over the past few years. Operators for internal enterprise applications are still early. If your company builds a sophisticated stateful system, such as an ecommerce site, a transaction processor or an inventory system, an app-specific operator may pay off. The gains are biggest when the application runs widely and changes often.
 
-App-specific operators are not always the right choice. For simpler use cases they are likely overkill. Production-ready operators are not trivial to build, so weigh the trade-offs. Ask how much time you spend on routine toil for deployment and day 2 work. Ask whether building an operator would cost less than that toil over the long term. Then ask whether Helm or Kustomize already automate enough of the work.
+App-specific operators are not always the right choice. For simpler use cases they are likely overkill. Production-ready operators are not trivial to build, so weigh the trade-offs. Ask how much time you spend on routine toil for deployment and day 2 work. Ask whether building an operator would cost less than that toil over the long term. Then ask whether Helm or Kustomize already automate enough of the work. Write down your answers before you start a project. A short written answer is often enough to show that a simpler tool would have been the right choice.
 
 ### Operator implementation choices
 
-Several tools can build an operator. Each one trades effort, language support and control differently, as the table shows.
+Several tools can build an operator. Each one trades effort, language support and control differently, as the table shows. Read the Cons column as honestly as the Pros, because every option you pick will cost you something.
 
 | Option | Language | Pros | Cons |
 |---|---|---|---|
@@ -445,9 +458,9 @@ Several tools can build an operator. Each one trades effort, language support an
 | **Kyverno/Argo-based automation** | YAML policies/workflows | Quick for generate/mutate patterns | Not a general operator |
 | **GitOps + Helm only** | None | Simplest | No runtime reconciliation of application-specific logic |
 
-If you only need templated resources, Helm, Kustomize or Crossplane is enough. If the operator must make runtime decisions about health, ordering, rolling operations, node hardware or external APIs, write a controller. Use Go for production-grade work. Use Python with kopf for prototypes and small scopes.
+If you only need templated resources, Helm, Kustomize or Crossplane is enough. If the operator must make runtime decisions about health, ordering, rolling operations, node hardware or external APIs, write a controller. Use Go for production-grade work. Use Python with kopf for prototypes and small scopes. The difference is the kind of decision the code makes. A template fills in values once. A controller keeps making decisions for as long as the object exists.
 
-Before you write a controller, check whether templated resources from Helm, Kustomize or Crossplane would do the job.
+Before you write a controller, check whether templated resources from Helm, Kustomize or Crossplane would do the job. A short check at the start saves weeks of work later.
 
 ### Programming the Kubernetes API from Python (`kubernetes` OpenAPI client)
 
@@ -505,29 +518,29 @@ pf = portforward(
 )
 ```
 
-The code follows five steps that match its numbered comments. It authenticates, lists Pods, creates a Pod, watches for changes, and then reads logs, runs commands and forwards ports. Each step uses a different part of the client.
+The code follows five steps that match its numbered comments. It authenticates, lists Pods, creates a Pod, watches for changes, and then reads logs, runs commands and forwards ports. Each step uses a different part of the client. Read the steps in order, because the first one decides which cluster the rest of the program talks to. If authentication fails, nothing after it can work.
 
-For higher-level platform abstractions built on CRDs and operators, see 5.22, section 4. That section covers the `Team` self-service onboarding CRD and Pinterest's `PinterestService` workload CRD from *Production Kubernetes*, Chapter 16.
+For higher-level platform abstractions built on CRDs and operators, see 5.22, section 4. That section covers the `Team` self-service onboarding CRD and Pinterest's `PinterestService` workload CRD from *Production Kubernetes*, Chapter 16. Those two examples show how a platform team can hide the details of a common setup behind one short object.
 
 ### But what about `kubectl x`?
 
-Most people learn Kubernetes through `kubectl`, so they expect each command to match one API call. That guess is partly right. Simple commands like `kubectl get pods` map straight to the API. Richer features are many API calls wrapped in logic inside `kubectl` itself.
+Most people learn Kubernetes through `kubectl`, so they expect each command to match one API call. That guess is partly right. Simple commands like `kubectl get pods` map straight to the API. Richer features are many API calls wrapped in logic inside `kubectl` itself. A single command can hide several requests, one after another, plus some decisions made on the client side.
 
-The line between client and server has moved over time. Many features began as client-side code in `kubectl`. Rollouts now run on the server, in the Deployment resource. In the same way, `kubectl apply` moved to the server as server-side apply.
+The line between client and server has moved over time. Many features began as client-side code in `kubectl`. Rollouts now run on the server, in the Deployment resource. In the same way, `kubectl apply` moved to the server as server-side apply. Each move makes the behaviour the same no matter which client you use, which is the reason the move was made.
 
-Some logic still lives in the client, so every client library has to rebuild it. How closely a library matches `kubectl` depends on the language. The Java client is a thick client, and it copies much of what `kubectl` does.
+Some logic still lives in the client, so every client library has to rebuild it. How closely a library matches `kubectl` depends on the language. The Java client is a thick client, and it copies much of what `kubectl` does. A thick client holds more of the logic itself, while a thin client sends simple requests and lets the server decide.
 
-When a feature is missing from your library, try a trick. Add `--v=10` to a command, as in `kubectl get pods --v=10`. That turns on verbose logging, which shows every HTTP request and response sent to the API server. If you need more detail, the `kubectl` source code is in the Kubernetes repository.
+When a feature is missing from your library, try a trick. Add `--v=10` to a command, as in `kubectl get pods --v=10`. That turns on verbose logging, which shows every HTTP request and response sent to the API server. Reading that output is a quick way to see the exact call you need to copy. If you need more detail, the `kubectl` source code is in the Kubernetes repository.
 
 ### OpenAPI and generated client libraries
 
-Writing a client by hand is the alternative. The API has many resources in many groups, and each one has many operations. Every language would need its own copy of all of that, which would be a huge and dull job.
+Writing a client by hand is the alternative. The API has many resources in many groups, and each one has many operations. Every language would need its own copy of all of that, which would be a huge and dull job, and every copy would drift a little from the others.
 
-So the clients are generated. A code generator reads a data specification of the API and writes the client for one language. You can think of it as a compiler that runs in reverse. The API is described in OpenAPI, the most common format for RESTful APIs. The OpenAPI specification on GitHub is over four megabytes.
+So the clients are generated. A code generator reads a data specification of the API and writes the client for one language. You can think of it as a compiler that runs in reverse. The API is described in OpenAPI, the most common format for RESTful APIs. The OpenAPI specification on GitHub is over four megabytes, which gives you a sense of how much detail a client has to cover.
 
 The official Python, Java and .NET clients all come from the same core generation logic, which is also on GitHub. You will rarely generate them yourself. Still, knowing the process helps when something breaks. Generated code is overwritten the next time the API is generated, so you never fix it by hand. A mistake in the specification gets fixed in the specification. A mistake in the generated output gets fixed in the code generator.
 
-The process is complex, but it is the only way a small group of authors can keep up with an API this large. Each client project also publishes a compatibility matrix. It shows which client versions work with which Kubernetes API versions.
+The process is complex, but it is the only way a small group of authors can keep up with an API this large. Each client project also publishes a compatibility matrix. It shows which client versions work with which Kubernetes API versions. Check that matrix before you upgrade either side.
 
 ### Authenticating to the Kubernetes API
 
@@ -537,31 +550,31 @@ When you use `kubectl`, you rarely think about this, and the client libraries ma
 
 Code outside a cluster needs a kubeconfig file. By default, the client looks in `${HOME}/.kube/config`. If the `KUBECONFIG` variable is set, it takes priority over that home location. The file holds everything needed to reach the API server. In Python you call `config.load_kube_config()`. In Java you call `Config.defaultClient()` and then `Configuration.setDefaultApiClient(client)`. In .NET you call `KubernetesClientConfiguration.BuildDefaultConfig()`.
 
-Some cloud providers get the token from an outside program. That program often comes with the provider's command-line tools. Your code must be able to run that program too, or it cannot get a token.
+Some cloud providers get the token from an outside program. That program often comes with the provider's command-line tools. Your code must be able to run that program too, or it cannot get a token. A common symptom is code that works in your terminal and fails in a container that lacks the tool.
 
 Code running inside a Pod works differently. The Pod has a service account, and Kubernetes places its token and certificate authority into the Pod as a volume. The API server is always reachable at a fixed DNS name, generally `kubernetes`. Because all the data is already in the Pod, no kubeconfig is needed. In Python you call `config.load_incluster_config()`. In Java you call `ClientBuilder.cluster().build()`. In .NET you call `KubernetesClientConfiguration.InClusterConfig()`.
 
-The default service account has very few permissions, so code in a Pod often cannot do much at first. If you see authorization errors, give the Pod a service account made for your code, with the roles it needs in the cluster.
+The default service account has very few permissions, so code in a Pod often cannot do much at first. If you see authorization errors, give the Pod a service account made for your code, with the roles it needs in the cluster. Grant only the roles the code uses, so a bug in the code cannot do more damage than it needs to.
 
 ### Namespaced and cluster-level resources
 
 Before you call the API, know where a resource lives. Namespaced resources exist inside a namespace, such as a Pod or a Deployment in `kube-system`. Cluster-level resources exist only once in the whole cluster. A Namespace is the obvious example, and CustomResourceDefinitions and ClusterRoleBindings are others.
 
-The difference shows up in the function names. To list Pods in the `default` namespace in Python, you write `api.list_namespaced_pods('default')`. To list Namespaces, you write `api.list_namespaces()`. Once you see the pattern, the names are easy to guess.
+The difference shows up in the function names. To list Pods in the `default` namespace in Python, you write `api.list_namespaced_pods('default')`. To list Namespaces, you write `api.list_namespaces()`. Once you see the pattern, the names are easy to guess. The word `namespaced` in a method name tells you that a namespace argument is required.
 
 ### API groups
 
-Kubernetes sorts its resources into API groups. `kubectl` users rarely notice this, but you can see the group in the `apiVersion` field of a YAML file. When you program against the API, the grouping matters, because each group often has its own client class. For example, a Deployment lives in the `apps/v1` group. To work with Deployments, you create an `AppsV1Api` object, which knows how to handle every resource in the `apps/v1` group and version. In Java, that is `new AppsV1Api()`.
+Kubernetes sorts its resources into API groups. `kubectl` users rarely notice this, but you can see the group in the `apiVersion` field of a YAML file. When you program against the API, the grouping matters, because each group often has its own client class. For example, a Deployment lives in the `apps/v1` group. To work with Deployments, you create an `AppsV1Api` object, which knows how to handle every resource in the `apps/v1` group and version. In Java, that is `new AppsV1Api()`. If you pick the wrong client class, the call fails because the resource is not in that group.
 
 ### Listing and creating Pods
 
-Start by creating a client object, then use it to list the Pods in the `default` namespace. In Python you create `client.CoreV1Api()` and call `list_namespaced_pod('default')`. In Java the same call is `listNamespacedPod("default")`, which returns a `V1PodList`. In .NET it is `ListNamespacedPod("default")`.
+Start by creating a client object, then use it to list the Pods in the `default` namespace. In Python you create `client.CoreV1Api()` and call `list_namespaced_pod('default')`. In Java the same call is `listNamespacedPod("default")`, which returns a `V1PodList`. In .NET it is `ListNamespacedPod("default")`. Each language has its own name for the same request, so look for the group first and the method second.
 
-Creating a resource is the next task. The create call is easy to find, such as `create_namespaced_pod` in Python. Defining the new Pod is the harder part. In Python you build a `client.V1Container` and place it inside a `client.V1Pod`. The Pod's name goes in a `client.V1ObjectMeta`. Java uses a `V1PodBuilder` with chained `withNewMetadata()` and `withNewSpec()` calls. .NET sets the `Metadata` and `Spec` properties of a new `V1Pod`.
+Creating a resource is the next task. The create call is easy to find, such as `create_namespaced_pod` in Python. Defining the new Pod is the harder part. In Python you build a `client.V1Container` and place it inside a `client.V1Pod`. The Pod's name goes in a `client.V1ObjectMeta`. Java uses a `V1PodBuilder` with chained `withNewMetadata()` and `withNewSpec()` calls. .NET sets the `Metadata` and `Spec` properties of a new `V1Pod`. The shape is the same in all three. A Pod has metadata and a spec, and the spec holds the containers.
 
 ### Creating, replacing, and patching objects
 
-You will see three verbs for changing a resource: `create`, `replace` and `patch`. They look alike, but each one works differently.
+You will see three verbs for changing a resource: `create`, `replace` and `patch`. They look alike, but each one works differently. Think of them as three ways to change a form. You can fill in a blank one, rewrite the whole thing, or correct one line and leave the rest alone.
 
 | Verb | What it does | Watch out for |
 |---|---|---|
@@ -569,11 +582,11 @@ You will see three verbs for changing a resource: `create`, `replace` and `patch
 | Replace | Replaces an existing resource completely, without reading the old one | You must send a complete resource |
 | Patch | Changes only the parts you name, and leaves the rest alone | You send a special Patch resource, not the whole object |
 
-Patching is not always simple, and in many cases replacing is easier. With large resources, though, patching can save network bandwidth and API server work. It also helps when several actors change different parts of one resource, because they do not fight over write conflicts.
+Patching is not always simple, and in many cases replacing is easier. With large resources, though, patching can save network bandwidth and API server work. It also helps when several actors change different parts of one resource, because they do not fight over write conflicts. A conflict happens when two writers both replace the whole object and the second one overwrites the first without knowing it.
 
-To patch, you build a Patch object that describes the change. Kubernetes supports three patch formats: JSON Patch, JSON Merge Patch and strategic merge patch. The first two are RFC standards used in other places. The third is a format Kubernetes developed itself. Each has its pros and cons. This section uses JSON Patch, because it is the simplest to read.
+To patch, you build a Patch object that describes the change. Kubernetes supports three patch formats: JSON Patch, JSON Merge Patch and strategic merge patch. The first two are RFC standards used in other places. The third is a format Kubernetes developed itself. Each has its pros and cons. This section uses JSON Patch, because it is the simplest to read. Each operation in a JSON Patch names an action, a path and a value, so you can read it like a sentence.
 
-Here is the idea for raising a Deployment to three replicas. In Python you set `deployment.spec.replicas = 3` and then call `patch_namespaced_deployment`. In Java the JSON Patch body is `[{"op":"replace","path":"/spec/replicas","value":3}]`, and `PatchUtils.patch` sends it. The .NET sample uses the same JSON Patch body. In each sample, the Deployment ends up with three replicas.
+Here is the idea for raising a Deployment to three replicas. In Python you set `deployment.spec.replicas = 3` and then call `patch_namespaced_deployment`. In Java the JSON Patch body is `[{"op":"replace","path":"/spec/replicas","value":3}]`, and `PatchUtils.patch` sends it. The .NET sample uses the same JSON Patch body. In each sample, the Deployment ends up with three replicas. The `replace` operation changes one field, so the rest of the Deployment is left as it was.
 
 ### Watching for changes instead of polling
 
@@ -581,27 +594,29 @@ Kubernetes resources are declarative. They describe the desired state of the sys
 
 The simplest method is polling. Polling calls the list function at a fixed interval, such as every 60 seconds, and then goes through every resource it cares about. Polling is easy to write, but it has real costs. A change can wait until the next poll, so it arrives late. Polling also loads the API server, because it keeps returning resources that have not changed. Many simple clients start with polling, and too many of them can overload the server.
 
-Kubernetes also offers watch semantics, which are event-based. You tell the API server what you care about, and it sends a notice whenever that changes. In practice, the client makes a GET request that hangs open. The TCP connection stays open for the length of the watch. The server writes to that stream each time something changes, and it never closes the stream.
+Think about a kitchen. Polling is a cook who walks to the pass every minute to check whether any orders are ready. Most trips find nothing. A watch is a bell that rings when an order is up. The cook keeps working and reacts only when there is news. Both approaches get the food out, but only one of them wastes steps on empty checks.
 
-A watch turns a `while` loop that polls into a set of callbacks. In Java you wrap `listNamespacedPodCall` in `Watch.createWatch`, then loop over each item and print its type and name. You close the watch in a `finally` block. Each change reaches your code without a polling delay. The server also does less work, because it does not resend unchanged resources.
+Kubernetes also offers watch semantics, which are event-based. You tell the API server what you care about, and it sends a notice whenever that changes. In practice, the client makes a GET request that hangs open. The TCP connection stays open for the length of the watch. The server writes to that stream each time something changes, and it never closes the stream. The stream is like a subscription to a newsletter. You get a message when there is news, and you do not have to ask every hour.
+
+A watch turns a `while` loop that polls into a set of callbacks. In Java you wrap `listNamespacedPodCall` in `Watch.createWatch`, then loop over each item and print its type and name. You close the watch in a `finally` block, so the connection is released even if the loop fails. Each change reaches your code without a polling delay. The server also does less work, because it does not resend unchanged resources.
 
 ### Interacting with Pods
 
-The API also lets your code work directly with the apps running in a Pod. `kubectl` has `logs`, `exec` and `port-forward` for this, and your own code can do the same things.
+The API also lets your code work directly with the apps running in a Pod. `kubectl` has `logs`, `exec` and `port-forward` for this, and your own code can do the same things. These are the three everyday tools for looking inside a running container, and a program that automates debugging may need all three.
 
 These three calls do not follow the usual REST pattern. Each client library needs custom logic for them, so they differ more from one client to the next. There is no shortcut. You have to learn how each language handles them.
 
 **Reading and streaming logs**
 
-When you get Pod logs, you choose between two modes. A snapshot shows the logs as they are right now. Streaming keeps a connection open, so new lines arrive as they are written. Streaming is the same as `kubectl logs -f`. Without it, you get only the current contents.
+When you get Pod logs, you choose between two modes. A snapshot shows the logs as they are right now. Streaming keeps a connection open, so new lines arrive as they are written. Streaming is the same as `kubectl logs -f`. Without it, you get only the current contents. Choose the snapshot for a quick check and streaming for watching a job as it runs.
 
 In Python you call `read_namespaced_pod_log` with a `name` and a `namespace`. In Java, `PodLogs` has a `streamNamespacedPodLog` method. In .NET, `ReadNamespacedPodLogWithHttpMessagesAsync` takes `follow: true` to stream.
 
 **Running a command in a Pod**
 
-Another common task is running a command inside a Pod and reading its output. `kubectl exec` does this from the command line. Under the hood, the API opens a WebSocket connection to the server. A WebSocket lets several streams share one HTTP connection. Here the streams are `stdin`, `stdout` and `stderr`. The client libraries handle the WebSocket details for you.
+Another common task is running a command inside a Pod and reading its output. `kubectl exec` does this from the command line. Under the hood, the API opens a WebSocket connection to the server. A WebSocket lets several streams share one HTTP connection. Here the streams are `stdin`, `stdout` and `stderr`, which are the input stream, the normal output and the error output. The client libraries handle the WebSocket details for you.
 
-To run `ls /foo` in a Pod, Python wraps `connect_get_namespaced_pod_exec` in `stream` and passes `command=cmd`. Java uses an `Exec` object and its `exec` method. .NET calls `WebSocketNamespacedPodExecAsync` and reads the output through a `StreamDemuxer`.
+To run `ls /foo` in a Pod, Python wraps `connect_get_namespaced_pod_exec` in `stream` and passes `command=cmd`. Java uses an `Exec` object and its `exec` method. .NET calls `WebSocketNamespacedPodExecAsync` and reads the output through a `StreamDemuxer`. A demuxer splits the combined stream back into its separate parts, so your code can read normal output and errors on their own.
 
 **Port forwarding**
 
@@ -609,31 +624,33 @@ You can also forward network connections from a Pod to your local machine. As wi
 
 The setup is the same either way. In Python you call `portforward` with `connect_get_namespaced_pod_portforward`, the Pod name, the namespace and `ports='8080'`. Java uses a `PortForward` object and its `forward` method. .NET calls `WebSocketNamespacedPodPortForwardAsync` with the `v4.channel.k8s.io` protocol.
 
-Each of these examples connects port 8080 in the Pod to port 8080 in your program. The code gets back the byte streams for that channel, and you use those streams to send and receive messages. Because these samples were not run on live hardware, run them against your own cluster before you rely on them.
+Each of these examples connects port 8080 in the Pod to port 8080 in your program. The code gets back the byte streams for that channel, and you use those streams to send and receive messages. Run these samples against your own cluster before you rely on them, and start with a Pod you do not mind restarting.
 
 ## 4. Packaging, distribution and lifecycle
 
-An operator that works on your laptop still has to reach other clusters. Packaging decides how the manager image, its manifests and its CRDs get there, and lifecycle decides how they change over time.
+Think of a package the way a shipping crate works. The crate holds the operator's image, its manifests, its CRDs and its permissions, and it must arrive complete on every cluster. A crate that is missing one part will still open, but the part it lacks will fail later and far from the cause.
 
-Packaging the manager means a container image for the manager, plus a Kustomize or Helm chart to deploy it. CRDs usually ship separately. A Helm `crds/` directory installs CRDs, but it never upgrades them. Many projects therefore ship CRDs in their own chart, apply them with a `kubectl apply --server-side` step, or let the operator apply its own CRDs. The package also carries RBAC, generated as a ClusterRole or Role from `+kubebuilder:rbac` markers. Webhook certificates come from cert-manager, and `caBundle` is injected into the webhook configuration. The manager itself may need a ServiceMonitor, PodDisruptionBudget, NetworkPolicy and PriorityClass.
+An operator that works on your laptop still has to reach other clusters. Packaging decides how the manager image, its manifests and its CRDs get there, and lifecycle decides how they change over time. A package that cannot be installed twice the same way, or cannot be upgraded safely, causes trouble on every cluster that uses it.
 
-OLM, the Operator Lifecycle Manager, is OpenShift's default. It also runs on vanilla Kubernetes. It uses ClusterServiceVersion, CatalogSource, Subscription and OperatorGroup objects to handle installation, upgrade graphs, dependency resolution and automatic updates from channels. Upgrade graphs use `replaces` and `skipRange`. The bundle format and operator-sdk bundle tooling go with it. Other options include OperatorHub, Helm charts, and GitOps with pinned versions. Many AI platforms prefer GitOps with pinned versions for explicit control.
+Packaging the manager means a container image for the manager, plus a Kustomize or Helm chart to deploy it. CRDs usually ship separately. A Helm `crds/` directory installs CRDs, but it never upgrades them. Many projects therefore ship CRDs in their own chart, apply them with a `kubectl apply --server-side` step, or let the operator apply its own CRDs. The package also carries RBAC, generated as a ClusterRole or Role from `+kubebuilder:rbac` markers. Webhook certificates come from cert-manager, and `caBundle` is injected into the webhook configuration. The `caBundle` is the certificate authority that lets the API server trust the webhook. The manager itself may need a ServiceMonitor, PodDisruptionBudget, NetworkPolicy and PriorityClass.
 
-Upgrading CRDs needs care. Schema changes must stay backward compatible while old objects exist. Tighten validation carefully, because existing invalid objects will block updates. Add new fields as optional with defaults, and handle storage version migrations. Test upgrades with real objects, for example by applying the new CRD on top of a populated cluster. Never delete a CRD during an upgrade, because that deletes all its CRs. Pin the operator and CRD versions together.
+OLM, the Operator Lifecycle Manager, is OpenShift's default. It also runs on vanilla Kubernetes. It uses ClusterServiceVersion, CatalogSource, Subscription and OperatorGroup objects to handle installation, upgrade graphs, dependency resolution and automatic updates from channels. Upgrade graphs use `replaces` and `skipRange`. The bundle format and operator-sdk bundle tooling go with it. Other options include OperatorHub, Helm charts, and GitOps with pinned versions. Many AI platforms prefer GitOps with pinned versions for explicit control. With pinned versions, the cluster changes only when someone changes a number in Git, which makes every upgrade a reviewed change.
 
-Grant least privilege. Give the controller only the verbs on the resources it reconciles, and split cluster-scoped permissions from namespaced ones. Avoid `*`, review the generated rules (5.16), and use `resourceNames` where you can. Give webhooks their own ServiceAccounts, and restrict who can create CRs of powerful kinds.
+Upgrading CRDs needs care. Schema changes must stay backward compatible while old objects exist. Tighten validation carefully, because existing invalid objects will block updates. Add new fields as optional with defaults, and handle storage version migrations. Test upgrades with real objects, for example by applying the new CRD on top of a populated cluster. Never delete a CRD during an upgrade, because that deletes all its CRs. Pin the operator and CRD versions together, so the controller never runs against a schema it does not expect.
 
-Operators can be cluster-wide, or you can make them namespace-scoped to watch a set of namespaces. Watch out for version skew across clusters. Watch out too for CRD ownership conflicts, which happen when two operators claim the same kind.
+Grant least privilege. Give the controller only the verbs on the resources it reconciles, and split cluster-scoped permissions from namespaced ones. Avoid `*`, review the generated rules (5.16), and use `resourceNames` where you can. `resourceNames` limits a rule to named objects instead of every object of a kind. Give webhooks their own ServiceAccounts, and restrict who can create CRs of powerful kinds.
 
-Operational readiness covers several things. Use leader election with a Lease, graceful shutdown, and resource requests. Give infrastructure operators `priorityClassName: system-cluster-critical`. Add PDBs, and liveness and readiness probes from controller-runtime (`healthz` and `readyz`). Expose a secured metrics endpoint, and write structured logs. Add tracing, runbooks and alerts for reconcile error rate, queue depth and webhook latency. Include an SBOM and signing (5.27), upgrade tests, and chaos tests that kill the manager mid-reconcile.
+Operators can be cluster-wide, or you can make them namespace-scoped to watch a set of namespaces. Watch out for version skew across clusters, which means one cluster running a different operator version from another. Watch out too for CRD ownership conflicts, which happen when two operators claim the same kind.
 
-Failure modes to plan for include a webhook outage that blocks CR creation, finalizer deadlocks, and reconcile hot loops. Unbounded retries can hammer external APIs. Two controllers can manage the same child. Leaked external resources appear when finalizers are missing. Stale caches can cause duplicate creates, and huge status growth can hurt. CRD conversion bugs can corrupt data, and an operator can crash-loop after a schema change. A CR deleted before its operator was installed gets no cleanup at all.
+Operational readiness covers several things. Use leader election with a Lease, graceful shutdown, and resource requests. Leader election means that only one replica acts at a time, while the others wait as standbys. Give infrastructure operators `priorityClassName: system-cluster-critical`. Add PDBs, and liveness and readiness probes from controller-runtime (`healthz` and `readyz`). Expose a secured metrics endpoint, and write structured logs. Add tracing, runbooks and alerts for reconcile error rate, queue depth and webhook latency. Include an SBOM and signing (5.27), upgrade tests, and chaos tests that kill the manager mid-reconcile. Chaos tests are deliberate failures that show whether the controller recovers cleanly.
 
-Decide your upgrade and uninstall procedure before the first release, since either one can strand CRs.
+Failure modes to plan for include a webhook outage that blocks CR creation, finalizer deadlocks, and reconcile hot loops. Unbounded retries can hammer external APIs. Two controllers can manage the same child. Leaked external resources appear when finalizers are missing. Stale caches can cause duplicate creates, and huge status growth can hurt. CRD conversion bugs can corrupt data, and an operator can crash-loop after a schema change. A CR deleted before its operator was installed gets no cleanup at all. For each one, ask what the operator would do, and whether a human would notice in time.
+
+Decide your upgrade and uninstall procedure before the first release, since either one can strand CRs. Write the procedure down while the design is fresh, because the person who writes it later may not know the order of steps.
 
 ## 5. AI-platform operators (what to know)
 
-Most AI platforms on Kubernetes run several operators side by side, and each one owns its own CRDs. The table lists the ones you will meet and what each one manages.
+Most AI platforms on Kubernetes run several operators side by side, and each one owns its own CRDs. When a training job fails, the answer may be in any one of them. Each row names the operator, the custom resources it owns, and the things it changes in the cluster. Read the table from left to right. First find the resource you are looking at, then find the operator that owns it, then find the children that operator touches. The table lists the ones you will meet and what each one manages, so you know where to look first.
 
 | Operator | Key CRDs | What it manages | Notes |
 |---|---|---|---|
@@ -655,53 +672,58 @@ Most AI platforms on Kubernetes run several operators side by side, and each one
 | **Slurm operators (Slinky/Soperator)** | `Cluster`, `NodeSet`, `Controller` ... | Slurm on Kubernetes | Part 6 |
 | **Node problem/health operators** | Custom (5.32) | GPU node health remediation | You will build one |
 
-Notice that the operators cover different layers. Some handle the node software and the network. Others handle job admission, distributed training, serving, and delivery of the platform itself.
+Notice that the operators cover different layers. Some handle the node software and the network. Others handle job admission, distributed training, serving, and delivery of the platform itself. Each layer has its own owner and its own failure symptoms, so a symptom in one layer often points you to the layer below it.
 
 When you evaluate an operator, start with its maturity level and its upgrade story, including how it handles CRDs. Then look at RBAC breadth and failure semantics, which means what happens when the operator is down or its CRs are deleted. Check observability and resource footprint too. Also consider the support policy, the supply-chain posture such as signed images and SBOMs, the documentation, and API stability, including whether the API is alpha or v1.
 
-Before you install an operator, check how it upgrades its CRDs and what happens when its controller goes down.
+Before you install an operator, check how it upgrades its CRDs and what happens when its controller goes down. Those two answers predict most of the trouble you will see later.
+
 
 ## 6. Lab
 
-Start with the self-checking Python lab. You can run it locally. It checks three things: the CRD structural schema pruner, defaulter and `x-kubernetes-validations` CEL rule evaluator (`evaluate_crd_schema_and_cel`); the hub-and-spoke multi-version conversion and `status.storedVersions` migrator (`convert_crd_via_hub_and_migrate_storage`); and the operator finalizer and `/status` subresource reconciler (`reconcile_cr_with_finalizer_and_status`).
+The lab has two parts, and the first one needs no cluster. Start with the self-checking Python lab, which you can run on your own machine. It checks three things. The first is the CRD structural schema pruner, defaulter and `x-kubernetes-validations` CEL rule evaluator, which is `evaluate_crd_schema_and_cel`. The second is the hub-and-spoke multi-version conversion and `status.storedVersions` migrator, which is `convert_crd_via_hub_and_migrate_storage`. The third is the operator finalizer and `/status` subresource reconciler, which is `reconcile_cr_with_finalizer_and_status`. Run the command below and read the output. Each check is a small model of a behaviour you will see in a real cluster.
 
 ```bash
 python3 code/part05/crd_schema_conversion_sim_lab.py
 ```
 
-Next, move to a `kind` or `kubeadm` cluster, where you can work through the steps below. The interactive shell steps below were not run on live hardware. Work through these exercises:
+The second part moves to a `kind` or `kubeadm` cluster, where you can work through the steps below. The interactive shell steps below were not run on live hardware, so treat them as a plan to check against what your cluster really does. Work through these exercises in order, because later steps reuse the CRD you build in the first one.
 
-1. Write a CRD. Create the `GPUHealthPolicy` CRD above and apply it. Test valid and invalid objects, including an enum violation, a missing `codes` field, a CEL rule failure and an unknown field that gets pruned. Run `kubectl explain gpuhealthpolicy.spec --recursive`, add printer columns, and check the output of `kubectl get`.
-2. Try defaults and pruning. Remove a field from the schema and watch what gets pruned. Then add `x-kubernetes-preserve-unknown-fields` and compare the two results. Finally, test defaulting on create and on update.
-3. Work with CEL. Add an immutability rule to a field, and add a cross-field validation. Add a transition rule too. Then hit the CEL cost limits by leaving arrays unbounded, and fix them with `maxItems` and `maxLength`.
-4. Test the status subresource. Patch `status` with `kubectl patch --subresource=status`. Then try writing status through the main endpoint, which the API server ignores. Check that `generation` does not change on status updates.
-5. Test versions and conversion. Add `v1beta1` with a renamed field, and use `conversion.strategy: None` to observe the data loss. Then implement a minimal conversion webhook in Go or Python, and verify the round trips. Run the storage-version migration and verify `status.storedVersions`.
-6. Test finalizers. Create a toy controller, either a shell loop with kubectl or a Python program with kopf, that adds a finalizer and cleans up an external file. Delete the CR and watch it stay in Terminating until the cleanup finishes. Uninstall the controller to reproduce the stuck CR, then recover from it.
-7. Compare operator options. Implement the same trivial "ensure a ConfigMap per CR" three ways: as a Helm-based operator, as a kopf handler, and with controller-runtime (5.31). Compare code size, behaviour on restarts, and conflict handling.
-8. Try server-side apply with CRs. Use two field managers to edit different list items in a `map`-type list and in an `atomic` list. Observe the conflicts and ownership with `--show-managed-fields`.
-9. Inspect a real operator. Install the GPU Operator, or Kueue, in kind. List its CRDs, RBAC and webhooks. Read the CRD schemas and the `ClusterPolicy` spec. Find the finalizers, the owner references on its DaemonSets, and the status conditions. Then delete the operator, not the CRs, and note the effects.
-10. Run failure drills. Kill the manager mid-reconcile. Delete a child object. Break the webhook. Apply an invalid CR that was created before a CRD tightening. Fill status with large data and observe the impact on the API.
-11. Run an upgrade drill. Upgrade the operator image together with a CRD schema change in a populated cluster. Verify the existing CRs, then roll back. Document the playbook, which also matters for 5.20.
-12. Review a design. Take a proposed `TrainingRun` CRD and review it against the API design guidance. Check spec and status separation, immutability, references, conditions and quotas. Then rewrite it.
+1. Write a CRD. Create the `GPUHealthPolicy` CRD above and apply it. Then test valid and invalid objects. Try an enum violation, a missing `codes` field, a CEL rule failure and an unknown field that gets pruned. Run `kubectl explain gpuhealthpolicy.spec --recursive` to see the field docs. Add printer columns, and check the output of `kubectl get`.
+2. Try defaults and pruning. Remove a field from the schema, and watch what gets pruned. Then add `x-kubernetes-preserve-unknown-fields`. Compare the two results side by side. Finally, test defaulting on create. Then test it on update.
+3. Work with CEL. Add an immutability rule to a field. Add a cross-field validation next. Then add a transition rule. Leave an array unbounded and hit the CEL cost limit. Fix it with `maxItems` and `maxLength`.
+4. Test the status subresource. Patch `status` with `kubectl patch --subresource=status`. Then try writing status through the main endpoint. The API server ignores that write, so confirm it. Check that `generation` does not change on status updates.
+5. Test versions and conversion. Add `v1beta1` with a renamed field. Set `conversion.strategy: None` and watch the data get lost. Next, implement a minimal conversion webhook in Go or Python. Verify the round trips. Then run the storage-version migration and check `status.storedVersions`.
+6. Test finalizers. Create a toy controller with a shell loop and kubectl, or with a Python program that uses kopf. The controller should add a finalizer and clean up an external file. Delete the CR, and watch it stay in Terminating until the cleanup finishes. Then uninstall the controller to reproduce the stuck CR, and recover from it.
+7. Compare operator options. Implement the same small job, "ensure a ConfigMap per CR," three ways. Use a Helm-based operator, a kopf handler, and controller-runtime from 5.31. Compare the code size, the behaviour on restarts and the conflict handling.
+8. Try server-side apply with CRs. Use two field managers. Have each one edit a different list item in a `map`-type list, then in an `atomic` list. Watch the conflicts and the ownership with `--show-managed-fields`.
+9. Inspect a real operator. Install the GPU Operator, or Kueue, in kind. List its CRDs, its RBAC and its webhooks. Read the CRD schemas and the `ClusterPolicy` spec. Find the finalizers, the owner references on its DaemonSets and the status conditions. Then delete the operator, but not the CRs, and note what changes.
+10. Run failure drills. Kill the manager in the middle of a reconcile. Delete a child object. Break the webhook. Apply an invalid CR that was created before a CRD tightening. Fill status with large data, and observe the effect on the API.
+11. Run an upgrade drill. Upgrade the operator image together with a CRD schema change, in a populated cluster. Verify the existing CRs. Then roll back. Write down the playbook, which also matters for 5.20.
+12. Review a design. Take a proposed `TrainingRun` CRD and review it against the API design guidance. Check the separation of spec and status. Check immutability, references, conditions and quotas. Then rewrite it.
 13. Clean up when you finish.
 
-Run the Python lab first. You can do it locally, and it checks the same mechanics that the cluster exercises rely on.
+Run the Python lab first, because it checks the same mechanics that the cluster exercises rely on. Keep a short notebook while you work. For each step, write what you expected, what the cluster actually did and why the two differ. That notebook becomes the start of your own runbook for the operator, and it is the habit that makes the next incident shorter. Once it passes, the cluster steps are easier to read. A failure in a cluster step is then a question about the cluster, not about the logic.
 
 ## 7. Common mistakes
+
+Most of these mistakes share one root cause. The author treated the CRD as a data format and forgot that the API server and a controller will act on it. Read the list with that in mind.
 
 Some CRDs have no structural schema or no validation at all, and that lets fields be silently pruned. Imperative fields, mutable identity fields and unbounded status cause trouble later. Writing status through the main resource, or without `observedGeneration`, is also a mistake.
 
 Controllers that skip `ownerReferences`, or skip finalizers for external resources, leave things behind. Deleting the operator before its CRs is another trap. Helm `crds/` upgrades can mislead you, and deleting CRDs during an upgrade causes data loss.
 
-Hot loops often come from status updates that trigger reconciles. They also come from missing backoff, or from stuffing long-running work into `Reconcile`. Webhooks can become single points of failure. Conversion webhooks without round-trip tests are risky.
+Hot loops often come from status updates that trigger reconciles. They also come from missing backoff, or from stuffing long-running work into `Reconcile`. Webhooks can become single points of failure. Conversion webhooks without round-trip tests are risky, because a conversion that loses one field only shows up when someone reads the old version.
 
 Over-broad RBAC and cluster-scoped CRs without access control are mistakes too. Two operators or controllers that manage the same objects will fight, and that includes Terraform or GitOps fighting an operator. Building an operator when Helm or Crossplane would do is a mistake. So is using Helm when the work needs runtime decisions.
+
+Each of these mistakes has a quiet early sign. An operator that is missing finalizers looks fine until someone deletes a CR and the external resource stays behind. A hot loop looks fine until the API server's load climbs. Over-broad RBAC looks fine until a bug uses the extra permission. Look for those early signs during review, not after an incident.
 
 Review each controller's finalizers, owner references and RBAC before you ship the first release, since most of these mistakes show up there.
 
 ## 8. Interview angles
 
-Expect questions like these about extensions and operators.
+Interviewers use these questions to see whether you can reason about a platform, not only recite its parts. Each question has a short answer and a longer one behind it. Practice the short answer first, then add the mechanism. A good answer names the trade-off early, shows the mechanism that causes it, and ends with what you would check first in a real cluster. Saying that you would check the status conditions and the operator's logs is often as strong as any fact you recite.
 
 - What is a CRD? How is it different from an aggregated API server?
 - What is an operator? Describe its reconcile loop and the capability levels.
@@ -714,12 +736,14 @@ Expect questions like these about extensions and operators.
 
 ## Exercises
 
-1. You will study the CRD anatomy, structural schemas, unknown-field pruning and `x-kubernetes-validations` CEL rules. Use `evaluate_crd_schema_and_cel()` in `code/part05/crd_schema_conversion_sim.py` to trace the `GPUHealthPolicy` CRD from Section 2. Explain why structural schemas are mandatory, and why undeclared fields are silently pruned on write when `preserveUnknownFields: false`. Then explain how `x-kubernetes-list-type: map` with `x-kubernetes-list-map-keys: [type]` works with Server-Side Apply. Finally, explain how CEL rules enforce cross-field validation, such as `CordonAndDrain` requiring `maxUnavailableNodes`, and immutability with `self == oldSelf`. Kubernetes Programming with Go, Chapter 8, covers the same ground.
-2. You will work through CRD subresources (`/status` and `/scale`), multi-version serving, hub-and-spoke conversion and storage version migration. Using `convert_crd_via_hub_and_migrate_storage()` in `code/part05/crd_schema_conversion_sim.py`, explain why enabling `subresources.status: {}` stops `spec` updates from overwriting `status`, and the reverse. Explain why `etcd` stores only one `storage: true` version. Then trace the 4-step procedure that migrates a CRD from `v1alpha1` to `v1beta1` and removes `v1alpha1` from `status.storedVersions`.
-3. You will study the operator pattern, the 5 operator capability levels and the reconcile loop. Using `reconcile_cr_with_finalizer_and_status()` in the same file, trace the reconcile flowchart from Section 3. Contrast `ownerReferences`, which fit Kubernetes child objects, with `finalizers`, which fit external resources such as node cordons or cloud buckets. Then explain why uninstalling an operator before deleting its CRs deadlocks CR deletion.
-4. Program Kubernetes from Python with the `kubernetes` OpenAPI client and `kopf`, as covered in Kubernetes: Up and Running, Chapter 18. Trace the 5 Python patterns in Section 3. They are `config.load_kube_config()` versus `config.load_incluster_config()`, `CoreV1Api` and `AppsV1Api` CRUD with `patch_namespaced_deployment`, `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward(v1.connect_get_namespaced_pod_portforward, ...)`. Then compare `kubebuilder` (Go), `Operator SDK` (Go, Helm or Ansible), `kopf` (Python), `Metacontroller` and `Crossplane`.
-5. Work on packaging, distribution and upgrades: the Helm `crds/` pitfall, OLM, RBAC and operational readiness. Explain why Helm's `crds/` directory installs CRDs on `helm install` but never updates them on `helm upgrade`. Then explain how to upgrade CRDs safely in GitOps without deleting CRs. Finally, explain how OLM manages operator lifecycles with `ClusterServiceVersion`, `CatalogSource`, `Subscription` and `OperatorGroup`.
-6. Map the AI-platform operator ecosystem, covering the GPU Operator, Network Operator, Kueue, JobSet, Kubeflow Training Operator, KubeRay and KServe. For each AI operator in Section 5, list its primary CRDs and the child resources it reconciles. Then describe what happens to running GPU workloads if the operator's controller Pod crashes or is upgraded.
+Each exercise asks you to trace one mechanism in the code or the cluster. Work through them in order, because the later ones refer to ideas from the earlier ones.
+
+1. You will study the CRD anatomy, the structural schemas, unknown-field pruning and the `x-kubernetes-validations` CEL rules. Use `evaluate_crd_schema_and_cel()` in `code/part05/crd_schema_conversion_sim.py` to trace the `GPUHealthPolicy` CRD from Section 2. Explain why structural schemas are mandatory. Then explain why undeclared fields are silently pruned on write when `preserveUnknownFields: false`. Next, explain how `x-kubernetes-list-type: map` with `x-kubernetes-list-map-keys: [type]` works with Server-Side Apply. Finally, explain how CEL rules enforce cross-field validation. Use the `CordonAndDrain` rule that requires `maxUnavailableNodes`. Then explain immutability with `self == oldSelf`. Kubernetes Programming with Go, Chapter 8, covers the same ground.
+2. You will work through CRD subresources, which are `/status` and `/scale`, along with multi-version serving, hub-and-spoke conversion and storage version migration. Use `convert_crd_via_hub_and_migrate_storage()` in `code/part05/crd_schema_conversion_sim.py`. Explain why enabling `subresources.status: {}` stops `spec` updates from overwriting `status`. Then explain the reverse case. Explain why `etcd` stores only one `storage: true` version. Finally, trace the four-step procedure that migrates a CRD from `v1alpha1` to `v1beta1`. The last step removes `v1alpha1` from `status.storedVersions`.
+3. You will study the operator pattern, the five operator capability levels and the reconcile loop. Use `reconcile_cr_with_finalizer_and_status()` in the same file. Trace the reconcile flowchart from Section 3. Contrast `ownerReferences`, which fit Kubernetes child objects, with `finalizers`, which fit external resources such as node cordons or cloud buckets. Then explain why uninstalling an operator before deleting its CRs deadlocks CR deletion.
+4. Program Kubernetes from Python with the `kubernetes` OpenAPI client and `kopf`, as covered in Kubernetes: Up and Running, Chapter 18. Trace the five Python patterns in Section 3. The patterns are `config.load_kube_config()` versus `config.load_incluster_config()`, `CoreV1Api` and `AppsV1Api` CRUD with `patch_namespaced_deployment`, `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward(v1.connect_get_namespaced_pod_portforward, ...)`. Then compare `kubebuilder` (Go), `Operator SDK` (Go, Helm or Ansible), `kopf` (Python), `Metacontroller` and `Crossplane`.
+5. Work on packaging, distribution and upgrades. The topics are the Helm `crds/` pitfall, OLM, RBAC and operational readiness. Explain why Helm's `crds/` directory installs CRDs on `helm install` but never updates them on `helm upgrade`. Then explain how to upgrade CRDs safely in GitOps without deleting CRs. Finally, explain how OLM manages operator lifecycles with `ClusterServiceVersion`, `CatalogSource`, `Subscription` and `OperatorGroup`.
+6. Map the AI-platform operator ecosystem. Cover the GPU Operator, the Network Operator, Kueue, JobSet, the Kubeflow Training Operator, KubeRay and KServe. For each AI operator in Section 5, list its primary CRDs. List the child resources it reconciles too. Then describe what happens to running GPU workloads if the operator's controller Pod crashes. Describe the same thing for an upgrade.
 
 ## Checkpoint questions (20)
 
