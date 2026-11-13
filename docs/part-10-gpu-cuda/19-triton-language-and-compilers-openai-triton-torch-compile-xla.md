@@ -24,11 +24,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A team ports a model from Ampere to Hopper. Its hand-tuned CUDA kernels, written for the older chip, need rewriting to use the new hardware features. The same model in plain eager PyTorch avoids that work but launches a separate GPU kernel for every small addition or activation. Each kernel reads from and writes to high-bandwidth memory, so the Tensor Cores spend much of their time idle.
+A team moves a model from Ampere GPUs to Hopper GPUs, and the first thing they notice is that the hand-tuned CUDA kernels they wrote for the older chip do not use the new hardware well. Those kernels need rewriting before they can take advantage of the newer features. The same model running in plain eager PyTorch needs no rewriting, which is the appeal. The catch is that eager mode launches a separate GPU kernel for every small addition or activation. Each kernel reads its input from high-bandwidth memory, does a little arithmetic and writes the result back. The Tensor Cores, which are the fast matrix units on the chip, spend much of their time waiting for data, so expensive hardware sits idle.
 
-Compiler stacks and Python-based kernel languages address both problems. The PyTorch compiler captures whole subgraphs and fuses elementwise operations automatically. It lowers them to OpenAI Triton kernels, or sends large matrix multiplications to vendor libraries. When the compiler's choices fall short, an engineer can write a Triton kernel directly in Python and still use hardware features such as Tensor Memory Accelerator descriptors and fifth-generation Tensor Cores.
+Compiler stacks and Python-based kernel languages address both problems. Think of the compiler as a translator that reads a long run of operations before it starts writing anything. The PyTorch compiler captures whole subgraphs, which are connected pieces of the model's computation, and fuses elementwise operations automatically. An elementwise operation works on each number on its own, such as an addition or a sigmoid. Fusing several of them means one kernel does the work of many, so the data is read and written once instead of many times. The compiler lowers that work to OpenAI Triton kernels, or it sends large matrix multiplications to vendor libraries that the chip maker has tuned. When the compiler's choices fall short, an engineer can write a Triton kernel directly in Python and still use hardware features such as Tensor Memory Accelerator descriptors and fifth-generation Tensor Cores.
 
-Some terms in the table below need a definition first. An intermediate representation, or IR, is the form a compiler uses between the source program and machine code. An FX graph is PyTorch's graph of Python operations. AOTAutograd is the stage that builds the backward pass ahead of time. *AI Systems Performance Engineering* Chapter 14 covers all three layers of this ecosystem, and the table summarizes the pipeline stages, the OpenAI Triton runtime metrics, and the OpenXLA backend.
+Some terms in the table below need a definition first. An intermediate representation, or IR, is the form a compiler uses between the source program and machine code. Think of it as a middle language. The compiler translates your Python program into it, rewrites it several times, and only then emits instructions for the chip. Optimizations happen in that middle form, because it is easier to reason about than either the Python source or the final machine code. An FX graph is PyTorch's graph of Python operations. AOTAutograd is the stage that builds the backward pass ahead of time. *AI Systems Performance Engineering* Chapter 14 covers all three layers of this ecosystem, and the table summarizes the pipeline stages, the OpenAI Triton runtime metrics and the OpenXLA backend.
 
 | Compiler Layer | Core Mechanism | Key Quantitative Facts |
 |---|---|---|
@@ -39,8 +39,10 @@ Some terms in the table below need a definition first. An intermediate represent
 | OpenAI Triton SPMD & Proton | Programs whole thread blocks operating on blocked vectors (`BLOCK_SIZE = 1,024` across `num_warps × 32` threads) with hardware TMA descriptors (`tl.make_tensor_descriptor`) and Blackwell `tcgen05` UMMA (`256 KB`/SM TMEM). | Persistent GEMM (`matmul_kernel_persistent`) finishes an `8,192 × 8,192 × 512` benchmark in `159.352 ms` (`4,312.421` Proton score), beating standard Triton (`165.349 ms`), `torch.matmul` (`174.671 ms`), and cuBLAS (`174.920 ms`, `8.90%` faster). |
 | PyTorch XLA (OpenXLA) | Lowers PyTorch graphs via `backend="openxla"` into whole-program static HLO executables. | Targets Google Cloud TPUs, Meta MTIA, and AWS Trainium and Inferentia via the AWS Neuron SDK. |
 
+Read the table from top to bottom. Each row is one layer of the stack, from the Python frontend that captures your program down to the library that finally runs it on the chip. The middle column explains the mechanism, and the right column gives the figures the source attaches to that layer. Treat those figures as reference points, and measure your own model before you rely on any of them.
+
 :::note About the benchmark numbers in this chapter
-The Proton figures come from the book, which notes that numeric values in its metric tables are illustrative. Read them as ratios only. A single matrix multiply of those dimensions requires roughly 68.7 GFLOP, which a modern data-center GPU runs in a fraction of a millisecond. Therefore, the total millisecond figure represents an aggregate over many launches or an illustrative value, not a single kernel execution. The Triton and compiler code snippets were not run on live GPU hardware here.
+The Proton figures come from *AI Systems Performance Engineering* Chapter 14, which notes that numeric values in its metric tables are illustrative. Read them as ratios only. A ratio tells you how two runs compare, and that comparison tends to survive a change of hardware. An absolute millisecond figure depends on the GPU, its clocks and the driver version, so it may not hold on your machine. A single matrix multiply of those dimensions requires roughly 68.7 GFLOP, which a modern data-center GPU runs in a fraction of a millisecond. Therefore, the total millisecond figure represents an aggregate over many launches or an illustrative value, not a single kernel execution. The Triton and compiler code snippets were not run on live GPU hardware here.
 :::
 
 ## Prerequisites and outcomes
@@ -48,13 +50,7 @@ The Proton figures come from the book, which notes that numeric values in its me
 **Prerequisites:**
 - Chapters 10.13 through 10.18 covering memory coalescing, shared-memory tiling, Blackwell Tensor Memory and Tensor Memory Accelerator hardware, asynchronous pipeline double buffering, warp specialization, and CUDA Graphs.
 
-**Outcomes:** After this chapter you will be able to:
-1. Trace a PyTorch model through TorchDynamo, AOTAutograd, PrimTorch IR, and TorchInductor, and choose between compilation modes and AOTInductor.
-2. Handle variable-length language model sequences using SymPy symbolic shapes, `torch._dynamo.mark_dynamic`, and fixed bucket padding.
-3. Diagnose and eliminate graph breaks using `torch._dynamo.explain`, `torch.where`, and `torch.cond`, while preserving intentional distributed communication breaks.
-4. Audit compiled code and numerical accuracy using compiler logging flags, debug directories, `tlparse`, and deterministic cuBLAS workspace settings.
-5. Write, autotune, and register custom OpenAI Triton kernels using hardware tensor descriptors, warp specialization, and persistent software pipelining.
-6. Profile Triton kernels with the Proton profiler and contrast TorchInductor against the OpenXLA compiler backend.
+**What this chapter walks through:** The chapter follows one PyTorch model through the compiler stack, from TorchDynamo through AOTAutograd, PrimTorch IR and TorchInductor. It then covers how to handle changing sequence lengths with SymPy symbolic shapes, `torch._dynamo.mark_dynamic` and fixed bucket padding. Next it shows how to find and remove graph breaks with `torch._dynamo.explain`, `torch.where` and `torch.cond`, and how to audit compiled code for accuracy, and how to write, autotune and register a custom OpenAI Triton kernel. It ends with the Proton profiler and a comparison between TorchInductor and the OpenXLA backend. Each part starts from a problem you are likely to meet on a real job.
 
 ---
 
@@ -83,11 +79,13 @@ flowchart LR
 
 ### 1.1 Stage 1 — TorchDynamo: CPython bytecode capture, FX Graphs, guards, and compiler stances
 
-In standard eager PyTorch, the Python interpreter dispatches tensor operations one at a time. Every operation pays Python frame overhead and launches a separate GPU kernel before seeing what comes next. Early graph capture tools tried to fix this by requiring static domain-specific languages, which broke whenever a model used standard Python control flow. Infrastructure teams needed a compiler frontend that could capture graphs directly from arbitrary Python bytecode.
+A colleague profiles a model that runs slower than its arithmetic would suggest. The timeline shows the GPU idle in short gaps between many tiny kernels, and the CPU is busy in between. The model is correct, but the Python side keeps stopping to launch the next small piece of work. The compiler stack exists to close those gaps, and the first stage has to understand the Python code before it can change anything.
 
-When you wrap a model with `torch.compile`, the first stage that runs is TorchDynamo. Instead of executing Python operations eagerly, TorchDynamo hooks into CPython's Frame Evaluation API defined in PEP 523 to inspect bytecode instructions dynamically. Whenever it encounters PyTorch tensor operations, it appends them as nodes into an FX Graph until it reaches an unsupported Python construct. That unsupported construct triggers a graph break, runs in eager mode, and lets TorchDynamo resume capturing the next FX Graph immediately afterward.
+In standard eager PyTorch, the Python interpreter dispatches tensor operations one at a time. Every operation pays Python frame overhead and launches a separate GPU kernel before the interpreter has even looked at what comes next. Early graph capture tools tried to fix this by requiring a static domain-specific language, which is a restricted notation with its own rules. Those tools broke whenever a model used ordinary Python control flow such as an `if` statement or a loop. Infrastructure teams needed a compiler frontend that could capture graphs directly from arbitrary Python bytecode, which is the low-level instruction form that Python runs internally.
 
-For a simple function that computes a sine, adds a second tensor, and sums the result, TorchDynamo constructs the following FX Graph representation.
+When you wrap a model with `torch.compile`, the first stage that runs is TorchDynamo. Instead of executing Python operations eagerly, TorchDynamo hooks into CPython's Frame Evaluation API defined in PEP 523 to inspect bytecode instructions as they run. CPython is the standard Python interpreter, and PEP 523 is the Python Enhancement Proposal that added this hook. Whenever TorchDynamo encounters PyTorch tensor operations, it appends them as nodes into an FX Graph until it reaches an unsupported Python construct. That unsupported construct triggers a graph break, runs in eager mode, and lets TorchDynamo resume capturing the next FX Graph immediately afterward. A graph break is therefore not a crash. It is a seam where the compiled region ends and ordinary Python takes over for a moment.
+
+For a simple function that computes a sine, adds a second tensor, and sums the result, TorchDynamo constructs the following FX Graph representation. Read it as a list of steps. Each line names one operation and the values it uses, so the whole function becomes a small data-flow diagram that the later stages can optimize.
 
 ```text
 # Function: def f(x, y): z = x.sin() + y; return z.sum()
@@ -100,7 +98,9 @@ graph():
     return %sum
 ```
 
-To ensure the compiled graph remains valid on future batches, TorchDynamo attaches runtime guards on tensor shapes, dtypes, devices, and Python constants. You can control how the compiler reacts when a guard fails or a graph break occurs by calling `torch.compiler.set_stance`. The table below summarizes the four compiler stances implemented in our companion module.
+A compiled graph is only correct for the inputs it was built from. If the next batch has a different shape, or a different dtype, which is the element type of the tensor such as float32 or bfloat16, the old graph no longer applies. To ensure the compiled graph remains valid on future batches, TorchDynamo attaches runtime guards on tensor shapes, dtypes, devices and Python constants. A guard is a small check that runs before the cached graph is reused. When the check passes, the graph runs. When it fails, the compiler has to decide what to do.
+
+That decision is controlled by a stance, which is the policy the compiler follows when a guard fails or a graph break occurs. You set it by calling `torch.compiler.set_stance`. The table below summarizes the four compiler stances implemented in the companion code. Pick the stance by asking what you would rather have happen on a surprise: a silent slowdown, a loud failure, or a pause for compilation.
 
 | Stance Name | Behavior on Graph Breaks and Guard Misses | Primary Use Case |
 |---|---|---|
@@ -111,19 +111,21 @@ To ensure the compiled graph remains valid on future batches, TorchDynamo attach
 
 ### 1.2 Stage 2 — AOTAutograd: Ahead-of-time joint forward and backward graph fusion
 
-If a compiler only captures the forward pass, the backward pass still runs dynamically through the C++ autograd engine during training. Separate forward and backward compilation prevents the optimizer from fusing operations across the pass boundary. Worse, the forward pass may save large intermediate activation tensors in high-bandwidth memory when recomputing a cheap elementwise operation during backpropagation would be much faster. Training pipelines end up bottlenecked by activation memory traffic and extra kernel launches.
+Picture a training step where the forward pass finishes, and the backward pass then starts from scratch. A profiler shows the optimizer waiting on a long string of small gradient kernels, and the memory graph shows big activation tensors sitting in memory for a long time. Nobody wrote a bug. The two passes were simply compiled, or not compiled, as if they were strangers.
 
-AOTAutograd solves this by tracing both passes ahead of time before any GPU code is generated. It runs the TorchDynamo forward FX Graph through PyTorch's autograd engine in functional mode via `torch.autograd.forward_ad` to capture the exact gradient operations. The result is a single joint forward-and-backward FX Graph covering the entire training step.
+If a compiler only captures the forward pass, the backward pass still runs dynamically through the C++ autograd engine during training. The autograd engine is the part of PyTorch that works out gradients, and C++ is the language it is written in. Separate forward and backward compilation prevents the optimizer from fusing operations across the pass boundary. Worse, the forward pass may save large intermediate activation tensors in high-bandwidth memory, when recomputing a cheap elementwise operation during backpropagation would be much faster than reading the saved copy back. Training pipelines end up bottlenecked by activation memory traffic and extra kernel launches.
 
-Because both passes live in one static dataflow graph, downstream compiler passes can optimize across the forward and backward boundary. They perform common-subexpression elimination and fuse elementwise backward operations directly into neighboring gradient kernels. They also reuse intermediate activation buffers between forward and backward passes to reduce peak memory footprint and kernel launch counts.
+AOTAutograd solves this by tracing both passes ahead of time before any GPU code is generated. AOT means ahead of time, so the work happens before the training loop runs. It runs the TorchDynamo forward FX Graph through PyTorch's autograd engine in functional mode via `torch.autograd.forward_ad` to capture the exact gradient operations. Functional mode here means the trace records operations as pure functions of their inputs. The result is a single joint forward-and-backward FX Graph covering the entire training step.
+
+Because both passes live in one static dataflow graph, downstream compiler passes can optimize across the forward and backward boundary. They perform common-subexpression elimination, which means computing a repeated value once and reusing it. They also fuse elementwise backward operations directly into neighboring gradient kernels. Finally, they reuse intermediate activation buffers between forward and backward passes. That reuse reduces the peak memory footprint, which is the highest amount of memory the step needs at any moment, and it reduces the number of kernel launches.
 
 ### 1.3 Stage 3 — PrimTorch IR: Decomposing ATen operators into functional primitives
 
-PyTorch exposes more than two thousand operators in its full ATen C++ library. Many of these operators overlap in functionality or mutate input tensors in place. Implementing and maintaining code generators for thousands of operators across every hardware backend is practically impossible. Furthermore, hidden in-place tensor mutations create aliasing hazards that prevent a compiler from safely reordering or fusing loops.
+Imagine a compiler team that has to write a code generator for every operator PyTorch offers. ATen is the core C++ library of tensor operators that PyTorch calls underneath its Python API. PyTorch exposes more than two thousand operators in that library. Many of them overlap in functionality, and many mutate input tensors in place, meaning they overwrite the memory of their input rather than returning a new tensor. Implementing and maintaining code generators for thousands of operators across every hardware backend is practically impossible. Furthermore, hidden in-place tensor mutations create aliasing hazards, which are cases where two names point at the same memory. Those hazards prevent a compiler from safely reordering or fusing loops, because a change through one name would silently change the other.
 
-PrimTorch IR solves both problems by canonicalizing the joint graph into a compact, purely functional operator set. As modeled in the companion module, PrimTorch decomposes PyTorch's operator surface down to roughly two hundred fifty core primitive operations. Crucially, PrimTorch performs functionalization to eliminate all in-place mutations and view aliasing hazards inside the graph.
+PrimTorch IR solves both problems by canonicalizing the joint graph into a compact, purely functional operator set. Canonicalizing means rewriting many similar operations into one standard form. As modeled in the companion code, PrimTorch decomposes PyTorch's operator surface down to roughly two hundred fifty core primitive operations. A primitive is a small, basic operation that the later stages know how to generate code for. Crucially, PrimTorch performs functionalization to eliminate all in-place mutations and view aliasing hazards inside the graph. A view is a tensor that shares memory with another, such as a transposed or sliced version of it.
 
-For example, an in-place addition mutation is decomposed into a pure functional addition followed by an explicit storage copy node at the graph boundary.
+For example, an in-place addition mutation is decomposed into a pure functional addition followed by an explicit storage copy node at the graph boundary. Read the example line by line. The first line computes a new tensor from `x` and `y` and does not touch `x`. The second line writes that new result back into the storage of `x`. The write is now visible as its own node in the graph, so no later stage can miss it.
 
 ```text
 PrimTorch IR Operator Reduction (PRIMTORCH_CORE_PRIMITIVES_APPROX = 250):
@@ -134,13 +136,13 @@ Functionalization of x.add_(y):
   %copy = aten::copy_(x, %z)   # writes %z's data back into x's storage explicitly
 ```
 
-Because mutations become explicit copy nodes at the edges of a purely functional dataflow graph, the inner graph has no hidden side effects. TorchInductor's fusion and memory-planning passes can therefore reorder and fuse inner operations aggressively without risking data corruption.
+Because mutations become explicit copy nodes at the edges of a purely functional dataflow graph, the inner graph has no hidden side effects. A side effect is anything a function does besides returning its value, such as changing memory that someone else can see. Without side effects in the middle of the graph, the next stage can treat each operation as a pure step. TorchInductor's fusion and memory-planning passes can therefore reorder and fuse inner operations aggressively without risking data corruption. Memory planning decides which buffers can share space, so the same memory serves two steps that never overlap.
 
 ### 1.4 Stage 4 — TorchInductor: Define-by-run loop IR, compilation modes, AOTInductor, TE, and FlexAttention
 
-Once the graph is reduced to functional primitives, the compiler still has to turn those primitives into fast machine code on the target GPU. A naive lowering would still materialize intermediate tensors in global memory whenever a tensor is transposed or sliced. In addition, invoking an external C++ compiler like nvcc for every fused kernel would make just-in-time compilation painfully slow. Finally, engineers need a clear way to trade off initial compile time against steady-state CUDA Graph and autotuning speed.
+Suppose a model transposes a large activation and then adds a bias. A naive compiler would write the transposed copy into high-bandwidth memory, read it back for the addition, and write the sum again. That copy is pure overhead. Once the graph is reduced to functional primitives, the compiler still has to turn those primitives into fast machine code on the target GPU, and it has to avoid copies like that one. A naive lowering would still materialize intermediate tensors in global memory whenever a tensor is transposed or sliced. In addition, invoking an external C++ compiler like nvcc for every fused kernel would make just-in-time compilation painfully slow. Just-in-time compilation means the code is compiled while the program runs, so the compile time is paid on the job's clock. Finally, engineers need a clear way to trade off initial compile time against steady-state CUDA Graph and autotuning speed. Steady state means the speed the job reaches after the first few steps, once the compiling is finished.
 
-TorchInductor is PyTorch's default compiler backend for NVIDIA GPUs, AMD GPUs, and CPUs. It lowers ATen and PrimTorch nodes into fused loop nests expressed in a Python define-by-run loop-level IR using SymPy index expressions. Because indexing is symbolic, view operations like transposes and slices become pure index math inside the consumer loop without materializing a transposed tensor in high-bandwidth memory.
+TorchInductor is PyTorch's default compiler backend for NVIDIA GPUs, AMD GPUs and CPUs. It lowers ATen and PrimTorch nodes into fused loop nests expressed in a Python define-by-run loop-level IR using SymPy index expressions. A define-by-run IR builds its loops while the program runs, rather than from a fixed description. SymPy is a Python library for symbolic math, so index expressions are stored as formulas instead of fixed numbers. Because indexing is symbolic, view operations like transposes and slices become pure index math inside the consumer loop without materializing a transposed tensor in high-bandwidth memory. The consumer loop simply computes the right address for each element as it goes.
 
 ```python
 # TorchInductor loop-level IR representation of z = x.permute(1, 0) + x[2, :] (ASP Ch 14)
@@ -154,7 +156,9 @@ def inner_fn(index):
 #                            inner_fn=inner_fn, ranges=[size0, size1])
 ```
 
-For NVIDIA GPUs, TorchInductor emits Python OpenAI Triton kernels from its loop IR and invokes the Triton JIT compiler. Triton lowers its intermediate representation through LLVM NVPTX directly into NVIDIA PTX and driver-compiled SASS without ever calling nvcc. For large matrix multiplications, TorchInductor's autotuner benchmarks its generated Triton kernels against cuBLAS, cuBLASLt, and CUTLASS candidates and caches whichever implementation wins for that shape.
+For NVIDIA GPUs, TorchInductor emits Python OpenAI Triton kernels from its loop IR and invokes the Triton JIT compiler. JIT here again means compiled at run time. Triton lowers its intermediate representation through LLVM NVPTX directly into NVIDIA PTX and driver-compiled SASS without ever calling nvcc. PTX is NVIDIA's portable assembly language for GPUs, and SASS is the binary machine code that the driver produces for the specific chip. LLVM is the compiler infrastructure that handles the lowering, and NVPTX is its backend for NVIDIA targets. For large matrix multiplications, TorchInductor's autotuner benchmarks its generated Triton kernels against cuBLAS, cuBLASLt and CUTLASS candidates. cuBLAS and cuBLASLt are NVIDIA's tuned linear algebra libraries, and CUTLASS is NVIDIA's template library for matrix kernels. The autotuner caches whichever implementation wins for that shape, so the choice is made once and reused.
+
+The table below lists the modes you choose between. Each mode is a trade of compile time against run time. A mode that tries more candidates takes longer to compile and usually runs faster afterwards. The right mode depends on whether your shapes stay fixed, and how long the job lives.
 
 | Compiler Mode or Feature | How It Works | Key Trade-Offs and Performance Facts |
 |---|---|---|
@@ -166,7 +170,7 @@ For NVIDIA GPUs, TorchInductor emits Python OpenAI Triton kernels from its loop 
 | Explicit Transformer Engine (TE) | Requires instantiating `transformer_engine.pytorch.layers` explicitly in the model definition. | `torch.compile` does not auto-replace `torch.nn.Linear` with FP8 TE layers, but fuses ops around explicit TE modules. |
 | FlexAttention (`flex_attention`) | Compiles custom Python attention score modifications (ALiBi, sliding window, document masking, block sparsity) into fused Triton kernels. | Achieves `~85%–90%` of modern FlashAttention performance across both forward and backward passes. |
 
-Always enable the fast scaled dot-product attention and TensorFloat-32 flags early in your training or serving script so TorchInductor and cuBLAS can use Tensor Core math.
+A common surprise is a job that compiles cleanly but still runs matrix math at full float32 precision, leaving the Tensor Cores unused. The fix is a handful of global settings. Scaled dot-product attention is the core operation of transformer models, and the flags below choose which fast attention kernels PyTorch may use. TensorFloat-32 is a reduced-precision float format that the Tensor Cores can process quickly. Always enable the fast scaled dot-product attention and TensorFloat-32 flags early in your training or serving script so TorchInductor and cuBLAS can use Tensor Core math. Put these lines near the top of the script, before the model runs for the first time, so every compiled graph sees the same settings.
 
 ```python
 import torch
@@ -184,9 +188,9 @@ torch.backends.cuda.enable_mem_efficient_sdp(True)
 
 ### 2.1 Dynamic shapes: SymPy, `mark_dynamic`, and the bucket-padding rule
 
-Large language model workloads rarely see the exact same token count on every request. If a compiler specializes strictly on exact tensor dimensions, every new prompt length invalidates the shape guard and triggers a multi-second recompilation stall. Conversely, if an engineer blindly forces every dimension of the model to be dynamic, the compiler loses static hidden-dimension optimizations and cannot capture CUDA Graphs. Serving latency degrades either from recompilation storms or from lost static optimizations.
+Picture an inference service that works well in testing and then stalls every few seconds in production. The logs show a compile message each time a user sends a prompt of a new length. Large language model workloads rarely see the exact same token count on every request, so the service is compiling far more often than anyone planned. If a compiler specializes strictly on exact tensor dimensions, every new prompt length invalidates the shape guard and triggers a multi-second recompilation stall. Conversely, if an engineer blindly forces every dimension of the model to be dynamic, the compiler loses static hidden-dimension optimizations and cannot capture CUDA Graphs. The hidden dimension is the width of the model's internal vectors, which stays the same from request to request. Serving latency degrades either from recompilation storms or from lost static optimizations, and the fix has to balance both.
 
-TorchDynamo and TorchInductor solve this by using the SymPy symbolic math library to track dynamic dimensions through index arithmetic. Instead of guarding on a single integer, the compiler emits range guards that cover a whole span of sequence lengths. When you know ahead of time which axis varies, calling `torch._dynamo.mark_dynamic` marks only that batch or sequence dimension as symbolic while keeping hidden dimensions static.
+TorchDynamo and TorchInductor solve this by using the SymPy symbolic math library to track dynamic dimensions through index arithmetic. A symbolic dimension is a name such as `s0` standing for "some size that is not yet known". Instead of guarding on a single integer, the compiler emits range guards that cover a whole span of sequence lengths. A range guard says "any length in this span uses this compiled graph", which is far cheaper than a new compile per length. When you know ahead of time which axis varies, calling `torch._dynamo.mark_dynamic` marks only that batch or sequence dimension as symbolic while keeping hidden dimensions static. Marking one axis at a time gives you the flexibility you need without losing the static optimizations everywhere else.
 
 ```text
 Dynamic Shape Guard Progression and Padding Rule (ASP Ch 14):
@@ -198,13 +202,13 @@ Dynamic Shape Guard Progression and Padding Rule (ASP Ch 14):
   5. Hybrid Bucket-Padding Rule: If sequence lengths vary by only ±10%–20%, pad inputs to fixed bucket sizes (±10%–20%) and use static shapes + CUDA Graphs; for wider variation, combine coarse buckets with mark_dynamic().
 ```
 
-Understanding why `dynamic=True` disables CUDA Graphs is critical for low-latency inference. CUDA Graphs bake exact memory addresses and fixed grid launch dimensions into the driver replay buffer. Therefore, whenever sequence lengths vary within ten to twenty percent, padding requests to fixed static buckets and keeping CUDA Graphs enabled outperforms fully dynamic shapes.
+Understanding why `dynamic=True` disables CUDA Graphs is critical for low-latency inference. A CUDA Graph records a whole sequence of GPU work once, and then replays it with one cheap launch. The recording bakes exact memory addresses and fixed grid launch dimensions into the driver replay buffer, which is the stored copy the driver replays. A replay only makes sense if every shape is the same as at recording time. Symbolic shapes break that assumption, so the compiler cannot record them. Therefore, whenever sequence lengths vary within ten to twenty percent, padding requests to fixed static buckets and keeping CUDA Graphs enabled outperforms fully dynamic shapes. Padding costs a little wasted math on the extra tokens, and that cost is usually smaller than the launch overhead it saves.
 
 ### 2.2 Diagnosing and eliminating graph breaks (`torch._dynamo.explain`, `torch.where`, `torch.cond`, and DDP/FSDP)
 
-A single stray print statement or a Python conditional check on a tensor value inside the forward pass silently shatters a compiled graph into multiple fragments. Each graph break forces the GPU stream to synchronize or return control to the Python interpreter, runs the offending line in eager mode, and launches a separate subgraph afterward. Because the compiler falls back to eager mode without crashing by default, engineers often think their model is fully compiled when it is actually fragmented into slow pieces.
+A teammate adds a debug print to the forward pass to check a value, and the next benchmark gets slower. Nothing errors and the loss looks right. The print is the reason. A single stray print statement or a Python conditional check on a tensor value inside the forward pass silently shatters a compiled graph into multiple fragments. Each graph break forces the GPU stream to synchronize, or it returns control to the Python interpreter. The offending line then runs in eager mode, and a separate subgraph launches afterward. A stream synchronization means the CPU waits until the GPU has finished the queued work. Because the compiler falls back to eager mode without crashing by default, engineers often think their model is fully compiled when it is actually fragmented into slow pieces.
 
-Use `torch._dynamo.explain` to inspect the exact subgraph count, break count, and offending source lines. In the companion module, running `analyze_dynamo_graph_breaks` on the book's toy function reveals two breaks caused by a Python print call and a data-dependent branch. Guarding debug prints with `torch._dynamo.is_compiling` and rewriting tensor branches with `torch.where` or `torch.cond` eliminates both breaks.
+Use `torch._dynamo.explain` to inspect the exact subgraph count, break count and offending source lines. Run it once on the model before you tune anything, and read the break reasons before you change any code. In the companion code, running `analyze_dynamo_graph_breaks` on the toy function reveals two breaks caused by a Python print call and a data-dependent branch. A data-dependent branch is an `if` whose outcome depends on a tensor's value, which the compiler cannot know until the GPU computes it. Guarding debug prints with `torch._dynamo.is_compiling` and rewriting tensor branches with `torch.where` or `torch.cond` eliminates both breaks. The table after that shows the three versions side by side.
 
 | Function Variant | Graph Count | Graph Break Count | Op Count | Root Cause or Refactoring Mechanism |
 |---|---:|---:|---:|---|
@@ -212,7 +216,7 @@ Use `torch._dynamo.explain` to inspect the exact subgraph count, break count, an
 | `model_where` (Option A) | `1` | `0` | `5` | Guards `print` with `if not torch._dynamo.is_compiling():` and computes both paths via `torch.where(b.sum() < 0, -b, b)`. |
 | `model_cond` (Option B) | `1` | `0` | `5` | Traces both true and false branches as subgraphs via `torch.cond` using pure functions returning tensors of identical shape and dtype. |
 
-Here is the complete code showing the broken function alongside both single-graph fixes.
+Here is the complete code showing the broken function alongside both single-graph fixes. Read the BEFORE function first, then the two AFTER versions. Both fixes keep the same output as the original, but they avoid the Python print and the Python `if` that caused the breaks.
 
 ```python
 # Diagnosing 2 graph breaks (3 subgraphs) with torch._dynamo.explain() and fixing both (ASP Ch 14) (untested here)
@@ -249,13 +253,13 @@ def model_cond(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return x * b
 ```
 
-Not every graph break is a bug. When you combine `torch.compile` with DistributedDataParallel or FullyShardedDataParallel configured with `use_original_params=True` and wrapped per Transformer block submodule, the explain tool reports graph breaks at collective communication boundaries. Do not try to remove these communication breaks. PyTorch intentionally splits the graph at each gradient bucket or FSDP submodule boundary so asynchronous NCCL collectives overlap with the computation of neighboring compiled subgraphs.
+Not every graph break is a bug. Suppose your explain output lists breaks in the middle of a distributed training run and you start to panic. Check the break reasons first. When you combine `torch.compile` with DistributedDataParallel, which is PyTorch's standard data-parallel wrapper, or with FullyShardedDataParallel, which shards the parameters across GPUs, configured with `use_original_params=True` and wrapped per Transformer block submodule, the explain tool reports graph breaks at collective communication boundaries. A collective is an operation where many GPUs exchange data, such as an all-reduce that sums gradients across them. Do not try to remove these communication breaks. PyTorch intentionally splits the graph at each gradient bucket or FSDP submodule boundary so asynchronous NCCL collectives overlap with the computation of neighboring compiled subgraphs. NCCL is NVIDIA's library for collective communication, and asynchronous means the network transfer runs while the GPU keeps computing.
 
 ### 2.3 Compiler logging, `TORCH_COMPILE_DEBUG=1`, `tlparse`, and numerical determinism
 
-When a compiled model runs slower than expected or produces slightly different floating-point numbers than eager mode, treating the compiler as a black box makes root-cause analysis impossible. You need visibility into which guards failed, why CUDA Graphs were skipped, what Triton code was generated, and which compiler pass introduced a numerical discrepancy.
+Imagine a compiled model that is a little slower than you expected, and its loss curve drifts slightly away from the eager run. Both symptoms have causes that the compiler can report if you ask it. When a compiled model runs slower than expected or produces slightly different floating-point numbers than eager mode, treating the compiler as a black box makes root-cause analysis impossible. Floating-point numbers that differ in the last digits are often normal, because fusing operations changes the order of rounding. The question is which change caused the difference and whether it matters. You need visibility into which guards failed, why CUDA Graphs were skipped, what Triton code was generated, and which compiler pass introduced a numerical discrepancy.
 
-*AI Systems Performance Engineering* Chapter 14 Table 14-1 catalogs eleven `TORCH_LOGS` flags that expose every internal phase of the compiler.
+*AI Systems Performance Engineering* Chapter 14 catalogs eleven `TORCH_LOGS` flags that expose every internal phase of the compiler. The environment variable `TORCH_LOGS` takes a comma-separated list, so you turn on only the phases you need. Each flag below answers a different question. Start with the flag that matches your symptom, and add others only when the first one leaves you with a new question.
 
 | `TORCH_LOGS` Flag | What It Logs | When to Use It |
 |---|---|---|
@@ -271,7 +275,7 @@ When a compiled model runs slower than expected or produces slightly different f
 | `graph_outputs` | Final compiled FX graph structure. | Auditing subgraph boundaries. |
 | `graph_code` | Python code equivalent of each FX graph produced by TorchDynamo. | Inspecting functional ATen decomposition. |
 
-Beyond `TORCH_LOGS`, PyTorch provides dedicated environment variables for artifact dumping, trace parsing, numerical minification, and bitwise cuBLAS determinism.
+Beyond `TORCH_LOGS`, PyTorch provides dedicated environment variables for artifact dumping, trace parsing, numerical minification and bitwise cuBLAS determinism. Artifact dumping means writing the intermediate files to disk so you can open them. Numerical minification means shrinking a failing program down to a small reproducer. Bitwise determinism means two runs produce exactly the same bits, not just close numbers. The table lists each variable with its setting and the role it plays.
 
 | Environment Variable or Config | Setting / Value | Diagnostic or Determinism Role |
 |---|---|---|
@@ -288,11 +292,11 @@ Beyond `TORCH_LOGS`, PyTorch provides dedicated environment variables for artifa
 
 ### 3.1 Triton's SPMD programming model: `vector_add_kernel` and `BLOCK_SIZE` vs `num_warps`
 
-Writing raw CUDA C++ requires managing scalar thread indices, shared-memory bank conflicts, and manual vector coalescing by hand. A single off-by-one indexing bug or misaligned pointer crashes the kernel or ruins memory throughput. Even worse, developers coming from CUDA C++ often confuse Triton's block size with the number of hardware threads per block, leading to severe occupancy misconfigurations.
+Imagine a CUDA C++ kernel that works on small test inputs and then writes garbage on a large one. The bug is a single off-by-one in an index calculation, and it only shows up when the grid is big enough to reach the last element. Writing raw CUDA C++ requires managing scalar thread indices, shared-memory bank conflicts and manual vector coalescing by hand. Shared memory is the fast on-chip memory that a block of threads shares, and a bank conflict happens when several threads hit the same memory bank at once and have to wait. Coalescing means that neighboring threads read neighboring memory addresses, so the hardware can serve them in one wide transaction. A single off-by-one indexing bug or misaligned pointer crashes the kernel or ruins memory throughput. Even worse, developers coming from CUDA C++ often confuse Triton's block size with the number of hardware threads per block, leading to severe occupancy misconfigurations. Occupancy is how many threads can be resident on a streaming multiprocessor at once.
 
-While NVIDIA announced Python-centric CUDA DSLs in 2025 including cuTile, CuTe Python DSL, CUTLASS Python DSL, and cuPyNumeric, OpenAI Triton remains the primary GPU kernel language used by TorchInductor and custom PyTorch extensions. Unlike CUDA's scalar thread model where you program an individual thread via `threadIdx.x`, Triton uses a Single-Program, Multiple-Data model where you program an entire thread block operating on blocked vectors and tiles. Calling `tl.program_id` returns the unique block index analogous to `blockIdx.x`, while `tl.num_programs` returns the grid dimension.
+While NVIDIA announced Python-centric CUDA DSLs in 2025 including cuTile, CuTe Python DSL, CUTLASS Python DSL and cuPyNumeric, OpenAI Triton remains the primary GPU kernel language used by TorchInductor and custom PyTorch extensions. A DSL is a domain-specific language, a small language built for one kind of job. Unlike CUDA's scalar thread model where you program an individual thread via `threadIdx.x`, Triton uses a Single-Program, Multiple-Data model where you program an entire thread block operating on blocked vectors and tiles. In practice that means you write the code for one program instance, and that instance handles a whole chunk of data at once. Calling `tl.program_id` returns the unique block index analogous to `blockIdx.x`, while `tl.num_programs` returns the grid dimension. The grid is the total number of program instances launched for the call.
 
-In `plan_triton_kernel_launch`, `BLOCK_SIZE` is a compile-time constant specifying how many data elements each Triton program instance processes. Meanwhile, the actual number of CUDA threads per thread block is controlled separately by `num_warps`. The table below shows how block size, warp count, and thread counts relate on modern GPUs.
+In `plan_triton_kernel_launch`, `BLOCK_SIZE` is a compile-time constant specifying how many data elements each Triton program instance processes. A compile-time constant is fixed when the kernel is compiled, so the compiler can unroll loops and size registers around it. Meanwhile, the actual number of CUDA threads per thread block is controlled separately by `num_warps`. A warp is a group of 32 CUDA threads that execute together, so the warp count sets the thread count. Those two numbers answer different questions. `BLOCK_SIZE` asks how much data one instance handles, and `num_warps` asks how many threads share that work. The table below shows how block size, warp count and thread counts relate on modern GPUs.
 
 | Vector / Tile `BLOCK_SIZE` | Recommended `num_warps` | CUDA Threads per Block (`num_warps × 32`) | Elements per Thread (`BLOCK_SIZE / threads`) | Example Grid for `n_elements = 10,000` |
 |---:|---:|---:|---:|---|
@@ -304,7 +308,9 @@ In `plan_triton_kernel_launch`, `BLOCK_SIZE` is a compile-time constant specifyi
 
 If you call a raw `@triton.jit` kernel directly inside a compiled region without registering it, TorchDynamo cannot trace inside the custom launch call. Instead, it treats the unregistered kernel as an opaque foreign function or triggers a graph break. That break prevents TorchInductor from reordering or fusing operations around your custom kernel.
 
-Wrapping the kernel with `torch.library.triton_op` and `wrap_triton` exposes it as a first-class PyTorch operator. TorchInductor can then inline, reorder, and fuse surrounding elementwise operations across the custom kernel boundary without breaking the FX Graph. For training workloads, attaching a backward pass via `register_autograd` integrates the custom operator seamlessly with AOTAutograd.
+Wrapping the kernel with `torch.library.triton_op` and `wrap_triton` exposes it as a first-class PyTorch operator. A first-class operator is one the compiler knows about by name, so it can reason about it like any built-in. TorchInductor can then inline, reorder and fuse surrounding elementwise operations across the custom kernel boundary without breaking the FX Graph. For training workloads, attaching a backward pass via `register_autograd` integrates the custom operator seamlessly with AOTAutograd. The backward pass tells autograd how to compute gradients for the operator, because the compiler cannot guess that from the forward kernel alone.
+
+Read the example in three parts. The `vector_add_kernel` function is the Triton kernel itself, and each program instance adds one block of elements. The `vector_add` function wraps that kernel so PyTorch sees a normal operator. The final comment points at the backward registration you would add for training.
 
 ```python
 # Registering a custom Triton kernel with PyTorch for seamless torch.compile fusion (ASP Ch 14) (untested here)
@@ -338,11 +344,11 @@ def vector_add(x: Tensor, y: Tensor) -> Tensor:
 
 ### 3.3 Autotuning (`@triton.autotune`), Warp Specialization, TMA Descriptors, and Persistent GEMM (`matmul_kernel_persistent`)
 
-A naive tiled matrix multiplication kernel (`tiled_gemm_kernel`) stalls on global memory latency and wastes cycles launching thousands of short-lived thread blocks. Even when engineers add software pipelining (`pipelined_matmul`) with multiple pipeline stages, a subtle variable-overwrite mistake inside the loop can allow the compiler to reorder loads past compute instructions and collapse overlap completely. Reaching peak Tensor Core throughput on Hopper and Blackwell requires hardware descriptor loads, warp specialization, and persistent grid scheduling.
+Picture a matrix multiplication that runs at a fraction of the speed the datasheet promises. The GPU is not out of work. It is waiting, again and again, for the next tile of data to arrive from global memory. A naive tiled matrix multiplication kernel (`tiled_gemm_kernel`) stalls on global memory latency and wastes cycles launching thousands of short-lived thread blocks. A tile is a small square of the output that one block computes, and a kernel that launches many tiny blocks pays the launch cost many times. Even when engineers add software pipelining (`pipelined_matmul`) with multiple pipeline stages, a subtle variable-overwrite mistake inside the loop can allow the compiler to reorder loads past compute instructions and collapse overlap completely. Software pipelining means fetching the next tile while the current one is multiplied. Reaching peak Tensor Core throughput on Hopper and Blackwell requires hardware descriptor loads, warp specialization and persistent grid scheduling. Each of those three is a way to keep the Tensor Cores fed.
 
-To saturate modern Tensor Cores, combine four advanced OpenAI Triton features from *AI Systems Performance Engineering* Chapter 14. First, decorate the kernel with `@triton.autotune` so Triton benchmarks candidate tile sizes, warp counts, and pipeline depths on representative production shapes and caches the fastest configuration. Second, enable warp specialization via `warp_specialize=True` in `tl.range` and `num_consumer_groups` in `triton.Config` so dedicated producer warps issue Tensor Memory Accelerator loads while consumer warps run Tensor Core instructions.
+To saturate modern Tensor Cores, combine four advanced OpenAI Triton features from *AI Systems Performance Engineering* Chapter 14. Think of them as four separate levers, and each one works on a different part of the stall. First, decorate the kernel with `@triton.autotune` so Triton benchmarks candidate tile sizes, warp counts and pipeline depths on representative production shapes and caches the fastest configuration. Autotuning removes the guesswork, because the chip tells you which setting is fastest. Second, enable warp specialization via `warp_specialize=True` in `tl.range` and `num_consumer_groups` in `triton.Config` so dedicated producer warps issue Tensor Memory Accelerator loads while consumer warps run Tensor Core instructions. Producer warps fetch data and consumer warps compute, so the two jobs run side by side.
 
-Third, construct hardware tensor descriptors via `tl.make_tensor_descriptor` so loads lower to asynchronous bulk tensor copies and `tl.dot` lowers to Blackwell fifth-generation Tensor Core UMMA accumulating in Tensor Memory. Fourth, keep current and next tile variables strictly separate inside a persistent 1D grid loop (`matmul_kernel_persistent`) following the prefetch-next, compute-current, and swap ordering rule. The table below summarizes the exact parameters and hardware rules for these four mechanisms.
+Third, construct hardware tensor descriptors via `tl.make_tensor_descriptor` so loads lower to asynchronous bulk tensor copies and `tl.dot` lowers to Blackwell fifth-generation Tensor Core UMMA accumulating in Tensor Memory. A descriptor describes a whole tile's shape and strides once, so the hardware can copy it with one instruction. UMMA is the matrix instruction that Blackwell's Tensor Cores execute, and Tensor Memory is the on-chip space where its accumulators live. Fourth, keep current and next tile variables strictly separate inside a persistent 1D grid loop (`matmul_kernel_persistent`) following the prefetch-next, compute-current and swap ordering rule. A persistent kernel launches only as many program instances as the chip can keep busy, and each instance walks through several output tiles. The table below summarizes the exact parameters and hardware rules for these four mechanisms.
 
 | Triton Feature | API / Configuration | Hardware Lowering and Mandatory Rules |
 |---|---|---|
@@ -351,7 +357,7 @@ Third, construct hardware tensor descriptors via `tl.make_tensor_descriptor` so 
 | TMA Tensor Descriptors & TMEM | `tl.make_tensor_descriptor(ptr, shape, strides, block_shape)` + `tl.dot(a_cur, b_cur)` | Leading strides must be multiples of `16 bytes` (`16B` valid, `12B` invalid) and innermost dim must be contiguous; on Blackwell (`sm_100`), `tl.dot` lowers to `tcgen05` UMMA with FP32 accumulators in `256 KB`/SM TMEM. |
 | Pipelining & Persistent GEMM | `matmul_kernel_persistent` with `grid = min(65536, MT * NT)` and `tile_idx += nprog` | Must follow `prefetch-next -> compute-current -> swap` so `a_cur`/`b_cur` are not overwritten before `tl.dot`; outperforms standard launches especially when `K > 1,024` (`[M=8192, N=8192, K=512]` yields `MT=64`, `NT=64`, `TILE_COUNT=4,096`, `K_tiles=8`; `65536x65536` caps `262,144` tiles at `65,536` programs = `4` tiles/program). |
 
-Here is the production `matmul_kernel_persistent` implementation combining TMA tensor descriptors, Blackwell TMEM accumulation, warp specialization, and the three-step prefetch-compute-swap loop.
+Here is the production `matmul_kernel_persistent` implementation combining TMA tensor descriptors, Blackwell TMEM accumulation, warp specialization and the three-step prefetch-compute-swap loop. TMEM is Tensor Memory, the accumulator space described above. Before you read the code, notice its shape. A single outer loop walks over output tiles, and an inner loop walks over the K dimension, which is the shared dimension that gets summed. The inner loop is where the prefetch-compute-swap rule lives.
 
 ```python
 # Production Persistent Tiled GEMM in OpenAI Triton with TMA Descriptors, TMEM, and Warp Specialization
@@ -417,17 +423,19 @@ def matmul_kernel_persistent(
         tile_idx += nprog # Persistent stride across output tiles
 ```
 
+Walk through the code once, top to bottom. The first lines compute how many tiles exist along each axis and how many there are in total. The descriptors come next, and they describe the two input matrices once, before the loop. The `while` loop then takes one output tile at a time. Inside it, the prologue loads the first pair of tiles, and the K loop keeps the next pair in flight while the current pair feeds `tl.dot`. The `if` checks guard the last iteration, so the code never loads past the end of K. At the end the tile is stored, and `tile_idx += nprog` moves this instance on to its next tile. Each program instance therefore handles several tiles, one after another, instead of one tile and then exit.
+
 ---
 
 ## 4. Profiling with Triton Proton and the PyTorch XLA (OpenXLA) Backend
 
 ### 4.1 Triton Proton profiler (`8,192 × 8,192 × 512` GEMM benchmark) and portable cache hints
 
-Standard Python timers cannot distinguish kernel launch overhead from actual GPU execution across custom Triton kernels and vendor baselines. Furthermore, when engineers try to tune L1 and L2 cache residency by pasting undocumented inline PTX strings into their kernels, minor driver updates or new GPU architectures routinely break the build. Teams need a Triton-native profiler and portable cache eviction APIs.
+Picture a benchmark table where the custom kernel looks faster than cuBLAS, but nobody can say whether the gain is real. A Python timer wrapped around the call measures the time from the Python side. That includes the launch overhead, the Python work and the waiting, so it can hide or invent differences in the GPU work itself. Standard Python timers cannot distinguish kernel launch overhead from actual GPU execution across custom Triton kernels and vendor baselines. Furthermore, when engineers try to tune L1 and L2 cache residency by pasting undocumented inline PTX strings into their kernels, minor driver updates or new GPU architectures routinely break the build. L1 and L2 are the two levels of on-chip cache that sit between the cores and global memory. PTX is the assembly language that the Triton compiler targets. Teams need a Triton-native profiler and portable cache eviction APIs. An eviction policy tells the cache which data to drop first when it is full.
 
-Triton Proton is Triton's built-in hierarchical profiler. Activated via `proton.start` and `proton.scope`, Proton records user-supplied FLOP and byte metadata and emits NVTX ranges that correlate directly with Nsight Systems timelines and Nsight Compute kernel inspections. Rather than embedding fragile inline PTX modifiers like `ld.global.nc.l1::no_allocate.l2::256b`, you should also pass Triton's portable `eviction_policy="evict_last"` or `"evict_first"` and `cache_modifier=` arguments on load and store operations.
+Triton Proton is Triton's built-in hierarchical profiler. Hierarchical means it nests timing scopes inside each other, so a total time can be broken into the parts that make it up. Activated via `proton.start` and `proton.scope`, Proton records user-supplied FLOP and byte metadata and emits NVTX ranges that correlate directly with Nsight Systems timelines and Nsight Compute kernel inspections. FLOP means floating-point operations, and NVTX is the NVIDIA annotation API that puts named ranges on a timeline. Rather than embedding fragile inline PTX modifiers like `ld.global.nc.l1::no_allocate.l2::256b`, you should also pass Triton's portable `eviction_policy="evict_last"` or `"evict_first"` and `cache_modifier=` arguments on load and store operations. Those arguments express the same intent in a form that survives a driver or architecture change.
 
-The table below shows the Proton profile comparison across four implementations multiplying matrices of shape `[M=8192, N=8192, K=512]` in our benchmark module.
+The table below shows the Proton profile comparison across four implementations multiplying matrices of shape `[M=8192, N=8192, K=512]` in the companion benchmark code. The first row is the total for the whole profile. The cuBLAS row is the baseline, and the rows after it show how each implementation compares with that baseline.
 
 | Proton Scope (`[M=8192, N=8192, K=512]`) | Execution Time (`ms`) | Proton Throughput Metric | Relative Comparison |
 |---|---:|---:|---|
@@ -439,9 +447,9 @@ The table below shows the Proton profile comparison across four implementations 
 
 ### 4.2 PyTorch XLA (OpenXLA) vs. TorchInductor
 
-While TorchInductor is the default backend for NVIDIA and AMD GPUs, many large-scale training and serving fleets run on custom ASICs that do not execute NVIDIA PTX or Triton kernels. If an engineering team deploys a dynamic-shape PyTorch model directly onto an XLA accelerator without changing how sequence lengths are handled, every unpadded request triggers a whole-program compilation stall lasting several seconds.
+Picture a team whose model runs well on GPUs, then moves to an accelerator built by a cloud provider. Their first requests hang for several seconds each. The model did not change. The new backend compiles each whole program for each input shape, and the team never padded their inputs. While TorchInductor is the default backend for NVIDIA and AMD GPUs, many large-scale training and serving fleets run on custom ASICs that do not execute NVIDIA PTX or Triton kernels. An ASIC is an application-specific chip, built for one family of workloads rather than for general graphics or compute. If an engineering team deploys a dynamic-shape PyTorch model directly onto an XLA accelerator without changing how sequence lengths are handled, every unpadded request triggers a whole-program compilation stall lasting several seconds.
 
-PyTorch XLA is activated via `backend="openxla"` and lowers PyTorch graphs into OpenXLA High-Level Optimizer (`HLO` / `StableHLO`) executables. It targets Google Cloud TPUs, Meta's Training and Inference Accelerator, and AWS Trainium and Inferentia via the AWS Neuron SDK. The table below contrasts TorchInductor against PyTorch XLA across hardware targets, compilation granularity, and dynamic shape handling.
+PyTorch XLA is activated via `backend="openxla"` and lowers PyTorch graphs into OpenXLA High-Level Optimizer (`HLO` / `StableHLO`) executables. XLA is the compiler framework behind these accelerators, and HLO is its intermediate language. The output is a whole-program executable, meaning the compiler sees the entire graph at once. It targets Google Cloud TPUs, Meta's Training and Inference Accelerator, and AWS Trainium and Inferentia via the AWS Neuron SDK. The Neuron SDK is AWS's software kit for its own accelerators. The table below contrasts TorchInductor against PyTorch XLA across hardware targets, compilation granularity and dynamic shape handling. Focus on the last row, because it tells you what to change in your serving code.
 
 | Feature | TorchInductor (`backend="inductor"`) | PyTorch XLA (`backend="openxla"`) |
 |---|---|---|
@@ -454,11 +462,11 @@ PyTorch XLA is activated via `backend="openxla"` and lowers PyTorch graphs into 
 
 ## 5. Commands and Configurations That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 14. Commands that require an attached CUDA GPU are marked untested here.
+All commands below follow *AI Systems Performance Engineering* Chapter 14. They need a machine with an attached CUDA GPU to show anything useful, so treat them as a reading guide and run them on your own hardware.
 
 ### 5.1 Inspect `torch.compile` graph breaks, generated Triton/PTX code, `tlparse` traces, and bitwise cuBLAS determinism
 
-Use these environment variables to log graph breaks, dump generated TorchInductor and OpenAI Triton assembly, parse structured traces with `tlparse`, and enforce bitwise cuBLAS determinism.
+Picture a job that has been slow since the last framework upgrade. You do not yet know whether the cause is a graph break, a recompilation, or a kernel that changed. Use these environment variables to log graph breaks, dump generated TorchInductor and OpenAI Triton assembly, parse structured traces with `tlparse` and enforce bitwise cuBLAS determinism. The four commands below take a fixed order. Run the first one to see what the compiler is telling you. Run the later ones only when the first output points at them. `tlparse` is the parser that turns a trace folder into a readable report.
 
 ```bash
 # 1. Log graph breaks, guards, recompiles, performance hints, and generated Triton code (Table 14-1) (untested here)
@@ -482,7 +490,7 @@ python3 verify_accuracy.py
 
 ## 6. How It Fails: Six `torch.compile`, Triton, and OpenXLA Failure Modes
 
-When compiler optimizations or custom Triton kernels underperform in production, the root cause almost always matches one of six recurring failure modes. Check the symptom column below to isolate the bug and apply the corresponding fix.
+It is Monday morning, and a service that was fast on Friday now misses its latency target. Nothing in the code changed except a dependency bump. When compiler optimizations or custom Triton kernels underperform in production, the root cause almost always matches one of six recurring failure modes. Start with the symptom you can see, such as a missing speedup, a stall that repeats, or a crash under a flag. Then check the symptom column below to isolate the bug and apply the corresponding fix. Each row pairs a symptom with its likely cause, so you can compare what you observe with the most probable explanation before you touch any code.
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -497,9 +505,9 @@ When compiler optimizations or custom Triton kernels underperform in production,
 
 ## 7. Hands-On Lab: Verify the PyTorch Compiler Stack, `dynamo.explain`, `TORCH_LOGS`, Triton SPMD & TMA Rules, and Proton Benchmarks
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python, while live GPU commands are provided in Section 5 and marked untested here.
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. The lab script uses only the standard library, so it runs the same way on any machine, while the live GPU commands are in Section 5. You can start on a laptop and move the GPU commands to a GPU VM later.
 
-Run `code/part10/triton_and_compilers_lab.py` to verify all twenty-five compiler and Triton assertions.
+Start with the script that needs no GPU. Run `code/part10/triton_and_compilers_lab.py` to verify all twenty-five compiler and Triton assertions. Each assertion checks one claim from this chapter, so a failure points you to the section that explains it.
 
 ```bash
 python3 code/part10/triton_and_compilers_lab.py
@@ -545,16 +553,16 @@ Summary: 25 passed, 0 failed (total 25)
 1. Which CPython PEP does TorchDynamo use to capture bytecode?
 2. PrimTorch decomposes how many ATen operators into how many core primitives? How does it functionalize an in-place add?
 3. How does TorchInductor lower its Python loop-level IR to NVIDIA PTX without calling `nvcc`?
-4. `dynamo.explain` runs on `toy_example`. State the graph count, graph break count, op count, and the two break reasons.
+4. Suppose `dynamo.explain` runs on `toy_example`. What is the graph count? What is the graph break count? What is the op count? Which two reasons does it give for the breaks?
 5. Write the two refactored versions, `model_where` and `model_cond`, that reduce the graph count to one with no breaks.
 6. Why does `mode="reduce-overhead"` combined with `dynamic=True` disable CUDA Graphs? State the sequence-length padding rule of thumb.
 7. Name the `TORCH_LOGS` setting that catches missed CUDA Graphs. Name the reproducer setting that isolates post-AOT numerical bugs. Name the cuBLAS workspace flag that makes matmuls deterministic.
-8. `vector_add_kernel` runs on ten thousand elements at a block size of 1,024. How many program instances launch? At four warps, how many CUDA threads does a block use, and how many elements does each thread handle?
+8. `vector_add_kernel` runs on ten thousand elements at a block size of 1,024. How many program instances launch? At four warps, how many CUDA threads does a block use? How many elements does each thread handle?
 9. Which warp counts does the chapter recommend at larger block sizes? How do `@triton_op`, `wrap_triton`, and `register_autograd` expose the kernel to the PyTorch compiler?
 10. State the two alignment and layout requirements that let `tl.make_tensor_descriptor` map to hardware TMA. To which instruction and memory space does `tl.dot` lower on Blackwell?
 11. Why does overwriting the current tile variable before `tl.dot` in a pipelined loop collapse overlap?
-12. The benchmark is `[M=8192, N=8192, K=512]` with `128x128x64` tiles. Compute the tile grid counts and loop iterations.
-13. Compare the four Proton runtimes for cuBLAS, PyTorch, standard Triton, and `matmul_kernel_persistent`. Why does OpenXLA need static shape bucketing for inference?
+12. The benchmark shape is `[M=8192, N=8192, K=512]`. The tiles are `128x128x64`. How many tiles cover the output? How many loop iterations does each tile run?
+13. Compare the four Proton runtimes for cuBLAS, PyTorch, standard Triton and `matmul_kernel_persistent`. Which one is fastest? Why does OpenXLA need static shape bucketing for inference?
 
 ---
 

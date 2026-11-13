@@ -24,14 +24,19 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An individual kernel can reach nearly complete warp execution efficiency inside its own loop and still leave an AI cluster idle. Between kernels, the GPU often stalls waiting for host-to-device micro-batch transfers, blocking memory allocations, legacy default-stream barriers, or cross-GPU network copies. Training engineers and inference operators see these stalls as wide empty gaps on the Nsight Systems timeline and degraded token throughput.
+Picture a training job whose kernels are beautifully tuned. Each one runs close to full efficiency inside its own loop. Yet the timeline in Nsight Systems shows wide empty gaps between the kernels. The GPU sits idle while the host copies the next micro-batch, while an allocation waits its turn, or while a copy from one GPU to another crawls across the network. The kernels are fine. The space between them is the problem, and that space is what this chapter is about.
 
-Chapter 11 of *AI Systems Performance Engineering* extends intra-kernel pipelining into a full two-layer execution architecture that overlaps work inside and across kernels.
+Between kernels, the GPU often stalls while it waits for host-to-device micro-batch transfers, blocking memory allocations, legacy default-stream barriers, or cross-GPU network copies. A micro-batch is a small slice of the training data sent to the GPU in one step. Training engineers and inference operators see these stalls as wide empty gaps on the Nsight Systems timeline, and the result is lower token throughput. Token throughput is how many output tokens the service produces per second.
 
-- Three-way overlap across compute engines and dual Direct Memory Access copy engines keeps the Streaming Multiprocessor compute pipelines. Both copy engines busy at the same time. Modern NVIDIA GPUs pair their compute pipelines with at least two copy engines and support up to 128 resident kernel grids. Enqueuing micro-batches across explicit non-blocking streams with pinned host memory and stream-ordered allocation overlaps current compute, next input staging, and prior output retrieval.
-- Stream-ordered memory pools eliminate the global synchronization barriers caused by legacy blocking allocation and deallocation calls. Using `cudaMallocAsync` and `cudaFreeAsync` with a tuned pool release threshold allocates temporary attention scratch buffers and grows variable-length sequence workspaces without cross-stream stalls. It also feeds layerwise large language model pipelines across multiple streams on a single GPU.
-- Two-layer pipelines combine intra-kernel warp specialization or Thread Block Clusters with inter-kernel CUDA Streams. Driving a three-role dual-pipeline kernel or a four-block clustered kernel across multiple streams hides host staging and stream-ordered allocation behind active kernel execution. This overlap still works even when cooperative cluster kernels serialize on the Streaming Multiprocessors.
-- Multi-GPU peer-to-peer transfers, NCCL ring AllReduce, NIXL, and Programmatic Dependent Launch extend stream overlap across devices and across back-to-back kernels. Dedicated high-priority streams overlap peer Direct Memory Access on the copy engine. Low-occupancy NCCL collectives, and NIXL transfers, all of which can be captured into a CUDA Graph. Programmatic Dependent Launch lets a primary kernel trigger a dependent kernel as soon as its global memory writes flush. The prologue and epilogue overlap in the same stream.
+*AI Systems Performance Engineering* Chapter 11 extends intra-kernel pipelining into a full two-layer execution architecture. The first layer runs inside each kernel, and the second runs across kernels. The chapter combines both layers so that work overlaps everywhere it can.
+
+The first idea is three-way overlap. A modern NVIDIA GPU has compute pipelines for the Streaming Multiprocessors, plus at least two copy engines. A copy engine is a separate hardware unit that moves data, so it can work while the compute pipelines are busy. Keeping the compute pipelines and both copy engines busy at once is the goal. Enqueuing micro-batches across explicit non-blocking streams, with pinned host memory and stream-ordered allocation, overlaps the current compute, the staging of the next input, and the retrieval of the prior output. The source describes up to 128 resident kernel grids as well. A grid is one launch of a kernel, so the number reflects how many launches the hardware can hold at once.
+
+The second idea is stream-ordered memory pools. Legacy allocation and deallocation calls can stop the whole GPU while they run. Stream-ordered pools remove that global barrier. Using `cudaMallocAsync` and `cudaFreeAsync` with a tuned pool release threshold lets a job allocate temporary attention scratch buffers and grow variable-length sequence workspaces without stalling other streams. The same approach feeds layerwise large language model pipelines spread across several streams on one GPU.
+
+The third idea is the two-layer pipeline. It combines intra-kernel warp specialization or Thread Block Clusters with inter-kernel CUDA Streams. A three-role dual-pipeline kernel, or a four-block clustered kernel, can run across several streams. Host staging and stream-ordered allocation then hide behind kernels that are already running. The source notes that this overlap still works even when cooperative cluster kernels take turns on the Streaming Multiprocessors.
+
+The fourth idea is wider reach. Multi-GPU peer-to-peer transfers, NCCL ring AllReduce, NIXL, and Programmatic Dependent Launch extend stream overlap across devices and across back-to-back kernels. Peer-to-peer means one GPU reading or writing another GPU's memory directly. NCCL is NVIDIA's library for collective communication between GPUs. NIXL is the NVIDIA Inference Xfer Library, which moves data for inference. Dedicated high-priority streams can overlap peer copies on the copy engine. Low-occupancy NCCL collectives and NIXL transfers can both be captured into a CUDA Graph, which is a recorded sequence of GPU work that can be replayed. Programmatic Dependent Launch lets a primary kernel trigger a dependent kernel as soon as its global memory writes are flushed, so the prologue of the second kernel and the epilogue of the first run in the same stream.
 
 | Architectural Layer | Key Mechanism | Primary Parameters and Figures | Model or Hardware Result |
 |---|---|---|---|
@@ -41,33 +46,28 @@ Chapter 11 of *AI Systems Performance Engineering* extends intra-kernel pipelini
 | Multi-GPU and PDL | `cudaMemcpyPeerAsync`, NCCL, `nixlCommStream`, `cudaTriggerProgrammaticLaunchCompletion`, `cudaGridDependencySynchronize` | Figure 11-8 with 4 GPUs and 4 chunks 1-4; Figure 11-9, Figure 11-10, Figure 11-11 | 0 SM cycles for peer DMA; PDL cuts 4.0 ms to 3.6 ms in `model_programmatic_dependent_launch()` |
 
 :::note About the timings in this chapter
-The stage timings and the Programmatic Dependent Launch figures in the table above come from small timeline models in `code/part10/inter_kernel_pipelining.py`. Those models use assumed stage durations such as 1.0 ms H2D. 2.0 ms compute, and 1.0 ms D2H to illustrate the diagrams in the book and are not GPU measurements. The book notes that its own metric tables are illustrative as well, and the CUDA listings reproduced from the book were not compiled here.
+The stage timings and the Programmatic Dependent Launch figures in the table above come from small timeline models in `code/part10/inter_kernel_pipelining.py`. Those models use assumed stage durations such as 1.0 ms H2D, 2.0 ms compute, and 1.0 ms D2H. They illustrate the diagrams in *AI Systems Performance Engineering* and are not GPU measurements. The source notes that its own metric tables are illustrative as well. The CUDA listings reproduced from that source were not compiled here.
 :::
 
 ## Prerequisites and outcomes
 
-**Prerequisites:**
+**Prerequisites:** Work through Chapter 10.12 first. It covers the basics of CUDA Streams, CUDA Events, and pinned memory. Then review Chapter 10.16, which covers `<cuda/pipeline>`, three-role warp specialization, Cooperative Groups, and Thread Block Clusters. The ideas in this chapter stack on top of those two.
 
-- Chapter 10.12 covering foundational CUDA Streams, CUDA Events, and pinned memory, plus Chapter 10.16 covering `<cuda/pipeline>`, three-role warp specialization, Cooperative Groups, and Thread Block Clusters.
-
-**Outcomes — after completing this chapter you will be able to:**
-
-1. Orchestrate concurrent kernels and three-way H2D, compute, and D2H pipelines across non-blocking streams, diagnose 50% resource-contention splits under saturation, and respect the 128-grid hardware concurrency limit.
-2. Configure the stream-ordered memory allocator using `cudaMallocAsync`, `cudaFreeAsync`, `cudaMemPoolSetAttribute`, and `cudaMemPoolAttrReleaseThreshold` for temporary scratch buffers, growing token sequences, and layerwise pipelines.
-3. Contrast the legacy default stream, the Per-Thread Default Stream, and explicit non-blocking streams, and coordinate streams with CUDA Events and deadlock-free `cudaLaunchHostFunc` callbacks.
-4. Implement two-layer pipelining with dual-pipeline warp specialization and multi-stream Thread Block Clusters launched via `cudaLaunchKernelExC`.
-5. Build multi-GPU pipeline and data-parallel overlap loops using peer asynchronous copies, high-priority NCCL ring AllReduce streams, NIXL communication streams, and global multi-stream graph capture.
-6. Implement Programmatic Dependent Launch and combine it with Thread Block Clusters, warp specialization, and Blackwell Tensor Memory Accelerator reductions.
+The chapter moves through the material in order. It starts with concurrent kernels and the three-way overlap of host-to-device copies, compute, and device-to-host copies across non-blocking streams. It explains why the hardware limit of 128 concurrent grids matters. Next it covers the stream-ordered memory allocator, including the calls `cudaMallocAsync`, `cudaFreeAsync`, `cudaMemPoolSetAttribute`, and `cudaMemPoolAttrReleaseThreshold`, and how they serve scratch buffers, growing token sequences, and layerwise pipelines. Then it compares the legacy default stream with the Per-Thread Default Stream and explicit non-blocking streams. It shows how events and `cudaLaunchHostFunc` coordinate work without deadlocks. After that it layers warp specialization and Thread Block Clusters on top of multiple streams through `cudaLaunchKernelExC`. Multi-GPU overlap comes next, with peer copies, NCCL ring AllReduce streams, NIXL communication streams, and multi-stream graph capture. The last part covers Programmatic Dependent Launch and how it combines with clusters, warp specialization, and Blackwell Tensor Memory Accelerator reductions.
 
 ---
 
 ## 1. Overlapping Kernel Execution and 3-Way Data Transfers with CUDA Streams
 
+Suppose a training script launches every kernel into one queue. Small kernels that use only part of the GPU leave the rest of the Streaming Multiprocessors idle. Your question is how to let those kernels run side by side. The answer starts with the stream, a queue of GPU work that the hardware can run alongside other queues.
+
 ### 1.1 Concurrent kernel dispatch and host interleaving
 
-When a training script launches every kernel into a single queue, small kernels that use only part of the GPU leave the remaining Streaming Multiprocessors idle. Worse, if the host waits for each launch before running CPU bookkeeping, host and device execution serialize completely. A CUDA Stream solves this problem by acting as an independent first-in, first-out queue of device operations.
+When a training script launches every kernel into a single queue, small kernels that use only part of the GPU leave the remaining Streaming Multiprocessors idle. Worse, if the host waits for each launch before running CPU bookkeeping, host and device execution serialize completely. A CUDA Stream solves this problem by acting as an independent first-in, first-out queue of device operations. First-in, first-out means work leaves the queue in the same order it entered.
 
-Operations inside a single stream execute in strict issue order. Operations enqueued into different non-blocking streams can overlap on the GPU whenever hardware resources are free. As shown in Figure 11-1 of *AI Systems Performance Engineering* Chapter 11. Because kernel launches are asynchronous, control returns to the CPU immediately so host functions can run in parallel with device work.
+Think of a stream as one checkout lane in a supermarket. Operations inside one lane are served strictly in order. Two lanes can be served at the same time, so the shoppers in lane two do not wait for lane one. Operations enqueued into different non-blocking streams can overlap on the GPU whenever hardware resources are free. Non-blocking means the stream does not wait for the legacy default stream. Figure 11-1 of *AI Systems Performance Engineering* Chapter 11 shows this layout. Because kernel launches are asynchronous, control returns to the CPU immediately. That lets host functions run in parallel with device work. If you have written asynchronous code in Python, the idea will feel familiar. The call returns quickly, and the result shows up later.
+
+The table summarizes the example program below. Read it as a map of which kernel goes on which stream, and where the CPU work fits in between.
 
 | Parameter | Configuration | Detail |
 |---|---|---|
@@ -122,13 +122,17 @@ int main() {
 
 ### 1.2 Three-way `H2D` / `Compute` / `D2H` overlap, hardware limits (`128` grids), and saturation contention
 
-In a naive inference or training loop, each micro-batch copies inputs from host to device. Runs the kernel, and copies outputs from device to host one after another. While the PCIe or NVLink bus transfers data, the Streaming Multiprocessors sit idle, and while the Streaming Multiprocessors compute, both directions of the bus sit idle. Over eight batches, this stop-and-go execution nearly doubles wall-clock latency.
+Start with a plain inference loop. Each micro-batch copies its inputs from host to device, runs the kernel, and then copies the outputs from device back to host. The steps happen one after another. While the PCIe or NVLink bus carries data, the Streaming Multiprocessors sit idle. While the Streaming Multiprocessors compute, both directions of the bus sit idle. Over eight batches, this stop-and-go execution nearly doubles wall-clock latency.
 
-Modern NVIDIA data-center GPUs provide at least two independent Direct Memory Access copy engines where `deviceProp.asyncEngineCount >= 2` alongside the Streaming Multiprocessor compute pipeline. One copy engine handles host-to-device transfers while the second copy engine handles device-to-host transfers, as illustrated in Figure 11-2 of *AI Systems Performance Engineering* Chapter 11. Pipelining micro-batches across three or more non-blocking streams keeps all three hardware engines busy during steady state.
+The fix is a three-lane assembly line. Batch b is computing, batch b+1 is arriving, and batch b-1 is leaving. Every hardware engine works on a different batch in the same moment. Modern NVIDIA data-center GPUs provide at least two independent Direct Memory Access copy engines, the units that move data without using the compute cores. The check is `deviceProp.asyncEngineCount >= 2`, and it sits alongside the Streaming Multiprocessor compute pipeline. One copy engine handles host-to-device transfers, while the second handles device-to-host transfers. Figure 11-2 of *AI Systems Performance Engineering* Chapter 11 illustrates this split. Pipelining micro-batches across three or more non-blocking streams keeps all three hardware engines busy during steady state. The lanes only truly run side by side when the host memory is pinned. Pinning lets a copy engine read the host buffer directly while the CPU does other work. Without pinning, the lane has to wait for a staging copy first, and that wait stops the whole lane.
+
+Each stream in that three-lane layout has one job:
 
 - Stream 0 drives the Streaming Multiprocessor compute pipeline for the current micro-batch.
-- Stream 1 drives copy engine 0 to run a host-to-device asynchronous copy for the next micro-batch from pinned host RAM into HBM.
-- Stream 2 drives copy engine 1 to run a device-to-host asynchronous copy for the completed output of the previous micro-batch back to pinned host RAM.
+- Stream 1 drives copy engine 0 to run a host-to-device asynchronous copy for the next micro-batch, from pinned host RAM into HBM.
+- Stream 2 drives copy engine 1 to run a device-to-host asynchronous copy for the completed output of the previous micro-batch, back to pinned host RAM.
+
+The diagram shows the same three lanes at one moment in steady state. A helpful way to follow it is to pick one batch and track it across time. In the first slice, batch b is still arriving on the input lane. In the next slice, it is the batch on the compute lane. In the slice after that, its results are leaving on the output lane. Each batch passes through all three lanes, and the lanes always hold three different batches at the same moment. That is the whole secret of steady state. Nothing waits for the previous batch to finish completely before the next one starts moving.
 
 ```mermaid
 flowchart LR
@@ -146,12 +150,14 @@ flowchart LR
     Reqs --> StepT
 ```
 
-Four physical and runtime rules govern whether multi-stream operations actually overlap on hardware.
+Four physical and runtime rules decide whether multi-stream work really overlaps on the hardware. Missing any one of them quietly turns the pipeline back into a line of waiting.
 
-1. Pinned host memory is mandatory for asynchronous `cudaMemcpyAsync` transfers. Passing a pageable pointer forces the CUDA driver to perform a synchronous CPU staging copy into an internal pinned buffer. Which blocks the calling CPU thread and serializes that stream. Always allocate host staging buffers with `cudaMallocHost` in C++ or set `pin_memory=True` in PyTorch.
-2. Stream-ordered memory allocation is mandatory when buffers are allocated dynamically inside a multi-stream loop. Calling legacy `cudaMalloc` or `cudaFree` forces a device-wide synchronization across all streams on the GPU.
-3. Resource saturation splits throughput evenly between contending streams. If a single kernel already consumes 100% of compute throughput. HBM bandwidth, launching a second kernel in another stream makes both kernels contend and run at 50% speed each.
-4. Modern GPUs enforce a hard hardware limit of 128 concurrently executing kernel grids per device. Any kernel launches beyond 128 active grids wait in hardware queues. An active grid finishes, and co-resident kernels must fit within each Streaming Multiprocessor's register, shared memory, and block limits.
+1. Pinned host memory is required for asynchronous `cudaMemcpyAsync` transfers. Pinned memory is host RAM that the operating system will not move around, so the GPU can read it directly. If you pass a pageable pointer, the CUDA driver makes a synchronous CPU staging copy into an internal pinned buffer first. That copy blocks the calling CPU thread and serializes the stream. Allocate host staging buffers with `cudaMallocHost` in C++, or set `pin_memory=True` in PyTorch.
+2. Stream-ordered allocation is required when buffers are allocated inside a multi-stream loop. Calling the legacy `cudaMalloc` or `cudaFree` forces a device-wide synchronization across all streams on the GPU. Every lane has to stop so the allocator can finish its work.
+3. Resource saturation splits throughput between contending streams. Suppose a single kernel already uses 100% of compute throughput or HBM bandwidth. If you launch a second kernel in another stream, the two kernels contend, and each one runs at 50% speed. The second stream adds no net speedup in that case.
+4. Modern GPUs enforce a hard limit of 128 concurrently executing kernel grids per device. Launches beyond 128 active grids wait in hardware queues. When an active grid finishes, a waiting grid can start. Kernels that do run together must still fit within each Streaming Multiprocessor's register, shared memory, and block limits.
+
+The table compares three versions of the same eight-batch workload. Each row changes one thing, so you can see what each fix buys you. The timings are the assumed stage times from the timeline model, not measurements.
 
 | Pipeline Scenario (`simulate_inter_kernel_stream_pipeline`, 8 Batches) | Stage Timings Assumed | Total Time | Speedup vs Serial |
 |---|---|---|---|
@@ -163,17 +169,23 @@ Four physical and runtime rules govern whether multi-stream operations actually 
 
 ## 2. The Stream-Ordered Memory Allocator (`cudaMallocAsync`) and LLM Scratch Pools
 
+Picture a serving engine that has been running steadily for hours. A request arrives with a longer prompt than usual, and the scratch buffer has to grow. Your question is why that one allocation makes other requests stall. The answer lies in how the allocator talks to the rest of the GPU.
+
 ### 2.1 Tuning the device memory pool (`cudaMemPoolSetAttribute` & `PYTORCH_ALLOC_CONF`)
 
-Dynamic deep learning workloads frequently allocate and free temporary tensors inside the training or inference loop. When a runtime falls back to OS-level blocking allocations, the driver halts every stream on the GPU to update page tables. Even PyTorch's default caching allocator, which is stream-aware on cache hits, synchronizes the entire device whenever a cache miss triggers a fresh allocation from the driver.
+Dynamic deep learning workloads frequently allocate and free temporary tensors inside the training or inference loop. A tensor is a block of numbers on the GPU, and a temporary tensor lives only for part of a step. When a runtime falls back to OS-level blocking allocations, the driver halts every stream on the GPU to update page tables. Page tables are the bookkeeping that maps memory addresses to physical pages. Even PyTorch's default caching allocator, which is stream-aware on cache hits, synchronizes the entire device whenever a cache miss triggers a fresh allocation from the driver. A cache miss means the allocator has no free block of the right size and has to ask the driver for new memory.
 
-Exporting `PYTORCH_ALLOC_CONF=backend:cudaMallocAsync` switches PyTorch to CUDA's native stream-ordered memory allocator. This allocator processes allocation and deallocation calls as stream-ordered queue items inside a per-device memory pool `cudaMemPool_t`, reducing cross-stream fragmentation. When a tensor is freed asynchronously on stream A. Stream B can reuse that physical memory immediately after an event dependency without waiting for the rest of the GPU.
+Exporting `PYTORCH_ALLOC_CONF=backend:cudaMallocAsync` switches PyTorch to CUDA's native stream-ordered memory allocator. This allocator treats allocation and deallocation calls as items in a stream queue, inside a per-device memory pool of type `cudaMemPool_t`. Because the work is queued in order, it reduces cross-stream fragmentation. Fragmentation is the situation where free memory exists but is split into pieces too small to use. Consider a tensor freed asynchronously on stream A. Stream B can reuse that physical memory right after an event dependency, without waiting for the rest of the GPU. An event dependency is a marker that tells stream B to wait only for that one point in stream A.
 
 ```bash
 export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
 ```
 
-In CUDA C++, you tune how much memory the default device pool retains before returning physical pages to the operating system by calling `cudaMemPoolSetAttribute` with `cudaMemPoolAttrReleaseThreshold`. Setting the threshold to half of total global memory retains up to 50% of total VRAM in the pool across asynchronous free calls. On a 192 GiB Blackwell B200 GPU, that threshold keeps 96 GiB cached in the pool so subsequent mini-batches never pay operating-system mapping overhead.
+Think of the pool as a shelf where unused boxes wait for the next order. The release threshold decides how much stays on that shelf before the extra boxes go back to the warehouse. A higher threshold means fewer trips to the warehouse, but it also keeps more memory tied up in the process. In CUDA C++, you control how much memory the default device pool keeps before it returns physical pages to the operating system. You do this by calling `cudaMemPoolSetAttribute` with `cudaMemPoolAttrReleaseThreshold`. The chapter's example sets the threshold to half of total global memory. That keeps up to 50% of total VRAM in the pool across asynchronous free calls. On a 192 GiB Blackwell B200 GPU, the threshold keeps 96 GiB cached in the pool, so later mini-batches do not pay the cost of mapping memory from the operating system again. Mapping is the work of connecting physical pages to the process's address space, and it is slow compared with reusing pages the pool already holds.
+
+```bash
+export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
+```
 
 ```cpp
 // Stream-ordered memory pool configuration and 2-stream overlapped pipeline
@@ -234,7 +246,9 @@ void runStreamOrderedPipeline(const float* h_data1, float* h_result1,
 
 ### 2.2 Three LLM workloads that depend on `cudaMallocAsync`
 
-Large language model serving and training engines allocate scratch memory whose size changes from batch to batch and step to step. When a serving engine uses blocking allocations for these buffers, a single sequence-length jump stalls every concurrent stream on the GPU. Figure 11-3 of *AI Systems Performance Engineering* Chapter 11 and `plan_stream_ordered_pool()` in `code/part10/inter_kernel_pipelining.py` show three places where `cudaMallocAsync` preserves full overlap.
+Large language model serving and training engines allocate scratch memory whose size changes from batch to batch and step to step. Scratch memory is temporary working space that a computation needs while it runs. When a serving engine uses blocking allocations for these buffers, a single jump in sequence length stalls every concurrent stream on the GPU. Figure 11-3 of *AI Systems Performance Engineering* Chapter 11 and `plan_stream_ordered_pool()` in `code/part10/inter_kernel_pipelining.py` show three places where `cudaMallocAsync` keeps full overlap. The table below takes each pattern in turn and compares the legacy call with the stream-ordered call. A quick way to see the difference is to ask what the other streams are doing while the allocation runs. With the legacy call, the answer is nothing, because every stream is frozen. With the stream-ordered call, the other streams keep working. The allocation is only one more item in the queue of the stream that asked for it, so the rest of the GPU does not wait for it.
+
+Each row is a pattern you are likely to meet. The first is a fixed-size scratch buffer that gets allocated again and again. The second is a buffer that has to grow as the sequence gets longer. The third is a model split across streams, where one half hands its buffers to the other half.
 
 | LLM Runtime Pattern | Why Dynamic Allocation Occurs | What Happens with Legacy `cudaMalloc` | What Happens with `cudaMallocAsync` |
 |---|---|---|---|
@@ -246,11 +260,13 @@ Large language model serving and training engines allocate scratch memory whose 
 
 ## 3. Default vs. Explicit Streams, Per-Thread Default Streams (`PTDS`), Events, and Host Callbacks
 
+Think about a shared kitchen where one cook refuses to let anyone else use the stove until their own dish is finished. Your question is why a single CUDA call without a stream argument can freeze work that has nothing to do with it. The answer is the legacy default stream, and the stream choices in this section decide whether the kitchen runs in parallel.
+
 ### 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams
 
-A single stray CUDA call that omits its stream argument can silently destroy multi-stream concurrency across an entire application. By default, omitting the stream argument sends work to the legacy default stream, which acts as a global bidirectional barrier against every blocking stream on the GPU. Engineers debugging Nsight Systems traces recognize this bug immediately when all active streams stop at a vertical wall before and after a tiny helper kernel.
+A single stray CUDA call that omits its stream argument can silently destroy multi-stream concurrency across an entire application. By default, omitting the stream argument sends work to the legacy default stream. That stream acts as a global bidirectional barrier against every blocking stream on the GPU. A barrier here means work on the default stream cannot start until earlier work everywhere finishes, and later work cannot start until it finishes. Engineers debugging Nsight Systems traces recognize this bug immediately. All active streams stop at a vertical wall before and after a tiny helper kernel, and the helper is the one call that did not name a stream.
 
-CUDA provides three distinct stream behaviors depending on how streams are created. Whether Per-Thread Default Streams are enabled, as shown in Figure 11-4 of *AI Systems Performance Engineering* Chapter 11.
+CUDA provides three distinct stream behaviors, depending on how streams are created. Whether Per-Thread Default Streams are enabled changes which one you get. Figure 11-4 of *AI Systems Performance Engineering* Chapter 11 shows the difference. The table lists the three behaviors and the recommendation for each. Per-Thread Default Streams change the rule so that each host thread gets its own default lane. The lanes stay in order inside each thread, but a lane in one thread no longer blocks a lane in another thread. That helps when third-party libraries omit stream arguments inside a multi-threaded application. An explicit non-blocking stream goes one step further. It never waits for the legacy stream, unless you tell it to wait on an event.
 
 | Stream Type | Creation or Activation Flag | Self-Ordering | Cross-Stream Synchronization Behavior | Production Recommendation |
 |---|---|---|---|---|
@@ -260,28 +276,32 @@ CUDA provides three distinct stream behaviors depending on how streams are creat
 
 ### 3.2 Fine-grained cross-stream events (`Figures 11-5 to 11-7`) and the `cudaLaunchHostFunc` deadlock rule
 
-```text
-When one stream produces tensors that another stream consumes, using host-blocking calls such as `cudaDeviceSynchronize()` or `cudaStreamSynchronize()` stalls the CPU and drains unrelated GPU queues. Producer-consumer pipelines need a way to enforce ordering on the GPU hardware scheduler without stopping the host thread or unrelated streams. Figures 11-5 through 11-7 in *AI Systems Performance Engineering* Chapter 11 contrast coarse host synchronization against fine-grained CUDA Events.
-```
+Consider a producer stream that writes a tensor and a consumer stream that reads it. The consumer must wait for the producer, but nothing else should wait. A host-blocking call is the blunt tool here. Calls such as `cudaDeviceSynchronize()` or `cudaStreamSynchronize()` stall the CPU and drain unrelated GPU queues along with the one you care about. Producer-consumer pipelines need a way to enforce ordering inside the GPU scheduler, without stopping the host thread or unrelated streams. Figures 11-5 through 11-7 in *AI Systems Performance Engineering* Chapter 11 contrast coarse host synchronization with fine-grained CUDA Events. An event is a marker placed in a stream that other streams can wait on.
 
-- Device-wide synchronization via `cudaDeviceSynchronize()` blocks the calling CPU thread until every stream across the entire GPU drains to completion. Never call it inside a hot training or inference loop.
-- Single-stream host synchronization in Figure 11-5 blocks the calling CPU thread until all operations in that specific stream complete. Reserve it for epoch boundaries or final cleanup.
-- Event-based stream synchronization in Figures 11-6. 11-7 pairs `cudaEventRecord` on the producer stream with `cudaStreamWaitEvent` on the consumer stream and returns control to the CPU immediately. Only the consumer stream waits on the GPU hardware scheduler until the producer stream reaches the recorded event, while all other GPU streams continue at full speed.
-- Disabling event timestamps via `cudaEventDisableTiming` strips timestamp-recording overhead whenever an event is used purely for cross-stream ordering rather than elapsed-time measurement.
+The four options below run from the bluntest to the most precise.
 
-Sometimes the CPU needs to recycle a custom host memory buffer as soon as a GPU stream completes a kernel without spinning on an event query. Blocking on stream synchronization. You can enqueue a host function on the stream by calling `cudaLaunchHostFunc(stream, myHostCallback, userData)`. Never invoke any device-side CUDA API such as a memory copy, allocation, or kernel launch from inside that host callback. Because the callback runs on an internal CUDA runtime thread. The stream waits for the callback to return, calling a CUDA API inside the callback creates a circular wait and deadlocks the application.
+- Device-wide synchronization with `cudaDeviceSynchronize()` blocks the calling CPU thread until every stream across the entire GPU drains to completion. Never call it inside a hot training or inference loop.
+- Single-stream host synchronization, shown in Figure 11-5, blocks the calling CPU thread until all operations in that one stream complete. Reserve it for epoch boundaries or final cleanup.
+- Event-based stream synchronization, shown in Figures 11-6 and 11-7, pairs `cudaEventRecord` on the producer stream with `cudaStreamWaitEvent` on the consumer stream. The CPU returns immediately. Only the consumer stream waits, and only until the producer reaches the recorded event. All other GPU streams keep running at full speed.
+- Disabling timestamps with `cudaEventDisableTiming` removes the cost of recording times. Use it when an event only orders work and you never measure elapsed time with it.
+
+Use the list above as a decision guide. Start with the event option whenever two streams depend on each other. Reach for a host synchronization only at a natural boundary, such as the end of an epoch. The device-wide option is the one to avoid in any loop that runs many times.
+
+Sometimes the CPU needs to recycle a host memory buffer as soon as a GPU stream finishes a kernel. Blocking on a stream synchronization would be wasteful, and spinning on an event query burns CPU time. The better tool is a callback. You enqueue a host function on the stream by calling `cudaLaunchHostFunc(stream, myHostCallback, userData)`. The rule is strict. Never invoke a device-side CUDA API inside that host callback. That includes a memory copy, an allocation, or a kernel launch. The callback runs on an internal CUDA runtime thread, and the stream waits for the callback to return. A CUDA call inside the callback waits on work that is itself waiting for the callback, so the application deadlocks.
 
 ---
 
 ## 4. Two-Layer Pipelining: Intra-Kernel Warp Specialization + Inter-Kernel CUDA Streams + Thread Block Clusters
 
+Picture a dual-stage kitchen. One station chops while another cooks, and a third plates. Each station keeps its own queue of orders, and the pass between stations stays busy. Your question is how to build that kitchen when the pipeline lives inside one kernel and the orders come from several streams. This section answers it in two layers.
+
 ### 4.1 Layering dual-pipeline 3-role warp specialization with CUDA streams (`warp_specialized_two_pipelines`)
 
-A single pipeline object inside a thread block overlaps global-to-shared loads with compute. But the compute warp and storer warp still contend if they share a single stage barrier. In addition, a single kernel launch still pays host-to-device and device-to-host transfer latency between batches. Combining a dual-pipeline three-role warp-specialized kernel with multiple CUDA Streams solves both bottlenecks at once.
+A single pipeline object inside a thread block overlaps global-to-shared loads with compute. But the compute warp and the storer warp still contend if they share a single stage barrier. A barrier here is the point where a group of threads waits for each other. In addition, a single kernel launch still pays host-to-device and device-to-host transfer latency between batches. Combining a dual-pipeline three-role warp-specialized kernel with multiple CUDA Streams solves both bottlenecks at once. Each layer covers the weakness of the other. The inner pipeline keeps the warps of one block busy. The outer streams keep the copies and allocations running beside the kernel.
 
-```text
-In *AI Systems Performance Engineering* Chapter 11, `warp_specialized_two_pipelines` launches 3 warps per block with 96 threads: warp 0 is the loader, warp 1 is the compute warp, and warp 2 is the storer. The block coordinates those three roles using two independent two-stage block-scoped pipelines. First, `pipe_lc` connects the loader to the compute warp with depth 2 for asynchronous vectorized loads from HBM into shared memory. Second, `pipe_cs` connects the compute warp to the storer warp with depth 2 so computed tiles hand off cleanly while the next tile computes.
-```
+The roles and buffers are easier to follow as a plan before you read the code. The loader warp is warp 0. It copies the A and B tiles from global memory into Shared Memory with 16-byte vector copies. The compute warp is warp 1. It adds the two input tiles into C and hands the result forward. The storer warp is warp 2. It copies the finished C tile back to global memory. Two pipeline objects connect the three roles. The first one, `pipe_lc`, links the loader to the compute warp. The second one, `pipe_cs`, links the compute warp to the storer warp. Each pipeline has two stages, so the next tile can load while the current one computes.
+
+The configuration numbers in the next block explain how the buffers fit. Each line gives one fact about the layout.
 
 ```text
 1D tile size:          TILE_SIZE = 1,024 floats per buffer
@@ -292,7 +312,7 @@ Shared memory layout:  2 stages * 3 buffers [A0 | B0 | C0 | A1 | B1 | C1] * 1,02
 Host stream driver:    NUM_STREAMS = 2, BATCHES = 8, prefetching next = tile + gridDim.x
 ```
 
-Here is the complete device kernel and multi-stream host driver from *AI Systems Performance Engineering* Chapter 11.
+Here is the complete device kernel and multi-stream host driver from *AI Systems Performance Engineering* Chapter 11. Read the kernel in the order the work flows. The loader warp issues vector copies, two per chunk, using `float4` values, so each lane moves a full 16-byte piece at a time. The loader then commits the stage and waits for it. The compute warp adds the two tiles into C. The storer warp waits on the second pipeline and writes C back out. Each `cta.sync()` is a checkpoint that makes the roles wait for each other before the next role starts. The host driver then spreads the eight batches across two streams, so the copies for one batch can sit beside the kernel for another. If the pipeline stalls, check the stage count first. A depth of 2 lets one tile load while the other tile computes. Each extra stage needs its own buffers in Shared Memory, so more depth costs more of the budget.
 
 ```cpp
 // Two-level pipeline: Intra-kernel 3-role dual-pipeline (pipe_lc + pipe_cs)
@@ -432,9 +452,11 @@ void runTwoPipelineMultistreamHost() {
 
 ### 4.2 Combining Thread Block Clusters, Warp Specialization, and CUDA Streams (`launch_warp_specialized_cluster_pipeline_multistream`)
 
-Full-device cooperative and clustered kernels often reserve every Streaming Multiprocessor on the GPU at once. Because no free Streaming Multiprocessors remain, a second cooperative cluster kernel launched on another stream cannot co-reside on the compute engines at the exact same moment. Engineers often assume that multi-stream execution is useless for full-grid cluster kernels, leaving host transfers and memory allocations exposed between runs.
+Full-device cooperative and clustered kernels often reserve every Streaming Multiprocessor on the GPU at once. Because no free Streaming Multiprocessors remain, a second cooperative cluster kernel launched on another stream cannot run on the compute engines at the same moment. Engineers often conclude that multi-stream execution is useless for full-grid cluster kernels. The result is host transfers and memory allocations left exposed between runs.
 
-Even when cooperative cluster kernels serialize on the Streaming Multiprocessors, driving them across two streams via `launch_warp_specialized_cluster_pipeline_multistream` still overlaps all non-compute stages. While Stream 0 executes its cluster kernel on the Streaming Multiprocessors, Stream 1 runs stream-ordered allocations and stages the next micro-batch into HBM via host-to-device asynchronous copy. At the same time, Stream 0 streams the completed output of the previous micro-batch back to the host and frees its buffers asynchronously.
+The source argues that this conclusion is too quick. Even when cooperative cluster kernels take turns on the Streaming Multiprocessors, driving them across two streams through `launch_warp_specialized_cluster_pipeline_multistream` still overlaps every non-compute stage. Think of two chefs who share one oven. The oven is busy with one dish at a time, but the prep and cleanup for both dishes happen off the oven, at the same time. While Stream 0 runs its cluster kernel on the Streaming Multiprocessors, Stream 1 runs stream-ordered allocations and stages the next micro-batch into HBM through a host-to-device asynchronous copy. At the same time, Stream 0 streams the completed output of the previous micro-batch back to the host and frees its buffers asynchronously.
+
+The configuration block below lists the geometry for that launch. Read the cluster size first, then the block size, then the stream count.
 
 ```text
 Cluster kernel:       warp_specialized_cluster_pipeline
@@ -448,7 +470,7 @@ Launch attributes:    2 attributes: cudaLaunchAttributeClusterDimension = dim3(4
 Kernel handle lookup: cudaGetKernel(&k, warp_specialized_cluster_pipeline)
 ```
 
-Once a simpler double-buffered kernel and multi-stream pipeline already saturate HBM bandwidth. Hide host-to-device latency, adding three-role warp specialization and Thread Block Clusters yields only a few extra percentage points of utilization. Reserve the full three-layer combination for ultra-latency-sensitive inference kernels where every microsecond of tile handoff matters.
+Once a simpler double-buffered kernel and a multi-stream pipeline already saturate HBM bandwidth, the picture changes. Hiding host-to-device latency is the job that is still left, and adding three-role warp specialization and Thread Block Clusters yields only a few extra percentage points of utilization. Reserve the full three-layer combination for ultra-latency-sensitive inference kernels, where every microsecond of tile handoff matters.
 
 ---
 
@@ -456,7 +478,9 @@ Once a simpler double-buffered kernel and multi-stream pipeline already saturate
 
 ### 5.1 Multi-GPU pipeline parallelism (`cudaMemcpyPeerAsync`) and data parallelism (`NCCL` & `NIXL`)
 
-In multi-GPU training and inference, running peer-to-peer activation transfers. Gradient reductions on the same stream as forward and backward compute stalls every GPU at every layer boundary. A pipeline-parallel stage on GPU 0 sits idle while its activations cross NVLink to GPU 1. And data-parallel backward passes wait for ring AllReduce collectives to finish before starting the next layer. Separating compute and communication onto dedicated streams across GPUs lets compute engines and network engines run simultaneously.
+Suppose you run a model split across two GPUs. GPU 0 finishes its layers and then has to hand activations to GPU 1. If that handoff runs on the same stream as the compute, GPU 0 sits idle during the transfer. The same problem appears in data-parallel training. The backward pass waits for a ring AllReduce, which is a collective where every GPU combines its gradients with its neighbors in a ring, before the next layer can start. In multi-GPU training and inference, running peer-to-peer activation transfers, or gradient reductions, on the same stream as forward and backward compute stalls every GPU at every layer boundary. A pipeline-parallel stage on GPU 0 sits idle while its activations cross NVLink to GPU 1. Data-parallel backward passes wait for ring AllReduce collectives to finish before starting the next layer. Separating compute and communication onto dedicated streams across GPUs lets the compute engines and the network engines run at the same time.
+
+The diagram shows the handoff as two streams on each GPU. The compute stream keeps working on the next batch while the copy stream carries the activations across.
 
 ```mermaid
 flowchart LR
@@ -472,21 +496,17 @@ flowchart LR
     S1A -->|"NVLink / PCIe P2P + eventFromA"| S1B
 ```
 
-*AI Systems Performance Engineering* Chapter 11 details three multi-GPU overlap patterns across NVLink, PCIe, and RDMA interconnects.
+*AI Systems Performance Engineering* Chapter 11 details three multi-GPU overlap patterns across NVLink, PCIe, and RDMA interconnects. NVLink and PCIe are the links between GPUs and the host. RDMA is remote direct memory access, which moves data between machines without involving the remote CPU. The first pattern is two-GPU pipeline parallelism. Layers 0-3 run on GPU 0, and layers 4-7 run on GPU 1. On GPU 0, the compute stream runs `myTransformerLayers0to3`, records an event with timing disabled, and immediately starts the next micro-batch. Meanwhile, a communication stream waits on that event, calls `cudaMemcpyPeerAsync` to push activations to GPU 1, and records a completion event. GPU 1's compute stream waits on that completion event before it runs `myTransformerLayers4to7`. Because the peer copy runs on GPU 0's copy engine, using 0 SM cycles, GPU 0 computes the next batch at 100% speed during the transfer.
 
-```text
-1. Two-GPU pipeline parallelism splits Layers 0-3 onto GPU 0 and Layers 4-7 onto GPU 1. On GPU 0, the compute stream runs `myTransformerLayers0to3`, records an event with timing disabled, and immediately starts the next micro-batch. Meanwhile, the communication stream waits on that event, calls `cudaMemcpyPeerAsync` to push activations to GPU 1, and records a completion event for GPU 1's compute stream to wait on before running `myTransformerLayers4to7`. Because peer copy executes on GPU 0's copy engine using 0 SM cycles, GPU 0 computes the next batch at 100% speed during the transfer.
-```
-```text
-2. Multi-GPU data parallelism overlaps backward compute with NCCL ring AllReduce collectives, shown in Figure 11-8 across 4 GPUs and 4 contiguous tensor chunks labeled Chunks 1-4. Unlike peer Direct Memory Access copies, NCCL collectives run as device kernels on Streaming Multiprocessors, but they are tuned as low-occupancy kernels that saturate link bandwidth using only a few thread blocks or offload reductions to NVIDIA SHARP switch hardware. Frameworks launch `ncclAllReduce` on a dedicated high-priority communication stream coordinated via CUDA Events so backward compute overlaps gradient communication.
-```
-3. Disaggregated prefill and decode KV-cache transfers use the NVIDIA Inference Xfer Library NIXL on a dedicated high-priority `nixlCommStream`. NIXL replaces manual peer copies with chunked. Pipelined transfers across NVLink, GPUDirect RDMA, and NVMe storage so high-priority copy commands preempt lower-priority queues without consuming upfront Streaming Multiprocessor resources.
+The second pattern is data parallelism. Backward compute overlaps with NCCL ring AllReduce collectives, as shown in Figure 11-8 across 4 GPUs and 4 contiguous tensor chunks labeled Chunks 1-4. Unlike peer Direct Memory Access copies, NCCL collectives run as device kernels on Streaming Multiprocessors. They are tuned as low-occupancy kernels, which means they saturate link bandwidth using only a few thread blocks. Some collectives instead offload reductions to NVIDIA SHARP switch hardware, which performs the reduction inside the network switch. Frameworks launch `ncclAllReduce` on a dedicated high-priority communication stream, and CUDA Events coordinate it so that backward compute overlaps gradient communication.
+
+The third pattern is disaggregated serving. Prefill and decode run on different GPUs in that setup, so the KV-cache has to travel between them. The KV-cache holds the attention keys and values of earlier tokens. The NVIDIA Inference Xfer Library, NIXL, moves that cache on a dedicated high-priority `nixlCommStream`. NIXL replaces manual peer copies with chunked, pipelined transfers across NVLink, GPUDirect RDMA, and NVMe storage. High-priority copy commands can then preempt lower-priority queues, without consuming upfront Streaming Multiprocessor resources. The three patterns share one idea. Each one moves the slow transfer off the compute stream, so the compute stream does not wait for the network or for the second GPU.
 
 ### 5.2 Capturing a multi-stream iteration into a `CUDA Graph` (`cudaStreamCaptureModeGlobal`)
 
-Even when compute and NCCL streams overlap on the GPU. Launching dozens of small kernels, events, and collective calls from Python every step can still bottleneck on host CPU driver overhead. Capturing the entire multi-stream DAG into a single CUDA Graph removes that CPU launch overhead while preserving every cross-stream overlap edge.
+Even when compute and NCCL streams overlap on the GPU, the host still has to launch them. Launching dozens of small kernels, events, and collective calls from Python every step can bottleneck on host CPU driver overhead. Picture a cook who must call out every ticket one by one, when a single printed order sheet would do. Capturing the entire multi-stream dependency graph into a single CUDA Graph removes that CPU launch overhead. It keeps every cross-stream overlap edge, because the edges are part of the recorded graph.
 
-To capture across multiple streams, begin capture on the primary stream using `cudaStreamCaptureModeGlobal`. Fork work onto secondary streams with CUDA Events, and join all secondary streams back into the primary stream before calling `cudaStreamEndCapture`. Once instantiated, a single cudaGraphLaunch call replays the entire multi-stream compute and communication step.
+To capture across multiple streams, begin capture on the primary stream using `cudaStreamCaptureModeGlobal`. Fork work onto secondary streams with CUDA Events, and join all secondary streams back into the primary stream before calling `cudaStreamEndCapture`. Fork means the secondary stream waits on an event from the primary stream, and join means the primary stream waits on an event from the secondary stream. Once the graph is instantiated, one `cudaGraphLaunch` call replays the entire multi-stream compute and communication step. Capture works by recording instead of running. During capture, the calls are written into a graph and are not executed right away. That is why the graph can be replayed later without the host issuing every call again. The trade-off is that a recorded graph has a fixed shape. A step whose structure changes from one iteration to the next has to be captured again, or it has to run outside the graph.
 
 ```cpp
 // Capturing a multi-stream compute + NCCL communication DAG into a single CUDA Graph
@@ -515,9 +535,11 @@ cudaStreamEndCapture(streamA, &graph);
 
 ### 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream
 
-Normally, two kernels enqueued into the same CUDA Stream execute strictly back-to-back. The hardware scheduler will not start the secondary kernel on any Streaming Multiprocessor until every thread block of the primary kernel has finished its epilogue and exited. During the tail wave of the primary kernel, most Streaming Multiprocessors sit idle while the secondary kernel waits behind the stream boundary.
+Normally, two kernels enqueued into the same CUDA Stream execute strictly back to back. Think of two cars in a single-lane tunnel. The second car waits for the first to exit completely. The hardware scheduler will not start the secondary kernel on any Streaming Multiprocessor until every thread block of the primary kernel has finished its epilogue and exited. The epilogue is the final cleanup work at the end of a kernel. During the tail wave of the primary kernel, most Streaming Multiprocessors sit idle while the secondary kernel waits behind the stream boundary.
 
-Programmatic Dependent Launch, supported on Hopper. Blackwell GPUs, breaks that strict boundary inside a single stream without CPU intervention, as shown in Figure 11-9 of *AI Systems Performance Engineering* Chapter 11. As soon as the primary kernel finishes writing the global memory data that the secondary kernel needs, the primary kernel signals the hardware command processor. The GPU immediately starts the secondary kernel's non-dependent prologue on free Streaming Multiprocessors while the primary kernel finishes its remaining epilogue work.
+Programmatic Dependent Launch, supported on Hopper and Blackwell GPUs, breaks that strict boundary inside a single stream without CPU intervention. Figure 11-9 of *AI Systems Performance Engineering* Chapter 11 shows the timing. As soon as the primary kernel finishes writing the global memory data that the secondary kernel needs, the primary kernel signals the hardware command processor. The GPU then starts the secondary kernel's non-dependent prologue on the free Streaming Multiprocessors. The prologue is the setup that does not need the primary kernel's data. The primary kernel keeps running its remaining epilogue in the meantime.
+
+The diagram shows both kernels on one stream. The trigger in kernel A and the synchronization in kernel B are the handshake that makes the overlap safe.
 
 ```mermaid
 flowchart LR
@@ -536,11 +558,13 @@ flowchart LR
     A2 ==>|"Device-side PDL handoff (0 CPU overhead)"| B2
 ```
 
-Implementing Programmatic Dependent Launch requires a three-part contract across the primary kernel, the secondary kernel, and the host launch.
+Implementing Programmatic Dependent Launch requires a three-part contract across the primary kernel, the secondary kernel, and the host launch. Each part has one job, and all three must be present.
 
-1. In the primary kernel, call `cudaTriggerProgrammaticLaunchCompletion()` once all global memory writes needed by the secondary kernel are complete. This call flushes global writes and signals the hardware scheduler that the secondary kernel may launch while the primary kernel executes its epilogue.
-2. In the secondary kernel, execute any independent preamble or constant setup first, then call `cudaGridDependencySynchronize()` before reading any global memory written by the primary kernel.
-3. On the host, configure the secondary kernel's launch configuration with `cudaLaunchAttributeProgrammaticStreamSerialization` set to 1, and enqueue the launch via `cudaLaunchKernelExC`.
+1. In the primary kernel, call `cudaTriggerProgrammaticLaunchCompletion()` once all global memory writes needed by the secondary kernel are complete. This call flushes global writes and tells the hardware scheduler that the secondary kernel may launch while the primary kernel is still in its epilogue.
+2. In the secondary kernel, run any independent preamble or constant setup first. Then call `cudaGridDependencySynchronize()` before reading any global memory that the primary kernel wrote.
+3. On the host, set `cudaLaunchAttributeProgrammaticStreamSerialization` to 1 in the secondary kernel's launch configuration, and enqueue the launch with `cudaLaunchKernelExC`.
+
+The table compares the two modes with the same kernels. The only change is whether the epilogue overlaps the start of the secondary kernel. Read the second row closely. The secondary kernel now starts at the 1.6 ms mark, while the primary kernel's 0.4 ms epilogue is still running. The secondary kernel's own work is unchanged. Only its start moves earlier, and that is where the saving comes from.
 
 | Execution Mode (`model_programmatic_dependent_launch`) | Primary Main + Epilogue | Secondary Duration | Total Stream Time | Time Saved |
 |---|---|---|---|---|
@@ -549,11 +573,9 @@ Implementing Programmatic Dependent Launch requires a three-part contract across
 
 ### 6.2 Combining `PDL` + Thread Block Clusters (`__cluster_dims__(2,1,1)`) + Warp Specialization (`primary_gemm` → `secondary_gemm`, `Figures 11-10 & 11-11`)
 
-```text
-High-throughput inference pipelines often chain two matrix multiplications back-to-back, such as the up-projection and down-projection in a Transformer MLP block. Running those two GEMM kernels without intra-kernel, inter-block, and inter-kernel overlap leaves memory buses idle during compute and Streaming Multiprocessors idle during kernel handoffs. Figures 11-10 and 11-11 in *AI Systems Performance Engineering* Chapter 11 combine Programmatic Dependent Launch, Thread Block Clusters, and warp specialization in a `primary_gemm` to `secondary_gemm` pipeline.
-```
+Consider a Transformer MLP block, which chains two matrix multiplications back to back. These are the up-projection and the down-projection. Running those two GEMM kernels without overlap leaves memory buses idle during compute, and it leaves Streaming Multiprocessors idle during kernel handoffs. GEMM is general matrix multiplication, the operation that dominates Transformer compute. Figures 11-10 and 11-11 in *AI Systems Performance Engineering* Chapter 11 combine Programmatic Dependent Launch, Thread Block Clusters, and warp specialization in a `primary_gemm` to `secondary_gemm` pipeline.
 
-Each kernel uses the compile-time attribute `__cluster_dims__(2, 1, 1)` to co-schedule pairs of thread blocks within a Graphics Processing Cluster and synchronize them via cluster barrier instructions. Inside each block, producer warps stage tiles into shared memory while consumer warps compute matrix-multiply-accumulate instructions. On Blackwell GPUs, producer warps pair descriptor-based Tensor Memory Accelerator multicast `cp.async.bulk.tensor` with descriptor-based Tensor Memory Accelerator reductions `cp.reduce.async.bulk.tensor` to fuse small reductions directly into the copy engine and lower register pressure.
+The configuration block lists the sizes and the handoff points for that pipeline.
 
 ```text
 Cluster dimension:     __cluster_dims__(2, 1, 1) (2 CTAs per cluster)
@@ -563,6 +585,10 @@ Static shared memory:  tileA[128 * 128] (65,536 B) + tileB[128 * 128] (65,536 B)
 Inter-kernel handoff:  primary_gemm calls cudaTriggerProgrammaticLaunchCompletion() after cluster.sync()
                        secondary_gemm calls cudaGridDependencySynchronize() before consuming C
 ```
+
+Each kernel uses the compile-time attribute `__cluster_dims__(2, 1, 1)` to co-schedule pairs of thread blocks within a Graphics Processing Cluster, and it synchronizes them through cluster barrier instructions. Inside each block, producer warps stage tiles into shared memory while consumer warps compute matrix-multiply-accumulate instructions. On Blackwell GPUs, producer warps can pair descriptor-based Tensor Memory Accelerator multicast, written as `cp.async.bulk.tensor`, with descriptor-based Tensor Memory Accelerator reductions, written as `cp.reduce.async.bulk.tensor`. That fuses small reductions into the copy engine and lowers register pressure. Put simply, the cluster pair cooperates inside each kernel, and Programmatic Dependent Launch cooperates between the two kernels. Each layer removes a different kind of waiting. Clusters remove waiting between blocks. Programmatic Dependent Launch removes waiting between kernels. Warp specialization removes waiting inside a block. When all three appear in one pipeline, the GPU spends less of its time in the gaps between those steps.
+
+The code below shows the handoff between the two kernels. Read `primary_gemm` first, then the trigger, and then the wait at the top of `secondary_gemm`.
 
 ```cpp
 // Combining Programmatic Dependent Launch (PDL), Thread Block Clusters (__cluster_dims__(2,1,1)),
@@ -636,11 +662,11 @@ void secondary_gemm(const float* __restrict__ A,
 
 ## 7. Commands and Configurations That Matter
 
-Without the right compiler flags and profiler tracing options, multi-threaded applications silently serialize on the legacy default stream and stream overlap bugs remain invisible. All commands below follow *AI Systems Performance Engineering* Chapter 11. Shell commands that require an attached Hopper or Blackwell GPU are marked untested here.
+Multi-threaded applications can silently serialize on the legacy default stream when no one passes the right compiler flags or profiler options. The overlap bug then stays invisible until a trace shows the wall. The commands in this section are the ones to run when you suspect that. Start with the environment settings, then the compile line, then the trace. Each step gives you a clearer picture than the one before it. All commands below follow *AI Systems Performance Engineering* Chapter 11. Shell commands that need an attached Hopper or Blackwell GPU were not run on live hardware for this handbook.
 
 ### 7.1 Enable Per-Thread Default Streams (`PTDS`), compile `PDL` + Cluster kernels, and trace multi-stream overlap in `nsys` (untested here)
 
-Use `--default-stream per-thread` during compilation to isolate default streams per host thread. Export the stream-ordered allocator configuration for PyTorch workloads, and run Nsight Systems to inspect multi-stream overlap on the timeline.
+Use `--default-stream per-thread` during compilation to isolate default streams per host thread. Each thread then gets its own private default stream, so one thread's stray call does not stop the others. Export the stream-ordered allocator configuration for PyTorch workloads. Then run Nsight Systems to inspect multi-stream overlap on the timeline. Nsight Systems is NVIDIA's timeline profiler, and it is the tool that shows the walls and gaps in the first place.
 
 ```bash
 # 1. Compile with Per-Thread Default Stream (PTDS) enabled and Hopper/Blackwell arch (untested here)
@@ -659,7 +685,9 @@ nsys stats multistream_pdl_report.nsys-rep
 
 ## 8. How It Fails: Six Multi-Stream, Allocator, Callback, and `PDL` Failure Modes
 
-When a multi-stream pipeline runs slower than expected or hangs in production, the root cause almost always traces back to one of six synchronization or memory-staging mistakes. The table below pairs each failure mode with its profiler symptom, root cause, and fix.
+When a multi-stream pipeline runs slower than expected or hangs in production, the root cause almost always traces back to one of six synchronization or memory-staging mistakes. Most of them are small. Each one takes away the overlap that the rest of the chapter depends on. The table below pairs each failure mode with its profiler symptom, root cause, and fix.
+
+Read the symptom column first. A wall on the timeline points to the legacy stream. A slow copy that blocks the host points to pageable memory. A hang inside the runtime points to a callback that calls back into CUDA. Two of the six rows come up most often in practice. Legacy allocation and pageable host memory are easy to add by accident and hard to notice without a timeline. If you find one, check the other one too.
 
 | # | Failure Mode | Production or Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -674,15 +702,15 @@ When a multi-stream pipeline runs slower than expected or hangs in production, t
 
 ## 9. Hands-On Lab: Verify 3-Way Stream Overlap, Stream-Ordered Pools, Dual-Pipeline Warp Specialization, Cluster Streams, and `PDL`
 
-This lab verifies the three-way stream overlap timeline model, stream-ordered pool sizing, dual-pipeline warp specialization geometry, multi-stream Thread Block Cluster launches, and Programmatic Dependent Launch calculations. It runs deterministically on any Linux machine. Nebius GPU VM with Python 3.10 or newer using standard library Python, while all compiler and profiler commands in Section 7 are marked untested here.
+Before you rely on the timeline numbers in this chapter, you want to confirm the arithmetic behind them. This lab does that check. It verifies the three-way stream overlap timeline model, stream-ordered pool sizing, dual-pipeline warp specialization geometry, multi-stream Thread Block Cluster launches, and Programmatic Dependent Launch calculations. It runs deterministically on any Linux machine or Nebius GPU VM with Python 3.10 or newer, using standard library Python only. The compiler and profiler commands in Section 7 were not run on a live cluster for this handbook, so this lab is the part you can run first.
 
-Run `code/part10/inter_kernel_pipelining_lab.py` from the repository root.
+Run `code/part10/inter_kernel_pipelining_lab.py` from the repository root. If a line prints FAIL, do not edit the chapter's numbers to match it. Find the rule that disagrees, and check that rule against the source first.
 
 ```bash
 python3 code/part10/inter_kernel_pipelining_lab.py
 ```
 
-Expected output with 25 passed and 0 failed tests is shown below.
+Expected output with 25 passed and 0 failed tests is shown below. Each line names the check it covers, so a failure points to the rule that broke.
 
 ```text
 === Chapter 10.17 Lab: Inter-Kernel Pipelining, Sync & Stream-Ordered Allocation (ASP Ch 11) ===
@@ -719,20 +747,14 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. Quantifying three-way multi-stream overlap versus pageable memory and blocking allocations. Using the timeline model in Section 1.2 across 8 batches. Calculate total execution time and speedup for fully overlapped non-blocking streams with pinned host memory and stream-ordered allocation, for pageable host memory, and for blocking allocation. Also state the per-stream throughput share when two streams contend on a saturated engine and the hardware limit on concurrent resident grids.
-```text
-2. Sizing pool release thresholds and LLM variable-length scratch buffers. On a 192 GiB GPU, calculate the byte value of half of total global memory passed to `cudaMemPoolSetAttribute` and the exact byte size of a 16 MB per-stream attention scratch buffer. State the scratch growth factor when sequence length increases from 512 to 1,024 tokens and the environment variable that enables stream-ordered allocation in PyTorch.
-```
-3. Comparing legacy, per-thread, and non-blocking streams. Explain how the legacy default stream interacts with other streams. State both ways to enable Per-Thread Default Streams via a compiler flag. A preprocessor macro, and explain why calling a device copy inside a `cudaLaunchHostFunc` callback deadlocks.
-```text
-4. Sizing `warp_specialized_two_pipelines` with dual pipelines. For a 1,024-float tile across 2 stages and 3 buffers per stage, calculate the dynamic shared memory footprint in bytes and KiB. Explain why the tile size must be a multiple of 128 and how the two pipelines coordinate the 3 warps when the block has 96 threads.
-```
-```text
-5. Multi-stream Thread Block Clusters in `launch_warp_specialized_cluster_pipeline_multistream`. For a 128-by-128 tile of 16,384 floats, a 4-block cluster, and 132 Streaming Multiprocessors across 2 streams, calculate shared memory bytes per block, total blocks per grid, and rows per block. Explain why launching across 2 streams still improves end-to-end throughput even though the cooperative cluster kernels serialize on the Streaming Multiprocessors.
-```
-```text
-6. Programmatic Dependent Launch and cluster timing and shared memory math. Given a primary GEMM with 1.6 ms main work plus 0.4 ms epilogue and a secondary GEMM with 2.0 ms total work using 128-by-128 tiles, calculate total stream execution time with and without Programmatic Dependent Launch. Compute the static shared memory footprint per block and list the three API calls or attributes required on the primary kernel, secondary kernel, and host launch.
-```
+Each exercise below uses one situation from this chapter. Work through them in order, since the later ones reuse the timing and sizing math from the earlier ones. Write each answer in one line before you check the chapter. The arithmetic is short, but the units change between bytes, KiB, and GiB, so note the unit each time.
+
+1. Start with the 8-batch timeline model in Section 1.2. Calculate the total execution time for fully overlapped streams with pinned host memory and stream-ordered allocation. Then calculate the total for pageable host memory. Finally, calculate the total for blocking allocation. Compare each speedup with the serial baseline.
+2. Two streams share a saturated engine. What per-stream throughput share does each one get? Then state the hardware limit on concurrent resident grids. On a 192 GiB GPU, what is half of total global memory in bytes? What is the exact byte size of a 16 MB per-stream attention scratch buffer? When sequence length grows from 512 to 1,024 tokens, what is the scratch growth factor?
+3. Explain how the legacy default stream interacts with other streams. Name both ways to enable Per-Thread Default Streams, one through a compiler flag and one through a preprocessor macro. Then explain why a device copy inside a `cudaLaunchHostFunc` callback deadlocks.
+4. Take a 1,024-float tile across 2 stages and 3 buffers per stage. What is the dynamic shared memory footprint in bytes? What is it in KiB? Why must the tile size be a multiple of 128? How do the two pipelines coordinate the 3 warps when the block has 96 threads?
+5. Take a 128-by-128 tile of 16,384 floats, a 4-block cluster, and 132 Streaming Multiprocessors across 2 streams. How many shared memory bytes does each block need? How many blocks are in each grid? How many rows does each block handle? Why does launching across 2 streams still improve throughput when the cooperative cluster kernels take turns on the Streaming Multiprocessors?
+6. A primary GEMM has 1.6 ms of main work and 0.4 ms of epilogue. The secondary GEMM has 2.0 ms of total work and uses 128-by-128 tiles. What is the total stream time with Programmatic Dependent Launch? What is it without? What is the static shared memory footprint per block for those tiles? Name the API calls or attributes needed on the primary kernel, the secondary kernel, and the host launch.
 
 ---
 
@@ -898,4 +920,5 @@ Passing `cudaStreamCaptureModeGlobal` instructs CUDA to record operations enqueu
 - **Run here:** `python3 -B code/part10/inter_kernel_pipelining_lab.py` (25 passed, 0 failed; read via `tools/study_rag/bookch.py` and mapped in `MIGRATION_MAP.md`, expanding Chapters `10.3`, `10.11`, and `10.12` in `2026`).
 - **Explicitly labelled inferences:** The illustrative stage timings in `simulate_inter_kernel_stream_pipeline()` and `model_programmatic_dependent_launch()` in `code/part10/inter_kernel_pipelining.py` are **my inference** illustrating Figures 11-2 and 11-9 of *AI Systems Performance Engineering* Chapter 11.
 - **Not verified on live hardware:** All `nvcc`, `nsys`, `ncclAllReduce`, `nixlCommStream`, and `cudaLaunchKernelExC` commands in Section 7 are marked `(untested here)` because this verification environment does not have an attached Hopper (`sm_90`) or Blackwell (`sm_100`) GPU.
+
 

@@ -23,11 +23,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A training job runs at half the speed its owners expected. Nobody knows why. The cause could be Python interpreter dispatch, a CPU data loader that cannot keep up, or host-to-device copies that do not overlap with compute. It could also be Mixture-of-Experts token routing, a memory-bound kernel, allocator fragmentation, or one slow rank in a multi-GPU collective. Guessing wastes days of engineering time and thousands of GPU hours.
+A training job runs at half the speed its owners expected. Nobody knows why. The GPUs look busy on the dashboard, and the loss is moving, so the problem is not obvious. The cause could be Python interpreter dispatch, a CPU data loader that cannot keep up, or host-to-device copies that do not overlap with compute. A host-to-device copy moves data from the CPU's memory into the GPU's memory. It could also be Mixture-of-Experts token routing, a memory-bound kernel, allocator fragmentation or one slow rank in a multi-GPU collective. A memory-bound kernel spends most of its time waiting for data, and a rank is one process in a distributed job. Guessing wastes days of engineering time and thousands of GPU hours.
 
-The remedy is to pick the profiler that fits the layer. A wrong pick is like using an X-ray machine to take a patient's temperature. Suppose a team writes a sparse matrix multiplication kernel in OpenAI Triton that runs four times slower than standard PyTorch on an H100. Nsight Systems shows only one long bar on the GPU row, because it cannot see inside a streaming multiprocessor's register file or L1 cache. Register spilling and uncoalesced sector loads need Nsight Compute. The opposite mistake is just as costly. Running Nsight Compute kernel replay on a whole multi-GPU job, when the GPU is actually waiting on single-threaded image decoding, buries the team in hardware counters and hides the gap on the host.
+The remedy is to pick the profiler that fits the layer. A wrong pick is like using an X-ray machine to take a patient's temperature. The tool may work, but it answers a question you did not ask. Suppose a team writes a sparse matrix multiplication kernel in OpenAI Triton that runs four times slower than standard PyTorch on an H100. Nsight Systems shows only one long bar on the GPU row, because it cannot see inside a streaming multiprocessor's register file or L1 cache. Register spilling and uncoalesced sector loads need Nsight Compute. A spill happens when a kernel needs more registers than the hardware gives it, so values get pushed out to slower memory. The opposite mistake is just as costly. Running Nsight Compute kernel replay on a whole multi-GPU job, when the GPU is actually waiting on single-threaded image decoding, buries the team in hardware counters and hides the gap on the host. Kernel replay runs the same kernel several times to collect counters, which is slow on a big job.
 
-*AI Systems Performance Engineering* Chapter 13 and `nvidia-devops` Volume 17 Chapter 2 give a method that covers every layer of the stack. A few terms appear in the table below. NVTX, the NVIDIA Tools Extension, lets code label ranges on a timeline. CUPTI, the CUDA Profiling Tools Interface, is the library the profilers use to collect GPU events. FSDP, fully sharded data parallel, splits model state across GPUs. DDP, distributed data parallel, keeps a full model copy on each GPU. The table summarizes the bottlenecks and optimization gains tracked in this chapter.
+*AI Systems Performance Engineering* Chapter 13 and the `nvidia-devops` engineering notes on profiling tools give a method that covers every layer of the stack. A few terms appear in the table below. NVTX, the NVIDIA Tools Extension, lets code label ranges on a timeline. CUPTI, the CUDA Profiling Tools Interface, is the library the profilers use to collect GPU events. FSDP, fully sharded data parallel, splits model state across GPUs. DDP, distributed data parallel, keeps a full model copy on each GPU. The table summarizes the bottlenecks and optimization gains tracked in this chapter. Read each row as a pairing of a layer, the tool that looks at that layer and the kind of number that tool returns.
 
 | Bottleneck Layer | Profiler or Diagnostic Tool | Representative Metric or Benchmark Shift |
 |---|---|---|
@@ -40,7 +40,7 @@ The remedy is to pick the profiler that fits the layer. A wrong pick is like usi
 | Multi-GPU Trace & CI Regression Gates | Holistic Trace Analysis (HTA), TorchBench CI, PyTorch HUD, and MLPerf Logging | Enforces `>= 5%` regression gate over `3` runs; breaks down a `24.0 ms` MLPerf step into `10.5 ms` forward (`43.8%`), `9.0 ms` backward (`37.5%`), `4.0 ms` all-reduce (`16.7%` = `1/6`), and `0.5 ms` other (`2.1%`). |
 
 :::note About the numbers in this chapter
-The profile outputs, step times, call-stack percentages, and Grace hardware counter values come from *AI Systems Performance Engineering*, which notes that its metric-table numbers are illustrative, and from the Volume 17 notes. They show how to read each tool rather than what your specific cluster will print, and none were captured on live GPU hardware for this handbook. Shell commands are marked untested here.
+The profile outputs, step times, call-stack percentages and Grace hardware counter values come from *AI Systems Performance Engineering*, which notes that its metric-table numbers are illustrative, and from the `nvidia-devops` notes on profiling tools. They show how to read each tool rather than what your specific cluster will print. None were captured on live GPU hardware for this handbook, so the shell commands were not run here. Use them as a template and capture your own numbers.
 :::
 
 ## Prerequisites and outcomes
@@ -48,12 +48,7 @@ The profile outputs, step times, call-stack percentages, and Grace hardware coun
 **Prerequisites:**
 - Chapters 10.13 through 10.19 covering memory coalescing, occupancy, Roofline arithmetic intensity, asynchronous pipelines, CUDA streams, CUDA Graphs, and the PyTorch compiler with OpenAI Triton.
 
-**Outcomes:** After this chapter you will be able to:
-1. Select the exact tool for each layer of the four-layer Profiling Evidence Ladder and the nine profiling and visualization tools in Table 13-1.
-2. Instrument PyTorch training and inference loops with NVTX markers and reconcile the 64-expert MoE operator breakdown in Table 13-2.
-3. Project host NVTX ranges onto asynchronous GPU kernels using Nsight Systems in Table 13-3 and verify kernel Roofline shifts with Nsight Compute in Table 13-4.
-4. Profile host CPU bottlenecks and Grace-Blackwell superchip interconnects using Linux `perf` hardware counters, DWARF call graphs, and NVLink-C2C PMUs.
-5. Apply targeted PyTorch optimizations across compiler modes, stream overlap, shared CUDA Graph pools, caching allocator sub-buckets, superchip offloading, pluggable NCCL memory pools, distributed sharding, and continuous integration gates.
+**What this chapter walks through:** The chapter starts with the four-layer Profiling Evidence Ladder and the set of tools that sits on each layer. It then follows one 64-expert Mixture-of-Experts training step through PyTorch Profiler, Nsight Systems, Nsight Compute and Linux `perf`, reading the operator table, the timeline projection, the kernel Roofline and the host hotspots in turn. Next it covers compiler modes, stream overlap, CUDA Graph pools, allocator tuning, superchip offloading and distributed sharding. It finishes with the continuous integration gates that stop a slow change from merging. Each step answers the question the previous step left open.
 
 ---
 
@@ -61,9 +56,9 @@ The profile outputs, step times, call-stack percentages, and Grace hardware coun
 
 ### 1.1 The 4-Layer Evidence Ladder and NVTX Cross-Tool Correlation
 
-When a distributed training job slows down, engineers often reach for whichever profiler they used last. Running a heavy kernel replay tool on a cluster-wide network stall freezes the job for hours without revealing the straggler rank. Conversely, staring at a coarse cluster dashboard when a single fused attention kernel is spilling registers tells you only that the GPU is busy, not why the math pipeline is stalled.
+When a distributed training job slows down, engineers often reach for whichever profiler they used last. That habit is understandable, because the last tool worked well once. Running a heavy kernel replay tool on a cluster-wide network stall freezes the job for hours without revealing the straggler rank, which is the one process that is holding everyone else back. Conversely, staring at a coarse cluster dashboard when a single fused attention kernel is spilling registers tells you only that the GPU is busy, not why the math pipeline is stalled. The fix is to start from the question and work down through the layers.
 
-The Volume 17 Chapter 2 engineering notes (`select_profiling_tool_from_ladder`) organize GPU observability into a four-layer Evidence Ladder. You start at the top with zero-overhead telemetry and step down only when the higher layer isolates where the problem lives.
+The `nvidia-devops` engineering notes on profiling tools (`select_profiling_tool_from_ladder`) organize GPU observability into a four-layer Evidence Ladder. A ladder is a sequence of tools ordered from the cheapest and widest to the most expensive and narrowest. You start at the top with zero-overhead telemetry and step down only when the higher layer isolates where the problem lives. Each step costs more of the job's time, so you climb down only as far as you need to.
 
 ```mermaid
 flowchart TB
@@ -82,11 +77,11 @@ flowchart TB
     T1 --> T2 --> T3 --> T4
 ```
 
-To correlate events across all four layers without guessing which Python line launched which CUDA kernel, inject NVIDIA Tools Extension range markers into your model code. An NVTX range pushed on the CPU via `torch.cuda.nvtx.range_push` or `torch.profiler.record_function` appears with the exact same label in PyTorch Profiler, Nsight Systems, Holistic Trace Analysis, Perfetto, and Nsight Compute filter paths. Best of all, NVTX markers add near-zero overhead when no profiler is attached.
+To correlate events across all four layers without guessing which Python line launched which CUDA kernel, inject NVIDIA Tools Extension range markers into your model code. A range marker is a named start and end point that you place in your code. Think of it as a label on a timeline. An NVTX range pushed on the CPU via `torch.cuda.nvtx.range_push` or `torch.profiler.record_function` appears with the exact same label in PyTorch Profiler, Nsight Systems, Holistic Trace Analysis, Perfetto and Nsight Compute filter paths. The label is the thread that connects the tools, so a forward pass called "forward" in one tool is the same forward pass in every other. Best of all, NVTX markers add near-zero overhead when no profiler is attached. You can leave them in production code and pay almost nothing for them.
 
 ### 1.2 The 9 profiling and visualization tools in Table 13-1
 
-Modern PyTorch engineering relies on specialized tools for operator attribution, system timelines, kernel micro-architecture, memory lifecycles, host CPU counters, multi-node trace alignment, and edge deployment. *AI Systems Performance Engineering* Chapter 13 Table 13-1 catalogs the nine profiling and visualization tools in this suite.
+Imagine you are handed a new cluster and asked to explain why its jobs are slow. The first question is which of the many profiling tools to open, and the list can look overwhelming. Modern PyTorch engineering relies on specialized tools for operator attribution, system timelines, kernel micro-architecture, memory lifecycles, host CPU counters, multi-node trace alignment and edge deployment. *AI Systems Performance Engineering* Chapter 13 catalogs the nine profiling and visualization tools in this suite. The table lists each tool with its scope, its key features and the job it is best at. Do not try to learn all nine at once. Learn the tool that matches the layer where your problem lives, and come back to the others when a question needs them.
 
 | Tool | Scope | Key Features | Primary Use Case |
 |---|---|---|---|
@@ -100,15 +95,17 @@ Modern PyTorch engineering relies on specialized tools for operator attribution,
 | 8. TorchEval | Standardized model quality & performance metrics | Unified PyTorch API for logging throughput (`tokens/s`), latency, and validation accuracy/loss across distributed ranks. | Ensure throughput optimizations (such as large batch sizes or FP8/FP4) do not degrade model convergence. |
 | 9. ExecuTorch | Edge, mobile, and embedded deployment runtime | Lightweight ahead-of-time export runtime with profiling hooks, memory analysis, and Hugging Face Optimum ExecuTorch integration. | Profile and run PyTorch models on constrained edge hardware (Meta glasses, iOS, Android, embedded Linux). |
 
+Most of your work will sit in the first four rows. Those tools cover the cluster, the timeline, the operator and the kernel, which is the path a slow training job usually follows. The remaining rows matter when your problem is about the fleet, the quality of the model or a device at the edge. Keep the table nearby during an investigation, and check the scope column before you open a tool, because the scope tells you whether the tool can even see the problem you are chasing.
+
 ---
 
 ## 2. Four-Tool Walkthrough: Profiling a 64-Expert Mixture-of-Experts Training Step
 
 ### 2.1 Step 1 — Operator-level attribution with `torch.profiler`
 
-When a Mixture-of-Experts language model trains slowly, you first need to know which PyTorch operators consume the most GPU time. Unlike a dense Transformer where a handful of large matrix multiplications dominate, a 64-expert model dispatches tokens dynamically across dozens of smaller expert layers. Furthermore, if you start recording on the very first batch, one-time CUDA context initialization, JIT compilation, and allocator warmup distort the trace completely.
+When a Mixture-of-Experts language model trains slowly, you first need to know which PyTorch operators consume the most GPU time. A Mixture-of-Experts model holds many expert sub-networks, and a small router sends each token to a few of them. Unlike a dense Transformer where a handful of large matrix multiplications dominate, a 64-expert model dispatches tokens dynamically across dozens of smaller expert layers. Many small operations mean many small launches, and the total time is spread across them. Furthermore, if you start recording on the very first batch, one-time CUDA context initialization, JIT compilation and allocator warmup distort the trace completely. The first batch is slow for reasons that never repeat, so it tells you nothing about the steady job.
 
-Following *AI Systems Performance Engineering* Chapter 13, the example profiles a 64-expert Mixture-of-Experts causal language model with batch size four, fused AdamW, and bfloat16 mixed precision. First, run five unprofiled warmup iterations using `set_to_none=True` so cuBLAS handles and caching-allocator blocks reach steady state. Next, wrap one steady-state training step in `torch.profiler.profile` with nested NVTX ranges for the forward pass, backward pass, and optimizer step.
+Following *AI Systems Performance Engineering* Chapter 13, the example profiles a 64-expert Mixture-of-Experts causal language model with batch size four, fused AdamW and bfloat16 mixed precision. Fused AdamW is an optimizer that updates all its parameters in one fused kernel. bfloat16 is a compact float format that keeps the same range as standard single-precision float, which makes it a common choice for training. First, run five unprofiled warmup iterations using `set_to_none=True` so cuBLAS handles and caching-allocator blocks reach steady state. Setting gradients to `None` instead of zero also skips a memory write each step. Next, wrap one steady-state training step in `torch.profiler.profile` with nested NVTX ranges for the forward pass, backward pass and optimizer step. The nesting is what lets the later tools show the three phases as parts of one training step.
 
 ```python
 # Profiling 1 steady-state MoE training iteration after 5 warmup steps (ASP Ch 13) (untested here)
@@ -147,7 +144,9 @@ print(
 )
 ```
 
-Calling `prof.key_averages().table` sorted by `self_cuda_time_total` produces the top-ten operator breakdown in Table 13-2. Notice how the call counts reflect the 64-expert architecture directly.
+Read the code in the order it runs. The `profiler.profile` block sets up recording, and the `record_shapes`, `profile_memory`, `with_stack` and `with_flops` switches add shape, memory, call-stack and FLOP details to each event. The `train_step` label wraps the whole step, and the NVTX push and pop calls mark the forward, backward and optimizer phases inside it. The final `print` block ranks the operators by the GPU time they used and keeps the top ten. Each line exists to answer one question, so you can change a switch later without guessing what it did.
+
+Calling `prof.key_averages().table` sorted by `self_cuda_time_total` produces the top-ten operator breakdown, which the table below walks through row by row. Notice how the call counts reflect the 64-expert architecture directly. The call count for the expert matrix multiplies is a fingerprint of the expert count running in two passes, and checking it is the first sign that the trace matches the model you think you are profiling.
 
 | Rank | Operation | Self CUDA Total (`ms`) | Calls per Iteration | Architectural Interpretation (`64` Experts) |
 |---:|---|---:|---:|---|
@@ -165,9 +164,9 @@ Calling `prof.key_averages().table` sorted by `self_cuda_time_total` produces th
 
 ### 2.2 Step 2 — System timeline and NVTX GPU projection with Nsight Systems
 
-Operator tables tell you how much GPU time each kernel family spent, but they hide how those kernels align with CPU phases. Because CUDA kernel launches are asynchronous, the CPU thread pushes and pops the forward NVTX range long before the GPU finishes executing the forward kernels. If you measure the CPU wall-clock duration of an NVTX range, you measure only host launch speed rather than true GPU execution time.
+A colleague shows you a forward pass that takes a few milliseconds on the CPU clock, and then asks why the GPU looks so much slower in the trace. The answer is in how the work is queued. Operator tables tell you how much GPU time each kernel family spent, but they hide how those kernels align with CPU phases. Because CUDA kernel launches are asynchronous, the CPU thread pushes and pops the forward NVTX range long before the GPU finishes executing the forward kernels. The CPU just drops the work into a queue and moves on. If you measure the CPU wall-clock duration of an NVTX range, you measure only host launch speed rather than true GPU execution time.
 
-Nsight Systems solves this by using CUPTI activity records to project every CPU-emitted NVTX range onto the asynchronous GPU streams that executed the kernels launched inside that range. Running the `nvtx_gpu_proj_sum` report or recipe computes the exact GPU start-to-end span of each annotated phase.
+Nsight Systems solves this by using CUPTI activity records to project every CPU-emitted NVTX range onto the asynchronous GPU streams that executed the kernels launched inside that range. CUPTI records what the GPU actually did, with start and end times for each kernel. Projection means taking the host's range boundaries and finding every GPU event that was launched inside them. Running the `nvtx_gpu_proj_sum` report or recipe computes the exact GPU start-to-end span of each annotated phase. Read its output as a question about the GPU: how long was the GPU busy on work that this phase launched.
 
 ```bash
 # Capture CUDA API + NVTX trace and print the NVTX GPU Projection Summary (ASP Ch 13) (untested here)
@@ -177,7 +176,7 @@ nsys stats --report=nvtx_gpu_proj_sum profile.nsys-rep
 nsys recipe nvtx_gpu_proj_sum profile.nsys-rep
 ```
 
-The table below shows the resulting NVTX GPU Projection Summary from Table 13-3.
+The first command captures the trace. The `nsys stats` line prints the projection from that trace. The `nsys recipe` line at the end produces a similar summary, so use whichever your Nsight Systems version supports. The table below shows the resulting NVTX GPU Projection Summary. Read the rows from the outside in. The `train_step` row is the wrapper, and the three rows below it are the phases that add up to it.
 
 | NVTX Range | Total GPU Time (`ms`) | Self GPU Time (`ms`) | Child GPU Time (`ms`) | Instances (Calls) | How CUPTI Projects the Range |
 |---|---:|---:|---:|---:|---|
@@ -188,9 +187,9 @@ The table below shows the resulting NVTX GPU Projection Summary from Table 13-3.
 
 ### 2.3 Step 3 — Kernel Roofline analysis with Nsight Compute (`ncu`)
 
-Once PyTorch Profiler and Nsight Systems confirm that matrix multiplications dominate the training step, timeline tools cannot tell you whether those kernels are limited by Tensor Core math or high-bandwidth memory traffic. Trying to guess whether a kernel needs better tiling or lower precision without hardware counters leads to blind trial and error.
+Suppose the timeline now shows clearly that matrix multiplications dominate the training step. The next question is harder. Are those kernels waiting on memory, or are they busy doing math as fast as the Tensor Cores allow? Once PyTorch Profiler and Nsight Systems confirm that matrix multiplications dominate the training step, timeline tools cannot tell you whether those kernels are limited by Tensor Core math or high-bandwidth memory traffic. Trying to guess whether a kernel needs better tiling or lower precision without hardware counters leads to blind trial and error. The Roofline model gives the question a shape. It compares how much math a kernel does per byte it moves against what the chip can deliver, and the kernel lands either under the memory ceiling or under the compute ceiling.
 
-Nsight Compute (`ncu`) looks inside the matrix multiplication kernels. Reading SM hardware counters as a non-root user requires setting the NVIDIA kernel module option `NVreg_RestrictProfilingToAdminUsers=0`.
+Nsight Compute (`ncu`) looks inside the matrix multiplication kernels. It replays each selected kernel and reads the hardware counters for that single launch. Reading SM hardware counters as a non-root user requires setting the NVIDIA kernel module option `NVreg_RestrictProfilingToAdminUsers=0`. Until that option is set, the counters may show as missing or refuse to load, so check the module option first when a non-root run fails.
 
 ```bash
 # Collect Roofline, DRAM/L2 throughput, FP32 instructions, and occupancy for "matmul" kernels (untested here)
@@ -201,7 +200,7 @@ ncu --target-processes all \
     --csv full -o matmul_roofline_report python train.py
 ```
 
-Table 13-4 compares the Nsight Compute counters before and after applying reduced-precision math, kernel fusion, and tiling. Remember from Chapter 10.14 that there is no universal occupancy target. Many well-tuned kernels hide memory latency completely at twenty-five to fifty percent achieved occupancy when instruction-level parallelism and TMA overlap are high. Always inspect warp stall reasons alongside occupancy.
+The table below compares the Nsight Compute counters before and after applying reduced-precision math, kernel fusion and tiling. Read each row against the Roofline regime in its last column. The baseline row is pinned under the memory ceiling, and the optimized row sits near the compute ceiling. Remember from Chapter 10.14 that there is no universal occupancy target. Occupancy is the share of a streaming multiprocessor's thread slots that are filled. Many well-tuned kernels hide memory latency completely at twenty-five to fifty percent achieved occupancy when instruction-level parallelism and TMA overlap are high. A high occupancy number alone does not prove a kernel is healthy, so always inspect warp stall reasons alongside occupancy.
 
 | Kernel Configuration | `%` of Peak FLOPS (SM Compute Throughput) | `%` of Peak Memory BW (DRAM Throughput) | Achieved SM Occupancy (`%`) | Roofline Regime & Diagnosis |
 |---|---:|---:|---:|---|
@@ -210,9 +209,9 @@ Table 13-4 compares the Nsight Compute counters before and after applying reduce
 
 ### 2.4 Step 4 — Host CPU and Grace-Blackwell NVLink-C2C PMU profiling with Linux `perf`
 
-Even when GPU kernels are well tuned, a training loop can still run slowly if the host CPU cannot dispatch operators or feed batches fast enough. GPU-only profilers show empty white gaps between kernels on the stream timeline, but they do not reveal what the Linux kernel, C++ dispatcher, or Python interpreter was doing during those gaps.
+Picture a GPU timeline with the kernels packed tightly at the start of the step and a long empty stretch at the end. The GPU sat idle for that stretch, which usually points to the host as the place to look. Even when GPU kernels are well tuned, a training loop can still run slowly if the host CPU cannot dispatch operators or feed batches fast enough. GPU-only profilers show empty white gaps between kernels on the stream timeline, but they do not reveal what the Linux kernel, C++ dispatcher or Python interpreter was doing during those gaps. Linux `perf` fills that blind spot. It reads the CPU's own hardware counters and samples where the processor spends its time.
 
-To inspect host CPU execution and Grace-Blackwell superchip fabric counters, run Linux `perf` on a Grace-Blackwell node pairing an ARM Neoverse V2 Grace CPU with a Blackwell GPU.
+To inspect host CPU execution and Grace-Blackwell superchip fabric counters, run Linux `perf` on a Grace-Blackwell node pairing an ARM Neoverse V2 Grace CPU with a Blackwell GPU. A superchip here means the CPU and GPU share a fast coherent link, NVLink-C2C, instead of talking over PCIe. The three commands below move from cheap to expensive. The first gives a summary, the second records call stacks, and the third reads the fabric counters.
 
 ```bash
 # 1. Lightweight hardware counter summary (IPC, cache misses, branch misses) (untested here)
@@ -227,7 +226,7 @@ perf list | grep -i nvidia
 perf stat -a -e nvidia_nvlink_c2c0_pmu_0/cycles/ -e cycles,cache-misses python train_deepseek_v3.py
 ```
 
-The block below summarizes the exact hardware counter outputs on the Grace CPU and the Grace-Blackwell NVLink-C2C PMU (`/sys/bus/event_source/devices/nvidia_nvlink_c2c*`). An ARM Neoverse V2 core has a theoretical maximum of eight instructions per cycle. Measuring under two instructions per cycle therefore proves the host thread is stalling on memory, I/O latency, and Python interpreter dispatch. Note also that Linux `perf` NVIDIA PMUs expose device-level link and fabric counters only, while SM-level warp stall and memory counters remain exclusively in CUPTI and Nsight Compute.
+The block below summarizes the exact hardware counter outputs on the Grace CPU and the Grace-Blackwell NVLink-C2C PMU (`/sys/bus/event_source/devices/nvidia_nvlink_c2c*`). A PMU is a performance monitoring unit, a set of hardware counters built into a chip. Instructions per cycle, or IPC, is the number of instructions the core finishes each clock tick. An ARM Neoverse V2 core has a theoretical maximum of eight instructions per cycle. Measuring under two instructions per cycle therefore proves the host thread is stalling on memory, I/O latency and Python interpreter dispatch. A low IPC means the core spends most of its ticks waiting, and the counters on their own cannot say which of the three waits is the real one. The hotspot sampling below narrows it down. Note also that Linux `perf` NVIDIA PMUs expose device-level link and fabric counters only, while SM-level warp stall and memory counters remain exclusively in CUPTI and Nsight Compute.
 
 ```text
 1. Grace CPU perf stat Summary (ASP Ch 13):
@@ -242,7 +241,7 @@ The block below summarizes the exact hardware counter outputs on the Grace CPU a
    - CPU cycles: 45,678,901 | cache-misses: 7,890,123 | elapsed: 2.345678901 s
 ```
 
-Sampling DWARF call stacks at two thousand hertz via `perf record` and `perf report` isolates the five host CPU hotspots shown in the table below.
+Sampling DWARF call stacks at two thousand hertz via `perf record` and `perf report` isolates the five host CPU hotspots shown in the table below. DWARF is the debugging format that lets `perf` unwind the stack through both C++ and Python frames, and hertz means samples per second. The sample share column tells you where the host's time went. Each row also gives a likely cause and a first fix. Treat the fix as a hypothesis to test, and measure again after each change.
 
 | `perf report` Symbol (`Shared Object`) | Sample Share (`%`) | Bottleneck Diagnosis | Targeted Mitigation |
 |---|---:|---|---|
@@ -252,15 +251,17 @@ Sampling DWARF call stacks at two thousand hertz via `perf record` and `perf rep
 | `ncclAllReduce` (`libnccl.so`) | `8.7%` | Host-side collective orchestration and gradient synchronization overhead. | Tune DDP `bucket_cap_mb` (default `25 MB`), overlap with backward compute, or use 8-bit gradient compression. |
 | `read` (`libc.so.6` OS syscall) | `5.3%` | Small-file storage read syscalls and unpinned host staging copies. | Set `pin_memory=True`, `.to(device, non_blocking=True)`, `prefetch_factor=4` or `8` (`4 * 4 = 16` or `8 * 4 = 32` prefetched batches), pack small files into WebDataset (tar), Arrow, Parquet, or TFRecord shards, and offload decoding to NVIDIA DALI / Magnum IO. |
 
+Notice that the hotspots point in different directions. The top two rows are about the Python and dispatch side of the step, the middle row is about gradient exchange, and the bottom two rows are about data reaching the GPU. A single profile can show all of them at once, so resist the urge to fix only the biggest number. Start with the largest row, make one change, and measure again. Then move to the next row, because the ranking can shift once the first cause is gone.
+
 ---
 
 ## 3. Applying Compiler, Stream, CUDA Graph Tree, and Memory Allocator Optimizations
 
 ### 3.1 `torch.compile` MoE benchmark, Table 13-5 modes, Mega-Cache, and Regional Compilation
 
-Once profiling reveals that Python dispatch (`py::forward`) and fragmented MoE routing ops slow down each step, engineers need a systematic way to fuse those operations without spending weeks writing custom C++ extensions. However, measuring the speedup carelessly with Python's wall-clock timer records only asynchronous CPU enqueue time. At the same time, full-model compilation across dozens of identical Transformer blocks can cause painful cold-start delays on large clusters.
+Once profiling reveals that Python dispatch (`py::forward`) and fragmented MoE routing ops slow down each step, engineers need a systematic way to fuse those operations without spending weeks writing custom C++ extensions. Fusing is the same idea from Chapter 10.19, where several small operations become one kernel. However, measuring the speedup carelessly with Python's wall-clock timer records only asynchronous CPU enqueue time. The timer stops as soon as the work is queued, long before the GPU finishes it, so the speedup looks better or worse than it is. At the same time, full-model compilation across dozens of identical Transformer blocks can cause painful cold-start delays on large clusters. Cold start means the first run, when the compiler has not yet produced any code.
 
-Timing GPU steps accurately requires `torch.cuda.Event(enable_timing=True)` paired with `elapsed_time`. On the 64-expert MoE model, enabling `torch.compile` fuses the token-routing, activation, and normalization kernels. That fusion cuts step time from two hundred forty-eight milliseconds down to one hundred seventy-three milliseconds. By contrast, dense models dominated by a single giant matrix multiply typically see a much smaller speedup because they have far less launch and memory-bandwidth overhead to fuse away.
+Timing GPU steps accurately requires `torch.cuda.Event(enable_timing=True)` paired with `elapsed_time`. An event is a marker placed in the GPU's queue, so the difference between two events measures GPU time rather than CPU time. On the 64-expert MoE model, enabling `torch.compile` fuses the token-routing, activation and normalization kernels. That fusion cuts step time from two hundred forty-eight milliseconds down to one hundred seventy-three milliseconds. The gain is largest here for a reason. Each step launches many small kernels, and fusing them removes most of the launch and memory traffic. By contrast, dense models dominated by a single giant matrix multiply typically see a much smaller speedup because they have far less launch and memory-bandwidth overhead to fuse away.
 
 ```text
 64-Expert MoE torch.compile Benchmark (ASP Ch 13):
@@ -269,7 +270,7 @@ Timing GPU steps accurately requires `torch.cuda.Event(enable_timing=True)` pair
   - Dense single-GEMM model: typically < 10% speedup from torch.compile
 ```
 
-Compare the four compiler modes in Table 13-5 below when balancing compile latency, workspace memory, and CUDA Graph compatibility.
+Compare the four compiler modes in the table below when balancing compile latency, workspace memory and CUDA Graph compatibility. Start with the question of how often your shapes change. A fixed shape rewards the modes that spend compile time to capture graphs. A shape that changes on every request favors the mode that avoids graphs. The Chapter 10.19 modes covered the same trade-off, and the right pick comes from your traffic pattern, not from the name of the mode.
 
 | `torch.compile` Mode | Description | Compile Time | Extra Memory | Notable Features & Best Use Case |
 |---|---|---|---|---|
@@ -278,21 +279,21 @@ Compare the four compiler modes in Table 13-5 below when balancing compile laten
 | `max-autotune` | Benchmarks extensive Triton tile/warp configs + cuBLAS/CUTLASS and enables CUDA Graphs. | High (minutes) | Maybe (if graphs used) | Highest steady-state speed for long training runs and production serving. |
 | `max-autotune-no-cudagraphs` | Full Triton/cuBLAS autotuning without CUDA Graph capture. | High | No | Best for dynamic MoE token routing / variable sequence lengths or when measuring raw kernel speed without graph pool memory. |
 
-To cut cold-start compilation time across multi-node fleets and inspect generated kernels, combine three compiler features from Chapter 13.
+Picture a fleet of identical nodes that each spend a long stretch compiling the same model before their first step. That waste repeats on every node and every restart. To cut cold-start compilation time across multi-node fleets and inspect generated kernels, combine three compiler features from Chapter 13. Each feature attacks a different part of the waste. The first shares the compiled results, the second avoids compiling repeated blocks more than once, and the third makes the generated kernels easy to read in a profiler.
 
 1. Persist compiled TorchInductor and Triton artifacts across runs and nodes using PyTorch Mega-Cache via `save_cache_artifacts` and `load_cache_artifacts`, or mount a shared `TORCHINDUCTOR_CACHE_DIR` across identical GPU nodes.
 2. Wrap repeated submodules such as a Transformer block with Regional Compilation via `torch.compiler.nested_compile_region` so PyTorch compiles the block once and reuses the compiled code across all layers.
 3. Set `TORCHINDUCTOR_UNIQUE_KERNEL_NAMES=1` and `TORCHINDUCTOR_BENCHMARK_KERNEL=1` when profiling to emit descriptive kernel names and standalone per-kernel benchmark harnesses.
 
-Beyond the compiler, Chapter 13 highlights two complementary PyTorch optimization suites for attention and low-precision math. First, PyTorch's attention stack pairs `scaled_dot_product_attention` with FlexAttention for custom prefill and training masks. It also provides FlexDecoding for autoregressive decode with dynamic KV-cache layouts and `context_parallel` for sharding long sequences across GPUs. Second, PyTorch Architecture Optimization (`torchao`) provides a unified Python API for quantization, pruning, and 2:4 or block sparsity. Those transformations compile directly through TorchInductor into fused low-precision kernels.
+Beyond the compiler, Chapter 13 highlights two complementary PyTorch optimization suites for attention and low-precision math. Think of the first as the attention toolbox and the second as the size-reduction toolbox. First, PyTorch's attention stack pairs `scaled_dot_product_attention` with FlexAttention for custom prefill and training masks. Prefill is the step that processes the whole prompt at once. The stack also provides FlexDecoding for autoregressive decode with dynamic KV-cache layouts, which handles one new token at a time, and `context_parallel` for sharding long sequences across GPUs. A KV cache stores the keys and values from earlier tokens so they are not recomputed. Second, PyTorch Architecture Optimization (`torchao`) provides a unified Python API for quantization, pruning and 2:4 or block sparsity. Quantization stores numbers with fewer bits, pruning removes weights, and sparsity forces a pattern of zeros that the hardware can skip. Those transformations compile directly through TorchInductor into fused low-precision kernels.
 
 ### 3.2 Overlapping `transfer_stream` and `compute_stream`, CUDA Graph Trees, and the FireworksAI decreasing-batch pool
 
-If a training loop copies the next batch from host memory on the default CUDA stream, the GPU's compute engines sit idle waiting for the PCIe or NVLink-C2C transfer to finish before starting the forward pass. Similarly, when an inference server captures separate CUDA Graphs for multiple batch sizes, allocating a separate private memory pool for every graph wastes gigabytes of high-bandwidth memory.
+Picture a training loop where the GPU's utilization graph has a saw-tooth shape. It works hard for a moment, drops to nothing, and then works again. The drops line up with the batch copies. If a training loop copies the next batch from host memory on the default CUDA stream, the GPU's compute engines sit idle waiting for the PCIe or NVLink-C2C transfer to finish before starting the forward pass. A CUDA stream is an ordered queue of GPU work, and the default stream runs its items one after another. Similarly, when an inference server captures separate CUDA Graphs for multiple batch sizes, allocating a separate private memory pool for every graph wastes gigabytes of high-bandwidth memory. A memory pool is the block of GPU memory a graph reserves for its own buffers.
 
-To hide host-to-device transfer latency, create a dedicated `transfer_stream` alongside the default `compute_stream`. Preload the next batch asynchronously on the transfer stream, record a completion event on that stream, and make the compute stream wait on that event via `wait_event` or `wait_stream` before launching the model forward pass.
+To hide host-to-device transfer latency, create a dedicated `transfer_stream` alongside the default `compute_stream`. Two streams can run at the same time, so the copy and the math overlap. Preload the next batch asynchronously on the transfer stream, record a completion event on that stream, and make the compute stream wait on that event via `wait_event` or `wait_stream` before launching the model forward pass. The wait is what keeps the order correct. The compute stream will not read the batch until the copy has finished.
 
-For CUDA Graphs in LLM serving, call `torch.cuda.empty_cache` once right before graph capture, never inside the hot loop. Synchronize the capture stream both before entering and after exiting the `torch.cuda.graph` context manager. When serving multiple batch-size graph variants with PagedAttention, pass a shared `graph_pool_handle` and capture the graphs in decreasing order of batch size. Smaller batch graphs then reuse the memory buffers already reserved by the largest batch graph.
+For CUDA Graphs in LLM serving, call `torch.cuda.empty_cache` once right before graph capture, never inside the hot loop. Calling it inside the loop would hand memory back to the system on every step, and the next step would have to ask for it again. Synchronize the capture stream both before entering and after exiting the `torch.cuda.graph` context manager. The context manager is the block that records the graph, and synchronizing on both sides makes sure no earlier work leaks into the recording. When serving multiple batch-size graph variants with PagedAttention, pass a shared `graph_pool_handle` and capture the graphs in decreasing order of batch size. PagedAttention is the vLLM technique that stores the KV cache in fixed-size blocks. Smaller batch graphs then reuse the memory buffers already reserved by the largest batch graph. Starting from the biggest graph means its buffers are large enough for the smaller ones to fit inside.
 
 ```text
 CUDA Graph Sizing and Shared-Pool Capture Rules (ASP Ch 13):
@@ -300,11 +301,15 @@ CUDA Graph Sizing and Shared-Pool Capture Rules (ASP Ch 13):
   - FireworksAI Decreasing-Batch Shared Pool: Capture batch variants in decreasing order [8, 4, 2, 1] (8 -> 4 -> 2 -> 1) using a shared pool = torch.cuda.graph_pool_handle() so smaller graphs reuse the batch=8 buffer without extra VRAM allocation.
 ```
 
+The block above is a sizing rule, not a command. Read the first line as "size for the spike, not the average". If your normal maximum batch is smaller than an occasional peak, capture at the peak so no request ever falls outside a captured graph. Read the second line as the order of capture. The largest batch goes first, and each smaller batch then shares the same pool. Keep the order in mind when you write the capture loop, because a reversed order loses the reuse.
+
 ### 3.3 Tuning `PYTORCH_ALLOC_CONF`, `SuperOffload` (`GraceAdam`), Pluggable NCCL `MemPool`, UCX, and Symmetric Memory
 
-In Mixture-of-Experts models, the number of tokens routed to each expert changes every step. Those variable-sized activation tensors repeatedly split and fragment PyTorch's caching allocator until a multi-day training job crashes with an out-of-memory error despite constant model size. At the same time, standard GPU memory allocations cannot be driven directly by NVSwitch or InfiniBand hardware offloads without extra copy overhead.
+Picture an MoE training job that runs fine for days and then dies with an out-of-memory error. The model size never changed, so the memory did not run out in the usual sense. The memory is split into pieces that are too small to reuse. In Mixture-of-Experts models, the number of tokens routed to each expert changes every step. Those variable-sized activation tensors repeatedly split and fragment PyTorch's caching allocator, which keeps freed blocks around for reuse, until a multi-day training job crashes with an out-of-memory error despite constant model size. Fragmentation means the free memory exists but is scattered into pieces too small for the next request. At the same time, standard GPU memory allocations cannot be driven directly by NVSwitch or InfiniBand hardware offloads without extra copy overhead. NVSwitch is NVIDIA's switch chip for GPU-to-GPU links, and InfiniBand is a high-speed network fabric.
 
-First, preallocate fixed-size expert buffers sized to maximum expert token capacity and tune `PYTORCH_ALLOC_CONF` so slightly varying allocation requests hit the same power-of-two sub-bucket. Second, on Grace-Blackwell superchips, use `SuperOffload` with Speculation-Then-Validation and `GraceAdam` to run vectorized optimizer updates on the Grace CPU over coherent NVLink-C2C while backpropagation runs on the GPU. Third, register a pluggable NCCL memory pool and enable cross-rack UCX transport. Finally, use PyTorch Symmetric Memory so MoE `all-to-all` token shuffles run directly on-device inside a CUDA Graph.
+First, preallocate fixed-size expert buffers sized to maximum expert token capacity and tune `PYTORCH_ALLOC_CONF` so slightly varying allocation requests hit the same power-of-two sub-bucket. A sub-bucket is a slice of a power-of-two size range, so two requests that are close in size share one slice. Second, on Grace-Blackwell superchips, use `SuperOffload` with Speculation-Then-Validation and `GraceAdam` to run vectorized optimizer updates on the Grace CPU over coherent NVLink-C2C while backpropagation runs on the GPU. Speculation-Then-Validation lets the CPU update ahead of time and then checks that the guess was right. Third, register a pluggable NCCL memory pool and enable cross-rack UCX transport. UCX is an open communication framework that can drive RDMA networks. Finally, use PyTorch Symmetric Memory so MoE `all-to-all` token shuffles run directly on-device inside a CUDA Graph. An all-to-all is the exchange in which every GPU sends a different slice of tokens to every other GPU.
+
+The first bash line sets the allocator. Read its fields one at a time. `max_split_size_mb` keeps large blocks from being chopped up, `roundup_power2_divisions` controls the sub-buckets, and `backend` picks the CUDA allocator underneath. The next block sets the NCCL and UCX variables that switch cross-rack traffic to UCX with GPUDirect RDMA, which lets the network card read GPU memory directly. Set them on every rank, so that all ranks agree on which transport they use.
 
 ```bash
 # 1. Tune PyTorch CUDA caching allocator to prevent MoE block splitting and fragmentation (untested here)
@@ -316,7 +321,7 @@ export NCCL_PLUGIN_P2P=ucx
 export UCX_TLS=rc,self,gdr_copy,cuda_copy
 ```
 
-The table below summarizes the exact allocator rounding math, Grace SVE register counts, NVLink 5 bandwidths, and memory history settings verified in our companion module.
+The table below summarizes the exact allocator rounding math, Grace SVE register counts, NVLink 5 bandwidths and memory history settings from the companion code. SVE is the ARM Scalable Vector Extension, which sets the width of the vector registers. Read the first row as the worked example for the sub-bucket idea above.
 
 | Memory or Fabric Optimization | Configuration / API | Quantitative Behavior and Hardware Specs |
 |---|---|---|
@@ -332,9 +337,9 @@ The table below summarizes the exact allocator rounding math, Grace SVE register
 
 ### 4.1 DDP, FSDP, TorchTitan, AsyncTP, AutoParallel, and SimpleFSDP
 
-If you wrap an entire multi-billion-parameter model in a single root FSDP instance or merge all DDP gradients into one giant communication bucket, the compiler sees one monolithic graph with zero intermediate communication boundaries. As a result, all collective communication waits until the end of the pass instead of overlapping with backward computation. Peak memory spikes and GPUs sit idle waiting on network transfers.
+Picture a multi-billion-parameter model that scales well on a small node and then stops improving when you add more nodes. The trace shows the compute finishing early and a long communication tail at the end of the pass. The cause is often the wrapper, not the network. If you wrap an entire multi-billion-parameter model in a single root FSDP instance or merge all DDP gradients into one giant communication bucket, the compiler sees one monolithic graph with zero intermediate communication boundaries. A bucket is a group of gradients sent together in one collective. As a result, all collective communication waits until the end of the pass instead of overlapping with backward computation. Peak memory spikes and GPUs sit idle waiting on network transfers.
 
-When scaling compiled models across GPUs, structure your distributed wrappers around submodule boundaries so communication and computation overlap automatically.
+When scaling compiled models across GPUs, structure your distributed wrappers around submodule boundaries so communication and computation overlap automatically. Each boundary is a point where a block's gradients are ready to send, so the network can start moving them while the next block is still computing. The table below lists the settings that create those boundaries, along with the overlap each one buys.
 
 | Distributed Mechanism | Recommended Configuration | Overlap and Performance Impact |
 |---|---|---|
@@ -345,11 +350,11 @@ When scaling compiled models across GPUs, structure your distributed wrappers ar
 
 ### 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging
 
-Even after a model is carefully profiled and tuned, routine pull requests or library upgrades can quietly introduce a graph break or allocator regression. Without automated performance gates and structured step-time breakdowns in continuous integration, teams discover a ten percent throughput loss only weeks later during a costly production training run.
+Even after a model is carefully profiled and tuned, routine pull requests or library upgrades can quietly introduce a graph break or allocator regression. A graph break here is the compiler-side seam from Chapter 10.19, and it can return with a single new print statement. Without automated performance gates and structured step-time breakdowns in continuous integration, teams discover a ten percent throughput loss only weeks later during a costly production training run. By then, dozens of changes have landed, and finding the one that caused the loss is slow work.
 
-To prevent performance regressions from merging, run deterministic TorchBench workloads in GitHub Actions CI while checking peak memory allocation and `torch.allclose` numerical accuracy. Following the public PyTorch HUD convention, fail the build when throughput regresses by five percent or more sustained across three consecutive runs.
+To prevent performance regressions from merging, run deterministic TorchBench workloads in GitHub Actions CI while checking peak memory allocation and `torch.allclose` numerical accuracy. `torch.allclose` checks that two results match within a small tolerance, which catches changes that make the numbers wrong rather than just slow. Following the public PyTorch HUD convention, fail the build when throughput regresses by five percent or more sustained across three consecutive runs. The sustained rule matters. A single slow run can be noise from a busy machine, and a gate that fails on noise gets ignored.
 
-In production training jobs, emit structured MLPerf Logging lines that break each step down into forward, backward, all-reduce, and other millisecond fields. Table 13-6 below shows how a twenty-four millisecond training iteration breaks down across compute, communication, and host overhead (`evaluate_mlperf_step_breakdown`).
+In production training jobs, emit structured MLPerf Logging lines that break each step down into forward, backward, all-reduce and other millisecond fields. Structured lines are easy to parse, so a dashboard can plot them over time. The table below shows how a twenty-four millisecond training iteration breaks down across compute, communication and host overhead (`evaluate_mlperf_step_breakdown`).
 
 | Step Component (`:::MLL` JSON Field) | Time per Iteration (`ms`) | Share of Step (`%`) | Optimization Implication |
 |---|---:|---:|---|
@@ -359,15 +364,17 @@ In production training jobs, emit structured MLPerf Logging lines that break eac
 | Other overhead (`other_ms`) | `0.5 ms` | `2.1%` | Data loading and host dispatch are well-hidden (`2.1%`). |
 | Total step time (`step_time_ms`) | `24.0 ms` | `100.0%` | End-to-end iteration baseline. |
 
+Read the table as a budget. The four rows add up to the total, so each share tells you how much of the step a single part is responsible for. Compute is the largest share, and that is the healthy pattern. The row to watch is the all-reduce row, because it is time the GPUs spend waiting for each other rather than doing math. Once a row names the bottleneck, the optimization column tells you the first thing to try. Measure the step again after each change, and check that the all-reduce share falls rather than the total only moving around.
+
 ---
 
 ## 5. Commands and Configurations That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 13 and `nvidia-devops` Volume 17 Chapter 2. Shell commands that require an attached CUDA GPU or Grace-Blackwell node are marked untested here.
+All commands below follow *AI Systems Performance Engineering* Chapter 13 and the `nvidia-devops` profiling notes. They need a CUDA GPU or a Grace-Blackwell node, so they are a reference for how each command is written, not output you can copy as-is. Adjust the script names and output paths to your own job.
 
 ### 5.1 End-to-end profiling commands (`nsys`, `ncu`, `perf`, `PYTORCH_ALLOC_CONF`, `UCX`, `TorchBench`)
 
-Use these commands to capture Nsight Systems NVTX projections, Nsight Compute Roofline counters, Linux `perf` DWARF call stacks and Grace-Blackwell NVLink-C2C PMU events, allocator tuning, and TorchBench CI checks.
+Use these commands to capture Nsight Systems NVTX projections, Nsight Compute Roofline counters, Linux `perf` DWARF call stacks and Grace-Blackwell NVLink-C2C PMU events, allocator tuning and TorchBench CI checks. Run them in the same order as the sections above. Start with the Nsight Systems trace, then Nsight Compute on the one kernel the trace flagged, then `perf` for the host. Keep the allocator and transport settings in the job's environment file, so every run uses the same values.
 
 ```bash
 # 1. Nsight Systems: trace CUDA + NVTX and print the NVTX GPU Projection Summary (Table 13-3) (untested here)
@@ -399,7 +406,7 @@ torchbench run --model moe --iters 10 --batch-size 4 --json results.json
 
 ## 6. How It Fails: Six Profiling, Allocator, and Distributed Scaling Failure Modes
 
-When profiling sessions mislead an engineering team or memory optimizations backfire in production, the issue almost always stems from one of six anti-patterns. Use the table below to match the observed symptom to its root cause and fix.
+A profiling session that points the team at the wrong layer can cost a week. A memory setting that helped in one job can make the next job crash. When profiling sessions mislead an engineering team or memory optimizations backfire in production, the issue almost always stems from one of six anti-patterns. An anti-pattern is a common habit that looks reasonable and causes the trouble. Use the table below to match the observed symptom to its root cause and fix. Start from the symptom you can see in the dashboard or the trace, and read across the row only after you have matched the symptom.
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -414,9 +421,9 @@ When profiling sessions mislead an engineering team or memory optimizations back
 
 ## 7. Hands-On Lab: Verify the Evidence Ladder, MoE Profiler Tables 13-2 to 13-4, Grace `perf` Counters, Allocator Rounding, and MLPerf Table 13-6
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python, while live GPU and Grace-Blackwell commands are provided in Section 5 and marked untested here.
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. The lab script uses only the standard library and runs the same way everywhere. The live GPU and Grace-Blackwell commands are in Section 5, and you can run them later on a GPU node once the script passes.
 
-Run `code/part10/profiling_tools_lab.py` to verify all twenty-five profiling, allocator, and scaling assertions.
+Start with the script that needs no GPU. Run `code/part10/profiling_tools_lab.py` to verify all twenty-five profiling, allocator and scaling assertions. Each line of output names the claim it checks, so a failure points you to the section that explains that claim.
 
 ```bash
 python3 code/part10/profiling_tools_lab.py
@@ -459,17 +466,17 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. Cluster utilization drops from ninety percent to ten percent at midnight. Which tool in the Evidence Ladder and Table 13-1 do you reach for?
+1. Cluster utilization drops from ninety percent to ten percent at midnight. Which tool on the Evidence Ladder do you reach for first?
 2. Pick the right tool for each of three problems. In the first, CPU image decompression in the DataLoader starves the GPU. In the second, a sparse Triton kernel runs four times slower than PyTorch on an H100. In the third, you need to align traces from eight ranks.
-3. In Table 13-2, add the CUDA time and call counts of the top two matrix ops. Do the same for the two routing ops.
-4. Show how the forward, backward, and optimizer ranges in Table 13-3 sum to the outer step time. Why does the optimizer range report one NVTX instance although it brackets sixty-four `aten::add_` launches?
-5. Compare baseline and optimized `matmul` in Table 13-4 on peak FLOPS, peak memory bandwidth, and achieved SM occupancy.
+3. In the operator table of Section 2.1, add the CUDA time of the top two matrix ops. Do the same for the two routing ops.
+4. Show how the forward, backward and optimizer ranges in the NVTX projection table sum to the outer step time. Why does the optimizer range report one NVTX instance? It brackets sixty-four `aten::add_` launches.
+5. Compare baseline and optimized `matmul` in the Nsight Compute table on peak FLOPS, peak memory bandwidth and achieved SM occupancy.
 6. The Grace core's measured IPC is far below the Neoverse V2 maximum. What does that say about the host? List the five `perf report` hotspots and a fix for each.
 7. With `roundup_power2_divisions`, what is the sub-bucket step size in the 512 to 1,024 MB range? What size does a 600 MB request round up to?
 8. Why does FireworksAI capture shared-pool CUDA Graph variants in decreasing order of batch size?
 9. By how much does `SimpleFSDP` cut memory and raise throughput over eager FSDP2 in TorchTitan? How many ARM SVE registers does `GraceAdam` use in `SuperOffload`?
 10. State the bidirectional and one-way bandwidth of Blackwell NVLink 5. Name the three environment variables that enable cross-rack UCX.
-11. Table 13-6 lists forward, backward, all-reduce, and other times in milliseconds. Compute the total step time, each share, and the total compute share.
+11. The MLPerf breakdown lists forward, backward, all-reduce and other times in milliseconds. Compute the total step time. Then compute each share and the total compute share.
 12. What regression threshold and number of sustained runs do PyTorch HUD and TorchBench CI use?
 
 ---

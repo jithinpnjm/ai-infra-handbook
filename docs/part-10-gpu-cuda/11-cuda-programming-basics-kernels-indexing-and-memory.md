@@ -25,7 +25,7 @@ lab_venue: "Nebius GPU"
 
 An AI infrastructure engineer rarely writes custom CUDA kernels from scratch every day. Yet production training jobs still crash with illegal memory access faults. Other jobs hang forever on an A100 after passing desktop unit tests, or spend most of their runtime inside memory allocation calls. When these failures wake up the on-call team, the root cause lives inside the fundamental rules of the CUDA execution and memory model.
 
-Four real production incidents from our reference notes show how quickly small kernel or memory mistakes turn into cluster outages. Each incident looks mysterious from the outside until you trace how threads, thread blocks, and device buffers map onto the physical GPU.
+Four real production incidents from the reference runs behind this chapter show how quickly small kernel or memory mistakes turn into cluster outages. Each one began as a line of code that looked reasonable in review. The bug only showed itself once the code met a real GPU, a real data size, or a real load. Each incident looks mysterious from the outside until you trace how threads, thread blocks, and device buffers map onto the physical GPU.
 
 | Incident Scenario | What Went Wrong in Production | Reference Impact | Root Fix |
 |---|---|---|---|
@@ -33,6 +33,8 @@ Four real production incidents from our reference notes show how quickly small k
 | **Silent 67-Element Truncation vs Out-of-Bounds Crash** | Team ported a vector loop of `N = 1,000,003` floats with `256` threads per block using either truncated division or ceiling division without a guard. | Truncated division (`3,906` blocks = `999,936` threads) left `67` tail elements at `0.000000`; unguarded ceiling division (`3,907` blocks = `1,000,192` threads) let `189` extra threads write out of bounds. | Pair ceiling division `(N + 255) / 256` with an explicit `if (idx < N)` bounds check inside the kernel. |
 | **Cross-Block Spin-Wait Deadlock on A100** | A 1,000-block risk kernel had Block 100 spin in a `while(true)` loop waiting for Block 1 to set a flag in global memory. | Passed by luck on a desktop GPU, but hung forever on a production A100 or MIG slice because spinning blocks starved Block 1 from ever entering an SM. | Remove cross-block spin loops and split global dependencies into two sequential kernel launches. |
 | **15-Minute `.to('cuda')` Normalization Slowdown** | Data scientist moved a single-division normalization of `1 billion` numbers onto an H100 using `.to('cuda')`. | Took `15 minutes` on the GPU over the `64 GB/s` PCIe Gen5 bus versus `2 minutes` on the CPU reading local DDR5 RAM at `~300 GB/s` (in Lab 02, `1.259 ms` copy time is `13.11x` / `~13x` the `0.096 ms` kernel). | Keep low-arithmetic-intensity passes on the CPU or fuse them into existing GPU kernels so data crosses PCIe only once. |
+
+Think of this chapter as a tour of a busy factory floor. Each concept maps onto one role on that floor, and the code examples are the work orders that tell each role what to do. We build the model from the ground up, so every term gets a plain explanation before it is used.
 
 This chapter builds a clear mental model of CUDA programming from the ground up. We start with why CUDA replaced graphics-shader workarounds and how execution space specifiers divide work between the CPU and GPU. Next, we trace thread indexing, launch geometry, and hardware limits on modern architectures. Finally, we cover explicit, stream-ordered, and Unified Memory lifecycles alongside scoped synchronization and asynchronous error bisection.
 
@@ -53,19 +55,19 @@ The timings, percentages, and throughput figures in this chapter are illustrativ
 
 **Prerequisites:** Complete Chapters 10.1 through 10.3 on GPU throughput architecture, warps, SMs, and the memory hierarchy. Also review Chapter 10.9 on the CUDA Runtime, Driver API, and `nvcc` compilation flow.
 
-**Outcomes:** After completing this chapter, you will be able to accomplish four goals.
-1. Explain why CUDA replaced pre-2006 graphics shader tricks and how execution space specifiers partition code across CPU and GPU.
-2. Compute 1D, 2D, and 3D thread coordinates, size grids with ceiling division and grid-stride loops, and eliminate warp lane waste.
-3. Manage device memory across explicit allocations, stream-ordered memory pools, and Unified Memory while preventing page-thrashing slowdowns.
-4. Synchronize workloads using the narrowest valid scope, measure kernel time accurately with CUDA Events, and bisect asynchronous kernel faults.
+**Outcomes:** The chapter walks through four things in order. It starts with why CUDA replaced the pre-2006 graphics shader tricks, and how execution space specifiers split code between the CPU and the GPU. It then covers thread coordinates in 1D, 2D, and 3D, sizing grids with ceiling division and grid-stride loops, and removing warp lane waste. Next comes device memory across explicit allocations, stream-ordered pools, and Unified Memory, with attention to page-thrashing slowdowns. The last part shows how to synchronize at the narrowest valid scope, time kernels with CUDA Events, and bisect asynchronous faults.
 
 ---
 
 ## 1. Why CUDA Exists and the Heterogeneous Host–Device Model
 
+A team lead opens a ticket that says the new GPU code is slower than the CPU version it replaces. Before anyone looks at a kernel, the team needs to understand what CUDA is for and where its work actually runs. This section starts with the history, because the design of CUDA makes more sense once you know what came before it.
+
 ### 1.1 From graphics shaders to a compute-first platform
 
 When early deep learning and physics teams tried to run matrix math on GPUs before 2006, every project stalled on graphics APIs. Those APIs were never designed for general computation. Engineers had to disguise numerical arrays as 2D textures and rewrite math loops as OpenGL or DirectX pixel shaders. They then read results back as rendered framebuffers. If a calculation produced wrong numbers, the team had no numerical debugger and had to guess what went wrong from rendering counters.
+
+A shader is a small program that a graphics chip runs for each pixel, and a framebuffer is the memory that holds the finished picture. Anyone who wanted matrix results had to pretend the numbers were pixels, run the shader, and then read the picture back to recover the answers.
 
 This overhead is called the graphics translation tax. It breaks into three concrete engineering costs.
 - Data had to look like textures and algorithms had to look like shader stages before any real math could begin.
@@ -76,11 +78,11 @@ Two additional details come from general background knowledge and are not stated
 
 NVIDIA removed the translation tax in 2006 by introducing CUDA as a compute-first platform. It gave developers linear device pointers, threads, thread blocks, grids, and the `nvcc` compiler. Over time, that foundation grew into a deep ecosystem of domain libraries (`cuBLAS`, `cuDNN`, `NCCL`, `cuFFT`, `CUTLASS`, FlashAttention) and cluster telemetry tools (`DCGM`, Nsight Systems, Nsight Compute).
 
-In one customer scenario, a startup CFO proposes replacing NVIDIA GPUs with a competitor chip. The rival chip advertises half the price and 20% higher raw TFLOPS. That scenario shows why raw silicon TFLOPS mislead buyers. Unoptimized translation layers for PyTorch, DeepSpeed, and FlashAttention can cut real cluster utilization by 50%. At the same time, the SRE team must rebuild its entire monitoring stack from scratch.
+In one customer scenario, a startup CFO proposes replacing NVIDIA GPUs with a competitor chip. The rival chip advertises half the price and 20% higher raw TFLOPS. That scenario shows why raw silicon TFLOPS mislead buyers. Unoptimized translation layers for PyTorch, DeepSpeed, and FlashAttention can cut real cluster utilization by 50%. At the same time, the SRE team must rebuild its entire monitoring stack from scratch. The lesson is that a spec sheet number is a ceiling, not a delivery. Real throughput depends on the software between the model and the silicon, and that software is where most of the cost hides.
 
 ### 1.2 The heterogeneous execution contract: `__host__`, `__device__`, and `__global__`
 
-When a newcomer writes a CUDA program and passes a normal CPU pointer into a GPU kernel, the program crashes. It either raises an illegal memory access error or leaves the output buffer full of zeros. New engineers often forget that a CUDA application runs across two physically separate processors with separate memory spaces. Without a strict contract between CPU orchestration and GPU execution, the compiler cannot know which instructions belong on which processor.
+When a newcomer writes a CUDA program and passes a normal CPU pointer into a GPU kernel, the program crashes. It either raises an illegal memory access error or leaves the output buffer full of zeros. New engineers often forget that a CUDA application runs across two physically separate processors with separate memory spaces. Without a strict contract between CPU orchestration and GPU execution, the compiler cannot know which instructions belong on which processor. A useful picture is a restaurant with two kitchens. The front kitchen takes orders, prepares ingredients, and keeps the books. The back kitchen does the heavy cooking on a line of identical stations. Each kitchen has its own pantry, and a dish cannot be cooked in one kitchen using only the ingredients stored in the other.
 
 In the CUDA heterogeneous model, the Host consists of the CPU and system DDR5 RAM. It runs `main()`, reads files and network sockets, allocates device buffers, and queues asynchronous work. The Device consists of the GPU and its HBM and on-chip SRAM. It executes parallel kernels queued by the host. You tell `nvcc` where each function executes by placing an execution space specifier on the declaration.
 
@@ -110,7 +112,9 @@ sequenceDiagram
     H->>R: 7. cudaFree(d_in) / cudaFreeAsync
 ```
 
-The hardware boundary between Host RAM and Device HBM enforces one strict pointer rule in explicit-memory CUDA. Host pointers returned by `malloc()` point to CPU system memory. Device pointers returned by `cudaMalloc()` point to GPU HBM. In one customer scenario, passing a raw host pointer directly into a kernel causes GPU threads to dereference an unmapped device address. The hardware raises `CUDA error: an illegal memory access was encountered` and leaves the output buffer all zeros.
+Read the diagram as a timeline with seven numbered steps. Steps 1 and 2 put the data in place. Step 3 is the launch, and the arrow returns to the CPU almost at once. That is why the note says a launch is asynchronous, meaning the CPU does not wait for the work to finish. Step 4 is the work itself, handled by the hardware scheduler that hands thread blocks to the SMs. Step 5 is the point where the CPU chooses to wait. Only after that does step 6 show a finished result on the host. Step 7 cleans up the device memory.
+
+Think of two post offices with separate address books. A street address from one book means nothing in the other, and a letter addressed to the wrong office goes nowhere. The hardware boundary between Host RAM and Device HBM enforces one strict pointer rule in explicit-memory CUDA. Host pointers returned by `malloc()` point to CPU system memory. Device pointers returned by `cudaMalloc()` point to GPU HBM. In one customer scenario, passing a raw host pointer directly into a kernel causes GPU threads to dereference an unmapped device address. The hardware raises `CUDA error: an illegal memory access was encountered` and leaves the output buffer all zeros. Notice that the message does not say which pointer was wrong. The clue is the kind of memory the pointer came from, and that is why the rule about host and device pointers has to be learned before the first kernel is written. A pointer that works in host code can still be invalid inside a kernel, because the kernel runs on the other processor.
 
 ---
 
@@ -118,9 +122,9 @@ The hardware boundary between Host RAM and Device HBM enforces one strict pointe
 
 ### 2.1 The execution configuration and GPU hardware limits
 
-If an engineer launches a kernel with 100,000 threads in a single thread block, the GPU refuses to run the kernel at all. If the engineer goes to the opposite extreme and launches 1 thread per block, the kernel runs at a tiny fraction of peak speed. Both failures happen because the software launch configuration must fit inside the physical scheduling limits of the Streaming Multiprocessor.
+If an engineer launches a kernel with 100,000 threads in a single thread block, the GPU refuses to run the kernel at all. If the engineer goes to the opposite extreme and launches 1 thread per block, the kernel runs at a tiny fraction of peak speed. Both failures happen because the software launch configuration must fit inside the physical scheduling limits of the Streaming Multiprocessor. In practice, the first step is to read the limits in the table and make the launch fit inside them. The second step is to make each block big enough to keep its SM busy.
 
-When host code launches a kernel with chevron syntax, it defines a two-level hierarchy of a Grid divided into Thread Blocks, which are divided into Threads. Under the hood, the hardware GigaThread Engine assigns whole Thread Blocks to SMs. Each SM then slices every assigned block into 32-thread Warps. Tables 6-1 through 6-4 of *AI Systems Performance Engineering* Chapter 6 define the exact hardware limits on modern NVIDIA GPUs such as Blackwell B200 and Hopper H100.
+Picture a crew dispatcher. The whole job is the grid. Each crew is a thread block, and each crew member is a thread. The dispatcher assigns whole crews to work areas on the floor, and each work area can only hold so many crews at once. The chevron syntax is the call that places the job order with the dispatcher. When host code launches a kernel with chevron syntax, it defines a two-level hierarchy of a Grid divided into Thread Blocks, which are divided into Threads. Under the hood, the hardware GigaThread Engine assigns whole Thread Blocks to SMs. Each SM then slices every assigned block into 32-thread Warps. Tables 6-1 through 6-4 of *AI Systems Performance Engineering* Chapter 6 define the exact hardware limits on modern NVIDIA GPUs such as Blackwell B200 and Hopper H100.
 
 | Scope | Hardware Parameter (Blackwell B200 / Hopper H100) | Hard Limit | Operational & Sizing Rule |
 |---|---|---:|---|
@@ -133,11 +137,15 @@ When host code launches a kernel with chevron syntax, it defines a two-level hie
 | **Per-SM Memory** | Register file, SMEM, TMEM, and L2 (Blackwell) | `64K` 32-bit regs (`256 KB`) | Max `255` regs/thread; `228 KB` SMEM (`227 KB` usable/block, `1 KB` reserved); `256 KB` TMEM (`~10 cycles`) for `tcgen05.mma` / `UMMA`; `126 MB` L2. |
 | **Grid** | Max grid dimensions (`gridDim.x`, `y`, `z`) | `X: 2,147,483,647` (`2^31 - 1`) | `Y: 65,535` and `Z: 65,535`, with up to `128` concurrent grids executing on one GPU simultaneously. |
 
-Why does *AI Systems Performance Engineering* Chapter 6 recommend 256 threads per block as the default starting point for most kernels. First, 256 is an exact multiple of 32, so zero warp lanes go to waste. Second, on an SM that supports 2,048 resident threads, placing 256 threads in each block allows 8 blocks to reside on each SM at the same time. That keeps all 64 warps active across the SM's 4 warp schedulers without hitting the 32-block ceiling or exhausting per-block shared memory and registers.
+Read the table as a list of ceilings. Each row is a limit the hardware will not exceed, and the sizing rule in the last column tells you how to stay under it. The first row matters most, because the warp is the unit the hardware really runs. A block size that is not a multiple of the warp size leaves some lanes in the last warp empty, and those empty lanes do no work at all.
+
+Why does *AI Systems Performance Engineering* Chapter 6 recommend 256 threads per block as the default starting point for most kernels. First, 256 is an exact multiple of 32, so zero warp lanes go to waste. Second, on an SM that supports 2,048 resident threads, placing 256 threads in each block allows 8 blocks to reside on each SM at the same time. That keeps all 64 warps active across the SM's 4 warp schedulers without hitting the 32-block ceiling or exhausting per-block shared memory and registers. In plain words, 256 is a size that keeps the crews busy without running out of room on the floor.
 
 ### 2.2 1D indexing, ceiling division, and the two boundary bugs
 
 When a team ports a CPU loop over an array of length $N$ to CUDA, two classic off-by-one bugs show up whenever $N$ is not a multiple of the block size. If the programmer uses integer division to compute the block count, the kernel finishes without reporting any error while leaving the tail elements at zero. If the programmer switches to ceiling division so the grid covers the tail, but forgets a bounds check inside the kernel, the extra threads in the last block write past the end of the buffer.
+
+Think of a long shelf of boxes and a crew of workers, one worker per box. Integer division rounds down, so a crew sized that way is one worker short for the leftover boxes at the end of the shelf. Ceiling division rounds up, which sends one extra worker for those leftover boxes. That extra worker must be told to stop at the end of the shelf, and that is the job of the bounds check.
 
 Inside a CUDA kernel, every thread runs the exact same C++ function body. To make each thread process a unique array element, the thread computes its global 1D index from CUDA's built-in coordinates.
 
@@ -145,11 +153,15 @@ Inside a CUDA kernel, every thread runs the exact same C++ function body. To mak
 int idx = blockIdx.x * blockDim.x + threadIdx.x;
 ```
 
+Read the expression from the inside out. `threadIdx.x` is this thread's seat number inside its own block, like a worker's place in one row. `blockDim.x` is how many seats each row holds. `blockIdx.x` tells you which row this block sits in. Multiplying the row number by the seats per row and then adding the seat number gives one global position across the whole grid. Every worker runs the same line but gets a different answer, and that difference is what lets one kernel body process a whole array.
+
 To ensure enough threads are launched when $N$ is not divisible by the block size, host code computes the grid size using ceiling division. Inside the kernel, every thread guards its memory access with `if (idx < N)`.
 
 ```cpp
 int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
 ```
+
+The line is an integer trick for rounding up without floating-point math. The part `N + threadsPerBlock - 1` adds just enough extra that any leftover elements push the division up by one step. The division then drops the fraction that remains. The leftover elements in the last block are handled by the bounds check inside the kernel, which is why the two lines are always used as a pair.
 
 The block below traces the exact indexing and boundary arithmetic across four worked examples, following *AI Systems Performance Engineering* Chapter 6.
 
@@ -185,9 +197,13 @@ flowchart TB
   Guard -->|"Yes (Safe Pattern)"| Valid["Threads 0 .. 1,000,002 compute c[idx] = a[idx] + b[idx]<br/>189 extra threads exit cleanly -> validation: PASS"]
 ```
 
+Read the diagram as a decision with two questions. The first question is how the block count gets computed. The truncation branch launches too few threads and reports no error, which makes it the hardest of these bugs to catch. The ceiling branch launches enough threads, but it needs the guard. Only the guarded path reaches a clean PASS. The same habit applies to any problem size. Test the boundary sizes first, because a bug that hides at 1,000,003 elements often shows up one element away from a full block.
+
 ### 2.3 Warp lane waste, SM grid underfill, and grid-stride loops
 
 Even when a kernel produces bit-exact answers, poor launch geometry can leave most of a GPU's compute units idle. A computer-vision team might see 10% GPU utilization on a 4K image filter. Another team might upgrade a cluster from A10 GPUs to H100 GPUs and see zero speedup on their custom preprocessing kernel. Both problems happen when block dimensions waste warp lanes or when a fixed grid size fails to feed every SM on a larger GPU.
+
+The hardware always works in whole warps, and a warp is a team of threads that moves in step. Think of a bus that seats a full team. If a block only has one thread, the bus still leaves with every seat reserved, and all but one seat sits empty.
 
 Three launch-geometry rules govern how effectively a kernel fills the hardware.
 - When a block size is not a multiple of 32, the hardware still allocates whole 32-thread warps and leaves the leftover lanes in the final warp idle.
@@ -201,7 +217,7 @@ Three launch-geometry rules govern how effectively a kernel fills the hardware.
 | **4K Image or `1024 × 1024` Matrix with `16 × 16` tiles** | `<<<dim3(240, 135), dim3(16, 16)>>>` (`32,400` blocks of `256` threads) | Each `16 × 16` block has `256` threads = `8` full warps of `32` threads (`0` idle warp lanes). | `100%` warp lane utilization across all `8,294,400` pixels. |
 | **Fixed 64-block grid moved from A10 to H100** | `<<<64, 256>>>` (`64` total blocks) | Nearly fills an A10 GPU (`72` SMs), but on an H100 (`132` SMs) at most `64` SMs get a block while `132 - 64 = 68` SMs sit completely idle. | Upgrading to H100 yields almost no speedup until `gridDim` scales with the GPU or uses a grid-stride loop. |
 
-Below is the standard 2D indexing pattern alongside the 1D grid-stride loop pattern that lets any grid size process an array of arbitrary length.
+Both patterns answer the same question from different angles. The 2D version sizes the grid to the picture, so every pixel gets its own thread. The grid-stride version sizes the work to the hardware, so the same code handles any array length. Below is the standard 2D indexing pattern alongside the 1D grid-stride loop pattern that lets any grid size process an array of arbitrary length.
 
 ```cpp
 // 1. 2D row-major indexing with dim3(16, 16) blocks (V3 Ch 4 & ASP Ch 6 p. 191)
@@ -224,15 +240,19 @@ __global__ void scale_grid_stride(float* values, int n, float factor) {
 }
 ```
 
+The 2D kernel works like a grid on graph paper. Each thread finds its column `x` and its row `y` from the same block and thread formula used in the 1D case, applied once for each direction. The `if` line keeps the threads at the right and bottom edges from touching pixels that do not exist. The index `y * width + x` turns the two coordinates into one position in memory, because the buffer is stored one row after another.
+
+The grid-stride loop solves a different problem. Picture a crew that gets a fixed number of workers, but the job has more boxes than workers. Each worker takes a box, then skips ahead by the total size of the crew and takes the next one. The loop keeps going until the boxes run out. Because the step is the total number of threads in the grid, the same kernel works on a small GPU with a small grid and on a large GPU with a large grid. That is how a fixed launch stops leaving SMs idle.
+
 ---
 
 ## 3. CUDA Memory Management: Explicit Copies, Stream-Ordered Pools, and Unified Memory
 
 ### 3.1 Explicit device memory and the PCIe transfer-to-kernel ratio
 
-Teams new to GPU acceleration often port a simple math function to CUDA and measure the GPU kernel alone at under a tenth of a millisecond. They then wonder why their end-to-end service actually got slower. They overlook the time spent moving inputs from CPU system RAM into GPU HBM over the PCIe bus and copying outputs back. When an operation performs only one or two arithmetic operations per element, PCIe data movement completely dominates the runtime.
+Teams new to GPU acceleration often port a simple math function to CUDA and measure the GPU kernel alone at under a tenth of a millisecond. They then wonder why their end-to-end service actually got slower. They overlook the time spent moving inputs from CPU system RAM into GPU HBM over the PCIe bus and copying outputs back. When an operation performs only one or two arithmetic operations per element, PCIe data movement completely dominates the runtime. A useful test is to ask how many times each element gets used by math before it leaves the GPU. If the answer is once, the copy is the real work. A kernel that reuses each value across many operations has room to win, because the copy cost is spread over more useful math.
 
-In the explicit CUDA memory model, the host allocates device HBM with `cudaMalloc` and optionally clears raw bytes with `cudaMemset`. Be careful with `cudaMemset` because it writes a single byte pattern to every byte in the buffer. It is safe for zeroing arrays, but it cannot initialize multi-byte floating-point values such as `1.0f`. Next, the host copies inputs from CPU to GPU with `cudaMemcpy`, launches the kernel, copies results back to the host, and releases device memory with `cudaFree`.
+In the explicit CUDA memory model, the host allocates device HBM with `cudaMalloc` and optionally clears raw bytes with `cudaMemset`. Be careful with `cudaMemset` because it writes a single byte pattern to every byte in the buffer. It is safe for zeroing arrays, but it cannot initialize multi-byte floating-point values such as `1.0f`. Next, the host copies inputs from CPU to GPU with `cudaMemcpy`, launches the kernel, copies results back to the host, and releases device memory with `cudaFree`. Think of `cudaMalloc` as reserving a parking space, `cudaMemcpy` as driving a car in or out, and `cudaFree` as handing the space back to the lot.
 
 | Workload Scenario | Stage Breakdown & Bandwidths | Transfer-to-Compute Comparison | Operational Takeaway |
 |---|---|---|---|
@@ -244,7 +264,7 @@ In the explicit CUDA memory model, the host allocates device HBM with `cudaMallo
 
 Even when tensors stay on the GPU for multiple kernels, a C++ inference server that calls `cudaMalloc` and `cudaFree` on every incoming request will suffer severe latency spikes. Worse, under variable-size requests, an application can crash with an out-of-memory error even while `nvidia-smi` reports gigabytes of free VRAM. Both problems come from calling synchronous OS-backed device allocations inside a hot loop and from allocator fragmentation.
 
-Standard `cudaMalloc` and `cudaFree` are synchronous, heavyweight operations. They trigger OS kernel `mmap` and `ioctl` calls, GPU page-table updates, and device-wide synchronization across streams. Look at the Nsight Systems API summary across 4,000 requests, alongside the fragmentation state from the same run.
+Think of a shared kitchen where every cook must stop the whole line each time they need a new bowl. A synchronous allocation is that stop. Standard `cudaMalloc` and `cudaFree` are synchronous, heavyweight operations. They trigger OS kernel `mmap` and `ioctl` calls, GPU page-table updates, and device-wide synchronization across streams. Look at the Nsight Systems API summary across 4,000 requests, alongside the fragmentation state from the same run.
 
 ```text
 1. Nsight Systems CUDA API Summary across 4,000 requests (V3 Ch 5 lines 300-309):
@@ -273,11 +293,15 @@ myKernel<<<blocksPerGrid, threadsPerBlock, 0, stream1>>>(d_buf, N);
 cudaFreeAsync(d_buf, stream1); // Returns buffer to pool once stream1 completes
 ```
 
+Read the code line by line. `cudaStream_t stream1;` declares a handle to a stream, which is a conveyor belt. Work queued on the same belt runs in the order it was placed. `cudaStreamCreateWithFlags` creates that belt with the non-blocking flag, so it does not wait for the default belt to empty. `float* d_buf = nullptr;` sets the pointer to nothing before the allocation. `cudaMallocAsync` asks the pool for a block of memory on this belt. The kernel launch sits on the same belt, so it runs after the allocation finishes. The last line hands the buffer back to the pool when the belt reaches that point, and the next request can reuse the memory without a trip to the operating system.
+
 ### 3.3 Unified Memory, prefetching, and the oversubscription cliff
 
 To avoid managing separate host and device pointers, developers sometimes switch every allocation to `cudaMallocManaged` (Unified Memory) and assume the CUDA driver will handle data movement for free. Then three surprises hit in production. First, the initial training step runs 20 times slower than the second step. Second, a dataset that grows just 10% larger than GPU VRAM causes throughput to collapse by more than 10x. Third, a single CPU debug print statement stalls a 4-millisecond kernel for nearly 100 milliseconds.
 
 First, distinguish Unified Virtual Addressing (UVA) from Unified Memory. UVA simply places CPU and GPU pointers into a single virtual address table so the runtime can tell whether a pointer lives on the host or device. Unified Memory goes further by creating a managed allocation backed by the `nvidia-uvm.ko` kernel module. It automatically migrates pages on demand across PCIe or NVLink-C2C via hardware page faults whenever the CPU or GPU touches a nonresident page.
+
+Think of Unified Memory as a library with an automatic courier. When you ask for a book that is stored across town, the courier fetches it for you, and the wait is the cost. If you keep asking for more books than fit on your desk, the courier spends its whole day carrying books back and forth. That is the page-thrashing story in the table that follows. The courier is helpful, but it cannot make a desk bigger. What actually happens on the first touch is simple to describe. The GPU reads an address, finds that the page is not on the device, and raises a fault. The driver moves the page across the bus, and then the read continues. Every page touched for the first time pays that round trip, which is why the first iteration is slow and the second one is fast.
 
 | Unified Memory Scenario | Configuration / Working Set Size | Reference Timing or Effective Bandwidth | Root Cause & Remediation |
 |---|---|---|---|
@@ -295,7 +319,7 @@ First, distinguish Unified Virtual Addressing (UVA) from Unified Memory. UVA sim
 
 When engineers try to coordinate threads across a GPU without respecting CUDA's execution hierarchy, they hit three severe bugs. A kernel with a spin loop between two blocks hangs forever on a production A100. A conditional barrier deadlocks an SM. Or a global counter produces a different wrong sum on every run. Each bug happens when code uses the wrong synchronization scope for the hardware level it is trying to coordinate.
 
-Because CUDA executes asynchronously across the host, across streams, and across thread blocks, ordering is always scoped to a specific level of the hierarchy. You must pick the narrowest synchronization primitive that matches your data dependency.
+Think of the scopes as levels of a building. A warp is a small team at one desk, a thread block is one floor, a stream is a single conveyor belt, and the full device is the whole building. Asking for a barrier at the wrong level either costs far too much or does not reach the people who need to wait. Because CUDA executes asynchronously across the host, across streams, and across thread blocks, ordering is always scoped to a specific level of the hierarchy. You must pick the narrowest synchronization primitive that matches your data dependency.
 
 | Scope Level | CUDA Primitive | Hardware Scope & Critical Correctness Rule |
 |---|---|---|
@@ -307,13 +331,15 @@ Because CUDA executes asynchronously across the host, across streams, and across
 | **6. Cross-Stream Event** | `cudaEventRecord` + `cudaStreamWaitEvent` | Makes Stream B wait on the GPU hardware for an event recorded in Stream A without blocking the host CPU thread (covered in Chapter 10.12). |
 | **7. Full Device** | `cudaDeviceSynchronize()` | Blocks the host CPU until all work on all streams across the entire GPU completes. Use for debugging checkpoints or shutdown, never inside a hot request loop. |
 
-Why did a financial-risk kernel deadlock on a production A100 when Block 100 spun waiting for Block 1 to write a flag. Standard CUDA kernels provide no global barrier across independent thread blocks. Furthermore, the hardware scheduler makes zero guarantee about the order in which blocks enter SMs. When spinning blocks such as Block 100 occupy all resident SM slots, Block 1 sits in the hardware queue waiting for an SM slot to open. Meanwhile, Block 100 waits forever for Block 1 to run. Whenever step B depends on the global output of step A across all blocks, split the work into two sequential kernel launches separated by stream ordering.
+Picture two workers. Worker 100 stands at the door of a room, waiting for worker 1 to flip a switch inside. Worker 1 is outside the building, waiting for a seat in the room to open. Neither one moves, and each one is waiting for the other. Why did a financial-risk kernel deadlock on a production A100 when Block 100 spun waiting for Block 1 to write a flag. Standard CUDA kernels provide no global barrier across independent thread blocks. Furthermore, the hardware scheduler makes zero guarantee about the order in which blocks enter SMs. When spinning blocks such as Block 100 occupy all resident SM slots, Block 1 sits in the hardware queue waiting for an SM slot to open. Meanwhile, Block 100 waits forever for Block 1 to run. Whenever step B depends on the global output of step A across all blocks, split the work into two sequential kernel launches separated by stream ordering.
 
 A second synchronization bug appears when thousands of threads increment a shared counter or accumulate a sum without coordination. In one customer scenario, running an unguarded reduction three times in a row produced three different wrong answers. That non-deterministic drift across identical inputs is the signature of a read-modify-write data race. Replacing the increment with `atomicAdd` restores correctness at the L2 cache. However, if 100,000 threads hit the same global address at once, the L2 atomic unit serializes all 100,000 updates. The production fix is to accumulate partial sums inside each block's fast on-chip Shared Memory using `__syncthreads()`, and let thread 0 issue a single `atomicAdd` per block to global memory.
 
 ### 4.2 Asynchronous timing (`0.014 ms` vs `4.812 ms`) and bisecting deferred errors
 
-Because kernel launches return control to the CPU immediately after placing a command in the stream queue, two operational traps catch engineers off guard. First, timing a kernel launch with a standard C++ CPU timer measures only the microsecond queue submission overhead. It underreports kernel time by hundreds of times. Second, when a kernel writes out of bounds on the GPU, the error surfaces several lines later on an innocent `cudaMemcpy` call.
+Because kernel launches return control to the CPU immediately after placing a command in the stream queue, two operational traps catch engineers off guard. First, timing a kernel launch with a standard C++ CPU timer measures only the microsecond queue submission overhead. It underreports kernel time by hundreds of times. Second, when a kernel writes out of bounds on the GPU, the error surfaces several lines later on an innocent `cudaMemcpy` call. The copy is simply the first call that has to wait for the GPU, so it is the first place the fault becomes visible. The fault itself happened earlier, in a kernel the copy never mentions.
+
+Think of a CUDA event as a stopwatch marker that the GPU places on the conveyor belt. When the GPU reaches the marker, it records the time. The CPU reads the two marks later. This is why an event timer measures real device time, while a plain CPU timer reads the wall clock at the moment the launch call returns.
 
 Look at the timing and error-attribution numbers in the two customer scenarios above.
 
@@ -348,15 +374,19 @@ To catch immediate launch-configuration mistakes and bisect which kernel trigger
     } while (0)
 ```
 
+Read the macro from top to bottom. `#define CUDA_CHECK(call)` creates a shortcut that wraps any CUDA call. The `do { ... } while (0)` wrapper makes the macro behave like a single statement, so it works inside an if without extra braces. The first line inside stores the result of the call. If that result is not `cudaSuccess`, the macro prints the file name, the line number, and the readable error text, and then exits. The backslashes at the end of each line join the macro into one logical line for the preprocessor, which is the step that runs before the compiler. Think of it as a smoke alarm on every door. You do not check each door by hand, but any door that catches fire sets off the same alarm and prints the address on it.
+
 ---
 
 ## 5. Commands and Code Patterns That Matter
+
+A teammate sends you a single source file and asks whether it works on the new GPU server. The reference program and the commands below are what you would run to answer that question. They compile the file, test it at sizes near a warp boundary, and profile where the time goes.
 
 The compilation and execution commands below follow *AI Systems Performance Engineering* Chapter 6. Because this handbook builds without an attached GPU, the commands below were not run on live hardware.
 
 ### 5.1 Complete reference implementation: `vector_add.cu`
 
-The complete reference implementation below validates 1D vector addition and records per-stage CUDA Event timings.
+The complete reference implementation below validates 1D vector addition and records per-stage CUDA Event timings. Read the program as a work order for a crew. The host sets up the materials, the kernel is the crew's instruction card, and the events are the stopwatch marks that tell you how long each stage took.
 
 ```cpp
 // vector_add.cu (from nvidia-devops Volume 03 Lab 02 Step 2)
@@ -455,6 +485,22 @@ int main(int argc, char** argv) {
 }
 ```
 
+The walk-through below follows the file from top to bottom, in the same order the program runs.
+
+The first lines bring in the CUDA runtime and the standard C++ tools for math, printing, and vectors. Think of them as the toolbox that is opened before the job starts. The `CUDA_CHECK` macro is the same smoke alarm from the error-bisection section, wrapped around every CUDA call in this file.
+
+The `vector_add` kernel is the crew's instruction card. Each worker computes its position exactly as the indexing section describes, then checks that the position is inside the array. Only then does it add one element of `a` to the matching element of `b` and write the result to `c`. The `if` line is the guard that stops the extra workers at the end of the shelf.
+
+Inside `main`, the program reads two optional arguments from the command line. If you type nothing, it uses its default count and block size. Otherwise it takes the values you pass. The variable `bytes` is the total size of one vector in memory, which is the count multiplied by the size of one float. The host then fills the input vectors with simple repeating patterns and computes the expected answer on the CPU, so the GPU result has something to be checked against.
+
+Next, `cudaMalloc` reserves three blocks of GPU memory, one for each vector. The four events are stopwatch marks placed on the work queue. Each one marks the end of a stage. The two host-to-device copies move the inputs over PCIe, and the event marks around them time the copy-in stage. The `blocks_required` line is ceiling division again, so the crew is large enough to cover every element.
+
+The triple angle bracket line dispatches the crew with the block count and the block size. The launch returns to the CPU almost at once. `cudaGetLastError` then checks that the launch itself was accepted, which is not the same as checking that the work finished. The `end_kernel` event marks the end of the kernel stage on the queue.
+
+The device-to-host copy is queued after the kernel, so it waits for the kernel to finish before it brings the results back. `cudaEventSynchronize` makes the CPU wait for the last mark before the program reads the times. `cudaEventElapsedTime` then reads the gap between two marks for each stage.
+
+The validation loop compares every result with the CPU reference. The small tolerance allows for floating-point rounding, which can differ slightly between the CPU and the GPU. The program prints the stage timings and a PASS or FAIL word. The final lines return the events and the memory to the system, and the exit code tells the shell whether validation passed.
+
 ### 5.2 Compile, test boundary shapes, and profile API overhead
 
 ```bash
@@ -474,9 +520,13 @@ nsys profile -o profile-report ./vector_add 1000003 256
 nsys stats --report cuda_api_sum profile-report.nsys-rep
 ```
 
+Read these commands as a short test plan. The first group compiles the program and runs it at sizes just below, at, and just above a warp boundary, because boundary sizes are where the guard logic is most likely to fail. The second line forces the GPU code to be compiled at load time, which helps you check the embedded code path. The last group records a profile and prints a summary of the CUDA API calls. That summary is the kind of table the allocation section reads from, and it tells you whether allocation or the kernel dominates the time.
+
 ---
 
 ## 6. How It Fails: Six Production CUDA Programming & Memory Failure Modes
+
+The first sign is usually a job that crashes, a GPU that sits idle, or a number that changes from one run to the next. Use the table to match the symptom to a likely cause before you change any code.
 
 | # | Failure Mode | Production Symptom | Root Cause & Diagnostic Evidence | Fix |
 |---|---|---|---|---|
@@ -491,6 +541,8 @@ nsys stats --report cuda_api_sum profile-report.nsys-rep
 
 ## 7. Hands-On Lab: Validate CUDA Launch Geometry, Indexing, Memory Lifecycles, and Unified Memory Behavior
 
+You want proof that the launch arithmetic, the memory rules, and the Unified Memory numbers hold before you rely on them in a code review. The lab checks them without needing a GPU.
+
 **Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. Full C++ source and compilation commands are provided in Section 5.
 
 Run `code/part10/cuda_programming_basics_lab.py`.
@@ -499,7 +551,7 @@ Run `code/part10/cuda_programming_basics_lab.py`.
 python3 code/part10/cuda_programming_basics_lab.py
 ```
 
-The lab prints 25 passing assertions with 0 failures.
+The lab prints 25 passing assertions with 0 failures. Each PASS line names the rule it checks and the source it came from, so a failure points you to the assumption that broke.
 
 ```text
 === Chapter 10.11 Lab: CUDA Programming Basics (Kernels, Indexing & Memory) ===
@@ -536,12 +588,14 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **1D launch coverage, guarded threads, and truncation math:** Using the parameters in the table below, calculate the global index of the target thread. Then compute the ceiling-division block count, total threads, and guarded extra threads, plus the truncated block count and untouched tail elements.
-2. **Warp lane waste in 1D and 2D:** Using the 1D and 2D launch configurations in the table below, calculate how many warps and warp lanes are allocated per block. Also determine how many lanes sit idle and the percentage of wasted warp lanes for each case.
-3. **SM residency and grid underfill:** Using the hardware limits from *AI Systems Performance Engineering* Chapter 6, state the maximum resident warps, threads, and blocks per SM on Blackwell. Calculate how many 256-thread blocks versus 1,024-thread blocks can reside on one SM simultaneously, and find how many SMs sit idle when a 64-block grid runs on an H100.
-4. **Transfer-to-compute ratio and allocation API overhead:** Using the Lab 02 stage timings and Chapter 5 API profile figures in the table below, compute the ratio of total PCIe transfer time to kernel execution time. Then find the combined percentage of CUDA API time spent in allocation plus deallocation, its ratio to kernel launch time, and the stream-ordered replacement calls.
-5. **Unified Memory first-touch, CPU debug stall, and oversubscription cliff:** Using the figures in the table below, calculate the cold-vs-warm iteration ratio, the CPU-check-vs-kernel stall ratio, and the throughput drop factor when crossing from 90% to 110% of VRAM capacity. State the API call that eliminates the cold first-touch spike.
-6. **Bisecting asynchronous errors and fixing inter-block deadlocks:** A program launches two kernels followed by a device-to-host copy, and crashes on the copy line with an illegal memory access error. Explain why the copy call is innocent, show how to bisect the true culprit, and explain how to fix a kernel that deadlocks because Block 100 spins waiting for Block 1.
+Work through these on paper first, then compare your answers with the figures in the tables and the lab output. Each exercise reuses numbers that appear earlier in the chapter.
+
+1. **1D launch coverage, guarded threads, and truncation math:** Using the parameters in the table below, what is the global index of the target thread? What is the ceiling-division block count? How many threads does that launch create? How many extra threads does the guard stop? What block count does truncated division give, and how many tail elements stay untouched?
+2. **Warp lane waste in 1D and 2D:** Using the launch configurations in the table below, how many warps does each block get? How many warp lanes does each block get? How many lanes sit idle in each case? What percentage of warp lanes is wasted in each case?
+3. **SM residency and grid underfill:** Using the hardware limits from *AI Systems Performance Engineering* Chapter 6, what are the maximum resident warps, threads, and blocks per SM on Blackwell? How many 256-thread blocks can reside on one SM at once? How many 1,024-thread blocks can reside there? How many SMs sit idle when a 64-block grid runs on an H100?
+4. **Transfer-to-compute ratio and allocation API overhead:** Using the Lab 02 stage timings and Chapter 5 API profile figures in the table below, what is the ratio of total PCIe transfer time to kernel execution time? What combined percentage of CUDA API time goes to allocation plus deallocation? How does that percentage compare with kernel launch time? Which stream-ordered calls replace them?
+5. **Unified Memory first-touch, CPU debug stall, and oversubscription cliff:** Using the figures in the table below, what is the cold-to-warm iteration ratio? What is the CPU-check-to-kernel stall ratio? By what factor does throughput drop when the working set crosses from 90% to 110% of VRAM capacity? Which API call removes the cold first-touch spike?
+6. **Bisecting asynchronous errors and fixing inter-block deadlocks:** A program launches two kernels followed by a device-to-host copy, and it crashes on the copy line with an illegal memory access error. Why is the copy call innocent? How would you bisect the true culprit? How would you fix a kernel that deadlocks because Block 100 spins waiting for Block 1?
 
 | Exercise | Input Parameters & Reference Figures |
 |---|---|

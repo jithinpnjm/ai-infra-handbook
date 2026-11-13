@@ -25,9 +25,11 @@ lab_venue: "Nebius GPU"
 
 A node comes back from a maintenance window. `nvidia-smi` lists all eight GPUs as healthy, yet a collective test reaches about 90 GB/s where it used to reach about 800 GB/s. Nothing has failed in the usual sense. The NVSwitch chips are present but nobody has told them how to route.
 
-Chapter 10.6 described the wires of NVLink and NVSwitch in two-GPU PCIe bridges, eight-GPU HGX baseboards, and seventy-two-GPU NVL72 racks. The wires alone move nothing. A two-GPU bridge is initialized directly by the GPU kernel driver. An NVSwitch crossbar is a switched fabric, so a control-plane daemon must find the switch chips (application-specific integrated circuits, or ASICs), train the NVLink ports, program the unicast and NVLink SHARP multicast routing tables, and fence faulted links.
+Chapter 10.6 described the wires of NVLink and NVSwitch. Those wires come in three layouts: two-GPU PCIe bridges, eight-GPU HGX baseboards, and seventy-two-GPU NVL72 racks. Wires alone move nothing, though. A two-GPU bridge is simple enough that the GPU kernel driver can bring it up directly, much as a single cable needs only a plug check. An NVSwitch crossbar is a different kind of object. It is a switched fabric, where any GPU reaches any other GPU through a switch chip, so the switches must be coordinated before traffic can move. That coordination belongs to a control-plane daemon, a background program that manages the fabric rather than carrying data. The daemon has to find the switch chips (application-specific integrated circuits, or ASICs, which are chips built for one job), train the NVLink ports (agree on the link settings at each end), program the unicast and NVLink SHARP multicast routing tables (the lookup tables that tell each switch where to forward a packet), and fence faulted links (cut a broken link off so traffic stops flowing into it).
 
 On an eight-GPU HGX or DGX server, that control plane is the NVIDIA Fabric Manager daemon `nvidia-fabricmanager.service`. On a multi-node NVL72 rack, it expands into NVOS on the switch trays coordinated by NMX-M. When Fabric Manager is stopped, version-mismatched, or beaten in a boot race by `kubelet`, workloads either fail peer-to-peer initialization or silently fall back onto the host PCIe bus.
+
+The boot race deserves a closer look, because it is the failure that surprises people most. The kubelet is the agent on each Kubernetes node that starts pods. It knows nothing about the state of the NVSwitch chips. If it starts before Fabric Manager finishes, it happily accepts GPU work. The pod then starts on a fabric that is still being wired, and NCCL (NVIDIA Collective Communications Library, the library that moves data between GPUs during training) quietly picks the slower route. The pod spec looks correct and the GPUs look healthy, so the only symptom is a slow job.
 
 | Production incident | What went wrong in the control or data plane | Measured operational impact |
 |---|---|---|
@@ -35,7 +37,7 @@ On an eight-GPU HGX or DGX server, that control plane is the NVIDIA Fabric Manag
 | 2. The 5th-pod / 8th-pod `TopologyAffinityError` | Dual-socket `128`-core, `8`-GPU node (`64` cores and `4` GPUs per NUMA socket) runs `single-numa-node`, and OS daemonsets reserve `2` CPU cores on NUMA 1 (`62` free cores). | Pods requesting `16` integer cores + `1` GPU fit 4 pods on NUMA 0 (`64` cores) and 3 pods on NUMA 1 (`48` cores), stranding `14` free cores and `1` idle GPU (`14 < 16`). |
 | 3. 40% slowdown or `~50 Gbps` cap on a 400G InfiniBand fabric | Missing `nvidia-peermem` / BIOS Large BAR forces a Host Bounce Buffer, PCIe downtrains to x8 (`25–30 GB/s`), IB port sticks in `State: Initializing`, or DDP sends tiny `256 KB` messages. | Throughput drops from `~390 Gbps` to `~50 Gbps` (`6.25 GB/s`), or PyTorch runs 40% slow until DDP `bucket_cap_mb` is raised from `25 MB` to `50 MB`. |
 
-The chapter explains what Fabric Manager does and how the three NVLink domain sizes differ. It then shows how NVSM and NVDebug collect health data from inside the operating system. The last sections follow the path from GPU to network adapter to fabric, and finish with a three-step benchmark ladder for finding which layer is slow.
+The rest of the chapter takes one question at a time. What does Fabric Manager actually do, and how do the three NVLink domain sizes differ? How do NVSM and NVDebug collect health data from inside the operating system? How does a message travel from a GPU to a network adapter and then out onto the fabric? Finally, how do you find the slow layer without guessing? The last part gives a three-step benchmark ladder for that search. Each step rules out one layer before you move on to the next.
 
 :::tip In one minute
 - The three NVLink domain sizes use different control planes. Two-GPU PCIe bridges need no Fabric Manager. Eight-GPU HGX baseboards need the host Fabric Manager, locked to the exact driver version. Seventy-two-GPU NVL72 racks use NVOS on the switch trays, managed by NMX-M.
@@ -50,28 +52,27 @@ The chapter explains what Fabric Manager does and how the three NVLink domain si
 
 **Prerequisites:** Complete Chapters 10.6 through 10.9 on GPU interconnects, PCIe versus SXM form factors, `nvidia-smi` operations, and the NVIDIA driver and container stack. You should also review Chapters 9.2 through 9.5 on DGX, HGX, and NVL72 rack architectures.
 
-**Outcomes:** After this chapter you will be able to:
-- Contrast two-GPU PCIe bridge domains, eight-GPU HGX baseboard domains, and seventy-two-GPU NVL72 rack domains.
-- Configure Fabric Manager and enforce systemd boot ordering before `containerd` and `kubelet`.
-- Operate NVSM and NVDebug on a DGX or HGX host and across a cluster through Base Command Manager `cmsh`.
-- Trace the zero-copy scale-out data path through DMA, RDMA, GPUDirect RDMA, GPUDirect Storage, and the ConnectX-6, ConnectX-7, and ConnectX-8 adapters.
-- Configure the Kubernetes Topology Manager single-NUMA policy without starving pods of CPU, and run the benchmark ladder to separate PCIe, optics, Subnet Manager, GPUDirect, and PyTorch DDP bucket problems.
+The chapter starts with the three NVLink domain sizes and the control plane each one needs. It then covers the boot ordering that keeps Fabric Manager ahead of `containerd` and `kubelet`, along with the NVSM and NVDebug tools for collecting health evidence. Next it follows the zero-copy scale-out path from the GPU through the network adapter to the fabric. The last parts cover the Topology Manager policies that keep pods on one NUMA node, and a benchmark ladder that separates the PCIe, optics, Subnet Manager, GPUDirect, and PyTorch DDP bucket problems.
 
 ---
 
 ## 1. NVLink Domains and the NVIDIA Fabric Manager (`nvidia-fabricmanager`)
 
+A capacity planner compares two quotes. One server has a pair of GPUs joined by a bridge, and the other has eight GPUs on a shared board. Both advertise NVLink. Before signing, the planner needs to know which design depends on a host daemon to deliver its bandwidth, because that daemon becomes one more service to keep alive.
+
 ### 1.1 What is an NVLink domain, and why does NVSwitch require a Fabric Manager?
 
-An NVLink domain is the set of GPUs that can address one another's High-Bandwidth Memory directly over NVLink using peer-to-peer memory semantics. If the fabric control plane for that domain is not running, GPUs inside the same server or rack cannot open peer-to-peer NVLink handles. Workloads then either fail initialization or silently fall back to host PCIe transfers.
+An NVLink domain is the set of GPUs that can address one another's High-Bandwidth Memory directly over NVLink using peer-to-peer memory semantics. Peer-to-peer means one GPU reads or writes another GPU's memory directly, without a copy that passes through the CPU. If the fabric control plane for that domain is not running, GPUs inside the same server or rack cannot open peer-to-peer NVLink handles. Workloads then either fail initialization or silently fall back to host PCIe transfers.
 
-As modeled in `code/part10/fabric_manager_nvlink.py`, NVIDIA platforms form three distinct NVLink domain geometries. A two-GPU PCIe bridge wires two GPUs point-to-point with no intermediate switch chip, so the kernel driver trains the links directly. On an eight-GPU HGX baseboard or a seventy-two-GPU NVL72 rack, all 18 NVLink lanes from each GPU terminate on NVSwitch crossbar ASICs. Those switch ASICs power on with empty forwarding tables until Fabric Manager or NVOS and NMX-M program the unicast and NVLink SHARP multicast routes.
+As modeled in `code/part10/fabric_manager_nvlink.py`, NVIDIA platforms form three distinct NVLink domain geometries. It helps to picture each one as a different street layout. A two-GPU PCIe bridge is a private driveway between two houses. The two GPUs are wired straight to each other with no intermediate switch chip, so the kernel driver trains those links directly. On an eight-GPU HGX baseboard or a seventy-two-GPU NVL72 rack, the layout changes. All 18 NVLink lanes from each GPU terminate on NVSwitch crossbar ASICs, which work like a junction box that connects every house to every other house. Those switch ASICs power on with empty forwarding tables. A table with no entries tells the switch nothing, so no traffic can be routed until Fabric Manager (or NVOS and NMX-M on NVL72) programs the unicast and NVLink SHARP multicast routes. Multicast means one send that reaches several receivers.
 
 | NVLink domain type | Max GPUs in domain | NVSwitch ASICs | Per-GPU bidirectional NVLink BW | Aggregate domain BW | Control plane that programs the fabric | Supports NVLink SHARP (`NVLS`)? |
 |---|---:|---:|---:|---:|---|---|
 | 1. PCIe 2-Way Bridge Pair (e.g., H100 NVL) | `2` | `0` | `600 GB/s` | `1.2 TB/s` | Direct P2P link training in `nvidia.ko` GPU driver; no Fabric Manager needed. | No |
 | 2. 8-GPU HGX / DGX Baseboard (H100/H200 or B200) | `8` | `4` (soldered on HGX PCB) | `900 GB/s` (H100)<br/>`1,800 GB/s` (B200) | `7.2 TB/s` (H100)<br/>`14.4 TB/s` (B200) | Host daemon `nvidia-fabricmanager.service` (`/usr/bin/nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg`). | Yes (3rd/4th-gen NVSwitch) |
 | 3. 72-GPU GB200 / GB300 NVL72 Rack (`18` compute trays) | `72` | `18` (`9` switch trays x `2` ASICs) | `1,800 GB/s` (`1.8 TB/s`) | `129.6 TB/s` (`~130 TB/s`) | NVOS on switch trays + NMX-M (Network Manager eXperience) & cluster Fabric Manager (`superpod-gb300-ra`). | Yes (NVLS in-switch reduction engines) |
+
+Two words come up again and again in this part. Scale-up means adding GPUs inside one server or rack that share a fast fabric. Scale-out means connecting many servers over a network. Latency is how long one small message takes to arrive, and bandwidth is how much data moves per second. A fabric can have excellent bandwidth and still feel slow for small messages. Collective operations send many small steps, so both numbers matter.
 
 As documented in *AI Data Center Network Design and Technologies* Chapter 13, switched scale-up fabrics achieve sub-microsecond GPU-to-GPU latency compared to PCIe Gen5. That gap has also led to open scale-up specifications such as UALink and SUE-T, covered in Part 12.
 
@@ -80,6 +81,8 @@ As documented in *AI Data Center Network Design and Technologies* Chapter 13, sw
 | NVLink / NVSwitch scale-up fabric | `100–300 ns` GPU-to-GPU latency (`~200 ns` at the switch device level) vs `500 ns–1 μs` on PCIe Gen5. | Host `/dev/nvidia-nvswitch*` devices programmed by `nv-fabricmanager` (`18` links per GPU) or NVOS/NMX-M across `18` NVSwitch ASICs in NVL72. |
 | UALink (Ultra Accelerator Link) | Open scale-up specification for xPU fabrics. | `8` stations x `4` lanes of `200 Gbps` = `32` lanes / `6.4 Tbps` per xPU with `640-byte` DL flits. |
 | SUE-T (Scale-Up Ethernet Transport) | Ethernet-based scale-up transport specification. | Uses AFH (AI Fabric Header) with LLR (Link Layer Retry) and CBFC (Credit-Based Flow Control). |
+
+The boot sequence is easier to see as a picture than as a list.
 
 ```mermaid
 flowchart TB
@@ -90,6 +93,10 @@ flowchart TB
   Check -->|"yes"| Fast["Healthy: NV18 all-to-all,<br/>NCCL uses NVLink and NVLS"]
   Check -->|"no"| Slow["Silent PCIe fallback<br/>or peer mapping failure"]
 ```
+
+Read the diagram from the top. The kernel modules load first, because Fabric Manager needs them before it can see any switch. Fabric Manager then does the slow work of programming the crossbar. Only after that should `containerd` and `kubelet` start pods. The decision at the bottom is the question to ask after every reboot. Did Fabric Manager finish before the first workload started? If yes, the node runs at NVLink speed. If no, the node falls back to a slower path, and the failure is silent.
+
+The table below turns the same four steps into something you can check on a real node. Each row names the step, what it does, and the detail to look for.
 
 | Step | What happens | Detail |
 |---|---|---|
@@ -102,13 +109,17 @@ flowchart TB
 
 ### 1.2 `nvidia-fabricmanager.service` lifecycle, version locking, and the `kubelet` boot race
 
+Picture the Monday after a maintenance window. The team patched the driver on a set of GPU servers, rebooted them, and the dashboards turned green. Two days later, one node runs a training job at a fraction of its earlier speed. Nobody touched the code. The cause is usually one of three mistakes, and the three rules below are written to catch each one.
+
 On an eight-GPU HGX server, three operational mistakes routinely break the NVLink mesh after maintenance windows: version drift between the driver and Fabric Manager, systemd boot races against `kubelet`, and misdiagnosing a soldered NVSwitch failure as a GPU failure. The auditor in `code/part10/fabric_manager_nvlink.py` checks all three rules.
 
-The first rule is about versions. Fabric Manager talks to the kernel NVSwitch driver through a private interface between compiled programs, called an application binary interface. The two must therefore come from the same release, so the Fabric Manager package version must equal the driver version.
+The first rule is about versions. Think of the driver and Fabric Manager as two halves of a plug and socket. If the pin layout changes on one half, the other half no longer fits. Fabric Manager talks to the kernel NVSwitch driver through a private interface between compiled programs, called an application binary interface, or ABI. The two must therefore come from the same release, so the Fabric Manager package version must equal the driver version. A mismatch rarely announces itself at login. It shows up as Fabric Manager exiting at startup, which leaves the switches uninitialized and the node quietly slow.
+
+Boot order is the rule people skip most often. In systemd, the service manager that starts Linux services at boot, a unit can say that it wants another unit, and it can separately say that it must start after that unit. Those are two different statements. Wanting a service does not put the order right, because only the After= line controls the order.
 
 The second rule is about order. In the `systemd-analyze blame` example below, Fabric Manager needs 15.234 seconds to start, while `containerd` needs 10.123 and `kubelet` 5.234. The source example attributes that time to training 144 NVLink sub-links and programming four NVSwitch ASICs. Treat 15 seconds as an illustrative figure from that example, not an NVIDIA specification. The real time varies with the system and driver version. In systemd, `Wants=` or `Requires=` declares a dependency but does not set startup order. Pair `Wants=` with `After=nvidia-fabricmanager.service` on both `containerd` and `kubelet`.
 
-The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink error, recall from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit. The four NVSwitch ASICs are soldered onto the HGX baseboard, so a failed switch ASIC means returning the whole baseboard to the vendor under a return merchandise authorization, or RMA.
+The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink error, recall from Chapter 9.3 that each SXM GPU is a bolted Field-Replaceable Unit, or FRU, which is a part a technician swaps as one piece. The four NVSwitch ASICs are soldered onto the HGX baseboard, so a failed switch ASIC means returning the whole baseboard to the vendor under a return merchandise authorization, or RMA. An RMA is the paperwork that starts a hardware return. Replacing the wrong part wastes a visit and leaves the fault in place, which is why the health tools in the next section matter. They show which box failed before you order anything.
 
 | Operational rule | Exact versions, timings, or error codes | Consequence of violation & remediation |
 |---|---|---|
@@ -120,11 +131,15 @@ The third rule is about what to replace. When `dmesg` logs Xid 74 for an NVLink 
 
 ## 2. In-Band Hardware Health & Telemetry Bundles: `NVSM` (`nvsm`) and `NVDebug` (`nvdebug`)
 
+A node shows a missing PCIe device in the morning report. Before anyone opens a ticket with the vendor, the on-call engineer needs three answers. Which part is unhealthy? What do the logs say? Can the evidence be bundled for NVIDIA Enterprise Support in one step?
+
 ### 2.1 NVIDIA System Management (`NVSM`): Host CLI vs BCM `cmsh` wrapper
 
-When an HGX or DGX node reports a degraded NVLink fabric or missing PCIe device, engineers need a single in-band tool to check component health and collect a support archive for NVIDIA Enterprise Support. Whereas the Out-of-Band BMC and Redfish interface monitor the chassis from outside the operating system over a dedicated management network, NVIDIA System Management runs inside Linux. It monitors GPUs, NVSwitches, NVLink-C2C, DIMMs, NVMe drives, fans, and power supplies.
+When an HGX or DGX node reports a degraded NVLink fabric or missing PCIe device, engineers need a single in-band tool to check component health and collect a support archive for NVIDIA Enterprise Support. In-band means the tool runs inside the operating system and reads the hardware through the Linux kernel. The other path is out-of-band. It goes through the BMC (baseboard management controller), a small computer on the server board that keeps working when Linux is down. Redfish, a standard web interface that most BMCs expose, is the usual way to query it. Out-of-band access travels over a dedicated management network. NVIDIA System Management, called NVSM here, runs inside Linux. It monitors GPUs, NVSwitches, NVLink-C2C, DIMMs, NVMe drives, fans, and power supplies.
 
-In the BCM 11 Administrator Manual Section 10.13, Base Command Manager provides a cluster-wide `nvsm` wrapper inside `cmsh` device mode alongside an automated `NVSMHealthDump` monitoring action on the active head node. When extracted, an `nvsm health` archive exposes a structured two-level directory tree (`boot/`, `etc/`, `nvsmhealth_commands/`, `proc/`, `usr/`, `var/`, plus JSON health files). That archive captures hundreds of system command outputs and `/proc` states for offline root-cause analysis.
+Base Command Manager (BCM) is the cluster management software that runs on the head node, the machine that looks after the other nodes. Its `cmsh` shell is the command line for that software.
+
+In the BCM 11 Administrator Manual Section 10.13, Base Command Manager provides a cluster-wide `nvsm` wrapper inside `cmsh` device mode alongside an automated `NVSMHealthDump` monitoring action on the active head node. When extracted, an `nvsm health` archive exposes a structured two-level directory tree (`boot/`, `etc/`, `nvsmhealth_commands/`, `proc/`, `usr/`, `var/`, plus JSON health files). That archive captures hundreds of system command outputs and `/proc` states for offline root-cause analysis. Think of it as a snapshot folder. Support staff can unpack it on any machine and read the health files offline, which helps when the broken node will not answer a login.
 
 | `cmsh` `device -> nvsm` subcommand | Options | Operational purpose & output |
 |---|---|---|
@@ -137,9 +152,9 @@ In the BCM 11 Administrator Manual Section 10.13, Base Command Manager provides 
 
 ### 2.2 `NVDebug` (`nvdebug`): Multi-platform host, BMC, Redfish, and NVSwitch log collection
 
-While `nvsm` targets in-band DGX health, complex fabric failures often require pulling logs simultaneously from the host OS, IPMI, Redfish, and NVSwitch management controllers across heterogeneous x86 and Arm platforms. Running manual SSH and Redfish loops by hand during an outage is slow and error-prone.
+Picture an outage where the host Linux shows the GPUs as present, yet the switch management controller reports errors and the BMC keeps a log of its own. Pulling each source by hand means one SSH session per host and one Redfish query per controller. The minutes add up, and each manual step is a chance to copy the wrong file. While `nvsm` targets in-band DGX health, complex fabric failures often require pulling logs simultaneously from the host OS, IPMI, Redfish, and NVSwitch management controllers across heterogeneous x86 and Arm platforms. IPMI (Intelligent Platform Management Interface) is an older standard for many of the same BMC functions. Running manual SSH and Redfish loops by hand during an outage is slow and error-prone.
 
-To automate multi-plane log collection, the BCM 11 Administrator Manual Section 10.14 provides the `nvdebug` tool inside `cmsh` device mode. Starting a collection on a target node launches a transient systemd service and writes compressed log bundles to the shared cluster filesystem.
+To automate multi-plane log collection, the BCM 11 Administrator Manual Section 10.14 provides the `nvdebug` tool inside `cmsh` device mode. Starting a collection on a target node launches a transient systemd service and writes compressed log bundles to the shared cluster filesystem. A transient service exists only for the length of one job. It starts, collects its logs, writes the bundle, and goes away. The shared cluster filesystem is a directory that every node can see, so the bundle lands in one place rather than on the node that broke.
 
 | `nvdebug` parameter or command | Supported values & flags | Operational behavior & telemetry |
 |---|---|---|
@@ -152,7 +167,9 @@ To automate multi-plane log collection, the BCM 11 Administrator Manual Section 
 
 ## 3. From the NVLink Domain to the Scale-Out Fabric: GPUDirect RDMA, GDS, ConnectX, and NCCL
 
-Once intra-node NVLink and Fabric Manager are healthy, tensors must leave the NVLink domain over PCIe and network adapters to synchronize gradients or read training data across the cluster. If any link in that GPU-to-PCIe-to-NIC-to-Switch chain falls back to host CPU staging, multi-node throughput collapses even when every GPU and NVSwitch inside the server is healthy.
+Picture a training job that spans a whole row of servers. The GPUs inside each box look perfect in `nvidia-smi`, yet the job slows every time a gradient has to leave the box. The problem sits somewhere on the way out of the server, and this section follows that path one stop at a time.
+
+Once intra-node NVLink and Fabric Manager are healthy, tensors must leave the NVLink domain over PCIe and network adapters to synchronize gradients or read training data across the cluster. A network adapter, called a NIC (network interface card), is the card that puts those bytes on the wire. RDMA (Remote Direct Memory Access) lets one machine write into another machine's memory while the CPUs stay out of the copy path. If any link in that GPU-to-PCIe-to-NIC-to-Switch chain falls back to host CPU staging, multi-node throughput collapses even when every GPU and NVSwitch inside the server is healthy.
 
 ```mermaid
 flowchart LR
@@ -183,9 +200,9 @@ flowchart LR
 
 ### 3.1 Why GPU networking exists: 3D Parallelism, TCP/IP overhead, and switch-buffer jitter
 
-In synchronous distributed training across Data, Pipeline, and Tensor Parallelism, every GPU must exchange gradients or activations at the end of every micro-step. When the network introduces high latency, CPU copy overhead, or microburst queueing jitter, the entire GPU fleet sits idle waiting for the slowest rank to finish its collective.
+Data parallelism gives every GPU a full copy of the model and a different slice of the batch. Pipeline parallelism splits the model into stages that sit on different GPUs. Tensor parallelism splits one layer across several GPUs. Training that combines these styles is often called 3D parallelism. In synchronous distributed training across Data, Pipeline, and Tensor Parallelism, every GPU must exchange gradients or activations at the end of every micro-step. A collective is one of these group exchanges, and a micro-step is one small slice of a training step. Each exchange works as a lockstep. When the network introduces high latency, CPU copy overhead, or microburst queueing jitter, the entire GPU fleet sits idle waiting for the slowest rank to finish its collective. A rank is one process in the job, usually one GPU.
 
-Standard Linux TCP/IP socket calls force a seven-step kernel penalty: user-to-kernel context switches, socket buffer copies, software TCP checksums, MTU segmentation, and millions of CPU interrupts per second. Similarly, routing AI training traffic through shared deep-buffer enterprise Ethernet switches introduces microburst queueing delays and packet drops unless lossless RDMA flow control is engineered end-to-end.
+Think of a socket call as asking the kernel, the core of the operating system, to carry a letter for you. The program hands the letter over, the kernel copies it into its own buffers, and the kernel splits it into frames that fit the network's MTU (maximum transmission unit, the largest frame the link carries). Every one of those steps costs CPU time. TCP/IP is the standard network protocol stack that most software uses by default. Standard Linux TCP/IP socket calls force a seven-step kernel penalty: user-to-kernel context switches, socket buffer copies, software TCP checksums, MTU segmentation, and millions of CPU interrupts per second. Similarly, routing AI training traffic through shared deep-buffer enterprise Ethernet switches introduces microburst queueing delays and packet drops unless lossless RDMA flow control is engineered end-to-end. A deep-buffer switch holds many packets in memory before it drops any. That sounds safe, but a burst from many GPUs at once fills the queue, and the packets then wait in line.
 
 | Production scenario | Network bottleneck mechanism | Quantified impact & architectural fix |
 |---|---|---|
@@ -195,9 +212,11 @@ Standard Linux TCP/IP socket calls force a seven-step kernel penalty: user-to-ke
 
 ### 3.2 `GPUDirect RDMA` (`BAR1` + `nvidia-peermem`) vs `GPUDirect Storage` (`GDS`, `libcufile`, `DALI`)
 
+Picture a parcel that arrives at a warehouse before it reaches the right house. It arrives, but it took an extra trip, and someone has to carry it again. A bounce buffer works the same way. An RDMA adapter that writes into host memory does not put the data where the GPU needs it, so the GPU has to read a second copy across PCIe. The same extra trip shows up in storage, where standard Python file reads pass training data through the Linux kernel Page Cache, a region of RAM that holds recently read files.
+
 Enabling RDMA on the network adapter is only half the battle. Standard RDMA moves packets from the wire into host CPU DDR5 system memory. That forces the GPU to perform a second PCIe copy from system RAM into GPU HBM, known as the Host Bounce Buffer. The same bottleneck hits storage pipelines when standard Python file reads stage training data through the Linux kernel Page Cache.
 
-NVIDIA solves both host-memory bottlenecks by exposing GPU HBM directly onto the PCIe bus via BAR1 so network adapters and NVMe controllers can DMA straight into GPU memory without touching the host CPU. GPUDirect RDMA uses the `nvidia-peermem.ko` kernel module to register GPU HBM pages with the InfiniBand or RoCE subsystem. Similarly, GPUDirect Storage uses `libcufile` and `nvidia-fs.ko` to move data directly between local NVMe or remote NVMe-oF storage arrays and GPU HBM.
+NVIDIA solves both host-memory bottlenecks by exposing GPU HBM directly onto the PCIe bus via BAR1 so network adapters and NVMe controllers can DMA straight into GPU memory without touching the host CPU. DMA (direct memory access) means a device moves data into memory without the CPU copying each byte. BAR1 is the window through which other devices on the bus reach GPU memory, and the BIOS settings in the table below control whether that window is large enough. GPUDirect RDMA uses the `nvidia-peermem.ko` kernel module to register GPU HBM pages with the InfiniBand or RoCE subsystem. Similarly, GPUDirect Storage uses `libcufile` and `nvidia-fs.ko` to move data directly between local NVMe or remote NVMe-oF storage arrays and GPU HBM.
 
 | Zero-copy technology | Required host hardware, BIOS, & kernel components | Production symptom when broken (`Customer Scenarios`) | Validated engineering fix |
 |---|---|---|---|
@@ -206,9 +225,11 @@ NVIDIA solves both host-memory bottlenecks by exposing GPU HBM directly onto the
 
 ### 3.3 `ConnectX-6`, `ConnectX-7`, and `ConnectX-8` PCIe physics & the dual-200G OEM trap
 
+A buyer asks for the fastest network card for the newest GPUs. The quote arrives with a card that sounds right, and the real question is whether the server's slot can carry that speed. PCIe, the Peripheral Component Interconnect Express bus, is the highway between the GPU, the network card, and the CPU. Its speed depends on the generation and on the lane count of the slot, which is the x16 part of each name.
+
 A GPU cannot push data onto the network faster than its local PCIe slot and network adapter can carry it. If a server pairs a Hopper or Blackwell GPU with an older PCIe generation or splits bandwidth across mismatched network cards, the PCIe bus becomes the bottleneck before packets ever reach the switch.
 
-Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 slot bandwidth (`code/part10/fabric_manager_nvlink.py`). In one customer scenario, a discount OEM advertised 400 Gbps per H100 GPU by pairing two 200 Gbps ConnectX-6 PCIe Gen4 cards per GPU. Because each ConnectX-6 is capped at 200 Gbps and the GPU often lacks a direct local PCIe switch path to the second card, multi-rail NCCL routing degrades. Production H100 and B200 servers require a 1:1 generationally matched 400G ConnectX-7 or 800G ConnectX-8 pairing.
+A SmartNIC is a network card with its own processing, and OEM stands for original equipment manufacturer, the company that assembles the complete server. Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 slot bandwidth (`code/part10/fabric_manager_nvlink.py`). In one customer scenario, a discount OEM advertised 400 Gbps per H100 GPU by pairing two 200 Gbps ConnectX-6 PCIe Gen4 cards per GPU. Because each ConnectX-6 is capped at 200 Gbps and the GPU often lacks a direct local PCIe switch path to the second card, multi-rail NCCL routing degrades. Production H100 and B200 servers require a 1:1 generationally matched 400G ConnectX-7 or 800G ConnectX-8 pairing. Think of the dual-card layout as two narrow pipes feeding one faucet. On paper the total looks right. In practice each card has its own path to the GPU, and multi-rail traffic (traffic spread across several network ports) is only as fast as the weakest path. NCCL has to choose which port each GPU uses, and a poor choice slows the whole collective.
 
 | SmartNIC generation | Line rate per port | Line rate in Bytes/sec | Host PCIe bus interface | Unidirectional PCIe x16 ceiling | Optical transceiver form factor | Matched GPU generation |
 |---|---:|---:|---|---:|---|---|
@@ -218,7 +239,11 @@ Matching the SmartNIC generation to the GPU generation is governed by PCIe x16 s
 
 ### 3.4 Scale-out fat-tree sizing (`1,024 GPUs`), `1:1` non-blocking vs `2:1` oversubscription, and storage plane isolation
 
+Imagine a full row of servers, each one sending at full speed in the same instant, because every rank is waiting on the same collective. The network team needs to know whether the leaf and spine switches can absorb that burst without queueing. Oversubscription means the downlinks offer more traffic than the uplinks can carry. It is harmless for ordinary web traffic that comes and goes, and it is harmful here.
+
 Even when every server has healthy NVSwitches, GPUDirect RDMA, and matched ConnectX-7 adapters, the cluster will stall if the top-of-rack and spine switches are oversubscribed or shared with bulk storage traffic. Because all ranks in a synchronous training collective transmit at line rate at the exact same microsecond, traditional data-center oversubscription ratios immediately cause congestion.
+
+Non-blocking means every downlink has a matching uplink path, so a packet never waits for a shared link to free up. A fat-tree is a layered topology in which the bandwidth is spread across more links toward the top. Rail-optimized means each GPU rail, or network port, is wired to its own leaf switch.
 
 As Chapters 9.6 through 9.9 describe, production AI fabrics follow three non-negotiable topology rules. They use 1:1 non-blocking rail-optimized fat-trees, enforce zero spine oversubscription on compute fabrics, and maintain physical separation between the compute fabric and the storage fabric.
 
@@ -228,15 +253,21 @@ As Chapters 9.6 through 9.9 describe, production AI fabrics follow three non-neg
 | 2. Why `2:1` spine oversubscription fails (`Scenario 2`) | Leaf switch connects `32` server ports down (`32 x 400G`) with only `16` uplinks to the Spine (`2:1` oversubscription). | A `512`-GPU training job running synchronous `AllReduce` drives `400 Gbps` on all `32` downlinks simultaneously, saturating the `16` uplinks and triggering IB credit backpressure. |
 | 3. Why storage (`100 GB` checkpoints) must be isolated (`Scenario 3`) | Bursting a `100 GB` checkpoint write over the shared compute InfiniBand switches. | Bulk storage frames fill switch buffers and cause head-of-line queueing jitter for latency-sensitive `AllReduce` packets; isolate storage onto a separate fabric via BlueField-3 DPUs. |
 
+Each row in the table above answers one design question. Which fabric shape does the cluster need? How many leaf and spine switches does it take? Where does the storage traffic go? The numbers in the scenarios are worked examples, and the same arithmetic applies when you change the switch size or the server count.
+
 ---
 
 ## 4. Topology-Aware Placement & the 3-Step Benchmark Hierarchy (`nvbandwidth` → `ib_write_bw` → `nccl-tests`)
 
+A GPU server has two CPU sockets, and each socket owns part of the cores, memory, and GPUs. A scheduler that ignores that layout can hand one pod a GPU on one socket and its CPU cores on the other. The pod starts, but every transfer then crosses the link between the sockets. NUMA (non-uniform memory access) is the name for this layout, where each socket has local memory and reaching the other socket costs extra time. Keeping a pod on one socket is the job of the Topology Manager, and the next subsections explain how it decides.
+
 ### 4.1 Kubernetes Topology Manager (`single-numa-node`) and the `16-Core → 12-Core` fix
+
+A ticket reports eight GPUs sitting idle while pods stay pending with a TopologyAffinityError. The GPU list looks free, and the admission error does not name the missing cores. Working out which resource ran out takes some arithmetic, and the table below does that arithmetic for you.
 
 On a dual-socket GPU server, if Kubernetes assigns a pod a GPU on NUMA node 0 but allocates CPU cores or an SR-IOV NIC on NUMA node 1, every host-to-device transfer and network call must cross the inter-socket UPI or Infinity Fabric link. Conversely, enabling strict single-NUMA enforcement without accounting for OS and DaemonSet CPU overhead causes pods to fail admission with a topology affinity error while GPUs sit idle.
 
-The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. The simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces a real customer incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
+The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for pods in the Guaranteed QoS class requesting integer CPU cores. QoS stands for quality of service, the label Kubernetes uses to rank pods. A pod gets the Guaranteed class when its requests match its limits, and that class is the one that receives exclusive CPU cores. An integer request asks for whole cores, such as 16. A fractional request does not qualify. The simulator in `code/part10/fabric_manager_nvlink.py` models all four policies and reproduces a real customer incident. When OS threads reserve 2 CPU cores on NUMA 1, the eighth pod is blocked until the per-pod CPU request is right-sized from 16 cores down to 12 cores.
 
 | Policy or scenario | Kubelet admission rule & NUMA math | Result on a `128`-core (`64`/NUMA), `8`-GPU (`4`/NUMA) server |
 |---|---|---|
@@ -247,9 +278,13 @@ The kubelet Topology Manager coordinates CPU, memory, GPU, and NIC alignment for
 
 ### 4.2 The 3-Step Hardware-to-Application Benchmark Hierarchy (`diagnose_three_step_data_path_benchmarks`)
 
+A training job that used to finish overnight now runs into the next afternoon. The team has already changed a few NCCL environment variables, and nothing moved. This is the point where guessing stops working and the layers need to be checked in order.
+
 When a distributed training job runs slowly or stalls, debugging inside Python or tweaking NCCL environment variables at random wastes hours. A slow job can be caused by a dead InfiniBand Subnet Manager, a dirty optical transceiver, a downtrained PCIe riser, a missing peer-memory kernel module, or tiny PyTorch gradient buckets.
 
 Follow a sequential benchmark ladder. By checking port state first, intra-node `nvbandwidth` second, raw wire `ib_write_bw` third, and `nccl-tests` fourth, you prove each physical layer before inspecting application code.
+
+Think of the ladder as a set of gates. Each gate proves one layer is healthy, and the next gate only means something after the previous one opens. The port state comes first, because a dead link makes every later test meaningless. The intra-node test comes next and checks the PCIe path inside the box. The raw wire test checks the cable and the switch. The NCCL test comes last because it exercises the full stack, and a failure there is hard to read unless the earlier gates passed. Application profiling belongs after all of them, since a slow model cannot be blamed on the network until the network is proven.
 
 ```mermaid
 flowchart TB
@@ -281,11 +316,13 @@ flowchart TB
 
 ## 5. Commands and Configurations That Matter
 
+A new node arrives in a rack with a handover note that says its fabric is healthy. Before the team trusts the note, someone types a short list of commands and compares the output with the numbers in this chapter. The commands below are that list.
+
 The commands below follow the BCM 11 Administrator Manual, Sections 10.13 and 10.14. No multi-node HGX or InfiniBand hardware was available for this chapter, so the commands below were not run on live hardware.
 
 ### 5.1 Verify `nvidia-fabricmanager.service` and enforce systemd ordering before `containerd`/`kubelet`
 
-When an eight-GPU HGX server boots or updates its driver packages, verify that Fabric Manager matches the exact driver version. Then inspect systemd boot timings so `kubelet` cannot race ahead of NVSwitch initialization.
+When an eight-GPU HGX server boots or updates its driver packages, verify that Fabric Manager matches the exact driver version. Then inspect systemd boot timings so `kubelet` cannot race ahead of NVSwitch initialization. The first command lists installed packages, so you can compare the driver and Fabric Manager versions side by side. The second command checks whether the service is running. The `systemd-analyze` commands report how long each unit took to start, and that report is where the boot race shows up.
 
 ```bash
 # 1. Verify that nvidia-fabricmanager package matches the installed driver branch (untested here)
@@ -298,7 +335,7 @@ systemd-analyze blame | head -n 10
 systemd-analyze critical-chain kubelet.service
 ```
 
-Create `/etc/systemd/system/containerd.service.d/wait-for-fabricmanager.conf` and the identical drop-in for `kubelet.service`.
+A drop-in is a small override file. It adds lines to a service without editing the vendor's original unit file, which keeps the change in one place. Create `/etc/systemd/system/containerd.service.d/wait-for-fabricmanager.conf` and the identical drop-in for `kubelet.service`. Both files hold the same two lines, because both services must wait for the same Fabric Manager.
 
 ```ini
 [Unit]
@@ -308,7 +345,11 @@ Wants=nvidia-fabricmanager.service
 
 ### 5.2 Run `nvsm` and `nvdebug` on a DGX host and inside BCM `cmsh`
 
+A DGX node shows a fabric alarm late on a Friday. You want the health state from the node itself, and you also want the cluster head node to gather a support archive without logging in to each box. The two paths below cover both cases.
+
 To inspect in-band health on a single DGX node or collect cluster-wide support archives from the Base Command Manager head node, use `nvsm` and `nvdebug`.
+
+The first block runs on the node itself through the Linux command line. The second block asks the BMC for thermal readings over HTTPS. In that command, the user option supplies a username and password, and the insecure option tells curl to skip certificate checking. That is common on a BMC with a self-signed certificate, but it is a risk on an untrusted network.
 
 ```bash
 # 1. Directly on a DGX host (in-band Linux CLI) (untested here)
@@ -319,7 +360,7 @@ sudo nvsm dump health
 curl -u admin:password -k https://<BMC_IP>/redfish/v1/Chassis/1/Thermal
 ```
 
-Inside Base Command Manager `cmsh`:
+Inside Base Command Manager `cmsh`, the prompt shows which mode you are in. The line `device` moves you into device mode, and the `nvsm` and `nvdebug` lines after it act on the node names you pass with `-n`. A bracketed range of node names, as the block below shows, covers several DGX systems in one line.
 
 ```text
 [basecm11]% device
@@ -335,7 +376,9 @@ Inside Base Command Manager `cmsh`:
 
 ### 5.3 Execute the 3-step data-path benchmark sequence (`nvbandwidth` → `ib_write_bw` → `nccl-tests`)
 
-Run the four verification steps in strict order to isolate InfiniBand link state, intra-node PCIe bandwidth, raw RDMA wire speed, and multi-node GPUDirect RDMA collectives.
+You suspect a slow link between two nodes and need to know which layer to blame. Run the checks in order and stop at the first failure. A later test cannot rescue an earlier broken layer, so running them out of order wastes time.
+
+Run the four verification steps in strict order to isolate InfiniBand link state, intra-node PCIe bandwidth, raw RDMA wire speed, and multi-node GPUDirect RDMA collectives. Each step answers one question, and each answer decides whether the next step is worth running.
 
 ```bash
 # Step 0 (untested here): Verify InfiniBand port state (Active + LinkUp, Rate: 400) and zero error counters
@@ -369,7 +412,9 @@ gdscheck -p
 
 ## 6. How It Fails: Six Production Fabric Manager, NVLink Domain, and Data-Path Failure Modes
 
-When an intra-node NVLink mesh or scale-out RDMA fabric degrades, use the symptom and diagnostic evidence in the table below to isolate the root cause before replacing hardware.
+The ticket is short. Training was fine on Monday and has been slow since the maintenance window. You cannot tell which failure mode it is until you match the symptom to the evidence, and replacing hardware is expensive, so the evidence comes first.
+
+When an intra-node NVLink mesh or scale-out RDMA fabric degrades, use the symptom and diagnostic evidence in the table below to isolate the root cause before replacing hardware. Read each row from left to right. The symptom is what a user sees, the root cause and evidence is what the logs and counters show, and the fix is the action that restores the fabric.
 
 | # | Failure mode | Production symptom | Root cause & diagnostic evidence | Fix |
 |---|---|---|---|---|
@@ -384,6 +429,8 @@ When an intra-node NVLink mesh or scale-out RDMA fabric degrades, use the sympto
 
 ## 7. Hands-On Lab: Verify NVLink Domains, Fabric Manager Rules, Topology Manager Admission, and 3-Step Benchmark Triage
 
+A new engineer on the platform team wants to practice this reasoning before touching a production node. The lab below lets you do that on any Linux machine. It checks the rules from this chapter one case at a time, so you can see each rule fire before you rely on it in a real incident.
+
 **Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using the Python standard library. All live `systemctl`, `nvsm`, `nvdebug`, `nvbandwidth`, `ib_write_bw`, and `all_reduce_perf` commands are in Section 5.
 
 Run `code/part10/fabric_manager_nvlink_lab.py` to execute all 25 verification checks.
@@ -391,6 +438,8 @@ Run `code/part10/fabric_manager_nvlink_lab.py` to execute all 25 verification ch
 ```bash
 python3 code/part10/fabric_manager_nvlink_lab.py
 ```
+
+If the lab prints `25 passed, 0 failed`, every rule in this chapter held for the cases the lab tests. If a line reads FAIL, read the check name first, because each name points to the rule it tests and the section that explains it.
 
 Expected output (`25 passed, 0 failed`).
 
@@ -429,17 +478,17 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. An eight-GPU HGX H100 server reboots. In the boot timings in Section 1.2, Fabric Manager finishes after `kubelet`. What happens to the first training pod? Write the systemd drop-in that prevents this for `containerd.service` and `kubelet.service`.
-2. A DGX node logs an NVLink error. Write the `cmsh` device-mode commands that show active NVSM alerts and the driver and Fabric Manager versions.
-3. For the same node, write the commands that start a full health dump. Then write the command that collects an `nvdebug` bundle for the health-check log group.
-4. A dual-socket HGX server has 128 CPU cores and 8 GPUs, split evenly across two NUMA nodes. System daemons reserve 2 cores on NUMA 1. Using Table 4.1, how many pods that each request 16 CPUs and 1 GPU does the single-NUMA policy admit?
-5. In that same server, how many CPU cores and GPUs stay stranded on NUMA 1? Why does a request of 12 CPUs per pod admit all 8 pods?
-6. Use Table 4.2 on four tickets. In the first, `nvbandwidth` reports half the normal PCIe Gen5 bandwidth. In the second, `ibstat` shows the physical link up but the logical state as initializing. Give the root cause and fix for each.
-7. In the third ticket, `ib_write_bw` runs at full line rate, but `nccl-tests` shows InfiniBand transport without GPUDirect RDMA at 50 Gbps. In the fourth, all three benchmarks pass and a PyTorch DDP model with tiny layers runs 40% slow. Give the root cause and fix for each.
-8. Use Table 3.3 to convert a 400 Gbps ConnectX-7 port and an 800 Gbps ConnectX-8 port into gigabytes per second. Compare each with the one-way bandwidth of the matching PCIe x16 slot.
-9. Why does pairing each H100 with two 200 Gbps ConnectX-6 cards fail to match one ConnectX-7 card?
-10. Use Table 3.4 for 128 DGX H100 servers and 64-port Quantum-2 NDR switches. How many servers fit in one rail-optimized Leaf Group?
-11. For the same cluster, how many Leaf Groups, Leaf switches, and Spine switches does a 1:1 non-blocking fabric need?
+1. An eight-GPU HGX H100 server reboots. In the boot timings in Section 1.2, Fabric Manager finishes after `kubelet`. What happens to the first training pod? Write the systemd drop-in that stops this for `containerd.service`. Write the same drop-in for `kubelet.service`.
+2. A DGX node logs an NVLink error. Write the `cmsh` device-mode command that lists the active NVSM alerts. Write the device-mode command that shows the driver and Fabric Manager versions.
+3. For the same node, write the command that starts a full health dump. Write the `nvdebug` command that collects a bundle for the health-check log group.
+4. A dual-socket HGX server has 128 CPU cores and 8 GPUs, split evenly across two NUMA nodes. System daemons reserve 2 cores on NUMA 1. Each pod asks for 16 CPUs and 1 GPU. Using the policy table in Section 4.1, how many of these pods does the single-NUMA policy admit?
+5. In that same server, how many CPU cores stay stranded on NUMA 1? How many GPUs stay unused there? Why does a request of 12 CPUs per pod admit all 8 pods?
+6. Use the step table in Section 4.2 for these tickets. In the first ticket, `nvbandwidth` reports half the normal PCIe Gen5 bandwidth. What is its root cause? What is its fix? In the second ticket, `ibstat` shows the physical link up but the logical state as initializing. What is its root cause? What is its fix?
+7. In the third ticket, `ib_write_bw` runs at full line rate. However, `nccl-tests` shows InfiniBand transport without GPUDirect RDMA at 50 Gbps. What is the root cause for this ticket? What is the fix? In the fourth ticket, all three benchmarks pass. A PyTorch DistributedDataParallel (DDP) model with tiny layers still runs 40% slow. What is the root cause there? What is the fix?
+8. Use the SmartNIC table in Section 3.3 to convert a 400 Gbps ConnectX-7 port into gigabytes per second. Convert the 800 Gbps ConnectX-8 port the same way. Compare each result with the one-way bandwidth of its matching PCIe x16 slot.
+9. Why does pairing each H100 with two 200 Gbps ConnectX-6 cards fail to match one ConnectX-7 card? Think about the path from the GPU to each card.
+10. Use the scale-out sizing table in Section 3.4 for this case. The cluster has 128 DGX H100 servers and uses 64-port Quantum-2 NDR switches. How many servers fit in one rail-optimized Leaf Group?
+11. For the same cluster, how many Leaf Groups does a 1:1 non-blocking fabric need? How many Leaf switches does it need? How many Spine switches does it need?
 
 ---
 

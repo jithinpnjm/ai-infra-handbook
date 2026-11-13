@@ -23,11 +23,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-In Chapter 10.11, we saw that moving data across the PCIe bus took roughly 13 times longer than executing the vector-add kernel itself. If a production inference server or training loop runs sequentially, it copies Batch 1 to the GPU, computes Batch 1, and copies Result 1 back to the CPU before touching Batch 2. Under that serial pattern, the hardware sits idle half the time. The GPU Streaming Multiprocessors wait while the PCIe bus transfers bytes, and the PCIe bus waits while the SMs run math.
+In Chapter 10.11, we saw that moving data across the PCIe bus took roughly 13 times longer than executing the vector-add kernel itself. If a production inference server or training loop runs sequentially, it copies Batch 1 to the GPU, computes Batch 1, and copies Result 1 back to the CPU before touching Batch 2. Under that serial pattern, the hardware sits idle half the time. The GPU Streaming Multiprocessors wait while the PCIe bus transfers bytes, and the PCIe bus waits while the SMs run math. Picture a bakery with one oven and one loading dock. The dock unloads a tray, the oven bakes it, and the dock sits idle while the oven works. Nothing is wrong with either piece on its own. The bakery is slow because the two never work at the same time.
 
-Modern NVIDIA data-center GPUs such as A100, H100, and B200 include independent hardware DMA Copy Engines alongside the SM compute engines. One DMA engine handles Host-to-Device transfers and a second DMA engine handles Device-to-Host transfers. When properly configured, the GPU executes three-way overlap simultaneously. Stream 0 computes Batch $t$ on the SMs, Stream 1 copies Batch $t+1$ from host to device, and Stream 2 copies the finished output of Batch $t-1$ from device to host.
+Modern NVIDIA data-center GPUs such as A100, H100, and B200 include independent hardware DMA Copy Engines alongside the SM compute engines. One DMA engine handles Host-to-Device transfers and a second DMA engine handles Device-to-Host transfers. When properly configured, the GPU executes three-way overlap simultaneously. Stream 0 computes Batch $t$ on the SMs, Stream 1 copies Batch $t+1$ from host to device, and Stream 2 copies the finished output of Batch $t-1$ from device to host. Read that sentence as a schedule. At any moment, the oven, the inbound dock, and the outbound dock are each working on a different batch. That is the picture the rest of the chapter tries to build.
 
-Yet in production, engineering teams routinely add CUDA Streams and `cudaMemcpyAsync` to their service, open an NVIDIA Nsight Systems timeline, and discover zero overlap. Four production incidents from our reference sources illustrate what breaks multi-stream concurrency in the real world.
+Yet in production, engineering teams routinely add CUDA Streams and `cudaMemcpyAsync` to their service, open an NVIDIA Nsight Systems timeline, and discover zero overlap. Four production incidents from the reference runs behind this chapter illustrate what breaks multi-stream concurrency in the real world. Each one passed a quick read of the code, and the gap only appeared in a profiler trace. The profiler is the tool that shows overlap, or the lack of it, so the incidents below each come with a trace or a timing.
 
 | Incident Scenario | What Went Wrong in Production | Reference Trace or Timing Impact | Root Fix |
 |---|---|---|---|
@@ -36,10 +36,10 @@ Yet in production, engineering teams routinely add CUDA Streams and `cudaMemcpyA
 | **`812.4 ms -> 1,934.7 ms` Sync Stall & Index `4,194,304` Corruption** | In `overlap_pipeline.cu` (`67,108,864` floats = `1 << 26` across `16` chunks of `4,194,304` floats = `16 MiB` each, `512 MiB` total transfer), an engineer added `cudaDeviceSynchronize()` or reordered slot collection after refill. | Baseline 2-stream overlap took `812.4 ms` (`~630.2 MiB/s`); hot-loop `cudaDeviceSynchronize()` bloated runtime by `2.38x` (`~2.4x`) to `1,934.7 ms`; collecting after refilling corrupted output at index `4,194,304` (or intermittently at index `4,194,305` when event sync was omitted). | Enforce per-slot `cudaEventSynchronize(complete[slot])` -> Collect -> Refill -> H2D -> Kernel -> D2H -> `cudaEventRecord`. |
 | **Recommendation Engine Cold-Start Spike** | A recommendation microservice using Unified Memory saw its first request take `5 seconds` before settling to `100 ms` by request `10`. | Cold demand-paging faults migrated embeddings across PCIe on the first request. | Prefetch managed buffers with `cudaMemPrefetchAsync` during warmup or use explicit pinned-memory stream pipelines. |
 
-This chapter explains how to build and verify genuinely overlapped CUDA pipelines. We cover CUDA Stream types and the legacy default stream barrier, and we show why DMA engines require pinned host memory and local NUMA placement. Next, we explain how CUDA Events and host callbacks coordinate multi-stream pipelines without stalling the CPU. Finally, we cover how stream-ordered memory allocation prevents multi-stream LLM scratch buffer stalls, and we walk through the complete double-buffered pipeline.
+This chapter explains how to build and verify genuinely overlapped CUDA pipelines. We cover CUDA Stream types and the legacy default stream barrier, and we show why DMA engines require pinned host memory and local NUMA placement. Next, we explain how CUDA Events and host callbacks coordinate multi-stream pipelines without stalling the CPU. Finally, we cover how stream-ordered memory allocation prevents multi-stream LLM scratch buffer stalls, and we walk through the complete double-buffered pipeline. Think of the whole chapter as a bakery line. The streams are the conveyor belts, the copy engines are the loading and unloading docks, and the SMs are the ovens. Overlap means the docks and the ovens run at the same time instead of taking turns.
 
 :::note About the numbers in this chapter
-The trace values, bandwidths, runtimes, and failure indexes quoted from `nvidia-devops` Volume 03 Chapters 7 and 8 and Lab 03 are marked as illustrative in those source notes. They demonstrate the exact diagnostic shape of each failure mode and were not captured on live hardware for this handbook. The architectural rules for stream 0 barriers, pinned DMA transfers, stream-ordered allocators, and host callbacks come from *AI Systems Performance Engineering* Chapter 11.
+The trace values, bandwidths, runtimes, and failure indexes quoted from the `nvidia-devops` pipeline and pinned-memory material (its chapters 7 and 8 and Lab 03) are marked as illustrative in that material. They demonstrate the exact diagnostic shape of each failure mode and were not captured on live hardware for this handbook. The architectural rules for stream 0 barriers, pinned DMA transfers, stream-ordered allocators, and host callbacks come from *AI Systems Performance Engineering* Chapter 11.
 :::
 
 :::tip In one minute
@@ -55,11 +55,7 @@ The trace values, bandwidths, runtimes, and failure indexes quoted from `nvidia-
 
 **Prerequisites:** Complete Chapter 10.11 on CUDA kernels, launch geometry, and explicit memory APIs. Also review Chapter 10.6 on PCIe DMA transfers and NUMA topology.
 
-**Outcomes:** After completing this chapter, you will be able to accomplish four goals.
-1. Contrast host asynchrony against device concurrency, explain why the legacy default stream serializes multi-stream pipelines, and configure explicit non-blocking streams.
-2. Explain why hardware DMA Copy Engines require pinned host memory, quantify the throughput gap across pageable and remote-NUMA buffers, and size bounded pinned pools safely.
-3. Coordinate multi-stream producer-consumer pipelines and LLM layerwise overlap using CUDA Events, host callbacks, and stream-ordered memory allocation.
-4. Build, profile with Nsight Systems, and troubleshoot a double-buffered overlapped CUDA pipeline, diagnosing fake overlap, device synchronization stalls, and premature slot reuse.
+**Outcomes:** The chapter walks through four things in order. It starts with host asynchrony against device concurrency, and why the legacy default stream serializes pipelines, which leads to explicit non-blocking streams. It then explains why hardware DMA Copy Engines need pinned host memory, how large the gap is between pageable and remote-NUMA buffers, and how to size a bounded pinned pool safely. Next it covers multi-stream producer-consumer pipelines and LLM layerwise overlap with CUDA Events, host callbacks, and stream-ordered allocation. The last part builds, profiles, and troubleshoots a double-buffered pipeline, which means diagnosing fake overlap, device synchronization stalls, and premature slot reuse.
 
 ---
 
@@ -67,15 +63,15 @@ The trace values, bandwidths, runtimes, and failure indexes quoted from `nvidia-
 
 ### 1.1 Host asynchrony vs device concurrency and 3-way hardware engine overlap
 
-When an engineer sees `cudaMemcpyAsync` and a kernel launch return control to the CPU in a few microseconds, it is tempting to assume the transfer and kernel are running together on the GPU. Often they are not. A function returning quickly to the CPU only proves host asynchrony. Real pipeline speedup requires device concurrency across separate physical engines on the GPU die.
+When an engineer sees `cudaMemcpyAsync` and a kernel launch return control to the CPU in a few microseconds, it is tempting to assume the transfer and kernel are running together on the GPU. Often they are not. A function returning quickly to the CPU only proves host asynchrony. Real pipeline speedup requires device concurrency across separate physical engines on the GPU die. A simple test separates the two. If the CPU call returns quickly, that is host asynchrony. Only a profiler trace that shows two bars at the same time on different engines proves device concurrency.
 
-A CUDA Stream is a FIFO hardware-backed work queue. Commands enqueued into the same stream execute in strict issue order. Commands enqueued into different independent streams have no ordering constraint and can run concurrently on the hardware. Make sure you separate two distinct concepts from `nvidia-devops` Volume 03 Chapter 7 and *AI Systems Performance Engineering* Chapter 11.
+A CUDA Stream is a FIFO hardware-backed work queue. Commands enqueued into the same stream execute in strict issue order. Commands enqueued into different independent streams have no ordering constraint and can run concurrently on the hardware. Think of a stream as a single checkout lane at a store. Customers in one lane are served in order, but two lanes can serve customers at the same time. Keep two distinct ideas apart, because the rest of this section depends on the difference between them. Use the `nvidia-devops` pipeline material as the reference for the exact terms.
 - Host asynchrony means the C++ call returns control to the calling CPU thread before the GPU finishes the work.
 - Device concurrency means two or more operations make simultaneous physical progress on the GPU's hardware engines during the same microsecond window.
 
-How can a single GPU copy inputs, run a compute kernel, and copy outputs back at the exact same microsecond. Modern data-center GPUs provide separate physical hardware engines.
-- The Compute Engine (Streaming Multiprocessors) can execute up to 128 concurrent kernel grids if their combined registers, shared memory, and warps fit within per-SM limits. If a single kernel already saturates 100% of SM compute or HBM bandwidth, running two kernels concurrently simply shares the saturated hardware at roughly 50% speed each.
-- The DMA Copy Engines move data across PCIe or NVLink-C2C independently of the SMs. When a GPU has two or more asynchronous copy engines (`deviceProp.asyncEngineCount`), one engine handles Host-to-Device transfers and a second handles Device-to-Host transfers. That hardware separation enables three-way overlap across consecutive batches.
+Think of a kitchen where one person chops, another cooks, and a third plates, all at once. The question is how a single chip manages the same trick. How can a single GPU copy inputs, run a compute kernel, and copy outputs back at the exact same microsecond? Modern data-center GPUs provide separate physical hardware engines.
+- The Compute Engine (Streaming Multiprocessors) can execute up to 128 concurrent kernel grids if their combined registers, shared memory, and warps fit within per-SM limits. If a single kernel already saturates 100% of SM compute or HBM bandwidth, running two kernels concurrently simply shares the saturated hardware at roughly 50% speed each. That is why overlap helps most when kernels spend time waiting on memory or a copy, and helps least when every kernel already uses the full chip.
+- The DMA Copy Engines move data across PCIe or NVLink-C2C independently of the SMs. When a GPU has two or more asynchronous copy engines (`deviceProp.asyncEngineCount`), one engine handles Host-to-Device transfers and a second handles Device-to-Host transfers. That hardware separation enables three-way overlap across consecutive batches. In plain words, the copy engines behave like loading docks that work on their own schedule, separate from the oven floor.
 
 ```mermaid
 gantt
@@ -107,13 +103,15 @@ gantt
     D2H Batch 2                                           :d3, 11, 13
 ```
 
-Look at time window 5 to 7 in the Gantt chart above. All three physical engines work simultaneously. Stream 0 copies Batch 0 outputs back to the host on Copy Engine 1, Stream 1 executes Kernel Batch 1 on the SMs, and Stream 2 copies Batch 2 inputs to the device on Copy Engine 0.
+Read the Gantt chart as a set of rows, one per stream. Each bar shows when one operation runs, against the chart's own time axis. The first section shows the sequential version, where every bar waits for the one before it. The lower sections show the same work spread across streams, so bars can sit side by side.
+
+Look at time window 5 to 7 in the Gantt chart above. All three physical engines work simultaneously. Stream 0 copies Batch 0 outputs back to the host on Copy Engine 1, Stream 1 executes Kernel Batch 1 on the SMs, and Stream 2 copies Batch 2 inputs to the device on Copy Engine 0. The point is not the exact numbers on the chart. The point is that three bars overlap at once, one for each engine.
 
 ### 1.2 Legacy Default Stream vs Per-Thread Default Stream vs Non-Blocking Streams
 
-Even when a developer creates multiple streams, a single stray logging call, helper kernel, or library call launched without an explicit stream argument can serialize the entire GPU. That surprise happens because CUDA's legacy default stream was originally designed to make single-stream programs safe. It acts as a global barrier across all regular blocking streams.
+Even when a developer creates multiple streams, a single stray logging call, helper kernel, or library call launched without an explicit stream argument can serialize the entire GPU. That surprise happens because CUDA's legacy default stream was originally designed to make single-stream programs safe. It acts as a global barrier across all regular blocking streams. Think of it as a gate that every lane must pass through. Even if every other lane is busy with its own customers, one person who walks up to the default gate makes everyone wait behind it.
 
-In *AI Systems Performance Engineering* Chapter 11, Chris Fregly contrasts the three stream modes and explains how to prevent accidental stream serialization. Note that `CUDA_API_PER_THREAD_DEFAULT_STREAM` is a compile-time C preprocessor macro defined before including the CUDA runtime header, not a runtime environment variable.
+In *AI Systems Performance Engineering* Chapter 11, Chris Fregly contrasts the three stream modes and explains how to prevent accidental stream serialization. Note that `CUDA_API_PER_THREAD_DEFAULT_STREAM` is a compile-time C preprocessor macro defined before including the CUDA runtime header, not a runtime environment variable. In plain words, you set it before the CUDA header is read, the same way you set a compiler option before a build starts, and not while the program is already running.
 
 | Stream Mode | Creation or Activation Syntax | Synchronization Behavior Across Streams | Production Guidance |
 |---|---|---|---|
@@ -121,15 +119,21 @@ In *AI Systems Performance Engineering* Chapter 11, Chris Fregly contrasts the t
 | **2. Per-Thread Default Stream (`PTDS`, `cudaStreamPerThread`)** | Compile with `nvcc --default-stream per-thread` or place `#define CUDA_API_PER_THREAD_DEFAULT_STREAM 1` before `#include <cuda_runtime.h>`. | Gives each host CPU thread its own independent default stream that does not block other host threads' default streams or explicit streams (unless mixed with `cudaStreamLegacy`). | Enable for multi-threaded C++ hosts where each CPU worker thread submits independent GPU work. |
 | **3. Explicit Non-Blocking Stream (`cudaStreamNonBlocking`)** | `cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)` | Completely independent queue; never synchronizes implicitly with legacy stream `0`. Only waits when explicitly instructed via `cudaStreamWaitEvent()`. | Standard choice for AI pipelines. Pass explicit `cudaStreamNonBlocking` streams to all kernels, copies, `cuBLAS`, `cuDNN`, and high-priority `NCCL` streams. |
 
+The table is a lookup. The short rule is to create explicit non-blocking streams for real work and to keep the legacy stream out of hot paths. The sections that follow show why the copy engines care where host memory lives. When you review a pull request, look for three things first. Does each launch and copy name its stream? Does any allocation or synchronize call sit inside the hot loop? Is the host buffer pinned? Those three checks catch most of the fake overlap described in this chapter.
+
 ---
 
 ## 2. Pinned Host Memory, NUMA Locality, and Stream-Ordered LLM Scratch Pools
 
+A team has two streams, both marked non-blocking, and the profiler still shows one stream waiting for the other. The copy engines are idle, the GPU is idle, and the host is busy. This section explains the most common reason for that picture, which is the kind of host buffer the copy reads from.
+
 ### 2.1 Why DMA requires Pinned Memory and the 256 MiB benchmark
 
-If you create two non-blocking streams and call `cudaMemcpyAsync` on standard C++ vector or `malloc()` host buffers, Nsight Systems shows zero overlap. The second stream waits until the first stream's transfers and kernel completely finish. Worse, your Host-to-Device transfer bandwidth sits at less than a quarter of PCIe capacity. The culprit is standard OS pageable memory, which a GPU DMA engine cannot read directly.
+If you create two non-blocking streams and call `cudaMemcpyAsync` on standard C++ vector or `malloc()` host buffers, Nsight Systems shows zero overlap. The second stream waits until the first stream's transfers and kernel completely finish. Worse, your Host-to-Device transfer bandwidth sits at less than a quarter of PCIe capacity. The culprit is standard OS pageable memory, which a GPU DMA engine cannot read directly. Think of a DMA engine as a loading truck that can only pick up from a dock with a fixed address. Pageable memory is like a parcel that the post office keeps moving between shelves, so the truck cannot find it when it arrives.
 
-When you allocate host memory with `malloc()`, `new`, or a default CPU tensor, the Linux kernel returns pageable virtual memory. The OS kernel can swap those 4 KB pages to NVMe disk or relocate their physical page frames at any instant. Therefore, the GPU's DMA Copy Engine cannot safely read from those physical addresses over PCIe. Whenever you pass a pageable host pointer to `cudaMemcpyAsync`, the CUDA driver must first perform a synchronous CPU copy into a hidden internal page-locked staging buffer before DMA can start. That hidden copy blocks the host CPU thread and serializes your streams.
+When you allocate host memory with `malloc()`, `new`, or a default CPU tensor, the Linux kernel returns pageable virtual memory. The OS kernel can swap those 4 KB pages to NVMe disk or relocate their physical page frames at any instant. Therefore, the GPU's DMA Copy Engine cannot safely read from those physical addresses over PCIe. Whenever you pass a pageable host pointer to `cudaMemcpyAsync`, the CUDA driver must first perform a synchronous CPU copy into a hidden internal page-locked staging buffer before DMA can start. That hidden copy blocks the host CPU thread and serializes your streams. Put simply, the driver makes a second copy, and that second copy happens on the CPU, where your program is already waiting.
+
+Read the flowchart from the top. Every transfer first asks one question about the host buffer, which is whether it is pinned. The answer decides the whole path. A pageable buffer takes the detour through a hidden CPU copy. A pinned buffer goes straight to the DMA engine, and then a second question matters, which is whether the buffer sits on the NUMA socket that the GPU is wired to.
 
 ```mermaid
 flowchart TB
@@ -142,7 +146,7 @@ flowchart TB
   NUMA -->|"Yes: Local NUMA Socket"| Local["Direct DMA over local PCIe root<br/>Reference run (256 MiB): 16.902 ms (15.88 GB/s = 4.40x)<br/>True H2D + Compute + D2H overlap"]
 ```
 
-The table below summarizes the 256 MiB benchmark and the Nsight Systems serialized trace from `nvidia-devops` Volume 03 Chapters 7 and 8.
+The table below summarizes the 256 MiB benchmark and the serialized Nsight Systems trace from the `nvidia-devops` material. Read the rows in order. The first two rows compare pageable and pinned transfers. The third row shows the NUMA penalty. The last row is the trace that shows whether two streams were really overlapping. Think about what the first row is saying. The same bytes cross the bus in every case. The only change is the kind of host buffer, and that one choice changes the time a whole transfer takes.
 
 | Benchmark / Trace Case | Host Buffer & NUMA Configuration | Reference Duration & Effective Bandwidth | Concurrency & Host Behavior |
 | --- | --- | --- | --- |
@@ -151,15 +155,17 @@ The table below summarizes the 256 MiB benchmark and the Nsight Systems serializ
 | **Remote-NUMA Pinned H2D Transfer** (`256 MiB`) | Pinned buffer allocated on NUMA 0 feeding a GPU wired to NUMA 1 | `~1.75x` penalty -> drops from `15.88 GB/s` to `9.08 GB/s` | DMA traffic traverses the inter-socket UPI or xGMI link before reaching the GPU's PCIe root complex. |
 | **Serialized Nsight Systems Trace** (`nsys stats --report cuda_gpu_trace`) | Stream 14 (`H2D` `1,200,000 ns` dur `480,000 ns`, `transform` `1,680,412 ns` dur `612,304 ns`, `D2H` `2,292,900 ns` dur `471,200 ns`) vs Stream 15 | Stream 14 D2H ends at `2,764,100 ns`; Stream 15 H2D starts at `2,764,300 ns` (`dur 478,900 ns`, `transform` at `3,243,600 ns` `dur 609,100 ns`) | `200 ns` idle gap between Stream 14 end and Stream 15 start proves `FAKE_SERIALIZED_OVERLAP` (true overlap starts Stream 15 H2D at e.g. `1,700,000 ns` during Stream 14's `[1,680,412 .. 2,292,716 ns]` kernel window). |
 
+Read the last row the way you would read a timeline. Look at the end of Stream 14's copy back, then at the start of Stream 15's copy in. The gap between them is 200 ns, which is tiny, and it means Stream 15 waited for Stream 14 to finish. Real overlap would show Stream 15 starting while Stream 14 is still busy in its kernel.
+
 ### 2.2 Four host-memory modes and the Linux OOM Killer rule
 
-Once engineers see a 4.40x transfer speedup from pinned memory, someone inevitably tries to pin the entire training dataset in host RAM. On a 512 GB GPU server, pinning 500 GB of host RAM leaves only 12 GB of swappable memory for the Linux kernel, page cache, `kubelet`, and container daemons. Because the OS kernel is forbidden from swapping page-locked memory to disk, memory pressure immediately wakes the Linux OOM Killer and crashes the node.
+Once engineers see a 4.40x transfer speedup from pinned memory, someone inevitably tries to pin the entire training dataset in host RAM. On a 512 GB GPU server, pinning 500 GB of host RAM leaves only 12 GB of swappable memory for the Linux kernel, page cache, `kubelet`, and container daemons. Because the OS kernel is forbidden from swapping page-locked memory to disk, memory pressure immediately wakes the Linux OOM Killer and crashes the node. A simple way to think about it is that pinned memory is a reservation. The host needs room for everything else that is not pinned, so a reservation that takes almost all of the RAM leaves nothing for the operating system to work with.
 
-CUDA offers four host-memory mechanisms in `nvidia-devops` Volume 03 Chapter 8, and production systems must pair them with a bounded pool lifecycle.
-- Dedicated pinned allocation via `cudaHostAlloc` or `cudaMallocHost` allocates fresh page-locked host RAM that must be freed with `cudaFreeHost`. In PyTorch, setting `pin_memory=True` on a data loader uses this path automatically for batch loading.
-- Host memory registration via `cudaHostRegister` page-locks an existing `malloc()` or memory-mapped buffer in place and releases the lock with `cudaHostUnregister`.
-- Mapped pinned zero-copy memory via `cudaHostAllocMapped` maps pinned host RAM into the GPU address space so a kernel can read or write host memory directly over PCIe without calling `cudaMemcpy`. Only use mapped memory for tiny, read-once status flags, because repeated kernel reads pay PCIe latency on every access.
-- Bounded pinned ring pools prevent the 500 GB on 512 GB OOM trap by pre-allocating a small fixed number of slot buffers bound to the GPU's local NUMA node. Each slot cycles through a strict state machine from Free to Filling, Submitted, InFlight, Complete, and back to Free.
+CUDA offers four host-memory mechanisms, covered in the `nvidia-devops` pinned-memory material, and production systems must pair them with a bounded pool lifecycle.
+- Dedicated pinned allocation via `cudaHostAlloc` or `cudaMallocHost` allocates fresh page-locked host RAM that must be freed with `cudaFreeHost`. In PyTorch, setting `pin_memory=True` on a data loader uses this path automatically for batch loading. The practical lesson is that the flag asks for a reserved buffer, so it should be paired with a limit on how much memory the loader can hold.
+- Host memory registration via `cudaHostRegister` page-locks an existing `malloc()` or memory-mapped buffer in place and releases the lock with `cudaHostUnregister`. Registration is useful when the buffer already exists and you cannot change where it came from.
+- Mapped pinned zero-copy memory via `cudaHostAllocMapped` maps pinned host RAM into the GPU address space so a kernel can read or write host memory directly over PCIe without calling `cudaMemcpy`. Only use mapped memory for tiny, read-once status flags, because repeated kernel reads pay PCIe latency on every access. Think of it as reading a letter through a mail slot each time, instead of carrying the letter into the room once.
+- Bounded pinned ring pools prevent the 500 GB on 512 GB OOM trap by pre-allocating a small fixed number of slot buffers bound to the GPU's local NUMA node. Each slot cycles through a strict state machine from Free to Filling, Submitted, InFlight, Complete, and back to Free. A state machine is simply a list of allowed moves. A slot can only move forward along that list, which stops two stages from touching the same buffer at once.
 
 ### 2.3 Stream-ordered allocations for LLM scratch buffers
 
@@ -169,13 +175,15 @@ In *AI Systems Performance Engineering* Chapter 11, Chris Fregly details the fou
 - Per-batch attention scratch buffers allocate a 16 MB workspace for raw attention scores before softmax and free it immediately after the layer completes.
 - Variable-length input sequences occur when Batch $N$ has 512 tokens and Batch $N+1$ jumps to 1,024 tokens, requiring larger intermediate activation buffers on the fly.
 - Autoregressive decoding causes KV-cache and activation buffers to grow as new tokens are generated.
-- Layerwise model pipelining runs Transformer layers 0 through 5 for Batch $t+1$ on Stream 0 while Stream 1 executes layers 6 through 11 for Batch $t$.
+- Layerwise model pipelining runs Transformer layers 0 through 5 for Batch $t+1$ on Stream 0 while Stream 1 executes layers 6 through 11 for Batch $t$. The four cases share one pattern. Memory is needed in the middle of work that is already running on another stream, so a blocking allocation stops more than it should. The fix is to ask for memory on the stream that needs it, so the request waits only inside its own lane.
 
-Replacing blocking allocations with stream-ordered `cudaMallocAsync` and `cudaFreeAsync` keeps allocations local to the requesting stream so other streams never stall. Those calls are backed by the device memory pool configured via `cudaMemPoolSetAttribute`. In PyTorch, you can switch the caching allocator to CUDA's native stream-ordered allocator with a single environment variable.
+Replacing blocking allocations with stream-ordered `cudaMallocAsync` and `cudaFreeAsync` keeps allocations local to the requesting stream so other streams never stall. Those calls are backed by the device memory pool configured via `cudaMemPoolSetAttribute`. In PyTorch, you can switch the caching allocator to CUDA's native stream-ordered allocator with a single environment variable. Think of the stream-ordered pool as a tool crib that belongs to one shift. Tools are checked out and returned in the order the shift runs, so nobody has to stop the whole plant to find a wrench.
 
 ```bash
 export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
 ```
+
+The single line sets an environment variable before the program starts. PyTorch reads that variable when it starts up and chooses the allocator backend, so the training code itself does not need to change.
 
 ---
 
@@ -183,7 +191,7 @@ export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
 
 ### 3.1 Cross-stream dependencies with CUDA Events and host callbacks
 
-Suppose Stream B needs data produced by Stream A, or an `NCCL` communication stream must wait until the backward-pass compute stream finishes calculating a layer's gradients. Calling `cudaDeviceSynchronize()` or `cudaStreamSynchronize()` on the host is the wrong tool for that handoff. Host-side synchronization blocks the CPU thread from queueing future work and can stall unrelated streams. Instead, the dependency should be enforced directly on the GPU hardware scheduler.
+Suppose Stream B needs data produced by Stream A, or an `NCCL` communication stream must wait until the backward-pass compute stream finishes calculating a layer's gradients. Calling `cudaDeviceSynchronize()` or `cudaStreamSynchronize()` on the host is the wrong tool for that handoff. Host-side synchronization blocks the CPU thread from queueing future work and can stall unrelated streams. A useful rule is to ask who has to wait for whom, and to let the GPU be the one that waits. Instead, the dependency should be enforced directly on the GPU hardware scheduler. A helpful picture is a relay race. The runner in lane B does not start until the runner in lane A has passed the baton, and the rest of the stadium keeps running around them.
 
 You coordinate two streams without blocking the host CPU by recording a CUDA Event marker in the producer stream with `cudaEventRecord`. You then instruct the consumer stream to wait on that event via `cudaStreamWaitEvent`.
 
@@ -196,16 +204,18 @@ CUDA_CHECK(cudaStreamWaitEvent(consumerStream, dataReadyEvent, 0));
 consumerKernel<<<grid, block, 0, consumerStream>>>(d_buf);
 ```
 
-Three operational rules from *AI Systems Performance Engineering* Chapter 11 and `nvidia-devops` Volume 03 Lab 03 govern events, callbacks, and two-level pipelining.
-- Disable timing overhead on pure dependency events. When an event is used only for cross-stream waits or completion barriers and never passed to `cudaEventElapsedTime`, create it with `cudaEventDisableTiming` so the driver skips recording hardware timestamp counters.
-- Never call CUDA device APIs inside `cudaLaunchHostFunc`. When you enqueue a CPU callback into a stream, the callback runs on an internal CUDA runtime thread while the stream waits for the callback to return. Calling any CUDA device API such as `cudaMemcpy` or `cudaMalloc` inside that callback can trigger a permanent circular deadlock.
-- Combine intra-kernel and inter-kernel pipelining. High-performance kernels combine intra-kernel warp specialization across loader, compute, and storer warps in double-buffered Shared Memory with inter-kernel CUDA Stream pipelining across consecutive batches.
+Read the two numbered parts as a handshake. The first line places a marker on the producer's belt, and it returns right away. The second part tells the consumer's belt to hold until that marker is reached. The CPU never waits, so it can keep queueing other work in the meantime. The consumer kernel is queued after the wait, so it starts only when the producer's data is ready. The final argument of `cudaStreamWaitEvent` is a flags value, and zero keeps the default behavior.
+
+Three operational rules from *AI Systems Performance Engineering* Chapter 11 and the `nvidia-devops` Lab 03 material govern events, callbacks, and two-level pipelining.
+- Disable timing overhead on pure dependency events. When an event is used only for cross-stream waits or completion barriers and never passed to `cudaEventElapsedTime`, create it with `cudaEventDisableTiming` so the driver skips recording hardware timestamp counters. It is a small change that matters in a hot loop, where the same kind of marker is recorded again and again.
+- Never call CUDA device APIs inside `cudaLaunchHostFunc`. When you enqueue a CPU callback into a stream, the callback runs on an internal CUDA runtime thread while the stream waits for the callback to return. Calling any CUDA device API such as `cudaMemcpy` or `cudaMalloc` inside that callback can trigger a permanent circular deadlock. Picture a sign on a door that says wait here until the room is empty, while the person inside is waiting for the door to open.
+- Combine intra-kernel and inter-kernel pipelining. High-performance kernels combine intra-kernel warp specialization across loader, compute, and storer warps in double-buffered Shared Memory with inter-kernel CUDA Stream pipelining across consecutive batches. Put simply, the first two rules are about not blocking, and this one is about keeping every stage busy. A pipeline can follow the first two rules and still run slowly if one stage sits idle while another stage waits.
 
 ### 3.2 Double-buffered pipeline ownership in `overlap_pipeline.cu`
 
-When a team builds a double-buffered pipeline with two streams sharing two pinned slot buffers, two bugs show up in code reviews. First, an engineer nervous about race conditions drops a `cudaDeviceSynchronize()` call inside the chunk loop, destroying all overlap and more than doubling the runtime. Second, an engineer reorders the host buffer copy lines or forgets to synchronize on the slot completion event before reusing a slot. That mistake causes validation to fail deterministically at the start of the second chunk or intermittently on subsequent elements.
+When a team builds a double-buffered pipeline with two streams sharing two pinned slot buffers, two bugs show up in code reviews. First, an engineer nervous about race conditions drops a `cudaDeviceSynchronize()` call inside the chunk loop, destroying all overlap and more than doubling the runtime. Second, an engineer reorders the host buffer copy lines or forgets to synchronize on the slot completion event before reusing a slot. That mistake causes validation to fail deterministically at the start of the second chunk or intermittently on subsequent elements. The mental model that prevents both bugs is a two-tray bakery. You never pour new dough into a tray until the last loaf has been taken out of it, and you never stop the whole bakery to check on one tray.
 
-Let us trace the exact architecture and numbers of `overlap_pipeline.cu` from `nvidia-devops` Volume 03 Lab 03.
+Let us trace the exact architecture and numbers of `overlap_pipeline.cu` from the `nvidia-devops` Lab 03 material.
 
 ```text
 Double-Buffered Pipeline Geometry & Reference Runs (nvidia-devops V3 Ch 7 & Lab 03):
@@ -233,15 +243,19 @@ Double-Buffered Pipeline Geometry & Reference Runs (nvidia-devops V3 Ch 7 & Lab 
      Run 1: 812.4 ms (PASS); Run 2: FAIL at index 4,194,305 (chunkElements + 1); Run 3: 809.1 ms (PASS).
 ```
 
+Read the seven ownership steps as one rule that repeats for each tray. The wait comes first, because the tray is not free until its last loaf has left the oven and reached the host. The collect step moves that finished output out of the tray. Only then is the tray refilled and sent back to the GPU. The upload, the kernel, and the download are queued on the same belt, so they run in order. The final record step places a new marker, which the next wait will look for. The three runs above show the difference the wait makes. Run 2 is the signature of a race, where the host touched a tray before the marker confirmed that the copy had finished. A practical check is to read the stream order after each change and confirm that the wait line still comes before the collect line. Swapping two lines is an easy way to break a pipeline, and it is easy to miss in review.
+
 ---
 
 ## 4. Commands and Code Patterns That Matter
 
-All code and profiling commands below are drawn from `nvidia-devops` Volume 03 Lab 03 and *AI Systems Performance Engineering* Chapter 11. Because no GPU is attached during this build, compilation and profiling commands are marked as untested here.
+A reviewer asks you to prove that the new pipeline really overlaps. You need the code, the compile line, and the profiler commands that would show the overlap on a real GPU. This section gives you those, and it is clear about what has not been run yet.
+
+All code and profiling commands below are drawn from the `nvidia-devops` Lab 03 material and *AI Systems Performance Engineering* Chapter 11. Because no GPU is attached during this build, these commands were not run on live hardware.
 
 ### 4.1 Double-buffered multi-stream pipeline loop (`overlap_pipeline.cu` core pattern)
 
-The core double-buffered slot loop below enforces the seven-step ownership sequence across chunks.
+A teammate's pull request moves one line inside the loop and calls the change a cleanup. The loop below is the place where that kind of change can silently break the pipeline, so it is worth reading slowly, one line at a time. The core double-buffered slot loop below enforces the seven-step ownership sequence across chunks.
 
 ```cpp
 // Core double-buffered slot loop from nvidia-devops Volume 03 Lab 03 (Step 1)
@@ -282,7 +296,17 @@ for (std::size_t chunk = 0; chunk < chunks; ++chunk) {
 }
 ```
 
+Read the loop one block at a time, using the bakery picture again. There are two trays, and the variable `slot` decides which tray the current chunk uses. The expression `chunk % streamCount` alternates between the trays, the way a card dealer alternates between two piles.
+
+The first block is the wait and collect step. Once a tray has been used, the loop must not touch it until the last loaf has left it. `cudaEventSynchronize` waits for that loaf's completion marker. `std::copy_n` then moves the finished output into the full output array at the right position. The `std::min` calls handle the last chunk, which can be shorter than a full tray. The else branch makes the same wait, so every tray follows the same rule.
+
+The second block is the refill and launch step. It works out where this chunk starts in the big array and how many elements it holds. The copy into the input tray is a plain CPU copy. The upload, the kernel, and the download are then queued on the same stream, so the GPU runs them in order. `cudaGetLastError` checks that the kernel launch was accepted. The final call places the completion marker on the stream, and the next time this tray comes around, the wait at the top of the loop looks for that marker.
+
+Notice what the loop never does. It never calls `cudaDeviceSynchronize`. Each call returns to the CPU quickly, so the CPU can prepare the next chunk while the GPU works on the current one.
+
 ### 4.2 Compile with Per-Thread Default Stream, enable `cudaMallocAsync`, and verify overlap with `nsys` (untested here)
+
+Read the commands as a path from source code to evidence. The first line builds the program. The next two lines run it at a power-of-two shape and at an awkward shape, which is where boundary bugs tend to show up. The profiler lines record the timeline, and the stats line prints the per-stream table. The last line sets the same environment variable described in the stream-ordered section. Check the job environment before you read the profile, because a missing variable changes which allocator the run uses.
 
 ```bash
 # 1. Compile overlap_pipeline.cu (optionally enabling Per-Thread Default Stream) (untested here)
@@ -300,9 +324,13 @@ nsys stats --report cuda_gpu_trace overlap-report.nsys-rep | head -n 15
 export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
 ```
 
+A short reading guide for this block. Each command produces one kind of evidence, and you should check the evidence before you trust the speed claim. A fast run that fails validation is not a win, and a passing run with no overlap in the trace is not a pipeline.
+
 ---
 
 ## 5. How It Fails: Six Production Stream, Event, and Pinned-Memory Failure Modes
+
+The usual first sign is a pipeline that is slower than the benchmark, or a result that changes between runs. Use the table to match the symptom to the cause before you change the code.
 
 | # | Failure Mode | Production Symptom | Root Cause & Diagnostic Evidence | Fix |
 |---|---|---|---|---|
@@ -317,7 +345,9 @@ export PYTORCH_ALLOC_CONF=backend:cudaMallocAsync
 
 ## 6. Hands-On Lab: Verify Pageable vs Pinned DMA, Nsight Trace Overlap, and the Double-Buffered Pipeline
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. Full C++ source and profiler commands are provided in Section 4 and marked as untested here.
+Before you rely on this pipeline in a service, you want a repeatable check that each rule from this chapter still holds. The lab below runs those checks on any Linux machine, one rule per line, so a broken assumption shows up before a production trace does.
+
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. Full C++ source and profiler commands are provided in Section 4.
 
 Run `code/part10/streams_events_pinned_lab.py`.
 
@@ -325,7 +355,7 @@ Run `code/part10/streams_events_pinned_lab.py`.
 python3 code/part10/streams_events_pinned_lab.py
 ```
 
-The lab prints 25 passing assertions with 0 failures.
+The lab prints 25 passing assertions with 0 failures. The PASS lines work as a checklist. Each line states one rule from this chapter, such as pinned memory beating pageable memory, or a hot-loop device sync being flagged.
 
 ```text
 === Chapter 10.12 Lab: Streams, Events, Asynchronous Copies & Pinned Memory ===
@@ -362,12 +392,14 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Pageable vs Pinned vs Remote-NUMA transfer math:** Using the Volume 03 Chapter 8 parameters in the table below, calculate the effective bandwidth in GB/s for pageable and local-NUMA pinned transfers. Then find the speedup factor of pinned over pageable, and the effective bandwidth when the pinned buffer sits on a remote NUMA socket.
-2. **Proving fake vs real stream overlap from an Nsight Systems trace:** Using the trace timestamps in the table below, calculate the exact timestamp when Stream 14's Device-to-Host copy finishes. Then find the nanosecond gap before Stream 15 starts, and list the three code bugs that cause this serialization.
-3. **Double-buffered pipeline sizing and synchronization slowdown:** Using the `overlap_pipeline.cu` parameters in the table below, calculate the number of chunks, the MiB per slot buffer, and the total MiB transferred across both directions. Then compute the effective MiB/s throughput of the baseline run and the slowdown ratio caused by inserting `cudaDeviceSynchronize()` in the loop.
-4. **Diagnosing slot corruption at index `4,194,304` and `4,194,305`:** Explain why moving collection after refill in `overlap_pipeline.cu` causes validation to fail deterministically at the start of the second chunk. Contrast that with why omitting event synchronization causes intermittent failures on the next element.
-5. **Legacy Stream 0 vs Non-Blocking Streams and LLM scratch pools:** An LLM serving pipeline runs early layers on one stream and later layers on a second stream, allocating a 16 MB attention scratch buffer whenever sequence length doubles. Explain why calling `cudaMalloc` or issuing work on legacy stream 0 stalls both streams. Write the stream creation, stream-ordered allocation, cross-stream event wait, and PyTorch environment variable that prevent global stalls.
-6. **Bounded pinned pool sizing vs the Linux OOM Killer:** Using the server RAM parameters in the table below, calculate how much pageable RAM remains if a developer pins 500 GB on a 512 GB host. Explain what the OS does under memory pressure, and calculate the total host RAM locked by a bounded 2-slot double-buffered pool across 8 GPUs.
+Each exercise starts from a trace, a timing, or a configuration that appears in this chapter. Work through the arithmetic on paper before you check the figures in the tables.
+
+1. **Pageable vs Pinned vs Remote-NUMA transfer math:** Using the pinned-memory parameters in the table below, what is the effective bandwidth in GB/s for pageable transfers? What is it for local-NUMA pinned transfers? What speedup does pinned memory give over pageable? What is the effective bandwidth when the pinned buffer sits on a remote NUMA socket?
+2. **Proving fake vs real stream overlap from an Nsight Systems trace:** Using the trace timestamps in the table below, when does Stream 14's Device-to-Host copy finish? What is the nanosecond gap before Stream 15 starts? Which three code bugs could cause this serialization?
+3. **Double-buffered pipeline sizing and synchronization slowdown:** Using the `overlap_pipeline.cu` parameters in the table below, how many chunks does the run use? How many MiB does each slot buffer hold? How many MiB cross the bus in both directions? What is the effective MiB/s throughput of the baseline run? What slowdown ratio does inserting `cudaDeviceSynchronize()` in the loop cause?
+4. **Diagnosing slot corruption at index `4,194,304` and `4,194,305`:** Why does moving collection after refill in `overlap_pipeline.cu` cause validation to fail deterministically at the start of the second chunk? How does that differ from omitting event synchronization, which causes intermittent failures on the next element?
+5. **Legacy Stream 0 vs Non-Blocking Streams and LLM scratch pools:** An LLM serving pipeline runs early layers on one stream and later layers on a second stream. It allocates a 16 MB attention scratch buffer whenever sequence length doubles. Why does calling `cudaMalloc` stall both streams? Why does issuing work on legacy stream 0 stall both streams? Write the stream creation call. Write the stream-ordered allocation call. Write the cross-stream event wait. Write the PyTorch environment variable that prevents global stalls.
+6. **Bounded pinned pool sizing vs the Linux OOM Killer:** Using the server RAM parameters in the table below, how much pageable RAM remains if a developer pins 500 GB on a 512 GB host? What does the OS do under memory pressure? How much host RAM does a bounded 2-slot double-buffered pool lock across 8 GPUs?
 
 | Exercise | Input Parameters & Reference Figures |
 |---|---|

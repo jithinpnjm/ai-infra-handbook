@@ -23,39 +23,33 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A training engineer writes to the on-call channel: the job has been running at 100 percent GPU utilization for six hours, and the loss has not moved. On the host, `top` shows a calm CPU, the disks are quiet and the network links are idle. Every Linux metric says the server is healthy. The GPUs say something else, and you only hear it if you know where to listen.
+A training engineer writes to the on-call channel. The job has been running at 100 percent GPU utilization for six hours, and the loss has not moved. On the host, `top` shows a calm CPU, the disks are quiet and the network links are idle. Every Linux metric says the server is healthy. The GPUs say something else, and you only hear it if you know where to listen.
 
-To the host kernel, an NVIDIA GPU is a device on the PCIe bus. Linux does not schedule its warps, track its memory or read its die temperature. Those facts live inside the GPU and its driver, and you reach them through `nvidia-smi` and the NVIDIA Data Center GPU Manager, called DCGM from here on.
+The reason is that to the host kernel, an NVIDIA GPU is just a device on the PCIe bus. Linux does not schedule its warps, track its memory or read its die temperature. Those facts live inside the GPU and its driver, and you reach them through `nvidia-smi` and the NVIDIA Data Center GPU Manager, called DCGM from here on. The `nvidia-smi` tool is the command-line view that ships with the driver. DCGM is the fleet-level service that collects the same signals in a form a monitoring system can scrape.
 
-Three dashboard numbers mislead people more than any others. The utilization percentage can read 100 while no useful math happens. The memory figure can read 95 percent on a healthy job. The clock speed can fall by a fifth while utilization stays the same. This chapter explains each of the three, then shows how to read the throttle reasons, the topology and the Xid error codes that tell you what the hardware is really doing.
+Three dashboard numbers mislead people more than any others. The utilization percentage can read 100 while no useful math happens. The memory figure can read 95 percent on a healthy job. The clock speed can fall by a fifth while utilization stays the same. Each of these is accurate about one narrow thing, and none of them tells you the whole story. This chapter explains each of the three, and then it shows how to read the throttle reasons, the topology and the Xid error codes, which together tell you what the hardware is really doing.
 
 :::tip In one minute
-- GPU utilization means a kernel was running during the sample window. It does not say how many SMs were busy or whether they did useful work. For an honest figure use `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`.
-- `nvidia-smi` memory used includes everything the framework has reserved, such as the PyTorch caching pool. High reserved memory is normal. Compare allocated with reserved before you worry.
-- The throttle bitmask in `clocks_throttle_reasons.active` records why clocks dropped. Read it first when a job is slow and the GPU looks busy.
-- Enable persistence mode with `nvidia-persistenced`, so the driver keeps the GPU initialized between jobs and the first CUDA call is not slow.
-- An NCCL hang often shows every rank near 100 percent utilization, because the NCCL kernels spin while they wait for a peer that never arrives.
+- Does GPU utilization show how busy the chip is? Not really. It means a kernel was running during the sample window. It does not say how many SMs were busy or whether they did useful work. For an honest figure, use `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`.
+- Why does memory used look so high? `nvidia-smi` memory used includes everything the framework has reserved, such as the PyTorch caching pool. High reserved memory is normal. Compare allocated with reserved before you worry.
+- Where do you look when a job is slow? Start with the throttle bitmask in `clocks_throttle_reasons.active`, which records why clocks dropped. Read it first when a job is slow and the GPU looks busy.
+- Why keep the driver initialized? Enable persistence mode with `nvidia-persistenced`, so the driver keeps the GPU initialized between jobs and the first CUDA call is not slow.
+- What does a hang look like? An NCCL hang often shows every rank near 100 percent utilization, because the NCCL kernels spin while they wait for a peer that never arrives.
 :::
 
 ---
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** the earlier chapters in Part 10 on GPU architecture, the memory hierarchy, PCIe and NVLink, and the GPU product line.
+**Prerequisites:** the earlier chapters in Part 10 on GPU architecture, the memory hierarchy, PCIe and NVLink, and the GPU product line. The ideas of an SM, a warp and a kernel from those chapters carry directly into this one.
 
-**Outcomes:** after this chapter you can do the following.
-1. Sort GPU telemetry into metrics, logs and traces, and into execution, memory and thermal or power signals.
-2. Explain why utilization, memory used and clock speed each mislead, and name the counters that do not.
-3. Compare PyTorch allocated memory, reserved memory and free driver memory.
-4. Decode the throttle reason bitmask into thermal, power and hardware causes.
-5. Set a node baseline: persistence mode, power limit, clock lock and `dmon` streaming.
-6. Triage Xid codes by tier and walk an ordered checklist for a slow GPU job.
+The chapter walks through how to sort GPU telemetry into metrics, logs and traces, and into execution, memory, and thermal or power signals. It then explains why utilization, memory used and clock speed each mislead, and which counters do not. Next it compares PyTorch allocated memory, reserved memory and free driver memory, and it decodes the throttle bitmask into thermal, power and hardware causes. It finishes with a node baseline (persistence mode, power limit, clock lock and `dmon` streaming) and an ordered checklist for a slow GPU job, which includes triaging Xid codes by tier.
 
 ---
 
 ## 1. The GPU observability architecture
 
-If you plot only one-minute averages, a half-second thermal spike vanishes into the average and nobody can say why latency jumped. Observability means collecting the specific signals that let you tell one failure from another. The standard split is three kinds of evidence, collected for three kinds of hardware signal.
+Picture a dashboard that plots only one-minute averages. A half-second thermal spike disappears into the average, and nobody can say why latency jumped during that minute. Observability means collecting the specific signals that let you tell one failure from another. The standard split is three kinds of evidence. Metrics are numbers over time. Logs are discrete events. Traces record timing and causality. For a GPU, each kind of evidence can cover three kinds of hardware signal, which are execution, memory, and thermal and power.
 
 ```mermaid
 flowchart TD
@@ -67,11 +61,15 @@ flowchart TD
   S --> S3["Thermal and power"]
 ```
 
+The diagram shows the two axes together. The three pillars are the kinds of evidence, and the three signal categories are the kinds of hardware behavior. A useful incident note names one of each. For example, a metric shows thermal power falling, a log shows a fault on the same GPU, and a trace shows which kernel was waiting when the slowdown began.
+
 | Pillar | Sampling cadence | Primary tools | Question answered and limitation |
 |---|---|---|---|
 | Metrics | 1 to 10 Hz up to 15 to 30 s intervals | `nvidia-smi`, DCGM, Prometheus, Grafana | What is happening on average? A 60-second average can read a healthy 72°C while the die spiked to 85°C for 500 ms and throttled. |
 | Logs | Event-driven on state changes | `dmesg`, `journalctl`, Xid events | What broke and why? Silent while filters clog or memory bandwidth saturates, until a hard fault fires. |
 | Traces | Per kernel launch and memory copy | Nsight Systems, Nsight Compute, PyTorch Profiler | Where did the time go? Produces gigabytes per second per GPU, so it cannot run cluster-wide all the time. |
+
+The cadence column explains the cost of each pillar. Metrics are cheap enough to run all the time, but they average away short events. Logs are almost free, because they are written only when something changes, but they stay quiet about slow drift. Traces show the most detail, and the amount of data they produce is why you turn them on for a short window rather than leaving them running. Most real diagnoses start with metrics, move to logs to find the event, and finish with a trace from the window that matters.
 
 | Signal category | Examples |
 |---|---|
@@ -79,17 +77,19 @@ flowchart TD
 | Memory | Allocated tensor memory, the framework cache, HBM bandwidth activity, L2 hit rate, PCIe and NVLink throughput |
 | Thermal and power | Die temperature, power draw against the limit, throttle reason bitmask |
 
+The examples table is a checklist of names to look for when you build a dashboard. Execution signals tell you whether the compute units are doing work. Memory signals tell you whether the data is arriving fast enough. Thermal and power signals tell you whether the hardware is holding back on purpose. A slowdown usually shows up in one of these three, and the name of the category tells you where to look next.
+
 ### 1.1 Why host queue models fail on a GPU
 
-Brendan Gregg's USE method checks three things for every resource: utilization, saturation and errors. On a CPU, saturation is easy to see because `/proc/loadavg` and `vmstat` show the run queue.
+Imagine an operator who has spent years reading CPU dashboards. A busy CPU shows a long run queue, and a long run queue tells the operator where the work is piling up. Brendan Gregg's USE method gives the same habit a name. It checks three things for every resource, which are utilization, saturation and errors. On a CPU, saturation is easy to see because `/proc/loadavg` and `vmstat` show the run queue directly.
 
-A GPU hides its queues. Thousands of threads are scheduled inside each SM by hardware warp schedulers, and CUDA streams feed hardware rings that the GPU firmware manages. If the host submits work faster than the GPU finishes it, the host thread simply blocks inside a call such as `cudaStreamSynchronize()` and shows up as sleeping. If the host submits tiny kernels one at a time, the GPU drains its ring between launches and drops its clocks. Neither state appears in the host run queue, so you have to read counters from the GPU itself.
+A GPU hides its queues from the host. Thousands of threads are scheduled inside each SM by hardware warp schedulers. CUDA streams feed hardware rings that the GPU firmware manages, and those rings are not visible to the host operating system. If the host submits work faster than the GPU finishes it, the host thread simply blocks inside a call such as `cudaStreamSynchronize()` and shows up as sleeping. If the host submits tiny kernels one at a time, the GPU drains its ring between launches and drops its clocks. Neither state appears in the host run queue. You have to read counters from the GPU itself to see either one.
 
 ---
 
 ## 2. The three misleading metrics
 
-An on-call engineer who reads GPU percentages like CPU percentages gets every diagnosis wrong. A deadlocked job can show 100 percent utilization, a healthy job can show 95 percent memory from the first batch, and a throttled card can look fully busy while running slowly.
+An on-call engineer who reads GPU percentages the way they read CPU percentages will get every diagnosis wrong. A deadlocked job can show 100 percent utilization. A healthy job can show 95 percent memory from the first batch. A throttled card can look fully busy while it runs slowly. The three sections below take the three numbers one at a time, and each one starts with the trap it sets.
 
 ```mermaid
 flowchart TD
@@ -110,15 +110,19 @@ flowchart TD
     end
 ```
 
+The two subgraphs show the same headline number hiding different realities. In the utilization case, three jobs share one percentage and have three different outcomes. In the memory case, one total splits into a working set, a cache and free space. Both patterns appear in the sections that follow.
+
 ### 2.1 The utilization lie
 
-In `nvidia-smi`, the `GPU-Util` column and the metric `DCGM_FI_DEV_GPU_UTIL` have a narrow definition. They report the share of the sample window in which at least one kernel was executing on the GPU.
+In `nvidia-smi`, the `GPU-Util` column and the metric `DCGM_FI_DEV_GPU_UTIL` have a narrow definition. They report the share of the sample window in which at least one kernel was executing on the GPU. The number answers "was anything running", and it does not answer "how much of the chip was working".
 
-That definition ignores how many SMs the kernel used and what its warps were doing. Picture an H100 SXM5 with 132 SMs. A kernel launched as one block occupies one SM and spins in a `while (flag == 0)` loop. The other 131 SMs are idle, and `nvidia-smi` still reports 100 percent. A memory-bound kernel whose math units wait on HBM reads also reports high utilization, because the kernel is running.
+That definition ignores how many SMs the kernel used and what its warps were doing. Picture an H100 SXM5 with 132 SMs. A kernel launched as one block occupies one SM and spins in a `while (flag == 0)` loop, waiting for a signal that never comes. The other 131 SMs are idle, and `nvidia-smi` still reports 100 percent, because a kernel is running. A memory-bound kernel whose math units wait on HBM reads also reports high utilization, for the same reason. Both cases look identical in the headline number, so the headline number cannot tell them apart.
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-The table shows two A100-PCIE-40GB nodes with the same 85 percent utilization and very different outcomes. The function `evaluate_utilization_regime()` in `code/part10/gpu_node_ops.py` encodes the rule.
+The note above matters because a threshold written for the old unit silently means something else after an upgrade. A rule that fires at 80 on a percent metric will never fire on a ratio metric whose values stay between 0 and 1. When you change an exporter version, change the rule and the unit in the same commit.
+
+The table shows two A100-PCIE-40GB nodes with the same 85 percent utilization and very different outcomes. Rows one and two are the same node type running different work, and rows three and four are a two-GPU job where one card is healthy and the other is stuck. The function `evaluate_utilization_regime()` in `code/part10/gpu_node_ops.py` encodes the rule that separates these cases.
 
 | Scenario | SM utilization | Memory used, temperature | Memory bandwidth activity | Throughput | Diagnosis |
 |---|---|---|---|---|---|
@@ -127,9 +131,11 @@ The table shows two A100-PCIE-40GB nodes with the same 85 percent utilization an
 | GPU 0 in a two-GPU job | 85% | 32 GB of 40 GB, 65°C | 82% | 2,048 samples/s | Healthy memory-bound training. |
 | GPU 1 in the same job | 85% | 32 GB of 40 GB, 65°C | 12% | 180 samples/s | Stuck in a synchronization wait loop. |
 
+The key is the memory bandwidth column. It is the only column that differs between the two rows that look the same on utilization. When the numbers come back this way, do not ask whether the GPU is busy. Ask what it is busy doing, and the bandwidth column is where that answer lives.
+
 ### 2.2 Utilization you can trust
 
-If the headline number lies, which one do you alert on? DCGM exposes profiling counters that measure what the hardware actually did. They need the profiling module of DCGM and cost a small amount of overhead, which is why they are not the default.
+If the headline number lies, which signal should you alert on? DCGM exposes profiling counters that measure what the hardware actually did. They need the profiling module of DCGM and cost a small amount of overhead, which is why they are not the default. Turn them on for the nodes that matter, and use the defaults everywhere else.
 
 | Metric | What it measures | How to read it |
 |---|---|---|
@@ -138,13 +144,13 @@ If the headline number lies, which one do you alert on? DCGM exposes profiling c
 | `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` | Fraction of cycles the Tensor Core pipe is active | The best single indicator that matrix math is happening |
 | `DCGM_FI_PROF_DRAM_ACTIVE` | Fraction of cycles the HBM interface is transferring data | High value with low Tensor activity means memory-bound |
 
-A healthy dense training step on a large model shows high Tensor activity. A dataloader stall shows low SM activity and low Tensor activity together, even when `GPU-Util` still looks reasonable because short kernels keep arriving.
+The single spinning block in the first row is the same case as the utilization lie. Averaged over all SMs, one busy SM out of 132 barely moves the number, which is why the profiling counter tells you the truth where the headline does not. The Tensor Core row is the one to watch on training nodes. A healthy dense training step on a large model shows high Tensor activity. A dataloader stall shows low SM activity and low Tensor activity together. In that case `GPU-Util` can still look reasonable, because short kernels keep arriving, even though the chip spends most of its time waiting for data.
 
 ### 2.3 The memory lie
 
-When `nvidia-smi` shows 30.2 GB used on a 40 GB GPU, the natural reaction is to fear an out-of-memory crash. Usually that number includes memory the framework is holding for reuse.
+When `nvidia-smi` shows 30.2 GB used on a 40 GB GPU, the natural reaction is to fear an out-of-memory crash. Usually that number includes memory the framework is holding for reuse. Think of it as a warehouse that keeps empty pallets stacked by the door. The pallets count as used floor space, even though they are empty and can be reused immediately.
 
-Calling `cudaMalloc` is slow because it updates page tables and can synchronize the device. PyTorch avoids paying that cost every step with a caching allocator. It requests memory from the driver on demand, in blocks, and when a tensor is freed it keeps the block in its own pool for the next batch instead of handing it back. The pool therefore grows to match the job's peak needs and stays there. Do not confuse this with a fixed upfront grab. PyTorch does not claim a large share of the card when it starts. JAX does: its default preallocates 75 percent of GPU memory at startup. vLLM also preallocates, by design, up to the fraction set by `gpu_memory_utilization`, and chapter 15.3 explains why.
+Calling `cudaMalloc` is slow because it updates page tables and can synchronize the device. PyTorch avoids paying that cost every step with a caching allocator. It requests memory from the driver on demand, in blocks. When a tensor is freed, it keeps the block in its own pool for the next batch instead of handing it back. The pool therefore grows to match the job's peak needs and stays there. Do not confuse this with a fixed upfront grab. PyTorch does not claim a large share of the card when it starts. JAX does: its default preallocates 75 percent of GPU memory at startup. vLLM also preallocates, by design, up to the fraction set by `gpu_memory_utilization`, and chapter 15.3 explains why.
 
 ```text
 Example on a 40.0 GB GPU:
@@ -157,13 +163,15 @@ Example on a 40.0 GB GPU:
   Headroom for a new tensor (9.8 + 1.8):            11.6 GB
 ```
 
+Read the block from top to bottom. The first two lines are the truth about tensors. The reserved line is what `nvidia-smi` shows, so it is the number that scares people. The last three lines turn the reserved figure into the memory that can actually be used. Free driver memory is the space nobody has touched. Reusable pool memory is the space PyTorch has already claimed and can give to a new tensor without asking the driver. Together they make the headroom.
+
 The headroom figure is an upper bound. The 1.8 GB inside the pool can be split into pieces too small for one large tensor, which is the fragmentation case in section 5.4. The function `analyze_pytorch_memory_state()` in `code/part10/gpu_node_ops.py` computes these numbers.
 
-Alerting when `nvidia-smi` memory crosses 80 percent produces constant false alarms. Alert on true headroom, or on a falling trend in free driver memory across a deployment, and use `torch.cuda.memory_summary()` to see fragmentation.
+Alerting when `nvidia-smi` memory crosses 80 percent produces constant false alarms, because a healthy job often sits there. Alert on true headroom, or on a falling trend in free driver memory across a deployment. When you suspect fragmentation, use `torch.cuda.memory_summary()` to see the gap between reserved and allocated memory broken down by pool.
 
 ### 2.4 The clock speed lie
 
-A third trap appears when utilization reads 100 percent and step times grow. The cause is often that a fan failed, a filter clogged or the cold aisle warmed up, and the GPU lowered its clocks to protect itself. Each instruction now takes longer, and the GPU is still busy. Always plot `clocks.current.sm` beside utilization.
+A third trap appears when utilization reads 100 percent and step times grow. Picture a rack where a fan has failed. The cards next to it warm up, and the GPUs lower their clocks to protect themselves. Each instruction now takes longer, and the GPU is still busy, so the utilization number does not move. The cause is often a fan that failed, a filter that clogged or a cold aisle that warmed up. Always plot `clocks.current.sm` beside utilization, so a drop in clocks shows up next to the number it is hiding.
 
 The table gives A100 examples. Your own device reports its limits through `nvidia-smi -q -d CLOCK`.
 
@@ -173,15 +181,17 @@ The table gives A100 examples. Your own device reports its limits through `nvidi
 | Idle clock | About 300 MHz at low power | Normal clock gating when no kernels run. A clock alert must not fire on idle nodes. |
 | Throttled clock | 1200 MHz at 85°C, about 15 percent lower | A thermal or power limit is active. Read the throttle reason next. |
 
+The three rows form a simple ladder. The peak row is what the card can do when nothing holds it back. The idle row is normal, and an alert that fires on it will page someone for no reason. The throttled row is the one that needs a reason, and the throttle bitmask in the next section is where that reason is recorded.
+
 ---
 
 ## 3. Clocks, power caps and throttle reasons
 
-When a GPU slows down, guessing between a hot room, a power cap and an idle workload wastes recovery time. The GPU records the cause of every clock reduction in a bitmask register that you can read.
+When a GPU slows down, guessing between a hot room, a power cap and an idle workload wastes recovery time. A hot room needs facilities work, a power cap needs someone to find the setting, and an idle workload needs a change in the code. Each fix is different, so the diagnosis has to come first. The GPU records the cause of every clock reduction in a bitmask register that you can read, and that register is the fastest way to skip the guesswork.
 
 ### 3.1 Decoding the throttle bitmask
 
-Read the mask with `nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv`, or see the decoded text with `nvidia-smi -q -d PERFORMANCE`. When several reasons apply, NVML ORs the flags together. For example `0x0000000000000024` is `SW_POWER_CAP` (`0x04`) plus `SW_THERMAL_SLOWDOWN` (`0x20`). The bit values below follow the NVML header `nvml.h`.
+A bitmask is a number where each bit is a yes or no flag. Read the mask with `nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv`, or see the decoded text with `nvidia-smi -q -d PERFORMANCE`. When several reasons apply, NVML ORs the flags together, which means the bits add up in the number. For example `0x0000000000000024` is `SW_POWER_CAP` (`0x04`) plus `SW_THERMAL_SLOWDOWN` (`0x20`). Reading a mask is then a matter of splitting it back into its bits. The bit values below follow the NVML header `nvml.h`.
 
 | Bitmask | Reason | Meaning | Severity and action |
 |---|---|---|---|
@@ -196,11 +206,13 @@ Read the mask with `nvidia-smi --query-gpu=clocks_throttle_reasons.active --form
 | `0x0000000000000080` | `HW_POWER_BRAKE_SLOWDOWN` | An external power brake signal is active. | Critical: check the BMC power shelf and PSU logs. |
 | `0x0000000000000100` | `DISPLAY_CLOCK_SETTING` | Clocks adjusted for display output. | Rare on headless data center nodes. |
 
-Newer drivers spell the query fields `clocks_event_reasons.*` and keep the older `clocks_throttle_reasons.*` spelling for compatibility. Run `nvidia-smi --help-query-gpu | grep -i reasons` on your driver to see which names it accepts. A clock lock left by `nvidia-smi -lgc` is easiest to catch by noticing clocks that stay low on a cool, lightly loaded GPU, not by waiting for a specific bit.
+To decode a mask by hand, start from the largest flag and subtract. A value of `0x0000000000000024` contains `0x20`, which is the thermal flag, and what remains is `0x04`, the power cap flag. That is why the thermal reason is the one to act on first. The severity column tells you how urgent each flag is, and the action column tells you the first thing to check. Treat `GPU_IDLE` and `SYNC_BOOST` as normal. Treat the thermal, power brake and hardware flags as incidents.
+
+Newer drivers spell the query fields `clocks_event_reasons.*` and keep the older `clocks_throttle_reasons.*` spelling for compatibility. Run `nvidia-smi --help-query-gpu | grep -i reasons` on your driver to see which names it accepts. A clock lock left by `nvidia-smi -lgc` is easiest to catch by noticing clocks that stay low on a cool, lightly loaded GPU, not by waiting for a specific bit. No throttle bit will be set in that case, because the clocks are held by a setting rather than by a limit.
 
 ### 3.2 Temperature headroom
 
-Data center GPUs are built to run hot under load, and the limits differ by model. Ask your own device: `nvidia-smi -q -d TEMPERATURE` prints the slowdown and shutdown temperatures. The function `classify_temperature_headroom()` in `code/part10/gpu_node_ops.py` uses these illustrative bands.
+Data center GPUs are built to run hot under load, and the limits differ by model. Ask your own device: `nvidia-smi -q -d TEMPERATURE` prints the slowdown and shutdown temperatures. Those two numbers are the edges of the safe zone. Slowdown is where the card begins to cut clocks, and shutdown is where it gives up entirely. The function `classify_temperature_headroom()` in `code/part10/gpu_node_ops.py` uses these illustrative bands.
 
 ```mermaid
 flowchart LR
@@ -210,15 +222,17 @@ flowchart LR
     B4 --> B5["> 85°C<br/>CRITICAL<br/>Throttling active"]
 ```
 
-Why does one GPU in a rack run hotter than its neighbour? Think of the die as a heater inside a duct. The die temperature is roughly the temperature of the air or coolant reaching it, plus the power it draws multiplied by the thermal resistance between die and coolant. Thermal resistance is measured in degrees Celsius per watt, and it grows when airflow is blocked or a heatsink is poorly seated. The same 700 W of draw therefore gives a few degrees more on a GPU behind a clogged filter than on its neighbour, even though both have identical workloads.
+The bands turn a temperature into an action. Healthy and normal readings need no action. Caution means the margin to slowdown is shrinking, so it is time to look at airflow. Throttle threshold and critical mean the card is already slowing itself down, and the throttle bitmask should show a thermal flag at that point.
 
-This model gives two practical rules. Compare a hot GPU with its neighbours at the same power, because a single outlier points to that GPU's airflow or seating. If every GPU in the rack runs warm together, look at inlet temperature and facility cooling instead. Set a temperature alert a few degrees under the slowdown temperature your device reports, sustained for a couple of minutes, so it fires before throttling starts.
+Why does one GPU in a rack run hotter than its neighbor? Think of the die as a heater inside a duct. The die temperature is roughly the temperature of the air or coolant reaching it, plus the power it draws multiplied by the thermal resistance between die and coolant. Thermal resistance is measured in degrees Celsius per watt, and it grows when airflow is blocked or a heatsink is poorly seated. The same 700 W of draw therefore gives a few degrees more on a GPU behind a clogged filter than on its neighbor, even though both have identical workloads.
+
+This model gives two practical rules. First, compare a hot GPU with its neighbors at the same power, because a single outlier points to that GPU's airflow or seating. Second, if every GPU in the rack runs warm together, look at inlet temperature and facility cooling instead. The inlet is where cool air enters the chassis. For alerting, set a temperature alert a few degrees under the slowdown temperature your device reports, sustained for a couple of minutes, so it fires before throttling starts.
 
 ### 3.3 Power capping and clock locking
 
-When a rack runs close to its breaker limit, or an engineer needs jitter-free latency numbers, automatic settings cause trouble. Power spikes during dense matrix bursts can trip breakers, and automatic frequency scaling adds noise to P99 inference benchmarks.
+When a rack runs close to its breaker limit, or an engineer needs jitter-free latency numbers, automatic settings cause trouble. Power spikes during dense matrix bursts can trip breakers. Automatic frequency scaling adds noise to P99 inference benchmarks, where P99 means the latency that all but the slowest one percent of requests beat, so a single slow clock change can move the number a lot.
 
-Two `nvidia-smi` controls help. A power cap with `-pl` sets a ceiling below the factory default, within the range the device allows. When draw nears the cap, the GPU lowers SM clocks. A clock lock with `-lgc` pins the SM frequency range to remove frequency scaling jitter, and `-rgc` restores automatic scaling.
+Two `nvidia-smi` controls help. A power cap with `-pl` sets a ceiling below the factory default, within the range the device allows. When draw nears the cap, the GPU lowers SM clocks to stay under it. A clock lock with `-lgc` pins the SM frequency range to remove frequency scaling jitter, and `-rgc` restores automatic scaling.
 
 ```bash
 # Cap GPU 0 at 500 W
@@ -231,11 +245,13 @@ sudo nvidia-smi -i 0 -lgc 1410,1410
 sudo nvidia-smi -i 0 -rgc
 ```
 
-A power cap that someone set for a benchmark and forgot is a classic slow-node cause. Compare `power.limit` with `power.default_limit` across the fleet.
+Each command has one job. The first changes the power ceiling, the second fixes the clock to one value, and the third hands control back to the driver. These commands change the hardware behavior for everyone who uses the GPU, so run them on a node that is out of production for the test, and put the reset in the same runbook as the change.
+
+A power cap that someone set for a benchmark and forgot is a classic slow-node cause. Compare `power.limit` with `power.default_limit` across the fleet. Any card where the first is lower than the second is capped on purpose or by mistake, and the difference is worth explaining in the runbook.
 
 ### 3.4 NVML under nvidia-smi and DCGM
 
-A monitoring script that shells out to `nvidia-smi` in a tight loop wastes CPU and churns driver handles. Both `nvidia-smi` and DCGM sit on the NVIDIA Management Library, NVML, in `libnvidia-ml.so`. Custom agents should call NVML directly, initialise it once at startup, and bind devices by UUID because logical indices can shift across reboots.
+A monitoring script that shells out to `nvidia-smi` in a tight loop wastes CPU and churns driver handles. Both `nvidia-smi` and DCGM sit on the NVIDIA Management Library, NVML, in `libnvidia-ml.so`. NVML is the C library that exposes the driver's device state. Custom agents should call NVML directly, initialize it once at startup, and bind devices by UUID, because logical indices can shift across reboots.
 
 | NVML function | Returns | Note |
 |---|---|---|
@@ -248,28 +264,30 @@ A monitoring script that shells out to `nvidia-smi` in a tight loop wastes CPU a
 | `nvmlDeviceGetCurrentClocksThrottleReasons()` | 64-bit bitmask | AND it with the reason flags. |
 | `nvmlDeviceSetGpuLockedClocks()` and `nvmlDeviceResetGpuLockedClocks()` | Lock or reset SM clocks | Same effect as `-lgc` and `-rgc`. |
 
+The table is a reference for writing an agent. Two rows deserve a second look. The power function reports milliwatts, so a dashboard that expects watts must divide. The throttle function returns the whole bitmask, so you must AND it with each flag before you decide anything. A reading of the raw number alone is not a diagnosis.
+
 ### 3.5 Prefill and decode on an inference node
 
-On an LLM server such as vLLM or TensorRT-LLM, clocks and power show the two phases of a request. Prefill processes all prompt tokens at once and is compute-bound, so power rises toward the limit and clocks boost. Decode produces one token at a time, reads the model weights for each token, and is memory-bandwidth bound, so power falls and clocks can drift down.
+On an LLM server such as vLLM or TensorRT-LLM, clocks and power show the two phases of a request. Prefill processes all the prompt tokens at once, and it is compute-bound. Power rises toward the limit and clocks boost. Decode produces one token at a time. It reads the model weights for each token, and it is memory-bandwidth bound, so power falls and clocks can drift down. Seeing the two phases in the telemetry lets you match a power curve to what the server is doing.
 
 | Phase | Bottleneck | Power on H100 SXM | SM clock behaviour |
 |---|---|---|---|
 | Prefill | Compute-bound matrix math across the prompt | Near the 700 W ceiling | Boosts toward 1800 to 1980 MHz |
 | Decode | HBM bandwidth, a few operations per byte | Roughly 350 to 450 W | Frequency scaling lowers clocks during stalls, then boosts again on prefill |
 
-Without a clock lock, this swing adds jitter to time to first token and inter-token latency. Lock clocks for benchmarks. In production, decide deliberately, because a lock also gives up boost headroom.
+Without a clock lock, this swing adds jitter to time to first token and inter-token latency. Time to first token is how long a user waits before the first word appears. Inter-token latency is the gap between words after that. Lock clocks for benchmarks, so the numbers are repeatable. In production, decide deliberately, because a lock also gives up boost headroom during prefill bursts.
 
 ---
 
 ## 4. Commands and configuration that matter
 
-When a node boots with no baseline tuning, or an operator scrapes the `nvidia-smi` table with a regular expression, automation breaks in production. The workflows below set persistence mode, query structured fields, stream device counters at 1 Hz and verify PCIe negotiation.
+When a node boots with no baseline tuning, or an operator scrapes the `nvidia-smi` table with a regular expression, automation breaks in production. A table layout can change between driver releases, and a regex written against it will quietly return nothing. The workflows below set persistence mode, query structured fields, stream device counters at 1 Hz and verify PCIe negotiation. Each one replaces a fragile habit with a command whose output format is stable.
 
 ### 4.1 Persistence mode
 
-Why does the first CUDA call on an idle node sometimes take seconds? When no process holds a GPU open and persistence is off, the driver deinitialises the GPU's state. The kernel modules stay loaded. The next process to open the device pays for GPU initialisation again, and on an eight-GPU node that delay is noticeable. Container device plugins and health probes that touch the GPU can time out during it.
+Why does the first CUDA call on an idle node sometimes take seconds? When no process holds a GPU open and persistence is off, the driver deinitializes the GPU's state. The kernel modules stay loaded. The next process to open the device pays for GPU initialization again, and on an eight-GPU node that delay adds up. Container device plugins and health probes that touch the GPU can time out during it. A probe that times out can make Kubernetes restart a pod that was actually fine.
 
-Persistence mode keeps the GPU initialised even when no client is attached. The cost is a few extra watts of idle power. NVIDIA recommends the `nvidia-persistenced` daemon over the legacy `nvidia-smi -pm 1` setting, which is not preserved across reboots and is being phased out.
+Persistence mode keeps the GPU initialized even when no client is attached. The cost is a few extra watts of idle power, which is a small price for a node that starts jobs without delay. NVIDIA recommends the `nvidia-persistenced` daemon over the legacy `nvidia-smi -pm 1` setting. The legacy setting is not preserved across reboots and is being phased out, so a node that depends on it can lose the setting on its next restart.
 
 ```bash
 # Check the current state on all GPUs
@@ -282,18 +300,22 @@ sudo systemctl enable --now nvidia-persistenced
 sudo nvidia-smi -pm 1
 ```
 
+The first command prints one line per GPU, and each line should read Enabled in the persistence column. The second command starts the daemon now and sets it to start at every boot, so it is the one to put in your node image. The third is the fallback when a daemon is not an option, and you must run it again after each reboot.
+
 ### 4.2 Scripted inventory
 
-Query structured CSV fields rather than scraping the default table.
+Query structured CSV fields rather than scraping the default table. The query below asks for one line per GPU, with every field named. The output keeps its column order, so a script can read it by column name.
 
 ```bash
 nvidia-smi --query-gpu=index,uuid,pci.bus_id,driver_version,memory.total,memory.used,memory.free,temperature.gpu,power.draw,power.limit,clocks.current.sm,clocks.max.sm,clocks_throttle_reasons.active \
   --format=csv
 ```
 
+The fields cover the four things an inventory needs. The identity fields are index, UUID and PCI bus address. The software field is the driver version. The memory fields show total, used and free. The thermal, power and clock fields show the live state, and the throttle field shows why clocks are held. Store the UUID, not the index, as the key in your inventory, because indices can change after a reboot.
+
 ### 4.3 High-frequency streaming with dmon and pmon
 
-Prometheus usually polls every 15 to 30 seconds, which averages away short bursts of throttling. `nvidia-smi dmon` and `nvidia-smi pmon` stream at 1 to 10 Hz.
+Prometheus usually polls every 15 to 30 seconds, which averages away short bursts of throttling. A short burst can vanish entirely between two polls. `nvidia-smi dmon` and `nvidia-smi pmon` stream at 1 to 10 Hz, which is fast enough to catch those bursts while you watch a node. Think of `dmon` as a whole-GPU view and `pmon` as a per-process view.
 
 ```bash
 # Device metrics each second: power, SM util, clocks, video, memory util, ECC, temperature
@@ -302,6 +324,8 @@ nvidia-smi dmon -s pucvmet -d 1
 # Per-process SM and memory utilization each second
 nvidia-smi pmon -s um -d 1
 ```
+
+The first command prints a row per GPU each second, and the selector letters choose the columns. The second prints a row per process that is using the GPU, which helps when two containers share one card. Run them during an incident, and stop them once you have what you need, because streaming every second is more output than a dashboard needs.
 
 A healthy dual-GPU training run looks like this.
 
@@ -312,9 +336,13 @@ A healthy dual-GPU training run looks like this.
     1  195   84   81     0     0  1410  1410 28400     0     0     0   72
 ```
 
-SM utilization is 85 and 84 percent, memory activity is 82 and 81 percent, processor clocks hold at 1410 MHz, and the double-bit ECC counters read zero. Each of those is a thing you check before you suspect the job.
+Read one row at a time. The gpu and mem columns are the two utilization numbers that matter most. Power draw is nearly the same on both cards, and it stays steady. Clocks hold at 1410 MHz, which means the card is not throttling. The two ECC error columns read zero, and the temperature is in the high 60s to low 70s, which is normal for sustained load. Each of those is a thing you check before you suspect the job.
+
+SM utilization is 85 and 84 percent, memory activity is 82 and 81 percent, processor clocks hold at 1410 MHz, and the double-bit ECC counters read zero. Double-bit ECC counts errors that the hardware could not correct, so zero there is the most important reading in the row.
 
 ### 4.4 Topology and PCIe link negotiation
+
+Topology describes how the GPUs and CPUs are wired to each other. Two GPUs that sit under the same PCIe switch can exchange data directly, and two GPUs on different CPU sockets may have to cross a slower link. The commands below show that wiring and check the PCIe link speed of each card.
 
 ```bash
 # Topology matrix and peer-to-peer read and write capability
@@ -334,17 +362,19 @@ for bdf in $(lspci -D | grep -Ei 'NVIDIA' | awk '{print $1}'); do
 done
 ```
 
-If `LnkSta` shows a lower speed or width than `LnkCap`, the link has trained down, which is a seating, riser or cable fault. That fault halves host-to-GPU bandwidth without any error message.
+The first group prints a matrix in which each cell describes the link between two GPUs, or between a GPU and a CPU. The peer-to-peer commands report whether each pair can read and write the other's memory directly. The second group compares what each card can do (LnkCap) with what it negotiated (LnkSta). The third group prints the NUMA node of each GPU, which is the CPU memory region closest to it. A NUMA node is one memory-and-CPU region on a multi-socket machine. Pin data loaders to the matching NUMA node, so CPU work and GPU work sit on the same side of the machine.
+
+If `LnkSta` shows a lower speed or width than `LnkCap`, the link has trained down, which is a seating, riser or cable fault. That fault halves host-to-GPU bandwidth without any error message. The job still runs, and it simply runs slower. Reseat the card, check the riser, and compare the link with a healthy neighbor before you replace anything.
 
 ---
 
 ## 5. Field triage: Xid errors and slowdown causes
 
-When a node logs kernel errors at 3 AM, or a job slows without crashing, you must separate harmless warnings from real hardware faults. Guessing wrong either pages the team for nothing or leaves a bad GPU in the cluster. Chapter 10.21 owns the full health and Xid reference. This section gives the triage rule an on-call needs.
+When a node logs kernel errors in the middle of the night, or a job slows without crashing, you must separate harmless warnings from real hardware faults. Guessing wrong either pages the team for nothing or leaves a bad GPU in the cluster. Chapter 10.21 owns the full health and Xid reference. This section gives the triage rule an on-call engineer needs at the moment of the page.
 
 ### 5.1 Xid errors: three tiers
 
-An Xid is an error code the NVIDIA kernel driver prints to `dmesg` as `NVRM: Xid (PCI:<bus>): <code>, <message>`. Triage by the number, because the message text can change between driver releases. The function `classify_xid()` in `code/part10/gpu_node_ops.py` encodes this table.
+An Xid is an error code that the NVIDIA kernel driver prints to `dmesg`. The format is `NVRM: Xid (PCI:<bus>): <code>, <message>`, where the bus is the PCI address of the card and the code is the number that matters. Triage by the number, because the message text can change between driver releases while the number stays put. The function `classify_xid()` in `code/part10/gpu_node_ops.py` encodes this table.
 
 | Xid | Meaning | Tier | Action |
 |---|---|---|---|
@@ -363,7 +393,9 @@ An Xid is an error code the NVIDIA kernel driver prints to `dmesg` as `NVRM: Xid
 | 95 | Uncontained ECC error | 3 | Drain; treat output of the running job as corrupted. |
 | 74 | NVLink error | None | Depends on the link fault; follow the NVLink diagnostic path. |
 
-Three rules govern the tiers. For tier 1, do not page anyone for a single event, but trend it weekly. For tier 2, suspect hardware only if the same GPU repeats the same code across unrelated applications, and then treat it as tier 3. For tier 3, stop scheduling on the GPU immediately, because a bad card in service costs more than a drained node.
+The tiers describe how much you trust the card after you see the code. Tier 1 codes are the card reporting its own repairs or early warnings, so they are trend material. Tier 2 codes usually point at the program that was running. Tier 3 codes mean the hardware or the data may be damaged, so the card comes out of service. The Xid 74 row has no tier, because an NVLink error depends on which link failed, and the right response depends on that.
+
+Three rules govern the tiers. For tier 1, do not page anyone for a single event, but trend it weekly. For tier 2, suspect hardware only if the same GPU repeats the same code across unrelated applications, and then treat it as tier 3. For tier 3, stop scheduling on the GPU immediately, because a bad card in service costs more than a drained node. The rules are short, so you can apply them in the middle of the night without reading the whole catalog.
 
 ```text
 Illustrative dmesg progression, oldest first:
@@ -374,9 +406,11 @@ Illustrative dmesg progression, oldest first:
   A weekly trend of 94 Xid 92 events against 12 the week before would have shown the fault early.
 ```
 
+Read the sequence as a story with a beginning. The first line is the earliest and the most useful clue. The ECC count rising across windows is the trend that would have warned someone before the card fell off the bus. The last line is the lesson: a weekly comparison catches the drift while there is still time to plan a repair. Here, the earliest code is the one to chase, and the later codes are its consequences.
+
 ### 5.2 Which kind of slowdown is it?
 
-When a job is slow and `nvidia-smi` reports high utilization, follow this ordered checklist. The functions `triage_slowdown()` and `diagnose_busy_but_slow()` in `code/part10/gpu_node_ops.py` implement it.
+When a job is slow and `nvidia-smi` reports high utilization, follow this ordered checklist. The order matters, because the cheap checks come first and rule out the common causes before you open a profiler. The functions `triage_slowdown()` and `diagnose_busy_but_slow()` in `code/part10/gpu_node_ops.py` implement it.
 
 ```mermaid
 flowchart TD
@@ -391,6 +425,8 @@ flowchart TD
     Tensor -->|"10% to 50%"| Unknown["Inconclusive: profile with Nsight Systems"]
 ```
 
+The diagram reads from the top. First, check the throttle reason, since a hardware or power reason explains the slowdown directly. Only when no reason is active does the tensor activity decide the next step. High tensor activity points to the network or the data loader, low tensor activity points to software overhead, and the middle band calls for a profiler.
+
 | Cause | How to recognise it | First fix |
 |---|---|---|
 | Thermal throttling | A thermal reason is active and temperature is near the slowdown limit. Fans at 100 percent at that temperature mean cooling is saturated. A slowdown at the same time every afternoon points to facility cooling. | One hot GPU: inspect its airflow. Whole rack or a daily pattern: escalate to facilities. |
@@ -399,15 +435,17 @@ flowchart TD
 | Leftover clock lock | Clocks stay low while the GPU is cool and lightly loaded because someone left `-lgc` active. | Clear it with `nvidia-smi -rgc`, and reset memory clocks with `-rmc`. |
 | Bursty workload | No throttle reason, a cool GPU, and clocks that swing between high and low across short batch gaps. Sampling every 0.5 seconds for five minutes and counting distinct values is a quick test: one value or two to three within about 50 MHz is stable, more than five is oscillating. | Remove idle input gaps found with Nsight Systems, or lock clocks. |
 
-The PSU sizing rule of thumb used by `minimum_psu_watts()` is GPU count times watts per GPU times 1.3 for headroom. Four 300 W GPUs need at least 1,560 W.
+The table lists the five causes that show up most often, each with a sign you can see and a first fix. The thermal row asks whether one card or a whole rack is hot, because that answer decides who you call. The power rows separate a setting from a supply problem. The clock lock row is easy to miss, since no throttle bit is set when someone holds a clock on purpose. The bursty row is the hardest to see, and the sampling test is a cheap way to confirm it before you spend an hour in a profiler.
+
+The PSU sizing rule of thumb used by `minimum_psu_watts()` is GPU count times watts per GPU times 1.3 for headroom. The 1.3 factor leaves room for spikes above the average draw. Four 300 W GPUs need at least 1,560 W.
 
 ### 5.3 Fans: many data center GPUs have none
 
-`nvidia-smi --query-gpu=fan.speed` returns a value only on cards with an on-board fan. Passively cooled cards such as the H100 PCIe and the L40S, and SXM modules on HGX baseboards, report N/A. Their cooling comes from chassis fans that the Baseboard Management Controller, BMC, controls. Query the BMC with `ipmitool sdr type Fan` or Redfish. One fan at 0 RPM beside neighbours turning at 8,400 RPM is a failed fan. Do not open a data center GPU to replace thermal paste yourself. Cordon the node, capture logs and open a vendor RMA.
+`nvidia-smi --query-gpu=fan.speed` returns a value only on cards with an on-board fan. Passively cooled cards such as the H100 PCIe and the L40S, and SXM modules on HGX baseboards, report N/A. Their cooling comes from chassis fans that the Baseboard Management Controller, BMC, controls. The BMC is the small controller on the server board that watches sensors and drives the chassis fans, and you can reach it over the network. Query the BMC with `ipmitool sdr type Fan` or Redfish, which is the standard web interface to the same data. One fan at 0 RPM beside neighbors turning at 8,400 RPM is a failed fan. Do not open a data center GPU to replace thermal paste yourself. Cordon the node, capture logs and open a vendor RMA. Cordon means marking the node so no new work lands on it, and RMA means return merchandise authorization, the vendor's process for a warranty replacement.
 
 ### 5.4 When throttle reasons are clear and utilization still misleads
 
-If no throttle bit is active and Tensor activity is low, the GPU spends its time on overhead instead of matrix math.
+If no throttle bit is active and Tensor activity is low, the GPU spends its time on overhead instead of matrix math. The table below lists four common overhead causes. Each one has a counter that shows it and a remedy that targets it. Use the counter first, so you fix the cause you have measured rather than the one you suspect.
 
 | Bottleneck | Signal | Remedy |
 |---|---|---|
@@ -416,13 +454,15 @@ If no throttle bit is active and Tensor activity is low, the GPU spends its time
 | Fragmentation | CUDA out-of-memory error while `nvidia-smi` shows free memory; `torch.cuda.memory_summary()` shows a wide gap between reserved and allocated. | Set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, reduce shape variety, and use `torch.cuda.empty_cache()` sparingly. |
 | Missed spikes | Point-in-time `nvidia-smi` looks normal during sporadic slowdowns. | Stream `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS` and `DCGM_FI_DEV_GPU_TEMP` through dcgm-exporter. |
 
-How large is the clock drop to expect? Examples range from about 7 percent (1980 to 1833 MHz) to 15 percent (1410 to 1200 MHz) to a severe 1500 to 500 MHz. No single number is a law of the hardware. Measure your own baseline with `nvidia-smi dmon` before an incident, so you know what normal looks like on your nodes.
+The first two rows are about the work the GPU is asked to do. A copy stall means the data is not arriving, and a precision stall means the math is not using the fast units. The fragmentation row is about memory layout, where the free space exists but is split into pieces too small for the request. The missed spikes row is about measurement, where the sampling interval is too coarse to catch a short event. Each row names a different kind of problem, so the counter in the middle column is the thing to check first.
+
+How large is the clock drop to expect? Examples range from about 7 percent (1980 to 1833 MHz) to 15 percent (1410 to 1200 MHz) to a severe 1500 to 500 MHz. No single number is a law of the hardware. Measure your own baseline with `nvidia-smi dmon` before an incident, so you know what normal looks like on your nodes. A drop of 7 percent may be ordinary on one fleet and alarming on another, and only your own baseline can tell you which.
 
 ---
 
 ## 6. How it fails: six production failure modes
 
-The function `audit_gpu_node_operational_health()` in `code/part10/gpu_node_ops.py` combines these checks into one gate. It is this handbook's own composition, not a vendor tool.
+The function `audit_gpu_node_operational_health()` in `code/part10/gpu_node_ops.py` combines these checks into one gate. It is the handbook's own composition, built from the checks above, rather than a vendor tool. The table lists the six failures the gate is designed to catch. Each row gives the symptom an operator sees first, the evidence that confirms it, and the fix.
 
 | # | Failure | Symptom | Evidence | Fix |
 |---|---|---|---|---|
@@ -433,13 +473,15 @@ The function `audit_gpu_node_operational_health()` in `code/part10/gpu_node_ops.
 | 5 | Fragmentation out-of-memory | The job crashes with CUDA out of memory although free memory showed before the crash. | The reserved pool is split into pieces smaller than the requested tensor. | Export `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. |
 | 6 | Uncorrected ECC errors | Training aborts or loss turns to NaN; `dmesg` shows Xid 48, 94 or 95. | `ecc.errors.uncorrected.volatile.total` is above zero. | Cordon the node with `kubectl cordon`, drain workloads and run hardware diagnostics for an RMA. |
 
-Row 4 is the case people meet most often. A stuck collective does not look idle, so a dashboard filtered for low utilization never catches it. Pair utilization with job progress, such as steps per second, to catch it.
+Row 4 is the case people meet most often. A stuck collective does not look idle, so a dashboard filtered for low utilization never catches it. The job looks busy, the card looks busy, and nothing moves forward. Pair utilization with job progress, such as steps per second, to catch it. A flat step counter next to a high utilization number is the signature of a hang.
 
 ---
 
 ## Hands-on lab: verify throttle bitmasks, memory regimes and Xid triage
 
-**Venue:** any Linux machine or Nebius GPU VM with Python 3.10 or later. No GPU is needed, because the lab runs the diagnostic model in `code/part10/gpu_node_ops.py` against fixed inputs.
+**Venue:** any Linux machine or Nebius GPU VM with Python 3.10 or later. No GPU is needed, because the lab runs the diagnostic model in `code/part10/gpu_node_ops.py` against fixed inputs. The commands in section 4 need a real GPU node, and this lab does not run them.
+
+The lab checks the decision logic. It feeds fixed bitmasks, memory figures, temperatures and Xid codes into the diagnostic model, then compares each answer with the expected one. Because the inputs are fixed, the output is the same on every machine.
 
 ```bash
 python3 code/part10/gpu_node_ops_lab.py
@@ -494,19 +536,21 @@ Expected output, ending in 41 passed.
 Summary: 41 passed, 0 failed (total 41)
 ```
 
-The commands in section 4 need real GPU hardware. The lab does not run them.
+Each line in the output names one rule and says whether the model followed it. The lines with "Rejects" check the input guards, which matter as much as the answers, because a monitoring tool that accepts a negative temperature is hiding a bug. If a line fails, read its label first. The label names the rule, and you can find that rule in the sections above to see what changed.
 
 ---
 
 ## Exercises
 
-1. **Decode a throttle mask:** A monitoring alert reads `clocks_throttle_reasons.active` as `0x0000000000000028`. Use the table in section 3.1 to decode it into its flags and say what is physically happening on the GPU.
-2. **Same utilization, different outcome:** Both GPUs in a two-GPU server report 85 percent SM utilization. GPU 0 trains at 2,048 samples per second and GPU 1 at 180. Write the command that shows memory bandwidth activity, and explain why GPU 1 is stalling.
-3. **PyTorch memory headroom:** A 40.0 GB A100 has 28.4 GB allocated by PyTorch and 30.2 GB reserved. Calculate the reserved fraction, the best-case headroom for new tensors, and whether an 8.0 GB allocation can succeed. Then say what could still make it fail.
-4. **Read a combined throttle mask:** The mask reads `0x0000000000000044`. Name the two reasons, say which one you would investigate first, and name one command and one BMC check that confirm it.
-5. **Persistence mode:** Explain what the driver does when persistence mode is off and no job is running. State why the next job starts slowly and name the daemon that fixes it across reboots.
-6. **Clock locking for inference jitter:** A latency benchmark on an A100 swings between 45 ms and 70 ms at P99. Write the command that locks SM clocks at the 1410 MHz rated maximum and the command that restores automatic scaling.
-7. **Triage a dmesg sequence:** The log shows Xid 92, then Xid 45 six seconds later, then Xid 79 five seconds after that. Classify each code by tier, name the cause and the symptoms, and state your first two actions on the node.
+Each exercise uses the numbers in the block after the list. Write a short answer for each one, and show the arithmetic where it is asked for.
+
+1. **Decode a throttle mask:** A monitoring alert reads `clocks_throttle_reasons.active` as `0x0000000000000028`. Use the table in section 3.1 to decode it into its flags. Say what is physically happening on the GPU.
+2. **Same utilization, different outcome:** Both GPUs in a two-GPU server report 85 percent SM utilization. GPU 0 trains at 2,048 samples per second. GPU 1 trains at 180. Write the command that shows memory bandwidth activity. Explain why GPU 1 is stalling.
+3. **PyTorch memory headroom:** A 40.0 GB A100 has 28.4 GB allocated by PyTorch. It also reserves 30.2 GB. Calculate the reserved fraction. Calculate the best-case headroom for new tensors. Decide whether an 8.0 GB allocation can succeed. Then say what could still make it fail.
+4. **Read a combined throttle mask:** The mask reads `0x0000000000000044`. Name the two reasons. Say which one you would investigate first. Name one command that confirms it. Name one BMC check that confirms it.
+5. **Persistence mode:** Explain what the driver does when persistence mode is off and no job is running. State why the next job starts slowly. Name the daemon that fixes it across reboots.
+6. **Clock locking for inference jitter:** A latency benchmark on an A100 swings between 45 ms and 70 ms at P99. Write the command that locks SM clocks at the 1410 MHz rated maximum. Write the command that restores automatic scaling.
+7. **Triage a dmesg sequence:** The log shows Xid 92, and it comes first. Xid 45 follows six seconds later. Xid 79 follows five seconds after that. Classify each code by tier. Name the cause and the symptoms. State your first two actions on the node.
 
 ```text
 Exercise 3: 40.0 GB GPU, 28.4 GB allocated, 30.2 GB reserved, new batch needs 8.0 GB.

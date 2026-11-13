@@ -24,11 +24,15 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A kernel can have coalesced memory loads, conflict-free shared memory, high occupancy, and still leave the GPU mostly idle. This happens when every byte fetched from high-bandwidth memory performs only one or two floating-point operations. Compute throughput on modern GPUs has grown much faster than memory bandwidth. Low arithmetic intensity pins workloads under the slanted memory roof of the Roofline model long before Tensor Cores reach capacity.
+Picture a team that has already tried the common kernel tweaks from this part of the handbook. Their loads coalesce, their shared memory is free of conflicts, their occupancy looks healthy, and the GPU still sits mostly idle. The dashboard shows the cards busy, but the Tensor Cores spend long stretches waiting. A kernel can have coalesced memory loads, conflict-free shared memory, and high occupancy, and still leave the GPU mostly idle. This happens when every byte fetched from high-bandwidth memory performs only one or two floating-point operations. Compute throughput on modern GPUs has grown much faster than memory bandwidth. Low arithmetic intensity pins workloads under the slanted memory roof of the Roofline model long before Tensor Cores reach capacity.
 
-In *AI Systems Performance Engineering* Chapter 9, Blackwell B200 compute throughput jumps by two orders of magnitude across precision formats while memory bandwidth remains finite. Even inside a multi-GPU NVLink rack, kernels with low FLOPs per byte saturate memory and interconnect buses first. Infrastructure engineers must raise arithmetic intensity so each memory transaction feeds dozens of math operations on chip.
+Arithmetic intensity is the number of floating-point operations a kernel performs for each byte it moves. It is a ratio, and it does not care how fast your code is written. A kernel that does one operation per byte has a low ratio no matter how clean its code looks. The fix is to change the work so that each byte pulled from memory feeds more math before it leaves the chip.
 
-Note on the numbers: the source text states that the numeric values in its metric tables, including Tables 9-1 and 9-2, are illustrative. Therefore, they were not rerun on live hardware for this handbook. The arithmetic intensity figures and padding percentages are exact arithmetic from the stated byte and operation counts.
+In *AI Systems Performance Engineering* Chapter 9, Blackwell B200 compute throughput jumps by two orders of magnitude across precision formats, while memory bandwidth remains finite. Even inside a multi-GPU NVLink rack, kernels with low FLOPs per byte saturate memory and interconnect buses first. Infrastructure engineers must raise arithmetic intensity so each memory transaction feeds dozens of math operations on chip. In a cluster, that is the difference between paying for expensive accelerators that wait and getting the throughput the purchase order promised.
+
+A note on the numbers: the source text states that the numeric values in its metric tables, including Tables 9-1 and 9-2, are illustrative. Therefore, they were not rerun on live hardware for this handbook. The arithmetic intensity figures and padding percentages are exact arithmetic from the stated byte and operation counts. Keep those two kinds of numbers apart in your head. One kind is arithmetic you can check with a pencil, and the other is a measurement from one machine.
+
+Read the table from left to right. The first column names the transformation or the hardware figure. The second column gives the baseline, and the third gives the optimized or target value. The last column explains the mechanism that moves the number. The first row sets compute figures against memory figures, and the gap between them is what this whole chapter is about. The remaining rows walk through the fusion, cluster, tile, and PTX techniques in the order the chapter covers them.
 
 | Transformation or Hardware Metric | Baseline | Optimized / Target | Key Mechanism and Impact |
 |---|---|---|---|
@@ -51,13 +55,9 @@ Note on the numbers: the source text states that the numeric values in its metri
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Complete Chapter 10.4 on Tensor Cores and precision formats, and Chapter 10.5 on the Roofline model. You should also review Chapters 10.13 and 10.14 on memory coalescing, tiling, bank conflicts, occupancy, and instruction-level parallelism.
+**Prerequisites:** Complete Chapter 10.4 on Tensor Cores and precision formats, and Chapter 10.5 on the Roofline model. You should also review Chapters 10.13 and 10.14 on memory coalescing, tiling, bank conflicts, occupancy, and instruction-level parallelism. If the word arithmetic intensity still feels loose, reread the Roofline chapter first, because every decision in this chapter is a move along that chart.
 
-**Outcomes:**
-1. Combine multilevel microtiling, two-stage TMA software prefetching, and Thread Block Cluster TMA multicast to multiply on-chip data reuse.
-2. Implement vertical and horizontal kernel fusion with `fusedL2Norm`. Apply recomputation trade-offs, 2:4 structured sparsity, and PyTorch ragged nested tensors.
-3. Size matrix tiles for Blackwell per-SM Tensor Memory. Configure PyTorch reduced-precision execution and instantiate declarative CUTLASS Sm100 GEMM templates.
-4. Audit inline PTX cache-bypass and prefetch instructions. Explain the portability risks of undocumented PTX modifiers in production libraries.
+**What the chapter covers:** The chapter starts with multilevel microtiling, two-stage TMA software prefetching, and Thread Block Cluster multicast, which together multiply on-chip data reuse. It then moves to vertical and horizontal kernel fusion through the `fusedL2Norm` example, recomputation trade-offs, 2:4 structured sparsity, and PyTorch ragged nested tensors. Next comes sizing matrix tiles for Blackwell's per-SM Tensor Memory, configuring reduced-precision execution in PyTorch, and instantiating declarative CUTLASS Sm100 GEMM templates. The last part audits inline PTX cache-bypass and prefetch instructions, and it explains the portability risks of undocumented PTX modifiers in production libraries.
 
 ---
 
@@ -65,11 +65,13 @@ Note on the numbers: the source text states that the numeric values in its metri
 
 ### 1.1 Multilevel microtiling across DRAM, L2, SMEM, TMEM, and registers
 
-Staging a tile in Shared Memory reduces global HBM traffic. However, threads can still bottleneck on Shared Memory bandwidth if every scalar multiply-add reads operands from shared banks. When warps issue back-to-back math instructions, shared memory access latency and bank pressure limit how fast the arithmetic units can run. Adding a register-level staging tier between Shared Memory and the compute units removes this bottleneck.
+Staging a tile in Shared Memory reduces global HBM traffic. However, threads can still bottleneck on Shared Memory bandwidth if every scalar multiply-add reads its operands from shared banks. Think of a kitchen where every spice has to come from the same shelf at the back. The cooks spend more time walking than cooking. When warps issue back-to-back math instructions, shared memory access latency and bank pressure limit how fast the arithmetic units can run. Adding a register-level staging tier between Shared Memory and the compute units removes this bottleneck, because the spices now sit on the cook's own counter.
 
-Multilevel microtiling splits on-chip staging into two coordinated tiers. In the first tier, the thread block cooperatively streams a macro-tile from off-chip HBM through L2 into Shared Memory using asynchronous copies. Two ping-pong buffers allow the next macro-tile to prefetch while the current macro-tile computes. In the second tier, each thread loads a vectorized register microtile from Shared Memory into its private register file, or stages operands into Blackwell per-SM Tensor Memory for fifth-generation Tensor Core instructions.
+Multilevel microtiling splits on-chip staging into two coordinated tiers. In the first tier, the thread block cooperatively streams a macro-tile from off-chip HBM through L2 into Shared Memory using asynchronous copies. A macro-tile is a large block of a matrix that one thread block works on for a while. Two ping-pong buffers allow the next macro-tile to prefetch while the current macro-tile computes. In the second tier, each thread loads a vectorized register microtile from Shared Memory into its private register file, or stages operands into Blackwell per-SM Tensor Memory for fifth-generation Tensor Core instructions. A microtile is the small block of results that one thread computes in its own registers.
 
-Every element fetched from Shared Memory into registers participates in multiple outer-product operations at single-cycle register latency. On a Grace Blackwell Superchip using Unified Memory, engineers can also overlap host-to-device migration over NVLink-C2C using `cudaMemPrefetchAsync()`. However, explicit pinned memory or TMA transfers remain more predictable for strict latency targets.
+Every element fetched from Shared Memory into registers takes part in multiple outer-product operations at single-cycle register latency. An outer product multiplies one column of values by one row of values and produces a full grid of partial results, so a single load feeds many multiply-adds. On a Grace Blackwell Superchip using Unified Memory, engineers can also overlap host-to-device migration over NVLink-C2C using `cudaMemPrefetchAsync()`. NVLink-C2C is the chip-to-chip link between the Grace CPU and the Blackwell GPU. However, explicit pinned memory or TMA transfers remain more predictable for strict latency targets, because the runtime is not deciding when the data moves.
+
+Think of the tiers as shelves between the pantry and the cook. The pantry is HBM, which is large and slow to reach. L2 is a shared shelf near the pantry that every SM can use. Shared memory is a counter that one thread block can reach quickly. Registers are the cook's own hands. A good kernel moves each ingredient down this chain once, then reuses it as many times as the recipe allows. The table lists the path for each tier, so you can see which shelf a given buffer lives on.
 
 | Staging Tier or Path | Hardware Units Involved | Tile / Buffer Sizing & Bandwidth | Source Reference |
 |---|---|---|---|
@@ -80,11 +82,11 @@ Every element fetched from Shared Memory into registers participates in multiple
 
 ### 1.2 Tiling across SMs with Thread Block Clusters and TMA multicast
 
-Single-block tiling reuses data only among the threads of one Streaming Multiprocessor. In a large matrix multiplication, four or sixteen different SMs computing adjacent output tiles all need the exact same input tile of matrix A or matrix B from HBM. If every SM fetches that tile independently, global memory bandwidth is wasted on duplicate reads.
+Single-block tiling reuses data only among the threads of one Streaming Multiprocessor. In a large matrix multiplication, four or sixteen different SMs computing adjacent output tiles all need the exact same input tile of matrix A or matrix B from HBM. If every SM fetches that tile independently, global memory bandwidth is wasted on duplicate reads. It is the same problem as a street of houses where every family drives to the store for the same bag of flour.
 
-Thread Block Clusters and Distributed Shared Memory solve this by grouping multiple thread blocks scheduled simultaneously across neighboring SMs into a hardware-synchronized cluster. Instead of four SMs reading the same tile from HBM four times, the Tensor Memory Accelerator fetches the tile from HBM and L2 once. It then multicasts that tile simultaneously into the shared memory of all member blocks. This cuts global HBM traffic for shared tiles in proportion to the cluster size and multiplies GPU-wide arithmetic intensity.
+Thread Block Clusters and Distributed Shared Memory solve this by grouping multiple thread blocks scheduled simultaneously across neighboring SMs into a hardware-synchronized cluster. Distributed Shared Memory lets a block read the shared memory of its neighbors in the same cluster. Instead of four SMs reading the same tile from HBM four times, the Tensor Memory Accelerator fetches the tile from HBM and L2 once. It then multicasts that tile simultaneously into the shared memory of all member blocks. Multicast means one delivery lands in several destinations, the way one truck drops the same bundle at every house on a block. This cuts global HBM traffic for shared tiles in proportion to the cluster size and multiplies GPU-wide arithmetic intensity.
 
-By default, CUDA guarantees portable cluster sizes up to eight thread blocks. On Blackwell architectures, setting `cudaFuncAttributeNonPortableClusterSizeAllowed` unlocks non-portable clusters of up to sixteen thread blocks for even higher reuse. Engineers should always profile occupancy before enabling sixteen-block clusters because large clusters can constrain block scheduling across SMs.
+By default, CUDA guarantees portable cluster sizes up to eight thread blocks. On Blackwell architectures, setting `cudaFuncAttributeNonPortableClusterSizeAllowed` unlocks non-portable clusters of up to sixteen thread blocks for even higher reuse. Non-portable means the size works on Blackwell but is not promised by the portable CUDA contract for every GPU. Engineers should always profile occupancy before enabling sixteen-block clusters, because large clusters can constrain block scheduling across SMs. A cluster that cannot be placed on the chip will wait, and waiting blocks do no work.
 
 | Cluster Configuration | CTAs per Cluster | HBM Traffic Reduction / Intensity Multiplier | Portability & API Requirement |
 |---|---|---|---|
@@ -93,9 +95,9 @@ By default, CUDA guarantees portable cluster sizes up to eight thread blocks. On
 | Max portable cluster | `8` CTAs | Up to `8x` reuse | Default CUDA portable cluster ceiling |
 | Blackwell non-portable cluster | `16` CTAs | Up to `16x` reuse | Requires `cudaFuncAttributeNonPortableClusterSizeAllowed` on `sm_100` |
 
-The 16-block cluster is something you opt into, not the default. Blackwell can run clusters larger than the portable limit of 8 thread blocks, but only after you set `cudaFuncAttributeNonPortableClusterSizeAllowed` on the kernel. Without that attribute, the portable ceiling still applies.
+The 16-block cluster is something you opt into, not the default. Blackwell can run clusters larger than the portable limit of 8 thread blocks, but only after you set `cudaFuncAttributeNonPortableClusterSizeAllowed` on the kernel. Without that attribute, the portable ceiling still applies. Read the table as a menu. Each row trades a little more scheduling freedom for a little more reuse, and the portability column tells you what the row costs in terms of how far the code can travel.
 
-Bigger is not automatically faster. A 16-block cluster can raise data reuse to 16× and lift arithmetic intensity by a similar factor. Larger clusters can also reduce occupancy, so the book advises profiling before you keep the 16-block setting. Measure the same kernel at 8 and at 16 blocks, then keep whichever one is faster.
+Bigger is not automatically faster. A 16-block cluster can raise data reuse to 16× and lift arithmetic intensity by a similar factor. Larger clusters can also reduce occupancy, so *AI Systems Performance Engineering* advises profiling before you keep the 16-block setting. Measure the same kernel at 8 and at 16 blocks, then keep whichever one is faster. The reuse factor is what the hardware could save, and the timing is what your kernel actually gets.
 
 ---
 
@@ -103,11 +105,13 @@ Bigger is not automatically faster. A 16-block cluster can raise data reuse to 1
 
 ### 2.1 Vertical and horizontal kernel fusion and the fusedL2Norm worked example
 
-Whenever a kernel finishes and writes an intermediate tensor back to HBM just so the next kernel can read it, the workload pays a full HBM round-trip and a kernel launch gap. In a naive multi-pass pipeline such as row-wise L2 normalization, separate kernels square each element, sum the squares across each row, and divide every element by the row norm. Each pass streams the entire tensor through global memory while performing only a single arithmetic operation per element.
+Whenever a kernel finishes and writes an intermediate tensor back to HBM just so the next kernel can read it, the workload pays a full HBM round-trip and a kernel launch gap. In a naive multi-pass pipeline such as row-wise L2 normalization, separate kernels square each element, sum the squares across each row, and divide every element by the row norm. Each pass streams the entire tensor through global memory while performing only a single arithmetic operation per element. The data moves three times, and the math barely changes. Think of a baker who carries the dough from the mixer to the table, back to the mixer, and then to the oven, when one bench would have done all three jobs.
 
-Kernel fusion combines multiple operations into a single launch so intermediate values stay inside registers or Shared Memory. Vertical fusion chains sequential producer-to-consumer operations on the same tensor, while horizontal fusion batches independent parallel projections into one kernel. In the `fusedL2Norm` kernel from *AI Systems Performance Engineering* Chapter 9, a single thread block per row accumulates sums of squares in registers using `fmaf`. It then reduces the row sum in Shared Memory and normalizes the row in place.
+Kernel fusion combines multiple operations into a single launch, so intermediate values stay inside registers or Shared Memory. Vertical fusion chains sequential producer-to-consumer operations on the same tensor, while horizontal fusion batches independent parallel projections into one kernel. A producer is the operation that creates a value, and a consumer is the one that reads it. In the `fusedL2Norm` kernel from *AI Systems Performance Engineering* Chapter 9, a single thread block per row accumulates sums of squares in registers using `fmaf`. It then reduces the row sum in Shared Memory and normalizes the row in place. The row never leaves the chip between those steps.
 
-The fused kernel also applies two instruction-level optimizations. First, it replaces slow floating-point division in the inner loop with a fast Special Function Unit reciprocal square root `rsqrtf` followed by a single-cycle multiply. Second, each thread computes `rsqrtf` once outside the write loop and reuses the scalar inverse across all elements in its grid-stride pass.
+The fused kernel also applies two instruction-level optimizations. First, it replaces slow floating-point division in the inner loop with a fast Special Function Unit reciprocal square root `rsqrtf` followed by a single-cycle multiply. The Special Function Unit is the small hardware block that handles transcendental functions such as square roots. Second, each thread computes `rsqrtf` once outside the write loop and reuses the scalar inverse across all elements in its grid-stride pass. A grid-stride loop lets each thread step through the array by the total thread count, so one kernel covers any tensor length.
+
+Start with the byte counts in the table, because the whole argument rests on them. A single elementwise pass reads one value and writes one value. The unfused normalization makes three such passes, so the same element crosses the HBM bus three times. The fused kernel reads the element twice, once to accumulate the sum and once to scale the output, and writes it once. The intensity column is the FLOP count divided by those bytes. The ratios are low for every version because normalization does so little math per element. Fusion does not make the math bigger. It shrinks the bytes, and that is what raises the ratio.
 
 | Pipeline Variant | Operations Executed | HBM Bytes Moved per FP32 Element | Arithmetic Intensity (`FLOPs/byte`) |
 |---|---|---|---|
@@ -131,6 +135,8 @@ flowchart TB
     F3 --> AI2["12 B/elem -> 0.25 to 0.3333 FLOPs/B"]
   end
 ```
+
+Walk through the kernel from the top. Each block handles one row, and the block number picks that row. The first loop has every thread add up squares from its own strided slice of the row into a private local value. The result goes into shared memory, and the barrier makes sure every thread has written before anyone reads. The second loop is a tree reduction. Each pass halves the number of active threads, and each active thread adds its partner's value. After the loop, the first slot of shared memory holds the full row sum. The final loop computes the reciprocal square root once and multiplies each element by it. A small constant is added before the root so that an all-zero row does not divide by zero.
 
 ```cpp
 // Fused row-wise L2 normalization kernel (ASP Ch 9 p. 301)
@@ -170,11 +176,11 @@ __global__ void fusedL2Norm(const float* __restrict__ x,
 
 ### 2.2 2:4 structured sparsity and recomputation trade-offs
 
-Dense weight matrices force memory buses to transfer parameters that contribute almost nothing to the output activation. Similarly, caching every forward-pass activation in HBM for backpropagation consumes both memory bandwidth and capacity. Engineers need algorithmic ways to skip zero weights in hardware and trade abundant compute cycles for fewer memory accesses.
+Dense weight matrices force memory buses to transfer parameters that contribute almost nothing to the output activation. Similarly, caching every forward-pass activation in HBM for backpropagation consumes both memory bandwidth and capacity. Engineers need algorithmic ways to skip zero weights in hardware and to trade abundant compute cycles for fewer memory accesses. Compute is cheap on a modern GPU, while moving bytes is the expensive part, so each trade in this section spends math to save traffic.
 
-On Ampere, Hopper, and Blackwell GPUs, Sparse Tensor Cores accelerate a fine-grained 2:4 structured sparsity pattern where at least two out of every four consecutive weights are zero. Hardware multiplexers compress zero weights out of storage and skip them during matrix multiply-accumulate instructions. This doubles effective parameters per byte and lifts Tensor Core throughput up to twofold. Because training gradients change dynamically and small batches do not amortize metadata index overhead, 2:4 sparsity is used primarily for calibrated post-training inference at large batch sizes via `cuSPARSELt` or PyTorch `to_sparse_semi_structured()`.
+On Ampere, Hopper, and Blackwell GPUs, Sparse Tensor Cores accelerate a fine-grained 2:4 structured sparsity pattern, where at least two out of every four consecutive weights are zero. Hardware multiplexers compress zero weights out of storage and skip them during matrix multiply-accumulate instructions. A multiplexer is a switch that picks one input out of several. This doubles effective parameters per byte and lifts Tensor Core throughput up to twofold. Because training gradients change dynamically, and small batches do not amortize metadata index overhead, 2:4 sparsity is used primarily for calibrated post-training inference at large batch sizes via `cuSPARSELt` or PyTorch `to_sparse_semi_structured()`. Calibration means you measure the pruned model on real data and check that its accuracy holds. The metadata is the small index that tells the hardware where the surviving weights sit.
 
-Recomputation applies the opposite trade-off by recalculating cheap intermediate values on the fly inside registers instead of reading stored tensors from HBM. Recomputing a square or activation function takes only a few clock cycles on an ALU, whereas fetching a saved activation from global memory costs hundreds of cycles. Activation checkpointing uses this exact principle during training to trade extra FLOPs for lower HBM bandwidth and VRAM usage.
+Recomputation applies the opposite trade-off. Instead of reading stored tensors from HBM, it recalculates cheap intermediate values on the fly inside registers. Recomputing a square or activation function takes only a few clock cycles on an ALU, whereas fetching a saved activation from global memory costs hundreds of cycles. Activation checkpointing uses this exact principle during training to trade extra FLOPs for lower HBM bandwidth and VRAM usage. VRAM is the memory on the GPU card, and it is the budget that large training runs run out of first. A checkpoint is a value you keep, and everything else gets recomputed when it is needed again.
 
 | Technique | Pattern / Mechanism | Hardware & Batch Constraints | Effective Gain |
 |---|---|---|---|
@@ -183,11 +189,11 @@ Recomputation applies the opposite trade-off by recalculating cheap intermediate
 
 ### 2.3 PyTorch arithmetic intensity levers
 
-Writing custom CUDA kernels for every operator is impractical when iterating on model architectures in Python. However, default eager-mode PyTorch launches separate kernels for each pointwise operation and pads variable-length sequence batches with zeros. That default behavior wastes over half of memory bandwidth on intermediate buffers and pad tokens.
+Writing custom CUDA kernels for every operator is impractical when iterating on model architectures in Python. However, default eager-mode PyTorch launches separate kernels for each pointwise operation and pads variable-length sequence batches with zeros. Eager mode means each Python line runs right away, one operation at a time. That default behavior wastes over half of memory bandwidth on intermediate buffers and pad tokens. The waste is quiet, because the code is correct and the outputs look right, and only the traffic counters reveal it.
 
-PyTorch provides three native mechanisms that raise arithmetic intensity without custom C++ code. First, `torch.compile` uses TorchInductor to fuse chains of pointwise and reduction operations into single Triton or CUDA kernels automatically. Second, `torch.nn.attention.sdpa_kernel` with `SDPBackend.FLASH_ATTENTION` forces scaled dot-product attention onto the tiled online-softmax FlashAttention kernel. The quadratic attention matrix never touches HBM.
+PyTorch provides three native mechanisms that raise arithmetic intensity without custom C++ code. First, `torch.compile` uses TorchInductor to fuse chains of pointwise and reduction operations into single Triton or CUDA kernels automatically. Second, `torch.nn.attention.sdpa_kernel` with `SDPBackend.FLASH_ATTENTION` forces scaled dot-product attention onto the tiled online-softmax FlashAttention kernel. Online softmax computes the normalizing sum in tiles as the data streams past, so the full attention table never has to be written out. The quadratic attention matrix never touches HBM.
 
-Third, `torch.nested.nested_tensor` packs variable-length sequences into a single jagged buffer without rectangular zero-padding. When serving an LLM batch with sequence lengths ranging from short prompts to long contexts, rectangular padding forces the GPU to read and compute thousands of useless zero tokens. Packing those sequences into a nested tensor ensures every byte fetched from HBM contributes to real token math.
+Third, `torch.nested.nested_tensor` packs variable-length sequences into a single jagged buffer without rectangular zero-padding. A jagged layout stores each sequence back to back with its own length, so no sequence has to stretch to match the longest one. When serving an LLM batch with sequence lengths ranging from short prompts to long contexts, rectangular padding forces the GPU to read and compute thousands of useless zero tokens. Packing those sequences into a nested tensor ensures that every byte fetched from HBM contributes to real token math. Think of a bus that drops each rider at their stop instead of driving the full route with empty seats.
 
 | PyTorch Lever | API / Configuration | Workload Math / Example | Memory Traffic Saved |
 |---|---|---|---|
@@ -207,11 +213,13 @@ with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
 
 ### 3.1 How reduced precision multiplies arithmetic intensity
 
-Storing and transferring model weights in 32-bit floating-point format starves modern GPUs of both memory bandwidth and Tensor Core throughput. Scalar FP32 cores deliver only a small fraction of a GPU's total compute capacity while consuming four bytes for every parameter loaded from HBM. Halving the byte width of weights and activations transfers twice as many parameters per memory transaction and unlocks dedicated Tensor Core pipelines.
+Storing and transferring model weights in 32-bit floating-point format starves modern GPUs of both memory bandwidth and Tensor Core throughput. Scalar FP32 cores deliver only a small fraction of a GPU's total compute capacity while consuming four bytes for every parameter loaded from HBM. Halving the byte width of weights and activations transfers twice as many parameters per memory transaction and unlocks dedicated Tensor Core pipelines. A smaller number format is like a smaller box: the same truck can carry more boxes.
 
-Each step down the precision ladder raises arithmetic intensity and peak throughput together. Enabling TF32 in PyTorch keeps the 8-bit exponent range of FP32 while routing matrix multiplications onto Tensor Cores. Moving to BF16 or FP16 halves memory traffic and quadruples compute throughput. BF16 is preferred for training because its 8-bit exponent prevents gradient underflow without needing a dynamic loss scaler.
+Each step down the precision ladder raises arithmetic intensity and peak throughput together. Enabling TF32 in PyTorch keeps the 8-bit exponent range of FP32 while routing matrix multiplications onto Tensor Cores. Moving to BF16 or FP16 halves memory traffic and quadruples compute throughput. BF16 is preferred for training because its 8-bit exponent prevents gradient underflow without needing a dynamic loss scaler. The exponent sets the range of sizes a number can take, and the mantissa sets how finely it can be measured. Gradient underflow means very small gradients round to zero and vanish from training.
 
-For large-batch training and inference, 8-bit and 4-bit formats push efficiency even further. FP8 managed by Transformer Engine and INT8 accelerated by the `DP4A` dot-product instruction cut weight traffic by seventy-five percent compared to FP32. On Blackwell GPUs, two-level micro-scaled NVFP4 cuts weight bytes eightfold and raises dense Tensor Core throughput by more than two orders of magnitude over scalar FP32.
+For large-batch training and inference, 8-bit and 4-bit formats push efficiency even further. FP8 managed by Transformer Engine and INT8 accelerated by the `DP4A` dot-product instruction cut weight traffic by seventy-five percent compared to FP32. On Blackwell GPUs, two-level micro-scaled NVFP4 cuts weight bytes eightfold and raises dense Tensor Core throughput by more than two orders of magnitude over scalar FP32. Two-level micro-scaling means each small block of values carries its own scale, and the whole tensor carries a second, coarser scale. Those two scales keep the 4-bit values useful. Transformer Engine is NVIDIA's library that manages the precision choices for transformer models.
+
+Read the table as a ladder. Each row down the table uses fewer bytes per element, so each trip across the bus carries more elements. The first two rows are both four bytes, which is why TF32 saves no memory traffic even though it speeds up the math. The next rows halve and then quarter the bytes. The last row is the most aggressive, and it needs the most care. The notes column tells you what each format needs from the rest of the stack, such as calibration, a scale, or a particular batch size. A lower byte count is only a win when accuracy and hardware support come with it.
 
 | Precision Format | Bytes per Element | Relative Weight Traffic vs FP32 | Arithmetic Intensity Multiplier vs FP32 | Hardware Execution Engine & Key Rule |
 |---|---:|---:|---:|---|
@@ -224,11 +232,11 @@ For large-batch training and inference, 8-bit and 4-bit formats push efficiency 
 
 ### 3.2 Staging tiles through SMEM and per-SM TMEM
 
-On Hopper GPUs, holding large matrix accumulators in the general-purpose register file caused severe register pressure and limited thread block occupancy. When a warp-group matrix multiplication needed tens of thousands of registers for partial sums, fewer warps could co-reside on the SM and instructions stalled on register dependencies. Blackwell solves this by adding a dedicated Tensor Memory SRAM buffer inside every SM.
+On Hopper GPUs, holding large matrix accumulators in the general-purpose register file caused severe register pressure and limited thread block occupancy. An accumulator is the running total of a matrix product. When a warp-group matrix multiplication needed tens of thousands of registers for partial sums, fewer warps could co-reside on the SM, and instructions stalled on register dependencies. Blackwell solves this by adding a dedicated Tensor Memory SRAM buffer inside every SM. The accumulators move out of the register file into a space of their own, so the general-purpose registers are free for everything else.
 
-High-throughput Blackwell kernels use a three-stage on-chip pipeline. First, the kernel allocates four ping-pong buffers in dynamic Shared Memory so `cuda::memcpy_async` and TMA stream the next input tiles from HBM into Shared Memory while Tensor Cores consume the current tiles. Second, fifth-generation Tensor Core instructions such as `tcgen05.mma`, `tcgen05.ld`, and `tcgen05.st` stage operands and accumulate partial sums directly inside the per-SM Tensor Memory buffer. General-purpose registers remain completely free for other operations.
+High-throughput Blackwell kernels use a three-stage on-chip pipeline. First, the kernel allocates ping-pong buffers in dynamic Shared Memory, so `cuda::memcpy_async` and TMA stream the next input tiles from HBM into Shared Memory while Tensor Cores consume the current tiles. Second, fifth-generation Tensor Core instructions such as `tcgen05.mma`, `tcgen05.ld`, and `tcgen05.st` stage operands and accumulate partial sums directly inside the per-SM Tensor Memory buffer. General-purpose registers remain completely free for other operations. Third, the finished results move out to memory for the next step. Each stage hands its tile to the next, so the three stages run as a relay race rather than as one long sprint.
 
-Sizing tiles to fit this dedicated Tensor Memory budget is essential. A full-precision accumulator tile or a wide half-precision tile can fill one hundred percent of a single SM's Tensor Memory capacity. Choosing an oversized tile overflows the hardware buffer and forces the compiler or runtime to reject the configuration or spill to slower memory.
+Sizing tiles to fit this dedicated Tensor Memory budget is essential. A full-precision accumulator tile or a wide half-precision tile can fill one hundred percent of a single SM's Tensor Memory capacity. Choosing an oversized tile overflows the hardware buffer and forces the compiler or runtime to reject the configuration or spill to slower memory. The table below does the arithmetic for each tile shape, so you can see which ones fit before you write any kernel code.
 
 | Buffer or Tile Configuration | Dimensions & Precision | Exact Byte & KiB Footprint | Share of Per-SM Memory Ceiling |
 |---|---|---|---|
@@ -241,11 +249,11 @@ Sizing tiles to fit this dedicated Tensor Memory budget is essential. A full-pre
 
 ### 3.3 Using CUTLASS templates versus hand-tuned MMA kernels
 
-Writing raw assembly to coordinate TMA descriptors, register-bypassing copies, Tensor Memory accumulators, and warp specialization takes weeks of engineering effort for each GPU generation. Furthermore, standard CUDA C++ does not allow programmers to allocate Tensor Memory pointers directly with `malloc` or `__shared__` keywords. Relying on hand-tuned assembly for every matrix shape makes production codebases brittle and slow to migrate across architectures.
+Writing raw assembly to coordinate TMA descriptors, register-bypassing copies, Tensor Memory accumulators, and warp specialization takes weeks of engineering effort for each GPU generation. Warp specialization means some warps only load data while others only compute. Furthermore, standard CUDA C++ does not allow programmers to allocate Tensor Memory pointers directly with `malloc` or `__shared__` keywords. Relying on hand-tuned assembly for every matrix shape makes production codebases brittle and slow to migrate across architectures. A kernel that only one engineer can read becomes a risk the moment that engineer changes teams.
 
-NVIDIA's CUTLASS template library encapsulates the entire hardware pipeline behind declarative C++ templates. A single `cutlass::gemm::device::Gemm` instantiation configures asynchronous TMA bulk tensor staging, register-bypassing `cp.async` copies, `tcgen05.mma` accumulation inside Tensor Memory, and fused epilogue activation in a few lines of code. This same template infrastructure powers `cuBLAS`, `cuBLASLt`, and PyTorch TorchInductor backends.
+NVIDIA's CUTLASS template library encapsulates the entire hardware pipeline behind declarative C++ templates. A template is C++ code with placeholders that the compiler fills in for each configuration. A single `cutlass::gemm::device::Gemm` instantiation configures asynchronous TMA bulk tensor staging, register-bypassing `cp.async` copies, `tcgen05.mma` accumulation inside Tensor Memory, and fused epilogue activation in a few lines of code. An epilogue is the final step that writes results out, and fusing an activation into it saves one more trip to memory. This same template infrastructure powers `cuBLAS`, `cuBLASLt`, and PyTorch TorchInductor backends.
 
-As shown in Table 9-1 of *AI Systems Performance Engineering*, a declarative CUTLASS template matches a hand-tuned MMA kernel at ninety-eight percent Tensor Core utilization. The template uses slightly more registers and Shared Memory per thread block to remain general, which stays well inside hardware occupancy limits. In exchange, teams inherit support for new precision formats and cluster multicast features automatically.
+As shown in Table 9-1 of *AI Systems Performance Engineering*, a declarative CUTLASS template matches a hand-tuned MMA kernel at ninety-eight percent Tensor Core utilization. The template uses slightly more registers and Shared Memory per thread block to remain general, which stays well inside hardware occupancy limits. In exchange, teams inherit support for new precision formats and cluster multicast features automatically. The trade is the same one a team makes when it adopts a standard library instead of writing its own sorting routine.
 
 ```cpp
 // CUTLASS Blackwell (Sm100) FP16 GEMM with FP32 TMEM accumulation (ASP Ch 9 p. 315)
@@ -265,6 +273,8 @@ using Gemm = cutlass::gemm::device::Gemm<
 >;
 ```
 
+This comparison answers the question a team usually asks first: does the template give up performance for its convenience? The Tensor Core utilization row shows that, as the source reports it, it does not give up performance for this GEMM. The register and shared-memory rows show the small price of generality, paid as slightly larger footprints. The effort row matters most across a fleet of GPUs, because the template is written once, while the hand-tuned kernel must be redone for each new generation.
+
 | Metric | Hand-Tuned MMA Kernel | CUTLASS GEMM Template | Architectural Takeaway |
 |---|---:|---:|---|
 | Tensor Core Utilization | `98%` | `98%` | Matches hand-written assembly within `~2%` (`96%–98%` sustained). |
@@ -274,9 +284,11 @@ using Gemm = cutlass::gemm::device::Gemm<
 
 ### 3.4 Overlapping copies with compute using the CUDA Pipeline API
 
-A custom tile loop has a timing problem. If the kernel waits for the next tile to arrive from HBM before it starts math, the Tensor Cores sit idle during every wait. The fix is double buffering: while the current tile is being computed, the next tile is already on its way into shared memory.
+A custom tile loop has a timing problem. If the kernel waits for the next tile to arrive from HBM before it starts math, the Tensor Cores sit idle during every wait. The fix is double buffering: while the current tile is being computed, the next tile is already on its way into shared memory. Think of a pizza oven with two trays. One tray bakes while the other is loaded, so the oven never sits empty.
 
-The book shows this with `cuda::memcpy_async` and the CUDA Pipeline API (`<cuda/pipeline>`). The example below stages A and B tiles in four shared-memory buffers. The code is copied from the book and is not compiled or run here.
+The book shows this with `cuda::memcpy_async` and the CUDA Pipeline API (`<cuda/pipeline>`). The example below stages A and B tiles in four shared-memory buffers. This copy is not compiled or run in this handbook, so read it as a pattern to adapt rather than code to paste.
+
+Before the code, note what the kernel is trying to do. It streams pairs of A and B tiles, so each step needs two copies per tile. The pipeline object tracks which buffer is ready and which is free. The producer acquires a slot, issues the copies, and commits. The consumer waits, computes on the older tile, and releases it. The assert near the top guards the vector width, so a tile size that does not line up with the four-float loads fails early.
 
 ```cpp
 // two_stage_pipeline.cu (from ASP Ch 9, pp. 308-309; not compiled here)
@@ -343,15 +355,15 @@ void stage_ab_tiles(const float* __restrict__ globalA,
 }
 ```
 
-Read the loop in three steps. The producer side issues copies for tile `t` into the free buffer. The consumer side waits until the older tile has landed, then computes on it. Finally, the last tile is consumed after the loop. When you launch this kernel, set the dynamic shared memory size to `4 x tile_elems x sizeof(float)` so all four buffers fit.
+Read the loop in three steps. The producer side issues copies for tile `t` into the free buffer. The consumer side waits until the older tile has landed, then computes on it. Finally, the last tile is consumed after the loop. When you launch this kernel, set the dynamic shared memory size to `4 x tile_elems x sizeof(float)` so all four buffers fit. The producer and consumer roles are the same two cooks in a kitchen, one filling the tray and one emptying it.
 
-The copy side matters as much as the buffer count. The book recommends `cuda::memcpy_async` for bulk tensor transfers, because it maps to the Tensor Memory Accelerator (TMA). Reserve `cp.async` for niche cases that TMA cannot express, and those cases are rare. Whichever copy you use, make sure it has completed before you read the data.
+The copy side matters as much as the buffer count. *AI Systems Performance Engineering* recommends `cuda::memcpy_async` for bulk tensor transfers, because it maps to the Tensor Memory Accelerator (TMA). Reserve `cp.async` for niche cases that TMA cannot express, and those cases are rare. Whichever copy you use, make sure it has completed before you read the data. Reading early gives you whatever was in the buffer before, which is a silent bug, and no error message will tell you it happened.
 
 ### 3.5 The profile, diagnose, and optimize loop
 
-Most kernel work follows one cycle: profile, diagnose, optimize, and profile again. Start by finding out whether the kernel is memory bound or compute bound. Then work through the levers in order: occupancy tuning, warp-level refinements, ILP, and higher arithmetic intensity through tiling, fusion, and Tensor Cores.
+Most kernel work follows one cycle: profile, diagnose, optimize, and profile again. Start by finding out whether the kernel is memory bound or compute bound. Then work through the levers in order: occupancy tuning, warp-level refinements, ILP, and higher arithmetic intensity through tiling, fusion, and Tensor Cores. Each lever has a cost, so the order is about spending effort where the profile says the gain is.
 
-The payoff can be large. The book notes that a memory-bound GPU kernel can become compute bound after this cycle, and in strongly memory-bound workloads the gain can reach an order of magnitude. Use the Roofline view in Nsight Compute to confirm that the kernel really moved.
+The payoff can be large. *AI Systems Performance Engineering* notes that a memory-bound GPU kernel can become compute bound after this cycle, and in strongly memory-bound workloads the gain can reach an order of magnitude. Use the Roofline view in Nsight Compute to confirm that the kernel really moved. A kernel that moved along the chart has changed regime, and that is the evidence you want before you celebrate.
 
 ---
 
@@ -359,11 +371,13 @@ The payoff can be large. The book notes that a memory-bound GPU kernel can becom
 
 ### 4.1 Four legitimate use cases for inline PTX and Table 9-2
 
-Even after coalescing, vectorization, shared-memory tiling, and CUTLASS templates are in place, compiler-generated code can still leave a five to ten percent performance gap in hot inner loops. The C++ compiler cannot always predict whether a global buffer will be read only once and pollute the L1 cache, nor does CUDA C++ expose every hardware special register. Dropping down to inline PTX with `asm volatile` gives engineers fine-grained control over cache policies, prefetching, address arithmetic, and hardware identifiers.
+Even after coalescing, vectorization, shared-memory tiling, and CUTLASS templates are in place, compiler-generated code can still leave a five to ten percent performance gap in hot inner loops. The C++ compiler cannot always predict whether a global buffer will be read only once and pollute the L1 cache, nor does CUDA C++ expose every hardware special register. Dropping down to inline PTX with `asm volatile` gives engineers fine-grained control over cache policies, prefetching, address arithmetic, and hardware identifiers. Inline PTX is PTX assembly written inside a C++ file, and it is the last step before the chip's own machine code.
 
-Chapter 9 highlights four specific inline PTX patterns. First, `cp.async.bulk.prefetch.L2.global` prefetches the next 128-byte cache line into L2 ahead of the loop index. Second, `ld.global.cg.f32` uses the cache-global modifier to cache streaming reads in L2 while bypassing L1 so hot reusable working sets are not evicted from L1. Third, `mad.wide.u32` computes 64-bit byte offsets in a single wide instruction while `membar.sys` enforces system-wide memory fences across NVLink-C2C and PCIe polling loops.
+Chapter 9 highlights four specific inline PTX patterns. First, `cp.async.bulk.prefetch.L2.global` prefetches the next 128-byte cache line into L2 ahead of the loop index. Second, `ld.global.cg.f32` uses the cache-global modifier to cache streaming reads in L2 while bypassing L1, so hot reusable working sets are not evicted from L1. Third, `mad.wide.u32` computes 64-bit byte offsets in a single wide instruction, while `membar.sys` enforces system-wide memory fences across NVLink-C2C and PCIe polling loops. A memory fence is a point where the hardware makes sure earlier writes are visible to other parts of the system before the code continues.
 
-Fourth, reading the `%smid` special register identifies which physical Streaming Multiprocessor a thread block is executing on for persistent-kernel work partitioning. Combining wide address arithmetic, manual load scheduling, and L1-bypass hints in Table 9-2 cuts memory warp stalls from thirty-five percent to twenty percent of cycles. That reduction lifts instruction issue rate and speeds up the already-optimized C++ loop by seven percent.
+Fourth, reading the `%smid` special register identifies which physical Streaming Multiprocessor a thread block is executing on, for persistent-kernel work partitioning. A persistent kernel stays resident and pulls work from a queue, instead of exiting after one job. Combining wide address arithmetic, manual load scheduling, and L1-bypass hints in Table 9-2 cuts memory warp stalls from thirty-five percent to twenty percent of cycles. That reduction lifts instruction issue rate and speeds up the already-optimized C++ loop by seven percent. Seven percent is a real gain, but it is small next to the gains from the earlier sections.
+
+The three snippets map to three ideas. The first prefetches the next 128 bytes into L2 by naming an address 32 floats ahead. The second loads one float through the cache-global path, so the value does not stay in L1. The third reads the SM number into a register. Each snippet uses asm volatile, which tells the compiler not to move or delete the instruction, even when its result looks unused.
 
 ```cpp
 // 1. Prefetch 128 bytes (32 floats ahead, 16B-aligned) from global HBM into L2 cache (ASP Ch 9 p. 318)
@@ -379,6 +393,8 @@ unsigned int smid;
 asm volatile("mov.u32 %0, %%smid;" : "=r"(smid));
 ```
 
+Read the two rows of this table as a before and after. The stall share falls from thirty-five percent to twenty percent, and the issue rate per scheduler rises. The runtime row shows the payoff in plain time. The gain is only seven percent, so it is a last-mile tweak. Ask whether a seven percent gain is worth the readability cost of inline assembly before you keep it.
+
 | Version | Warp Stall (`memory`) | Issue IPC (per scheduler) | Kernel Execution Time | Speedup |
 |---|---:|---:|---:|---:|
 | Optimized CUDA C++ (compiler schedule) | `35%` of cycles | `1.5` | `1.07 ms` | `1.00x` (baseline) |
@@ -386,16 +402,18 @@ asm volatile("mov.u32 %0, %%smid;" : "=r"(smid));
 
 ### 4.2 Case study: DeepSeek DeepEP cache bypass on H800
 
-In Mixture-of-Experts training and inference, expert-parallel all-to-all dispatch and combine kernels stream large token buffers across NVLink and RDMA while compute kernels run simultaneously on the same SMs. On interconnect-constrained H800 GPUs, standard global loads allocate cache lines inside the L1 cache during communication streaming. That allocation evicts the hot working sets needed by active compute warps and stalls both compute and communication.
+In Mixture-of-Experts training and inference, expert-parallel all-to-all dispatch and combine kernels stream large token buffers across NVLink and RDMA while compute kernels run simultaneously on the same SMs. A Mixture-of-Experts model routes each token to a few specialist sub-networks, so tokens have to be shipped between GPUs. All-to-all means every GPU sends pieces to every other GPU. RDMA is direct memory access across the network. On interconnect-constrained H800 GPUs, standard global loads allocate cache lines inside the L1 cache during communication streaming. That allocation evicts the hot working sets needed by active compute warps, and it stalls both compute and communication.
 
-While building the open-source DeepEP communication library, DeepSeek engineers embedded an undocumented PTX instruction to solve this L1 cache thrashing problem. The instruction issues a non-coherent global load, instructs the hardware not to allocate lines in L1, and fetches 256-byte chunks directly into the L2 cache. As a result, streaming token transfers flow through L2 while active compute warps retain their hot L1 working set.
+While building the open-source DeepEP communication library, DeepSeek engineers embedded an undocumented PTX instruction to solve this L1 cache thrashing problem. Cache thrashing means the cache keeps evicting useful lines to make room for data that will not be read again. The instruction issues a non-coherent global load, instructs the hardware not to allocate lines in L1, and fetches 256-byte chunks directly into the L2 cache. As a result, streaming token transfers flow through L2, while active compute warps keep their hot L1 working set. It is the same idea as a delivery door that bypasses the kitchen counter, so the counter stays clear for the cooks.
 
-Relying on undocumented PTX instructions carries an operational risk in production infrastructure. Because the modifier is outside NVIDIA's official public PTX ISA specification, it is not guaranteed to remain stable across future driver releases or new GPU generations. DeepSeek mitigated this risk by wrapping the custom instruction behind a compile-time environment flag that falls back to standard documented PTX whenever needed.
+Relying on undocumented PTX instructions carries an operational risk in production infrastructure. Because the modifier is outside NVIDIA's official public PTX ISA specification, it is not guaranteed to remain stable across future driver releases or new GPU generations. DeepSeek mitigated this risk by wrapping the custom instruction behind a compile-time environment flag that falls back to standard documented PTX whenever needed. A flag like that turns a risky change into a switch you can flip without editing the kernel.
 
 ```text
 Instruction: ld.global.nc.l1::no_allocate.l2::256b
 Fallback Guard: DISABLE_AGGRESSIVE_PTX_INSTRS=1
 ```
+
+Read this table as the anatomy of one instruction. Each row names a piece of the instruction and says what that piece does. The first piece says which path the load takes. The second says which cache level must not receive the line. The third sets how much data arrives at a time. The last row is not part of the instruction at all. It is the build-time switch that lets the team fall back to documented PTX.
 
 | Instruction Component / Flag | Hardware Behavior & Operational Role |
 |---|---|
@@ -406,39 +424,41 @@ Fallback Guard: DISABLE_AGGRESSIVE_PTX_INSTRS=1
 
 ### 4.3 PTX and SASS: what they are and when to stop
 
-Inline assembly is the bottom layer of CUDA work. It lets experts tune a few instructions by hand, after everything above it is already tuned. The compiler is usually very good, so the gains are small. Treat this section as a tool for one hot loop after everything else is tuned, not as a default habit.
+Inline assembly is the bottom layer of CUDA work. It lets experts tune a few instructions by hand, after everything above it is already tuned. The compiler is usually very good, so the gains are small. Treat this section as a tool for one hot loop after everything else is tuned, not as a default habit. A rule of thumb is to reach for assembly only when a profile points at one specific instruction.
 
-PTX is a low-level parallel thread execution virtual machine. It exposes the GPU as a parallel device and defines the instructions the GPU understands. CUDA C++ compiles to PTX, and PTX is then translated into native instructions for the target chip. SASS is that native assembly. It is what the hardware executes.
+PTX is a low-level parallel thread execution virtual machine. It exposes the GPU as a parallel device and defines the instructions the GPU understands. CUDA C++ compiles to PTX, and PTX is then translated into native instructions for the target chip. SASS is that native assembly. It is what the hardware executes. You can think of PTX as the recipe a cook reads and SASS as the exact motions the cook makes at the stove for one particular stove.
 
 Inline PTX lets you write those instructions inside C++ with `asm()`. You can mix C++ and PTX by naming inputs and outputs. The compiler then places your instructions into the final SASS. This is useful in a few cases:
 
-- The GPU instruction you need has no direct CUDA intrinsic.
-- You want a cache hint on one specific memory access.
-- You need a memory fence or barrier at an exact point.
-- You want to reorder instructions to avoid a pipeline stall.
-- You need a special register, such as the SM ID or the warp lane ID, that C++ does not expose.
+- Is there a GPU instruction that has no direct CUDA intrinsic? Then inline PTX is the route.
+- Do you want a cache hint on one specific memory access? Then a PTX load modifier does the job.
+- Do you need a memory fence or barrier at an exact point? Then PTX lets you place it.
+- Do you want to reorder instructions to avoid a pipeline stall? Then you can force the order.
+- Do you need a special register, such as the SM ID or the warp lane ID, that C++ does not expose? Then read it from PTX.
 
-Instruction order is one of the more practical cases. Suppose a kernel has two independent loads, each followed by a use. The compiler may issue load 1, use 1, load 2, and then use 2. A better order is to issue both loads back to back and then use both results, so their latencies overlap. Inline PTX lets you force that order, which is a manual way of raising ILP.
+Instruction order is one of the more practical cases. Suppose a kernel has two independent loads, each followed by a use. The compiler may issue load 1, use 1, load 2, and then use 2. A better order is to issue both loads back to back and then use both results, so their latencies overlap. Inline PTX lets you force that order, which is a manual way of raising ILP. The arithmetic is the same either way, and only the order of the waiting changes.
 
 Some developers use `%smid` in persistent kernels so that only one block per SM does a given job. This is manual SM partitioning, and the CUDA C++ API does not offer it directly. It is a niche pattern, so use it only when the simpler approaches do not fit.
 
-PTX is generally forward compatible. SASS changes with each GPU generation, so SASS-level code can break on new hardware. Even PTX sometimes needs an update after a hardware change if you want the same performance.
+PTX is usually forward compatible, which means code written in PTX can often run on newer chips after the driver compiles it again. SASS changes with each GPU generation, so SASS-level code can break on new hardware. Even PTX sometimes needs an update after a hardware change if you want the same performance.
 
-The expected gain is small on code that is already well optimized. For a memory-bound kernel, two independent load streams written in PTX may give a 5%–10% speedup, because the compiler can be conservative there. In a compute-bound kernel, you might pick a fast math instruction over a precise one. CUDA's fast math intrinsics, such as `__sinf()`, are one example.
+The expected gain is small on code that is already well optimized. For a memory-bound kernel, two independent load streams written in PTX may give a 5%–10% speedup, because the compiler can be conservative there. In a compute-bound kernel, you might pick a fast math instruction over a precise one. CUDA's fast math intrinsics, such as `__sinf()`, are one example. A fast math intrinsic trades a little accuracy for speed, so check the output before you keep it.
 
-Assembly has real costs. It is labor-intensive, it lowers portability, and it must be checked again on each new GPU. It can also make things slower if the order is wrong. Use Nsight Compute to check the SASS throughput metrics and the Warp Stall Reasons. A good change shows less memory-dependency stall and a higher instruction issue rate.
+Assembly has real costs. It is labor-intensive, it lowers portability, and it must be checked again on each new GPU. It can also make things slower if the order is wrong. Use Nsight Compute to check the SASS throughput metrics and the Warp Stall Reasons. A good change shows less memory-dependency stall and a higher instruction issue rate. If the numbers do not move, revert the change and keep the code simple.
 
-Use inline assembly as the last resort. Keep it isolated and documented, and verify every change with a profiler. For most work, CUDA's built-in optimizations, or well-tuned libraries such as CUB and Thrust, are good enough.
+Use inline assembly as the last resort. Keep it isolated and documented, and verify every change with a profiler. For most work, CUDA's built-in optimizations, or well-tuned libraries such as CUB and Thrust, are good enough. CUB and Thrust are NVIDIA's libraries of parallel primitives, such as scans and sorts, that already handle the hard details.
 
 ---
 
 ## 5. Commands and Configurations That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 9. Shell commands and PyTorch snippets that require an attached CUDA GPU are marked untested here.
+All commands below follow *AI Systems Performance Engineering* Chapter 9. Shell commands and PyTorch snippets that require an attached CUDA GPU were not run on a live cluster, so treat them as a template to check on your own hardware.
 
 ### 5.1 Inspect generated PTX and SASS and profile Roofline intensity
 
-When a kernel underperforms expectations, inspecting the compiler-generated PTX and SASS reveals whether the compiler emitted fast reciprocal square-root instructions, vectorized loads, or unintended register spills. Combining `cuobjdump` with Nsight Compute Roofline profiling pinpoints whether the kernel is still memory-bandwidth bound.
+When a kernel underperforms expectations, inspecting the compiler-generated PTX and SASS reveals whether the compiler emitted fast reciprocal square-root instructions, vectorized loads, or unintended register spills. Combining `cuobjdump` with Nsight Compute Roofline profiling pinpoints whether the kernel is still memory-bandwidth bound. Read the dump first, because a missing instruction is often easier to spot in the listing than in the timing numbers.
+
+The first command in the block compiles with the keep flag, which saves the intermediate PTX and binary files, and with the line-info flag, which lets the profiler point back to your source. The two cuobjdump lines then search the PTX for the instructions you care about, and they print the start of the machine code. The ncu command collects the Roofline view along with the memory and warp-state sections. Run the profile on the same binary you just inspected, so the listing and the counters describe the same code.
 
 ```bash
 # 1. Compile keeping intermediate .ptx and .cubin files to inspect instruction scheduling (untested here)
@@ -454,7 +474,7 @@ ncu --set full --section SpeedOfLight_RooflineChart \
 
 ### 5.2 Enable TF32, BF16 AMP, FlashAttention, 2:4 sparsity, and NestedTensor in PyTorch
 
-Configuring PyTorch to use Tensor Cores, ragged batching, structured sparsity, and fused attention requires only a few explicit API calls at model initialization and forward-pass time.
+Configuring PyTorch to use Tensor Cores, ragged batching, structured sparsity, and fused attention requires only a few explicit API calls at model initialization and forward-pass time. Each call below sets one lever, and you can enable them one at a time so that a regression is easy to trace back to its cause.
 
 ```python
 # PyTorch arithmetic-intensity configuration template (ASP Ch 9 pp. 304-310) (untested here)
@@ -482,7 +502,7 @@ with torch.amp.autocast("cuda", dtype=torch.bfloat16), sdpa_kernel(SDPBackend.FL
 
 ## 6. How It Fails: Six Production Arithmetic-Intensity Failure Modes
 
-Even well-intentioned kernel fusions and precision optimizations can degrade performance or fail at launch if hardware limits are ignored. The table below summarizes the six most common failure modes from Chapter 9, their profiler symptoms, root causes, and fixes.
+Even well-intentioned kernel fusions and precision optimizations can degrade performance or fail at launch if hardware limits are ignored. The table below summarizes the six most common failure modes from Chapter 9, their profiler symptoms, root causes, and fixes. Start from the symptom column, because that is the one you can see in a profile before you know the cause.
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -497,7 +517,7 @@ Even well-intentioned kernel fusions and precision optimizations can degrade per
 
 ## 7. Hands-On Lab: Verify fusedL2Norm Intensity, Cluster Multicast, TMEM Tile Budgets, CUTLASS, and Inline PTX
 
-This deterministic verification lab runs on any Linux machine or Nebius GPU VM with Python 3.10 or newer using standard library Python. It validates the arithmetic-intensity ratios, cluster multicast factors, Tensor Memory tile budgets, precision multipliers, and inline PTX metrics from Chapter 9.
+This deterministic verification lab runs on any Linux machine or Nebius GPU VM with Python 3.10 or newer, using standard library Python. It checks the arithmetic-intensity ratios, cluster multicast factors, Tensor Memory tile budgets, precision multipliers, and inline PTX metrics from Chapter 9. Because it is arithmetic, it runs without a GPU. A passing run proves the math in the chapter is consistent, not that a kernel is fast.
 
 Run `code/part10/kernel_efficiency_lab.py`:
 
@@ -506,6 +526,8 @@ python3 code/part10/kernel_efficiency_lab.py
 ```
 
 Expected output:
+
+Each line of the output names one claim from the chapter. A PASS line means the arithmetic in the lab matches the figure in the text. The rejection lines near the end check that the lab refuses bad inputs, such as a cluster larger than the hardware allows. Read a failure as a sign that either the text or the code has drifted, and fix whichever one is wrong.
 
 ```text
 === Chapter 10.15 Lab: Kernel Efficiency and Arithmetic Intensity (ASP Chapter 9) ===
@@ -542,12 +564,12 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Unfused versus fusedL2Norm arithmetic intensity math:** Using the byte and operation counts in Section 2.1, calculate the arithmetic intensity of a single one-FLOP elementwise pass moving twelve bytes. Then calculate the total bytes moved per element and arithmetic intensity of the three-pass unfused L2 normalization pipeline versus `fusedL2Norm` under both the conservative three-FLOP and full four-FLOP counts.
-2. **Thread Block Cluster TMA multicast reuse:** Explain how a four-block cluster uses TMA multicast and Distributed Shared Memory to reduce global HBM tile traffic fourfold. State the default portable cluster limit in CUDA and name the exact kernel attribute required on Blackwell to launch a sixteen-block cluster.
-3. **Sizing tiles for Blackwell TMEM and two-stage SMEM:** Calculate the exact byte and KiB footprint of a 256 by 512 FP16 tile, a 256 by 256 FP32 tile, a 256 by 256 NVFP4 tile, and a 512 by 512 FP16 tile against Blackwell's per-SM TMEM limit. Also compute the dynamic Shared Memory required by `stage_ab_tiles` when `tile_elems` equals 1,024.
-4. **Precision scaling, 2:4 sparsity, and NestedTensor savings:** Calculate the dense compute ratio of B200 NVFP4 to B200 FP32 and the percentage gain of B300 NVFP4 over B200. State the weight traffic reduction percentage of INT8 versus FP32, the MACs per `DP4A` instruction, and the percentage of padded token traffic saved by `torch.nested.nested_tensor` on the four-sequence batch in Section 2.3.
-5. **Hand-tuned MMA versus CUTLASS Sm100 GEMM:** Compare the Tensor Core utilization, registers per thread, Shared Memory per CTA, and engineering effort between a hand-tuned MMA kernel and a CUTLASS GEMM template from Table 9-1. Explain how `cp.async`, TMA, and `tcgen05.mma` move data from HBM to Shared Memory to Tensor Memory without consuming general-purpose registers.
-6. **Auditing inline PTX and DeepSeek DeepEP cache bypass:** Explain what each modifier in `ld.global.nc.l1::no_allocate.l2::256b` does on an H800 GPU during expert-parallel all-to-all streaming. Compare its purpose against `ld.global.cg.f32` and `cp.async.bulk.prefetch.L2.global` in Table 9-2, and explain why DeepEP guards the instruction with `DISABLE_AGGRESSIVE_PTX_INSTRS=1`.
+1. **Unfused versus fusedL2Norm arithmetic intensity math:** Using the byte and operation counts in Section 2.1, what is the arithmetic intensity of a single one-FLOP elementwise pass that moves twelve bytes? What are the total bytes moved per element by the three-pass unfused L2 normalization pipeline? What is its arithmetic intensity, and how does it compare with `fusedL2Norm` under the conservative three-FLOP count and under the full four-FLOP count?
+2. **Thread Block Cluster TMA multicast reuse:** Explain how a four-block cluster uses TMA multicast and Distributed Shared Memory to reduce global HBM tile traffic fourfold. What is the default portable cluster limit in CUDA? Which exact kernel attribute does Blackwell require to launch a sixteen-block cluster?
+3. **Sizing tiles for Blackwell TMEM and two-stage SMEM:** What is the exact byte and KiB footprint of a 256 by 512 FP16 tile against Blackwell's per-SM TMEM limit? Repeat the calculation for a 256 by 256 FP32 tile, a 256 by 256 NVFP4 tile, and a 512 by 512 FP16 tile. Then compute the dynamic Shared Memory required by `stage_ab_tiles` when `tile_elems` equals 1,024.
+4. **Precision scaling, 2:4 sparsity, and NestedTensor savings:** What is the dense compute ratio of B200 NVFP4 to B200 FP32? What is the percentage gain of B300 NVFP4 over B200? What is the weight traffic reduction percentage of INT8 versus FP32, and how many MACs does one `DP4A` instruction execute? What percentage of padded token traffic does `torch.nested.nested_tensor` save on the four-sequence batch in Section 2.3?
+5. **Hand-tuned MMA versus CUTLASS Sm100 GEMM:** Compare the Tensor Core utilization, registers per thread, Shared Memory per CTA, and engineering effort between a hand-tuned MMA kernel and a CUTLASS GEMM template from Table 9-1. Then explain how `cp.async`, TMA, and `tcgen05.mma` move data from HBM to Shared Memory to Tensor Memory without consuming general-purpose registers.
+6. **Auditing inline PTX and DeepSeek DeepEP cache bypass:** What does each modifier in `ld.global.nc.l1::no_allocate.l2::256b` do on an H800 GPU during expert-parallel all-to-all streaming? How does its purpose compare with `ld.global.cg.f32` and `cp.async.bulk.prefetch.L2.global` in Table 9-2? Why does DeepEP guard the instruction with `DISABLE_AGGRESSIVE_PTX_INSTRS=1`?
 
 ---
 
@@ -741,4 +763,3 @@ The primary source for this chapter is *AI Systems Performance Engineering* by C
 - A physical Blackwell or Hopper GPU (`H100`, `CGA` Cooperative Grid Array, `SFU` pipeline, `ld.global.ca` / `ld.global.ca.f32`, `33` / `314` metrics, Volume `02` and `MIGRATION_MAP.md`, cross-referenced with Chapter `10.16` in `2026`) was not attached during this build. Therefore, `nvcc`, `cuobjdump`, `ncu`, and PyTorch CUDA commands in Section 5 are marked untested here.
 - Full source code of DeepSeek's DeepEP repository beyond the `ld.global.nc.l1::no_allocate.l2::256b` and `DISABLE_AGGRESSIVE_PTX_INSTRS=1` analysis in Chapter 9 is not in the local corpus.
 - Validation notes: in the book's `fusedL2Norm` code, every thread computes `rsqrtf(sdata[0])` rather than broadcasting from thread zero. In addition, Tables 9-1 and 9-2 are illustrative in the source text and are described as reported figures here.
-

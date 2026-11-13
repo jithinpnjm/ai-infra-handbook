@@ -24,11 +24,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An engineer launches a custom kernel with 1,024 threads per block, expecting the most parallelism the hardware allows. Occupancy comes back at 15 percent and the GPU stalls on memory. A week later a compiler update raises a kernel from 40 registers per thread to 56, and the number of warps resident on each SM drops by a third. Neither problem shows up as an error. Both come from the way a GPU admits and runs work.
+Picture an engineer who launches a custom kernel (a small program that runs across many GPU threads) with 1,024 threads per block, expecting the most parallelism the hardware allows. The occupancy number comes back at 15 percent, and the GPU stalls on memory. A week later a compiler update raises the kernel from 40 registers per thread to 56, and the number of warps resident on each SM drops by a third. Neither problem shows up as an error message. Both come from the way a GPU admits and runs work, and that is the subject of this chapter.
 
-A modern NVIDIA GPU is not a flat pool of 14,000 cores that shares out whatever code you give it. Work passes through hardware admission gates, and the threads that run it move in lockstep groups of 32. You can debug a production AI cluster without ever writing a CUDA kernel, but you cannot read its profiler output without this model.
+A modern NVIDIA GPU is not a flat pool of 14,000 cores that shares out whatever code you give it. Work passes through hardware admission gates, and the threads that run it move in lockstep groups of 32. You can run a production AI cluster for a long time without ever writing a CUDA kernel. You cannot read its profiler output, though, without knowing this model.
 
-The model also explains results that look contradictory. A kernel can report 91 percent achieved occupancy in Nsight Compute and 95 percent utilization in `nvidia-smi` while delivering poor token throughput. A shared-memory tiled kernel at 45 percent occupancy can finish twice as fast as a naive kernel at 90 percent. Two Python processes that share a GPU without Multi-Instance GPU or Multi-Process Service lose tens of microseconds to context switching on every time slice.
+The model also explains results that look contradictory. A kernel can report 91 percent achieved occupancy in Nsight Compute and 95 percent utilization in `nvidia-smi` while delivering poor token throughput. A shared-memory tiled kernel at 45 percent occupancy can finish twice as fast as a naive kernel at 90 percent. Two Python processes that share a GPU without Multi-Instance GPU or Multi-Process Service lose tens of microseconds to context switching on every time slice. Once you know the execution model, these results stop looking like a contradiction and start looking like a predictable consequence of the hardware rules.
 
 ```text
 Production Execution Model Anomalies vs Silicon Reality (ASP Ch 6, V2 Ch 2-9):
@@ -41,11 +41,11 @@ Production Execution Model Anomalies vs Silicon Reality (ASP Ch 6, V2 Ch 2-9):
 The chapter follows work through a Hopper H100 or Blackwell B200 GPU. It starts at the GigaThread Engine, which hands thread blocks to the chip, and ends at the four dual-issue warp schedulers inside each Streaming Multiprocessor. Along the way it gives the formulas for launch geometry and SM occupancy, then the five warp states and the two Nsight Compute efficiency gates. It closes with NVIDIA Compute Sanitizer, which catches memory bugs at run time.
 
 :::tip In one minute
-- The GigaThread Engine assigns thread blocks to Streaming Multiprocessors, where they stay until they finish. The unified L2 cache sits between all SMs, the HBM controllers, and the PCIe and NVLink interfaces.
-- Each Blackwell or Hopper SM has 4 independent warp schedulers. Each issues one warp per cycle, and may pair one math instruction with one memory instruction from that same warp. Special Function Units run transcendentals on a separate pipeline.
-- Threads group into 32-thread warps, and warps form thread blocks of up to 1,024 threads on one SM. Neighboring blocks form thread block clusters that share Distributed Shared Memory, and all blocks together form the grid.
-- Resident blocks per SM are capped by the tightest of three limits, rounded down to whole blocks: the slot ceilings, the 65,536-register file, and the 228 KB shared-memory pool.
-- **High occupancy does not guarantee high throughput.** Check two ratios in Nsight Compute: `smsp__thread_inst_executed_per_inst_executed.ratio` should be near 32, and `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio` should be near 4 for 4-byte floats.
+- Where do thread blocks go? The GigaThread Engine assigns thread blocks to Streaming Multiprocessors, where they stay until they finish. The unified L2 cache sits between all SMs, the HBM controllers, and the PCIe and NVLink interfaces.
+- How is an SM built? Each Blackwell or Hopper SM has 4 independent warp schedulers. Each issues one warp per cycle, and may pair one math instruction with one memory instruction from that same warp. Special Function Units run transcendentals on a separate pipeline.
+- How do threads group? Threads group into 32-thread warps, and warps form thread blocks of up to 1,024 threads on one SM. Neighboring blocks form thread block clusters that share Distributed Shared Memory, and all blocks together form the grid.
+- What limits residency? Resident blocks per SM are capped by the tightest of three limits, rounded down to whole blocks: the slot ceilings, the 65,536-register file, and the 228 KB shared-memory pool.
+- Is high occupancy enough? High occupancy does not guarantee high throughput. Check two ratios in Nsight Compute: `smsp__thread_inst_executed_per_inst_executed.ratio` should be near 32, and `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio` should be near 4 for 4-byte floats.
 :::
 
 ---
@@ -54,24 +54,19 @@ The chapter follows work through a Hopper H100 or Blackwell B200 GPU. It starts 
 
 **Prerequisites**: Review CPU versus GPU throughput design, SIMT concepts, and theoretical FLOPs and bandwidth formulas from Chapter 10.1.
 
-**Outcomes**: After completing this chapter, you will be able to:
-1. Map the internal geography of a modern NVIDIA GPU across the GigaThread Engine, the unified L2 cache, Streaming Multiprocessors, DMA Copy Engines, and hardware media decoders.
-2. Explain the four-partition architecture of a Blackwell or Hopper SM, including dual-issue warp scheduling across 16 Load/Store units and the decoupled Special Function Unit pipeline.
-3. Map the software execution hierarchy of Thread, Warp, Thread Block, Thread Block Cluster, and Grid onto physical silicon, and translate terms across OpenCL, CUDA, HIP, AMD, and CPU loops.
-4. Calculate 1D, 2D, and 3D kernel launch geometry, explain why the `if (idx < N)` bounds check prevents lazy `cudaErrorIllegalAddress` faults, and test forward compatibility with `CUDA_FORCE_PTX_JIT=1`.
-5. Compute exact SM occupancy from thread, warp, block, register, and shared-memory limits, and tune residency using `nvcc -Xptxas=-v`, `__launch_bounds__`, and the CUDA Occupancy API.
-6. Diagnose the five warp states, warp divergence, predication, and the two Nsight Compute efficiency gates for active lanes and global memory sectors.
-7. Separate the four production scheduling layers, contrast raw GPU context switching against MIG and MPS, and catch memory, race, and barrier bugs in CI using `compute-sanitizer`.
+The chapter maps the internal geography of a modern NVIDIA GPU, from the GigaThread Engine and the unified L2 cache to the Streaming Multiprocessors, the copy engines, and the media decoders. It explains the four-partition layout of a Blackwell or Hopper SM, including dual-issue scheduling across 16 Load/Store units and the separate Special Function Unit pipeline. It then walks the software hierarchy of Thread, Warp, Thread Block, Thread Block Cluster, and Grid, and shows how those names line up with OpenCL, HIP, and CPU loops. Launch geometry comes next. It covers the `if (idx < N)` bounds check, which stops threads past the end of an array from faulting later with `cudaErrorIllegalAddress`, and the forward-compatibility test with `CUDA_FORCE_PTX_JIT=1`. The later sections cover occupancy and tuning with `nvcc -Xptxas=-v`, `__launch_bounds__`, and the CUDA Occupancy API, then warp states, the four scheduling layers in production, and `compute-sanitizer` for catching memory and race bugs in CI.
 
 ---
 
 ## 1. Inside a modern NVIDIA GPU and the Streaming Multiprocessor
 
-When a computer-vision training pipeline decodes JPEGs on the host CPU or calls `.cpu().numpy()` inside its training loop, `nvidia-smi` utilization oscillates between 0 percent and 100 percent every few seconds. The GPU finishes its matrix math in milliseconds and then starves waiting for data to cross the PCIe bus. Understanding why that happens requires looking inside the GPU die to see how compute engines, caches, copy engines, and media decoders interact.
+Picture a computer-vision training pipeline. The data loader decodes JPEG images on the host CPU, and somewhere in the training loop someone calls `.cpu().numpy()`, which copies a tensor back to the host for a quick check. The `nvidia-smi` utilization graph now oscillates between 0 percent and 100 percent every few seconds. The GPU finishes its matrix math in milliseconds and then sits idle, waiting for data to cross the PCIe bus. The graph looks like a problem with the GPU, but the GPU is only waiting. Understanding why that happens requires looking inside the GPU die to see how compute engines, caches, copy engines, and media decoders interact.
 
 ### 1.1 Silicon geography: GigaThread Engine, L2 Cache, SMs, Copy Engines, and NVDEC
 
-Think of a modern GPU as a hierarchical silicon factory. Data enters through the PCIe or NVLink loading dock and rests in the off-chip HBM warehouse. It then flows through the central L2 cache hub and is processed on dozens of Streaming Multiprocessor assembly lines. If you remove the heatsink from an NVIDIA Hopper H100 SXM5 or Blackwell B200 package, five hardware subsystems work together inside the processor die.
+Think of a modern GPU as a hierarchical silicon factory. Data enters through the PCIe or NVLink loading dock and rests in the off-chip HBM warehouse. It then flows through the central L2 cache hub and gets processed on dozens of Streaming Multiprocessor assembly lines. Each part of the factory has a clear job, and a delay at any one of them shows up as idle time on the lines. If you removed the heatsink from an NVIDIA Hopper H100 SXM5 or Blackwell B200 package, you would find five hardware subsystems working together inside the processor die.
+
+The diagram traces those five subsystems and the links between them. Follow a block of work from the host, through the scheduler, into an SM, and out to memory. The media engines sit beside the flow, handling video and images on their own.
 
 ```mermaid
 flowchart TD
@@ -93,6 +88,8 @@ flowchart TD
     L2 <-->|"NVLink 4/5: 900 to 1,800 GB/s"| Peer["Peer GPUs in NVLink Domain"]
 ```
 
+The table below gives each subsystem's hardware capacity on H100 and B200, and the rule that governs how it behaves. Read the middle column as the size of the part and the last column as how it behaves in practice.
+
 | Silicon subsystem | Hardware capacity (H100 / B200) | Architectural role and operational rule |
 |---|---|---|
 | **1. GigaThread Engine** | Global work distributor | Receives the launched grid of thread blocks and assigns each block to an SM with free registers, shared memory, and warp slots. Once admitted to an SM, a block never migrates to another SM. |
@@ -101,9 +98,13 @@ flowchart TD
 | **4. Copy Engines (DMA)** | Asynchronous DMA controllers | Move bytes between pinned host RAM and GPU HBM over PCIe or NVLink without using SMs, allowing Batch `k + 1` transfers to overlap Batch `k` compute. |
 | **5. Media Engines (`NVDEC`, `NVENC`, `OFA`)** | Dedicated fixed-function silicon | Decode and encode video and JPEGs plus optical flow outside the SMs. Offloading image decode via **NVIDIA DALI** eliminates the 0%-to-100% CPU starvation sawtooth. |
 
+Two rows matter most for the opening story.
+
+The L2 cache deserves a note of its own. Its 50 MB on H100 or 126 MB on B200 sits between every SM and the HBM warehouse. When a weight tile is already waiting in L2, the SM skips the long trip off-chip entirely. That is why a kernel that reuses one tile across many blocks can run much faster than the raw HBM bandwidth alone would predict. The cache is a shared hub, so the reuse has to be planned in the kernel, not left to chance. The GigaThread Engine's rule, that a block stays on the SM it was admitted to, explains why the scheduler must find room before it starts a block. The Copy Engines row explains the fix for the sawtooth. When the copy engines move Batch `k + 1` while the SMs compute Batch `k`, the GPU keeps its own pipeline full and stops waiting on the host. Offloading the JPEG decode to the media engines removes the CPU step that was feeding that sawtooth in the first place.
+
 ### 1.2 Inside one SM: four warp schedulers, dual-issue, and SFUs
 
-If you zoom inside a single Streaming Multiprocessor on a Hopper or Blackwell GPU, the SM is not a single monolithic scheduler. Instead, it is divided into **four independent scheduling sub-partitions**, acting like four mini-SMs that share the on-chip 256 KB L1 Data Cache and Shared Memory SRAM.
+Zoom inside a single Streaming Multiprocessor on a Hopper or Blackwell GPU, and the SM is not one big scheduler. It is divided into **four independent scheduling sub-partitions**. Each sub-partition works like a mini-SM with its own scheduler, its own registers, and its own math units. All four share the on-chip 256 KB of L1 data cache and shared memory SRAM. Think of an office floor with four teams. Each team has its own manager and desks, and they all draw from the same supply room.
 
 ```mermaid
 flowchart TB
@@ -127,7 +128,9 @@ flowchart TB
     end
 ```
 
-Using the per-cycle SM scheduling rules from *AI Systems Performance Engineering* Chapter 6 (Table 6-1), every clock cycle inside an SM follows strict issue constraints.
+The diagram shows each sub-partition as a column. The scheduler at the top picks a warp, the register file feeds the math pipes, the load and store units reach the shared SRAM, and the SFU pipe runs the special functions on its own path. Because the four columns run side by side, the SM can advance several warps in the same clock cycle.
+
+Using the per-cycle SM scheduling rules from *AI Systems Performance Engineering*, Chapter 6, every clock cycle inside an SM follows strict issue constraints. The table lists each constraint with its value and what it means in practice.
 
 | SM scheduling resource (per clock cycle) | Hardware value | Architectural rule and operational meaning |
 |---|---|---|
@@ -138,15 +141,18 @@ Using the per-cycle SM scheduling rules from *AI Systems Performance Engineering
 | **Load/Store (`LD/ST`) pipelines per SM** | **16** (**4** per scheduler) | Memory requests flow through 16 combined `LD/ST` units to L1/Shared memory, L2 cache, or off-chip HBM. |
 | **Special Function Unit (SFU) pipeline** | Separate decoupled pipeline | Transcendental operations (`sin`, `cos`, `exp`, `rcp`, `sqrt`) execute on a dedicated SFU pipeline outside the math+memory dual-issue pair, so attention `softmax` exponentials do not stall core issue. |
 
----
+The dual-issue row is the one to remember. A scheduler can send one math instruction and one memory instruction together, but only when both come from the same warp. That rule is why a warp with a healthy mix of arithmetic and loads keeps the SM busier than a warp that only does one kind of work. The SFU row explains why attention, which uses many exponentials, does not force the core pipes to wait for them.
 
+Here is a way to picture dual issue. Each scheduler is a dispatcher with two hands. One hand can send a math instruction to the arithmetic pipes, and the other can send a load or store to the memory units. Both hands work in the same cycle, but only on instructions from the same warp. If the warp offers only math, the second hand sits idle, and the SM loses the chance to overlap memory with arithmetic.
+
+---
 ## 2. The thread hierarchy: Threads, Warps, Thread Blocks, Clusters, and Grids
 
-A compiled CUDA binary can run on a small 2-SM test GPU today and scale across a 132-SM GPU tomorrow without code changes. CUDA achieves that generational scalability by organizing parallel software into a nested hierarchy that maps onto the physical hardware tree.
+Picture a team that tests a CUDA kernel on a small development GPU with 2 streaming multiprocessors (SMs), then runs the same binary on a data center GPU with 132 SMs. The code does not change, and it works on both. That is not an accident. CUDA achieves that generational scalability by organizing parallel software into a nested hierarchy that maps onto the physical hardware tree. The software names describe the work, and the hardware decides how much of it runs at once.
 
 ### 2.1 Software-to-hardware mapping and cross-vendor terminology
 
-When a host program launches a kernel, CUDA decomposes the work across five software levels. Those levels are Thread, Warp, Thread Block or Cooperative Thread Array, Thread Block Cluster, and Grid.
+When a host program launches a kernel, CUDA decomposes the work across five software levels. Those levels are Thread, Warp, Thread Block or Cooperative Thread Array (CTA, a team of threads that cooperate on one tile of work), Thread Block Cluster, and Grid. Each level has a matching piece of hardware, and the diagram shows the pairing. Read it from the top down on the left, then follow the thick arrows to the hardware on the right.
 
 ```mermaid
 flowchart LR
@@ -172,13 +178,19 @@ flowchart LR
     Th ==> Lane
 ```
 
-1. **Thread**. The smallest software worker. Each thread executes the kernel function on its own data element using its own private registers, up to a hardware maximum of **255** 32-bit registers per thread.
-2. **Warp**. When an SM admits a Thread Block, the hardware slices its threads into fixed bundles of **32** consecutive threads. Multidimensional blocks are linearized in row-major order first, placing threads 0 through 31 in Warp 0 and 32 through 63 in Warp 1. The warp is the fundamental hardware unit of SIMT scheduling.
-3. **Thread Block**. A 1D, 2D, or 3D team of up to **1,024** threads or **32** warps, also called a Cooperative Thread Array. Every thread in a block runs on the **same physical SM**, sharing fast on-SM `__shared__` memory and synchronizing at barriers via `__syncthreads()`. Because each barrier forces fast warps to wait for the slowest warp in the block, kernels should minimize barrier points.
-4. **Thread Block Cluster and Distributed Shared Memory**. Before Hopper, threads in different blocks could only share data through slower L2 cache or HBM. Hopper and Blackwell introduce **Thread Block Clusters**, which co-schedule neighboring blocks across SMs inside a Graphics Processing Cluster. Using hardware **Distributed Shared Memory**, threads in Block A can read, write, and atomically update Block B's shared memory over an on-chip SM-to-SM network. Cluster barriers synchronize those blocks without touching HBM, as expanded in Chapter 10.16.
-5. **Grid**. The complete collection of Thread Blocks launched by one kernel call. Separate Thread Blocks execute independently in any order. A small GPU runs a few blocks at a time in a queue, while a large GPU dispatches over a hundred blocks simultaneously.
+The five levels, from the smallest to the largest, work like this.
 
-The table below combines the cross-vendor abstractions from *Parallel and High Performance Computing* Chapter 10 with the Blackwell B200 limits from *AI Systems Performance Engineering* Chapter 6.
+The thread is the smallest software worker. Each thread executes the kernel function on its own data element, using its own private registers. The hardware maximum is **255** 32-bit registers per thread, so a thread can hold a fair amount of state without touching memory.
+
+The warp is the level the hardware actually schedules. When an SM admits a thread block, the hardware slices its threads into fixed bundles of 32 consecutive threads. Multidimensional blocks are first flattened in row-major order, which means the last index changes fastest. That puts threads 0 through 31 in Warp 0 and threads 32 through 63 in Warp 1. A warp is the unit that marches in step, so its 32 threads always share one instruction pointer.
+
+The thread block is a 1D, 2D, or 3D team of up to 1,024 threads, or 32 warps. Every thread in a block runs on the same physical SM, which lets them share fast on-SM `__shared__` memory and wait for each other at barriers with `__syncthreads()`. A barrier is a checkpoint where every thread must arrive before any can continue. Because each barrier makes the fast warps wait for the slowest warp in the block, kernels should use as few barrier points as they can.
+
+The thread block cluster and distributed shared memory are newer. Before Hopper, threads in different blocks could share data only through the slower L2 cache or HBM. Hopper and Blackwell introduce Thread Block Clusters, which schedule neighboring blocks onto SMs inside one Graphics Processing Cluster (GPC, a group of SMs that sit close together on the die). Through the hardware Distributed Shared Memory (DSMEM), threads in Block A can read, write, and atomically update Block B's shared memory over an on-chip SM-to-SM network. Cluster barriers synchronize those blocks without touching HBM, as expanded in Chapter 10.16.
+
+The grid is the complete set of thread blocks launched by one kernel call. Separate blocks execute independently, in any order. A small GPU runs a few blocks at a time from a queue, while a large GPU dispatches over a hundred blocks at once. Because the blocks do not depend on each other's order, the same grid runs correctly on both.
+
+The table below combines the cross-vendor abstractions from *Parallel and High Performance Computing* Chapter 10 with the Blackwell B200 limits from *AI Systems Performance Engineering* Chapter 6. Each row is one role, and each column is the name that role carries on a different platform.
 
 | Abstraction / Hardware limit | OpenCL | AMD GPU (`HIP` / `MI50`) | NVIDIA CUDA (`H100` / `B200`) | CPU equivalent |
 |---|---|---|---|---|
@@ -193,15 +205,17 @@ The table below combines the cross-vendor abstractions from *Parallel and High P
 | **Register file per SM** | — | Arch-dependent | **65,536** (`64K`) 32-bit registers (**256 KB**) | Physical vector register file |
 | **L1 + Shared Memory SRAM per SM** | `Local memory` | `LDS` (**64 KB**) | **256 KB** total (`up to 228 KB shared/SM; 227 KB dynamic/block + 1 KB CUDA reserved`) | L1 data cache |
 
+Read the table row by row, and the names stop feeling foreign. The Work Group in OpenCL is the same thing as the Thread Block in CUDA. The Subgroup is the same thing as the Warp, though AMD's version holds 64 items. When a vendor document talks about a block, a tile, or a work group, you can ask which row it belongs to and get the same answer.
+
 ---
 
 ## 3. Kernel launch geometry, bounds checks, tile decomposition, and PTX compatibility
 
-A kernel can pass unit tests on power-of-two batch sizes like 256 or 1,024, yet crash in production with `cudaErrorIllegalAddress` on a 63-token prompt. A compiled CUDA binary can also fail to load when deployed onto a newer GPU generation. Both bugs come from how launch geometry and binary compilation interact with the GPU runtime.
+A kernel can pass unit tests on power-of-two batch sizes like 256 or 1,024, then crash in production with `cudaErrorIllegalAddress` on a 63-token prompt. The unit tests were fine because their sizes divided evenly. The production input did not. A compiled CUDA binary can also fail to load when it is deployed onto a newer GPU generation. Both bugs come from how the launch geometry and the binary compilation interact with the GPU runtime, and this section walks through both.
 
 ### 3.1 1D, 2D, and 3D indexing and the `if (idx < N)` bounds check
 
-In GPU programming, often called "Me" programming, you replace the outer CPU `for` loop with a grid of threads where each thread computes its own global index. When the host launches `myKernel<<<blocksPerGrid, threadsPerBlock>>>(d_input, N)`, each thread calculates its unique 1D coordinate using three built-in variables: `blockIdx.x`, `blockDim.x`, and `threadIdx.x`.
+GPU programming is often called "Me" programming. You replace the outer CPU `for` loop with a grid of threads, and each thread computes its own global index. Think of it as handing every worker a numbered seat in a stadium. When the host launches `myKernel<<<blocksPerGrid, threadsPerBlock>>>(d_input, N)`, each thread calculates its unique 1D coordinate using three built-in variables: `blockIdx.x`, `blockDim.x`, and `threadIdx.x`. The first gives the block's position in the grid, the second gives the size of a block, and the third gives the thread's position inside its block.
 
 ```cpp
 __global__ void myKernel(float* input, int N) {
@@ -212,9 +226,13 @@ __global__ void myKernel(float* input, int N) {
 }
 ```
 
-Choosing `threadsPerBlock` and `blocksPerGrid` for a one-million-element array requires three rules. First, always pick `threadsPerBlock` as a multiple of 32, typically **256** (8 warps) or between 128 and 512. A 33-thread block allocates 2 warps (64 lanes) and leaves 31 lanes idle while consuming two warp slots. Starting at 256 threads per block fills every warp 100 percent and allows up to 8 blocks to reside per SM.
+The arithmetic in the first line is the whole idea. Multiply the block number by the block size, then add the position inside the block. That gives each thread a unique number from zero up to the total thread count. The `if` line then decides which of those numbers are real elements of the array.
 
-Second, use integer ceiling division to calculate `blocksPerGrid` so the grid launches enough blocks to cover every element. Third, always guard memory accesses with `if (idx < N)` so trailing threads in the final block or warp never read or write past the end of the array.
+Choosing `threadsPerBlock` and `blocksPerGrid` for a one-million-element array takes three rules. First, always pick `threadsPerBlock` as a multiple of 32, typically **256** (8 warps) or a value between 128 and 512. A 33-thread block allocates 2 warps (64 lanes) and leaves 31 lanes idle while it consumes two warp slots. Starting at 256 threads per block fills every warp and allows up to 8 blocks to reside per SM.
+
+Second, use integer ceiling division to calculate `blocksPerGrid`, so the grid launches enough blocks to cover every element. Ordinary division rounds down and would leave the last few elements unprocessed. Ceiling division rounds up, so the last partial block still gets launched.
+
+Third, always guard memory accesses with `if (idx < N)`, so the trailing threads in the final block or warp never read or write past the end of the array. Those trailing threads exist because the grid is rounded up to whole blocks, and the guard is what keeps them harmless.
 
 ```text
 Ceiling Grid Math & Out-of-Bounds Fault Mechanics (ASP Ch 6 pp. 188-193, execution_model.py):
@@ -232,11 +250,13 @@ Ceiling Grid Math & Out-of-Bounds Fault Mechanics (ASP Ch 6 pp. 188-193, executi
      - Asynchronous Reporting: Host discovers cudaErrorIllegalAddress lazily at the next cudaDeviceSynchronize() or cudaMemcpy()
 ```
 
-Because CUDA kernels execute asynchronously without per-thread operating system exceptions, an out-of-bounds memory access sets a global hardware fault flag for the entire launch. The host CPU only discovers that fault lazily on the next synchronous API call such as `cudaDeviceSynchronize()` or `cudaMemcpy()`, where it surfaces as `cudaErrorIllegalAddress`. During debugging, always pair kernel launches with `cudaGetLastError()` and `cudaDeviceSynchronize()`.
+The worked numbers show both sides of the rule. A million-element array needs 3,907 blocks, which launches 192 more threads than there are elements. Those extra threads are harmless only because the guard stops them. The 63-element case is smaller and easier to picture. Two warps launch 64 threads, and the last one has no element to work on. Without the guard, it writes past the end of the array.
+
+Because CUDA kernels execute asynchronously, an out-of-bounds write does not raise an exception in the thread that caused it. The access sets a global hardware fault flag for the entire launch. The host CPU discovers that fault late, on the next synchronous API call such as `cudaDeviceSynchronize()` or `cudaMemcpy()`, where it surfaces as `cudaErrorIllegalAddress`. The error often points at a line that is innocent, which is why debugging takes longer than it should. During debugging, always pair kernel launches with `cudaGetLastError()` and `cudaDeviceSynchronize()`, so the error appears next to the launch that caused it.
 
 ### 3.2 2D and 3D domain tile decomposition and halo trade-offs
 
-When processing 2D images or 3D scientific volumes, engineers pass `dim3(Tx, Ty, Tz)` structures for `threadsPerBlock` and `blocksPerGrid`. Reproducing the four canonical domain decompositions from *Parallel and High Performance Computing* Chapter 10 (Table 10.3) illustrates how tile shape controls block counts.
+When you process 2D images or 3D scientific volumes, you pass `dim3(Tx, Ty, Tz)` structures for `threadsPerBlock` and `blocksPerGrid`. The shape you choose sets how many blocks the grid needs. Reproducing the four canonical domain decompositions from *Parallel and High Performance Computing* Chapter 10, Table 10.3, shows how tile shape controls the block counts.
 
 | Domain type | Global domain size (`Gz x Gy x Gx`) | Block / Tile shape (`Tz x Ty x Tx`) | Threads per block (Tile size) | Grid dimensions (`NTz x NTy x NTx`) | Total work groups (Thread Blocks `NT`) |
 |---|---|---|---|---|---|
@@ -245,21 +265,27 @@ When processing 2D images or 3D scientific volumes, engineers pass `dim3(Tx, Ty,
 | **Large 2D tile** | `1024 x 1024` | `8 x 16` | `128` (4 warps) | `128 x 64` | **8,192** |
 | **3D volume** | `128 x 128 x 128` | `4 x 4 x 8` | `128` (4 warps) | `32 x 32 x 16` | **16,384** |
 
-Two physical trade-offs govern multidimensional tile selection. First, align the fastest-changing dimension (`blockDim.x`) to warps and cache lines so adjacent threads in a warp read contiguous memory addresses. Second, balance contiguous width against perimeter halo reloads. In stencil or convolution kernels, each tile loads a border halo of neighbor pixels from adjacent tiles. A flat 64 by 2 tile has a long perimeter that duplicates many HBM halo loads. A square or near-square tile such as 16 by 16 (256 threads) or 16 by 8 (128 threads) minimizes the perimeter-to-area ratio while preserving coalesced row reads. Using C++ lambda wrappers in portability frameworks such as SYCL, Kokkos, and Raja lets teams express these tiled loop bodies once across CPU and GPU backends.
+The table shows that a smaller tile does not mean fewer blocks. The small 2D tile produces twice as many blocks as the large one, because each block covers less ground. Read the last column as the amount of scheduling work the GPU must do.
+
+Two physical trade-offs govern how you pick a multidimensional tile.
+
+You can check the trade-off on paper before writing a line of kernel code. Count the threads in a candidate tile, then count the halo cells that the tile must read from its neighbors. A tile whose halo is large compared with its interior spends its time on border reads, and that time does not produce output. Choose the tile shape that keeps the halo small compared with the work inside it. First, align the fastest-changing dimension, `blockDim.x`, to warps and cache lines, so that adjacent threads in a warp read contiguous memory addresses. Second, balance the width of the tile against the halo reloads along its edges. In stencil or convolution kernels, each tile must also load a border of neighbor pixels from the adjacent tiles, and that border is the halo. A flat 64 by 2 tile has a long perimeter, which duplicates many HBM halo loads. A square or near-square tile, such as 16 by 16 (256 threads) or 16 by 8 (128 threads), keeps the perimeter small compared with the area, while still reading rows in a coalesced way. Using C++ lambda wrappers in portability frameworks such as SYCL, Kokkos, and Raja lets teams write these tiled loop bodies once and run them on CPU and GPU backends.
 
 ### 3.3 Forward and backward binary compatibility (SASS, PTX, and `CUDA_FORCE_PTX_JIT=1`)
 
-How can a PyTorch wheel or CUDA binary compiled years ago still execute on a brand-new Blackwell GPU? The NVIDIA compiler (`nvcc`) uses a two-stage compilation model combining architecture-specific machine code with a virtual intermediate representation.
+How can a PyTorch wheel or a CUDA binary compiled years ago still run on a brand-new Blackwell GPU? The answer lies in how the NVIDIA compiler (`nvcc`) packages the code. It uses a two-stage compilation model, which stores architecture-specific machine code alongside a virtual intermediate form. The next GPU generation can then finish the job at startup.
 
-1. **SASS (Streaming ASSembler)**. Native machine instructions compiled for one specific GPU architecture, such as `sm_80` for Ampere, `sm_90` for Hopper, or `sm_100` for Blackwell. Family-specific targets like `sm_100f` and `compute_100f` restrict portability to devices within that exact feature family. Native SASS runs only on the architecture family it was built for.
-2. **PTX (Parallel Thread Execution)**. NVIDIA's virtual instruction-set intermediate representation. When you ship a fatbinary containing architecture-specific SASS cubins plus virtual PTX, any future GPU driver can Just-In-Time compile the embedded PTX into native machine code at startup.
-3. **Pre-flight verification with `CUDA_FORCE_PTX_JIT=1`**. In continuous integration or node qualification tests, run your binary with the environment variable `CUDA_FORCE_PTX_JIT=1`. That flag forces the CUDA driver to ignore embedded SASS and JIT-compile the embedded PTX. If a build script omitted PTX from the fatbinary, the test fails immediately in CI rather than crashing in production on next-generation GPU nodes.
+1. SASS (Streaming ASSembler) is the native machine code compiled for one specific GPU architecture, such as `sm_80` for Ampere, `sm_90` for Hopper, or `sm_100` for Blackwell. Family-specific targets like `sm_100f` and `compute_100f` restrict portability to devices within that exact feature family. Native SASS runs only on the architecture family it was built for.
+2. PTX (Parallel Thread Execution) is NVIDIA's virtual instruction-set intermediate representation, a form of the program that no chip runs directly. When you ship a fatbinary, which is a single file holding several builds, it contains architecture-specific SASS cubins plus virtual PTX. A future GPU driver can then Just-In-Time (JIT) compile the embedded PTX into native machine code at startup.
+3. Pre-flight verification with `CUDA_FORCE_PTX_JIT=1` is the last step, and it sets the environment variable `CUDA_FORCE_PTX_JIT=1`. In continuous integration or node qualification tests, run your binary with that variable set. It forces the CUDA driver to ignore the embedded SASS and JIT-compile the embedded PTX instead. If a build script left PTX out of the fatbinary, the test fails right away in CI, rather than crashing later on next-generation GPU nodes in production.
+
+The three steps form a safety net. SASS gives speed on the GPU you have today. PTX gives a path to the GPU you will buy next year. The forced JIT test proves that the path still exists before the day you need it.
 
 ---
 
 ## 4. Residency, Occupancy, and how to calculate and tune them
 
-A minor compiler change that adds 16 registers per thread can suddenly cut resident warps from 48 to 32. Launching 1,024 threads per block can also leave half the SM empty. Both behaviors come from how the SM admission gate calculates **Occupancy**, the ratio of active resident warps on an SM to the hardware maximum of 64 warps.
+A minor compiler change that adds 16 registers per thread can suddenly cut resident warps from 48 to 32. Launching 1,024 threads per block can also leave half the SM empty. Both behaviors come from how the SM admission gate calculates **Occupancy**, the ratio of active resident warps on an SM to the hardware maximum of 64 warps. Occupancy is a measure of how much of the SM's capacity is loaded with work at any moment. It is not a measure of how fast the work runs.
 
 ```text
 SM Occupancy Definition (ASP Ch 6, V2 Ch 6):
@@ -268,7 +294,7 @@ SM Occupancy Definition (ASP Ch 6, V2 Ch 6):
 
 ### 4.1 The block admission gate and worked register and shared-memory occupancy math
 
-When the GigaThread Engine attempts to place a candidate Thread Block onto an SM, the hardware checks **three finite resource caps simultaneously**. Whichever cap is tightest determines how many whole blocks can reside on the SM at once.
+When the GigaThread Engine tries to place a candidate thread block onto an SM, the hardware checks three finite resource caps at the same time. Think of it as three gates at a ferry terminal. A ferry can only take on as many cars as the narrowest gate allows, whether the limit is the number of vehicles, the weight, or the space on deck. Whichever cap is tightest sets how many whole blocks can reside on the SM at once.
 
 ```mermaid
 flowchart TD
@@ -281,7 +307,7 @@ flowchart TD
   Min --> Occ["Occupancy<br/>= Resident Warps / 64"]
 ```
 
-A candidate block is defined by four numbers: `threadsPerBlock`, `warpsPerBlock`, `regsPerThread`, and `sharedMemPerBlock`.
+A candidate block is defined by four numbers: `threadsPerBlock`, `warpsPerBlock`, `regsPerThread`, and `sharedMemPerBlock`. Those four values come from the kernel's launch settings and from what the compiler reports. Once you know them, the three caps are simple arithmetic.
 
 | Admission cap | Hardware limit per SM | How it restricts resident blocks |
 |---|---|---|
@@ -289,9 +315,12 @@ A candidate block is defined by four numbers: `threadsPerBlock`, `warpsPerBlock`
 | **2. Register file** | **65,536** 32-bit registers (max **255** per thread) | Max threads = `floor(65536 / regsPerThread)`; max blocks = `floor(max_threads / threadsPerBlock)`. |
 | **3. Shared memory** | **228 KB** shared per SM (max **227 KB** dynamic/block) | Effective block SMEM = dynamic SMEM + **1 KB** reserved by CUDA; max blocks = `floor(228 KB / effective_smem)`. |
 
-The function `calc_sm_occupancy` in `code/part10/execution_model.py` applies these three limits together. The book gives the slot limits and the Volume 02 notes give the register and shared-memory method, so the combined function is this handbook's own.
+Each row is a separate gate. The slot ceiling counts blocks and warps, the register cap counts how many registers the kernel's threads need, and the shared memory cap counts the bytes each block reserves. The lowest of the three numbers wins. That is why a kernel that looks light on one resource can still be limited by another.
 
-You can inspect a kernel's exact compile-time register count and local-memory spill footprint before running any profiler by passing `-Xptxas=-v` to `nvcc`.
+The function `calc_sm_occupancy` in `code/part10/execution_model.py` applies these three limits together. The slot limits come from *AI Systems Performance Engineering*. The register and shared-memory method comes from the NVIDIA notes cited in the Sources section. Combining the three gates into one function is a design choice made for this chapter, so check its output against the arithmetic above.
+
+---
+You can inspect a kernel's exact compile-time register count, and its local-memory spill footprint, before you run any profiler. Pass `-Xptxas=-v` to `nvcc`, and the compiler prints the numbers as it builds. Spills matter because they mean the compiler ran out of registers and had to park values in slower memory.
 
 ```text
 $ nvcc -O3 -Xptxas=-v kernel.cu -o kernel
@@ -301,7 +330,9 @@ ptxas info    : Function properties for _Z6kernelPfS_m
 ptxas info    : Used 48 registers, 384 bytes cmem[0]
 ```
 
-Now examine the **register cliff effect** using the worked calculations from Volume 02 Chapter 6 across an SM with 65,536 registers and 64 maximum warps.
+Read the last two lines first. The `Used 48 registers` line tells you how many registers each thread asks for, and the spill line tells you whether the compiler had to push any values out of registers. Zero bytes of spills is the healthy case.
+
+Now examine the **register cliff effect**. The derivations below use the same SM from the earlier sections, with 65,536 registers and a maximum of 64 warps, which is 2,048 threads per SM. Each case changes one thing, so you can see the effect of that one change on resident warps.
 
 ```text
 Worked SM Occupancy Derivations (65,536 Regs/SM, 64 Max Warps = 2,048 Threads/SM, 228 KB SMEM/SM):
@@ -318,6 +349,8 @@ Worked SM Occupancy Derivations (65,536 Regs/SM, 64 Max Warps = 2,048 Threads/SM
      - SMEM limit: 64 KB dynamic + 1 KB CUDA reserved = 65 KB/block -> floor(228 KB / 65 KB) = 3 blocks -> 24 warps = 37.5%
 ```
 
+The summary table puts the same five cases side by side. Each row names the resource that limited it, which is the column to read first.
+
 | Scenario | Threads / block (warps) | Registers / thread | Dynamic SMEM / block | Max threads by regs | Resident blocks | Resident warps | SM Occupancy | Limiting resource |
 |---|---|---|---|---|---|---|---|---|
 | **1. Balanced kernel** | **256** (8 warps) | **32** regs | **0 KB** | **2,048** | **8** blocks | **64** warps | **100.0%** | Slot/Warp ceiling |
@@ -326,15 +359,17 @@ Worked SM Occupancy Derivations (65,536 Regs/SM, 64 Max Warps = 2,048 Threads/SM
 | **4. Oversized 1,024-thread block** | **1,024** (32 warps) | **48** regs | **0 KB** | **1,365** | **1** block | **32** warps | **50.0%** | **Registers + Block size** |
 | **5. Large shared-memory tile** | **256** (8 warps) | **24** regs | **64 KB** (+1 KB) | **2,048** | **3** blocks | **24** warps | **37.5%** | **Shared Memory** |
 
-Three engineering rules emerge directly from those numbers. First, partial blocks can never reside on an SM. In Row 3, increasing register usage from 40 to 56 registers per thread reduced the thread ceiling to 1,170 threads, which is 4.57 blocks of 256 threads. Because the SM only admits whole blocks, residency dropped from 6 blocks at 75 percent to 4 blocks at 50 percent in one step.
+Three engineering rules come out of those numbers. The first rule is that a partial block can never reside on an SM. In row 3, raising the register use from 40 to 56 per thread cut the thread ceiling to 1,170 threads. That is 4.57 blocks of 256 threads, and the SM only admits whole blocks. So residency fell from 6 blocks at 75 percent to 4 blocks at 50 percent in one step. A small change in one register count can cost a large share of occupancy.
 
-Second, launching 1,024 threads per block often backfires. At 48 registers per thread, one 1,024-thread block consumes 49,152 registers, leaving only 16,384 free registers. A second block cannot fit, so the SM runs only 1 block. If that single block hits a `__syncthreads()` barrier, the SM has zero other blocks to switch to. Reducing `threadsPerBlock` to 256 lets the SM pack 5 independent blocks.
+The second rule is that a 1,024-thread block often backfires. At 48 registers per thread, one 1,024-thread block consumes 49,152 registers, leaving only 16,384 free. A second block cannot fit, so the SM runs only one block. If that single block reaches a `__syncthreads()` barrier and waits, the SM has no other block to switch to. Reducing `threadsPerBlock` to 256 lets the SM pack 5 independent blocks, which gives the scheduler something to do while one block waits.
 
-Third, watch for register spilling above 255 registers per thread or non-zero spill stores and loads. When a thread exceeds the register budget, `nvcc` spills excess variables into Local Memory, which physically resides in off-chip HBM DRAM with hundreds of cycles of latency. Spilling to HBM hurts performance far more than running at slightly lower occupancy.
+The third rule is to watch for register spilling. Spilling happens above 255 registers per thread, or whenever the compiler reports non-zero spill stores and loads. When a thread exceeds its register budget, `nvcc` spills the excess variables into Local Memory. Despite its name, Local Memory is private to each thread but physically sits in off-chip HBM DRAM, with hundreds of cycles of latency. Spilling to HBM hurts performance far more than running at slightly lower occupancy does, so a kernel with a few spills and high occupancy is often the wrong thing to chase.
+
+Put the three rules together and you get a practical habit. Before you touch the launch configuration, compile with `-Xptxas=-v` and read the register count and the spill bytes. Then do the arithmetic for the block size you plan to use. If the arithmetic says a block limit is hit, change the block size or the register budget first, and only then profile to confirm the change helped.
 
 ### 4.2 Why sufficient parallelism matters and why 100% occupancy is not the goal
 
-Compare the two vector addition implementations on one million floats profiled with `nsys` and `ncu` in *AI Systems Performance Engineering* Chapter 6. The first kernel, `addSequential<<<1, 1>>>` or a naive Python loop, uses a single thread on one SM. The second kernel, `addParallel<<<3907, 256>>>` or vectorized PyTorch `C = A + B`, launches 3,907 blocks of 256 threads across all SMs simultaneously.
+A common goal in tuning is to push occupancy as high as possible. This subsection shows why that goal can mislead you. Compare two vector addition implementations on one million floats. The source profiles both with `nsys` and `ncu` in *AI Systems Performance Engineering* Chapter 6. The first kernel, `addSequential<<<1, 1>>>` or a naive Python loop, uses a single thread on one SM. The second kernel, `addParallel<<<3907, 256>>>` or vectorized PyTorch `C = A + B`, launches 3,907 blocks of 256 threads, which spread across all SMs at once.
 
 | Benchmark metric (`N = 1,000,000` floats, *AI Systems Performance Engineering* Ch 6 Table 6-6) | `add_sequential` (`<<<1, 1>>>`) | `add_parallel` (`<<<3907, 256>>>`) | Speedup / Change |
 |---|---|---|---|
@@ -343,9 +378,9 @@ Compare the two vector addition implementations on one million floats profiled w
 | **Achieved SM occupancy (`ncu` `sm__warps_active`)** | **1.3%** | **38.7%** | Hides HBM load latency |
 | **Warp execution efficiency** | **3.1%** (1 / 32 lanes) | **100.0%** (32 / 32 lanes) | Full 32-lane SIMT utilization |
 
-Look closely at the third row. The parallel kernel achieved a **22.2x** speedup and **95.0%** GPU utilization at only **38.7%** achieved occupancy. Why did it not need 100 percent occupancy? Occupancy is a means to hide latency rather than an end-to-end performance goal. Once an SM has enough independent warps to keep its pipelines busy during HBM loads, adding more resident warps does not make a memory-bound kernel faster. It merely places more warps in line waiting for the same saturated HBM bus. A tiled kernel that caches data in registers or shared memory often drops to 45 or 50 percent occupancy. Yet it runs twice as fast because it cuts off-chip HBM traffic in half.
+The first row shows the scale of the gain. The sequential version takes 48.21 milliseconds, and the parallel one finishes in 2.17 milliseconds. The third row is the surprising one. The parallel kernel achieved a **22.2x** speedup and **95.0%** GPU utilization at only **38.7%** achieved occupancy. Why did it not need 100 percent occupancy? Occupancy is a means to hide latency, not an end-to-end performance goal. Once an SM has enough independent warps to keep its pipelines busy during HBM loads, adding more resident warps does not make a memory-bound kernel faster. It only places more warps in line waiting for the same saturated HBM bus. A tiled kernel that caches data in registers or shared memory often drops to 45 or 50 percent occupancy, yet it can run twice as fast because it cuts off-chip HBM traffic roughly in half.
 
-You can prove whether a high-occupancy kernel has already hit the HBM bandwidth ceiling in a single Nsight Compute (`ncu`) pass.
+You can prove whether a high-occupancy kernel has already hit the HBM bandwidth ceiling in a single Nsight Compute (`ncu`) pass. The command below asks for two metrics, warp activity and DRAM throughput, and reports both as a percentage of their peak.
 
 ```text
 $ ncu --metrics sm__warps_active.avg.pct_of_peak_sustained_active,dram__throughput.avg.pct_of_peak_sustained_elapsed ./kernel
@@ -353,29 +388,31 @@ $ ncu --metrics sm__warps_active.avg.pct_of_peak_sustained_active,dram__throughp
   dram__throughput.avg.pct_of_peak_sustained_elapsed    %    97.8
 ```
 
-When `sm__warps_active` is **91.2%** and `dram__throughput` is **97.8%**, HBM memory bandwidth is completely saturated. Raising occupancy further will yield zero speedup.
+When `sm__warps_active` is **91.2%** and `dram__throughput` is **97.8%**, HBM memory bandwidth is completely saturated. Raising occupancy further will yield zero speedup. The two numbers tell the story in one line. The SMs are full, and the memory bus is also full. More warps would only queue behind the bus.
 
 ### 4.3 Tuning occupancy with `__launch_bounds__` and the CUDA Occupancy API
 
-When a kernel uses too many registers per thread and starves the SM of resident warps, engineers use two mechanisms to tune residency.
+When a kernel uses too many registers per thread and starves the SM of resident warps, engineers have two mechanisms for tuning residency. The first is a compile-time hint. The second is a runtime query.
 
-First, compile-time `__launch_bounds__(maxThreadsPerBlock, minBlocksPerMultiprocessor)` instructs `nvcc` to cap per-thread register allocation so at least `minBlocksPerMultiprocessor` blocks of size `maxThreadsPerBlock` fit on each SM. Watch out for the hardware ceiling trap documented in *AI Systems Performance Engineering* Chapter 6 on page 206. Writing `__launch_bounds__(256, 16)` requests 4,096 resident threads per SM, which exceeds the **2,048-thread** hardware limit on Blackwell and Hopper. The `ptxas` assembler ignores `.minnctapersm` and clamps residency to **8** blocks, or at most 32 registers per thread. Always ensure that `maxThreadsPerBlock * minBlocksPerMultiprocessor <= 2048`.
+The first mechanism is `__launch_bounds__(maxThreadsPerBlock, minBlocksPerMultiprocessor)`, a compile-time annotation. It tells `nvcc` to cap the per-thread register allocation, so that at least `minBlocksPerMultiprocessor` blocks of size `maxThreadsPerBlock` fit on each SM. It is easy to ask for more than the hardware can give. *AI Systems Performance Engineering* Chapter 6, on page 206, documents this hardware ceiling trap. Writing `__launch_bounds__(256, 16)` requests 4,096 resident threads per SM, which exceeds the **2,048-thread** hardware limit on Blackwell and Hopper. The `ptxas` assembler ignores `.minnctapersm` and clamps residency to **8** blocks, or at most 32 registers per thread. The safe rule is to keep `maxThreadsPerBlock * minBlocksPerMultiprocessor <= 2048`, so the product never passes the hardware limit.
 
 ```text
 ptxas warning : Value of threads per SM...is out of range. .minnctapersm will be ignored
 ```
 
-Second, runtime `cudaOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize, myKernel, dynSmemBytes, 0)` queries the CUDA driver for the block size that maximizes SM occupancy for the kernel's compiled register count and dynamic shared memory. Because `minGridSize` only reports the minimum blocks needed to fill one wave across the GPU, compute your actual launch grid using `(N + bestBlockSize - 1) / bestBlockSize`.
+The warning above is the sign that the request was out of range. When you see it during a build, go back and check the arithmetic in the rule before you trust the kernel's residency.
+
+The second mechanism is runtime. `cudaOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize, myKernel, dynSmemBytes, 0)` asks the CUDA driver which block size maximizes SM occupancy for the kernel's compiled register count and dynamic shared memory. The API returns a block size, which you can use at launch time. It also returns `minGridSize`, but that value only reports the minimum number of blocks needed to fill one wave across the GPU. It is not the size of your actual launch. Compute the real grid yourself with `(N + bestBlockSize - 1) / bestBlockSize`, so every element is covered.
 
 ---
 
 ## 5. Warp states, instruction dispatch, divergence, and the two efficiency gates
 
-Having 48 or 64 warps resident on an SM does not guarantee that the SM can issue an instruction on the next clock cycle. Even when an SM issues instructions every cycle at 95 percent utilization, a kernel can lose most of its throughput through the two Nsight Compute efficiency gates.
+Having 48 or 64 warps resident on an SM does not guarantee that the SM can issue an instruction on the next clock cycle. Picture a busy kitchen with plenty of cooks at their stations, where most of them are waiting on the oven. The stations are full, but very little food leaves the kitchen. Even when an SM issues instructions every cycle at 95 percent utilization, a kernel can lose most of its throughput through the two Nsight Compute efficiency gates.
 
 ### 5.1 The five warp states and scoreboard dependencies
 
-At every clock cycle, each warp on an SM sits in one of five hardware states.
+At every clock cycle, each warp on an SM sits in one of five hardware states. The table defines each state and what moves a warp from one state to the next.
 
 | Warp state | Hardware definition | What governs state transitions |
 |---|---|---|
@@ -385,11 +422,13 @@ At every clock cycle, each warp on an SM sits in one of five hardware states.
 | **4. Selected** | The **1 Eligible warp** chosen by its sub-partition's warp scheduler to issue 1 (or 2 dual-issued) instruction(s) on this clock cycle. | Hardware warp scheduler priority policy. |
 | **5. Completed** | All 32 threads in the warp have finished executing the kernel. | Releases the warp slot; when all warps in a block complete, the block's registers and shared memory are freed. |
 
-Why does the gap between **Active** and **Eligible** matter? In dependent instructions such as `A = B + C; D = A * E;`, the hardware Scoreboard marks the warp **Stalled** until `A` is written back. If all 64 Active warps wait on an HBM load or a barrier at once, **Eligible** warps drop to 0 and the SM stalls despite 100 percent occupancy.
+Think of the five states as a line at a checkout. Active means the shopper is in the store, Stalled means the shopper is waiting on a price check, Eligible means the shopper is ready to pay, Selected means the cashier is taking the payment, and Completed means the shopper has left.
+
+The gap between Active and Eligible matters most. In a dependent pair of instructions such as `A = B + C; D = A * E;`, the second line cannot run until `A` is written. The hardware Scoreboard tracks that dependency and marks the warp Stalled until the value arrives. If all 64 Active warps wait on an HBM load or a barrier at the same moment, the number of Eligible warps drops to zero, and the SM stalls even though its occupancy reads 100 percent.
 
 ### 5.2 Warp divergence, predication, and the two Nsight Compute efficiency gates
 
-When warps are Eligible and Selected on every cycle, how can a kernel still deliver poor token or record throughput? The answer lies in the **two hardware efficiency gates**: Control-Flow Efficiency and Memory Coalescing Efficiency.
+When warps are Eligible and Selected on every cycle, how can a kernel still deliver poor token or record throughput? The answer lies in the **two hardware efficiency gates**: Control-Flow Efficiency and Memory Coalescing Efficiency. A kernel can look busy at every level and still fail one of these gates, so the gates are the right place to look next.
 
 ```mermaid
 flowchart TD
@@ -400,6 +439,8 @@ flowchart TD
   G2 -->|"~4 Sectors: 128 B"| Good["High Goodput"]
   G2 -->|"11.6 to 32 Sectors"| Leak2["Memory Bandwidth Leak<br/>Up to 8x Wasted HBM Traffic"]
 ```
+
+The diagram sends every issued warp instruction through two checks in order. The first asks how many lanes were active. The second asks how many memory sectors each load touched. A warp can pass the first gate and fail the second, or fail both.
 
 | Efficiency gate | Nsight Compute (`ncu`) metric | Ideal value | Degraded example (V2 Ch 9) |
 |---|---|---|---|
@@ -419,21 +460,20 @@ Two Efficiency Gates Math (V2 Ch 9, V2 Lab 03, execution_model.py):
     - Worst-Case Scattered Load:  32.0 sectors x 32 B = 1,024.0 B moved for 128 B useful -> 8.0x byte amplification
 ```
 
-First, consider **Gate 1: Warp Divergence and Predication**. All 32 threads in a warp share one instruction pointer. When an `if/else` condition evaluates to true for 16 threads and false for the other 16 threads *within the same warp*, the warp suffers **Warp Divergence**. The SM first executes Path A with the 16 false lanes masked off, and then executes Path B with the 16 true lanes masked off, before reconverging. Execution time doubles and lane efficiency drops to 50 percent. Crucially, divergence occurs *only within a single 32-thread warp*. If Warp 0 takes Path A and Warp 1 takes Path B, there is zero warp divergence because each warp branches uniformly. For very short branch bodies, `nvcc` uses **predication**, issuing instructions unconditionally while a per-lane predicate bit controls register writeback.
+Take Gate 1 first. All 32 threads in a warp share one instruction pointer. When an `if/else` condition is true for 16 threads and false for the other 16 *within the same warp*, the warp suffers **Warp Divergence**. The SM first runs Path A with the 16 false lanes masked off. Then it runs Path B with the 16 true lanes masked off, and the warp reconverges. Execution time doubles, and lane efficiency falls to 50 percent. Divergence happens only inside a single 32-thread warp. If Warp 0 takes Path A and Warp 1 takes Path B, there is no warp divergence, because each warp branches uniformly. For very short branch bodies, `nvcc` uses **predication** instead. It issues the instructions unconditionally, and a per-lane predicate bit decides which lanes write their results. Predication avoids the two-pass cost for short bodies.
 
-Second, consider **Gate 2: Memory Coalescing**. When 32 threads in a warp each read a 4-byte float, the memory subsystem services the 128-byte load in **32-byte sectors**. Four sectors make up one 128-byte cache line. In a coalesced `contiguous_copy` kernel where adjacent threads read adjacent addresses, all 128 bytes sit in one aligned cache line, transferring **4 sectors**. In a `strided_copy` or scattered pointer-chasing kernel, each thread hits a different cache line. The hardware fetches up to **32 separate 32-byte sectors**, moving 1,024 bytes just to deliver 128 useful bytes and wasting **8.0x** of HBM bandwidth.
+Now take Gate 2. When 32 threads in a warp each read a 4-byte float, the memory subsystem serves the 128-byte load in 32-byte sectors. Four sectors make up one 128-byte cache line. In a coalesced `contiguous_copy` kernel, adjacent threads read adjacent addresses, so all 128 bytes sit in one aligned cache line and the load transfers 4 sectors. In a `strided_copy` or scattered pointer-chasing kernel, each thread lands in a different cache line. The hardware then fetches up to 32 separate 32-byte sectors. That moves 1,024 bytes to deliver 128 useful bytes, which wastes 8.0x of HBM bandwidth.
 
-The function `diagnose_kernel_efficiency_gates` in `code/part10/execution_model.py` joins the three occupancy limits to these two gates. That combination is this handbook's own, not a table from the book.
+The function `diagnose_kernel_efficiency_gates` in `code/part10/execution_model.py` joins the three occupancy limits to these two gates. Joining them into one diagnosis is a choice made for this chapter, and it is not a table from the source material.
 
 ---
-
 ## 6. Production operations: the four scheduling layers, GPU Contexts, and Compute Sanitizer
 
-Two Kubernetes pods sharing a GPU via operating system time-slicing can run more than twice as slowly as expected with high driver overhead in Nsight Systems. Similarly, `nvidia-smi` can succeed on the bare-metal host while `docker run --gpus all` fails inside a container. Answering both questions requires separating the four scheduling layers of an AI cluster.
+Picture two Kubernetes pods that share one GPU through operating system time-slicing. Each pod works fine on its own, but together they run more than twice as slowly as expected, and Nsight Systems shows high driver overhead. In the same week, a second team reports that `nvidia-smi` succeeds on the bare-metal host while `docker run --gpus all` fails inside a container. Both reports look like GPU problems, but neither is really about the SM. Answering them requires separating the four scheduling layers of an AI cluster, because each layer has its own scheduler and its own failure modes.
 
 ### 6.1 The four scheduling layers and GPU Context Switching (Time-Slicing vs MIG vs MPS)
 
-In production, SM warp scheduling sits at the bottom of a four-layer scheduling stack.
+In production, SM warp scheduling sits at the bottom of a four-layer scheduling stack. Work comes down from the top layer, and each layer decides something that the layer below must live with. The table lists each layer, its scheduler, the unit it schedules, and the failure you usually see there.
 
 | Layer | Scheduler component | Scheduling unit | Typical failure and symptom |
 |---|---|---|---|
@@ -442,13 +482,17 @@ In production, SM warp scheduling sits at the bottom of a four-layer scheduling 
 | **3. Kernel layer** | **GigaThread Engine** | Grid and Thread Blocks (CTAs) | Small grid tail effect or oversized **1,024-thread** blocks capping each SM at 1 active block. |
 | **4. SM layer** | **4 Warp Schedulers per SM** | 32-thread Warps & Dual-Issued Instructions | Warp divergence (`19.4 / 32` lanes), uncoalesced sector amplification (`11.6` to `32` sectors), or register spilling to HBM local memory. |
 
-A platform team that shares GPUs between tenants needs to understand **GPU Contexts**, which belong to Layer 2. Just as a Linux process owns a virtual address space, a CUDA process creates a **GPU Context** holding its device page tables, allocations, and hardware state. By default, an NVIDIA GPU executes **one hardware context at a time**. When two independent OS processes share one GPU without isolation, the driver must perform **GPU Context Switching**. Saving and restoring SM and page-table state takes tens of microseconds while both processes evict each other's L2 cache lines.
+The first layer explains the container report. The cluster layer places pods and passes the GPU into the container, so a failure at the Container Toolkit boundary looks like a GPU that vanished. The fourth layer explains the nodes that look busy but run slowly. Each of the middle layers is where the time-slicing and batching problems live.
 
-Never share a production GPU across heavy workloads using raw OS time-slicing alone. Instead, choose one of three supported architectures. Dedicate a whole GPU per process. Partition the GPU in hardware with **Multi-Instance GPU (MIG)** so each tenant receives physically isolated SMs, L2 cache banks, memory controllers, and an independent hardware context. Or enable **NVIDIA Multi-Process Service (MPS)** when cooperative processes from the same tenant need to share a single combined GPU context without context-switch stalls, as covered in Chapters 11.24 through 11.26.
+A platform team that shares GPUs between tenants needs to understand **GPU Contexts**, which belong to layer 2. A GPU Context is to a CUDA process what a virtual address space is to a Linux process. It is the set of device page tables, allocations, and hardware state that belongs to one process. By default, an NVIDIA GPU runs **one hardware context at a time**. When two independent OS processes share one GPU without isolation, the driver must perform **GPU Context Switching**. Saving and restoring SM and page-table state takes tens of microseconds, and both processes evict each other's L2 cache lines while they wait their turn. That is the thrash behind the opening story.
+
+Never share a production GPU across heavy workloads using raw OS time-slicing alone. Instead, choose one of three supported architectures. The first is to dedicate a whole GPU to each process. The second is to partition the GPU in hardware with **Multi-Instance GPU (MIG)**, so each tenant receives physically isolated SMs, L2 cache banks, memory controllers, and an independent hardware context. The third is to enable **NVIDIA Multi-Process Service (MPS)** when cooperating processes from the same tenant need to share one combined GPU context without context-switch stalls, as covered in Chapters 11.24 through 11.26. Pick the one that matches who owns the processes. Isolation between tenants calls for MIG, while teamwork inside one tenant calls for MPS.
 
 ### 6.2 Catching memory, race, and barrier bugs with NVIDIA Compute Sanitizer
 
-A single kernel launch spawns millions of threads without per-thread OS page protection. Off-by-one indexing bugs or shared-memory race conditions can silently corrupt weights or trigger `cudaErrorIllegalAddress` crashes hours into a run. Integrate **NVIDIA Compute Sanitizer (`compute-sanitizer`)** into continuous integration pipelines using `--error-exitcode 1` and `--nvtx yes`.
+A single kernel launch can spawn millions of threads, and none of them gets its own operating system page protection. An off-by-one indexing bug or a shared-memory race condition can therefore corrupt weights silently, or trigger a `cudaErrorIllegalAddress` crash hours into a run. NVIDIA Compute Sanitizer (`compute-sanitizer`) is the tool that catches these bugs while the program runs. Integrate it into continuous integration pipelines using `--error-exitcode 1` and `--nvtx yes`, so a bug fails the build instead of reaching production.
+
+The sanitizer ships as four separate tools. Each one checks for a different class of bug, so a clean run from one tool does not clear the others. The table lists the four tools and the command for each.
 
 | Compute Sanitizer tool | Command invocation | Functional bug class detected at runtime |
 |---|---|---|
@@ -457,11 +501,15 @@ A single kernel launch spawns millions of threads without per-thread OS page pro
 | **3. `initcheck`** | `compute-sanitizer --tool initcheck` | Kernel threads reading from **uninitialized device global memory** (such as a forgotten `cudaMemcpy` or `cudaMemset`). |
 | **4. `synccheck`** | `compute-sanitizer --tool synccheck` | Invalid barrier synchronization, such as placing `__syncthreads()` inside a divergent `if/else` branch where only some threads in the block reach the barrier, causing a hardware deadlock. |
 
+Memcheck is the one you will reach for first, because out-of-bounds access is the most common kernel bug. Racecheck is the next most useful, since shared-memory races are hard to see by reading the code. Initcheck and synccheck catch the quieter mistakes that come from missing setup and from barriers placed in the wrong branch.
+
 ---
 
 ## Commands and configurations that matter
 
 ### 1. Inspecting compile-time register usage and local-memory spills (`nvcc -Xptxas=-v`, untested on live Nebius GPU VM)
+
+The first command builds the kernel for Hopper and embeds PTX as well, then prints the register and spill counts. The second runs the binary with the forced PTX JIT, which proves the embedded PTX can be compiled at runtime.
 
 ```bash
 # Compile a CUDA file for Hopper (sm_90) + embedded PTX (compute_90) and print register/spill counts
@@ -472,6 +520,8 @@ CUDA_FORCE_PTX_JIT=1 ./memory_patterns
 ```
 
 ### 2. Profiling timeline gaps (`nsys`) and SM occupancy and efficiency gates (`ncu`)
+
+Use two profilers for two different questions. Nsight Systems shows the timeline, including the gaps between kernels. Nsight Compute zooms into one kernel and reports its efficiency gates. The first command below records the timeline, and the second collects the occupancy and gate metrics for the kernel.
 
 ```bash
 # 1. Nsight Systems (nsys): capture end-to-end host-to-device copies, kernel gaps, and NVTX ranges
@@ -485,6 +535,8 @@ ncu --section SpeedOfLight \
 
 ### 3. Live DCGM and `nvidia-smi` host versus container boundary verification
 
+This check separates a host problem from a container problem. Run the host commands first. If they pass, and the container command still fails, the problem sits at the Container Toolkit boundary, not in the driver.
+
 ```bash
 # 1. Host baseline and streaming SM / memory / PCIe monitoring
 nvidia-smi --query-gpu=index,name,driver_version,pstate,memory.used,utilization.gpu,utilization.memory,power.draw --format=csv
@@ -495,6 +547,8 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 ```
 
 ### 4. CI functional verification with `compute-sanitizer`
+
+The four sanitizer runs below are the CI gate. Each one returns a non-zero exit code when its bug class appears, which fails the pipeline. Run all four, because each tool covers a different class of bug.
 
 ```bash
 # Fail CI with non-zero exit code if any out-of-bounds access, shared-memory race, or barrier bug occurs
@@ -507,6 +561,8 @@ compute-sanitizer --tool synccheck --error-exitcode 1 ./memory_patterns
 ---
 
 ## How it fails
+
+The table lists six failure modes that you will meet on real systems. Each row gives the symptom you see first, the root cause behind it, and the first fix to try. Start from the symptom, and only then reason about the cause.
 
 | Failure mode | Symptom | Root cause | Diagnosis & fix |
 |---|---|---|---|
@@ -521,9 +577,11 @@ compute-sanitizer --tool synccheck --error-exitcode 1 ./memory_patterns
 
 ## Hands-on lab
 
+The lab in this section is a plain Python model. It checks the arithmetic in this chapter without needing a GPU, and it turns each hand calculation into a number that either passes or fails. The commands in the earlier sections, such as the `nvcc`, `ncu`, and `compute-sanitizer` runs, were not run on a live cluster, so treat them as steps to follow on real hardware.
+
 ### Self-checking Python model (`code/part10/execution_model_lab.py` — verified here)
 
-The module `code/part10/execution_model.py` implements the hardware tables, launch calculators, SM occupancy solver, `__launch_bounds__` validator, and Nsight Compute efficiency-gate analyzer from this chapter. Its test runner `code/part10/execution_model_lab.py` (along with `code/part10/kernel_efficiency_lab.py`) executes 25 automated checks verifying every worked example from the cited books and notes.
+The module `code/part10/execution_model.py` implements the hardware tables, the launch calculators, the SM occupancy solver, the `__launch_bounds__` validator, and the Nsight Compute efficiency-gate analyzer from this chapter. Its test runner, `code/part10/execution_model_lab.py`, runs alongside `code/part10/kernel_efficiency_lab.py` and executes 25 automated checks. The checks cover each worked example from the cited sources, so a failing check points you to the example that moved.
 
 ```text
 What code/part10/execution_model_lab.py Verifies (25 Automated Checks):
@@ -539,13 +597,13 @@ What code/part10/execution_model_lab.py Verifies (25 Automated Checks):
   7. Efficiency Gates:       19.4 / 32 = 60.62% active-lane efficiency; 11.6 sectors (371.2 B = 2.9x) and 32.0 sectors (1,024 B = 8.0x) vs 4.0 coalesced (1.0x)
 ```
 
-Run the lab from the repository root.
+Run the lab from the repository root. The `-B` flag keeps Python from writing bytecode into the repository.
 
 ```bash
 python3 -B code/part10/execution_model_lab.py
 ```
 
-Expected output verified in this repository.
+The expected output below came from a run in this repository. Each `PASS` line names the source table it checks, so you can trace any result back to the text.
 
 ```text
 === Chapter 10.2 Lab: The Execution Model — Threads, Warps, Blocks & SMs ===
@@ -565,40 +623,51 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Common first mistakes
 
-- **Setting `threadsPerBlock = 1024` assuming bigger blocks always mean higher parallelism**. Above 32 registers per thread, a 1,024-thread block prevents a second block from fitting in the SM register file. That caps occupancy at 50 percent and leaves the SM with no backup blocks during `__syncthreads()` barriers. Start at 256 threads per block.
-- **Choosing block sizes that are not multiples of 32**. Every partially filled warp still consumes one of the SM's warp slots while masking off inactive lanes on every instruction.
-- **Chasing full occupancy when `dram__throughput` is already saturated**. Once HBM bandwidth is above 95 percent, adding more resident warps only increases memory queuing. A lower-occupancy kernel that reuses data in shared memory or registers is often much faster.
-- **Writing `__launch_bounds__(256, 16)` without checking the SM thread limit**. Requesting 4,096 threads per SM exceeds the 2,048-thread ceiling, triggers a `ptxas` warning, and is ignored by the assembler.
-- **Omitting `if (idx < N)` in kernels because test inputs were powers of two**. The first production request with an odd token count writes past the buffer and crashes asynchronously with `cudaErrorIllegalAddress`.
-- **Putting `.cpu()`, `.item()`, or `print(tensor)` inside a training or inference loop**. Copying a device tensor to host CPU RAM inside a loop forces a synchronous `cudaStreamSynchronize()` and drags execution down to PCIe speeds.
-- **Sharing a GPU across multiple heavy processes without MIG or MPS**. Default OS time-slicing swaps entire GPU hardware contexts and thrashes the L2 cache.
-- **Shipping CUDA binaries with only architecture-specific SASS and no PTX**. Without embedded PTX, the binary will fail to load on newer GPU generations. Running with `CUDA_FORCE_PTX_JIT=1` catches this in CI.
+Each of these mistakes is easy to make, and each one has a simple check that catches it early.
+
+Setting `threadsPerBlock = 1024` because bigger blocks sound like more parallelism is the first. Above 32 registers per thread, a 1,024-thread block keeps a second block from fitting in the SM register file. That caps occupancy at 50 percent and leaves the SM with no backup block during `__syncthreads()` barriers. Start at 256 threads per block and measure from there.
+
+Choosing block sizes that are not multiples of 32 is the second. Every partly filled warp still uses one of the SM's warp slots, and it masks off the inactive lanes on every instruction.
+
+Chasing full occupancy when `dram__throughput` is already saturated is the third. Once HBM bandwidth is above 95 percent, adding more resident warps only increases memory queuing. A lower-occupancy kernel that reuses data in shared memory or registers is often much faster.
+
+Writing `__launch_bounds__(256, 16)` without checking the SM thread limit is the fourth. Requesting 4,096 threads per SM exceeds the 2,048-thread ceiling, triggers a `ptxas` warning, and gets ignored by the assembler.
+
+Omitting `if (idx < N)` because the test inputs were powers of two is the fifth. The first production request with an odd token count writes past the buffer and crashes asynchronously with `cudaErrorIllegalAddress`.
+
+Putting `.cpu()`, `.item()`, or `print(tensor)` inside a training or inference loop is the sixth. Copying a device tensor to host RAM inside a loop forces a synchronous `cudaStreamSynchronize()` and drags execution down to PCIe speeds.
+
+Sharing a GPU across multiple heavy processes without MIG or MPS is the seventh. Default OS time-slicing swaps entire GPU hardware contexts and thrashes the L2 cache.
+
+Shipping CUDA binaries with only architecture-specific SASS and no PTX is the eighth. Without embedded PTX, the binary fails to load on newer GPU generations. Running with `CUDA_FORCE_PTX_JIT=1` catches this in CI.
 
 ---
 
 ## Exercises
 
-1. Run the lab with `python3 -B code/part10/execution_model_lab.py`. Then open `code/part10/execution_model.py` and read how `calc_sm_occupancy` works.
-2. Call `calc_sm_occupancy` for a 256-thread block. Step the registers per thread from 24 to 80. Write down where resident blocks drop.
-3. Take a kernel that uses 48 registers per thread. Try block sizes from 64 to 1,024. Which sizes give the best occupancy, and why does 1,024 leave only one block?
-4. Give a kernel 113 KB of dynamic shared memory, then 114 KB. CUDA reserves 1 KB per block. Why does the first fit two blocks in 228 KB and the second only one?
+Each exercise gives one situation and one task. The first exercises use the lab functions, and the last one needs a real GPU VM.
+
+1. Run the lab with `python3 -B code/part10/execution_model_lab.py`. Then open `code/part10/execution_model.py`, and read how `calc_sm_occupancy` works. Which of the three caps does the function check first?
+2. A teammate wants to know when a 256-thread block loses residency. Call `calc_sm_occupancy` for that block size. Step the registers per thread from 24 to 80. Write down the register count where resident blocks drop.
+3. Take a kernel that uses 48 registers per thread. Try block sizes from 64 to 1,024. Which block size gives the best occupancy? Why does 1,024 leave only one block?
+4. Give a kernel 113 KB of dynamic shared memory, then 114 KB. CUDA reserves 1 KB per block. Why does the first case fit two blocks in 228 KB, and the second only one?
 5. Use `validate_launch_bounds` with 256 and 512 threads per block. Which minimum block counts pass the 2,048-thread ceiling? What register cap does each passing pair imply?
 6. Pass `diagnose_kernel_efficiency_gates` a kernel with 19.4 active threads per instruction and 11.6 sectors per load. How much extra HBM traffic does it move, compared with a worst case of 32 sectors?
-7. On a Nebius GPU VM, compile `memory_patterns.cu` from Volume 02 Lab 03 with `nvcc -O3 -Xptxas=-v`. Compare sectors per request for the contiguous and strided copies in `ncu`, then run `compute-sanitizer` to check correctness.
+7. On a Nebius GPU VM, compile `memory_patterns.cu`, the memory-pattern example from the source notes, with `nvcc -O3 -Xptxas=-v`. Compare sectors per request for the contiguous and strided copies in `ncu`, then run `compute-sanitizer` to check correctness.
 
 ---
 
 ## Interview angles
 
-- **Walk me through what happens in hardware from the moment PyTorch launches a CUDA kernel until instructions execute on an SM**.
+- Walk me through what happens in hardware from the moment PyTorch launches a CUDA kernel until instructions execute on an SM.
   The host driver pushes the kernel launch descriptor across PCIe to the GPU's GigaThread Engine. The GigaThread Engine admits Thread Blocks onto Streaming Multiprocessors as soon as an SM has enough free thread and warp slots, registers, and shared memory. Once admitted, the SM splits the block into SIMT warps across its four warp-scheduler sub-partitions. Every cycle, each scheduler picks an Eligible warp with ready operands and dual-issues up to one math instruction plus one memory instruction.
-- **An engineer increased register usage from 40 to 56 registers per thread on a 256-thread block and occupancy dropped from 75% to 50%, yet the kernel ran 15% faster. How is that possible**?
+- An engineer increased register usage from 40 to 56 registers per thread on a 256-thread block and occupancy dropped from 75% to 50%, yet the kernel ran 15% faster. How is that possible?
   At 40 registers per thread, the 65,536-register file fits six whole 256-thread blocks for 75 percent occupancy. At 56 registers per thread, the register file fits four whole blocks for 50 percent occupancy. However, occupancy only measures resident warp capacity. If those extra registers cached hot intermediate values on chip and eliminated slow HBM memory traffic while 32 warps were still enough to hide latency, total runtime improves.
-- **Why can `nvidia-smi` show 95% utilization and `ncu` show 91% achieved occupancy while a kernel delivers only 20% of expected throughput**?
+- Why can `nvidia-smi` show 95% utilization and `ncu` show 91% achieved occupancy while a kernel delivers only 20% of expected throughput?
   Check the two efficiency gates in Nsight Compute. First, inspect `smsp__thread_inst_executed_per_inst_executed.ratio` for warp divergence, where values well below 32 mean warps execute with many lanes masked off. Second, inspect `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio` for uncoalesced memory access, where values near 11.6 to 32 instead of 4 for float loads cause up to an eightfold HBM bandwidth amplification.
-- **What is the difference between Thread Block Shared Memory and Hopper or Blackwell Distributed Shared Memory**?
+- What is the difference between Thread Block Shared Memory and Hopper or Blackwell Distributed Shared Memory?
   Standard Shared Memory (`__shared__`, up to 227 KB dynamic per block) is scoped strictly to a single Thread Block executing on a single SM. Thread Block Clusters on Hopper and Blackwell group multiple blocks across neighboring SMs inside a GPC and link their shared-memory SRAM over an on-chip SM-to-SM network called Distributed Shared Memory. Threads across blocks in the cluster can read, write, and barrier-synchronize without going to L2 or HBM.
-- **Why does running two separate training processes on the same GPU without MIG or MPS hurt performance even if their combined memory fits in HBM**?
+- Why does running two separate training processes on the same GPU without MIG or MPS hurt performance even if their combined memory fits in HBM?
   Each OS process creates its own GPU Context containing separate page tables, register state, and memory allocations. MIG physically partitions SMs, L2 banks, and memory controllers into independent hardware contexts, while MPS funnels cooperative processes into one shared context. Without either feature, the GPU driver must time-slice and context-switch across tens of microseconds while both processes evict each other's L2 cache lines.
 
 ---

@@ -23,15 +23,17 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A GPU can have over a thousand TeraFLOPS of arithmetic horsepower and still crawl at a tiny fraction of its capability. Execution pipelines frequently spend 80% of their cycles waiting for bytes to arrive from memory. No single storage technology can be simultaneously tiny, fast, and huge. Every modern GPU solves this physical trade-off with a seven-tier memory hierarchy stretching from single-cycle per-thread registers out to off-chip HBM3e and host CPU RAM.
+A GPU can have over a thousand TeraFLOPS of arithmetic horsepower and still crawl at a tiny fraction of its capability. Execution pipelines frequently spend 80% of their cycles waiting for bytes to arrive from memory. Picture a fleet of expensive accelerators that all look busy on the dashboard, while the math units sit idle for most of each step. The fix is rarely a faster chip. It is usually a better trip for the bytes.
 
-As an AI infrastructure or platform engineer, you will diagnose memory-hierarchy bottlenecks constantly.
-- A thirteen-billion-parameter FP16 model fits effortlessly inside an 80 GB H100 with plenty of room to spare. Yet it hits a hard latency floor during unbatched LLM decode.
-- A compiler optimization that unrolls a loop and reduces instruction count can make a kernel slower. It does this by spilling just two float variables per thread into local memory.
-- A naive matrix transpose in fast on-chip shared memory stalls heavily on bank conflicts. Adding a single unused padding column makes that kernel three times faster.
-- A misconfigured server BIOS that leaves Resizable BAR disabled caps the host aperture at a tiny window. That setting cripples CPU-to-GPU transfers on an 80 GB GPU.
+No single storage technology can be simultaneously tiny, fast, and huge. A register file is fast but holds very little, while a pool of DRAM holds a great deal but answers slowly. Every modern GPU solves this physical trade-off with a seven-tier memory hierarchy, stretching from single-cycle per-thread registers out to off-chip HBM3e and host CPU RAM.
 
-This chapter maps every tier of the GPU memory hierarchy, including Blackwell Tensor Memory and the Tensor Memory Accelerator. It derives the exact arithmetic for cache-line coalescing, shared-memory bank conflicts, and register spilling. Finally, it connects kernel-level access patterns to host-level Resizable BAR, pinned memory, stream-ordered memory pools, and Unified Memory.
+As an AI infrastructure or platform engineer, you will diagnose memory-hierarchy bottlenecks constantly. The four cases below are the kind of problem that shows up in a ticket.
+- Why does a model that fits easily still feel slow? A thirteen-billion-parameter FP16 model fits effortlessly inside an 80 GB H100 with plenty of room to spare. Yet it hits a hard latency floor during unbatched LLM decode.
+- Why did an optimization make a kernel slower? A compiler optimization that unrolls a loop and reduces instruction count can make a kernel slower. It does this by spilling just two float variables per thread into local memory.
+- Why does a shared-memory kernel stall? A naive matrix transpose in fast on-chip shared memory stalls heavily on bank conflicts. Adding a single unused padding column makes that kernel three times faster.
+- Why is the CPU-to-GPU path so narrow? A misconfigured server BIOS that leaves Resizable BAR disabled caps the host aperture at a tiny window. That setting cripples CPU-to-GPU transfers on an 80 GB GPU.
+
+This chapter maps every tier of the GPU memory hierarchy, including Blackwell Tensor Memory and the Tensor Memory Accelerator. It derives the exact arithmetic for cache-line coalescing, shared-memory bank conflicts, and register spilling. Finally, it connects kernel-level access patterns to host-level Resizable BAR, pinned memory, stream-ordered memory pools, and Unified Memory, so you can see how a setting on the server affects a kernel on the GPU.
 
 ```text
 Key memory hierarchy diagnostic benchmarks:
@@ -47,22 +49,19 @@ Key memory hierarchy diagnostic benchmarks:
 - CPU versus GPU throughput design and peak HBM and PCIe bandwidth formulas from the first chapter of this part.
 - The execution hierarchy from thread to warp, block, cluster, and grid, along with sub-partitions and occupancy rules from the second chapter of this part.
 
-**Outcomes:** After completing this chapter, you will be able to accomplish five primary objectives.
-- First, map all seven device memory tiers on Hopper and Blackwell GPUs alongside the five Points of Coherency.
-- Second, explain why local memory describes thread scope rather than physical location. You will also calculate the hidden HBM byte traffic caused by register spilling and spot spills at compile time with `nvcc -O3 -Xptxas=-v`.
-- Third, stage data in shared memory tiles, calculate bank conflict degrees, and eliminate column conflicts with array padding or XOR index swizzling. You will also bypass shared memory for intra-warp reductions using `__shfl_down_sync` register shuffles.
-- Fourth, explain cache-line coalescing, contrast Array of Structures with Structure of Arrays, and use vectorized loads. You will also route immutable lookup tables through the read-only data cache and overlap global-to-shared DMA using the Tensor Memory Accelerator and `cuda::memcpy_async` double-buffering.
-- Fifth, separate VRAM capacity from effective HBM bandwidth, verify Resizable BAR in `nvidia-smi -q -d MEMORY`, and tune stream-ordered memory pools and Unified Memory.
+The chapter starts with the seven memory tiers and the Points of Coherency, which say where one thread's write becomes visible to another. It then moves on-chip, covering registers and their spills to local memory, shared-memory tiling, bank conflicts with `[32][33]` padding or XOR swizzling, and warp shuffles (`__shfl_down_sync`) that skip shared memory altogether. Next comes global memory, where coalescing, Array of Structures against Structure of Arrays, vectorized loads, the read-only data cache, and the Tensor Memory Accelerator (TMA) with `cuda::memcpy_async` double-buffering decide how fast bytes arrive. The last part separates VRAM capacity from effective HBM bandwidth, shows how to check Resizable BAR in `nvidia-smi -q -d MEMORY`, and tunes stream-ordered memory pools and Unified Memory.
 
 ---
 
 ## 1. The seven-tier GPU memory hierarchy and Points of Coherency
 
-When an AI workload runs much slower than the GPU's peak math rating, engineers often guess blindly between changing batch sizes, rewriting kernels, or buying faster hardware. Without a clear map of where bytes sit and how many cycles each hop costs, you cannot tell whether threads are starving on off-chip DRAM or fighting over on-chip scratchpad capacity. Every step further away from the SM arithmetic units gives you roughly an order of magnitude more storage capacity at the cost of higher latency and lower per-SM bandwidth.
+Picture a workload that runs at a fraction of the GPU's rated speed. The team has three guesses. Maybe the batch is too small, maybe a kernel needs a rewrite, or maybe the hardware is simply too slow. Each guess sends the team down an expensive path. Without a clear map of where bytes sit and how many cycles each hop costs, you cannot tell whether the threads are starving on off-chip DRAM or fighting over the small on-chip scratchpad. The map answers that question before anyone spends a week on the wrong fix.
+
+The rule behind the map is simple. Every step further away from the SM's arithmetic units gives you roughly an order of magnitude more storage capacity, and it costs you higher latency and lower per-SM bandwidth. A register is the closest storage and the smallest. HBM is the farthest on the device and the largest. Keep that trade-off in mind, because each tier in the rest of this chapter is one point on that line.
 
 ### 1.1 Architectural map from Registers and TMEM to L2, HBM3e, and Host RAM
 
-The hardware organizes storage into fast on-chip tiers per SM, a shared GPU-wide L2 cache, off-chip HBM stacks, and the external host interconnect. On-chip levels respond in a few cycles at terabytes to tens of terabytes per second per SM. Off-chip HBM requires hundreds of cycles per round trip.
+The hardware organizes storage into fast on-chip tiers inside each SM, a shared GPU-wide L2 cache, off-chip HBM stacks, and the external host interconnect. On-chip levels respond in a few cycles, and they move terabytes to tens of terabytes per second per SM. Off-chip HBM needs hundreds of cycles for each round trip. The diagram shows which threads can reach which tier, and the dotted line marks the path that register spills take to slow memory.
 
 ```mermaid
 flowchart TD
@@ -77,6 +76,10 @@ flowchart TD
   HBM <-->|"PCIe Gen5 or NVLink-C2C"| Host["Host RAM and NVMe"]
 ```
 
+Read the diagram from the thread outward. A thread touches its registers directly, and it reaches the constant cache for read-only values. A thread block shares the on-SM shared memory, and it can reach its neighbors through the cluster's distributed shared memory. Tensor Cores on Blackwell have their own tier, TMEM. Everything that does not fit on the SM goes through the L2 cache, and only then to HBM, and from HBM to the host.
+
+The table below lists each level with its size, its latency, and a short note. Read the size column for capacity, and read the latency column for the cost of a miss.
+
 | Level | Size | Latency | Notes |
 |---|---|---|---|
 | 1. Register file | 64K x 32-bit registers per SM (256 KB), max 255 per thread | about 1 cycle | On-chip, per SM |
@@ -88,7 +91,9 @@ flowchart TD
 | 7. HBM global memory | 80 to 141 GB (H100/H200), 180 to 288 GB (B200/B300) | about 800 cycles typical round trip | 3.35 TB/s (H100) / 8.0 TB/s (B200) through the memory controllers |
 | Host link | Host CPU RAM (DDR5 / LPDDR5X) and NVMe (GPUDirect Storage) | n/a | PCIe Gen5 (63 GB/s, BAR1/ReBAR) or NVLink-C2C (900 GB/s coherent) |
 
-The following table compares the full Blackwell memory hierarchy specification from *AI Systems Performance Engineering* Chapter 6 Table 6-5 alongside Hopper H100.
+The latency column tells the story of a single load. A value in a register is ready almost at once. A value in shared memory takes a few dozen cycles, and a value in L2 takes about two hundred. A value that has to come all the way from HBM can take about eight hundred cycles, and the warp that asked for it simply waits. The GPU hides that wait by running other warps, which is the trick from the execution model in the previous chapter.
+
+The following table compares the full Blackwell memory hierarchy, as described in *AI Systems Performance Engineering* Chapter 6, with Hopper H100. It adds the visibility scope and the rules for each tier, so you can see who controls each level.
 
 | Memory tier | Visibility scope | Capacity (Blackwell B200 / Hopper H100) | Typical latency | Approx. bandwidth | Who manages it & key rules |
 |---|---|---|---|---|---|
@@ -100,17 +105,21 @@ The following table compares the full Blackwell memory hierarchy specification f
 | **6. Local Memory (Spill Space)** | **Per thread** (logical scope, **physically off-chip.**) | Backed by Global HBM DRAM | **100s → 1,000+ cycles** (on L1/L2 miss) | Up to HBM BW (~8 TB/s B200) | Compiler automatic fallback when registers spill (>255 or launch-bounds cap) or for per-thread arrays indexed dynamically. |
 | **7. Global Memory (HBM3 / HBM3e)** | **Device-wide / System** | **80 GB H100**, **141 GB H200**, **180–192 GB B200**, **~288 GB B300** | **100s → 1,000+ cycles** (~800 cycles typical) | **3.35 TB/s H100**, **4.8 TB/s H200**, **~8.0 TB/s B200** (16 TB/s per 2-GPU GB200/GB300) | Application (`cudaMalloc`, `cudaMallocAsync`). On B200, 8 HBM3e stacks (4 per reticle die across the 10 TB/s chip-to-chip link) appear as one uniform address space. |
 
+Two rows deserve a second look. Local memory is listed as a per-thread tier, but it lives in the same off-chip HBM as the global memory. The name describes who can see the data, not where it is stored. The constant cache is fast only when every lane of a warp reads the same address, because the hardware then sends one broadcast to all of them.
+
 ### 1.2 Points of Coherency and tracing a memory request
 
-When threads exchange data, a race condition occurs if the reader looks at a cache level that has not yet received the writer's update. The Point of Coherency is the specific hardware level where one thread's write becomes visible to another thread. That level depends directly on how far apart the two threads sit in the execution hierarchy.
+When threads exchange data, a race condition can occur if the reader looks at a cache level that has not yet received the writer's update. Imagine two people sharing a whiteboard, where one writes a number and the other reads it from a photo taken earlier. The Point of Coherency is the specific hardware level where one thread's write becomes visible to another. That level depends directly on how far apart the two threads sit in the execution hierarchy.
 
-1. **Thread level:** The register file is private to a single thread.
-2. **Thread Block level:** The L1 and shared memory SRAM on a single SM serves a thread block and is synchronized with `__syncthreads()`.
-3. **Thread Block Cluster level:** Multi-SM Distributed Shared Memory within a Graphics Processing Cluster serves a cluster and is synchronized with `cluster.sync()`.
-4. **Device level:** The unified L2 cache and global HBM serve all SMs on one GPU.
-5. **System level:** Coherent memory spans multiple GPUs and the host CPU over NVLink, NVSwitch, NVLink-C2C, or PCIe.
+1. Thread level: the register file is private to a single thread, so no other thread can see the write.
+2. Thread block level: the L1 and shared memory SRAM on a single SM serve one thread block, and they are synchronized with `__syncthreads()`.
+3. Thread block cluster level: the multi-SM distributed shared memory within a Graphics Processing Cluster serves a cluster, and it is synchronized with `cluster.sync()`.
+4. Device level: the unified L2 cache and global HBM serve all SMs on one GPU.
+5. System level: coherent memory spans multiple GPUs and the host CPU over NVLink, NVSwitch, NVLink-C2C, or PCIe.
 
-You can tell in five seconds whether a slow workload is bottlenecked on the memory hierarchy rather than on compute or kernel launches. Run `nvidia-smi dmon -s ucm -c 3` to sample SM and memory interface activity.
+The levels run from narrow to wide. The closer two threads are in the hierarchy, the cheaper it is to share data between them. When you design a kernel, ask which level your threads actually need, and keep the sharing at the lowest level that works.
+
+You can tell in five seconds whether a slow workload is bottlenecked on the memory hierarchy rather than on compute or kernel launches. Run `nvidia-smi dmon -s ucm -c 3` to sample SM and memory interface activity. The output below shows what three samples look like, with one row per sample.
 
 ```text
 $ nvidia-smi dmon -s ucm -c 3
@@ -121,34 +130,37 @@ $ nvidia-smi dmon -s ucm -c 3
     0    19    88
 ```
 
-When SM utilization sits around 18% while memory utilization sits around 90%, the SMs are starving while the memory interface is saturated. Next, run one Nsight Compute pass on the L1 and L2 sector hit rates using `l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct` to separate two distinct failure modes.
+When SM utilization sits around 18 percent while memory utilization sits around 90 percent, the SMs are starving while the memory interface is saturated. That pattern points at the memory hierarchy. Next, run one Nsight Compute pass on the L1 and L2 sector hit rates, using `l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct`. The two rates separate two distinct failure modes, and each one has a different fix.
 
 | Cache hit pattern in `ncu` | Typical metrics | Root cause | Fix |
 |---|---|---|---|
 | **Low L1 and low L2 hit rates + high HBM traffic** | L1 `12.4%`, L2 `18.9%` | Streaming or uncoalesced access pattern bypasses both caches and slams HBM on almost every load | Fix data layout (SoA), coalescing, or shared-memory tiling |
 | **High L2 hit rate + high HBM traffic** | Working set slightly exceeds L2 (50 MB H100 / 126 MB B200) | Cache thrashing as tiles are evicted right before reuse | Reduce precision (FP8/FP4), fuse kernels, or adjust tile/batch size |
 
+The first row is a layout problem. Data is read in a pattern the caches cannot reuse, so almost every load goes to HBM. The second row is a capacity problem. The working set is just a little bigger than L2, so tiles get evicted right before the kernel needs them again.
+
 :::info In one minute: Section 1 takeaways
-- The seven device memory tiers trade capacity for speed, moving from registers and Blackwell TMEM out to shared memory, constant cache, L2 cache, and global HBM.
-- Blackwell TMEM provides 256 KB per SM for fifth-generation Tensor Core accumulators and operands and is managed via TMA and `tcgen05` descriptors rather than C++ pointers.
-- Pair `nvidia-smi dmon -s ucm` with `ncu` L1 and L2 sector hit rates (`l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct`) to pinpoint which tier is leaking performance.
+- Which tiers matter most? The seven device memory tiers trade capacity for speed, moving from registers and Blackwell TMEM out to shared memory, constant cache, L2 cache, and global HBM.
+- What is new on Blackwell? TMEM provides 256 KB per SM for fifth-generation Tensor Core accumulators and operands. It is managed via TMA and `tcgen05` descriptors rather than C++ pointers.
+- How do you find the leaking tier? Pair `nvidia-smi dmon -s ucm` with the `ncu` L1 and L2 sector hit rates (`l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct`) to pinpoint which tier is leaking performance.
 :::
 
 ---
-
 ## 2. On-chip storage: Registers, Local Memory spills, Shared Memory tiling, Bank Conflicts, and Warp Shuffles
 
-Even when data fits on chip, a single bad compiler decision or indexing stride can quietly route on-chip accesses into off-chip DRAM or serialize a 32-thread warp into 32 sequential steps. Kernel authors and performance engineers feel this when an apparent optimization, such as unrolling a loop or staging a matrix tile in shared memory, suddenly cuts throughput in half.
+Picture a kernel review. A developer unrolls a loop to cut the instruction count, expecting a faster kernel. The benchmark comes back at half the old throughput. Nothing in the source code looks wrong, and the arithmetic has not changed. The cause sits one level down, in the registers. Even when data fits on chip, a single compiler decision or indexing stride can quietly route on-chip accesses into off-chip DRAM, or serialize a 32-thread warp into 32 sequential steps. Kernel authors and performance engineers feel this most when an apparent optimization, such as unrolling a loop or staging a matrix tile in shared memory, cuts throughput in half instead of raising it.
+
+This section takes the on-chip tiers one at a time. It starts with registers and the local memory that they spill into. Then it covers shared memory as a tile you control, the bank conflicts that can slow it down, and the warp shuffles that let threads trade values without using shared memory at all.
 
 ### 2.1 Registers versus Local Memory: why "Local" memory is physically off-chip
 
-One of the most dangerous misnomers in CUDA is local memory. The word local describes logical visibility scope, meaning the variable is private to a single thread just like a local variable in C. It does not describe physical location. Physically, local memory is allocated in off-chip global HBM DRAM and routed through the L1 and L2 caches.
+One of the most dangerous misnomers in CUDA is local memory. The word "local" describes the logical visibility scope. The variable is private to a single thread, the same way a local variable in C is private to its function. It does not describe where the bytes physically live. Physically, local memory is allocated in off-chip global HBM DRAM and routed through the L1 and L2 caches. A developer who assumes "local" means "fast" will be surprised by the profile.
 
 The `nvcc` compiler places a thread's variables into slow local memory in two situations.
-- **Register spilling:** The kernel requires more live variables than fit in the per-thread register allocation. This happens when demand exceeds the hardware ceiling or exceeds the register cap forced by `__launch_bounds__`.
-- **Dynamic array indexing:** A thread declares a local array such as `float buf[32]` and indexes it with a runtime variable `buf[i]`. The compiler cannot resolve runtime indices to fixed register numbers at compile time.
+- Register spilling: the kernel needs more live variables than fit in the per-thread register allocation. This happens when demand exceeds the hardware ceiling, or when it exceeds the register cap forced by `__launch_bounds__`.
+- Dynamic array indexing: a thread declares a local array, such as `float buf[32]`, and indexes it with a runtime variable, `buf[i]`. The compiler cannot map a runtime index to a fixed register number at compile time, so the array goes to memory.
 
-You can catch register spilling at compile time before ever running on a GPU by passing `nvcc -O3 -Xptxas=-v`.
+You can catch register spilling at compile time, before ever running on a GPU, by passing `nvcc -O3 -Xptxas=-v`. The compiler prints the register count and the spill bytes, and those two numbers tell you most of what you need to know. The first block below is a healthy kernel. The second block is the same kernel after aggressive unrolling.
 
 ```text
 # Healthy kernel: zero spills
@@ -160,7 +172,9 @@ ptxas info : Function properties for _Z6kernelPKfPfm
 ptxas info : Used 96 registers, 0 bytes cmem[0]
 ```
 
-To see why even a tiny spill hurts bandwidth-bound workloads, examine the worked calculation from the Volume 02 notes. Suppose a kernel spills just two float values per thread and launches a modest grid of thread blocks. Every spilled variable must be written out as a spill store and read back as a spill load.
+The regressed build reports spill stores and spill loads, which means some values no longer fit in registers. Each of those values now travels to HBM and back. The register count also rose, which is the first sign that the unrolled code is asking for more on-chip state than the SM can hold.
+
+To see why even a tiny spill hurts bandwidth-bound workloads, work through the calculation from the source notes. Suppose a kernel spills just two float values per thread, and it launches a modest grid of thread blocks. Every spilled variable is written out as a spill store and read back as a spill load, so each spilled value costs two trips.
 
 ```text
 Worked register spill traffic calculation:
@@ -169,20 +183,22 @@ Worked register spill traffic calculation:
 - Extra Spill Traffic = 65,536 threads x 8 bytes x 2 (store + load) = 1,048,576 bytes (1.0 MiB ≈ 1.05 MB)
 ```
 
-That single kernel launch silently injects over a megabyte of extra cache and HBM traffic that does not appear anywhere in your C++ or PyTorch source code.
+Read the calculation one factor at a time. The per-thread cost is 8 bytes for the spill and 8 more for the reload. Multiply that by the number of threads, and the total comes out to about one megabyte per launch. That single kernel launch silently injects over a megabyte of extra cache and HBM traffic that does not appear anywhere in your C++ or PyTorch source code. A kernel that runs thousands of times per step pays that cost thousands of times.
 
 ### 2.2 Shared Memory tiling and data reuse
 
-Unlike hardware-managed L1 and L2 caches where hardware heuristics decide what to evict, shared memory declared with `__shared__` is an explicit, programmer-managed scratchpad in on-SM SRAM. On Hopper and Blackwell, the SM provides combined L1 and shared SRAM. The dynamic shared memory carveout per block is configured via `cudaFuncAttributePreferredSharedMemoryCarveout`.
+Unlike hardware-managed L1 and L2 caches, where hardware heuristics decide what to evict, shared memory is an explicit scratchpad that you manage. Memory declared with `__shared__` lives in on-SM SRAM, and you decide what goes in it and when it is reused. On Hopper and Blackwell, the SM provides combined L1 and shared SRAM, so the split between them is a setting. The dynamic shared memory carveout per block is configured via `cudaFuncAttributePreferredSharedMemoryCarveout`.
 
-In a naive matrix multiplication $C = A \times B$ of size $N \times N$, each thread computing one output element reads an entire row of $A$ and column of $B$ directly from global HBM. That pattern re-fetches every input element $N$ times across different threads. Shared-memory tiling fixes this redundant traffic in four cooperative steps.
+Consider the naive matrix multiplication $C = A \times B$ of size $N \times N$. Each thread computing one output element reads an entire row of $A$ and a column of $B$ directly from global HBM. That pattern fetches the same input element again and again, once for every thread that needs it. Shared-memory tiling fixes this redundant traffic in four cooperative steps.
 
-- First, threads in a square thread block cooperatively load one tile of $A$ into `__shared__ float sA[32][32]` and one tile of $B$ into `sB[32][32]`.
-- Second, the block calls `__syncthreads()` so all loads finish before any thread reads the staged tile.
-- Third, each thread executes multiply-accumulates directly from fast shared memory, reusing each HBM value across the entire tile width.
-- Fourth, the block calls `__syncthreads()` again before advancing to load the next tile along the reduction dimension.
+- First, the threads in a square thread block load one tile of $A$ into `__shared__ float sA[32][32]` and one tile of $B$ into `sB[32][32]`, working together so each element is fetched once.
+- Second, the block calls `__syncthreads()`, so every load finishes before any thread reads the staged tile.
+- Third, each thread runs its multiply-accumulates straight from fast shared memory, reusing each HBM value across the whole width of the tile.
+- Fourth, the block calls `__syncthreads()` again before it loads the next tile along the reduction dimension.
 
-The table below shows the measured impact of shared-memory tiling from *AI Systems Performance Engineering* Chapter 7.
+The four steps are a rhythm of load, wait, compute, and wait again. The barriers are what keep the rhythm honest. Without them, a thread could read a tile that a neighbor has not finished writing yet.
+
+The table below shows the measured impact of shared-memory tiling from *AI Systems Performance Engineering* Chapter 7. Each row compares the naive kernel with the tiled one on the same matrix size, and the last column explains the change.
 
 | Metric (`N = 1,024` FP32 matrix multiply, *AI Systems Performance Engineering* Ch. 7 Table 7-4) | Before (`naiveMatMul` from HBM) | After (`tiledMatMul` in Shared Memory) | Why it changed |
 |---|---|---|---|
@@ -193,7 +209,11 @@ The table below shows the measured impact of shared-memory tiling from *AI Syste
 | **Arithmetic intensity (FLOPs / byte)** | 1.5 FLOPs/byte (15 GFLOPS @ 10 GB/s) | **8.0 FLOPs/byte** (170 GFLOPS @ 21 GB/s) | **5.3x higher arithmetic intensity**, shifting the kernel toward compute-bound. |
 | **Sustained FP32 throughput** | 15 GFLOPS | **170 GFLOPS** | **11.3x speedup** from shared-memory reuse alone. |
 
-Why not keep doubling the tile size forever? Doubling a 2D tile's width and height doubles the reuse factor but quadruples shared memory capacity and increases per-thread register pressure. Libraries such as NVIDIA CUTLASS, `cuBLAS`, `cuDNN`, OpenAI Triton, and NVIDIA Python `cuTile` with `TileIR` autotune these hierarchical thread, warp, and block tile dimensions automatically.
+The table tells one story from several angles. The tiled kernel fetches far fewer sectors from DRAM, so the DRAM channel is less busy. The arithmetic intensity, which is operations per byte moved, rises, and that moves the kernel from waiting on memory toward doing math. The final row is the result that matters to the business, because it is the throughput the user sees.
+
+Why not keep doubling the tile size forever? Doubling a 2D tile's width and height doubles the reuse factor, but it quadruples the shared memory the tile needs and adds per-thread register pressure. At some point the bigger tile costs more occupancy than it saves in traffic. Libraries such as NVIDIA CUTLASS, `cuBLAS`, `cuDNN`, OpenAI Triton, and NVIDIA Python `cuTile` with `TileIR` tune these hierarchical thread, warp, and block tile dimensions automatically, so most teams never pick a tile size by hand.
+
+The next block works through the resource budget for one tile size, so you can see the limits add up.
 
 ```text
 64 x 64 tile resource budget (ASP Ch. 7 pp. 233-234):
@@ -203,13 +223,15 @@ Why not keep doubling the tile size forever? Doubling a 2D tile's width and heig
 - SM residency limit: 2 blocks use 45,056 registers (fits in 65,536), but 2 x 1,024 = 2,048 threads hits the hard 2,048-thread SM ceiling (max 2 blocks/SM).
 ```
 
+Work through the block limits in order. The shared memory fits, and the registers fit, so the question is the thread ceiling. Two blocks of 1,024 threads reach the 2,048-thread limit exactly, which means the SM can hold no more than two of these blocks. That is the same admission arithmetic from the execution model chapter, now applied to a tiled kernel.
+
 ### 2.3 Shared-Memory 32-Bank Conflicts, `[32][33]` Padding, Swizzling, and Warp Shuffles
 
-Shared memory is fast only when threads access different hardware banks in parallel. On Hopper, Blackwell, and Ampere, shared memory is divided into hardware banks that are one float wide. Successive words map to successive banks according to `bank = (byte_addr // 4) % 32`.
+Shared memory is fast only when the threads in a warp access different hardware banks in parallel. Think of shared memory as 32 parallel drawers, each one word wide. When all 32 threads reach into different drawers at once, every drawer is used in one trip. When several threads reach into the same drawer, they have to take turns. On Hopper, Blackwell, and Ampere, shared memory is divided into hardware banks that are one float wide. Successive words map to successive banks according to `bank = (byte_addr // 4) % 32`.
 
-- **Conflict-free stride-1 access:** When all threads in a warp read row-major elements `tile[threadIdx.y][threadIdx.x]`, adjacent threads step by one word. They hit distinct banks in a single transaction.
-- **The Broadcast Exception:** When all threads in a warp read the exact same address such as `tile[0][0]`, the hardware broadcasts that word to all lanes in one cycle with zero bank conflict.
-- **The Bank Conflict Trap:** During a naive matrix transpose `transposeNaive`, threads in a warp read down a column of `__shared__ float tile[32][32]` using `tile[threadIdx.x][threadIdx.y]` or `arr[threadIdx.x * 32]`. Every thread lands on the exact same bank at different addresses. The hardware must serialize the instruction into sequential replays.
+The rule has three cases, and the first two are good news. Conflict-free stride-1 access happens when all threads in a warp read row-major elements such as `tile[threadIdx.y][threadIdx.x]`. Adjacent threads step by one word, so they hit distinct banks in a single transaction. The broadcast exception happens when all threads in a warp read the exact same address, such as `tile[0][0]`. The hardware sends that one word to every lane in one cycle, with no conflict at all.
+
+The third case is the trap. During a naive matrix transpose, the kernel `transposeNaive` has threads in a warp read down a column of `__shared__ float tile[32][32]`, using `tile[threadIdx.x][threadIdx.y]` or `arr[threadIdx.x * 32]`. Every thread lands on the same bank at different addresses. The hardware cannot serve them in one go, so it serializes the instruction into a series of replays.
 
 ```mermaid
 flowchart LR
@@ -228,10 +250,14 @@ flowchart LR
     end
 ```
 
-Three practical techniques eliminate shared-memory bank conflicts.
-- **Array Padding with `__shared__ float tile[32][33]`:** Adding one unused padding column changes the row stride so column width and bank count are coprime. Column reads map each thread in the warp to a unique bank and eliminate all conflicts.
-- **XOR Index Swizzling:** Libraries like CUTLASS transform the column index with a bitwise XOR operation `col_swizzled = col ^ row`. This permutes bank assignments across rows with zero memory overhead.
-- **Warp Shuffle Intrinsics (`__shfl_sync` and `__shfl_down_sync`):** When threads only need to exchange or reduce data within a single warp, do not write to shared memory at all. Warp shuffle intrinsics read another lane's register directly across the SM sub-partition in logarithmic butterfly steps. This matches Cooperative Groups `__reduce_sync` performance with zero shared memory and zero barriers.
+The two panels show the same access with one change. In the unpadded tile, the row stride is 32 words, so every row starts on Bank 0 and the whole column collides. In the padded tile, the row stride is 33 words, so each row starts one bank further along. The same column read now touches all 32 banks once each.
+
+Three practical techniques remove shared-memory bank conflicts. Each one changes the address math, so the data stays the same.
+- Array padding with `__shared__ float tile[32][33]` adds one unused padding column. That changes the row stride so that the column width and the bank count are coprime, which means they share no common factor. Column reads then map each thread in the warp to a unique bank, and all conflicts disappear.
+- XOR index swizzling is the second technique. Libraries such as CUTLASS transform the column index with a bitwise XOR, `col_swizzled = col ^ row`. That permutes which bank each row lands on, with zero extra memory.
+- Warp shuffle intrinsics (`__shfl_sync` and `__shfl_down_sync`) are the third. When threads only need to exchange or reduce data inside one warp, they do not need shared memory at all. A shuffle reads another lane's register directly, in logarithmic butterfly steps, so the cost is a handful of steps and no barriers. This matches the speed of Cooperative Groups `__reduce_sync` for the same job, with zero shared memory and zero barriers.
+
+The arithmetic for the padded tile is short enough to check by hand. With 33 floats per row, thread `t` reads word `t * 33 + col`, and that lands in bank `(t + col) % 32`. Because 33 and 32 share no common factor, the 32 threads cover all 32 banks. The padding costs one float per row, which is about 3.1 percent of the tile.
 
 ```text
 Bank conflict math & ASP Ch. 7 Table 7-5 transpose results:
@@ -244,6 +270,8 @@ Bank conflict math & ASP Ch. 7 Table 7-5 transpose results:
 - Warp shuffle reduction: 5 butterfly steps (offset = 16, 8, 4, 2, 1) across 32 threads
 ```
 
+The padded result matches the diagram. Zero conflicts, a shared-memory utilization of 100 percent, and a kernel that drops from 4.0 ms to 1.3 ms. The warp shuffle line at the bottom explains the five steps that the next code block uses.
+
 ```cpp
 unsigned mask = __activemask();
 for (int offset = 16; offset > 0; offset >>= 1) {
@@ -252,25 +280,33 @@ for (int offset = 16; offset > 0; offset >>= 1) {
 // Lane 0 now holds the sum of all 32 threads: 0 shared memory bytes, 0 barriers, 0 bank conflicts!
 ```
 
+The loop runs five times, halving the offset each time, so the values add up in a tree across the 32 lanes. Only lane 0 ends with the full sum. Nothing is written to shared memory, and no barrier is needed, because every step happens inside one warp.
+
 :::info In one minute: Section 2 takeaways
-- Local memory is a thread-scoped logical spill space backed by off-chip HBM DRAM; always check `nvcc -O3 -Xptxas=-v` to confirm zero spill stores and loads.
-- Shared memory has 32 banks of 4 bytes each, so striding by 32 floats causes a 32-way bank conflict whereas padding to `tile[32][33]` or XOR swizzling achieves zero bank conflicts.
-- Use `__shfl_down_sync` for intra-warp reductions directly in registers without touching shared memory.
+- What is local memory? It is a thread-scoped spill space backed by off-chip HBM DRAM. Always check `nvcc -O3 -Xptxas=-v` to confirm zero spill stores and loads.
+- What makes a bank conflict? Shared memory has 32 banks of 4 bytes each, so striding by 32 floats causes a 32-way bank conflict. Padding to `tile[32][33]` or XOR swizzling removes the conflict.
+- What should reduce within a warp? Use `__shfl_down_sync` for intra-warp reductions directly in registers, without touching shared memory.
 :::
 
 ---
 
 ## 3. Global memory access: Coalescing, Vectorization, Read-Only Cache, and TMA Async Prefetch
 
-A kernel can have plenty of HBM bandwidth on paper and still stall constantly if threads request scattered addresses or wait idle while data travels across the chip. When global memory loads are unaligned or strided, the memory controllers fetch many more cache sectors than the kernel actually uses. This saturates the HBM bus while delivering only a fraction of peak throughput to the SMs.
+A kernel can have plenty of HBM bandwidth on paper and still stall constantly, if its threads request scattered addresses or wait idle while data travels across the chip. Picture a delivery driver who must visit one house on every block in a city, instead of visiting the houses on one street in order. The same number of packages goes out, but the route is many times longer. When global memory loads are unaligned or strided, the memory controllers fetch many more cache sectors than the kernel actually uses. That saturates the HBM bus while delivering only a fraction of peak throughput to the SMs.
+
+---
 
 ### 3.1 128-byte cache-line coalescing and AoS versus SoA
 
-Global HBM memory is accessed through the L2 and L1 caches in aligned cache lines subdivided into sectors. When the threads in a warp issue a memory load, the hardware coalescer groups their target addresses into as few sector transactions as possible.
+Global memory is reached through the L2 and L1 caches, which move data in aligned cache lines. Each line is split into sectors, and a sector is the smallest unit the memory system moves. When the threads in a warp issue a load, the hardware coalescer (the part that merges the warp's requests) groups their target addresses into as few sector transactions as it can. The closer the addresses sit together, the fewer transactions it needs.
 
-- **Optimal coalesced load:** When threads in a warp read contiguous float values starting at an aligned address `in[idx]`, the entire warp request maps to one cache line and achieves full load efficiency.
-- **Misaligned contiguous load:** If the warp's starting address is shifted off a cache-line boundary, the contiguous request straddles two cache lines and fetches an extra sector.
-- **Strided or AoS load:** When threads read strided addresses `in[idx * 2]` or read one field out of an Array of Structures, a single warp spans multiple cache lines and wastes most of the bytes transferred across the HBM bus. Converting an Array of Structures to a Structure of Arrays places each field in its own contiguous array so adjacent threads always read adjacent addresses.
+Think of a warp as a group of people fetching books from a shelf. If they all reach for neighboring books, one shelf trip covers everyone. If each person is sent to a different aisle, the same number of books takes many more trips. Coalescing is the difference between those two trips.
+
+- Optimal coalesced load: when threads in a warp read contiguous float values starting at an aligned address such as `in[idx]`, the entire warp request maps to one cache line and achieves full load efficiency.
+- Misaligned contiguous load: if the warp's starting address is shifted off a cache-line boundary, the contiguous request straddles two cache lines and fetches an extra sector. The data is still contiguous, but the boundary costs a second trip.
+- Strided or AoS load: when threads read strided addresses such as `in[idx * 2]`, or read one field out of an Array of Structures (AoS, where each record keeps all its fields together), a single warp spans multiple cache lines. Most of the bytes transferred across the HBM bus are then thrown away. Converting an Array of Structures to a Structure of Arrays (SoA, where each field gets its own contiguous array) fixes this. Adjacent threads then always read adjacent addresses for the same field.
+
+The table lists four access patterns for the same 128 useful bytes. Read the sector column first, because it shows how many trips the warp made.
 
 | Access pattern (32 threads reading 4-byte floats = 128 useful bytes) | Sectors fetched (32 B each) | Total bytes transferred | Global Memory Load Efficiency | Notes |
 |---|---|---|---|---|
@@ -279,20 +315,28 @@ Global HBM memory is accessed through the L2 and L1 caches in aligned cache line
 | **Stride-2 (`in[idx * 2]`, `uncoalescedCopy`) or narrow AoS** | **8.0 sectors** (2 cache lines) | 256 B | **50%** (23% measured) | Wastes half of transferred bytes. |
 | **Stride ≥ 8 or random scatter** | **32.0 sectors** (up to 32 lines) | 1,024 B | **12.5%** | 8x bandwidth waste. |
 
+The first row is the goal. Every other row shows a way the same 128 useful bytes get wrapped in extra traffic. The measured figures in the stride-2 row sit a little below the ideal ones, which is the usual gap between counting sectors on paper and timing a real run.
+
 ### 3.2 Vectorized loads on Hopper and Blackwell
 
-Even when a scalar load is fully coalesced, each warp still issues separate thread reads that the hardware coalescer must stitch together. Vectorized memory access packs multiple elements into a single wide load instruction per thread, relying on the `cudaMalloc` base pointer alignment guarantee. Always verify pointer alignment before casting an offset pointer to a vector type.
+Even when a scalar load is fully coalesced, each thread still issues its own separate read, and the hardware coalescer has to stitch those reads together. Vectorized memory access changes that. It packs several elements into one wide load instruction per thread, which means fewer instructions for the same bytes. The trick depends on the alignment guarantee of `cudaMalloc`, which returns base pointers aligned for this purpose. Still, verify the pointer alignment before you cast an offset pointer to a vector type, because an offset from a misaligned base breaks the guarantee.
+
+The table compares two vector widths. Each row lists the instruction, the bytes per thread, the cache lines per warp, and the alignment check you must pass.
 
 | Vector load width | Target architecture | Per-thread instruction & bytes | Per-warp bytes & cache lines | Instruction reduction | Alignment requirement |
 |---|---|---|---|---|---|
 | **128-bit (`float4`)** | Ampere & Hopper | `LD.E.128` (4 floats = **16 bytes/thread**) | **512 bytes/warp** across 4 lines (**16 sectors**, 4.0 sectors/tx) | **4x fewer** memory instructions | `uintptr_t(ptr) % 16 == 0` |
 | **256-bit (`alignas(32)` struct or `double4`)** | Blackwell B200 (CUDA 13+) | Native 32-byte global load (8 floats = **32 bytes/thread**) | **1,024 bytes/warp** across 8 lines (**32 sectors**) | **8x fewer** memory instructions (compiles to two 16 B loads on Hopper) | `uintptr_t(ptr) % 32 == 0` |
 
+Read the two rows as a single idea repeated at a wider size. The 128-bit form reads 16 bytes per thread on Ampere and Hopper. The 256-bit form reads 32 bytes per thread on Blackwell. Both need the pointer to sit on a boundary of their own width, and a failed check is the signal to fix the layout before you tune anything else.
+
 ### 3.3 Read-Only Data Cache and Tensor Memory Accelerator
 
-Two additional hardware features on modern SMs eliminate the remaining global-memory stalls.
-- **Read-Only Data Cache with `const __restrict__`:** When many threads repeatedly look up values in an immutable table larger than the constant cache, omitting `const __restrict__` forces the compiler to assume the pointer might be aliased and modified. That default path uses normal coherent global loads that pollute L1 and L2. Marking the pointer `const float* __restrict__` or calling `__ldg()` proves immutability and non-aliasing. The compiler then routes loads through the low-latency read-only data cache path.
-- **Asynchronous Bulk Prefetching with the Tensor Memory Accelerator and `cuda::memcpy_async`:** Even a coalesced, vectorized load stalls a warp if the SM's load/store units must issue the addresses and wait hundreds of cycles for HBM. On Hopper and Blackwell, the Tensor Memory Accelerator is a dedicated hardware DMA engine inside the SM. It copies multidimensional tiles asynchronously between global HBM and shared memory via `cp.async.bulk` without using SM registers or load/store instruction slots. By allocating two ping-pong buffers in shared memory and coordinating them with the C++ `cuda::pipeline` API, TMA streams the next tile from HBM in the background while the SM's warps compute on the current tile.
+Two more hardware features on modern SMs remove the global-memory stalls that are left after coalescing and vectorization. Each one solves a different part of the problem.
+
+The first is the read-only data cache, which you reach by declaring the pointer `const __restrict__`. When many threads repeatedly look up values in an immutable table, such as an embedding table that is larger than the constant cache, the compiler needs a promise. Without `const __restrict__`, the compiler must assume that the pointer might be aliased, which means another pointer could modify the same memory. That default path uses normal coherent global loads, which fill up L1 and L2 with data that is never reused. Marking the pointer `const float* __restrict__`, or calling `__ldg()`, makes the promise. It proves that the table is read-only and not aliased, so the compiler can route the loads through the low-latency read-only data cache.
+
+The second is asynchronous bulk prefetching with the Tensor Memory Accelerator (TMA) and `cuda::memcpy_async`. Even a coalesced, vectorized load stalls a warp when the SM's load and store units must issue each address and then wait hundreds of cycles for HBM. On Hopper and Blackwell, the TMA is a dedicated hardware DMA engine (direct memory access, a copier that works without the SM's help) inside the SM. It copies multidimensional tiles between global HBM and shared memory asynchronously, using `cp.async.bulk`. That copy does not use SM registers or load and store slots. The trick is to allocate two ping-pong buffers in shared memory and coordinate them with the C++ `cuda::pipeline` API. While the warps compute on one tile, TMA streams the next tile in from HBM in the background.
 
 ```text
 TMA double-buffering pipeline sequence (cuda::pipeline):
@@ -300,7 +344,9 @@ TMA double-buffering pipeline sequence (cuda::pipeline):
 4. pipe.consumer_wait()    -> 5. compute on staged tile  -> 6. pipe.consumer_release()
 ```
 
-The table below compares all five hardware-software memory optimizations from *AI Systems Performance Engineering* Chapter 7.
+Read the sequence as two roles taking turns. The producer side acquires a buffer, starts the copy, and commits it. The consumer side waits for the copy to finish, computes on the tile, and then releases the buffer for reuse. With two buffers, the producer is always one tile ahead, so the consumer rarely waits.
+
+The table below compares the five hardware and software memory optimizations from *AI Systems Performance Engineering* Chapter 7. Each row names the technique, the before and after numbers, and the speedup that the profiler showed.
 
 | Optimization technique (*AI Systems Performance Engineering* Ch. 7) | Before (Unoptimized) | After (Optimized) | Speedup & key profiler evidence (`ncu`) |
 |---|---|---|---|
@@ -310,24 +356,28 @@ The table below compares all five hardware-software memory optimizations from *A
 | **4. Read-Only Cache** (adding `const __restrict__`, Table 7-6) | 2.5 ms, 52% Load Eff, 600 GB/s DRAM, 1,500 GB/s L2, 45% SM Active | **1.0 ms**, **97% Load Eff**, **200 GB/s DRAM**, **1,800 GB/s L2**, **93% SM Active** | **2.5x faster** (3x less DRAM traffic, served from L1/L2 cache). |
 | **5. TMA + `cuda::memcpy_async` Double-Buffering** (Table 7-7) | 18.0 ms, 23% Load Eff, 6.4 sectors/req, 62% SM Active | **7.0 ms**, **99% Load Eff**, **4.0 sectors/req**, **100% SM Active** | **2.6x faster** (~800-cycle HBM latency hidden behind compute). |
 
+The five rows form a progression. Rows 1 and 2 fix how bytes are laid out and reused. Row 3 fixes the bank conflicts, and rows 4 and 5 fix how the data is fetched. Each row removes a source of wasted traffic, and the speedup follows from that.
+
 :::info In one minute: Section 3 takeaways
-- Aim for 4.0 sectors per request and above 95% Global Memory Load Efficiency in `ncu`.
-- Use `float4` vector loads on Ampere and Hopper and 32-byte `alignas(32)` vector loads on Blackwell.
-- Mark read-only lookup tables `const __restrict__`, and use TMA with `cuda::memcpy_async` and `cuda::pipeline` to double-buffer global-to-shared tile transfers.
+- What should the profiler show? Aim for 4.0 sectors per request and above 95% Global Memory Load Efficiency in `ncu`.
+- Which vector width fits your GPU? Use `float4` vector loads on Ampere and Hopper, and 32-byte `alignas(32)` vector loads on Blackwell.
+- How do you hide HBM latency? Mark read-only lookup tables `const __restrict__`, and use TMA with `cuda::memcpy_async` and `cuda::pipeline` to double-buffer global-to-shared tile transfers.
 :::
 
 ---
 
 ## 4. Device and Host-Device memory: Capacity vs Bandwidth, ReBAR, Memory Pools, and Unified Memory
 
-A model can fit comfortably inside GPU memory with plenty of free space and still miss its production latency SLA. Platform engineers also hit mysterious multi-millisecond stalls between kernels when host BIOS settings cap the PCIe aperture or when training loops invoke synchronous OS memory allocators.
+Picture a model that fits comfortably in GPU memory, with plenty of free space, and still misses its production latency target. The GPU is not short of room. The bottleneck is the speed of the path that feeds it. Platform engineers also hit mysterious multi-millisecond stalls between kernels. When that happens, the cause is often a host BIOS setting that caps the PCIe aperture, or a training loop that calls a synchronous OS memory allocator on every step.
 
 ### 4.1 Capacity versus Bandwidth
 
-In cluster sizing and incident triage, never confuse HBM capacity in gigabytes with HBM bandwidth in terabytes per second. Capacity decides whether the model weights, KV cache, and activations fit without an out-of-memory error. Bandwidth sets the physical speed limit on how fast those bytes stream into the SMs.
+In cluster sizing and incident triage, never confuse HBM capacity in gigabytes with HBM bandwidth in terabytes per second. They answer different questions. Capacity decides whether the model weights, the KV cache, and the activations fit without an out-of-memory error. Bandwidth sets the physical speed limit on how fast those bytes can stream into the SMs. A system can have plenty of one and too little of the other.
 
-- **Worked serving latency floor on a 13B FP16 model:** A thirteen-billion-parameter model in half precision fits inside an H100 with plenty of free VRAM to spare. However, during unbatched autoregressive decode, the GPU must read all model weights from HBM for every single token generated. No amount of extra free VRAM will lower that per-token latency floor. You must increase HBM bandwidth, quantize weights to lower precision, or use continuous batching to amortize each weight read across concurrent requests.
-- **Worked bandwidth-utilization check:** When an elementwise kernel processes data near physical peak bandwidth on an H100, the memory controllers are already saturated. The only way to speed up that step is kernel fusion or reduced precision. Conversely, if the kernel achieves only a small fraction of peak throughput, the hardware bus is not the limit. Uncoalesced addressing or partition stride contention is wasting bandwidth.
+- Worked serving latency floor on a 13B FP16 model: a thirteen-billion-parameter model in half precision fits inside an H100 with plenty of free VRAM to spare. During unbatched autoregressive decode, though, the GPU must read all the model weights from HBM for every token it generates. No amount of extra free VRAM lowers that per-token floor. You must increase HBM bandwidth, quantize the weights to lower precision, or use continuous batching so that each weight read serves several requests at once.
+- Worked bandwidth-utilization check: when an elementwise kernel processes data near the physical peak on an H100, the memory controllers are already saturated. The only way to speed up that step is kernel fusion or reduced precision. If the kernel reaches only a small fraction of the peak, the bus is not the limit, and uncoalesced addressing or partition stride contention is wasting bandwidth.
+
+The derivations below work both examples with numbers. Follow the first one line by line, since it explains the per-token floor.
 
 ```text
 Worked capacity vs. bandwidth derivations (V2 Ch. 5 & Ch. 8):
@@ -342,13 +392,19 @@ Worked capacity vs. bandwidth derivations (V2 Ch. 5 & Ch. 8):
    - Pathological case = 500 GB/s (14.9% ≈ 15% of 3,350 GB/s peak -> uncoalesced or partition-strided)
 ```
 
+The first derivation reads like a simple division. The model's weights are 26 GB, and every token streams them through the memory bus once. Dividing 26 GB by the 3.35 TB/s bus gives about 7.8 milliseconds per token, which is the floor no matter how much memory is free. Halving the bytes per weight with FP8 halves that floor. The second derivation runs the same logic in reverse. A kernel that moves 16 GB in 6 ms is already using about 80 percent of the bus, so there is little left to gain from better addressing, and only fusion or lower precision can help.
+
 ### 4.2 PCIe BAR1 and Resizable BAR, Stream-Ordered Memory Pools, and Unified Memory
 
-Beyond the GPU package itself, three host and runtime memory settings directly govern production stability.
+Beyond the GPU package itself, three host and runtime memory settings directly govern production stability. Each one is easy to overlook, and each one shows up as a symptom far from its cause.
 
-- **PCIe BAR1 and Resizable BAR:** Base Address Register 1 is the PCIe aperture window in the host CPU physical address space. The CPU and peer RDMA NICs use this window to map GPU HBM for GPUDirect RDMA. Legacy BIOS defaults cap BAR1 at a tiny window, forcing transfers to page repeatedly. On every production GPU server, Resizable BAR and Above 4G Decoding must be enabled in the BIOS so BAR1 Total matches the full GPU VRAM.
-- **Stream-Ordered Memory Pools (`cudaMallocAsync` and `PYTORCH_ALLOC_CONF`):** Traditional `cudaMalloc()` and `cudaFree()` are synchronous across the entire GPU device and invoke OS kernel calls (`mmap` and `ioctl`). Those calls cause context switches and pipeline stalls whenever a loop allocates temporary buffers. In CUDA C++, use `cudaMallocAsync(&ptr, bytes, stream)` and `cudaFreeAsync(ptr, stream)` on a non-blocking stream (`cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)`). You can tune pool retention with `cudaMemPoolSetAttribute(..., cudaMemPoolAttrReleaseThreshold, ...)` and `cudaMemPoolTrimTo`. In PyTorch, the caching memory allocator implements this pool strategy automatically via `PYTORCH_ALLOC_CONF`, formerly `PYTORCH_CUDA_ALLOC_CONF`. Set `expandable_segments:True` to prevent fragmentation OOMs.
-- **Unified Memory (`cudaMallocManaged`) and proactive prefetching:** Calling `cudaMallocManaged()` creates a single pointer accessible from both CPU and GPU via hardware page faulting. On PCIe systems, touching unmigrated pages inside a GPU kernel triggers expensive on-demand page faults across the bus. On Grace Hopper GH200 and Grace Blackwell GB200 and GB300 systems, pages migrate over high-bandwidth coherent NVLink-C2C. Even on Superchips, eliminate surprise page-fault stalls by advising the driver and prefetching buffers before launching the kernel.
+- PCIe BAR1 and Resizable BAR: Base Address Register 1 is the PCIe aperture, a window in the host CPU's physical address space. The CPU and peer RDMA NICs use this window to map GPU HBM for GPUDirect RDMA. Legacy BIOS defaults cap BAR1 at a tiny window, which forces transfers to be broken into many small pieces. On every production GPU server, Resizable BAR and Above 4G Decoding must be enabled in the BIOS, so that BAR1 Total matches the full GPU VRAM.
+- Stream-ordered memory pools (`cudaMallocAsync` and `PYTORCH_ALLOC_CONF`): traditional `cudaMalloc()` and `cudaFree()` are synchronous across the entire GPU device, and they call into the operating system (`mmap` and `ioctl`). Those calls cause context switches and pipeline stalls whenever a loop allocates temporary buffers. In CUDA C++, use `cudaMallocAsync(&ptr, bytes, stream)` and `cudaFreeAsync(ptr, stream)` on a non-blocking stream (`cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)`). A pool keeps freed memory around for reuse, so the next allocation does not go back to the OS. You can tune how much the pool keeps with `cudaMemPoolSetAttribute(..., cudaMemPoolAttrReleaseThreshold, ...)` and `cudaMemPoolTrimTo`. In PyTorch, the caching memory allocator implements this pool strategy automatically, and you control it through `PYTORCH_ALLOC_CONF`, formerly `PYTORCH_CUDA_ALLOC_CONF`. Set `expandable_segments:True` to prevent fragmentation OOMs, where memory is free in total but too scattered to hand out.
+- Unified Memory (`cudaMallocManaged`) and proactive prefetching: calling `cudaMallocManaged()` creates a single pointer that the CPU and the GPU can both use, with the hardware page faulting pages across as needed. On PCIe systems, touching a page that has not moved yet inside a GPU kernel triggers an expensive on-demand page fault across the bus. On Grace Hopper GH200 and Grace Blackwell GB200 and GB300 systems, pages migrate over the high-bandwidth coherent NVLink-C2C instead. Even on those Superchips, you should avoid surprise page-fault stalls. Advise the driver and prefetch the buffers before the kernel launches.
+
+The three settings share one theme. Each one decides whether the GPU waits for a slow path that the kernel code never sees. The BIOS decides how big the window is, the allocator decides how often the OS gets involved, and the prefetch decides whether a page is already in place when the kernel asks for it.
+
+The command below checks the BAR1 window on a host. It filters the memory report down to the BAR1 block, so you can compare the total against the VRAM.
 
 ```text
 $ nvidia-smi -q -d MEMORY | grep -A 5 "BAR1"
@@ -358,6 +414,10 @@ $ nvidia-smi -q -d MEMORY | grep -A 5 "BAR1"
         Free                              : 81918 MiB
 ```
 
+Read the `Total` line first. It should match the VRAM of the card. A total of 256 MiB is the value the diagnostic warns about, and it means the BIOS setting is still wrong. The `Used` and `Free` lines are only the current state.
+
+The next block lists the advice and prefetch calls for managed memory. Each line tells the driver one thing about the buffer, and the last line starts the move.
+
 ```cpp
 cudaMemAdvise(ptr, size, cudaMemAdviseSetPreferredLocation, gpuId);
 cudaMemAdvise(ptr, size, cudaMemAdviseSetReadMostly, gpuId);
@@ -366,25 +426,29 @@ cudaStreamAttachMemAsync(stream, ptr, 0, cudaMemAttachSingle);
 cudaMemPrefetchAsync(ptr, size, gpuId, stream);
 ```
 
-Combining the BAR1 Resizable BAR check, pinned memory check, `cudaMallocAsync` pool check, and `cudaMemPrefetchAsync` Unified Memory check into `audit_host_device_memory_config` in `code/part10/gpu_memory_hierarchy.py` is my inference.
+The advice lines describe where the data should live and who will read it. The prefetch line moves it there ahead of time, on the stream, so the kernel finds it already in place.
+
+Combining the BAR1 Resizable BAR check, the pinned memory check, the `cudaMallocAsync` pool check, and the `cudaMemPrefetchAsync` Unified Memory check into `audit_host_device_memory_config` in `code/part10/gpu_memory_hierarchy.py` is a suggestion of this chapter rather than a published recipe. The function is meant to run the four checks in one pass, which makes the review repeatable.
 
 :::info In one minute: Section 4 takeaways
-- Capacity in gigabytes decides whether weights, KV cache, and activations fit; bandwidth in terabytes per second sets the per-token decode floor.
-- Always verify that BAR1 Total is at least equal to VRAM Total via `nvidia-smi -q -d MEMORY`.
-- Replace synchronous `cudaMalloc` and `cudaFree` inside loops with stream-ordered `cudaMallocAsync` and `cudaFreeAsync` or `PYTORCH_ALLOC_CONF=expandable_segments:True`. Pair `cudaMallocManaged` with `cudaMemPrefetchAsync` and `cudaMemAdvise`.
+- What does gigabytes decide? Capacity in gigabytes decides whether weights, KV cache, and activations fit. Bandwidth in terabytes per second sets the per-token decode floor.
+- What should the BAR1 check show? Always verify that BAR1 Total is at least equal to VRAM Total via `nvidia-smi -q -d MEMORY`.
+- What replaces the slow allocator? Replace synchronous `cudaMalloc` and `cudaFree` inside loops with stream-ordered `cudaMallocAsync` and `cudaFreeAsync`, or set `PYTORCH_ALLOC_CONF=expandable_segments:True`. Pair `cudaMallocManaged` with `cudaMemPrefetchAsync` and `cudaMemAdvise`.
 :::
 
 ---
 
 ## 5. Field notes from the Volume 02 memory chapters
 
-When teams triage a slow training or inference job in production, they often misread profiler metrics because terms like global memory, local memory, and peak bandwidth sound interchangeable in casual conversation. Treating a timing gap as proof of uncoalesced loads without checking occupancy or L2 hit rates leads engineers to rewrite kernels that were actually stalled on host copies or partition contention.
+When a team triages a slow training or inference job in production, the profiler metrics are often misread. Terms like global memory, local memory, and peak bandwidth sound interchangeable in casual conversation, but each one names a different thing. Treating a timing gap as proof of uncoalesced loads, without checking occupancy or L2 hit rates, leads engineers to rewrite kernels that were actually stalled on host copies or partition contention. These field notes are meant to slow that reflex down.
 
-These field notes come from the Volume 02 chapters and labs. All command outputs below are marked illustrative in those notes rather than captured on live hardware, so treat the numbers as diagnostic examples rather than hardware specifications.
+These field notes come from the source notes' memory chapters and labs. All command outputs below are marked illustrative in those notes rather than captured on live hardware, so treat the numbers as diagnostic examples rather than hardware specifications.
 
 ### 5.1 Words that are easy to confuse
 
 The notes highlight four pairs of memory terms that engineers regularly mix up during design reviews and incident calls. Every memory tier is characterized by five measurable properties: capacity, peak bandwidth, effective bandwidth, latency, and reuse. Reuse measures how many useful operations are performed on a piece of data before it must be fetched again.
+
+The table defines each term by what it means and by what it does not mean. Read the second column as the definition and the third column as the trap.
 
 | Term | What it means | What it does not mean |
 |---|---|---|
@@ -393,16 +457,18 @@ The notes highlight four pairs of memory terms that engineers regularly mix up d
 | Local memory | Private to one thread (logical scope) | On-chip. It is backed by the device memory path |
 | Peak bandwidth | The theoretical maximum transfer rate | What a kernel achieves. Effective bandwidth is the useful bytes delivered per second |
 
+The most common mix-up is the first row. People picture global memory as a chip of its own, but it is only an address space. A load to global memory might be satisfied by L1 or L2 and never touch HBM at all. The same confusion hits local memory, which sounds on-chip but lives in the device memory path.
+
 ### 5.2 Locality, memory partitions and what to size
 
-Understanding why a kernel misses peak bandwidth or runs out of memory under load requires looking at locality, hardware partitions, and runtime state growth.
+Understanding why a kernel misses peak bandwidth, or why it runs out of memory under load, requires looking at locality, hardware partitions, and runtime state growth. Locality is the idea that recently and nearby used data is likely to be used again. Partitions are the physical split of memory into controllers that work in parallel. Runtime state is everything that grows while a job runs.
 
-- **Temporal locality:** The same data is reused soon, so an on-chip cache can avoid a repeat HBM read.
-- **Spatial locality:** Nearby addresses are used together, so a single cache transaction serves several thread values.
-- **Working set:** If reuse happens only after the data has already been evicted from cache, the cache gives little benefit.
-- **Memory partitions:** HBM bandwidth is delivered in parallel across multiple memory controllers and partitions, and hardware address mapping spreads requests across them. A bad stride or memory layout can concentrate traffic on a few partitions while others sit idle. This causes a kernel to deliver far less than peak bandwidth even when its accesses are coalesced.
-- **Capacity plan must include runtime state:** Training requires parameters, gradients, optimizer state, activations, communication buffers, and checkpoints. Inference requires weights, KV cache, temporary workspaces, batching buffers, and allocator reserves or fragmentation headroom. Always size for peak concurrency and sequence length rather than the quiet moment right after model load.
-- **KV cache estimate:** The KV cache byte footprint follows the formula below and grows dynamically with sequence length and traffic, unlike static model weights.
+- Temporal locality: the same data is reused soon, so an on-chip cache can avoid a repeat HBM read.
+- Spatial locality: nearby addresses are used together, so a single cache transaction serves several thread values.
+- Working set: if reuse happens only after the data has already been evicted from cache, the cache gives little benefit.
+- Memory partitions: HBM bandwidth is delivered in parallel across multiple memory controllers and partitions, and hardware address mapping spreads requests across them. A bad stride or memory layout can concentrate traffic on a few partitions while others sit idle. This makes a kernel deliver far less than peak bandwidth, even when its accesses are coalesced.
+- Capacity plan must include runtime state: training requires parameters, gradients, optimizer state, activations, communication buffers, and checkpoints. Inference requires weights, KV cache, temporary workspaces, batching buffers, and allocator reserves or fragmentation headroom. Always size for peak concurrency and sequence length, rather than the quiet moment right after the model loads.
+- KV cache estimate: the KV cache byte footprint follows the formula below. It grows dynamically with sequence length and traffic, unlike the static model weights.
 
 ```text
 KV cache byte footprint formula (Volume 02 interview note):
@@ -410,9 +476,11 @@ KV_cache_bytes = 2 x layers x heads x head_dim x sequence_length x batch_size x 
 (where the factor of 2 accounts for Key plus Value tensors)
 ```
 
+Read the formula from the left. Each factor is a dial you can turn. More layers, more heads, longer sequences, bigger batches, and wider numbers all push the total up. The leading 2 is there because every token keeps both a key and a value. Plug in your own model's values before a capacity review, and you will see why the cache can outgrow the weights under load.
+
 ### 5.3 Evidence patterns
 
-The table below summarizes four recurring profiler signatures from the Volume 02 notes and how to interpret them.
+The table below summarizes four recurring profiler signatures from the source notes, along with how to read each one.
 
 | Symptom | Evidence in the note | How to read it |
 |---|---|---|
@@ -421,11 +489,13 @@ The table below summarizes four recurring profiler signatures from the Volume 02
 | Shared-memory bank conflicts | `l1tex__data_bank_conflicts_pipe_lsu.sum` = 412,800 on a kernel expected to be conflict-free | A stride maps several lanes to one bank. Fix with a small padding or layout change, not a rewrite |
 | A "faster" kernel got slower | `-Xptxas=-v` diff: 44 registers and 0 spills became 88 registers with 40 bytes spill stores and 48 bytes spill loads | Two costs at once: lower occupancy and new memory traffic |
 
-Two operational rules follow from these patterns. First, forcing a lower register count with a launch bound can make a kernel slower because live values spill to local memory instead of disappearing. Second, a compiler upgrade can change register allocation for unchanged source code, so always diff the `-Xptxas=-v` output between compiler versions. Furthermore, shared memory and L1 share the same on-chip SRAM capacity on many architectures, so a kernel that carves out more shared memory leaves less room for L1.
+The first row shows that the GPU can be idle while the copies run. The second row explains a number that looks odd until you divide it. 18.6 sectors per request, against an ideal of about four, means each warp pulls several times the bytes it uses. The last two rows point at fixes that are a padding change and a register review, which are small and specific.
+
+Two operational rules follow from these patterns. First, forcing a lower register count with a launch bound can make a kernel slower, because live values spill to local memory instead of disappearing. Second, a compiler upgrade can change register allocation for unchanged source code, so always diff the `-Xptxas=-v` output, built with `nvcc -O3 -Xptxas=-v`, between compiler versions. Shared memory and L1 also share the same on-chip SRAM on many architectures, so a kernel that carves out more shared memory leaves less room for L1.
 
 ### 5.4 Lab 03 worked comparison: contiguous versus strided copy
 
-In Lab 03, two kernels copy `1 << 24` floats for one hundred iterations on an illustrative H100 run. The contiguous kernel maps thread `i` to element `i`, while the strided kernel maps logical thread `i` to element `(i * 32) % count`.
+In the third lab of the source notes, two kernels copy `1 << 24` floats for one hundred iterations on an illustrative H100 run. The contiguous kernel maps thread `i` to element `i`. The strided kernel maps logical thread `i` to element `(i * 32) % count`. The two kernels do the same work on the same data, but they visit the memory in different orders.
 
 | Metric | Contiguous | Strided |
 |---|---:|---:|
@@ -437,18 +507,26 @@ In Lab 03, two kernels copy `1 << 24` floats for one hundred iterations on an il
 | Achieved occupancy | 87.4% | 85.9% |
 | Sectors per request | 4.0 | 23.5 |
 
-Notice how the note reasons through the evidence. Achieved occupancy is nearly identical between the two runs, so warp residency is ruled out as the cause. Sectors per request jumping upward alongside the L2 hit rate drop together explain the elapsed time gap. The note also warns that the modulo arithmetic in the strided kernel adds some instruction cost of its own. A rigorous diagnosis states both what the evidence supports and what remains uncertain. A timing difference alone is never proof of a coalescing problem. If the strided kernel is not slower on your GPU, change the stride and array size and profile again instead of forcing the expected result.
+The notes reason through the evidence in a useful order. Achieved occupancy is nearly identical between the two runs, so warp residency is ruled out as the cause. Sectors per request jump upward while the L2 hit rate drops, and those two changes together explain the gap in elapsed time. The notes also warn that the modulo arithmetic in the strided kernel adds some instruction cost of its own. A rigorous diagnosis states both what the evidence supports and what is still uncertain. A timing difference alone is never proof of a coalescing problem. If the strided kernel is not slower on your GPU, change the stride and the array size, and profile again instead of forcing the result you expected.
 
 ### 5.5 Customer scenarios from the notes
 
-- **Recommendation model with large embedding lookups:** When a workload has irregular access patterns and very little data reuse, focus on memory capacity, HBM bandwidth, cache behavior, data placement, and batching. Peak Tensor Core throughput is not the bottleneck.
-- **Comparing GPUs for small-batch weight streaming:** When a team compares GPUs by memory capacity and peak compute alone for small-batch weight streaming, add HBM bandwidth, L2 behavior, reuse, and latency targets. A less compute-dense GPU can be the better fit if it meets the capacity and bandwidth need at lower cost.
+Two customer situations from the notes show how the same numbers lead to different advice.
+
+- Recommendation model with large embedding lookups: when a workload has irregular access patterns and very little data reuse, focus on memory capacity, HBM bandwidth, cache behavior, data placement, and batching. Peak Tensor Core throughput is not the bottleneck.
+- Comparing GPUs for small-batch weight streaming: when a team compares GPUs by memory capacity and peak compute alone, add HBM bandwidth, L2 behavior, reuse, and latency targets to the comparison. A less compute-dense GPU can be the better fit if it meets the capacity and bandwidth need at lower cost.
+
+The lesson is the same in both cases. Pick the GPU and the tuning by the resource the workload actually waits on, not by the headline number on the spec sheet.
 
 ---
 
 ## Commands and configurations that matter
 
+The three command groups below cover a host check, a kernel check, and an allocator setting. Run them in that order, because each one narrows the search for the next.
+
 ### 1. Pre-flight check for BAR1, HBM usage, and streaming SM vs memory utilization
+
+The first command confirms that the BAR1 window maps the full VRAM. The second samples SM and memory activity once per second for five samples, which tells you whether the SMs are waiting on memory.
 
 ```bash
 # 1. Confirm Resizable BAR (Large BAR1) maps full GPU VRAM (expect ~81920 MiB on H100 80GB, NOT 256 MiB!)
@@ -459,6 +537,8 @@ nvidia-smi dmon -s ucm -c 5
 ```
 
 ### 2. Inspecting register spills and Nsight Compute memory counters
+
+The first command builds the kernel and prints its register and spill counts. The second asks Nsight Compute for the cache hit rates, the DRAM throughput, the sectors per request, and the bank conflicts, all in one pass.
 
 ```bash
 # 1. Check compile-time register count and verify 0 bytes spill stores / 0 bytes spill loads
@@ -476,6 +556,8 @@ ncu --metrics \
 
 ### 3. Configuring PyTorch's caching allocator pool to reduce VRAM fragmentation
 
+PyTorch's caching allocator can be told to use expandable segments. That setting reduces fragmentation, so the pool can grow in place instead of splitting into pieces. Set the variable before the process starts.
+
 ```bash
 # Use expandable virtual memory segments in PyTorch's caching allocator pool
 export PYTORCH_ALLOC_CONF="expandable_segments:True"
@@ -484,6 +566,8 @@ export PYTORCH_ALLOC_CONF="expandable_segments:True"
 ---
 
 ## How it fails
+
+The table lists five failure modes that you will meet in production. Each row gives the symptom you see first, the root cause behind it, and the fix to try. Match the symptom first, and then trace it to the cause.
 
 | Failure mode | Symptom | Root cause | Diagnosis & fix |
 |---|---|---|---|
@@ -499,14 +583,16 @@ export PYTORCH_ALLOC_CONF="expandable_segments:True"
 
 ### Self-checking Python model (`code/part10/gpu_memory_hierarchy_lab.py` — verified here)
 
-The module `code/part10/gpu_memory_hierarchy.py` implements the seven-tier Blackwell and Hopper memory specifications, capacity-versus-bandwidth evaluators, register-spill calculators, cache-line coalescing models, shared-memory bank conflict solvers, and host-device BAR1 and pool auditors. Its companion script `code/part10/gpu_memory_hierarchy_lab.py` runs twenty-five self-checks across six core areas.
+The module `code/part10/gpu_memory_hierarchy.py` implements the seven-tier Blackwell and Hopper memory specifications. It also includes the capacity-versus-bandwidth evaluators, the register-spill calculators, the cache-line coalescing models, the shared-memory bank conflict solvers, and the host-device BAR1 and pool auditors. Its companion script, `code/part10/gpu_memory_hierarchy_lab.py`, runs twenty-five self-checks across six core areas. The areas are listed below, so you can see which part of the chapter each check protects.
 
-- **Blackwell memory hierarchy and Points of Coherency:** Validates registers, shared/L1, TMEM, constant cache, L2 cache, local memory, and global HBM3e.
-- **Capacity versus bandwidth decode floor:** Evaluates the half-precision weight footprint inside an H100 and its weight-read latency floor.
-- **Register spilling and effective bandwidth utilization:** Computes hidden HBM spill traffic and compares saturated versus uncoalesced HBM throughput.
-- **Cache-line coalescing and vectorized loads:** Models sector counts and load efficiency across aligned, misaligned, strided, `float4`, and Blackwell vector accesses.
-- **Shared-memory bank conflict math:** Verifies row accesses, unpadded column conflicts, padded `tile[32][33]` column accesses, even strides, and hardware broadcasts.
-- **Benchmark tables and host-device config audits:** Checks all five optimization tables plus BAR1 Resizable BAR, pinned memory, `cudaMallocAsync`, and `cudaMemPrefetchAsync` rules.
+- Blackwell memory hierarchy and Points of Coherency: validates registers, shared/L1, TMEM, constant cache, L2 cache, local memory, and global HBM3e.
+- Capacity versus bandwidth decode floor: evaluates the half-precision weight footprint inside an H100 and its weight-read latency floor.
+- Register spilling and effective bandwidth utilization: computes hidden HBM spill traffic and compares saturated versus uncoalesced HBM throughput.
+- Cache-line coalescing and vectorized loads: models sector counts and load efficiency across aligned, misaligned, strided, `float4`, and Blackwell vector accesses.
+- Shared-memory bank conflict math: verifies row accesses, unpadded column conflicts, padded `tile[32][33]` column accesses, even strides, and hardware broadcasts.
+- Benchmark tables and host-device config audits: checks all five optimization tables, plus the BAR1 Resizable BAR, pinned memory, `cudaMallocAsync`, and `cudaMemPrefetchAsync` rules.
+
+The parameter block below lists the values the checks use, so you can compare each expected result with the arithmetic in the earlier sections.
 
 ```text
 Lab verification parameters (25 self-checks):
@@ -518,13 +604,13 @@ Lab verification parameters (25 self-checks):
 - Bank conflicts: stride 1 = 32 banks (1-way); stride 32 = 1 bank (32-way conflict); stride 33 = 32 banks (0 conflicts); stride 2 = 2-way; stride 16 = 16-way; stride 0 = 1-cycle broadcast.
 ```
 
-Run the lab from the repository root.
+Run the lab from the repository root. The `-B` flag keeps Python from writing bytecode into the repository.
 
 ```bash
 python3 -B code/part10/gpu_memory_hierarchy_lab.py
 ```
 
-Expected output verified in this repository is shown below.
+The output below came from a run in this repository. Each `PASS` line names the source table it checks, so you can trace the result back to the text.
 
 ```text
 === Chapter 10.3 Lab: The GPU Memory Hierarchy ===
@@ -542,27 +628,33 @@ Expected output verified in this repository is shown below.
 Summary: 25 passed, 0 failed (total 25)
 ```
 
+The lab output is the check, and the next step is the real card. The commands in the earlier section, such as `nvcc`, `ncu`, and `nvidia-smi`, were not run on a live cluster, so run them on a GPU host before you trust the numbers.
+
 ---
 
 ## Common first mistakes
 
-- **Assuming local memory is fast on-SM memory:** Local memory is a per-thread logical address space backed by off-chip HBM DRAM that costs hundreds to over a thousand cycles on a cache miss. Always check `nvcc -O3 -Xptxas=-v` for `spill stores` and `spill loads`.
-- **Declaring `__shared__ float tile[32][32]` when warps read columns:** Because shared memory has thirty-two banks, reading down a column of an unpadded float array hits the same bank across all threads in the warp and triggers a bank conflict. Pad the array to `tile[32][33]` by adding one column.
-- **Forgetting `const __restrict__` on read-only lookup or embedding tables:** Without `const __restrict__`, the compiler cannot prove non-aliasing and skips the low-latency read-only data cache path.
-- **Casting unaligned offset pointers to `float4*` or wide vector types:** While `cudaMalloc` guarantees base alignment, adding an unaligned element offset like `ptr + 1` before `reinterpret_cast<const float4*>` causes a misaligned address fault (`cudaErrorMisalignedAddress`).
-- **Calling synchronous `cudaMalloc` or `cudaFree` inside a request or training loop:** Synchronous allocations stall all streams on the GPU and trigger OS `ioctl` and `mmap` context switches. Use `cudaMallocAsync` and `cudaFreeAsync` or framework memory pools instead.
-- **Ignoring `BAR1 Total: 256 MiB` in `nvidia-smi -q -d MEMORY`:** Leaving Resizable BAR disabled in the BIOS forces CPU and RDMA mappings through a tiny aperture.
+Each of these mistakes is common, and each one has a short check that catches it.
+
+- Assuming local memory is fast on-SM memory is the first. Local memory is a per-thread logical address space backed by off-chip HBM DRAM, and a cache miss on it costs hundreds to over a thousand cycles. Always check `nvcc -O3 -Xptxas=-v` for `spill stores` and `spill loads`.
+- Declaring `__shared__ float tile[32][32]` when warps read columns is the second. Shared memory has thirty-two banks, so reading down a column of an unpadded float array hits the same bank across all threads in the warp and triggers a bank conflict. Pad the array to `tile[32][33]` by adding one column.
+- Forgetting `const __restrict__` on read-only lookup or embedding tables is the third. Without `const __restrict__`, the compiler cannot prove non-aliasing, and it skips the low-latency read-only data cache path.
+- Casting unaligned offset pointers to `float4*` or wide vector types is the fourth. `cudaMalloc` guarantees base alignment, but adding an unaligned element offset, such as `ptr + 1`, before `reinterpret_cast<const float4*>` causes a misaligned address fault (`cudaErrorMisalignedAddress`).
+- Calling synchronous `cudaMalloc` or `cudaFree` inside a request or training loop is the fifth. Synchronous allocations stall the streams on the GPU and trigger OS `ioctl` and `mmap` context switches. Use `cudaMallocAsync` and `cudaFreeAsync`, or framework memory pools, instead.
+- Ignoring `BAR1 Total: 256 MiB` in `nvidia-smi -q -d MEMORY` is the sixth. Leaving Resizable BAR disabled in the BIOS forces CPU and RDMA mappings through a tiny aperture.
 
 ---
 
 ## Exercises
 
-- **First exercise:** Run `python3 -B code/part10/gpu_memory_hierarchy_lab.py` and inspect `code/part10/gpu_memory_hierarchy.py`. Use `evaluate_capacity_vs_decode_floor` to compare the weight-read latency floor of a large language model across FP16, FP8, and FP4 on H100, H200, and B200 using the parameters in the block below.
-- **Second exercise:** Using `calc_register_spill_traffic`, calculate how many megabytes of extra HBM traffic are generated per launch when a grid of thread blocks spills four floats per thread.
-- **Third exercise:** Call `calc_warp_coalescing_and_vector_loads(4, stride_elements=s, base_offset_bytes=0)` for the stride values listed below. Determine how many sectors are fetched at each stride and the resulting Global Memory Load Efficiency percentage.
-- **Fourth exercise:** Call `calc_shared_mem_bank_conflict(stride)` for the stride values listed below. Explain mathematically why even strides cause bank conflicts while odd strides are completely conflict-free.
-- **Fifth exercise:** Using `calc_effective_bandwidth_utilization`, evaluate a kernel on a Blackwell B200 that reads and writes the buffer sizes listed below. Calculate what percentage of peak HBM3e bandwidth it achieves.
-- **Sixth exercise:** Using `audit_host_device_memory_config`, test the node configuration listed below where BAR1 is capped at its legacy default. Identify which BIOS setting is misconfigured and which `nvidia-smi` command verifies the fix.
+Each exercise gives one task. The input values for all six are listed in the block after the list, so you do not have to look them up.
+
+- First exercise: run `python3 -B code/part10/gpu_memory_hierarchy_lab.py` and inspect `code/part10/gpu_memory_hierarchy.py`. Use `evaluate_capacity_vs_decode_floor` to compare the weight-read latency floor of a large language model across FP16, FP8, and FP4. Run it on H100, H200, and B200, using the parameters in the block below.
+- Second exercise: using `calc_register_spill_traffic`, calculate how many megabytes of extra HBM traffic a grid generates per launch when it spills four floats per thread.
+- Third exercise: call `calc_warp_coalescing_and_vector_loads(4, stride_elements=s, base_offset_bytes=0)` for the stride values listed below. Determine how many sectors are fetched at each stride. Then work out the Global Memory Load Efficiency percentage for each one.
+- Fourth exercise: call `calc_shared_mem_bank_conflict(stride)` for the stride values listed below. Explain why even strides cause bank conflicts. Then explain why odd strides are conflict-free.
+- Fifth exercise: using `calc_effective_bandwidth_utilization`, evaluate a kernel on a Blackwell B200 that reads and writes the buffer sizes listed below. What percentage of peak HBM3e bandwidth does it achieve?
+- Sixth exercise: using `audit_host_device_memory_config`, test the node configuration listed below, where BAR1 is capped at its legacy default. Which BIOS setting is misconfigured? Which `nvidia-smi` command verifies the fix?
 
 ```text
 Exercise input parameters for code/part10/gpu_memory_hierarchy.py:
@@ -578,15 +670,15 @@ Exercise input parameters for code/part10/gpu_memory_hierarchy.py:
 
 ## Interview angles
 
-- **"What is the difference between Global Memory, Local Memory, Shared Memory, Registers, and Blackwell's TMEM?"**
-  *Answer:* Registers are private per-thread on-SM SRAM with single-cycle latency. Shared memory is per-block on-SM SRAM explicitly staged by the programmer. Blackwell TMEM is dedicated on-SM SRAM for fifth-generation Tensor Core accumulators and operands managed via TMA and `tcgen05` descriptors rather than C++ pointers. Global memory is device-wide off-chip stacked HBM DRAM. Local memory is a per-thread logical spill space physically backed by off-chip HBM DRAM when registers spill.
-- **"Why does a naive Shared-Memory matrix transpose suffer a bank conflict, and why does declaring `tile[32][33]` fix it?"**
+- "What is the difference between Global Memory, Local Memory, Shared Memory, Registers, and Blackwell's TMEM?"
+  *Answer:* Registers are private per-thread on-SM SRAM with single-cycle latency. Shared memory is per-block on-SM SRAM explicitly staged by the programmer. Blackwell TMEM is dedicated on-SM SRAM for fifth-generation Tensor Core accumulators and operands, managed via TMA and `tcgen05` descriptors rather than C++ pointers. Global memory is device-wide off-chip stacked HBM DRAM. Local memory is a per-thread logical spill space physically backed by off-chip HBM DRAM when registers spill.
+- "Why does a naive Shared-Memory matrix transpose suffer a bank conflict, and why does declaring `tile[32][33]` fix it?"
   *Answer:* Shared memory has thirty-two banks that repeat every thirty-two floats. In `tile[32][32]`, reading down a column steps by the exact bank period, so all threads in a warp land on the same bank and serialize the read. Padding to `tile[32][33]` makes the row stride coprime to the bank count. Each thread in the warp then lands in a distinct bank with zero conflicts.
-- **"A 13B FP16 model only uses 26 GB of an 80 GB H100, yet single-user token generation cannot get below ~8 ms/token. Why?"**
+- "A 13B FP16 model only uses 26 GB of an 80 GB H100, yet single-user token generation cannot get below ~8 ms/token. Why?"
   *Answer:* Capacity only answers whether the model fits in VRAM, whereas autoregressive decode must stream all model weights from HBM for every output token. Dividing the weight footprint by the H100 peak bandwidth sets the physical weight-read latency floor. You lower that floor by quantizing to FP8 or FP4, upgrading to higher-bandwidth HBM on H200 or B200, or using continuous batching.
-- **"How does the Tensor Memory Accelerator on Hopper and Blackwell improve memory-bound kernels?"**
+- "How does the Tensor Memory Accelerator on Hopper and Blackwell improve memory-bound kernels?"
   *Answer:* Instead of using the SM's load/store units and thread registers to issue addresses and wait hundreds of cycles for HBM, the TMA hardware DMA engine executes bulk multidimensional global-to-shared copies in the background. It uses `cuda::memcpy_async` and `cuda::pipeline` while the SM's warps compute on the previous tile in a ping-pong buffer.
-- **"What is BAR1 in `nvidia-smi -q -d MEMORY`, and why is 256 MiB a red flag on an AI node?"**
+- "What is BAR1 in `nvidia-smi -q -d MEMORY`, and why is 256 MiB a red flag on an AI node?"
   *Answer:* BAR1 is the PCIe Base Address Register aperture mapping GPU HBM into the host CPU physical address space. Seeing a small legacy aperture means Resizable BAR is disabled in the server BIOS. That bottlenecks host DMA and GPUDirect RDMA transfers that expect the full VRAM aperture to be mapped.
 
 ---

@@ -24,9 +24,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Suppose a tiled matrix kernel already has coalesced loads, sensible occupancy, and tiles staged in Shared Memory. Profiling still shows the Tensor Cores idle for long stretches. The reason is the loop itself. Every warp issues a global load into Shared Memory and stops at a block-wide `__syncthreads()` barrier until the data arrives. It then computes on the tile and stops at another barrier before the next load. While the loads run, the Tensor Cores wait. While the math runs, the memory system waits.
+Picture a tiled matrix kernel that already looks healthy on paper. Its global loads are coalesced, which means neighboring threads read neighboring addresses, so the memory system is used well. Its occupancy is sensible, and its tiles sit in Shared Memory, the fast on-chip scratch space that threads in one block share. Then someone opens the profiler and sees the Tensor Cores idle for long stretches. Nothing is broken in the usual sense. The problem is the shape of the loop.
 
-*AI Systems Performance Engineering* Chapter 10 describes how Hopper and Blackwell kernels remove these gaps inside a kernel. They use four tools: asynchronous ring buffers, warp specialization across the warp schedulers, persistent megakernels, and Thread Block Clusters linked by Distributed Shared Memory. Together they keep the memory pipeline and the Tensor Cores busy at the same time.
+Here is what the loop does on each pass. Every warp issues a load from global memory into Shared Memory, which is the slow trip to device memory. It then stops at a block-wide `__syncthreads()` barrier and waits until every thread in the block has arrived and the data is ready. Only after that does it compute on the tile. It stops at another barrier before the next load can start. While the loads run, the math units wait. While the math runs, the memory system waits. The two kinds of work take turns instead of happening side by side.
+
+A laundry with one washer and one dryer makes the same point. If you wash a load, wait for it to finish, dry it, and only then start the next wash, the washer sits idle during every drying cycle. The fix is simple. You load the washer with the next batch while the dryer works on the current one. GPU kernels need the same trick, and most of this chapter is about how to build it inside a single kernel launch.
+
+*AI Systems Performance Engineering* Chapter 10 describes how Hopper and Blackwell kernels remove these gaps inside a kernel. Hopper and Blackwell are NVIDIA GPU generations. The chapter names four tools. The first is asynchronous ring buffers, which let a copy and a computation use different slots at the same moment. The second is warp specialization across the warp schedulers, where some warps only load and others only compute. The third is persistent megakernels, which stay resident and pull work in a loop. The fourth is Thread Block Clusters linked by Distributed Shared Memory, which let neighboring blocks read each other's Shared Memory directly. Together they keep the memory pipeline and the Tensor Cores busy at the same time.
 
 | Pattern | Baseline | Optimized Result | Mechanism & Hardware Units |
 |---|---|---|---|
@@ -36,34 +40,38 @@ Suppose a tiled matrix kernel already has coalesced loads, sensible occupancy, a
 | Thread Block Clusters (`CTA` Clusters), DSMEM & TMA multicast (Tables 10-4 & 10-5) | `2x` global loads, `50%` L2 hit, `300 GB/s` DRAM BW/CTA (`18.4 ms` single-block warp-spec) | `1x` loads, `85%` L2 hit, `150 GB/s` DRAM BW/CTA (`0.6x` time = `40%` speedup); `17.2 ms` (`+6.5%`, `2.40x` vs naive, `97%` eff, `170 GB/s` L2) | Co-schedules `2` to `8` CTAs (`16` non-portable on Blackwell) in a GPC with DSMEM (`cluster.map_shared_rank()`), Scratch Memory, and `cluster.sync()`. |
 
 :::note About the numbers and code in this chapter
-*AI Systems Performance Engineering* states that the numeric values in its metric tables, including Tables 10-2 through 10-5, are illustrative and explain concepts. Therefore, none were rerun on live hardware for this handbook. The CUDA code is reproduced from the book and was not compiled here. Three cautions apply to the printed listings.
+The numbers in the metric tables, including Tables 10-2 through 10-5, come from *AI Systems Performance Engineering*. The source presents them as illustrative values that explain concepts, so they are not guaranteed specifications. None of them were rerun on live hardware for this handbook. The CUDA code is copied from *AI Systems Performance Engineering* and was not compiled here. Three cautions apply to the printed listings. Read them before you copy any listing into a project.
 
-First, in `warp_specialized_pipeline_kernel`, the phases are separated by `cta.sync()`. The load, compute, and store roles run sequentially inside each tile iteration rather than demonstrating the full concurrent overlap reported in Table 10-3. Second, in `gemm_tiled_pipeline`, the call `cuda::aligned_size_t<32>(sizeof(float))` passes a 4-byte size with a 32-byte alignment. That violates the API requirement that the size be a multiple of the alignment, so treat that call as conceptual pseudocode. Third, the dynamic shared-memory budget uses the book's figure of 227,328 bytes, which represents the 227 KB per-block limit. Both tile choices of 112 and 128 fit safely below that ceiling.
+First, in `warp_specialized_pipeline_kernel`, the phases are separated by `cta.sync()`. That means the load, compute, and store roles run one after another inside each tile iteration. The listing does not show the full concurrent overlap reported in Table 10-3. The barriers are simple to read, but they remove the very overlap the table is about.
+
+Second, in `gemm_tiled_pipeline`, the call `cuda::aligned_size_t<32>(sizeof(float))` passes a 4-byte size with a 32-byte alignment. The API requires the size to be a multiple of the alignment, so that call breaks the rule. Treat it as conceptual pseudocode, not as a line you can compile as written.
+
+Third, the dynamic shared-memory budget uses the figure of 227,328 bytes from *AI Systems Performance Engineering*. That is the 227 KB per-block limit. Both tile choices of 112 and 128 fit safely below that ceiling.
 :::
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Complete Chapter 10.2 on SM warp schedulers and GPC hierarchy, and Chapter 10.3 on Shared Memory and DSMEM. Review Chapter 10.12 on `cuda::memcpy_async` and streams, Chapter 10.14 on occupancy and warp stalls, and Chapter 10.15 on multilevel tiling and Tensor Memory.
+**Prerequisites:** Complete Chapter 10.2 on SM warp schedulers and GPC hierarchy, and Chapter 10.3 on Shared Memory and DSMEM. Review Chapter 10.12 on `cuda::memcpy_async` and streams, Chapter 10.14 on occupancy and warp stalls, and Chapter 10.15 on multilevel tiling and Tensor Memory. You do not need all of them memorized. Each one gives a piece of the vocabulary that the rest of this chapter takes for granted, such as what a warp scheduler does and why a copy can run in the background.
 
-**Outcomes:**
-1. Implement a multi-stage ring-buffered tiled GEMM using `<cuda/pipeline>`. Size two-stage and three-stage dynamic Shared Memory buffers and reproduce the Table 10-2 speedup metrics.
-2. Design a three-role warp-specialized pipeline. Enforce the collective ordering rule for unified block-scoped pipeline objects.
-3. Explain how CUTLASS ping-pong warp specialization and PyTorch FlashAttention-3 overlap TMA loads, Tensor Core math, and epilogue stores across warp schedulers.
-4. Calculate persistent-kernel launch savings, inference megakernel speedups, and maximum co-resident grid limits for `cudaLaunchCooperativeKernel` and `grid.sync()`.
-5. Configure Thread Block Clusters with `cudaLaunchKernelEx`. Coordinate Distributed Shared Memory via `cluster.sync()` and `cluster.map_shared_rank()`, and choose between TMA multicast and DSMEM sharing.
-6. Trace the multi-block `warp_specialized_cluster_pipeline` kernel. Compare all four optimization stages across Table 10-5.
+The chapter walks through its material in a fixed order. It starts with a multi-stage ring-buffered tiled GEMM that uses `<cuda/pipeline>`, then sizes its two-stage and three-stage Shared Memory buffers and checks the speedups in Table 10-2. Next it builds a three-role warp-specialized pipeline and explains the collective ordering rule that keeps it correct. After that it looks at how CUTLASS ping-pong warp specialization and PyTorch FlashAttention-3 overlap TMA loads, Tensor Core math, and epilogue stores. The later parts cover persistent-kernel launch savings, megakernel speedups, and the co-resident grid limits for `cudaLaunchCooperativeKernel` and `grid.sync()`. The chapter then turns to Thread Block Clusters launched through `cudaLaunchKernelEx`, coordinated with `cluster.sync()` and `cluster.map_shared_rank()`. The last step traces the multi-block `warp_specialized_cluster_pipeline` kernel and compares the four stages of Table 10-5.
 
 ---
 
 ## 1. Intra-Kernel Pipelining and Double/Triple Buffering with `<cuda/pipeline>`
 
+Suppose a kernel has already been tuned to use Shared Memory well, but its profiler still shows the math units waiting after every tile load. Your first question is why the warps cannot simply keep going. The answer comes from the barrier. A `__syncthreads()` call is a promise that every thread has reached the same point, so nobody can move ahead until the slowest thread gets there.
+
 ### 1.1 The two `<cuda/pipeline>` paradigms in Table 10-1
 
-Traditional SIMT execution hides memory latency only by context-switching across many resident warps when a load stalls. If every warp in a tiled loop hits a `__syncthreads()` barrier at the end of a load phase, no warp can advance to the math phase until the slowest memory transaction finishes. Intra-kernel pipelining removes that stop-and-wait barrier by overlapping asynchronous memory copies and math operations inside a single kernel execution.
+Traditional SIMT execution hides memory latency only by context-switching across many resident warps when a load stalls. SIMT stands for single instruction, multiple threads, which is how a GPU runs a group of threads together. If every warp in a tiled loop hits a `__syncthreads()` barrier at the end of a load phase, no warp can advance to the math phase until the slowest memory transaction finishes. Intra-kernel pipelining removes that stop-and-wait barrier by overlapping asynchronous memory copies and math operations inside a single kernel execution. Asynchronous here means the copy is started now and finished later, while the warp does other work.
 
-*AI Systems Performance Engineering* Table 10-1 distinguishes two `<cuda/pipeline>` designs. In a uniform double-buffered or triple-buffered pipeline, all threads in the thread block step through tiles together. A ring buffer in Shared Memory overlaps prefetching the next tile with computing the current tile. In a warp-specialized pipeline, separate warps are dedicated permanently to memory loading, Tensor Core computation, and output storing. Each warp scheduler issues a continuous stream of homogeneous instructions.
+An assembly line is a useful picture. One station fetches the next part while the station after it bolts the current part onto the product. Nobody waits for the whole part to be finished before the next station starts. A pipelined kernel does the same thing with tiles. The copy station fetches tile number 3 while the math station works on tile number 2.
 
-Both designs rely on four producer-consumer primitives in `<cuda/pipeline>`. The producer calls `pipe.producer_acquire()` to reserve the next ring-buffer stage slot and `pipe.producer_commit()` to batch-commit all `cuda::memcpy_async` copies issued in that stage. The consumer calls `pipe.consumer_wait()` or `cuda::pipeline_consumer_wait_prior<N>(pipe)` to wait only until the target stage arrives in Shared Memory. It then calls `pipe.consumer_release()` once computation finishes so the producer can reuse that slot.
+*AI Systems Performance Engineering* Table 10-1 distinguishes two `<cuda/pipeline>` designs. In a uniform double-buffered or triple-buffered pipeline, all threads in the thread block step through tiles together. A ring buffer in Shared Memory overlaps prefetching the next tile with computing the current tile. A ring buffer is a fixed set of slots that are reused in order, like a row of cubbies that you fill and empty in turn. In a warp-specialized pipeline, separate warps are dedicated permanently to memory loading, Tensor Core computation, and output storing. Each warp scheduler issues a continuous stream of homogeneous instructions. Homogeneous here means that every warp on a scheduler does the same kind of work.
+
+Both designs rely on four producer-consumer primitives in `<cuda/pipeline>`. A producer is the group of threads that starts the copies, and a consumer is the group that reads the finished data. The producer calls `pipe.producer_acquire()` to reserve the next ring-buffer stage slot. It then calls `pipe.producer_commit()` to batch-commit all `cuda::memcpy_async` copies issued in that stage. The consumer calls `pipe.consumer_wait()` or `cuda::pipeline_consumer_wait_prior<N>(pipe)` to wait only until the target stage arrives in Shared Memory. Finally it calls `pipe.consumer_release()` once computation finishes, so the producer can reuse that slot.
+
+The table below lists the two variants side by side. Use it as a lookup when you pick a design for a new kernel.
 
 | `<cuda/pipeline>` Variant | Best For | Main Execution Mechanism |
 |---|---|---|
@@ -91,9 +99,13 @@ flowchart LR
 
 ### 1.2 Full cooperative double/triple-buffered GEMM and Table 10-2
 
-In a two-stage pipeline, one ring-buffer slot prefetches the next tile from DRAM while the arithmetic units compute on the previously loaded slot. On Blackwell GPUs the Tensor Cores are fast enough, relative to HBM latency, that a single prefetch in flight may not hide the full memory delay. Adding a third stage creates a triple-buffered ring that keeps two asynchronous prefetches in flight while computing on the third slot.
+Think of a two-stage pipeline as a two-tray oven. While one tray bakes, the other is being loaded with fresh dough. In a two-stage pipeline, one ring-buffer slot prefetches the next tile from DRAM while the arithmetic units compute on the previously loaded slot. DRAM is the main device memory, and a prefetch is a copy started early so the data is ready when it is needed. On Blackwell GPUs the Tensor Cores are fast enough, relative to HBM latency, that a single prefetch in flight may not hide the full memory delay. HBM is the high-bandwidth memory stacked next to the GPU die. Adding a third stage creates a triple-buffered ring that keeps two asynchronous prefetches in flight while computing on the third slot. In the oven picture, that is a third tray that lets the loader stay two trays ahead of the baker.
 
-Even heavily tuned attention kernels cannot overlap everything, because data movement and online softmax rescaling compete for the same resources. The book reports that FlashAttention-3 reaches about 75 percent of peak FP16 FLOPS with warp-specialized overlap. The `gemm_tiled_pipeline` kernel below primes the ring buffer in a prologue loop and then steps through the slots in steady state. In the book's illustrative Table 10-2 run, that halves the runtime of naive tiling, from 41.3 ms to 20.5 ms.
+Even heavily tuned attention kernels cannot overlap everything, because data movement and online softmax rescaling compete for the same resources. Online softmax rescaling is the bookkeeping that keeps a running softmax correct as new blocks of scores arrive. *AI Systems Performance Engineering* reports that FlashAttention-3 reaches about 75 percent of peak FP16 FLOPS with warp-specialized overlap. FP16 is 16-bit floating point, and FLOPS counts floating-point operations per second.
+
+The `gemm_tiled_pipeline` kernel below primes the ring buffer in a prologue loop. A prologue is the setup work that runs before the steady-state loop begins. The kernel then steps through the slots in steady state, where each pass waits for one slot, computes on it, releases it, and refills it with a later tile. In the illustrative Table 10-2 run, that halves the runtime of naive tiling, from 41.3 ms to 20.5 ms.
+
+Read the code in three phases. The first phase, the prologue, starts the first `STAGES` tiles moving into Shared Memory. The second phase, the steady-state loop, waits for the tile in slot `s = tile % STAGES`, adds its dot products to the running sum, releases the slot, and starts a copy for the tile that is `STAGES` ahead. The third phase writes the finished value of each thread to `C_global`. The `% STAGES` part is what makes the slots wrap around like the cubbies in the ring buffer. Out-of-range elements are filled with zeros, so the math stays correct at the matrix edges.
 
 ```cpp
 // Cooperative multi-stage (double/triple-buffered) tiled GEMM using <cuda/pipeline>
@@ -219,13 +231,17 @@ void gemm_tiled_pipeline(const float* __restrict__ A_global, // [M x K]
 
 ## 2. Warp Specialization and Producer-Consumer Pipelines
 
+Consider a kernel where every warp is doing both jobs, loading and computing. The scheduler keeps switching between the two kinds of instruction, and neither job runs at full speed. Your question is whether it helps to give the jobs to different warps. The next subsection explains why it does.
+
 ### 2.1 Why warp specialization beats uniform double buffering
 
-In a uniform double-buffered kernel, every warp executes the exact same instruction sequence of issuing loads, waiting on `consumer_wait()`, and computing dot products. Because each warp belongs to one of the SM's four hardware warp schedulers, a warp issuing address calculation and `memcpy_async` instructions cannot issue Tensor Core instructions in that same cycle. Moreover, whenever DRAM latency spikes, `pipe.consumer_wait()` stalls every warp in the block simultaneously.
+In a uniform double-buffered kernel, every warp executes the exact same instruction sequence. Each warp issues loads, waits on `consumer_wait()`, and then computes dot products. Each warp also belongs to one of the SM's four hardware warp schedulers. An SM is a streaming multiprocessor, the unit that runs thread blocks. A warp that is busy issuing address calculation and `memcpy_async` instructions cannot issue Tensor Core instructions in that same cycle, because the scheduler is working on the first kind of instruction. Moreover, whenever DRAM latency spikes, `pipe.consumer_wait()` stalls every warp in the block simultaneously. Everyone waits for the same slow copy.
 
-Warp specialization breaks that symmetry by assigning distinct warps inside the thread block to dedicated hardware engines. In a two-role split, four producer warps continuously fetch tiles into Shared Memory while eight consumer warps run Tensor Core math uninterrupted. In a three-role split, loader warps fetch input tiles, compute warps accumulate matrix products, and storer warps drain completed output tiles back to global memory.
+Warp specialization breaks that symmetry by assigning distinct warps inside the thread block to dedicated hardware engines. Picture a restaurant kitchen. In a uniform kitchen, every cook chops, cooks, and plates every dish, so each cook switches tasks all the time. In a specialized kitchen, some cooks only prep ingredients, some only run the stove, and some only plate and send out orders. The stove never waits for someone to finish chopping, because the chopping happens on a different station. In a two-role split, four producer warps continuously fetch tiles into Shared Memory while eight consumer warps run Tensor Core math uninterrupted. In a three-role split, loader warps fetch input tiles, compute warps accumulate matrix products, and storer warps drain completed output tiles back to global memory.
 
-Because those specialized warps reside on different hardware warp schedulers, Scheduler 0 issues a memory load, Scheduler 1 issues a Tensor Core MMA, and Scheduler 2 issues a global store in the exact same clock cycle. This turns out-of-phase oscillation between L2 bandwidth and Tensor Core utilization into continuous in-phase execution. In CUTLASS's `gemm_tma_warpspecialized_pingpong` schedule, two consumer warp groups also ping-pong between MMA compute and post-MMA epilogue stores. As a result, Tensor Cores never idle during epilogue cleanup.
+Because those specialized warps reside on different hardware warp schedulers, one scheduler can issue a memory load, another can issue a Tensor Core MMA, and a third can issue a global store in the same clock cycle. MMA stands for matrix multiply-accumulate, the core operation of Tensor Cores. This turns out-of-phase oscillation between L2 bandwidth and Tensor Core utilization into continuous in-phase execution. L2 is the large on-chip cache shared by all SMs. In CUTLASS's `gemm_tma_warpspecialized_pingpong` schedule, two consumer warp groups also ping-pong between MMA compute and post-MMA epilogue stores. The epilogue is the final step that scales results and writes them out. Because the two groups take turns, the Tensor Cores never idle during epilogue cleanup.
+
+The table lists four patterns, from the simplest to the most specialized. Each row names the roles and the hardware signature you would look for in Nsight Compute, which is NVIDIA's kernel profiler.
 
 | Warp Specialization Pattern | Role Assignment across `4` SM Schedulers | Hardware Overlap & Nsight Compute Signature |
 |---|---|---|
@@ -251,9 +267,13 @@ flowchart TB
 
 ### 2.2 Full 3-role `<cuda/pipeline>` kernel and the collective ordering rule
 
-When sizing a three-role warp-specialized kernel on Blackwell, the three square Shared Memory tiles for matrices A, B, and C must fit within the per-block dynamic Shared Memory ceiling. Selecting a tile dimension of 112 uses roughly two-thirds of the per-block budget and launches cleanly after opting in via `cudaFuncAttributeMaxDynamicSharedMemorySize`. Selecting a tile dimension of 160 exceeds the per-block hardware limit and causes kernel launch failure.
+Start with the sizing question, because it comes first in practice. A three-role kernel keeps three square tiles for matrices A, B, and C in Shared Memory at once. Those three tiles must fit inside the per-block dynamic Shared Memory ceiling. Dynamic Shared Memory is the part of Shared Memory whose size is chosen at launch time, not at compile time. Selecting a tile dimension of 112 uses roughly two-thirds of the per-block budget. That launch succeeds only after the host opts in through `cudaFuncAttributeMaxDynamicSharedMemorySize`. Selecting a tile dimension of 160 exceeds the per-block hardware limit and causes kernel launch failure.
 
-A strict correctness rule governs how `<cuda/pipeline>` methods are called inside warp-specialized kernels. When a kernel creates a unified block-scoped pipeline via `cuda::make_pipeline(cta, &pipe_state)`, the methods `producer_acquire()`, `producer_commit()`, `consumer_wait()`, and `consumer_release()` are collective across all participating threads in the thread block. They must execute in a consistent sequence outside divergent `warp_id` branches, using `cta.sync()` between role phases. Calling pipeline collectives inside divergent warp branches requires instantiating a partitioned pipeline with explicit producer and consumer thread partitions.
+The sizing arithmetic is easy to check by hand. Multiply the tile edge by itself, multiply by the three tiles, and then multiply by the four bytes in a float. The table below walks through that calculation for each tile choice used in the chapter.
+
+A strict correctness rule governs how `<cuda/pipeline>` methods are called inside warp-specialized kernels. The rule is about who is allowed to call them. When a kernel creates a unified block-scoped pipeline via `cuda::make_pipeline(cta, &pipe_state)`, the methods `producer_acquire()`, `producer_commit()`, `consumer_wait()`, and `consumer_release()` are collective. Collective means every participating thread in the block must take part in the call. They must execute in a consistent sequence outside divergent `warp_id` branches. A divergent branch is an if statement where some warps go one way and others go the other way. The kernel uses `cta.sync()` between role phases so each phase finishes before the next one starts. Calling pipeline collectives inside divergent warp branches requires instantiating a partitioned pipeline with explicit producer and consumer thread partitions. A partitioned pipeline tells the hardware exactly which threads are producers and which are consumers, so the rule no longer applies in the same way.
+
+Think of a relay team where every runner must cross the handoff line together. If only the first lane's runners go to the line, the race stops. The collective rule works the same way for the pipeline.
 
 | Tile Choice / Metric | Calculation (`3 × TILE_SIZE^2 × 4 B`) | Byte & KiB Footprint | Fits Blackwell `227,328 B` (`~227 KB`) Block Limit? |
 |---|---|---|---|
@@ -357,9 +377,11 @@ void warp_specialized_pipeline_kernel(const float* __restrict__ A_global,
 
 ### 2.3 PyTorch torch.compile, Triton, and scaled_dot_product_attention
 
-Python engineers do not need to write C++ pipeline code by hand to benefit from warp specialization in standard Transformer layers. Unfused eager-mode attention runs three separate kernels for query-key multiplication, softmax normalization, and value multiplication. That forces two intermediate round-trips of the quadratic attention matrix through HBM and leaves Tensor Cores waiting on memory transfers across every attention head.
+Python engineers do not need to write C++ pipeline code by hand to benefit from warp specialization in standard Transformer layers. Consider what happens in unfused eager-mode attention. The attention step is three operations in a row, the query-key product, the softmax, and the value product. Each operation becomes its own kernel. Between kernels, the full attention matrix is written out to HBM and read back in. That happens twice, which is why the code comment counts two intermediate round-trips. The round-trips make the Tensor Cores wait on memory transfers in every attention head.
 
-Calling `torch.compile` through TorchInductor and OpenAI Triton, or invoking `torch.nn.functional.scaled_dot_product_attention`, lowers attention into fused kernels automatically. Those generated kernels use asynchronous pipeline barriers and warp-specialized producer-consumer groups under the hood. Inside the dispatched FlashAttention-2 or FlashAttention-3 kernel, loader warps prefetch key and value tiles into Shared Memory while consumer warps overlap matrix multiplication and online softmax rescaling on Tensor Cores. Storer warps write the final context tensor back to HBM once at the end of the loop.
+Calling `torch.compile` through TorchInductor and OpenAI Triton, or invoking `torch.nn.functional.scaled_dot_product_attention`, lowers attention into fused kernels automatically. Fused means the three steps run inside one kernel, so the intermediate matrix does not need to make the trip to HBM. TorchInductor is the compiler backend inside `torch.compile`, and Triton is the Python-based language it generates kernels with. Those generated kernels use asynchronous pipeline barriers and warp-specialized producer-consumer groups under the hood. Inside the dispatched FlashAttention-2 or FlashAttention-3 kernel, loader warps prefetch key and value tiles into Shared Memory. Consumer warps overlap matrix multiplication and online softmax rescaling on Tensor Cores. Storer warps write the final context tensor back to HBM once at the end of the loop.
+
+For an infrastructure engineer, the practical lesson is that you can often get this behavior from a single line of PyTorch. Most of the time you do not write the pipeline yourself. You choose the library call that already has it. The code below shows the before and after. Both versions compute attention, but the second one lets the library choose the fused kernel. When you review a model that still uses the first form, the question to ask is whether the attention call can be replaced without changing the result.
 
 ```python
 # Unfused attention: 3 separate kernels + 2 intermediate N x N HBM round-trips (untested here)
@@ -375,13 +397,19 @@ context = torch.nn.functional.scaled_dot_product_attention(queries, keys, values
 
 ## 3. Persistent Kernels, Megakernels, and Cooperative Grid Synchronization
 
+Picture an inference server that receives a thousand tiny tasks in a burst. If each task launches its own kernel, the GPU spends more time being told what to do than doing the work. Your question becomes how to stop paying the launch cost over and over. The answer is to launch once and let the work come to the kernel.
+
 ### 3.1 Persistent kernels: eliminating launch overhead and uneven tail waves
 
-When an inference server or graph-processing stage executes a thousand tiny independent tasks, launching a separate CUDA kernel for every task wastes a large share of wall-clock time. Each kernel launch incurs roughly twenty microseconds of host-to-device launch overhead. That adds twenty milliseconds of pure overhead on top of a hundred milliseconds of actual GPU work. Worse, because each tiny grid occupies only a few SMs and drains between launches, average GPU utilization hovers around thirty-five percent.
+When an inference server or graph-processing stage executes a thousand tiny independent tasks, launching a separate CUDA kernel for every task wastes a large share of wall-clock time. Wall-clock time is the real elapsed time you would measure with a stopwatch. Each kernel launch incurs roughly twenty microseconds of host-to-device launch overhead. Host-to-device overhead is the cost of the CPU telling the GPU to start work. That adds twenty milliseconds of pure overhead on top of a hundred milliseconds of actual GPU work. Worse, because each tiny grid occupies only a few SMs and drains between launches, average GPU utilization hovers around thirty-five percent. Draining means the last blocks finish and the GPU sits partly empty before the next launch arrives.
 
-A persistent kernel eliminates both launch overhead and tail-wave draining by launching a single long-lived grid that stays resident across all SMs until the entire work queue is empty. On a GPU with 132 SMs, launching one block of 256 threads per SM creates 33,792 persistent worker threads that pull tasks continuously from a device-side atomic counter `atomicAdd(&g_index, 1)`. The host pays the twenty-microsecond launch cost only once, and irregular task durations balance automatically across SMs.
+A taxi analogy helps here. Sending one taxi for each passenger means the driver spends the trip back to the stand every time. A persistent kernel is like hiring one driver who stays on the road and picks up the next passenger from a queue. The driver never goes back to the stand between rides.
 
-Notice the important distinction between per-SM thread occupancy and active SMs in a persistent launch. Running one block of 256 threads on an SM that supports 2,048 resident threads represents only 12.5 percent thread occupancy per SM. Yet because every single one of the 132 SMs runs a persistent block continuously, one hundred percent of the GPU's SMs remain actively engaged throughout the entire workload.
+A persistent kernel eliminates both launch overhead and tail-wave draining. It does this by launching a single long-lived grid that stays resident across all SMs until the entire work queue is empty. On a GPU with 132 SMs, launching one block of 256 threads per SM creates 33,792 persistent worker threads. Those workers pull tasks continuously from a device-side atomic counter, `atomicAdd(&g_index, 1)`. An atomic counter is a shared number that threads increment one at a time, so no two threads grab the same task. The host pays the twenty-microsecond launch cost only once. Irregular task durations balance automatically across SMs, because a worker that finishes a short task simply grabs the next one.
+
+Notice the distinction between per-SM thread occupancy and active SMs in a persistent launch. Occupancy measures how many threads are resident on an SM compared with the most it can hold. Running one block of 256 threads on an SM that supports 2,048 resident threads represents only 12.5 percent thread occupancy per SM. Yet because every single one of the 132 SMs runs a persistent block continuously, one hundred percent of the GPU's SMs remain actively engaged throughout the entire workload. Low occupancy does not mean idle hardware in this design. It means each SM has room to hold more work if the design needs it.
+
+The table compares the two designs for the same workload. Read the first row as the work, the second as the launch cost, and the last two as the shape of the grid.
 
 | Metric (`model_persistent_kernel()` in `code/part10/intra_kernel_pipelining.py`) | Traditional 1-Kernel-per-Task (`1,000` Launches) | Persistent Worker-Pool Kernel (`1` Launch on `132` SMs) |
 |---|---:|---:|
@@ -413,17 +441,21 @@ __global__ void persistentKernel(Task* tasks, int totalTasks) {
 
 ### 3.2 Megakernels for LLM inference
 
-During autoregressive LLM decode, generating each token requires executing dozens of small operators across eighty or more Transformer layers. Standard serving engines launch separate kernels for RMSNorm, QKV projections, rotary embeddings, attention, all-reduce communication, and MLP blocks on every layer. At small batch sizes, host launch latency and inter-kernel barrier gaps dominate token generation time.
+During autoregressive LLM decode, the model writes one token at a time, and each new token depends on the ones before it. Generating each token requires executing dozens of small operators across eighty or more Transformer layers. Standard serving engines launch separate kernels for RMSNorm, QKV projections, rotary embeddings, attention, all-reduce communication, and MLP blocks on every layer. RMSNorm and rotary embeddings are small per-token operations, and an all-reduce is the step where several GPUs combine their partial results. At small batch sizes, host launch latency and inter-kernel barrier gaps dominate token generation time. Batch size is how many requests the server handles together. With few requests, each kernel does very little math, so the gaps between kernels take a bigger share of the time.
 
-Extending the persistent-kernel design across an entire Transformer forward pass produces an inference megakernel. Driven by an on-device task schedule, a single persistent megakernel fuses layer norms, projections, attention, and even cross-GPU communication inside one long-lived launch. In Chapter 10 decode benchmarks, persistent megakernels reduce token decode latency by 1.2x to 6.7x compared to standard per-layer launches in vLLM and SGLang.
+Think of a factory that stops the whole line between every station to wait for a truck. The trucks cost more than the stations. A megakernel is the answer to that problem. It removes the stop between stations by keeping them all in one long-lived program.
+
+Extending the persistent-kernel design across an entire Transformer forward pass produces an inference megakernel. A forward pass is one complete run of the model on the current tokens. Driven by an on-device task schedule, a single persistent megakernel fuses layer norms, projections, attention, and even cross-GPU communication inside one long-lived launch. The schedule lives on the device, so the GPU itself decides which task runs next. In Chapter 10 decode benchmarks, persistent megakernels reduce token decode latency by 1.2x to 6.7x compared to standard per-layer launches in vLLM and SGLang. vLLM and SGLang are two open-source LLM serving engines. The range is wide because the gain depends on the batch size and the model.
 
 ### 3.3 Cooperative Groups and grid-wide synchronization
 
-Standard CUDA `__syncthreads()` synchronizes only the threads within a single thread block. When an algorithm requires a global barrier across the entire array—such as a two-pass reduction and normalization over a thousand iterations—engineers traditionally had to end the kernel and launch a second kernel for the next pass. Over a thousand iterations of a two-stage algorithm, that boundary forces two thousand separate kernel launches.
+Standard CUDA `__syncthreads()` synchronizes only the threads within a single thread block. Suppose your algorithm needs a global barrier across the whole array. A two-pass reduction and normalization over a thousand iterations is an example. Engineers traditionally had to end the kernel and launch a second kernel for the next pass, because a kernel launch is the only global barrier they had. Over a thousand iterations of a two-stage algorithm, that boundary forces two thousand separate kernel launches.
 
-The Cooperative Groups API in `<cooperative_groups.h>` provides explicit thread collectives across five granularities, including a whole-device grid handle `cg::this_grid()` that exposes `grid.sync()`. Calling `grid.sync()` synchronizes all resident thread blocks across the entire GPU and enforces global memory visibility without returning to the host. Two strict hardware rules govern `grid.sync()`: every thread in every block must reach the barrier outside divergent conditionals, and all blocks in the grid must co-reside simultaneously on the GPU.
+The Cooperative Groups API in `<cooperative_groups.h>` provides explicit thread collectives across five granularities. A granularity here is the size of the group, from a few threads inside a warp up to the whole device. One of those granularities is the whole-device grid handle, `cg::this_grid()`, which exposes `grid.sync()`. Calling `grid.sync()` synchronizes all resident thread blocks across the entire GPU and enforces global memory visibility without returning to the host. Visibility means a value written by one block is guaranteed to be seen by the others after the barrier. Two strict hardware rules govern `grid.sync()`. Every thread in every block must reach the barrier outside divergent conditionals. All blocks in the grid must co-reside simultaneously on the GPU. If any of those rules is broken, the barrier waits forever.
 
-Before calling `cudaLaunchCooperativeKernel`, the host code must query `cudaOccupancyMaxActiveBlocksPerMultiprocessor` and clamp `gridSize` to `maxCoopGrid` while using a grid-stride loop inside the kernel. If an unclamped grid requests more blocks than can co-reside simultaneously, `cudaLaunchCooperativeKernel` fails immediately to prevent a missing-block deadlock. When concurrent streams need to share SMs on the same GPU, engineers should avoid locking the full grid with `grid.sync()` and use Thread Block Clusters with `cluster.sync()` instead.
+The host side has its own job. Before calling `cudaLaunchCooperativeKernel`, the host code must query `cudaOccupancyMaxActiveBlocksPerMultiprocessor`. That call reports how many blocks of the kernel can fit on each SM at once. The host then clamps `gridSize` to `maxCoopGrid`, and the kernel uses a grid-stride loop so each thread handles several elements. A grid-stride loop lets a smaller grid cover a larger array by stepping forward in strides. If an unclamped grid requests more blocks than can co-reside simultaneously, `cudaLaunchCooperativeKernel` fails immediately. That failure protects you from a missing-block deadlock, where the barrier waits for blocks that never got a spot on the GPU. When concurrent streams need to share SMs on the same GPU, engineers should avoid locking the full grid with `grid.sync()`. Thread Block Clusters with `cluster.sync()` are the smaller alternative.
+
+The table lists the five granularities and the sizing rules for the whole-device grid.
 
 | Cooperative Group Granularity / Metric | API Handle & Barrier | Sizing / Co-Residency Math & Rules |
 |---|---|---|
@@ -432,6 +464,8 @@ Before calling `cudaLaunchCooperativeKernel`, the host code must query `cudaOccu
 | 3. Thread Block Cluster (`CGA`) | `cg::cluster_group cluster = cg::this_cluster();` + `cluster.sync()` | Hardware-accelerated barrier across `2` to `8` (`16` non-portable) co-scheduled CTAs in a GPC |
 | 4. Whole-Device Grid (`combinedKernel`) | `cg::grid_group grid = cg::this_grid();` + `grid.sync()` via `cudaLaunchCooperativeKernel` | `maxCoopGrid = maxBlocksPerSm * prop.multiProcessorCount = 4 * 132 = 528` blocks; `N = 1,000,000` at `256` threads/block = `3,907` blocks must clamp to `528` (`N = 65,536` = `256 <= 528` fits directly); fuses `2` stages × `1,000` iterations = `2,000` launches into `1` launch (`1,999` eliminated) |
 | 5. Multi-Device Grid | Cross-GPU cooperative barriers | Legacy / specialized multi-GPU lockstep |
+
+The code below shows the fusion in action. It replaces two thousand launches with one launch that synchronizes itself between stages.
 
 ```cpp
 // Fusing 2 stages x 1,000 iterations (2,000 kernel launches) into 1 cooperative persistent kernel
@@ -493,11 +527,17 @@ void launchCombinedCooperative(float* dA, float* dB, int N, int iterations) {
 
 ## 4. Thread Block Clusters, DSMEM, Scratch Memory, Swizzling, and 2-SM CTA Pairs
 
+Imagine two neighbors who each need a few bags of flour from the same warehouse. If each one drives to the warehouse separately, the trips are wasted. If they share a car, one trip serves both. Thread Block Clusters apply the same idea to GPU blocks, which are called CTAs in the hardware documentation. CTA stands for cooperative thread array, which is another name for a thread block. Your question is how neighboring blocks can share data without a trip to global memory.
+
 ### 4.1 Hardware hierarchy: GPC coscheduling, NV-HBI logical GPC, and Thread Block Swizzling
 
-When thread blocks are dispatched in naive row-major order across a large output matrix, early blocks in a scheduling wave load disjoint rows and columns from HBM. Those uncoordinated loads evict shared tiles from the L2 cache before neighboring blocks in the next wave can reuse them. In addition, independent thread blocks have no hardware guarantee that they will run at the same time on neighboring SMs.
+When thread blocks are dispatched in naive row-major order across a large output matrix, early blocks in a scheduling wave load disjoint rows and columns from HBM. A scheduling wave is the group of blocks that run at the same time across the GPU. Those uncoordinated loads evict shared tiles from the L2 cache before neighboring blocks in the next wave can reuse them. In addition, independent thread blocks have no hardware guarantee that they will run at the same time on neighboring SMs. Without that guarantee, a block cannot count on its neighbor being present.
 
-A Thread Block Cluster is a hardware-level execution group introduced on Hopper and expanded on Blackwell. It guarantees that all member thread blocks are coscheduled simultaneously onto SMs inside the same GPU Processing Cluster. On dual-die Blackwell GPUs, each physical die contains its own GPC partition, and the coherent High-Bandwidth Interface links both dies into a combined logical GPC transparently. Furthermore, Thread Block Swizzling reorders logical tile coordinates into two-dimensional swizzled groups so all blocks active in a wave share the same matrix rows and columns out of L2 cache.
+A Thread Block Cluster is a hardware-level execution group introduced on Hopper and expanded on Blackwell. It guarantees that all member thread blocks are coscheduled simultaneously onto SMs inside the same GPU Processing Cluster. A GPC, or GPU processing cluster, is a group of SMs that sit together on the die. On dual-die Blackwell GPUs, each physical die contains its own GPC partition. The coherent High-Bandwidth Interface, called NV-HBI, links both dies into a combined logical GPC transparently. Logical here means the software sees one GPC even though the hardware has two dies. Thread Block Swizzling reorders logical tile coordinates into two-dimensional swizzled groups. The result is that all blocks active in a wave share the same matrix rows and columns out of L2 cache. Swizzling changes only the order in which tiles are assigned, not what each tile computes.
+
+A shuffled deck makes the swizzle idea clear. Dealing cards in plain row order gives each player a different set of ranks. Dealing them in a zigzag pattern gives neighboring players overlapping cards. The total deal is the same, but the pieces that need to be near each other are now near each other.
+
+The table lists the four hardware pieces behind this section. Each row says what the piece is and what it does for scheduling.
 
 | Hardware Mechanism (Figures 10-10 to 10-12) | Architectural Scope | Performance & Scheduling Role |
 |---|---|---|
@@ -508,17 +548,19 @@ A Thread Block Cluster is a hardware-level execution group introduced on Hopper 
 
 ### 4.2 Distributed Shared Memory versus hardware Scratch Memory
 
-Without a cross-SM interconnect, two thread blocks that need to exchange partial sums or share an input tile must write data out to L2 or HBM and wait for a global memory round-trip. That off-SM detour wastes memory bandwidth and adds hundreds of cycles of latency. Within a Thread Block Cluster, two distinct on-chip SRAM mechanisms eliminate that round-trip.
+Without a cross-SM interconnect, two thread blocks that need to exchange partial sums or share an input tile must write data out to L2 or HBM and wait for a global memory round-trip. A partial sum is an intermediate total that another block still needs to add to. The off-SM detour wastes memory bandwidth and adds hundreds of cycles of latency. Within a Thread Block Cluster, two distinct on-chip SRAM mechanisms eliminate that round-trip. SRAM is the fast memory built from transistors that sits on the chip itself.
 
-Distributed Shared Memory stitches the local `__shared__` memory of every CTA in the cluster into a single unified address space over the dedicated SM-to-SM cluster network. Any thread block in the cluster can perform loads, stores, or `atomicAdd` operations directly into another member block's shared memory via `cluster.map_shared_rank(ptr, target_rank)`. This bypasses both HBM DRAM and the L2 cache. To avoid remote bank serialization, warps accessing remote DSMEM should read or write contiguous, 32-byte-aligned sectors in unique address ranges.
+Distributed Shared Memory, or DSMEM, stitches the local `__shared__` memory of every CTA in the cluster into a single unified address space. It travels over the dedicated SM-to-SM cluster network. Any thread block in the cluster can perform loads, stores, or `atomicAdd` operations directly into another member block's shared memory via `cluster.map_shared_rank(ptr, target_rank)`. A rank is the index of a block inside its cluster. This path bypasses both HBM DRAM and the L2 cache. To avoid remote bank serialization, warps accessing remote DSMEM should read or write contiguous, 32-byte-aligned sectors in unique address ranges. Bank serialization is what happens when several threads hit the same memory bank at once, so their accesses queue up one after another.
 
-Underneath DSMEM sits Scratch Memory, a separate hardware-managed on-chip SRAM region that is completely invisible to kernel code. The GPU uses Scratch Memory automatically to track `cluster.sync()` barrier arrival counters, group progress, and DSMEM access flags. If a large sixteen-block cluster or complex synchronization pattern exceeds the dedicated Scratch SRAM capacity, the hardware transparently spills coordination metadata to L1 and L2 backed local memory to preserve correctness.
+Underneath DSMEM sits Scratch Memory. This is a separate, hardware-managed on-chip SRAM region that kernel code cannot see. The GPU uses Scratch Memory automatically to track `cluster.sync()` barrier arrival counters, group progress, and DSMEM access flags. Think of it as the bookkeeping drawer behind the counter, where the staff keep the order tickets. If a large sixteen-block cluster or complex synchronization pattern exceeds the dedicated Scratch SRAM capacity, the hardware transparently spills coordination metadata to L1 and L2 backed local memory to preserve correctness. The drawer overflows into a bigger cabinet, which is slower but still correct.
 
 ### 4.3 Launching and coordinating a Thread Block Cluster
 
-Launching a Thread Block Cluster requires either compile-time `__cluster_dims__` annotations or runtime configuration with `cudaLaunchKernelEx` and `cudaLaunchAttributeClusterDimension`. Inside the kernel, every block in the cluster must declare the exact same dynamic shared memory size and synchronize around remote DSMEM accesses using `cluster.sync()`.
+Launching a Thread Block Cluster requires either compile-time `__cluster_dims__` annotations or runtime configuration with `cudaLaunchKernelEx` and `cudaLaunchAttributeClusterDimension`. Compile-time means the cluster shape is written into the kernel source. Runtime means the host sets it when it launches. Inside the kernel, every block in the cluster must declare the exact same dynamic shared memory size. They also synchronize around remote DSMEM accesses using `cluster.sync()`. If one block declared a different size, the cluster would not agree on the layout of the shared buffers.
 
-In `MyClusterKernel` below, each block initializes its local `shared_buffer` and waits at `cluster.sync()` so all member buffers are ready. Each block then maps a DSMEM pointer to Block 0's shared memory via `cluster.map_shared_rank(shared_buffer, 0)`. Non-zero ranks execute an on-chip `atomicAdd` directly into Block 0's shared memory over the SM-to-SM network. A second `cluster.sync()` barrier ensures all remote updates finish before Block 0 reads the combined result.
+Read `MyClusterKernel` in three beats. First, each block fills its own `shared_buffer` and waits at `cluster.sync()`, so every member has its buffer ready. Second, each block maps a DSMEM pointer to Block 0's shared memory through `cluster.map_shared_rank(shared_buffer, 0)`. Non-zero ranks then run an on-chip `atomicAdd` straight into Block 0's shared memory over the SM-to-SM network. Third, a second `cluster.sync()` makes sure all of those remote updates finish before Block 0 reads the combined result. The two barriers are the handshake. Without the first, a block could read a neighbor's buffer before it was filled. Without the second, Block 0 could print before the adds land.
+
+The host code below sets the cluster size at runtime. It uses a cluster of two blocks, which is the CTA pair pattern covered in the next part of this section.
 
 ```cpp
 // Host launch and device kernel for a Thread Block Cluster using DSMEM + cluster.sync()
@@ -584,11 +626,13 @@ void launchClusterExample(void* args[]) {
 
 ### 4.4 Thread Block Pairs, TMA multicast versus DSMEM, and Table 10-4
 
-A single thread block often lacks the register file, Shared Memory, or Tensor Memory capacity to compute a 256 by 256 output tile by itself. Pairing two thread blocks into a Thread Block Pair coschedules them onto adjacent SMs inside a GPC so they operate as one double-sized logical unit. Each CTA loads half of the input subtile into its local Shared Memory and holds half of the accumulator in its per-SM Tensor Memory.
+A single thread block often lacks the register file, Shared Memory, or Tensor Memory capacity to compute a 256 by 256 output tile by itself. The register file is the fast per-thread storage, and Tensor Memory is the on-SM memory that holds Tensor Core accumulators. Pairing two thread blocks into a Thread Block Pair coschedules them onto adjacent SMs inside a GPC. They then operate as one double-sized logical unit. Each CTA loads half of the input subtile into its local Shared Memory and holds half of the accumulator in its per-SM Tensor Memory. The accumulator is the running result that the Tensor Cores keep adding to.
 
-In CUTLASS, this hardware capability is exposed as a 2-SM Unified MMA GEMM using `tcgen05.mma` with `cta_group::2`. As shown in Table 10-4, pairing two CTAs over DSMEM cuts global load transactions in half, boosts L2 cache hit rate by thirty-five percentage points, halves DRAM bandwidth per CTA, and yields a forty percent execution speedup.
+In CUTLASS, this hardware capability is exposed as a 2-SM Unified MMA GEMM using `tcgen05.mma` with `cta_group::2`. CUTLASS is NVIDIA's library of templated matrix-multiply code, and UMMA is the unified matrix multiply-accumulate instruction on Blackwell. As shown in Table 10-4, pairing two CTAs over DSMEM cuts global load transactions in half, boosts L2 cache hit rate by thirty-five percentage points, halves DRAM bandwidth per CTA, and yields a forty percent execution speedup. The point to take away is that the pair reuses one loaded tile instead of loading it twice.
 
-Engineers also need a clear rule for choosing between TMA multicast to `shared::cluster` and DSMEM pointer sharing via `cluster.map_shared_rank()`. Choose TMA multicast when per-block tile reuse is high or the cluster size is large, because TMA broadcasts one L2 fetch into every CTA's local Shared Memory simultaneously for repeated local reads. Choose DSMEM pointer sharing when Shared Memory capacity is tight or the cluster size is small and each follower block reads its slice of the leader's tile only once.
+Engineers also need a clear rule for choosing between two ways of sharing data inside a cluster. The first is TMA multicast to `shared::cluster`. TMA stands for Tensor Memory Accelerator, the hardware unit that moves tiles without using threads. The second is DSMEM pointer sharing through `cluster.map_shared_rank()`. Choose TMA multicast when per-block tile reuse is high or the cluster size is large. TMA then broadcasts one L2 fetch into every CTA's local Shared Memory at the same time, so each block can read its copy repeatedly. Choose DSMEM pointer sharing when Shared Memory capacity is tight or the cluster size is small. In that case each follower block reads its slice of the leader's tile only once, so keeping a copy in every block would waste space.
+
+The table compares two independent blocks with a CTA pair, and then gives the rule for choosing between the two sharing methods.
 
 | Metric or Architecture Parameter | Two Independent CTAs (No DSMEM) | CTA Pair with DSMEM (`clusterDim.x = 2`, `2-SM UMMA`) | Improvement / Rule |
 |---|---:|---:|---|
@@ -602,11 +646,13 @@ Engineers also need a clear rule for choosing between TMA multicast to `shared::
 
 ### 4.5 Combining warp specialization with Thread Block Clusters and Table 10-5
 
-In single-block warp specialization, each block still loads its own copy of the input tiles from global memory. Combining `<cuda/pipeline>` asynchronous copies, three-role warp specialization, and Thread Block Cluster DSMEM sharing in `warp_specialized_cluster_pipeline` removes those duplicate inter-block loads. The leader block (`cluster_rank == 0`) uses its loader warp (`warp_id == 0`) to stage the 128 by 128 input tiles once into its own Shared Memory.
+In single-block warp specialization, each block still loads its own copy of the input tiles from global memory. That is wasteful when neighboring blocks need the same tiles. Combining `<cuda/pipeline>` asynchronous copies, three-role warp specialization, and Thread Block Cluster DSMEM sharing in `warp_specialized_cluster_pipeline` removes those duplicate inter-block loads. The leader block, where `cluster_rank == 0`, uses its loader warp, `warp_id == 0`, to stage the 128 by 128 input tiles once into its own Shared Memory. The other blocks then read those tiles over DSMEM instead of loading them again.
 
-Remember that a `cuda::pipeline` created with `thread_scope_block` is scoped strictly to the single CTA that created it. Calling `pipe.producer_commit()` in the leader block does not synchronize `pipe.consumer_wait()` in follower blocks. Instead, the leader block waits locally via `cuda::pipeline_consumer_wait_prior<1>(pipe)`, and all blocks in the cluster call `cluster.sync()` before mapping pointers to the leader's tiles via `cluster.map_shared_rank(A_tile_local, 0)`.
+Remember that a `cuda::pipeline` created with `thread_scope_block` is scoped strictly to the single CTA that created it. The scope is the set of threads that the pipeline's handshake covers. Calling `pipe.producer_commit()` in the leader block does not synchronize `pipe.consumer_wait()` in follower blocks. Instead, the leader block waits locally via `cuda::pipeline_consumer_wait_prior<1>(pipe)`. All blocks in the cluster then call `cluster.sync()` before mapping pointers to the leader's tiles via `cluster.map_shared_rank(A_tile_local, 0)`. The cluster barrier is the signal that the leader's copy has finished.
 
-Each block then computes a disjoint horizontal band of rows in its compute warp and writes its band to global memory in its storer warp. A second `cluster.sync()` ensures all follower blocks finish reading DSMEM before the leader overwrites the tile buffer on the next iteration. Across the four-stage progression in Table 10-5, this cluster pipeline drives execution time down to 17.2 ms—a 2.40x total speedup over naive tiling at ninety-seven percent warp execution efficiency.
+Each block then computes a disjoint horizontal band of rows in its compute warp and writes its band to global memory in its storer warp. A band is a strip of rows, so every block works on a different strip of the same tile. A second `cluster.sync()` ensures all follower blocks finish reading DSMEM before the leader overwrites the tile buffer on the next iteration. Across the four-stage progression in Table 10-5, this cluster pipeline drives execution time down to 17.2 ms. That is a 2.40x total speedup over naive tiling, at ninety-seven percent warp execution efficiency.
+
+The code below shows the whole pattern. Read it in five steps, one per numbered comment. The leader stages the tiles. The cluster publishes them. Each block computes its band. The storer writes the band. The final barrier protects the buffer for the next tile.
 
 ```cpp
 // Multi-block warp-specialized cluster pipeline using DSMEM and a leader block-scoped pipeline
@@ -725,11 +771,11 @@ void warp_specialized_cluster_pipeline(const float* __restrict__ A_global,
 
 ## 5. Commands and Configurations That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 10. Shell commands and host configuration snippets that require an attached Hopper or Blackwell GPU are marked untested here.
+Picture your first afternoon on a new Hopper or Blackwell node. A pipelined kernel builds without complaint, then fails at launch with a shared-memory error. The commands in this section are the ones you would reach for in that moment. Treat them as a checklist of what to verify, and run them yourself on the hardware you have.
 
 ### 5.1 Compile and profile pipeline, cooperative grid, and cluster kernels
 
-Compiling kernels that use `<cuda/pipeline>` and Thread Block Clusters requires C++20 mode and an architecture-accelerated target such as `sm_90a` or `sm_100a`. Profiling with Nsight Compute verifies whether asynchronous copies overlap computation and whether L2 throughput climbs as expected.
+Compiling kernels that use `<cuda/pipeline>` and Thread Block Clusters requires C++20 mode and an architecture-accelerated target such as `sm_90a` or `sm_100a`. The `a` suffix turns on the architecture-specific instructions that these features need. Read the flags in the first command as a short list. `-O3` asks the compiler for its highest optimization level. `-std=c++20` selects the C++ language version. `-lineinfo` keeps a link from compiled code back to your source lines, so the profiler can point at the line that is slow. Profiling with Nsight Compute verifies whether asynchronous copies overlap computation and whether L2 throughput climbs as expected. A good first profile checks the overlap, then the cache throughput, then whether the cluster stays resident on the GPU.
 
 ```bash
 # 1. Compile double-buffered, warp-specialized, and cluster pipeline kernels for Hopper (sm_90a) or Blackwell (sm_100a) (untested here)
@@ -743,7 +789,7 @@ ncu --set full --section LaunchStats --section Occupancy \
 
 ### 5.2 Enable dynamic shared memory above 48 KB on Blackwell
 
-By default, CUDA restricts dynamic Shared Memory per thread block to 48 KB unless the host code explicitly opts in to the device's extended Shared Memory limit. Always query `cudaDevAttrMaxSharedMemoryPerBlockOptin` and call `cudaFuncSetAttribute` with `cudaFuncAttributeMaxDynamicSharedMemorySize` before launching large multi-stage or three-role kernels.
+By default, CUDA restricts dynamic Shared Memory per thread block to 48 KB. Unless the host code explicitly opts in to the device's extended Shared Memory limit, the kernel cannot use more than that. Think of the default as the standard locker size, and the opt-in as asking the front desk for a bigger locker. Always query `cudaDevAttrMaxSharedMemoryPerBlockOptin` first. Then call `cudaFuncSetAttribute` with `cudaFuncAttributeMaxDynamicSharedMemorySize` before launching large multi-stage or three-role kernels.
 
 ```cpp
 // Host setup to enable 150,528 B (TILE_SIZE=112) or 196,608 B (TILE_SIZE=128) dynamic SMEM per block (untested here)
@@ -760,7 +806,11 @@ cudaFuncSetAttribute(warp_specialized_cluster_pipeline,
 
 ## 6. How It Fails: Six Intra-Kernel Pipelining, Cooperative Grid, and Cluster Failure Modes
 
-Synchronizing asynchronous pipelines, whole-device grids, and multi-SM clusters introduces subtle concurrency hazards. The table below catalogs the six primary failure modes from Chapter 10, their production symptoms, root causes, and remedies.
+Late at night, a kernel that passed every test on a desktop GPU hangs on a production node. Nothing in the source looks wrong at first glance. Synchronizing asynchronous pipelines, whole-device grids, and multi-SM clusters introduces subtle concurrency hazards. A hazard here is a situation where the code looks right but the timing or the rules are wrong. The failures often show up as a hang, a wrong answer, or a launch error, and the symptom can be far from the cause. The table below catalogs the six primary failure modes from Chapter 10. For each one it lists the production or profiler symptom, the root cause, and the fix.
+
+Use the table as a first-pass filter, not as a final answer. Many real incidents combine two rows, for example a barrier that was placed inside a branch and a launch that was never clamped. Read the symptom first, then check the rows that match it, then check the rest.
+
+When you debug one of these, start from the symptom column. A hang points toward a barrier that some thread never reached. A launch error points toward sizing or opt-in. A wrong answer in only part of a tile points toward a block that read another block's data too early.
 
 | # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
@@ -775,13 +825,15 @@ Synchronizing asynchronous pipelines, whole-device grids, and multi-SM clusters 
 
 ## 7. Hands-On Lab: Verify Pipeline Speedups, SMEM Budgets, Persistent Kernels, Cooperative Grids, and Cluster DSMEM
 
-This deterministic verification lab runs on any Linux machine or Nebius GPU VM with Python 3.10 or newer using standard library Python. It validates all four stages of Table 10-5, dynamic Shared Memory budgets, persistent-kernel launch savings, cooperative grid clamping, and Thread Block Cluster DSMEM rules.
+Before you spend time on a GPU node, you want to know whether the numbers in this chapter even add up. The lab in this section is a deterministic check. It does not need a GPU. It runs the arithmetic and the rule checks from this chapter in plain Python, so you can confirm the numbers before you spend time on hardware. It runs on any Linux machine or Nebius GPU VM with Python 3.10 or newer, using only the standard library. It validates all four stages of Table 10-5, the dynamic Shared Memory budgets, the persistent-kernel launch savings, the cooperative grid clamping, and the Thread Block Cluster DSMEM rules. These steps were not run on a live cluster for this handbook. The expected output below is the output the script prints.
 
-Run `code/part10/intra_kernel_pipelining_lab.py`:
+Run `code/part10/intra_kernel_pipelining_lab.py` from the root of the repository. The script needs no GPU and no extra packages.
 
 ```bash
 python3 code/part10/intra_kernel_pipelining_lab.py
 ```
+
+The output lists each check with a PASS or FAIL label. A failing line tells you which rule the code no longer matches.
 
 Expected output:
 
@@ -820,15 +872,17 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. How many bytes of dynamic Shared Memory does `gemm_tiled_pipeline` need with a tile size of 32? Give the answer for two stages and for three stages.
-2. `warp_specialized_pipeline_kernel` runs at tile size 112, then at tile size 160. Compare each footprint with Blackwell's per-block limit.
-3. `warp_specialized_cluster_pipeline` runs at tile size 128. What is its Shared Memory footprint? How many rows does each CTA process in a two-block cluster, and in a four-block cluster?
-4. Compare the four stages in Tables 10-2, 10-3, and 10-5: naive tiling, double buffering, single-block warp specialization, and the cluster pipeline. For each, list the runtime and the warp execution efficiency.
+Each exercise below uses one situation from this chapter. Work through them in order, because later ones build on the arithmetic of the earlier ones.
+
+1. A kernel named `gemm_tiled_pipeline` uses a tile size of 32. Work out its dynamic Shared Memory need with two stages. Then work out the need with three stages.
+2. A kernel named `warp_specialized_pipeline_kernel` runs at tile size 112. Compare its footprint with Blackwell's per-block limit. Then repeat the comparison at tile size 160.
+3. A kernel named `warp_specialized_cluster_pipeline` runs at tile size 128. What is its Shared Memory footprint? How many rows does each CTA process in a two-block cluster? How many rows does each CTA process in a four-block cluster?
+4. Tables 10-2, 10-3, and 10-5 show four stages. Pick naive tiling first. What are its runtime and warp execution efficiency? Then do the same for double buffering, the single-block warp specialization, and the cluster pipeline.
 5. A job has 1,000 tasks of 0.1 ms each, and every launch costs 0.02 ms on a 132-SM GPU. What are the launch overhead and the total time for 1,000 separate launches? Compare that with one persistent launch of 132 blocks of 256 threads.
-6. That persistent launch uses how many threads? Why do 100 percent of the SMs stay active when per-SM thread occupancy is only 12.5 percent?
-7. A two-phase algorithm runs 1,000 iterations over 1,000,000 elements, with 256 threads per block on a 132-SM GPU. `cudaOccupancyMaxActiveBlocksPerMultiprocessor` reports four active blocks per SM. How many launches does `combinedKernel` remove?
-8. For the same grid, compare the unclamped block count with `maxCoopGrid`. What happens if `gridSize` is not clamped?
-9. Table 10-4 pairs two CTAs over DSMEM. State the change in global loads, L2 hit rate, DRAM bandwidth per CTA, and kernel time. Then state when to choose TMA multicast to `shared::cluster` instead of DSMEM `map_shared_rank`.
+6. How many threads does that persistent launch use? Why do 100 percent of the SMs stay active when per-SM thread occupancy is only 12.5 percent?
+7. A two-phase algorithm runs 1,000 iterations over 1,000,000 elements. It uses 256 threads per block on a 132-SM GPU. `cudaOccupancyMaxActiveBlocksPerMultiprocessor` reports four active blocks per SM. How many launches does `combinedKernel` remove?
+8. For the same grid, what is the unclamped block count? Compare it with `maxCoopGrid`. What happens if `gridSize` is not clamped?
+9. Table 10-4 pairs two CTAs over DSMEM. What changes for global loads? What changes for the L2 hit rate? What changes for DRAM bandwidth per CTA? What changes for kernel time? When would you choose TMA multicast to `shared::cluster` instead of DSMEM `map_shared_rank`?
 10. Why does `pipe.producer_acquire()` inside `if (warp_id == 0)` hang on a unified CTA pipeline?
 11. Why do follower blocks read stale data in `warp_specialized_cluster_pipeline` if they call `pipe.consumer_wait()` on the leader's pipeline without `cluster.sync()`?
 
@@ -1008,4 +1062,5 @@ The primary source for this chapter is *AI Systems Performance Engineering* by C
 - All `nvcc`, `ncu`, `cudaLaunchCooperativeKernel`, and `cudaLaunchKernelEx` commands in Section 5 (`GPCs`, `ILP` vs TLP, `cp.async.bulk.tensor`, `232,448` B total SMEM carveout, cross-referenced with Chapter `10.13` in `2026`) are marked untested here because no Hopper or Blackwell GPU was available for this chapter.
 - Low-level PTX barrier arrival count encodings for `mbarrier.init` and `mbarrier.arrive.expect_tx` inside `<cuda/pipeline>` implementation headers are not in the corpus. They are omitted in favor of the C++ `<cuda/pipeline>` and Cooperative Groups APIs covered in Chapter 10.
 - Validation notes: Table 10-4 reports `0.6x` relative time and calls it a forty percent speedup, which corresponds to forty percent less time (`1.67x` faster). All lab checks in `code/part10/intra_kernel_pipelining_lab.py` pass (`25 passed, 0 failed`).
+
 

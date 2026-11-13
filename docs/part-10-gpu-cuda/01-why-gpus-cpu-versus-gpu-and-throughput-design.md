@@ -24,11 +24,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-From the outside, an AI inference service looks just like a standard web microservice. A client sends an HTTP POST request carrying a JSON prompt, and the server returns a JSON response. That surface similarity tempts platform teams to scale and troubleshoot AI systems using web-application instincts. That mistake causes some of the most expensive outages and hardware waste in production infrastructure.
+Picture an AI inference service that looks, from the outside, exactly like the web services your team already runs. A client sends an HTTP POST request (a web request that carries its data in the body) with a JSON prompt (JavaScript Object Notation, a plain text format for structured data), and the server sends a JSON response back. The dashboards look familiar, the load balancer looks familiar, and so the platform team reaches for the same habits they use on a web tier. Those habits are exactly where the expensive mistakes start.
 
-A traditional web application is almost always bound by input and output waits. Host CPU threads spend most of their time waiting on database queries, disk reads, or upstream network sockets. Adding more stateless CPU servers behind a load balancer increases concurrency cleanly. An AI model, by contrast, is bound by dense matrix math and memory bandwidth. Generating a single response requires trillions of multiply-accumulate operations and terabytes per second of memory movement. Adding 100 standard CPU servers will not make a single prompt run faster. Instead, it saturates the network with synchronization traffic and stalls on motherboard DDR memory buses.
+A traditional web application spends most of its life waiting. A thread might wait on a database query, a disk read, or a reply from another service over the network. While it waits, the operating system hands the CPU core to another request. That is why adding more stateless servers behind a load balancer (a component that spreads incoming requests across servers) scales so cleanly. An AI model is the opposite. It is busy almost all the time, doing dense matrix math (large grids of multiply and add operations) and pushing huge amounts of data through memory. One response can need trillions of multiply-accumulate operations, which are the basic multiply-then-add steps behind all that math, along with terabytes per second of memory traffic. Adding 100 standard CPU servers will not make one prompt run faster. Instead, the servers spend their time exchanging synchronization traffic over the network and waiting on the memory bus inside each motherboard.
 
-Even after you deploy GPUs, daily production incidents require a silicon-level model of throughput design. A training job can sit at 15 percent GPU utilization while every host CPU core is pegged at 100 percent. A data science team can migrate legacy FP32 code from V100 GPUs to expensive H100 GPUs and see almost zero speedup. A coding assistant can stream words rapidly once it starts, yet freeze for 10 seconds before the first word appears. A training cluster can report 100 percent utilization in `nvidia-smi` while wasting 70 percent of its actual compute capacity.
+Even after you deploy GPUs, daily production incidents need a silicon-level view of throughput to explain them. A training job can sit at 15 percent GPU utilization while every host CPU core is pegged at 100 percent. A data science team can move legacy FP32 code (32-bit floating point, the older and wider number format) from V100 GPUs to expensive H100 GPUs and see almost no speedup. A coding assistant can stream words quickly once it starts, yet freeze for 10 seconds before the first word appears. A training cluster can report 100 percent utilization in `nvidia-smi` (the NVIDIA System Management Interface command) while wasting 70 percent of its real compute capacity. Each of these symptoms has a cause on the hardware side, and the rest of this chapter builds the picture that lets you connect a symptom to its cause.
 
 ```text
 Production Symptoms vs Hardware Reality (V1 Ch 1-4, ASP Ch 1):
@@ -38,14 +38,14 @@ Production Symptoms vs Hardware Reality (V1 Ch 1-4, ASP Ch 1):
   - 100% nvidia-smi, 30% Goodput:     70% to 75% of cluster capacity is lost to AllReduce waits, data stalls, and restarts
 ```
 
-This chapter builds the foundational model of latency-oriented CPU design versus throughput-oriented GPU design. We derive the exact formulas for peak floating-point operations, memory bandwidth, PCIe transfer overhead, and cluster goodput. Finally, we connect the silicon inside one GPU to the full-stack AI factory around it.
+The chapter starts with the basic difference between a CPU and a GPU. A CPU is built to finish one task quickly, while a GPU is built to get through a huge crowd of small tasks at the same time. From there it works through the formulas that set the exact speed ceilings for peak math, memory bandwidth, and PCIe transfers (PCI Express, the bus that links cards to the server board). It then adds the cluster-level measure called goodput, which is useful work actually finished per second rather than work the hardware could theoretically do. Last, it connects the silicon inside one GPU to the full AI factory around it.
 
 :::tip In one minute
-- **Web vs AI scaling:** Web infrastructure scales horizontally around external I/O waits. AI infrastructure is governed by General Matrix Multiply compute, High-Bandwidth Memory speed, and GPU-to-GPU interconnect bandwidth.
-- **CPU vs GPU silicon budget**. CPUs dedicate roughly 35 percent of their die to control logic, 45 percent to caches, and 20 percent to arithmetic units. GPUs dedicate roughly 80 percent of their die to compute units, 15 percent to registers and L1 memory, and 5 percent to control logic.
-- **SIMT warps and Tensor Cores**. NVIDIA GPUs execute threads in lockstep groups of 32 called warps. They hide memory latency by switching warps in a single cycle inside the register file. Scalar CUDA cores execute one multiply-accumulate per cycle, whereas Tensor Cores execute an entire 4x4 matrix multiply-accumulate in one operation.
-- **Prefill vs Decode**. Reading the prompt during prefill is compute-bound and determines Time To First Token. Generating tokens sequentially during decode is memory-bandwidth-bound and determines Time Per Output Token.
-- **Goodput over vanity utilization**. `nvidia-smi` utilization only shows that at least one kernel is active. Goodput measures actual useful tokens or training samples completed per second divided by the theoretical speed of light ceiling.
+- Why does the web playbook fail? Web infrastructure scales horizontally around external I/O waits. AI infrastructure is governed by General Matrix Multiply compute, High-Bandwidth Memory speed, and GPU-to-GPU interconnect bandwidth.
+- How do CPU and GPU chips differ? CPUs dedicate roughly 35 percent of their die to control logic, 45 percent to caches, and 20 percent to arithmetic units. GPUs dedicate roughly 80 percent of their die to compute units, 15 percent to registers and L1 memory, and 5 percent to control logic.
+- What makes a GPU fast at matrix math? NVIDIA GPUs execute threads in lockstep groups of 32 called warps. They hide memory latency by switching warps in a single cycle inside the register file. Scalar CUDA cores execute one multiply-accumulate per cycle, whereas Tensor Cores execute an entire 4x4 matrix multiply-accumulate in one operation.
+- Which phase of an LLM request is slow? Reading the prompt during prefill is compute-bound and determines Time To First Token. Generating tokens sequentially during decode is memory-bandwidth-bound and determines Time Per Output Token.
+- Why is utilization not enough? `nvidia-smi` utilization only shows that at least one kernel is active. Goodput measures actual useful tokens or training samples completed per second divided by the theoretical speed of light ceiling.
 :::
 
 ---
@@ -54,28 +54,23 @@ This chapter builds the foundational model of latency-oriented CPU design versus
 
 **Prerequisites**: Review Linux processes, memory, NUMA topology, and PCIe fundamentals from Chapters 1.8, 1.10, and 1.17. You should also be familiar with NVIDIA server families and rack power envelopes from Chapters 9.1 through 9.5.
 
-**Outcomes**: After completing this chapter, you will be able to:
-1. Contrast stateless web scaling against heterogeneous CPU and GPU execution. You will trace an AI request across CPU preprocessing, PCIe DMA transfer, GPU High-Bandwidth Memory, and the autoregressive decode loop.
-2. Explain how the end of Dennard Scaling split processor design between latency-oriented CPUs and throughput-oriented SIMT GPUs. You will also map hardware terminology across OpenCL, AMD, NVIDIA, and Intel architectures.
-3. Calculate theoretical peak scalar FLOPs, GDDR and HBM memory bandwidth, and PCIe Gen1 through Gen6 throughput including encoding overhead and pinned memory effects.
-4. Trace GPU evolution from fixed-function graphics pipelines to unified CUDA shaders, Volta Tensor Cores, Ampere MIG, the Hopper Transformer Engine, and Blackwell NVL72 racks. You will also evaluate the precision cascade from FP64 to FP4.
-5. Separate the compute-bound prefill phase from the memory-bandwidth-bound decode phase. You will explain how Continuous Batching and PagedAttention prevent KV cache fragmentation crashes.
-6. Compute cluster goodput, apply the dense transformer training FLOP heuristic, evaluate DeepSeek-V3 sparse Mixture-of-Experts co-design, and model energy and job-suite parallel efficiency trade-offs.
-7. Execute the eight-step Linux host qualification sequence and use staged latency tracing to isolate CPU preprocessing bottlenecks from GPU execution bottlenecks.
+The chapter follows one AI request from start to finish. It begins with the contrast between stateless web scaling and a mix of CPU and GPU work, then traces the request across CPU preprocessing, the PCIe transfer, GPU High-Bandwidth Memory, and the decode loop. It explains why CPUs and GPUs were built differently in the first place, and how the precision cascade from FP64 down to FP4 trades bits for speed. It covers the arithmetic for peak FLOPs, memory bandwidth, and PCIe throughput, and it separates the compute-bound prefill phase from the memory-bound decode phase, where Continuous Batching and PagedAttention keep the key-value (KV) cache from fragmenting. The last sections cover goodput, the eight-step host check, and a staged latency lab.
 
 ---
 
 ## 1. Why AI breaks the web-scaling mindset
 
-When a platform engineer treats an LLM service like a stateless web tier, the cluster quickly hits an invisible wall. Adding more CPU nodes does not shrink response latency, and standard Ethernet networks collapse under synchronization traffic.
+Imagine a platform engineer who has spent years running web services. She is asked to speed up a slow language model endpoint, so she adds CPU nodes to the cluster. The latency chart barely moves, and the network graphs climb steadily. Her instincts were built on web services, and those instincts do not explain what she is seeing. This section shows why the same scaling move that helps a web tier does little for a model.
 
-A traditional web server is built to wait efficiently on external input and output. Think of a web tier like a busy hotel front desk where receptionists spend most of their time waiting on phone calls to housekeeping. Hiring more receptionists lets the desk handle more guests waiting in parallel. An AI model, by contrast, is like translating an entire encyclopedia page by page. The work is relentless arithmetic and page turning, so putting 100 clerks in separate buildings connected by slow walkie-talkies makes the job slower.
+A traditional web server is built to wait efficiently on external input and output. Think of a web tier as a busy hotel front desk, where the receptionists spend most of their time on hold, waiting for housekeeping to answer the phone. Hiring more receptionists lets the desk handle more guests at once, because each one spends most of the day waiting anyway. An AI model is more like translating an entire encyclopedia, page by page. The work is relentless arithmetic and page turning. Putting 100 clerks in separate buildings, connected by slow walkie-talkies, does not finish the book faster. It makes the job slower, because every page now needs a conversation across the gap.
 
 ### 1.1 I/O-bound web infrastructure versus compute- and memory-bound AI
 
-In cloud-native web engineering, a slow endpoint almost always points to an external I/O bottleneck. Common culprits include database locks, object-storage reads, or upstream REST calls. While a thread waits on a network socket, the operating system scheduler yields the CPU core to another request. Horizontal scaling works because independent web requests rarely share dense mathematical state.
+Suppose a web endpoint suddenly takes much longer to answer. An experienced web engineer usually starts by checking the database, the object store, and any upstream REST calls, because slow web requests almost always wait on something outside the process. The usual repair is to add capacity or fix a slow query. While one thread waits on a network socket, the operating system scheduler gives the CPU core to another request. Horizontal scaling works because independent web requests rarely share dense mathematical state.
 
-AI workloads invert every one of those assumptions. First, neural networks spend the vast majority of their runtime executing General Matrix Multiply operations across billions of learned parameters. Second, multiplying those matrices forces the processor to stream gigabytes of model weights from memory into the arithmetic units on every step. Third, when a model exceeds the memory of one accelerator, it is split across multiple GPUs. Those GPUs synchronize activations and gradients continuously over NVLink, InfiniBand, or RoCEv2 fabrics.
+AI workloads reverse every one of those assumptions. First, neural networks spend most of their runtime executing General Matrix Multiply operations across billions of learned parameters. Second, each multiplication forces the processor to stream gigabytes of model weights from memory into the arithmetic units, and it does this again on every step. Third, when a model is too large for one accelerator, it is split across several GPUs. Those GPUs must exchange activations and gradients (the intermediate values and the learning signals that flow between layers) all the time over NVLink, InfiniBand, or RoCEv2 fabrics. The bottleneck is no longer waiting for an outside service. The bottleneck is the arithmetic and the movement of data inside the machine.
+
+The arithmetic makes this concrete. Take a 70 billion parameter model stored in 16-bit formats. Each parameter takes 2 bytes, so the weights alone fill 140 GB. Reading that once from CPU memory takes hundreds of milliseconds, because a server's DDR5 memory delivers only a few hundred GB/s per socket. Reading it from GPU HBM3 or HBM3e takes tens of milliseconds per token, because the bus moves several TB/s. The same bytes, read from a different place, make a very different speed.
 
 ```text
 Memory Bandwidth Wall for a 70B Parameter LLM in FP16 / BF16 (V1 Ch 1, V1 Ch 2):
@@ -86,7 +81,9 @@ Memory Bandwidth Wall for a 70B Parameter LLM in FP16 / BF16 (V1 Ch 1, V1 Ch 2):
 
 ### 1.2 The four physical stages of an AI request on a heterogeneous node
 
-Neither a CPU alone nor a GPU alone can serve a production AI model. Every modern AI server is a heterogeneous system with a strict division of labor between the host subsystem and the device subsystem. The host subsystem comprises the CPU and DDR5 system RAM, which run the Linux kernel, scheduler agents, storage drivers, and data preprocessing. The device subsystem comprises the GPU silicon and its on-package High-Bandwidth Memory, which execute massively parallel matrix math.
+Neither a CPU alone nor a GPU alone can serve a production AI model. Every modern AI server is a heterogeneous system, which means it mixes different kinds of processors and gives each one a specific job. The host subsystem is the CPU and its DDR5 system RAM. It runs the Linux kernel, the scheduler agents, the storage drivers, and the data preprocessing. The device subsystem is the GPU silicon and the High-Bandwidth Memory packaged next to it. It runs the massively parallel matrix math. A request moves back and forth between these two subsystems, and each crossing has its own cost.
+
+Take a single prompt as it arrives at an inference server. The diagram below follows it from the front door, through the host, into the GPU, and out again.
 
 ```mermaid
 flowchart TB
@@ -105,7 +102,7 @@ flowchart TB
     DevGPU -->|"4. Autoregressive Loop<br/>Next Token ID to CPU Decode"| Tok
 ```
 
-When a user sends a prompt to an inference server, four physical stages execute in sequence.
+When a user sends a prompt to an inference server, four physical stages run in sequence. The table gives each stage, the hardware it uses, and the place where it usually slows down. Read it as a map of where a request spends its time.
 
 | Stage | Subsystem | Hardware and software activity | Primary bottleneck risk |
 |---|---|---|---|
@@ -114,59 +111,64 @@ When a user sends a prompt to an inference server, four physical stages execute 
 | **Stage 3: Parallel Matrix Execution** | GPU SMs, Tensor Cores, and HBM | Streams model weights and context state from HBM into Streaming Multiprocessors and Tensor Cores for parallel multiply-accumulate math. | HBM memory bandwidth saturation or unoptimized scalar precision. |
 | **Stage 4: Autoregressive Loop** | GPU and Host loop | Emits a probability distribution for the single next token, appends that token ID to the sequence, and repeats Stage 3 for every output word. | Sequential token-by-token weight streaming across the entire model. |
 
+Stage 1 is where the CPU earns its keep. It turns text into token IDs, which are the integer codes a model reads, and it groups waiting requests into a batch. Stage 2 is the crossing. The data travels over PCIe or NVLink-C2C, and it has to land in memory the GPU can reach without help from the CPU. Stage 3 is where the GPU does its work, reading the weights from HBM and multiplying them at high speed. Stage 4 is the one that surprises people. The model produces one token, and then the whole cycle repeats for the next token. A long answer means many trips through Stage 3, so a slow loop multiplies every small delay.
+
 ### 1.3 Three classic infrastructure bottlenecks on day one
 
-Mapping those four stages explains the three hardware walls you will diagnose on production clusters.
+Your pager goes off in the middle of the night. The GPUs look busy on paper, but the answers come out slowly. Mapping the four stages above explains most of what you will see, because each slow answer points to one stage. Three walls account for almost every case.
 
-First, the Memory Wall occurs on GPU HBM during autoregressive generation. Because the GPU must read all model weights from HBM for every single token produced, memory bandwidth limits token generation speed. Engineers mitigate this wall by deploying higher-bandwidth HBM such as H200 at 4.8 TB/s or B200 at 8.0 TB/s. They also quantize weights from 16-bit formats down to 8-bit or 4-bit formats, cutting the bytes moved per parameter in half or by four.
+The first is the Memory Wall, which sits on GPU HBM during autoregressive generation. The GPU must read all model weights from HBM for every single token it produces, so memory bandwidth sets the speed of token generation. Engineers push against this wall in two ways. They deploy higher-bandwidth HBM, such as H200 at 4.8 TB/s or B200 at 8.0 TB/s. They also quantize the weights, which means storing each number in a smaller format. Moving from 16-bit to 8-bit cuts the bytes moved per parameter in half, and moving to 4-bit cuts them to a quarter.
 
-Second, the Interconnect Wall appears when a 70B or 405B model is split across multiple GPUs using Tensor Parallelism. Those GPUs must synchronize partial sums after every transformer layer. Over a standard PCIe Gen5 x16 bus at roughly 63 to 64 GB/s per direction, GPUs spend most of their time waiting on the bus. High-speed NVLink fabrics at 900 GB/s on Hopper or 1,800 GB/s on Blackwell and 400G to 800G GPUDirect RDMA networks keep the compute units fed.
+The second is the Interconnect Wall. It appears when a 70B or 405B model is split across multiple GPUs using Tensor Parallelism, which divides each layer's math across the GPUs. Those GPUs must combine their partial sums after every transformer layer. Over a standard PCIe Gen5 x16 bus, which moves roughly 63 to 64 GB/s in each direction, the GPUs spend most of their time waiting for the bus. High-speed NVLink at 900 GB/s on Hopper or 1,800 GB/s on Blackwell, together with 400G to 800G GPUDirect RDMA networks (direct memory transfers between GPUs and network cards), keeps the compute units fed.
 
-Third, Host Starvation occurs when the CPU cannot feed the accelerators fast enough. In computer-vision or multimodal training, slow disk reads and CPU-bound JPEG decoding leave expensive GPUs sitting at 10 to 15 percent utilization waiting on a cheap CPU. Platform teams resolve host starvation using parallel NVMe storage, GPUDirect Storage to bypass CPU bounce buffers, and NVIDIA DALI to offload data augmentation directly onto the GPU.
+The third is Host Starvation, which happens when the CPU cannot feed the accelerators fast enough. In computer vision or multimodal training, slow disk reads and CPU-bound JPEG decoding leave expensive GPUs sitting at 10 to 15 percent utilization while they wait on a cheap CPU. The fix is to get the data to the GPU faster. Platform teams use parallel NVMe storage, GPUDirect Storage to skip the CPU bounce buffers (the staging copies the CPU would otherwise make), and NVIDIA DALI to move data augmentation (random crops, flips, and similar changes to training images) onto the GPU itself.
 
 ---
 
 ### 1.4 The performance engineer's daily work
 
-An AI systems performance engineer commands top salaries, and the reason is clear. The work has a direct effect on the bottom line. The role blends expertise across hardware, software, and algorithms. Engineers need low-level operating system knowledge, memory hierarchies, networking fundamentals, and languages such as Python and C++. They also need frameworks such as PyTorch, OpenAI's Triton, and NVIDIA's CUDA.
+Consider a Tuesday in the life of an AI systems performance engineer. A training run is noticeably slower than it was last week. Nobody changed the model. The engineer opens a profiler, finds one kernel that now waits on memory, and traces that wait back to a change in how the data loader batches its inputs. That single chain of cause and effect is the job. The role is hard to hire for because it sits between hardware, software, and algorithms, and the work pays off directly in cost and in delivery speed.
 
-On any given day, the engineer might examine GPU kernel efficiency, tune OS thread scheduling, analyze memory access patterns, raise network throughput, or debug distributed training. The core duties are benchmarking, profiling, debugging, optimizing, scaling, and managing resources. Hardware, software, and algorithm specialties must be codesigned together. Their trade-offs need to be understood as a set.
+The engineer needs low-level operating system knowledge, an understanding of memory hierarchies, networking fundamentals, and skill in languages such as Python and C++. The toolset includes frameworks such as PyTorch, OpenAI's Triton, and NVIDIA's CUDA. Each tool answers a different question, and knowing which question to ask is most of the skill.
 
-Benchmarking and profiling measure latency, throughput, memory usage, and other metrics under training and inference workloads. To find bottlenecks, combine NVIDIA Nsight Systems, NVIDIA Nsight Compute, and the PyTorch profiler. Automated performance tests should also run, so regressions are caught early in the development cycle.
+On any given day, the engineer might examine GPU kernel efficiency, tune OS thread scheduling, analyze memory access patterns, raise network throughput, or debug distributed training. The core duties are benchmarking, profiling, debugging, optimizing, scaling, and managing resources. Hardware, software, and algorithm specialties must be designed together, because a choice in one area changes the trade-offs in the others.
 
-Debugging traces each problem to its root cause. That cause might be a suboptimal CUDA kernel, unnecessary communication overhead, or an imbalance in the training or inference workload. The fix might be the latest NVIDIA Transformer Engine for matrix operations on modern LLMs. It might be a higher degree of parallelism for an embarrassingly parallel inference workload. It might also be better memory management in attention, which moves less data in and out of GPU RAM.
+Benchmarking and profiling measure latency, throughput, memory usage, and other metrics under training and inference workloads. A profiler is a tool that records where time and memory go during a run. To find bottlenecks, the engineer combines NVIDIA Nsight Systems, NVIDIA Nsight Compute, and the PyTorch profiler. Automated performance tests should also run on every change, so regressions are caught early in the development cycle rather than in production.
 
-Even minor code tweaks can produce major wins. A Python preprocessing step can hold up an entire training pipeline. Reimplement that step in C++, or use NVIDIA cuPyNumeric, a drop-in NumPy replacement that spreads array work across CPUs and GPUs.
+Debugging traces each problem to its root cause. That cause might be a suboptimal CUDA kernel (a small program that runs across many GPU threads), unnecessary communication overhead, or an imbalance in the training or inference workload. The fix might be the latest NVIDIA Transformer Engine for matrix operations on modern LLMs. It might be a higher degree of parallelism for an embarrassingly parallel inference workload, which is one where the pieces of work never need to talk to each other. It might also be better memory management in attention, which moves less data in and out of GPU RAM.
 
-Scaling from research to production is its own discipline. Moving from 8 GPUs to 80,000 GPUs should keep overhead low and efficiency high. That requires NVIDIA's Collective Communications Library (NCCL, pronounced "nickel") for all-reduce and other collectives in training. For distributed inference, the NVIDIA Inference Xfer Library (NIXL) moves data point to point across GPU memory and storage tiers. Optimize all-to-all and all-gather as well, since training and inference both use them heavily.
+Small code changes can produce large wins. A Python preprocessing step can hold up an entire training pipeline while the GPUs sit idle. The engineer can reimplement that step in C++, or use NVIDIA cuPyNumeric, a drop-in replacement for NumPy (the common Python array library) that spreads array work across CPUs and GPUs.
 
-Data placement across nodes uses data, tensor, and pipeline parallelism. A model too large for one GPU may need tensor or pipeline parallelism. A mixture-of-experts model can also use expert parallelism.
+Scaling from research to production is its own discipline. Moving from 8 GPUs to 80,000 GPUs should keep overhead low and efficiency high. That requires NVIDIA's Collective Communications Library (NCCL, pronounced "nickel") for all-reduce and other collective operations in training, where every GPU must share results with every other GPU. For distributed inference, the NVIDIA Inference Xfer Library (NIXL) moves data point to point across GPU memory and storage tiers. The engineer also optimizes all-to-all and all-gather, since training and inference both use them heavily.
 
-Resource management is the next duty. A model uses CPU cores, GPU memory, interconnect bandwidth, and storage I/O. The engineer keeps GPUs fed with data at full throttle, pins threads to CPU cores, and reduces context-switch overhead. The engineer also avoids out-of-memory errors on GPUs. When a job does not need a full GPU, GPU virtualization such as NVIDIA's Multi-Instance GPU (MIG) partitions the device for better utilization.
+Data placement across nodes uses data, tensor, and pipeline parallelism. Data parallelism gives each GPU a copy of the model and a slice of the data. A model too large for one GPU may need tensor or pipeline parallelism, which split the model itself across GPUs. A mixture-of-experts model can also use expert parallelism, where different GPUs hold different expert sub-networks.
 
-Cross-team collaboration is critical. Performance engineers work with researchers, data scientists, and application developers. They also work with networking and storage teams. Changing model code means coordinating with researchers. Deploying a new GPU driver means working with the infrastructure team. Updating the CUDA driver or CUDA version for bug fixes and efficiency involves DevOps, infrastructure, and support teams. The performance engineer sits at the intersection and speaks the language of AI, computer science, and systems engineering.
+Resource management is the next duty. A model uses CPU cores, GPU memory, interconnect bandwidth, and storage I/O all at once, and a bottleneck in any one of them slows the whole job. The engineer keeps GPUs fed with data at full throttle, pins threads to CPU cores, and reduces context-switch overhead. The engineer also works to avoid out-of-memory errors on GPUs. When a job does not need a full GPU, GPU virtualization such as NVIDIA's Multi-Instance GPU (MIG) partitions the device into smaller pieces, so the rest of the hardware is not left idle.
 
-Transparency matters too. In performance engineering, measure everything and trust data, not assumptions. Publishing your work lets others learn, reproduce, and build on your findings.
+Cross-team collaboration is critical. Performance engineers work with researchers, data scientists, and application developers, and they also work with networking and storage teams. Changing model code means coordinating with researchers. Deploying a new GPU driver means working with the infrastructure team. Updating the CUDA driver or CUDA version for bug fixes and efficiency involves DevOps, infrastructure, and support teams. The performance engineer sits at the intersection and speaks the language of AI, computer science, and systems engineering.
 
-This broad, deep understanding is rare. It is why AI systems performance engineers are so scarce today.
+Transparency matters too. In performance engineering, measure everything and trust data over assumptions. Publishing your work lets others learn from it, reproduce it, and build on your findings.
+
+This broad, deep understanding is rare, and that is why AI systems performance engineers are so scarce today.
 
 ### 1.5 Core competencies and tools of the role
 
-The book's first chapter starts by tracing how AI workloads moved from traditional computing to today's demands. That history shows why specialized performance engineering became necessary. The chapter then lists the core competencies. These include a deep understanding of hardware architectures, software optimization techniques, and system-level integration. Soft skills matter as well, including problem solving, communication, and collaboration.
+The first chapter of *AI Systems Performance Engineering* traces how AI workloads moved from traditional computing to today's demands. That history explains why a specialized performance discipline became necessary. The chapter then lists the core competencies. They include a deep understanding of hardware architectures, software optimization techniques, and system-level integration. Soft skills matter as well, including problem solving, communication, and collaboration.
 
-The practical side covers how engineers analyze system bottlenecks, implement optimization strategies, and keep AI systems scalable and reliable. Real-world scenarios show the challenges and fixes found in the field. Performance testing, monitoring, and benchmarking tools round out the toolkit. Each tool shows how to assess and improve a system.
+The practical side covers how engineers analyze system bottlenecks, implement optimization strategies, and keep AI systems scalable and reliable. Real-world scenarios show the challenges and fixes found in the field. Performance testing, monitoring, and benchmarking tools round out the toolkit. Each tool shows how to assess and improve a system, and the skill is knowing which tool answers which question.
 
 ---
-
 ## 2. CPU latency design versus GPU throughput design
 
-Why can we not simply build a server CPU with 10,000 cores to run deep learning? The answer lies in how thermal physics forced processor architects to choose between minimizing the latency of one complex thread and maximizing the throughput of thousands of simple threads.
+A colleague in a planning meeting asks a sensible question. If deep learning needs so much parallel work, why not build a server CPU with 10,000 cores and skip the GPU entirely? The short answer is heat. Processor designers hit a physical limit long before they could fit that many cores on a chip, and the way they responded split the processor world into two families. One family makes a single thread as fast as possible. The other makes thousands of simple threads add up to a lot of work. Knowing which family a chip belongs to explains most of what happens when you run a model on it.
 
 ### 2.1 The end of Dennard Scaling and the silicon budget split
 
-Until roughly 2005, two physical trends gave software engineers an automatic performance boost on every hardware refresh. Moore's Law doubled transistor density roughly every two years, while Dennard Scaling kept power density constant as transistors shrank. Together, they allowed CPU clock frequencies to climb toward 4 to 5 GHz, making single-threaded code run faster without code changes. Around 4 to 5 GHz, however, silicon hit a thermal wall where current leakage and heat dissipation prevented higher clock speeds.
+Until roughly 2005, software got faster on every new chip without anyone changing a line of code. Two physical trends made that happen. Moore's Law described transistor density, the number of tiny switches that fit in a given area, roughly doubling every two years. Dennard Scaling said that as transistors shrank, the power they used per unit of area stayed about constant. Together, the two trends let CPU clock frequencies climb toward 4 to 5 GHz, so single-threaded code ran faster on each new generation with no changes at all.
 
-Processor architects responded to that thermal wall in two opposite ways. CPUs optimized for serial latency, whereas GPUs optimized for parallel throughput.
+That free ride ended around 4 to 5 GHz. At that point the silicon hit a thermal wall. Current leaked through the tiny transistors even when they were off, and the heat that resulted could not be carried away fast enough to allow higher clock speeds. Once the clock speed stopped climbing, the only way to get more work done was to do more things at once. Chip designers had to pick a direction, and they picked two.
+
+Processor architects responded to that thermal wall in two opposite ways. CPUs were optimized to finish one serial thread quickly, while GPUs were optimized to keep thousands of parallel threads busy. Think of a CPU as a single master chef who handles a complicated order from start to finish, with a pantry close at hand and a fine eye for every detail. A GPU is a large kitchen crew where each cook does a simple, repeated task, and the crew as a whole produces far more meals per hour. Neither is better in general. Each one is built for a different kind of order.
 
 ```mermaid
 flowchart LR
@@ -189,6 +191,8 @@ flowchart LR
     end
 ```
 
+The diagram shows where the silicon goes. On a CPU, most of the die is spent on control logic that guesses what comes next and on large caches that keep recent data close. Only a small share is left for the arithmetic itself. On a GPU, the picture flips. Most of the die is arithmetic units, and one control unit steers a whole group of them. The reader's job is to notice that the same chip area is spent on very different things, and that each choice follows from the goal.
+
 | Architectural dimension | General-purpose CPU (Latency Machine) | Accelerated GPU (Throughput Machine) |
 |---|---|---|
 | **Primary design goal** | Finish one serial instruction stream in as few nanoseconds as possible. | Finish millions of parallel data operations per second across massive arrays. |
@@ -198,11 +202,13 @@ flowchart LR
 | **Main memory interface** | Motherboard DDR4/DDR5 DIMMs (**~150–400 GB/s** per socket). | On-package GDDR6 (**300–864 GB/s**) or stacked HBM2e/HBM3/HBM3e (**2.0–8.0 TB/s**). |
 | **Heavy vector math behavior** | Heavy `AVX-512` vector math draws high power, triggers thermal down-clocking, and peaks at a few TFLOPS. | Dedicated Tensor Cores sustain **1,000+ TFLOPS** of dense low-precision matrix math. |
 
-Why does a CPU's massive L3 cache fail on deep learning workloads? A database or web server repeatedly reads the same hot lookup tables and instruction paths, allowing a 100 MB L3 cache to achieve a high hit rate. A neural network forward pass streams a 140 GB weight tensor through the processor once per token. That streaming pattern immediately flushes a 100 MB L3 cache, causing cache thrashing and leaving the CPU arithmetic units stalled on 300 GB/s motherboard DDR5 memory.
+The table is a lookup, so read one row at a time. The first row sets the goal. The silicon row explains the budget. The branch row explains why a GPU punishes code where threads want different paths. The memory row shows why the GPU's bandwidth is so much higher. The math row is the reason the GPU wins on dense matrix work.
+
+Why does a CPU's massive L3 cache fail on deep learning workloads? An L3 cache is the largest and slowest of the on-chip caches, a shared store that holds recently used data near the cores. A database or web server repeatedly reads the same hot lookup tables and instruction paths, so a 100 MB L3 cache can achieve a high hit rate. A neural network forward pass works differently. It streams a 140 GB weight tensor through the processor once per token, touching far more data than the cache can hold. That streaming pattern flushes the cache again and again, a problem called cache thrashing. The arithmetic units end up stalled, waiting on 300 GB/s of motherboard DDR5 memory.
 
 ### 2.2 Cross-vendor hardware terminology
 
-When you read profiling guides, academic papers, or multi-vendor specifications, different hardware vendors use different names for the exact same silicon building blocks. Both commodity integrated GPUs (or AMD Accelerated Processing Units that share system RAM on the CPU die) and dedicated discrete GPUs organize their parallel compute engines into a hierarchical tree.
+When you read profiling guides, academic papers, or multi-vendor specifications, you will notice that different hardware vendors use different names for the same silicon building blocks. It can feel like learning three languages for one building. Both commodity integrated GPUs (or AMD Accelerated Processing Units, which share system RAM on the CPU die) and dedicated discrete GPUs organize their parallel compute engines into a hierarchical tree. The table maps the names across vendors so you can read any document without getting lost.
 
 | Concept / Hierarchy level | Host CPU | OpenCL standard | AMD GPU (`ROCm`) | NVIDIA GPU (`CUDA`) | Intel GPU (`Gen11` / `Xe`) |
 |---|---|---|---|---|---|
@@ -213,13 +219,15 @@ When you read profiling guides, academic papers, or multi-vendor specifications,
 | **Smallest execution unit** | Thread | Work Item | Work Item | **Thread** | Thread |
 | **Lockstep execution group** | SIMD vector | Subgroup / Vector | Wavefront / Subgroup (**64** threads) | **SIMT Warp** (**32** threads) | SIMD subgroup |
 
+When you see "SM" in an NVIDIA document, think "Compute Unit" in OpenCL and AMD language. When you see "warp," think "wavefront" on AMD, although an AMD wavefront holds 64 threads where an NVIDIA warp holds 32. The lane that does the actual arithmetic is a "CUDA Core" on NVIDIA and a "Processing Element" on AMD and OpenCL. Keep this table open when you read a vendor paper, and the names will stop getting in the way of the ideas.
+
 ### 2.3 SIMT warps, zero-cost context switching, and batch-size alignment
 
-If you spawn 100,000 operating system threads on a 64-core Linux CPU, the server grinds to a halt. To switch a CPU core from Thread A to Thread B, the Linux kernel must execute a context switch. It pauses the core, saves CPU registers out to system RAM, reloads the next thread's registers from RAM, and flushes pipeline state. That sequence costs thousands of clock cycles.
+Picture a Linux server with 64 CPU cores. Someone starts 100,000 operating system threads on it, and the machine grinds to a halt. The reason is the cost of switching. To move a CPU core from Thread A to Thread B, the Linux kernel must run a context switch. It pauses the core, saves the CPU registers (the small, fast slots where a thread keeps its working values) out to system RAM, loads the next thread's registers back from RAM, and flushes the pipeline state. Each of those steps costs time, and the sequence costs thousands of clock cycles. Multiply that by 100,000 threads and most of the machine spends its life switching rather than working.
 
-An NVIDIA GPU solves this problem using Single Instruction, Multiple Threads execution and hardware warp scheduling. Whenever work is launched on the GPU, each Streaming Multiprocessor groups threads into fixed bundles of 32 threads called a warp. All 32 threads in a warp execute the exact same instruction at the exact same clock cycle across 32 different data elements. Because all 32 lanes follow one instruction pointer, they share a single instruction fetch and decode unit, freeing roughly 80 percent of the die for math units.
+An NVIDIA GPU avoids that cost with a design called Single Instruction, Multiple Threads (SIMT), together with hardware warp scheduling. Whenever work is launched on the GPU, each Streaming Multiprocessor groups its threads into fixed bundles of 32 threads called a warp. Think of a warp as a squad of soldiers who march in step. All 32 threads execute the exact same instruction on the same clock cycle, each one on its own data element. Because all 32 lanes follow one instruction pointer, they share a single instruction fetch and decode unit. That shared front end is why the GPU can give roughly 80 percent of its die to math units.
 
-Furthermore, each Streaming Multiprocessor contains a massive physical register file with 65,536 32-bit registers. Instead of swapping thread state to RAM, the GPU keeps tens of thousands of threads resident in registers simultaneously. Up to 100,000 active threads can reside on chip at once. When Warp 0 issues a global memory load to HBM that takes hundreds of cycles, the warp scheduler does not wait or copy registers to RAM. On the very next clock cycle, it issues an instruction from Warp 1 whose operands are already sitting in registers. Memory latency is hidden by massive concurrency rather than avoided by large caches.
+The register file is the second half of the trick. Each Streaming Multiprocessor contains a massive physical register file with 65,536 32-bit registers. Instead of copying a thread's state to RAM when it pauses, the GPU keeps tens of thousands of threads resident in registers at the same time. Up to 100,000 active threads can live on the chip at once. When Warp 0 issues a load from global memory in HBM, a fetch that takes hundreds of cycles, the scheduler does not wait and does not copy anything. On the very next clock cycle it issues an instruction from Warp 1, whose operands are already sitting in registers. The memory wait is hidden by having many warps ready to go, rather than by avoiding the wait with large caches.
 
 ```text
 SIMT Warp Lane Efficiency vs Batch Size Alignment (V1 Ch 3, why_gpus.py):
@@ -229,12 +237,14 @@ SIMT Warp Lane Efficiency vs Batch Size Alignment (V1 Ch 3, why_gpus.py):
   - Operational Rule: Always pad batch sizes, hidden dimensions, and vocabularies to multiples of 8 or 32
 ```
 
+The listing shows what happens at the edges. A warp always runs all 32 lanes, so a batch of 31 still occupies a full warp and wastes one lane. A batch of 33 spills into a second warp, and then 31 lanes sit idle. The practical rule follows directly: pad batch sizes, hidden dimensions, and vocabularies to a multiple of 8 or 32, so the lanes stay full. This is one of the cheapest performance fixes you will ever make, because it costs nothing except attention to shapes.
+
 ### 2.4 Calculating theoretical peak FLOPs, memory bandwidth, and PCIe overhead
 
-Before running a single benchmark on a new GPU server, an infrastructure engineer should calculate its theoretical speed-of-light ceilings from datasheet specifications.
+Before you run a single benchmark on a new GPU server, calculate its theoretical speed-of-light ceilings from the datasheet. The number you get is the best the hardware could do on paper. A benchmark that lands far below it tells you something is wrong, and a benchmark that lands close to it tells you the software is doing its job. Three formulas cover most of what you need: peak floating-point operations per second (FLOP/s), memory bandwidth, and PCIe transfer rate. Each one is a product of a few datasheet numbers, so you can check the arithmetic by hand.
 
 #### Formula 1: Peak theoretical scalar and vector FLOP/s
-A Fused Multiply-Add instruction computes `D = A * B + C` in a single clock cycle, completing two floating-point operations (one multiply and one add). Peak theoretical scalar performance in TFLOP/s therefore follows a direct product of clock rate, multiprocessor count, and core count.
+A Fused Multiply-Add (FMA) instruction computes `D = A * B + C` in a single clock cycle. It counts as two floating-point operations, one multiply and one add. Peak theoretical performance in TFLOP/s (trillions of floating-point operations per second) is therefore a direct product of three things: the clock rate, the number of multiprocessors, and the number of cores in each one.
 
 ```text
 Peak Theoretical Scalar TFLOP/s (PHPC Ch 9 §9.2.4):
@@ -248,7 +258,9 @@ Peak Theoretical Scalar TFLOP/s (PHPC Ch 9 §9.2.4):
       FP64 (32/SM): 2 x 1410 x 108 x 32 / 10^6 =  9.7459 TFLOP/s (9.75 rounded, 9.7 truncated in book)
 ```
 
-High-performance computing GPUs such as the V100, A100, MI50, and MI100 provide a 1:2 FP64-to-FP32 core ratio, whereas graphics and inference GPUs often use 1:4, 1:8, or lower double-precision ratios.
+Work through the V100 line by hand to see how the formula behaves. Multiply 2 by 1,530 MHz, then by 80 SMs, then by 64 FP32 cores in each SM, and divide by one million. The answer is about 15.67 TFLOP/s. Swap in 32 FP64 cores per SM and the answer halves, which is why double precision is the slow lane on this family. The same calculation on the A100, with its 108 SMs, gives the figures in the table below.
+
+High-performance computing GPUs such as the V100, A100, MI50, and MI100 provide a 1:2 FP64-to-FP32 core ratio, whereas graphics and inference GPUs often use 1:4, 1:8, or lower double-precision ratios. That ratio is a design choice. Scientific codes that need double precision pay for it, and inference chips usually skip it because models run well in lower precision.
 
 | Accelerator | CUs / SMs | FP32 cores/CU | FP64 cores/CU | Boost Clock (MHz) | Peak FP32 (TFLOP/s) | Peak FP64 (TFLOP/s) |
 |---|---|---|---|---|---|---|
@@ -259,7 +271,7 @@ High-performance computing GPUs such as the V100, A100, MI50, and MI100 provide 
 | **Intel Ice Lake Gen11 Integrated** | 8 Subslices | 64 EUs | 16 | 1,000 MHz | **1.0** | **0.25** |
 
 #### Formula 2: Peak theoretical GPU memory bandwidth
-Global memory bandwidth depends on the memory clock frequency, the width of the memory bus in bits divided by 8 bits per byte, and the transaction multiplier per clock cycle. Double Data Rate HBM transfers 2 transactions per clock cycle, whereas GDDR5, GDDR5X, and GDDR6 transfer 4 to 8 transactions per cycle.
+Memory bandwidth, the rate at which bytes move between the GPU and its memory, depends on three things: the memory clock frequency, the width of the memory bus in bits divided by 8 bits per byte, and the number of transfers per clock cycle. Double Data Rate HBM moves data twice per clock cycle, whereas GDDR5, GDDR5X, and GDDR6 move 4 to 8 transfers per cycle. The multiplier is where the memory types differ most.
 
 ```text
 Theoretical Memory Bandwidth & BabelStream Verification (PHPC Ch 9 §9.3.1-9.3.2, Table 9.4):
@@ -278,10 +290,10 @@ Theoretical Memory Bandwidth & BabelStream Verification (PHPC Ch 9 §9.3.1-9.3.2
     Triad: 840,730.8 MB/s (~840.7 GB/s)    Dot: 866,071.4 MB/s (~866.1 GB/s, ~96% of peak)
 ```
 
-Notice how HBM achieves terabytes per second while saving power. GDDR6 drives a narrow 256-bit or 384-bit bus at very high clock frequencies. HBM instead stacks DRAM dies vertically on a silicon interposer across an ultra-wide 4,096-bit or 5,120-bit bus at a lower clock frequency.
+Notice how HBM reaches terabytes per second while keeping its power in check. GDDR6 drives a narrow 256-bit or 384-bit bus at very high clock frequencies, and every extra clock step costs power. HBM takes the other route. It stacks DRAM dies vertically on a silicon interposer (a shared base layer that links the memory to the GPU), and it reaches across an ultra-wide 4,096-bit or 5,120-bit bus at a lower clock frequency. Width does the work that speed does in GDDR. The BabelStream lines are the reality check. A V100 with a theoretical peak of 897 GB/s delivered about 866.1 GB/s on the Dot test, close to the ceiling, and a little less on the Copy and Triad tests.
 
 #### Formula 3: Theoretical PCIe bus bandwidth and pinned host memory
-When tensors move between host CPU memory and a discrete GPU over PCIe, unidirectional bandwidth depends on lane count, transfer rate, and line encoding overhead. PCIe Gen1 and Gen2 use `8b/10b` encoding, sending 10 bits for every 8 data bits, which imposes a 20 percent overhead (an 80 percent efficiency factor). PCIe Gen3 through Gen6 use `128b/130b` encoding, sending 130 bits for every 128 data bits, which reduces overhead to 1.54 percent (a 98.46 percent efficiency factor).
+When tensors move between host CPU memory and a discrete GPU over PCIe, the one-way bandwidth depends on three things: lane count, transfer rate, and line encoding overhead. Encoding is the extra bits a link sends to keep the signal reliable. PCIe Gen1 and Gen2 use `8b/10b` encoding, which sends 10 bits for every 8 data bits, an overhead of 20 percent, or an efficiency factor of 80 percent. PCIe Gen3 through Gen6 use `128b/130b` encoding, which sends 130 bits for every 128 data bits. That cuts the overhead to 1.54 percent, a 98.46 percent efficiency factor.
 
 ```text
 PCIe Unidirectional Bandwidth Formula (PHPC Ch 9 §9.4.1, Table 9.5):
@@ -297,27 +309,34 @@ PCIe Unidirectional Bandwidth Formula (PHPC Ch 9 §9.4.1, Table 9.5):
 | **PCIe Gen5** | 32.0 GT/s | 1.54% (`128b/130b`) | 98.46% (0.9846) | **63 GB/s** (63.01 GB/s) |
 | **PCIe Gen6** | 64.0 GT/s | 1.54% (`128b/130b`) | 98.46% (0.9846) | **126 GB/s** (126.03 GB/s) |
 
-In production, achieved PCIe throughput depends on payload size and host memory pinning. Transfers smaller than roughly 10 MB (`10^7` bytes) are dominated by transaction setup latency and achieve only a fraction of link bandwidth. Standard operating system allocations (`malloc`) are pageable, meaning the Linux kernel can swap those pages out to disk. The GPU DMA engine requires fixed physical addresses, so pageable transfers force the CUDA driver to copy the array into a temporary pinned staging buffer first. Allocating host buffers directly in page-locked pinned memory via `cudaMallocHost` or setting `pin_memory=True` in a PyTorch `DataLoader` eliminates that extra CPU copy. On a PCIe Gen3 x16 system, pinned memory reaches roughly 11.6 GB/s, or 72 percent of the 15.75 GB/s theoretical ceiling, with low variance.
+Read the table as a sequence of doublings. Each generation roughly doubles the transfer rate per lane, so an x16 slot doubles its ceiling with each step. The jump from Gen2 to Gen3 is also an efficiency jump, because the encoding overhead falls from 20 percent to 1.54 percent. That is why the Gen3 row looks so much better than a simple doubling would suggest.
+
+The formula gives the ceiling. Real throughput depends on the size of each transfer and on the kind of host memory involved. Transfers smaller than roughly 10 MB (`10^7` bytes) are dominated by the setup latency of each transaction, so they reach only a fraction of the link's bandwidth. Standard operating system allocations (`malloc`) are pageable, which means the Linux kernel can swap those pages out to disk at any moment. The GPU's DMA engine (direct memory access, the hardware that copies data without the CPU) needs a fixed physical address, so a pageable transfer forces the CUDA driver to copy the array into a temporary pinned staging buffer first. Allocating host buffers directly in page-locked pinned memory, using `cudaMallocHost` or setting `pin_memory=True` in a PyTorch `DataLoader`, removes that extra CPU copy. On a PCIe Gen3 x16 system, pinned memory reaches roughly 11.6 GB/s, or 72 percent of the 15.75 GB/s ceiling, with low variance from run to run.
 
 ### 2.5 Five workload patterns where GPUs struggle
 
-GPUs are specialized throughput engines rather than universal replacements for every CPU program. Five workload patterns perform poorly on GPU silicon.
+GPUs are specialized throughput engines. They are not universal replacements for every CPU program, and a job that suits a CPU can run slower on a GPU than on a laptop. Five workload patterns perform poorly on GPU silicon, and each one traces back to the design choices from earlier in this section.
 
-1. **Lack of parallelism**. This is the First Law of GPGPU. If an algorithm is inherently serial or spawns only a few hundred threads, it cannot fill the SMs or hide memory latency, so a high-clock-speed CPU core finishes faster.
-2. **Irregular pointer-chasing memory access**. This is the Second Law of GPGPU. Graph traversals or sparse lookups that jump randomly across memory prevent the GPU from coalescing requests into wide HBM transactions.
-3. **Severe warp branch divergence**. When threads inside the same 32-thread warp take different `if/else` branch paths, the SIMT hardware must execute each path serially with inactive lanes masked off.
-4. **Dynamic host-driven memory allocations**. Calling `cudaMalloc` and `cudaFree` inside a tight execution loop stalls the GPU on synchronous host driver calls.
-5. **Deep recursive algorithms**. GPU threads have tiny per-thread stack frames compared to CPU threads and are poorly suited to deep call-stack recursion.
+1. **Lack of parallelism**. This is the First Law of GPGPU. If an algorithm is inherently serial, or it spawns only a few hundred threads, it cannot fill the SMs or hide memory latency. A high-clock-speed CPU core finishes first.
+2. **Irregular pointer-chasing memory access**. This is the Second Law of GPGPU. Graph traversals or sparse lookups jump randomly across memory. That stops the GPU from combining neighboring requests into wide HBM transactions, so most of the bandwidth goes unused.
+3. **Severe warp branch divergence**. When threads inside the same 32-thread warp take different `if/else` paths, the SIMT hardware must run each path one after another, with the lanes that are not on that path switched off.
+4. **Dynamic host-driven memory allocations**. Calling `cudaMalloc` and `cudaFree` inside a tight loop stalls the GPU on synchronous calls to the host driver, which means the GPU waits for the CPU-side driver to answer each request.
+5. **Deep recursive algorithms**. GPU threads have tiny per-thread stack frames (the small blocks of memory that track each function call) compared to CPU threads. They are poorly suited to deep recursion.
 
 ---
-
 ## 3. How GPU silicon evolved from pixels to Tensor Cores and NVL72
 
-Modern H100 and B200 GPUs train transformer models tens of times faster than older V100 GPUs. Yet those same accelerators show almost no speedup when handed unoptimized legacy FP32 code. Understanding that gap requires tracing how NVIDIA evolved GPU silicon from fixed-function graphics pipelines into rack-scale Tensor Core computers.
+Picture a team that buys a fleet of H100 GPUs to speed up a training job. The new hardware is far faster than the old V100 cards, yet the first run barely improves on the old one. The code was written for an older chip and never asked for the features the new one offers. To see why, you need the story of how NVIDIA's GPUs changed, because each feature exists to solve a problem that the previous generation could not solve.
+
+Modern H100 and B200 GPUs train transformer models tens of times faster than older V100 GPUs. Yet those same accelerators show almost no speedup when they are handed unoptimized legacy FP32 code. Understanding that gap requires tracing how NVIDIA evolved GPU silicon from fixed-function graphics pipelines into rack-scale Tensor Core computers. Fixed-function means each stage of the pipeline does one hardwired job, and it cannot be reprogrammed for something else.
 
 ### 3.1 From 4K video games to GPGPU and CUDA
 
-Rendering a 4K video game frame (`3840 x 2160`) at 60 frames per second requires computing lighting, shading, and geometry for more than 8 million independent pixels, 60 times every second. Around 2006 to 2010, physicists running `O(N^2)` molecular dynamics simulations noticed that calculating forces between millions of atoms had the exact same mathematical structure as shading millions of pixels. A single workstation with four consumer Fermi GPUs could beat a multi-million-dollar CPU cluster whose Ethernet network was choked with MPI messages.
+Start with a video game. Rendering a 4K frame (`3840 x 2160`) at 60 frames per second means working out lighting, shading, and geometry for more than 8 million independent pixels, and doing that 60 times every second. Each pixel can be worked out on its own, so a chip built to shade many pixels at once is a chip built for parallel work.
+
+Around 2006 to 2010, physicists running `O(N^2)` molecular dynamics simulations noticed something useful. (The `O(N^2)` notation means the work grows with the square of the number of items, so each atom interacts with every other atom.) Calculating the forces between millions of atoms had the same mathematical structure as shading millions of pixels. A single workstation with four consumer Fermi GPUs could beat a multi-million-dollar CPU cluster whose Ethernet network was choked with MPI messages (the message-passing traffic that cluster nodes exchange with each other). The graphics chip had been built for games, and it turned out to be a very good scientific calculator too.
+
+That discovery pushed NVIDIA to make the GPU programmable for general work. The result was CUDA, a programming model that lets C and C++ code run directly on GPU threads. The timeline below shows each generation and the bottleneck it was built to remove.
 
 ```mermaid
 timeline
@@ -332,7 +351,9 @@ timeline
     2024+ : Blackwell (B200/GB200) : Rack-Scale AI : 2nd-Gen Transformer Engine (FP4), NVLink 5 (1.8 TB/s), NVL72 (130 TB/s)
 ```
 
-Each generation of NVIDIA data center silicon removed the specific hardware bottleneck that limited the previous era.
+Read the timeline as a chain of answers. Each generation of NVIDIA data center silicon removed the specific hardware bottleneck that limited the previous era. Kepler had the cores but not the memory to feed them. Pascal brought in fast on-package memory. Volta added the first Tensor Core for matrix math, which is the piece that made deep learning practical. Ampere made one GPU shareable among several users. Hopper focused on the transformer models that power today's language systems. Blackwell is built around the rack as a single computer.
+
+The table below lists the same story with the key capacities for each generation.
 
 | Generation & Year | Flagship SKU | Key architectural inventions and hardware capacities |
 |---|---|---|
@@ -345,7 +366,9 @@ Each generation of NVIDIA data center silicon removed the specific hardware bott
 | **Hopper (2022–2024)** | H100 (80 GB) / H200 (141 GB) | Added the **Transformer Engine** for dynamic layer-by-layer FP8 scaling, **3.35 TB/s** HBM3 on H100, **4.8 TB/s** HBM3e on H200, and **900 GB/s** NVLink 4. |
 | **Blackwell (2024+)** | B200 / B300 / GB200 NVL72 | Added 2nd-Gen Transformer Engine with microscaled **FP4**, **180–192 GB** HBM3e on B200 (**288 GB** on B300) at **8.0 TB/s**, and **1.8 TB/s** NVLink 5 (**18 x 100 GB/s** links). |
 
-Look closely at the rack-scale leap in the **GB200 and GB300 NVL72** architecture. Described as an AI supercomputer in a rack, an NVL72 cabinet links **36 Grace CPUs and 72 Blackwell GPUs** across a liquid-cooled NVSwitch copper backplane.
+The Volta row is the one to remember. A Tensor Core does a whole `4 x 4` matrix multiply-accumulate in a single operation, which would take 64 separate steps on ordinary scalar cores. A large part of the speedup that made deep learning practical comes from that one change in how the math is packaged.
+
+Look closely at the rack-scale leap in the **GB200 and GB300 NVL72** architecture. NVIDIA describes an NVL72 as an AI supercomputer in a rack. One cabinet links **36 Grace CPUs and 72 Blackwell GPUs** across a liquid-cooled NVSwitch copper backplane, which is the shared switching fabric that lets every GPU in the rack reach every other one.
 
 ```text
 GB200 / GB300 NVL72 Rack Envelope & MLPerf v5.0 Gains (ASP Ch 1, V1 Ch 7):
@@ -358,15 +381,15 @@ GB200 / GB300 NVL72 Rack Envelope & MLPerf v5.0 Gains (ASP Ch 1, V1 Ch 7):
 
 The rack-scale story continues past Blackwell. Vera Rubin VR200 arrives in 2026, and Feynman follows in 2028. Both extend the idea of exascale supercomputers condensed into one data center rack. NVIDIA calls these NVL rack systems, such as NVL72, NVL144, and NVL576, "AI supercomputers in a rack." The label fits.
 
-Each NVL72 rack is a building block. Racks can be combined into ultrascale clusters that support multi-trillion-parameter models. Cloud providers such as AWS, Google Cloud Platform (GCP), Microsoft Azure, CoreWeave, and Lambda Labs can provision racks and rack clusters with a few clicks. Expect a real bill, though.
+Each NVL72 rack is a building block rather than the whole cluster. Racks can be combined into ultrascale clusters that support multi-trillion-parameter models. Cloud providers such as AWS, Google Cloud Platform (GCP), Microsoft Azure, CoreWeave, and Lambda Labs can provision racks and rack clusters within a few clicks. Expect a real bill, though, because a rack this dense costs serious money to run.
 
-The NVLink fabric inside the rack unifies all 72 GPUs into one high-speed cluster. Frameworks such as PyTorch for training and vLLM for inference can use that single domain for data, tensor, pipeline, and expert parallelism. CUDA Unified Memory can migrate pages or access them remotely over NVLink. Remote memory has distinct latency and bandwidth, so treat it as nonuniform.
+The NVLink fabric inside the rack unifies all 72 GPUs into one high-speed domain. Frameworks such as PyTorch for training and vLLM for inference can use that single domain for data, tensor, pipeline, and expert parallelism. CUDA Unified Memory can migrate pages between CPU and GPU, or access them remotely over NVLink. Remote memory has a different latency and bandwidth from local memory, so treat it as nonuniform. In other words, the same pointer can be fast or slow depending on where the data lives.
 
-For managed allocations across Grace and Blackwell, prefer explicit prefetching. Use `cudaMemPrefetchAsync` and `cudaMemAdvise` to reduce page-fault stalls.
+For managed allocations across Grace and Blackwell, prefer explicit prefetching. Use `cudaMemPrefetchAsync` and `cudaMemAdvise` to reduce page-fault stalls. A page fault is the stop that happens when the GPU touches memory that is not yet in its local store, and explicit prefetching moves the data before anyone waits on it.
 
 ### 3.2 The precision cascade: trading bits for memory bandwidth and FLOPs
 
-Every step down in numerical precision cuts the bytes stored in HBM and moved across memory buses while multiplying Tensor Core math throughput.
+Every step down in numerical precision cuts the bytes stored in HBM and moved across memory buses, and at the same time it raises the math throughput of the Tensor Cores. The trade is between accuracy and speed. A number stored in fewer bits takes less room and less time to move, but it carries less detail. Training and serving teams pick the lowest precision that keeps their model accurate enough.
 
 ```mermaid
 flowchart LR
@@ -376,19 +399,23 @@ flowchart LR
     FP8 --> FP4["FP4 / INT4: 0.5 Bytes<br/>Blackwell Ultra-Dense Inference<br/>4x BW & 4x TFLOPS vs BF16"]
 ```
 
-Two operational traps catch infrastructure teams during GPU hardware upgrades. First, migrating a legacy FP32 training container from V100 to H100 without enabling Automatic Mixed Precision (`torch.amp` with BF16 or FP8) or TF32 forces the workload onto scalar FP32 cores. That mistake bypasses the H100 Tensor Cores and Transformer Engine completely.
+Read the diagram from left to right. Each arrow is a choice to store numbers in fewer bytes. FP64 uses 8 bytes per number and is kept for scientific work that needs every digit. FP32 and TF32 use 4 bytes and remain the default for older deep learning code. FP16 and BF16 use 2 bytes and became the standard for modern LLM training. FP8 and INT8 use 1 byte and carry most of today's serving work. FP4 and INT4 use half a byte and push the density even further.
 
-Second, buying flagship AI GPUs like the H100 for pure 64-bit double-precision (`FP64`) fluid dynamics without profiling wastes budget on unused FP8 silicon. An H100 still runs FP64 faster than a V100 because its FP64 cores, L2 cache, and 3.35 TB/s HBM3 are faster. However, the team pays a premium for AI features the code never touches. Always profile workloads with the Empirical Roofline Toolkit or `mixbench`. Those tools plot compute GFLOP/s against memory bandwidth across arithmetic intensities from `1 FLOP/load` on typical apps up to `65 FLOPs/load` on dense GEMM. Choose PCIe L-series GPUs such as L4 and L40S for graphics, media, and small-batch inference. Reserve SXM and NVLink H-series or B-series systems for distributed training and large-scale LLM serving.
+Two operational traps catch infrastructure teams during GPU hardware upgrades, and both come from skipping a precision setting. First, migrating a legacy FP32 training container from V100 to H100 without enabling Automatic Mixed Precision (`torch.amp` with BF16 or FP8) or TF32 forces the workload onto scalar FP32 cores. That mistake bypasses the H100 Tensor Cores and Transformer Engine completely, so you pay for the new card and use the old path.
+
+Second, buying flagship AI GPUs like the H100 for pure 64-bit double-precision (`FP64`) fluid dynamics without profiling wastes budget on silicon the job never touches. An H100 still runs FP64 faster than a V100, because its FP64 cores, L2 cache, and 3.35 TB/s HBM3 are faster. However, the team pays a premium for AI features the code never uses. Always profile the workload first. The Empirical Roofline Toolkit and `mixbench` plot compute GFLOP/s (billions of floating-point operations per second) against memory bandwidth across arithmetic intensities. Arithmetic intensity is the number of operations done per byte loaded, and it runs from `1 FLOP/load` on typical apps up to `65 FLOPs/load` on dense GEMM. A low number means the job waits on memory, and a high number means it waits on math. That picture tells you which GPU to buy. Choose PCIe L-series GPUs such as L4 and L40S for graphics, media, and small-batch inference. Reserve SXM and NVLink H-series or B-series systems for distributed training and large-scale LLM serving.
 
 ---
 
 ## 4. Anatomy of an LLM inference request: Prefill, Decode, and the KV Cache
 
-An internal coding assistant can pause for 10 seconds before printing the first word on a 5,000-line prompt. An inference server can also crash with `CUDA out of memory` under concurrent traffic even when the model weights fit easily in VRAM. Both failures happen because an LLM request is not a uniform computation. It splits into two distinct hardware phases and dynamically allocates GPU memory for every active user.
+An internal coding assistant can pause for 10 seconds before printing the first word of an answer to a 5,000-line prompt, even though the words then stream out quickly. Later the same week, an inference server crashes with `CUDA out of memory` under concurrent traffic, even though the model weights fit easily in VRAM (the memory on the GPU card). Both failures are real, and both come from the same fact. An LLM request is not a uniform computation. It splits into two hardware phases, and it grabs more GPU memory as each user's conversation grows.
+
+This section walks through one request in order. It starts with the prompt, which is a burst of parallel work. Then it moves to the answer, which is a long chain of small steps. Last, it looks at the KV cache, the store of past attention keys and values that lets the model avoid redoing work for each new token, and the memory that store consumes as users pile on.
 
 ### 4.1 Phase 1 (Prefill and TTFT) versus Phase 2 (Decode and TPOT)
 
-Because transformer models generate text autoregressively, serving a single prompt stresses two completely different parts of the GPU in sequence.
+Transformer models generate text autoregressively, which means they produce one token at a time, and each new token depends on everything before it. Serving one prompt therefore stresses two completely different parts of the GPU, one after the other. The diagram follows one long prompt from the client to the first output token and then through the loop that produces the rest of the answer.
 
 ```mermaid
 sequenceDiagram
@@ -411,31 +438,41 @@ sequenceDiagram
     end
 ```
 
+Phase 1 is prefill. The model reads the whole prompt at once, and the GPU can process all of those tokens in parallel. That turns the work into one large matrix-matrix multiplication, which is the kind of job Tensor Cores are built for. The phase ends when the first output token appears. The delay from request arrival to that first token is called TTFT (Time To First Token).
+
+Phase 2 is decode. The model now writes the answer one token at a time. For each new word, the GPU streams the model weights and the growing KV cache out of HBM, does a small matrix-vector multiply, and produces one token. Almost all of the time goes into moving bytes rather than doing math, so memory bandwidth sets the pace. The delay between output tokens is called TPOT (Time Per Output Token).
+
 | Inference phase | Hardware execution pattern | Primary bottleneck | Service Level Indicator (SLI) | Symptom when degraded |
 |---|---|---|---|---|
 | **1. Prefill Phase** (reading the prompt) | Processes all input prompt tokens in parallel inside one massive matrix-matrix multiplication (`GEMM`) and writes the initial Key-Value cache to HBM. | **Compute-bound** on GPU Tensor Cores. | **TTFT (Time To First Token):** delay from request arrival until the first output token appears. | Users stare at a blank screen for 5 to 10 seconds on long 5,000-line code prompts, even though words stream fast afterward. |
 | **2. Decode Phase** (generating the answer) | Generates one token at a time sequentially. For every word, the GPU streams all model weights plus the growing KV cache from HBM to do a small matrix-vector multiply. | **Memory-bandwidth-bound** on HBM GB/s. | **TPOT (Time Per Output Token)** or **ITL (Inter-Token Latency)**. | The first word appears in 0.2 seconds, but subsequent text streams painfully slowly at 1.5 seconds per word. |
 
-When a platform team sees a 10-second TTFT on 5,000-line code prompts while TPOT remains fast, buying GPUs with higher memory bandwidth will not help. Prefill is compute-bound on Tensor Cores. Instead, apply three targeted mitigations. First, enable prefix or prompt caching in vLLM, SGLang, or TensorRT-LLM so shared codebase headers reuse pre-computed KV cache blocks without re-running prefill math. Second, enforce input context limits or chunked prefill. Third, deploy disaggregated prefill and decode serving. That pattern routes heavy prompts onto compute-optimized prefill nodes and transfers the KV cache over RDMA or NVLink via NVIDIA NIXL and NVIDIA Dynamo to decode nodes.
+The table makes the two symptoms easy to tell apart. A slow prefill shows up as a long wait before anything appears. A slow decode shows up as text that starts quickly and then crawls. Each symptom points at a different bottleneck, so each one needs a different fix.
+
+When a platform team sees a 10-second TTFT on 5,000-line code prompts while TPOT stays fast, buying GPUs with higher memory bandwidth will not help. Prefill is compute-bound on Tensor Cores, so more bandwidth does not speed up the math. The team should try three targeted mitigations instead. First, enable prefix or prompt caching in vLLM, SGLang, or TensorRT-LLM, so that shared codebase headers reuse pre-computed KV cache blocks and skip the prefill math for that part. Second, enforce input context limits or chunked prefill, which splits a very long prompt into pieces so that one huge request cannot block everyone else. Third, deploy disaggregated prefill and decode serving. That pattern sends heavy prompts to compute-optimized prefill nodes, then moves the KV cache over RDMA or NVLink, using NVIDIA NIXL and NVIDIA Dynamo, to decode nodes that are tuned for memory bandwidth.
 
 ### 4.2 The KV cache memory crisis, Continuous Batching, and PagedAttention
 
-Model weights are static in GPU memory, but the Key-Value cache grows dynamically with sequence length and active user concurrency. Suppose an 8-billion-parameter model in FP16 (2 bytes per parameter) occupies 16 GB of weights on a 24 GB GPU. That leaves only 8 GB of free VRAM. Every active user request stores its intermediate Key and Value attention tensors inside that remaining 8 GB. Caching those vectors prevents recomputing previous tokens on every decode step. When 10 users upload large PDFs simultaneously, their combined KV caches exceed 8 GB and crash the server with an out-of-memory error.
+Model weights sit still in GPU memory once they are loaded. The KV cache does not. It grows with the length of each conversation and with the number of users active at the same moment. Picture an 8-billion-parameter model in FP16 (2 bytes per parameter). It occupies 16 GB of weights on a 24 GB GPU. That leaves only 8 GB of free VRAM. Every active user request stores its attention keys and values inside that remaining 8 GB. The cache exists to avoid recomputing the previous tokens on every decode step, so it is a shortcut that costs memory.
+
+Now let a few users upload large PDFs at once. Each conversation adds its own KV cache, and the caches share the same leftover space. When 10 users upload large PDFs simultaneously, their combined KV caches can exceed the 8 GB that remains, and the server crashes with an out-of-memory error even though the weights themselves fit. The problem is not the model size. It is how the free memory is handed out to conversations.
 
 Modern inference engines such as vLLM, Triton Inference Server, TensorRT-LLM, SGLang, and NVIDIA NIM prevent this crash using two foundational systems techniques.
 
-1. **Continuous Batching**. Naive static batching waits for the longest response in a batch of 500 tokens to finish before admitting new requests. That leaves GPU lanes idle for requests that finished after 5 tokens. Continuous batching evicts finished sequences and inserts newly arrived requests at the granularity of a single decode step.
-2. **PagedAttention**. Early serving engines required each request's KV cache to sit in a single contiguous slab of VRAM pre-allocated for the maximum possible context length. That contiguous pre-allocation wasted **60% to 80%** of KV cache memory to internal and external fragmentation. Introduced by the vLLM project, PagedAttention splits the KV cache into fixed-size, non-contiguous physical blocks mapped via a virtual page table. That design eliminates fragmentation waste and raises serving throughput by **2x to 4x** at the same latency.
+1. **Continuous Batching**. Naive static batching waits for the longest response in a batch of 500 tokens to finish before it admits new requests. That leaves GPU lanes idle for the requests that finished after 5 tokens. Continuous batching removes finished sequences and inserts newly arrived requests at the granularity of a single decode step, so the lanes stay busy.
+2. **PagedAttention**. Early serving engines required each request's KV cache to sit in one contiguous slab of VRAM, pre-allocated for the maximum possible context length. That pre-allocation wasted **60% to 80%** of KV cache memory to internal and external fragmentation. Fragmentation means memory exists but is cut into pieces too small or too scattered to use. PagedAttention, introduced by the vLLM project, splits the KV cache into fixed-size, non-contiguous physical blocks, and it maps those blocks through a virtual page table, much as an operating system maps memory pages. That design removes most of the fragmentation waste and raises serving throughput by **2x to 4x** at the same latency.
 
 ---
 
 ## 5. Performance engineering at scale: Goodput, Mechanical Sympathy, and energy
 
-At cluster scale, raw `nvidia-smi` utilization and peak datasheet TFLOPS become vanity metrics. A cluster can report 100 percent GPU utilization on every dashboard while wasting three-quarters of its compute capacity. What governs training time and financial return is **Goodput**, the fraction of theoretical cluster capacity spent making useful mathematical progress.
+Picture a finance lead who opens the cluster dashboard and sees 100 percent GPU utilization on every node. She asks a simple question. If the GPUs are full, why does the training job take so long, and why does the invoice keep growing? The answer is that the dashboard and the job are measuring different things. At cluster scale, raw `nvidia-smi` utilization and peak datasheet TFLOPS become vanity metrics. A cluster can report 100 percent GPU utilization on every dashboard while wasting three-quarters of its compute capacity. What governs training time and financial return is **Goodput**, the fraction of theoretical cluster capacity spent making useful mathematical progress.
 
 ### 5.1 Measuring Goodput versus Speed of Light
 
-In `nvidia-smi`, a reading of 100 percent GPU utilization only means that at least one CUDA kernel was active on the device during the sampling window. That kernel might be using only 5 percent of the SMs or spinning on an interconnect wait. To measure true efficiency, performance engineers compare two rates. **Speed of Light** is the theoretical maximum throughput of the hardware in tokens or samples per second if compute, memory, and interconnects operated at 100 percent without stalls. **Goodput**, also called the effective training-time ratio, is the actual rate of productive work completed end to end. It discounts time lost to data stalls, `AllReduce` waits, pipeline bubbles, job preemptions, and failure restarts.
+A reading of 100 percent GPU utilization in `nvidia-smi` only means that at least one CUDA kernel (a GPU program) was active on the device during the sampling window. That kernel might be using only 5 percent of the SMs, or it might be spinning on an interconnect wait. The number says almost nothing about how much useful work was finished. To measure true efficiency, performance engineers compare two rates.
+
+The first rate is the Speed of Light. It is the theoretical maximum throughput of the hardware, in tokens or samples per second, if compute, memory, and interconnects all ran at 100 percent with no stalls. The second is Goodput, also called the effective training-time ratio. It is the actual rate of productive work finished from end to end. Goodput discounts the time lost to data stalls, `AllReduce` waits (the moments when every GPU must wait for all the others to share results), pipeline bubbles, job preemptions, and failure restarts. Dividing Goodput by the Speed of Light gives a percentage you can track over time.
 
 ```text
 Goodput Efficiency Formula & Production Benchmarks (ASP Ch 1 pp. 13-15):
@@ -452,33 +489,35 @@ Goodput Efficiency Formula & Production Benchmarks (ASP Ch 1 pp. 13-15):
      - Worked Job Example:   300 samples/s achieved / 1,000 samples/s ideal = 30.0% goodput (70.0% wasted capacity)
 ```
 
-Raising cluster goodput by even 20 percentage points recovers millions of dollars in hardware and electricity without buying a single additional server.
+Work the first example through by hand. The node produces 100,000 tokens in 10 seconds, which is 10,000 tokens per second. The hardware ceiling is 8 GPUs at 1,500 tokens per second each, which is 12,000. Divide the useful rate by the ceiling, and you get 83.3 percent goodput. The second example shows the same arithmetic at cluster scale. A job that could run at 1,000 samples per second on ideal hardware, but that actually delivers 300, has 30 percent goodput. The other 70 percent is capacity that the dashboard counted as busy and the job never used.
 
 Meta's AI infrastructure team described the same gap in its "Revisiting Reliability" paper. That paper introduces the effective training time ratio. It shows that preemptions, hardware faults, and network congestion reduce realized training time, even when headline utilization looks high. In that analysis, the cluster looked fully utilized, yet 70% to 75% of its compute was lost to communication delays, suboptimal parallelization, data delays, and failure recovery.
 
-NVIDIA calls the theoretical hardware maximum the speed of light. You will see that phrase in NVIDIA blogs, documentation, webinars, and conference talks. In simple terms, goodput counts the useful work completed per unit time. That work might be tokens processed or inference requests completed. Everything that does not directly contribute to training or inference is discounted. Dividing by the cluster's maximum possible throughput gives a percent efficiency value.
+Raising cluster goodput by even 20 percentage points recovers millions of dollars in hardware and electricity without buying a single additional server. That is why goodput is the number finance and engineering leaders should share.
+
+NVIDIA calls the theoretical hardware maximum the speed of light. You will see that phrase in NVIDIA blogs, documentation, webinars, and conference talks. In simple terms, goodput counts the useful work completed per unit of time. That work might be tokens processed or inference requests completed. Everything that does not directly contribute to training or inference is discounted. Dividing by the cluster's maximum possible throughput gives a percent efficiency value.
 
 A simple case shows the idea. Take a training job that could process 1,000 samples per second on ideal hardware. A poor input pipeline and excessive synchronization hold it to 300 samples per second. That job runs at 30% goodput. The remaining 70% of capacity is essentially wasted.
 
-MLPerf results need careful reading. MLPerf cautions that per-GPU results are not a primary metric across platforms. Use system-level, end-to-end throughput as the correct basis for comparison. Treat per-GPU numbers as component-level indicators only.
+MLPerf results need careful reading. MLPerf is a benchmark suite for AI systems. It cautions that per-GPU results are not a primary metric across platforms, so use system-level, end-to-end throughput as the correct basis for comparison. Treat per-GPU numbers as component-level indicators only.
 
 Investments in performance engineers return well above their cost. A performance engineer who helps lift cluster efficiency by 20% can cut hardware costs by millions of dollars in a large AI environment.
 
-Goodput beats raw FLOPS or device utilization because it measures what matters. It shows how much useful training you get per dollar of cost and per joule of power. It reflects how well hardware, software, and algorithms work together toward faster, cheaper model training.
+Goodput beats raw FLOPS or device utilization because it measures what matters. It shows how much useful training you get per dollar of cost and per joule of power, where a joule is the basic unit of energy. It reflects how well hardware, software, and algorithms work together toward faster, cheaper model training.
 
-Improving goodput requires understanding how these layers interact. Hardware includes CPUs, GPUs, network topologies, memory hierarchies, and storage layouts. Software includes operating system configurations, paged memory, and I/O utilization. Algorithms include transformer variants, attention alternatives, and caching and batching strategies.
+Improving goodput requires understanding how these layers interact. Hardware includes CPUs, GPUs, network topologies, memory hierarchies, and storage layouts. Software includes operating system configurations, paged memory, and I/O utilization. Algorithms include transformer variants, attention alternatives, and caching and batching strategies. A gain in one layer can be lost in another, so the work is to measure the whole path.
 
 ### 5.2 Mechanical sympathy, 100-trillion-parameter math, and the DeepSeek-V3 case study
 
-Coined by race-car driver Jackie Stewart and brought to computing by Martin Thompson, **mechanical sympathy** means designing software that works with the physical grain of the hardware. For example, standard self-attention materializes a large `N x N` attention matrix in off-chip HBM. **FlashAttention** tiles the attention math inside fast on-chip SRAM shared memory, cutting HBM reads and writes to deliver a **2x to 4x** speedup while shrinking memory footprint. Similarly, because transformer attention relies heavily on exponentials in `softmax`, NVIDIA expanded the **Special Function Units** inside modern SMs to accelerate transcendental math alongside the Tensor Cores.
+Coined by race-car driver Jackie Stewart and brought to computing by Martin Thompson, mechanical sympathy means designing software that works with the physical grain of the hardware. A driver who understands the engine drives it more gently and gets more out of it. The same idea applies to GPU code. For example, standard self-attention materializes a large `N x N` attention matrix in off-chip HBM, and every read and write of that matrix costs bandwidth. FlashAttention tiles the attention math inside fast on-chip SRAM shared memory, cutting HBM reads and writes to deliver a 2x to 4x speedup while shrinking the memory footprint. Similarly, because transformer attention relies heavily on exponentials in `softmax`, NVIDIA expanded the Special Function Units inside modern SMs to accelerate transcendental math alongside the Tensor Cores. Transcendental math is the family of functions such as exponentials and logarithms that a simple multiplier cannot compute directly.
 
-Real-world experience shows that even minor tweaks to GPU kernels or memory access patterns can produce outsized gains. FlashAttention is a classic example. It reimplements transformer attention in a hardware-aware way. It tiles GPU computation, which minimizes the reads and writes issued to GPU memory. That change shrinks attention, a major bottleneck, to a fraction of total runtime.
+Real-world experience shows that even minor tweaks to GPU kernels or memory access patterns can produce outsized gains. FlashAttention is a classic example. It reimplements transformer attention in a hardware-aware way. It tiles the GPU computation, which minimizes the reads and writes that go to GPU memory. That change shrinks attention, which had been a major bottleneck, to a fraction of total runtime.
 
-Replacing default attention with FlashAttention gives a 2x to 4x speedup in training and inference for long sequences. It also reduces the overall memory footprint. FlashAttention became the default in many libraries almost overnight. Since then, many new attention algorithms have appeared, including DeepSeek's Multi-Head Latent Attention (MLA).
+Replacing default attention with FlashAttention gives a 2x to 4x speedup in training and inference for long sequences. It also reduces the overall memory footprint. FlashAttention became the default in many libraries almost overnight. Since then, many new attention algorithms have appeared, including DeepSeek's Multi-Head Latent Attention (MLA), which compresses the cache of keys and values.
 
 NVIDIA's work on special-function throughput and fast-math pipelines follows the same codesign pattern. Those changes target attention bottlenecks directly, in close cooperation with the researchers and practitioners who run LLMs on the hardware. That is mechanical sympathy in its purest form.
 
-Why can we not rely on brute-force dense scaling forever? Using the dense transformer training heuristic `C = 6 x N x D`, consider the hardware required to train a hypothetical **100-trillion-parameter** dense model on **29 trillion** tokens.
+Why can we not rely on brute-force dense scaling forever? Using the dense transformer training heuristic `C = 6 x N x D`, where `N` is the parameter count and `D` is the number of training tokens, consider the hardware required to train a hypothetical 100-trillion-parameter dense model on 29 trillion tokens. A dense model uses its full network for every token, so the arithmetic grows with both numbers at once.
 
 ```text
 100-Trillion-Parameter Dense Model Scaling Wall (ASP Ch 1 p. 7, why_gpus.py):
@@ -489,23 +528,23 @@ Why can we not rely on brute-force dense scaling forever? Using the dense transf
   - Note: Excludes optimizer states, gradients, activations, and KV cache
 ```
 
-A 100-trillion-parameter model is an aspirational milestone for AI. People often compare it with the estimated 100 trillion synaptic connections in the human neocortex, treating each connection as one parameter. Building such a model is possible in theory. Doing it by brute force would be impractical for all but the wealthiest organizations.
+A 100-trillion-parameter model is an aspirational milestone for AI. People often compare it with the estimated 100 trillion synaptic connections in the human neocortex, treating each connection as one parameter. That comparison is a rough picture, not a measurement. Building such a model is possible in theory. Doing it by brute force would be impractical for all but the wealthiest organizations.
 
-One prominent idea is sparsity, especially mixture-of-experts (MoE) models. Dense models, such as the GPT-series LLMs made popular by OpenAI, use their full network for every token. A MoE model routes each input token through only a subset of its many experts. FLOPs per token stay roughly constant as total parameters grow. Sparse models also tend to have lower request latency at inference, because fewer parameters are active.
+One prominent idea is sparsity, especially mixture-of-experts (MoE) models. Dense models, such as the GPT-series LLMs made popular by OpenAI, use their full network for every token. A MoE model routes each input token through only a subset of its many experts, which are separate sub-networks inside the model. FLOPs per token stay roughly constant as total parameters grow. Sparse models also tend to have lower request latency at inference, because fewer parameters are active for each token.
 
-There is public speculation that some frontier models, including OpenAI's GPT-series and o-series reasoning models, use the MoE architecture. Sparse models show that multi-trillion-parameter scale does not need an equal explosion in computation. Google's Switch Transformer from 2021 is a 1.6-trillion-parameter MoE. It matched dense-model accuracy with a fraction of the computation. It trained 7x faster than a comparable dense approach.
+There is public speculation that some frontier models, including OpenAI's GPT-series and o-series reasoning models, use the MoE architecture. Whatever the truth for any one model, the lesson holds. Sparse models show that multi-trillion-parameter scale does not need an equal explosion in computation. Google's Switch Transformer from 2021 is a 1.6-trillion-parameter MoE. It matched dense-model accuracy with a fraction of the computation, and it trained 7x faster than a comparable dense approach.
 
-DeepSeek-V3 and DeepSeek-R1 are strong MoE examples. They hold about 680 billion total parameters, with about 37 billion active per input token. Each token uses 1 shared expert plus 8 selected experts. Those experts come from a pool of 256. That makes them far more resource-efficient than similarly sized dense LLMs.
+DeepSeek-V3 and DeepSeek-R1 are strong MoE examples. They hold about 680 billion total parameters, with about 37 billion active per input token. Each token uses 1 shared expert plus 8 selected experts. Those experts come from a pool of 256. That makes them far more resource-efficient than similarly sized dense LLMs, because most of the network sits idle for any given token.
 
 Memory is a second major bottleneck. A 100-trillion-parameter model needs about 200 TB of GPU memory just to load FP16 weights. That is 100 trillion parameters times 2 bytes each. The figure is roughly three orders of magnitude above the roughly 180 GB of usable HBM on one NVIDIA Blackwell B200, which has 192 GB physically.
 
-Loading only the weights takes about 1,110 B200 GPUs at 180 GB each. With 288 GB B300 GPUs, it takes about 695. Activations, optimizer states, KV cache, and serving workspace add more. A B200 node holds 8 GPUs, so loading the model takes about 125 GPU nodes. A cluster of B300 nodes, with 8 GPUs per node, takes about 86 nodes.
+Loading only the weights takes about 1,110 B200 GPUs at 180 GB each. With 288 GB B300 GPUs, it takes about 695. Activations, optimizer states, KV cache, and serving workspace add more on top. A B200 node holds 8 GPUs, so loading the model takes about 125 GPU nodes. A cluster of B300 nodes, with 8 GPUs per node, takes about 86 nodes.
 
-Feeding data fast enough to keep such a model busy is also hard. Communication overhead grows as the model is split across 1,000 B200 GPUs or 700 B300 GPUs. One training run can consume millions of GPU-hours and megawatt-hours of energy. That cost is why the era of 100-trillion-parameter AI forces a redesign of system design. Hardware, algorithms, and software must coevolve.
+Feeding data fast enough to keep such a model busy is also hard. Communication overhead grows as the model is split across 1,000 B200 GPUs or 700 B300 GPUs. One training run can consume millions of GPU-hours and megawatt-hours of energy. That cost is why the era of 100-trillion-parameter AI forces a redesign of system design. Hardware, algorithms, and software must evolve together.
 
-While the optimizations here also apply to smaller models, we will keep returning to the 100-trillion-parameter case. It shows that we cannot just throw hardware at the scaling problem. We need software and algorithmic innovation codesigned with compute, networking, memory, and storage.
+While the optimizations here also apply to smaller models, we will keep returning to the 100-trillion-parameter case. It shows that we cannot just throw hardware at the scaling problem. We need software and algorithmic innovation designed together with compute, networking, memory, and storage.
 
-The **DeepSeek-V3 and DeepSeek-R1** training run demonstrates how mechanical sympathy and hardware-software co-design overcome severe hardware limits. Restricted from buying B200 or H100 GPUs at 900 GB/s NVLink, DeepSeek trained its 680-billion-parameter model on export-compliant **NVIDIA H800 GPUs** throttled to **400 GB/s** NVLink. Dense frontier training runs cost an estimated **$100M** for GPT-4 and **$191M** for Gemini Ultra. DeepSeek instead reported completing its run for under **$6M** in compute through five co-designed optimizations released during its February 2025 Open-Source Week.
+The DeepSeek-V3 and DeepSeek-R1 training run demonstrates how mechanical sympathy and hardware-software co-design overcome severe hardware limits. Restricted from buying B200 or H100 GPUs at 900 GB/s NVLink, DeepSeek trained its 680-billion-parameter model on export-compliant NVIDIA H800 GPUs throttled to 400 GB/s NVLink. Dense frontier training runs cost an estimated $100M for GPT-4 and $191M for Gemini Ultra. DeepSeek instead reported completing its run for under $6M in compute through five co-designed optimizations released during its February 2025 Open-Source Week.
 
 | Optimization pillar | Open-source repo | How it works with H800 hardware |
 |---|---|---|
@@ -515,11 +554,13 @@ The **DeepSeek-V3 and DeepSeek-R1** training run demonstrates how mechanical sym
 | **4. Bidirectional Overlap & Expert Routing** | `DualPipe`, `DeepEP`, `EPLB` | Overlaps forward and backward computation with all-to-all RDMA and NVLink communication (`DualPipe` and `DeepEP`) plus redundant expert load balancing (`EPLB`), hiding the **400 GB/s** H800 NVLink limit. |
 | **5. Parallel NVMe + RDMA Storage** | `3FS` (Fire-Flyer File System) | Saturates NVMe SSD and RDMA fabric bandwidth across storage nodes so data loading never starves the SMs. |
 
+The table lists five pillars, and each one attacks a different limit. The MoE row cuts the work per token. The MLA row shrinks the cache. The FP8 row halves the bytes moved. The overlap row hides communication behind computation. The storage row keeps the data flowing so the SMs never wait on the disk. Together they show that a hardware limit can be worked around from several sides at once.
+
 ### 5.3 Time-to-solution, energy efficiency, and job-suite parallel efficiency
 
-When sizing a cluster or choosing how many GPUs to allocate per job, three quantitative models from *Parallel and High Performance Computing* Chapter 9 guide capacity planning.
+When you size a cluster or choose how many GPUs to give each job, three quantitative models from *Parallel and High Performance Computing* Chapter 9 guide the capacity planning. Each model answers a different question, and they can point in different directions, so you need all three.
 
-First, GPUs compress time-to-solution dramatically on data-parallel workloads. On the `CloverLeaf` hydrodynamics benchmark over **500,000** cycles, a single V100 GPU finishes **4.6x** faster than a 36-core Skylake CPU and **10.4x** faster than a 16-core Ivy Bridge CPU.
+The first question is how long a job takes. GPUs compress time-to-solution dramatically on data-parallel workloads, where the same operation runs over large amounts of data. On the `CloverLeaf` hydrodynamics benchmark over **500,000** cycles, a single V100 GPU finishes **4.6x** faster than a 36-core Skylake CPU and **10.4x** faster than a 16-core Ivy Bridge CPU.
 
 ```text
 CloverLeaf Hydrodynamics Benchmark Time-to-Solution (PHPC Ch 9 §9.6.1):
@@ -528,13 +569,15 @@ CloverLeaf Hydrodynamics Benchmark Time-to-Solution (PHPC Ch 9 §9.6.1):
   - 1x NVIDIA V100 GPU (CUDA -arch=sm_70):              59.3 s / 500 cycles (0.12 s/cycle) ->  16.5 hours (4.6x vs Skylake, 10.4x vs Ivy Bridge)
 ```
 
-Second, a single GPU has a higher nameplate Thermal Design Power than a single CPU. Even so, a GPU cluster consumes far less total electrical energy to deliver the same aggregate memory bandwidth.
+The second question is how much energy the cluster burns. A single GPU has a higher nameplate Thermal Design Power (TDP, the maximum heat a part is designed to shed) than a single CPU. Even so, a GPU cluster consumes far less total electrical energy to deliver the same aggregate memory bandwidth, because it needs far fewer processors to reach that bandwidth. The formula below turns power into energy.
 
 ```text
 Energy Consumption Formula & Real-World Power Draw (PHPC Ch 9 §9.6.2):
   Energy (kWh) = (N_processors x TDP (Watts) x Runtime (hours)) / 1,000
   Empirical V100 Power (nvidia-smi dmon on CloverLeaf 60s run): 10.4 kJ (~61% of 300 W TDP active, ~20% of TDP idle)
 ```
+
+The comparison table below applies that formula to a design target of 10 TB/s. Each row is a single fact about the two clusters, so read down a column to see one design and across a row to compare the two.
 
 | Design target: ~10 TB/s aggregate memory bandwidth (24-hour run) | CPU Cluster: **45x Intel Xeon Gold 6152** | GPU Cluster: **12x NVIDIA V100 GPUs** |
 |---|---|---|
@@ -543,7 +586,9 @@ Energy Consumption Formula & Real-World Power Draw (PHPC Ch 9 §9.6.2):
 | **Nameplate TDP per processor** | **140 W** per CPU | **300 W** per GPU |
 | **24-hour energy consumption** | 45 x 140 W x 24 h = **151.2 kWh** | 12 x 300 W x 24 h = **86.4 kWh** (~42.9% less energy) |
 
-Third, engineers must balance single-job turnaround time against multi-job queue throughput. When you double the processors assigned to a job (`P_mult = 2`), inter-processor communication overhead reduces parallel efficiency (`P_efficiency = 80%`). That trade-off makes a single urgent job finish faster, but makes a full queue of 100 jobs finish **25 hours slower**.
+The fewer-but-hotter design wins on energy. The GPU cluster draws more power per part, but it needs only 12 parts to reach the bandwidth that takes 45 CPUs. Multiply the power by the hours, and the GPU cluster uses less energy over the day. The same table also shows the hardware price gap, which favors the GPUs as well.
+
+The third question is how to share a fixed pool of processors. Engineers must balance the turnaround time of a single job against the throughput of a whole queue of jobs. When you double the processors assigned to a job (`P_mult = 2`), inter-processor communication overhead reduces parallel efficiency (`P_efficiency = 80%`). That trade-off makes a single urgent job finish faster, but it makes a full queue of 100 jobs finish **25 hours slower**.
 
 ```text
 Single-Job Turnaround vs 100-Job Suite Throughput on 200 Processors (PHPC Ch 9 §9.6.2):
@@ -555,37 +600,39 @@ Single-Job Turnaround vs 100-Job Suite Throughput on 200 Processors (PHPC Ch 9 �
   - Case 2 ( 5 concurrent jobs x 40 processors): 20 batches x  6.25 hours = 125.0 hours total (25 hours / 25% slower)
 ```
 
-Scale up processors per job when minimizing latency for one critical run. Scale down processors per job within memory limits when maximizing total throughput across a busy multi-job queue.
+Scale up processors per job when minimizing latency for one critical run. Scale down processors per job, within memory limits, when maximizing total throughput across a busy multi-job queue. The listing shows the trade in numbers: the single job gets faster, but the whole queue takes longer to clear.
 
 ---
 
 ### 5.4 Why DeepSeek's export limits shaped its design
 
-In late 2024, DeepSeek.AI, a small startup in China, stunned the AI community. It trained a frontier large language model without access to the latest NVIDIA GPUs. Export restrictions blocked top-tier Blackwell and Hopper parts. Its engineers used export-compliant alternatives, including the NVIDIA H800. They also wrote custom kernels and used techniques such as model distillation to squeeze out performance.
+In late 2024, DeepSeek.AI, a small startup in China, stunned the AI community. It trained a frontier large language model without access to the latest NVIDIA GPUs. Export restrictions blocked the top-tier Blackwell and Hopper parts. Its engineers used export-compliant alternatives, including the NVIDIA H800. They also wrote custom kernels and used techniques such as model distillation, which trains a smaller model to copy a larger one, to squeeze out performance.
 
 Despite those limits, DeepSeek trained DeepSeek-R1 to reasoning performance near leading frontier models. Those models were trained on the most capable chips of the time. The case shows that performance engineers can get the most from their hardware, whatever the constraints. DeepSeek treated communication bandwidth as a scarce resource. It optimized every byte on the wire and scaled out to thousands of constrained GPUs.
 
 Contrast that with the brute-force path of the largest frontier labs in the United States and Europe. Those labs keep building larger clusters for larger models. Model sizes grew from millions to billions, and now to trillions of parameters. Each 10x jump in scale unlocked new capabilities. It also brought enormous cost. Training GPT-4 in 2023 reportedly cost an estimated ~$100 million. Google's Gemini Ultra, in late 2023, is estimated at ~$191 million.
 
-DeepSeek claims its model was trained for less than $6 million in compute. That figure is an order of magnitude below GPT-4 and Gemini Ultra. Its performance on the benchmarks it reports is comparable to far more expensive closed-model systems. Doubt remains about the $6 million number. It may cover only a single training run, and it may exclude experimentation and the model-development pipeline.
+DeepSeek claims its model was trained for less than $6 million in compute. That figure is an order of magnitude below GPT-4 and Gemini Ultra. Its performance on the benchmarks it reports is comparable to far more expensive closed-model systems. Doubt remains about the $6 million number. It may cover only a single training run, and it may exclude experimentation and the model-development pipeline. Treat the claim as a reported figure to check, not as settled fact.
 
 The announcement briefly shocked US financial markets. NVIDIA's stock dropped ~17% in a single day, on fears that efficiency gains would need less NVIDIA hardware. That reaction was somewhat overblown, and the stock recovered in later sessions. It still shows how an efficiency breakthrough can move global markets.
 
-DeepSeek also reports large inference efficiency gains. They come from hardware-aware changes to the transformer architecture behind most frontier LLMs. The rest of this book covers these optimizations.
+DeepSeek also reports large inference efficiency gains. They come from hardware-aware changes to the transformer architecture behind most frontier LLMs. The rest of this handbook covers these optimizations.
 
 At these scales, every bit of squeezed performance can mean millions or billions of dollars saved. Each removed bottleneck has an outsized effect on training throughput and inference latency. That lowers cost and makes end users happier. AI systems performance engineering is not only about speed. It makes the previously impossible both possible and affordable.
 
 DeepSeek delivered GPT-4-level model performance for millions of dollars less. It did this by extracting every ounce of performance from the H800, even with reduced communication bandwidth. It also saved money by needing less human-labeled data for R1's reasoning fine-tuning.
 
-DeepSeek built DeepSeek-R1 on top of the V3 base. R1 is a reasoning model, designed much like OpenAI's o1 and o3 series. Its staged pipeline uses cold-start data, supervised fine-tuning (SFT), rejection sampling, and reinforcement learning (RL). DeepSeek-R1-Zero took a different path. It emphasized RL over SFT, used minimal supervised data, and trained with RL on chain-of-thought reasoning data. That approach cut training cost and time.
+DeepSeek built DeepSeek-R1 on top of the V3 base. R1 is a reasoning model, designed much like OpenAI's o1 and o3 series. Its staged pipeline uses cold-start data, supervised fine-tuning (SFT), rejection sampling, and reinforcement learning (RL). Cold-start data is a small, clean set of examples that gives the model a stable start. DeepSeek-R1-Zero took a different path. It emphasized RL over SFT, used minimal supervised data, and trained with RL on chain-of-thought reasoning data, where the model writes out its steps before the answer. That approach cut training cost and time.
 
-The lessons are clear. Large, sparsely activated MoE models can scale even on limited memory and compute budgets. Novel training schedules and low-level communication and computation overlap can overcome hardware limits. The return on investment was large. Smart software and algorithm design overcame brute-force hardware limits, which let DeepSeek build large-scale models on a tight budget.
+The lessons are clear. Large, sparsely activated MoE models can scale even on limited memory and compute budgets. Novel training schedules, and low-level overlap of communication with computation, can push past hardware limits. The return on investment was large. Smart software and algorithm design overcame brute-force hardware limits, which let DeepSeek build large-scale models on a tight budget.
 
 ---
 
 ## 6. From one GPU to the full-stack AI factory
 
-A fast GPU cannot deliver high goodput in isolation. Network packet drops, partial rank launches, missing `/dev/nvidia*` container access, or tripped rack circuit breakers will leave the SMs idle.
+Picture a new GPU rack that passes its own burn-in test on the first day. On the second day, a distributed job starts and the GPUs sit idle, with no error message on any single card. The GPU is fine. The problem is somewhere in the layers around it, such as a network that drops packets, a container that cannot see the device files, or a rack that trips its breaker under load. A fast GPU cannot deliver high goodput in isolation. Network packet drops, partial rank launches, missing `/dev/nvidia*` container access, or tripped rack circuit breakers will leave the SMs idle, and none of those problems shows up inside the chip.
+
+The diagram below shows the full stack that sits around one GPU. Read it from the top down. The serving software at the top sends work to the math libraries, which send it to the drivers, which finally reach the hardware. The orchestration layer on the side decides where each job runs.
 
 ```mermaid
 flowchart TD
@@ -609,7 +656,9 @@ flowchart TD
     end
 ```
 
-To orient you for the rest of Part 10 and Parts 11 through 17, four infrastructure layers surround the GPU silicon.
+Read the diagram as four layers. The top layer is the serving software that answers requests. The second layer is the math and communication libraries that turn those requests into GPU work. The third layer provisions machines and decides who gets which GPU. The bottom layer is the silicon, the network fabric, and the physical facility that powers and cools it all. A failure can start in any layer and look like a slow GPU from the outside, which is why the layers need to be checked in order.
+
+To orient you for the rest of Part 10 and Parts 11 through 17, four infrastructure layers surround the GPU silicon. The table gives the main components in each layer and the role each one plays in preventing failures.
 
 | Infrastructure layer | Core components | Production role and failure prevention |
 |---|---|---|
@@ -618,45 +667,45 @@ To orient you for the rest of Part 10 and Parts 11 through 17, four infrastructu
 | **3. Provisioning & Orchestration** | `BCM`, `Kubernetes + GPU Operator`, `Slurm` | `BCM` boots golden PXE images and runs `dcgmi diag` and `nccl-tests` pre-flight gates (Part 8). `GPU Operator` manages K8s driver/device/DCGM/MIG DaemonSets for inference (Chapters 11.1–11.5). `Slurm` (`slurmctld`/`slurmd` with Enroot/Pyxis) or K8s `KAI Scheduler`, `Kueue`, and `Volcano` provide **gang scheduling** so multi-node jobs never deadlock waiting on partial pods (Chapters 11.7–11.20). |
 | **4. Sharing & Facility Envelopes** | `MIG`, `vGPU`, `RDHx`, `DLC` | `MIG` partitions one GPU in hardware into up to **7** isolated instances for K8s pods, while `vGPU` shares GPUs across VMware or KVM hypervisors (Chapters 11.23–11.26). Legacy racks supply **5–15 kW** air cooling, whereas 4x DGX H100s (**>40 kW**), 8x DGX H100s (**~85 kW**, **>1,000 lbs**), and NVL72 racks (**120–132 kW**) require Rear Door Heat Exchangers or Direct Liquid Cooling (Chapters 6.30, 9.11). |
 
----
+The table is a map of who is responsible for what. The runtime libraries make the GPU do math quickly and talk to its neighbors. The serving stack compiles and packages the model. The orchestration layer keeps jobs from waiting forever on each other. The sharing and facility layer decides how one card is split between users and whether the room can power and cool the rack at all.
 
 ### 6.1 Where the rest of the book goes
 
-The book follows one path. It starts with hardware fundamentals, moves up through the software stack, and ends with algorithmic techniques. Each stage includes hands-on analysis. The goal is to optimize 100-trillion-parameter AI systems, so every layer gets examined.
+The source book, *AI Systems Performance Engineering*, follows one path. It starts with hardware fundamentals, moves up through the software stack, and ends with algorithmic techniques. Each stage includes hands-on analysis. The goal is to optimize 100-trillion-parameter AI systems, so every layer gets examined in turn.
 
 Chapter 2 covers NVIDIA AI system hardware in depth. That includes the GB200 and GB300 NVL72 rack, which combines Grace Blackwell Superchip design with the NVLink network. Chapters 3 through 5 cover OS, networking, and storage optimizations for GPU systems. They explain CPU and memory pinning, Docker and Kubernetes, and network and storage setup for GPU environments.
 
-Chapters 6 through 12 teach CUDA programming and kernel optimization. These skills are needed to build hardware-aware algorithms such as FlashAttention and DeepSeek's MLA. Those algorithms target attention, the resource-heavy part of the transformer that dominates generative AI. The book then moves to distributed communication. It shows how to minimize communication and overlap computation with it, a pattern that applies across the whole stack.
+Chapters 6 through 12 teach CUDA programming and kernel optimization. These skills are needed to build hardware-aware algorithms such as FlashAttention and DeepSeek's MLA. Those algorithms target attention, the resource-heavy part of the transformer that dominates generative AI. The source then moves to distributed communication. It shows how to minimize communication and overlap computation with it, a pattern that applies across the whole stack.
 
 Chapters 13 and 14 cover PyTorch-specific optimization. They explain the PyTorch compiler stack and OpenAI's Python-based Triton language for custom GPU kernels. Triton lowers the barrier, because it does not require deep C++ knowledge. These chapters also cover parallelism: data (DP), fully sharded data (FSDP), tensor (TP), pipeline (PP), context (CP), and mixture-of-experts (MoE). They close with memory techniques such as activation checkpointing, sharding optimizer states, and offloading to CPU memory.
 
-Chapters 15 through 19 focus on inference and agentic AI. The central pattern is disaggregated prefill and decode. NVIDIA Dynamo supports it, with KV cache movement over UCX with GPUDirect RDMA, NCCL point-to-point, or framework transports. The book also covers the serving engines vLLM, SGLang, and NVIDIA TensorRT LLM. The Dynamo framework integrates with those engines and uses NIXL for low-latency KV cache transfer. Other topics include the Grace CPU for preprocessing, draft models for speculative decoding, and request routing and batching. Compression methods include 4-bit quantization, knowledge distillation, sparsity and pruning, and specialized TensorRT kernels. Adaptive runtime tuning appears throughout.
+Chapters 15 through 19 focus on inference and agentic AI. The central pattern is disaggregated prefill and decode. NVIDIA Dynamo supports it, with KV cache movement over UCX with GPUDirect RDMA, NCCL point-to-point, or framework transports. The source also covers the serving engines vLLM, SGLang, and NVIDIA TensorRT LLM. The Dynamo framework integrates with those engines and uses NIXL for low-latency KV cache transfer. Other topics include the Grace CPU for preprocessing, draft models for speculative decoding, and request routing and batching. Compression methods include 4-bit quantization, knowledge distillation, sparsity and pruning, and specialized TensorRT kernels. Adaptive runtime tuning appears throughout.
 
 Chapter 20 covers AI-assisted tools for kernel and system optimization. It includes case studies on training and serving multi-billion- and multi-trillion-parameter models. It also covers self-improving optimization and agents. The appendix gives a checklist of common performance and cost-saving tips.
 
-Throughout the book, each generation's gains in compute, memory, networking, and storage add to AI scaling. Those gains show up as ultrascale clusters, multi-trillion-parameter models, high-throughput training, and extreme-low-latency inference servers.
+Throughout the source, each generation's gains in compute, memory, networking, and storage add to AI scaling. Those gains show up as ultrascale clusters, multi-trillion-parameter models, high-throughput training, and extreme-low-latency inference servers.
 
 ### 6.2 Key takeaways and the closing argument
 
-These qualities define the performance engineer's role. The role merges deep technical knowledge with strategic, profile-driven optimization. It turns raw hardware into cost-effective, high-performance AI.
+These qualities define the performance engineer's role. The role merges deep technical knowledge with strategic, profile-driven optimization. It turns raw hardware into cost-effective, high-performance AI. The takeaways below are the habits that follow from everything earlier in this chapter.
 
-**Measure goodput.** Look beyond raw FLOPS or utilization. Measure how much of the GPU's time goes to useful work, such as forward and backward computation, versus waiting on data or other overhead. Use Nsight Systems, Nsight Compute, or the PyTorch profiler to measure that ratio, and push it up.
+Measure goodput first. Look beyond raw FLOPS or utilization. Measure how much of the GPU's time goes to useful work, such as forward and backward computation, versus waiting on data or other overhead. Use Nsight Systems, Nsight Compute, or the PyTorch profiler to measure that ratio, and push it up.
 
-**Prefer skillful engineering over brute-force spending.** More hardware is not a silver bullet. Clever software and system work can close gaps when hardware is limited. DeepSeek trained a model that matched far more powerful hardware by optimizing communication and hardware use. It did so on H800 GPUs with limited interconnect bandwidth, at a fraction of the cost. Skillful engineering beat brute-force spending.
+Prefer skillful engineering over brute-force spending. More hardware is not a silver bullet. Clever software and system work can close gaps when hardware is limited. DeepSeek trained a model that matched far more powerful hardware by optimizing communication and hardware use. It did so on H800 GPUs with limited interconnect bandwidth, at a fraction of the cost. Skillful engineering beat brute-force spending.
 
-**Look for order-of-magnitude impact with incremental optimizations.** At scale, a small percentage gain can save millions of dollars. Small inefficiencies, such as redundant computation and slow data pipelines, quietly raise cost as a system grows.
+Look for order-of-magnitude impact with incremental optimizations. At scale, a small percentage gain can save millions of dollars. Small inefficiencies, such as redundant computation and slow data pipelines, quietly raise cost as a system grows.
 
-**Approach tuning with a profile-driven mindset.** Let data and profilers find the true bottleneck. It may be compute utilization, memory bandwidth, memory latency, cache misses, or communication delays. Then apply targeted optimization to that bottleneck.
+Approach tuning with a profile-driven mindset. Let data and profilers find the true bottleneck. It may be compute utilization, memory bandwidth, memory latency, cache misses, or communication delays. Then apply targeted optimization to that bottleneck, and leave the rest alone until the profile says otherwise.
 
-**Maintain a holistic view.** Performance spans the GPU, CPU, memory, network, algorithms, and libraries. A weak link in any layer can bottleneck the whole system. Sometimes an algorithm change relieves a hardware limit. Sometimes a new hardware feature enables a new algorithm.
+Maintain a holistic view. Performance spans the GPU, CPU, memory, network, algorithms, and libraries. A weak link in any layer can bottleneck the whole system. Sometimes an algorithm change relieves a hardware limit. Sometimes a new hardware feature enables a new algorithm.
 
-**Stay informed on the latest hardware, software, and algorithms.** Unified CPU-GPU memory, faster interconnects, and new numerical precision formats can change the best strategy. Keep your mental models current so you can remove bottlenecks quickly. The MLPerf benchmark suites are a good resource for hardware performance across models.
+Stay informed on the latest hardware, software, and algorithms. Unified CPU-GPU memory, faster interconnects, and new numerical precision formats can change the best strategy. Keep your mental models current so you can remove bottlenecks quickly. The MLPerf benchmark suites are a good resource for hardware performance across models.
 
-The conclusion is simple. At large scale, optimization is not optional. It separates a system that works from one that is impractical. Traditional approaches in hardware or algorithms break down at this scale, so we need advanced hardware and smart software together. AI models push physical resource limits, and hardware races to keep up. Performance engineers make sure that expensive machinery delivers results.
+The conclusion is simple. At large scale, optimization is not optional. It separates a system that works from one that is impractical. Traditional approaches in hardware or algorithms break down at this scale, so the field needs advanced hardware and smart software together. AI models push physical resource limits, and hardware races to keep up. Performance engineers make sure that expensive machinery delivers results.
 
-Throwing money and hardware at the problem is not enough. We must co-optimize model architectures, algorithms, hardware, and system design together. The performance engineer's job spans many disciplines. You may profile a GPU one day, study network topology the next, and analyze algorithmic complexity after that. The role suits a full-stack performance enthusiast who wants every bit of performance from hardware and software.
+Throwing money and hardware at the problem is not enough. Model architectures, algorithms, hardware, and system design have to be co-optimized together. The performance engineer's job spans many disciplines. You may profile a GPU one day, study network topology the next, and analyze algorithmic complexity after that. The role suits a full-stack performance enthusiast who wants every bit of performance from hardware and software.
 
-The mantra for this role is mechanical sympathy. Understand the machinery, both hardware and software, so you can tailor solutions that use the whole stack. This book is a study in that idea. New hardware features and constraints inspire new software. New algorithms encourage new hardware.
+The mantra for this role is mechanical sympathy. Understand the machinery, both hardware and software, so you can tailor solutions that use the whole stack. *AI Systems Performance Engineering* is a study in that idea. New hardware features and constraints inspire new software. New algorithms encourage new hardware.
 
 A 100-trillion-parameter model stays beyond today's hardware. Even an exascale system would need several millennia of GPU time for one training run. That is impractical. It is why advanced hardware and clever software optimizations are both needed. The following chapters break an AI system into processors, memory, interconnects, and frameworks, and show how to optimize each part on principle.
 
@@ -664,11 +713,11 @@ A 100-trillion-parameter model stays beyond today's hardware. Even an exascale s
 
 ## 7. Inspecting a GPU host and tracing a staged request path
 
-When you log into an unfamiliar GPU server or investigate a latency spike, never guess and never reinstall drivers blindly. Follow two operational habits. Verify the hardware and driver stack from bottom to top, and measure request latency stage by stage.
+When you log into an unfamiliar GPU server, or when you investigate a latency spike, never guess and never reinstall drivers blindly. Blind reinstalls can hide the real cause and make the next incident harder to read. Follow two operational habits instead. Verify the hardware and driver stack from bottom to top, and measure request latency stage by stage.
 
 ### 7.1 The 8-step host inspection sequence and 3-layer failure triage
 
-When `nvidia-smi` fails on a Linux host, the root cause sits at one of three distinct physical or software layers.
+Picture the first ten minutes on an unfamiliar box. Someone says the GPUs are gone after a reboot. Before you touch anything, you need to know which layer broke. When `nvidia-smi` fails on a Linux host, the root cause sits at one of three distinct physical or software layers. The flowchart walks through the checks in order, and each branch tells you which layer to look at next.
 
 ```mermaid
 flowchart LR
@@ -682,15 +731,17 @@ flowchart LR
     S5 -->|"Table printed"| OK["Host GPU Ready<br/>Header CUDA Version =<br/>max driver compatibility"]
 ```
 
-First, check PCIe bus visibility using `lspci | grep -i nvidia`. Empty output proves the Linux kernel sees no NVIDIA PCIe device at all, indicating a CPU-only instance, unseated hardware, or missing hypervisor PCIe passthrough. Second, if `lspci` lists the GPUs, check `which nvidia-smi`. A missing binary means the hardware is physically present on the motherboard, but the NVIDIA user-space driver packages are not installed. Third, if `/usr/bin/nvidia-smi` exists but prints `NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver`, the `nvidia.ko` kernel module is unloaded or mismatched against the running `uname -r` kernel after an OS upgrade. Note that `CUDA Version` in the `nvidia-smi` header shows the maximum runtime version supported by the driver, not the installed `nvcc` toolkit.
+The first check is the physical bus. Run `lspci | grep -i nvidia`. Empty output proves the Linux kernel sees no NVIDIA PCIe device at all. That points to a CPU-only instance, unseated hardware, or missing hypervisor PCIe passthrough, which is the step that hands a physical device through to a virtual machine. Second, if `lspci` lists the GPUs, check `which nvidia-smi`. A missing binary means the hardware is physically present on the motherboard, but the NVIDIA user-space driver packages are not installed. Third, if `/usr/bin/nvidia-smi` exists but prints `NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver`, the `nvidia.ko` kernel module is unloaded or mismatched against the running `uname -r` kernel after an OS upgrade. Note that `CUDA Version` in the `nvidia-smi` header shows the maximum runtime version supported by the driver, not the installed `nvcc` toolkit. That detail trips up many people, so check the toolkit separately when you need it.
 
-Combining the three-layer host inspection state machine from Volume 01 Lab 01 with the staged latency analyzer from Volume 01 Lab 02 into `diagnose_host_and_request_stage` in `code/part10/why_gpus.py` is **my inference**.
+This chapter suggests combining the three-layer host inspection with the staged latency analyzer into one function, `diagnose_host_and_request_stage` in `code/part10/why_gpus.py`. That combination is an idea of this chapter, not a recipe a source spelled out.
 
 ---
 
 ## Commands and configurations that matter
 
 ### 1. The 8-step Linux and GPU host qualification sequence (untested on live Nebius GPU VM)
+
+The block below runs the host checks in the same order as the flowchart. Run it on a fresh host before you put the box into service. Each comment names the steps it covers.
 
 ```bash
 # Steps 1 & 2: Identify OS distribution and running kernel (nvidia.ko must match uname -r)
@@ -716,12 +767,16 @@ sudo journalctl -k | grep -i nvidia
 
 ### 2. Monitoring GPU power and utilization over time (`nvidia-smi dmon`)
 
+A single `nvidia-smi` snapshot can miss a spike. The `dmon` mode samples the same counters on a schedule, so you can see the shape of a run. The command below records one sample per second for 65 samples.
+
 ```bash
 # Log power (W), GPU/memory temp (C), SM/mem utilization (%), and clocks every 1s for 65 samples
 nvidia-smi dmon -i 0 --select pumct -c 65 --options DT --filename gpu_monitoring.log &
 ```
 
 ### 3. Empirical memory bandwidth (`BabelStream`) and Roofline (`mixbench`) micro-benchmarks
+
+These two micro-benchmarks give you the measured numbers to compare against the paper ceilings from section 2. BabelStream measures memory bandwidth, and mixbench measures how compute throughput changes with arithmetic intensity. Run both on the same GPU, so the results line up.
 
 ```bash
 # 1. Measure achieved HBM Copy / Mul / Add / Triad / Dot bandwidth with BabelStream
@@ -737,6 +792,8 @@ cd mixbench && make && ./mixbench-cuda-ro
 
 ## How it fails
 
+The table lists six failure modes that you will meet on real clusters. Each row has a symptom you can see, the root cause behind it, and the first fix to try. Match the symptom first, and only then reason about the cause.
+
 | Failure mode | Symptom | Root cause | Diagnosis & fix |
 |---|---|---|---|
 | **1. Host Starvation (CPU preprocessing bottleneck)** | Training or inference runs slowly; `nvidia-smi` shows **10–15%** GPU utilization while `htop` shows **100%** CPU utilization, or staged logs show `preprocessing_ms = 500 ms` vs `execution_ms = 80 ms`. | The host CPU cannot tokenize text, decode JPEGs, or copy pageable memory buffers fast enough to keep the GPUs fed. | Profile stage timings, enable pinned host memory (`pin_memory=True` or `cudaMallocHost`), increase `DataLoader` workers, use NVMe with **GPUDirect Storage**, or offload image decoding to GPU **NVDEC** via **NVIDIA DALI**. |
@@ -750,9 +807,11 @@ cd mixbench && make && ./mixbench-cuda-ro
 
 ## Hands-on lab
 
+Before you run anything, know what this lab can and cannot show. The first part is a plain Python model of the formulas in this chapter. It runs on any laptop and needs no GPU. The second part is a small local HTTP service that simulates a slow preprocessing stage. Neither part touches real GPU hardware, and the micro-benchmarks in the host section were not run on a live cluster.
+
 ### Part A: Self-checking Python model (`code/part10/why_gpus_lab.py` — verified here)
 
-The module `code/part10/why_gpus.py` implements every formula and diagnostic classifier from this chapter. Its test runner `code/part10/why_gpus_lab.py` executes 30 automated checks covering all worked examples from the cited sources.
+The module `code/part10/why_gpus.py` implements every formula and diagnostic classifier from this chapter. Its test runner, `code/part10/why_gpus_lab.py`, runs 30 automated checks. The checks cover the worked examples from the cited sources, so a failing check tells you which number moved. The list below shows what each group of checks covers.
 
 ```text
 What code/part10/why_gpus_lab.py Verifies (30 Automated Checks):
@@ -765,13 +824,13 @@ What code/part10/why_gpus_lab.py Verifies (30 Automated Checks):
   7. Triage Classifiers:     3-layer host inspection (lspci -> which nvidia-smi -> nvidia-smi) & staged latency detector (20ms vs 500ms prep)
 ```
 
-Run the lab from the repository root.
+Run the lab from the repository root. The command uses `-B`, which stops Python from writing bytecode files into the repository.
 
 ```bash
 python3 -B code/part10/why_gpus_lab.py
 ```
 
-Expected output verified in this repository.
+The expected output below came from a run in this repository. Each `PASS` line names the source table or section that the check follows, so you can trace it back to the text above.
 
 ```text
 === Chapter 10.1 Lab: Why GPUs — CPU vs GPU & Throughput Design ===
@@ -790,7 +849,7 @@ Summary: 30 passed, 0 failed (total 30)
 
 ### Part B: Staged request-path latency and preprocessing fault-injection lab
 
-Run this local staged HTTP server from Volume 01 Lab 02 using Python's standard library. It shows how a CPU preprocessing stall inflates total latency while model execution stays constant.
+This lab starts a small local HTTP server with Python's standard library. The server sleeps for a preprocessing time and then for an execution time, and it reports both. You can then raise the preprocessing time and watch the total latency grow while the execution time stays put. That is the same pattern as a CPU that cannot feed the GPU fast enough.
 
 ```bash
 # 1. Start the staged service in healthy mode (PREPROCESS_MS=20, EXECUTION_MS=80)
@@ -819,43 +878,56 @@ curl -sS -X POST -d '{"prompt":"measure the request path"}' http://127.0.0.1:808
 kill $SERVER_PID
 ```
 
+Read the response from step 2 first. The `preprocess_ms` field should sit near 20, and the `execution_ms` field near 80. Then restart the server with the slow preprocessing setting from step 3 and send the same request again. The total grows, and the extra time sits in the preprocessing stage, not on the GPU side.
+
 ---
 
 ## Common first mistakes
 
-1. **Treating 100% `nvidia-smi` utilization as proof of hardware efficiency**. That metric only reports that at least one kernel was active, even if only one SM was busy or stalled. Always measure goodput against the hardware speed of light.
-2. **Reading the `CUDA Version` in the `nvidia-smi` header as the installed CUDA Toolkit**. That header field reports the maximum CUDA runtime version supported by the kernel driver, not the `nvcc` compiler installed in `/usr/local/cuda`.
-3. **Assuming `nvidia-smi: command not found` means no GPU is installed**. Always run `lspci | grep -i nvidia` first to separate missing PCIe hardware from missing user-space driver packages.
-4. **Choosing odd or unaligned batch sizes such as 31 or 33**. NVIDIA GPUs execute threads in 32-thread SIMT warps and tile Tensor Core matrices in multiples of 8, 16, or 32. Unaligned sizes leave warp lanes masked off.
-5. **Copying large host arrays from pageable `malloc` memory instead of pinned memory**. Pageable transfers force an extra CPU staging copy and reduce achieved PCIe bandwidth significantly.
-6. **Buying higher-bandwidth GPUs to fix slow Time To First Token on long prompts**. Long-prompt prefill is compute-bound on Tensor Cores, whereas token-by-token decode is memory-bandwidth-bound on HBM.
-7. **Migrating legacy FP32 scripts to H100 or B200 GPUs without enabling BF16, FP8, or TF32**. Without mixed or reduced precision, workloads bypass the Tensor Cores and Transformer Engine completely.
-8. **Over-scaling GPUs per job across a multi-job queue**. When doubling GPUs per job drops parallel efficiency to 80 percent, a 100-job queue finishes 25 percent slower than running twice as many narrower jobs concurrently.
+These eight mistakes show up again and again in first-month GPU work. Each one has a short fix, and most of the fixes cost nothing but a check.
+
+Treating 100% `nvidia-smi` utilization as proof of hardware efficiency is the first. That metric only reports that at least one kernel was active, even if only one SM was busy or stalled. Measure goodput against the hardware speed of light before you call a cluster healthy.
+
+Reading the `CUDA Version` in the `nvidia-smi` header as the installed CUDA Toolkit is the second. That header field reports the maximum CUDA runtime version supported by the kernel driver, not the `nvcc` compiler installed in `/usr/local/cuda`. The two numbers can differ on the same box.
+
+Assuming `nvidia-smi: command not found` means no GPU is installed is the third. Run `lspci | grep -i nvidia` first, so you can separate missing PCIe hardware from missing user-space driver packages. The two problems need different fixes.
+
+Choosing odd or unaligned batch sizes such as 31 or 33 is the fourth. NVIDIA GPUs execute threads in 32-thread SIMT warps, and they tile Tensor Core matrices in multiples of 8, 16, or 32. Unaligned sizes leave warp lanes masked off, so the hardware runs but does less work per cycle.
+
+Copying large host arrays from pageable `malloc` memory instead of pinned memory is the fifth. Pageable transfers force an extra CPU staging copy, and they reduce the achieved PCIe bandwidth noticeably.
+
+Buying higher-bandwidth GPUs to fix a slow Time To First Token on long prompts is the sixth. Long-prompt prefill is compute-bound on Tensor Cores, while token-by-token decode is memory-bandwidth-bound on HBM. Faster memory helps the second phase, not the first.
+
+Migrating legacy FP32 scripts to H100 or B200 GPUs without enabling BF16, FP8, or TF32 is the seventh. Without mixed or reduced precision, the workload bypasses the Tensor Cores and Transformer Engine completely.
+
+Over-scaling GPUs per job across a multi-job queue is the eighth. When doubling GPUs per job drops parallel efficiency to 80 percent, a 100-job queue finishes 25 percent slower than running twice as many narrower jobs at the same time.
 
 ---
 
 ## Exercises
 
-1. Run `python3 -B code/part10/why_gpus_lab.py` and inspect `code/part10/why_gpus.py`. Use `calc_peak_tflops` and `calc_peak_memory_bandwidth_gbps` to verify the exact FP32, FP64, and HBM2 ceilings for V100, A100, and AMD MI100.
-2. Using `calc_pcie_bandwidth_gbps`, compare unidirectional and bidirectional bandwidth across PCIe Gen3 x16, PCIe Gen4 x16, PCIe Gen5 x16, and PCIe Gen6 x16. Explain why the encoding overhead dropped from 20 percent in Gen2 to 1.54 percent in Gen3 and later generations.
-3. Call `calc_warp_lane_efficiency` for batch sizes of 31, 32, 33, and 64. State how many hardware lanes are allocated and wasted in each case.
-4. Using `calc_goodput_efficiency`, evaluate an 8-GPU node processing 100,000 tokens in 10 seconds against a 1,500 tokens/s per-GPU ceiling. Compare it against a cluster achieving 300 samples/s out of a 1,000 samples/s ideal peak.
-5. Using `size_100t_weight_cluster`, calculate how many 8-GPU nodes are required to hold the raw weights of a 100-trillion-parameter model in FP16, FP8, and FP4. Compare B200 GPUs at 180 GB HBM3e against B300 GPUs at 288 GB HBM3e.
-6. Using `calc_job_suite_turnaround`, reproduce the 200-processor, 100-job suite trade-off comparing 20 processors per job at 10 hours per job against 40 processors per job at 80 percent parallel efficiency.
+Each exercise gives one situation and then one task. Work through them in order, because later ones reuse the functions from the lab.
+
+1. A colleague quotes peak numbers for three GPUs in a design review. Run `python3 -B code/part10/why_gpus_lab.py` first. Then open `code/part10/why_gpus.py`. Use `calc_peak_tflops` and `calc_peak_memory_bandwidth_gbps` to check the FP32, FP64, and HBM2 ceilings for V100, A100, and AMD MI100.
+2. Your network team is choosing a PCIe generation for a new host. Using `calc_pcie_bandwidth_gbps`, compare unidirectional and bidirectional bandwidth for each x16 generation, from Gen3 to Gen6. Why did the encoding overhead fall from 20 percent in Gen2 to 1.54 percent in Gen3?
+3. A batch of 31 requests arrives at an inference server. Call `calc_warp_lane_efficiency` for the batch sizes 31 and 32. Then call it for 33 and 64. How many hardware lanes does each case allocate? How many lanes does each case waste?
+4. A dashboard shows an 8-GPU node that finished 100,000 tokens in 10 seconds. Using `calc_goodput_efficiency`, work out its goodput against a ceiling of 1,500 tokens per second for each GPU. Next, compare it with a cluster that delivers 300 samples per second out of an ideal 1,000. Which one is using its hardware better?
+5. Your team is asked how many nodes it takes to hold the raw weights of a 100-trillion-parameter model. Using `size_100t_weight_cluster`, count the 8-GPU nodes needed for FP16. Do the same for FP8 and FP4. Then compare B200 GPUs at 180 GB HBM3e with B300 GPUs at 288 GB HBM3e.
+6. A planning team has 200 processors and 100 jobs to run. Using `calc_job_suite_turnaround`, reproduce the trade-off between 20 processors per job and 40 processors per job. Use 10 hours per job for the 20-processor case. Use 80 percent parallel efficiency for the 40-processor case.
 
 ---
 
 ## Interview angles
 
-1. **Why did CPU-centric horizontal scaling stop working for deep learning, and why do we not just build CPUs with 10,000 cores**?
+1. Why did CPU-centric horizontal scaling stop working for deep learning, and why do we not just build CPUs with 10,000 cores?
    CPUs dedicate roughly 80 percent of their silicon to branch prediction, out-of-order control logic, and large caches to minimize single-thread latency. They also read from 300 to 400 GB/s motherboard DDR5 RAM. Deep learning matrix math has predictable control flow that flushes L3 caches and requires terabytes per second of memory bandwidth. GPUs strip control logic down to 5 percent by sharing one decoder across a 32-thread SIMT warp, dedicate 80 percent of the die to compute units, and pair the die with 3.35 to 8.0 TB/s HBM.
-2. **A customer ran their V100 PyTorch training container on new H100 GPUs and says the H100 is barely faster. What happened**?
+2. A customer ran their V100 PyTorch training container on new H100 GPUs and says the H100 is barely faster. What happened?
    Their legacy script enforces strict 32-bit float scalar math (`allow_tf32=False`), bypassing the H100 Tensor Cores and Transformer Engine. Enabling Automatic Mixed Precision with BF16 or FP8 or compiling with TensorRT engages the Tensor Cores, which execute full 4x4 matrix multiply-accumulates per operation instead of scalar operations.
-3. **Users of an internal coding assistant complain of a 10-second delay before the first word appears, after which tokens stream quickly. Should we buy GPUs with faster memory bandwidth**?
+3. Users of an internal coding assistant complain of a 10-second delay before the first word appears, after which tokens stream quickly. Should we buy GPUs with faster memory bandwidth?
    No. Fast streaming proves that HBM bandwidth during the decode phase is healthy. The 10-second delay occurs during the compute-bound prefill phase on 5,000-line code prompts. Fix it with prefix caching, chunked prefill, or disaggregated prefill and decode serving pools.
-4. **What is Goodput, and why can a cluster with 100% `nvidia-smi` utilization still have 30% Goodput**?
+4. What is Goodput, and why can a cluster with 100% `nvidia-smi` utilization still have 30% Goodput?
    `nvidia-smi` utilization only indicates that at least one kernel is running on the GPU. Goodput measures useful tokens or training samples completed per second divided by the theoretical speed of light ceiling. It exposes the 70 to 75 percent of capacity often lost to data-loading stalls, `AllReduce` communication waits, pipeline bubbles, and job restarts.
-5. **How did DeepSeek train the 680B DeepSeek-V3 model on export-restricted H800 GPUs**?
+5. How did DeepSeek train the 680B DeepSeek-V3 model on export-restricted H800 GPUs?
    The H800 throttles NVLink bandwidth from 900 GB/s down to 400 GB/s. DeepSeek co-designed a sparse Mixture-of-Experts architecture activating only 9 of 256 experts, or 37B active parameters per token. They combined that sparsity with Multi-Head Latent Attention (`FlashMLA`), FP8 matrix kernels (`DeepGEMM`), bidirectional pipeline and expert-parallel overlap (`DualPipe` and `DeepEP`), and the `3FS` parallel filesystem.
 
 ---
