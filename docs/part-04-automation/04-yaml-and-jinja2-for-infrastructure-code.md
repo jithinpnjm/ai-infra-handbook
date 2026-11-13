@@ -24,6 +24,8 @@ lab_venue: "GCP / GKE"
 
 Almost every control surface in this handbook is YAML, JSON or a template that produces one. That covers Ansible playbooks and inventories, Kubernetes manifests, Helm values and charts, Slurm and NCCL config generated from templates, GitHub Actions and GitLab CI pipelines, Prometheus rules, Docker Compose, cloud-init user data and Argo CD applications. When one of these files misbehaves, the cause is usually small. Most production incidents blamed on automation are really YAML mistakes, such as bad indentation, a type change like `no` becoming a boolean, or a tab character. The rest are template mistakes: an undefined variable, wrong whitespace or an unescaped brace. Learning YAML's data model and Jinja2's expression language removes a large class of these errors. It also makes you faster at everything that follows.
 
+Picture a Friday change to a Slurm configuration. The diff is four lines long, the reviewer skims it, and the change goes out before the weekend. On Monday the scheduler refuses to start, and the log points at a line that looks correct when you read it. The cause is often one invisible character, such as a tab that looks like spaces, or a colon hiding inside an unquoted value. Nobody made a design mistake. The file simply meant something other than what it appeared to say. This chapter teaches you to read these files the way the parser reads them, so the Monday morning version of the story takes minutes instead of hours.
+
 ## Prerequisites and outcomes
 
 You need only basic scripting familiarity to follow this chapter. By the end, you should be able to write correct YAML. That includes scalars, sequences, mappings, multi-line strings, anchors, aliases and merge keys, multi-document files and comments, all without falling into type-coercion traps. You should be able to move between YAML and JSON in your head. You should also check a file with `yamllint`, schemas and parsers.
@@ -32,7 +34,9 @@ On the template side, you will work with Jinja2 variables, expressions, filters,
 
 ## 1. YAML essentials
 
-A YAML file looks like plain text, but a parser turns each value into a typed object before any tool reads it. Those types are the source of several traps. YAML ("YAML Ain't Markup Language") is a human-friendly serialisation format, which means a way of writing data as text. In practice it is a superset of JSON, because JSON is valid YAML 1.2. So `{"a": 1}` works anywhere YAML does. Every YAML file is built from three structures, shown in the table below.
+Picture a pull request that changes the `mode` of a sudoers drop-in in a playbook. The reviewer reads `0644` in the diff, nods, and approves. The file is valid YAML, so every check passes. The parser, though, reads the unquoted `0644` as an octal number, and the file lands on the target with permissions nobody intended. Most of YAML's traps look harmless in a diff, which is why this section matters before you write your first real file.
+
+A YAML file looks like plain text, but a parser turns each value into a typed object before any tool reads it. Think of the parser as a clerk at a counter. The clerk looks at each word, decides whether it is a number, a true or false value, or plain text, and files it in the right box. Those types are the source of several traps. YAML ("YAML Ain't Markup Language") is a human-friendly serialisation format, which means a way of writing data as text. In practice it is a superset of JSON, because JSON is valid YAML 1.2. So `{"a": 1}` works anywhere YAML does. Every YAML file is built from three structures, shown in the table below.
 
 | Structure | Syntax | JSON/Python equivalent |
 |---|---|---|
@@ -64,33 +68,35 @@ cluster:
 ...                                # optional document end marker
 ```
 
-Notice that the example mixes block style, which uses indentation, with flow style, which uses brackets and braces.
+Read the example from the top. The `---` line opens the document, and the `cluster:` key opens a mapping. Everything indented under `cluster:` belongs to that mapping, so `name`, `racks` and `nodes` are its keys. The `racks` line uses flow style, a compact bracket form that holds three names on one line. The `nodes` line switches to block style, with one dash per node, because each node is a small mapping that reads better across several lines. Indentation tells the parser where each item ends, and the brackets tell it the same thing for the short lists.
+
+Notice that the example mixes block style, which uses indentation, with flow style, which uses brackets and braces. Both are valid, and the two can sit side by side inside one file. The `gpu01` node writes its tags in flow style, while `gpu02` writes them as a block list. The parser reads both as the same list. Pick the form that a human reviewer reads fastest, and keep that form consistent within each file.
 
 ### Rules that bite
 
-Indentation is structure, so use spaces and never tabs. A tab character is a parse error. Use two spaces consistently. Sequences under a key may be indented or not, since `key:\n- a` and `key:\n  - a` are both valid. Pick one style.
+Indentation is structure, so use spaces and never tabs. Picture a parser that reads your file from left to right and top to bottom. It counts the leading spaces on each line to decide which key owns which value. A tab character breaks that count, so the parser stops with a parse error, even when the tab looks exactly like two spaces in your editor. Use two spaces consistently, and let each level sit two spaces deeper than its parent. Sequences under a key may be indented or not, since `key:\n- a` and `key:\n  - a` are both valid. The two forms mean the same thing, so pick one style and keep it across the whole repository.
 
-A colon followed by a space separates a key from its value. A value that contains `: ` or ` #` must be quoted. A `#` that follows a space starts a comment.
+A colon followed by a space separates a key from its value. Consider `msg: Disk full: retry` in a playbook. The parser sees a second colon followed by a space, and it can no longer tell where the key ends and the value begins. A value that contains `: ` or ` #` must be quoted, so the line becomes `msg: "Disk full: retry"`. A `#` that follows a space starts a comment, so `path: /data #1` silently stores only `/data`. The rest of the line is ignored, and no error appears.
 
-Quoting matters because unquoted strings go through type inference. Single quotes are literal, and only `''` escapes a quote inside them. Double quotes support escapes such as `\n`, `\t` and `é`. When you are in doubt, quote the value.
+Quoting matters because unquoted strings go through type inference. Type inference means the parser guesses a type from the text before it stores the value. Single quotes are literal, so `'C:\temp'` keeps its backslash exactly as written, and only `''` escapes a quote inside them. Double quotes support escapes such as `\n`, `\t` and `é`, so `"line one\nline two"` holds a real line break. When you are in doubt, quote the value. A quoted string is never reinterpreted, and a reader can see at a glance that the value is meant to be text.
 
-Type coercion is one of the easiest traps to fall into. YAML 1.1 parsers such as PyYAML, which Ansible uses, read `yes`, `no`, `on`, `off`, `y` and `n` as booleans. This is the "Norway problem": the country code `NO` becomes `false`. The same parsers read `1.10` as the float 1.1, so a version number loses its zero. They can read `010` as octal, `1e3` as a float and `2024-01-15` as a date object. The values `~` and empty become null, and a leading `0x` is hex. Times such as `22:30` may parse as sexagesimal integers in YAML 1.1. Meanwhile `0.0.0.0` stays a string, but `1.2` is a float.
+Type coercion is one of the easiest traps to fall into. Coercion means the parser changes a value into another type without asking you first. Imagine a site inventory with a country column, where Norway's row silently turns into a boolean and the column stops making sense. That is the whole trap in one picture. YAML 1.1 parsers such as PyYAML, which Ansible uses, read `yes`, `no`, `on`, `off`, `y` and `n` as booleans. This is the "Norway problem": the country code `NO` becomes `false`. The same parsers read `1.10` as the float 1.1, so a version number loses its zero. They can read `010` as octal, `1e3` as a float and `2024-01-15` as a date object. The values `~` and empty become null, and a leading `0x` is hex. Times such as `22:30` may parse as sexagesimal integers in YAML 1.1. Meanwhile `0.0.0.0` stays a string, but `1.2` is a float.
 
-Quote versions, codes, IDs and file modes such as `mode: "0644"`. Ansible's guidance is to quote file modes, since `0644` is octal in YAML 1.1 while many tools expect a string. Quote anything else that must stay text.
+Quote versions, codes, IDs and file modes such as `mode: "0644"`. Ansible's guidance is to quote file modes, since `0644` is octal in YAML 1.1 while many tools expect a string. The reviewer in the opening picture read `0644` and pictured the permissions that the octal reading does not give. Quote anything else that must stay text, because a human reading the file and a parser reading the file may disagree about what it means.
 
 A string that begins with an asterisk, ampersand, exclamation mark, percent sign, at sign, backtick, brace, bracket, pipe or greater-than sign must be quoted. In Ansible, a value that starts with a Jinja expression needs quotes as well. For example, `"{{ var }}"` must be quoted, because an opening brace would otherwise start a flow mapping.
 
-Multi-line strings have their own style choices. `|` keeps every newline, which suits config files and scripts. `>` folds newlines into spaces. Chomping indicators control the end of the block: `|-` strips the final newline, and `|+` keeps all trailing newlines. An indentation indicator such as `|2` handles content that starts with spaces.
+Multi-line strings have their own style choices. Picture an embedded shell script with three commands on separate lines. Under `|` each command keeps its own line, so the script runs as written. Under `>` the lines are folded together with spaces, and the shell receives one long line that no longer behaves like the script you wrote. So `|` keeps every newline, which suits config files and scripts. `>` folds newlines into spaces, which suits long prose such as a description. Chomping indicators control the end of the block: `|-` strips the final newline, and `|+` keeps all trailing newlines. An indentation indicator such as `|2` handles content that starts with spaces.
 
-Duplicate keys are easy to miss. Most parsers silently keep the last one, which hides copy-paste bugs. `yamllint` flags them with the `key-duplicates` rule.
+Duplicate keys are easy to miss. Picture a vars file where someone copies a block, and the copy keeps the old `mode` line below the new one. Most parsers silently keep the last one, which hides copy-paste bugs, and nothing on screen tells you that a value was thrown away. `yamllint` flags them with the `key-duplicates` rule.
 
-Several documents can share one file if you separate them with `---`. Kubernetes manifests and Helm output use this layout. A single parse call usually expects one document, unless you call `yaml.safe_load_all`.
+Several documents can share one file if you separate them with `---`. Each section between separators is a complete, independent document, so a Kubernetes file with three deployments holds three documents side by side. Kubernetes manifests and Helm output use this layout. A single parse call usually expects one document, so the call reads only the first one, unless you call `yaml.safe_load_all`, which returns every document in order.
 
-Never call `yaml.load` on untrusted input, because it can instantiate arbitrary Python objects. Use `yaml.safe_load` instead. Anchors can also be abused for "billion laughs" expansion in untrusted documents.
+Never call `yaml.load` on untrusted input, because it can instantiate arbitrary Python objects. A YAML tag can ask the loader to build an object of any class it can import, and that object runs code when it is created. The result is that reading a file becomes the same as running it. Use `yaml.safe_load` instead, which builds only plain dictionaries, lists, strings and numbers. Anchors can also be abused for "billion laughs" expansion in untrusted documents.
 
 ### Anchors, aliases and merge keys
 
-Anchors (`&name`) mark a node, and aliases (`*name`) reuse it. The merge key `<<` merges one mapping into another. It is a YAML 1.1 convention that PyYAML and Kubernetes tooling support. It is not part of the YAML 1.2 core, and not every parser honours it. The example below shows the idea.
+Picture a node pool of forty identical GPU machines, where each entry repeats the same OS, GPU count and tags. Copy-pasting forty blocks works until someone changes one shared value, and then thirty-nine entries have to be edited by hand. Anchors solve that problem. An anchor (`&name`) marks a node, and an alias (`*name`) reuses it. The merge key `<<` merges one mapping into another. It is a YAML 1.1 convention that PyYAML and Kubernetes tooling support. It is not part of the YAML 1.2 core, and not every parser honours it. The example below shows the idea.
 
 ```yaml
 defaults: &node_defaults
@@ -106,17 +112,19 @@ nodes:
     gpus: 4                      # override
 ```
 
-Anchors work inside a single file only, not across files. Overused anchors make diffs harder to read. CI definitions, such as GitLab `extends` or GitHub Actions reusable workflows, give you higher-level reuse.
+Walk through the example as a parser would. It reads the `defaults` block first and stores it under the name `node_defaults`. When it reaches `gpu01`, the `<<: *node_defaults` line copies `gpus: 8`, `os` and `tags` into that node. For `gpu02`, it makes the same copy and then reads `gpus: 4`, which replaces the copied 8. The override wins because the local key comes after the merge. The other two keys still come from the defaults, so `gpu02` keeps its OS and tags.
+
+Anchors work inside a single file only, not across files. Overused anchors make diffs harder to read. A reviewer who sees `<<: *node_defaults` has to scroll to the top of the file to learn what the node really contains, and a chain of anchors that refer to other anchors makes that search longer still. CI definitions, such as GitLab `extends` or GitHub Actions reusable workflows, give you higher-level reuse.
 
 ### JSON, YAML and other formats
 
-You will often need to convert a file or query it from the command line. Run `python3 -c 'import sys,yaml,json; print(json.dumps(yaml.safe_load(sys.stdin), indent=2))' < file.yml` to convert it for inspection. The `yq` tool (mikefarah) and `jq` both process YAML and JSON. Examples are `yq '.nodes[].name' nodes.yml`, `yq -o=json` and in-place edits with `yq -i`. Kubernetes accepts either format.
+Suppose a colleague sends you a nodes file and asks why the scheduler reads a value you did not expect. The fastest way to see what the parser actually produced is to convert the file to JSON, where every type is spelled out. Quoted strings stay strings, and unquoted `no` shows up as `false`. You will often need to convert a file or query it from the command line. Run `python3 -c 'import sys,yaml,json; print(json.dumps(yaml.safe_load(sys.stdin), indent=2))' < file.yml` to convert it for inspection. The `yq` tool (mikefarah) and `jq` both process YAML and JSON. Examples are `yq '.nodes[].name' nodes.yml`, `yq -o=json` and in-place edits with `yq -i`. Kubernetes accepts either format.
 
-Choose the format by asking who edits the file. JSON has no comments and is stricter, which suits machine exchange. YAML suits human-edited configuration. TOML (Python tooling), HCL (Terraform) and INI (ansible.cfg, systemd) are the alternatives.
+Choose the format by asking who edits the file. A person who edits a config every week wants comments, room for notes and light punctuation. A program that sends the same data to an API every second wants strict rules and no surprises. JSON has no comments and is stricter, which suits machine exchange. YAML suits human-edited configuration. TOML (Python tooling), HCL (Terraform) and INI (ansible.cfg, systemd) are the alternatives.
 
-YAML has no built-in schema enforcement. Validate it with JSON Schema through `check-jsonschema`, with `kubeconform` for Kubernetes, with `pydantic` models in Python, or with Ansible argument specs for roles. Lint the style with `yamllint`. Schema validation and data models are also covered in *Network Programmability and Automation*, chapter 8 (Data Formats and Models). That chapter places YAML among structured data formats, which beat fragile CLI screen scraping. Screen scraping means parsing human-oriented output such as `show interfaces em0`, which breaks whenever a vendor changes the spacing. Requesting structured output, such as XML from `show interfaces em0 | display xml` or JSON, avoids that problem.
+YAML has no built-in schema enforcement. A parser only checks that the text is well formed, so a file with `gpus: eight` parses without complaint, even though no tool that expects a number will accept it. A schema adds the missing rule, and it says what each key must hold. Validate it with JSON Schema through `check-jsonschema`, with `kubeconform` for Kubernetes, with `pydantic` models in Python, or with Ansible argument specs for roles. Lint the style with `yamllint`. Schema validation and data models are also covered in *Network Programmability and Automation*, chapter 8 (Data Formats and Models). That chapter places YAML among structured data formats, which beat fragile CLI screen scraping. Screen scraping means parsing human-oriented output such as `show interfaces em0`, which breaks whenever a vendor changes the spacing. Requesting structured output, such as XML from `show interfaces em0 | display xml` or JSON, avoids that problem.
 
-The same chapter covers three ideas worth knowing. The first is the two phases of reading text off the wire. Markup languages like HTML annotate documents for rendering, while data serialization formats represent typed data structures across languages. When bytes arrive, you decode them into a UTF-8 string, such as `"{\"vendors\":[\"Cisco\",\"Juniper\",\"Arista\"]}"`. Then you deserialize that string into native structures with `json.loads()`, which gives you a Python `dict` and `list`. Sending reverses the flow: you serialize first and then encode.
+The same chapter covers three ideas worth knowing, and each one answers a question that comes up when data moves between machines. The first is the two phases of reading text off the wire. Markup languages like HTML annotate documents for rendering, while data serialization formats represent typed data structures across languages. When bytes arrive, you decode them into a UTF-8 string, such as `"{\"vendors\":[\"Cisco\",\"Juniper\",\"Arista\"]}"`. Then you deserialize that string into native structures with `json.loads()`, which gives you a Python `dict` and `list`. Sending reverses the flow: you serialize first and then encode.
 
 The second is the split between text and binary formats. XML uses tags, attributes and `xmlns:` namespaces. You query it with **XPath**, for example `//device/model` or `//device[@name="leaf"]/model`, or with **XQuery**. You validate it with **XSD** (`xmlschema`). JSON is lighter, and you validate it with **JSON Schema**. A schema starts with `"$schema": "https://json-schema.org/draft/2020-12/schema"` and can check `minLength`, `maxLength`, `minimum: 1`, `maximum: 4094` and IPv4 `pattern` regexes through Python's `jsonschema.validate()`. For high-throughput RPCs, such as gRPC telemetry or distributed training control planes, binary **Protocol Buffers** and **FlatBuffers** remove the text-parsing overhead. Protocol Buffers use `.proto` files, compiled with `protoc` and validated with `protoc-gen-validate`. FlatBuffers lets you read fields straight from the byte buffer without unpacking it. Python's `pickle` works only with Python, and it is unsafe on untrusted bytes.
 
@@ -149,7 +157,9 @@ rules:
 
 ## 2. Jinja2 essentials
 
-Writing a Slurm node list by hand for every machine invites mistakes. Jinja2 lets you write the pattern once and feed it data. It is a Python templating engine. A template mixes literal text with three kinds of delimiters, shown in the table below. Each kind does a different job, so learn to recognise them at a glance.
+A network engineer needs forty switch configurations by Friday. Writing them by hand means forty chances for one interface to get the wrong VLAN. A template writes the pattern once, and a data file decides what differs from switch to switch. Think of the template as a form letter and the data as the names and addresses on the envelopes. The letter stays the same, and each envelope gets its own details.
+
+Writing a Slurm node list by hand for every machine invites mistakes. Each line looks almost the same, and the one that goes wrong is the one nobody re-reads. Jinja2 lets you write the pattern once and feed it data. It is a Python templating engine, which means it reads a template file, fills in the blanks from a Python dictionary or list, and returns plain text. A template mixes literal text with three kinds of delimiters, shown in the table below. Each kind does a different job, so learn to recognise them at a glance.
 
 | Delimiter | Purpose |
 |---|---|
@@ -157,7 +167,7 @@ Writing a Slurm node list by hand for every machine invites mistakes. Jinja2 let
 | `{% statement %}` | Control flow: `if`, `for`, `set`, `macro`, `include`, `block` |
 | `{# comment #}` | Comment (not rendered) |
 
-Rendering takes a template plus a context, which is the set of variables, and produces text. Ansible uses Jinja2 for variable interpolation in playbooks, conditionals and `template` files. Salt, Flask, dbt, Superset, Cookiecutter and many network-automation tools also use it. Helm and Terraform do not. Helm uses Go templates, and Terraform uses HCL.
+Rendering takes a template plus a context, which is the set of variables, and produces text. Think of the template as the form letter and the context as the mail merge list. Rendering runs once per row of data, fills each blank, and gives you a finished page. Nothing is sent or installed at this stage. You only get text, which you can read before anything touches a server. Ansible uses Jinja2 for variable interpolation in playbooks, conditionals and `template` files. Salt, Flask, dbt, Superset, Cookiecutter and many network-automation tools also use it. Helm and Terraform do not. Helm uses Go templates, and Terraform uses HCL.
 
 ```python
 from jinja2 import Environment, StrictUndefined
@@ -170,13 +180,15 @@ NodeName={{ n.name }} Gres=gpu:{{ n.gpus }} State=UNKNOWN
 print(tpl.render(nodes=[{"name": "gpu01", "gpus": 8}, {"name": "gpu02", "gpus": 8}]))
 ```
 
-Notice that the loop writes one line per node, with each GPU count filled in. The `StrictUndefined` setting turns a missing variable into an error instead of an empty string. That is the single most useful safety setting. Ansible's default also errors on undefined variables unless you provide a `default`.
+Notice that the loop writes one line per node, with each GPU count filled in. Here is what happens when the code runs. Jinja2 reads the first line of the template, sees the `for` tag, and starts a loop over the two nodes in the list. For `gpu01`, it writes the text `NodeName=gpu01 Gres=gpu:8 State=UNKNOWN` and a line break. It then does the same for `gpu02`, and the closing `endfor` tag ends the loop. The `trim_blocks` setting removes the blank line that the tag itself would otherwise leave behind, which keeps the output tidy.
+
+The `StrictUndefined` setting turns a missing variable into an error instead of an empty string. Suppose you rename `gpus` to `gpu_count` in the data but forget to update the template. Without the setting, every line would quietly read `Gres=gpu:` with nothing after the colon. With it, the render stops and names the missing variable. That is the single most useful safety setting. Ansible's default also errors on undefined variables unless you provide a `default`.
 
 ### Expressions
 
-Expressions are how you read values out of your data. Write `{{ cluster.name }}` to read an attribute, or `{{ cluster['name'] }}` for the item form. Lists work the same way: `{{ list[0] }}`, `{{ list[-1] }}` and slices such as `{{ list[1:3] }}`. Literals include strings, numbers, `true` and `false` (Python's `True` and `False` also work), `none`, lists such as `[1, 2]`, dicts such as `{'a': 1}`, and tuples.
+Expressions are how a template reads values out of your data. Think of the context as a filing cabinet and an expression as the label you write to pull out one folder. `{{ cluster.name }}` opens the drawer called `cluster` and takes the `name` folder from it. Write `{{ cluster.name }}` to read an attribute, or `{{ cluster['name'] }}` for the item form. Lists work the same way: `{{ list[0] }}`, `{{ list[-1] }}` and slices such as `{{ list[1:3] }}`. Literals include strings, numbers, `true` and `false` (Python's `True` and `False` also work), `none`, lists such as `[1, 2]`, dicts such as `{'a': 1}`, and tuples.
 
-The operators are arithmetic `+ - * / // % **`, comparison `== != < > <= >=`, logic `and or not`, and membership `in`. Use `~` to join strings, not `+`. The conditional expression `{{ 'a' if cond else 'b' }}` picks one value or the other. The `is` keyword applies a test, which the next section covers.
+The operators are arithmetic `+ - * / // % **`, comparison `== != < > <= >=`, logic `and or not`, and membership `in`. Use `~` to join strings, not `+`. The reason is that `~` always treats its operands as text, so a node number of 1 joins cleanly as `gpu` `~` `1`. The `+` operator tries arithmetic first, and mixing text with a number fails. The conditional expression `{{ 'a' if cond else 'b' }}` picks one value or the other. The `is` keyword applies a test, which the next section covers.
 
 ### Filters
 
@@ -192,7 +204,7 @@ A filter transforms a value, and you can chain filters together. The form is `{{
 | Paths | `basename`, `dirname`, `expanduser`, `realpath`, `splitext` (Ansible) |
 | Network (Ansible `ansible.utils`/`ansible.netcommon`) | `ipaddr`/`ansible.utils.ipaddr`, `ipv4`, `ipmath`, `cidr_merge`, `hwaddr`, `ansible.utils.next_nth_usable` |
 
-Read the examples below as short pipelines. Each one takes the nodes list and returns a single answer, such as the names of the GPU nodes or their total.
+Read the examples below as short pipelines. Each one takes the nodes list and returns a single answer, such as the names of the GPU nodes or their total. A pipe character works like a conveyor belt. The value enters on the left, each filter changes it once, and the result moves on to the right. Take the second line. `selectattr('gpus', 'ge', 8)` keeps only the nodes whose `gpus` value is 8 or more. `map(attribute='name')` then pulls the name out of each remaining node, and `join(',')` glues the names together with commas. If the first filter keeps nothing, the later filters receive an empty list and the output is an empty string.
 
 ```jinja
 {{ nodes | map(attribute='name') | list }}                       {# ['gpu01', 'gpu02'] #}
@@ -214,11 +226,11 @@ A test asks a yes-or-no question about a value. You write it after `is`, usually
 {{ result is failed }}
 ```
 
-Use `is version` when a version number matters, such as a GPU driver check. The other tests answer simpler questions about whether a value exists or what type it has.
+Use `is version` when a version number matters, such as a GPU driver check. A plain `>=` comparison on version text can go wrong, because text compares character by character, so one version string can sort after a newer one. The version test compares the parts as versions, so the check reads the driver branch correctly. The other tests answer simpler questions about whether a value exists or what type it has. A test is the right tool when the answer is yes or no, and a filter is the right tool when the answer is a new value.
 
 ### Control structures
 
-Control structures let a template make decisions and repeat text. The `if` block below picks a line based on the node's role. The `for` loop groups nodes by rack, and its `else` branch covers an empty group.
+Control structures let a template make decisions and repeat text. Think of them as the branches and loops in a recipe. An `if` tag asks a question about the data and keeps one branch, and a `for` tag repeats one block for each item. Together they let one template produce a different line for a compute node, a login node and a node with no GPUs. The `if` block below picks a line based on the node's role. The `for` loop groups nodes by rack, and its `else` branch covers an empty group.
 
 ```jinja
 {% if node.role == 'compute' and node.gpus > 0 %}
@@ -243,18 +255,20 @@ Control structures let a template make decisions and repeat text. The `if` block
 {% for n in nodes %}{% set ns.count = ns.count + n.gpus %}{% endfor %}   {# variable scoping workaround #}
 ```
 
+Here is the loop on the first rack in plain words. The `groupby('rack')` filter sorts the nodes into one bundle per rack, and the outer `for` walks those bundles. The inner loop then sorts each bundle by name and prints one line per node. Only the first and last node get extra words, and an empty rack prints the `(no nodes)` line from the `else` branch.
+
 Inside a loop, the `loop` variable tells you where you are. `index` is 1-based, and `index0` counts from 0. You also get `first`, `last`, `length`, `revindex`, `cycle('a','b')`, `previtem` and `nextitem`. A variable set inside a `for` stays inside that loop. When you need a value after the loop, use `namespace` to carry it out. The `{% for ... %}...{% else %}...{% endfor %}` form runs the `else` block when the sequence is empty.
 
 ### Whitespace control
 
-Templates that produce config files must control blank lines and indentation, and a template can break them without any visible sign. Jinja2 gives you several tools. `{%-` and `-%}` strip whitespace before or after a tag. `trim_blocks=True` removes the first newline after a block tag. `lstrip_blocks=True` strips leading whitespace before a block tag. Ansible's `template` module sets `trim_blocks=True` by default. You can set `lstrip_blocks` through `jinja2_extensions` or a `# jinja2:` header. A common pattern is a first-line override, shown below.
+Templates that produce config files must control blank lines and indentation, and a template can break them without any visible sign. Picture a sshd config where every `{% if %}` line leaves an empty line behind. Each block adds a gap, and after twenty conditionals the file looks like it has been edited by hand. Nothing is broken yet, but the diff against the last deploy shows a dozen changes that mean nothing. Jinja2 gives you several tools. `{%-` and `-%}` strip whitespace before or after a tag. `trim_blocks=True` removes the first newline after a block tag. `lstrip_blocks=True` strips leading whitespace before a block tag. Ansible's `template` module sets `trim_blocks=True` by default. You can set `lstrip_blocks` through `jinja2_extensions` or a `# jinja2:` header. A common pattern is a first-line override, shown below.
 
 ```jinja
 #jinja2: trim_blocks:True, lstrip_blocks:True
 # {{ ansible_managed }}
 ```
 
-Always render the template and read the output. Whitespace errors are invisible in the template itself, and they are fatal in whitespace-sensitive output such as YAML or Makefiles.
+Always render the template and read the output. Whitespace errors are invisible in the template itself, because the template looks neat in your editor while the output drifts. They are fatal in whitespace-sensitive output such as YAML or Makefiles. A Makefile, for example, needs a real tab before each recipe line, so a template that swaps that tab for spaces produces a file that the tool refuses to read. Read the rendered file the way the target will read it, and the drift becomes obvious.
 
 ### Macros, includes, inheritance, raw blocks
 
@@ -276,23 +290,25 @@ NodeName={{ n.name }} CPUs={{ n.cpus }} Gres=gpu:{{ n.gpus | default(default_gpu
 {% raw %}{{ this is output literally }}{% endraw %}      {# to emit braces, e.g. Prometheus/Go templates #}
 ```
 
-Prometheus alert annotations, Helm templates and Grafana are the usual cases where a template must output literal `{{ }}`. Wrap that text in `{% raw %}`, or write it with `{{ '{{' }}`.
+A macro is like a small function that returns text. You define it once, give it arguments such as the node and a default GPU count, and call it wherever the stanza is needed. An include is closer to pasting in another file. Inheritance lets a base layout hold the common shell of a file, while each child fills in only its own block. Each of these tools keeps one copy of a repeated piece, which means a fix goes in one place. Prometheus alert annotations, Helm templates and Grafana are the usual cases where a template must output literal `{{ }}`. Wrap that text in `{% raw %}`, or write it with `{{ '{{' }}`.
 
 ## 3. Jinja2 in Ansible
 
-Ansible adds its own variables, filters and tests on top of Jinja2. It evaluates templates on the control node, the machine you run Ansible from. You will meet Jinja2 in several places, and each place has its own quoting rules.
+Your Ansible run fails with `AnsibleUndefinedVariable` on one host, while the same playbook works on the others. The template uses a variable that is defined only in a different inventory group. Knowing where Ansible evaluates a template, and which variables are visible at that point, tells you where to look first. The sections below walk through the places where Jinja2 shows up in a playbook, and the quoting rules that go with each one.
+
+Ansible adds its own variables, filters and tests on top of Jinja2. It evaluates templates on the control node, the machine you run Ansible from, and not on the servers being configured. That split explains a lot of confusion. A `template` task fills in its blanks on your laptop or CI runner, then copies the finished text to the target. A `shell` task runs on the target. You will meet Jinja2 in several places, and each place has its own quoting rules.
 
 Jinja2 appears in task arguments, `vars`, `when`, `loop`, `failed_when`, `changed_when`, file contents rendered by the `template` module (such as `src: nccl.conf.j2`), and inventory variables. The `when` clause is already a Jinja expression. Write `when: ansible_distribution == 'Ubuntu'`, not `when: "{{ ... }}"`.
 
 A YAML value that starts with `{{` must be quoted, for example `msg: "{{ var }}"`. Inside quotes you can mix literal text and expressions, as in `path: "/data/{{ project }}/{{ env }}"`.
 
-Undefined variables cause an error by default. Use `{{ var | default('x') }}`, `{{ var | mandatory }}`, an `is defined` check, or `default(omit)` to drop an optional module parameter.
+Undefined variables cause an error by default. The error usually means the variable is set in a group that this host does not belong to, or in a file the play never loads. Use `{{ var | default('x') }}` when a sensible fallback exists. Use `{{ var | mandatory }}` when the run should stop with a clear message. An `is defined` check lets a task decide what to do when a variable is missing. Use `default(omit)` when the module should use its own built-in value for a parameter you did not set.
 
-Ansible templating returns strings unless the value is a single native expression. A boolean from `{{ }}` can therefore arrive as the string `"True"`. Use `| bool`, `| int` and `when:` conditionals instead of string comparisons. The `jinja2_native` setting can change this behaviour, so test carefully.
+Ansible templating returns strings unless the value is a single native expression. Picture a flag that a previous task registered as `False`, which then passes through a template on its way to a second task. The flag comes out as the text `"False"`. Text is never empty, so a plain truth test reads it as true, and the second task runs when it should have been skipped. A boolean from `{{ }}` can therefore arrive as the string `"True"`. Use `| bool`, `| int` and `when:` conditionals instead of string comparisons. The `jinja2_native` setting can change this behaviour, so test carefully.
 
 Lookups and facts give you data from outside the template. Examples include `lookup('env', 'HOME')`, `lookup('file', 'x')`, `lookup('pipe', 'cmd')` (run on the control node), `query`, `hostvars['host']['ansible_default_ipv4']['address']`, `groups['gpu']`, `inventory_hostname`, `ansible_facts` and `play_hosts`.
 
-The `ansible.builtin.template` module renders on the control node and copies the result to the target. Its options include `owner`, `group`, `mode`, `backup`, `variable_start_string` for different delimiters, and `validate: "visudo -cf %s"`. The `validate` option checks the file before it is installed, which is essential for sudoers, sshd and nginx. The `{{ ansible_managed }}` variable gives you a "do not edit" header.
+Think of the `ansible.builtin.template` module as a careful courier. It fills in the form on the control node, checks the result if you asked it to, and only then delivers the finished copy to the target. The module renders on the control node and copies the result to the target. Its options include `owner`, `group`, `mode`, `backup`, `variable_start_string` for different delimiters, and `validate: "visudo -cf %s"`. The `validate` option checks the file before it is installed, which is essential for sudoers, sshd and nginx. The `{{ ansible_managed }}` variable gives you a "do not edit" header.
 
 The next example renders Slurm node definitions from inventory data.
 
@@ -305,9 +321,9 @@ NodeName={{ host }} NodeAddr={{ h.ansible_host }} CPUs={{ h.ansible_processor_vc
 PartitionName=gpu Nodes={{ groups['gpu'] | join(',') }} Default=YES MaxTime=INFINITE State=UP
 ```
 
-For example, a host without a `gpu_count` variable falls back to the default of 8, so its line reads `Gres=gpu:8`. If the host sets `gpu_count` to 4, the same line reads `Gres=gpu:4`. The rest of the line stays the same either way.
+Walk through one host to see how the loop behaves. The loop runs once for each name in `groups['gpu']`, sorted alphabetically. Inside the loop, `set h = hostvars[host]` gives the template a short handle on that host's variables. For a host without a `gpu_count` variable, the `default(8)` filter fills the gap, so its line reads `Gres=gpu:8`. If the host sets `gpu_count` to 4, the same line reads `Gres=gpu:4`. The rest of the line stays the same either way.
 
-The NCCL environment comes from variables in the same way.
+The NCCL environment is the next case, and it follows the same pattern. Here the template turns a dictionary of settings into environment lines, one per key. `dictsort` puts the keys in a stable order, so the file comes out identical on every render, and a stable order is what lets a diff show only real changes. The `| default({})` guard means that a host without NCCL settings still renders a valid, empty file.
 
 ```jinja
 # {{ ansible_managed }}
@@ -342,11 +358,13 @@ Notice that you can pass either a Python `dict` (`interface_dict`) or a custom P
 
 The second walkthrough templates `nginx.conf.j2` and `index.html.j2` in an Ansible playbook. It comes from *Ansible: Up and Running*, chapter 3, in the file `webservers-tls.yml`. That file defines play-level `vars:`: `tls_dir: /etc/nginx/ssl/`, `key_file: nginx.key`, `cert_file: nginx.crt`, `conf_file: /etc/nginx/sites-available/default` and `server_name: localhost`. The task `template: src=nginx.conf.j2 dest={{ conf_file }} mode='0644'` fills `{{ server_name }}` and `{{ tls_dir }}{{ cert_file }}` into the NGINX `server` block. A second task, `template: src=index.html.j2 dest=/usr/share/nginx/html/index.html`, uses the built-in `{{ inventory_hostname }}` variable. Whenever the rendered file changes, `notify: Restart nginx` restarts the service.
 
-For any file that a broken config could lock you out of, such as sudoers or sshd, set `validate` before you trust the template.
+Picture a playbook run that replaces `/etc/sudoers` with a template containing one mistyped character. Without `validate`, the broken file lands on the server, and the next `sudo` command fails for every administrator. With `validate: "visudo -cf %s"`, the check runs first, and the bad file is rejected while the old one stays in place. For any file that a broken config could lock you out of, such as sudoers or sshd, set `validate` before you trust the template.
 
 ## 4. Templating elsewhere (and how not to confuse them)
 
-Several tools in this stack use templates, and their syntax looks alike even where the rules differ. The table shows which language each tool uses, so you can check before you edit a file.
+In one afternoon you might open a Helm chart, then an Ansible role, then a Terraform module. Each one uses curly braces, and each one means something different. A Jinja filter pasted into a Go template fails, and a `${var}` pasted into a Jinja template may be read as text. The table below is the cheat sheet that stops you from making that mistake under time pressure.
+
+Several tools in this stack use templates, and their syntax looks alike even where the rules differ. The problem is that the same `{{` can mean three different things depending on which file you are in. Picture a Helm values file pasted into a Jinja template: Jinja reads the Helm braces first and tries to fill them in, and the render fails with a message about an undefined name. Each row in the table answers the question of which engine is reading the braces in front of you. The table shows which language each tool uses, so you can check before you edit a file.
 
 | Tool | Language | Notes |
 |---|---|---|
@@ -362,17 +380,21 @@ Several tools in this stack use templates, and their syntax looks alike even whe
 
 A few habits keep templated configuration manageable. Separate data from templates by keeping variables in inventory or vars files, and keep the templates light on logic. Where you can, prefer declarative overlays such as Kustomize, or typed config. Avoid templating a templating language, such as Helm values rendered by Jinja and then rendered again by Terraform. Keep logic in code or modules rather than in 200-line Jinja files. Validate the generated YAML after rendering with `yamllint`, `kubeconform` or `kubectl --dry-run=server`.
 
-Keep a template for the parts that really vary, and keep the data in a file you can read without rendering it.
+A useful test is to ask whether a reviewer could understand the change without running anything. If the answer is no, the logic has probably moved into the template and out of the data. Keep a template for the parts that really vary, and keep the data in a file you can read without rendering it.
 
 ## 5. Testing and debugging templates
 
-A template can render without errors and still produce a broken file. You catch those problems by rendering offline, comparing the result with an expected file, and checking the output with the target's own tools.
+A template can render without errors and still produce a broken file. The usual failure looks like this: the render succeeds, the service refuses to start, and the log says the config is malformed on line 14. The fix is to render offline first, compare the result with an expected file, and let the target's own tools judge the output. Each of the three checks below catches a different kind of problem.
+
+Picture a template change that passes review, renders cleanly on your laptop, and still breaks the service after deployment. The fix is a loop you run before anything reaches a server. First, render the template on your own machine with realistic data. Second, compare the output with a file you already reviewed. Third, hand the output to the target's own checker. Each step catches a different kind of mistake, and together they turn a surprise on Monday into a failed test on Friday.
 
 You can render offline in three ways. Use the `jinja2` Python API with a fixtures file. Run a single task with `ansible localhost -m ansible.builtin.template -a "src=nccl.conf.j2 dest=/tmp/out" -e @vars.yml --diff`, or use a one-task playbook. To check a single expression, run `ansible -m debug -a "msg={{ ... }}"`.
 
-Golden-file tests render representative data, including empty lists and missing optional keys, and compare the result with an expected file. See 3.9 for testing patterns. Snapshot tests catch accidental whitespace changes.
+Golden-file tests render representative data, including empty lists and missing optional keys, and compare the result with an expected file. The expected file is called the golden file, and someone reviews it once and commits it. From then on, any change to the template shows up as a diff against that file, so a reviewer sees exactly which line moved. Choose inputs that stress the template. An empty list, a missing optional key and a host with zero GPUs will expose more bugs than a tidy, typical host. See 3.9 for testing patterns. Snapshot tests catch accidental whitespace changes, because a stray space that a human would never notice still shows up in a diff.
 
 Validate the output with the target's own parser. Examples include `nginx -t`, `visudo -cf`, `sshd -t`, `slurmd -C` or `scontrol` checks, `kubeconform`, `promtool check rules`, and `python -c 'import yaml; yaml.safe_load(...)'`.
+
+When something goes wrong, the fastest path is to look at what the template actually received. Printing the data shows you the values, and a missing or misspelled key is usually visible at once.
 
 When something goes wrong, print the data. Use `{{ var | to_nice_json }}` in `debug` tasks, run `ansible-playbook -vvv`, or run `ansible-inventory --host name` to see merged variables. For an undefined-variable error, read the exact variable name and the precedence layer (4.7).
 
@@ -387,15 +409,19 @@ The table below matches common error messages to their usual causes.
 | `did not find expected key` | Indentation is wrong |
 | `The task includes an option with an undefined variable` | An option refers to a variable that does not exist |
 
-Heavy Jinja inside loops over thousands of hosts is slow. Precompute values with `set_fact` or filters, and avoid `lookup('pipe')` per host.
+Work through the table from the top. An undefined variable is the most common cause, so check the exact variable name and the layer that should define it before you touch the template. Most of the other rows point at a single character, such as a tab, a colon or a brace, so read the line number in the error and look there first.
+
+Think of each `lookup('pipe')` call as a trip to the shop. One trip is cheap, but repeating it for every host in a fleet of thousands adds up to a long wait. Heavy Jinja inside loops over thousands of hosts is slow. Precompute values with `set_fact` or filters, and avoid `lookup('pipe')` per host.
 
 Before you ship a template, render it once against your edge-case fixtures and read the output.
 
 ## 6. Security considerations
 
-Untrusted data is the main risk when templates are involved. Never render a user-provided string as a template, because that opens the door to server-side template injection. Ansible marks values from facts as "unsafe", which stops them from being templated again. Do not remove that `!unsafe` marking, and avoid `eval`-like constructs.
+A colleague builds a notification feature that takes free text from a web form and runs it through a template engine on the server. A user types a template expression into that field, and the engine evaluates it with the server's privileges. Nothing in the code looked wrong, because the danger came from treating user input as template source. The rule below prevents that, and the rest of this section covers secrets that end up in rendered files.
 
-Secrets need extra care in rendered files. Set `mode: "0600"`, `owner` and `no_log: true` on any task that renders a secret. Set `diff: false` as well, so the secret stays out of `--diff` output. When you template values into shell commands, quote them with the `| quote` filter. Use `yaml.safe_load` for parsing, and pin and review your parsers as part of your tooling.
+Think of a template engine as a machine that obeys whatever text it is given as a recipe. Feed it your own recipe, and it does what you intend. Feed it a recipe written by a stranger, and the stranger decides what happens on your machine. Untrusted data is the main risk when templates are involved. Never render a user-provided string as a template, because that opens the door to server-side template injection. Ansible marks values from facts as "unsafe", which stops them from being templated again. Do not remove that `!unsafe` marking, and avoid `eval`-like constructs.
+
+Secrets need extra care in rendered files, because a rendered file is a copy of the secret sitting on disk. Picture a database password that ends up in a config file readable by every user on the host. The fix is to limit who can read the file and to keep the value out of logs. Set `mode: "0600"`, `owner` and `no_log: true` on any task that renders a secret. Set `diff: false` as well, so the secret stays out of `--diff` output. When you template values into shell commands, quote them with the `| quote` filter. Use `yaml.safe_load` for parsing, and pin and review your parsers as part of your tooling.
 
 ## 7. Lab
 
@@ -405,13 +431,13 @@ Start with the self-checking Python lab. Run it on your own machine to confirm t
 python3 code/part04/yaml_jinja2_templates_lab.py
 ```
 
-Next, work through the exercises below on any machine with Python 3.10+ and `jinja2`, `pyyaml` and `yamllint` installed. You will find that every interactive shell step is marked `untested here`.
+Think of the lab as a rehearsal before a real rollout. Start with the script, watch each check pass, and then move on to the exercises. Next, work through the exercises below on any machine with Python 3.10+ and `jinja2`, `pyyaml` and `yamllint` installed. The interactive shell steps have not been run on live hardware, so treat your first run as the real test.
 
 1. Read a file that contains `no`, `yes`, `1.10`, `010`, `22:30`, `2024-01-01`, `~`, `0x1f` and `"quoted"`. Parse it with PyYAML and print each Python type. Then quote each value correctly, and run `yamllint` with the `truthy` rule.
 2. Build the node defaults file, then load it with PyYAML and with `yq`. Show a parser that ignores `<<`. Finally, refactor the file to use explicit inheritance in code.
 3. Write `|`, `>`, `|-` and `>+` blocks, and print their `repr` to see the newlines. Then embed a script and a systemd unit in YAML.
 4. Render the Slurm node template from a Python script with `StrictUndefined`. Remove a variable and watch the error. Then compare the behaviour without `StrictUndefined`.
-5. From a nodes list, produce four results: (a) comma-joined names for nodes with 8 GPUs, (b) the total GPUs, (c) nodes grouped by rack, and (d) a YAML dump with `to_nice_yaml`.
+5. Take a nodes list where some nodes have 8 GPUs and others have 4. Produce the comma-joined names of the 8-GPU nodes. Then produce the total GPU count. Next, group the nodes by rack. Finally, dump the whole list with `to_nice_yaml`.
 6. Render the same loop with and without `trim_blocks`, `lstrip_blocks` and `{%-`. Diff the outputs. Then fix a template that emits blank lines in the middle of a config file.
 7. Factor the repeated stanzas into macros and includes. Test `{% raw %}` by templating a Prometheus alert rule that contains Go template syntax.
 8. Write `nccl.conf.j2` and render it with the `template` module. Use `--diff`, `--check`, and `validate:` with a custom validator command. Show `default(omit)` skipping an optional parameter, and reproduce the YAML error that an unquoted `{{ }}` value causes.
@@ -422,13 +448,15 @@ Next, work through the exercises below on any machine with Python 3.10+ and `jin
 
 ## 8. Common mistakes
 
+Most of these mistakes survive review, because each one looks correct at a glance. Reviewers read intent, and the mistakes live in what the parser or the renderer does with the text. Think of a reviewer as someone who checks the recipe, while the parser is the cook who might misread a quantity. A value that reads as a version, a template that reads as plain text, or a loop that reads as obvious. Check each one by rendering the file and reading the output, not by trusting the source.
+
 Tabs and uneven indentation are the first things you should check in YAML. Mixing list styles also makes a file harder for others to read. Unquoted values such as `NO`, `1.10`, `yes`, times and values with leading zeros get reinterpreted by YAML. An unquoted `{{ var }}` at the start of a value causes trouble too.
 
 In templates, `when: "{{ var }}"` double-templates a condition, where `when: var` is correct. Relying on undefined variables that quietly render as empty strings is another trap. So are templates with heavy logic and nested loops that nobody can review, and templates that generate other templates. Whitespace bugs slip through when no one inspects the generated output. Forgetting `{% raw %}` breaks Go-template or Jinja-in-Jinja content.
 
 Security mistakes matter too. Using `yaml.load` on untrusted data, or rendering untrusted strings as templates, is a mistake to avoid. Anchors across files are not supported, and overused merge keys can hide the effective configuration. Deploying rendered output that you never validated is a mistake of its own.
 
-Inspect the rendered output on every template change. Whitespace bugs show up there, not in the template.
+Inspect the rendered output on every template change. Whitespace bugs show up there, not in the template. Make it a habit to open the rendered file before you open the diff of the template, because the rendered file shows what the target will receive.
 
 ## 9. Interview angles
 
@@ -448,12 +476,12 @@ Use these questions to check what you have learned.
 
 These exercises check whether you have understood the ideas. Each one points at a specific function or file, so you can see the behaviour yourself.
 
-1. Start with the YAML type traps. Use `classify_yaml11_unquoted_scalar()` and `apply_yaml_block_chomping()` in `code/part04/yaml_jinja2_templates.py`. Explain how YAML 1.1 parsers coerce `NO`, `1.10`, `010`, `0x1f`, `22:30` and `~`, and why file modes such as `"0644"` and version strings must be quoted. Then state the exact newline difference between `|`, `|-`, `|+`, `>` and `>-`. Finally, explain how `&anchor`, `*alias` and `<<` work, and why pure YAML task dictionaries beat `key=value` inline strings in Ansible, as *Ansible: Up and Running*, chapter 3, explains.
-2. Next, compare the data formats YAML, JSON, XML, Protobuf and FlatBuffers, as *Network Programmability and Automation*, chapter 8, does. Explain the two phases of reading and writing a text-based format on the wire, which are decoding and deserializing on input and serializing and encoding on output. Then explain why structured formats beat CLI screen scraping. After that, compare `JSON Schema` with `YANG`, using `container`, `list`, `leaf`, `leaf-list` and `typedef` (RFC 6020 and RFC 7950). Explain why YANG is a data-modeling language rather than a wire serialization format.
-3. Work with the Jinja2 core, using `get_interface_speed()`, `render_switchport_template()` and `render_slurm_nodes_template()`, as *Network Programmability and Automation*, chapter 9, shows. Explain how `{{ }}`, `{% %}` and `{# #}` behave with `StrictUndefined`, `trim_blocks=True`, `lstrip_blocks=True` and `{%- -%}`. Then explain how `map(attribute=...)`, `selectattr`, `groupby`, `default('x', true)` and custom filters such as `ENV.filters['get_interface_speed']` transform collections. Finally, explain why a counter updated inside `{% for %}` needs `namespace(count=0)`.
-4. Move on to Jinja2 in Ansible. You will need to explain why a YAML value that starts with `"{{ var }}"` must be quoted, while `when: ansible_distribution == 'Ubuntu'` must not wrap its expression in `{{ }}`. Then show how `ansible.builtin.template` uses `validate: "visudo -cf %s"` (or `nginx -t`), how `default(omit)` drops optional module parameters, and how `{% raw %}...{% endraw %}` escapes literal `{{ }}` for Prometheus or Helm rules.
-5. Compare the templating tools across the stack. Look at how Ansible (Jinja2), Helm (Go `text/template` with Sprig, such as `{{ .Values.x | quote }}` and `{{-`), Terraform (HCL `${var.x}` and `templatefile()`), and Kustomize (template-free strategic-merge and JSON6902 patches) parameterize configuration. Then explain why templating a template, such as Jinja generating Helm templates, is an anti-pattern.
-6. Design a CI step that renders `slurm.conf.j2` and `nccl.conf.j2` offline against test fixtures, using `StrictUndefined`. The step should diff the output against golden files and check syntax with `yamllint` and `check-jsonschema`. Then explain Server-Side Template Injection (`SSTI`), why `yaml.safe_load` is mandatory, and why tasks that render secret templates need `mode: "0600"`, `no_log: true` and `diff: false`.
+1. A config review flags a value that the parser read differently from how it looks. Run `classify_yaml11_unquoted_scalar()` from `code/part04/yaml_jinja2_templates.py` on `NO` and on `1.10`. What type does each one become? Why must the file mode `"0644"` stay quoted? Next, run `apply_yaml_block_chomping()` on `|`, `|-` and `|+`. Which of those styles keeps a trailing blank line? Does `>-` strip the final newline? A playbook uses `&anchor`, `*alias` and `<<` to share settings. How does the parser build the final mapping for each host? Why does `0x1f` read as a number while `22:30` needs quotes? Why do pure YAML task dictionaries read better than `key=value` strings, as *Ansible: Up and Running*, chapter 3, explains?
+2. A telemetry team must choose a format for switch data. Which two phases turn incoming bytes into a Python dictionary? Why does structured output beat scraping `show interfaces em0` by hand? Which element would you use for a plain list of name servers in YANG, `leaf-list` or `container`? How does a `typedef` such as `vlan-id` differ from a `leaf`? Why is YANG a data-modeling language and not a wire format? Check your answer against *Network Programmability and Automation*, chapter 8, and against the `JSON Schema` rules in that chapter.
+3. A switchport template prints extra blank lines in the middle of a config. Which setting, `trim_blocks=True` or `lstrip_blocks=True`, removes the newline after a block tag? What happens when `StrictUndefined` meets a missing variable? Why does `{%-` remove more whitespace than a plain `{%` tag? Which pipeline uses `selectattr` and `map(attribute=...)` to return the GPU name list for nodes with 8 or more GPUs? Why does a counter updated inside `{% for %}` need `namespace(count=0)`? Use `get_interface_speed()` and `render_switchport_template()` from *Network Programmability and Automation*, chapter 9, to test your answer.
+4. A playbook fails on a value that starts with a brace. Why must `msg: "{{ var }}"` be quoted? Why must `when: ansible_distribution == 'Ubuntu'` skip the `{{ }}` wrapper? Which `validate` command stops a broken sudoers file from reaching the server, and which one would you choose for `nginx -t`? When does `default(omit)` drop an optional module parameter? How would `{% raw %}...{% endraw %}` protect a Prometheus rule that contains literal braces, and how does `ansible.builtin.template` decide when to copy the file?
+5. A team uses Ansible, Helm, Terraform and Kustomize in one repository. Which of those tools uses no templating at all? How does Helm's `{{ .Values.x | quote }}` differ from Jinja's filter syntax? How does Terraform's `${var.x}` differ from `templatefile()` when it fills a file? Why is a Jinja template that generates a Helm template an anti-pattern? Check your answer against the table in section 4, where `{{-` and `templatefile()` are listed.
+6. Your merge request changes `slurm.conf.j2` and `nccl.conf.j2`. What should the CI step render, and with which undefined-variable setting, `StrictUndefined` or the default? How does a golden-file diff catch a stray space? Which two checkers, `yamllint` or `check-jsonschema`, validate the syntax of the output? Why must the parsing call be `yaml.safe_load` rather than `yaml.load`? Why does a user-supplied string never belong in `Template(user_input).render()`, the Server-Side Template Injection (`SSTI`) pattern? Which three task settings, `mode: "0600"`, `no_log: true` and `diff: false`, keep a rendered secret safe?
 
 ## Checkpoint questions (20)
 
@@ -591,4 +619,4 @@ Server-Side Template Injection, or `SSTI`, happens when untrusted input reaches 
   - `network-programmability-and-automation-2nd-edition` — Christian Adell, Scott Lowe, Matt Oswalt & Jason Edelman, *Network Programmability and Automation*, 2nd ed., **Chapter 8: Data Formats and Models** (read in full: structured data vs fragile CLI screen scraping on `show interfaces em0`, markup vs data serialization, decoding/deserializing vs serializing/encoding, YAML syntax and PyYAML, XML/XSD/XPath/XQuery, JSON and JSON Schema `draft/2020-12`, binary Protobuf `.proto`/`protoc`/`protoc-gen-validate` and FlatBuffers vs `pickle`, and YANG RFC 6020 / 7950 `module`, `typedef`, `container`, `list`, `leaf`, `leaf-list`, and OpenConfig) and **Chapter 9: Templates** (read in full: web vs network templating, separating templates from data, Jinja2 `Environment(loader=FileSystemLoader('.'))`, dictionary vs `NetworkInterface` class rendering, switchport trunk/access conditionals and loops, filter chaining `| upper | reverse`, custom Python filter `get_interface_speed`, XSLT with `lxml.etree`, and Go `text/template` with `{{range}}`, pipelines, and `template.FuncMap{"ifparse": IfParse}`).
 - **Run here:** `python3 code/part04/yaml_jinja2_templates_lab.py` (4 passed, 0 failed).
 - **Explicitly labelled inferences:** The `classify_yaml11_unquoted_scalar`, `apply_yaml_block_chomping`, and `render_slurm_nodes_template` functions in `code/part04/yaml_jinja2_templates.py` and the Slurm/NCCL `.j2` templates are the author's constructions applying *Ansible: Up and Running* Chapter 3 and *Network Programmability and Automation* Chapters 8 & 9 to AI cluster configurations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Interactive `yq`, `yamllint`, `kubeconform`, and `ansible-playbook` commands (`1.10`, `010`, `22:30`, `0x1f`, `0644`, `0600`, `550`, `4094`, `1000`, `100`) are marked (`untested here`) where not executed by `yaml_jinja2_templates_lab.py`.
+- **Not verified on live hardware:** Interactive `yq`, `yamllint`, `kubeconform`, and `ansible-playbook` commands (`1.10`, `010`, `22:30`, `0x1f`, `0644`, `0600`, `550`, `4094`, `1000`, `100`) are marked as not run in this chapter where `yaml_jinja2_templates_lab.py` does not execute them.

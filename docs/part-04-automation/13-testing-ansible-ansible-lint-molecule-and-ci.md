@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a role that you merge on a Friday and that runs against a whole cluster on Monday. Drained nodes, broken drivers and unplanned reboots are the cost when nobody has tested it. You cannot unit-test a role against a mock, because its behaviour is the effect it has on an operating system. You can, however, test it cheaply and repeatedly in disposable containers and VMs. You can check that a second run changes nothing, and you can verify the state it leaves behind. This chapter builds a test pyramid for automation: lint, syntax, dry-run, converge-and-verify, idempotence, upgrade paths, and the small tier that needs real GPUs.
+Picture a role that you merge on a Friday and that runs against a whole cluster on Monday. Nobody reviewed the change in a running environment, and the first real test is the production rollout. Drained nodes, broken drivers and unplanned reboots are the cost when nobody has tested it. You cannot unit-test a role against a mock, because its behaviour is the effect it has on an operating system. A mock of `apt` tells you that a function was called, not that the package installed. You can, however, test it cheaply and repeatedly in disposable containers and VMs. A disposable environment is one you can throw away after each run, so every test starts from a clean state. You can check that a second run changes nothing, and you can verify the state it leaves behind. This chapter builds a test pyramid for automation: lint, syntax, dry-run, converge-and-verify, idempotence, upgrade paths, and the small tier that needs real GPUs.
 
 ## Prerequisites and outcomes
 
@@ -36,6 +36,8 @@ This chapter assumes 4.6, 4.8, 4.11 and the testing mindset from 3.9. When you f
 - Integrate tests in CI with caching, matrices, scheduled runs and release gates, and test upgrades from old versions.
 
 ## 1. Test pyramid for Ansible
+
+A role change looks harmless in a pull request. The real question is how you would know it works before a host depends on it. A test pyramid answers that with cheap checks at the base and expensive checks at the top. Most problems are caught at the bottom, before anything runs on a real machine.
 
 Suppose a role passes lint and syntax checks, then fails on the first real host. The question is which layer should have caught the bug.
 
@@ -51,13 +53,19 @@ flowchart TB
 
 Each layer catches different bugs. Lint finds style problems, deprecated syntax and risky constructs. Syntax and check tests find structural errors. Container Molecule scenarios find logic and idempotency bugs in user-space configuration. VMs cover kernel, systemd and network behaviour, and hardware tests cover drivers, firmware and fabrics. Keep most of your tests low in the pyramid, and save the expensive tiers for risks that only they can reveal.
 
+The shape of the pyramid is a cost decision. The base is wide because those tests are cheap enough to run on every change, so you can afford many of them. The top is narrow because a GPU run takes time, uses scarce hardware and may need a maintenance window. A team that puts every check at the top will run few checks, and the few checks will be slow. A team that keeps checks at the bottom catches most mistakes before anyone has to book a node.
+
 ## 2. Static analysis
 
-Static analysis is the cheapest gate you have. It reads your files without running anything, so a mistake shows up in seconds rather than on a host.
+Static analysis reads your code without running it. It catches the typo, the wrong indentation and the deprecated module before a single host is touched. It is the cheapest test you have, so it runs first and on every change.
+
+Static analysis is the cheapest gate you have. It reads your files without running anything, so a mistake shows up in seconds rather than on a host. Think of it as a proofreader who checks the spelling before the page goes to print. The proofreader cannot tell you whether the story is good, but they will catch a missing letter that would otherwise appear on every page.
 
 ### yamllint
 
-`yamllint` checks the YAML files themselves, including indentation, line length and the spacing inside braces. The configuration below sets the rules for this repository. It also ignores `.git/`, `collections/` and the `__pycache__` folders under `molecule/`.
+yamllint checks the shape of YAML files. YAML is the plain-text format that Ansible reads, and its meaning depends on indentation, so a single misplaced space can change what a task does. yamllint finds the tab, the duplicate key and the bad indentation that a human eye skims past in a long diff. A duplicate key is worth special attention. Two lines that set the same name in one block do not raise an error in every parser. The second one may quietly win, and the first setting disappears without a warning. Run it on every file before any other check, because a file that does not parse makes every later test meaningless.
+
+`yamllint` checks the YAML files themselves, including indentation, line length and the spacing inside braces. The configuration below sets the rules for this repository. It also ignores `.git/`, `collections/` and the `__pycache__` folders under `molecule/`. The `ignore` block lists paths that are not yours to lint, such as installed collections, which other teams maintain.
 
 ```yaml
 # .yamllint
@@ -75,11 +83,13 @@ ignore: |
   molecule/*/__pycache__/
 ```
 
-The `truthy` rule allows only `true` and `false`, so values such as `yes`, `no`, `on` and `off` are flagged.
+The `truthy` rule allows only `true` and `false`, so values such as `yes`, `no`, `on` and `off` are flagged. The reason is historical. Older YAML parsers read `no` as the boolean false, so a country code `NO` for Norway quietly became `false` in some files. Allowing only the two spellings removes that surprise, and every reader sees the same value.
 
 ### ansible-lint
 
-`ansible-lint` reads playbooks, roles, collections and task files, then checks them against its rules. Those rules cover naming, FQCN, `command` used where a module exists, missing `changed_when`, risky file permissions, deprecated syntax, `no-handler`, `package-latest`, jinja spacing and YAML formatting. It can fix some of these problems on its own with `--fix`.
+ansible-lint checks Ansible rules on top of the YAML. It knows what a task is, so it can warn about a shell command where a module exists, or about a short module name without its collection. A short name such as `copy` could mean the built-in module or a module with the same name in another collection, and the full name `ansible.builtin.copy` removes the doubt. Treat its warnings as review comments from a careful colleague, and fix them in the same change.
+
+`ansible-lint` reads playbooks, roles, collections and task files, then checks them against its rules. Those rules cover naming, FQCN, `command` used where a module exists, missing `changed_when`, risky file permissions, deprecated syntax, `no-handler`, `package-latest`, jinja spacing and YAML formatting. A rule that says `no-handler` flags a task that restarts a service directly, when it should notify a handler instead. A rule that says `package-latest` flags a task that upgrades every package to the newest version, which makes the next run differ from the last one. It can fix some of these problems on its own with `--fix`. Automatic fixes are safe for formatting and naming, but review the diff, because a fix to a command can change what it does.
 
 ```yaml
 # .ansible-lint
@@ -99,25 +109,29 @@ ansible-lint -L                           # list rules
 ansible-lint --format sarif -q > lint.sarif   # for code-scanning dashboards
 ```
 
-Sometimes a rule must be broken on purpose. In that case, add an inline skip with a reason, such as `# noqa: command-instead-of-module` on the task line. The older `tags: [skip_ansible_lint]` form is legacy. Every skip is debt, so review them regularly. The profiles climb from basic correctness to full production hygiene. Start new repositories at `production`, and raise legacy code one profile at a time.
+Sometimes a rule must be broken on purpose. Suppose a task must call a vendor tool that has no module yet. The rule that prefers a module is then wrong for that one line, and the honest fix is to say so. In that case, add an inline skip with a reason, such as `# noqa: command-instead-of-module` on the task line. A reason written beside the skip tells the next reader that the choice was deliberate. The older `tags: [skip_ansible_lint]` form is legacy. Every skip is debt, so review them regularly, because a skip written during an outage often outlives the outage. The profiles climb from basic correctness to full production hygiene. Start new repositories at `production`, and raise legacy code one profile at a time, so the team fixes a manageable batch each time rather than facing hundreds of warnings at once.
 
 `shellcheck` checks the scripts embedded in your tasks, and `gitleaks` (4.12) scans for leaked secrets. `j2lint` lints the Jinja2 templates. `ansible-playbook --syntax-check` and `ansible-inventory --graph` check playbooks and inventories against your test inventories. `check-jsonschema` validates variable files against a JSON Schema that describes your inventory conventions. Finally, `pre-commit` runs all of these on your own machine, as covered in 4.1.
 
 ## 3. Syntax, check mode and render tests
 
-Suppose a template renders fine for one environment and breaks in another, because an optional variable is unset there. Render tests catch that before a host does.
+These tests run the playbook without changing a host. They confirm that the playbook parses, that check mode reports sensible changes, and that templates render. They catch mistakes that linters cannot see, such as a variable that is missing only at run time. A linter reads the text of a file. These tests follow the logic far enough to see what the run would try to do.
 
-A syntax check reads each playbook without running it, so structural errors show up early. Run `ansible-playbook playbooks/site.yml --syntax-check -i inventories/lab` for each playbook in CI. Include a variant for each environment, so that conditional imports get exercised too.
+Suppose a template renders fine for one environment and breaks in another, because an optional variable is unset there. Render tests catch that before a host does. The production inventory may always set that variable, so nobody notices until a lab or a new environment is added. A render test with the variable unset shows the problem the day it is written.
 
-Check mode shows what would change without changing anything. Running `--check --diff` against a test inventory, whether containers or a lab, catches module argument errors and shows the intended changes. The limits from 4.6 still apply. On a freshly created host, check mode can fail legitimately because prerequisites are not yet installed, so use it for drift tests on hosts that have already converged.
+A syntax check reads each playbook without running it, so structural errors show up early. Run `ansible-playbook playbooks/site.yml --syntax-check -i inventories/lab` for each playbook in CI. Include a variant for each environment, so that conditional imports get exercised too. A conditional import only loads when its condition is true, so a syntax check against one inventory may never read that branch.
 
-Many bugs live in templates. You can render each template with the `template` module against `localhost`, or with Python Jinja2 in unit tests, as covered in 3.9. Use representative variable sets, including optional values left unset, and compare the output with golden files. Golden-file tests make the diffs visible in code review. Then validate the rendered file with the target tool, such as `nginx -t`, `sshd -t`, `visudo -cf` or `promtool check config`.
+Check mode shows what would change without changing anything. Running `--check --diff` against a test inventory, whether containers or a lab, catches module argument errors and shows the intended changes. The limits from 4.6 still apply. On a freshly created host, check mode can fail legitimately because prerequisites are not yet installed. A task that would edit a file in a directory that does not exist yet can only report that it would fail. So use check mode for drift tests on hosts that have already converged, where the answer means something.
 
-Role inputs need checking too. Describe them with a JSON Schema or an argument spec, and test that schema with valid and invalid fixtures.
+Many bugs live in templates. You can render each template with the `template` module against `localhost`, or with Python Jinja2 in unit tests, as covered in 3.9. A golden file is a saved copy of the output you expect. The test renders the template again and compares the new output with that saved copy, so any change shows up as a diff. Use representative variable sets, including optional values left unset, and compare the output with golden files. Golden-file tests make the diffs visible in code review, which means a reviewer sees exactly how a template change alters the rendered file. Then validate the rendered file with the target tool, such as `nginx -t`, `sshd -t`, `visudo -cf` or `promtool check config`. Each of those tools reads a config file and reports whether the service would accept it. A file can be valid YAML and still be a broken nginx config, so the target tool gets the last word.
+
+Role inputs need checking too. Describe them with a JSON Schema or an argument spec, and test that schema with valid and invalid fixtures. A fixture is a small input file kept for tests. A valid fixture should pass, and an invalid fixture should fail with a clear reason. Testing the failure matters as much as testing the success, because a validator that accepts everything passes every valid test.
 
 ## 4. Molecule
 
-Suppose you have changed a role and want to know, before you merge, whether it still works on both Ubuntu and Rocky Linux. Molecule automates that check. It is the standard framework for testing roles and collections. It creates instances, runs your role on them, checks idempotence, verifies the results and destroys the instances afterwards. Each test setup lives in a scenario folder, `molecule/<name>/`, and the default scenario is called `default`.
+Molecule runs a role against a disposable target, usually a container or a VM. In one command it can create the target, apply the role, test the result and destroy the target again. Each run starts from a fresh machine, so the test does not depend on what ran before it. Think of a Molecule instance as a rented test kitchen. The kitchen is stocked the same way every time, you cook the recipe in it, and then the kitchen is cleaned out. If the dish comes out right only in a kitchen with yesterday's leftovers, the recipe is wrong.
+
+Suppose you have changed a role and want to know, before you merge, whether it still works on both Ubuntu and Rocky Linux. Molecule automates that check. It is the standard framework for testing roles and collections. It creates instances, runs your role on them, checks idempotence, verifies the results and destroys the instances afterwards. An instance is one target machine, which in this chapter is a container. Each test setup lives in a scenario folder, `molecule/<name>/`, and the default scenario is called `default`. A scenario is a complete test recipe. It names the platforms, the steps and the checks, so the same scenario can run on a laptop and in CI with the same result.
 
 ### Install and initialise
 
@@ -206,7 +220,9 @@ This verify playbook uses only Ansible modules, so it needs no extra library. It
 
 ### The test sequence
 
-`molecule test` runs the whole sequence in one go. While you develop, run the individual steps instead, because a full run rebuilds the instance every time.
+A Molecule run follows a fixed sequence of steps. Knowing the order tells you where a failure happened: during the create, the converge, the idempotence check or the verify step. Read the failing step name first, because it points at the part of the role to inspect. A failure during `create` is about the container image or Docker itself, and the role has not run yet. A failure during `converge` is about the role's first run. A failure during `idempotence` means the role ran once and then changed something on the second run, and a failure during `verify` means the role ran but the result is not what the check expected.
+
+`molecule test` runs the whole sequence in one go. While you develop, run the individual steps instead, because a full run rebuilds the instance every time. Rebuilding is slow, and a slow loop makes you test less often. The individual steps let you keep the instance alive, change one file, and run only the step that needs to see the change.
 
 ```bash
 molecule test               # full: dependency, lint(optional), cleanup, destroy, syntax, create, prepare, converge, idempotence, side_effect, verify, cleanup, destroy
@@ -222,15 +238,15 @@ molecule test -s upgrade
 
 The stages do different jobs. The optional `prepare.yml` sets up prerequisites that are not under test, such as installing Python, creating a fake `/dev` file or starting a mock service. `converge.yml` applies the role or playbook under test, using test variables.
 
-The `idempotence` stage runs converge again, and it fails if any task reports `changed`. This one check finds the majority of subtle bugs. Typical examples are a `command` task without `changed_when`, a template that contains timestamps, and a `lineinfile` regex that does not match the line it writes.
+The `idempotence` stage runs converge again, and it fails if any task reports `changed`. This one check finds the majority of subtle bugs. Idempotent means that running the same change twice gives the same result as running it once. A second run should find everything already in place and report nothing to do. Typical examples are a `command` task without `changed_when`, which reports a change every time it runs even when nothing changed, a template that contains timestamps, which differs on every render, and a `lineinfile` regex that does not match the line it writes, so the line is added again each time.
 
-The optional `side_effect.yml` damages the system between runs, for example by deleting a managed file or killing a service. The role then converges again, and `verify` confirms that the role repaired the damage. This is the drift correction test. The `verify` stage asserts on the final state, so keep its checks independent of how the role did its work.
+The optional `side_effect.yml` damages the system between runs, for example by deleting a managed file or killing a service. The role then converges again, and `verify` confirms that the role repaired the damage. This is the drift correction test. Drift is any change made outside the role, such as a hand edit or a stopped daemon. The `verify` stage asserts on the final state, so keep its checks independent of how the role did its work. A check that looks only at the role's own intermediate file can pass while the live system is still wrong.
 
-Run `molecule test` locally and in CI. While you develop, loop on `molecule converge` and `molecule verify` instead. To keep instances alive after a failure, use `molecule test --destroy never`.
+Run `molecule test` locally and in CI. While you develop, loop on `molecule converge` and `molecule verify` instead. To keep instances alive after a failure, use `molecule test --destroy never`. That keeps the broken instance around, so you can open it and see what state the role left behind.
 
 ### Verification options
 
-The Ansible-native verifier (`verifier: ansible`) uses assertions built from modules such as `assert`, `stat`, `slurp`, `uri`, `command`, `service_facts` and `package_facts`. It needs no extra dependency, so it suits most roles. The testinfra verifier, which runs on Python and pytest, gives you expressive host assertions.
+The Ansible-native verifier (`verifier: ansible`) uses assertions built from modules such as `assert`, `stat`, `slurp`, `uri`, `command`, `service_facts` and `package_facts`. It needs no extra dependency, so it suits most roles. A verifier is the part of the test that checks the outcome, and it runs after the role has finished. The testinfra verifier, which runs on Python and pytest, gives you expressive host assertions. Pytest is a Python test runner, and testinfra adds a `host` object that exposes files, services, sockets and packages in plain Python. Choose the verifier the team can read fastest. A verifier that only one person understands becomes a verifier that nobody updates.
 
 ```python
 # molecule/default/tests/test_default.py
@@ -248,6 +264,8 @@ def test_port_listening(host):
 
 To use testinfra, set `verifier: name: testinfra` with the plugin, then run `molecule verify`. Other options include `goss`, `serverspec` and `inspec`.
 
+Each assertion in that file answers one question about the host. Does the file exist? Is the service running? Is the port open? Keeping one question per test makes a failure message point at exactly one problem.
+
 A few more tools cover the same ideas, and `code/part04/ansible_testing_molecule.py` models them. One is Goss, which checks host state declaratively in YAML. You create a Goss scenario with `molecule init scenario -r ssh --driver-name docker --verifier-name goss goss`. The Goss spec in `molecule/goss/tests/test_sshd.yml` asserts `file: /etc/ssh/ssh_host_ed25519_key.pub: { exists: true, mode: '0644', owner: root, group: root, contains: ['ssh-ed25519 '] }`, `port: tcp:22: { listening: true }`, `service: sshd: { enabled: true, running: true }` and `user: sshd: { exists: true }`. Run it with `/usr/local/bin/goss -g test_sshd.yml v -f tap`, and the results come back as TAP, ending at `1..18`. Another is `ansible-later` (`.later.yml`), which runs alongside `yamllint` and `ansible-lint`.
 
 ### Multi-platform and multi-host scenarios (`docker_networks` and `desired_state`, *Ansible: Up and Running* Chapter 14)
@@ -256,11 +274,13 @@ Roles often run on more than one operating system, so test each supported OS. Fo
 
 Some roles need several hosts at once, such as a Slurm controller with compute nodes, a PostgreSQL primary with a replica, or nginx with an app. A three-node Redis and Sentinel cluster (`redis1..3_centos7`) is a typical case. For this kind of role, define several platforms and give them `groups:`, such as `redis_server` and `redis_sentinel`. Then add a custom `docker_networks:` bridge subnet in `molecule.yml`. Use `10.16.0.0/24`, with the static IPs `10.16.0.10`, `10.16.0.11` and `10.16.0.12`. With that network in place, `converge.yml` can test multi-node discovery and failover.
 
-Some roles install and remove themselves with one `desired_state` variable. The dispatch in `tasks/main.yml` runs `include_tasks: "{{ desired_state }}.yml"`, which picks `present.yml` or `absent.yml` (Examples 14-4 and 14-5). Test both `desired_state: present` and `desired_state: absent` in Molecule, so you know the role can also clean up after itself.
+Some roles install and remove themselves with one `desired_state` variable. Think of it as a light switch with two positions. The dispatch in `tasks/main.yml` runs `include_tasks: "{{ desired_state }}.yml"`, which picks `present.yml` or `absent.yml`. Setting the variable to `present` loads the install steps, and setting it to `absent` loads the removal steps. Test both `desired_state: present` and `desired_state: absent` in Molecule, so you know the role can also clean up after itself. A removal path that nobody has tested often fails on the day someone needs it, when a decommissioned node still holds a stale config.
 
 ### Drivers and what containers cannot do
 
-Each driver trades speed against realism. Containers are fast and cheap, but they share the host's kernel, so some behaviour cannot be tested there. The table shows what each driver can and cannot do.
+A container is fast, but it shares the host kernel and usually has no init system. A role that loads kernel modules or tunes sysctl values needs a real VM to test properly. Know that limit before you trust a green container run, because the green result only covers what the container can show.
+
+Each driver trades speed against realism. A driver is the backend that creates the target, such as Docker or a VM provider. Containers are fast and cheap, but they share the host's kernel, so some behaviour cannot be tested there. The table shows what each driver can and cannot do. Read the Limits column before you choose a driver, because a driver is only as useful as the questions it can answer.
 
 | Driver | Use | Limits |
 |---|---|---|
@@ -270,19 +290,21 @@ Each driver trades speed against realism. Containers are fast and cheap, but the
 | Delegated | Your own provisioning | Maximum flexibility |
 | Lima/Multipass, KVM, Proxmox | Local/lab VMs | Setup effort |
 
-GPU roles need a split. Most of the role can run in containers: the package repository configuration, the templates, the unit files, and the configuration validation against a stub `nvidia-smi` script. Keep a small hardware tier on labelled self-hosted runners with real GPUs for the driver install, `nvidia-smi`, `dcgmi diag -r 1`, Fabric Manager, MIG, the container toolkit and a short NCCL test. Mark that tier with `molecule test -s gpu_hw`, and schedule it nightly or on release branches instead of every push. Each run should leave the GPU runner clean, for example by rebooting it into a known image. NVIDIA data-centre drivers will not install in an unprivileged container, so do not pretend to test them there. Test everything around them instead.
+GPU roles need a split. A stub is a small fake program that answers the same command with a fixed reply, so the role can run its validation code without a real GPU. Most of the role can run in containers: the package repository configuration, the templates, the unit files, and the configuration validation against a stub `nvidia-smi` script. The stub proves that the role reads the output correctly, though it cannot prove that the GPU really reports that output. Keep a small hardware tier on labelled self-hosted runners with real GPUs for the driver install, `nvidia-smi`, `dcgmi diag -r 1`, Fabric Manager, MIG, the container toolkit and a short NCCL test. Mark that tier with `molecule test -s gpu_hw`, and schedule it nightly or on release branches instead of every push. Each run should leave the GPU runner clean, for example by rebooting it into a known image. NVIDIA data-centre drivers will not install in an unprivileged container, so do not pretend to test them there. Test everything around them instead.
 
 ### Testing handlers, errors and upgrades
 
-A handler should run when a config changes and stay quiet when nothing changes. To test that, converge twice with a change in between, such as a side effect or a changed variable. Then verify that the service restarted. You can compare `ActiveEnterTimestamp` or a unit invocation ID, or check that a marker file was created by the handler in test mode.
+A handler should run when a config changes and stay quiet when nothing changes. Think of a smoke alarm that should sound only when there is smoke. An alarm that never sounds is useless, and one that sounds every hour teaches people to ignore it. To test that, converge twice with a change in between, such as a side effect or a changed variable. Then verify that the service restarted. A restart that happens on every run is a restart the team will eventually stop trusting. You can compare `ActiveEnterTimestamp` or a unit invocation ID, or check that a marker file was created by the handler in test mode.
 
 Invalid inputs should fail, and they should fail with the right message. Use a scenario that passes invalid inputs, and verify that the argument specs fail as expected. In `ansible-playbook`, you can invert `failed_when` inside a `block/rescue`. Alternatively, use a CI step that asserts a non-zero exit.
 
-Upgrade tests are essential for drivers and databases, so test them on purpose. Converge with version N-1 of the role and its variables, then converge with the new version, then verify the state and the idempotence. Keep a `prepare.yml` that installs the old state. Drift tests work the other way round. You corrupt the state on purpose, by editing a config file, stopping a service or changing a sysctl. Then you converge and verify the repair, using `side_effect.yml`. Add a handler test and an upgrade test to any role that owns a service or a driver.
+Upgrade tests are essential for drivers and databases, so test them on purpose. A fresh install hides a whole class of bugs, because it never has to move from an old layout to a new one. A driver role that works on a clean node can still fail on the node that has the previous driver installed. Converge with version N-1 of the role and its variables, then converge with the new version, then verify the state and the idempotence. Keep a `prepare.yml` that installs the old state. Drift tests work the other way round. You corrupt the state on purpose, by editing a config file, stopping a service or changing a sysctl. Then you converge and verify the repair, using `side_effect.yml`. Add a handler test and an upgrade test to any role that owns a service or a driver.
 
 ## 5. Testing playbooks and collections
 
-Roles are not the only thing that needs tests. Playbooks and collections need checks too, and each one uses different tools.
+A collection is a shipped product, so it needs the same test discipline as an application. The checks in this section run on the whole collection rather than one role, so a change in a shared module is tested everywhere it is used.
+
+Roles are not the only thing that needs tests. Playbooks and collections need checks too, and each one uses different tools. A playbook is the thin layer that wires roles to hosts, so its tests check the wiring: which hosts it targets, which roles it calls and in what order. A collection is a package of roles and modules, so its tests check the public interface that other teams depend on. The same change can break both, and the test for each lives in a different place.
 
 A playbook can also be a Molecule scenario. Its `converge.yml` imports the playbook with a test inventory. In a monorepo, put a `molecule/` directory at the repository root. Multi-host scenarios there mirror the full topology on a smaller scale. For example, 3 nodes can stand in for login, controller and compute.
 
@@ -291,6 +313,8 @@ Collections are tested with `ansible-test`. `ansible-test sanity` checks style, 
 Custom modules (4.15) need pytest unit tests. Those tests mock `AnsibleModule` with `set_module_args` and patch `exit_json`, and you should add integration tests alongside them. Dynamic inventory logic needs its own unit tests, with canned API responses through `responses` or `respx`, as covered in 3.9. Test a collection with `ansible-test` before you release it, and mock the API for every inventory plugin.
 
 ## 6. CI integration
+
+A test that runs only on your laptop protects nobody else. Your laptop has your tools, your environment variables and your half-finished experiments, so a test that passes there may fail for a colleague. CI runs the same checks on every pull request, in a clean environment. The job layout below puts the cheap checks first, so a typo fails in seconds rather than after a long Molecule run. A job is a unit of work in CI, and a job that depends on another waits for it to pass first. Here the Molecule jobs wait for lint, so a broken file never starts a container.
 
 A CI pipeline turns these checks into a gate for every change. The workflow below runs lint first. Then it runs a Molecule matrix over roles and distributions, and it runs the GPU tier only on a nightly schedule or when a pull request carries the `test-gpu` label.
 
@@ -342,7 +366,7 @@ jobs:
 
 When you wire this into a repository, replace the action versions and runner labels, since they are only examples. The habits behind it matter more.
 
-Cache pip and collections, and pin the `ansible-core` and Molecule versions. Pin the platform images by digest so the tests are reproducible, and refresh them on a schedule to catch upstream breakage. Matrix the run across the supported OSes and ansible-core versions, covering the current line and the previous LTS-ish line. Let the experimental versions fail without blocking the build. Path filters let a role's tests run only when that role changes, and you run everything nightly.
+Cache pip and collections, and pin the `ansible-core` and Molecule versions. Caching keeps a copy of downloaded packages between runs, so the job does not fetch them again. Pinning means the job uses the exact version you named, so today's run and next month's run test the same tools. Pin the platform images by digest so the tests are reproducible, and refresh them on a schedule to catch upstream breakage. A digest is a fixed fingerprint of an image, so the name cannot silently point at new contents. Matrix the run across the supported OSes and ansible-core versions, covering the current line and the previous LTS-ish line. A matrix runs the same job once for each combination in the list. Let the experimental versions fail without blocking the build, so you learn early about an upcoming change without holding up the team. Path filters let a role's tests run only when that role changes, and you run everything nightly.
 
 Publish JUnit or SARIF output and the Molecule logs as artefacts. Make lint and the tests required checks on protected branches (4.2). Tag a release only when lint and the full matrix pass. Build the collections after the tests, and sign the artefacts.
 
@@ -350,7 +374,9 @@ For speed, use prebuilt Molecule images that already have Python and systemd con
 
 ## 7. What to test: a checklist per role
 
-Before you call a role finished, run it through this checklist. Each item is one thing a good test suite should prove.
+Testing everything is slow, and testing nothing is risky. The checklist below picks the properties that matter for a role, so that each test has a clear reason to exist. Work through it for each role you own. A checklist works because it turns a vague worry, "did I test enough?", into a series of yes or no answers that anyone on the team can check.
+
+Before you call a role finished, run it through this checklist. Each item is one thing a good test suite should prove. If an item has no test behind it, write that down as a known gap, rather than assuming the gap does not matter.
 
 1. The role converges on every supported platform without errors.
 2. A second run reports zero changes, which is the idempotence check.
@@ -367,6 +393,8 @@ Before you call a role finished, run it through this checklist. Each item is one
 Use the list as your review checklist for every change to a role.
 
 ## 8. Troubleshooting Molecule
+
+A Molecule run fails in the middle, and the container is left behind or the error is buried in a long output. Troubleshooting means reading the sequence step by step, and knowing which step owns the failure before you change anything. A useful habit is to write down the failing step, the first error line and the instance name before you touch a file. Those three facts often point straight at the cause, and they keep you from changing three things at once, which hides the real fix.
 
 When a Molecule run goes wrong, the symptom usually points to a short list of causes. The table pairs each symptom with its likely cause and the fix you should try first.
 
@@ -385,6 +413,8 @@ When you see a symptom, find its row in the table, and check the cause before yo
 
 ## 9. Lab
 
+Run the lab in order, from the cheapest test to the most expensive. Each step adds one layer, so you can see exactly what each layer catches that the one below it missed. Keep a short note as you go. Write down which layer caught each problem, because that note is the clearest evidence that the pyramid is doing its job.
+
 Start on your own machine with the self-checking Python lab. It runs the `ansible-lint` rule checks through `check_ansible_lint_rules`, which cover `name[missing]`, `fqcn[action-core]`, `command-instead-of-module`, `no-changed-when`, `risky-shell-pipe`, `risky-file-permissions` and `package-latest`. It also walks the complete Molecule lifecycle in `run_molecule_lifecycle`, from `create -> converge -> idempotence -> side_effect -> repair -> verify -> destroy`. Finally, it checks the Goss `test_sshd.yml` spec in `evaluate_goss_sshd_spec`, which comes from *Ansible: Up and Running*, Chapter 14.
 
 ```bash
@@ -393,21 +423,23 @@ python3 code/part04/ansible_testing_molecule_lab.py
 
 The steps after that need Docker or Podman, plus `molecule`, `ansible-lint` and `pytest-testinfra`. The interactive shell steps below were not run on live hardware. Work through these exercises in order.
 
-1. Add `.yamllint` and `.ansible-lint` with profile `production`, plus pre-commit hooks. Run them on the 4.9 and 4.11 content, fix what they report, then add a deliberate violation and watch CI fail.
-2. Initialise a Docker scenario for `kernel_tuning`, or another role, on two distros. Write a converge playbook and an Ansible-native verify, then run `molecule test`.
-3. Hunt an idempotence bug. Add a task with `command: echo >> file`, watch idempotence fail, and fix it with a module.
-4. Add a `side_effect.yml` that deletes the managed file and stops a service. Then confirm that the role repairs both.
-5. Rewrite the verification with testinfra tests, and compare readability and speed against the Ansible-native version.
-6. Write golden-file render tests for a Slurm or NCCL template, using several variable sets. Where you can, run the output through `nginx -t` or `promtool` analogues.
-7. Add a scenario that passes an invalid value, and assert the failure message you expect.
-8. Converge with the old role version from a Git tag, then converge with the new one. Verify the state, and document any non-idempotent migrations.
-9. Build a three-container scenario for a Slurm-like role, with a controller and two nodes and a stub scheduler. Verify that the cross-host config renders correctly from `hostvars`.
-10. Create a fake `nvidia-smi` script that the driver role's validate tasks use inside containers. Then describe the extra hardware scenario that would run on a real GPU runner.
-11. Implement the CI workflow with a matrix and path filters. Add the nightly schedule, and make lint and Molecule required checks.
-12. Run `ansible-test sanity`, plus a small unit test for a custom filter or module.
-13. Clean up the containers and VMs you created, so nothing lingers.
+1. Your 4.9 and 4.11 content has never been linted. Which `.yamllint` and `.ansible-lint` settings, with profile `production`, do you start from? After the fixes, which deliberate violation makes CI fail, and which pre-commit hook catches it first?
+2. A `kernel_tuning` role must work on two distributions. Which converge playbook and Ansible-native verify do you write for it? Which `molecule test` run shows both distributions passing?
+3. A task uses `command: echo >> file` and fails the idempotence stage. Which module replaces it? Which second run proves the fix?
+4. Your `side_effect.yml` deletes the managed file and stops a service. Which two repairs must the role make on the next converge? Which verify check proves each one?
+5. You rewrite the verification with testinfra. Which assertion reads more clearly than the Ansible-native version? Which run is faster?
+6. A Slurm or NCCL template needs golden-file tests across several variable sets. Which variable set leaves an optional value unset? Which validation tool, such as `nginx -t` or `promtool`, checks the rendered output?
+7. A scenario passes one invalid value. Which failure message do you expect from the argument spec? Which `rescue` assertion confirms it?
+8. You converge with the old role version from a Git tag, then with the new one. Which state do you verify after the second converge? Which migration, if any, is not idempotent?
+9. A three-container scenario needs a controller and two nodes. Which `hostvars` value must the cross-host config render correctly? Which verify check proves it?
+10. A fake `nvidia-smi` script lets the driver role run its validate tasks in containers. What does the stub prove? Which extra hardware scenario would run on a real GPU runner?
+11. Your CI workflow needs a matrix and path filters. Which nightly schedule line do you add? Which two checks become required?
+12. Your collection needs a sanity run and one unit test. Which `ansible-test` command runs the sanity suite? Which custom filter gets the unit test?
+13. When you finish, which containers and VMs need removing so nothing lingers?
 
 ## 10. Common mistakes
+
+Testing mistakes give false confidence. A test that always passes, a Molecule scenario that never runs the idempotence check, or a CI job that ignores failures. A green check is useful only if it could have failed. A simple way to check a test is to break the thing it guards, on purpose, and confirm that the test goes red. If it stays green, the test was not testing anything.
 
 The mistakes below are worth recognising early, because each one makes your test suite look better than it is.
 
@@ -418,6 +450,8 @@ Other mistakes come from the environment. Containers pretending to be hosts mean
 The last group concerns security and cost. Giving CI credentials to untrusted PR runs is risky, and so are Molecule inventories that contain secrets. Running expensive GPU or VM tiers on every commit leads to them being disabled later, when they annoy people. With no upgrade tests, you learn about upgrade problems on production.
 
 ## 11. Interview angles
+
+Testing questions show whether you know what a passing test proves. Name the layers, and say what each layer cannot catch. A candidate who says "lint passed, so it is correct" has overstated what lint can see. A candidate who says "lint passed, the container run passed, and the GPU tier is scheduled nightly because containers cannot load drivers" shows that they know where the gaps are.
 
 These questions come up when interviewers ask about testing automation.
 
@@ -433,12 +467,12 @@ These questions come up when interviewers ask about testing automation.
 
 Each exercise asks you to explain or compare something from the chapter, using the code in the lab. Read the referenced functions before you start, so you know what each one checks.
 
-1. Work through the 5-Layer Ansible Test Pyramid and static analysis, using `yamllint`, `ansible-lint` and `ansible-later` from *Ansible: Up and Running*, Chapter 14. Using `check_ansible_lint_rules()` in `code/part04/ansible_testing_molecule.py`, explain what each tier of the Ansible test pyramid catches. Then describe how `.yamllint` and `.ansible-lint` (`profile: production`, `offline: true`) are configured, and what `fqcn[action-core]`, `command-instead-of-module`, `no-changed-when`, `risky-shell-pipe`, `risky-file-permissions` and `package-latest` detect.
-2. Trace the full `molecule test` lifecycle, which is covered in *Ansible: Up and Running*, Chapters 14 and 22. Using `run_molecule_lifecycle()` in `code/part04/ansible_testing_molecule.py`, go through all the stages: `dependency`, `cleanup`, `destroy`, `syntax`, `create`, `prepare`, `converge`, `idempotence`, `side_effect`, `verify`, `cleanup` and `destroy`. Then explain why `molecule converge` and `molecule verify` (or `--destroy never` with `molecule login`) are used during interactive development.
-3. Compare the three Molecule verifiers: the Ansible-native one (`verify.yml`), testinfra (`pytest`) and Goss (`test_sshd.yml`, from *Ansible: Up and Running*, Chapter 14). Using `evaluate_goss_sshd_spec()` in `code/part04/ansible_testing_molecule.py`, compare writing assertions in `verify.yml` (`assert`, `slurp`, `command`), in testinfra (`host.file`, `host.service`, `host.socket`), and in Goss (`test_sshd.yml`, with TAP output).
-4. Multi-host and multi-network scenarios, drift and upgrade testing are covered in *Ansible: Up and Running*, Chapter 14. Show how `molecule.yml` defines a 3-node cluster with `groups:` and `docker_networks:` (`10.16.0.0/24`, `10.16.0.10..12`). Then explain how `side_effect.yml` tests drift self-healing, how `prepare.yml` tests `N-1 -> N` version upgrades, and how `desired_state: absent` tests clean uninstallation.
-5. This exercise compares three test environments, and `molecule test -s gpu_hw` belongs to the last one. Contrast what can be tested inside unprivileged systemd Docker or Podman containers, with a stub `nvidia-smi` script. Then contrast Vagrant or KVM VMs, which cover kernel modules, non-namespaced sysctls and reboots. Finally, contrast self-hosted GPU runners, where the `gpu_hw` scenario tests real NVIDIA drivers, `dcgmi diag -r 1`, Fabric Manager and MIG.
-6. Compare the GitHub Actions workflow in Section 6 with the Jenkins pipeline in *Ansible: Up and Running*, Chapter 22. The workflow runs `lint -> molecule matrix -> scheduled/labeled gpu-hw`. The `Jenkinsfile` stages run `Syntax -> Linting -> Playbook/converge -> Verification -> Idempotency`. Then compare both with `ansible-test sanity/units/integration` for collections.
+1. A reviewer asks what each tier of the test pyramid catches. Which bugs does `check_ansible_lint_rules()` in `code/part04/ansible_testing_molecule.py` find, and which does it miss? (*Ansible: Up and Running*, Chapter 14)
+2. Your team asks why the lifecycle has two `cleanup` stages and two `destroy` stages. Which stages run in order, from `dependency` to the final `destroy`? Use `run_molecule_lifecycle()` to check the order. Why are `molecule converge` and `molecule verify` used during interactive work?
+3. You must choose a verifier for a new role. Which checks are easiest to write in `verify.yml` with `assert`, `slurp` and `command`? Which checks read more clearly with testinfra's `host.file`, `host.service` and `host.socket`? Use `evaluate_goss_sshd_spec()` to see what the Goss spec checks, and what TAP output looks like. (*Ansible: Up and Running*, Chapter 14)
+4. A three-node cluster needs a private network with fixed addresses. Which `docker_networks:` and `groups:` settings in `molecule.yml` build it? Which `side_effect.yml` run proves drift self-healing? Which `prepare.yml` step sets up an `N-1` upgrade, and which `desired_state: absent` run proves clean uninstallation? (*Ansible: Up and Running*, Chapter 14)
+5. A GPU driver role must be tested in three places. What can an unprivileged container test with a stub `nvidia-smi` script? What can a VM test that a container cannot, such as kernel modules and reboots? What does `molecule test -s gpu_hw` check on a self-hosted GPU runner?
+6. Your team compares its GitHub Actions workflow with a Jenkins pipeline. Which stage order does each one use? Which `ansible-test` suites apply to a collection, and where do they fit in either pipeline? (*Ansible: Up and Running*, Chapter 22)
 
 ## Checkpoint questions (20)
 
@@ -619,4 +653,4 @@ From there, inspect `/var/log/syslog`, `journalctl -xe` and the rendered files i
   - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 14: Quality Assurance with Molecule** (read in full: `yamllint`, `ansible-lint`, `ansible-later` `.later.yml`, Molecule history created by `@retr0h` in 2015, Molecule drivers `delegated`/`docker`/`podman`/`vagrant`/`azure`/`ec2`/`gce`/`hetznercloud`/`linode`, Windows Vagrant VirtualBox example, multi-container Redis + Sentinel cluster with `docker_networks` `10.16.0.0/24` and `groups`, `desired_state` `present.yml`/`absent.yml`, Goss verifier `test_sshd.yml` with TAP `1..18` output, and Testinfra `testinfra.utils.ansible_runner`) and **Chapter 22: CI/CD and Ansible** (read in full: declarative `Jenkinsfile` mapping Molecule stages `syntax`, `lint`, `converge`, `verify`, and `idempotence`).
 - **Run here:** `python3 code/part04/ansible_testing_molecule_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `check_ansible_lint_rules`, `run_molecule_lifecycle`, and `evaluate_goss_sshd_spec` models in `code/part04/ansible_testing_molecule.py`, the `kernel_tuning` `molecule.yml`/`converge.yml`/`verify.yml`/`test_default.py` files, and the GitHub Actions `ansible-ci.yml` workflow are the author's constructions applying *Ansible: Up and Running* Chapters 14 & 22 to GPU infrastructure roles (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** Live `molecule`, `docker`, `ansible-lint`, `pytest-testinfra`, `goss`, and `ansible-test` executions (`molecule>=6`, `160` line-length, `vm.dirty_ratio: 10`, `9400`, `10.16.0.0/24`, `10.16.0.10..12`, `cron: "0 4 * * *"`, `3.12`) are marked (`untested here`) where not executed by `ansible_testing_molecule_lab.py`.
+- **Not verified on live hardware:** Live `molecule`, `docker`, `ansible-lint`, `pytest-testinfra`, `goss`, and `ansible-test` executions (`molecule>=6`, `160` line-length, `vm.dirty_ratio: 10`, `9400`, `10.16.0.0/24`, `10.16.0.10..12`, `cron: "0 4 * * *"`, `3.12`) are marked as not run in this chapter where `ansible_testing_molecule_lab.py` does not execute them.

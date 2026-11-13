@@ -24,9 +24,11 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU Kubernetes platform. It is a large stack of layers: operators, CRDs, schedulers, monitoring, ingress, storage, policies, team namespaces and quotas, inference services and pipelines. All of these change constantly. They also have to stay consistent across dev, staging and production clusters, and across regions. GitOps handles this by making Git the source of truth and an in-cluster controller the executor. Every change becomes a reviewed commit, and rollback is `git revert`. Drift, meaning the live cluster no longer matches Git, is detected and optionally healed. Credentials never leave the cluster, and the audit trail is the Git history. For platform teams that run many clusters, this is the default delivery model for everything above the infrastructure layer.
 
+Think about the alternative for a moment. Without GitOps, the platform lives in the heads of two or three people and in a folder of shell scripts that were last run in the spring. When one of those people goes on leave, nobody can say which chart version runs in production. GitOps turns that memory into a repository that anyone on the team can read, review and reproduce.
+
 ## Prerequisites and outcomes
 
-Needs 4.1, 4.2, 4.25 and Kubernetes fundamentals (Part 5). After this chapter you can:
+Needs 4.1, 4.2, 4.25 and Kubernetes fundamentals (Part 5). Before you start, make sure you can read a Kubernetes manifest and explain what a Deployment and a Service are for. After this chapter you can:
 
 - State the four GitOps principles and contrast pull-based reconciliation with push-based CI/CD.
 - Install and operate Argo CD and Flux; define Applications, ApplicationSets, Kustomizations, HelmReleases, sources, health checks, sync policies, waves, hooks, ignore rules.
@@ -35,9 +37,13 @@ Needs 4.1, 4.2, 4.25 and Kubernetes fundamentals (Part 5). After this chapter yo
 - Sequence the bootstrap of a GPU platform (operators before custom resources, CRDs before consumers) and handle upgrade ordering.
 - Add progressive delivery (Argo Rollouts, Flagger), notifications, observability and troubleshooting techniques.
 
+Two terms come up in almost every section. A reconciler is a loop that keeps comparing the real world with the desired state and acts on any gap. A controller is a program in the cluster that runs such a loop for one kind of object. Both words describe the same idea from two angles, and you will see them used interchangeably.
+
 ## 1. GitOps principles and architecture
 
 Picture a cluster that someone changed by hand on a Friday night. Nobody wrote the change down, and nobody can say what the cluster should look like on Monday. GitOps is designed to catch exactly this kind of drift. The OpenGitOps principles describe a system that is declarative. Its desired state is versioned and immutable, and it lives in Git. Approved changes are pulled automatically by software agents, and those agents continuously reconcile actual state with desired state.
+
+The diagram below shows the whole loop. Read it from left to right. A human proposes a change, the change is reviewed and merged, and then a controller inside the cluster does the work and reports back.
 
 ```mermaid
 flowchart LR
@@ -52,23 +58,23 @@ flowchart LR
 
 Read the diagram from left to right. An engineer opens a pull request against the config repo, and CI builds, tests and scans the image. The GitOps controller inside the cluster watches that repo, renders the manifests, and compares them with the live API. It then applies, prunes or self-heals the difference, and reports status.
 
-Compared with push CI/CD, covered in 4.1 and 4.2, the differences are concrete. Credentials stay in the cluster, so the CI system does not hold cluster-admin. Drift is continuously corrected. You can check the cluster state against Git at any time. A new cluster can be created by pointing a controller at a repo, and a rollback is a Git operation. The trade-off is real. When a sync fails, you first debug the indirection: why didn't it sync? CRD and ordering complexity grows, secrets handling needs a design, and the controller itself becomes critical infrastructure.
+Compared with push CI/CD, covered in 4.1 and 4.2, the differences are concrete. Push CI/CD means the pipeline reaches into the cluster and makes the change itself. Credentials stay in the cluster, so the CI system does not hold cluster-admin. Drift is continuously corrected. You can check the cluster state against Git at any time. A new cluster can be created by pointing a controller at a repo, and a rollback is a Git operation. The trade-off is real. When a sync fails, you first debug the indirection: why didn't it sync? CRD and ordering complexity grows, secrets handling needs a design, and the controller itself becomes critical infrastructure. Everything depends on it, so it needs the same care you give any other production system.
 
-This pattern uses two repositories. The application repository holds the source, Dockerfile, tests and chart, and CI builds it. The config repository holds environments, Helm values, Kustomize overlays and Application definitions, and the controller watches it. CI's last step updates the image tag or digest in the config repo through a pull request, or through an image-update automation. Deployment is then a reviewed config change, not a side effect of CI.
+This pattern uses two repositories. The application repository holds the source, Dockerfile, tests and chart, and CI builds it. The config repository holds environments, Helm values, Kustomize overlays and Application definitions, and the controller watches it. CI's last step updates the image tag or digest in the config repo through a pull request, or through an image-update automation. Deployment is then a reviewed config change, not a side effect of CI. An image-update automation is a bot that notices a new image and opens that pull request for you.
 
 ### Filesystem as the source of truth
 
 Most people first meet Kubernetes by typing commands. You run `kubectl run` to start a Pod, or `kubectl edit` to change one in place. Over time, the YAML file starts to look like a note you write on the way to the real goal, a running cluster. For a production application, that order is backwards.
 
-Turn it around. The truth lives in the files on disk, and the objects in the cluster are a reflection of those files. The data in `etcd` is then just the current copy of what the files say.
+Turn it around. The truth lives in the files on disk, and the objects in the cluster are a reflection of those files. The data in `etcd` is then just the current copy of what the files say. Etcd is the database that backs the Kubernetes API, so it holds the live objects and nothing else.
 
-This view lets you treat the cluster as immutable infrastructure. Teams already do this for containers, and the same reasons hold for the cluster. Picture a cluster built by hand from random YAML downloaded off the internet. That cluster is a snowflake, and it is as fragile as a virtual machine built from imperative bash scripts. Files in source control also let several people work on the cluster state together. Conflicts become easy to see and settle.
+This view lets you treat the cluster as immutable infrastructure. Teams already do this for containers, and the same reasons hold for the cluster. Picture a cluster built by hand from random YAML downloaded off the internet. That cluster is a snowflake, and it is as fragile as a virtual machine built from imperative bash scripts. A snowflake is a system that is unique and cannot be rebuilt the same way twice. Files in source control also let several people work on the cluster state together. Conflicts become easy to see and settle, because they show up as merge conflicts in a pull request rather than as surprises in production.
 
-The first principle of a good layout is simple. Every application deployed to Kubernetes is first described in files on a filesystem. The live API objects are a projection of those files into one particular cluster.
+The first principle of a good layout is simple. Every application deployed to Kubernetes is first described in files on a filesystem. The live API objects are a projection of those files into one particular cluster. A projection is one view of the same underlying thing, so the same files can project into a staging cluster and a production cluster with different results.
 
 ### Code review for every change
 
-Code review for application source code is now routine. Several people read a change before it is committed, and the code gets better. Configuration deserves the same care. The book's authors say most service outages are self-inflicted, through an unexpected side effect, a typo or a simple mistake. Having at least two people look at any configuration change makes those errors much less likely.
+Code review for application source code is now routine. Several people read a change before it is committed, and the code gets better. Configuration deserves the same care. The book's authors say most service outages are self-inflicted, through an unexpected side effect, a typo or a simple mistake. Having at least two people look at any configuration change makes those errors much less likely. A typo in a replica count is a small mistake to read and a large one to discover at night.
 
 The second principle follows from this. The layout must make it easy to review every change that goes into the files that describe your cluster. Give every configuration change the same review you give application code.
 
@@ -84,33 +90,35 @@ if (featureFlags.myFlag) {
 }
 ```
 
-The gate has three useful effects. The team can merge to the production branch long before the feature is ready. Work stays close to `HEAD`, so you avoid the painful merge conflicts of a long-lived branch. Turning the feature on is a configuration change, so it is clear what changed in production. Rolling it back is just as simple.
+The gate has three useful effects. The team can merge to the production branch long before the feature is ready. Work stays close to `HEAD`, so you avoid the painful merge conflicts of a long-lived branch. `HEAD` is the newest commit on the main line of work. Turning the feature on is a configuration change, so it is clear what changed in production. Rolling it back is just as simple.
 
 Using a flag also keeps debugging simple. Disabling a feature does not require a binary rollback to an older version of the code. Such a rollback would also remove the bug fixes and improvements that the newer version brings. So the third principle of application layout is this: code lands in source control, off by default, behind a flag, and is turned on only by a code-reviewed change to configuration.
 
 ### Keeping secrets out of plain Git
 
-Git as the single source of truth creates a problem. Secrets must live somewhere, and plain Secrets in Git are a leak waiting to happen. Bitnami's Sealed Secrets solves this. You commit an encrypted version of a Secret, and the controller decrypts it in the cluster once it is applied. Applications then read the Secret as usual. Plan this design early, because the GitOps model depends on it.
+Git as the single source of truth creates a problem. Secrets must live somewhere, and plain Secrets in Git are a leak waiting to happen. Anyone who can read the repository, and anyone who ever could, can read a password committed there. Bitnami's Sealed Secrets solves this. You commit an encrypted version of a Secret, and the controller decrypts it in the cluster once it is applied. Applications then read the Secret as usual. Plan this design early, because the GitOps model depends on it. Section 5 of 4.12 covers the other options.
 
 ### Alerting on drift that never heals
 
-A failed push pipeline shows up as a failed job, so someone notices. A declarative controller can fail more quietly. It keeps trying to reach the declared state, and the gap can persist. Watch for the state of the cluster and the state of Git staying different for a long time. Set an alert for that case, so the drift gets fixed.
+A failed push pipeline shows up as a failed job, so someone notices. A declarative controller can fail more quietly. It keeps trying to reach the declared state, and the gap can persist. A sync that is stuck in a retry loop looks busy from the outside, and nobody is paged. Watch for the state of the cluster and the state of Git staying different for a long time. Set an alert for that case, so the drift gets fixed.
 
 ### Ordering, scripts and objects made by controllers
 
-Not every application deploys cleanly as a flat set of YAML files. While you move to GitOps, you may need ordering rules and some scripting. Watch out for controllers that create objects through the Kubernetes API. Those objects are not in Git. In strict mode, the GitOps tool may delete them as unknown resources. That deletion is often what you want, since Git is the source of truth. Still, changes made outside Git can break the model, so plan a workaround for them.
+Not every application deploys cleanly as a flat set of YAML files. While you move to GitOps, you may need ordering rules and some scripting. Watch out for controllers that create objects through the Kubernetes API. Those objects are not in Git. In strict mode, the GitOps tool may delete them as unknown resources. That deletion is often what you want, since Git is the source of truth. Still, changes made outside Git can break the model, so plan a workaround for them. The usual workaround is to let the controller own those objects and exclude them from the sync.
 
 ### Why two repositories
 
-Keep application code and deployment configuration in separate repositories. Each concern usually belongs to a different team. Developers should know how their app deploys, and they should have a say. Sizing, environments and secret injection usually belong to the platform or operations team. Security and audit rules also differ between code repositories and repositories that hold deployment pipelines, secrets and environment settings. Separate repos let each team apply its own rules.
+Keep application code and deployment configuration in separate repositories. Each concern usually belongs to a different team. Developers should know how their app deploys, and they should have a say. Sizing, environments and secret injection usually belong to the platform or operations team. Security and audit rules also differ between code repositories and repositories that hold deployment pipelines, secrets and environment settings. Separate repos let each team apply its own rules. A developer can merge a fix to the application without ever holding the key to production settings.
 
 ## 2. Argo CD
 
-Suppose an upgrade of the GPU operator stalls at two in the morning. Before you touch anything, you need to know which object holds the desired state and which one holds the live state. Argo CD is built around a small set of objects that answer that question.
+Suppose an upgrade of the GPU operator stalls at two in the morning. Before you touch anything, you need to know which object holds the desired state and which one holds the live state. Argo CD is built around a small set of objects that answer that question. Once you can name the desired object and the live object, most of the troubleshooting is already done.
 
 ### Architecture and objects
 
-Argo CD runs as several components. The API server serves the UI, the CLI and gRPC clients. The repo-server clones repositories and renders manifests with Helm, Kustomize or plugins. The application-controller compares desired state with live state and performs the sync. Redis, Dex with OIDC for single sign-on, the ApplicationSet controller and the notifications controller complete the set. Three custom resources describe your work. `Application` and `ApplicationSet` describe what to deploy, and `AppProject` sets the guardrails: allowed repos, destinations, resource kinds and roles.
+Argo CD runs as several components. The API server serves the UI, the CLI and gRPC clients. The repo-server clones repositories and renders manifests with Helm, Kustomize or plugins. The application-controller compares desired state with live state and performs the sync. Redis, Dex with OIDC for single sign-on, the ApplicationSet controller and the notifications controller complete the set. OIDC is the standard login protocol that lets Argo CD trust your company's identity provider. Three custom resources describe your work. `Application` and `ApplicationSet` describe what to deploy, and `AppProject` sets the guardrails: allowed repos, destinations, resource kinds and roles.
+
+The Application below is the most common object you will write. Read it as a sentence. It says: take this chart at this version, install it into this namespace, keep it in sync, and leave the replica count to the autoscaler.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -145,13 +153,15 @@ spec:
       jsonPointers: [/spec/replicas]                       # HPA owns replicas
 ```
 
-This Application pins the chart version and turns on automated sync. The `ignoreDifferences` block tells Argo CD to leave `replicas` alone, because the HPA owns it.
+This Application pins the chart version and turns on automated sync. The `ignoreDifferences` block tells Argo CD to leave `replicas` alone, because the HPA owns it. Each line of the `syncPolicy` block changes behaviour, so read them one at a time. `ServerSideApply` moves field ownership onto the API server, which matters for large CRDs. `ApplyOutOfSyncOnly` limits each sync to the objects that actually differ, which keeps a big app quick to sync.
 
-Two status fields matter most, and they answer different questions. Sync status tells you whether the live objects match Git, and it shows Synced or OutOfSync. Health status tells you whether the resources work, and it shows Healthy, Progressing, Degraded or Missing. Built-in health checks cover core kinds, and you can write custom Lua health checks for CRDs.
+Two status fields matter most, and they answer different questions. Sync status tells you whether the live objects match Git, and it shows Synced or OutOfSync. Health status tells you whether the resources work, and it shows Healthy, Progressing, Degraded or Missing. Built-in health checks cover core kinds, and you can write custom Lua health checks for CRDs. Lua is the small scripting language that Argo CD uses for these custom checks.
 
-The sync policy decides when Argo CD applies changes. A manual sync waits until someone triggers it. With `automated`, Argo CD applies changes itself. `prune` deletes resources that were removed from Git, and `selfHeal` reverts changes made outside Git. Production often uses automated sync for platform layers, and manual or gated sync for risky ones.
+Keep the two statuses apart in your head, because they fail for different reasons. A `Synced` application with a `Degraded` health status means Git and the cluster agree, but the thing Git describes is broken, such as a GPU pod that cannot be scheduled. An `OutOfSync` application that reports `Healthy` means something works, but it no longer matches Git, so a change was made somewhere it should not have been. The fix for the first case is in the workload or its node pool. The fix for the second case is in whoever changed the object by hand.
 
-Sync options and ordering control how a sync runs. A `sync-wave` annotation (`argocd.argoproj.io/sync-wave: "-1"`) orders resources inside a sync, so CRDs and namespaces go in earlier and custom resources go in later. Resource hooks (`PreSync`, `Sync`, `PostSync`, `SyncFail`) run Jobs for migrations and smoke tests. Other options include `Replace=true`, `ServerSideApply`, `Prune=false`, `Validate=false` and `SkipDryRunOnMissingResource=true`, the last one for custom resources whose CRD is installed in the same sync.
+The sync policy decides when Argo CD applies changes. A manual sync waits until someone triggers it. With `automated`, Argo CD applies changes itself. `prune` deletes resources that were removed from Git, and `selfHeal` reverts changes made outside Git. Production often uses automated sync for platform layers, and manual or gated sync for risky ones. A risky one might be a driver upgrade that restarts GPUs, where a person should press the button.
+
+Sync options and ordering control how a sync runs. A `sync-wave` annotation (`argocd.argoproj.io/sync-wave: "-1"`) orders resources inside a sync, so CRDs and namespaces go in earlier and custom resources go in later. Resource hooks (`PreSync`, `Sync`, `PostSync`, `SyncFail`) run Jobs for migrations and smoke tests. A hook is an extra object that runs at a set point in the sync, such as a migration before the app starts. Other options include `Replace=true`, `ServerSideApply`, `Prune=false`, `Validate=false` and `SkipDryRunOnMissingResource=true`, the last one for custom resources whose CRD is installed in the same sync.
 
 App-of-apps and ApplicationSets solve the same problem at different scales. In app-of-apps, an Application's manifests are other Applications, so one object can bootstrap a whole platform. An ApplicationSet generates Applications from generators: list, cluster, git directory/file, matrix, pull request and SCM provider. It is the standard way to stamp the same component across clusters or environments. The next ApplicationSet does exactly that for every prod cluster. Read the matrix generator as a pairing: each registered prod cluster is combined with every folder under `addons/*`.
 
@@ -181,19 +191,21 @@ spec:
       syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }
 ```
 
+Think of the matrix as a grid. Rows are clusters and columns are add-on folders, and the ApplicationSet creates one Application in every cell. Adding a new add-on folder adds a column, and adding a new prod cluster adds a row. You do not write either one by hand.
+
 Multi-cluster setups come in two shapes. You can register clusters from a hub with `argocd cluster add`, which uses a ServiceAccount token for each cluster. Or you can run one Argo CD instance per cluster, which isolates better and needs fewer credentials, but leaves you more to operate. The hub shape concentrates credentials and failure in one place. Per-cluster instances scale and isolate better, with ApplicationSets or Fleet-style management on top.
 
-`AppProject` restricts source repos, destinations, cluster-scoped resources and roles. The `argocd-rbac-cm` setting maps SSO groups to roles. Put platform and team applications in separate projects.
+`AppProject` restricts source repos, destinations, cluster-scoped resources and roles. The `argocd-rbac-cm` setting maps SSO groups to roles, so a person's group membership decides what they may do. Put platform and team applications in separate projects, so a team cannot accidentally deploy into the platform's namespaces.
 
 Argo CD does not decrypt secrets itself. You pair it with Sealed Secrets, SOPS (through plugins or KSOPS), External Secrets Operator, or Vault Agent/CSI, covered in 4.12. Never put plaintext Secrets in Git.
 
-Argo CD can send notification triggers and templates to Slack, email or webhooks. Its Prometheus metrics cover sync counts and reconciliation duration. Audit runs through Git and Argo events.
+Argo CD can send notification triggers and templates to Slack, email or webhooks. A trigger is the condition, such as a failed sync, and a template is the message sent. Its Prometheus metrics cover sync counts and reconciliation duration. Audit runs through Git and Argo events.
 
-Argo CD renders Helm, Kustomize, plain YAML and Jsonnet. Custom rendering goes into CMP sidecars, and those need care with supply chain and performance. You can read Helm values from files in Git with `valueFiles`, or combine several sources with `sources:`.
+Argo CD renders Helm, Kustomize, plain YAML and Jsonnet. Jsonnet is a data templating language, and Argo CD supports it alongside the other three. Custom rendering goes into CMP sidecars, and those need care with supply chain and performance. A CMP is a config management plugin, a small container that runs next to the repo server. You can read Helm values from files in Git with `valueFiles`, or combine several sources with `sources:`.
 
 ### CLI
 
-Most day-to-day work uses a handful of commands. The `--dry-run` flag shows what a sync would do before it happens.
+Most day-to-day work uses a handful of commands. The `--dry-run` flag shows what a sync would do before it happens, so it is the safe way to look before you act.
 
 ```bash
 argocd login argocd.example.com --sso
@@ -208,13 +220,15 @@ argocd app set gpu-operator --sync-policy none     # pause automation during an 
 argocd proj list
 ```
 
-The rollback command is a warning as much as a tool. With automated sync it is not recommended, so revert the change in Git instead. When an incident starts, pause automation with `--sync-policy none`, then make the fix in Git.
+The rollback command is a warning as much as a tool. With automated sync it is not recommended, so revert the change in Git instead. Argo would otherwise sync the reverted state straight back to Git's version, and the rollback would be undone. When an incident starts, pause automation with `--sync-policy none`, then make the fix in Git.
 
 ## 3. Flux
 
-Suppose you have a new cluster and a Git repository, and you want Flux to take over from there. Flux is built differently from Argo CD, so it helps to know its parts first.
+Suppose you have a new cluster and a Git repository, and you want Flux to take over from there. Flux is built differently from Argo CD, so it helps to know its parts first. Where Argo CD is one large program with a UI, Flux is a set of small controllers that each do one job.
 
 Flux is a CNCF graduated project. It is a set of Kubernetes controllers, which the project calls the GitOps Toolkit. Each controller owns one concern. The source-controller handles Git, Helm, OCI and Bucket sources. The kustomize-controller reconciles Kustomizations, and the helm-controller manages HelmReleases. The notification-controller handles notifications. An optional image-reflector/automation pair scans image tags and writes them back to Git. Everything is declarative CRDs, and there is no central UI. For a UI, use the Weave GitOps/Capacitor/Headlamp plugins.
+
+The three objects below show the Flux model in one place. Read them top to bottom, because each one feeds the next. The GitRepository fetches the files, the Kustomization applies some of them, and the HelmRelease installs a chart.
 
 ```yaml
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -259,19 +273,19 @@ spec:
     driver: { enabled: false }
 ```
 
-This set of three objects shows the Flux model in one place. The GitRepository fetches the config, the Kustomization applies the infrastructure path, and the HelmRelease installs the GPU operator chart.
+Notice the `interval` on each object. It is how often Flux checks again, so the GitRepository polls Git every minute while the HelmRelease checks every half hour. The `dependsOn` line on the Kustomization is what keeps the CRDs ahead of the things that use them. Without it, the infrastructure could try to start before the schemas it needs exist.
 
 Several Flux features go beyond that basic flow. Bootstrap is where Flux starts. Running `flux bootstrap github|gitlab|git --owner=... --repository=... --path=clusters/prod-us` installs the controllers and commits their manifests to the repo, which then manages itself. Ordering comes from `dependsOn` across Kustomizations and HelmReleases, together with `wait` and health checks. CRDs usually sit in their own Kustomization, and the others depend on it.
 
-A HelmRelease can manage CRD upgrades with `crds: CreateReplace`. It also handles automatic remediation (rollback, uninstall or retry), test hooks, and drift detection through `driftDetection`. SOPS decryption is built into kustomize-controller, which supports age, PGP and KMS keys.
+A HelmRelease can manage CRD upgrades with `crds: CreateReplace`. It also handles automatic remediation (rollback, uninstall or retry), test hooks, and drift detection through `driftDetection`. Remediation is what Flux does when an install or upgrade fails, and `remediateLastFailure` tells it to roll back to the last working release. SOPS decryption is built into kustomize-controller, which supports age, PGP and KMS keys.
 
-Multi-tenancy works through namespaced Flux objects. Each one can set `serviceAccountName` to impersonate an account with least privilege. Tenants get their own sources and Kustomizations, and those are bound to RBAC. Image automation uses ImageRepository, ImagePolicy and ImageUpdateAutomation. Together they scan registries and commit tag bumps to Git.
+Multi-tenancy works through namespaced Flux objects. Each one can set `serviceAccountName` to impersonate an account with least privilege. Tenants get their own sources and Kustomizations, and those are bound to RBAC. Image automation uses ImageRepository, ImagePolicy and ImageUpdateAutomation. Together they scan registries and commit tag bumps to Git. The bumps then flow through the same review process as any other change.
 
-The CLI covers the routine work. `flux get all` lists the objects, `flux reconcile source git platform-config` runs a source reconcile on demand, and `flux reconcile kustomization infrastructure --with-source` reconciles the Kustomization along with its source. `flux suspend/resume`, `flux diff kustomization`, `flux logs` and `flux trace` handle the rest.
+The CLI covers the routine work. `flux get all` lists the objects, `flux reconcile source git platform-config` runs a source reconcile on demand, and `flux reconcile kustomization infrastructure --with-source` reconciles the Kustomization along with its source. `flux suspend/resume`, `flux diff kustomization`, `flux logs` and `flux trace` handle the rest. `flux trace` is especially useful, because it walks back from a running object to the Git commit that created it.
 
 ### Argo CD vs Flux
 
-Both tools solve the same problem, so the choice comes down to how each one is built. The table compares them on one concern per row.
+Both tools solve the same problem, so the choice comes down to how each one is built. The table compares them on one concern per row. Read it as a list of questions you should ask your team, such as "who will look at the UI" and "who runs many clusters."
 
 | Aspect | Argo CD | Flux |
 |---|---|---|
@@ -285,11 +299,11 @@ Both tools solve the same problem, so the choice comes down to how each one is b
 | Progressive delivery | Argo Rollouts | Flagger |
 | Best for | Teams wanting visibility and self-service UI, many app teams | Platform teams wanting a lean, composable, fleet-oriented system |
 
-Both tools work well. Whichever you pick, do not run both against the same objects. Many organisations standardise on one of them, so each set of objects has a single owner.
+Both tools work well. Whichever you pick, do not run both against the same objects. Two controllers that both want the same object will undo each other, and the cluster ends up in a loop. Many organisations standardise on one of them, so each set of objects has a single owner.
 
 ## 4. Repository design
 
-Consider a team that runs `prod-us` and `staging-eu`. Someone asks which chart version runs in production right now. The repository layout decides how quickly you can answer that question. A good layout keeps every environment visible in one place.
+Consider a team that runs `prod-us` and `staging-eu`. Someone asks which chart version runs in production right now. The repository layout decides how quickly you can answer that question. A good layout keeps every environment visible in one place, so the answer is one `grep` away instead of a search through old branches.
 
 ```text
 config-repo/
@@ -309,15 +323,15 @@ config-repo/
 └── docs/ (ADRs, runbooks)
 ```
 
-The tree above separates what runs where from what is shared. Each cluster directory is the root of reconciliation, and the shared components sit beside it.
+The tree above separates what runs where from what is shared. Each cluster directory is the root of reconciliation, and the shared components sit beside it. Think of `clusters/` as the table of contents for the whole fleet. It says which pieces each cluster should include, and the pieces themselves live in the other folders.
 
-Environments are directories, not branches. Each environment's overlay is a directory, and promotion is a pull request that changes the prod overlay, such as a version bump or an image digest, after staging proves the change. You can automate those bump pull requests with Renovate or Flux image automation. This model is covered in 4.1.
+Environments are directories, not branches. Each environment's overlay is a directory, and promotion is a pull request that changes the prod overlay, such as a version bump or an image digest, after staging proves the change. An overlay is a small set of changes laid on top of a shared base, so prod can differ from staging in only the few places that must differ. You can automate those bump pull requests with Renovate or Flux image automation. This model is covered in 4.1.
 
-Shared structure stays DRY, meaning don't repeat yourself. Use a Kustomize base with overlays, or Helm values layering. Avoid deep overlay chains, because nobody can read them. Render locally with `kustomize build` or `helm template`, and validate in CI with `kubeconform`, `kyverno test` and `conftest`, covered in 4.2 and 4.13. Pin everything: chart versions, image digests and CRD manifests by tag. Never use `latest`.
+Shared structure stays DRY, meaning don't repeat yourself. Use a Kustomize base with overlays, or Helm values layering. Avoid deep overlay chains, because nobody can read them. A chain of five overlays on top of each other hides where a value really comes from. Render locally with `kustomize build` or `helm template`, and validate in CI with `kubeconform`, `kyverno test` and `conftest`, covered in 4.2 and 4.13. Pin everything: chart versions, image digests and CRD manifests by tag. Never use `latest`, because it changes without telling you.
 
 Lifecycles differ, so separate them. CRDs and operators sit in the infrastructure layer and rarely change. Custom resources and apps change often. Put them in separate sync or Kustomization units with explicit ordering. Each object should also have one writer. Terraform bootstraps the controller, covered in 4.25. After that, Git owns the cluster state, so avoid mixed ownership.
 
-Access should follow the tree. The platform team owns `infrastructure/` and `clusters/`, while each team owns its `apps/<team>` path through CODEOWNERS, covered in 4.1. Branch protection and required checks gate merges, and Argo and Flux read the repo with read-only deploy keys. A config monorepo makes atomic cross-component changes simpler, and it gives you a fleet view. Large organisations often split by domain instead, into platform and per-team repos, and keep a registry of those repos. That registry can come from the ApplicationSet SCM generator or from Flux multi-tenancy.
+Access should follow the tree. The platform team owns `infrastructure/` and `clusters/`, while each team owns its `apps/<team>` path through CODEOWNERS, covered in 4.1. Branch protection and required checks gate merges, and Argo and Flux read the repo with read-only deploy keys. A deploy key is an SSH key that can read one repository and nothing else. A config monorepo makes atomic cross-component changes simpler, and it gives you a fleet view. Large organisations often split by domain instead, into platform and per-team repos, and keep a registry of those repos. That registry can come from the ApplicationSet SCM generator or from Flux multi-tenancy.
 
 ### Filesystem layout for one cluster
 
@@ -331,7 +345,7 @@ service-1/
 service-2/
 ```
 
-Each directory holds the YAML files that describe the current state of that component. Put the service name and the object type in each file name, so the file tells you what it is.
+Each directory holds the YAML files that describe the current state of that component. Put the service name and the object type in each file name, so the file tells you what it is. A reviewer scanning a folder should be able to name every file without opening it.
 
 ```
 frontend/
@@ -345,7 +359,7 @@ service-1-deployment.yaml
 
 The `...` marks the other files for that service, such as its ingress or its ConfigMap.
 
-Kubernetes lets you put several objects in one YAML file, but that is usually a bad habit. Group objects in one file only when they are conceptually identical. Think of it like designing a class. If the objects do not form one concept, they belong in separate files.
+Kubernetes lets you put several objects in one YAML file, but that is usually a bad habit. Group objects in one file only when they are conceptually identical. Think of it like designing a class. If the objects do not form one concept, they belong in separate files. A Deployment and its matching Service form one concept, so keeping them together can be sensible. A Deployment and an unrelated ConfigMap do not, and separating them keeps each diff readable.
 
 ### Keeping several releases side by side
 
@@ -355,9 +369,9 @@ You will often need to look back at an earlier version of the application. You a
 
 With tags and branches, the directory tree does not change. When you are ready for a release, place a source-control tag on it, such as `git tag v1.0`. The tag marks the configuration for that version. Meanwhile, `HEAD` keeps moving forward.
 
-A fix to a released version takes a few more steps, but it follows the normal source-control flow. You commit the change to `HEAD` first. Then you create a branch named `v1` at the `v1.0` tag, cherry-pick the change onto that branch with `git cherry-pick <edit>`, and tag the branch as `v1.1` to mark a new point release.
+A fix to a released version takes a few more steps, but it follows the normal source-control flow. You commit the change to `HEAD` first. Then you create a branch named `v1` at the `v1.0` tag, cherry-pick the change onto that branch with `git cherry-pick <edit>`, and tag the branch as `v1.1` to mark a new point release. Cherry-picking copies one commit onto another line of work, so the fix lands in the old release without bringing along the new features.
 
-A common mistake is to cherry-pick the fix only into the latest release. Put it into every active release, because you may need to roll back to an older version, and the fix will still be needed there.
+A common mistake is to cherry-pick the fix only into the latest release. Put it into every active release, because you may need to roll back to an older version, and the fix will still be needed there. An older release that you forgot to fix is a trap that springs during the next incident.
 
 #### Versioning with directories
 
@@ -383,13 +397,13 @@ current/
 
 The `...` stands for the rest of the files in each folder, which follow the same pattern.
 
-Every deployment still runs from `HEAD`, not from a fixed revision or tag. You add new configuration to the `current` directory, and when you create a release, you copy `current` into a new directory for that release.
+Every deployment still runs from `HEAD`, not from a fixed revision or tag. You add new configuration to the `current` directory, and when you create a release, you copy `current` into a new directory for that release. The release folder then never changes again, so you can always see exactly what v1 was.
 
-A bug fix to a release is a little different. The pull request must change the YAML file in every relevant release directory. That is more work than one cherry-pick, but it has a benefit. A single change request shows that every affected version gets the same fix, so no version is missed.
+A bug fix to a release is a little different. The pull request must change the YAML file in every relevant release directory. That is more work than one cherry-pick, but it has a benefit. A single change request shows that every affected version gets the same fix, so no version is missed. The reviewer sees all the affected folders in one diff, which makes a forgotten version hard to hide.
 
 ### Stages between HEAD and release
 
-Shipping software is not one step. A change passes through several stages before users see it:
+Shipping software is not one step. A change passes through several stages before users see it. Each stage is a checkpoint where the change gets more scrutiny, and each one should move forward only when the previous one has earned it.
 
 - `HEAD`: the bleeding edge, with the latest changes.
 - Development: largely stable, but not ready to deploy. Developers use it to build features.
@@ -399,7 +413,7 @@ Shipping software is not one step. A change passes through several stages before
 
 A source-control tag is the right way to model development. Development moves fast and stays only slightly behind `HEAD`, so a tag fits it well. Add a `development` tag, then let an automated process move it forward. On a regular schedule, run automated integration tests against `HEAD`. If they pass, move the `development` tag up to `HEAD`. Developers can then track close to the latest changes, knowing the config has passed at least a basic smoke test.
 
-Do not make a new set of configurations for every stage. Every combination of version and stage would be a mess that is hard to reason about. Map each stage to a revision instead. With the filesystem, use symbolic links to point a stage name at a version:
+Do not make a new set of configurations for every stage. Every combination of version and stage would be a mess that is hard to reason about. Map each stage to a revision instead. With the filesystem, use symbolic links to point a stage name at a version. A symbolic link is a small file that acts as a pointer to another folder, so `canary` can point at v2 while `release` still points at v1.
 
 ```
 frontend/
@@ -410,7 +424,7 @@ frontend-deployment.yaml
 ...
 ```
 
-With version control, the same map is just an extra tag on the same revision as the right version. Two processes run side by side. One cuts new release versions, and the other qualifies a release version for a stage. Each one moves forward on its own schedule.
+With version control, the same map is just an extra tag on the same revision as the right version. Two processes run side by side. One cuts new release versions, and the other qualifies a release version for a stage. Each one moves forward on its own schedule. Keeping them separate means a stage can advance without a new release being cut.
 
 ### Parameterized environments with Helm
 
@@ -418,7 +432,7 @@ Once you have many environments and stages, keeping them all identical becomes i
 
 Almost every templating language works this way. A template file holds most of the configuration. A parameters file combines with the template to make the final result, and parameters can also have default values when none is given. The patterns here use Helm, a package manager for Kubernetes. They apply to any templating language, so choosing one is a matter of team style.
 
-Helm templates use "mustache" syntax:
+Helm templates use "mustache" syntax, which is a pair of double braces around a value to be filled in:
 
 ```
 metadata:
@@ -465,11 +479,11 @@ frontend-deployment.yaml
 ...
 ```
 
-Keep the parameters file small, so the differences between environments are easy to see at a glance.
+Keep the parameters file small, so the differences between environments are easy to see at a glance. If the parameters file grows to hundreds of lines, the environments are no longer really the same template, and the shared template has stopped doing its job.
 
 ## 5. Bootstrapping a GPU platform: ordering
 
-Picture a fresh GPU cluster with nothing on it yet. If you install an operator before the CRDs it depends on exist, the sync fails with a missing-kind error. The diagram gives the order to bring things up in, one wave at a time.
+Picture a fresh GPU cluster with nothing on it yet. If you install an operator before the CRDs it depends on exist, the sync fails with a missing-kind error. The diagram gives the order to bring things up in, one wave at a time. Each wave should be healthy before the next one begins, so a failure stops the line early.
 
 ```mermaid
 flowchart TB
@@ -480,61 +494,63 @@ flowchart TB
   W4 --> W5["Wave 5: apps: inference gateways, pipelines, dashboards"]
 ```
 
+Read the waves as a building schedule. You pour the foundation before the walls, and you install the wiring before the fixtures. Each wave depends on the one before it, and skipping ahead almost always produces an error that looks unrelated to the real cause.
+
 A few practical notes follow. Each one describes a trap you are likely to hit during bootstrap.
 
-Install CRDs before the custom resources that use them. Use separate Applications or Kustomizations for the operator install and for its instances, or use sync waves with `SkipDryRunOnMissingResource`. With Flux, combine `dependsOn` with `wait`.
+Install CRDs before the custom resources that use them. Use separate Applications or Kustomizations for the operator install and for its instances, or use sync waves with `SkipDryRunOnMissingResource`. With Flux, combine `dependsOn` with `wait`. The `wait` setting tells Flux to hold until the earlier layer is actually ready, not just applied.
 
-The GPU Operator shows Healthy only when its daemonsets are ready on the nodes. That can take many minutes while drivers compile and load, so give the timeouts generous room. Downstream apps should depend on the operator being ready, which means GPU allocatable.
+The GPU Operator shows Healthy only when its daemonsets are ready on the nodes. That can take many minutes while drivers compile and load, so give the timeouts generous room. Downstream apps should depend on the operator being ready, which means GPU allocatable. Allocatable means the scheduler can hand out that many GPUs, and it appears only once the device plugin is working.
 
-Helm CRDs behave differently in each tool. Argo CD applies chart CRDs through sync, and large CRDs need `Replace` or `ServerSideApply`. Flux uses `crds: CreateReplace` instead. Know your tool's upgrade semantics before you upgrade.
+Helm CRDs behave differently in each tool. Argo CD applies chart CRDs through sync, and large CRDs need `Replace` or `ServerSideApply`. Flux uses `crds: CreateReplace` instead. Know your tool's upgrade semantics before you upgrade, because the wrong setting can leave an old CRD in place while the new operator expects the new fields.
 
-Operator upgrades roll DaemonSets across GPU nodes. You control that rollout with operator upgrade policies, `maxUnavailable`, node drains and maintenance windows, covered in Part 11. Do not let `automated` sync apply risky upgrades to the whole fleet at once. Roll them out progressively across clusters instead, with an ApplicationSet using staged `RollingSync`, or with Flux per-cluster paths promoted in ring order.
+Operator upgrades roll DaemonSets across GPU nodes. You control that rollout with operator upgrade policies, `maxUnavailable`, node drains and maintenance windows, covered in Part 11. Do not let `automated` sync apply risky upgrades to the whole fleet at once. Roll them out progressively across clusters instead, with an ApplicationSet using staged `RollingSync`, or with Flux per-cluster paths promoted in ring order. A ring is a group of clusters that receives a change at the same stage, so the first ring acts as a canary for the rest.
 
-Terraform creates the cluster and installs the controller plus the root app, covered in 4.25. Everything else flows from Git, including the controller's own upgrades, because the controller is self-managed.
+Terraform creates the cluster and installs the controller plus the root app, covered in 4.25. Everything else flows from Git, including the controller's own upgrades, because the controller is self-managed. Self-managed means the controller's own definition lives in the same Git repository it reads, so it can upgrade itself the same way it upgrades everything else.
 
-Operators need more care in a GitOps setup. This part draws on *Production Kubernetes*, Chapter 11, which covers how GitOps controllers interact with two categories of **Kubernetes Operators**. The term was coined in November 2016 by Brandon Phillips at CoreOS, for a controller that manages a `CustomResourceDefinition`.
+Operators need more care in a GitOps setup. This part draws on *Production Kubernetes*, Chapter 11, which covers how GitOps controllers interact with two categories of **Kubernetes Operators**. An operator is a controller that knows how to run one specific piece of software, using a custom resource to describe what you want. The term was coined in November 2016 by Brandon Phillips at CoreOS, for a controller that manages a `CustomResourceDefinition`.
 
-The first category is the app-specific operators in Waves 1–3. Operators such as `cert-manager`, Prometheus Operator, NVIDIA GPU Operator, Network Operator and KubeRay watch domain-specific CRDs, such as `ClusterPolicy`, `ServiceMonitor` and `RayCluster`. They reconcile complex DaemonSets, StatefulSets and device plugins.
+The first category is the app-specific operators in Waves 1–3. Operators such as `cert-manager`, Prometheus Operator, NVIDIA GPU Operator, Network Operator and KubeRay watch domain-specific CRDs, such as `ClusterPolicy`, `ServiceMonitor` and `RayCluster`. They reconcile complex DaemonSets, StatefulSets and device plugins. The domain knowledge lives inside the operator, so you do not have to script each step yourself.
 
 The second category is the platform and tenancy operators in Wave 4. Imagine developers opening pull requests with four separate YAML files each: `Namespace`, `ResourceQuota`, `Role` and `RoleBinding`. A platform team can generate those files with Kustomize or Helm in GitOps, or deploy a custom tenancy operator instead. The book's example is the **`AcmeNamespace`** resource (`tenancy.acme.com/v1alpha1`), which can be built with **Kubebuilder** in Go, **Operator SDK** in Go, Ansible or Helm, or with **Metacontroller** webhooks.
 
-When Argo CD or Flux syncs a single `AcmeNamespace` resource with `spec: { namespaceName: app-y, adminUsername: sam, deploymentTier: dev }`, the controller's `Reconcile` loop creates the child `Namespace`, `Role` and `RoleBinding`. It sets **`ownerReferences`** on each child with `ctrl.SetControllerReference`. Deleting the parent `AcmeNamespace` therefore garbage-collects all the child resources automatically. The controller also updates **`status.phase`**, moving from `CreationInProgress` to `Created`, so the Argo CD and Flux health checks know when the namespace is ready.
+The benefit is that a developer writes one small object, and the operator produces the four files. When an Argo CD or Flux sync applies a single `AcmeNamespace` resource with `spec: { namespaceName: app-y, adminUsername: sam, deploymentTier: dev }`, the controller's `Reconcile` loop creates the child `Namespace`, `Role` and `RoleBinding`. It sets **`ownerReferences`** on each child with `ctrl.SetControllerReference`. An owner reference is a link that says "this child belongs to that parent." Deleting the parent `AcmeNamespace` therefore garbage-collects all the child resources automatically. The controller also updates **`status.phase`**, moving from `CreationInProgress` to `Created`, so the Argo CD and Flux health checks know when the namespace is ready. The health check reads that field, so the GitOps tool does not declare the sync finished too early.
 
-Bring up each wave and confirm it is healthy before you start the next one.
+Bring up each wave and confirm it is healthy before you start the next one. Waiting feels slow, but it is much faster than debugging a wave-4 failure that was really caused by a wave-2 operator that never became ready.
 
 ## 6. Progressive delivery and verification
 
-Deploying a new model server is risky. You want proof on real traffic before the whole fleet changes.
+Deploying a new model server is risky. You want proof on real traffic before the whole fleet changes. Progressive delivery means releasing a change to a small slice of users first, watching it, and widening the slice only when the numbers stay healthy.
 
-Argo Rollouts and Flagger replace Deployments with canary or blue-green strategies. The strategies are driven by metrics, such as Prometheus queries on error rate, latency, GPU utilisation, tokens/second and time-to-first-token. The tool then promotes the release automatically, or rolls it back. For inference services, this is how you validate a new model server version or new model weights on a slice of traffic, covered in Part 15.
+Argo Rollouts and Flagger replace Deployments with canary or blue-green strategies. The strategies are driven by metrics, such as Prometheus queries on error rate, latency, GPU utilisation, tokens/second and time-to-first-token. Time-to-first-token is how long a user waits before the model starts answering, so it is one of the first numbers an inference user notices. The tool then promotes the release automatically, or rolls it back. For inference services, this is how you validate a new model server version or new model weights on a slice of traffic, covered in Part 15.
 
-Pre/post-sync hooks run smoke tests. A smoke test can be a Job that calls the service, or `nvidia-smi` run in a pod. If the test fails, the sync is marked failed.
+Pre/post-sync hooks run smoke tests. A smoke test is a quick check that the basics work, such as one request returning a sensible answer. A smoke test can be a Job that calls the service, or `nvidia-smi` run in a pod. If the test fails, the sync is marked failed, and the bad version does not quietly carry on.
 
-Policy gates belong in CI, before merge. Run `kubeconform`, Kyverno CLI tests, Conftest, image scanning and signature verification (cosign + admission policy), covered in 4.2. Admission controllers then enforce the same kind of rule at runtime.
+Policy gates belong in CI, before merge. Run `kubeconform`, Kyverno CLI tests, Conftest, image scanning and signature verification (cosign + admission policy), covered in 4.2. Cosign signs container images so you can prove where they came from. Admission controllers then enforce the same kind of rule at runtime, so anything that slips past CI is still refused by the cluster.
 
-Notifications close the loop. Send sync failures and health degradation to chat or on-call. Then correlate them with Git commits: Argo shows the revision, and Flux events include the commit SHA.
+Notifications close the loop. Send sync failures and health degradation to chat or on-call. Then correlate them with Git commits: Argo shows the revision, and Flux events include the commit SHA. A commit SHA is the unique ID of one Git commit, and it is the link from a failure back to the change that caused it.
 
-SLO-aware promotion means you do not auto-promote to prod unless staging metrics stayed healthy for a soak period.
+SLO-aware promotion means you do not auto-promote to prod unless staging metrics stayed healthy for a soak period. An SLO, or service level objective, is the target you promise for something like error rate or latency. A soak period is a stretch of time in staging with no regressions, long enough to catch problems that appear only under sustained load.
 
-Let a new model version soak in staging before it sees production traffic.
+Let a new model version soak in staging before it sees production traffic. A model can look fine for an hour and then degrade under the daily traffic peak, so the soak should include a full cycle of real load if you can.
 
 ### Canary, blue/green and A/B testing
 
-Deploying a version is not the same as releasing it to users. Progressive patterns separate the two steps, so you can test on real traffic first. In a canary release, a small share of traffic goes to the new version. The share can be picked by metadata, by user or by another attribute. Watch the canary, and raise its share as your confidence grows.
+Deploying a version is not the same as releasing it to users. Progressive patterns separate the two steps, so you can test on real traffic first. In a canary release, a small share of traffic goes to the new version. The name comes from the canary in a coal mine, the early warning that something is wrong. The share can be picked by metadata, by user or by another attribute. Watch the canary, and raise its share as your confidence grows.
 
-Blue/green is a bigger cutover. Traffic moves in one step from the old version (blue) to the new one (green). The two can run in one cluster or in two. You can test green while users still hit blue. If errors rise, you move traffic back. Stateful apps, sessions and other shared state need careful handling in this pattern.
+Blue/green is a bigger cutover. Traffic moves in one step from the old version (blue) to the new one (green). The two can run in one cluster or in two. You can test green while users still hit blue. If errors rise, you move traffic back. The switch-back is quick because blue never went away. Stateful apps, sessions and other shared state need careful handling in this pattern, because a user half-way through a session may land on the other version.
 
-A/B testing sends a version with different behavior to a subset of users. You then compare usage metrics. Those metrics decide whether to roll back, roll forward or widen the experiment.
+A/B testing sends a version with different behavior to a subset of users. You then compare usage metrics. Those metrics decide whether to roll back, roll forward or widen the experiment. The difference from a canary is the purpose. A canary asks "is the new version safe," while an A/B test asks "which version is better."
 
 ### Flagger
 
-Most of these patterns work by shifting network traffic. Kubernetes gives you the networking primitives to do it. Flagger is one open source tool that uses them. It runs as a controller in the cluster and watches the `image` field of Deployments. It then configures a service mesh to shift traffic step by step. It also checks the health of the new version, and it either continues the rollout or halts it and reverts.
+Most of these patterns work by shifting network traffic. Kubernetes gives you the networking primitives to do it. Flagger is one open source tool that uses them. It runs as a controller in the cluster and watches the `image` field of Deployments. It then configures a service mesh to shift traffic step by step. A service mesh is a layer of proxies that sits between services and controls how traffic flows. Flagger also checks the health of the new version, and it either continues the rollout or halts it and reverts.
 
-Flagger needs a service mesh for most of these patterns. That extra complexity is why many teams add progressive delivery in a second or third phase of their Kubernetes journey.
+Flagger needs a service mesh for most of these patterns. That extra complexity is why many teams add progressive delivery in a second or third phase of their Kubernetes journey. Start with plain rolling updates and good health checks, and add a mesh only when the simpler approach stops being enough.
 
 ## 7. Operating GitOps
 
-Running GitOps day to day means watching for drift, stalls and surprises. Most of them show up as a sync that will not finish, or an app that never turns green.
+Running GitOps day to day means watching for drift, stalls and surprises. Most of them show up as a sync that will not finish, or an app that never turns green. The habit that helps most is to check the symptom before touching anything, because the fix is often one setting rather than a rebuild.
 
 ### Troubleshooting
 
@@ -553,31 +569,31 @@ When something stalls, start with the symptom. The table maps each one to its li
 | Drift fights | Another controller/automation modifies the same fields (Terraform, operators) | Single ownership, `ignoreDifferences`, field managers |
 | Changes applied late | Reconcile interval, rate limits | Tune intervals/webhooks; manual refresh |
 
-Most rows point to one of a few causes, such as a CRD that is not installed yet or a field that a controller changes. Check those first, before you change the cluster.
+Most rows point to one of a few causes, such as a CRD that is not installed yet or a field that a controller changes. Check those first, before you change the cluster. A quick way to think about it is to ask two questions: is Git asking for something the cluster cannot accept, and is something else changing the same object?
 
 ### Disaster recovery and security
 
-Controller state can be rebuilt from Git. Back up the secrets, such as SOPS keys and repo credentials, along with Argo CD's own config as code and your cluster registrations. Then test a rebuild from scratch by bootstrapping a cluster and watching it converge.
+Controller state can be rebuilt from Git. Back up the secrets, such as SOPS keys and repo credentials, along with Argo CD's own config as code and your cluster registrations. The keys are the part you cannot regenerate from Git, so they need their own safe storage. Then test a rebuild from scratch by bootstrapping a cluster and watching it converge. A rebuild you have never tried is a plan, not a recovery.
 
-Least privilege matters because controllers often hold cluster-admin. You can reduce that with impersonation in Flux, with AppProjects that restrict destinations and kinds in Argo, or with per-tenant controllers. Protect the Git repos with branch protection, signed commits and required reviews, because **write access to the config repo equals cluster-admin**. Use separate repos or paths, plus approvals, for sensitive layers such as RBAC, policies and privileged operators.
+Least privilege matters because controllers often hold cluster-admin. You can reduce that with impersonation in Flux, with AppProjects that restrict destinations and kinds in Argo, or with per-tenant controllers. Protect the Git repos with branch protection, signed commits and required reviews, because **write access to the config repo equals cluster-admin**. Anyone who can change the config can make the controller deploy anything, so treat repository access with the same seriousness as cluster access. Use separate repos or paths, plus approvals, for sensitive layers such as RBAC, policies and privileged operators.
 
-Supply chain controls cover charts, sources and plugins. Pin and verify charts with OCI and cosign, restrict allowed repositories, scan manifests, and avoid arbitrary CMP plugins. Set resource limits and network policies on the controllers too.
+Supply chain controls cover charts, sources and plugins. Pin and verify charts with OCI and cosign, restrict allowed repositories, scan manifests, and avoid arbitrary CMP plugins. A plugin runs code inside the repo server, so an untrusted one is an untrusted program with access to your repositories. Set resource limits and network policies on the controllers too, so a runaway controller cannot starve the cluster.
 
-Emergency changes need a plan. Allow `kubectl` fixes only through break-glass access. Argo's `selfHeal` will revert such fixes, so pause automation first with `--sync-policy none`/`flux suspend`, make the fix, and then reconcile Git to match, covered in 4.2.
+Emergency changes need a plan. Allow `kubectl` fixes only through break-glass access. Argo's `selfHeal` will revert such fixes, so pause automation first with `--sync-policy none`/`flux suspend`, make the fix, and then reconcile Git to match, covered in 4.2. The order matters. If you fix first and pause second, the controller may revert the fix in the seconds between.
 
-At the scale of thousands of applications, you need controller sharding, which Argo's application-controller provides through `--sharding`. You also need repo-server caching and appset progressive syncs. Avoid monolithic repos with huge renders.
+At the scale of thousands of applications, you need controller sharding, which Argo's application-controller provides through `--sharding`. Sharding splits the applications across several controller instances, so no single one holds all the work. You also need repo-server caching and appset progressive syncs. Avoid monolithic repos with huge renders, because a render that takes minutes slows every sync that depends on it.
 
-During an incident, pause automation before you touch the cluster.
+During an incident, pause automation before you touch the cluster. Pausing first is the rule that prevents the most common self-inflicted wound in GitOps: a fix that is undone by the system you meant to help.
 
 ## 8. Lab
 
-Start with the self-checking Python lab, which you run locally from `code/part04/gitops_sync_waves_lab.py`. It checks three things. First, the Argo CD `sync-wave` and resource hook (`PreSync` / `Sync` / `PostSync`) scheduler. Its `plan_argocd_sync_waves` function orders Waves `0..5` for GPU platform bootstrap. Second, the `ApplicationSet` matrix generator for `clusters x git directories`, through `expand_applicationset_matrix`. Third, the GitOps drift and prune reconciler, `evaluate_gitops_reconciliation`, which honors `ignoreDifferences` on HPA-managed `/spec/replicas` and `Prune=false` protection on stateful PVCs.
+Start with the self-checking Python lab, which you run locally from `code/part04/gitops_sync_waves_lab.py`. It needs no cluster, so you can check the logic first. It checks three things. First, the Argo CD `sync-wave` and resource hook (`PreSync` / `Sync` / `PostSync`) scheduler. Its `plan_argocd_sync_waves` function orders Waves `0..5` for GPU platform bootstrap. Second, the `ApplicationSet` matrix generator for `clusters x git directories`, through `expand_applicationset_matrix`. Third, the GitOps drift and prune reconciler, `evaluate_gitops_reconciliation`, which honors `ignoreDifferences` on HPA-managed `/spec/replicas` and `Prune=false` protection on stateful PVCs.
 
 ```bash
 python3 code/part04/gitops_sync_waves_lab.py
 ```
 
-Next, you need a machine with `kind`, `kubectl`, `helm`, and the `argocd` and `flux` CLIs. All interactive shell steps you see below are `untested here`. Work through the exercises in order, and watch what changes at each step.
+The commands in this lab have not been run on live hardware, so treat each result as yours to confirm. Next, you need a machine with `kind`, `kubectl`, `helm`, and the `argocd` and `flux` CLIs. Work through the exercises in order, and watch what changes at each step. Each exercise builds on the one before, so skipping ahead usually leaves a gap you will hit later.
 
 1. Install Argo CD in kind, and create an Application for a Helm chart from Git. Watch Sync and Health, change values in Git, and run `argocd app diff`. Then make an out-of-band change and watch `selfHeal` revert it. Finally, toggle `prune`.
 2. Bootstrap Flux against a Git repo. Add a `HelmRepository`, a `HelmRelease` and a Kustomization. Use `flux get all`, `flux reconcile` and `flux diff`. Then break a chart value and watch remediation.
@@ -595,21 +611,21 @@ Next, you need a machine with `kind`, `kubectl`, `helm`, and the `argocd` and `f
 
 ## 9. Common mistakes
 
-Most GitOps trouble comes from a few recurring habits. The mistakes below are the ones teams make most often.
+Most GitOps trouble comes from a few recurring habits. The mistakes below are the ones teams make most often. Read them as a checklist to hold up against your own repository.
 
-The first group is about access and secrets. Plaintext secrets in Git are a mistake, and so is giving Argo CD and Flux cluster-admin everywhere. Branch-per-environment and copied manifests per cluster are traps too.
+The first group is about access and secrets. Plaintext secrets in Git are a mistake, and so is giving Argo CD and Flux cluster-admin everywhere. Branch-per-environment and copied manifests per cluster are traps too. A copied manifest drifts the moment someone edits one copy and forgets the other.
 
-The second group is about versions and change size. Unpinned chart versions and `latest` images leave you unsure what is running. Automated prod sync of risky upgrades across the whole fleet is worse, because one bad change lands everywhere at once.
+The second group is about versions and change size. Unpinned chart versions and `latest` images leave you unsure what is running. Automated prod sync of risky upgrades across the whole fleet is worse, because one bad change lands everywhere at once. Ringed rollouts exist precisely to stop that.
 
-The third group is about ownership and data. Two controllers, or Terraform and GitOps, can own the same resources, and `selfHeal` then fights the other owner. `prune: true` with no protection on stateful objects, or refactors that delete volumes, can remove data you need.
+The third group is about ownership and data. Two controllers, or Terraform and GitOps, can own the same resources, and `selfHeal` then fights the other owner. `prune: true` with no protection on stateful objects, or refactors that delete volumes, can remove data you need. A deleted volume is often gone for good, so protect it before the refactor, not after.
 
-The last group is about operations. Treating GitOps as only a deploy mechanism, and neglecting observability, notifications and ownership, leaves you blind. Putting build outputs into Git without a source of truth muddies what is authoritative.
+The last group is about operations. Treating GitOps as only a deploy mechanism, and neglecting observability, notifications and ownership, leaves you blind. Putting build outputs into Git without a source of truth muddies what is authoritative. Build outputs such as compiled binaries belong in a registry, not in the config repo.
 
-Start with the secrets and access items, since they carry the most risk.
+Start with the secrets and access items, since they carry the most risk. A single leaked credential there can undo every other safeguard in this chapter.
 
 ## 10. Interview angles
 
-Interviewers tend to come back to the same handful of GitOps questions. The hints in parentheses show what a strong answer covers.
+Interviewers tend to come back to the same handful of GitOps questions. The hints in parentheses show what a strong answer covers. Try answering each one aloud in under two minutes, then check the hints.
 
 - "What is GitOps? How is it different from CI/CD pushing to the cluster?"
 - "Argo CD or Flux? Trade-offs?"
@@ -623,14 +639,14 @@ Interviewers tend to come back to the same handful of GitOps questions. The hint
 
 ## Exercises
 
-These exercises ask you to trace real manifests and explain the reasons behind them, so keep the chapter open while you work. Watch what you see at each step.
+These exercises ask you to trace real manifests and explain the reasons behind them, so keep the chapter open while you work. Watch what you see at each step, and write your explanation before you check the chapter.
 
-1. Explain the four OpenGitOps principles: Declarative, Versioned & Immutable, Pulled Automatically and Continuously Reconciled. Then explain why pull-based reconciliation keeps cluster-admin credentials inside the cluster rather than in CI. Finish by explaining how the App Repo + Config Repo pattern works.
-2. Cover Argo CD architecture, the `Application` spec (`automated`, `prune`, `selfHeal`, `ServerSideApply`, `ignoreDifferences`) and `ApplicationSet` matrix generators. Use `expand_applicationset_matrix()` and `evaluate_gitops_reconciliation()` in `code/part04/gitops_sync_waves.py` to trace the `gpu-operator` `Application` manifest and the `platform-addons` `ApplicationSet` matrix generator (`clusters x git directories`). Explain `ignoreDifferences` on `/spec/replicas` and `Prune=false` on stateful PVCs.
-3. Cover Flux architecture (`GitRepository`, `Kustomization`, `HelmRelease`), native SOPS decryption and the Argo CD vs. Flux trade-offs. Trace the Section 3 Flux manifests: a `GitRepository`, a `Kustomization` with `dependsOn: [{name: crds}]` and native SOPS `sops-age` decryption, and a `HelmRelease` with `crds: CreateReplace` and auto-remediation. Then compare Argo CD and Flux across Helm handling, UI, multi-cluster models and secrets.
-4. Work through the bootstrap of a GPU Kubernetes platform in 6 Waves (`Wave 0` to `Wave 5`), and the platform operators in *Production Kubernetes* Chapter 11. Use `plan_argocd_sync_waves()` in `code/part04/gitops_sync_waves.py` to trace the 6-wave order: `Wave 0` namespaces and CRDs, `Wave 1` `cert-manager`, CSI and Prometheus CRDs, `Wave 2` GPU Operator and Network Operator, `Wave 3` Kueue, Volcano and KubeRay, `Wave 4` Kyverno and tenancy, and `Wave 5` apps. Then explain how the `AcmeNamespace` operator from *Production Kubernetes* Chapter 11 uses `ownerReferences` and `status.phase`.
-5. Cover the config repository layout (`clusters/`, `infrastructure/{base,overlays}`, `apps/{base,overlays}`) and progressive delivery with `Argo Rollouts` / `Flagger`. Explain why environments are represented as Kustomize/Helm overlays in directories on `main` rather than Git branches. Then explain how CI validates rendered manifests offline with `kustomize build | kubeconform`, and how Argo Rollouts or Flagger gate inference rollouts on Prometheus GPU, TTFT and error metrics.
-6. Cover troubleshooting stuck `OutOfSync` and `Progressing` apps, multi-tenant security (`AppProject` vs. Flux impersonation) and break-glass incident handling. Diagnose the top 5 GitOps failure modes in Section 7, explain why write access to the config repository is equivalent to `cluster-admin`, and state how to pause GitOps (`argocd app set --sync-policy none` / `flux suspend`) during an emergency incident.
+1. A new engineer asks why the cluster pulls its changes rather than having CI push them. Explain the four OpenGitOps principles: Declarative, Versioned and Immutable, Pulled Automatically, and Continuously Reconciled. Explain why pull-based reconciliation keeps cluster-admin credentials inside the cluster rather than in CI. Then explain how the App Repo and Config Repo pattern works.
+2. A team's `gpu-operator` Application keeps showing OutOfSync, and the HPA keeps changing the replica count. Use `expand_applicationset_matrix()` and `evaluate_gitops_reconciliation()` in `code/part04/gitops_sync_waves.py` to trace the behaviour. Trace the `gpu-operator` `Application` manifest, including its `automated`, `prune`, `selfHeal` and `ServerSideApply` settings. Trace the `platform-addons` `ApplicationSet` matrix generator, which creates one application per cluster and folder. Explain why `ignoreDifferences` on `/spec/replicas` stops the fight. Then explain why `Prune=false` protects stateful PVCs.
+3. A team is choosing between Argo CD and Flux, and wants to see the Flux model in action first. Trace the Section 3 Flux manifests. Start with the `GitRepository`. Then trace the `Kustomization` with `dependsOn: [{name: crds}]` and its native SOPS `sops-age` decryption. Then trace the `HelmRelease` with `crds: CreateReplace` and auto-remediation. Finish by comparing Argo CD and Flux across Helm handling, UI, multi-cluster models and secrets.
+4. A platform team must bring up a GPU cluster without a race between operators and the things that depend on them. Use `plan_argocd_sync_waves()` in `code/part04/gitops_sync_waves.py` to trace the 6-wave order. Trace Wave 0 (namespaces and CRDs), Wave 1 (`cert-manager`, CSI and Prometheus CRDs), Wave 2 (the GPU Operator and Network Operator), Wave 3 (Kueue, Volcano and KubeRay), Wave 4 (Kyverno and tenancy) and Wave 5 (apps). Then explain how the `AcmeNamespace` operator from *Production Kubernetes* Chapter 11 uses `ownerReferences` and `status.phase`.
+5. A team is organising its config repository and wants to test inference rollouts safely. Cover the config repository layout, which holds `clusters/`, `infrastructure/{base,overlays}` and `apps/{base,overlays}`. Explain why environments are represented as Kustomize or Helm overlays in directories on `main` rather than Git branches. Explain how CI validates rendered manifests offline with `kustomize build | kubeconform`. Finally, explain how Argo Rollouts or Flagger gate inference rollouts on Prometheus GPU, TTFT and error metrics.
+6. An on-call engineer is asked to diagnose a stuck sync during a live incident. Diagnose the top five GitOps failure modes from Section 7. Explain why write access to the config repository is equivalent to cluster-admin. State how to pause GitOps with `argocd app set --sync-policy none` or `flux suspend` during an emergency, and explain why the pause must come before the fix.
 
 ## Checkpoint questions (20)
 
@@ -810,4 +826,4 @@ Never point all 20 clusters at one unringed `HEAD` path with `automated` sync fo
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 15: Software Supply Chain** (read in full: GitOps as a reconciling controller, Sealed Secrets, drift alerts, ordering, controller-created resources, the two-repository layout, push-based deploys, and canary, blue/green and A/B rollouts with Flagger).
 - **Run here:** `python3 code/part04/gitops_sync_waves_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `plan_argocd_sync_waves`, `expand_applicationset_matrix`, and `evaluate_gitops_reconciliation` models in `code/part04/gitops_sync_waves.py`, the 6-wave GPU platform bootstrap diagram, and the Argo CD `Application`/`ApplicationSet` and Flux `GitRepository`/`Kustomization`/`HelmRelease` manifests are the author's constructions synthesizing *Production Kubernetes* Chapter 11 and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** Live `argocd`, `flux`, `kustomize`, and `kubeconform` executions (`v24.6.0`, `retry.limit: 5`, `duration: 10s, maxDuration: 3m`, `interval: 1m / 10m / 30m`, `timeout: 15m`, `retries: 3`, `20` clusters) are marked (`untested here`) where not executed by `gitops_sync_waves_lab.py`.
+- **Not verified on live hardware:** Live `argocd`, `flux`, `kustomize`, and `kubeconform` executions (`v24.6.0`, `retry.limit: 5`, `duration: 10s, maxDuration: 3m`, `interval: 1m / 10m / 30m`, `timeout: 15m`, `retries: 3`, `20` clusters) are not run here, except where `gitops_sync_waves_lab.py` executes them.

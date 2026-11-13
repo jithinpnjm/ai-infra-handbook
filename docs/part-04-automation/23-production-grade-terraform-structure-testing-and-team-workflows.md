@@ -22,9 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Consider a GPU training platform that changes constantly. New capacity turns up in a new region, a new node pool arrives for a new accelerator generation, quotas get adjusted, and a new team needs its own network policy. Each change can cost tens of thousands of dollars per day or interrupt a multi-week training run.
+Consider a GPU training platform that changes constantly. New capacity turns up in a new region, a new node pool arrives for a new accelerator generation, quotas get adjusted, and a new team needs its own network policy. Each change can cost tens of thousands of dollars per day or interrupt a multi-week training run. A training run is a job that can take weeks, and if it loses its nodes halfway through, the progress since the last checkpoint is gone.
 
-Terraform that works on a laptop is not enough for this. You need a repeatable process. That process has a repository layout that limits blast radius, standards that make changes reviewable, and tests at several levels. It also has pipelines that produce evidence (4.2), policies that stop expensive or insecure mistakes, and operating practices that keep dozens of engineers from stepping on each other. This chapter turns individual Terraform skills into a production practice.
+Think about what happens on a Friday afternoon. An engineer changes one line that resizes a node pool, opens a pull request, and a reviewer approves it after a quick look at the code. The apply runs and replaces every node in the pool, because the new size forces a rebuild. Half of the GPUs that were running a training job disappear. Nothing in the code was wrong on its own. The mistake was that nobody read the plan, and nobody checked what the change touched.
+
+Terraform that works on a laptop is not enough for this. You need a repeatable process. That process has a repository layout that limits blast radius, standards that make changes reviewable, and tests at several levels. It also has pipelines that produce evidence (4.2), policies that stop expensive or insecure mistakes, and operating practices that keep dozens of engineers from stepping on each other. This chapter turns individual Terraform skills into a production practice. Each part of that practice exists because someone, somewhere, paid for a mistake without it.
 
 ## Prerequisites and outcomes
 
@@ -37,11 +39,15 @@ This chapter builds on 4.2 and 4.18 to 4.22, so work through those first. When y
 - Add guardrails for cost, security and compliance with OPA, Sentinel, budgets, quotas and tagging, and design controls specific to GPUs.
 - Plan upgrades of Terraform or OpenTofu, providers and modules, and plan migrations such as state moves and refactors, so that each one stays safe.
 
+A few terms come up often in this chapter. A stack is one root module with one state file. A module is a reusable package of Terraform code that a stack calls. Drift is the gap that appears when someone changes a real resource by hand, and the code no longer describes what exists. Blast radius is how much damage one change can reach. Keep those four in mind as you read.
+
 ## 1. Repository structure
 
-A new engineer's first question is usually where a change belongs. The repository layout answers that before anyone opens a file. Reusable building blocks live in one place, the stacks that actually deploy live in another, and each stack keeps its own state.
+A new engineer's first question is usually where a change belongs. The repository layout answers that before anyone opens a file. Reusable building blocks live in one place, the stacks that actually deploy live in another, and each stack keeps its own state. Picture a city's street map. Each folder is a street with a clear address, so anyone can find a building without asking.
 
 ### Live vs modules
+
+The tree below shows one common layout. Read it as two halves. The top half, `modules/`, holds code that nothing deploys by itself. The `live/` half holds the deployable stacks, which are the things you actually run `apply` on.
 
 ```text
 platform-infra/
@@ -65,23 +71,23 @@ platform-infra/
 └── docs/ (ADRs, runbooks)
 ```
 
-The tree separates reusable code from deployable code. Each folder under `live/` is a root module with one state, so its path also tells a reviewer how far a change can reach.
+The tree separates reusable code from deployable code. Each folder under `live/` is a root module with one state, so its path also tells a reviewer how far a change can reach. A change under `live/prod/us-central1/gpu-pools/` touches one pool in one region in production. A change under `modules/` can touch every stack that calls that module, which is why module changes need more review than stack changes.
 
-Give every stack its own directory, and give every environment its own directory too. Do not use Git branches for environments (4.1). A stack's path expresses its blast radius, which makes that path the first thing to check in a review.
+Give every stack its own directory, and give every environment its own directory too. Do not use Git branches for environments (4.1). A stack's path expresses its blast radius, which makes that path the first thing to check in a review. Reviewers who see a path under `prod/` know to read the plan slowly.
 
-Keep modules apart from live code. If you work inside a monorepo, a local path is fine during development. Higher environments should still consume modules through pinned versions, either Git tags or a registry, and the promotion process has to pin the version before production (4.20).
+Keep modules apart from live code. If you work inside a monorepo, a local path is fine during development. Higher environments should still consume modules through pinned versions, either Git tags or a registry, and the promotion process has to pin the version before production (4.20). A pinned version is a fixed label, so the code that production runs today is the code it ran yesterday.
 
-Layer the stacks by dependency and by how often they change: global or foundation first, then network, storage, cluster, gpu-pools and add-ons (4.19, 4.25). Dependencies flow downward only, so a lower layer never reads from a higher one.
+Layer the stacks by dependency and by how often they change: global or foundation first, then network, storage, cluster, gpu-pools and add-ons (4.19, 4.25). Dependencies flow downward only, so a lower layer never reads from a higher one. The foundation changes rarely and is shared, while add-ons change often and belong to a single team. Putting the slow-changing layers at the bottom keeps the fast-changing ones from breaking the base.
 
-Give each stack one owner, recorded in CODEOWNERS. The platform team owns shared foundations. A research team can own its own pools, with platform review of the module interface.
+Give each stack one owner, recorded in CODEOWNERS. CODEOWNERS is a file that maps paths to the people who must approve changes to them. The platform team owns shared foundations. A research team can own its own pools, with platform review of the module interface. The interface is the set of inputs and outputs that other people depend on, so it is the part that most needs a second pair of eyes.
 
-Enforce naming and tagging standards through modules and policies. The tags are `owner`, `cost_center`, `environment`, `managed_by=terraform`, and `ttl` for ephemeral stacks.
+Enforce naming and tagging standards through modules and policies. A tag is a label on a cloud resource, used for cost reports and ownership questions. The tags are `owner`, `cost_center`, `environment`, `managed_by=terraform`, and `ttl` for ephemeral stacks. The `ttl` tag marks a resource as temporary, so a cleanup job can find it later. When every resource carries these tags, a finance question such as "who runs this cluster?" has an answer in seconds.
 
-Keep environment values in `terraform.tfvars`, or in a small `locals` or YAML data file per stack. Put no business logic in tfvars, and keep secrets out of it entirely (4.22).
+Keep environment values in `terraform.tfvars`, or in a small `locals` or YAML data file per stack. Put no business logic in tfvars, and keep secrets out of it entirely (4.22). Business logic here means conditions and decisions, such as "if prod, use three zones." That kind of logic belongs in a module, where it can be tested, and tfvars should hold only plain values.
 
 ### Orchestration of many stacks
 
-Plain Terraform has no cross-stack orchestration, so you need a tool or a script for that job. The table compares the common options.
+Plain Terraform has no cross-stack orchestration, so you need a tool or a script for that job. Cross-stack orchestration means running several stacks in the right order, and skipping the ones that did not change. Plain Terraform handles one stack at a time, so once you have a dozen stacks, somebody has to keep track of the order. The table compares the common options.
 
 | Tool | Idea | Notes |
 |---|---|---|
@@ -91,13 +97,13 @@ Plain Terraform has no cross-stack orchestration, so you need a tool or a script
 | **Atlantis / Spacelift / env0 / Scalr / HCP workspaces** | PR-driven runs per project with locks, policies, dependencies | Choose by hosting and policy needs |
 | **Make/scripts/CI matrix** | Simple per-directory loops | Fine for small estates; grows brittle |
 
-Whichever tool you choose, you should plan only what changed (using path filters or change detection), apply in dependency order, serialise per state, and make it obvious to reviewers which stacks a PR affects.
+Whichever tool you choose, you should plan only what changed (using path filters or change detection), apply in dependency order, serialise per state, and make it obvious to reviewers which stacks a PR affects. Serialise per state means only one run may change a given state at a time, so two applies cannot write over each other.
 
 ### Keeping `live/` DRY with Terragrunt (*Terraform: Up and Running* Chapter 10)
 
-Copy-pasted `backend` and `provider` blocks multiply quickly across dozens of folders in `live/`. *Terraform: Up and Running*, chapter 10 (*How to Use Terraform as a Team*), by Yevgeniy Brikman, shows how Terragrunt removes that repetition. Two pieces do most of the work.
+DRY means "don't repeat yourself." Copy-pasted `backend` and `provider` blocks multiply quickly across dozens of folders in `live/`. Then one day you change the bucket name, and you must edit forty files by hand, and you miss two of them. *Terraform: Up and Running*, chapter 10 (*How to Use Terraform as a Team*), by Yevgeniy Brikman, shows how Terragrunt removes that repetition. Two pieces do most of the work.
 
-1. The root file, `live/stage/terragrunt.hcl`, defines the S3 backend once for the environment. It uses `path_relative_to_include()` to set the state key, so `live/stage/services/hello-world-app/terragrunt.hcl` stores its state at `services/hello-world-app/terraform.tfstate`. That behaviour is tested in `code/part04/terraform_production_guardrails_lab.py`.
+1. The root file, `live/stage/terragrunt.hcl`, defines the S3 backend once for the environment. It uses `path_relative_to_include()` to set the state key, so `live/stage/services/hello-world-app/terragrunt.hcl` stores its state at `services/hello-world-app/terraform.tfstate`. The key is built from the folder path, so every stack gets its own state without anyone typing a key by hand. That behaviour is tested in `code/part04/terraform_production_guardrails_lab.py`.
    ```hcl
    remote_state {
      backend = "s3"
@@ -114,11 +120,11 @@ Copy-pasted `backend` and `provider` blocks multiply quickly across dozens of fo
      }
    }
    ```
-2. Each child `terragrunt.hcl` pulls in the root backend with `include { path = find_in_parent_folders() }`. The hello-world-app stack points its `terraform { source = "github.com/<OWNER>/modules//services/hello-world-app?ref=v0.0.8" }` at a versioned module, and declares its cross-stack dependency with `dependency "mysql" { config_path = "../../data-stores/mysql" }`. It passes `inputs = { mysql_config = dependency.mysql.outputs }` into the module. Running `terragrunt run-all apply` builds the cross-folder graph, applies `data-stores/mysql` first, and then applies `services/hello-world-app`.
+2. Each child `terragrunt.hcl` pulls in the root backend with `include { path = find_in_parent_folders() }`. The hello-world-app stack points its `terraform { source = "github.com/<OWNER>/modules//services/hello-world-app?ref=v0.0.8" }` at a versioned module, and declares its cross-stack dependency with `dependency "mysql" { config_path = "../../data-stores/mysql" }`. It passes `inputs = { mysql_config = dependency.mysql.outputs }` into the module. Running `terragrunt run-all apply` builds the cross-folder graph, applies `data-stores/mysql` first, and then applies `services/hello-world-app`. The graph is the map of which stack depends on which, and Terragrunt works it out from the `dependency` blocks.
 
 ## 2. Production-readiness checklist
 
-A stack that works on a laptop can still fail the first time it manages production. Before you let any stack or module near production, walk through the checklist below and tick every item.
+A stack that works on a laptop can still fail the first time it manages production. A laptop has one user, no reviewers, and no one else depending on the result. Production has all of those things. Before you let any stack or module near production, walk through the checklist below and tick every item. An unticked item is not a reason to panic. It is a question you must answer before the stack gets production rights.
 
 **Correctness and safety**
 - [ ] Pinned `required_version`, provider versions with lock file committed; module versions pinned.
@@ -149,19 +155,23 @@ A stack that works on a laptop can still fail the first time it manages producti
 - [ ] Tests exist at appropriate levels (section 3); examples run in CI.
 - [ ] Code review by owners; CHANGELOG for modules.
 
-Why does production infrastructure take so long? Typical estimates give a sense of the scale: `1–2 weeks` for managed RDS, `2–4 weeks` for a stateless ASG, `2–4 months` for a stateful distributed datastore, and `6–36 months` for an end-to-end architecture. Teams get bogged down by accidental complexity and yak shaving (Seth Godin) when they underestimate the essential complexity (Fred Brooks, *The Mythical Man-Month*). That essential complexity is the 20-item Production-Grade Infrastructure Checklist It spans Install, Configure, Provision, Deploy, High Availability, Scalability, Performance, Networking, Security, Metrics, Logs, Backup & Restore, Cost Optimization, Documentation, and Tests.
+Why does production infrastructure take so long? Typical estimates give a sense of the scale: `1–2 weeks` for managed RDS, `2–4 weeks` for a stateless ASG, `2–4 months` for a stateful distributed datastore, and `6–36 months` for an end-to-end architecture. Teams get bogged down by accidental complexity and yak shaving (Seth Godin) when they underestimate the essential complexity (Fred Brooks, *The Mythical Man-Month*). Yak shaving is the chain of small, unrelated chores that appears when you set out to do one simple thing. Essential complexity is the work the problem itself demands, and it cannot be wished away. That essential complexity is the 20-item Production-Grade Infrastructure Checklist. It spans Install, Configure, Provision, Deploy, High Availability, Scalability, Performance, Networking, Security, Metrics, Logs, Backup & Restore, Cost Optimization, Documentation, and Tests.
+
+Here is how to read those estimates. Suppose a team plans a service in two weeks, because the service itself is small. The estimate ignores the networking, the backups, the alerts and the runbook that production needs. The gap between the two weeks and the real schedule is the essential complexity, and it is better to see it on paper than during an outage.
 
 Chapter 8 also makes three points worth carrying into your own code.
 
-- Decompose large modules into small, composable functions. The monolithic `webserver-cluster` module becomes `modules/cluster/asg-rolling-deploy`, `modules/networking/alb` and `modules/services/hello-world-app`. Each has matching `examples/` and `test/` folders, so callers can reuse the ASG or the ALB on their own. If you need only one of them, you can take just that module.
-- Pin the Terraform CLI binary with `tfenv` and a `.terraform-version` file. Running `tfenv install 1.2.3 && tfenv use 1.2.3` alongside `required_version` keeps developer laptops and CI runners on the same CLI version. Without that pin, you cannot be sure which version ran your plan.
-- Treat escape hatches as a last resort. Reach for `provisioner "local-exec"` (with `when = destroy`), `provisioner "remote-exec"` or `data "external"` only when no native provider resource exists. Each one weakens the predictability of the plan. A `data "external"` program reads JSON arguments on `stdin` and writes a flat `map(string)` JSON object to `stdout`.
+- Decompose large modules into small, composable functions. A composable module is one that you can combine with others like building blocks. The monolithic `webserver-cluster` module becomes `modules/cluster/asg-rolling-deploy`, `modules/networking/alb` and `modules/services/hello-world-app`. Each has matching `examples/` and `test/` folders, so callers can reuse the ASG or the ALB on their own. If you need only one of them, you can take just that module. The split matters because one team's needs rarely match another team's, and a single large module forces everyone to take the whole thing.
+- Pin the Terraform CLI binary with `tfenv` and a `.terraform-version` file. Running `tfenv install 1.2.3 && tfenv use 1.2.3` alongside `required_version` keeps developer laptops and CI runners on the same CLI version. Without that pin, you cannot be sure which version ran your plan. Two engineers on two different CLI versions can produce two different plans from the same code.
+- Treat escape hatches as a last resort. Reach for `provisioner "local-exec"` (with `when = destroy`), `provisioner "remote-exec"` or `data "external"` only when no native provider resource exists. Each one weakens the predictability of the plan, because Terraform cannot see inside what the script does. A `data "external"` program reads JSON arguments on `stdin` and writes a flat `map(string)` JSON object to `stdout`. A plan is only as trustworthy as the parts of it that Terraform can actually inspect.
 
-Before a stack manages production, decide what you will do about every unchecked item on this list.
+Before a stack manages production, decide what you will do about every unchecked item on this list. A plain note such as "we accept this risk until the next quarter, owner Dana" is far better than a silent gap.
 
 ## 3. Testing strategy
 
-A change can pass review and still break a cluster on its first apply. Tests catch many of those failures earlier. Each level of testing looks for a different kind of mistake, from syntax at the bottom to a working deployment at the top.
+A change can pass review and still break a cluster on its first apply. Review reads the code, but it cannot predict what a cloud API will do when it receives the request. Tests catch many of those failures earlier. Each level of testing looks for a different kind of mistake, from syntax at the bottom to a working deployment at the top.
+
+Picture a pyramid. The bottom layers are cheap and run often, and the top layers are expensive and run rarely. You want many fast checks at the bottom and a few slow checks at the top.
 
 ```mermaid
 flowchart TB
@@ -184,22 +194,22 @@ flowchart TB
 | Post-deploy smoke | Scripts/`check` blocks/Ansible validation (4.17) | After apply | The deployed thing works: nodes join, GPUs visible, NCCL passes |
 | Operational | DR restore drills, game days, drift reports | Scheduled | State restore, rebuild in new region |
 
-Read the table with its Runs column in mind, because it tells you when each check happens. Static checks run on every commit, while integration tests run nightly or at release because they create real resources.
+Read the table with its Runs column in mind, because it tells you when each check happens. Static checks run on every commit, while integration tests run nightly or at release because they create real resources. A static check that takes seconds can run on every keystroke in a pull request, while an integration test that creates a cluster may run once a night. Put each check where its cost matches how often you need the answer.
 
-Run your integration tests in a sandbox account. Set budget caps, deny expensive SKUs by default, and clean up automatically. Tag resources with `ttl`, and let a reaper job such as **`cloud-nuke`** or **`aws-nuke`** delete anything older than 24 hours (*Terraform: Up and Running*, chapter 9). Keep the sandbox away from production data and networks.
+Run your integration tests in a sandbox account. Set budget caps, deny expensive SKUs by default, and clean up automatically. A SKU is the cloud's code for one specific product, such as a particular GPU machine type. Tag resources with `ttl`, and let a reaper job such as **`cloud-nuke`** or **`aws-nuke`** delete anything older than 24 hours (*Terraform: Up and Running*, chapter 9). A reaper is a scheduled script that finds forgotten resources and deletes them. Keep the sandbox away from production data and networks, so a bad test cannot reach anything real.
 
 Two techniques keep tests fast and isolated, and both come from *Terraform: Up and Running*, chapter 9.
 
-1. Dependency injection in modules. If a service module (`hello-world-app`) hardcodes `data "terraform_remote_state" "db"`, you cannot unit-test it without first setting up an S3 state bucket and deploying a database. Add an optional input, `variable "mysql_config" { type = object({ address = string, port = number }); default = null }`, and set `count = var.mysql_config == null ? 1 : 0` on `data "terraform_remote_state" "db"`. Tests can then inject a mock `{ address = "mock-mysql", port = 3306 }`, or wire `mysql_config = module.mysql` directly in memory.
-2. Skipping slow stages during local development. Deploying and tearing down an RDS database or GKE cluster on every test edit takes a long time. An integration test run for the hello-world app stage printed `795.63s`, about 13 minutes. Wrap each test phase in Terratest's **`test_structure.RunTestStage(t, "deploy_db", func() { ... })`**, which saves state to `/tmp` with `test_structure.SaveTerraformOptions`. Run `go test` once. Then iterate on `deploy_app` and `validate_app` in seconds with **`SKIP_deploy_db=true SKIP_teardown_db=true SKIP_teardown_app=true go test -timeout 30m`**. The pattern is modeled in `run_terratest_stages()` in `code/part04/terraform_production_guardrails.py`.
+1. Dependency injection in modules. Dependency injection means a module receives the thing it needs from its caller, rather than fetching it from somewhere itself. If a service module (`hello-world-app`) hardcodes `data "terraform_remote_state" "db"`, you cannot unit-test it without first setting up an S3 state bucket and deploying a database. Add an optional input, `variable "mysql_config" { type = object({ address = string, port = number }); default = null }`, and set `count = var.mysql_config == null ? 1 : 0` on `data "terraform_remote_state" "db"`. Tests can then inject a mock `{ address = "mock-mysql", port = 3306 }`, or wire `mysql_config = module.mysql` directly in memory. The module no longer cares where the database details came from, and that is exactly what makes it testable.
+2. Skipping slow stages during local development. Deploying and tearing down an RDS database or GKE cluster on every test edit takes a long time. An integration test run for the hello-world app stage printed `795.63s`, about 13 minutes. Wrap each test phase in Terratest's **`test_structure.RunTestStage(t, "deploy_db", func() { ... })`**, which saves state to `/tmp` with `test_structure.SaveTerraformOptions`. Run `go test` once. Then iterate on `deploy_app` and `validate_app` in seconds with **`SKIP_deploy_db=true SKIP_teardown_db=true SKIP_teardown_app=true go test -timeout 30m`**. The pattern is modeled in `run_terratest_stages()` in `code/part04/terraform_production_guardrails.py`. Think of it as keeping the oven on between batches of cookies, rather than heating it from cold every time.
 
-Why not test the whole company stack from scratch on every commit? Spinning it up and tearing it down takes hours, and it is too brittle. Transient cloud API rate limits and timeouts turn every run into a whack-a-mole. Run fast static, unit and module integration tests in ephemeral sandboxes instead. Then test full-stack interactions by promoting immutable module versions through a persistent **`staging`** environment.
+Why not test the whole company stack from scratch on every commit? Spinning it up and tearing it down takes hours, and it is too brittle. Transient cloud API rate limits and timeouts turn every run into a whack-a-mole. A rate limit is the cloud refusing requests because you sent too many, and a timeout is a request that never came back. Run fast static, unit and module integration tests in ephemeral sandboxes instead. Then test full-stack interactions by promoting immutable module versions through a persistent **`staging`** environment. Immutable means a version never changes once it is tagged, so staging tests the exact code that production will later run.
 
-You can test a GPU module without a GPU. Validate it with plan-level tests, and apply it with the cheapest accelerator, or with a zero-GPU variant if the module supports one. Run a small GPU smoke test on a schedule rather than on every PR.
+You can test a GPU module without a GPU. Validate it with plan-level tests, and apply it with the cheapest accelerator, or with a zero-GPU variant if the module supports one. A zero-GPU variant is a version of the module with the accelerator turned off, so you can check everything else cheaply. Run a small GPU smoke test on a schedule rather than on every PR, because a GPU machine costs far more per hour than a CPU one.
 
-After `apply`, run `plan -detailed-exitcode` and require exit 0. This is the idempotency test. A destroy test matters just as much, because `destroy` must succeed with no dependency leftovers, which is critical for ephemeral environments.
+After `apply`, run `plan -detailed-exitcode` and require exit 0. This is the idempotency test. Idempotent means running the same thing again changes nothing, so a second plan should show no changes at all. The `-detailed-exitcode` flag makes the exit code report the result: 0 for no changes, and a different code when changes are pending. A destroy test matters just as much, because `destroy` must succeed with no dependency leftovers, which is critical for ephemeral environments. A leftover is a resource that blocks another one from being deleted, and a leftover in a sandbox quietly costs money every day.
 
-Each module's `examples/` folder doubles as documentation and as an integration test target. The Terratest sketch below shows the usual shape. It uses a unique name suffix, `terraform.InitAndApply`, assertions made with provider SDKs (for example, bucket versioning or node pool labels), `defer terraform.Destroy`, and `retry.DoWithRetry` for eventual consistency.
+Each module's `examples/` folder doubles as documentation and as an integration test target. The Terratest sketch below shows the usual shape. It uses a unique name suffix, `terraform.InitAndApply`, assertions made with provider SDKs (for example, bucket versioning or node pool labels), `defer terraform.Destroy`, and `retry.DoWithRetry` for eventual consistency. Eventual consistency means a change may take a moment to show up everywhere, so the test retries a check rather than failing on the first try.
 
 ```go
 // tests/gpu_pool_test.go (sketch)
@@ -216,13 +226,17 @@ func TestGpuPool(t *testing.T) {
 }
 ```
 
-Before you merge a module, decide which of these levels it needs. A critical module earns integration tests on its PRs, while a simple one may not.
+Read the test from top to bottom. It builds a unique name, asks Terraform to create the example, reads back the output, and checks the name. The `defer` line at the top is the important one, because it schedules the destroy before anything can fail. Even if an assertion fails halfway, the cleanup still runs.
+
+Before you merge a module, decide which of these levels it needs. A critical module earns integration tests on its PRs, while a simple one may not. Write the decision down in the module's README, so the next reviewer knows why the tests look the way they do.
 
 ## 4. Team workflow
 
-Suppose an engineer applies a change to shared production from a laptop. Nobody else reviewed the plan, and nobody can see what changed. The process below is built to stop that from happening.
+Suppose an engineer applies a change to shared production from a laptop. Nobody else reviewed the plan, and nobody can see what changed. The state now says one thing, the code says another, and the next person to run plan gets a confusing diff. Worse, nobody can tell later who made the change or why. The process below is built to stop that from happening.
 
 ### Change lifecycle
+
+The sequence diagram shows one change moving through every role. Follow the lines from left to right, and notice that the apply to production waits for a human approval. Each actor in the diagram has a single job, and the Git pull request is where they all meet.
 
 ```mermaid
 sequenceDiagram
@@ -243,26 +257,26 @@ sequenceDiagram
   CI->>Git: record apply result, update change log
 ```
 
-Read the diagram from top to bottom. Code moves through a pull request first, then through staging, and only then reaches production behind an approval gate. When you review a change, you will see most of the rules below in action.
+Read the diagram from top to bottom. Code moves through a pull request first, then through staging, and only then reaches production behind an approval gate. Soak means waiting in staging for a while, so that a problem shows up before production sees it. When you review a change, you will see most of the rules below in action.
 
-1. Plan on the PR, then apply on merge or through an approved command. Applying from laptops is forbidden for shared environments. The only exception is a logged break-glass path.
-2. A saved plan that someone reviewed is the plan that gets applied (4.2). Stale plans fail and must be regenerated.
-3. Allow one apply per state at a time. Other PRs queue or lock, using Atlantis locks or CI concurrency groups.
-4. Promote the same module versions and the same code from dev to staging to prod. Environment differences live only in variables. Do not merge the same change by hand into each environment.
-5. Reviewers read the plan, not just the diff. They look for destroys, replacements (`-/+`), scope creep (resources unrelated to the PR) and cost changes. A PR template can carry a checklist: expected changes, rollback plan, blast radius, cost estimate, and customer or team impact.
-6. Keep changes small and frequent. Separate refactors (state moves) from behaviour changes, and separate provider upgrades from feature work.
-7. Document a break-glass path for emergencies, such as a manual apply or a console change. Then require a follow-up PR that reconciles code and state within a day, plus a postmortem for any manual change. Alert on out-of-band changes.
-8. Run drift detection nightly (4.2). Owners triage the results. Chronic drift is a bug, either in the code or in the access controls.
-9. Use protected branches, signed commits (optional), required checks and CODEOWNERS (4.1).
-10. Give engineers read access to plans and state metadata, but not apply credentials. The pipeline holds apply rights. Production console access stays read-only, with break-glass elevation and audit logging.
+1. Plan on the PR, then apply on merge or through an approved command. Applying from laptops is forbidden for shared environments. The only exception is a logged break-glass path. A break-glass path is a deliberate, recorded way to skip the normal process during an emergency.
+2. A saved plan that someone reviewed is the plan that gets applied (4.2). Stale plans fail and must be regenerated. A stale plan is one made against state that has since changed, so applying it could do something nobody reviewed.
+3. Allow one apply per state at a time. Other PRs queue or lock, using Atlantis locks or CI concurrency groups. A lock is a marker that says "someone is changing this now, wait your turn."
+4. Promote the same module versions and the same code from dev to staging to prod. Environment differences live only in variables. Do not merge the same change by hand into each environment, because the copies will drift apart.
+5. Reviewers read the plan, not just the diff. They look for destroys, replacements (`-/+`), scope creep (resources unrelated to the PR) and cost changes. A replacement is a destroy followed by a create, so it is the change most likely to cause an outage. A PR template can carry a checklist: expected changes, rollback plan, blast radius, cost estimate, and customer or team impact.
+6. Keep changes small and frequent. Separate refactors (state moves) from behaviour changes, and separate provider upgrades from feature work. When a single PR does three things, a reviewer cannot tell which one caused a problem.
+7. Document a break-glass path for emergencies, such as a manual apply or a console change. Then require a follow-up PR that reconciles code and state within a day, plus a postmortem for any manual change. A postmortem is a short written review of what happened and what will change. Alert on out-of-band changes, meaning changes made outside the pipeline.
+8. Run drift detection nightly (4.2). Owners triage the results. Chronic drift is a bug, either in the code or in the access controls. If the same drift shows up every night, someone is making changes that the code does not know about, and that is the thing to fix.
+9. Use protected branches, signed commits (optional), required checks and CODEOWNERS (4.1). A protected branch cannot be changed by a direct push, so every change arrives through a reviewed pull request.
+10. Give engineers read access to plans and state metadata, but not apply credentials. The pipeline holds apply rights. Production console access stays read-only, with break-glass elevation and audit logging. Elevation means a temporary, logged grant of more rights, and it expires on its own.
 
 ### Atlantis-style flow (summary)
 
-The Atlantis-style flow is driven by `atlantis.yaml`. That file lists projects (directories), workflows (init, plan, policy and apply steps), `apply_requirements: [approved, mergeable]`, and autoplan file patterns. Comments such as `atlantis plan -d live/prod/us-central1/gpu-pools` and `atlantis apply -d ...` start the runs. Locks hold a project until the PR merges, and Conftest policy checks run after the plan. Equivalent flows exist in GitHub Actions or GitLab, using change detection through Terramate or path filters, and in HCP Terraform, using VCS-driven runs.
+The Atlantis-style flow is driven by `atlantis.yaml`. That file lists projects (directories), workflows (init, plan, policy and apply steps), `apply_requirements: [approved, mergeable]`, and autoplan file patterns. Autoplan means Atlantis runs a plan on its own whenever a matching file changes in a pull request. Comments such as `atlantis plan -d live/prod/us-central1/gpu-pools` and `atlantis apply -d ...` start the runs. A reviewer types these as comments in the pull request, so the whole history stays in one place. Locks hold a project until the PR merges, and Conftest policy checks run after the plan. Equivalent flows exist in GitHub Actions or GitLab, using change detection through Terramate or path filters, and in HCP Terraform, using VCS-driven runs. A VCS-driven run is one that starts when a commit lands in the version control system.
 
 ### Promotion with versions
 
-Each environment pins its own module version. Staging points at the newest version, and production keeps the previous one until the change is promoted.
+Each environment pins its own module version. A pin is the exact version number in the `ref` argument. Staging points at the newest version, and production keeps the previous one until the change is promoted. This lets you watch the new version run in staging before production depends on it.
 
 ```hcl
 # live/staging/.../gpu-pools/main.tf
@@ -277,21 +291,21 @@ module "pool" {
 }
 ```
 
-To promote, you open a PR that bumps `ref` in production once staging has soaked. Renovate can open those PRs for each environment automatically.
+To promote, you open a PR that bumps `ref` in production once staging has soaked. Renovate can open those PRs for each environment automatically. Renovate is a bot that watches for new versions and opens the pull request for you, so the promotion itself is reviewed like any other change.
 
 ## 5. Guardrails: cost, security, compliance
 
-A plan that looks harmless can still delete a production node pool or open an SSH port to the world. Policy as code reads the plan before anything is applied, so it can stop those changes first. Each rule below is a check that a policy engine runs against the plan (4.2), and the examples are specific to AI infrastructure.
+A plan that looks harmless can still delete a production node pool or open an SSH port to the world. Policy as code reads the plan before anything is applied, so it can stop those changes first. Think of it as a checkpoint at the airport. The check runs before anyone boards, so the mistake is caught on the ground. Each rule below is a check that a policy engine runs against the plan (4.2), and the examples are specific to AI infrastructure.
 
-- Cost: deny creation of more than N GPUs in a plan without an approval tag. Allow-list accelerator types and regions. Require `ttl` on sandbox resources, forbid on-demand GPU instances in non-prod, and require budgets and alerts on every project. Show cost estimates (Infracost) in PR comments, and fail any PR that goes above a threshold.
-- Capacity and quota: validate changes against known quotas, through a data source or a policy. Require reservation IDs or capacity blocks for large clusters, and prevent deletion of a reservation that backs running capacity.
-- Security: block `0.0.0.0/0` on SSH or management ports. Allow private nodes only. Use CMEK or KMS for checkpoint buckets, enforce public access prevention, and ban static IAM keys. Review workload identity bindings, turn on VPC flow logs, and mirror org policies in code.
-- Data protection: set `prevent_destroy` and `force_destroy = false` (`force_destroy=false`) on dataset and checkpoint buckets. Also enable object versioning, retention locks where required, and cross-region replication for critical datasets.
-- Networking for training: set MTU and jumbo-frame options, placement policies and compact placement. Require EFA, GPUDirect-TCPX or RDMA network interfaces on the instance types that need them. A policy should assert the NIC configuration, because forgetting it silently halves training throughput.
-- Tagging: you should tag resources with owner, cost_center, project, environment and data classification.
+- Cost: deny creation of more than N GPUs in a plan without an approval tag. Allow-list accelerator types and regions. Require `ttl` on sandbox resources, forbid on-demand GPU instances in non-prod, and require budgets and alerts on every project. Show cost estimates (Infracost) in PR comments, and fail any PR that goes above a threshold. An allow-list names the only values that are permitted, so anything else is refused by default.
+- Capacity and quota: validate changes against known quotas, through a data source or a policy. Require reservation IDs or capacity blocks for large clusters, and prevent deletion of a reservation that backs running capacity. A quota is the cap the cloud puts on how much of a resource you may use, and a reservation is a promise of capacity held for you.
+- Security: block `0.0.0.0/0` on SSH or management ports. That address range means "the whole internet," so a rule that allows it on SSH is an open door. Allow private nodes only. Use CMEK or KMS for checkpoint buckets, enforce public access prevention, and ban static IAM keys. CMEK means customer-managed encryption keys, which you control rather than the cloud. Review workload identity bindings, turn on VPC flow logs, and mirror org policies in code. Flow logs record the network traffic that crosses a network, which helps when you need to answer "who talked to what?"
+- Data protection: set `prevent_destroy` and `force_destroy = false` (`force_destroy=false`) on dataset and checkpoint buckets. Also enable object versioning, retention locks where required, and cross-region replication for critical datasets. With `force_destroy = false`, Terraform refuses to delete a bucket that still holds data, so one careless destroy cannot wipe out a training dataset.
+- Networking for training: set MTU and jumbo-frame options, placement policies and compact placement. The MTU is the largest packet size a network link accepts, and jumbo frames are packets bigger than the usual size, which speed up large transfers. A compact placement policy puts the GPU machines physically close together, which lowers network latency. Require EFA, GPUDirect-TCPX or RDMA network interfaces on the instance types that need them. A policy should assert the NIC configuration, because forgetting it silently halves training throughput.
+- Tagging: you should tag resources with owner, cost_center, project, environment and data classification. The data classification tag says how sensitive the data inside the resource is.
 - Blast radius: reject plans that touch more than N resources of type `*_node_pool` or `*_instance` without a label. Require two approvers for any destroy of a cluster.
 
-The two Rego rules below show the pattern. The first blocks deleting a production node pool, and the second blocks creating an unversioned bucket.
+The two Rego rules below show the pattern. Rego is the policy language that Open Policy Agent (OPA) uses to read a plan and decide. The first blocks deleting a production node pool, and the second blocks creating an unversioned bucket. Read each rule as an "if" statement. If a planned change matches the conditions, the rule adds a message, and the message stops the run.
 
 ```rego
 package terraform.guardrails
@@ -314,35 +328,35 @@ deny contains msg if {
 }
 ```
 
-Policy syntax and plan JSON shapes depend on the tool versions. Check them against the version you run.
+Policy syntax and plan JSON shapes depend on the tool versions. Check them against the version you run. A rule that compiles on one version can silently match nothing on another, so test every rule with a plan that should fail it.
 
-Start by deciding which of these rules your team enforces as a hard deny and which as a warning. Begin with the rules that guard production data and expensive capacity.
+Start by deciding which of these rules your team enforces as a hard deny and which as a warning. A hard deny stops the pull request, while a warning only posts a comment. Begin with the rules that guard production data and expensive capacity, because those are the mistakes that cost the most when they happen.
 
 ## 6. Operating the estate
 
-After the first apply, the work shifts to keeping the estate current. Upgrades, refactors, on-call duty and team growth each need routines rather than heroics.
+After the first apply, the work shifts to keeping the estate current. Upgrades, refactors, on-call duty and team growth each need routines rather than heroics. A routine is something the team does the same way every time, so it does not depend on one person's memory.
 
-- Upgrades: read the upgrade guides before each Terraform or OpenTofu version bump, and check that plans match on every stack. Upgrade one provider at a time, starting in the lower environments. Update modules with their changelogs and `moved` blocks. Set a cadence, such as a monthly patch and a quarterly minor version. Keep a compatibility matrix, let Renovate open the PRs, and budget time for cleanup so you never face a three-major-version jump.
-- Refactors: split large stacks along ownership lines with `import`, `removed` and `moved` (4.19). Move one resource group at a time. You should check that the plan is clean between steps.
-- Documentation and ADRs: record decisions in ADRs, such as why this layout, why this state split, and why OpenTofu. Keep diagrams (4.2) and runbooks for tasks like provisioning a new region, adding GPU pools, requesting quota and recovering state.
-- On-call: pipelines should alert on failed applies, drift, stuck locks and state backend errors, with a clear escalation path. Write runbooks for an apply that failed halfway, for someone who created resources by hand, and for a plan that wants to destroy production.
-- Metrics: track lead time for infrastructure changes, change failure rate, drift count, time to recover, plan duration, the number of manual (break-glass) changes, module version adoption, and cost per environment.
-- Developer experience: offer golden-path modules and templates, such as `cookiecutter` scaffolding for a new stack. Keep feedback fast, with plans in minutes and clear validation errors. Let teams self-serve within guardrails, for example through a PR that adds a YAML entry for a new namespace or quota.
-- Multi-tenancy: give each team its own stacks and state, and set policy boundaries with tags and quotas. Accept inner-source module contributions, reviewed through CODEOWNERS.
+- Upgrades: read the upgrade guides before each Terraform or OpenTofu version bump, and check that plans match on every stack. Upgrade one provider at a time, starting in the lower environments. Update modules with their changelogs and `moved` blocks. A `moved` block tells Terraform that a resource has a new name, so it renames the state entry instead of destroying and recreating the resource. Set a cadence, such as a monthly patch and a quarterly minor version. Keep a compatibility matrix, which is a table of which versions work with which, let Renovate open the PRs, and budget time for cleanup so you never face a three-major-version jump. Skipping several major versions at once is where most painful upgrades come from.
+- Refactors: split large stacks along ownership lines with `import`, `removed` and `moved` (4.19). Move one resource group at a time. You should check that the plan is clean between steps. A clean plan between steps means the refactor changed the layout but not the real infrastructure.
+- Documentation and ADRs: record decisions in ADRs, which are short architecture decision records, such as why this layout, why this state split, and why OpenTofu. An ADR is useful because it answers "why was this done?" long after the people who decided have moved on. Keep diagrams (4.2) and runbooks for tasks like provisioning a new region, adding GPU pools, requesting quota and recovering state.
+- On-call: pipelines should alert on failed applies, drift, stuck locks and state backend errors, with a clear escalation path. Write runbooks for an apply that failed halfway, for someone who created resources by hand, and for a plan that wants to destroy production. A runbook is a step-by-step guide for one specific situation, written so that a tired person at night can follow it.
+- Metrics: track lead time for infrastructure changes, change failure rate, drift count, time to recover, plan duration, the number of manual (break-glass) changes, module version adoption, and cost per environment. Lead time is how long a change takes from merge to running in production. Change failure rate is the share of changes that cause a problem.
+- Developer experience: offer golden-path modules and templates, such as `cookiecutter` scaffolding for a new stack. A golden path is the recommended way to do a common task, so most people take it without thinking. Keep feedback fast, with plans in minutes and clear validation errors. Let teams self-serve within guardrails, for example through a PR that adds a YAML entry for a new namespace or quota.
+- Multi-tenancy: give each team its own stacks and state, and set policy boundaries with tags and quotas. Accept inner-source module contributions, reviewed through CODEOWNERS. Inner source means teams contribute to each other's shared modules through the same review process used for open source.
 
-Decide which of these metrics your team will review together, and who owns each one.
+Decide which of these metrics your team will review together, and who owns each one. A metric that nobody owns will drift the way an unowned stack does.
 
 ## 7. Terraform and GPU capacity management
 
-GPU capacity behaves differently from elastic CPU capacity, and that difference shapes how you write Terraform for it. A plan that looks like a routine node update can take capacity away from a running job or fail to get it back. The constraints below are the ones that show up in practice.
+GPU capacity behaves differently from elastic CPU capacity, and that difference shapes how you write Terraform for it. Elastic CPU capacity can usually be added or removed on demand. GPU capacity is often scarce, so once you release it you may not get it back. A plan that looks like a routine node update can take capacity away from a running job or fail to get it back. The constraints below are the ones that show up in practice.
 
-- Capacity is scarce and time-bound. You may use reservations, capacity blocks, committed use discounts, or spot and preemptible fleets. Treat each reservation as a first-class resource, with an owner, an expiry and renewal alerts. Avoid Terraform plans that recreate nodes backed by a reservation, because the replacement may fail to re-acquire capacity. Use `create_before_destroy` carefully, since the old and new nodes may not both fit (4.21). Prefer in-place updates or platform-managed rolling updates.
-- Long-running jobs: infrastructure applies must coordinate with job schedules. Drain and cordon nodes through Slurm or Kubernetes before replacing them (4.17). CI should enforce maintenance windows, so that no apply touches training pools during protected periods unless the change is marked `emergency`.
-- Quota requests are manual and slow, so put them in your change tickets. Code can assert that quota is sufficient through data sources or checks.
-- Heterogeneous fleets can mix A100, H100, and B200/GB200 across regions or clouds. Define pools from data, such as YAML, with a per-accelerator policy and validation. Modules should expose one stable interface across providers.
-- Hybrid with Slurm or BCM: use Terraform for the cloud or virtualised parts. Handle bare-metal and BMC provisioning with BCM, Ansible or Redfish (Parts 7 and 8). Keep one inventory source of truth that feeds both, with Terraform outputs turned into inventory (4.27).
+- Capacity is scarce and time-bound. You may use reservations, capacity blocks, committed use discounts, or spot and preemptible fleets. A committed use discount is a lower price in return for a promise to keep spending, and a spot or preemptible machine is one the cloud can take back at short notice. Treat each reservation as a first-class resource, with an owner, an expiry and renewal alerts. Avoid Terraform plans that recreate nodes backed by a reservation, because the replacement may fail to re-acquire capacity. Use `create_before_destroy` carefully, since the old and new nodes may not both fit (4.21). Prefer in-place updates or platform-managed rolling updates.
+- Long-running jobs: infrastructure applies must coordinate with job schedules. Drain and cordon nodes through Slurm or Kubernetes before replacing them (4.17). Draining means moving work off a node, and cordoning means marking it so that no new work lands there. CI should enforce maintenance windows, so that no apply touches training pools during protected periods unless the change is marked `emergency`.
+- Quota requests are manual and slow, so put them in your change tickets. Code can assert that quota is sufficient through data sources or checks, so a plan fails early rather than halfway through an apply.
+- Heterogeneous fleets can mix A100, H100, and B200/GB200 across regions or clouds. Those are different generations of NVIDIA accelerators, and each one needs different machine types and drivers. Define pools from data, such as YAML, with a per-accelerator policy and validation. Modules should expose one stable interface across providers, so a caller asks for "eight GPUs of this kind" and the module handles the details.
+- Hybrid with Slurm or BCM: use Terraform for the cloud or virtualised parts. Handle bare-metal and BMC provisioning with BCM, Ansible or Redfish (Parts 7 and 8). Bare metal means a physical server with no virtual layer, and a BMC is the small management controller inside a server that lets you power it on remotely. Keep one inventory source of truth that feeds both, with Terraform outputs turned into inventory (4.27). An inventory here is the list of machines that other tools use, and two lists that disagree cause hard-to-find bugs.
 
-Decide who owns each reservation before the next plan touches its node pool.
+Decide who owns each reservation before the next plan touches its node pool. An unowned reservation is the kind that quietly expires, and nobody notices until the next big run has nowhere to go.
 
 ## 8. Lab
 
@@ -352,13 +366,13 @@ Start with the self-checking Python lab. It runs on your machine, so you can see
 python3 code/part04/terraform_production_guardrails_lab.py
 ```
 
-The lab checks three things. It verifies the OPA and Rego guardrail rules from section 5, which `evaluate_production_guardrails` applies. Those rules block deleting `tier == "prod"` node pools without `allow-prod-destroy`, block creating unversioned `google_storage_bucket` resources, and enforce `ManagedBy == "Terraform"` tags. It also checks Terragrunt's `path_relative_to_include()` backend key generator (`render_terragrunt_backend_key`, from *Terraform: Up and Running*, chapter 10), and Terratest's `test_structure.RunTestStage` with `SKIP_<stage>=true` (`run_terratest_stages`, from chapter 9).
+The lab checks three things. It verifies the OPA and Rego guardrail rules from section 5, which `evaluate_production_guardrails` applies. Those rules block deleting `tier == "prod"` node pools without `allow-prod-destroy`, block creating unversioned `google_storage_bucket` resources, and enforce `ManagedBy == "Terraform"` tags. It also checks Terragrunt's `path_relative_to_include()` backend key generator (`render_terragrunt_backend_key`, from *Terraform: Up and Running*, chapter 10), and Terratest's `test_structure.RunTestStage` with `SKIP_<stage>=true` (`run_terratest_stages`, from chapter 9). A passing lab tells you the logic is right. It does not tell you that a cloud API will accept the same request.
 
-Next, you will need a machine with Terraform or OpenTofu 1.6+ and GitHub or GitLab CI. The interactive shell steps below were not run on live hardware, so treat the results as yours to confirm. Work through these exercises in order.
+The commands in this lab have not been run on live hardware, so treat each result as yours to confirm. Next, you will need a machine with Terraform or OpenTofu 1.6+ and GitHub or GitLab CI. Work through these exercises in order.
 
 1. Create `modules/` and `live/{lab,staging,prod}/...` with two stacks, `network` and `compute`, using local providers or a sandbox cloud. Give each stack its own backend with a distinct key, and add CODEOWNERS and a PR template.
 2. Build the CI pipeline from 4.2, specialised for this layout. It should detect changes by path, plan each changed stack, run the policy check, post a plan comment, and apply the saved plan on merge for lab and staging. Production stays behind an approval gate.
-3. Wire `fmt`, `validate`, `tflint`, `checkov` or `trivy`, `terraform-docs`, gitleaks and Conftest into the pipeline, together with the guardrails above. Write allow and deny fixtures, and show each gate failing a PR.
+3. Wire `fmt`, `validate`, `tflint`, `checkov` or `trivy`, `terraform-docs`, gitleaks and Conftest into the pipeline, together with the guardrails above. Write allow and deny fixtures, and show each gate failing a PR. A fixture is a small sample input, such as a plan file, used to test a rule.
 4. Add `terraform test` plan-level tests for a module that has validation and conditionals. Include `expect_failures`, and run the tests in CI.
 5. Write an integration test against a sandbox, using Terratest or `terraform test` at apply level. Include the idempotency check (`plan -detailed-exitcode`) and destroy. Add TTL tags and a reaper that deletes leaked resources.
 6. Tag the module `v1.0.0` and use it in staging. Bump it to `v1.1.0`, let it soak, and promote it to prod through a PR. Then practise a rollback by reverting the pin.
@@ -368,30 +382,30 @@ Next, you will need a machine with Terraform or OpenTofu 1.6+ and GitHub or GitL
 10. Bump a provider major version in a branch. Run plans across all stacks, classify each diff as cosmetic or replacement, and write the migration steps.
 11. Split one monolithic stack into two, using `import` and `removed`. Check that each step gives a clean plan, and document the procedure as a runbook.
 12. Compute lead time and change failure rate from the PR history of the lab repository.
-13. Clean up.
+13. Clean up. Destroy everything the lab created, and confirm that the reaper found nothing left over.
 
-Start with exercise 1 and check each gate as you add it. A gate that has never failed has not been tested yet.
+Start with exercise 1 and check each gate as you add it. A gate that has never failed has not been tested yet. Make each gate fail on purpose once, so you know it really catches the problem it guards against.
 
 ## 9. Common mistakes
 
-Most Terraform problems on GPU estates repeat a few mistakes. Check your team against this list.
+Most Terraform problems on GPU estates repeat a few mistakes. Check your team against this list, and be honest about which ones you recognise.
 
-- Running one repository or one state for the whole company, or working without module versioning discipline.
-- Applying from laptops with shared admin credentials, which leaves no audit trail.
+- Running one repository or one state for the whole company, or working without module versioning discipline. One giant state means one mistake can reach everything.
+- Applying from laptops with shared admin credentials, which leaves no audit trail. An audit trail is the record of who changed what, and shared credentials erase it.
 - Reviewing PRs as code without reading the plan, and skipping policy checks for cost and security.
 - Creating a branch per environment, then re-applying the same change by hand to each one.
 - Testing only in production, or writing integration tests that leak resources and money.
 - Leaving versions unpinned, and planning an "upgrade day" every two years.
-- Mixing refactors with feature changes, or doing manual state surgery without a runbook.
+- Mixing refactors with feature changes, or doing manual state surgery without a runbook. Manual state surgery means editing the state file by hand, which is risky and easy to get wrong.
 - Running without drift detection, and tolerating console changes over time.
 - Treating GPU capacity like elastic CPU, by recreating nodes without capacity reservations or drains.
 - Leaving ownership unclear, so that stacks exist that nobody maintains.
 
-Pick the mistake your team makes most often, and fix that one first.
+Pick the mistake your team makes most often, and fix that one first. A single fix to the most common habit usually does more than a long list of small ones.
 
 ## 10. Interview angles
 
-Use these questions to check whether you can explain the design to someone else.
+Use these questions to check whether you can explain the design to someone else. Practise answering each one out loud, as if a hiring manager were listening, and keep your answer under a minute.
 
 - "How would you structure Terraform for dev/stage/prod across multiple regions and teams?"
 - "Describe your Terraform CI/CD workflow. What blocks a bad change?"
@@ -404,14 +418,14 @@ Use these questions to check whether you can explain the design to someone else.
 
 ## Exercises
 
-Answer each exercise in writing before you check it against the code, so you can see where your reasoning drifts.
+Each exercise gives you one situation and one question, or a small set of questions. Answer each one in writing before you check it against the code, so you can see where your reasoning drifts.
 
-1. Work out how `modules/` and `live/` divide the code, and how `live/` is partitioned by environment, region and layered stack (`global -> network -> storage -> cluster -> gpu-pools`). Use `render_terragrunt_backend_key()` in `code/part04/terraform_production_guardrails.py` as your reference. Then trace how Terragrunt's `remote_state` with `path_relative_to_include()`, `find_in_parent_folders()`, `dependency` blocks and `run-all` remove duplicated backend and provider boilerplate. Cover Terragrunt, Terramate and Atlantis, using *Terraform: Up and Running*, chapters 8 and 10.
-2. Summarise the four pillars of the Section 2 production-readiness checklist: Correctness and Safety, Security and Compliance, Operability and Quality. Set them beside the 20-item checklist. Explain why decomposing `webserver-cluster` into `asg-rolling-deploy`, `alb` and `hello-world-app` improves reuse. State when the escape hatches (`local-exec`, `remote-exec`, `data "external"`) are acceptable.
-3. Using `run_terratest_stages()` in `code/part04/terraform_production_guardrails.py`, explain the testing pyramid and three things, drawing on *Terraform: Up and Running*, chapter 9. (a) How `var.mysql_config` dependency injection decouples module tests from `terraform_remote_state`. (b) How `test_structure.RunTestStage`, `random.UniqueId()`, `defer terraform.Destroy`, `http_helper.HttpGetWithRetry` and `SKIP_<stage>=true` work in Terratest. (c) Why promoting through a persistent `staging` environment beats full-stack E2E tests from scratch.
-4. Explain the Golden Rule of Terraform, *"The `main` branch of the `live` repository is a 1:1 representation of production"*. Explain why long-lived `stage` and `prod` Git branches fail, using the `Anna` and `Bill` merge-conflict scenario. Then trace the 7-step workflow of PR, plan, policy, merge, staging soak and prod promotion (*Terraform: Up and Running*, chapter 10).
-5. Using `evaluate_production_guardrails()` in `code/part04/terraform_production_guardrails.py`, write and explain Rego `deny` rules for GPU infrastructure, drawing on chapter 9 and Section 5 with `OPA`/`Rego`, `Conftest`, `Sentinel` and `Infracost`. The rules should block deleting production GPU node pools without `allow-prod-destroy`, block unversioned checkpoint buckets, enforce `ManagedBy = "Terraform"` and `cost_center` tags, and verify multi-NIC EFA or GPUDirect-TCPX attachments.
-6. Explain how to upgrade Terraform and provider versions safely across 100 stacks. Then explain how to handle emergency break-glass changes, and how capacity reservations, capacity blocks and Slurm or Kubernetes node drains interact with Terraform changes on GPU fleets.
+1. A new engineer asks why `live/` is split by environment, region and layer. Use `render_terragrunt_backend_key()` in `code/part04/terraform_production_guardrails.py` as your reference. Explain how the layers run from `global` to `network` to `storage` to `cluster` to `gpu-pools`. Then trace how Terragrunt's `remote_state` with `path_relative_to_include()` removes the duplicated backend code. Trace how `find_in_parent_folders()`, `dependency` blocks and `run-all` do the same for the rest of the boilerplate. Finish by comparing Terragrunt, Terramate and Atlantis, using *Terraform: Up and Running*, chapters 8 and 10.
+2. A reviewer wants to know whether the production-readiness checklist is complete. Summarise the four pillars of the Section 2 checklist: Correctness and Safety, Security and Compliance, Operability and Quality. Set them beside the 20-item checklist, and point out which pillar covers each one. Explain why decomposing `webserver-cluster` into `asg-rolling-deploy`, `alb` and `hello-world-app` improves reuse. Then state when the escape hatches (`local-exec`, `remote-exec`, `data "external"`) are acceptable.
+3. A test suite for a service module is slow, and it depends on a live database. Using `run_terratest_stages()` in `code/part04/terraform_production_guardrails.py`, explain the testing pyramid. Draw on *Terraform: Up and Running*, chapter 9, to explain how `var.mysql_config` dependency injection decouples the module tests from `terraform_remote_state`. Then explain how `test_structure.RunTestStage` works in Terratest. Explain what `random.UniqueId()` and `defer terraform.Destroy` protect against. Explain what `SKIP_<stage>=true` saves you. Finish by explaining why promoting through a persistent `staging` environment beats full-stack end-to-end tests run from scratch.
+4. A team keeps a `stage` branch and a `prod` branch, and merges changes between them by hand. Explain the Golden Rule of Terraform, which says the `main` branch of the `live` repository should be a 1:1 representation of production. Explain why the long-lived branches fail, using the `Anna` and `Bill` merge-conflict scenario. Then trace the 7-step workflow of PR, plan, policy, merge, staging soak and prod promotion (*Terraform: Up and Running*, chapter 10).
+5. A security lead wants policy rules for GPU infrastructure. Using `evaluate_production_guardrails()` in `code/part04/terraform_production_guardrails.py`, write Rego `deny` rules that match the policy goals. Draw on chapter 9 and Section 5. Name the tools that run these rules, which are `OPA`/`Rego`, `Conftest`, `Sentinel` and `Infracost`. The rules should block deleting production GPU node pools without `allow-prod-destroy`. They should block unversioned checkpoint buckets. They should enforce `ManagedBy = "Terraform"` and `cost_center` tags. Finally, they should verify multi-NIC EFA or GPUDirect-TCPX attachments.
+6. A team must upgrade Terraform and provider versions across 100 stacks without an outage. Explain how to do that safely. Then explain how to handle an emergency break-glass change. Finish by explaining how capacity reservations, capacity blocks and Slurm or Kubernetes node drains interact with Terraform changes on GPU fleets.
 
 Write your answers as short explanations, and keep a note of any step you could not verify.
 
@@ -555,4 +569,4 @@ Follow these steps. Never mix a provider or core upgrade with feature changes in
   - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md` and `volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md`): guardrails, OPA policies for GPU spend and deletion protection, end-to-end AI factory implementation, and drift detection.
 - **Run here:** `python3 code/part04/terraform_production_guardrails_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `evaluate_production_guardrails`, `render_terragrunt_backend_key`, and `run_terratest_stages` models in `code/part04/terraform_production_guardrails.py`, the `platform-infra/` repository layout, the `TestGpuPool` Go test sketch, and the `package terraform.guardrails` Rego policy are the author's constructions synthesizing *Terraform: Up and Running* Chapters 8–10 and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** Live `terragrunt`, `terramate`, `atlantis`, `go test` (`Terratest`), `cloud-nuke`, and `infracost` executions (`v2.4.0`, `v2.3.1`, `1.2.3`, `795.63s`, `100` stacks) are marked (`untested here`) where not executed by `terraform_production_guardrails_lab.py`.
+- **Not verified on live hardware:** Live `terragrunt`, `terramate`, `atlantis`, `go test` (`Terratest`), `cloud-nuke`, and `infracost` executions (`v2.4.0`, `v2.3.1`, `1.2.3`, `795.63s`, `100` stacks) are not run here, except where `terraform_production_guardrails_lab.py` executes them.

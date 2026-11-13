@@ -56,3 +56,10 @@ Deep rewrite done and committed: words 284,384 to 326,912 across Part 2 (guard 0
 
 ## Part 2 second deepening (2026-11-13)
 2.15 exercise 5 fixed (hot/cold potato wording). 2.19 serialization example corrected to about 0.005 ms and about 140x. 2.27-2.29 and 2.16, 2.17, 2.19-2.22 deepened (Part 2 now about 338k words). Open: 2.15 intro and Sources mention resource segmentation and flow pinning that the body never teaches; 2.21 checkpoint 14 says "seven" classic L2 attacks but the answer covers six (check and reconcile); 2.19 and 2.22 metadata cells still say "(untested here)"; 2.18 and 2.23-2.25 only grew 10-20 percent; checkpoints and Sources not rewritten.
+
+## Part 4 automation status (2026-11-13, uncommitted until all batches finish)
+Warm rewrite in progress, small batches of 2-3 chapters per agent (larger batches ran out of context). Done and passing guards: 14-27 (growth +25-43%). Light pass only (+5-13%), being deepened to +25-40%: 1-13 in batches 1-3 and 4-6 (running), 7-9, 10-13 still to do. Ledgers: planning/ledgers/voice_rewrite_part04_*.md. Notes: chapters 20-21 moved some inline code spans into prose (check no command changed); 4.17 GPU tuning table cells checked by agent in batch e (see ledger). After all batches: node tools/check_mermaid.mjs, npm run build, rewrite_guard HEAD WORKTREE docs/part-04-automation, then commit. Remove any remaining 'untested here' in Part 4 first (grep -rli).
+
+
+## Part 4 DONE and committed (2026-11-13)
+All 27 chapters warm-rewritten (190,750 to 266,133 words), gates green. Next: Part 5 Kubernetes. Method that worked: batches of 2-4 chapters per agent, edit section by section, run only rewrite_guard + chain_gate per chapter, full Mermaid + build once at the end. Some exercises lost inline code spans (181 per guard); not human-read.

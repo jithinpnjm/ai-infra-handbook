@@ -24,14 +24,16 @@ lab_venue: "GCP / GKE"
 
 Picture a small GPU cluster that you have to build from nothing, then rebuild, change and finally tear down. This lab ties Part 4 together by building one small but realistic platform. **Terraform creates the infrastructure**: the network, storage, nodes and outputs. **Ansible configures it**, covering the base OS, the GPU stack, monitoring and a small Slurm cluster. Validation then proves that it works, and a pipeline runs the same flow repeatably.
 
-Drift and upgrade exercises show how the platform behaves on Day 2, and teardown returns everything to zero. Each step reuses patterns from earlier chapters. The Git workflow comes from 4.1 and pipeline design from 4.2. Ansible roles, variables, handlers and testing come from 4.3 to 4.17, while Terraform modules, state, loops, secrets and team workflow come from 4.18 to 4.25.
+Think of the three parts as a relay. Terraform hands the list of machines to Ansible, Ansible prepares each machine, and validation checks the result before anyone calls the cluster ready. If any leg drops the baton, the cluster is not ready, no matter how green the earlier steps looked.
+
+Drift and upgrade exercises show how the platform behaves on Day 2, and teardown returns everything to zero. Day 2 is the stretch of life after the first build, when the real work is change, repair and growth. Each step reuses patterns from earlier chapters. The Git workflow comes from 4.1 and pipeline design from 4.2. Ansible roles, variables, handlers and testing come from 4.3 to 4.17, while Terraform modules, state, loops, secrets and team workflow come from 4.18 to 4.25.
 
 The lab has two paths, so you can learn without spending money.
 
-- **Path A: local rehearsal (default).** Terraform's Docker provider, or Multipass through `local-exec` or a community provider, creates the "nodes" as systemd-enabled containers or VMs on your machine. There are no GPUs, so GPU-specific tasks run against stub `nvidia-smi` and `dcgmi` scripts. Everything else is real: the inventory export, roles, Slurm, validation, CI and drift checks.
+- **Path A: local rehearsal (default).** Terraform's Docker provider, or Multipass through `local-exec` or a community provider, creates the "nodes" as systemd-enabled containers or VMs on your machine. There are no GPUs, so GPU-specific tasks run against stub `nvidia-smi` and `dcgmi` scripts. Everything else is real: the inventory export, roles, Slurm, validation, CI and drift checks. A stub is a small fake program that prints what the real tool would print, so the logic that reads its output still runs.
 - **Path B: cloud.** The same Terraform root uses a cloud module instead of the Docker module. It creates a VPC, firewall, bucket and VMs in a sandbox project. Use small CPU VMs, and optionally one L4/A100 VM if you have quota and a budget cap. The Ansible side stays the same, except that the driver role runs for real.
 
-> **Warning.** Cloud GPU resources cost money by the hour. Set a budget and alert first (4.24), prefer Spot, apply only when ready to test, and destroy at the end. Never run this in a production project.
+> **Warning.** Cloud GPU resources cost money by the hour. Set a budget and alert first (4.24), prefer Spot, apply only when ready to test, and destroy at the end. Never run this in a production project. A forgotten GPU VM over a weekend is one of the most common ways a learning lab becomes an expensive surprise.
 
 ## Learning outcomes
 
@@ -46,7 +48,7 @@ After the lab, you can:
 
 ## Architecture
 
-Read the diagram from top to bottom, because that is the order you will work in. Terraform builds the infrastructure, its output becomes the Ansible inventory, and Ansible configures the nodes that validation then checks. The nightly drift job looks at both layers.
+Read the diagram from top to bottom, because that is the order you will work in. Terraform builds the infrastructure, its output becomes the Ansible inventory, and Ansible configures the nodes that validation then checks. The nightly drift job looks at both layers, so it can catch a change made on either side.
 
 ```mermaid
 flowchart LR
@@ -66,17 +68,17 @@ flowchart LR
   DRIFT --> N
 ```
 
-The nodes are `login01`, the bastion and login host, `ctl01`, which runs the Slurm controller and monitoring, and `gpu01` to `gpu03`, the workers. Path B adds a bucket for shared data and a service account.
+The nodes are `login01`, the bastion and login host, `ctl01`, which runs the Slurm controller and monitoring, and `gpu01` to `gpu03`, the workers. A bastion is the single machine that outsiders reach first, so everything else can stay private behind it. Path B adds a bucket for shared data and a service account.
 
 ## Part 0: Prerequisites and repository skeleton
 
-Start with the self-checking Python lab. You run it locally, and it checks the links that join the two halves of the lab. It verifies the Terraform `var.nodes` to deterministic IP and SSH-port allocator, the Ansible inventory generator that writes `inventories/lab/generated/hosts.yml` (`generate_ansible_inventory_from_tf_nodes`), the `gpu_stub` template renderer for `nvidia-smi -L` (`render_stub_nvidia_smi_list`), and the end-to-end `playbooks/verify.yml` cluster health gate (`verify_cluster_end_to_end`).
+Start with the self-checking Python lab. You run it locally, and it checks the links that join the two halves of the lab. It verifies the Terraform `var.nodes` to deterministic IP and SSH-port allocator, the Ansible inventory generator that writes `inventories/lab/generated/hosts.yml` (`generate_ansible_inventory_from_tf_nodes`), the `gpu_stub` template renderer for `nvidia-smi -L` (`render_stub_nvidia_smi_list`), and the end-to-end `playbooks/verify.yml` cluster health gate (`verify_cluster_end_to_end`). A passing run means the hand-off logic is sound, even before you have a single container.
 
 ```bash
 python3 code/part04/gpu_cluster_e2e_bridge_lab.py
 ```
 
-Next, check that you have the tools for the interactive walkthrough. Tools for the interactive walkthrough (`untested here`): Git, Terraform or OpenTofu 1.6+, Ansible-core 2.16+, `ansible-lint`, `yamllint`, `pre-commit`, Docker (Path A), optionally Multipass; for Path B `gcloud` authenticated with a sandbox project.
+The commands in this lab have not been run on live hardware, so treat each step as unverified until you run it yourself. Next, check that you have the tools for the interactive walkthrough: Git, Terraform or OpenTofu 1.6+, Ansible-core 2.16+, `ansible-lint`, `yamllint`, `pre-commit`, Docker (Path A), optionally Multipass; for Path B `gcloud` authenticated with a sandbox project. Install them in one sitting, so you find missing tools before you start the work rather than halfway through a build.
 
 ```bash
 mkdir gpu-lab && cd gpu-lab && git init -b main
@@ -100,15 +102,15 @@ pip install ansible-core ansible-lint yamllint pre-commit
 ansible-galaxy collection install ansible.posix community.general community.docker
 ```
 
-The `.gitignore` keeps Terraform state, plan files and generated inventory out of Git. Next, add a `.pre-commit-config.yaml` file that runs `terraform fmt`, `terraform validate`, yamllint, ansible-lint and gitleaks, as covered in 4.1. Commit it, then create a branch for the work with `git switch -c lab/initial-cluster`.
+The `.gitignore` keeps Terraform state, plan files and generated inventory out of Git. Think of it as a fence around anything that is either secret or regenerated. State can hold secrets, plan files show what is about to change, and the generated inventory is rebuilt every time anyway. Next, add a `.pre-commit-config.yaml` file that runs `terraform fmt`, `terraform validate`, yamllint, ansible-lint and gitleaks, as covered in 4.1. Commit it, then create a branch for the work with `git switch -c lab/initial-cluster`. Working on a branch means the first change is reviewable as one unit, which is the habit you are practising.
 
 ## Part 1: Terraform: nodes and network (Path A: Docker)
 
-Suppose a node has to appear before anything else can run on it. In Path A, that node is a container, and Terraform is the tool that creates it. The three files below define the node model, the Docker module that builds the containers, and the live root that exports the inventory for Ansible.
+Suppose a node has to appear before anything else can run on it. In Path A, that node is a container, and Terraform is the tool that creates it. The three files below define the node model, the Docker module that builds the containers, and the live root that exports the inventory for Ansible. Read them in that order, because each one depends on the one before.
 
 ### 1.1 Variables and the node model
 
-Start with the node model. It is a map keyed by hostname, so each entry carries its own role and GPU count. The validation block rejects any role that is not `login`, `controller` or `gpu`.
+Start with the node model. It is a map keyed by hostname, so each entry carries its own role and GPU count. A map keyed by name is useful because adding a host is one new entry, and the rest of the code picks it up without changes. The validation block rejects any role that is not `login`, `controller` or `gpu`, so a typo such as `gpus` spelled as `gpu` fails at plan time rather than in the middle of a build.
 
 ```hcl
 # terraform/live/lab/variables.tf
@@ -142,9 +144,11 @@ variable "ssh_public_key_path" {
 }
 ```
 
+Notice that `gpus` is optional. The login and controller nodes do not need a GPU count, so Terraform fills in zero for them. That default keeps the map short, and it is the reason the GPU worker entries are the only ones that name a count.
+
 ### 1.2 The Docker node module (systemd + sshd containers)
 
-The Docker module turns that map into containers. Each container gets a fixed address on a private network and a published SSH port on the host. Because the map is sorted by name, the same hostname always gets the same address and port.
+The Docker module turns that map into containers. Each container gets a fixed address on a private network and a published SSH port on the host. Because the map is sorted by name, the same hostname always gets the same address and port. Determinism matters here. If `gpu02` moved to a different address on every apply, the inventory, the Slurm config and the Prometheus targets would all need rewriting every time.
 
 ```hcl
 # terraform/modules/nodes_docker/main.tf
@@ -225,11 +229,13 @@ output "nodes" {
 }
 ```
 
-Running systemd inside containers needs cgroup settings that depend on your host OS. Docker Desktop on macOS, for example, uses a Linux VM with cgroup v2. If this gives you trouble, use Multipass VMs created by a `terraform_data` or `local-exec` wrapper, a community Multipass provider, or Vagrant. The Terraform interface stays the same, a map of nodes with addresses and ports, and that is the point.
+Walk through the `locals` block with a small example. Suppose the sorted names are `ctl01`, `gpu01`, `gpu02`, `gpu03` and `login01`. The index `i` runs from zero to four, so `ctl01` gets address `172.28.0.10` and SSH port `2200`, while `login01` gets `172.28.0.14` and port `2204`. The address comes from `cidrhost`, which picks the nth host inside the subnet, and the port is simply a counter added to a base. Both are reproducible, because sorting makes the order stable.
+
+Running systemd inside containers needs cgroup settings that depend on your host OS. Docker Desktop on macOS, for example, uses a Linux VM with cgroup v2. If this gives you trouble, use Multipass VMs created by a `terraform_data` or `local-exec` wrapper, a community Multipass provider, or Vagrant. The Terraform interface stays the same, a map of nodes with addresses and ports, and that is the point. Swapping the backend without touching the consumers is exactly what a module boundary is for.
 
 ### 1.3 Live root and generated inventory
 
-The live root calls the module and writes the Ansible inventory from its outputs. Terraform therefore decides which nodes exist, and Ansible reads the result without anyone editing a host list by hand.
+The live root calls the module and writes the Ansible inventory from its outputs. Terraform therefore decides which nodes exist, and Ansible reads the result without anyone editing a host list by hand. This is the single most important link in the lab. If a node exists in Terraform, it appears in Ansible, and nothing else has to be kept in sync.
 
 ```hcl
 # terraform/live/lab/main.tf
@@ -279,7 +285,9 @@ output "inventory_path" { value = local_file.inventory.filename }
 output "nodes"          { value = module.nodes.nodes }
 ```
 
-Run the root in the order below. The plan is the step to read carefully, because it shows what Terraform is about to change before anything happens.
+The `children` expression is the part to read slowly. It collects the distinct roles, so you get one group for `login`, one for `controller` and one for `gpu`. Then, inside each group, it lists the hosts that have that role. Each host carries its SSH host and port, its internal address and its GPU count. Ansible later uses those group names, such as `gpu`, to decide which roles run where.
+
+Run the root in the order below. The plan is the step to read carefully, because it shows what Terraform is about to change before anything happens. Read the plan before the apply, every time, even when you are sure. The habit is cheap now and expensive to lose later.
 
 ```bash
 cd terraform/live/lab
@@ -294,23 +302,23 @@ cat ../../../ansible/inventories/lab/generated/hosts.yml
 terraform plan                          # expect "No changes"
 ```
 
-The final plan should say "No changes", which tells you the live state matches the code.
+The final plan should say "No changes", which tells you the live state matches the code. If it does not, something in the cluster was changed outside Terraform, and you should find out why before going further.
 
-The inventory file is gitignored, as the skeleton shows, so CI regenerates it on every run. That is the intent. Terraform is the source of truth for whether a node exists and what its address is. Ansible's `group_vars` are the source of truth for how each node is configured.
+The inventory file is gitignored, as the skeleton shows, so CI regenerates it on every run. That is the intent. Terraform is the source of truth for whether a node exists and what its address is. Ansible's `group_vars` are the source of truth for how each node is configured. Keeping those two questions separate is what lets each tool do its own job well.
 
 ### Path B: cloud variant (summary)
 
 Path B swaps `nodes_docker` for `nodes_gcp`, a module that takes the same `nodes` map. It builds a VPC, a subnet, Cloud NAT and an IAP firewall (4.24). It also creates a service account without keys and a versioned bucket with `prevent_destroy`. Instances use an Ubuntu image with `enable-oslogin`. The `machine_type` comes from the role and GPU count, for example `e2-standard-4` for login and controller nodes, and `g2-standard-8` or `a2-highgpu-1g` for a single GPU worker. Labels support cost allocation, and `lifecycle.ignore_changes` covers metadata keys.
 
-The module returns the same output shape: `address`, `ssh_host` (the instance private IP through IAP, or an external bastion) and `ssh_port` set to 22. The live root calls the cloud module instead, and the Ansible side stays identical. Configure the remote state backend (4.19) with a versioned bucket.
+The module returns the same output shape: `address`, `ssh_host` (the instance private IP through IAP, or an external bastion) and `ssh_port` set to 22. The live root calls the cloud module instead, and the Ansible side stays identical. Configure the remote state backend (4.19) with a versioned bucket. Because the output shape is the same, swapping the module is a change to one line in the root, which is a useful test of whether your interfaces are clean.
 
 ## Part 2: Ansible: configure the cluster
 
-Terraform has created five machines, but they are still bare. Ansible turns them into a working cluster: it sets the base OS, installs the GPU stack, starts monitoring and brings up Slurm. The project settings and group variables come first, because every role reads them.
+Terraform has created five machines, but they are still bare. Ansible turns them into a working cluster: it sets the base OS, installs the GPU stack, starts monitoring and brings up Slurm. Slurm is the job scheduler that decides which node runs which job. The project settings and group variables come first, because every role reads them.
 
 ### 2.1 Project settings
 
-The `ansible.cfg` file points Ansible at the generated inventory and sets the defaults for every run. The `host_key_checking` line is the one to watch. It is switched off here only because the lab containers are rebuilt often.
+The `ansible.cfg` file points Ansible at the generated inventory and sets the defaults for every run. The `host_key_checking` line is the one to watch. It is switched off here only because the lab containers are rebuilt often. A host key is the fingerprint that identifies a server, and when it changes Ansible refuses to connect, as a safety measure. Turning that check off is safe in a throwaway lab and dangerous anywhere else.
 
 ```ini
 # ansible/ansible.cfg
@@ -329,7 +337,9 @@ pipelining           = True
 ssh_args             = -o ControlMaster=auto -o ControlPersist=60s
 ```
 
-The group variables hold the settings that apply across the cluster, plus the settings for each group. The Munge key is stored in an encrypted vault file.
+The `pipelining` and `ControlPersist` settings reuse one SSH connection for many tasks, which makes the run noticeably faster. The `forks` value sets how many hosts Ansible works on at the same time. Those settings are about speed, not safety, so they are safe to tune later.
+
+The group variables hold the settings that apply across the cluster, plus the settings for each group. The Munge key is stored in an encrypted vault file. Munge is the small authentication service that Slurm uses to check that its daemons trust each other. Its key is a shared secret, which is why it lives in the vault rather than in plain YAML.
 
 ```yaml
 # ansible/inventories/lab/group_vars/all.yml
@@ -345,12 +355,14 @@ expected_gpus_default: 8
 gpu_tools_stub: true            # Path A: install stub nvidia-smi/dcgmi; Path B: false (real driver)
 ```
 
+The `gpu_tools_stub` flag is the switch between the two paths. It is the one value you change to move from the local rehearsal to a real GPU VM. Everything else in the group variables stays the same on both paths, which keeps the two environments as close as possible.
+
 ### 2.2 Roles (compact versions)
 
-You create each role with `ansible-galaxy role init`, then write the minimum it needs. Every role has `defaults`, `tasks`, `handlers`, `meta/argument_specs.yml` and a `README.md`. The five roles below do the real work of the cluster, and each one leaves its node in a state the next role can build on.
+You create each role with `ansible-galaxy role init`, then write the minimum it needs. Every role has `defaults`, `tasks`, `handlers`, `meta/argument_specs.yml` and a `README.md`. The five roles below do the real work of the cluster, and each one leaves its node in a state the next role can build on. The order they run in matters, as the site playbook shows later.
 
-1. **`base_os`**: installs packages (`chrony`, `rsync`, `curl`, `jq`, `htop`) and creates the users and groups (`slurm`, `munge`, and `automation` with a sudoers drop-in that uses `validate: visudo -cf %s`). It writes `/etc/hosts` from the inventory with a `hostvars` loop (4.7), sets sysctl values through `ansible.posix.sysctl` and syncs time. Every task is idempotent, and a handler restarts chrony.
-2. **`gpu_stub`** (Path A) or **`nvidia_driver`** (Path B, see 4.17): installs stub scripts at `/usr/local/bin/nvidia-smi` and `dcgmi`. The stubs print plausible output based on `gpu_count`, through a Jinja template. They cover the `-L` and `--query-gpu` CSV forms, so later roles and validations run unchanged.
+1. **`base_os`**: installs packages (`chrony`, `rsync`, `curl`, `jq`, `htop`) and creates the users and groups (`slurm`, `munge`, and `automation` with a sudoers drop-in that uses `validate: visudo -cf %s`). A sudoers drop-in is a small file that grants extra rights, and `visudo -cf` checks it for syntax before it is installed, so a typo cannot lock you out of sudo. The role also writes `/etc/hosts` from the inventory with a `hostvars` loop (4.7), sets sysctl values through `ansible.posix.sysctl` and syncs time. Every task is idempotent, and a handler restarts chrony.
+2. **`gpu_stub`** (Path A) or **`nvidia_driver`** (Path B, see 4.17): installs stub scripts at `/usr/local/bin/nvidia-smi` and `dcgmi`. The stubs print plausible output based on `gpu_count`, through a Jinja template. They cover the `-L` and `--query-gpu` CSV forms, so later roles and validations run unchanged. CSV is comma-separated text, which is the format many monitoring scripts read.
 
 ```jinja
 {# roles/gpu_stub/templates/nvidia-smi.j2 #}
@@ -365,15 +377,17 @@ case "$1" in
 esac
 ```
 
-3. **`monitoring`**: runs `node_exporter` (from a package, or a binary checked by checksum) as a systemd unit. On `ctl01`, Prometheus reads a `file_sd` target file rendered from `groups['all']`, which the template in 4.7 shows. GPU nodes get a DCGM exporter stub, a small Python HTTP server that exposes fake `DCGM_FI_DEV_GPU_UTIL` metrics. On Path B you run the real exporter.
-4. **`munge_slurm`**: places the Munge key from the vault at mode `0400`, owned by `munge`. It renders `slurm.conf` and `gres.conf` from the inventory (the 4.7 Slurm node template uses `gpu_count`), starts `slurmctld` on `ctl01` and `slurmd` on the GPU nodes. Distro packages are fine for a lab, while production builds Slurm from source or packages, as Part 6 describes. Containers can fight `slurmd`, which may need `-D` flags or cgroup settings. If that happens, run Slurm in a single VM or use the lab's mock scheduler script and focus on the Ansible flow.
-5. **`node_validate`**: has task files `quick.yml` (inventory sanity) and `standard.yml` (a stub DCGM level-1 equivalent). They assert that the GPU count equals `gpu_count`, that services are active and that ports are open. The role writes a JSON report to the control node.
+The template is short, but it does real work. The `for` loops print one line per GPU, so a host with four GPUs prints four lines and a host with eight prints eight. The stub also refuses any argument it does not know, which keeps it from pretending to support things it does not.
 
-> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+3. **`monitoring`**: runs `node_exporter` (from a package, or a binary checked by checksum) as a systemd unit. An exporter is a small program that publishes a machine's numbers, such as CPU and memory, for Prometheus to collect. On `ctl01`, Prometheus reads a `file_sd` target file rendered from `groups['all']`, which the template in 4.7 shows. File-based service discovery means Prometheus reads its target list from a file that Ansible writes, so new nodes appear without restarting Prometheus. GPU nodes get a DCGM exporter stub, a small Python HTTP server that exposes fake `DCGM_FI_DEV_GPU_UTIL` metrics. On Path B you run the real exporter.
+4. **`munge_slurm`**: places the Munge key from the vault at mode `0400`, owned by `munge`. Mode `0400` means only the owner can read the file, so no other account on the machine can copy the key. It renders `slurm.conf` and `gres.conf` from the inventory (the 4.7 Slurm node template uses `gpu_count`), starts `slurmctld` on `ctl01` and `slurmd` on the GPU nodes. The `gres.conf` file tells Slurm which generic resources, here GPUs, each node has. Distro packages are fine for a lab, while production builds Slurm from source or packages, as Part 6 describes. Containers can fight `slurmd`, which may need `-D` flags or cgroup settings. If that happens, run Slurm in a single VM or use the lab's mock scheduler script and focus on the Ansible flow. Knowing when to change the approach is part of the lab, not a failure of it.
+5. **`node_validate`**: has task files `quick.yml` (inventory sanity) and `standard.yml` (a stub DCGM level-1 equivalent). DCGM level-1 is a quick GPU health check that NVIDIA's tool runs, and the stub imitates its shape. The tasks assert that the GPU count equals `gpu_count`, that services are active and that ports are open. The role writes a JSON report to the control node, so the results survive after the run ends.
+
+> **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit. The lesson is wider than this one exporter. A metric name is part of the contract between an exporter and every dashboard or alert that reads it, so a rename silently breaks those readers.
 
 ### 2.3 Site playbook with ordering and safety
 
-The site playbook runs four plays in a deliberate order. The base configuration reaches every node first. Then the GPU workers are configured in small batches, so a bad driver stops the rollout after one node. The controller starts before the workers try to join, and the workers join only after they pass validation.
+The site playbook runs four plays in a deliberate order. The base configuration reaches every node first. Then the GPU workers are configured in small batches, so a bad driver stops the rollout after one node. The controller starts before the workers try to join, and the workers join only after they pass validation. Each play is a stage with a gate, and the gates are what make a failure safe.
 
 ```yaml
 # ansible/playbooks/site.yml
@@ -409,9 +423,11 @@ The site playbook runs four plays in a deliberate order. The base configuration 
     - ansible.builtin.import_role: { name: node_validate, tasks_from: standard }
 ```
 
+The `pre_tasks` assertion catches a missing GPU count before any change is made, which is the cheapest possible failure. The `serial` line is the most important safety feature in the file. It means the GPU play runs on one small batch first. If that batch fails, `max_fail_percentage: 0` stops everything else from starting. A worked example: with three workers, the first batch is one node, so one bad driver affects one machine rather than all three.
+
 ### 2.4 Run it
 
-Run the checks first, then the playbook. You should read the diff before you trust the first run. The `--check --diff` run is a dry run that shows the changes Ansible would make on one node. On the first full run, many tasks will report changes, so read the diff. A second full run should report no changes, apart from the probes.
+Run the checks first, then the playbook. You should read the diff before you trust the first run. The `--check --diff` run is a dry run that shows the changes Ansible would make on one node. On the first full run, many tasks will report changes, so read the diff. A second full run should report no changes, apart from the probes. A probe is a read-only check, such as asking a service for its status, and it always reports as a fresh result.
 
 ```bash
 cd ansible
@@ -425,22 +441,22 @@ ansible gpu -m ansible.builtin.command -a "nvidia-smi -L" -o
 ansible controller -m ansible.builtin.command -a "sinfo" -o              # if Slurm is running
 ```
 
-Every spurious `changed` must be fixed, as 4.6 explains, until the second run is clean.
+Every spurious `changed` must be fixed, as 4.6 explains, until the second run is clean. A spurious change is a task that reports a change even though nothing really changed, and it hides real changes in the noise. A clean second run is the proof that your playbook describes the state you want, rather than a sequence that happens to work once.
 
 ## Part 3: Verification
 
-A green run of the site playbook shows that its tasks finished. It does not show that the cluster works. You write `playbooks/verify.yml` to check the cluster from the outside. It is read-only, so you can run it at any time, and it checks the following:
+A green run of the site playbook shows that its tasks finished. It does not show that the cluster works. Those are different claims. A playbook can finish successfully and still leave a node that cannot schedule a job. You write `playbooks/verify.yml` to check the cluster from the outside. It is read-only, so you can run it at any time, and it checks the following:
 
-- Every host is reachable, and chrony is synchronised, meaning the `chronyc tracking` offset stays below a threshold.
+- Every host is reachable, and chrony is synchronised, meaning the `chronyc tracking` offset stays below a threshold. Clock drift matters because Slurm and Munge both reject requests from machines whose clocks disagree too much.
 - GPU hosts report the right number of GPUs through `nvidia-smi -L | wc -l == gpu_count`. The exporter answers on port 9400, and `node_exporter` answers on port 9100.
-- On the controller, every Prometheus target is `up` (checked by querying `http://ctl01:9090/api/v1/targets` with `uri`). `sinfo` lists all GPU nodes as `idle`, and a test job (`srun -N3 hostname`) returns three distinct hostnames.
-- An NCCL-style test runs as a stub or for real. On Path B with GPUs, run `nccl-tests`. On Path A, run a stub that prints a plausible bus bandwidth, so the assertion logic still gets exercised.
+- On the controller, every Prometheus target is `up` (checked by querying `http://ctl01:9090/api/v1/targets` with `uri`). `sinfo` lists all GPU nodes as `idle`, and a test job (`srun -N3 hostname`) returns three distinct hostnames. An idle node is one that is ready and waiting, so a node stuck in another state would not take work.
+- An NCCL-style test runs as a stub or for real. NCCL is the library GPUs use to talk to each other during training. On Path B with GPUs, run `nccl-tests`. On Path A, run a stub that prints a plausible bus bandwidth, so the assertion logic still gets exercised. The stub cannot prove speed, but it proves that the check runs and fails when it should.
 
-Collect the JSON reports into `reports/`. Then print a table that summarises the pass or fail result for each node. A failed node must make the playbook exit non-zero.
+Collect the JSON reports into `reports/`. Then print a table that summarises the pass or fail result for each node. A failed node must make the playbook exit non-zero, because a CI system only notices failures through the exit code. A verification that prints a red line but still exits zero is invisible to the pipeline.
 
 ## Part 4: Pipeline
 
-The pipeline should run the whole flow on every pull request and on a schedule, as 4.2 describes. The sketch below uses GitHub Actions. Adapt it if you use GitLab CI instead.
+The pipeline should run the whole flow on every pull request and on a schedule, as 4.2 describes. The sketch below uses GitHub Actions. Adapt it if you use GitLab CI instead. A pipeline is the automated version of the steps you ran by hand, so anyone can repeat the same sequence and get the same result.
 
 ```yaml
 # ci/lab-pipeline.yml  (copy to .github/workflows/)
@@ -485,11 +501,13 @@ jobs:
       run: cd terraform/live/lab && terraform destroy -input=false -auto-approve
 ```
 
-The ephemeral lab applies and destroys on the runner, so no state has to persist between runs. For Path B, use remote state, OIDC, separate plan and apply steps, and approvals, as 4.2 and 4.23 describe.
+Read the file as three stages. The `static` job is cheap, and it fails fast on formatting, lint and secrets. The `plan-and-test` job is expensive, and it runs only when the cheap checks pass. The destroy step at the bottom is the safety net that runs no matter what happened above it.
+
+The ephemeral lab applies and destroys on the runner, so no state has to persist between runs. For Path B, use remote state, OIDC, separate plan and apply steps, and approvals, as 4.2 and 4.23 describe. The concurrency line matters on Path B, because two runs must never change the same state at once.
 
 ## Part 5: Day-2 exercises
 
-A cluster that works on day one still has to survive changes. Each exercise below is a small operation you will meet after the first build, and each one shows whether your code and your checks hold up.
+A cluster that works on day one still has to survive changes. Each exercise below is a small operation you will meet after the first build, and each one shows whether your code and your checks hold up. Do them in order, because later ones assume the earlier ones are finished.
 
 1. Start by adding a node. Put `gpu04 = { role = "gpu", gpus = 8 }` into `var.nodes` through a pull request, then read the plan. It should add one new container and change the inventory, and it should leave `gpu01` to `gpu03` untouched. Apply it, run Ansible with `--limit gpu04`, then run the full playbook. Finally, verify that Slurm picks up the new node.
 2. Next, remove a node safely. Drain `gpu03` in Slurm with `scontrol update ... State=DRAIN`. Run a playbook that removes it from the Slurm config and from monitoring, and only then remove it from Terraform. Confirm that only that container is destroyed.
@@ -505,7 +523,7 @@ A cluster that works on day one still has to survive changes. Each exercise belo
 
 ## Part 6: Teardown and verification of cleanup
 
-Teardown is not finished when `terraform destroy` returns, so you check for anything it missed. On Path A, look for leftover containers and networks. On Path B, list the instances, disks, addresses and buckets that carry the cluster label.
+Teardown is not finished when `terraform destroy` returns, so you check for anything it missed. Terraform only destroys what its state knows about, and anything created by hand or by a side process survives. On Path A, look for leftover containers and networks. On Path B, list the instances, disks, addresses and buckets that carry the cluster label.
 
 ```bash
 cd terraform/live/lab && terraform destroy
@@ -518,11 +536,11 @@ gcloud compute addresses list
 gcloud storage buckets list --filter="name~gpulab"      # buckets with prevent_destroy need a deliberate override
 ```
 
-Check billing the next day for stragglers, such as disks, IPs, snapshots and reserved capacity.
+Check billing the next day for stragglers, such as disks, IPs, snapshots and reserved capacity. A straggler is anything that keeps charging after its parent is gone, and a day's delay is usually enough for the charges to show up.
 
 ## Deliverables and review checklist
 
-A reviewer should be able to inspect the following items, so keep each one ready to show.
+A reviewer should be able to inspect the following items, so keep each one ready to show. Together they prove the lab worked, and they give a reviewer enough to check the work without rerunning it.
 
 - A Git repository with a clear history of the lab changes, made in small PRs, plus CODEOWNERS and a README with a quick start and teardown steps.
 - The `terraform plan` and `apply` outputs, saved with secrets redacted, and the generated inventory.
@@ -531,7 +549,7 @@ A reviewer should be able to inspect the following items, so keep each one ready
 - The pipeline definition, one green run, and one deliberately failed run (for idempotency or validation), each with an explanation.
 - A short postmortem note for the drift and failure-injection exercises. It should cover what happened, how it was detected, how it was fixed, and how to prevent it.
 
-Then answer these self-review questions about your own build.
+Then answer these self-review questions about your own build. Write the answers down, because the act of writing them shows you the gaps.
 
 1. Where is the source of truth for node existence? For node configuration? How does information flow between them?
 2. What prevents a typo from applying a change to all nodes at once?
@@ -541,7 +559,7 @@ Then answer these self-review questions about your own build.
 
 ## Common mistakes in this lab
 
-These are the mistakes to watch for as you work through the lab.
+These are the mistakes to watch for as you work through the lab. Most of them feel harmless at the time, which is exactly why they are on the list.
 
 - Leaving `host_key_checking = False` in place and forgetting to turn it back on in real environments.
 - Editing the generated inventory by hand, or committing it.
@@ -553,7 +571,7 @@ These are the mistakes to watch for as you work through the lab.
 
 ## Interview angles
 
-You may be asked questions like these.
+You may be asked questions like these. For each one, name the two tools, the hand-off between them, and the check that proves the result.
 
 - "Walk me through provisioning and configuring a small GPU cluster from nothing, end to end, with IaC."
 - "How do Terraform and Ansible hand off information? What are the alternatives, such as dynamic inventory plugins, tags or SSM?"
@@ -563,12 +581,14 @@ You may be asked questions like these.
 
 ## Exercises
 
-1. Trace the hand-off from Terraform to Ansible, from `var.nodes` through `local_file.inventory` to `hosts.yml`. Use `generate_ansible_inventory_from_tf_nodes()` in `code/part04/gpu_cluster_e2e_bridge.py` to explain how `terraform/live/lab/main.tf` turns the `module.nodes.nodes` output map into a grouped Ansible YAML inventory. The groups are `login`, `controller` and `gpu`, and each host carries `ansible_host`, `ansible_port`, `node_ip` and `gpu_count`. Then explain why `ansible/inventories/lab/generated/` is listed in `.gitignore`.
-2. Compare two backends behind one module contract. Set Path A (`terraform/modules/nodes_docker`, which creates systemd and sshd containers on `172.28.0.0/24` with `cidrhost("172.28.0.0/24", 10 + i)` and host ports `2200 + i`) against Path B (`terraform/modules/nodes_gcp`, which creates a GCP VPC, Cloud NAT, an IAP firewall, a CMEK bucket and VMs). Explain why identical module inputs and outputs let `ansible/playbooks/site.yml` run unchanged on both.
-3. Trace the ordered configuration in `site.yml`, and compare the `gpu_stub` and `nvidia_driver` roles. Use `render_stub_nvidia_smi_list()` in `code/part04/gpu_cluster_e2e_bridge.py` to follow the 4 plays in `ansible/playbooks/site.yml`. They are `Base for every node`, then `GPU nodes` with `serial: ['34%', '100%']` and `max_fail_percentage: 0`, then `Controller services`, then `Workers join the scheduler`. Explain how `roles/gpu_stub/templates/nvidia-smi.j2` lets CI test every downstream role and assertion without physical GPUs.
-4. Verify the cluster end to end with `playbooks/verify.yml`. Use `verify_cluster_end_to_end()` to list the five checks in `verify.yml`: SSH reachability with the `chronyc tracking` offset; the GPU count from `nvidia-smi -L`; the node and DCGM exporter ports `9100` and `9400`; Prometheus `/api/v1/targets` with every target `up`; and Slurm `sinfo` showing `idle` nodes, plus `srun -N3 hostname`. Then explain why a green `site.yml` recap is not enough without `verify.yml`.
-5. Trace the unified pipeline in `ci/lab-pipeline.yml`. Explain what the `static` job checks. Explain why `plan-and-test` runs `ansible-playbook playbooks/site.yml` twice and greps for `changed=0` before it runs `verify.yml`. Explain why `terraform destroy` runs under `if: always()`. Finally, explain how the nightly cron (`30 3 * * *`) detects infrastructure drift with `terraform plan -detailed-exitcode` and configuration drift with `ansible-playbook --check --diff`.
-6. Work through the Day-2 operations: scaling out, scaling in safely, a canary driver upgrade, and Munge key rotation. Write out the exact command sequence to (a) add `gpu04` without disrupting `gpu01..03`; (b) remove `gpu03` safely by draining it in Slurm and updating `slurm.conf` and Prometheus before `terraform apply` destroys the node; and (c) rotate the Ansible-Vault-encrypted `munge.key` (`mode: "0400"`, `no_log: true`) across `ctl01` and `gpu01..03`.
+These exercises ask you to trace the lab's files and explain what each link does. Work through them with the files open, and write each explanation in your own words before you compare it with the chapter.
+
+1. A teammate asks how the node list becomes the Ansible inventory. Trace the hand-off from Terraform to Ansible, from `var.nodes` through `local_file.inventory` to `hosts.yml`. Use `generate_ansible_inventory_from_tf_nodes()` in `code/part04/gpu_cluster_e2e_bridge.py` to explain how `terraform/live/lab/main.tf` turns the `module.nodes.nodes` output map into a grouped Ansible YAML inventory. Name the groups, which are `login`, `controller` and `gpu`, and name the fields each host carries, which are `ansible_host`, `ansible_port`, `node_ip` and `gpu_count`. Then explain why `ansible/inventories/lab/generated/` is listed in `.gitignore`.
+2. A team wants the same playbook to run on a laptop and in the cloud. Compare two backends behind one module contract. Set Path A (`terraform/modules/nodes_docker`, which creates systemd and sshd containers on `172.28.0.0/24` with `cidrhost("172.28.0.0/24", 10 + i)` and host ports `2200 + i`) against Path B (`terraform/modules/nodes_gcp`, which creates a GCP VPC, Cloud NAT, an IAP firewall, a CMEK bucket and VMs). Explain why identical module inputs and outputs let `ansible/playbooks/site.yml` run unchanged on both.
+3. A new engineer wonders how the GPU stub lets the whole pipeline run without GPUs. Trace the ordered configuration in `site.yml`. Use `render_stub_nvidia_smi_list()` in `code/part04/gpu_cluster_e2e_bridge.py` to follow the 4 plays in `ansible/playbooks/site.yml`. They are `Base for every node`, then `GPU nodes` with `serial: ['34%', '100%']` and `max_fail_percentage: 0`, then `Controller services`, then `Workers join the scheduler`. Explain how `roles/gpu_stub/templates/nvidia-smi.j2` lets CI test every downstream role and assertion without physical GPUs.
+4. A team says a green playbook proves the cluster works. Verify the cluster end to end with `playbooks/verify.yml`. Use `verify_cluster_end_to_end()` to list the five checks in `verify.yml`. They cover SSH reachability with the `chronyc tracking` offset, the GPU count from `nvidia-smi -L`, the node and DCGM exporter ports `9100` and `9400`, Prometheus `/api/v1/targets` with every target `up`, and Slurm `sinfo` showing `idle` nodes with `srun -N3 hostname`. Then explain why a green `site.yml` recap is not enough without `verify.yml`.
+5. A reviewer wants to know what stops a bad change from reaching production through CI. Trace the unified pipeline in `ci/lab-pipeline.yml`. Explain what the `static` job checks. Explain why `plan-and-test` runs `ansible-playbook playbooks/site.yml` twice and greps for `changed=0` before it runs `verify.yml`. Explain why `terraform destroy` runs under `if: always()`. Finally, explain how the nightly cron (`30 3 * * *`) detects infrastructure drift with `terraform plan -detailed-exitcode` and configuration drift with `ansible-playbook --check --diff`.
+6. An operator must change the cluster on Day 2 without causing an outage, and the change involves three separate operations. Write the exact command sequence to add `gpu04` without disrupting `gpu01` to `gpu03`. Then write the sequence to remove `gpu03` safely, draining it in Slurm and updating `slurm.conf` and Prometheus before `terraform apply` destroys the node. Finally, write the sequence to rotate the Ansible-Vault-encrypted `munge.key` with `mode: "0400"` and `no_log: true` across `ctl01` and `gpu01` to `gpu03`.
 
 ## Checkpoint questions (20)
 
@@ -729,4 +749,4 @@ In Path A, disposable local Docker containers are destroyed and recreated on `12
   - `nvidia-devops` (`volume-10/04-ansible-for-infrastructure-automation.md`, `volume-10/05-terraform-for-infrastructure-as-code.md`, `volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md`, and `volume-10/17-git-for-infrastructure-and-operations.md`).
 - **Run here:** `python3 code/part04/gpu_cluster_e2e_bridge_lab.py` (2 passed, 0 failed).
 - **Explicitly labelled inferences:** The `generate_ansible_inventory_from_tf_nodes`, `render_stub_nvidia_smi_list`, and `verify_cluster_end_to_end` models in `code/part04/gpu_cluster_e2e_bridge.py` and the `gpu-lab` Terraform + Ansible + GitHub Actions capstone project are the author's constructions synthesizing Part 4 (`4.1`–`4.26`).
-- **Not verified on live hardware:** Interactive Docker/Multipass/GCP Terraform and Ansible executions (`172.28.0.0/24`, `2200..2204`, `0644`, `0400`, `forks = 20`, `ControlPersist=60s`, `550` / `555`, `9400`, `9100`, `9090`, `cron: "30 3 * * *"`, `500` nodes, `3 a.m.`) are marked (`untested here` / `not been executed`) where not executed by `gpu_cluster_e2e_bridge_lab.py`.
+- **Not verified on live hardware:** Interactive Docker/Multipass/GCP Terraform and Ansible executions (`172.28.0.0/24`, `2200..2204`, `0644`, `0400`, `forks = 20`, `ControlPersist=60s`, `550` / `555`, `9400`, `9100`, `9090`, `cron: "30 3 * * *"`, `500` nodes, `3 a.m.`) are not run here, except where `gpu_cluster_e2e_bridge_lab.py` executes them.

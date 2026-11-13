@@ -18,13 +18,13 @@ lab_venue: "GCP / GKE"
 | Priority tier | 0 |
 | Lab venue | Ubuntu 22.04/24.04 or RHEL 9 nodes with NVIDIA GPUs (A100/H100 class for NVSwitch topics); ConnectX NICs optional; stub scripts for rehearsal on plain VMs |
 | Part | Part 4: Automation and infrastructure as code |
-| Status | Drafted, labs **untested** |
+| Status | Drafted, labs not run on live hardware |
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that has just arrived. The GPUs are in place, but nothing on the machine works yet. Someone has to bring up a long stack of software in the right order. It starts with BIOS and firmware settings, and a kernel with matching headers. Next come the RDMA networking drivers (MLNX_OFED or DOCA), the NVIDIA driver, `nvidia-persistenced`, and Fabric Manager on NVSwitch systems. After those come the GPUDirect module `nvidia-peermem`, DCGM and its exporters for telemetry, and the container toolkit. Kernel tuning, filesystem mounts, and the scheduler or Kubernetes agent finish the stack.
+Picture a GPU node that has just come off the delivery truck. The GPUs are seated and the cables are in, but the machine can do very little useful work yet. Someone has to bring up a long stack of software, and the order matters. The stack starts with BIOS and firmware settings, then a kernel with matching headers. Next come the RDMA networking drivers (MLNX_OFED or DOCA), the NVIDIA driver, `nvidia-persistenced`, and Fabric Manager on NVSwitch systems. After those come the GPUDirect module `nvidia-peermem`, DCGM and its exporters for telemetry, and the container toolkit. Kernel tuning, filesystem mounts, and the scheduler or Kubernetes agent finish the stack.
 
-Each link in that chain has to be correct, and the links have to work together. Get the order wrong and you spend your time debugging `modprobe` failures. Get the versions wrong and a fleet can silently run at half speed. Skip validation and the first sign of a bad node may be a failed 64-node training job. Ansible's job is to bring nodes up, upgrade them and repair them in the same order every time, with a check after each step, across hundreds or thousands of machines.
+Each link in that chain has to be correct, and the links have to work together. Think of a row of dominoes laid in a fixed order. A tile placed in the wrong spot makes the rest fall in a confusing way, often far from the real mistake. Install the GPU driver before the RDMA stack, and you spend an afternoon debugging `modprobe` failures that look like driver bugs. Mix a driver with a Fabric Manager from another branch, and a fleet can run at half speed while every job still reports success. Skip validation, and the first sign of a bad node may be a failed 64-node training job that wasted a long run of cluster time. Ansible's job is to bring nodes up, upgrade them and repair them in the same order every time, with a check after each step, across hundreds or thousands of machines.
 
 ## Prerequisites and outcomes
 
@@ -40,7 +40,7 @@ Before you start, you need chapters 4.3 to 4.16, plus the Linux and GPU basics f
 
 ## 1. The node bring-up dependency graph
 
-When a freshly built node has a driver that will not load, you need to know which step went wrong. The graph below shows the order. Read each arrow as a dependency, so the box at the end of an arrow needs the box at its start. The round markers show where a reboot or module reload has to happen.
+Suppose a freshly built node comes up with a driver that will not load. Before you touch anything, you need to know which step went wrong, and that means knowing the order the steps depend on. The graph below shows that order. Read each arrow as "needs", so the box at the end of an arrow needs the box at its start. The round markers show where a reboot or module reload has to happen, because the kernel will not swap modules under a running driver.
 
 ```mermaid
 flowchart TB
@@ -62,15 +62,15 @@ flowchart TB
   SCH --> OK["Node released to workloads"]
 ```
 
-The graph gives you five rules. Install the RDMA stack before the GPU driver, because the driver's peer-memory module binds to it. Reboot or reload modules at every boundary where kernel modules change. Start Fabric Manager only after a matching driver is loaded, and before CUDA workloads run. Validate the node before the scheduler sees it. Register the node with the scheduler last.
+The graph gives you five rules, and each one prevents a failure you will eventually meet. First, install the RDMA stack before the GPU driver, because the driver's peer-memory module binds to it. If the order is reversed, `nvidia_peermem` loads without its RDMA partner and GPUDirect quietly stops working. Second, reboot or reload modules at every boundary where kernel modules change. Third, start Fabric Manager only after a matching driver is loaded, and before CUDA workloads run. Fourth, validate the node before the scheduler sees it, so a bad GPU never receives a job. Fifth, register the node with the scheduler last. Each rule is a dependency in the graph, so you can check your playbook against the arrows instead of against memory.
 
-If you use the GPU Operator on Kubernetes, it can manage the driver container, toolkit and DCGM itself (Part 11). Ansible's role then narrows to OS, kernel, OFED, and kubelet.
+If you use the GPU Operator on Kubernetes, it can manage the driver container, toolkit and DCGM itself (Part 11). Ansible's role then narrows to OS, kernel, OFED, and kubelet. The arrows stay the same either way. Only the component that draws them changes.
 
-When you write a bring-up playbook, follow the arrows rather than the order in which you remember the packages.
+When you write a bring-up playbook, follow the arrows rather than the order in which you remember the packages. Memory tends to skip the quiet steps, such as the reboot between OFED and the driver, and those are the steps that fail later.
 
 ## 2. Project structure
 
-A bring-up playbook is easier to trust when its folders and task order mirror the graph. The layout below keeps inventory, playbooks and roles apart.
+A bring-up playbook is easier to trust when its folders and task order mirror the graph. Picture a new engineer who opens the repository at 2 a.m. during a rack failure. If the folder names say where things live, that engineer finds the driver role in seconds and does not edit the wrong file. The layout below keeps inventory, playbooks and roles apart, so a change to one GPU model does not leak into every node.
 
 ```text
 gpu-platform/
@@ -90,7 +90,7 @@ gpu-platform/
     ├── gpu_tuning/ gpu_validate/ slurm_client/ k8s_node_prereqs/ node_exporter/
 ```
 
-The bring-up playbook should read like the graph, so here is the first one.
+The bring-up playbook should read like the graph, top to bottom, so a reviewer can compare the two side by side. Here is the first one. Each line in `roles:` is one box from the graph, in the same order, and Ansible runs them in that sequence for every host in the batch.
 
 ```yaml
 # playbooks/gpu_bringup.yml
@@ -113,15 +113,15 @@ The bring-up playbook should read like the graph, so here is the first one.
     - { role: slurm_client, tags: [scheduler], when: "scheduler | default('') == 'slurm'" }
 ```
 
-Notice the `serial` line. The playbook brings nodes up in batches of 10 by default, and `max_fail_percentage: 10` sets how many failures the run tolerates. Each role carries a tag, so you can run a single stage on its own. When you add a role, place it in the playbook at the point the graph says it belongs.
+Notice the `serial` line. Without it, Ansible would start the same install on every host at once, and a bad package would reach the whole rack in one step. With `serial: 10`, the playbook finishes a batch of 10 nodes before it starts the next. `max_fail_percentage: 10` sets how many failures the run tolerates before it stops. Each role carries a tag, so you can run a single stage on its own, for example `--tags driver` after a driver fix, without repeating the OS work. When you add a role, place it where the graph says it belongs. A role placed too early will fail for a reason that has nothing to do with its own code.
 
 ## 3. Roles in detail
 
-Each role does one job, and that job is easier to get right once you know the hardware. Read the roles in the order they run.
+Each role does one job, and that job is easier to get right once you know the hardware underneath it. Read the roles in the order they run, because each one assumes the roles before it have already left the node in a known state. A role that writes a config file assumes the package is installed. A role that starts a service assumes the kernel module is loaded. When a role fails, the first question is which assumption broke.
 
 ### 3.1 gpu_facts: know the hardware before changing it
 
-Consider a node where one GPU has dropped off the PCIe bus after a failed power cycle. If the playbook keeps going, it installs software on a machine that is missing a GPU. The `gpu_facts` role prevents that by looking first.
+Consider a node where one GPU has dropped off the PCIe bus after a failed power cycle. The server still boots, the operating system still runs, and seven GPUs still answer. If the playbook keeps going, it installs software on a machine that is missing a GPU, and the job queue later sends an 8-GPU job to a 7-GPU node. The `gpu_facts` role prevents that by looking first. It asks the hardware what is there, and it records the answer before anything changes.
 
 ```yaml
 - name: Detect NVIDIA devices
@@ -152,31 +152,31 @@ Consider a node where one GPU has dropped off the PCIe bus after a failed power 
 - ansible.builtin.setup: { filter: ansible_local }
 ```
 
-The role runs three discovery commands before it changes anything. It counts NVIDIA devices, checks for NVSwitch, and counts ConnectX and BlueField NICs. It then publishes the results as local facts that later roles can read.
+The role runs three discovery commands before it changes anything. The first counts NVIDIA devices by vendor ID `10de`, which `lspci` reads from the PCI bus. The second checks for NVSwitch chips, which only HGX and DGX boards carry. The third counts ConnectX and BlueField NICs by their vendor ID `15b3`. Each command has `failed_when: false`, because a server with no NVSwitch should not fail the play just because the search found nothing. The role then writes the results to a small JSON file under `/etc/ansible/facts.d/`. Ansible reads that file on the next fact gathering and exposes it as `ansible_local`, so later roles can ask "is there an NVSwitch here?" without running the search again.
 
-Compare the discovered count with the inventory's intended `expected_gpus`. A mismatch must stop the bring-up and raise a hardware ticket instead of continuing. Treat that comparison as a gate you never skip.
+Compare the discovered count with the inventory's intended `expected_gpus`. A mismatch must stop the bring-up and raise a hardware ticket instead of continuing. Think of it as a gate at the door. The software installed after the gate assumes all eight GPUs exist, so a missing GPU found later costs you the whole driver install to rediscover. Treat that comparison as a gate you never skip.
 
 ### 3.2 base_os and kernel_tuning
 
-Start with the basics. The base OS role sets time sync with `chrony`, consistent users and UIDs (SSSD/LDAP or static), SSH hardening, and package repositories from internal mirrors. It also deals with `unattended-upgrades`, which you disable or control, because a competing apt process caused the incident in section 7. Pin the kernel version with `dpkg_selections hold` or `versionlock`. Install matching headers for DKMS with `linux-headers-$(uname -r)`.
+Start with the basics, because every later role depends on them. The base OS role sets time sync with `chrony`. Clocks that drift apart make log timelines useless when you chase a fleet-wide fault. The role also sets consistent users and UIDs (SSSD/LDAP or static), applies SSH hardening, and points package repositories at internal mirrors. It deals with `unattended-upgrades`, which you disable or control, because a competing apt process caused the incident in section 7. A background upgrade that installs a new kernel in the middle of your bring-up is the kind of surprise that breaks DKMS later. Pin the kernel version with `dpkg_selections hold` or `versionlock`. Then install matching headers for DKMS with `linux-headers-$(uname -r)`, so the driver can build against the kernel that is actually running.
 
-Kernel parameters go into GRUB drop-ins through `GRUB_CMDLINE_LINUX_DEFAULT`. The parameters include `intel_iommu=on iommu=pt` or `amd_iommu=on`, `default_hugepagesz=1G hugepagesz=1G hugepages=N` where you use hugepages, and `transparent_hugepage=madvise`. Add `isolcpus` or `nohz_full` only when you have a reason, and set `pci=realloc` where the situation calls for it. Also set `processor.max_cstate`, and set `numa_balancing=disable` as a sysctl. Apply the changes with `update-grub` or `grub2-mkconfig`, followed by a controlled reboot.
+Kernel parameters go into GRUB drop-ins through `GRUB_CMDLINE_LINUX_DEFAULT`. GRUB is the boot loader, and this variable is the list of options handed to the kernel on every boot. The parameters include `intel_iommu=on iommu=pt` or `amd_iommu=on`, which the RDMA and GPU passthrough paths need. They also include `default_hugepagesz=1G hugepagesz=1G hugepages=N` where you use hugepages, and `transparent_hugepage=madvise`, which lets applications ask for huge pages rather than receiving them unpredictably. Add `isolcpus` or `nohz_full` only when you have a measured reason, because each one takes CPU cores away from the general scheduler. Set `pci=realloc` where the BIOS leaves PCIe address space too small for every GPU. Also set `processor.max_cstate`, which caps how deep idle cores may sleep. Set `numa_balancing=disable` as a sysctl, so the kernel does not move memory pages between sockets behind your back. Apply the changes with `update-grub` or `grub2-mkconfig`, followed by a controlled reboot. A parameter that is wrong in GRUB will not show up until the next boot, which is why the reboot belongs in the same change.
 
-For networking and memory, the role sets sysctls such as `net.core.rmem_max`, `vm.max_map_count` and `vm.swappiness=1`. It writes `limits.d` entries, with memlock unlimited for RDMA and a high nofile. It also sets tuned or `cpupower` governors, and IRQ affinity through an `irqbalance` policy or explicit pinning for NICs. It sets `ulimit` values in systemd units, disables services you do not need, and keeps `/dev/shm` sizes consistent for NCCL and PyTorch. The details are in Parts 1, 9 and 12.
+For networking and memory, the role sets sysctls such as `net.core.rmem_max`, `vm.max_map_count` and `vm.swappiness=1`. A sysctl is a kernel setting you change at runtime through `/proc/sys`. The `vm.swappiness=1` value tells the kernel to avoid swapping almost entirely, because swapping a training process to disk stalls every GPU that waits on it. The role writes `limits.d` entries, with memlock unlimited for RDMA, since RDMA pins memory so the NIC can read it directly, and a high nofile limit for many open file handles. It also sets tuned or `cpupower` governors, and IRQ affinity through an `irqbalance` policy or explicit pinning for NICs. An IRQ is the interrupt a device raises to ask the CPU for attention, and pinning it keeps NIC interrupts off the cores that feed the GPUs. The role sets `ulimit` values in systemd units, disables services you do not need, and keeps `/dev/shm` sizes consistent for NCCL and PyTorch. Those shared-memory sizes matter because data loaders pass batches through `/dev/shm`, and a small default size makes them fail with bus errors. The details are in Parts 1, 9 and 12.
 
-Four tuning insights that belong in this role. The first concerns GPU bubbles. The GPU does the matrix math, but the host CPU must keep launching CUDA kernels and preparing data batches. When a CPU core falls into a deep sleep state (`C-state`), waking it adds microseconds of jitter. That jitter piles up as GPU bubbles, which are idle gaps between kernels. Set the BIOS profile to High Performance, lock the Linux CPU frequency governor to `performance` with `cpupower frequency-set -g performance`, and disable deep C-states. Kernel launch latency then stays predictable.
+Four tuning insights belong in this role, and the first one is about GPU bubbles. A GPU bubble is an idle gap on the GPU, a stretch where the device waits for work and does nothing. The GPU does the matrix math, but the host CPU must keep launching CUDA kernels and preparing data batches. Picture a line cook who has to hand the next plate to the grill every few seconds. If the cook dozes off between tickets, the grill sits cold, even though the grill itself is fine. When a CPU core falls into a deep sleep state (`C-state`), waking it adds microseconds of delay. Each delay is small, but they add up across millions of kernel launches, and the result is a GPU that runs in short bursts. Set the BIOS profile to High Performance, lock the Linux CPU frequency governor to `performance` with `cpupower frequency-set -g performance`, and disable deep C-states. Launch latency then stays predictable from one step to the next.
 
-The second insight is NUMA affinity. On a dual-socket server, a data-loader process on NUMA node 0 may feed a GPU attached to the PCIe root complex on NUMA node 1. Host-to-device pinned-memory transfers (`H2D`) then cross the inter-socket UPI or Infinity Fabric link. That nearly doubles memory access latency. Capture `nvidia-smi topo -m` in the playbook. Configure the Kubernetes kubelet with `--topology-manager-policy=single-numa-node` (or `restricted`) and `--cpu-manager-policy=static`, and verify `pin_memory=True` and `non_blocking=True` readiness.
+The second insight is NUMA affinity. NUMA stands for non-uniform memory access. On a dual-socket server, each CPU socket has its own memory, and reaching the other socket's memory takes a longer trip over the link between them. Now picture a data-loader process on NUMA node 0 feeding a GPU attached to the PCIe root complex on NUMA node 1. The batch has to cross the inter-socket UPI or Infinity Fabric link on every copy, and that nearly doubles memory access latency. Capture `nvidia-smi topo -m` in the playbook, so you can see which GPUs and NICs sit behind which socket before any job runs. Configure the Kubernetes kubelet with `--topology-manager-policy=single-numa-node` (or `restricted`) and `--cpu-manager-policy=static`, so the scheduler keeps a pod's CPUs and GPU on one socket. Then verify `pin_memory=True` and `non_blocking=True` in the data loader, so host-to-device copies use pinned memory and run asynchronously.
 
-On integrated Grace Blackwell superchips, the Grace CPU and the Blackwell GPU share coherent memory over NVLink-C2C at up to 900 GB/s. An NVL72 rack domain provides 130 TB/s of aggregate bidirectional NVLink bandwidth, or 1.8 TB/s per GPU.
+On integrated Grace Blackwell superchips, the Grace CPU and the Blackwell GPU share coherent memory over NVLink-C2C at up to 900 GB/s. Coherent means both processors see the same memory contents without an explicit copy, so the CPU-to-GPU distance shrinks a great deal. An NVL72 rack domain provides 130 TB/s of aggregate bidirectional NVLink bandwidth, or 1.8 TB/s per GPU. These are the numbers your NUMA plan should match, because a topology that mismatches them loses that bandwidth at the first copy.
 
-The third insight is page-cache write-back. Large training runs write multi-gigabyte checkpoints in bursts. Tuning `vm.dirty_background_ratio` and `vm.dirty_ratio`, along with asynchronous or distributed checkpointing, keeps Linux page-cache write-back from freezing training steps. Preloading `jemalloc` (`narenas`, `background_thread:true`) or `tcmalloc` reduces host RAM fragmentation in multi-worker Python data loaders.
+The third insight is page-cache write-back. The page cache is the memory Linux uses to hold file data before it reaches disk. Large training runs write multi-gigabyte checkpoints in bursts, and the kernel can hold a large amount of dirty data before flushing it. When the flush finally starts, it competes with the training process for I/O and stalls the step that was running. Tuning `vm.dirty_background_ratio` and `vm.dirty_ratio` makes the kernel start writing earlier and in smaller pieces. Asynchronous or distributed checkpointing does the rest by moving the write off the training loop. Preloading `jemalloc` (`narenas`, `background_thread:true`) or `tcmalloc` reduces host RAM fragmentation in multi-worker Python data loaders, because each worker otherwise grows its own pool of small allocations that never returns cleanly.
 
-The fourth insight covers ECC, clocks and MIG. Keep ECC enabled on production AI fleets. A single undetected cosmic-ray bit flip during a multi-week training run can silently corrupt gradients into `NaN`. Changing ECC requires a GPU reset or a reboot. For acceptance benchmarks, use locked clocks (`nvidia-smi -lgc`), so thermal throttling on later runs does not skew the comparison. Use MIG for multi-tenant small-model inference. The Blackwell B200 profiles include `MIG 1g.23gb` x7, `1g.45gb` x4, `2g.45gb` x3, `3g.90gb` x2, `4g.90gb` x1, or `7g.180gb` x1. Large multi-GPU training jobs turn MIG off so they can use full GPUs.
+The fourth insight covers ECC, clocks and MIG. ECC (error-correcting code) is the memory protection that detects and fixes bit flips, and it is the reason to keep it on. A single undetected cosmic-ray bit flip during a multi-week training run can silently corrupt gradients into `NaN`, which is the not-a-number value that poisons every later step. Nothing crashes, and the loss curve simply goes bad days later. Changing ECC requires a GPU reset or a reboot, so decide it in the build, not in the middle of a run. For acceptance benchmarks, use locked clocks (`nvidia-smi -lgc`), so thermal throttling on later runs does not skew the comparison. Without locked clocks, the same benchmark can look faster on a cold rack than on a warm one, and the difference has nothing to do with the software. MIG (Multi-Instance GPU) splits one physical GPU into isolated slices, and it suits many small inference jobs that each need a fraction of the device. The Blackwell B200 profiles include `MIG 1g.23gb` x7, `1g.45gb` x4, `2g.45gb` x3, `3g.90gb` x2, `4g.90gb` x1, or `7g.180gb` x1. Large multi-GPU training jobs turn MIG off so they can use full GPUs and the full NVLink path.
 
 ### 3.3 mofed (MLNX_OFED / DOCA-Host)
 
-Suppose someone bumps the OFED version for one rack. The installer replaces the in-box kernel networking drivers on every node in that rack, and a reboot follows. Several steps here can break a node quietly, so each one needs care.
+Suppose someone bumps the OFED version for one rack on a Tuesday afternoon. The installer replaces the in-box kernel networking drivers on every node in that rack, and a reboot follows. Nothing about the change looks risky in the pull request, yet several steps here can break a node quietly, so each one needs care. OFED (OpenFabrics Enterprise Distribution) is NVIDIA's and Mellanox's bundle of RDMA drivers and user-space tools, and it is the layer the NICs need before any GPU traffic can leave the node.
 
 ```yaml
 - name: Download and verify the OFED bundle
@@ -206,9 +206,11 @@ Suppose someone bumps the OFED version for one rack. The installer replaces the 
 - ansible.builtin.meta: flush_handlers       # reboot now, before the NVIDIA driver build
 ```
 
-The install task uses `async: 3600`, so a long build does not hold the SSH session. Considerations come next. The installer replaces in-box kernel networking drivers, so version pinning, kernel matching (`--add-kernel-support` rebuilds for a running kernel) and a rollback path all matter. Firmware updates (`mlxfwmanager`, `--without-fw-update`) are a separate, carefully staged workflow, covered in Part 9. The idempotency guard should compare installed and requested versions (`ofed_info -s`), so that version bumps re-run the installer. DOCA-Host is the successor bundle for ConnectX and BlueField. It uses repository packages (`doca-ofed`), which are easier to automate than the ISO or tarball installer.
+The install task uses `async: 3600`, so a long build does not hold the SSH session. A kernel module build can run for many minutes, and a dropped SSH connection in the middle would leave the install half finished. With `async`, Ansible starts the job, then polls it every 60 seconds until it completes or the hour runs out. Now look at the rest of the install task, because several parts of it deserve attention. The installer replaces in-box kernel networking drivers, so version pinning, kernel matching (`--add-kernel-support` rebuilds for a running kernel) and a rollback path all matter. The rollback path matters most. If the new OFED fails on one rack, you need to know which version to reinstall, and where its tarball lives, before the change starts.
 
-The reboot handler looks like this.
+Firmware updates (`mlxfwmanager`, `--without-fw-update`) are a separate, carefully staged workflow, covered in Part 9. Keep firmware out of the same run as the driver, so a problem can be traced to one change. The idempotency guard should compare installed and requested versions (`ofed_info -s`), so that version bumps re-run the installer. The `creates:` guard in the code above only checks for a file, so it never re-runs when the version changes. DOCA-Host is the successor bundle for ConnectX and BlueField. It uses repository packages (`doca-ofed`), which are easier to automate than the ISO or tarball installer, because the package manager already tracks versions for you.
+
+The reboot handler is the piece that makes the new driver real. Until the node reboots, the old modules keep running, so a successful install alone changes nothing on the running system. Here is the handler.
 
 ```yaml
 - name: reboot node
@@ -220,11 +222,11 @@ The reboot handler looks like this.
     test_command: "uptime"
 ```
 
-GPU servers with many GPUs and NICs POST slowly and take time to train memory. Give them generous timeouts, and check the BMC for stuck boots, as Part 7 describes. Decide the OFED version and the rollback path before the installer runs anywhere.
+GPU servers with many GPUs and NICs POST slowly, which means the firmware tests and initializes each device before it hands control to the operating system. Memory training alone can take minutes on a large server. Give them generous timeouts, and check the BMC (the baseboard management controller, the small computer that offers remote power and console access) for stuck boots, as Part 7 describes. Decide the OFED version and the rollback path before the installer runs anywhere, because the moment to think about rollback is before anything has gone wrong.
 
 ### 3.4 nvidia_driver
 
-The driver is where many bring-ups stall, so the role makes its decisions explicit. It keeps five decisions in variables. The first is the branch: production or LTS, or a newer feature branch. The second is the flavour. Open kernel modules are required on Blackwell and recommended for recent data-centre GPUs, while proprietary modules are the alternative. The third is the install method. Distribution or NVIDIA repository packages, using DKMS or precompiled kernel modules, are the usual choice, and the `.run` file is for special cases only. The last two are the version pin and the holds.
+The driver is where many bring-ups stall, so the role makes its decisions explicit rather than leaving them to whoever ran the last install. It keeps five decisions in variables, and each one is a question you answer once and then reuse on every node. The first is the branch: production or LTS, or a newer feature branch. A branch is a driver release line, and staying on one line keeps the CUDA libraries and the kernel modules in agreement. The second is the flavour. Open kernel modules are required on Blackwell and recommended for recent data-centre GPUs, while proprietary modules are the alternative. The third is the install method. Distribution or NVIDIA repository packages, using DKMS (Dynamic Kernel Module Support, which rebuilds the module for each new kernel) or precompiled kernel modules, are the usual choice, and the `.run` file is for special cases only, because it bypasses the package manager's tracking. The last two are the version pin and the holds. A pin fixes the exact version, and a hold tells the package manager not to upgrade it on its own.
 
 ```yaml
 - name: Add the NVIDIA CUDA repository key and source (keyring-based)
@@ -274,11 +276,13 @@ The driver is where many bring-ups stall, so the role makes its decisions explic
   failed_when: (smi.stdout_lines | length) != expected_gpus or (smi.stdout_lines[0].split(',')[0] | trim) is not match('^' ~ nv_driver_branch)
 ```
 
-The code comment already warns you that package names vary by distribution, so verify them. DKMS builds need headers and can fail after a kernel update, which is why the kernel pin and hold matter. Upgrades must unload dependent modules (`nvidia_uvm`, `nvidia_peermem`, `nvidia_drm`) and stop the services that use the GPUs, such as DCGM, persistenced, exporters and containers. Then install, and reload or reboot. Downgrades need explicit permission variables. RHEL families use `dnf` modules, such as `dnf module enable nvidia-driver:550-open`, plus `versionlock` and the same cautions. Mixing the driver from the OS repository with the one from NVIDIA's repository is a classic break. Pin the branch and the holds in the same change, so the driver cannot drift on its own.
+The code comment already warns you that package names vary by distribution, so verify them on one host before you roll the role out. A typo in a package name is cheap to find on a test node and expensive to find across a rack. DKMS builds need headers and can fail after a kernel update, which is why the kernel pin and hold matter. If the kernel moves and the headers do not, DKMS has nothing to compile against, and the node boots with no GPU at all.
+
+Upgrades follow a fixed sequence. First, unload dependent modules (`nvidia_uvm`, `nvidia_peermem`, `nvidia_drm`), because the kernel refuses to replace a module that a running module still uses. Second, stop the services that use the GPUs, such as DCGM, persistenced, exporters and containers. Third, install the new package. Last, reload the modules or reboot, depending on what the install touched. Downgrades need explicit permission variables, so an accidental older version cannot slip in through a routine run. RHEL families use `dnf` modules, such as `dnf module enable nvidia-driver:550-open`, plus `versionlock` and the same cautions. Mixing the driver from the OS repository with the one from NVIDIA's repository is a classic break, because the two packages claim the same files and the package manager cannot tell which one is correct. Pin the branch and the holds in the same change, so the driver cannot drift on its own.
 
 ### 3.5 fabric_manager, GPU tuning, MIG
 
-On HGX and DGX systems, GPUs talk to each other through NVSwitch chips, and Fabric Manager programs those switches. Until Fabric Manager is running, CUDA applications cannot initialize. The role installs Fabric Manager to match the driver branch, starts it, and then checks the fabric.
+On HGX and DGX systems, GPUs talk to each other through NVSwitch chips, which act like a small network switch placed inside the server board. Fabric Manager is the service that programs those switches, telling them which GPU pairs may route to which. Until Fabric Manager is running, the switches have no routing tables, and CUDA applications cannot initialize. A job that starts on such a node fails at the first CUDA call, which is confusing if you only look at the training script. The role installs Fabric Manager to match the driver branch, starts it, and then checks the fabric.
 
 ```yaml
 - name: Fabric Manager matching the driver branch (NVSwitch systems: HGX/DGX)
@@ -294,9 +298,9 @@ On HGX and DGX systems, GPUs talk to each other through NVSwitch chips, and Fabr
   failed_when: "'inactive' in nvl.stdout | lower"
 ```
 
-Fabric Manager's version must exactly match the driver. On NVLink-switch fabrics such as GB200 NVL72, the multi-node NVLink domain uses extra components: IMEX and NVLink management software. Part 9 covers those.
+Fabric Manager's version must exactly match the driver. The two components speak a private protocol, and a mismatch is not a small warning. The daemon refuses to start, and the node stays unusable until the versions line up again. On NVLink-switch fabrics such as GB200 NVL72, the multi-node NVLink domain uses extra components: IMEX and NVLink management software. Part 9 covers those.
 
-The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute mode and MIG. The table lists each setting with its command and the situation that calls for it.
+The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute mode and MIG. Each setting changes how the GPU behaves between jobs or during them, so each one needs a reason. The table lists each setting with its command and the situation that calls for it, and a setting with no situation in the last column should not be applied at all.
 
 | Setting | Command | When you need it |
 |---|---|---|
@@ -306,7 +310,7 @@ The GPU tuning role handles the persistence daemon, clocks, power, ECC, compute 
 | ECC and compute mode | `nvidia-smi -e` for ECC, `nvidia-smi -c EXCLUSIVE_PROCESS` for compute mode | ECC stays on for production training. Change the compute mode only when policy asks for one process per GPU |
 | MIG | `nvidia-smi -mig 1`, then `nvidia-smi mig -cgi ... -C` | For multi-tenant small workloads |
 
-Changing MIG mode may need a GPU reset or a reboot, and no processes can be running on the GPU. The role also takes an `nvidia-smi topo -m` snapshot for inventory, installs the GDRCopy kernel module, and loads `nvidia-peermem` at boot through `modules-load.d`. If non-root runtimes need device nodes, it can set udev rules under `/etc/udev`.
+Changing MIG mode may need a GPU reset or a reboot, and no processes can be running on the GPU at the moment you flip it. The role then takes an `nvidia-smi topo -m` snapshot for inventory, so the record of how the node is wired lives next to the node's facts. It installs the GDRCopy kernel module, which gives CUDA code a fast path for small host-to-GPU copies. It also loads `nvidia-peermem` at boot through `modules-load.d`, so GPUDirect RDMA is ready before the first job arrives. If non-root runtimes need device nodes, the role can set udev rules under `/etc/udev`, which control the permissions the kernel gives to `/dev/nvidia*` files.
 
 ```yaml
 - name: Enable persistence daemon
@@ -321,11 +325,11 @@ Changing MIG mode may need a GPU reset or a reboot, and no processes can be runn
   when: mig_profile is defined
 ```
 
-Settle the MIG decision for each workload before you write the tuning role.
+Settle the MIG decision for each workload before you write the tuning role. Ask who will run on the node. A notebook pool that shares a GPU across many users wants MIG, while a multi-node training job wants the whole GPU and its NVLink path. Mixing both on one node means you must drain the node to change its mode, so decide the node's purpose first and set the role from that answer.
 
 ### 3.6 dcgm and telemetry
 
-A node can look fine from the outside and still have a failing GPU. DCGM and its exporter give you the view from inside.
+A node can look fine from the outside and still have a failing GPU. The server answers ping, the operating system boots, and the job starts. Only a tool that reads the GPU's own health counters shows the problem. DCGM (Data Center GPU Manager) is NVIDIA's tool for that job, and its exporter turns those counters into metrics that Prometheus can scrape. The exporter then lets you alert before a job fails, rather than after.
 
 ```yaml
 - ansible.builtin.apt: { name: datacenter-gpu-manager, state: present }
@@ -342,41 +346,41 @@ A node can look fine from the outside and still have a failing GPU. DCGM and its
   failed_when: diag1.rc != 0 or "Fail" in diag1.stdout
 ```
 
-The health check fails the task on a non-zero return code, or when the output contains `Fail`. Expose node health to Prometheus through the DCGM exporter on port 9400, along with node_exporter. Set labels for `cluster`, `rack` and `gpu_model`. Then make sure alerts exist for XID errors, ECC errors, thermal throttling, NVLink errors, PCIe replay counters and missing GPUs, as Part 17 covers.
+The health check fails the task on a non-zero return code, or when the output contains `Fail`. Either signal means the node should not take work, so the play stops for that host. Expose node health to Prometheus through the DCGM exporter on port 9400, along with node_exporter, which covers the CPU and disk side of the same machine. Set labels for `cluster`, `rack` and `gpu_model`, so a query can answer "which rack shows throttling?" without a lookup table. Then make sure alerts exist for XID errors (the GPU's error codes, which the driver writes to the kernel log), ECC errors, thermal throttling, NVLink errors, PCIe replay counters and missing GPUs, as Part 17 covers.
 
-The `dcgmi diag -r 1|2|3` levels trade time for coverage. Level 1 takes seconds, level 2 takes minutes, and level 3 runs about 15 to 30 minutes of stress. Match the level to the moment: quick checks on every run, and the long level for bring-up.
+The `dcgmi diag -r 1|2|3` levels trade time for coverage. Level 1 takes seconds and checks that the software stack is sane. Level 2 takes minutes and adds a stress pass across the hardware. Level 3 runs about 15 to 30 minutes of stress and is the most thorough. Match the level to the moment. Run quick checks on every playbook execution, and save the long level for bring-up, when a bad card is cheapest to swap.
 
 ### 3.7 container_toolkit and runtimes
 
-Once the host driver works, the container runtime needs to know how to pass GPUs into containers. Install `nvidia-container-toolkit`, then configure the runtime with `nvidia-ctk runtime configure --runtime=containerd|docker|crio` and restart it. If you use CDI, generate the specs with `nvidia-ctk cdi generate`. Test with a short container that runs `nvidia-smi`. Keep the toolkit versions aligned with the driver and with the Kubernetes device plugin, which Part 11 covers. Treat that container test as your proof that the runtime can reach the GPUs.
+Once the host driver works, the container runtime needs to know how to pass GPUs into containers. A container is isolated from the host, so the GPU device files and driver libraries must be mounted into it on purpose. The NVIDIA container toolkit does that mounting. Install `nvidia-container-toolkit`, then configure the runtime with `nvidia-ctk runtime configure --runtime=containerd|docker|crio` and restart it. The configure step edits the runtime's own config file, so the runtime knows about the NVIDIA hook. If you use CDI (Container Device Interface, a standard way to describe devices to runtimes), generate the specs with `nvidia-ctk cdi generate`. Then test with a short container that runs `nvidia-smi`. Keep the toolkit versions aligned with the driver and with the Kubernetes device plugin, which Part 11 covers. Treat that container test as your proof that the runtime can reach the GPUs. A host where `nvidia-smi` works but the container version fails has a runtime problem, not a driver problem.
 
 ### 3.8 Scheduler and Kubernetes agents
 
-Scheduler agents come last. For Slurm, the `slurm_client` role sets up the munge key, `slurm.conf`, and `gres.conf`, which auto-detects GPUs through NVML. It also sets up cgroups and `slurmd`. For Kubernetes, the node needs a container runtime, the kubelet, and the `nvidia.com/gpu` device plugin through the GPU Operator. It also needs node labels and taints for GPU pools, plus hugepages and topology manager settings. A node joins the scheduler only after validation succeeds, as section 5 explains. Register the node with the scheduler last, and only after the checks in section 5 pass.
+Scheduler agents come last, because a scheduler that sees a node will send it work immediately. For Slurm (the workload manager that queues and places jobs on nodes), the `slurm_client` role sets up the munge key, which authenticates messages between Slurm daemons, plus `slurm.conf` and `gres.conf`. The `gres.conf` file describes generic resources such as GPUs, and it auto-detects GPUs through NVML (the NVIDIA Management Library). The role also sets up cgroups, which fence each job's CPU and memory, and it starts `slurmd`, the daemon that runs on every compute node. For Kubernetes, the node needs a container runtime, the kubelet, and the `nvidia.com/gpu` device plugin through the GPU Operator. It also needs node labels and taints for GPU pools, so ordinary pods stay off GPU nodes, plus hugepages and topology manager settings. A node joins the scheduler only after validation succeeds, as section 5 explains. Register the node with the scheduler last, and only after the checks in section 5 pass.
 
 ## 4. Reboots, long tasks and idempotent upgrades
 
-A driver upgrade on a busy node raises one question first: does this node need a full reboot, or only a module reload? The answer shapes the rest of the upgrade.
+A driver upgrade on a busy node raises one question first: does this node need a full reboot, or only a module reload? The answer shapes the rest of the upgrade, and it decides how long the node stays out of service. A reboot can take a long time on a GPU server, while a reload can take seconds when nothing holds the device.
 
-Put reboots where they belong, which is after kernel, OFED or driver changes that need new modules. Use handlers with `meta: flush_handlers`, so the play continues on a clean boot. Do not reboot blindly. Detect the need first, by checking `/var/run/reboot-required` or `needs-restarting -r`, or by comparing running and installed module versions with `modinfo` and `cat /proc/driver/nvidia/version`.
+Put reboots where they belong, which is after kernel, OFED or driver changes that need new modules. A module is a piece of kernel code, and the running kernel keeps the copy it loaded at boot until something replaces it. Use handlers with `meta: flush_handlers`, so the play continues on a clean boot. A handler is a task that runs once, at the end of a play or at a flush point, and it fires only when another task reports a change. Do not reboot blindly. Detect the need first, by checking `/var/run/reboot-required` or `needs-restarting -r`, or by comparing running and installed module versions with `modinfo` and `cat /proc/driver/nvidia/version`. The last command prints the version of the driver the kernel is running, so it tells you what is live, and that can differ from what the package manager installed.
 
-OFED installs, DKMS builds and large package sets can take a long time. Run them with `async` and `poll`, or set a `timeout`. Keep `forks` and `throttle` in mind as well, because many parallel installs put load on the package mirror.
+OFED installs, DKMS builds and large package sets can take a long time. Run them with `async` and `poll`, or set a `timeout`, so one stuck task cannot hold the whole play. Keep `forks` and `throttle` in mind as well. `forks` controls how many hosts Ansible works on at once, and `throttle` limits how many tasks run at the same time. Many parallel installs put heavy load on the package mirror, and a mirror that slows to a crawl makes every node look broken.
 
-A reload can replace a reboot when it is safe. Stop the dependent services, unload `nvidia_uvm nvidia_drm nvidia_modeset nvidia` in that order, and load the new modules with `modprobe`. If unloading fails with `rmmod: in use`, find the holders with `lsof /dev/nvidia*` or `fuser -v /dev/nvidia*`. If the unload still fails, fall back to a reboot.
+A reload can replace a reboot when it is safe. Picture the modules as a stack of dependent parts, where the top ones need the ones below. Stop the dependent services first, then unload `nvidia_uvm nvidia_drm nvidia_modeset nvidia` in that order, which removes the top of the stack before the base. Load the new modules with `modprobe`. If unloading fails with `rmmod: in use`, something still holds a file open, and the kernel will not let go. Find the holders with `lsof /dev/nvidia*` or `fuser -v /dev/nvidia*`, which list the processes with those device files open. If the unload still fails, fall back to a reboot. A reboot is slower, but it leaves no half-unloaded state behind.
 
-Compare installed and desired versions explicitly. If your role only checks whether any driver is present, it will never upgrade one.
+Compare installed and desired versions explicitly. If your role only checks whether any driver is present, it will never upgrade one, because the check passes on the old driver every time. The check should ask "is this exact version here?" rather than "is some version here?"
 
-Keep the previous package versions in the mirror, so you have something to roll back to. Use the `block/rescue` pattern from 4.8 to reinstall the previous version, and leave the node drained when validation fails.
+Keep the previous package versions in the mirror, so you have something to roll back to. A rollback is only possible if the older package still exists. Use the `block/rescue` pattern from 4.8 to reinstall the previous version, and leave the node drained when validation fails. The `block` runs the upgrade, and the `rescue` runs only if the block fails, so the failure path is written down before it happens.
 
-Stop or hold `unattended-upgrades` and the `apt-daily` timers on GPU nodes, and apply security patches in controlled windows. Otherwise, dpkg locks and surprise kernel updates will break DKMS.
+Stop or hold `unattended-upgrades` and the `apt-daily` timers on GPU nodes, and apply security patches in controlled windows. A background upgrade can grab the dpkg lock while your play waits for it, or install a new kernel between your driver install and your reboot. Either one breaks DKMS in a way that is hard to trace back to its cause.
 
-Decide the reload-or-reboot path before the upgrade starts, and write the rollback steps down alongside it.
+Decide the reload-or-reboot path before the upgrade starts, and write the rollback steps down alongside it. Someone reading the runbook at 3 a.m. should not have to decide the path under pressure.
 
 ## 5. Validation and burn-in
 
-A node can pass every install step and still be wrong under load. Validation is how you find that out before the node takes work.
+A node can pass every install step and still be wrong under load. Every package installed cleanly, every service started, and the node still drops a GPU the first time it runs a heavy load. Validation is how you find that out before the node takes work, and it is the reason a fast install is not the same as a ready node.
 
-Gate a node's entry to production with progressively heavier tests. Each test runs as a task in `gpu_validate`. The table lists the stages from cheapest to most expensive.
+Gate a node's entry to production with progressively heavier tests. Start with the cheap checks, because they catch most dead hardware in seconds. Only a node that passes them earns the expensive stress tests. Each test runs as a task in `gpu_validate`. The table lists the stages from cheapest to most expensive.
 
 | Stage | Checks | Tools | Time |
 |---|---|---|---|
@@ -388,9 +392,9 @@ Gate a node's entry to production with progressively heavier tests. Each test ru
 | Network | Link state, RDMA perftest (`ib_write_bw`, `ib_send_lat`) to a peer, GID/RoCE config, MTU | `perftest`, `ibv_devinfo`, `rdma link` | minutes |
 | Multi-node collectives | NCCL all-reduce within tolerance of the expected bus bandwidth | `nccl-tests` (`all_reduce_perf`), `mpirun`/`srun` | minutes |
 
-Read the table from the top. The first rows take seconds, while the stress rows take 10 to 30 minutes.
+Read the table from the top. The first rows take seconds, while the stress rows take 10 to 30 minutes. A failure in an early row means the later rows never need to run, so the cheap checks save you real time across a large fleet.
 
-The burn test runs for 30 minutes in the background. Afterward, the play checks the kernel log as well.
+The burn test runs for 30 minutes in the background. Running it as an `async` task keeps the SSH session from timing out during the run. Afterward, the play checks the kernel log as well, because a GPU can survive a stress test with a fault written only to the log.
 
 ```yaml
 - name: Single-node GPU stress (30 min) in the background
@@ -409,9 +413,9 @@ The burn test runs for 30 minutes in the background. Afterward, the play checks 
   failed_when: kerr.stdout | length > 0 or ('faulty' in burn.stdout | lower)
 ```
 
-Use your standard burn tool, pinned by commit SHA and built into your image. Do not compile it from a moving branch at test time. Xid errors appear in the kernel log, not in the burn tool's output, so the kernel log check is not optional.
+Use your standard burn tool, pinned by commit SHA and built into your image. A commit SHA is the exact version of the code, so the same test runs on every node and every month. Do not compile it from a moving branch at test time, because a new commit upstream would change the test without anyone deciding to. Xid errors appear in the kernel log, not in the burn tool's output, so the kernel log check is not optional. The burn tool reports what it measured, and the kernel reports what the hardware complained about.
 
-The multi-node collectives test runs from a controller or login node, as a normal user rather than root.
+The multi-node collectives test runs from a controller or login node, as a normal user rather than root. A collective is an operation where many GPUs exchange data at once, such as an all-reduce that sums gradients across every GPU. This test is the closest thing to a real training step, so it catches problems the single-node tests miss, such as one slow rail in the fabric.
 
 ```yaml
 # Multi-node NCCL test from a controller/login node (run as a normal user, not root)
@@ -434,13 +438,13 @@ The multi-node collectives test runs from a controller or login node, as a norma
         fail_msg: "NCCL busbw below {{ expected_busbw_gbps }} GB/s on rack {{ rack }}"
 ```
 
-Bus bandwidth expectations depend on topology, NIC speeds and message sizes. Derive the baselines from known-good runs, and record them. Store the results as JSON artefacts with node serials, so trends and repeat offenders show up. Tag failing nodes `quarantine` and keep them out of the scheduler.
+Bus bandwidth expectations depend on topology, NIC speeds and message sizes. Bus bandwidth is the figure `nccl-tests` reports for how fast data moves across the GPUs, adjusted so numbers compare across different GPU counts. A rack with a different NIC layout will show a different number, and a number that is right for one rack can be wrong for another. Derive the baselines from known-good runs, and record them. Store the results as JSON artefacts with node serials, so trends and repeat offenders show up. A node that is always slightly below the floor, across many weeks, points to a real hardware or cabling problem. Tag failing nodes `quarantine` and keep them out of the scheduler until someone fixes them.
 
-Set the expected bus bandwidth from your own known-good runs before you enforce it in an assert.
+Set the expected bus bandwidth from your own known-good runs before you enforce it in an assert. A floor copied from a vendor slide will fail good nodes on your own network, and it will pass bad ones that happen to beat the slide's setup.
 
 ## 6. Day-2: drain, patch, validate, resume
 
-Suppose a driver update must reach a fleet that is busy running training jobs. Each node has to leave the scheduler, get patched and validated, and then rejoin. The pattern comes from 4.8, with GPU-aware checks added.
+Suppose a driver update must reach a fleet that is busy running training jobs. You cannot pull every node out at once, because the jobs on them would die and their work would be lost. Each node has to leave the scheduler, wait for its current job to finish, get patched and validated, and then rejoin. The pattern comes from 4.8, with GPU-aware checks added. The `serial` list below is the main safety control, because it limits how much of the fleet is in maintenance at any moment.
 
 ```yaml
 - name: Patch GPU nodes safely
@@ -477,11 +481,11 @@ Suppose a driver update must reach a fleet that is busy running training jobs. E
       changed_when: true
 ```
 
-The `serial` list moves in stages: one node first, then 5 percent, then 10 percent of the fleet. `max_fail_percentage: 3` stops the rollout once failures pass 3 percent. The play drains the node and waits for its jobs to finish. It then applies the driver and runs a quick validation. If anything fails, the `rescue` block leaves the node drained and stops for investigation. Only a clean run returns the node to service.
+The `serial` list moves in stages: one node first, then 5 percent, then 10 percent of the fleet. The first single node acts as a canary, a test case that shows whether the change is safe before it spreads. `max_fail_percentage: 3` stops the rollout once failures pass 3 percent. The play drains the node and waits for its jobs to finish. The `until` loop checks `squeue` again every 30 seconds, up to the retry limit, and it moves on only when the node's job list is empty. It then applies the driver and runs a quick validation. If anything fails, the `rescue` block leaves the node drained and stops for investigation. A drained node keeps its running jobs but takes no new ones. Only a clean run returns the node to service.
 
-On Kubernetes, the equivalent is `kubernetes.core.k8s_drain`, which respects PodDisruptionBudgets. Taint the node with `nvidia.com/gpu=maintenance:NoSchedule`, patch it, validate it with DCGM or NVML, and then uncordon it. Under the GPU Operator, let its upgrade controller handle driver upgrades rather than changing hosts by hand, as Part 11 explains.
+On Kubernetes, the equivalent is `kubernetes.core.k8s_drain`, which respects PodDisruptionBudgets. A PodDisruptionBudget is a limit that tells the cluster how many replicas of an app may be down at once, so a drain does not take a serving endpoint offline all at once. Taint the node with `nvidia.com/gpu=maintenance:NoSchedule`, patch it, validate it with DCGM or NVML, and then uncordon it. Uncordon marks the node schedulable again. Under the GPU Operator, let its upgrade controller handle driver upgrades rather than changing hosts by hand, as Part 11 explains. Two owners for the same driver is the mistake to avoid here.
 
-Fleet-wide diagnostics are read-only, so you can run them at any time.
+Fleet-wide diagnostics are read-only, so you can run them at any time, even during a busy shift, without changing anything on the nodes.
 
 ```yaml
 - name: Fleet GPU health sweep
@@ -504,11 +508,11 @@ Fleet-wide diagnostics are read-only, so you can run them at any time.
       become: false
 ```
 
-The sweep writes one JSON file per host. Aggregate those files into a report that counts nodes with fewer than 8 GPUs, PCIe links degraded below x16, nonzero uncorrected ECC, and active throttle reasons. That report is a typical first step when many jobs slow down during an incident. Run this sweep first when throughput drops, before you change any node.
+The sweep writes one JSON file per host. Each file holds a row for every GPU on that node, so a single host with a missing GPU shows up as a short list. Aggregate those files into a report that counts nodes with fewer than 8 GPUs, PCIe links degraded below x16, nonzero uncorrected ECC, and active throttle reasons. A throttle reason is the GPU's own note that it slowed down, usually for heat or power. That report is a typical first step when many jobs slow down during an incident, because it turns "training is slow" into a short list of suspects. Run this sweep first when throughput drops, before you change any node, so you do not fix the wrong thing.
 
 ## 7. Incidents that shaped the design
 
-Each incident below shaped one part of the design, and you can trace each fix back to a rule you have already seen.
+Each incident below shaped one part of the design. Read them as stories from a real fleet, and for each one, trace the fix back to a rule you have already seen in this chapter. The rule is the lesson. The story is how you remember it under pressure.
 
 1. A package upgrade across 256 GPU nodes stalled forever on a `dpkg` configuration-file prompt, because no terminal was attached. The cause was apt running non-interactively without a conffile policy, or competing with `unattended-upgrades`. The fix uses the `apt` module with `dpkg_options: force-confold,force-confdef`, `lock_timeout`, `DEBIAN_FRONTEND=noninteractive`, disabled unattended upgrades on nodes, and a task `timeout`.
 2. A green but dead service: systemd reported a successful start, while `slurmctld` crashed seconds later on a bad `slurm.conf`. The fix verifies behaviour after every critical start (`sinfo`, `curl /health`) with `until/retries`, and validates configs before they are installed (4.7).
@@ -519,17 +523,17 @@ Each incident below shaped one part of the design, and you can trace each fix ba
 7. 1,000 nodes downloading the same driver and OFED at once saturated the mirror. The fix uses `throttle`, `serial`, local caches or proxies, and preseeded images.
 8. A bad GRUB parameter or module config prevented boot, and automation kept retrying reboots. The fix is a canary first, `max_fail_percentage`, and BMC out-of-band access to recover (Part 7). It also follows one rule: automation never retries a reboot without human review when a node fails to return.
 
-Use the canary and `max_fail_percentage` settings from incident 8 on every fleet-wide change, because you want one bad change to stay small.
+Use the canary and `max_fail_percentage` settings from incident 8 on every fleet-wide change. The goal is that one bad change stays small. A canary of one node costs little, and a bad change that reaches 256 nodes before anyone notices costs a great deal more.
 
 ## 8. Lab
 
-You can work through much of this chapter without a GPU. Start with the self-checking Python lab, which runs locally. It checks three things. The first is the bring-up order validator, `validate_bringup_role_order`, which confirms that `mofed` runs before `nvidia_driver`, `nvidia_driver` before `fabric_manager`, and `gpu_validate` before `slurm_client`. The second is the health sweep classifier, `evaluate_gpu_health_sweep`, which catches GPUs that fell off the bus, uncorrected ECC errors, and PCIe `Gen4x8` degradation. The third is the parser and gate for `nccl-tests`, `parse_and_gate_nccl_busbw`, which reads the `all_reduce_perf` bus bandwidth and checks it against a floor.
+You can work through much of this chapter without a GPU. Start with the self-checking Python lab, which runs on your laptop and needs no hardware. It checks three things, and each one turns a rule from this chapter into a test. The first is the bring-up order validator, `validate_bringup_role_order`, which confirms that `mofed` runs before `nvidia_driver`, `nvidia_driver` before `fabric_manager`, and `gpu_validate` before `slurm_client`. The second is the health sweep classifier, `evaluate_gpu_health_sweep`, which catches GPUs that fell off the bus, uncorrected ECC errors, and PCIe `Gen4x8` degradation. The third is the parser and gate for `nccl-tests`, `parse_and_gate_nccl_busbw`, which reads the `all_reduce_perf` bus bandwidth and checks it against a floor.
 
 ```bash
 python3 code/part04/ansible_gpu_cluster_lab.py
 ```
 
-If you have no physical GPU, rehearse the interactive steps below with stub `nvidia-smi`, `dcgmi` and `ibstat` scripts on a plain VM. Those steps have not been run on hardware. Roles, ordering, handlers, reboots and validation logic still get exercised that way. Save the hardware steps for a real node.
+If you have no physical GPU, rehearse the interactive steps below with stub `nvidia-smi`, `dcgmi` and `ibstat` scripts on a plain VM. A stub is a small script that prints the output a real tool would print, so your roles see something familiar. The commands in the steps below have not been run on live hardware. Roles, ordering, handlers, reboots and validation logic still get exercised that way, and a stub catches typos in your YAML long before a real node does. Save the hardware steps for a real node, where the output can surprise you in ways a stub never will.
 
 1. Implement `gpu_facts`, and compare the discovered counts with what you expect. Publish `ansible_local.gpu`. Test with stubs first, then on a GPU host.
 2. Write the playbook from the graph, with its reboot points. Run it on a fresh VM or node. Check that `--list-tasks` shows the right order, and that a rerun reports `changed=0`, apart from validation probes.
@@ -549,9 +553,7 @@ Work through the steps in order, because each one builds on the one before it.
 
 ## 9. Common mistakes
 
-Most of these mistakes are shortcuts that seem reasonable at the time, so it helps to see them together.
-
-Most of these mistakes are shortcuts, and they fall into a few groups.
+Most of these mistakes are shortcuts that looked reasonable at the time. A shortcut saves ten minutes on the day it is written and costs a night of recovery later. Seeing the mistakes grouped makes them easier to spot in a pull request, so the groups below are the checklist to hold up when you review a GPU role.
 
 - Ordering: installing the NVIDIA driver before the RDMA stack, or skipping the reboot or module reload between them.
 - Versions: letting packages float with `state: latest`, letting `unattended-upgrades` change kernels and drivers, or mixing kernel, headers, driver branch, Fabric Manager and DCGM versions.
@@ -560,7 +562,7 @@ Most of these mistakes are shortcuts, and they fall into a few groups.
 - Reproducibility: hard-coded package names across distributions, benchmark tools built from moving branches, and no record of results, so repeat-offender nodes go unnoticed.
 - Safety: secrets in command lines and verbose logs, and Ansible driver changes underneath the GPU Operator, which gives the same component two managers.
 
-Review your roles against the ordering and version mistakes first, since the rest of the chapter depends on those rules.
+Review your roles against the ordering and version mistakes first. The health and rollout mistakes are easier to fix once the ordering is right, because a correct order makes every later check mean what it says.
 
 ## 10. Interview angles
 
@@ -579,21 +581,21 @@ Use these questions to test whether you can explain the chapter out loud.
 
 Work through these exercises after you have read the chapter and run the lab. Compare your answers with the lab output, and check the code you read against the lines it names.
 
-1. Use `validate_bringup_role_order()` in `code/part04/ansible_gpu_cluster.py` to follow the chain `mofed`, `nvidia_driver`, `fabric_manager`, `gpu_validate` and `slurm_client`. Explain why the MOFED or DOCA stack and its reboot must finish before the NVIDIA driver and `nvidia_peermem` are loaded.
-2. Explain why `nvidia-fabricmanager` must match the exact driver version on NVSwitch systems.
-3. Explain why `gpu_validate` must gate the start of `slurm_client` or `kubelet`.
-4. Show how `gpu_facts` uses `lspci -d 10de:` to count GPUs and publish `/etc/ansible/facts.d/gpu.fact`. Then say what the role does when a GPU has fallen off the PCIe bus.
-5. *AI Systems Performance Engineering*, Chapter 3, sets the `performance` CPU governor and disables deep C-states. Explain how that reduces GPU bubbles.
-6. Explain why the same chapter sets `--topology-manager-policy=single-numa-node` on the kubelet.
-7. Explain how `dpkg_options: "force-confold,force-confdef"` and `DEBIAN_FRONTEND: noninteractive` prevent a fleet-wide hang. Then explain why `dpkg_selections: hold` prevents a DKMS kernel mismatch.
-8. Explain why the `reboot` task sets `reboot_timeout: 1800`, and why `meta: flush_handlers` comes before the next role.
-9. Explain what `nvidia-persistenced` and `nvidia_peermem` each do.
-10. Name two Blackwell B200 MIG profiles, and say when a large training job turns MIG off.
-11. Contrast `dcgmi diag -r 1`, `-r 2` and `-r 3` by time and coverage.
-12. Trace the validation stages in Section 5 from PCIe and NVLink checks up to `gpu-burn`. Say where `journalctl -k` fits.
-13. Use `parse_and_gate_nccl_busbw()` to follow the last stage, the multi-node bus-bandwidth assertion.
-14. Use `evaluate_gpu_health_sweep()` to show how a read-only fleet sweep finds degraded nodes. Look for 7 of 8 GPUs, a PCIe `Gen4x8` downgrade, uncorrected ECC and throttling.
-15. Trace the Slurm and Kubernetes maintenance workflow, including `k8s_drain`.
+1. Your bring-up run shows `nvidia_driver` ahead of `mofed` in the task list. Use `validate_bringup_role_order()` in `code/part04/ansible_gpu_cluster.py` to find the failing pair. Why must the MOFED or DOCA stack and its reboot finish first?
+2. A node with NVSwitch chips refuses to start Fabric Manager after a driver bump. Why must the Fabric Manager version match the exact driver version?
+3. A Slurm node registers before `gpu_validate` finishes, and a job lands on a bad GPU. What order rule did the playbook break?
+4. A host reports 7 GPUs where the inventory expects 8. How does `gpu_facts` count the GPUs with `lspci -d 10de:`, and where does it publish the result?
+5. *AI Systems Performance Engineering*, Chapter 3, sets the `performance` CPU governor and disables deep C-states. How does that stop the GPU from sitting idle between kernels?
+6. The kubelet runs with `--topology-manager-policy=single-numa-node`. Why does that keep a pod's CPU and GPU on one socket?
+7. A package upgrade hangs on a conffile prompt across 200 nodes. Which two settings stop the prompt?
+8. A reboot on a large GPU server times out after 600 seconds. Why does `reboot_timeout: 1800` fix it?
+9. A training job's first CUDA call is slow on an idle node. What does `nvidia-persistenced` keep alive between jobs?
+10. A notebook pool and a training pool share the same hardware class. Name two Blackwell B200 MIG profiles, and say when the training job turns MIG off.
+11. A burn-in must finish within one maintenance window. How do `dcgmi diag -r 1`, `-r 2` and `-r 3` differ by time and coverage?
+12. A stress test exits with code 0, yet the node later drops a GPU. Trace the validation stages from PCIe and NVLink checks up to `gpu-burn`, and say where `journalctl -k` fits.
+13. A rack reports a bus bandwidth just below its floor. Use `parse_and_gate_nccl_busbw()` to follow the multi-node assertion and say what it returns.
+14. A fleet sweep shows one node with 7 of 8 GPUs, a `Gen4x8` PCIe link, and uncorrected ECC. Use `evaluate_gpu_health_sweep()` to explain why the node is flagged.
+15. A kernel patch must reach a Slurm partition and a Kubernetes pool. Trace the maintenance workflow, and say where `k8s_drain` fits.
 
 ## Checkpoint questions (20)
 
@@ -739,4 +741,4 @@ If a GPU server does not return within `reboot_timeout: 1800` after a kernel, GR
   - `nvidia-devops` (`volume-10/04-ansible-for-infrastructure-automation.md`): MOFED role and reboot flow, Fabric Manager and DCGM roles, non-interactive `apt` troubleshooting, green-but-dead service verification, `gpu-burn` and `nccl-tests` diagnostic playbooks.
 - **Run here:** `python3 code/part04/ansible_gpu_cluster_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `validate_bringup_role_order`, `evaluate_gpu_health_sweep`, and `parse_and_gate_nccl_busbw` models in `code/part04/ansible_gpu_cluster.py`, the 11-role `gpu_bringup.yml` dependency DAG, and the `fleet_diag.yml` sweep are the author's constructions synthesizing *AI Systems Performance Engineering*, Chapter 3, *Ansible: Up and Running*, and `volume-10/04` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `mlnxofedinstall`, `nvidia-smi`, `nvidia-fabricmanager`, `dcgmi diag`, `gpu_burn`, `mpirun ... all_reduce_perf`, and `scontrol` executions (`10de:`, `15b3:`, `3600`s async, `1800`s reboot timeout, `550`, `9400`, `2100`s burn, `-b 8 -e 8G`, `256` / `1,000` nodes) are marked (`untested here`) where not executed by `ansible_gpu_cluster_lab.py`.
+- **Not verified on live hardware:** Live `mlnxofedinstall`, `nvidia-smi`, `nvidia-fabricmanager`, `dcgmi diag`, `gpu_burn`, `mpirun ... all_reduce_perf`, and `scontrol` executions (`10de:`, `15b3:`, `3600`s async, `1800`s reboot timeout, `550`, `9400`, `2100`s burn, `-b 8 -e 8G`, `256` / `1,000` nodes) are marked where not executed by `ansible_gpu_cluster_lab.py`.

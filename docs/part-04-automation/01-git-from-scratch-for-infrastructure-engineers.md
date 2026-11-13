@@ -24,11 +24,15 @@ lab_venue: "GCP / GKE"
 
 Picture the on-call engineer at two in the morning. A training job has stopped reaching its storage network, and the engineer finds that an interface MTU changed earlier that day, from `9000` to `1500`. Nobody remembers who made the change, what else changed in the same session, or which value worked before the incident. The cluster is expensive and the training deadline is close, and all the engineer has is a few shell histories and an unreviewed terminal note.
 
-In an AI factory, almost everything that matters is, or should be, text in a repository. That includes Terraform that creates networks and GPU VMs, Ansible roles that install drivers and tune kernels, Slurm configuration, Kubernetes manifests and Helm values, Dockerfiles for training images, CI pipelines and runbooks. Git is the evidence trail for all of it. It tells you who changed the NCCL settings, when the MTU went from 9000 to 1500, which commit introduced the regression that halved training throughput, and how to go back. A cluster that cannot be rebuilt from Git is a pet, and a change that did not pass through review is an incident waiting to happen. This chapter teaches Git from the object model up. Then it covers the workflows that infrastructure teams use, namely trunk-based development, review, rebase and recovery, and it connects Git to CI/CD (4.2) and GitOps (4.26).
+That scene is worth slowing down on, because it is the exact problem Git was built to prevent. The engineer is not short of skill. The engineer is short of a record. The MTU (maximum transmission unit, the largest packet a network interface sends in one piece) is a small setting, but one wrong value on one interface can quietly slow a whole fabric. The cost then shows up hours later, far away from the change that caused it.
+
+In an AI factory, almost everything that matters is, or should be, text in a repository. That includes Terraform that creates networks and GPU VMs, Ansible roles that install drivers and tune kernels, Slurm configuration, Kubernetes manifests and Helm values, Dockerfiles for training images, CI pipelines and runbooks. Git is the evidence trail for all of it. It tells you who changed the NCCL settings, when the MTU went from 9000 to 1500, which commit introduced the regression that halved training throughput, and how to go back. A cluster that cannot be rebuilt from Git is a pet, and a change that did not pass through review is an incident waiting to happen.
+
+Put the same MTU change into Git and the story changes. The commit names the author, the time and the reason, and `git log -S` finds the exact day the value moved. The engineer spends a few minutes reading history instead of guessing at a terminal log. We start with the object model, because every later command makes sense only once you know what Git stores. After that we cover the workflows that infrastructure teams use, namely trunk-based development, review, rebase and recovery. Last, we connect Git to CI/CD (4.2) and GitOps (4.26).
 
 ## Prerequisites and outcomes
 
-You should already be comfortable at a shell (Part 1). By the end of this chapter, you will be able to:
+You should already be comfortable at a shell (Part 1). You do not need to have used Git on a team before. If you have only ever typed `git commit -m "stuff"` and moved on, this chapter is written for you. Use the list below as a self-check. Each line names one ability that a working infrastructure engineer uses every week. If a line feels unfamiliar when you reach the end, that is normal. Go back to the matching section and read it again slowly, and try the command on a scratch repository while you read.
 
 - Explain what a commit, tree, blob and ref are. You will also see why history is a directed acyclic graph, and why Git's model makes branching cheap and history tamper-evident.
 - Use the working tree, index and repository boundaries on purpose. That means staging hunks, reviewing diffs and writing good commits.
@@ -40,9 +44,15 @@ You should already be comfortable at a shell (Part 1). By the end of this chapte
 
 ## 1. Why version control (the infrastructure view)
 
-Suppose someone says, "I changed something on the switch last night." Version control turns that sentence into a reviewed, diffable, revertable commit. It also lets automated checks run before anything touches the hardware. It gives you five things. It tracks every change, with who made it, when and why. It provides accountability through blame and review trails. It lets parallel work merge in a predictable way. It lets you restore any prior state. It provides process hooks for CI, approvals and deployment triggers. Configuration that is not in version control is undocumented, unreviewable and unrecoverable.
+A colleague posts in the team channel that they changed something on a switch last night, but they are not sure what. Nobody can say what the switch looked like before, or whether the change is still there. Version control exists to stop that kind of conversation. It keeps a record of every change, so the answer is one command away.
 
-Git won for four practical reasons. It is distributed: every clone is a full backup with full history, so you can work offline and there is no single point of failure. It is fast, because local operations run on a content-addressed database. It is nonlinear, because a branch is a tiny pointer. In `.git/refs/heads/<branch>`, that pointer is a 40-character hexadecimal SHA-1 hash plus a newline, which makes it 41 bytes, so experimenting is essentially free. It is also integrity-protected, since every object is named by a hash of its content, and silent corruption or tampering can be detected.
+Suppose someone says, "I changed something on the switch last night." Version control turns that sentence into a reviewed, diffable, revertable commit. "Diffable" means you can compare the before and after side by side, the way you compare two photographs of the same rack taken a day apart. "Revertable" means you can go back to the earlier photograph in one step. The configuration file is the photograph, and Git keeps every version of it.
+
+It also lets automated checks run before anything touches the hardware. A pipeline can render the new configuration, check its syntax and refuse to continue if something is wrong. The switch never sees the bad line at all.
+
+Version control gives you five things. It tracks every change, with who made it, when and why. It provides accountability through blame and review trails. It lets parallel work merge in a predictable way. It lets you restore any prior state. It provides process hooks for CI, approvals and deployment triggers. Configuration that is not in version control is undocumented, unreviewable and unrecoverable. If you cannot answer "what did this look like yesterday," then you cannot answer "what did we change," either.
+
+Git won for four practical reasons. It is distributed: every clone is a full backup with full history, so you can work offline and there is no single point of failure. Think of a shared spreadsheet that every engineer keeps a complete copy of on a laptop. If the central server burns down, the team still has every row. It is fast, because local operations run on a content-addressed database. Content-addressed means that Git finds an object by the hash of what it contains, not by a name that someone chose, so a lookup is a direct jump rather than a search. It is nonlinear, because a branch is a tiny pointer. In `.git/refs/heads/<branch>`, that pointer is a 40-character hexadecimal SHA-1 hash plus a newline, which makes it 41 bytes, so experimenting is essentially free. It is also integrity-protected, since every object is named by a hash of its content, and silent corruption or tampering can be detected. If a single byte of an old file changes, its hash no longer matches its name, and Git can tell.
 
 Christian Adell, Scott Lowe, Matt Oswalt and Jason Edelman tell this history in chapter 11 of *Network Programmability and Automation*. Linus Torvalds created Git in April 2005. By then, the Linux kernel community had stopped using the proprietary BitKeeper system. It needed a fast, nonlinear, fully distributed version control system that could scale to thousands of kernel contributors.
 
@@ -56,9 +66,17 @@ Before you touch a production fabric or a GPU cluster, you need a local develope
   1. **Vagrant with VirtualBox or libvirt (`Vagrantfile`):** A `Vagrantfile` defines a multi-VM network lab. The example uses three `vyos/current` routers, r1 at `192.168.12.11`, r2 at `192.168.12.12` and r3 at `192.168.12.13`. They are wired over `virtualbox__intnet` private networks and configured automatically through `config.vm.provision "ansible" { |ansible| ansible.playbook = "playbook.yml" }`. You launch the lab with `vagrant up`, reach a router with `vagrant ssh r1`, and tear it down with `vagrant destroy -f`.
   2. **Containerlab (`topology1.clab.yaml`):** Containerlab starts lightweight containerized network operating systems in seconds. Examples include Nokia SR Linux (`ghcr.io/nokia/srlinux`), Arista cEOS, and SONiC nodes. The example lab uses the SONiC nodes `srl01` and `srl02`, with `startup-config: srl1.cfg` and a point-to-point link described by `endpoints: ["srl01:e1-1", "srl02:e1-1"]`. You deploy the lab with `containerlab deploy`, inspect a node with `ssh admin@172.20.20.2` or `docker exec`, and destroy it with `containerlab destroy`.
 
+Consider what this buys you on a normal Tuesday. A new engineer joins the team and needs a three-router test network to try a routing change. Instead of an afternoon of clicking through a hypervisor, they clone the repository and run `vagrant up`. The lab that comes up is the same lab the rest of the team tested against last week, because both came from the same text file.
+
+The same idea holds for the fabric lab. If a `*.clab.yaml` file says which two nodes are wired together, then the wiring is written down, reviewed and reproducible. Nothing depends on someone's memory of which cable went into which port.
+
 Because a `Vagrantfile` and a `*.clab.yaml` file are plain text tracked in Git, every engineer and CI runner boots the exact same lab topology. Keep every lab definition under version control, because a file that is not tracked cannot be reviewed or rebuilt.
 
 ## 2. The Git object model
+
+Say a colleague asks, "What exactly did we change in the GPU driver role last Tuesday?" To answer, you need to know what Git stores. Many engineers treat Git as a magic undo button, and that works until the day it does not. Once you see the four object types, every Git command becomes a question about one of them. A branch name, a log line and a diff are all just different ways of reading the same small set of objects.
+
+Read the diagram from left to right. The newest commit, `C3`, is at the left, and each arrow points backwards to its parent. Each commit points to a tree, which is the folder snapshot at that moment. The tree points to blobs, which hold the file contents, and to smaller trees, which hold subfolders. The label `refs/heads/main` points to the newest commit, and `HEAD` points to the branch you are on. Nothing in the diagram is a list of changes. Every box is a full picture, and Git reads the changes by comparing pictures.
 
 ```mermaid
 flowchart LR
@@ -73,7 +91,9 @@ flowchart LR
   HEAD["HEAD"] --> REF
 ```
 
-Git stores four kinds of objects. Each one is named by the hash of its content, either a SHA-1 hash or, in newer repositories, a SHA-256 hash. The table lists them. Read it as a set of building blocks: a commit points to a tree, and a tree points to blobs and subtrees.
+Git stores four kinds of objects. Each one is named by the hash of its content, either a SHA-1 hash or, in newer repositories, a SHA-256 hash. A hash is a short fingerprint computed from the bytes. Same bytes, same fingerprint, every time. The table lists the four kinds. Read it as a set of building blocks: a commit points to a tree, and a tree points to blobs and subtrees.
+
+Here is what a single commit writes when you run `git commit`. Git first stores each changed file as a blob. Then it builds a tree for each folder that changed, and it records the new hashes in those trees. It builds a root tree for the whole repository. Last, it writes a commit that points to that root tree and to the previous commit, and it moves the branch label forward. Those few small writes are enough, and the new snapshot is complete. Files you did not touch are not copied again, because their blobs already exist and the new tree simply points to them.
 
 | Object | Meaning |
 |---|---|
@@ -90,7 +110,7 @@ These design choices explain much of how Git behaves.
 - Branches and tags are just refs, which are files that hold a commit hash, such as `.git/refs/heads/main`. `HEAD` points to the current branch, or straight to a commit when it is detached. So creating a branch costs one tiny file.
 - Git does not delete objects right away. Unreachable objects stay until garbage collection (`git gc`, with a default grace period of about two weeks). That delay is why recovery with `reflog` usually works.
 
-You can inspect this machinery yourself with the commands below.
+The design choices above can feel abstract until you look at them. Git keeps all of this in plain files under `.git/`, so you can read them with ordinary commands. That is a good habit to build. When a Git command surprises you, look at the objects it touched. The output below does exactly that on a throwaway repository with one Terraform stub file.
 
 ```bash
 git init demo && cd demo
@@ -104,7 +124,11 @@ find .git/objects -type f | head
 cat .git/HEAD .git/refs/heads/main
 ```
 
-Each command prints one layer of the object model. Follow the chain from the commit to the tree, and from the tree to the `main.tf` blob.
+Each command prints one layer of the object model. Follow the chain from the commit to the tree, and from the tree to the `main.tf` blob. Run them in order, and read each output before you run the next one. The first command should print `commit`, and the second should show a `tree` line, your name and the message you typed. The third lists the single file in the root tree. The last one prints the Terraform line you wrote, which proves the blob holds the real bytes.
+
+Think of it as a set of nested labels. The commit is the sticker on a box, the tree is the list of what is inside, and the blob is the item itself. Each label holds the hash of the thing it points to, so if someone swaps an item, the label no longer matches and the change shows up. That matching is why Git can tell you that history has not been tampered with.
+
+A useful way to hold this in your head is to picture a rack diagram. The commit is the cover sheet with a revision number. The tree is the list of devices in each rack. The blob is the device label printed with its serial number. If someone quietly replaces a switch, the serial number on the label no longer matches the one in the inventory, and the audit catches it.
 
 ### The three areas
 
@@ -116,11 +140,17 @@ flowchart LR
   I -- "git restore --staged" --> W
 ```
 
-The index is what lets you commit only part of your work. With `git add -p`, you stage individual hunks, so each commit holds one logical change. Once you know the three boundaries, the output of `status`, `diff`, `diff --staged`, `restore` and `reset` makes sense. Here, `diff` compares the working tree with the index, and `diff --staged` compares the index with `HEAD`. Stage hunks with `git add -p` whenever one file holds two unrelated changes.
+The index is what lets you commit only part of your work. Think of it as a packing table. You edit files all day in the working tree, which is the messy workshop. When you are ready to commit, you carry only the items you want onto the packing table, and then you seal the box. Anything left in the workshop stays out of the shipment.
+
+The index is what makes that possible. With `git add -p`, you stage individual hunks, which means separate blocks of changed lines, so each commit holds one logical change. Suppose you fixed a typo in a Terraform variable description and also changed a firewall rule in the same file. You can stage the typo fix alone, commit it, and then stage the firewall rule in its own commit. Reviewers see two clear changes instead of one tangled one.
+
+Once you know the three boundaries, the output of `status`, `diff`, `diff --staged`, `restore` and `reset` makes sense. Here, `diff` compares the working tree with the index, and `diff --staged` compares the index with `HEAD`. Stage hunks with `git add -p` whenever one file holds two unrelated changes.
 
 ## 3. The daily workflow
 
-Set these options once on each machine. They control how Git merges, fetches, pushes and signs.
+Most mistakes that reach a shared repository happen in the last minute before a push. A stray debug line, a local key or a half-finished file sits in the working tree, and a quick `git add .` sweeps it into the commit. The routine below is built to make that moment boring. Each step asks one small question before anything is shared. Experienced engineers run the same routine on a two-line fix as on a large change, because the habit is what protects them on the day they are tired.
+
+Set these options once on each machine. They control how Git merges, fetches, pushes and signs. You do not need to memorize them. Each line answers a question you would otherwise hit by accident. For example, `pull.rebase true` decides what happens when your local history and the remote history have both moved on, and it stops Git from creating a surprise merge commit at two in the morning.
 
 ```bash
 git config --global user.name  "Jane Operator"
@@ -134,7 +164,7 @@ git config --global core.editor "vim"
 git config --global commit.gpgsign true       # sign commits (see section 11)
 ```
 
-Here is what a safe change to infrastructure code looks like, from the first fetch to the push. Each numbered comment marks one step.
+Here is what a safe change to infrastructure code looks like, from the first fetch to the push. Imagine a small job: the NCCL settings on the GPU nodes make NIC selection flap, and you want to pin the list of adapters. You will go through nine steps, and each one has a reason. Each numbered comment marks one step, so you can match the command to its reason.
 
 ```bash
 git fetch origin                               # 1. learn the latest remote state; changes nothing locally
@@ -149,7 +179,7 @@ git log --oneline --decorate -5                # 8. confirm the history looks ri
 git push -u origin tune-nccl-ib-hca            # 9. publish; CI runs speculative plans/tests; open a pull request
 ```
 
-Each step guards against a specific mistake. Fetching first keeps you from building on stale state. A branch protects `main`, which should always be deployable. Reviewing the diff catches stray edits, secrets and generated files. Staging explicit paths keeps `.terraform/`, state files, keys and crash logs out of the commit. The `--check` flag catches trailing-whitespace and tab-and-space damage, which can corrupt YAML. A message that explains *why* is the only part of the record that the diff cannot reconstruct. Finally, the push triggers CI, so the change is validated before it is merged.
+Each step guards against a specific mistake. Fetching first keeps you from building on stale state. If someone pushed a fix to `main` an hour ago, your local copy does not know about it yet, and your change could quietly undo it. A branch protects `main`, which should always be deployable. Reviewing the diff catches stray edits, secrets and generated files. It is the moment to ask, "Would I be comfortable if this line were printed on a slide in the team meeting?" Staging explicit paths keeps `.terraform/`, state files, keys and crash logs out of the commit. The `--check` flag catches trailing-whitespace and tab-and-space damage, which can corrupt YAML. YAML treats indentation as meaning, so a stray tab or a misplaced space can break the file or move a key under the wrong parent, and a quick read may miss it. A message that explains *why* is the only part of the record that the diff cannot reconstruct. The diff shows that the pinned list changed. Only the message can say that it changed to stop the adapters from flapping. Finally, the push triggers CI, so the change is validated before it is merged.
 
 ### Commit hygiene
 
@@ -158,9 +188,11 @@ Each step guards against a specific mistake. Fetching first keeps you from build
 - Use `git commit --amend` to fix the last commit, but only if you have not pushed it yet. To tidy a series before review, create a commit with `git commit --fixup <sha>`, then run `git rebase -i --autosquash`.
 - Use `git add -p` and `git restore -p` for fine control over what you stage. Use `git stash` when you need to switch context. Add `-u` to include untracked files, and manage the stack with `git stash list`, `git stash pop` and `git stash apply`.
 
+A good commit message is a note to the engineer who will read this line in two years, usually while something is on fire. A subject that says "fix stuff" tells that engineer nothing. A subject that says "nccl: pin IB HCA list to stop NIC auto-selection flapping" tells them the component, the action and the symptom. Spend the extra half minute on the message. It is the cheapest documentation your team will ever write.
+
 ### Looking at history
 
-When something breaks, these commands tell you what changed, who changed it and when.
+When something breaks, the first question is usually "what changed?" These commands answer it from different angles. `log` walks the timeline, `show` opens one moment, `diff` compares two moments, and `blame` tells you who wrote a particular line. Use them the way a detective uses a case file. Start broad, with the timeline for one folder, and narrow in on the line that matters.
 
 ```bash
 git log --oneline --graph --decorate --all
@@ -175,11 +207,15 @@ git log -L :function_name:file.py          # history of a function
 git shortlog -sn                           # who contributes how much
 ```
 
-To find out which change added a value, start with `git blame` for the line, then use `git log -S` to search for the string.
+To find out which change added a value, start with `git blame` for the line, then use `git log -S` to search for the string. Blame answers "who last touched this line," which is often a teammate who can explain the reason. The pickaxe search (`-S`) answers a different question. It asks which commit added or removed the string at all, even if the line has been edited many times since. Together they cover the MTU story from the opening scene: blame points at the day the value changed, and the pickaxe finds every change to the MTU.
 
 ## 4. Ignoring files and keeping the repo clean
 
-`.gitignore` is your first line of defence against committing state, secrets and junk. Here is a starting point for an infrastructure repository.
+Picture a Terraform run on a laptop. It creates a `.terraform/` folder and a `terraform.tfstate` file that records the current infrastructure, including resource IDs and sometimes secrets. Run `git add .` and both files go into the commit, and then into every clone. The `.gitignore` file is how you tell Git which files belong to the machine and not to the project.
+
+Think of the repository as the shipping box and `.gitignore` as the packing list you tape to the inside of the lid. Anything on the list stays on the workbench. Terraform state and generated folders belong on the workbench, because they describe one machine at one moment. Source files belong in the box, because every engineer needs them.
+
+`.gitignore` is your first line of defence against committing state, secrets and junk. Here is a starting point for an infrastructure repository. Read the comments as the reasons. Each group names a kind of file and says why it does not belong in history.
 
 ```gitignore
 # Terraform / OpenTofu
@@ -235,11 +271,17 @@ build/
 *.parquet
 ```
 
-A few rules are easy to get wrong. A `.gitignore` entry affects only **untracked** files, so a file that is already tracked stays tracked until you run `git rm --cached`. Keep per-user ignores in `~/.config/git/ignore` by setting `core.excludesFile`, and keep per-clone ignores in `.git/info/exclude`. Use `git status --ignored` to list ignored files, and `git check-ignore -v path` to see which rule matched. A negation (`!pattern`) cannot re-include a file whose parent directory is excluded. Run `git status --ignored` after you add a rule, so you can see what it catches.
+A few rules are easy to get wrong. A `.gitignore` entry affects only **untracked** files, so a file that is already tracked stays tracked until you run `git rm --cached`. This is the trap most teams fall into. Someone adds `*.tfstate` to the ignore list, feels safe, and then discovers the state file is still listed in every commit. The file was committed before the rule existed, and Git keeps tracking a file it already knows about. The fix is to untrack it once, which keeps the file on disk but removes it from future commits.
+
+Keep per-user ignores in `~/.config/git/ignore` by setting `core.excludesFile`, and keep per-clone ignores in `.git/info/exclude`. Your editor's swap files belong in the first place, since they are yours and not the project's. A local scratch folder that only you use belongs in the second. Use `git status --ignored` to list ignored files, and `git check-ignore -v path` to see which rule matched. The `-v` flag prints the file and line of the rule, which saves a lot of guessing when two rules seem to disagree. A negation (`!pattern`) cannot re-include a file whose parent directory is excluded. Run `git status --ignored` after you add a rule, so you can see what it catches.
 
 ## 5. Remotes and collaboration
 
-The commands below cover everyday work with remotes.
+A remote is another copy of the repository, usually on a server that the whole team can reach. Your clone gives it a short name, `origin`. Git also keeps remote-tracking branches, such as `origin/main`, which record where that remote copy was the last time you fetched. Think of `origin/main` as a photo of the team's main branch taken at your last fetch. It is not the live branch, and it goes stale as soon as someone else pushes.
+
+This is why the word "pull" causes so much confusion. Pulling changes your own branch in one step, and that can be surprising when the photo is out of date. Fetching only updates the photo. Your own branch, and the files you are looking at, stay exactly where they were. Once the photo is current, you can compare it with your work and choose what to do next.
+
+The commands below cover everyday work with remotes. Read them as a sequence of looking before touching. `remote -v` shows where each name points, `fetch` refreshes the photo, `branch -vv` shows which local branch follows which remote one, and `push` sends your work out only after you have looked.
 
 ```bash
 git remote -v
@@ -260,17 +302,25 @@ git push origin --delete feature
 - **Authentication:** Use SSH keys (ed25519), credential helpers or short-lived tokens. Give CI a deploy key with read-only scope. Never embed a token in a URL, because it lands in `.git/config` and in logs.
 - **Forks and pull or merge requests** are the review unit. Keep them small, at hundreds of lines. Describe the intent and the risk, link the plan output for IaC changes, and require passing checks.
 
-Fetch first, read the incoming log, and only then decide how to combine the two histories.
+Fetch first, read the incoming log, and only then decide how to combine the two histories. A short example shows why the order matters. Suppose a teammate pushed a change to the NCCL template while you were editing the same file. A plain `git pull` might merge the two changes without asking you, and you would find the result only at the next run. After a fetch, `git log main..origin/main` shows you the teammate's commit first. You can read it, decide whether it overlaps your work, and only then pick merge or rebase with full information.
 
 ## 6. Branching strategies for infrastructure
 
-GitFlow uses long-lived `develop` branches, plus release and hotfix branches. It suits versioned software that ships on a cadence. Infrastructure is different. Long-lived branches drift away from the live environment, merges grow huge, and the question "what is deployed?" has no single answer.
+Imagine a team with three long-lived branches: `develop`, `staging` and `prod`. A hotfix lands on `prod`, and someone copies it to `staging`, but nobody copies it back to `develop`. Six weeks later the next release brings the bug back. Long-lived branches make the history lie about what is deployed. The strategies below try to keep one honest answer to "what is running now?"
 
-Trunk-based development fits infrastructure better. Branches are short-lived and merge back to `main` within a day or two, and `main` stays deployable at all times. Incomplete work hides behind feature flags or variables, and environments differ by configuration rather than by branch. The repository then mirrors reality, every change is small and easy to review, and rollback is a `revert`. CI promotes the same commit through each environment. Cut a release branch only when you must maintain several supported versions at once, such as an internal Helm chart or Ansible collection that many teams consume.
+Notice how the drift happens. Nobody decided to break anything. Each branch was correct when it was last touched, and the copies simply stopped matching. Every extra branch is another copy that someone must remember to update, and people forget.
 
-Model environments as directories or variable files, not as branches, as in `envs/staging` and `envs/prod`. Separate `staging` and `prod` branches drift apart, and then cherry-picks turn into folklore. To promote a change, edit the version pin in the prod directory and send it through a reviewed commit. If you are choosing a model, pick trunk-based development and keep each environment in its own directory. With that setup, the repository tells you what is deployed.
+GitFlow uses long-lived `develop` branches, plus release and hotfix branches. It suits versioned software that ships on a cadence, such as a desktop app with numbered releases that customers install. Infrastructure is different. Long-lived branches drift away from the live environment, merges grow huge, and the question "what is deployed?" has no single answer. A network change that lives on `develop` for a month may collide with three other changes that landed on `prod` in the meantime.
+
+Trunk-based development fits infrastructure better. Branches are short-lived and merge back to `main` within a day or two, and `main` stays deployable at all times. Incomplete work hides behind feature flags or variables, so a half-built feature can sit in `main` without reaching production. Environments differ by configuration rather than by branch. The repository then mirrors reality, every change is small and easy to review, and rollback is a `revert`. CI promotes the same commit through each environment, so the staging test covered exactly the bytes that go to production. Cut a release branch only when you must maintain several supported versions at once, such as an internal Helm chart or Ansible collection that many teams consume.
+
+Model environments as directories or variable files, not as branches, as in `envs/staging` and `envs/prod`. Separate `staging` and `prod` branches drift apart, and then cherry-picks turn into folklore. To promote a change, edit the version pin in the prod directory and send it through a reviewed commit. Picture the prod directory as a sealed shipment and the pin as the single line that says which module version it uses. Moving the pin is the whole promotion, and the reviewer sees exactly one line change. If you are choosing a model, pick trunk-based development and keep each environment in its own directory. With that setup, the repository tells you what is deployed.
 
 ## 7. Merge, rebase and history shape
+
+A teammate's push is rejected with "your branch and origin/main have diverged." Both histories have grown from a common ancestor and then moved apart. You must pick how to join them, and each choice writes a different history. The diagram shows the shape you are choosing between. Read it from the top. Commits `A` and `B` are shared history. Your feature branch adds `F1` and `F2`, while `main` moves on with `C`. The merge commit `M` is the place where the two lines meet again.
+
+The word "diverged" is worth understanding, because it describes a fork in a road. Neither side did anything wrong. Two people made changes from the same starting point, and Git now needs a decision about how to combine them. Merging keeps the fork visible in history. Rebasing pretends the fork never happened by replaying your work on top of the newest `main`. Both answers are correct. They simply tell different stories.
 
 ```mermaid
 gitGraph
@@ -288,7 +338,9 @@ gitGraph
 - **Rebase** replays your commits on a new base. Each replayed commit gets a new hash, and the history becomes linear. A squash merge collapses a whole branch into one commit on `main`. That is clean for atomic infrastructure changes, but the intermediate commits are gone.
 - **Golden rule: never rebase commits that others have based work on.** That includes anything pushed to a shared branch. Rebase your private feature branch, and merge or squash shared work.
 
-Here is a safe rebase of a feature branch, which ends with a lease-protected push.
+Why does the golden rule exist? A rebase creates new commits with new hashes. If a teammate already built their work on the old commit, their history now points at a commit that no longer has a branch leading to it. Their next push tries to join two histories that look unrelated, and the mess lands on the whole team. Rebasing your own branch is safe because nobody else has based work on it yet.
+
+Here is a safe rebase of a feature branch, which ends with a lease-protected push. Think of the lease as a reservation. The push goes through only if the remote branch is still where you last saw it.
 
 ```bash
 git fetch origin
@@ -299,19 +351,27 @@ git add <files> && git rebase --continue      # or: git rebase --abort to return
 git push --force-with-lease         # branch is mine; lease protects against a surprise
 ```
 
-During a rebase, "ours" means the branch you are rebasing onto, and "theirs" means your commit being replayed. That is the reverse of a merge, and it causes many mistakes.
+During a rebase, "ours" means the branch you are rebasing onto, and "theirs" means your commit being replayed. That is the reverse of a merge, and it causes many mistakes. The easiest way to remember it is to ask, "Which side is the base?" During a rebase the base is `origin/main`, so "ours" is the base. Your own work is the visitor being replayed, so it is "theirs."
 
-**Interactive rebase** (`git rebase -i origin/main`) lets you reorder commits before review. You can squash (`s`), fixup (`f`), reword (`r`), edit (`e`) or drop (`d`) them. Pair it with `--autosquash` when you have fixup commits. **`git rebase --onto new-base old-base branch`** moves a stacked branch. Suppose `feature-B` was started from `feature-A`, and `feature-A` was squash-merged. Then `git rebase --onto main feature-A feature-B` transplants only the commits that belong to `feature-B`.
+**Interactive rebase** (`git rebase -i origin/main`) lets you reorder commits before review. You can squash (`s`), fixup (`f`), reword (`r`), edit (`e`) or drop (`d`) them. Squash folds one commit into the one above it and keeps both messages. Fixup does the same job but throws away the extra message. Pair it with `--autosquash` when you have fixup commits, and Git will move each fixup next to the commit it belongs to. Use it to tidy a series before a reviewer sees it, the way you would reorder the slides in a deck before presenting.
+
+**`git rebase --onto new-base old-base branch`** moves a stacked branch. Suppose `feature-B` was started from `feature-A`, and `feature-A` was squash-merged. The squash created one new commit on `main`, so the old commits of `feature-A` no longer match anything on `main`. Then `git rebase --onto main feature-A feature-B` transplants only the commits that belong to `feature-B`. Without `--onto`, a plain rebase would try to replay the old `feature-A` commits too, and you would see the same change conflict with itself.
 
 ### Resolving conflicts, including generated files
 
-A conflict shows both sides between the markers `<<<<<<<`, `=======` and `>>>>>>>`. Edit the file to the result you want, then run `git add` and continue. Several tools help. `git mergetool` opens a merge tool, and `git diff --diff-filter=U` lists the files that are still in conflict. `git checkout --conflict=diff3 file` shows the common ancestor as well. `git rerere` remembers your resolutions and replays them later.
+A conflict shows both sides between the markers `<<<<<<<`, `=======` and `>>>>>>>`. Edit the file to the result you want, then run `git add` and continue. Read the block as two versions of the same paragraph. The top half is one side, the bottom half is the other, and your job is to write the paragraph the team needs. Deleting both halves and starting again is a valid choice when neither side is right.
 
-Generated files need different treatment. These include `.terraform.lock.hcl`, `poetry.lock`, `package-lock.json` and Helm `Chart.lock`. Do not merge them by hand. Take the mainline version and regenerate it. During a rebase, "ours" is main, so run `git checkout --ours -- .terraform.lock.hcl`. Then run `terraform init`, and add `-upgrade` only if you mean to change versions. Finish with `git add` and continue. For Terraform state, the answer is to never keep state in Git at all (see 4.19).
+Several tools help. `git mergetool` opens a merge tool, and `git diff --diff-filter=U` lists the files that are still in conflict. `git checkout --conflict=diff3 file` shows the common ancestor as well, which is the version both sides started from. That third view often makes the right answer obvious. `git rerere` remembers your resolutions and replays them later. This is helpful when the same conflict returns, for example when you rebase the same branch twice.
+
+Generated files need different treatment. These include `.terraform.lock.hcl`, `poetry.lock`, `package-lock.json` and Helm `Chart.lock`. Do not merge them by hand. A lock file records exact versions that a tool resolved, and a hand-merged version describes a set of versions that nobody actually tested. Take the mainline version and regenerate it. During a rebase, "ours" is main, so run `git checkout --ours -- .terraform.lock.hcl`. Then run `terraform init`, and add `-upgrade` only if you mean to change versions. Finish with `git add` and continue. For Terraform state, the answer is to never keep state in Git at all (see 4.19).
 
 ## 8. Undoing things safely
 
-Pick the command by what has already happened. The table covers the common cases.
+Say you ran `git reset --hard` in the wrong terminal and lost a commit you had not pushed. The commit is not gone yet. Git keeps it in the object store until cleanup, so the reflog can still point you back to it. The table below pairs each situation with the safe command, so that you do not reach for the dangerous one in a hurry.
+
+Pick the command by what has already happened, not by what you want to happen. Each of the commands below moves a pointer, rewrites part of the index, or discards files, and each one leaves a different trail. Before you run anything destructive, ask whether the thing you are about to change has been shared. If it has, prefer a command that adds a new commit. If it has not, you have more room, and the reflog is there as a backstop.
+
+The table covers the common cases.
 
 | Situation | Command | Notes |
 |---|---|---|
@@ -324,9 +384,11 @@ Pick the command by what has already happened. The table covers the common cases
 | Lost commits after a bad reset or rebase | `git reflog` then `git branch rescue <sha>` | Local safety net |
 | Remove an untracked file | `git clean -n` (preview), then `git clean -f` | Always dry-run first |
 
-The reflog is your local safety net. Git records every movement of `HEAD` and of the branch tips. By default, reachable entries are kept for about 90 days, and unreachable entries for 30 days. Suppose you run `reset --hard` by mistake. `git reflog` then shows `HEAD@{1}: commit: ...`, and `git branch rescue HEAD@{1}` recovers the commit. The reflog is local only, and it does not survive a fresh clone. Treat it as a seat belt, not a backup.
+The reflog is your local safety net. Git records every movement of `HEAD` and of the branch tips. Think of it as a ship's log that notes each time the boat changed position. By default, reachable entries are kept for about 90 days, and unreachable entries for 30 days. Suppose you run `reset --hard` by mistake. `git reflog` then shows `HEAD@{1}: commit: ...`, and `git branch rescue HEAD@{1}` recovers the commit. Read the reflog from the top, where the newest movement is listed first, and find the line just before the mistake. That line holds the hash you want.
 
-Bisect finds the commit that introduced a regression, using a binary search. You mark a known-bad commit and a known-good one, and Git checks out the midpoint each time.
+The reflog is local only, and it does not survive a fresh clone. A teammate who clones the repository next week will not see your reflog at all. Treat it as a seat belt, not a backup. The real backup is the shared remote, and that is why pushing early matters.
+
+Bisect finds the commit that introduced a regression, using a binary search. You mark a known-bad commit and a known-good one, and Git checks out the midpoint each time. The idea is the same as finding a word in a printed dictionary. You do not read every page. You open to the middle, see whether your word comes before or after that point, and throw away the half that cannot hold it. Each answer halves the remaining search space, so even a long history takes only a few checks.
 
 ```bash
 git bisect start
@@ -339,11 +401,15 @@ git bisect run ./tests/check_bandwidth.sh
 git bisect reset
 ```
 
-Bisect works best when commits are small and the test is fast and repeatable. For infrastructure, the test might render a template and assert a value. It could also run `ansible-lint`, or evaluate a Terraform plan. When a regression has no obvious author, write a test for the symptom and let `git bisect run` find the commit.
+Bisect works best when commits are small and the test is fast and repeatable. The reason is simple. Each commit that bisect tests has to build, and a large commit that mixes three changes makes it unclear which of the three caused the failure. For infrastructure, the test might render a template and assert a value. It could also run `ansible-lint`, or evaluate a Terraform plan. A plan check is slower, so it suits a bisect that runs overnight, while a template check runs in seconds.
+
+When a regression has no obvious author, write a test for the symptom and let `git bisect run` find the commit. The test does not need to know the cause. It only needs to answer one yes or no question about each commit, such as "does the rendered config still set the right HCA list?" Once the answer is automatic, Git does the walking and you do the thinking.
 
 ## 9. Repository architecture
 
-Choosing between one repository per component and one large repository is a trade-off. The table lays out both sides.
+A platform team has a Terraform module for the GPU network, an Ansible role that installs drivers, and the environment definitions that call both. Should these live in one repository or three? The answer depends on who changes them and how often they must move together. A change that touches all three at once is easy in one repository and awkward across three.
+
+Think about the people involved. A network team that owns the module should not need to approve a change to a driver role, and a driver team should not wait on network reviews. Separate repositories give each team its own door. Yet a real change, such as a new NIC model, often touches the module, the role and the environment in one story. Splitting that story across three pull requests means three reviews, three merge times and a window where only one of the changes has landed. Either shape has a cost, and the table lays out both sides.
 
 | | Polyrepo (one repo per component/module/service) | Monorepo (many components in one repo) |
 |---|---|---|
@@ -351,15 +417,21 @@ Choosing between one repository per component and one large repository is a trad
 | Cons | Version skew; cross-repo changes need coordinated PRs; discoverability | Needs CODEOWNERS and path-scoped CI; large clone; one permission boundary; tooling (Bazel, Nx, path filters) at scale |
 | Fits | Reusable Terraform modules, Ansible roles/collections, published Helm charts | Platform repos for one organisation's environments and cluster definitions |
 
-A common pattern for an AI-infrastructure team combines both. It keeps a **live (environment) monorepo**, with paths such as `terraform/envs/prod/...`, `ansible/inventories/...` and `k8s/clusters/...`. That monorepo consumes **versioned module and role repos**, pinned by tag. CI uses path filters, so a change under `envs/staging/` plans only staging. **Submodules** point to another repository's commit, and **subtree** vendors one in. Both work, but both have sharp edges, such as a forgotten `--recurse-submodules` or detached HEADs. Where the tool supports it, prefer package-style pins. Examples are the Terraform module `ref=v1.4.2` and an Ansible `requirements.yml` with versions.
+A common pattern for an AI-infrastructure team combines both. It keeps a **live (environment) monorepo**, with paths such as `terraform/envs/prod/...`, `ansible/inventories/...` and `k8s/clusters/...`. That monorepo consumes **versioned module and role repos**, pinned by tag. Picture the module repos as a library of tested parts, and the monorepo as the building that uses them. The building always says which edition of each part it uses, so a library update never changes a building by surprise.
 
-A few other features help at scale. **`git worktree add ../hotfix hotfix-branch`** gives you a second checkout of the same repository without a re-clone, which is handy when you must patch production in the middle of a change. **Sparse checkout** and **partial clone** (`--filter=blob:none`) suit huge repositories. A **shallow clone** (`--depth 1`) suits CI, but some tools need the history, such as `git describe` and changelog generation. Use **tags** for releases, as in `git tag -a v1.4.0 -m ...`, and push them explicitly. Sign them with `-s`. Then `git describe --tags` gives you build versions.
+CI uses path filters, so a change under `envs/staging/` plans only staging. A path filter is a rule that says which folders trigger which jobs. Without it, every small edit would plan every environment, and the queue would grow long.
 
-Keep reusable modules in their own repositories, and keep environments in one monorepo, since each fits that shape.
+**Submodules** point to another repository's commit, and **subtree** vendors one in. Vendoring means copying the other repository's files into yours. Both work, but both have sharp edges, such as a forgotten `--recurse-submodules` or detached HEADs. A detached HEAD means you are looking at a commit with no branch name attached, so any new commit you make can be lost when you switch away. Where the tool supports it, prefer package-style pins. Examples are the Terraform module `ref=v1.4.2` and an Ansible `requirements.yml` with versions. A pin is one line that names a version, and anyone can read it and check it.
+
+A few other features help at scale. **`git worktree add ../hotfix hotfix-branch`** gives you a second checkout of the same repository without a re-clone, which is handy when you must patch production in the middle of a change. A re-clone means downloading the whole history again, and on a large repository that takes real time. A worktree shares the same database, so it starts almost at once. **Sparse checkout** and **partial clone** (`--filter=blob:none`) suit huge repositories. Sparse checkout writes only the folders you need into your working tree. Partial clone downloads the commits and trees now and fetches file contents only when you touch them. A **shallow clone** (`--depth 1`) suits CI, because a build needs only the newest snapshot. Some tools need the history, though, such as `git describe` and changelog generation, so check before you shallow clone a release job. Use **tags** for releases, as in `git tag -a v1.4.0 -m ...`, and push them explicitly. A tag is a permanent name for one commit, so the release you deployed on a given day can always be found by name. Sign them with `-s`. Then `git describe --tags` gives you build versions.
+
+Keep reusable modules in their own repositories, and keep environments in one monorepo, since each fits that shape. Modules change slowly and are used by many teams, so they benefit from separate versions and separate owners. Environments change every day and must move together, so they benefit from one place to see the whole picture.
 
 ## 10. Hooks and pre-commit: shifting left
 
-Git hooks run scripts at events such as `pre-commit`, `commit-msg` and `pre-push`. They live in `.git/hooks/*`, and that folder is not versioned. The pre-commit framework fixes this. It keeps the hook configuration in `.pre-commit-config.yaml`, and it installs the hooks for every contributor with `pre-commit install`. You can run every check across the repository with `pre-commit run --all-files`:
+A developer pushes a Terraform file with an API token pasted into a variable, or a YAML file with a tab in the wrong place. The mistake is cheap to catch on the laptop, and expensive to catch later in CI or on the cluster. Hooks move the check to the moment of the commit. "Shifting left" simply means checking earlier in the workflow, closer to where the mistake is made. Picture a building inspector who checks the wiring while the wall is still open. Finding a fault then costs a few minutes with a screwdriver. Finding it after the walls are painted costs a crew and a delay.
+
+Git hooks run scripts at events such as `pre-commit`, `commit-msg` and `pre-push`. A hook is a small program that Git runs at one of those moments, and a failing hook stops the step. They live in `.git/hooks/*`, and that folder is not versioned. Git does not copy it when someone clones the repository, so a hook you wrote on your laptop never reaches a teammate. The pre-commit framework fixes this. It keeps the hook configuration in `.pre-commit-config.yaml`, which is a tracked file, and it installs the hooks for every contributor with `pre-commit install`. You can run every check across the repository with `pre-commit run --all-files`. That command is useful right after you add a new check, because it shows you every existing file the check would flag:
 
 ```yaml
 repos:
@@ -383,24 +455,32 @@ repos:
   hooks: [ { id: gitleaks } ]
 ```
 
-The versions in that file are examples, so pin the versions you have reviewed. Local hooks are advisory, because a developer can bypass them with `--no-verify`. For that reason, **run the same checks in CI as required status checks**. Put fast checks, such as format, syntax and secrets, in pre-commit. Put slow checks, such as plans and integration tests, in CI. Start with the fast checks locally, then make the same ones required in CI.
+The versions in that file are examples, so pin the versions you have reviewed. Pinning matters because a hook that updates itself can start flagging files that passed yesterday, and then nobody trusts the hook. Local hooks are advisory, because a developer can bypass them with `--no-verify`. Sometimes that bypass is legitimate, for example when a hook is broken on a new laptop. That is exactly why the same checks must also run on the server. For that reason, **run the same checks in CI as required status checks**. A required status check is a result the server insists on before it accepts a merge.
+
+Put fast checks, such as format, syntax and secrets, in pre-commit. They finish in seconds, and the developer sees them right away. Put slow checks, such as plans and integration tests, in CI. A full plan can take minutes, and running it on every keystroke would only annoy people. Start with the fast checks locally, then make the same ones required in CI.
 
 ## 11. Secrets and sensitive history
 
-Git remembers everything. Deleting a secret in a later commit does not remove it from history, forks, clones, CI caches or backups. Treat any committed secret as **compromised**.
+A developer pushes a branch with an AWS key inside a YAML file. The pipeline flags it an hour later. By then two CI runners and a colleague's laptop have cloned the branch, so the key has already left the building. Deleting the file in the next commit does nothing to those copies. That is why the order below starts with rotation, not with cleanup.
 
-Work through these steps in order.
+Git remembers everything. Deleting a secret in a later commit does not remove it from history, forks, clones, CI caches or backups. A useful picture is a photocopier. Once a copy of the page has gone out of the office, tearing up the original does not call back the copy. Treat any committed secret as **compromised**. Assume that someone has already read it, even if you have no evidence that they did.
 
-1. **Revoke and rotate** the credential right away, because a copy may already exist. You cannot take back what someone has already copied. This is the only step that actually fixes the exposure. Then check the access logs for any use of it.
-2. Remove the secret from the current tree, and replace it with a reference to a secret manager (see 4.12).
-3. Only after that, optionally rewrite history to purge the secret. Tools include `git filter-repo --path secrets.yml --invert-paths`, `--replace-text`, and BFG Repo-Cleaner. Then force-push, ask collaborators to re-clone, and expire server-side caches and forks. The platform may still keep references, such as pull request refs, so contact support if needed.
-4. Finally, prevent the next leak. Add pre-commit secret scanning with gitleaks, trufflehog or detect-secrets, and turn on platform push protection. Add `.gitignore` entries too. Use encrypted alternatives such as Ansible Vault, SOPS with age or KMS, sealed secrets and external secrets operators.
+Work through these steps in order. Each step depends on the one before it, and skipping ahead wastes effort or leaves the door open.
 
-Sign your commits and tags as well, with SSH or GPG. Set `git config gpg.format ssh` to use SSH, and check signatures with `git log --show-signature`. Signed commits make provenance verifiable. On protected branches where supply-chain integrity matters, require signed commits. Rotate the credential first, and only then touch the repository. Your repository history comes second.
+1. **Revoke and rotate** the credential right away, because a copy may already exist. You cannot take back what someone has already copied. This is the only step that actually fixes the exposure. Revoking turns the old key into a dead one, and rotating issues a new key to the systems that still need access. Then check the access logs for any use of it, so you know whether the key was already used by someone else.
+2. Remove the secret from the current tree, and replace it with a reference to a secret manager (see 4.12). The next deploy then reads the new value at run time, not from a file in Git.
+3. Only after that, optionally rewrite history to purge the secret. Tools include `git filter-repo --path secrets.yml --invert-paths`, `--replace-text`, and BFG Repo-Cleaner. Rewriting history is slow, disruptive and never complete, which is why it comes third. Every collaborator must re-clone, and every open pull request still holds the old commits. Then force-push, ask collaborators to re-clone, and expire server-side caches and forks. The platform may still keep references, such as pull request refs, so contact support if needed.
+4. Finally, prevent the next leak. Add pre-commit secret scanning with gitleaks, trufflehog or detect-secrets, and turn on platform push protection. Push protection is a server-side check that refuses a push containing a recognised secret pattern. Add `.gitignore` entries too. Use encrypted alternatives such as Ansible Vault, SOPS with age or KMS, sealed secrets and external secrets operators. Each of these keeps the secret encrypted at rest, so the repository holds only ciphertext.
+
+Sign your commits and tags as well, with SSH or GPG. Set `git config gpg.format ssh` to use SSH, and check signatures with `git log --show-signature`. Signed commits make provenance verifiable. A signature is a mark that proves a specific person's key made the commit, so you can trust who wrote it. On protected branches where supply-chain integrity matters, require signed commits. Rotate the credential first, and only then touch the repository. Your repository history comes second.
 
 ## 12. Governance: branch protection and CODEOWNERS
 
-On the server, which means GitHub or GitLab, configure the following for `main`.
+A Slurm configuration change is merged on a Friday afternoon. The only approval came from a teammate who has never owned Slurm. Two days later the scheduler misbehaves, and nobody who understands the change had seen it. CODEOWNERS and branch protection exist so that the person who knows the domain sees the change before it lands, and so that a rushed merge cannot skip that step.
+
+Governance sounds like paperwork, but think of it as the rule that stops a junior engineer from approving their own change on a slow afternoon. The rule is not there because people cannot be trusted. It is there because a second pair of eyes finds the mistake that the first pair has read past a dozen times.
+
+On the server, which means GitHub or GitLab, configure the following for `main`. These settings are enforced by the platform, not by a good intention, which is the whole point.
 
 - Require pull requests, with at least one approving review, or two for production. Dismiss stale approvals when new commits are pushed.
 - Require status checks, such as lint, validate, plan and tests. The branch must also be up to date before merge.
@@ -420,29 +500,37 @@ The `CODEOWNERS` file maps paths to the reviewers who must approve changes there
 /.github/                  @org/sre-leads
 ```
 
-The file turns team boundaries into enforcement. A Slurm change needs HPC approval, and a VPC change needs the network team. Pair the file with a pull request template that asks what changed, what the risk is and what the rollback plan is, plus a link to the plan output. Add labels that show the blast radius.
+The file turns team boundaries into enforcement. A Slurm change needs HPC approval, and a VPC change needs the network team. Read the file from the bottom up, because the last matching line wins. The catch-all line at the top gives the SRE team a default, and the more specific lines below override it for their own paths. A reviewer who opens a pull request that touches `/ansible/roles/gpu_driver/` sees the HPC team requested, and nobody has to remember who owns what.
+
+Pair the file with a pull request template that asks what changed, what the risk is and what the rollback plan is, plus a link to the plan output. The template is a short form the author fills in before a reviewer sees the change. Add labels that show the blast radius, such as `gpu-fleet-wide` or `single-rack`, so a reviewer can tell at a glance how careful to be.
 
 ### Review by blast radius
 
-Review effort should follow risk. A documentation change can merge quickly. A change to a shared module, a firewall rule, a kernel parameter on all GPU nodes, a scheduler config or a state or backends file needs more. Such a change gets domain-owner review, a plan or dry-run artefact, a staged rollout plan and a rollback statement. For example, the rollout might canary one rack first, then more racks. Encode this with `CODEOWNERS`, labels and required environments in CI. Before you merge, ask how many machines the change touches, and let that answer set the level of review.
+Blast radius is the amount of damage a change can do if it goes wrong. Review effort should follow risk. A documentation change can merge quickly. A change to a shared module, a firewall rule, a kernel parameter on all GPU nodes, a scheduler config or a state or backends file needs more. Such a change gets domain-owner review, a plan or dry-run artefact, a staged rollout plan and a rollback statement. For example, the rollout might canary one rack first, then more racks. A canary is a small first step that tests the change on a few machines before the rest of the fleet sees it. If the canary misbehaves, the damage stays inside one rack. Encode this with `CODEOWNERS`, labels and required environments in CI. Before you merge, ask how many machines the change touches, and let that answer set the level of review.
 
 ## 13. Large files, binaries and LFS
 
-Git stores whole snapshots, so large binary files bloat the repository forever. Golden OS images, model checkpoints and datasets are the usual culprits. Every clone then gets slower.
+A model team commits a checkpoint by accident, and the repository now carries that file in its history. Every clone downloads it, and CI checkouts slow down. Removing it later is possible but painful, so the best time to decide where big files go is before the first one is added. The options below give you that choice.
 
-You have three options. **Git LFS** keeps small pointers in Git and the content on an LFS server. You set it up with `git lfs install` and `git lfs track "*.qcow2"`, then commit `.gitattributes`. Each clone downloads only the versions it needs, but hosting quotas and bandwidth still apply.
+Git stores whole snapshots, so large binary files bloat the repository forever. A binary file is one that is not plain text, such as a disk image or a trained model. Git can compress text well, but a model file is already dense and barely shrinks. Golden OS images, model checkpoints and datasets are the usual culprits. Every clone then gets slower, and every new engineer pays that cost on their first day.
 
-The second option is object storage with content addressing, plus a manifest in Git. Tools here include DVC, lakeFS, or a simple `artifacts.lock` file of SHA-256 hashes. The third option is an artifact registry, such as a container registry, Artifactory or the Hugging Face Hub, for images and models.
+You have three options. **Git LFS** keeps small pointers in Git and the content on an LFS server. A pointer is a short text file that says where the real bytes live and which hash they have. You set it up with `git lfs install` and `git lfs track "*.qcow2"`, then commit `.gitattributes`. The `.gitattributes` file is the rule that tells Git which file types go through LFS. Each clone downloads only the versions it needs, but hosting quotas and bandwidth still apply. Pick LFS when the big file belongs next to the code and changes alongside it.
 
-Never put checkpoints or datasets in plain Git. If a large file gets committed by mistake, purge it with `git filter-repo` before it spreads. Also turn on `check-added-large-files` in pre-commit. Decide where each large file will live before the first commit that adds it.
+The second option is object storage with content addressing, plus a manifest in Git. Content addressing means the storage key is the hash of the file, so the same bytes always land in the same place. A manifest is a small list of those hashes that Git can version. Tools here include DVC, lakeFS, or a simple `artifacts.lock` file of SHA-256 hashes. This option suits datasets that run to many gigabytes, because the big bytes never enter Git at all. The third option is an artifact registry, such as a container registry, Artifactory or the Hugging Face Hub, for images and models. A registry is a library built for large artifacts, with access control, versions and download tools already built in.
+
+Never put checkpoints or datasets in plain Git. If a large file gets committed by mistake, purge it with `git filter-repo` before it spreads. Purging after the fact is the last resort, because every clone made in the meantime already holds the file. Also turn on `check-added-large-files` in pre-commit. That hook stops the commit on the laptop, so the file never leaves it. Decide where each large file will live before the first commit that adds it.
 
 ## 14. GitOps: Git as the deployment trigger
 
-Git can drive deployment in two ways.
+An engineer runs `kubectl edit` on a production deployment at 3 AM to raise a memory limit. Git knows nothing about the change. At the next CI run, the pipeline either silently reverts the fix or leaves it in place, and nobody can say which. GitOps exists to make Git the one place where the desired state lives, so that every change can be traced and every drift can be seen.
 
-In the **push-based** model, CI builds the change and then pushes it to the target. CI runs `terraform apply`, `ansible-playbook`, `kubectl apply` or `helm upgrade` itself. This model is simple and flexible. However, CI needs credentials with broad write access to production, which makes the pipeline a high-value attack target. Drift between pushes also goes unnoticed.
+The key word is "desired." Git holds what the cluster should look like. The live cluster holds what it actually looks like. When the two differ, that difference is drift, and drift is where mysteries start. GitOps keeps the two in agreement, and it shows you the gap when they disagree.
 
-In the **pull-based (GitOps)** model, an agent inside the target environment pulls the desired state from Git. Argo CD and Flux are examples of such agents, and you can use either one. The agent reconciles the cluster to match Git, and it reports or automatically reverts any drift. Credentials stay inside the cluster, Git serves as the audit log, and rollback is a revert. The system also self-heals. See 4.26.
+Git can drive deployment in two ways. The difference is who does the work of applying a change, and that decides where the credentials live.
+
+In the **push-based** model, CI builds the change and then pushes it to the target. CI runs `terraform apply`, `ansible-playbook`, `kubectl apply` or `helm upgrade` itself. Think of CI as a courier who drives to the site and does the work. This model is simple and flexible, and most teams start here. However, CI needs credentials with broad write access to production, which makes the pipeline a high-value attack target. Drift between pushes also goes unnoticed, because the courier only visits when a new change arrives.
+
+In the **pull-based (GitOps)** model, an agent inside the target environment pulls the desired state from Git. Here the site keeps its own staff. The agent checks Git on a loop, compares it with the live cluster, and corrects any difference. Argo CD and Flux are examples of such agents, and you can use either one. The agent reconciles the cluster to match Git, and it reports or automatically reverts any drift. Credentials stay inside the cluster, Git serves as the audit log, and rollback is a revert. The system also self-heals, because the agent keeps checking even when nobody has pushed anything. See 4.26.
 
 ```mermaid
 flowchart LR
@@ -453,17 +541,19 @@ flowchart LR
   Agent -- "reconcile / detect drift" --> Env2["Cluster"]
 ```
 
-A few conventions keep this model clean. Keep application code repos apart from environment and config repos. CI can then update an image tag in the config repo through a pull request, and the agent deploys the change. Pin each image by an immutable digest or tag, and keep one source of truth per environment. Keep secrets out of Git by using external secret operators or SOPS-encrypted files. Choose the model before you wire the first pipeline, because it decides who holds the cluster credentials.
+A few conventions keep this model clean. Keep application code repos apart from environment and config repos. The reason is that a code change and a deployment change have different reviewers and different rhythms. CI can then update an image tag in the config repo through a pull request, and the agent deploys the change. Pin each image by an immutable digest or tag, so the bytes you tested are the bytes that run. A digest is a fingerprint of the image, and a tag such as `latest` can quietly point at something new tomorrow. Keep one source of truth per environment, so nobody has to guess which file wins. Keep secrets out of Git by using external secret operators or SOPS-encrypted files. Choose the model before you wire the first pipeline, because it decides who holds the cluster credentials. Changing that answer later means rebuilding the trust path, which is far more work than choosing well at the start.
 
 ## 15. Lab
 
-Start with the self-checking Python lab in `code/part04/git_infrastructure_workflow_lab.py`. You can run it before touching any real repository. It verifies Git's content-addressed SHA-1 hashing. The check uses the `blob <size>\0<content>` format, and it gives `ce013625030ba8dba906f756967f9e9ca394464a`. It confirms that a blob is reused when `main.tf` is renamed to `providers.tf`. It checks the Merkle DAG commit chaining in `build_git_commit_dag`. It also evaluates the last-matching-pattern rules in `.github/CODEOWNERS` with `resolve_codeowners`, and it runs an automated `git bisect run` binary search through `simulate_git_bisect_run`.
+Start with the self-checking Python lab in `code/part04/git_infrastructure_workflow_lab.py`. You can run it before touching any real repository. It verifies Git's content-addressed SHA-1 hashing. The check uses the `blob <size>\0<content>` format, and it gives `ce013625030ba8dba906f756967f9e9ca394464a`. It confirms that a blob is reused when `main.tf` is renamed to `providers.tf`. It checks the Merkle DAG commit chaining in `build_git_commit_dag`. It also evaluates the last-matching-pattern rules in `.github/CODEOWNERS` with `resolve_codeowners`, and it runs an automated `git bisect run` binary search through `simulate_git_bisect_run`. Each of these checks matches one idea from the chapter, so a failing check tells you which idea to reread.
 
 ```bash
 python3 code/part04/git_infrastructure_workflow_lab.py
 ```
 
-Next, work through the exercises below on any machine with Git 2.40+. All interactive shell steps are `untested here`, so you will need to check them yourself.
+Run the lab first, and read its output line by line. A lab that passes on your machine tells you the model of Git is sound. It does not tell you that your team's remote is set up correctly, which is why the exercises below use a throwaway remote.
+
+Next, work through the exercises below on any machine with Git 2.40+. The interactive shell steps have not been run on live hardware, so you will need to check them yourself. Do each one in a scratch folder, and keep a notes file of what you saw. Those notes are the evidence that you understand the drill, and they are worth more than a clean terminal.
 
 1. Start with the object model. Init a repo and make three commits. Use `cat-file`, `ls-tree`, `rev-parse` and `count-objects -v` to trace a commit to its tree and then to its blob. Modify one file and see which objects you get as new. Run `git gc` and compare the size of `.git`. Then show that renaming a file creates no new blob, and check the result yourself.
 2. Practise staging. Edit two unrelated things in one file, then split them into two commits with `git add -p`, which lets you choose each hunk. Use `git diff --staged --check` to catch a trailing space in YAML.
@@ -481,6 +571,8 @@ Next, work through the exercises below on any machine with Git 2.40+. All intera
 14. Finish by cleaning up the throwaway remote and repos. Do all of these drills on the throwaway remote only, so that a failed step cannot touch real history.
 
 ## 16. Common mistakes
+
+Most of these mistakes look harmless when they happen. A `git add .` on a Friday, a `--force` used to fix a rejected push, or a copied `prod` branch that no one owns. Each one feels like a small shortcut in the moment, and each one is the first step of a longer story that ends in an incident review. The list below is what those reviews keep returning to. Read it as a pattern, not a checklist of rules. Most entries come down to the same habit, which is looking at what a command will touch before you run it. Check your staged files against the list before you open a pull request.
 
 - Using `git add .` or `git commit -a` sweeps in state files, keys, build output and unrelated edits.
 - Committing secrets, `.tfstate` files or kubeconfigs, and assuming that a follow-up commit removes them.
@@ -513,12 +605,12 @@ The last question ties back to the reflog section above, so review that section 
 
 ## Exercises
 
-1. Start with the object model, which you can check yourself. Using `git_hash_object()` and `build_git_commit_dag()` in `code/part04/git_infrastructure_workflow.py`, work out what the blob, tree and commit objects are doing. The material comes from *Network Programmability and Automation* Chapter 11. Explain (a) why renaming `main.tf` to `providers.tf` creates zero new `blob` objects while it still changes the `tree` and `commit` SHA-1 hashes; (b) why a branch is a 41-byte ref file (`.git/refs/heads/main`) and what `HEAD` points to; and (c) what `git diff`, `git diff --staged` and `git diff HEAD` each compare across the Working Tree, Index and Repository.
-2. Next, walk through the daily workflow that you would follow and the remote setup. (a) Trace the 9-step operational workflow: `git fetch origin` -> `git switch -c` -> edit -> `git status` -> `git diff` -> `git add <path>` -> `git diff --staged --check` -> `git commit` -> `git push -u`. Explain why you must set `.gitignore` to exclude `*.tfstate*`, `.terraform/`, `*.tfvars` and keys, while keeping `.terraform.lock.hcl`. Then explain how `git rm --cached` untracks a file that was committed by mistake. (b) Contrast `git fetch` plus `git diff main..origin/main` with `git pull`. Explain why shared remotes (`na-shared.git`) are initialized with `git clone --bare`, and how the Vagrant and Containerlab topologies in *Network Programmability and Automation* Chapter 5 are versioned in Git. The material comes from *Network Programmability and Automation* Chapters 5 and 11.
-3. Next, decide on a branching strategy. (a) Explain why infrastructure teams use trunk-based development with directory-based environments (`envs/staging`, `envs/prod`) instead of long-lived `staging` and `prod` branches. (b) State the golden rule of rebase. Explain why `"ours"` and `"theirs"` swap places during a rebase compared with a merge. Show how to resolve conflicts in generated lock files (`.terraform.lock.hcl`), and how `git rebase --onto main feature-A feature-B` transplants a stacked branch.
-4. Practice undoing mistakes and hunting regressions. (a) Contrast `git revert <sha>` (and `git revert -m 1 <merge_sha>`) on a published branch with `git reset --soft/--mixed/--hard` on local history. Then show how `git reflog` recovers a commit that was lost to a bad `reset --hard`. (b) Using `simulate_git_bisect_run()` in `code/part04/git_infrastructure_workflow.py`, explain how `git bisect run ./tests/check_bandwidth.sh` finds a regression across 40 commits in 5 steps. Also explain what the exit codes `0`, `1..127` (except `125`) and `125` mean.
-5. Cover secrets, hooks and ownership, using the material from `volume-10`. (a) State the 4-step remediation order for a credential or private key that was committed to Git. Explain why rotation must come before `git filter-repo`. Then explain why the `.pre-commit-config.yaml` checks (`check-yaml`, `detect-private-key`, `gitleaks`, `terraform_fmt`, `ansible-lint`) must also run as required status checks in CI. (b) Using `resolve_codeowners()`, explain how the last-matching-pattern rules in `.github/CODEOWNERS` make domain owners approve changes in proportion to blast radius.
-6. Last, you choose a repository layout and a deployment model. (a) Compare polyrepos (versioned Terraform modules and Ansible roles) with a live environment monorepo. Explain when you would reach for `git worktree add`, `git lfs track`, or content-addressed object storage. (b) Contrast push-based CI deployment, where `terraform apply` runs from a CI runner, with pull-based GitOps reconciliation, where an `Argo CD` or `Flux` agent runs inside the cluster.
+1. A colleague renames `main.tf` to `providers.tf` and changes nothing else in the file. Why does that rename create no new blob? Using `git_hash_object()` and `build_git_commit_dag()` in `code/part04/git_infrastructure_workflow.py`, check which objects change and which stay the same. Why do the tree and commit hashes still change? What does a branch file such as `.git/refs/heads/main` hold, and why is it only 41 bytes? Which two areas does `git diff` compare, and which two does `git diff --staged` compare? The material comes from *Network Programmability and Automation* Chapter 11.
+2. A new engineer finishes an NCCL change on a laptop and is ready to share it. Which command fetches the latest remote state without changing local files? Walk through the operational workflow from `git fetch origin` to `git push -u`, and name the step that catches stray whitespace. Why should `.gitignore` exclude `*.tfstate*`, `.terraform/` and keys, while `.terraform.lock.hcl` stays tracked? How does `git rm --cached` untrack a state file that was committed by mistake? Why is a shared remote such as `na-shared.git` created with `git clone --bare`? The material comes from *Network Programmability and Automation* Chapters 5 and 11.
+3. Your team is choosing between long-lived `staging` and `prod` branches and directory-based environments such as `envs/staging` and `envs/prod`. Which model keeps one honest answer to "what is deployed?" Why? State the golden rule of rebase in one sentence. During a rebase, which side is `--ours`, and why does that swap compared with a merge? How do you resolve a conflict in `.terraform.lock.hcl` without editing it by hand? What does `git rebase --onto main feature-A feature-B` move?
+4. A bad `reset --hard` lost a commit on your laptop, and a separate change halved the bandwidth in `nccl-tests`. What does `git revert <sha>` do on a branch that is already published? When would you use `git revert -m 1 <merge_sha>` instead? How does `git reflog` find the lost commit so that you can recover it? Using `simulate_git_bisect_run()` in `code/part04/git_infrastructure_workflow.py`, how many bisect steps does `git bisect run ./tests/check_bandwidth.sh` need across 40 commits? What do exit codes `0`, `1..127` (except `125`) and `125` mean to bisect?
+5. A teammate commits a private key to a public branch. Which step comes first in the remediation order? Why must rotation happen before `git filter-repo` rewrites history? Why should the checks in `.pre-commit-config.yaml`, such as `detect-private-key` and `gitleaks`, also run as required status checks in CI? Using `resolve_codeowners()`, which owner approves a change to `/terraform/network/`? How does the last matching rule in `.github/CODEOWNERS` decide that owner?
+6. Your GPU platform team is choosing a repository layout and a deployment model. Should the reusable Terraform modules live in a monorepo or in versioned polyrepos? When would you reach for `git worktree add` during an urgent patch? When is `git lfs track` the right tool for a large file? In push-based delivery, where does the cluster credential live? In pull-based GitOps with Argo CD or Flux, which component holds the cluster credential?
 
 ## Checkpoint questions (20)
 
@@ -696,4 +788,4 @@ Every Git clone downloads the full history of the repository. If you commit a 10
   - `nvidia-devops` (`volume-10/17-git-for-infrastructure-and-operations.md`): Git object model, safe operational workflow, `.gitignore` for AI infrastructure, `pre-commit` hooks, polyrepo vs monorepo architecture, trunk-based development, rebase workflows (`--onto`, `--force-with-lease`), blast-radius review (`CODEOWNERS`), GitOps push vs pull models, secret leak remediation (`git filter-repo`), recovery (`reflog`), and `git bisect run`.
 - **Run here:** `python3 code/part04/git_infrastructure_workflow_lab.py` (4 passed, 0 failed).
 - **Explicitly labelled inferences:** The `git_hash_object`, `build_git_commit_dag`, `resolve_codeowners`, and `simulate_git_bisect_run` models in `code/part04/git_infrastructure_workflow.py`, the AI-factory `.gitignore` and `.pre-commit-config.yaml` templates, and the `CODEOWNERS` ruleset are the author's constructions applying *Network Programmability and Automation* Chapters 5 & 11 and `volume-10` to GPU cluster operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Interactive `git`, `vagrant`, `containerlab`, `dyff`, `pre-commit`, `gitleaks`, and `git filter-repo` shell commands (`Git 2.40+` / `2.41.0`, `9000` to `1500` MTU, `v4.6.0`, `v1.92.0`, `v24.9.0`, `v8.18.4`, `500` KB, `192.168.12.11..13`, `172.20.20.2`, `90`/`30` days reflog) are marked (`untested here`) where not executed by `git_infrastructure_workflow_lab.py`.
+- **Not verified on live hardware:** Interactive `git`, `vagrant`, `containerlab`, `dyff`, `pre-commit`, `gitleaks`, and `git filter-repo` shell commands (`Git 2.40+` / `2.41.0`, `9000` to `1500` MTU, `v4.6.0`, `v1.92.0`, `v24.9.0`, `v8.18.4`, `500` KB, `192.168.12.11..13`, `172.20.20.2`, `90`/`30` days reflog) are marked as not run in this chapter where `git_infrastructure_workflow_lab.py` does not execute them.

@@ -22,11 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Think about what your platform team builds each time a new AI environment appears. You create a VPC with a training subnet and jumbo MTU, a bucket for checkpoints with versioning and encryption, a GPU node pool with quotas and labels, an IAM role for a training service account, and a Kubernetes cluster baseline. If you copy-paste HCL between environments, the clusters slowly drift apart. Then one change to a security default means editing fifty files. A module solves this by packaging one piece of infrastructure behind a small, documented interface. You write it once, version it, test it and review it once, and then reuse it everywhere. Module design is where Terraform codebases succeed or fail at scale. Good modules make the next environment a ten-line file. Bad modules become a tangle of conditionals that nobody dares to touch.
+Picture a Tuesday morning when your platform team has to stand up a new AI environment. You need a VPC with a training subnet and jumbo MTU, a bucket for checkpoints with versioning and encryption, a GPU node pool with quotas and labels, an IAM role for the training service account, and a Kubernetes cluster baseline. The first time, someone copies the HCL from the last environment, changes a few names and it works. Six months later the copies have quietly diverged. Staging has an encryption setting that production never received, and nobody remembers who added it or why.
+
+Now the security team asks for a change to one default, such as turning on public access prevention for every bucket. In the copy-paste world, that change means finding and editing fifty files, and missing one is easy. A module solves this. It packages one piece of infrastructure behind a small, documented interface, so the rule lives in one place. You write the module once, give it a version, test it and review it once. Then every environment calls the same code. The next environment becomes a short file of inputs.
+
+Module design is where Terraform codebases succeed or fail at scale. Good modules make a new environment a ten-line file. Bad modules turn into a tangle of conditionals that nobody dares to touch, and at that point the team starts copying again.
 
 ## Prerequisites and outcomes
 
-You need 4.18 and 4.19 before you start. When you finish this chapter, you should be able to do five things:
+You need 4.18 and 4.19 first, because this chapter assumes you already read plans, keep state and configure providers. Once you finish reading, use the five lines below as a self-check:
 
 - Create modules with a clear structure and a typed, validated interface, and call them with `source`, `version`, `providers`, `count`, `for_each` and `depends_on`.
 - Choose the right module size. Keep the root module as the composition layer, keep modules small and focused, and avoid both god modules and thin wrappers.
@@ -36,11 +40,11 @@ You need 4.18 and 4.19 before you start. When you finish this chapter, you shoul
 
 ## 1. What a module is
 
-When you run `terraform plan` in a directory, Terraform reads every `.tf` file in it. Some of those files call other directories as modules. Every Terraform configuration is a module, and the directory where you run commands is the **root module**.
+Open a repository for a new environment and you will usually find a `main.tf` full of `module` blocks. When you run `terraform plan` in that directory, Terraform reads every `.tf` file it finds there. Some of those files call other directories as modules. Every Terraform configuration is a module, and the directory where you run commands is the **root module**. Think of the root as the main program that calls the helpers.
 
-Any other directory of `.tf` files that the root calls with a `module` block is a **child module**. A module takes **inputs**, which are variables, and returns **outputs**. Calling it works like calling a function: arguments go in and results come out. Its resources stay namespaced, so `module.network.google_compute_network.this` names one resource inside the `network` module.
+Any other directory of `.tf` files that the root calls with a `module` block is a **child module**. A module takes **inputs**, which are variables, and returns **outputs**. Calling it works like calling a function. Arguments go in, results come out, and the internals stay hidden from the caller. Its resources stay namespaced, so `module.network.google_compute_network.this` names one resource inside the `network` module. That prefix matters later, when you read a plan or the state file, because it tells you which module owns a resource.
 
-The diagram shows how a root wires its child modules together. Each arrow is a value flowing from one module into the next.
+The diagram shows how a root wires its child modules together. Read it from the top. The root calls each child module once and passes values between them. Each arrow is a value that one module hands to the next, such as a network ID that the cluster needs before it can be created. Nothing in the cluster module looks up the network by name.
 
 ```mermaid
 flowchart TB
@@ -54,7 +58,7 @@ flowchart TB
   STO -->|"bucket_names"| POOL
 ```
 
-This is the same wiring in HCL. The GPU pool gets its subnet from `module.network` and never looks the network up by name.
+This is the same wiring in HCL. The GPU pool gets its subnet from `module.network` and never looks the network up by name. The wiring is the whole point, so it is worth reading slowly.
 
 ```hcl
 module "network" {
@@ -82,9 +86,11 @@ module "gpu_pool" {
 }
 ```
 
+Here is what happens when you run `terraform plan` on that root. Terraform sees that `module "gpu_pool"` refers to `module.network` and `module.cluster`, so it orders the work from those references alone. The network module comes first in the graph. The pool then reads `module.network.subnet_ids["compute"]` and receives that value as its `subnet_id`. It also needs a cluster name, so it waits for `module.cluster` to produce one. You never write this order down by hand. If the pool suddenly stops getting a subnet, look at the reference first, because the pool's own code is usually fine.
+
 ## 2. Anatomy of a good module
 
-A good module looks the same every time, so anyone on your team knows where to look. The tree below shows the files that a GPU pool module needs.
+Good modules look the same every time, and that sameness is the point. Picture an on-call engineer at 2 a.m. who needs to change the autoscaling bounds of a GPU pool. If every module has the same shape, that engineer knows at once that the inputs are in `variables.tf` and the resources are in `main.tf`. Nobody has to hunt through the repository while the pager keeps ringing. The tree below shows the files that a GPU pool module needs.
 
 ```text
 modules/gke-gpu-pool/
@@ -101,11 +107,11 @@ modules/gke-gpu-pool/
 └── CHANGELOG.md
 ```
 
-Each file has one job. Inputs live in `variables.tf`, outputs live in `outputs.tf`, and `versions.tf` declares requirements without configuring any provider. The interface is the part other teams call, so it deserves the most care.
+Each file has one job, and the split follows what a reader needs to find. A reader who wants to know what a caller must supply opens `variables.tf` first. A reader who wants to know what the module hands back opens `outputs.tf`. The `versions.tf` file declares which provider versions are needed, without configuring any provider. The interface is the part other teams call, so it deserves the most care. Once other teams depend on it, every change to it becomes expensive.
 
 ### Interface design
 
-The `name` variable below shows how a module rejects bad input before anything is planned.
+Start with the interface, because the people who call the module only ever see that part. The `name` variable below shows how a module rejects bad input before anything is planned. Suppose a caller types `GPU_Pool_1` as the pool name. Without validation, the cloud API rejects the name halfway through an apply, after other resources were already created. With the `validation` block, Terraform stops during planning and prints the message you wrote.
 
 ```hcl
 # variables.tf
@@ -149,9 +155,9 @@ variable "labels" {
 }
 ```
 
-The `gpu_count` rule works as a small worked example. A caller who sets `gpu_count` to 3 gets an error, because 3 is not on the allowed list of 0, 1, 2, 4 and 8.
+Walk through the `gpu_count` rule once, slowly. A caller sets `gpu_count` to 3, because they want three GPUs per node. The condition asks whether 3 appears in the list `[0, 1, 2, 4, 8]`. It does not, so the check fails, and Terraform prints `gpu_count must be 0, 1, 2, 4 or 8.` The caller changes the value to 4 or 8, and the plan goes on. The list stands in for the node shapes your platform team supports, so the rule protects callers from a shape nobody can run.
 
-The resource itself is easy to read once the interface is clear. Its `lifecycle` block adds a `precondition` that refuses a GPU pool with a count above zero and no GPU type.
+The resource itself is easier to read once the interface is clear. Each input feeds one part of the resource, so you can trace a variable to the argument it controls. The `lifecycle` block adds a `precondition` that refuses a GPU pool with a count above zero and no GPU type. A precondition differs from a variable validation in one way. It can look at several values together, such as `var.gpu_count` and `var.gpu_type` at once.
 
 ```hcl
 # main.tf
@@ -202,46 +208,46 @@ output "id"   { value = google_container_node_pool.this.id }
 output "name" { value = google_container_node_pool.this.name }
 ```
 
-The outputs are short on purpose. They expose only `id` and `name`, not the whole resource.
+The outputs are short on purpose. They expose only `id` and `name`, not the whole resource. Imagine a caller that reaches through your module and reads the labels of an internal node pool directly. When you later restructure that internal argument, the caller breaks, and nobody on your team knew they depended on it. Two small outputs give callers what they need and leave you room to change everything else.
 
-Keep these design rules in mind when you write a module.
+The rules below come from one kind of mistake, made in different places. A module grows past what anyone can change safely, and every new caller locks in a little more of its shape.
 
-**Keep the interface small, typed and contractual.** Expose the knobs that vary between uses, and hide the implementation details. Every variable becomes a public API that you must support and version, so give sensible defaults and require only the inputs the module cannot guess.
+**Keep the interface small, typed and contractual.** Every variable is a public API, which means you must support it, document it and version it. A caller who sets ten knobs they never needed carries those knobs forever. So expose the settings that really vary between uses, hide the implementation details, and give sensible defaults. Require only the inputs the module cannot guess for itself.
 
-Types and validation make a module fail at plan time with a useful message. Object types with `optional()` defaults need Terraform 1.3 or later. `validation`, `precondition` and `postcondition` blocks do the checking, and good `description` text doubles as documentation.
+Types and validation catch a mistake at plan time, when the message is still useful, instead of at apply time, when half-built infrastructure is already running. Object types with `optional()` defaults need Terraform 1.3 or later. The `validation`, `precondition` and `postcondition` blocks do the checking, and a good `description` doubles as documentation, because it appears in the generated README.
 
-Treat outputs as the contract. Output IDs, names, ARNs or self-links, endpoints and structured maps that other modules consume, and mark secrets `sensitive`. Avoid outputting whole resources unless you mean to, because that couples consumers to the provider schema.
+Treat outputs as the contract. Output IDs, names, ARNs or self-links, endpoints and structured maps that other modules consume, and mark secrets `sensitive`. A contract only works when the consumer never needs your resource internals. Avoid outputting whole resources unless you mean to, because that couples consumers to the provider schema.
 
-**Keep provider configuration out of reusable modules.** Declare requirements in `required_providers`, and let the caller pass configured providers with `providers = { google = google.eu }`. A module with `provider` blocks is hard to use with `count` or `for_each`, and it complicates deletion. Use `configuration_aliases` when a module needs several providers. Modules that contain `provider` blocks or `configuration_aliases` have restrictions on `count` and `for_each`, so design the module so the caller can repeat it.
+**Keep provider configuration out of reusable modules.** Think of a provider block as the power outlet in a building. A reusable module should be a lamp that works in any outlet, so the caller decides which outlet to use. Declare requirements in `required_providers`, and let the caller pass configured providers with `providers = { google = google.eu }`. A module with `provider` blocks is hard to use with `count` or `for_each`, and it complicates deletion. Use `configuration_aliases` when a module needs several providers. Modules that contain `provider` blocks or `configuration_aliases` have restrictions on `count` and `for_each`, so design the module so the caller can repeat it.
 
-**Give each module one responsibility, and add value.** A network, a storage bucket, a node pool and an IAM role each deserve their own module. A platform module that does everything is hard to evolve, so compose small modules in the root instead. A module that forwards 30 variables to `aws_instance` adds indirection and no policy. Add value by encoding conventions such as naming, tags, labels, encryption defaults and logging, or by adding validations and companion resources.
+**Give each module one responsibility, and add value.** A network, a storage bucket, a node pool and an IAM role each deserve their own module. A platform module that does everything is hard to evolve, so compose small modules in the root instead. A module that forwards 30 variables to `aws_instance` adds indirection and no policy. Picture a reviewer who opens that wrapper and finds the same thirty arguments they could have read in the provider docs. Add value by encoding conventions such as naming, tags, labels, encryption defaults and logging, or by adding validations and companion resources. A bucket module that sets encryption, versioning and labels once means every caller gets those defaults without remembering them.
 
-Make the module secure by default, with private access, encryption and deletion protection for stateful resources. Allow overrides on purpose, not through a catch-all `extra_config` map that bypasses validation.
+Make the module secure by default, with private access, encryption and deletion protection for stateful resources. The safe choice should be the default, and the risky choice should be an explicit input. A caller who forgets a setting should get private access, not public access. Allow overrides on purpose, through named inputs, not through a catch-all `extra_config` map that bypasses validation.
 
-**Keep the module stable.** Renaming a resource inside a module is a breaking change for users' state. When you refactor, add `moved` blocks inside the module, because they travel with the module version. Accept IDs as inputs instead of looking things up by name, unless lookup is the module's job, because loose coupling makes the module easier to test. Avoid `timestamp()`, and avoid random values unless you use `random_*` resources. Derive `for_each` keys from static inputs, never from values unknown at plan time.
+**Keep the module stable.** Think of each resource name inside a module as an address in the state file. Rename one, and Terraform believes the old thing is gone and a new thing should appear, even though nothing changed in the cloud. Renaming a resource inside a module is a breaking change for users' state. When you refactor, add `moved` blocks inside the module, because they travel with the module version. Accept IDs as inputs instead of looking things up by name, unless lookup is the module's job, because loose coupling makes the module easier to test. Avoid `timestamp()`, and avoid random values unless you use `random_*` resources. Derive `for_each` keys from static inputs, never from values unknown at plan time.
 
-Three gotchas from *Terraform: Up and Running*, chapter 4, catch almost every team once.
+Three gotchas from *Terraform: Up and Running*, chapter 4, catch almost every team once. Each one looks harmless in a small test, and each one breaks only when a second caller shows up.
 
-The first is file paths. When a module calls `file(...)` or `templatefile(...)`, Terraform resolves relative paths from the root module directory, not from the child module directory. Suppose `modules/services/webserver-cluster/main.tf` writes `templatefile("user-data.sh", ...)`, and a root in `stage/services/webserver-cluster/` calls it. Terraform fails, because `user-data.sh` is not in `stage/`. Prefix module-internal files with `${path.module}/user-data.sh`. Here `path.module` is the directory of the module where the expression is written. `path.root` is the root module directory, and `path.cwd` is the current working directory.
+The first is file paths. When a module calls `file(...)` or `templatefile(...)`, Terraform resolves relative paths from the root module directory, not from the child module directory. The mistake hides well, because the module works fine when you test it from its own folder. Suppose `modules/services/webserver-cluster/main.tf` writes `templatefile("user-data.sh", ...)`, and a root in `stage/services/webserver-cluster/` calls it. Terraform fails, because `user-data.sh` is not in `stage/`. Prefix module-internal files with `${path.module}/user-data.sh`. Here `path.module` is the directory of the module where the expression is written. `path.root` is the root module directory, and `path.cwd` is the current working directory.
 
-The second is inline blocks against separate resources. Resources such as `aws_security_group`, `aws_route_table` and `aws_network_acl` accept rules either as inline blocks or as standalone resources. Suppose your module uses inline `ingress {}` blocks. A caller in `stage` then attaches an extra `aws_security_group_rule` on port `12345` to `module.webserver_cluster.alb_security_group_id`. The inline block and the standalone rule overwrite each other on alternating `terraform apply` runs. Inside reusable modules, always use separate `aws_security_group_rule`, `aws_route` and `aws_network_acl_rule` resources, which reference their group with `security_group_id = aws_security_group.alb.id`. Callers can then extend them safely.
+The second is inline blocks against separate resources. Resources such as `aws_security_group`, `aws_route_table` and `aws_network_acl` accept rules either as inline blocks or as standalone resources. Suppose your module uses inline `ingress {}` blocks. A caller in `stage` then attaches an extra `aws_security_group_rule` on port `12345` to `module.webserver_cluster.alb_security_group_id`. The inline block and the standalone rule overwrite each other on alternating `terraform apply` runs. The first apply removes the extra rule, and the next apply adds it back, so the plan never settles. Inside reusable modules, always use separate `aws_security_group_rule`, `aws_route` and `aws_network_acl_rule` resources, which reference their group with `security_group_id = aws_security_group.alb.id`. Callers can then extend them safely.
 
 The third is constants and extension points. Put internal constants such as `http_port = 80` and `all_ips = ["0.0.0.0/0"]` in a `locals` block, not in variables, when callers should not override them. Export identifiers such as `asg_name` and `alb_security_group_id` as outputs. A caller can then attach environment-specific resources, such as the `prod` schedule actions `scale_out_during_business_hours` at `0 9 * * *` and `scale_in_at_night` at `0 17 * * *`, without environment conditionals in the module.
 
-Decide which knobs are public before you publish a module, because every public variable becomes a promise you must keep.
+Decide which knobs are public before you publish a module, because every public variable becomes a promise you must keep. Make that decision on paper before the first release. Ask which values a second team will really want to change, and make only those public. Everything else stays a local detail that you can change freely.
 
 ## 3. Composition patterns
 
-A team that copies one root configuration for each environment soon finds the copies disagree. Composition patterns keep each root thin, so the shared logic lives in modules instead. These are the patterns to reach for.
+A team that copies one root configuration for each environment soon finds the copies disagree. Composition patterns keep each root thin, so the shared logic lives in modules instead. Think of a root as the conductor of an orchestra. It decides which section plays and when, but it does not play the instruments itself. These are the patterns to reach for.
 
-- Keep the root module as a composition layer. Environment directories mostly contain module calls and environment-specific values, such as `envs/prod/main.tf` and `terraform.tfvars`. They also hold the backend and provider configuration. Keep logic out of roots.
-- Use dependency inversion. Modules take IDs as inputs, such as `subnet_id`, instead of creating or looking up the network themselves. The same module then works in different topologies.
+- Keep the root module as a composition layer. Environment directories mostly contain module calls and environment-specific values, such as `envs/prod/main.tf` and `terraform.tfvars`. They also hold the backend and provider configuration. Keep logic out of roots, because a fix made inside one root has to be copied by hand into every other root.
+- Use dependency inversion. Modules take IDs as inputs, such as `subnet_id`, instead of creating or looking up the network themselves. The same module then works in different topologies, and a unit test can pass a dummy ID without building a real network.
 - Build layered stacks, as in 4.19. A `network` stack's outputs feed the `cluster` stack through data sources, and modules are used inside each stack.
-- Write convention modules. A small `labels` or `naming` module returns the standard names and tags that every other module uses.
+- Write convention modules. A small `labels` or `naming` module returns the standard names and tags that every other module uses, so two teams never invent two spellings for the same label.
 - Add facade modules after the building blocks settle. A facade composes several lower-level modules, such as `ai-training-environment`, which combines network, storage, cluster, pools and observability into one golden path. Keep the facade thin, and keep the building blocks usable on their own.
 - Make roots data-driven. A root reads a YAML or JSON file of pools or tenants with `yamldecode(file("pools.yaml"))` and runs `for_each` over the result. Adding a pool becomes a data change that a reviewer can check without knowing HCL.
 
-The locals block below reads the pool definitions from a file, so the root never hard-codes them. Each entry becomes one `gpu_pool` module instance, keyed by its name.
+The locals block below reads the pool definitions from a file, so the root never hard-codes them. Each entry becomes one `gpu_pool` module instance, keyed by its name. Read it as a loop over a table. Each row of the YAML file is one pool, and each row turns into one call of the module.
 
 ```hcl
 locals {
@@ -260,9 +266,11 @@ module "gpu_pool" {
 }
 ```
 
+Suppose the YAML file holds two entries, `h100-train` and `a100-infer`. Terraform turns them into `module.gpu_pool["h100-train"]` and `module.gpu_pool["a100-infer"]`. When a reviewer adds a third entry, the plan shows exactly one new instance, and the other two stay untouched.
+
 ### Passing providers and multi-region
 
-A root can configure the same provider twice, once per region. It then hands one of them to each module call.
+Picture a platform that runs one training cluster in the United States and another in Europe. Each region needs its own provider configuration, because the region setting lives there. A root can configure the same provider twice, once per region. It then hands one of them to each module call, so the same module code builds both pools.
 
 ```hcl
 provider "google" {
@@ -286,11 +294,11 @@ module "pool_eu" {
 }
 ```
 
-You cannot choose a provider per instance inside `for_each`, because provider mappings are static. Repeat the module call for each region, or use a separate stack per region. Decide which of the two you want before the platform grows.
+You cannot choose a provider per instance inside `for_each`, because provider mappings are static. Terraform fixes them while it reads the configuration, so a loop cannot pick a different region for each key. You have two honest options. Repeat the module call for each region, which is explicit and easy to read, or use a separate stack per region, which keeps each region's state apart. Decide which of the two you want before the platform grows, because the choice is much harder to undo once both regions hold state.
 
 ## 4. Sources, versions and distribution
 
-A module helps only when every environment can pull the same version of it. The source you choose decides how you pin and upgrade that version. The table compares the common source types.
+A module helps only when every environment can pull the same version of it. Picture two teams that both use the network module. If one team pins `v1.4.0` and the other pulls whatever is on `main` on Friday, the same code can produce two different plans. The source you choose decides how you pin and upgrade that version. The table compares the common source types.
 
 | Source | Example | Notes |
 |---|---|---|
@@ -301,22 +309,22 @@ A module helps only when every environment can pull the same version of it. The 
 | S3/GCS bucket archive | `s3::https://s3.amazonaws.com/bucket/module.zip` | Simple internal distribution |
 | OCI registry (OpenTofu 1.10+) | `oci://registry.example.com/modules/network` | Reuse container registry infrastructure |
 
-Whichever source you pick, pin the version in production. Use semantic versions, such as `v2.3.1`. Bump the major version for breaking input, output or resource changes, and keep a changelog. In production roots, pin an exact version with `version = "= 2.3.1"` or a Git tag, and change that pin deliberately through pull requests, with a plan for each environment. Renovate or Dependabot can open those upgrade pull requests for you. In a monorepo, tags such as `network/v1.4.0` let each module path move at its own pace.
+Whichever source you pick, pin the version in production. Pinning answers one question: when does a change reach production? An exact pin means a change arrives only when someone opens a pull request that bumps it, and the reviewer sees the new version number in the diff. Use semantic versions, such as `v2.3.1`. Bump the major version for breaking input, output or resource changes, and keep a changelog. In production roots, pin an exact version with `version = "= 2.3.1"` or a Git tag, and change that pin deliberately through pull requests, with a plan for each environment. Renovate or Dependabot can open those upgrade pull requests for you. In a monorepo, tags such as `network/v1.4.0` let each module path move at its own pace.
 
 ### Upgrading modules safely
 
-An upgrade is safe only when you move it one environment at a time. Work through these steps in order.
+Picture a Thursday release. The module author has tagged `v2.0.0`, and a consumer wants it in production by the weekend. Moving one environment at a time gives you a checkpoint after each move, so a surprise shows up in dev rather than in production. Work through these steps in order.
 
-1. Read the changelog, then run `terraform init -upgrade` in a branch.
-2. Run `terraform plan` in the lower environments first. Confirm that there are **no unexpected replacements**. A change to a resource address appears as a destroy and a create, unless `moved` blocks exist.
+1. Read the changelog, then run `terraform init -upgrade` in a branch. The changelog tells you which inputs changed, and the upgrade command fetches the new code.
+2. Run `terraform plan` in the lower environments first. Confirm that there are **no unexpected replacements**. A change to a resource address appears as a destroy and a create, unless `moved` blocks exist. Read the plan line by line, and look for `must be replaced` before you trust it.
 3. Promote the version pin through dev, staging and prod, using the same artefact described in 4.2.
-4. For breaking changes, ship a migration guide, `moved` blocks and deprecation periods. Keep the old variable names working for one major version, with a warning delivered through a `validation` block or documentation.
+4. For breaking changes, ship a migration guide, `moved` blocks and deprecation periods. Keep the old variable names working for one major version, with a warning delivered through a `validation` block or documentation. Callers then have time to move before the old names disappear.
 
-Promote the pin one environment at a time, and stop as soon as a plan shows an unexpected replacement.
+Promote the pin one environment at a time, and stop as soon as a plan shows an unexpected replacement. Stopping is a success, not a failure. The plan has just saved you from rebuilding a stateful resource.
 
 ## 5. Testing modules
 
-A broken module is expensive, because every root you build on it breaks as well. Test in layers, starting with cheap checks and working up to real cloud resources. The pyramid below mirrors the testing approach in 4.13 and 3.9.
+A broken module is expensive, because every root you build on it breaks as well. One bad default in a shared module can break ten environments in one afternoon. Test in layers, starting with cheap checks and working up to real cloud resources. The pyramid below mirrors the testing approach in 4.13 and 3.9.
 
 | Level | Tooling | What it checks |
 |---|---|---|
@@ -327,7 +335,7 @@ A broken module is expensive, because every root you build on it breaks as well.
 | Compatibility | Matrix over Terraform/OpenTofu and provider versions | Upgrade safety |
 | Examples as tests | Each `examples/*` is planned (and sometimes applied) in CI | Documentation always works |
 
-The lower rows cost more time and money, so run them less often. The test file below uses native tests, which need Terraform 1.6 or later.
+The lower rows cost more time and money, so run them less often. A plan-level test finishes in seconds and needs no cloud account, so it can run on every pull request. An apply-level test creates real resources, which costs money and can fail for reasons outside your code. The test file below uses native tests, which need Terraform 1.6 or later.
 
 ```hcl
 # tests/validation.tftest.hcl (Terraform 1.6+ native tests)
@@ -357,15 +365,15 @@ run "rejects_bad_gpu_count" {
 }
 ```
 
-In the first run, you plan a valid GPU pool and check that its maximum node count reaches the module. In the second run, you set `gpu_count` to 3 and expect the validation to fail.
+In the first run, you plan a valid GPU pool and check that its maximum node count reaches the module. In the second run, you set `gpu_count` to 3 and expect the validation to fail. The second run is the more useful one, because it proves the guard rail works. It is the run that uses `expect_failures = [var.gpu_count]`. A test that only checks the happy path would still pass after someone deleted the validation block.
 
-Terratest is the integration option, and you write it in Go. A Terratest sketch runs `terraform.InitAndApply` on an example directory with random names. It then checks the result with provider SDKs, such as `gcp.GetBucket...`, and finishes with `defer terraform.Destroy`. Integration tests cost money and time. Run them nightly or on release tags, in a dedicated sandbox with budgets and reaper jobs, and never against production state.
+Terratest is the integration option, and you write it in Go. A Terratest sketch runs `terraform.InitAndApply` on an example directory with random names. It then checks the result with provider SDKs, such as `gcp.GetBucket...`. Think of it as a test that really builds the thing, checks it and tears it down. The `defer terraform.Destroy` line runs at the end of the test, even when an assertion fails, so the sandbox does not keep paying for leftovers. Integration tests cost money and time. Run them nightly or on release tags, in a dedicated sandbox with budgets and reaper jobs, and never against production state.
 
-Run the fast plan-level tests on every change, and save the apply-level tests for release tags.
+Run the fast plan-level tests on every change, and save the apply-level tests for release tags. That split keeps each pull request quick while still catching real provider behavior before a release.
 
 ## 6. Worked example: network + checkpoint storage + GPU pool modules
 
-Say a team needs a training environment with a network, a checkpoint bucket and a GPU pool. Start with the bucket, because checkpoints are the one thing you cannot rebuild. The module below protects them.
+Say a team needs a training environment with a network, a checkpoint bucket and a GPU pool. Start with the bucket, because checkpoints are the one thing you cannot rebuild. Picture a long training run that fails near the end. The job can restart, but only from the last checkpoint that survived. A bucket that loses files by accident is therefore one of the most expensive mistakes in this stack. The module below protects the data.
 
 ```hcl
 # modules/checkpoint-bucket/main.tf
@@ -407,9 +415,9 @@ output "bucket_name" { value = google_storage_bucket.this.name }
 output "bucket_url"  { value = "gs://${google_storage_bucket.this.name}" }
 ```
 
-The `lifecycle` block at the bottom of the resource refuses accidental destroys. Checkpoints cannot be replaced, so that refusal is the point. The IAM bindings take a typed list of writer service accounts, and the outputs expose only the bucket name and URL.
+The `lifecycle` block at the bottom of the resource refuses accidental destroys. Checkpoints cannot be replaced, so that refusal is the point. A developer who runs a destroy against the wrong stack gets an error that names `prevent_destroy`, not a deleted bucket. To remove the bucket on purpose, the owner must first edit the module, which leaves a reviewable trace in version control. The IAM bindings take a typed list of writer service accounts, and the outputs expose only the bucket name and URL.
 
-The root module then wires the bucket to the network, the KMS key, the workload identity and the GPU pool.
+The root module then wires the bucket to the network, the KMS key, the workload identity and the GPU pool. Notice that the root never builds the bucket's internals. It only passes in a name, a location, a key ID and a list of writers, and it reads back the outputs it needs.
 
 ```hcl
 module "network"    { source = "../../modules/network"           /* ... */ }
@@ -428,11 +436,11 @@ module "gpu_pool" {
 }
 ```
 
-The example shows five habits. The bucket protects its own state with a lifecycle rule. Its IAM inputs are typed. Its outputs form a contract. The root stays thin, and the pool definitions live in data. Copy this shape for your next stateful resource.
+The example shows five habits. The bucket protects its own data with a lifecycle rule. Its IAM inputs are typed. Its outputs form a contract. The root stays thin, and the pool definitions live in data. Each habit answers a question a reviewer will ask. What protects the data? What must the caller provide? What does the module promise to return? Copy this shape for your next stateful resource.
 
 ## 7. Anti-patterns
 
-Most anti-patterns look harmless in a single change. They hurt when the module grows or when you need to upgrade it. A God module with 150 variables is hard to review, and every consumer must learn all of them.
+Most anti-patterns look harmless in a single change. They hurt when the module grows or when you need to upgrade it. Picture a reviewer who opens a pull request that adds one more boolean to a module. The change looks small, and only the sum of many such changes is painful. A God module with 150 variables is hard to review, and every consumer must learn all of them.
 
 - A God module has 150 variables and nested conditionals. A mega-wrapper re-exports every argument of one resource. Both are hard to change safely.
 - Providers configured inside child modules make those modules hard to reuse, count or delete.
@@ -445,13 +453,13 @@ Most anti-patterns look harmless in a single change. They hurt when the module g
 - Modules that hide dangerous behavior, such as auto-destroy or public exposure, behind friendly names mislead their callers.
 - Copy-pasted modules drift as their forks diverge. Monorepo modules edited in place also affect every environment that references them by path, so the next plan changes all of them.
 - Environment-specific branches in a shared module, such as `if var.env == "prod"`, hide behavior inside library code. Pass explicit inputs instead.
-- Over-abstracting too early is risky, so wait until you have seen the pattern three times.
+- Over-abstracting too early is risky, so wait until you have seen the pattern three times. The rule of three is a habit, not a law, but it protects you from guessing the wrong abstraction.
 
-When you spot one of these in a review, ask whether a smaller module or an explicit input would remove it.
+When you spot one of these in a review, ask whether a smaller module or an explicit input would remove it. Usually one of the two does.
 
 ## 8. Operating a module ecosystem
 
-Who fixes a shared module when it breaks, and who finds the teams still running an old version?
+Picture a Monday when a security patch lands in the shared network module. Who reviews it? Who tells the eight teams that still pin an old tag? These questions decide whether a module stays healthy after you publish it.
 - Ownership and review: `CODEOWNERS` files in module repos (4.1) name who approves changes. The platform team owns shared modules, and consumers propose changes through pull requests.
 - Documentation: generate a README with `terraform-docs`, and keep examples and diagrams alongside it. Maintain a "golden path" catalogue and an internal registry that people can search.
 - Compatibility: publish a support policy, such as supporting the last two majors. Announce deprecations, and automate the upgrade pull requests.
@@ -459,36 +467,36 @@ Who fixes a shared module when it breaks, and who finds the teams still running 
 - Cost guardrails: variables that cap GPU counts per environment, and required `ttl` and `owner` labels, which the policy checks in 4.2 enforce.
 - Telemetry: record which module versions each stack uses, through outputs, tags or a registry of deployments. That record lets you find stragglers on vulnerable versions.
 
-Assign an owner to every shared module before you publish it.
+Assign an owner to every shared module before you publish it. An unowned module drifts, and nobody notices until a plan fails in production.
 
 ## 9. Lab
 
-Start with the self-checking Python lab, which you run locally before you touch any cloud. It checks the `gke-gpu-pool` input `validation` and `precondition` rules, which match `tests/validation.tftest.hcl` (see `validate_gke_gpu_pool_inputs`). It also checks the Git module `source` rules: the `//` subdirectory and the `?ref=` immutability (`parse_git_module_source`, from *Terraform: Up and Running*, chapter 4). Last, it looks for the inline-versus-separate `aws_security_group_rule` conflict (`detect_inline_vs_separate_sg_conflict`, from the same chapter).
+Before you touch any cloud account, you want to know that the rules in the module are right. The self-checking Python lab below runs on your laptop for that reason. It checks the `gke-gpu-pool` input `validation` and `precondition` rules, which match `tests/validation.tftest.hcl` (see `validate_gke_gpu_pool_inputs`). It also checks the Git module `source` rules: the `//` subdirectory and the `?ref=` immutability (`parse_git_module_source`, from *Terraform: Up and Running*, chapter 4). Last, it looks for the inline-versus-separate `aws_security_group_rule` conflict (`detect_inline_vs_separate_sg_conflict`, from the same chapter). Run it from the repository root, and read its pass and fail summary before you move on.
 
 ```bash
 python3 code/part04/terraform_modules_validator_lab.py
 ```
 
-Then, on a machine with Terraform or OpenTofu 1.6 or later, work through the exercises below. The interactive shell steps have not been run.
+The commands in this lab have not been run on live hardware. Then, on a machine with Terraform or OpenTofu 1.6 or later, work through the exercises below. Do them in order, because each one reuses the module that the one before it produced.
 
-1. Turn a flat configuration into a first module. Extract a "checkpoint-bucket"-like module from it, using `local_file` or `random_pet` if you have no cloud account. Define typed variables with validation and outputs, then call the module twice with different inputs.
-2. Review the interface. Write down which inputs are required and which have defaults. Add `precondition` and `validation` blocks, then test the failure messages with invalid values.
-3. Define pools in YAML and read them with `yamldecode`. Create one module instance per key. Add a key, then remove one, and read the plan each time. Only that instance should change.
-4. Create three resources with `count`. Remove the middle one and watch the churn. Then repeat the exercise with `for_each` and stable keys.
+1. Turn a flat configuration into a first module. Extract a "checkpoint-bucket"-like module from it, using `local_file` or `random_pet` if you have no cloud account. This first extraction is where you feel how a module separates inputs from internals. Define typed variables with validation and outputs, then call the module twice with different inputs.
+2. Review the interface. Write down which inputs are required and which have defaults. Add `precondition` and `validation` blocks, then test the failure messages with invalid values. A message you cannot read at 2 a.m. is a bug in the module.
+3. Define pools in YAML and read them with `yamldecode`. Create one module instance per key. Add a key, then remove one, and read the plan each time. Only that instance should change. If another instance shows up in the plan, a key is probably derived from the wrong value.
+4. Create three resources with `count`. Remove the middle one and watch the churn. Then repeat the exercise with `for_each` and stable keys. The difference between the two plans is the reason this chapter prefers keys.
 5. Write a module that needs two providers, using `configuration_aliases`. Call it with a `providers` map. Then see for yourself why a module that contains a `provider` block is hard to remove or repeat.
-6. Host the module in Git with the tags `v1.0.0` and `v1.1.0`. Consume it with `?ref=`, and bump the version with a plan in a branch. Make a breaking rename twice, once with a `moved` block and once without, and compare the two plans.
-7. Write plan-level tests with assertions and `expect_failures`, and run them in CI. Then write an apply-level test against local providers.
-8. Run `tflint`, `checkov` (or `trivy config`) and `terraform-docs`. Fix the findings, and fail the pipeline on any violation.
-9. Take a God module, either the one provided or one you invent, and split it into focused modules with a thin root. Measure the plan time and the size of the review.
-10. Generate `plan.json` from your root. Write a Conftest rule, covered in 4.2, that rejects any bucket without versioning and any GPU count above a threshold you choose.
-11. Release module v2 with a breaking change. Migrate a consumer using `moved` blocks, and promote the change through the environments in phases.
-12. Clean up.
+6. Host the module in Git with the tags `v1.0.0` and `v1.1.0`. Consume it with `?ref=`, and bump the version with a plan in a branch. Make a breaking rename twice, once with a `moved` block and once without, and compare the two plans. The pair of plans shows you the value of a `moved` block more clearly than any sentence in this chapter.
+7. Write plan-level tests with assertions and `expect_failures`, and run them in CI. Then write an apply-level test against local providers. Notice how much faster the first kind runs.
+8. Run `tflint`, `checkov` (or `trivy config`) and `terraform-docs`. Fix the findings, and fail the pipeline on any violation. A warning that nobody reads is the same as no warning at all.
+9. Take a God module, either the one provided or one you invent, and split it into focused modules with a thin root. Measure the plan time and the size of the review. Smaller numbers are your evidence that the split worked.
+10. Generate `plan.json` from your root. Write a Conftest rule, covered in 4.2, that rejects any bucket without versioning and any GPU count above a threshold you choose. Pick the threshold yourself, and explain it to a teammate.
+11. Release module v2 with a breaking change. Migrate a consumer using `moved` blocks, and promote the change through the environments in phases. Watch each plan before you move to the next environment.
+12. Clean up. Destroy the sandbox resources, and confirm that no bucket or pool remains in the cloud console.
 
 Start with exercise 1, because the later exercises reuse the module it produces.
 
 ## 10. Common mistakes
 
-Most module problems trace back to a few habits. Watch for these in your own work.
+Picture a module that began as a quick fix and became the shared dependency for six teams. Its problems usually trace back to a few habits. Watch for these in your own work, because they are easy to fall into when a deadline is close.
 
 - Designing modules before you understand the pattern, or never extracting code that repeats.
 - Declaring variables without types or descriptions, skipping validation, and setting surprising defaults.
@@ -499,11 +507,11 @@ Most module problems trace back to a few habits. Watch for these in your own wor
 - Testing only by running `apply`, and doing that in production.
 - Treating the module registry as a dumping ground without an owner.
 
-Pick the mistake that appears most often in your repositories, and fix that one first.
+Pick the mistake that appears most often in your repositories, and fix that one first. Fixing the most common habit usually removes more pain than fixing the most dramatic one.
 
 ## 11. Interview angles
 
-Use these questions to check your understanding before an interview. Try to answer each one in your own words.
+Interviewers ask these questions because each answer shows whether you have run modules in production, not just read about them. Use these questions to check your understanding before an interview. Try to answer each one in your own words, out loud, as if a colleague were listening.
 
 - "What is a module? How do you design its interface?"
 - "Root module vs child module; how do you compose?"
@@ -514,24 +522,24 @@ Use these questions to check your understanding before an interview. Try to answ
 - "How would you provide a standard GPU training environment to ten teams?" A good answer uses a facade of building-block modules, plus validation, policy and versioning.
 - "A module upgrade wants to destroy the cluster. What do you do?" Stop, check for `moved` blocks, read the changelog, and plan in a lower environment.
 
-The last question ties the whole chapter together, so practice that one first.
+The last question ties the whole chapter together, so practice that one first. A calm answer to it shows that you know how to protect state, review changes and move one environment at a time.
 
 ## Exercises
 
-1. Explain how `variables.tf`, `locals.tf` and `outputs.tf` work together in one module. Say how a caller reads an output as `module.<NAME>.<OUTPUT>`. Use `validate_gke_gpu_pool_inputs()` in `code/part04/terraform_modules_validator.py` as your reference.
-2. A module calls `templatefile("user-data.sh", ...)`, and the plan fails from a root directory. Explain why, and fix it with `${path.module}`.
-3. Use `detect_inline_vs_separate_sg_conflict()` in the same file. Explain why reusable modules must use standalone `aws_security_group_rule` resources rather than inline `ingress {}` blocks.
-4. Explain provider inheritance and `configuration_aliases`. Then explain why a `provider "google" {}` block inside a child module breaks `count`, `for_each` and module removal.
-5. Show how a multi-region root passes `providers = { google = google.eu }` into a child module.
-6. Trace how `envs/prod/main.tf` composes `module.network`, `module.checkpoints`, `module.cluster` and `module.gpu_pool`. Say what `for_each = yamldecode(file("${path.module}/gpu-pools.yaml"))` buys you.
-7. Explain why `subnet_id = module.network.subnet_ids["compute"]` beats looking up the VPC inside `gke-gpu-pool`.
-8. Use `parse_git_module_source()` in the same file. Explain the double slash `//` in a module source, and what `?ref=v2.3.1` pins.
-9. Explain why `stage` can test `?ref=v0.0.2` while `prod` stays on `?ref=v0.0.1`. Then explain how a `moved {}` block in a v2 release prevents recreation across consumers. The source is *Terraform: Up and Running*, chapter 4.
-10. Trace `tests/validation.tftest.hcl` in Section 5. Follow the run that plans a valid pool, and the run with `expect_failures = [var.gpu_count]`.
-11. Compare fast plan-level `.tftest.hcl` tests with Go Terratest tests that call `terraform.InitAndApply` and `defer terraform.Destroy`.
-12. Explain why a 150-variable God module and a pile of boolean `create_x` toggles hurt maintainability.
-13. Explain why `if var.env == "prod"` inside a shared module is an anti-pattern, as *Terraform: Up and Running*, chapter 4, describes.
-14. Say what value `modules/checkpoint-bucket` adds over a raw `google_storage_bucket` resource.
+1. A new teammate asks how one module hangs together. How do `variables.tf`, `locals.tf` and `outputs.tf` work together inside one module? How does a caller read an output as `module.<NAME>.<OUTPUT>`? Use `validate_gke_gpu_pool_inputs()` in `code/part04/terraform_modules_validator.py` as your reference.
+2. A module calls `templatefile("user-data.sh", ...)`, and the plan fails when a root directory runs it. Why does the path resolve from the root? How does `${path.module}` fix it?
+3. A reusable module declares its firewall rules with inline `ingress {}` blocks. Why does `detect_inline_vs_separate_sg_conflict()` flag that choice? Why must reusable modules use standalone `aws_security_group_rule` resources instead?
+4. A child module has its own `provider "google" {}` block, and a caller wants to add `count` to it. What breaks? How do `configuration_aliases` change that picture?
+5. A multi-region root has two Google providers. How does it pass `providers = { google = google.eu }` into one child module, and why does the other module get a different provider?
+6. A new engineer opens `envs/prod/main.tf` and asks where the network comes from. Which modules does that file compose? What does `for_each = yamldecode(file("${path.module}/gpu-pools.yaml"))` buy the team?
+7. Someone proposes looking up the VPC by name inside `gke-gpu-pool`. Why does `subnet_id = module.network.subnet_ids["compute"]` work better?
+8. A colleague reads the source `git::https://...git//gke-gpu-pool?ref=v2.3.1` and asks what the double slash means. What does `//` select, and what does `?ref=v2.3.1` pin?
+9. The `stage` root tests `?ref=v0.0.2` while `prod` stays on `?ref=v0.0.1`. Why is that a safe arrangement? How does a `moved {}` block in a v2 release stop consumers from recreating a pool?
+10. A plan-level test file has a run that plans a valid pool and a run that sets `gpu_count` to 3. What does each run prove? Why does the second run need `expect_failures = [var.gpu_count]`?
+11. A teammate wants a fast test in CI. Should they write a plan-level `.tftest.hcl` test or a Go Terratest test that calls `terraform.InitAndApply`? Why?
+12. A module has 150 variables and a dozen boolean `create_x` toggles. Which problem does each one create for reviewers?
+13. A shared module contains `if var.env == "prod"`. Why does that line hide behavior from callers, as *Terraform: Up and Running*, chapter 4, describes?
+14. A team wraps a raw `google_storage_bucket` in a module and asks whether it adds value. What does `modules/checkpoint-bucket` add over the raw resource?
 
 Write your answers down before you open the validator code, so you can check your reasoning against it.
 
@@ -686,4 +694,4 @@ Exporting the whole resource object couples callers to the provider's internal s
   - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): module structure, interface design, `gke-gpu-pool` and `checkpoint-bucket` modules, `terraform test`, and anti-patterns.
 - **Run here:** `python3 code/part04/terraform_modules_validator_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `validate_gke_gpu_pool_inputs`, `parse_git_module_source`, and `detect_inline_vs_separate_sg_conflict` models in `code/part04/terraform_modules_validator.py` and the `gke-gpu-pool`, `checkpoint-bucket`, and `validation.tftest.hcl` listings are the author's constructions synthesizing *Terraform: Up and Running* chapter 4 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** Live `terraform test`, Terratest, GKE GPU node pool, and GCS bucket executions (`10.20.0.0/16`, `8896` MTU, `v2.3.1`, `40` chars, `[0, 1, 2, 4, 8]` GPUs, `~> 9.0`, `a3-highgpu-8g`, `150` vars, `12345` port) are marked (`untested here`) where not executed by `terraform_modules_validator_lab.py`.
+- **Not verified on live hardware:** Live `terraform test`, Terratest, GKE GPU node pool, and GCS bucket executions (`10.20.0.0/16`, `8896` MTU, `v2.3.1`, `40` chars, `[0, 1, 2, 4, 8]` GPUs, `~> 9.0`, `a3-highgpu-8g`, `150` vars, `12345` port) were not executed by `terraform_modules_validator_lab.py`.
