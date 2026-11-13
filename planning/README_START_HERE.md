@@ -19,7 +19,7 @@ The AI Infrastructure Handbook (Docusaurus site, repo `/Users/jithinpjoseph/Docu
 6. Nov 12: Claude's first Part 2 attempt was a light polish with flat word count. The owner REJECTED it: shortening or holding length is wrong. Kimi's gain came from adding words (situations, why, step-by-step, analogies). A "deep" rewrite of Part 2 was then started (two agents, ch 1-15 and 16-30, uncommitted, check `git status` and `planning/ledgers/voice_rewrite_part02_*.md`).
 
 ## What we need (goal)
-Every part rewritten to the Kimi/DeepSeek bar, in this order: Part 2, 4, 5, 6, 7, 8, 9, 10, 11 (not 11.31-11.34), 12-15, 16-19, then 20 and 0. Then validation with Fable or the owner. Facts, code, numbers stay exact; explanation grows.
+Every part rewritten to the Kimi/DeepSeek bar, in this order: Part 2, 4, 5, 6 (all done), 7 (in progress, see WORKLIST), 8, 9, 10, 11 (not 11.31-11.34), 12-15, 16-19, then 20 and 0. Current focus: finish Part 7, then Parts 8 and 9. Then validation with Fable or the owner. Facts, code, numbers stay exact; explanation grows.
 
 ## Owner preferences (hard)
 - Length is NOT a gate. Never trim to hit a count. Adding explanation is the point.

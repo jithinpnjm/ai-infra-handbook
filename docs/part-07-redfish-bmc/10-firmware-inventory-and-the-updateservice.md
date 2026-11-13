@@ -22,26 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A 512-GPU training job slows down, and the cause turns out to be four replacement nodes. Those nodes ran an older GPU firmware. The firmware throttled under sustained load and cut the job's throughput by 14 percent. Treat those numbers as an illustration, not a measurement.
+A 512-GPU training job slows down over a long run. Nothing in the code changed, and no alarm fires. Days later someone notices that four replacement nodes, fitted after board swaps, run an older GPU firmware than the rest of the cluster. That firmware throttled under sustained load and cut the job's throughput by 14 percent. Treat those numbers as an illustration, not a measurement.
 
-A GPU cluster is many parts that must work together. Those parts include the BIOS, the BMC, the GPU firmware, the NVSwitch firmware, the NIC firmware, the PCIe switches and more. If one node runs older firmware than the rest, it may be slower, or it may fail in odd ways. Everyone then waits for the slowest node.
+A GPU cluster is many parts that must work together. Those parts include the BIOS (the basic input and output system, the first code that runs when the server powers on), the BMC (the baseboard management controller, a small computer on the board that handles remote power and monitoring), the GPU firmware, the NVSwitch firmware, the NIC firmware, the PCIe switches and more. The NVSwitch chips link the GPUs to one another, the NIC is the network card, and the PCIe switches route traffic between the cards inside the server. If one node runs older firmware than the rest, it may be slower, or it may fail in odd ways. A training step ends only when every GPU has finished its share of the work, so one slow node holds the whole job back. Everyone then waits for the slowest node.
 
-That gives you two jobs. The first is to know exactly what is installed on every machine. This is called **inventory and drift**. The second is to change that firmware safely, which is called **update**. Redfish handles both through one service. Firmware updating is the riskiest thing you do with a BMC, so this chapter takes it slowly.
+That gives you two jobs. The first is to know exactly what is installed on every machine. This is called **inventory and drift**. The second is to change that firmware safely, which is called update. Redfish, the standard web interface that a BMC offers for remote management, handles both through one service. Firmware updating is the riskiest thing you do with a BMC, so this chapter takes it slowly.
 
 ## Prerequisites and outcomes
 
-This chapter builds on chapters 7.2 to 7.5 and 7.7, so read those first. When you finish, you should be able to:
-
-- list all firmware on a machine and compare it with a baseline.
-- explain the two Redfish ways to send a firmware image.
-- follow an update task and read its messages.
-- explain why an update can be finished but not active, and what activates it.
-- describe how BCM's `firmware` commands do the same work.
-- write a safe update procedure for a fleet.
+This chapter builds on chapters 7.2 to 7.5 and 7.7, so read those first. It then walks through the work in the order you meet it on a real node. It starts with listing every firmware version on a machine and comparing that list with a baseline. Next it covers the two ways to send an image, how to follow an update task and read its messages, and why an update can finish yet stay inactive until something activates it. It ends with how BCM's `firmware` commands do the same work, and how to write a safe update procedure for a whole fleet.
 
 ## 1. What is "firmware" in a GPU server?
 
-Firmware is software that lives on a chip inside a part, such as a GPU or a network card. An AI cluster has to keep seven groups of firmware consistent. The table below shows what each group controls and why you should care.
+Picture a support ticket that says one rack runs slower than the others. The first question is always the same: what is installed on each part of that box? Firmware is the answer to that question, so it helps to know what it is before you go looking for it.
+
+Firmware is software that lives on a chip inside a part, such as a GPU or a network card. It sits in the chip's own memory, so it runs before the operating system starts and keeps running after the operating system stops. An AI cluster has to keep seven groups of firmware consistent. The table below shows what each group controls and why you should care.
 
 | Group | Why it matters |
 |---|---|
@@ -53,11 +48,17 @@ Firmware is software that lives on a chip inside a part, such as a GPU or a netw
 | PCIe retimer and switch firmware | signal quality for fast links |
 | NVMe drive firmware | wear handling and bug fixes |
 
-The BCM manual's DGX H100 example shows how many pieces there really are. After one GPU-tray update, it lists these components, each with its own version: `HGX_FW_BMC_0`, `HGX_FW_FPGA_0`, `HGX_FW_ERoT_BMC_0`, `HGX_FW_ERoT_FPGA_0`, four `HGX_FW_ERoT_NVSwitch_n`, `HGX_FW_ERoT_PCIeSwitch_0`, eight `HGX_FW_GPU_SXM_n`, four `HGX_FW_NVSwitch_n`, eight `HGX_FW_PCIeRetimer_n` and `HGX_FW_PCIeSwitch_0`. Add up the groups and you get **30** components in the GPU tray alone: 4 + 4 + 1 + 8 + 4 + 8 + 1 = 30. ERoT means external root of trust, which is a security chip. The motherboard tray adds more, such as `CPLDMB_0` and `EROT_BIOS_0`. With this many parts in your cluster, inventory and baselines have to be automatic, so plan to collect every version with a script, not by hand.
+Read the table as a map of where a node can drift. A mismatch in any one group can change how fast a GPU runs, how it talks to its neighbors, or whether it boots at all. A row that looks minor, such as the retimer, can be the one that quietly lowers the speed of a fast link.
+
+The BCM manual's DGX H100 example makes the count concrete. After one GPU-tray update, it lists these components, each with its own version: `HGX_FW_BMC_0`, `HGX_FW_FPGA_0`, `HGX_FW_ERoT_BMC_0`, `HGX_FW_ERoT_FPGA_0`, four `HGX_FW_ERoT_NVSwitch_n`, `HGX_FW_ERoT_PCIeSwitch_0`, eight `HGX_FW_GPU_SXM_n`, four `HGX_FW_NVSwitch_n`, eight `HGX_FW_PCIeRetimer_n` and `HGX_FW_PCIeSwitch_0`. Add up the groups and you get **30** components in the GPU tray alone: 4 + 4 + 1 + 8 + 4 + 8 + 1 = 30. ERoT means external root of trust, which is a security chip. A root of trust is a small chip that checks other firmware before that firmware is allowed to run. The motherboard tray adds more, such as `CPLDMB_0` and `EROT_BIOS_0`.
+
+Imagine typing those thirty version strings for every node in a rack, once a month. You would make mistakes, and after a while you would stop doing it. A script does not get tired, so plan to collect every version with a script, not by hand.
 
 ## 2. Inventory: UpdateService and FirmwareInventory
 
-Start at the service root. It links to `UpdateService`, and `UpdateService` links to `FirmwareInventory`. That is a collection of `SoftwareInventory` resources, one per updatable component. The schema defines these properties on each `SoftwareInventory`:
+A new server arrives from the vendor, and your manager asks which firmware it carries before it goes into production. You could click through a web page, but a script can ask the same question for every node in the rack. To write that script, you first need to know the path the data takes through the Redfish tree.
+
+Start at the service root. It links to `UpdateService`, and `UpdateService` links to `FirmwareInventory`. The service root is the front door of the tree, and each link you follow takes you one level deeper. `FirmwareInventory` is a collection, which is a list of resources of one kind. Each item in that list is a `SoftwareInventory` resource, one for each updatable component. The schema defines these properties on each `SoftwareInventory`:
 
 | Property | Meaning |
 |---|---|
@@ -72,9 +73,11 @@ Start at the service root. It links to `UpdateService`, and `UpdateService` link
 | `Status` | `State` (it becomes `Updating` during an update) and `Health` |
 | `WriteProtected` | cannot be written |
 
-Pay the most attention to `Version`, which you compare against your baseline, and to `Status`, which shows `Updating` while an update runs. The `UpdateService` resource itself tells you what the service can do. It lists the actions `SimpleUpdate` and `StartUpdate`, the upload address `MultipartHttpPushUri`, the size limit `MaxImageSizeBytes`, and `ServiceEnabled`.
+Each property answers a different question. `Id` and `Name` tell you which component you are looking at. `Version` is the string you compare against your baseline. `Updateable` tells you whether this service can change the component at all, and `WriteProtected` tells you whether writes are blocked right now. Pay the most attention to `Version`, and to `Status`, which shows `Updating` while an update runs.
 
-The diagram below shows the whole flow, from the drift audit to the final check of the inventory.
+The `UpdateService` resource itself tells you what the service can do. It lists the actions `SimpleUpdate` and `StartUpdate`, the upload address `MultipartHttpPushUri`, the size limit `MaxImageSizeBytes`, and `ServiceEnabled`. Read it before you write any update code, because it tells you which methods this particular BMC actually supports.
+
+The diagram below shows the whole flow, from the drift audit to the final check of the inventory. Read it from the top. The admin script first audits drift, then sends the image by one of two paths, then follows the task through its stages. Once the component is activated, the flow loops back to the inventory.
 
 ```mermaid
 flowchart TD
@@ -102,17 +105,19 @@ flowchart TD
     ACT_BMC & ACT_BIOS & ACT_HGX -->|"4. Re-read Version"| INV
 ```
 
-Notice that the last step returns to the inventory, so the inventory is both where you start and where you finish. The lab tool reads the whole inventory in one call:
+Notice that the last step returns to the inventory, so the inventory is both where you start and where you finish. You read it before the update to record the old state, and you read it again after activation to confirm the new one. The lab tool reads the whole inventory in one call:
 
 ```bash
 python3 rf_firmware.py inventory http://<bmc> <user> <password>
 ```
 
-The mock prints 34 lines: the four base components and the 30 GPU-tray components. One of those lines looks like this: `HGX_FW_GPU_SXM_1  HGX_FW_GPU_SXM_1  96.00.70.00.01  updateable=True state=Enabled`.
+The mock prints 34 lines: the four base components and the 30 GPU-tray components. Each line gives a component, its version and whether the service can update it. One of those lines looks like this: `HGX_FW_GPU_SXM_1  HGX_FW_GPU_SXM_1  96.00.70.00.01  updateable=True state=Enabled`. That single line is the kind of record a fleet script collects from every node.
 
 ### Drift: comparing with a baseline
 
-**Drift** is what you get when a machine no longer matches what you decided it should be. You record that decision in a baseline file, which lists each component with its expected version. The tool compares the live inventory against a file like this:
+On a Monday check across a rack, a few nodes report a different GPU version from the rest. Nobody remembers touching them. That gap between what a machine runs and what it should run is **drift**, and the rest of this section shows how to catch it automatically.
+
+Drift is what you get when a machine no longer matches what you decided it should be. You record that decision in a baseline file, which lists each component with its expected version. The tool compares the live inventory against a file like this:
 
 ```json
 { "BIOS": "1.28", "BMC": "1.00.0", "HGX_FW_GPU_SXM_5": "96.00.74.00.01" }
@@ -122,13 +127,17 @@ The mock prints 34 lines: the four base components and the 30 GPU-tray component
 python3 rf_firmware.py drift http://<bmc> <user> <password> --baseline baseline.json
 ```
 
-Each line of the report gets one of four results. `ok` means the version matches. `DRIFT` means the version differs. `MISSING` means the baseline names something the machine does not have. `not in baseline` means the machine has something you did not list. The exit code is non-zero whenever something is wrong, so a pipeline can stop on it.
+Each line of the report gets one of four results. `ok` means the version matches. `DRIFT` means the version differs. `MISSING` means the baseline names something the machine does not have. `not in baseline` means the machine has something you did not list. The exit code is non-zero whenever something is wrong, so a pipeline can stop on it instead of quietly carrying on.
 
-The harder question is where the baseline comes from. It should be the **validated bundle** from your vendor for your platform, not "whatever is on the first node." Take it from that bundle and keep the file in version control.
+Here is how a drift run reads in practice. Suppose the baseline lists `HGX_FW_GPU_SXM_5` at `96.00.74.00.01`, and one node reports `96.00.70.00.01` for the same component. That line comes out as `DRIFT`, the report shows the gap, and the exit code is non-zero. A cron job or a pipeline step that checks the exit code can then send a warning or stop the rollout, instead of someone finding the gap weeks later in a training log.
+
+The harder question is where the baseline comes from. It should be the validated bundle from your vendor for your platform, not "whatever is on the first node." A node that happens to be installed first is not a reference. It is just one more machine that could also be wrong. Take the versions from that bundle and keep the file in version control. Version control also gives you a history, so when the baseline changes you can see who changed it and why.
 
 ## 3. Two ways to send an image
 
-The Redfish spec defines two methods for sending an image, in clause 12.6.2. A service may offer either method or both. The table compares them.
+You have a new firmware package and 100 BMCs to update. The package has to reach every one of them, and there are two ways to make that happen. In one, the BMC fetches the file itself from a web address you give it. In the other, your script sends the whole file inside the request. Both are defined in the Redfish spec, in clause 12.6.2. A service may offer either method or both.
+
+The table compares them.
 
 | | SimpleUpdate (pull) | Multipart HTTP push |
 |---|---|---|
@@ -138,11 +147,13 @@ The Redfish spec defines two methods for sending an image, in clause 12.6.2. A s
 | Parameters | `ImageURI` (required), `TransferProtocol`, `Targets`, `ExcludeTargets`, `ForceUpdate`, user name and password for the file server | a JSON part named `UpdateParameters` (same fields) and a binary part named `UpdateFile` |
 | Answer | `202` with a task monitor | `202` with a task monitor; `413` if the image is bigger than `MaxImageSizeBytes`; `411` if a length is required and missing |
 
-**Which to use.** Pull scales well. 100 BMCs can fetch the same file from one server in parallel, and you only send small requests. The cost is a file server on the management network that every BMC can reach. Push needs no file server, but your script moves the whole image for every machine. The BCM examples show packages of 100 to 135 MB. Multiply 100 machines by 135 MB and your script uploads 13.5 GB. The legacy `HttpPushUri` also exists, but its format is vendor specific.
+A useful way to choose is to ask where the bytes will come from. If your management network already has a small, reliable file server that every BMC can reach, pull keeps your script light and lets the BMCs do the copying. If there is no such server, or if the BMCs cannot reach one, push is the fallback, even though your own machine then carries the whole load.
 
-Several parameters decide what an update touches, so understand each one before you send a request. `Targets` holds the URIs of the inventory items to update. If you give none, the service applies the image to every applicable target it finds. Always give targets in scripts. `ExcludeTargets` works the other way, but it is ignored when `Targets` has members.
+**Which to use.** Pull scales well. 100 BMCs can fetch the same file from one server in parallel, and your script only sends small requests. The cost is a file server on the management network that every BMC can reach. Push needs no file server, but your script moves the whole image for every machine. The BCM examples show packages of 100 to 135 MB. Multiply 100 machines by 135 MB and your script uploads 13.5 GB. The legacy `HttpPushUri` also exists, but its format is vendor specific, so it is harder to write one script for every vendor.
 
-`ForceUpdate` tells the service to bypass update policies such as "do not downgrade." Use it with care. `TransferProtocol` names how the BMC fetches the file. The schema lists `CIFS`, `FTP`, `SFTP`, `HTTP`, `HTTPS`, `NFS`, `SCP`, `TFTP` and `OEM`. A service lists what it supports in the action's `TransferProtocol@Redfish.AllowableValues`. Prefer HTTPS, because a user name and password sent in a request must only travel over HTTPS, as clause 13.2 says.
+Several parameters decide what an update touches, so understand each one before you send a request. `Targets` holds the URIs of the inventory items to update. If you give none, the service applies the image to every applicable target it finds. Picture a script that leaves `Targets` out on a node with two GPU trays, and the image lands on parts you never meant to touch. Always give targets in scripts. `ExcludeTargets` works the other way, but it is ignored when `Targets` has members.
+
+`ForceUpdate` tells the service to bypass update policies such as "do not downgrade." Use it with care, because the policy exists for a reason. `TransferProtocol` names how the BMC fetches the file. The schema lists `CIFS`, `FTP`, `SFTP`, `HTTP`, `HTTPS`, `NFS`, `SCP`, `TFTP` and `OEM`. A service lists what it supports in the action's `TransferProtocol@Redfish.AllowableValues`. Prefer HTTPS, because a user name and password sent in a request must only travel over HTTPS, as clause 13.2 says.
 
 `@Redfish.OperationApplyTime` controls when the update applies. The `UpdateService` values are `Immediate`, `OnReset`, `AtMaintenanceWindowStart`, `InMaintenanceWindowOnReset`, `OnStartUpdateRequest` and `OnTargetReset`. With `OnStartUpdateRequest`, the update is **registered** now and starts only when you call `StartUpdate`.
 
@@ -150,7 +161,9 @@ That last value is useful in a cluster. You can stage the same update on a whole
 
 ## 4. The task and its messages
 
-Both methods answer with `202` and a task monitor, which chapter 7.5 covers. The task's `Messages` tell you how the update went. They come from the **Update message registry**, and the stage messages below follow the image from the first transfer to the wait for activation.
+You send a `SimpleUpdate` request, the BMC answers `202`, and your script prints "accepted." Is the update done? Not yet. The `202` only means the BMC accepted the job. The job itself lives in a task, and the task's messages tell you how it went.
+
+Both methods answer with `202` and a task monitor, which chapter 7.5 covers. The task's `Messages` tell you how the update went. They come from the **Update message registry**, a standard list of messages that the DMTF defines for all Redfish services. The stage messages below follow the image from the first transfer to the wait for activation.
 
 | Stage message | Meaning |
 |---|---|
@@ -163,7 +176,7 @@ Both methods answer with `202` and a task monitor, which chapter 7.5 covers. The
 | `ActivatingOnComponent` | being activated |
 | `UpdateSuccessful` | done |
 
-Some messages end the story without success, and some are not failures at all. The table below lists those endings, including the skips and the warning.
+Some messages end the story without success, and some are not failures at all. The table below lists those endings, including the skips and the warning. A skip is the BMC saying it looked at the image and chose not to flash it, which is different from a failure.
 
 | Message | Severity | Meaning |
 |---|---|---|
@@ -174,7 +187,9 @@ Some messages end the story without success, and some are not failures at all. T
 | `UpdateNotApplicable` | Warning | this image does not fit that device |
 | `AutomaticRecoveryInitiated`, `AutomaticRecoveryFailed`, `AutomaticRecoverySuccessful` | | the device tried to roll back |
 
-Your tool must read these messages. A `200` at the end of a task does **not** mean a new version is running, because a skipped update also ends in `200`. In the lab mock, a skipped downgrade finished with HTTP 200 and an unchanged version. So read the final message first, then re-read the inventory.
+In a script, the pattern is simple to describe and easy to get wrong. Poll the task monitor until its state is final. Then read the last message and its severity, and only after that look at the inventory. A script that stops polling too early reads a message from the middle of the update and reports a result that is not final yet.
+
+Your tool must read these messages. A `200` at the end of a task does **not** mean a new version is running, because a skipped update also ends in `200`. In the lab mock, a skipped downgrade finished with HTTP 200 and an unchanged version. So read the final message first, then re-read the inventory. That order keeps you from declaring victory on a task that did nothing.
 
 Here is what the lab tool printed on the mock. It did a dry run first, then a real run with `--yes`:
 
@@ -194,11 +209,13 @@ activating: POST /redfish/v1/Systems/System_0/Actions/ComputerSystem.Reset Reset
 inventory now says HostBIOS_0 = 1.28
 ```
 
-Read that output as a story: the plan, the progress lines, then the activation and the new version. The tool is a **dry run unless you pass `--yes`**, because a firmware update you start by mistake is expensive. Treat a `200` as the start of verification, not the end of the job.
+Read that output as a story: the plan, the progress lines, then the activation and the new version. The tool is a **dry run unless you pass `--yes`**, because a firmware update you start by mistake is expensive. The first pass only shows what would happen, and the second pass does the work. Treat a `200` as the start of verification, not the end of the job.
 
 ## 5. Staged is not active: activation
 
-A task can report success while the inventory still shows the old version. That is expected when the firmware is written to a spare area and used only after a reset. The old firmware keeps running until then. Your task ends in `AwaitToActivate`, and the inventory keeps showing the **old** version. Which reset you need depends on the component.
+A script reports success at night. In the morning the GPU still shows the old version, and nothing looks broken. The new firmware is sitting in a spare area, waiting for the right reset. This is the most common surprise in firmware work, so it helps to understand it before it happens to you.
+
+A task can report success while the inventory still shows the old version. That is expected when the firmware is written to a spare area and used only after a reset. The old firmware keeps running until then. Your task ends in `AwaitToActivate`, and the inventory keeps showing the old version. Which reset you need depends on the component.
 
 | Component | What activates it |
 |---|---|
@@ -207,7 +224,7 @@ A task can report success while the inventory still shows the old version. That 
 | PCIe switches, retimers, ERoT, CPLDs (notes) | an **AC power cycle** |
 | DGX H100 GPU firmware (BCM manual) | an **AC power cycle**: the manual says a regular DC power cycle from `cmsh` "is not enough to initialize some of the components" |
 
-The BCM manual defines the two power-cycle terms. A **DC power cycle** is a board-level reset. An **AC power cycle** cuts every AC input to the system, which you can do by switching off the PDU outlets or by pulling the mains cables. The closest `ResetType` values are `PowerCycle` and `FullPowerCycle`. The first is closest to removing power and restoring it, and the second is closest to removing the utility power lines. Chapter 7.5 covers both. Whether the BMC's `FullPowerCycle` really removes AC power on a given DGX has not been checked here.
+The BCM manual defines the two power-cycle terms. A **DC power cycle** is a board-level reset. An **AC power cycle** cuts every AC input to the system, which you can do by switching off the PDU outlets or by pulling the mains cables. The PDU is the power distribution unit that feeds the rack. The closest `ResetType` values are `PowerCycle` and `FullPowerCycle`. The first is closest to removing power and restoring it, and the second is closest to removing the utility power lines. Chapter 7.5 covers both. Confirm on your own hardware whether the BMC's `FullPowerCycle` really removes AC power on a given DGX before you rely on it.
 
 The mock models this. BMC firmware needs a `Manager.Reset`, BIOS needs a host restart, and the GPU-tray package needs a `FullPowerCycle`. The lab checks these rules, and its output shows them passing:
 
@@ -221,17 +238,19 @@ PASS  a FullPowerCycle (AC power removed) activates all 30 entries
 PASS  tool: a normal restart leaves the GPU firmware NOT active and the tool says so (exit 7)
 ```
 
-The last line matters most. A tool that stops at "update finished" would leave nodes half-updated while reporting success. Instead, the lab tool re-reads the inventory afterwards, says `NOT ACTIVE`, and exits with code 7.
+Walk through a real night with this in mind. The script sends the update, the task reaches `AwaitToActivate`, and the script reports success and moves on. Nothing has changed on the GPU yet. The next morning, someone checks the inventory and finds the old version still in place. The fix is not to rerun the update. The fix is to schedule the correct power cycle in the maintenance window, then check the inventory again.
 
-One package can change many inventory items at once. The mock's GPU-tray package updates 30 entries in a single step, just as the BCM manual's single `nvfw_dgx-hgx-h100x8_...fwpkg` file does. If you want only one member changed, `Targets` lets you limit the update to it. Match each component to its reset before you schedule the window, because a wrong reset leaves the new version inactive.
+The last line matters most. A tool that stops at "update finished" would leave nodes half-updated while reporting success. Instead, the lab tool re-reads the inventory afterwards, says `NOT ACTIVE`, and exits with code 7. A script that checks the exit code can then stop before it moves on to the next node.
+
+One package can change many inventory items at once. The mock's GPU-tray package updates 30 entries in a single step, just as the BCM manual's single `nvfw_dgx-hgx-h100x8_...fwpkg` file does. If you want only one member changed, `Targets` lets you limit the update to it. Match each component to its reset before you schedule the window, because a wrong reset leaves the new version inactive. A window that ends without the right reset looks finished on the task page and still runs the old code.
 
 ## 6. How BCM does it
 
-BCM wraps this whole flow in its `firmware` commands. Section 14.5.2 of the BCM 11 Administrator Manual gives the steps for a DGX H100:
+Many clusters do not send raw Redfish calls by hand. They run NVIDIA Base Command Manager (BCM), the software that provisions and manages the nodes, and BCM wraps this whole flow in its `firmware` commands. Section 14.5.2 of the BCM 11 Administrator Manual gives the steps for a DGX H100:
 
-1. Put the `.fwpkg` files from NVIDIA's DGX support portal on the head node, in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/`, in the subdirectory for your platform (`h100`, `gb200`, `gb200sw` and so on). The manual's examples run about 100 to 135 MB each, such as `nvfw_DGX-H100_0003_230817.1.1_custom_prod-signed.fwpkg` for the motherboard tray and `nvfw_DGX-HGX-H100x8_0002_230705.1.1_prod-signed.fwpkg` for the GPU tray.
-2. Configure the BMC network and the BMC settings (user name, user id and password). Then set **`firmwaremanagemode`** to your platform. The choices include `auto`, `h100`, `b200`, `b300`, `gb200`, `gb200sw`, `gb300`, `gb300sw`, `iLO` and `none`.
-3. `firmware info` lists the packages on the head node, with state `available`. `firmware status -n node001` shows each component's version, its state (`current`, `pending`, `completed`) and a Result text.
+1. Put the `.fwpkg` files from NVIDIA's DGX support portal on the head node, in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/`, in the subdirectory for your platform (`h100`, `gb200`, `gb200sw` and so on). The head node is the BCM server that holds the packages for the rest of the cluster. The manual's examples run about 100 to 135 MB each, such as `nvfw_DGX-H100_0003_230817.1.1_custom_prod-signed.fwpkg` for the motherboard tray and `nvfw_DGX-HGX-H100x8_0002_230705.1.1_prod-signed.fwpkg` for the GPU tray.
+2. Configure the BMC network and the BMC settings (user name, user id and password). Then set **`firmwaremanagemode`** to your platform. The choices include `auto`, `h100`, `b200`, `b300`, `gb200`, `gb200sw`, `gb300`, `gb300sw`, `iLO` and `none`. This setting tells BCM which platform's update rules to follow.
+3. `firmware info` lists the packages on the head node, with state `available`. `firmware status -n node001` shows each component's version, its state (`current`, `pending`, `completed`) and a Result text. Run these two commands before you flash anything, so you know what you are starting from.
 4. `firmware flash <package>.fwpkg` on a device starts the update. The manual says progress shows in `firmware status` as a percentage. The GPU rows show a transition such as `96.00.70.00.01 -> 96.00.74.00.01`. That arrow display is BCM's view. Redfish itself just gives the old version until activation.
 5. When the flash is done, the GPU rows say **`success: AC power cycle to activate`** with state `pending`. After the AC power cycle, they say **`success: activated`** with state `completed` and the new version.
 
@@ -243,20 +262,20 @@ So BCM adds package management, execution across many nodes and status tracking 
 
 ## 7. NVIDIA's own tool, `nvfwupd`
 
-`nvfwupd` is a command-line tool from the NVIDIA Enterprise Support Portal, and it updates DGX H100 and H200 systems out-of-band. The Redfish API is the other documented route, and the same steps and known issues apply to it. Typical commands look like this:
+Imagine a DGX H100 that the support team asks you to update, and the vendor's own command-line tool is the path they want. `nvfwupd` is that tool. It comes from the NVIDIA Enterprise Support Portal, and it updates DGX H100 and H200 systems out-of-band, which means it talks to the BMC over the management network instead of going through the host operating system. The Redfish API is the other documented route, and the same steps and known issues apply to it. Typical commands look like this:
 
 ```bash
 nvfwupd --target ip=<bmc-ip> user=<user> password=<password> show_version -p <package>.fwpkg
 nvfwupd -t ip=<bmc-ip> user=<user> password=<password> update_fw -p <package>.fwpkg -y -s update_bmc.json
 ```
 
-Five points matter, and you should read each one before you run anything. First, `show_version -p` compares installed versions with a package. Second, `update_fw -s <file>.json` limits the update to the targets in that file. Third, stop GPU activity first, because `nvidia-smi` can block a VBIOS update. Fourth, add no extra load, such as jobs, diagnostics or monitoring, while the update runs. Last, downgrades follow a `ForceUpdate` procedure.
+Five points matter, and you should read each one before you run anything. First, `show_version -p` compares the installed versions with a package, so you see the gap before you change anything. Second, `update_fw -s <file>.json` limits the update to the targets in that file. Third, stop GPU activity first, because `nvidia-smi` can block a VBIOS update. Fourth, add no extra load, such as jobs, diagnostics or monitoring, while the update runs. Last, downgrades follow a `ForceUpdate` procedure, so do not attempt one from memory.
 
-**`nvfwupd` was not run for this chapter, so these details are unconfirmed.** A container image and an `update_fw all --preview` command sometimes appear in informal descriptions. Neither appears in NVIDIA's documentation, so this chapter does not use them. Treat these commands as a starting point to check against NVIDIA's documentation, not as a procedure you can copy.
+Before you run anything from this list, check the details for `nvfwupd` against NVIDIA's documentation. The tool's flags and behavior can change from one release to the next, and a command copied from an old forum post may no longer match the version your support team hands you. A container image and an `update_fw all --preview` command sometimes appear in informal descriptions. Neither appears in NVIDIA's documentation, so this chapter does not use them. Treat the commands above as a starting point to check, not as a procedure you can copy.
 
 ## 8. A safe fleet procedure
 
-Suppose you must bring a rack of nodes to the same firmware in one maintenance window. The steps below keep a bad update from reaching the whole cluster. Work through them in order:
+Suppose you must bring a rack of nodes to the same firmware in one maintenance window. A maintenance window is a planned time when the nodes can stop taking jobs. The steps below keep a bad update from reaching the whole cluster. Work through them in order:
 
 1. **Decide the baseline.** Take it from the vendor's validated bundle for your platform, and write it to a file in version control.
 2. **Read the vendor's update guide** for this exact platform and release. Check the prerequisites, the known issues, the order of components, and which activation each component needs.
@@ -270,49 +289,58 @@ Suppose you must bring a rack of nodes to the same firmware in one maintenance w
 10. **Record** who ran the update, what changed, when, the versions before and after, and the task result.
 11. **Plan the rollback** before you start. Decide which package you would use, whether `ForceUpdate` applies, and what you will do if the BMC stops responding. Chapter 7.14 covers recovery steps for a bricked BMC.
 
-Why not update over SSH from the host OS? One argument is that an SSH session can drop in the middle of a write. A BMC-driven update does not depend on the host OS staying healthy. The argument is reasonable, but it is not a guarantee. The vendor's guide decides how each component is updated, and some components need the host side to stay quiet during the transfer.
+Think of the rollout as a sequence of waves. The first wave is one canary node, which is a machine you update first to see what the update does on your hardware. If the canary behaves, the next wave is a small group. Each wave has its own stop condition. A failed stage, a version that did not change, or a node that does not return to the scheduler all count as reasons to stop and look before you go on.
+
+Notice how much of the procedure happens before and after the flash itself. The flash is often the shortest part of the work. The snapshot, the drain, the verification and the record are what let you explain a failure later, and they are what let you stop a bad rollout early.
+
+Why not update over SSH from the host OS? SSH is the remote login session into the host operating system. One argument is that an SSH session can drop in the middle of a write, and a half-written image is a serious problem. A BMC-driven update does not depend on the host OS staying healthy. The argument is reasonable, but it is not a guarantee. The vendor's guide decides how each component is updated, and some components need the host side to stay quiet during the transfer.
 
 Firmware windows that also touch the InfiniBand fabric and parallel storage need extra ordering and Subnet Manager care. Those steps belong with the fabric and storage chapters in Parts 12 and 13, not here.
 
 ## 9. The lab
 
-Start the lab from the chapter's code folder. The groups below show what the 46 checks cover, so you know what a failure means.
+Before you point any of these tools at a real BMC, you want to see them behave. The lab gives you a mock BMC on your laptop, and it sends the same kinds of requests a real one would receive. Start the lab from the chapter's code folder. The groups below show what the 46 checks cover, so you know what a failure means.
 
 ```bash
 cd code/part07
 python3 firmware_lab.py
 ```
 
-1. **Inventory and drift** read the 34 components and compare them with the baseline, including drift, missing and extra items.
+The 46 checks pass against the mock. They have not been run against a live BMC, so treat a pass here as a rehearsal, not as proof for your hardware. The lab is most useful as a place to break things safely. Try a bad image, a missing target or a wrong reset type, and watch how the tool reports each one before you ever point it at a real node.
+
+1. **Inventory and drift** read the 34 components and compare them with the baseline. The checks cover drift, missing items and extra items.
 2. **The happy path** runs an update from start to finish. It checks for a `202`, an `Updating` state while the update runs, and the stage messages in order. It also checks `AwaitToActivate`, the old version and the new version.
 3. **Different activation** checks each reset type you will meet: a BMC reset, a host reset, a board power cycle and a full power cycle.
 4. **Failure and skip cases** cover a corrupted image, a file that is not a package, an unreachable image and a wrong target. They also cover the same version, a downgrade, the minimum-version rule, a missing `ImageURI` and a bad transfer protocol. A read-only user's request must be refused.
 5. **Cancel and staging** stop a running update, and stage one with `OnStartUpdateRequest` and `StartUpdate`.
 6. **Multipart push** covers success, a missing part, a file that is too large, and a wrong content type.
 7. **The tool** checks a dry run, a skipped update, the failure exit code and a timeout reported as unknown. It also checks the inactive and active cases (exit 7 for the inactive one).
-8. Last, the Task with its messages and the `Updating` inventory item **validate against the official DMTF schemas**.
+8. Last, the Task with its messages and the `Updating` inventory item validate against the official DMTF schemas. DMTF is the Distributed Management Task Force, the standards group that publishes Redfish.
 
-One bug showed up on the first run, and it matters because real BMCs behave the same way. The update took longer than the simulated session timeout, so the client got a 401 halfway through. The lab's Redfish client now has automatic **session renewal**. When it gets a 401 while holding a token, it logs in again once and repeats the request. Real BMCs time sessions out too, and a long update is exactly when that happens.
+One bug showed up on the first run, and it matters because real BMCs behave the same way. The update took longer than the simulated session timeout, so the client got a 401 halfway through. A 401 means the session token is no longer accepted. The lab's Redfish client now has automatic **session renewal**. When it gets a 401 while holding a token, it logs in again once and repeats the request. Real BMCs time sessions out too, and a long update is exactly when that happens.
 
 ## Exercises
 
-1. **Run the 46-check lifecycle suite.** Run `python3 code/part07/firmware_lab.py`, which should report all 46 checks passing. Then run `python3 code/part07/rf_firmware.py inventory` against the mock. List which components need `Manager.Reset`, which need a host `ComputerSystem.Reset`, and which need `FullPowerCycle` (AC power cycle).
-2. **Audit fleet drift with `rf_firmware.py drift`.** Save a JSON baseline that matches the mock's post-update GPU tray versions (`96.00.74.00.01`). Then change one GPU's expected version on purpose, and run `rf_firmware.py drift --baseline <file>`. Check that the tool flags `DRIFT` and exits non-zero.
-3. **Check that cancelling an update cleans up.** Read how `code/part07/firmware_lab.py` cancels an update in progress, with a `DELETE` on the Task Monitor URI, so you know what the test really checks. Then confirm that the target `SoftwareInventory` item's `Status.State` goes from `"Updating"` back to `"Enabled"`.
+Work through these in order. Each one uses the lab from section 9, and each one asks for a single decision.
+
+1. **Run the 46-check lifecycle suite.** Run `python3 code/part07/firmware_lab.py`, which should report all 46 checks passing. Your team wants proof that the lab works before anyone trusts it. Next, run `python3 code/part07/rf_firmware.py inventory` against the mock. Which components need `Manager.Reset`? Which need a host `ComputerSystem.Reset`? Which need `FullPowerCycle` (AC power cycle)?
+2. **Audit fleet drift with `rf_firmware.py drift`.** Save a JSON baseline that matches the mock's post-update GPU tray versions (`96.00.74.00.01`). Then change one GPU's expected version on purpose. Run `rf_firmware.py drift --baseline <file>`. Check that the tool flags `DRIFT` and exits non-zero.
+3. **Check that cancelling an update cleans up.** Read how `code/part07/firmware_lab.py` cancels an update in progress, with a `DELETE` on the Task Monitor URI. That tells you what the test really checks. Then confirm that the target `SoftwareInventory` item's `Status.State` goes from `"Updating"` back to `"Enabled"`.
 4. **Compare pull and push.** Write out the exact `curl` commands for updating `HostBIOS_0` in two ways. One uses `SimpleUpdate` with `ImageURI` and `Targets`. The other posts to `MultipartHttpPushUri` with `-F UpdateParameters=... -F UpdateFile=@...`. Then say which one you would choose for a `100–135 MB` `.fwpkg` bundle across 128 nodes, and why.
-5. **Design a canary rollout.** Apply the 11-step procedure in Section 8 to a 128-node cluster that rolls out in this order: `1` canary node → `1` rack of `8` nodes → `1` SU of `32` nodes → remaining SUs. Write down the exact stop condition between each wave.
+5. **Design a canary rollout.** Apply the 11-step procedure in Section 8 to a 128-node cluster. The cluster rolls out in this order: `1` canary node → `1` rack of `8` nodes → `1` SU of `32` nodes → remaining SUs. An SU is a scalable unit, a block of nodes that is planned together. Write down the exact stop condition between each wave.
 6. **Map BCM `firmware status` onto Redfish.** Compare the columns of BCM's `cmsh` `firmware status -n node001` output with the Redfish fields that hold the same information. The BCM columns are `component`, `version`, `state: current/pending/completed` and `Result: success: AC power cycle to activate`. Your answer should cover each column. The Redfish side is `SoftwareInventory` (`Id`, `Version`, `Status.State`) and `Task.Messages` (`Update.1.0.AwaitToActivate`, `Update.1.0.UpdateSuccessful`).
 
 ## 10. Interview angles
 
-These are the questions that come up most. For each one, lead with the short answer, then add the reason.
+These are the questions that come up most. Each answer below starts with the short version, then gives the reason.
 
 - "How do you update firmware on 500 DGX nodes?" Start with a baseline from the vendor. Drain the nodes, then roll out in small waves with BMC-driven updates and `Targets`. Verify the inventory and health before you return the nodes, and mention activation and rollback too.
 - "The update task finished with 200. Are you done?" Not yet. Read the final message to see whether the update was skipped or is waiting for activation, then re-read the inventory.
 - "What is drift and why does it matter for training?" Drift means a machine no longer matches the version you decided on. Nodes on different firmware behave differently, and collectives run at the speed of the slowest GPU.
 - "Why `Targets`?" Without them, the service may apply the image to every applicable device it finds.
 - "How do you stage an update across a rack and start it together?" Set `@Redfish.OperationApplyTime: OnStartUpdateRequest`, then call `StartUpdate`.
-- "Why can't you just reboot to activate?" Some parts need a DC cycle and some need an AC cycle. The vendor lists which one each part needs.
+- "Why can't you just reboot to activate?" Some parts need a DC cycle and some need an AC cycle. The vendor lists which one each part needs. A normal reboot restarts the host, but it may leave a GPU tray or a BMC on the old firmware, so the reset has to match the component.
+- "What do you do with a node that fails halfway through?" Stop the rollout, keep the node drained, and read the failed stage message. Do not start another update on the same node until you know which component is in an unknown state and what the rollback plan says.
 
 ## Checkpoint questions (20)
 

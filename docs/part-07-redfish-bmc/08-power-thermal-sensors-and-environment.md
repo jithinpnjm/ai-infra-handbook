@@ -22,21 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job that has slowed by a third since yesterday. Nothing crashed, and the operating system logs nothing unusual. The cause may be one fan that stopped, or one GPU that got too hot. The BMC watches the hardware from outside the operating system, so its sensors are the first place to look. Power is the other limit. Every rack has a fixed budget (chapter 6.30), and the BMC can report, and sometimes limit, how much each server draws.
+Picture a training job that has slowed by a third since yesterday. Nothing crashed, and the operating system logs nothing unusual. Your first guess is the code, but the code has not changed. The cause may be one fan that stopped, or one GPU that got too hot and quietly backed off its clock speed to protect itself. The BMC (baseboard management controller) watches the hardware from outside the operating system, so its sensors are the first place to look. Power is the other limit. Every rack has a fixed budget (chapter 6.30), and the BMC can report, and sometimes limit, how much each server draws. Knowing both numbers, heat and power, tells you whether the hardware is struggling or simply doing what it was told.
 
 ## Prerequisites and outcomes
 
-Work through 7.2 and 7.7 first. Chapter 6.30 helps too. It explains the rack budget this chapter keeps returning to. When you finish, you should be able to do these things on any Redfish service:
-
-- Find temperature, fan, voltage and power readings.
-- Tell the modern design (`Sensors`, subsystems) from the old one (`Thermal`, `Power`).
-- Read thresholds, and decide what to alert on.
-- Keep `Status`, `Health` and thresholds apart as three separate ideas.
-- Read power supply and cooling data, understand power-cap controls, and export readings in Prometheus format.
+Work through 7.2 and 7.7 first, because they set up the service tree and the three core families this chapter builds on. Chapter 6.30 helps too. It explains the rack budget this chapter keeps returning to. The chapter then walks through the readings you will meet on any Redfish service, starting with temperature, fan, voltage and power values. Along the way it keeps three ideas apart, which are `Status`, `Health` and thresholds. Most bad alerts come from mixing those three up, so each section returns to that split. It shows how the modern design (`Sensors` and the subsystems) differs from the old one (`Thermal` and `Power`), and how to read thresholds without mixing them up with health. It covers power supplies, cooling data and power-cap controls, and it ends with a Prometheus export of the readings.
 
 ## 1. Two designs for the same information
 
-Suppose you log in to an older server's BMC and find a `Thermal` page where you expected `Sensors`. That is not a mistake. Redfish changed how it shows heat and power, and both designs exist in real equipment, so you must be able to read both. The table below shows how they differ.
+Suppose you log in to an older server's BMC and find a `Thermal` page where you expected `Sensors`. That is not a mistake. Redfish changed how it shows heat and power over time, and both designs still exist in real equipment. You must be able to read both, because you will meet both in a real fleet. The table below shows how they differ.
 
 | | Old design (deprecated) | Modern design |
 |---|---|---|
@@ -45,9 +39,9 @@ Suppose you log in to an older server's BMC and find a `Thermal` page where you 
 | Linking | items are array entries, found by position | each item has its own address and links |
 | Status | the resource marks itself deprecated | current |
 
-The old design packs everything into arrays inside one resource, so you find an item by its position in the list. The modern design gives every item its own address, which is easier to follow and to check. DMTF's rack-server example even carries a hint inside the chassis: `"Thermal@Redfish.Deprecated": "Please migrate to use /redfish/v1/Chassis/1U/ThermalSubsystem"`. The schema marks the old way as deprecated, but the spec says services may still implement it, so older BMC firmware keeps it.
+The old design packs everything into arrays inside one resource, so you find an item by its position in the list. Position is fragile, because adding or removing one fan can shift every entry after it. The modern design gives every item its own address, which is easier to follow and to check. DMTF's rack-server example even carries a hint inside the chassis: `"Thermal@Redfish.Deprecated": "Please migrate to use /redfish/v1/Chassis/1U/ThermalSubsystem"`. The schema marks the old way as deprecated, but the spec says services may still implement it, so older BMC firmware keeps it.
 
-The lab shows the gap in the same example tree. Through the modern `Sensors` collection the tool found **41** readings. When I removed that link to force the old route, it found 9, from `Thermal` and `Power`. The modern way exposes more, with more detail, so read the modern design first and fall back to the old one only when you must.
+The lab shows the gap in the same example tree. Through the modern `Sensors` collection the tool found **41** readings. When the link is removed to force the old route, the tool finds 9, from `Thermal` and `Power`. The modern way exposes more, with more detail. So read the modern design first, and fall back to the old one only when you must.
 
 ```mermaid
 flowchart TD
@@ -67,11 +61,13 @@ flowchart TD
     EM -. "DataSourceUri" .-> SEN
 ```
 
-Your first step on any chassis is to check for the modern links. Only use the old resources when those links are missing.
+Your first step on any chassis is to check for the modern links. Only use the old resources when those links are missing. That order keeps you on the design the vendor is still maintaining, and it means your tool will keep working when the old resource finally disappears.
+
+Here is what that looks like in practice. You open the chassis resource and read its links. If `Sensors`, `ThermalSubsystem` and `PowerSubsystem` are all present, you follow them and stop there. If `Sensors` is missing but `Thermal` is present, you read the arrays in the old resource, and you write the tool so it logs which route it took. That log line matters later. When a reading looks wrong, you want to know whether it came from the modern tree or from the legacy arrays, because the two can disagree on a badly maintained BMC.
 
 ## 2. Sensors: one resource per measurement
 
-A GPU alarm fires at 3 a.m. The alert says "hot", but a number alone does not tell you much. You need to know what was measured, in which unit, and where on the machine. A `Sensor` answers all three questions in one resource. The table below lists the properties you will use most.
+A GPU alarm fires at 3 a.m. The alert says "hot", but a number alone does not tell you much. You need to know what was measured, in which unit, and where on the machine. A `Sensor` answers all three questions in one resource, which is why it is the workhorse of this chapter. The table below lists the properties you will use most.
 
 | Property | Meaning |
 |---|---|
@@ -86,19 +82,19 @@ A GPU alarm fires at 3 a.m. The alert says "hot", but a number alone does not te
 | `SpeedRPM` | fan speed, for fan sensors |
 | `Status` | `State` and `Health` |
 
-Because the unit and the context travel with the value, one program can read every sensor. It does not need a separate list for each vendor. You find sensors under `Chassis/<id>/Sensors`. Some BMCs also place sensors under other resources. In a fleet tool, treat the chassis list as the main route, and the metric links of components as an extra source.
+Because the unit and the context travel with the value, one program can read every sensor. It does not need a separate list for each vendor. A reading of `92` with no unit is ambiguous, but `92 Cel` at a `GPU` context tells you exactly what it means. You find sensors under `Chassis/<id>/Sensors`. Some BMCs also place sensors under other resources. In a fleet tool, treat the chassis list as the main route, and the metric links of components as an extra source.
 
 ### Thresholds
 
-A sensor's `Thresholds` object can hold these limits. Each one has a `Reading` and an `Activation` direction: `Increasing`, `Decreasing`, `Either` or `Disabled`.
+A sensor's `Thresholds` object can hold these limits. Each one has a `Reading` and an `Activation` direction: `Increasing`, `Decreasing`, `Either` or `Disabled`. The `Reading` is the value at which the limit sits, and the `Activation` says which way the value has to travel to cross it.
 
-`UpperCaution`, `UpperCritical`, `UpperFatal`, `LowerCaution`, `LowerCritical`, `LowerFatal`, and user-set variants (`UpperCautionUser` and so on). Each threshold can also carry `DwellTime`, which is how long the value must break the limit before it counts. It can also carry hysteresis, which is how far the value must fall back before the alarm clears.
+The limit names are `UpperCaution`, `UpperCritical`, `UpperFatal`, `LowerCaution`, `LowerCritical`, `LowerFatal`, and user-set variants such as `UpperCautionUser`. Each threshold can also carry `DwellTime`, which is how long the value must break the limit before it counts. A short spike that clears in a fraction of a second should not wake anyone up, and `DwellTime` is the setting that filters it out. A threshold can also carry hysteresis, which is how far the value must fall back before the alarm clears. Without hysteresis, a fan running right at the line would flip the alarm on and off every few seconds.
 
-Think of caution, critical and fatal as three steps up. **Caution** means the value is above normal. **Critical** means it is above normal and not yet fatal. **Fatal** is the level the equipment treats as dangerous. The BMC then sets `Status.Health` to `Warning` or `Critical`, and it may act on its own, for example by raising fan speed or shutting down.
+Think of caution, critical and fatal as three steps up a staircase. **Caution** means the value is above normal. **Critical** means it is above normal and not yet fatal. **Fatal** is the level the equipment treats as dangerous. The BMC then sets `Status.Health` to `Warning` or `Critical`, and it may act on its own, for example by raising fan speed or shutting down.
 
 ### Status is not the same as a reading
 
-A monitoring tool has to keep three separate ideas apart. The table below shows each one.
+A monitoring tool has to keep three separate ideas apart. The table below shows each one, and each answers a different question.
 
 | Idea | Where | Meaning |
 |---|---|---|
@@ -106,13 +102,13 @@ A monitoring tool has to keep three separate ideas apart. The table below shows 
 | **Threshold** | `Thresholds` | the limits for that number |
 | **Health** | `Status.Health` | the BMC's own judgment: `OK`, `Warning`, `Critical` |
 
-`Status.State` adds whether the sensor is `Enabled`, `Disabled`, `Absent` (nothing there) and so on. Do not mix these up. A sensor can be `Disabled` and have no reading, and that is normal.
+`Status.State` adds whether the sensor is `Enabled`, `Disabled`, `Absent` (nothing there) and so on. Do not mix these up. A sensor can be `Disabled` and have no reading, and that is normal. A sensor can also be `Enabled` with a reading that sits above its caution limit while its health still says `OK`, and that is the case the next paragraph is about.
 
-**Why your tool should check the value itself.** The BMC's health flag depends on firmware logic that you do not control. In my lab I set a GPU temperature above its critical threshold while leaving `Health: OK`. The tool still flagged it. A monitoring tool that trusts only the health flag misses sensors whose firmware forgot to update it, so use both.
+**Why your tool should check the value itself.** The BMC's health flag depends on firmware logic that you do not control. In the practice lab, a GPU temperature was set above its critical threshold while `Health: OK` stayed in place. The tool still flagged it. A monitoring tool that trusts only the health flag misses sensors whose firmware forgot to update it, so use both the value and the flag.
 
 ## 3. Thermal: fans, heat and cooling
 
-Fans are the part of the chassis that fails most visibly. A fan that slows down leaves hot air in the box, and the GPUs next to it pay for that. Under the modern `ThermalSubsystem`, the resources below describe the cooling hardware. The table lists what each link holds.
+Fans are the part of the chassis that fails most visibly. A fan that slows down leaves hot air in the box, and the GPUs next to it pay for that. Under the modern `ThermalSubsystem`, the resources below describe the cooling hardware. The table lists what each link holds, so you can go straight to the one you need.
 
 | Link | Contents |
 |---|---|
@@ -122,15 +118,15 @@ Fans are the part of the chassis that fails most visibly. A fan that slows down 
 | `Heaters` | heating elements, if any |
 | `LeakDetection`, `Pumps`, `Filters`, `CoolantConnectorRedundancy` | for liquid-cooled equipment |
 
-Fan redundancy tells you how serious a failed fan is. Take DMTF's example, where each fan group has `MinNeededInGroup: 1` out of two fans. If one fan fails, one fan is still left, so the group still meets its minimum. The failure becomes a repair ticket, not an emergency. Losing both fans would be a different story.
+Fan redundancy tells you how serious a failed fan is. Take DMTF's example, where each fan group has `MinNeededInGroup: 1` out of two fans. If one fan fails, one fan is still left, so the group still meets its minimum. The failure becomes a repair ticket to schedule, not an emergency to handle at midnight. Walk through what actually happens inside the box when one fan stops. The remaining fan spins faster to move the same air, its `SpeedPercent` climbs, and the sensors near the failed fan start to warm up slowly. Nothing shuts down yet. A good monitor catches that slow warming trend while the group still has its minimum, and that early catch is the whole value of reading redundancy as well as speed. Losing both fans would be a different story, because the group would fall below its minimum and the node would need to be drained.
 
-Liquid cooling adds more resources to the same model. `CoolingUnit` is a CDU, a coolant distribution unit. The others are `CoolantConnector`, `Pump`, `Reservoir`, `Filter`, `LeakDetection` and `LeakDetector`. The BCM manual says BCM uses Redfish for leak detection on NVL8 hardware. Chapter 6.30 explains why liquid cooling matters. I ran my reader on DMTF's cooling-unit example, which has a separate chassis for the CDU. It found 18 readings and flagged none.
+Liquid cooling adds more resources to the same model. `CoolingUnit` is a CDU, a coolant distribution unit that moves cooling liquid between the facility loop and the racks. The others are `CoolantConnector`, `Pump`, `Reservoir`, `Filter`, `LeakDetection` and `LeakDetector`. The BCM manual says BCM uses Redfish for leak detection on NVL8 hardware. Chapter 6.30 explains why liquid cooling matters for rack design. The reader was run against DMTF's cooling-unit example, which has a separate chassis for the CDU. It found 18 readings and flagged none.
 
 Once you can read the fans and their redundancy, the next question is what they are cooling against. That is the power side of the chassis.
 
 ## 4. Power: supplies, draw and limits
 
-A power supply can fail long before the server goes dark. It often warns first, and that warning is the signal you want. Under `PowerSubsystem`, the table below lists the links that hold power data.
+A power supply can fail long before the server goes dark. It often warns first, and that warning is the signal you want to catch. Under `PowerSubsystem`, the table below lists the links that hold power data.
 
 | Link or property | Meaning |
 |---|---|
@@ -140,9 +136,11 @@ A power supply can fail long before the server goes dark. It often warns first, 
 | `PowerSupplyRedundancy` | for example `Failover`, which supplies are active, how many are needed |
 | `Batteries` | battery units |
 
-Each `PowerSupply` reports its `PowerCapacityWatts` and `LineInputStatus`, which tells you whether the input power is present and normal. It also reports `PowerSupplyType` (AC or DC), efficiency ratings by load, input ranges and firmware version. A link to its `Metrics` (`PowerSupplyMetrics`) gives input and output watts, voltage, current and temperature. In DMTF's example, `Status.Conditions` holds a message that reads: *"Power supply 'PSU 1' has a predicted failure condition."* The health is `Warning`. This is the early signal to alert on, before a supply actually fails.
+Each `PowerSupply` reports its `PowerCapacityWatts` and `LineInputStatus`, which tells you whether the input power is present and normal. It also reports `PowerSupplyType` (AC or DC), efficiency ratings by load, input ranges and firmware version. A link to its `Metrics` (`PowerSupplyMetrics`) gives input and output watts, voltage, current and temperature. In DMTF's example, `Status.Conditions` holds a message that reads: *"Power supply 'PSU 1' has a predicted failure condition."* The health is `Warning`. This is the early signal to alert on, before a supply actually fails and takes its share of the load with it.
 
-`EnvironmentMetrics` is a handy summary that you can find on a chassis, and on many components such as each GPU. It gives `PowerWatts`, `EnergykWh`, `TemperatureCelsius`, `FanSpeedsPercent`, `HumidityPercent` and `PowerLimitWatts`. Each entry has a `DataSourceUri` that points to the sensor it came from. Follow that link when you need the detail behind a summary number.
+It helps to picture what redundancy means for the power side. A server with two supplies normally shares its load between them. If one supply fails, the other has to carry everything, and it runs hotter and closer to its own limit while it does. That is why a predicted-failure warning on one supply is urgent even when the server keeps running. The server still works, but it has lost its margin. The `PowerSupplyRedundancy` entry tells you whether that margin is gone, which is the question you want answered before the next outage.
+
+`EnvironmentMetrics` is a handy summary that you can find on a chassis, and on many components such as each GPU. It gives `PowerWatts`, `EnergykWh`, `TemperatureCelsius`, `FanSpeedsPercent`, `HumidityPercent` and `PowerLimitWatts`. Each entry has a `DataSourceUri` that points to the sensor it came from. Treat the summary as the headline and follow that link when you need the detail behind a summary number. The headline is quick to read, but the sensor is where the evidence lives. Imagine a dashboard that shows a GPU's power as a single number. When that number looks odd, the summary cannot tell you whether the sensor drifted, the GPU really drew more, or the summary was calculated from a stale value. Following `DataSourceUri` takes you to the sensor with its own units, thresholds and health, and that is where you settle the argument.
 
 ### Power capping with controls
 
@@ -163,17 +161,19 @@ A `Control` resource is a setting you can change. For power, DMTF's example look
 }
 ```
 
-Read the block as a short story. The server is drawing 374 W, and the cap is set to 500 W. The BMC allows any cap between 150 W and 1000 W, so 500 W is inside the range. To change the cap, you `PATCH` the control's `SetPoint`, and you use the usual ETag care from chapter 7.3. The NVIDIA notes say power capping on DGX H100 and H200 is done through Redfish. I could not check how.
+Read the block as a short story. The server is drawing 374 W, and the cap is set to 500 W. The BMC allows any cap between 150 W and 1000 W, so 500 W is inside the range. To change the cap, you `PATCH` the control's `SetPoint`, and you use the usual ETag care from chapter 7.3. An ETag is a version tag the server sends with a resource, and sending it back with `If-Match` tells the server to refuse the change if someone else edited the resource in the meantime. The NVIDIA notes say power capping on DGX H100 and H200 is done through Redfish. The exact method has not been checked here.
 
 :::warning Capping changes performance
-A power cap makes the hardware slow itself down to stay under the limit. On GPU servers, that directly lowers training speed. Change a cap only when you have a reason. Record who changed it and why, and compare the job speed before and after. A cap set below the normal draw of a busy server looks like a slow cluster from the user's side.
+A power cap makes the hardware slow itself down to stay under the limit. On GPU servers, that directly lowers training speed. Change a cap only when you have a reason. Record who changed it and why, and compare the job speed before and after. A cap set below the normal draw of a busy server looks like a slow cluster from the user's side, and nobody will think to check the cap first.
 :::
 
 ### The old design's power data
 
-For completeness, the old `Power` resource has `PowerControl[]`, `Voltages[]` and `PowerSupplies[]` arrays. Each `PowerControl` entry holds `PowerConsumedWatts`, `PowerCapacityWatts`, a `PowerLimit`, and `PowerMetrics` with the minimum, maximum and average over an interval. My tool reads these when the modern route is missing.
+For completeness, the old `Power` resource has `PowerControl[]`, `Voltages[]` and `PowerSupplies[]` arrays. Each `PowerControl` entry holds `PowerConsumedWatts`, `PowerCapacityWatts`, a `PowerLimit`, and `PowerMetrics` with the minimum, maximum and average over an interval. The reader uses these only when the modern route is missing, so you will see them mostly on older firmware.
 
-When you set a cap, decide first whether the job can afford the slowdown. The tool can show you the draw, but only you know the job's deadline.
+When you set a cap, decide first whether the job can afford the slowdown. The tool can show you the draw, but only you know the job's deadline and how much delay it can absorb.
+
+A simple way to plan is to write three numbers down before you touch the control. The first is the current draw from the sensor. The second is the new `SetPoint` you intend to set. The third is the expected slowdown, which you estimate from the job's own history. If the job has run before, look at what it did under a lower clock. If it has not, run a short test first on a node that is not on the critical path. Only then decide, and write the decision in the change log so the next person can see why the cap is there.
 
 ## 5. The tool: read both, flag by value
 
@@ -183,7 +183,7 @@ Reading the data by hand works for one server. It does not work for a rack of fo
 - The reading is at or above `UpperCritical` or `UpperFatal`, or above `UpperCaution`.
 - The sensor is `Enabled` but has no reading (`null`).
 
-`Disabled` and `Absent` sensors are skipped, because a missing reading on those is normal. With `--prom`, the tool prints Prometheus text format. Here is a run on my mock after I set one GPU temperature to 92 C. Its critical limit is 88, so 92 is four degrees over it.
+`Disabled` and `Absent` sensors are skipped, because a missing reading on those is normal. With `--prom`, the tool prints Prometheus text format. Prometheus is a time-series database that stores numbers with labels, so you can graph and alert on them. Here is a run on the practice mock after one GPU temperature is set to 92 C. Its critical limit is 88, so 92 is four degrees over it.
 
 ```text
 chassis Chassis_0: 4 readings via Sensors
@@ -198,24 +198,26 @@ chassis 1U: 41 readings via Sensors
 41 readings, 1 flagged
 ```
 
-The power-shelf example is the next case. The tool flagged `Power Shelf Load Percent` at 93 % against a caution limit of 90. Across the DMTF examples, the counts were: PDU 115 readings and nothing flagged, cooling unit 18 and nothing flagged, power shelf 35 and 1 flagged, rack server 41 and 1 flagged.
+The power-shelf example is the next case. The tool flagged `Power Shelf Load Percent` at 93 % against a caution limit of 90. Across the DMTF examples, the counts were: PDU 115 readings and nothing flagged, cooling unit 18 and nothing flagged, power shelf 35 and 1 flagged, rack server 41 and 1 flagged. Notice that the flags are the tool's answer to a question, not a final verdict. A reading just over a caution limit may be a planned load, and the next section helps you decide.
 
-The lab (`sensors_lab.py`) has 13 checks. They test that normal values are not flagged. They test critical and caution limits by value, a null reading, and `Critical` health. They also check that `Disabled` sensors are skipped, that the Prometheus text parses with the official `prometheus_client` parser, and that the tool falls back to the old route on DMTF's data.
+These lab steps were not run on a live BMC. The lab (`sensors_lab.py`) has 13 checks. They test that normal values are not flagged. They test critical and caution limits by value, a null reading, and `Critical` health. They also check that `Disabled` sensors are skipped, that the Prometheus text parses with the official `prometheus_client` parser, and that the tool falls back to the old route on DMTF's data.
 
 ### Prometheus export
 
-`--prom` produces lines like the ones below. Each sensor becomes one reading line and one health line.
+`--prom` produces lines like the ones below. Each sensor becomes one reading line and one health line. The reading line carries the number, and the health line carries a `1` for OK, so a single alert rule can watch the health line while a dashboard plots the reading line.
 
 ```text
 redfish_sensor_reading{chassis="1U",sensor="Ambient Temperature",kind="?",units="Cel"} 22.5
 redfish_sensor_ok{chassis="1U",sensor="Ambient Temperature",kind="?",units="Cel"} 1
 ```
 
-The `kind="?"` appears because that sensor in DMTF's example has no `ReadingType`, which is optional. Chapter 17's monitoring part builds on this idea. On a real fleet you would run an exporter service rather than a script. Keep the number of unique label values small, because fan and sensor names differ between machines. Test the cardinality before you roll it out.
+The `kind="?"` appears because that sensor in DMTF's example has no `ReadingType`, which is optional. Chapter 17's monitoring part builds on this idea. On a real fleet you would run an exporter service rather than a script, so the readings are collected on a schedule and not only when someone runs a command. Keep the number of unique label values small, because fan and sensor names differ between machines. Test the cardinality before you roll it out, and section 8.4 explains why that matters.
+
+Once the metrics reach Prometheus, the alert rules do the rest. A rule can watch the `redfish_sensor_ok` line for the value `0` and fire when a sensor stays unhealthy for a set time. That is the same idea as `DwellTime` on the BMC side, applied one layer up. Using both layers means a short blip is filtered twice, and only a steady problem reaches a person. Write the rule so its label filter excludes sensors you know are absent, because an absent sensor will otherwise fire the same alert every day.
 
 ## 6. Telemetry service: reports instead of polling
 
-Suppose you poll every sensor every 10 seconds from 1,000 BMCs. That is a lot of requests, and the BMCs have to answer every one of them. The **TelemetryService** solves this by letting the BMC collect the metrics itself and hand you a bundle. The table lists the resources involved.
+Suppose you poll every sensor every 10 seconds from 1,000 BMCs. That is a lot of requests, and each BMC has to answer every one of them while it also runs its own work. The **TelemetryService** solves this by letting the BMC collect the metrics itself and hand you a bundle. You ask for the bundle once, instead of asking for forty sensors one at a time. The table lists the resources involved.
 
 | Resource | Meaning |
 |---|---|
@@ -224,26 +226,30 @@ Suppose you poll every sensor every 10 seconds from 1,000 BMCs. That is a lot of
 | `MetricReports` | the produced reports. A `MetricReport` has `MetricValues`, a `ReportSequence` and a `Timestamp` |
 | `Triggers` | rules such as "when this reaches a threshold, take this action" |
 
-The service states the shortest allowed collection time in `MinCollectionInterval`. Metric reports can travel through the event service from chapter 7.5, and the spec has a separate event format for metric reports. The NVIDIA notes show one DGX report address, `TelemetryService/MetricReports/NvidiaNMMetrics_0`. I could not confirm that name. It is likely specific to one NVIDIA platform and firmware version, so check it on your own hardware before you rely on it.
+The service states the shortest allowed collection time in `MinCollectionInterval`, so you cannot ask for a report faster than the BMC can produce one. Metric reports can travel through the event service from chapter 7.5, and the spec has a separate event format for metric reports. The NVIDIA notes show one DGX report address, `TelemetryService/MetricReports/NvidiaNMMetrics_0`. That name could not be confirmed here. It is likely specific to one NVIDIA platform and firmware version, so check it on your own hardware before you rely on it.
 
-Use the built-in reports when the BMC offers them. Fall back to polling single sensors only when it does not.
+Use the built-in reports when the BMC offers them. Fall back to polling single sensors only when it does not. The built-in report is cheaper for the BMC and cheaper for your network, and it arrives with one timestamp that makes the numbers easier to line up.
+
+Here is the path a report takes. The `MetricReportDefinition` says which properties to collect and how often. The BMC gathers those values on its own schedule and writes them into a `MetricReport`. Your collector then either reads that resource or receives the report pushed through the event service. Either way, you handle one message per BMC instead of dozens of separate reads. The same bundle also carries a `ReportSequence`, so you can tell whether you missed one. A gap in the sequence is a clue that a report was lost, and your tool should say so instead of quietly averaging over the hole.
 
 ## 7. How this fits with GPU tools
 
-Two different tools watch the same server, and they see different things. The BMC sees the box. The GPU driver sees the chip. A slow job often needs both views before you know the cause. The table below shows where each one looks and where it is blind.
+Two different tools watch the same server, and they see different things. The BMC sees the box. The GPU driver sees the chip. A slow job often needs both views before you know the cause, because each view explains a different half of the story. The table below shows where each one looks and where it is blind.
 
 | Source | Sees | Does not see |
 |---|---|---|
 | **BMC / Redfish** | inlet and exhaust air, fans, power supplies, board temperatures, total power, sometimes GPU temperature and power | GPU clocks, throttle reasons, ECC details (unless the vendor adds them) |
 | **GPU driver (`nvidia-smi`, DCGM)** | GPU clocks, throttle reasons, utilization, memory errors, NVLink counters | fans, power supply health, anything when the OS is down |
 
-Here is how the two views combine. If a job is slow, the driver tells you the GPU is throttling for thermal or power reasons. That is the what. Redfish tells you the why, such as a failed fan, a hot inlet, or a power supply that dropped. The NVIDIA notes work through one such investigation, which they call "ghost throttling". I carry that scenario into chapter 7.14.
+Here is how the two views combine. If a job is slow, the driver tells you the GPU is throttling for thermal or power reasons. That is the what. Redfish tells you the why, such as a failed fan, a hot inlet, or a power supply that dropped. The NVIDIA notes work through one such investigation, which they call "ghost throttling". Chapter 7.14 carries that scenario forward, so you can see the full investigation in one place.
 
-Use both sources on every slow-job investigation. The driver narrows the problem to one GPU, and Redfish shows what is happening around it.
+Use both sources on every slow-job investigation. The driver narrows the problem to one GPU, and Redfish shows what is happening around it. Neither view alone is enough to tell you whether to fix the chip, the fan or the room.
+
+Sometimes the two views seem to disagree. The driver may report a thermal slowdown while the BMC shows every temperature in range. That is not a contradiction. The GPU may be reacting to a hot spot that the chassis sensors do not cover, such as the memory stacks next to the die. Treat the disagreement as a clue about where to look next, and do not pick the source you trust more and ignore the other one.
 
 ## 8. Finding data on an unknown machine
 
-Layouts differ from vendor to vendor, so you cannot always go straight to the answer. You need a fallback order that works even on a server you have never seen. Suppose the question is "what is the GPU temperature?" The steps below run in order, and you stop at the first one that gives you an answer.
+Layouts differ from vendor to vendor, so you cannot always go straight to the answer. You need a fallback order that works even on a server you have never seen. The order matters because the most specific route is usually the most accurate. A GPU's own metrics link is closer to the chip than a chassis sensor that happens to be labelled GPU, so you try it first and move outward only when it is missing. Suppose the question is "what is the GPU temperature?" The steps below run in order, and you stop at the first one that gives you an answer.
 
 1. From each `ComputerSystem`, look at `Processors` for `ProcessorType` equal to `GPU`. Follow the GPU's `EnvironmentMetrics` link if it exists. The notes show `GPU_SXM_<id>/EnvironmentMetrics` on the HGX baseboard.
 2. If that fails, search the chassis `Sensors` for `ReadingType: Temperature` and a `PhysicalContext` of `GPU`.
@@ -252,57 +258,57 @@ Layouts differ from vendor to vendor, so you cannot always go straight to the an
 
 ### 8.1 Correlating out-of-band BMC sensors with in-band DCGM throttling
 
-In an AI training cluster, thermal and power problems rarely crash a node outright. They slow it down instead. Modern GPUs and CPUs protect their silicon with aggressive clock-throttling loops in hardware. When a cooling fan loses a bearing, a cold-plate quick-disconnect coupling is partially seated, or a hot-aisle containment curtain tears open, the affected GPU drops its graphics clock from peak boost to a safe thermal floor. Every rank in your distributed training job then waits at each `AllReduce` barrier for that one throttled GPU.
+In an AI training cluster, thermal and power problems rarely crash a node outright. They slow it down instead. Modern GPUs and CPUs protect their silicon with aggressive clock-throttling loops in hardware. "Out-of-band" means the BMC reads the sensors over its own path, and "in-band" means the driver reads them from inside the running operating system. When a cooling fan loses a bearing, a cold-plate quick-disconnect coupling is partially seated, or a hot-aisle containment curtain tears open, the affected GPU drops its graphics clock from peak boost to a safe thermal floor. Every rank in your distributed training job then waits at each `AllReduce` barrier for that one throttled GPU. A single slow card holds up the whole job, which is why a small physical fault can cost a large amount of training time.
 
 To find these slowdowns quickly, you must combine two views. The **in-band GPU driver telemetry** comes from inside the server. The **out-of-band BMC sensor telemetry** comes from the management controller. Neither one tells the whole story on its own.
 
-- **What the GPU driver (`nvidia-smi` / DCGM) knows:** The driver knows the instantaneous SM clock frequency, the GPU die and HBM memory temperatures, the exact board power draw in watts, and the hardware slowdown bitmask (`clocks_event_reasons.hw_thermal_slowdown` or `hw_power_brake_slowdown`). It has no view of the sheet metal around the chip. If GPU 3 runs fifteen degrees hotter than GPUs 0 through 2 on the same baseboard, `nvidia-smi` cannot say why. The room's cold-aisle supply air may have warmed up, chassis fan 4 may have stalled, or a liquid-cooling pump may have lost pressure.
+- **What the GPU driver (`nvidia-smi` / DCGM) knows:** The driver knows the instantaneous SM clock frequency, the GPU die and HBM memory temperatures, the exact board power draw in watts, and the hardware slowdown bitmask (`clocks_event_reasons.hw_thermal_slowdown` or `hw_power_brake_slowdown`). It has no view of the sheet metal around the chip. If GPU 3 runs fifteen degrees hotter than GPUs 0 through 2 on the same baseboard, `nvidia-smi` cannot say why. The room's cold-aisle supply air may have warmed up, chassis fan 4 may have stalled, or a liquid-cooling pump may have lost pressure. Each of those causes looks the same from inside the driver.
 - **What the BMC (`Sensors`, `ThermalSubsystem`, `PowerSubsystem`) knows:** The BMC reads the room intake air temperature (`PhysicalContext: "Intake"`), the exhaust air temperature (`PhysicalContext: "Exhaust"`), and the fan tachometer speeds (`Rotational` sensors in RPM and `SpeedPercent`). It also reads the PSU input voltages and output wattages, plus the liquid-cooling manifold sensors (`LiquidInlet`, `LiquidOutlet`, `LiquidFlow`, `Pressure`, and `LeakDetector`).
 
-When a straggler detector flags a slow node, your diagnostic script should query both planes at once. Take the case where DCGM reports `hw_thermal_slowdown` on one GPU. The BMC's `Intake` sensor reads normal, and every fan spins at full RPM. The fault is then local to that GPU's heatsink or its TIM (thermal interface material) paste. If the BMC shows `Intake` air above the ASHRAE limit, the problem lies in facility airflow or aisle containment instead. If DCGM reports `hw_power_brake_slowdown`, the next stop is `PowerSubsystem/PowerSupplies` on the BMC. It shows at once whether a PSU lost AC input (`LineInputStatus`), or asserted a predictive failure condition, which triggers the hardware power brake to protect the remaining supplies.
+When a straggler detector flags a slow node, your diagnostic script should query both planes at once. A straggler is the one node that finishes late and holds back everyone else. Take the case where DCGM reports `hw_thermal_slowdown` on one GPU. The BMC's `Intake` sensor reads normal, and every fan spins at full RPM. The fault is then local to that GPU's heatsink or its TIM (thermal interface material, the paste between the chip and its cooler). If the BMC shows `Intake` air above the ASHRAE limit, the problem lies in facility airflow or aisle containment instead. ASHRAE is the body that publishes the recommended temperature range for data center air. If DCGM reports `hw_power_brake_slowdown`, the next stop is `PowerSubsystem/PowerSupplies` on the BMC. It shows at once whether a PSU lost AC input (`LineInputStatus`), or asserted a predictive failure condition, which triggers the hardware power brake to protect the remaining supplies.
 
 ### 8.2 Operating liquid-cooled racks through Redfish (`CoolingUnit` and `LeakDetection`)
 
-Rack power is climbing. Air-cooled designs run at `30–40 kW` per rack, while liquid-cooled `100–130+ kW` NVL72 racks are now common. As the heat load grows, the BMC's model of the environment has to grow too. It moves from fans and air thermistors to hydraulic loops. The modern Redfish schema (`DSP2046`) models liquid cooling in two linked trees.
+Rack power is climbing. Air-cooled designs run at `30–40 kW` per rack, while liquid-cooled `100–130+ kW` NVL72 racks are now common. As the heat load grows, the BMC's model of the environment has to grow too. It moves from fans and air thermistors to hydraulic loops, which are the pipes, pumps and valves that carry liquid coolant. The modern Redfish schema (`DSP2046`) models liquid cooling in two linked trees, one inside each tray and one at the rack or row.
 
 1. **Inside the compute or switch chassis (`Chassis/{id}/ThermalSubsystem`):** Each liquid-cooled tray exposes `CoolantConnectors`, which are supply and return valves with temperatures and pressures. It also exposes internal `Pumps`, `Filters`, and `LeakDetection`. Under `LeakDetection`, the `LeakDetectors` collection holds individual moisture, rope or optical sensors (`DetectorType: "Moisture"` or `"FloatSwitch"`). Their `Status.Health` changes to `Critical` and emits a high-priority Redfish event the moment coolant appears inside the tray.
 2. **At the rack or row Coolant Distribution Unit (`CoolingUnit` / CDU):** The CDU is modeled as a Redfish appliance. It reports the primary loop (facility chilled water) and the secondary loop (rack dielectric or PG25 water-glycol). The metrics include supply and return temperatures, differential pressure ($\Delta P$), volumetric flow rate (`L/min`), reservoir liquid level (`LiquidLevel`), and redundant pump status.
 
-This hydraulic telemetry needs the same care as the air-cooled sensors. Check both the value and the health, the way `rf_sensors.py` does. Do not wait for a `Fatal` over-temperature shutdown to find out that a CDU filter is clogging. If you scrape the secondary loop flow rate (`LiquidFlow`) and the pump differential pressure (`Pressure`) into Prometheus, you can alert when flow drops toward `LowerCaution`. That can happen days before GPU junction temperatures cross `UpperCaution`.
+This hydraulic telemetry needs the same care as the air-cooled sensors. Check both the value and the health, the way `rf_sensors.py` does. Do not wait for a `Fatal` over-temperature shutdown to find out that a CDU filter is clogging. A clogged filter shows up first as falling flow and rising pressure drop, and those trends can be seen long before the GPUs run hot. If you scrape the secondary loop flow rate (`LiquidFlow`) and the pump differential pressure (`Pressure`) into Prometheus, you can alert when flow drops toward `LowerCaution`. That can happen days before GPU junction temperatures cross `UpperCaution`, which gives maintenance time to act on a schedule.
 
 ### 8.3 Designing a safe cluster-wide power-capping controller
 
 Every data center has a hard electrical ceiling at the rack PDU, the busway and the transformer. Chapter 6.30 covers that budget. Now imagine a chiller plant losing one compressor on a hot afternoon. The facility team asks you to cut twenty percent of cluster power draw within two minutes, and they do not want multi-day training jobs killed. Redfish's `Control` resource gives you the out-of-band tool for that. It lives at `/redfish/v1/Chassis/{id}/Controls/PowerLimit`, or you can read `EnvironmentMetrics.PowerLimitWatts`. The mechanism is simple. The discipline around it is what keeps the cluster safe, and it comes down to four guardrails.
 
-1. **Check `AllowableMin` and `AllowableMax` for each chassis first.** Never push one fixed wattage across a mixed cluster. A dual-socket CPU storage node and an 8-GPU training node have very different ranges. A value outside the range returns HTTP `400 Bad Request`.
+1. **Check `AllowableMin` and `AllowableMax` for each chassis first.** Never push one fixed wattage across a mixed cluster. A dual-socket CPU storage node and an 8-GPU training node have very different ranges. A value outside the range returns HTTP `400 Bad Request`, so the BMC is telling you the limit is wrong for that box.
 2. **Cap whole jobs, not single racks.** Suppose a 64-node training job spans four racks. If you cap only Rack 1 at seventy percent power, its eight nodes throttle their GPU clocks. The other forty-eight nodes sit idle at every collective barrier, burning power while they wait for Rack 1. When you shed load for a multi-node job, apply one uniform cap across the whole allocation, or pause the lowest-priority batch queues first.
-3. **Record the baseline before you change anything.** Save each chassis's current `SetPoint` and `ControlMode` in Git before you lower it. Your restoration playbook then returns every server to its exact pre-incident state once cooling recovers.
-4. **Confirm the draw with the sensor.** Thirty seconds after you patch `SetPoint`, re-read the linked power sensor (`DataSourceUri`). Check that `Sensor.Reading` in watts dropped below the new cap. Also check that no PSU logged an under-voltage or over-current condition.
+3. **Record the baseline before you change anything.** Save each chassis's current `SetPoint` and `ControlMode` in Git before you lower it. Your restoration playbook then returns every server to its exact pre-incident state once cooling recovers. Without the saved baseline, you will guess at the old values later, and guessing is how a temporary cap becomes a permanent one.
+4. **Confirm the draw with the sensor.** Thirty seconds after you patch `SetPoint`, re-read the linked power sensor (`DataSourceUri`). Check that `Sensor.Reading` in watts dropped below the new cap. Also check that no PSU logged an under-voltage or over-current condition. A patch that the BMC accepted does not prove the hardware obeyed it.
 
 ### 8.4 Controlling Prometheus cardinality and scrape load at scale
 
-Suppose you deploy an out-of-band Redfish exporter across 1,000 servers, 30 PDUs and twenty CDUs. Two scaling traps can then bring down either your BMCs or your Prometheus time-series database.
+Suppose you deploy an out-of-band Redfish exporter across 1,000 servers, 30 PDUs and twenty CDUs. Two scaling traps can then bring down either your BMCs or your Prometheus time-series database. Both traps come from the same habit of asking for too much, too often.
 
-The first trap is **BMC CPU saturation from uncached `Sensor` walks**. Take a server with 40 `Sensor` resources. A naive exporter makes 42 sequential HTTP `GET` requests per node every 15 seconds. That keeps the BMC's embedded web server pegged at 100% CPU, and then interactive `cmsh` or Ansible calls start to time out. Avoid this by checking `/redfish/v1/` for `ProtocolFeaturesSupported.ExpandQuery`. If the BMC supports `?$expand=.($levels=1)`, one `GET /redfish/v1/Chassis/{id}/Sensors?$expand=.($levels=1)` returns all 40 sensor readings in a single round-trip. Better still, if the BMC implements `/redfish/v1/TelemetryService/MetricReports`, read the pre-assembled `MetricReport` in one `GET`. You can also subscribe to pushed metric reports over SSE or webhooks.
+The first trap is **BMC CPU saturation from uncached `Sensor` walks**. Take a server with 40 `Sensor` resources. A naive exporter makes 42 sequential HTTP `GET` requests per node every 15 seconds. That keeps the BMC's embedded web server pegged at 100% CPU, and then interactive `cmsh` or Ansible calls start to time out. Avoid this by checking `/redfish/v1/` for `ProtocolFeaturesSupported.ExpandQuery`. If the BMC supports `?$expand=.($levels=1)`, one `GET /redfish/v1/Chassis/{id}/Sensors?$expand=.($levels=1)` returns all 40 sensor readings in a single round-trip. Better still, if the BMC implements `/redfish/v1/TelemetryService/MetricReports`, read the pre-assembled `MetricReport` in one `GET`. You can also subscribe to pushed metric reports over SSE or webhooks, which means the BMC sends the data to you and you do not have to ask.
 
-The second trap is **Prometheus label cardinality explosion**. In `rf_sensors.py --prom`, each sensor emits a metric with the labels `{chassis, sensor, kind, units}`. Those four labels are safe, because every label value comes from a small, fixed hardware set on each node. That gives about 40 to 60 time series per server. Never put dynamic values into label values, such as timestamps, raw reading numbers, session IDs or unnormalized error strings. Keep the measurement as the metric's float value. Add `redfish_sensor_ok` (`1` or `0`) as a companion gauge for simple alerting rules. Scrape out-of-band BMCs at a calm `30`-to-`60`-second interval. Let the in-band `dcgm-exporter` handle the fast GPU telemetry, at `5`-to-`10`-second intervals.
+The second trap is **Prometheus label cardinality explosion**. Cardinality means the number of distinct label combinations, and each combination becomes its own time series that Prometheus must store. In `rf_sensors.py --prom`, each sensor emits a metric with the labels `{chassis, sensor, kind, units}`. Those four labels are safe, because every label value comes from a small, fixed hardware set on each node. That gives about 40 to 60 time series per server. Never put dynamic values into label values, such as timestamps, raw reading numbers, session IDs or unnormalized error strings. Keep the measurement as the metric's float value. Add `redfish_sensor_ok` (`1` or `0`) as a companion gauge for simple alerting rules. Scrape out-of-band BMCs at a calm `30`-to-`60`-second interval. Let the in-band `dcgm-exporter` handle the fast GPU telemetry, at `5`-to-`10`-second intervals, because the GPU numbers change quickly and the BMC numbers change slowly.
 
-When a sensor crosses a threshold between scrape intervals, use two channels together. Redfish push events (chapter 7.5) or `TelemetryService` `Triggers` deliver an alert within a second of the hardware assertion. The Prometheus history (`redfish_sensor_reading`) lets you plot the 24-hour thermal ramp across every rack in Grafana. That plot shows whether the overheating started with a facility chilled-water change or with a local fan failure.
+When a sensor crosses a threshold between scrape intervals, use two channels together. Redfish push events (chapter 7.5) or `TelemetryService` `Triggers` deliver an alert within a second of the hardware assertion. The Prometheus history (`redfish_sensor_reading`) lets you plot the 24-hour thermal ramp across every rack in Grafana. That plot shows whether the overheating started with a facility chilled-water change or with a local fan failure. The push tells you that something happened, and the history tells you how it developed.
 
 ## Exercises
 
-1. Run the lab first with `python3 code/part07/sensors_lab.py`. You should see `9 passed, 0 failed`, or 13 sub-assertions. Then open `code/part07/sensors_lab.py` and `code/part07/rf_sensors.py`. Find out how a GPU sensor at `92.0 Cel`, which is above `UpperCritical: 88.0`, gets flagged even when `Status.Health` still says `"OK"`.
-2. Serve `$REDFISH_PUBLICATIONS/mockups/public-pdu` with `redfish_mock.py --mockup`. Then run `python3 code/part07/rf_sensors.py http://127.0.0.1:8443 admin adminpass --all`. Go through the 115 sensors and list the `ReadingType` values you see: `Voltage`, `Current`, `Power`, `EnergykWh`, `Frequency` and `Temperature`. Then explain why a smart rack PDU exposes a `Chassis` resource at all.
-3. In the `public-rackmount1` mockup, open `/redfish/v1/Chassis/1U/Controls/PowerLimit`. Note the current `SetPoint` of `500`, the `AllowableMin` of `150`, the `AllowableMax` of `1000`, and the `Sensor.Reading` of `374`. Write the exact `PATCH` request, including `If-Match`, that lowers `SetPoint` to `450` W. Then state the performance trade-off that this change puts on a training node.
-4. Look at `/redfish/v1/Chassis/1U/PowerSubsystem/PowerSupplies` in `public-rackmount1`. Write a Python check that flags any `PowerSupply` where `Status.Health` is not `"OK"`, where `LineInputStatus` is not `"Normal"`, or where `Status.Conditions` is not empty.
-5. Extend `code/part07/rf_sensors.py` so it reads `ThermalSubsystem/Fans` and `FanRedundancy`. It should print each fan's `SpeedPercent`, and say whether the fan group has margin above `MinNeededInGroup`.
-6. Using `redfish_mock.py` in-process, set a sensor's `Thresholds.UpperCritical.Activation` to `"Disabled"`. Keep its `Reading` above `Thresholds.UpperCritical.Reading`. Then decide how a correct threshold evaluator should treat a disabled threshold, and check that your code does exactly that.
+1. Run the lab first with `python3 code/part07/sensors_lab.py`. You should see `9 passed, 0 failed`, or 13 sub-assertions. Then open `code/part07/sensors_lab.py` and `code/part07/rf_sensors.py`. Find out how a GPU sensor at `92.0 Cel` gets flagged, even though it is above `UpperCritical: 88.0`. Check that `Status.Health` still says `"OK"` while the flag appears.
+2. Serve `$REDFISH_PUBLICATIONS/mockups/public-pdu` with `redfish_mock.py --mockup`. Then run `python3 code/part07/rf_sensors.py http://127.0.0.1:8443 admin adminpass --all`. Go through the 115 sensors and list the `ReadingType` values you see. Expect `Voltage`, `Current`, `Power`, `EnergykWh`, `Frequency` and `Temperature`. Then explain why a smart rack PDU exposes a `Chassis` resource at all.
+3. In the `public-rackmount1` mockup, open `/redfish/v1/Chassis/1U/Controls/PowerLimit`. Note the current `SetPoint` of `500`. Note the `AllowableMin` of `150`, the `AllowableMax` of `1000`, and the `Sensor.Reading` of `374`. Write the exact `PATCH` request, including `If-Match`, that lowers `SetPoint` to `450` W. Then state the performance trade-off that this change puts on a training node.
+4. Look at `/redfish/v1/Chassis/1U/PowerSubsystem/PowerSupplies` in `public-rackmount1`. Write a Python check that flags any `PowerSupply` where `Status.Health` is not `"OK"`. The same check should flag any `LineInputStatus` that is not `"Normal"`, and any `Status.Conditions` that is not empty.
+5. Extend `code/part07/rf_sensors.py` so it reads `ThermalSubsystem/Fans` and `FanRedundancy`. It should print each fan's `SpeedPercent`. Then it should say whether the fan group has margin above `MinNeededInGroup`.
+6. Using `redfish_mock.py` in-process, set a sensor's `Thresholds.UpperCritical.Activation` to `"Disabled"`. Keep its `Reading` above `Thresholds.UpperCritical.Reading`. Then decide how a correct threshold evaluator should treat a disabled threshold. Check that your code does exactly that.
 
 ## 10. Interview angles
 
-Interviewers like these questions because each one has a clear first step. Use the answers below to practice saying the first step out loud.
+Interviewers like these questions because each one has a clear first step. Use the answers below to practice saying the first step out loud, before you add any detail.
 
-- "Training slowed down on one node. How do you check whether it is physical?" Start with the BMC sensors: inlet temperature, fans and power supplies. Compare them with the other nodes. Then check the GPU driver for throttle reasons.
+- "Training slowed down on one node. How do you check whether it is physical?" Start with the BMC sensors: inlet temperature, fans and power supplies. Compare them with the other nodes in the same rack. Then check the GPU driver for throttle reasons.
 - "Why check the reading and not just Health?" The health flag is firmware logic. Thresholds and values are data you can verify yourself.
 - "Thermal versus ThermalSubsystem?" The first is the old array-based design, and the second is the modern design with one resource per item. A tool must handle both.
 - "What is a power cap and what is the risk?" A power cap is a limit on server power. It protects the rack budget, but it also slows the hardware. Change it on purpose, and record the change.
