@@ -22,24 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-At 2 a.m. a training job has been running on 4,000 GPUs for nine days, and then it stops making progress. The scheduler says the nodes are healthy. The GPUs say they are idle. NCCL logs show a timeout, so everyone suspects the network. The gap between a fifteen-minute fix and a six-hour outage is rarely knowledge of one command. It is a **method**. You need to know what the system should do, build the right mental models, and choose the next question with care. You also measure instead of guessing, change one thing at a time, and record what you learn.
+At 2 a.m. a training job has been running on 4,000 GPUs for nine days, and then it stops making progress. The scheduler says the nodes are healthy. The GPUs say they are idle. NCCL logs show a timeout, so everyone suspects the network. People start to type commands into terminals, and each person has a different theory. The gap between a fifteen-minute fix and a six-hour outage is rarely knowledge of one command. It is a **method**. You need to know what the system should do, build the right mental models, and choose the next question with care. You also measure instead of guessing, change one thing at a time, and record what you learn.
 
-Troubleshooting is rarely taught, yet senior infrastructure interviews probe it hard. A typical question is "walk me through how you would debug...". This chapter teaches a general method. That method covers purpose, components, models, half-split, manipulation, simplification, fixing and technical debt. You also get a practical data-collection kit and decision trees for the most common failure classes. Finally, there are fourteen case studies. They run from a Linux host through overlays and load balancers to AI fabrics, and each one walks through symptoms, investigation, diagnosis and resolution.
+A stopped job with no clear error is the hardest kind of trouble. Nobody can tell whether the network failed, the storage failed, or a process inside a GPU hung. The method in this chapter starts from that uncertainty, and narrows it one test at a time, instead of guessing from the most alarming log line on the screen.
+
+Troubleshooting is rarely taught, yet senior infrastructure interviews probe it hard. A typical question is "walk me through how you would debug...". Behind that question is a simple worry: can this person stay calm and systematic when nothing makes sense? The method in this chapter starts from the purpose of the system and the models in your head. It then adds half-split, manipulation and simplification, and finishes with fixing, technical debt and learning. After that you get a practical data-collection kit and decision trees for the most common failure classes. Finally, there are fourteen case studies. They run from a Linux host through overlays and load balancers to AI fabrics, and each one walks through symptoms, investigation, diagnosis and resolution.
 
 Treat the method as the thing to learn, and the case studies as practice for it.
 
 ## Prerequisites and outcomes
 
-Before you start, work through the networking fundamentals in 2.2 to 2.10, routing and fabrics in 2.13 to 2.19, and the Linux toolbox in 2.22 to 2.26. You can read 2.31 alongside this chapter, because it covers the monitoring concepts.
+Work through the networking fundamentals in 2.2 to 2.10, routing and fabrics in 2.13 to 2.19, and the Linux toolbox in 2.22 to 2.26 before this chapter. You can read 2.31 alongside it, because it covers the monitoring concepts. The method is general, but the examples lean on those chapters: they use sockets, counters, captures, MTU, PFC and ECN as if you had already met them.
 
-When you finish, you should be able to do the following.
-
-- State the purpose of the system you troubleshoot in business terms, list its components, and recognise the combinatorial explosion that makes whole-system knowledge impossible.
-- Build and use *how*, *what* and *accurate* models, move between them, climb back up the model tree, and avoid getting locked into one model.
-- Apply the half-split method along a signal path, use manipulation to separate correlation from causation, and simplify before testing.
-- Separate the immediate fix from the permanent fix, manage technical debt, and run a blameless post-incident review.
-- Collect evidence quickly and safely with a standard diagnostic kit, and use decision trees for connectivity, performance, intermittent faults and fabric problems.
-- Diagnose the case-study failures: SNAT exhaustion, MTU black holes, conntrack exhaustion, ARP flux and `rp_filter`, UDP overflow, route dampening, checksum offload, PFC storms, veth bottlenecks, zero window, DNS timeouts, ECMP imbalance, rail mismatch and silent corruption. Then generalise to new ones.
+The method has plain names for its parts, such as half-split and manipulation, and each is explained with a small story the first time it appears.
 
 ## 1. The purpose and the components
 
@@ -47,11 +42,17 @@ When you finish, you should be able to do the following.
 
 Say you have checked every link and every BGP session, and every light is green. Is the network working? You cannot tell yet. Troubleshooting is an exercise in narrowing. You start with a broad, imprecise description of the problem, move to a focused one, and finally name something to change. The common failure is to narrow too fast, jump between hypotheses, and forget the overall purpose.
 
-**A system is working only if it accomplishes what it is supposed to do.** Green gauges on each component are not enough. A cable team once insisted that a repaired splice was fine, because its voltage and resistance readings were correct. Meanwhile, the wind-speed system the splice fed could not be calibrated. The dispute lasted days. A capacitive crosstalk test finally found the splice faulty, because it matched the purpose of the splice.
+Consider an engineer who has checked every link and every BGP session and seen only green. Users still see slow file reads. Green lights are evidence that the parts are up. They are not evidence that the service works. That gap is what the purpose-first rule keeps in view, and it is why the first question in any incident is what the system is for.
+
+**A system is working only if it accomplishes what it is supposed to do.** Green gauges on each component are not enough. A cable team once insisted that a repaired splice was fine, because its voltage and resistance readings were correct. Meanwhile, the wind-speed system the splice fed could not be calibrated. The dispute lasted days. A capacitive crosstalk test finally found the splice faulty, because it matched the purpose of the splice. Everyone had been measuring what was easy to measure, and not what the cable was for.
 
 Networks work the same way. "All links up and BGP established" is not the same as "the all-reduce reaches 90% of line rate." Define success in terms of what the application needs, and measure that.
 
+Make the purpose concrete with a target. Suppose the purpose is that an all-reduce across the fabric finishes at full speed. A link can be up, a session can be established, and the job can still be slow. Only a measurement of the all-reduce answers the purpose question. The measurable target is the thing you check at the very end, after every fix.
+
 Understand the business purpose too, and be honest about trade-offs. If the business asks for something impossible or very complex, do not simply say yes. Explain the cost and the risk.
+
+Trade-offs come up in the middle of an incident. A fix that restores service may leave a risk in place, and the people who own the service should know that before the fix goes in. Write the trade-off down next to the fix, so that the decision stays visible after the incident is over.
 
 ### Components
 
@@ -61,11 +62,15 @@ Before you test anything, write down the purpose and one measurable target for i
 
 ## 2. Models
 
-When you troubleshoot, you never see the whole system at once. You work from a model of it. Every model is incomplete, and it is still useful. A model makes a system understandable, but it also hides detail. So pick the right model for your question, and know what it leaves out. A black box that you are not allowed to understand cannot be troubleshot. It also makes troubleshooting any larger system that contains it much harder.
+When you troubleshoot, you never see the whole system at once. You work from a model of it, which is a simplified picture in your head, much like a map of a city. Every model is incomplete, and it is still useful. A map that showed every brick would be useless, and a map that omitted the one-way streets would send you the wrong way. A model makes a system understandable, but it also hides detail. So pick the right model for your question, and know what it leaves out. A black box that you are not allowed to understand cannot be troubleshot. It also makes troubleshooting any larger system that contains it much harder.
+
+Picture a doctor who sees a patient only through a few readings. The readings are not the patient, but the doctor uses a picture of how a body works to decide which reading matters. A network engineer does the same. The model is the picture, and the readings are the counters, the logs and the captures.
 
 ### How models (theory)
 
 How models explain how and why things work. They cover the problem each mechanism solves, the range of possible solutions, and how this implementation applies one. Take BGP peering. You can ask how BGP manages flow control, error correction and marshalling. TCP handles flow control and reliability for it. You can ask how BGP manages peer state, which involves a finite state machine, timers and keepalives. And you can ask how to configure it to peer.
+
+Protocol theory is the reason a symptom is possible at all. If you know that a BGP session must miss its hold timer before its routes withdraw, you know why a failure takes that long to show up. Without the theory, every delay looks like a new mystery, and you start guessing.
 
 Many engineers know the peer-state and configuration questions, but never study the first one. That gap leads to hunt-and-peck troubleshooting, built from fragments of past incidents. You build how models by reading protocol specifications and design rationales. You also study real network designs and their failures, and learn the algorithms and heuristics behind them. The theory chapters in this handbook are how models. These models are often best captured as flow charts or sequence diagrams.
 
@@ -73,11 +78,15 @@ Many engineers know the peer-state and configuration questions, but never study 
 
 What models describe what is normal in your own system. They cover the signal path of each application, meaning how its packets flow, queue and get processed. They also cover the baseline: traffic levels by time of day, SPF run times, jitter and delay per application, ECMP balance, PFC and ECN rates, temperatures and optic power. The normal configuration lives in a source of truth. The normal reaction to events, such as the expected convergence time and expected loss when a link fails, belongs here too. So do your security boundaries.
 
+A baseline is the what model in practice. Write down the normal retransmit rate, the normal latency and the normal load on one leaf switch. When the number moves, you have a fact to compare. An engineer who has never seen the system can then still tell what changed, because the change is measured against a number on the page.
+
 You learn these models only by observing repeatedly, ideally under real conditions, and by writing the baseline down. You cannot recognise broken without knowing normal. Be careful about observing only in the lab. A story from radar maintenance shows why. A technician checked the obvious, common failure first: a resistor that tested shorted. He fixed it and went home satisfied, which cost a second day. The real failure was an inductor in parallel with that resistor. On a DC ohmmeter, an inductor always reads as a short, so the instrument could not see it. Every tool has blind spots, so know what yours cannot see.
 
 ### Accurate models
 
 Accuracy means fit to purpose, not completeness. The OSI model is good for describing interfaces and for building a stack. It is poor for understanding what happens where and why. A model that organises functions by problem fits troubleshooting better. RINA is one example. It treats error control, flow control and multiplexing as things that recur at each scope. Different questions need different models, such as path, control plane, queues, energy and thermal, or application protocol.
+
+A road map that shows only the roads you need is accurate for driving and useless for plumbing. A network model should show the parts that carry the symptom, and leave out the rest until the evidence asks for them.
 
 ### Shifting between models and the model tree
 
@@ -85,21 +94,31 @@ Organise your models into a tree that runs from abstract to concrete. The tree s
 
 One incident shows how this goes. The team first treated an outage as EIGRP protocol behaviour. Then they treated it as packet transport, then as router input queues. Finally they found a broadcast flood. A backup server had been installed in "server mode", and it was scanning every subnet. Each shift changed the model. The team had to keep the larger purpose in view while chasing a "rogue IP address".
 
+Read this incident as a lesson about the tree. The team stayed at the protocol layer while the evidence kept refusing to fit. Each extra test at that layer cost time without giving a new answer. The turn came only when they climbed back up and asked what sat below the protocol. Climbing earlier would have saved the hours spent inside a protocol that was behaving correctly.
+
 When the evidence stops fitting your current model, climb back to the top of the tree and try another branch.
 
 ## 3. Half-split, manipulation and simplification
 
+Picture a long path, several hops from one host to another, with a flow that fails somewhere along it. Testing every hop one by one takes a long time, and a guess can send you down the wrong branch. The techniques in this section narrow the search quickly and with evidence. Each one cuts the problem in a different way, and together they turn a vague failure into a single component you can check.
+
+Why halves and not single hops? A long path takes many tests if you walk it one hop at a time. The same path takes only a handful of tests if each test cuts the remaining path in half. The saving grows with the length of the path, and that is why half-split is the first method to reach for on a long flow.
+
 ### Half split and move
 
-Hopping at random between models and tools is common, and it is slow. A flow that fails somewhere between two hosts can send you through a dozen tools in an afternoon. The **half-split method** gives you structure. It works like this:
+Hopping at random between models and tools is common, and it is slow. A flow that fails somewhere between two hosts can send you through a dozen tools in an afternoon. The **half-split method** gives you structure. It is the method behind the old guessing game of finding a number between one and a hundred by asking "higher or lower" and halving the range each time. It works like this:
 
-1. Map the path of the signal through the system. The signal is something you can test: a flow's packets, a neighbour adjacency, jitter at one point, the completeness of a stream, or a request.
+The search works like finding a name in a printed phone book. You open the middle page, see whether the name comes before or after it, and throw away the half that cannot hold it. Half-split applies the same method to a signal path, with the signal as the thing you test at each point.
+
+1. Map the path of the signal through the system. The signal is something you can test: the packets of a flow, a neighbour adjacency, jitter at one point, the completeness of a stream, or a request.
 2. Split the path roughly in half.
 3. Test the signal at the midpoint. Is it correct?
 4. If it is incorrect, move toward the source. If it is correct, move toward the destination.
 5. Repeat on the remaining half.
 
 At each test, ask two questions. What is the actual state of the system and the signal here? What should normal look like? The method forces you to look and compare with the baseline. It also keeps you tied to the larger context, so you do not dive into a plausible component that is only a symptom. The method fits networks well. Choose the path of the failing flow with `traceroute`, `ip route get` or an ECMP-aware `mtr`. Capture at the midpoint with a packet capture or counters, and then bisect.
+
+Take a flow that fails between a spine and a host. The midpoint test is at the leaf. If the leaf's counters show the packet arrived and also left, the fault lies past the leaf, so you move toward the host. If the packet never left the leaf, the fault lies before it, so you move toward the spine. Each answer narrows the path, and a few tests can point at a single device.
 
 ```mermaid
 flowchart LR
@@ -115,11 +134,15 @@ In this diagram, the first test happens at the spine. Its answer tells you which
 
 Sometimes a symptom coincides with an event. Jitter might start every time SPF runs on router E. Correlation is not causation, though. To establish cause, **manipulate one variable while holding the others constant**. Reproduce the suspected trigger on purpose. For example, cause the SPF event by flapping the same link, or replay the same traffic. Measure the signal while you do it. If the effect follows, you have a lever. If it does not, the correlation was a coincidence or a symptom of a deeper cause.
 
+Correlation is cheap, and causation costs a test. If jitter starts when the routing protocol runs its calculation, that is a lead and not a proof. The manipulation test is to trigger the calculation on purpose, on a quiet device, and see whether jitter follows. If it does, you have a cause. If it does not, you have saved yourself a change to the wrong component.
+
 Manipulation also helps you learn how a model behaves. You can change QoS settings on a test flow path and watch how the application reacts. In practice, reality is messier. Causes interact, and some cannot be reproduced. So you sometimes accept a correlation and try changes in order of safety and likelihood. The closer you stay to controlled manipulation, the faster and more certain your diagnosis becomes.
 
 ### Simplify before testing
 
 With many parallel paths, variables and layers, remove components until the problem goes away, or until only a minimal working set remains. You might disable ECMP to one path, drain a spine, turn off an optional feature, shift traffic to a single rail, bypass the load balancer, or test on loopback or a namespace. If the problem disappears early, you have two suspects. The removed component may have been the fault. Or a positive feedback loop or control-plane state velocity may be at work. Add components back one at a time until the problem returns. That is a built-in manipulation test. If the problem persists down to the minimum, you have narrowed it hugely.
+
+Picture a rack with several uplinks, a bonded pair and a firewall in line. Remove the firewall from the path. If the problem vanishes, the firewall is the suspect. Put it back and watch the problem return. Simplify on purpose, and remember to restore what you removed, because a path left changed is a new problem of its own.
 
 Reducing redundancy during an outage feels wrong. Do it only where it is safe. Drain a component rather than cut it, and do it under change control.
 
@@ -127,13 +150,17 @@ Reducing redundancy during an outage feels wrong. Do it only where it is safe. D
 
 Fixing usually has two stages. The first is the **immediate fix** that restores service: reroute, restart, roll back a config, or replace a part. The second is the permanent fix that removes the cause: correct design, automation, monitoring and documentation. Teams are tempted to stop after the first stage. Unfixed root causes build up as technical debt. That debt takes the form of workarounds that stay, undocumented exceptions and manual steps.
 
+Think of the immediate fix as a tourniquet and the permanent fix as the surgery. The tourniquet stops the bleeding so the patient survives, and nobody calls it a cure. A reroute or a restart is the tourniquet. The cause, such as a bad optic or a wrong MTU, needs the surgery, and the surgery is scheduled, not skipped.
+
 Record each temporary fix as debt, with an owner and a date, and schedule the permanent fix. After the incident, run a blameless post-incident review. It covers the timeline, what you knew and when, what misled you, and what detection or tooling was missing. It also covers what to change: alerts, runbooks, tests in CI and design. Finally, add the failure to your *what* model, so the next occurrence is recognised at once.
 
 Before you call an incident closed, record the temporary fix as debt and schedule the permanent one.
 
 ## 4. A practical workflow
 
-When an alert fires in the middle of the night, the order of your first steps matters. This workflow gives you that order.
+When an alert fires in the middle of the night, the order of your first steps matters. This workflow gives you that order, so that the pressure of the moment does not make you skip a step.
+
+Imagine the same alert handled two ways. In the first, the engineer starts changing settings at once, and the evidence is gone by the time the cause would have shown itself. In the second, the engineer writes down the symptom, saves the counters, and only then changes one thing. The second engineer loses a few minutes and keeps the evidence that tells the real story.
 
 1. Stabilise and scope the problem. Ask who is affected and since when. Ask what changed: deploys, config, firmware, traffic or season. Ask whether any data is at risk. Then name an incident lead and a communication channel, and keep a timeline.
 2. Define the symptom in measurable terms. For example: "rank 37 to rank 112 all-reduce latency rose from 1.2 ms to 40 ms starting 02:13." Include what works, because the negative space is often the most informative part.
@@ -145,11 +172,15 @@ When an alert fires in the middle of the night, the order of your first steps ma
 
 Several generic aids help along the way. Work bottom-up (physical → link → network → transport → application) when many things fail at once or after a hardware change. Work top-down when only one application misbehaves. Use divide and conquer, which is half-split, when the path is long. Follow the path: trace the actual flow end to end, including NAT, overlays and load balancers. Compare with a working peer by diffing a good node against a bad one. Check configs, firmware, `ethtool`, sysctls, routes and counters. Configuration drift is the most common root cause in fleets. Change one thing at a time, and revert the experiments that fail. Finally, use the packet, because a capture beats opinion.
 
+Working bottom up is a rule of thumb. Physical problems are the cheapest to rule out, and a loose cable or a dead optic usually shows up in a light or a counter. Check those before spending an hour on routing, because a clean physical layer makes the upper layers easier to read.
+
 Next time you start, write the symptom in measurable terms before you touch a command.
 
 ## 5. The diagnostic kit
 
 A kit saves time at 2 a.m., when nobody remembers the right commands. Keep one standard, scripted collector, so anyone can gather the same evidence in under a minute on any node and attach it to the ticket. The script is read-only, so gathering evidence never changes the state you are trying to explain.
+
+A kit is a set of answers you wrote down while you were calm. When the page arrives, you do not have to reinvent the commands. You run the script, attach its output to the ticket, and then read the output with a clear head. The archive is also the evidence you will need if the fault comes back.
 
 ```bash
 #!/bin/bash
@@ -175,15 +206,21 @@ tar czf $out.tgz -C /tmp $(basename $out) && echo "$out.tgz"
 
 Alongside the script, you run a few tools on demand. Use `mtr -n -r -c 100`, `tracepath` and `ping -M do -s N` to check paths and packet sizes. Take a short, truncated `tcpdump` on suspect interfaces, with a filter (chapter 2.26). Run `iperf3` and `ib_write_bw` between pairs of hosts, and `nccl-tests` per rail. Use `tcplife/tcpretrans/tcpdrop` (chapters 2.22 and 2.26) for kernel-side views. On the switch side, check the counters: `show interface counters errors`, PFC, ECN and queue drops, optics DOM, BGP and BFD state, and LLDP.
 
+The repeated view matters for loss. A single ping reports one answer, so a loss that appears only at one hop can be missed. The mtr tool repeats its probes along the path, and a loss that stays in one row points at the hop that owns it. Use the repeated view when the symptom is loss rather than a total failure.
+
 Attach the archive from the script to the ticket before anyone changes the node.
 
 ## 6. Decision trees
 
-A decision tree turns a vague complaint into a short series of yes or no questions. You follow the branch that matches your symptom.
+A decision tree turns a vague complaint into a short series of yes or no questions. You follow the branch that matches your symptom. It does not replace thinking, and it keeps you from skipping the cheap checks while you reach for the clever ones.
+
+Think of a decision tree as a set of signposts. Each question has two answers, and each answer points to a different road. You do not need to know the whole map. You only need the next question, and the answer to it decides the road you take next.
 
 ### Connectivity: "A cannot reach B"
 
 Start with scope. Does the failure happen on every client, or only on A? Then follow the diagram from the top.
+
+Suppose only one client fails. You now know the fault is near that client, or on the path from it, and not in the server that every other client reaches. That single answer removes half of the tree, and the remaining questions are shorter because the search space is smaller.
 
 ```mermaid
 flowchart TD
@@ -207,6 +244,8 @@ Read the diagram as a set of questions. A refusal (RST) points to a firewall rej
 
 Slowness has many causes, so work through these steps in order. Each one narrows the search.
 
+Read the steps as a funnel. The first step turns a feeling into a number. The second finds the limit, the third finds the segment that carries it, and the fourth separates loss from delay. Only then does the fifth step ask whether the trouble belongs to one flow or to all of them.
+
 1. Quantify the problem. Measure throughput, latency percentiles and retransmit rate. Compare them with the baseline and with the theoretical limit, such as line rate or BDP.
 2. Find the limit. Check the `ss -ti` limiter flags (cwnd-limited, rwnd-limited, sndbuf-limited, app-limited). Then check CPU (`mpstat`, `top -H`, softirq), memory, disk, the NIC (`ethtool -S` drops, pause), switch queues, PFC, ECN, MTU and congestion control.
 3. Find the segment. Test pairs along the path with `iperf3` or `ib_write_bw`, halving the path each time, per rail and per direction.
@@ -218,13 +257,19 @@ Slowness has many causes, so work through these steps in order. Each one narrows
 
 An intermittent fault is hard, because it is gone by the time you look. So start recording before the fault appears. Use ring buffer captures (`-C -W`), continuous telemetry, `ping -D -i 0.2` with timestamps, `mtr --report` loops, and scheduled `ss` and `nstat` snapshots. Collect switch syslog and counters too, and line them up by time.
 
+Recording is the whole method here. Set up a probe that runs all the time and writes a timestamp for every failure. When the fault returns, you have the moment and the state around it. The question then moves from a feeling to a pattern you can check.
+
 Then look for a pattern. Periodic faults often sit on a timer: 30 s, 60 s, 5 min or 1 h. Check cron jobs, backups, garbage collection, DHCP lease renewals, conntrack timeouts, BGP dampening, and certificate or token expiry. Also check whether the fault follows the load, the temperature or specific hosts.
 
 Intermittent faults are usually capacity limits, timeouts, flaps, or one bad member of an ECMP or LAG set. In that last case, only the traffic that hashes onto the bad path fails, while the rest succeeds.
 
+Each of those four causes leaves a different trace. A capacity limit shows a rising count that flattens at a ceiling. A timeout shows a fixed delay. A flap shows state changes in the logs. A bad member of a group shows one device in the counters that the others do not show.
+
 ### AI-fabric symptoms
 
 Symptoms in an AI fabric look different from ordinary network faults. The table lists the first checks for the most common ones.
+
+Ordinary faults often break a connection. AI fabric faults often slow a whole job while every link stays up. A job that runs at half speed for an hour can pass every health check. That is why the table below starts from what the job does, and not from what the links report.
 
 | Symptom | First checks |
 |---|---|
@@ -239,23 +284,31 @@ Read each row as a first move, not a diagnosis. Start with the row that matches 
 
 ## 7. Case studies
 
-The cases below come from production networking work. Each one follows the same path: the symptom, the investigation, the diagnosis, the resolution and a lesson you can carry to the next incident.
+The cases below come from production networking work. Each one follows the same path: the symptom, the investigation, the diagnosis, the resolution and a lesson you can carry to the next incident. Read each one in two passes. On the first pass, stop after the symptom and write down the first three things you would check. On the second pass, compare your list with what actually found the problem.
+
+Read each case as a short story with a fixed shape. The symptom comes first, as the user saw it. The evidence follows, in the order it was collected. The cause and the fix come last. Notice where the evidence changed the team's mind, because that moment teaches more than the fix does.
 
 ### Case 1: SNAT port exhaustion
 
-Microservices in a private subnet time out now and then when they connect to an external managed database. The database is healthy, and CPU is low. The NAT gateway's `dmesg` shows no conntrack drops. Yet about 5,000 containers connect through one NAT IP to one database IP and port. A single source IP has about 60,000 usable ephemeral ports per destination IP and port. Once those run out, new connections cannot get a mapping.
+Microservices in a private subnet time out now and then when they connect to an external managed database. The database is healthy, and CPU is low. The `dmesg` of the NAT gateway shows no conntrack drops, so the table is not the problem. The investigation then asks how many connections share the gateway. About 5,000 containers connect through one NAT IP to one database IP and port. A single source IP has about 60,000 usable ephemeral ports per destination IP and port. Every connection to that one database needs its own source port on the gateway. Once those ports run out, new connections cannot get a mapping, and they time out. It is a car park with a fixed number of spaces: the traffic is not heavy, but all the spaces are taken.
+
+Walk through what happens. Each outbound connection takes a source port from the NAT gateway's pool. When many connections are open at once, the pool runs low, and a new connection finds no free port to take. The request then waits and times out, even though the external service is healthy and the link has spare capacity. The problem is the pool, not the path.
 
 The fix is to add NAT gateway IPs and ports, for example through Cloud NAT port allocation. You can also use a connection pooler such as PgBouncer to multiplex connections, shorten TIME_WAIT, and reuse connections. The lesson: count the tuple dimensions, meaning source IP, destination IP and port, when you size NAT.
 
 ### Case 2: Path MTU black hole
 
-Small queries succeed, but large ones hang. `ping` works, and so does `telnet port`. A capture shows that the handshake succeeds. A full-sized server packet never reaches the client, and no ICMP appears. The server has MTU 9000, but a router in the middle runs at 1500. That router sends an ICMP "fragmentation needed" message, yet a firewall drops all ICMP.
+Small queries succeed, but large ones hang. `ping` works, and so does `telnet port`. Those two facts already say a lot: the path is up, and the failure depends on packet size. A capture shows that the handshake succeeds. A full-sized server packet never reaches the client, and no ICMP appears. The server has MTU 9000, but a router in the middle runs at 1500. That router sends an ICMP "fragmentation needed" message, yet a firewall drops all ICMP. The server never learns that its packets are too big, so it keeps retransmitting the same large packet into the same hole.
+
+Here is why the big packets hang while the small ones pass. Each link on the path has its own MTU. Small packets fit everywhere, so nothing needs to change. A large packet with the do-not-fragment flag set cannot fit a smaller link, and the router that must refuse it sends back a message. If that message is blocked, the sender never learns the size it must use, and it keeps resending a packet that cannot pass.
 
 The resolution is to align the MTUs, allow ICMP type 3 code 4 (and ICMPv6 type 2), clamp the MSS at the edge, and set `tcp_mtu_probing=1`. The lesson: test with `ping -M do -s` and look for the ICMP in the capture (chapter 2.7).
 
 ### Case 3: Conntrack table full
 
-Busy Kubernetes nodes show intermittent timeouts for new connections, while CPU and bandwidth look fine. In `dmesg` you find `nf_conntrack: table full, dropping packet`. The count from `conntrack -C` equals `nf_conntrack_max`, and `conntrack -S` shows insert_failed. Two problems combine here. The established timeout of 5 days keeps dead flows around forever, and the table is too small for the load.
+Busy Kubernetes nodes show intermittent timeouts for new connections, while CPU and bandwidth look fine. A healthy dashboard and unhappy users is the signature of a state table filling up. In `dmesg` you find `nf_conntrack: table full, dropping packet`. The count from `conntrack -C` equals `nf_conntrack_max`, and `conntrack -S` shows insert_failed. Two problems combine here. The established timeout of 5 days keeps dead flows around forever, and the table is too small for the load.
+
+The conntrack table is a notebook of every connection the node is tracking. Each new connection needs a new line. When the notebook fills, the kernel has no room to write and drops the new connection, often without a clear error. Established connections keep working, which is why only new connections fail.
 
 Raise the max and the hash size, lower the timeouts, and find the chatty clients. Use `notrack` for DNS and east-west flows. The lesson: capacity limits in state tables look like random packet loss.
 
@@ -263,23 +316,31 @@ Raise the max and the hash size, lower the timeouts, and find the chatty clients
 
 Two hosts on the same subnet cannot communicate. `ip neigh` shows INCOMPLETE. The captures show ARP requests and replies, yet the host ignores them. A host with several interfaces on one subnet answers ARP for any local IP on any interface. This is called ARP flux, so the replies leave from the wrong NIC. Strict `rp_filter` mode also drops the asymmetric traffic.
 
-The resolution is to set `arp_ignore=1`, `arp_announce=2` and `rp_filter=2`, and to use source-based routing (chapter 2.24). The better fix is one subnet per NIC. The lesson: Linux's weak host model surprises multi-NIC designs.
+Read the neighbour table as the host's address book. INCOMPLETE means the host asked for a link address and got no answer. When two interfaces share one subnet, the host can answer for the wrong interface, and the other host records the wrong owner. A host with two interfaces on one subnet must decide which one answers, and the default settings decide it badly.
+
+The resolution is to set `arp_ignore=1`, `arp_announce=2` and `rp_filter=2`, and to use source-based routing (chapter 2.24). The better fix is one subnet per NIC. The lesson: the weak host model of Linux surprises multi-NIC designs.
 
 ### Case 5: UDP receive buffer overflow (StatsD/syslog)
 
-Metric graphs show gaps under load, yet the servers do not crash. UDP has no flow control and no retransmissions. So when the receiver's socket buffer (`rmem_default`) overflows, the kernel drops packets silently. It counts them in `UdpRcvbufErrors`.
+Metric graphs show gaps under load, yet the servers do not crash. UDP has no flow control and no retransmissions. So when the socket buffer of the receiver (`rmem_default`) overflows, the kernel drops packets silently. It counts them in `UdpRcvbufErrors`.
+
+The receive buffer is a queue with a fixed size. When packets arrive faster than the application empties it, the kernel drops the excess without telling the sender. UDP has no retransmit, so the drop is permanent. The graph gap has the shape of those dropped packets, and the server looks healthy because the kernel did what it was configured to do.
 
 Monitor `nstat` and `ss -ump`, raise the buffers (`SO_RCVBUF`, `rmem_max`), and add receivers with `SO_REUSEPORT`. You can also batch metrics, and use TCP where loss matters. The lesson: silent loss needs counters, so always chart drops.
 
 ### Case 6: BGP route dampening after a flapping optic
 
-The management network goes down for exactly five minutes, and the outage repeats at random. A failing transceiver flaps a link every few seconds. Each time, the host's FRR advertises and then withdraws a route. The spine applies route-flap dampening and suppresses the route for a penalty period.
+The management network goes down for exactly five minutes, and the outage repeats at random. A failing transceiver flaps a link every few seconds. Each time, the FRR of the host advertises and then withdraws a route. The spine applies route-flap dampening and suppresses the route for a penalty period.
+
+Dampening works like a teacher who stops listening to a student who keeps interrupting. Each flap adds a penalty to the route. Once the penalty passes a threshold, the route is suppressed for a while, even after the link is stable again. The outage repeats because the suppression holds the route down after the optic has already recovered.
 
 The optic showed bad Rx power on DOM, so you replace it. Keep dampening in place, because it protects the control plane. The lesson: outages of an exact length are timers, such as dampening, hold-down, lease or cache. Find the timer.
 
 ### Case 7: TCP checksum offload failure
 
-`ping` works, but SSH hangs after the version exchange. The receiver's capture shows packets with an incorrect checksum. A driver or firmware bug makes the sender's NIC compute wrong checksums when TX offload is on. The receiver's hardware then drops those packets. Your capture tap sees them before the drop.
+`ping` works, but SSH hangs after the version exchange. The capture of the receiver shows packets with an incorrect checksum. A driver or firmware bug makes the NIC of the sender compute wrong checksums when TX offload is on. The hardware of the receiver then drops those packets. Your capture tap sees them before the drop.
+
+Ping uses small packets, so it never reaches the path where the offload fails. SSH sends larger segments, and the bad checksum is produced where the driver fills it in. The receiver drops the segment, and the sender waits for an acknowledgement that never comes. Small and large traffic take different code paths, and that difference is the clue.
 
 The workaround is `ethtool -K eth0 tx off`, and the lasting fix is to update the driver and firmware. The lesson: tell apart a harmless "bad cksum" on the sender from bad checksums seen at the receiver (chapter 2.26).
 
@@ -287,11 +348,15 @@ The workaround is `ethtool -K eth0 tx off`, and the lasting fix is to update the
 
 A multi-node job runs fine for five minutes, and then throughput falls to zero. The same fabric passes `ib_write_bw` when it is idle. On the hosts, `ethtool -S` shows `rx_pause` counters rising by millions per second. The ECN thresholds on the switches were set too high. The buffers filled before ECN or CNP could slow the senders. So the switches fired hard PFC pauses, which spread and froze the fabric.
 
+A pause storm spreads backwards through the fabric. One port sends pause frames, the switch holds its traffic, and the buffers behind it fill and send pauses of their own. The chain grows until throughput falls to zero. It stops only when ECN marks the flows early enough to slow them before the pauses start.
+
 The resolution is to lower the ECN thresholds below the PFC threshold, verify DCQCN on the NICs, enable the PFC watchdog, and find any stuck endpoint. The lesson: ECN must act well before PFC (chapter 2.19).
 
 ### Case 9: veth CPU bottleneck in a pod
 
 A pod with heavy network I/O tops out near 15 Gb/s on a 100G host, and one core sits at 100% softirq. Each flow crossing a veth pair is processed in softirq on a single CPU. That single CPU sets the ceiling for the pod.
+
+A veth pair is a virtual cable whose two ends are handled by the CPU. Every packet crossing it costs CPU time on one core. When that core is busy, the whole pod slows, even though the physical NIC has plenty of room. Bypass the virtual cable, and the core that did the copying is free for the application.
 
 The resolution is to use host networking, ipvlan or macvlan, SR-IOV, or RDMA secondary interfaces. An eBPF host-routing CNI also works. The lesson: the pod network is a different, slower data path than the host NIC.
 
@@ -299,11 +364,15 @@ The resolution is to use host networking, ipvlan or macvlan, SR-IOV, or RDMA sec
 
 A file transfer between two nodes stalls for 5 to 10 seconds, then resumes. The capture shows `TCP Window Size: 0` coming from the receiver. The receiving application is not reading fast enough, whether because of disk or CPU limits. The network itself is fine.
 
-Fix the receiver: its I/O, its CPU or its buffering. The lesson: a zero window points at the receiver's application, not at the path.
+A zero window is the receiver saying that its buffer is full. The sender must wait, and it sends small probes to ask whether space has opened. While the receiver stays busy, the transfer waits. The stall ends when the application reads again. The network did not fail in this case, and the fix belongs on the receiving host.
+
+Fix the receiver: its I/O, its CPU or its buffering. The lesson: a zero window points at the application of the receiver, not at the path.
 
 ### Case 11: Asymmetric ECMP and reordering from a host speaking BGP
 
 A host advertises its loopback to two ToRs. Return traffic then splits across both paths. That reorders packets and degrades TCP. Unequal path latency is one cause, combined with per-packet or poorly keyed load balancing. A bond misconfiguration on the host can make it worse.
+
+Two paths carry one flow in the wrong order when they differ in delay, so the receiver sees segments arrive out of sequence. TCP treats that as loss and slows down. Consistent per-flow hashing keeps each flow on one path, which removes the reordering while the paths stay in use.
 
 The resolution is consistent per-flow hashing, correct bonding and ECMP policy, and equal-length paths. The lesson: reordering looks like loss to TCP, which reacts with duplicate ACKs and SACK.
 
@@ -311,17 +380,23 @@ The resolution is consistent per-flow hashing, correct bonding and ECMP policy, 
 
 A UDP multicast application works on physical hosts but fails on a Kubernetes overlay. VXLAN overlays and clouds usually do not carry L2 multicast, because they run no IGMP snooping or PIM.
 
+Multicast needs the overlay to copy each frame to every member, and a plain VXLAN underlay does not do that by itself. Without a replication plan, the frame stops at the first tunnel endpoint, and the application sees a blackhole. The application works on physical hosts because the switch floods multicast there.
+
 You can fix it with unicast replication in the overlay, with EVPN multicast support, or by refactoring the application. The lesson: overlays change what the network can carry.
 
 ### Case 13: DNS 5-second delays in Kubernetes
 
 External calls show an occasional 5-second latency. Parallel A and AAAA queries leave from one source port. Conntrack and NAT then race the two queries, and one of them is dropped. The stub resolver waits out its default 5-second timeout. And `ndots:5` multiplies the number of queries.
 
+Here is the race the case describes. Linux sends the A and AAAA queries in parallel over the same socket. When both replies arrive at nearly the same moment, one of them can be lost in a race inside the connection table. The resolver then waits for the lost reply, and that wait is the stall the application sees.
+
 The resolution is `single-request-reopen`, NodeLocal DNSCache, a lower `ndots`, or a newer kernel (chapter 2.8). The lesson: an exact N-second delay is a timer, so match it to a default.
 
 ### Case 14: Silent corruption and a "slow rail" in a GPU cluster
 
-Step times oscillate across the cluster. One node is consistently 15% slower, and no link has gone down. The switch counters show FEC-corrected codewords and CRC errors rising on one port. The NIC's `ethtool -S` shows `rx_corrected_bits`. Optics DOM Rx power is marginal, and that rail sees retransmissions. NCCL logs show the rail finishing late.
+Step times oscillate across the cluster. One node is consistently 15% slower, and no link has gone down. The switch counters show FEC-corrected codewords and CRC errors rising on one port. The `ethtool -S` output of the NIC shows `rx_corrected_bits`. Optics DOM Rx power is marginal, and that rail sees retransmissions. NCCL logs show the rail finishing late.
+
+Synchronous training waits for its slowest member at every step. One slow rail therefore slows every rank, even though the other rails are healthy. The job looks uniformly slow, and the search for the fault starts in the wrong place unless you compare the numbers rail by rail.
 
 A dirty or failing optic or cable causes a high pre-FEC bit error rate. The rail still works, but with retries and added latency, so every collective waits for it. The resolution is to clean or replace the fibre or transceiver, and verify with BER tests and counters. Add alerts on FEC and CRC trends and on per-rail bandwidth skew. Drain the node until it is fixed. The lesson: in synchronous training the slowest participant sets the pace, so watch trends in error counters, not just link state.
 
@@ -335,7 +410,9 @@ Start with the self-checking Python lab, and run it on your own machine. It veri
 python3 code/part02/network_troubleshooting_method_lab.py
 ```
 
-Next, use the Chapter 2.27 containerlab fabric on a disposable Linux VM. Every interactive VM command below is `untested here`. A partner or a script injects one fault from the table, and you diagnose it with the method and the kit.
+Next, use the containerlab fabric from chapter 2.27 on a disposable Linux VM. The interactive VM commands below were not run on live hardware. A partner or a script injects one fault from the table, and you diagnose it with the method and the kit. Working with a partner matters: the person who injects the fault knows the answer, and you practise the method without the advantage of having set the trap yourself.
+
+The VM part lets you break things safely. Each fault is injected on purpose, so you know the true cause before you start. Work through the symptom as the application would see it, then through the hypotheses, and only then through the commands. The point is to practise the order of the work, not to be fast.
 
 | # | Injected fault | Injection method |
 |---|---|---|
@@ -360,8 +437,12 @@ For each fault, you write the symptom as the application sees it. Then list the 
 
 Most of these mistakes come from habit, not missing knowledge. Use the list as a checklist against your own work.
 
+Habits are easier to change than knowledge. A checklist kept beside the terminal, with the first three questions written on it, changes the order of the work more than any new command does.
+
 - You start with tools before knowing the purpose or a measurable symptom.
 - You narrow too fast and fixate on the first plausible cause, such as "it's always DNS". You forget to climb back up the models.
+
+A quick test of this habit is to write down two other causes that would produce the same symptom before you run anything. If you cannot name two, you have not yet looked at the problem widely enough.
 - You trust a single instrument. An ohmmeter cannot see an inductor failure, and link-up lights do not show BER.
 - You change several things at once, with no rollback and no notes.
 - You treat correlation as cause, and skip manipulation.
@@ -369,6 +450,8 @@ Most of these mistakes come from habit, not missing knowledge. Use the list as a
 - You have no baselines, so "abnormal" cannot be recognised.
 - You debug the network when the application, host or storage is the real bottleneck, or the other way round.
 - You do not capture evidence before the symptom disappears, for example by rebooting first.
+
+A reboot erases the evidence the fault left in memory and in the counters. Capture first, even when a reboot would be quicker. The minute spent saving a file often saves the rest of the afternoon.
 
 If you catch yourself doing any of these, write down the symptom and the baseline before your next change.
 
@@ -391,12 +474,15 @@ Pick two of these questions and answer each one with the method, not with a list
 
 Each exercise ties back to one part of the chapter. Work through them in order.
 
-1. Start with purpose, the combinatorial explosion, and the three kinds of model. Explain, from Computer Networking Problems and Solutions, chapter 24, why "all links up and BGP Established" does not prove that a network works. Relate your answer to the wind-speed cable story and its capacitive crosstalk. Then contrast How models (protocol theory), What models (local baselines and normal behaviour, plus the instrument blind spots in the storm-radar inductor story) and Accurate models (fit to purpose). Finally, explain how to move through the model tree without getting stuck in one branch. Explain it the way you would to a colleague who has not read the chapter.
-2. Next, practise the half-split search, manipulation, simplification and technical debt, using the same source, chapter 24. Run `run_half_split_path_search()` in `code/part02/network_troubleshooting_method.py` on `["src_host", "leaf_a", "spine", "leaf_b", "dst_host"]`. Trace which hops are probed when `leaf_b` is the first failing hop, and then when `leaf_a` is the first failing hop. Explain how controlled manipulation separates causation from correlation. Then explain what it means when a bug disappears during simplification, and why stopping at the immediate fix builds technical debt. As you trace the hops, say in one line what each probe tells you.
-3. Explain why you must run `netdiag.sh` before rebooting a node or restarting daemons. Then trace the Section 6 decision tree for "Host A cannot reach Service X on Host B". Follow the path for `Connection refused (RST)` and for `Connection timed out`, and say where the two paths split. Keep your path short, and mark the branch you take at each question.
-4. Using `classify_case_study_symptom()`, state the root cause, the diagnostic command or counter, and the permanent fix for each of these. Case 1 is SNAT port exhaustion at about 60,000 ports per destination tuple. Case 2 is the path MTU black hole. Case 3 is `nf_conntrack: table full`. Case 4 is multi-NIC ARP flux with `rp_filter=1`. Case 5 is a `UdpRcvbufErrors` overflow. Case 7 is bad TCP checksums seen by the receiver. Where a case needs two answers, keep the root cause and the fix apart.
-5. Next, cover the routing, overlay and transport cases. For Case 6, Case 9, Case 10, Case 11, Case 12 and Case 13, state the root cause and the fix. Case 6 is a repeating 5-minute outage from BGP route dampening on a flapping optic. Case 9 is a `veth` single-core softirq cap at about 15 Gb/s. Case 10 shows `TCP Window Size: 0`. Case 11 is asymmetric ECMP packet reordering. Case 12 is a VXLAN overlay multicast blackhole. Case 13 is the 5-second DNS timeout in Kubernetes. Write each case as a short paragraph you could read aloud.
-6. Last, compare the two AI-fabric cases, Case 8 and Case 14. Case 8 is a multi-node NCCL job that collapses to zero throughput after 5 minutes. It produces millions of `rx_pause` frames per second, because switch ECN thresholds sit above PFC XOFF. Case 14 is a 4,000-GPU training job whose step times are dragged down by 15% by one dirty or failing transceiver. Its DOM Rx power is low, and FEC-corrected bits and CRC errors rise on one rail. Compare the two cases. Keep the comparison to one paragraph, so you can see where they differ.
+1. A colleague says the network is fine because all links are up and BGP is Established. Explain why that does not prove that a network works, and relate your answer to the wind-speed cable story and its capacitive crosstalk. Explain it the way you would to a colleague who has not read the chapter.
+2. Contrast How models (protocol theory), What models (local baselines and normal behaviour, plus the instrument blind spots in the storm-radar inductor story) and Accurate models (fit to purpose). Then explain how to move through the model tree without getting stuck in one branch.
+3. Run `run_half_split_path_search()` in `code/part02/network_troubleshooting_method.py` on `["src_host", "leaf_a", "spine", "leaf_b", "dst_host"]`. Trace which hops are probed when `leaf_b` is the first failing hop, and then when `leaf_a` is the first failing hop. As you trace the hops, say in one line what each probe tells you.
+4. Explain how controlled manipulation separates causation from correlation. Then explain what it means when a bug disappears during simplification, and why stopping at the immediate fix builds technical debt.
+5. Explain why you must run `netdiag.sh` before rebooting a node or restarting daemons. Then trace the Section 6 decision tree for "Host A cannot reach Service X on Host B". Follow the path for `Connection refused (RST)` and for `Connection timed out`, and say where the two paths split. Keep your path short, and mark the branch you take at each question.
+6. Using `classify_case_study_symptom()`, state the root cause, the diagnostic command or counter, and the permanent fix for each of these. Case 1 is SNAT port exhaustion at about 60,000 ports per destination tuple. Case 2 is the path MTU black hole. Case 3 is `nf_conntrack: table full`. Case 4 is multi-NIC ARP flux with `rp_filter=1`. Case 5 is a `UdpRcvbufErrors` overflow. Case 7 is bad TCP checksums seen by the receiver. Where a case needs two answers, keep the root cause and the fix apart.
+7. For Case 6, Case 9 and Case 10, state the root cause and the fix. Case 6 is a repeating 5-minute outage from BGP route dampening on a flapping optic. Case 9 is a `veth` single-core softirq cap at about 15 Gb/s. Case 10 shows `TCP Window Size: 0`. Write each case as a short paragraph you could read aloud.
+8. For Case 11, Case 12 and Case 13, state the root cause and the fix. Case 11 is asymmetric ECMP packet reordering. Case 12 is a VXLAN overlay multicast blackhole. Case 13 is the 5-second DNS timeout in Kubernetes. Write each case as a short paragraph you could read aloud.
+9. Compare the two AI-fabric cases, Case 8 and Case 14. Case 8 is a multi-node NCCL job that collapses to zero throughput after 5 minutes. It produces millions of `rx_pause` frames per second, because switch ECN thresholds sit above PFC XOFF. Case 14 is a 4,000-GPU training job whose step times are dragged down by 15% by one dirty or failing transceiver. Its DOM Rx power is low, and FEC-corrected bits and CRC errors rise on one rail. Keep the comparison to one paragraph, so you can see where they differ.
 
 ## Checkpoint questions (20)
 

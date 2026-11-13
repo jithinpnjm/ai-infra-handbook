@@ -22,33 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Imagine a node that looks healthy. Its CPUs are idle, its bandwidth is spare, and yet new connections simply stop working. The cause is often in netfilter, the kernel framework that inspects and filters packets. Almost every packet on a Kubernetes node passes through it.
+Imagine a node that looks healthy. Its CPUs are idle, its bandwidth is spare, and yet new connections simply stop working. Dashboards are green, the pods are running, and users are still getting timeouts. The cause is often in netfilter, the kernel framework that inspects and filters packets. Almost every packet on a Kubernetes node passes through it.
 
-Many components add rules to that same path. kube-proxy installs thousands of NAT rules, and container runtimes add masquerade and port-publish rules. CNIs add policy chains, cloud agents add their own, and the host firewall sits underneath all of them.
+Many components add rules to that same path, and none of them knows about the others. kube-proxy installs thousands of NAT rules, and container runtimes add masquerade and port-publish rules. CNIs add policy chains, cloud agents add their own, and the host firewall sits underneath all of them. It is like a building where every tenant has been allowed to hang their own barrier across the same corridor.
 
 Small mistakes in this layer have large effects. When the connection-tracking table fills, new connections fail silently on a node that looks idle. A rule ordering mistake that drops health-check traffic can stall a whole rollout. When 5,000 pods share one SNAT address, outbound connections to a database can time out.
 
-Understanding hooks, tables, chains, priorities, the connection-tracking state machine and NAT is therefore a core operations skill. Moving from linear iptables rule lists to nftables sets, maps and eBPF datapaths is also a performance topic for large nodes. When you troubleshoot such a node, you need to know which layer dropped the packet. This chapter covers the architecture, the nftables language with its iptables equivalents, and conntrack, including states, sizing, helpers and bypass. It then covers NAT in practice, firewall design for servers, routers and container hosts, and debugging with counters, logging and tracing.
+Understanding hooks, tables, chains, priorities, the connection-tracking state machine and NAT is therefore a core operations skill. Moving from linear iptables rule lists to nftables sets, maps and eBPF datapaths is also a performance topic for large nodes. When you troubleshoot such a node, you need to know which layer dropped the packet. The story below starts with the places in the kernel where a packet can be touched, and then follows the packet through the nftables language and its iptables ancestors. It continues to conntrack, which remembers flows so that replies can find their way home, and to NAT, which rewrites addresses. After that comes what container hosts do to all of this, a way to design a firewall so it stays safe to change, and the debugging habits that find the one rule that ate your packet.
 
 ## Prerequisites and outcomes
 
-Before you change a firewall, you need the basics from earlier chapters. You should know IP routing and forwarding from chapter 2.5, TCP basics from 2.6, NAT concepts from 2.9, security basics from 2.21, and the `ss` and `ip` tools from 2.22.
+Before you change a firewall, you need the basics from earlier chapters. You should know IP routing and forwarding from chapter 2.5, TCP basics from 2.6, NAT concepts from 2.9, security basics from 2.21, and the `ss` and `ip` tools from 2.22. If you can describe what happens when a packet arrives that is not addressed to the host, and why NAT needs to remember something, you have enough background.
 
-By the end of this chapter, you will be able to:
-
-- Describe the five netfilter hooks, the packet flows for local, forwarded and locally generated traffic, and where routing decisions, DNAT and SNAT happen.
-- Explain iptables tables and chains, which are filter, nat, mangle, raw and security, and the nftables model, with its families, tables, chains, rules, sets, maps, verdict maps and flowtables. Then translate between them.
-- Write a safe default-deny server firewall, a router/NAT gateway ruleset and a container-host ruleset in nftables.
-- Explain connection tracking: tuples, states such as NEW, ESTABLISHED, RELATED, INVALID, UNTRACKED and SNAT/DNAT, timeouts, helpers, zones, and how to diagnose table exhaustion.
-- Use `conntrack`, `nft list`, `nft monitor`, `nft trace`, counters and logging to debug drops and NAT mappings.
-- Explain how Docker, Kubernetes (kube-proxy in iptables or IPVS mode), Cilium (eBPF) and NetworkPolicy interact with netfilter, and when to bypass conntrack.
-- Apply performance practices: sets instead of rule lists, early drop in `ingress` or `raw`, flowtable offload and hardware offload.
-
-Use this list as a checklist while you read the rest of the chapter.
+New words, such as hook, chain, tuple and verdict, are explained the first time they appear, with a packet you can picture.
 
 ## 1. Netfilter architecture
 
-Suppose a packet arrives at a server and vanishes without an error. To find out where it went, you need to know where the kernel inspects packets. Netfilter is the framework that provides those inspection points, called hooks. Subsystems such as iptables, nftables, conntrack, NAT, IPVS, SELinux secmark and bridge filters register handlers on a hook, each with a priority. The kernel calls the handlers in order, and each one returns a verdict: accept, drop, queue to userspace, stolen, or repeat/continue. `iptables` and `nftables` are user-space front ends to different kernel implementations of rule evaluation.
+Suppose a packet arrives at a server and vanishes without an error. To find out where it went, you need to know where the kernel inspects packets. Netfilter is the framework that provides those inspection points, called hooks. Think of them as checkpoints along a corridor. Subsystems such as iptables, nftables, conntrack, NAT, IPVS, SELinux secmark and bridge filters register handlers on a hook, each with a priority. The kernel calls the handlers in order, and each one returns a verdict: accept, drop, queue to userspace, stolen, or repeat/continue. `iptables` and `nftables` are user-space front ends to different kernel implementations of rule evaluation.
 
 There are five IPv4 and IPv6 hooks. Each one is a fixed point in the packet path, and the table below shows when a packet reaches it.
 
@@ -60,7 +50,7 @@ There are five IPv4 and IPv6 hooks. Each one is a fixed point in the packet path
 | `output` | OUTPUT | A locally generated packet leaves a local process, before routing is finalised |
 | `postrouting` | POSTROUTING | Any packet is about to leave an interface, after routing (SNAT/masquerade happens here) |
 
-Notice that `prerouting` runs before the routing decision. That is why destination NAT (DNAT) happens there, while source NAT (SNAT) and masquerade happen in `postrouting`, after routing.
+Notice that `prerouting` runs before the routing decision. That is why destination NAT (DNAT) happens there, while source NAT (SNAT) and masquerade happen in `postrouting`, after routing. DNAT has to change the destination before the kernel decides where to send the packet, and SNAT has to wait until the kernel has chosen the outgoing interface.
 
 ```mermaid
 flowchart LR
@@ -89,6 +79,8 @@ Reverse-path filtering drops packets that have impossible source addresses, unle
 
 ### Tables and chains in iptables
 
+Think of a building with several security checkpoints. Some checkpoints only look at the visitor's name on a list. Others check bags. Others write down where the visitor is going. Each checkpoint has its own job, and the order matters, because a visitor who is turned away early never reaches the later desks. The tables work the same way. Each table is a checkpoint with a purpose, and each rule in a chain is a line on the checkpoint's list. Walk one packet through the checkpoints in order and you will see why a rule in one table can be ignored by a rule in another.
+
 iptables groups its rules into tables, and each table has a purpose. A table holds chains, which are either hook points or user-defined chains.
 
 | Table | Purpose | Built-in chains |
@@ -105,7 +97,9 @@ Rules are checked one at a time until a terminating target matches. Consider a n
 
 ### nftables
 
-nftables needs kernel 3.13+ and is the default in modern distributions. It replaces iptables, ip6tables, arptables and ebtables with one framework and one tool, `nft`. Rules compile to bytecode, which a small virtual machine in the kernel evaluates. The ruleset can be replaced atomically, and the framework offers efficient hash, rbtree and interval sets, along with maps.
+Picture a kitchen drawer full of single-purpose gadgets, one for each job, and a single tool that replaces all of them. nftables is that single tool. A rule in nftables is written once, in one language, and the kernel compiles it into a small program that runs on every packet. Because the whole ruleset is compiled as one unit, a change can be loaded in one step, so there is no moment when the firewall is half updated. The walkthrough below shows how the parts fit together, starting from the family and working down to a single rule.
+
+nftables needs kernel 3.13+ and is the default in modern distributions. It replaces iptables, ip6tables, arptables and ebtables with one framework and one tool, `nft`. Rules compile to bytecode, which a small virtual machine in the kernel evaluates. The ruleset can be replaced atomically, which means the old rules stay active until the new set is complete, so there is no moment when the firewall is half loaded. The framework also offers efficient hash, rbtree and interval sets, along with maps.
 
 On many systems, the `iptables` binary is really `iptables-nft`, a compatibility layer that translates the old syntax into nftables objects. Check which one you have with `iptables --version`. Legacy and nft variants must not be mixed carelessly.
 
@@ -134,7 +128,9 @@ Be careful with `flush ruleset`. With a drop policy in place, it can cut off you
 
 ### A default-deny host firewall (server)
 
-Suppose you must lock down a server that is reachable from the network. A default-deny ruleset drops everything, then allows only what you name. Read the ruleset from top to bottom. The early rules carry the common traffic, and the last rule logs and drops whatever is left.
+Picture an engineer who edits a firewall on a remote server over SSH, adds a drop policy, and loses the session. The server is still running, but nobody can reach it. The safest habit is the one this section keeps returning to: prepare the allow rules first, keep a second session open, and set a timer that undoes the change if you cannot confirm it in time. The ruleset below follows that order, with the allowed traffic placed before the final drop.
+
+Suppose you must lock down a server that is reachable from the network. A default-deny ruleset drops everything, then allows only what you name. It is the difference between a club with a guest list and a club with a list of banned people. Read the ruleset from top to bottom. The early rules carry the common traffic, and the last rule logs and drops whatever is left.
 
 ```text
 #!/usr/sbin/nft -f
@@ -167,6 +163,8 @@ Test every change with `nft -c -f` first, and keep a second session open. When y
 
 ### A router/NAT gateway ruleset
 
+Picture a gate-keeper at the edge of a small village. Villagers may walk out to the market freely, and the gate-keeper keeps a note of who went out so that the replies can be let back in. Strangers may come in only to a few houses that have been named on a list. That is what a router with NAT does. Read the ruleset below as the gate-keeper's instructions, one line at a time, and ask at each line who is allowed through and what note is kept.
+
 A router has to do two things a server does not. It must forward packets between networks, and it must translate addresses at the edge. The ruleset below handles both.
 
 ```text
@@ -187,7 +185,7 @@ table ip nat {
 }
 ```
 
-The forward chain holds the router's policy. Outbound traffic from the LAN is allowed, and inbound traffic is allowed only for services you have published. The router also needs `sysctl net.ipv4.ip_forward=1`, covered in chapter 2.5.
+The forward chain holds the policy of the router. Outbound traffic from the LAN is allowed, and inbound traffic is allowed only for services you have published. The router also needs `sysctl net.ipv4.ip_forward=1`, covered in chapter 2.5.
 
 The same gateway in iptables looks like this: `iptables -P FORWARD DROP`, `iptables -t nat -A POSTROUTING -o wan0 -j MASQUERADE`, `iptables -A FORWARD -i wan0 -o lan0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT`, and `iptables -A FORWARD -i lan0 -o wan0 -j ACCEPT`. To convert legacy rules to nft syntax, use `iptables-translate`.
 
@@ -209,9 +207,11 @@ Many tools write rules on the same host. ufw runs on Ubuntu. firewalld runs on t
 
 ## 2. Connection tracking (conntrack)
 
-If you run Kubernetes or a NAT gateway, you will eventually read this table. Conntrack is the kernel's table of active flows. It lets netfilter make stateful decisions, and it lets NAT translate replies back to the right client. The module is `nf_conntrack`. Each entry stores the original tuple, which is the source, destination, protocol and ports as they arrived. A tuple is simply the set of values that identifies one flow. Each entry also stores the reply tuple, which shows how the reply looks after NAT, along with a state, a timeout, a mark, a zone and counters. Conntrack is required for stateful filtering with `ct state`, for NAT, for kube-proxy in iptables mode, for Docker published ports and for many helpers.
+If you run Kubernetes or a NAT gateway, you will eventually read this table. Conntrack is the kernel's table of active flows. It lets netfilter make stateful decisions, and it lets NAT translate replies back to the right client. A bank teller who remembers that you just asked to withdraw money can answer "yes, I was expecting you" when you return, and a conntrack table works the same way for packets. The module is `nf_conntrack`. Each entry stores the original tuple, which is the source, destination, protocol and ports as they arrived. A tuple is simply the set of values that identifies one flow. Each entry also stores the reply tuple, which shows how the reply looks after NAT, along with a state, a timeout, a mark, a zone and counters. Conntrack is required for stateful filtering with `ct state`, for NAT, for kube-proxy in iptables mode, for Docker published ports and for many helpers.
 
 ### States
+
+Think of conntrack states as stages in a visit. A new visitor arrives at the gate and is written in a book, and that is NEW. Once a reply comes back from the house they went to, the visit is known to be real, and the state becomes ESTABLISHED. A reply that belongs to an earlier visit but comes through a different gate is RELATED. A message that matches no visit at all is INVALID. Walk through a simple web request with these four stages in mind, and the rules that mention them will read like plain sentences.
 
 Every entry carries one of the states below. The state tells the firewall where the flow is in its life.
 
@@ -227,6 +227,8 @@ Every entry carries one of the states below. The state tells the firewall where 
 Conntrack changes what a firewall has to allow. Without it, a firewall that accepts inbound replies must open ephemeral port ranges for every outbound connection. With conntrack, a rule that says "allow established" is enough, and NAT knows how to map replies back. The state machine follows TCP details such as SYN_SENT, SYN_RECV, ESTABLISHED, FIN_WAIT, CLOSE_WAIT, TIME_WAIT and CLOSE. For UDP it uses a pseudo-state, UNREPLIED, which becomes ASSURED after bidirectional traffic. ICMP is tracked as well.
 
 ### Inspecting and managing
+
+Picture a support engineer who is asked why a particular connection is failing. The engineer looks in the book of open visits, finds the entry, and reads it. The commands in this section are that book. Start with the simplest view, look at one entry in full, and only then change anything. Reading first costs nothing, and it often shows the answer before any change is needed.
 
 When you suspect the table is involved, reach for these commands. Each one answers a different question you may have.
 
@@ -244,6 +246,8 @@ sysctl net.netfilter.nf_conntrack_tcp_timeout_established net.netfilter.nf_connt
 Read an entry like this one from left to right: `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED] mark=0 use=1`. The first tuple is the original direction, as the packet arrived. The second tuple is the reply direction, as it will look on the wire after NAT. Here that means the NAT address 203.0.113.9 and the translated port 40001.
 
 ### Sizing, timeouts and exhaustion
+
+Imagine a busy gateway at night. New connections from many services start to time out, but nobody has changed anything, CPU is low, and the bandwidth graph looks calm. The problem is a table that has quietly filled up. Every flow the gateway handles takes one entry, and entries stay alive for as long as their timeouts allow. When the table is full, the gateway does not tell the client anything. It drops the new connection. The paragraphs below explain what fills the table, how long entries live, and the order in which to fix it.
 
 A conntrack table has a fixed capacity. Entries live in a hash table whose bucket count is set by `nf_conntrack_buckets`, and the total is capped by `nf_conntrack_max`. The module parameter for the bucket count is `hashsize`. Each entry costs roughly 300 to 400 bytes, plus hash overhead.
 
@@ -277,15 +281,19 @@ Watch for asymmetric routing, because it also breaks conntrack. If you run sever
 
 ### Conntrack and UDP/DNS races
 
-Two UDP packets with the same 5-tuple, sent at the same moment, can race to create the conntrack entry through NAT. Take A and AAAA DNS queries sent from one source port as an example. One of the two is dropped. On older kernels, this race caused the infamous 5-second DNS timeouts (chapter 2.8). Mitigations include `single-request-reopen`, NodeLocal DNSCache, newer kernels, or `notrack` for DNS. Use `notrack` for DNS only once you have the stateless rules in place.
+Walk through the race one step at a time. A client sends two questions to the same resolver at almost the same moment, both from one source port. Each question tries to create the same entry in the table. The first one wins the creation, and the second finds the entry half made and is discarded. The client waits for an answer that never comes, and only the timeout rescues it. The walkthrough shows why the problem only appears under NAT, and why the fixes all try to separate the two questions or to skip the table for them.
+
+Two UDP packets with the same 5-tuple, sent at the same moment, can race to create the conntrack entry through NAT. Take A and AAAA DNS queries sent from one source port as an example. Both ask the same question in two forms, and a resolver library sends them together. One of the two is dropped. On older kernels, this race caused the infamous 5-second DNS timeouts (chapter 2.8), because the client waited the full retry period for an answer that never came. Mitigations include `single-request-reopen`, NodeLocal DNSCache, newer kernels, or `notrack` for DNS. Use `notrack` for DNS only once you have the stateless rules in place.
 
 ## 3. NAT in practice
 
+Consider a team that changes a NAT rule in the morning and sees no effect on connections already open. The change is correct. It applies only to new flows, because the mapping for each open flow was written into conntrack when that flow began. Once you know that, NAT stops being magic. It becomes a set of decisions taken at the start of each flow and remembered afterwards, and that memory is why the sections below worry so much about ports and tables.
+
 NAT mechanics were introduced in chapter 2.9. This section covers the Linux specifics.
 
-Only the first packet of a flow traverses the nat table. The translation is then stored in conntrack and applied automatically to every later packet, in both directions. So changing a NAT rule does not affect existing flows until their entries are deleted or expire, for example with `conntrack -D`.
+Only the first packet of a flow traverses the nat table. The translation is then stored in conntrack and applied automatically to every later packet, in both directions. So changing a NAT rule does not affect existing flows until their entries are deleted or expire, for example with `conntrack -D`. The NAT rule is only consulted when a flow begins, so it is easy to fix a rule, see no improvement, and wrongly conclude that the fix did not work.
 
-Choose the SNAT form with care. `snat to 203.0.113.9` uses a static address, which is cheaper. `masquerade` uses the interface's dynamic address, and it flushes conntrack entries when the interface goes down. For a pool of addresses, use `snat to 203.0.113.9-203.0.113.12 persistent` or `fully-random`. Add `--to-ports 10000-60000` to restrict the port range.
+Choose the SNAT form with care. `snat to 203.0.113.9` uses a static address, which is cheaper. `masquerade` uses the dynamic address of the interface, and it flushes conntrack entries when the interface goes down. For a pool of addresses, use `snat to 203.0.113.9-203.0.113.12 persistent` or `fully-random`. Add `--to-ports 10000-60000` to restrict the port range.
 
 Port exhaustion is easy to underestimate, so work through the arithmetic. A single source address can use about 64k ports per destination address and port. Suppose thousands of containers connect through one gateway IP to one database IP and port. All of them share that pool, and when it runs out, connects time out with "SNAT port exhaustion". The symptoms are connect timeouts and a rising `insert_failed` counter. You can fix this by adding more SNAT addresses in a round-robin pool, or by using connection pooling such as PgBouncer or HTTP keep-alive. You can also reduce TIME_WAIT on the gateway, spread connections across destinations, or avoid NAT entirely with routable pod IPs or private endpoints.
 
@@ -299,21 +307,25 @@ Before you change a NAT rule on a live gateway, decide whether existing flows mu
 
 ## 4. Container and Kubernetes hosts
 
-Docker creates the `docker0` bridge. It adds a `DOCKER` nat chain for DNAT of published ports, and a `DOCKER-USER` chain for your own rules, which is evaluated first in FORWARD. It also adds `DOCKER-ISOLATION-*` chains and a masquerade rule for the bridge subnet. Docker sets the FORWARD policy to DROP and enables `ip_forward`. Because Docker inserts its rules ahead of them, it bypasses ufw and firewalld rules for published ports. Put restrictions in `DOCKER-USER`, or bind published ports to a specific address, such as `-p 127.0.0.1:8080:80`. Check the result with `iptables -t nat -S DOCKER`.
+Picture a host where three different tools all believe they own the firewall. The container runtime wrote its rules first, the cluster's proxy added thousands more, and the administrator added a few of their own. A packet now passes through all of them, and the order is not obvious from any one file. This section explains which tool writes which chain, and how to read the combined result without breaking the parts that the other tools depend on.
+
+Container hosts are where most surprises happen, because the runtime writes firewall rules that you did not. You install a firewall, test it, and later find that a port you never opened is reachable. Docker creates the `docker0` bridge. It adds a `DOCKER` nat chain for DNAT of published ports, and a `DOCKER-USER` chain for your own rules, which is evaluated first in FORWARD. It also adds `DOCKER-ISOLATION-*` chains and a masquerade rule for the bridge subnet. Docker sets the FORWARD policy to DROP and enables `ip_forward`. Because Docker inserts its rules ahead of them, it bypasses ufw and firewalld rules for published ports. Put restrictions in `DOCKER-USER`, or bind published ports to a specific address, such as `-p 127.0.0.1:8080:80`. Check the result with `iptables -t nat -S DOCKER`.
 
 kube-proxy in iptables mode programs `KUBE-SERVICES`, `KUBE-NODEPORTS`, `KUBE-SVC-*`, `KUBE-SEP-*`, `KUBE-MARK-MASQ`, `KUBE-POSTROUTING` and `KUBE-FORWARD`. Each `KUBE-SVC-*` chain belongs to one Service and uses probabilistic jumps to balance load. Each `KUBE-SEP-*` chain performs the DNAT for one endpoint. Every packet sent to a ClusterIP walks these chains. With thousands of Services, you get thousands of rules, slow rule updates that need a full resync, and rising CPU at scale. IPVS mode uses kernel hash tables with real schedulers instead. The Cilium eBPF kube-proxy replacement programs maps instead. To debug one Service, run `iptables-save | grep KUBE-SVC-xxx`, `ipvsadm -Ln`, `conntrack -L | grep <clusterIP>` and `kubectl get endpointslices`.
 
-CNIs implement NetworkPolicy through iptables or ipset chains (Calico uses `cali-*`), through nftables, or through eBPF in Cilium. The host firewall must still allow the CNI's own traffic. That includes VXLAN on UDP 4789 and 8472, BGP on 179, IPIP as protocol 4, Typha, health checks, and node-to-node pod traffic.
+CNIs implement NetworkPolicy through iptables or ipset chains (Calico uses `cali-*`), through nftables, or through eBPF in Cilium. The host firewall must still allow the own traffic of the CNI. That includes VXLAN on UDP 4789 and 8472, BGP on 179, IPIP as protocol 4, Typha, health checks, and node-to-node pod traffic.
 
 Some rules are easy to break by accident. Do not run a firewalld or ufw reload, or `iptables -F`, on a Kubernetes node until you know what it deletes. Prefer tools that preserve chains they do not own. Keep host rules in a separate nftables table, because nft tables coexist, and keep them out of the iptables tables that kube-proxy owns. Also remember that nft and iptables-legacy rule sets are separate, and both are evaluated.
 
 Some traffic never reaches netfilter at all. Cilium attaches eBPF programs at the XDP and TC hooks, so it performs load balancing and policy before netfilter. It can run many flows without conntrack, because it keeps its own maps. For GPU and RDMA traffic, the fast path uses the NIC and bypasses the kernel stack entirely, as RoCE does. Host netfilter never sees that traffic, so apply isolation at the switch or the NIC instead (chapter 2.21).
 
-On a Kubernetes node, put your own rules in their own nftables table, and leave kube-proxy's chains alone.
+On a Kubernetes node, put your own rules in their own nftables table, and leave the chains of kube-proxy alone.
 
 ## 5. Firewall design strategies
 
-Start with the policy. Deny inbound and forwarded traffic by default, then allow only the services you need, from the sources that need them. On sensitive hosts, allow outbound traffic selectively too. GPU nodes, for example, need egress allow-lists for package mirrors, registries, NTP, DNS and monitoring.
+Imagine a team that has grown its firewall one emergency rule at a time for five years. Nobody knows why half the rules exist, and every change feels risky. The strategies below are the habits that stop that growth. They ask you to design the zones first, decide the policy, keep the rules in version control, and test every change on a copy. The practice is slower in the first week and far faster in the second year.
+
+A firewall is easiest to keep safe when it is designed, not accumulated. Start with the policy. Deny inbound and forwarded traffic by default, then allow only the services you need, from the sources that need them. On sensitive hosts, allow outbound traffic selectively too. GPU nodes, for example, need egress allow-lists for package mirrors, registries, NTP, DNS and monitoring.
 
 Give the structure the same care. Use a separate chain for each zone, such as `mgmt`, `fabric`, `storage` and `tenant`. Use sets for host groups. Interface matches with `iifname` need care, because interface names can change. Generate rules from inventory with templates, such as Ansible, rather than editing them by hand.
 
@@ -333,7 +345,7 @@ Decide which layer owns each rule, whether switch, NIC or host, before you write
 
 ### Default-deny rules, step by step
 
-A firewall is safest when it allows only what you trust. Start by changing the INPUT chain policy so that unmatched traffic is dropped:
+A firewall is safest when it allows only what you trust. The classic iptables walk-through below builds that stance one rule at a time, so you can see why each rule is needed. Start by changing the INPUT chain policy so that unmatched traffic is dropped:
 
 ```
 # iptables -P INPUT DROP
@@ -345,7 +357,7 @@ Allow ping and other ICMP traffic:
 # iptables -A INPUT -p icmp -j ACCEPT
 ```
 
-Make sure your host still receives packets sent to 127.0.0.1 and to its own address. Assuming your host's address is `my_addr`:
+Make sure your host still receives packets sent to 127.0.0.1 and to its own address. Assuming the address of your host is `my_addr`:
 
 ```
 # iptables -A INPUT -s 127.0.0.1 -j ACCEPT
@@ -360,7 +372,7 @@ Your host still needs outbound TCP. Every TCP connection starts with a SYN packe
 # iptables -A INPUT -p tcp '!' --syn -j ACCEPT
 ```
 
-If you use remote DNS over UDP, accept replies from each name server listed in `/etc/resolv.conf`. Replace `ns_addr` with the server's address:
+If you use remote DNS over UDP, accept replies from each name server listed in `/etc/resolv.conf`. Replace `ns_addr` with the address of the server:
 
 ```
 # iptables -A INPUT -p udp --source-port 53 -s ns_addr -j ACCEPT
@@ -376,7 +388,9 @@ These settings suit many situations, especially a broadband host that an intrude
 
 ### Rule order and the first match
 
-The kernel reads a chain from top to bottom and uses the first rule that matches. Start with one rule that drops a noisy host:
+Walk through one packet against a short chain, the way the kernel does. It reads the first rule. If the rule matches, the kernel obeys it and stops reading. If the rule does not match, the kernel moves on to the next line. This simple loop explains why a broad drop near the top can hide a narrow accept further down. The example below builds that situation one line at a time, so you can see the moment the accept stops working and the reason why.
+
+The kernel reads a chain from top to bottom and uses the first rule that matches. That one fact explains most "my rule does not work" stories. Start with one rule that drops a noisy host:
 
 ```
 # iptables -A INPUT -s 192.168.34.63 -j DROP
@@ -404,6 +418,8 @@ Each chain also has a default policy for packets that no rule matches. ACCEPT le
 
 ## 6. Debugging netfilter
 
+Picture a packet that reaches the host, is accepted by the network card, and never appears in the application log. Somewhere between the wire and the socket, a rule discarded it. The work in this section is a search for that rule. Counters tell you which rules matched at all. The trace tells you which rule made the decision for one packet. Read the three stories below first, so the commands feel like tools you have already seen used.
+
 When a packet goes missing, your job is to find the rule that touched it. Start with counters, which show which rules matched. Then trace one packet through the hooks. The commands below follow that order.
 
 ```bash
@@ -427,11 +443,13 @@ sudo dropwatch -l kas ; sudo bpftrace -e 'kprobe:nf_hook_slow { @[comm] = count(
 
 Here are three cases where this sequence found the problem. In the first, a packet appeared on `eth0` but never reached the application, even though routing was correct. Enabling TRACE showed the packet passing prerouting and entering input, then hitting rule #45 in the filter table. That rule was a stale DROP inserted by an automation job.
 
-In the second, replies from a backend never reached the client. The backend's default gateway was not the NAT box, so the connection showed as INVALID or untracked on the return path.
+In the second, replies from a backend never reached the client. The default gateway of the backend was not the NAT box, so the connection showed as INVALID or untracked on the return path.
 
 In the third, new connections stalled while `conntrack -C` equalled `nf_conntrack_max`. Check that count against the maximum first whenever new connections stall.
 
 ## 7. Performance notes for large nodes
+
+Picture a large node where the dashboards show the processors busy, but the work seems to move slowly. The cause is often the path every packet must walk. Each packet is compared against the rules in order, and each lookup in the connection table takes a lock. When the rule list is long and the connection rate is high, the cost grows with both. The notes below explain where the time goes, and which change moves the cost off the hot path.
 
 Rule evaluation in iptables is linear, so its cost grows with the number of rules. 20,000 rules cost real microseconds per packet. They also make updates slow, because kube-proxy rewrites the whole table. Use nftables sets and maps, IPVS, or eBPF datapaths instead.
 
@@ -455,7 +473,7 @@ Start with the self-checking Python lab, which you can run locally. It verifies 
 python3 code/part02/linux_netfilter_conntrack_lab.py
 ```
 
-Next, move to a disposable Linux VM with `root` and `nftables` installed. Every interactive VM command below is `untested here`, so run each one and check the output yourself. Work through these steps in order, and watch the counters as you go.
+Next, move to a disposable Linux VM with `root` and `nftables` installed. The interactive VM commands below were not run on live hardware, so run each one and check the output yourself. Work through these steps in order, and watch the counters as you go.
 
 1. Start with the hooks. Add nftables rules with counters at each hook: `prerouting`, `input`, `forward`, `output` and `postrouting`. Send a local ping, a forwarded ping through a namespace router (chapter 2.5), and traffic to the host itself. Then check the hook-order table above by watching the counters.
 2. Apply the default-deny server ruleset in a namespace. Verify it with `nc` or `nmap` from another namespace, checking which ports are allowed and which are dropped. Test ICMP, and watch the counters in `nft list ruleset`. Finally, confirm that removing the `ct state established` rule breaks replies.
@@ -470,6 +488,8 @@ Next, move to a disposable Linux VM with `root` and `nftables` installed. Every 
 Keep a copy of your saved rulesets within reach, because step 9 depends on them.
 
 ## 9. Common mistakes
+
+Picture an engineer who wants to be careful. They write a new rule, test it from their own laptop, see it work, and push it to every node at once. Later that week, a host behind a different network cannot reach its database, and nobody connects the two events for hours. The mistakes below are the quiet habits behind stories like that one. Read them as a short checklist before every firewall change.
 
 Each of these mistakes appears in the sections above. Check a change against this list before you apply it.
 
@@ -497,12 +517,17 @@ You may hear these questions in an interview. Each one asks you to explain a mec
 
 ## Exercises
 
-1. Start with the hook order. Drawing on *Networking and Kubernetes*, chapter 2, use `trace_netfilter_hooks()` in `code/part02/linux_netfilter_conntrack.py`. List the exact sequence of netfilter hooks traversed by an external-to-local packet, a local-to-external packet, a forwarded packet and a local-to-local loopback packet. Then state the priority order of subsystems within a hook (`raw -> conntrack -> mangle -> nat(dnat) -> filter -> security -> nat(snat)`), and explain why `forward` filter rules see the **post-DNAT** destination IP.
-2. Explain why 20,000 iptables rules slow packet handling and rule updates on large Kubernetes nodes. Then show how nftables solves this with unified `inet` tables, atomic `nft -f` transactions, O(1) and O(log n) sets (`@mgmt_nets`, `@blocklist`), verdict maps (`vmap`) and fast-path flowtable offloads.
-3. Write the default-deny `inet filter` host firewall from Section 1, and explain its rule ordering. Cover `iif lo accept`, `ct state invalid drop`, `ct state established,related accept`, `@blocklist`, the ICMPv4 and ICMPv6 allow rules for PMTUD and ND, rate-limited SSH from `@mgmt_nets`, Prometheus on `9100` and `9400`, and rate-limited drop logging. Then state the safety procedure you would follow before loading rules on a remote server.
-4. Start with the five conntrack states. (a) Using `classify_conntrack_packet_state()`, explain the states `NEW`, `ESTABLISHED`, `RELATED`, `INVALID` and `UNTRACKED`, and why asymmetric routing triggers `INVALID` drops. (b) Using `size_conntrack_table()`, compute the recommended `hashsize` buckets (`262,144`) and the approximate RAM (`~708 MiB`) for `nf_conntrack_max = 2,097,152`. Then write the `sysctl` and `nft raw prerouting ... notrack` commands that prevent `nf_conntrack: table full, dropping packet`.
-5. Compare Docker (`DOCKER-USER`) with Kubernetes, where kube-proxy runs in iptables, IPVS or Cilium eBPF mode. (a) Why does `docker run -p 8080:80` bypass `ufw` and `INPUT` chain firewall rules? How do you restrict it using `DOCKER-USER` or `-p 127.0.0.1:8080:80`? (b) Why must you never run `nft flush ruleset` or `iptables -F` on a live Kubernetes node? How does host netfilter interact with RoCEv2 RDMA traffic?
-6. Debug a vanishing packet. Write the exact sequence of `nft` commands that attaches a temporary priority `-300` trace chain (`meta nftrace set 1`), then streams rule-by-rule evaluation with `sudo nft monitor trace`. The packets to follow are those from `10.0.0.5` to TCP port `443` that vanish inside a host.
+Take each situation in turn, and answer it from the mechanism before you reach for a command.
+
+1. A packet vanishes inside a host and you need the hook order. Use `trace_netfilter_hooks()` in `code/part02/linux_netfilter_conntrack.py` to list the exact sequence of netfilter hooks traversed by an external-to-local packet, a local-to-external packet, a forwarded packet and a local-to-local loopback packet.
+2. State the priority order of subsystems within a hook (`raw -> conntrack -> mangle -> nat(dnat) -> filter -> security -> nat(snat)`). Then explain why `forward` filter rules see the **post-DNAT** destination IP.
+3. A Kubernetes node is slow to update its rules. Explain why 20,000 iptables rules slow packet handling and rule updates on large nodes. Then show how nftables solves this with unified `inet` tables, atomic `nft -f` transactions, O(1) and O(log n) sets (`@mgmt_nets`, `@blocklist`), verdict maps (`vmap`) and fast-path flowtable offloads.
+4. You must lock down a server. Write the default-deny `inet filter` host firewall from Section 1, and explain its rule ordering. Cover `iif lo accept`, `ct state invalid drop`, `ct state established,related accept`, `@blocklist`, the ICMPv4 and ICMPv6 allow rules for PMTUD and ND, rate-limited SSH from `@mgmt_nets`, Prometheus on `9100` and `9400`, and rate-limited drop logging. Then state the safety procedure you would follow before loading rules on a remote server.
+5. A gateway marks replies as INVALID. Using `classify_conntrack_packet_state()`, explain the states `NEW`, `ESTABLISHED`, `RELATED`, `INVALID` and `UNTRACKED`, and why asymmetric routing triggers `INVALID` drops.
+6. A gateway logs `nf_conntrack: table full, dropping packet`. Using `size_conntrack_table()`, compute the recommended `hashsize` buckets (`262,144`) and the approximate RAM (`~708 MiB`) for `nf_conntrack_max = 2,097,152`. Then write the `sysctl` and `nft raw prerouting ... notrack` commands that prevent the message.
+7. A published Docker port ignores your firewall. Explain why `docker run -p 8080:80` bypasses `ufw` and `INPUT` chain firewall rules, and how you restrict it using `DOCKER-USER` or `-p 127.0.0.1:8080:80`.
+8. A colleague wants to reset the firewall on a live Kubernetes node. Explain why you must never run `nft flush ruleset` or `iptables -F` there. Then explain how host netfilter interacts with RoCEv2 RDMA traffic.
+9. Debug a vanishing packet. Write the exact sequence of `nft` commands that attaches a temporary priority `-300` trace chain (`meta nftrace set 1`), then streams rule-by-rule evaluation with `sudo nft monitor trace`. The packets to follow are those from `10.0.0.5` to TCP port `443` that vanish inside a host.
 
 ## Checkpoint questions (20)
 

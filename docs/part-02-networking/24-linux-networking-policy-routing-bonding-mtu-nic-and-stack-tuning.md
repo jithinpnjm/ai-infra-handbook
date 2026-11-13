@@ -22,30 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU server is a multi-homed machine. It has several NICs, and each one sits on a different network: management, front end, storage and compute rails. The hardware can reach a 100 to 800 Gb/s capability, but a default Linux configuration will not deliver it. Collective communication, checkpoint writes and dataset reads then expose every inefficiency in the packet path.
+A GPU server is a multi-homed machine. It has several NICs, and each one sits on a different network: management, front end, storage and compute rails. The hardware can reach a 100 to 800 Gb/s capability, but a default Linux configuration will not deliver it. Collective communication, checkpoint writes and dataset reads then expose every inefficiency in the packet path. It is like buying a racing car and finding that the first gear is stuck: the engine is fine, and something in the transmission is losing the power.
 
 Getting the last 50% of bandwidth and the last 50 microseconds of latency means understanding how packets leave and enter the host. You need to know which routing table applies to which source address. You also need to know how interrupts and queues map to cores and NUMA nodes, which offloads are on, how big the rings and buffers are, what the MTU is end to end, and which TCP knobs matter.
 
-The same knowledge explains the classic failures. Replies can leave the wrong NIC. A single core can get pegged in softirq. Drops at the NIC ring may never reach `tcpdump`. A 100G link can deliver only 25G to one flow. A stack tuned for the wrong round-trip time will also disappoint. This chapter covers policy routing and VRFs, bonding operations, MTU design, NIC and kernel tuning, congestion control and buffers, and kernel-bypass options, and it gives you a method for tuning safely. Keep the failures above in mind as you read the sections below.
+The same knowledge explains the classic failures. Replies can leave the wrong NIC. A single core can get pegged in softirq. Drops at the NIC ring may never reach `tcpdump`. A 100G link can deliver only 25G to one flow. A stack tuned for the wrong round-trip time will also disappoint. The chapter follows those failures one at a time. First comes how a server with several NICs decides which one to answer on, then how bonding and MTU should be run, then the long journey of a packet through the NIC, the kernel queues and the TCP stack, with the knobs at each stage. It closes with the paths that bypass the kernel, and a method for changing any of this safely. Keep the failures above in mind as you read the sections below.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know host routing (chapter 2.5), TCP (chapter 2.6), `ip`, `ethtool` and counters (chapter 2.22), netfilter (chapter 2.23), and LAG and ECMP (chapter 2.12).
+You should know host routing (chapter 2.5), TCP (chapter 2.6), `ip`, `ethtool` and counters (chapter 2.22), netfilter (chapter 2.23), and LAG and ECMP (chapter 2.12). In practice, that means you can read a routing table, explain what a congestion window does, read an `ethtool -S` counter, and describe why a bond spreads flows rather than packets.
 
-By the end of this chapter, you should be able to:
-
-- Build and verify source-based, mark-based and interface-based policy routing. Fix asymmetric routing on multi-homed servers, and persist the rules in Netplan, NetworkManager or networkd.
-- Use VRFs for L3 isolation on Linux. Run processes inside a VRF, and leak routes where you need them.
-- Operate and troubleshoot Linux bonds, including modes, LACP state, hash policy and failover tests. Decide where bonding is the wrong tool, such as on compute rails.
-- Design MTU end to end, with jumbo frames, overlays and MSS clamping. Verify it with DF pings, and persist it.
-- Trace the receive and transmit paths through the NIC, DMA, ring, hardirq, NAPI and softirq, XDP, skb, tc, netfilter and socket. Then tune each stage: ring sizes, interrupt coalescing, RSS, RPS, RFS, XPS, IRQ affinity, NUMA locality, offloads (TSO, GSO, GRO, LRO) and PCIe.
-- Tune the TCP/IP stack: buffers, backlogs, congestion control and qdisc, `TIME_WAIT` and ports, keepalives, window scaling, SACK, timestamps, conntrack, busy polling and zero-copy. Justify each change with a measurement.
-- Choose among the kernel stack, XDP/eBPF, SR-IOV, DPDK and RDMA data paths.
-- Apply a tuning method of baseline, one change, measure and revert, followed by a safe rollout.
+Terms such as RSS, GRO and NAPI are explained at the stage of the packet path where they matter, so you do not need to know them yet.
 
 ## 1. Policy routing
 
-Normal routing looks only at the destination. That works for most traffic, but a server with two NICs often needs more. **Policy-based routing (PBR)** adds selectors. The kernel first checks a prioritised list of **rules** (`ip rule`). Each rule chooses which routing table to use, based on source address, destination, input interface, TOS/DSCP, fwmark, UID/GID range, IP protocol and ports. After a rule picks the table, the kernel does the longest-prefix lookup in that table.
+Picture a house with two front doors, one on a quiet lane and one on a main road. A visitor who rings the main-road bell should be sent home along the main road, not the lane. A server with two network cards is in the same position. A reply has to leave by the card the request arrived on, and the normal routing table, which looks only at the destination, cannot remember which door the visitor used. Policy routing adds that memory. The rest of this section shows how to write it down.
+
+Normal routing looks only at the destination. That works for most traffic, but a server with two NICs often needs more. Imagine a house with two front doors, one on a quiet street and one on a main road. A visitor who rings the main-road bell should be sent home along the main road, and a destination-only rule has no way to remember which door they used. **Policy-based routing (PBR)** adds selectors. The kernel first checks a prioritised list of **rules** (`ip rule`). Each rule chooses which routing table to use, based on source address, destination, input interface, TOS/DSCP, fwmark, UID/GID range, IP protocol and ports. After a rule picks the table, the kernel does the longest-prefix lookup in that table.
 
 The first command below prints the rule list the kernel checks. The second shows which name maps to which table number.
 
@@ -61,9 +54,11 @@ Rules are checked in order until one yields a route. Each rule has match fields:
 
 ### Fixing multi-homed asymmetric routing
 
-Consider a server with `eth0` at 10.0.0.5/24, whose default gateway is 10.0.0.1. Its second NIC, `eth1`, is 192.168.1.5/24 for storage, with gateway 192.168.1.1. A client on a remote storage subnet connects to 192.168.1.5. The request arrives on `eth1`, but the reply is routed by destination. The main table's default route points out `eth0`, and the reply keeps source 192.168.1.5. The upstream router at 10.0.0.1 sees a packet from 192.168.1.5 on the wrong VLAN and drops it, because of unicast reverse path forwarding. Or the client drops a reply that arrives from an unexpected path.
+Walk through the failure the way the packets do. A request comes in on the storage card. The server answers using the default route, which points out of the management card. The reply leaves with the storage address as its source, but from the wrong door. The router upstream sees an address on a port where it does not belong, and it drops the reply. The client waits, retries, and gets nothing. The steps below undo that chain, one link at a time, so each command can be checked against the packet it is meant to change.
 
-The fix gives each NIC its own routing table, and then selects that table by **source address**.
+Consider a server with `eth0` at 10.0.0.5/24, whose default gateway is 10.0.0.1. Its second NIC, `eth1`, is 192.168.1.5/24 for storage, with gateway 192.168.1.1. A client on a remote storage subnet connects to 192.168.1.5. The request arrives on `eth1`, but the reply is routed by destination. The default route of the main table points out `eth0`, and the reply keeps source 192.168.1.5. The upstream router at 10.0.0.1 sees a packet from 192.168.1.5 on the wrong VLAN and drops it, because of unicast reverse path forwarding. Or the client drops a reply that arrives from an unexpected path. The symptom is maddening: the connection starts, the first packet is seen, and everything after it times out.
+
+The fix gives each NIC its own routing table, and then selects that table by **source address**. A reply carries the address of the NIC it should leave through, so the rule says: packets from this address use this table.
 
 ```bash
 echo "200 storage" | sudo tee -a /etc/iproute2/rt_tables
@@ -78,6 +73,8 @@ The last command confirms the fix. It should show the route via 192.168.1.1 on `
 Two more settings help on a multi-NIC host. Set `rp_filter` to 2 (loose) or 0, as chapter 2.5 explains. Then set `arp_ignore=1` and `arp_announce=2`, so each NIC answers ARP only for its own addresses. On a GPU node with eight NICs, script the table and rule creation from inventory, with table = 100 + rail index, rather than typing each one.
 
 ### Netplan / NetworkManager / networkd persistence
+
+Picture a server that works perfectly after you type the routes by hand, and then comes back from a reboot with none of them. The change was real but temporary, because nothing wrote it down where the boot process reads it. The examples below show the same routes written into three different managers. Choose the one your machine already uses, and write the change there before you rely on it.
 
 Commands you type stay in effect only until the next reboot. To keep the same routes and rules, write them into the network configuration. The examples below show Netplan, NetworkManager and systemd-networkd.
 
@@ -111,7 +108,9 @@ The Netplan file declares the same table, route and rule as the commands above. 
 
 ### fwmark-based and UID-based routing
 
-Sometimes the source address is not the right selector. You can mark packets instead, and then select a table by that mark. Set the mark with netfilter or nftables, or set `SO_MARK` inside the application. Marks suit three jobs. They send traffic from one process, container or user through a VPN or a specific uplink. They steer storage traffic to a dedicated NIC. They also build transparent proxies.
+Picture a laptop where one application must always use the company VPN, while everything else goes out normally. Routing by destination cannot express that rule, because the destination is the same for both kinds of traffic. A mark solves the problem. The application's packets are tagged inside the kernel, and the routing rule says that tagged packets use a different table. The walkthrough shows the tag being set, the rule matching it, and the table sending the packet out through the chosen door.
+
+Sometimes the source address is not the right selector. You can mark packets instead, and then select a table by that mark. A mark is a small number attached to a packet inside the kernel, like a sticky note that never leaves the machine. Set the mark with netfilter or nftables, or set `SO_MARK` inside the application. Marks suit three jobs. They send traffic from one process, container or user through a VPN or a specific uplink. They steer storage traffic to a dedicated NIC. They also build transparent proxies.
 
 ```bash
 sudo nft add table inet mangle_t
@@ -140,7 +139,9 @@ For each NIC, decide which source addresses must leave through it, and write one
 
 ## 2. VRF on Linux
 
-Imagine two groups of interfaces that both use 10.9.0.0/24. A VRF gives each group its own routing table, so the two networks stay apart. A **VRF** (virtual routing and forwarding) device is that kind of group. It is lighter than a network namespace, because processes still share sockets, files and other stack state. VRFs are central to multi-tenant leaf switches, the kind that run Cumulus or SONiC, and they are useful on hosts too.
+Picture a shared office building where two companies rent floors. Each company has its own telephone switchboard and its own extension numbers, so company A can dial extension seven without reaching company B's extension seven. A VRF is the switchboard for one tenant. Two tenants can use the same address on their own switchboards without any clash. The steps below create two switchboards on one server and show how a process is placed on one of them.
+
+Imagine two groups of interfaces that both use 10.9.0.0/24. Two customers, say, have each been told to use the same private range, and the machine must serve both without mixing them up. A VRF gives each group its own routing table, so the two networks stay apart. A **VRF** (virtual routing and forwarding) device is that kind of group. It is lighter than a network namespace, because processes still share sockets, files and other stack state. VRFs are central to multi-tenant leaf switches, the kind that run Cumulus or SONiC, and they are useful on hosts too.
 
 The commands below create the VRF, add an interface to it, and then inspect and use it.
 
@@ -162,7 +163,9 @@ VRFs come with three caveats. Services must start inside the VRF or be VRF-aware
 
 ## 3. Bonding operations
 
-How do you know a bond is really working? Mode choices and hashing are covered in chapter 2.12. This section covers the operational view: what to read on the host, what to test, and what to confirm on the switch.
+Picture two network cables tied together so that they behave like one thicker cable. Traffic flows along both cables, and if one breaks, the other keeps the link alive. That is a bond. The operating questions are practical ones. Are both cables really in the same bundle? Does the switch on the far end agree? Does one busy flow stay on one cable, or does it spread? The walkthrough below asks those questions in order, so that a bond that looks healthy is also a bond that is working.
+
+How do you know a bond is really working? A bond can show "up" and still use only one of its links, or hold two links that are bundled to different partners. Mode choices and hashing are covered in chapter 2.12. This section covers the operational view: what to read on the host, what to test, and what to confirm on the switch.
 
 Start with the authoritative state file, and then check each interface.
 
@@ -177,7 +180,7 @@ watch -n1 "cat /sys/class/net/bond0/bonding/ad_aggregator; cat /sys/class/net/bo
 
 The `watch` line shows how the aggregator and the members change while a test runs. The `ethtool` lines confirm that the member speeds match.
 
-After any change, check the bond against this list. Every slave should sit in the same **Aggregator ID**, with a non-zero partner MAC. Set `lacp_rate fast`, `xmit_hash_policy layer3+4` (or an encapsulation variant for tunnels), `min_links` and `miimon 100`. Keep the MTU identical on the bond and its slaves. Set it on the bond, and the slaves inherit it.
+After any change, check the bond against this list. Every slave should sit in the same **Aggregator ID**, with a non-zero partner MAC. A slave in a different aggregator is not part of the bundle, and a zero partner MAC means the switch never answered. Set `lacp_rate fast`, `xmit_hash_policy layer3+4` (or an encapsulation variant for tunnels), `min_links` and `miimon 100`. Keep the MTU identical on the bond and its slaves. Set it on the bond, and the slaves inherit it.
 
 On the switch, the port-channel should be up, with all members `bundled`. Run a throughput test with many flows, and confirm traffic on every member with `sar -n DEV 1` or `ip -s link`. Finally, run a failover test by pulling cables or rebooting a switch, and check that recovery meets your recovery objective.
 
@@ -185,7 +188,9 @@ Bonding does not suit compute rails. One RDMA flow, which uses one queue pair, c
 
 ## 4. MTU design
 
-How large can a packet be on this network, and does every device agree? The MTU is a deliberate property of each network. Every device on a layer-2 segment has to agree on it, including hosts, switch ports, VLAN interfaces, bonds, bridges, virtual switches and overlays.
+Imagine a team whose small requests work perfectly, while every large download hangs. A ping of ordinary size gets an answer, and the application log shows nothing unusual. The usual culprit is a link on the path that accepts smaller packets than the others, so a large packet that cannot fit is quietly dropped. MTU design is the discipline of agreeing on one size everywhere, and checking that agreement with a test that refuses to fragment. The sections below explain how to set the size and how to prove it.
+
+How large can a packet be on this network, and does every device agree? The MTU is a deliberate property of each network. Every device on a layer-2 segment has to agree on it, including hosts, switch ports, VLAN interfaces, bonds, bridges, virtual switches and overlays. One device with a smaller value is enough to cause trouble, because the large packet either gets dropped or has to be split.
 
 The table gives the usual MTU for each network, along with what to watch for. Each row sets its own value, so check the MTU for each network separately.
 
@@ -216,7 +221,9 @@ Offloads also change what you capture. TSO, GSO and GRO let the stack handle 64 
 
 ## 5. The packet path and where to tune it
 
-A packet crosses many stages between the wire and your application, and a bottleneck can sit in any of them. The diagram shows the path in order. The sections below tune each stage.
+Picture a 100G link that moves only 25G for one transfer, while other transfers on the same host run at full speed. The link is not the problem. The packet passes through a long chain of queues and cores, and one stage in that chain has a narrow limit for this flow. The diagram that follows shows the chain. Each stage can be tuned on its own, and each stage can be the one that caps the flow. Walk the path from the wire inwards, the way a packet does, and ask at every stage whether it is the narrow point.
+
+A packet crosses many stages between the wire and your application, and a bottleneck can sit in any of them. The diagram shows the path in order. The sections below tune each stage, so that you can place each knob on the picture as you meet it.
 
 ```mermaid
 flowchart TD
@@ -235,13 +242,15 @@ Read the receive path from the top. If you want the transmit path, follow the do
 
 ### 5.1 Know the limits first (static tuning)
 
-Before you change anything, write down what the machine can do. Record the NIC model, firmware and driver, the link speed and FEC, and the PCIe generation and width. Also note the CPU model, the cores per NUMA node, SMT, the kernel version, the ring sizes, coalescing, offloads and queues, the IRQ distribution, firewall rules, MTU, congestion control and the workload. Find the NIC's NUMA node with `cat /sys/class/net/eth0/device/numa_node`, its PCIe link with `lspci -vv -s <bus> | grep -E 'LnkSta|LnkCap'`, and its GPU affinity with `nvidia-smi topo -m`.
+Before you change anything, write down what the machine can do. A tuning session without that list is a guess in the dark. Record the NIC model, firmware and driver, the link speed and FEC, and the PCIe generation and width. Also note the CPU model, the cores per NUMA node, SMT, the kernel version, the ring sizes, coalescing, offloads and queues, the IRQ distribution, firewall rules, MTU, congestion control and the workload. Find the NUMA node of the NIC with `cat /sys/class/net/eth0/device/numa_node`, its PCIe link with `lspci -vv -s <bus> | grep -E 'LnkSta|LnkCap'`, and its GPU affinity with `nvidia-smi topo -m`.
 
-The numbers make the limits concrete. A PCIe Gen4 x16 slot offers about 252 Gb/s usable, so the slot caps a 400G NIC. A NIC on the remote NUMA node adds latency and halves bandwidth, because traffic crosses the inter-socket link.
+The numbers make the limits concrete. A PCIe Gen4 x16 slot offers about 252 Gb/s usable, so the slot caps a 400G NIC. A NIC on the remote NUMA node adds latency and halves bandwidth, because traffic crosses the inter-socket link. A NUMA node is a group of CPU cores with their own local memory, and reaching the memory of another node is slower.
 
 ### 5.2 Rings, interrupts and coalescing
 
-Traffic arrives in bursts, and the CPU does not always poll the NIC fast enough. Ring sizes and interrupt coalescing decide how much a burst can absorb.
+Walk through what happens when a burst of packets reaches the card. The card writes each packet into a slot of the ring. Each time a slot fills, the card can either raise an interrupt straight away or wait a little and raise one interrupt for a batch. Waiting saves the processor from many small interruptions, but it adds a little delay to each packet. The ring is the waiting room, and coalescing decides how long the card waits before calling the processor. The steps below show the trade-off with one burst in mind.
+
+Traffic arrives in bursts, and the CPU does not always poll the NIC fast enough. Ring sizes and interrupt coalescing decide how much a burst can absorb. The ring is the waiting room between the NIC and the kernel, and its size is the number of seats.
 
 ```bash
 ethtool -g eth0                        # ring sizes: RX/TX current and pre-set maximums
@@ -253,11 +262,13 @@ Bigger rings reduce `rx_missed` and `rx_out_of_buffer` drops when the CPU cannot
 
 ### 5.3 Queues, RSS, RPS, RFS, XPS
 
-One core cannot process 100 Gb/s on its own. Traffic has to spread across many queues and cores, while each flow stays on one core, so packets keep their order and stay in cache.
+Walk through one flow from the wire to the application to see why the spreading matters. The card hashes the flow's addresses and ports and places it in one queue. That queue raises an interrupt on one core. The core handles the packets of that flow in order, and the application reads them from memory that the core has just touched, which keeps the cache warm. If the same flow were spread across several cores, packets could arrive out of order and the cache would be thrashed. The steps below show how the four mechanisms in this heading decide where each step of that walk happens.
 
-RSS, receive-side scaling, is the hardware option. The NIC hashes packet fields with Toeplitz over IPs and ports to pick one of N receive queues, and each queue has its own interrupt. Use `ethtool -l eth0` to see the channels, `sudo ethtool -L eth0 combined 32` to set them, `ethtool -x eth0` to see the indirection table and hash key, and `sudo ethtool -X eth0 equal 32` to spread the table evenly. Set hash fields with `ethtool -N eth0 rx-flow-hash tcp4 sdfn`. Match the queue count to the cores on the NIC's NUMA node, which is not always all the cores. Overlay traffic such as VXLAN hashes only on the outer headers, unless the NIC supports inner-header RSS.
+One core cannot process 100 Gb/s on its own. Traffic has to spread across many queues and cores, while each flow stays on one core, so packets keep their order and stay in cache. If two cores worked on the same flow, packets could be handled out of order and the cache lines would bounce between them.
 
-Each queue's IRQ should run on a core that is local to the NIC. Inspect the IRQs with `grep eth0 /proc/interrupts`, and check a queue's current CPU list with `cat /proc/irq/<n>/smp_affinity_list`. Pin it with `echo <cpu> | sudo tee /proc/irq/<n>/smp_affinity_list`. Vendor scripts such as `set_irq_affinity_bynode.sh <node> eth0` and `mlnx_affinity` do the same job. When you pin manually, stop `irqbalance` or exclude the NIC from it. Then align the IRQs with the application, so the thread that consumes the data runs on the same NUMA node or cache domain.
+RSS, receive-side scaling, is the hardware option. The NIC hashes packet fields with Toeplitz over IPs and ports to pick one of N receive queues, and each queue has its own interrupt. Use `ethtool -l eth0` to see the channels, `sudo ethtool -L eth0 combined 32` to set them, `ethtool -x eth0` to see the indirection table and hash key, and `sudo ethtool -X eth0 equal 32` to spread the table evenly. Set hash fields with `ethtool -N eth0 rx-flow-hash tcp4 sdfn`. Match the queue count to the cores on the NUMA node of the NIC, which is not always all the cores. Overlay traffic such as VXLAN hashes only on the outer headers, unless the NIC supports inner-header RSS.
+
+The IRQ of each queue should run on a core that is local to the NIC. Inspect the IRQs with `grep eth0 /proc/interrupts`, and check the current CPU list of a queue with `cat /proc/irq/<n>/smp_affinity_list`. Pin it with `echo <cpu> | sudo tee /proc/irq/<n>/smp_affinity_list`. Vendor scripts such as `set_irq_affinity_bynode.sh <node> eth0` and `mlnx_affinity` do the same job. When you pin manually, stop `irqbalance` or exclude the NIC from it. Then align the IRQs with the application, so the thread that consumes the data runs on the same NUMA node or cache domain.
 
 RPS, short for receive packet steering, is the software option. It spreads packet processing to other CPUs after the interrupt, which helps when the NIC has too few queues. Enable it with `echo ffff > /sys/class/net/eth0/queues/rx-0/rps_cpus` and `net.core.rps_sock_flow_entries`. RFS steers packets to the CPU where the consuming application thread runs, through `/sys/class/net/eth0/queues/rx-0/rps_flow_cnt`. aRFS does the same in hardware. RPS and RFS are useful on virtual NICs and single-queue devices. Modern multi-queue NICs usually rely on RSS.
 
@@ -266,6 +277,8 @@ XPS, transmit packet steering, maps CPUs to TX queues through `/sys/class/net/et
 Check the result with `mpstat -P ALL 1`. Are `%soft` and `%irq` spread across cores, or is one core at 100%? Also look at `perf top`, the NET_RX column per CPU in `/proc/softirqs`, per-queue balance from `ethtool -S eth0 | grep -E 'rx_queue_.*_packets'`, and `cat /proc/net/softnet_stat` for drops and squeezes. On modern NICs, let RSS do the spreading, and reach for RPS only when a device has too few queues.
 
 ### 5.4 Offloads
+
+Picture a clerk who checks every envelope for a correct postcode before it goes out. Offloads hand that clerk's job to the card. The card checks the checksum, or cuts large data into packets, or joins small packets back into larger ones, so the processor does not have to. The saving is real, but a clerk who changes the envelopes can break the mail for everyone downstream. The paragraphs below describe each offload, and the situations in which switching it off is the right move.
 
 Offloads move per-packet work from the CPU to the NIC. They save CPU time, but some of them break routers and bridges, so you need to know which is which. The table lists each offload, what it does and when it matters.
 
@@ -289,6 +302,8 @@ sudo ethtool -K eth0 tso on gso on gro on lro off
 
 ### 5.5 Kernel queues, budget and backlog
 
+Picture a kitchen where the waiters bring plates to the pass at a fixed pace. If too many plates arrive during one rush, either the pass fills up and dishes wait, or the waiters run out of time for the round and leave some plates behind. The kernel's receive path behaves the same way. The budget is how much work one round may do, and the backlog is the pass where packets wait for their turn. The two counters at the top of this section tell you which of those two places overflowed.
+
 Sometimes the NIC is fine, but the kernel cannot drain its work fast enough. Two counters tell you which limit you hit.
 
 ```bash
@@ -301,13 +316,13 @@ If `time_squeeze` rises, softirq stops before it drains the ring. Raise `netdev_
 
 ### 5.6 Busy polling and low latency
 
-Some workloads care more about microseconds than about CPU time. Busy polling makes a socket spin on the NIC queue instead of sleeping. That trades CPU for lower latency. The sysctl values `net.core.busy_poll` and `net.core.busy_read` set the time in microseconds, and `SO_BUSY_POLL` or epoll busy poll does the same per socket.
+Some workloads care more about microseconds than about CPU time. Busy polling makes a socket spin on the NIC queue instead of sleeping. That trades CPU for lower latency. A waiter who stands at the kitchen door gets your plate a moment sooner than one who waits to be called, and costs the restaurant a waiter's attention. The sysctl values `net.core.busy_poll` and `net.core.busy_read` set the time in microseconds, and `SO_BUSY_POLL` or epoll busy poll does the same per socket.
 
 Low latency also needs quiet cores. Isolate cores with `isolcpus`, `nohz_full` and `rcu_nocbs`. Disable deep C-states with the `tuned` profile `network-latency` or `intel_idle.max_cstate=1`. Set the CPU governor to `performance`. Use `tuned-adm profile network-throughput` or `tuned-adm profile network-latency` as a baseline. For microsecond-class work, plan on RDMA or DPDK instead.
 
 ## 6. TCP/IP stack tuning
 
-Most TCP defaults are sane, because the stack autotunes buffers for you. Measure first, and change a setting only when a number tells you to. Tune the stack for your bandwidth-delay product, your connection rates and your memory. Chapter 2.6 explains the mechanisms behind each one.
+Most TCP defaults are sane, because the stack autotunes buffers for you. That is why copying a long list of settings from a blog rarely helps and sometimes hurts. Measure first, and change a setting only when a number tells you to. Tune the stack for your bandwidth-delay product, your connection rates and your memory. The bandwidth-delay product is the amount of data that fits on the wire between two hosts, which is the speed multiplied by the round-trip time, and the buffers must be at least that large to keep a fast long path full. Chapter 2.6 explains the mechanisms behind each setting.
 
 The table maps each goal to the settings to start from. Treat every value as a starting point, and validate it on your own traffic.
 
@@ -327,7 +342,7 @@ The table maps each goal to the settings to start from. Treat every value as a s
 | Forwarding / multi-homing | `ip_forward=1` (only where needed), `rp_filter=2`, `arp_ignore=1`, `arp_announce=2`, `accept_redirects=0` |
 | File descriptors | `fs.file-max`, `ulimit -n` (LimitNOFILE) for servers with many sockets |
 
-The block below is an example AI-node baseline. It is a starting point only, and the source repository carries the same caveat.
+The block below is an example AI-node baseline. It is a starting point only, so validate each line before you keep it.
 
 ```ini
 # /etc/sysctl.d/99-ai-node-network.conf
@@ -364,11 +379,15 @@ Applications can set socket options too, and they should do so on purpose, rathe
 
 ### Qdisc and pacing
 
-The default `fq_codel` or `mq` qdisc is fine for most hosts. The `fq` qdisc gives per-flow pacing, which BBR required on older kernels, and it is useful alongside `SO_MAX_PACING_RATE`. The `mq` qdisc creates one qdisc per TX queue, which avoids lock contention. Check drops and requeues with `tc -s qdisc show dev eth0`. Heavy shaping with `htb` on 100G links costs a lot of CPU, so prefer NIC rate limits or switch policing.
+Picture a bus stop where buses leave in bunches, so a crowd waits and then a crowd rushes on. Pacing is the timetable that spreads departures evenly. The queue discipline is the rule that decides who boards first when the bus is full. The steps below show how to look at both, so that a burst can be seen on the timetable before it causes a complaint.
+
+The default `fq_codel` or `mq` qdisc is fine for most hosts. The `fq` qdisc gives per-flow pacing, which BBR required on older kernels, and it is useful alongside `SO_MAX_PACING_RATE`. Pacing means sending packets at an even rate instead of in sudden bursts. The `mq` qdisc creates one qdisc per TX queue, which avoids lock contention. Check drops and requeues with `tc -s qdisc show dev eth0`. Heavy shaping with `htb` on 100G links costs a lot of CPU, so prefer NIC rate limits or switch policing.
 
 ## 7. Beyond the kernel stack
 
-Sometimes the kernel stack is the wrong place for the work. The table compares the main alternatives, and the paragraph after it covers the cost of containers.
+Picture a city where every vehicle, from a bicycle to a lorry, uses the same roads and traffic lights. Sometimes that is fine. Sometimes a lorry carrying a fixed load needs its own lane with no lights at all. The alternatives in this section are those private lanes. Each one takes a class of work away from the general road, and each one gives something up in return, such as flexibility or the familiar tools of the kernel.
+
+Sometimes the kernel stack is the wrong place for the work. It is a general-purpose road, with traffic lights and speed limits for everyone, and some jobs want a private track. The table compares the main alternatives, and the paragraph after it covers the cost of containers.
 
 | Technology | Idea | When |
 |---|---|---|
@@ -386,7 +405,9 @@ The veth cost is worth knowing. Container traffic that crosses a veth pair and a
 
 ## 8. A safe tuning method
 
-You need a method that shows which change helped. The seven steps below build on each other.
+Imagine a colleague who changes six kernel settings on Monday and says the cluster is faster on Tuesday. Nobody knows which setting helped, one of them may have hurt, and the next kernel upgrade may quietly undo the lot. The method in this section exists to prevent that story. It asks you to name the goal first, measure a baseline, change one thing, measure again, and roll out only what the numbers justify. Each step is small, and together they make tuning something you can explain to someone else.
+
+You need a method that shows which change helped. Without one, tuning becomes a pile of settings that nobody can explain, and the next kernel upgrade quietly undoes half of them. The seven steps below build on each other.
 
 1. Define the goal and the metric first. An example is 8×400G all-reduce bandwidth ≥ 90% of line rate. Others are p99 RPC latency, and zero drops at the 99th percentile load.
 2. Take a baseline with representative tests, such as `iperf3 -P 16`, `nccl-tests`, `ib_write_bw` or an application benchmark. Record the configuration too: the output of `ethtool -k`, `-g`, `-c` and `-l`, a sysctl dump, the IRQ map, the CPU and NUMA layout, and the versions.
@@ -402,14 +423,16 @@ Write the metric down before you touch any setting.
 
 ## 9. Scenarios
 
-Each scenario below starts with a symptom you might see on a live host. It then tells you what to check and how to fix it.
+Read each scenario below as a short story. The story starts with a symptom that a user or a dashboard reports, and then it walks through what the engineer checks, in the order they check it. Try to guess the cause before reading the rest of each story. The guess is good practice, and when it is wrong, the reason it was wrong is usually the most useful lesson.
+
+Each scenario below starts with a symptom you might see on a live host. It then tells you what to check and how to fix it. Read the symptom, guess the cause, and only then read on.
 
 1. Suppose one transfer reaches only 25 Gb/s on a 100G link. Start with `iperf3 -P 8`, because one TCP flow is bounded by one core and by its window and RTT. Next, check softirq on one core with `mpstat`. Look for RSS collisions, check whether GRO is off, and see whether the buffers are too small for the RTT. Confirm the MTU is 9000 rather than 1500, check the PCIe slot width, and look for any NUMA mismatch. The fix is parallel streams, more queues with correct IRQ pinning, jumbo frames, buffers sized to the bandwidth-delay product, and the local NUMA node.
 2. Some packets are dropped before `tcpdump` can see them, so you check `ethtool -S` instead. Counters such as `rx_missed` or `rx_out_of_buffer` mean the ring overflowed. Increase the rings, add queues, fix IRQ pinning, and shed per-packet overhead.
 3. One core spends its time in softirq because of a veth pair or a single-queue virtual NIC. Use RPS or RFS, multiqueue virtio with `ethtool -L`, or host networking and SR-IOV for hot pods.
 4. When replies leave on the wrong NIC, you need the policy routing in section 1.
 5. Jumbo frames work for some traffic but not all. One hop still runs at 1500. A `ping -M do -s 8972` fails. Fix the MTU consistently, clamp MSS, and permit ICMP.
-6. Outbound connections fail at high rates, or the NCCL bootstrap handshake stalls. The likely cause is a narrow ephemeral port range. Check `net.ipv4.ip_local_port_range` in `/etc/sysctl.conf`. The book's example uses `"50000 51000"`, and `"10240 65535"` is another option. Also set an explicit `MASTER_PORT` and `NCCL_SOCKET_IFNAME=ib0`, so bootstrap handshakes do not land on `eth0`, `docker0` or `lo`. Other causes are `TIME_WAIT`, SNAT exhaustion and a full conntrack table. Fix them with connection pooling, `tcp_tw_reuse`, or more source IPs. When you tune NCCL socket transport across multiple NICs, `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` must not exceed `64` sockets total per communicator.
+6. Outbound connections fail at high rates, or the NCCL bootstrap handshake stalls. The likely cause is a narrow ephemeral port range. Check `net.ipv4.ip_local_port_range` in `/etc/sysctl.conf`. One example uses `"50000 51000"`, and `"10240 65535"` is another option. Also set an explicit `MASTER_PORT` and `NCCL_SOCKET_IFNAME=ib0`, so bootstrap handshakes do not land on `eth0`, `docker0` or `lo`. Other causes are `TIME_WAIT`, SNAT exhaustion and a full conntrack table. Fix them with connection pooling, `tcp_tw_reuse`, or more source IPs. When you tune NCCL socket transport across multiple NICs, `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` must not exceed `64` sockets total per communicator.
 7. UDP telemetry, such as StatsD or syslog, loses data. If you see it, watch `UdpRcvbufErrors`. Raise `rmem_max`, set `SO_RCVBUF`, scale the receivers with `SO_REUSEPORT`, and check `netdev_max_backlog`.
 8. Latency spikes when traffic goes from idle to a burst. Look at coalescing and C-states. Lower the coalescing, apply `tuned network-latency`, enable busy polling, and pin cores.
 9. If your hosts have BGP sessions to two ToRs, packets can reorder when the paths differ. Use consistent hashing, and avoid per-packet balancing.
@@ -423,7 +446,7 @@ Start on your own machine with the self-checking Python lab, at `code/part02/lin
 python3 code/part02/linux_stack_nic_tuning_lab.py
 ```
 
-The steps after that need a disposable Linux VM with `root`. The sixth step also needs bare-metal NIC hardware, which is optional. All interactive VM commands below are `untested here`, so run them on a throwaway system first.
+The steps after that need a disposable Linux VM with `root`. The sixth step also needs bare-metal NIC hardware, which is optional. The interactive VM commands below were not run on live hardware, so run them on a throwaway system first.
 
 1. The first step is the multi-homed asymmetric fix. Build two NIC namespaces, where a server has `eth0` and `eth1` on different subnets, connected by veths to two routers. Reproduce the reply-on-wrong-NIC drops with `rp_filter=1` or an upstream uRPF rule. Then fix them with rules and tables, and verify with `ip route get ... from ...` and `tcpdump`.
 2. The second step covers fwmark and uid routing. Mark one user's traffic, and route it through another gateway namespace. Confirm the path with `traceroute`.
@@ -440,6 +463,8 @@ Record each number you measure, so that you can attribute every gain to one chan
 
 ## 11. Common mistakes
 
+Picture an engineer who copies a long tuning file from a forum, applies it to every node, and sees the throughput fall. Nobody measured the baseline, so nobody knows which line caused the fall, and the file is now part of the team's routine. The mistakes below are the habits behind stories like this one. Each habit feels like progress when you do it, and each one hides the cause that you need to see.
+
 Most tuning mistakes come from a few habits.
 
 - Pasting a 100-line sysctl file for "AI/HPC tuning" without measuring it. Setting `SO_RCVBUF` explicitly also kills autotuning.
@@ -455,6 +480,8 @@ Most tuning mistakes come from a few habits.
 If you measure every setting before you copy it, you avoid the first mistake.
 
 ## 12. Interview angles
+
+Interviewers ask these questions to see how you reason, not just what you remember. For each one, start with the layer where the problem lives, name the mechanism at that layer, and only then name the tool. A good answer sounds like a walk through the packet, step by step, with a clear point where the problem appears.
 
 Use these questions to test yourself. Answer each one in your own words before you move on.
 
@@ -473,12 +500,20 @@ The last question ties the chapter together. Its answer is the seven-step method
 
 ## Exercises
 
-1. Work through policy routing and VRFs. (a) Write the `ip route` and `ip rule` commands, plus Netplan persistence, that you would use to fix asymmetric routing on a server. Its `eth0` is `10.0.0.5/24` with gateway `10.0.0.1`. Its storage NIC `eth1` is `192.168.1.5/24` with gateway `192.168.1.1`, and it uses table `200 storage`. Then explain why `nft` needs `type route hook output` when you mark packets with `meta mark set 0x64` for fwmark routing. (b) Contrast a Linux VRF, created with `ip link add vrf-blue type vrf table 10` and run with `ip vrf exec`, with a network namespace.
-2. Cover bonding and MTU. (a) List the 7-item operational verification checklist for a Linux `802.3ad` LACP bond, read from `/proc/net/bonding/bond0`. Then explain why GPU compute rails are never bonded. (b) Compare the standard MTU values for management (`1500`), storage (`9000`), RoCEv2 (`9000` Ethernet, `4096` IB MTU) and VXLAN overlays (`underlay - 50`). Then write the `ping -M do` command that you would use to verify the path.
-3. Cover the Linux RX/TX packet path: rings, coalescing, NAPI, RSS, RPS, RFS, XPS and NUMA IRQ affinity. (a) Trace a packet from the wire to `copy_to_user`, through `Wire -> DMA RX ring -> MSI-X Hard IRQ -> NAPI NET_RX softirq -> XDP -> sk_buff/GRO/RPS -> tc/netfilter/routing -> socket buffer`. (b) Use `plan_numa_local_rss_and_irq()` in `code/part02/linux_stack_nic_tuning.py` to explain how to size RSS queues with `ethtool -L`, and how to pin IRQs with `smp_affinity_list` to the NIC's local NUMA node. Read that node from `/sys/class/net/<dev>/device/numa_node`.
-4. Compare the offloads and the zero-copy calls. Contrast `TSO`, `GSO`, `GRO` and `LRO`, and explain why LRO must be disabled on routers, bridges and hypervisors. Then explain how `sendfile()` and `MSG_ZEROCOPY` save CPU cycles and memory bandwidth when a server sends large files or checkpoints.
-5. Tune the TCP stack and the NCCL bootstrap, using AI Systems Performance Engineering (chapter 4) and Systems Performance (chapter 10). (a) Use `recommend_tcp_max_buffer_bytes()` to compare the recommended `rmem_max` and `wmem_max` ceiling for a `100 Gb/s x 0.2 ms` intra-DC path (`16 MiB`) with a `10 Gb/s x 40 ms` WAN path (`128 MiB`). Explain why applications should not set `SO_RCVBUF` by hand. (b) Use `validate_nccl_socket_and_port_config()` to check `NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`, `NCCL_SOCKET_IFNAME`, and `net.ipv4.ip_local_port_range` set to `"50000 51000"` or `"10240 65535"`.
-6. Compare kernel bypass and run the tuning method. Compare `XDP`, `AF_XDP`, `SR-IOV`, `DPDK` and `RDMA` (`RoCEv2` or InfiniBand). Explain why container `veth` pairs can bottleneck a single CPU core in softirq. Then walk through the seven-step tuning method to find out why a single TCP stream reaches only `25 Gb/s` on a `100G` NIC.
+Each exercise gives one situation. Answer it from the mechanism first, and run the command second.
+
+1. A multi-homed server answers on the wrong NIC. Write the `ip route` and `ip rule` commands, plus Netplan persistence, that you would use to fix asymmetric routing. Its `eth0` is `10.0.0.5/24` with gateway `10.0.0.1`. Its storage NIC `eth1` is `192.168.1.5/24` with gateway `192.168.1.1`, and it uses table `200 storage`.
+2. You mark packets with `meta mark set 0x64` for fwmark routing. Explain why `nft` needs `type route hook output` for this to work.
+3. A team asks whether to use a VRF or a namespace. Contrast a Linux VRF, created with `ip link add vrf-blue type vrf table 10` and run with `ip vrf exec`, with a network namespace.
+4. List the 7-item operational verification checklist for a Linux `802.3ad` LACP bond, read from `/proc/net/bonding/bond0`. Then explain why GPU compute rails are never bonded.
+5. Compare the standard MTU values for management (`1500`), storage (`9000`), RoCEv2 (`9000` Ethernet, `4096` IB MTU) and VXLAN overlays (`underlay - 50`). Then write the `ping -M do` command that you would use to verify the path.
+6. Trace a packet from the wire to `copy_to_user`, through `Wire -> DMA RX ring -> MSI-X Hard IRQ -> NAPI NET_RX softirq -> XDP -> sk_buff/GRO/RPS -> tc/netfilter/routing -> socket buffer`.
+7. One core runs hot with softirq. Use `plan_numa_local_rss_and_irq()` in `code/part02/linux_stack_nic_tuning.py` to explain how to size RSS queues with `ethtool -L`, and how to pin IRQs with `smp_affinity_list` to the NUMA node that is local to the NIC. Read that node from `/sys/class/net/<dev>/device/numa_node`.
+8. Contrast `TSO`, `GSO`, `GRO` and `LRO`, and explain why LRO must be disabled on routers, bridges and hypervisors. Then explain how `sendfile()` and `MSG_ZEROCOPY` save CPU cycles and memory bandwidth when a server sends large files or checkpoints.
+9. Two paths need different socket buffers. Use `recommend_tcp_max_buffer_bytes()` to compare the recommended `rmem_max` and `wmem_max` ceiling for a `100 Gb/s x 0.2 ms` intra-DC path (`16 MiB`) with a `10 Gb/s x 40 ms` WAN path (`128 MiB`). Explain why applications should not set `SO_RCVBUF` by hand.
+10. An NCCL job stalls at bootstrap. Use `validate_nccl_socket_and_port_config()` to check `NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`, `NCCL_SOCKET_IFNAME`, and `net.ipv4.ip_local_port_range` set to `"50000 51000"` or `"10240 65535"`.
+11. A team wants to leave the kernel stack. Compare `XDP`, `AF_XDP`, `SR-IOV`, `DPDK` and `RDMA` (`RoCEv2` or InfiniBand). Explain why container `veth` pairs can bottleneck a single CPU core in softirq.
+12. A single TCP stream reaches only `25 Gb/s` on a `100G` NIC. Walk through the seven-step tuning method to find out why.
 
 ## Checkpoint questions (20)
 

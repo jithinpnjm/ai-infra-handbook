@@ -22,17 +22,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture an inference endpoint that goes down at 3 a.m. because its certificate has expired. That is a common page, because nearly every control-plane and serving interaction in an AI platform runs as HTTP over TLS. Model-serving endpoints (REST and gRPC over HTTP/2), the Kubernetes API server, container registries, artifact and dataset stores, MLflow and experiment trackers, NGC and Hugging Face downloads, webhooks, Prometheus scrapes and Redfish BMC APIs all work this way.
+Picture an inference endpoint that goes down at 3 a.m. because its certificate has expired. Nothing was deployed, nothing crashed, and yet every client is suddenly refusing to talk to it. That is a common page, because nearly every control-plane and serving interaction in an AI platform runs as HTTP over TLS. Model-serving endpoints (REST and gRPC over HTTP/2), the Kubernetes API server, container registries, artifact and dataset stores, MLflow and experiment trackers, NGC and Hugging Face downloads, webhooks, Prometheus scrapes and Redfish BMC APIs all work this way.
 
-Other failures in this layer are just as familiar. A kubelet cannot join the cluster when its client certificate rotated incorrectly. Behind a corporate proxy, `x509: certificate signed by unknown authority` can block image pulls. HTTP/2 head-of-line blocking or keepalive timeouts can degrade token streaming. An mTLS mesh can reject calls because of clock skew.
+Other failures in this layer are just as familiar. A kubelet cannot join the cluster when its client certificate rotated incorrectly. Behind a corporate proxy, `x509: certificate signed by unknown authority` can block image pulls. HTTP/2 head-of-line blocking or keepalive timeouts can degrade token streaming. An mTLS mesh can reject calls because of clock skew. Each of these is a different symptom of the same machinery, which is why it pays to understand the machinery once.
 
-This chapter gives you the practical model for all of it. It covers HTTP semantics and versions, the TLS handshake, certificates and public-key infrastructure, and the tools you use to inspect and debug each part.
+The practical model starts with the plain exchange everyone can read, a request and a response in text, and with what changes when a connection is reused or when the protocol version changes. Then comes the problem that plain text cannot solve, which is how two strangers can talk privately over a network that anyone can listen to. The answer is a handshake that combines several cryptographic ideas, and certificates that let a client decide whether to trust the party on the other end. Along the way come the tools you use to inspect and debug each part.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know TCP (2.6), DNS (2.8) and basic Linux tooling.
+Before you start, you should know TCP (2.6), DNS (2.8) and basic Linux tooling. You do not need any cryptography background. Each idea is explained from scratch.
 
-After this chapter, you should be able to do the following.
+Once you have finished the chapter, use this list as a self-check. Each line is something you should now be able to do.
 
 - Explain HTTP requests and responses, including methods, status codes, headers, caching and connection reuse. You should also be able to tell HTTP/1.1, HTTP/2 and HTTP/3 apart.
 - Explain the security goals of confidentiality, integrity and authentication, and the building blocks behind them: symmetric encryption, key exchange, public-key signatures, hashes and MACs. Say why TLS combines them.
@@ -45,7 +45,7 @@ If TCP or DNS is unfamiliar, read chapters 2.6 and 2.8 before you continue.
 
 ## 1. HTTP in practice
 
-When your API call fails, the answer is often in the HTTP exchange itself. HTTP is a request and response protocol that works at the application layer. The client sends a request with a method, a target, headers and an optional body. The server returns a response with a status, headers and an optional body. HTTP is stateless by design, so state has to travel in cookies, tokens or application sessions.
+When your API call fails, the answer is often in the HTTP exchange itself. HTTP is the language that web clients and servers speak, and it is close to a polite letter exchange. HTTP is a request and response protocol that works at the application layer. The client sends a request with a method, a target, headers and an optional body. The server returns a response with a status, headers and an optional body. HTTP is stateless by design, so state has to travel in cookies, tokens or application sessions.
 
 ```text
 GET /v1/models HTTP/1.1
@@ -59,7 +59,7 @@ Content-Length: 142
 Cache-Control: max-age=60
 ```
 
-The first line of each message matters most, so read it first when you debug. It holds the method and target in a request, and the status in a response. The table below lists the parts of a message. Methods matter most when you retry a call, because `GET`, `PUT` and `DELETE` are idempotent and `POST` is not.
+The first line of each message matters most, so read it first when you debug. It holds the method and target in a request, and the status in a response. The table below lists the parts of a message. Methods matter most when you retry a call, because `GET`, `PUT` and `DELETE` are idempotent and `POST` is not. Idempotent means that doing it twice has the same effect as doing it once, so a retry is safe.
 
 | Part | Notes |
 |---|---|
@@ -68,27 +68,27 @@ The first line of each message matters most, so read it first when you debug. It
 | Headers | `Host`, `Content-Type/Length`, `Authorization`, `Cookie/Set-Cookie`, `Cache-Control`, `ETag`/`If-None-Match`, `Accept-*`, `User-Agent`, `X-Forwarded-For`/`Forwarded`, `Retry-After`, `Upgrade` (WebSocket) |
 | Bodies | JSON, form data, multipart, binary; streaming via chunked transfer encoding or SSE for token streams; large uploads via multipart or presigned URLs |
 
-Status codes also point to where a failure happened. A 502, 503 or 504 from a load balancer or ingress points to the upstream, not to the client. A 504 is an upstream timeout. The model server may be slow, or the proxy timeout may be shorter than the inference time. A 499 from nginx means the client went away. A 429 means rate limiting. A 413 means the body is larger than a proxy limit, which is common with big prompts or uploads. A 401 means the caller is unauthenticated, while a 403 means the caller is unauthorised.
+Status codes also point to where a failure happened, which is why they are worth memorising. A 502, 503 or 504 from a load balancer or ingress points to the upstream, not to the client. A 504 is an upstream timeout. The model server may be slow, or the proxy timeout may be shorter than the inference time. A 499 from nginx means the client went away. A 429 means rate limiting. A 413 means the body is larger than a proxy limit, which is common with big prompts or uploads. A 401 means the caller is unauthenticated, while a 403 means the caller is unauthorised.
 
 ### Connections and versions
 
-HTTP/1.0 opened one TCP connection per request. HTTP/1.1 added persistent connections, called keep-alive, along with the `Host` header for virtual hosting, chunked encoding and caching controls. It still handles only one request in flight per connection, because pipelining is not used in practice. So browsers open several connections, and head-of-line blocking still happens at the HTTP layer.
+HTTP/1.0 opened one TCP connection per request, which meant a full handshake for every page element. HTTP/1.1 added persistent connections, called keep-alive, along with the `Host` header for virtual hosting, chunked encoding and caching controls. It still handles only one request in flight per connection, because pipelining is not used in practice. So browsers open several connections, and head-of-line blocking still happens at the HTTP layer.
 
-HTTP/2 (RFC 9113) multiplexes many streams over one TCP connection, using binary frames. It compresses headers with HPACK, and it applies flow control to each stream. Server push exists, but it has largely been abandoned. Browsers require TLS for HTTP/2, negotiated through the ALPN value `h2`. gRPC runs on HTTP/2. Its weakness is that a single lost TCP packet stalls all streams. That is TCP-level head-of-line blocking, covered in chapter 2.6.
+HTTP/2 (RFC 9113) multiplexes many streams over one TCP connection, using binary frames. Think of a single road that carries many lanes of traffic at once, instead of many separate roads. It compresses headers with HPACK, and it applies flow control to each stream. Server push exists, but it has largely been abandoned. Browsers require TLS for HTTP/2, negotiated through the ALPN value `h2`. gRPC runs on HTTP/2. Its weakness is that a single lost TCP packet stalls all streams. That is TCP-level head-of-line blocking, covered in chapter 2.6.
 
-HTTP/3 (RFC 9114) runs on QUIC over UDP. Its streams are independent, so a lost packet on one stream does not block the others. Handshakes are faster, connections can migrate, and TLS 1.3 is built in. Clients discover it through the `Alt-Svc` header or `HTTPS` DNS records. It is useful at the edge and in CDNs. Inside data centres, HTTP/2 over TCP remains the standard.
+HTTP/3 (RFC 9114) runs on QUIC over UDP. It removes the weakness that HTTP/2 inherits from TCP. Its streams are independent, so a lost packet on one stream does not block the others. Handshakes are faster, connections can migrate, and TLS 1.3 is built in. Clients discover it through the `Alt-Svc` header or `HTTPS` DNS records. It is useful at the edge and in CDNs. Inside data centres, HTTP/2 over TCP remains the standard.
 
 Reusing a connection saves the TCP and TLS handshake costs, which are 1 RTT + 1 RTT (chapter 2.6). Your clients must therefore reuse sessions through connection pools, `requests.Session` or gRPC channels. Servers and middleboxes also have idle timeouts. Examples are nginx `keepalive_timeout` at 75 s, and cloud load balancers at 60 to 350 s. The timing has to line up, so that stale connections are not reused. The server's idle timeout must be longer than the client's idle period, or shorter than the client's pool lifetime. Here is the arithmetic with numbers from this chapter. A load balancer that closes idle connections after 60 s, paired with a client pool that keeps them for 120 s, hands the client connections that are already closed. The next request then fails with a connection reset.
 
-Long-lived connections, such as WebSocket, Server-Sent Events (SSE) and token streams, need care. Proxies must not buffer the stream, and their read timeouts must be raised. Heartbeats keep the connection alive between messages.
+Long-lived connections, such as WebSocket, Server-Sent Events (SSE) and token streams, need care. Proxies must not buffer the stream, and their read timeouts must be raised. Heartbeats keep the connection alive between messages. Picture a chatbot that streams its answer word by word. If a proxy holds the words back until the answer is complete, the user sees nothing for a long time and then everything at once.
 
-Caching reuses responses. `Cache-Control`, `ETag`, `Last-Modified` and validators let clients and CDNs reuse what they already hold. Container registries and model hubs depend on content-addressed, immutable URLs.
+Caching reuses responses, so the same bytes do not have to travel twice. `Cache-Control`, `ETag`, `Last-Modified` and validators let clients and CDNs reuse what they already hold. Container registries and model hubs depend on content-addressed, immutable URLs, where the name of a file is derived from its content, so a given name always means the same bytes.
 
 Proxies sit in the path. Forward proxies, set with `HTTP_PROXY` or `HTTPS_PROXY`, use `CONNECT` tunnels for HTTPS. Reverse proxies and ingress controllers (nginx, Envoy, HAProxy, Traefik) are discussed in chapter 2.20. API gateways and service meshes add TLS termination, routing, retries, rate limiting and observability.
 
 ### `curl` as a diagnostic tool
 
-`curl` shows each stage of a request, so you can see which stage is slow or failing. The commands below show headers, timing, a DNS bypass, a verification skip for testing, mTLS and proxies.
+`curl` shows each stage of a request, so you can see which stage is slow or failing. It is the first tool to reach for when an API call misbehaves. The commands below show headers, timing, a DNS bypass, a verification skip for testing, mTLS and proxies.
 
 ```bash
 curl -v https://api.example.com/v1/models                  # request/response headers, TLS handshake summary
@@ -101,11 +101,11 @@ curl -x http://proxy:3128 https://example.com               # via proxy
 curl --connect-timeout 3 --max-time 10 --retry 2 URL
 ```
 
-The `-w` timing output shows where the time goes. A long `time_namelookup` points to DNS. A long gap between `time_connect` and `time_appconnect` is the TLS handshake. A long gap before `time_starttransfer` is server processing, and for inference that means model latency. Start with this breakdown, because it shows which stage holds the delay for your request.
+The `-w` timing output shows where the time goes. A long `time_namelookup` points to DNS. A long gap between `time_connect` and `time_appconnect` is the TLS handshake. A long gap before `time_starttransfer` is server processing, and for inference that means model latency. Start with this breakdown, because it shows which stage holds the delay for your request. It turns "the API feels slow" into a specific claim you can investigate.
 
 ### Reading a protocol trace
 
-A summary can hide the detail you need, so sometimes you must see the bytes. `curl --trace-ascii` writes a full log of the conversation to a file:
+A summary can hide the detail you need, so sometimes you must see the bytes. It is like asking a colleague for a recording of the call instead of their recollection. `curl --trace-ascii` writes a full log of the conversation to a file:
 
 ```bash
 $ curl --trace-ascii trace_file http://www.example.org/
@@ -146,9 +146,9 @@ This split tells you something important about the application layer. The operat
 
 ## 2. Security goals and cryptographic building blocks
 
-Suppose an attacker controls the Wi-Fi network your client uses. Transport security is the set of protections that keeps your traffic safe on a network like that. It addresses four problems. It proves that data was not altered in transit. It stops others from reading the data. It proves who you are talking to. It also protects users' privacy from traffic analysis, sometimes called data exhaust.
+Suppose an attacker controls the Wi-Fi network your client uses. Everything you send passes through their hands. Transport security is the set of protections that keeps your traffic safe on a network like that. It addresses four problems. It proves that data was not altered in transit. It stops others from reading the data. It proves who you are talking to. It also protects users' privacy from traffic analysis, sometimes called data exhaust.
 
-The building blocks are in the table below. Each one covers a different part of the job, and TLS combines them.
+The building blocks are in the table below. Each one covers a different part of the job, and TLS combines them. As you read it, notice that no single tool does everything. Encryption hides data but does not prove who sent it. A signature proves who sent it but does not hide anything. TLS needs both.
 
 | Primitive | Purpose | Examples |
 |---|---|---|
@@ -159,13 +159,13 @@ The building blocks are in the table below. Each one covers a different part of 
 | **MAC / HMAC** | Authenticate a message with a shared key | HMAC-SHA256 (GCM and Poly1305 embed their own) |
 | **Key derivation** | Turn shared secrets into session keys | HKDF |
 
-Encryption works like a substitution whose table depends on the key. Plaintext and a key go in, and ciphertext comes out. A 128-bit key, for example, selects one of `2^128` possible substitution tables. Only the key holder can reverse the process. Symmetric keys are fast, but they must somehow be shared. Public-key schemes solve the sharing problem, but they are slow. So protocols use public-key methods to agree on a session key, then switch to symmetric encryption for the data itself.
+Encryption works like a substitution whose table depends on the key. Plaintext and a key go in, and ciphertext comes out. A 128-bit key, for example, selects one of `2^128` possible substitution tables. Only the key holder can reverse the process. Symmetric keys are fast, but they must somehow be shared. Public-key schemes solve the sharing problem, but they are slow. So protocols use public-key methods to agree on a session key, then switch to symmetric encryption for the data itself. It is like using a slow, careful courier to deliver the key to a fast safe, and then using the safe for everything else.
 
-Forward secrecy comes from ephemeral Diffie-Hellman. Session keys cannot be derived from the server's long-term key. So if that key leaks later, recorded traffic still cannot be decrypted.
+Forward secrecy comes from ephemeral Diffie-Hellman. Ephemeral means the keys are made fresh for each session and then thrown away. Session keys cannot be derived from the server's long-term key. So if that key leaks later, recorded traffic still cannot be decrypted.
 
-Cryptographic hashes map any input to a fixed-length digest, and they resist collisions. The birthday paradox sets the strength you need. You may remember it from chapter 10 of Computer Networking Problems and Solutions. It takes only 23 people in a room for a probability above 50% that two of them share a birthday. So an `n`-bit hash gives `2^(n/2)` collision resistance. For a 256-bit hash, n/2 is 128, which gives `2^128`. That reasoning motivates the 256-bit and 384-bit SHA-2 and SHA-3 hashes. A hash alone gives integrity only against accidental change. Against an active attacker, you need a MAC or a signature.
+Cryptographic hashes map any input to a fixed-length digest, and they resist collisions. A digest is a short fingerprint of the input, so a one-bit change in the input changes the fingerprint completely. The birthday paradox sets the strength you need. It takes only 23 people in a room for a probability above 50% that two of them share a birthday. So an `n`-bit hash gives `2^(n/2)` collision resistance. For a 256-bit hash, n/2 is 128, which gives `2^128`. That reasoning motivates the 256-bit and 384-bit SHA-2 and SHA-3 hashes. A hash alone gives integrity only against accidental change. Against an active attacker, you need a MAC or a signature.
 
-A man-in-the-middle (MitM) attack starts when an attacker can redirect traffic. Common routes include DNS spoofing, ARP spoofing, rogue Wi-Fi, a BGP hijack and a compromised proxy. The attacker can then hold one encrypted session with the client and another with the server. The attacker can read everything in between, if the client cannot tell that the server's key is not the real one. Encryption alone is therefore not enough. You need to authenticate the peer's key. Hierarchical PKI does this, through the certificates and CA system described in section 4. A decentralized web of trust, as in PGP, works differently, because users vouch for each other's keys directly. Pre-shared or pinned keys also work, as in SSH `known_hosts` and WireGuard keys.
+A man-in-the-middle (MitM) attack starts when an attacker can redirect traffic. Picture a person who intercepts your letters, reads them, reseals them and passes them on, while pretending to each of you to be the other. Common routes include DNS spoofing, ARP spoofing, rogue Wi-Fi, a BGP hijack and a compromised proxy. The attacker can then hold one encrypted session with the client and another with the server. The attacker can read everything in between, if the client cannot tell that the server's key is not the real one. Encryption alone is therefore not enough. You need to authenticate the peer's key. Hierarchical PKI does this, through the certificates and CA system described in section 4. A decentralized web of trust, as in PGP, works differently, because users vouch for each other's keys directly. Pre-shared or pinned keys also work, as in SSH `known_hosts` and WireGuard keys.
 
 Even encrypted traffic leaks metadata. An observer can see who talks to whom, when, and how much, which is traffic analysis. Destination names leak as well, through SNI and DNS. Mitigations include encrypted SNI and ECH, along with DoT and DoH. MAC-address randomisation on Wi-Fi clients defeats location tracking across access points, though timing, sequence-number and capability fingerprints can partly re-identify devices. Onion routing builds nested encrypted hops. The entry node knows the source but not the destination, and the exit node knows the reverse.
 
@@ -173,11 +173,11 @@ In a data-centre setting, treat metadata exposure in multi-tenant networks and l
 
 ## 3. TLS
 
-TLS, short for Transport Layer Security, sits between the application and TCP, or inside QUIC. It gives you an authenticated, encrypted, integrity-protected byte stream. SSL is its obsolete predecessor. TLS has three parts: the handshake protocol, which negotiates parameters, authenticates the peer and derives keys; the record protocol, which fragments and protects each record; and alerts. HTTPS is HTTP over TLS on port 443. Other protocols use STARTTLS upgrades, as SMTP and IMAP do, or implicit TLS on a different port.
+TLS, short for Transport Layer Security, sits between the application and TCP, or inside QUIC. It gives you an authenticated, encrypted, integrity-protected byte stream. In everyday terms, it makes the connection act like a sealed, signed envelope. SSL is its obsolete predecessor. TLS has three parts: the handshake protocol, which negotiates parameters, authenticates the peer and derives keys; the record protocol, which fragments and protects each record; and alerts. HTTPS is HTTP over TLS on port 443. Other protocols use STARTTLS upgrades, as SMTP and IMAP do, or implicit TLS on a different port.
 
 ### The handshake (TLS 1.3)
 
-The diagram follows the TLS 1.3 handshake from the first client message to the first request.
+The diagram follows the TLS 1.3 handshake from the first client message to the first request. As you read it, ask at each arrow what the sender has just told the other side and what the other side can now do with that information.
 
 ```mermaid
 sequenceDiagram
@@ -192,25 +192,25 @@ sequenceDiagram
   C->>S: HTTP request
 ```
 
-Notice where encryption starts. After the `ServerHello`, both sides hold handshake keys, so everything else is encrypted.
+Notice where encryption starts. After the `ServerHello`, both sides hold handshake keys, so everything else is encrypted, including the certificate.
 
-TLS 1.3 needs one round trip instead of two. Both sides send their key shares immediately. Only forward-secret key exchange is allowed, so static-RSA key transport is gone. The certificate and handshake messages are encrypted. The cipher suites come from a reduced set of strong AEAD options, such as AES-GCM and ChaCha20-Poly1305. Compression and renegotiation are removed. 0-RTT resumption allows early data, but that data can be replayed, so use it only for idempotent requests.
+TLS 1.3 needs one round trip instead of two. The client does not wait to be told which key exchange to use. It guesses and sends its key share in the first message. Both sides send their key shares immediately. Only forward-secret key exchange is allowed, so static-RSA key transport is gone. The certificate and handshake messages are encrypted. The cipher suites come from a reduced set of strong AEAD options, such as AES-GCM and ChaCha20-Poly1305. Compression and renegotiation are removed. 0-RTT resumption allows early data, but that data can be replayed, so use it only for idempotent requests.
 
-Count the round trips to see the difference. TCP setup takes 1 RTT, and TCP plus TLS 1.2 takes `3` RTTs. TLS 1.3 adds only 1 RTT, so TCP plus TLS 1.3 takes `2` RTTs.
+Count the round trips to see the difference. TCP setup takes 1 RTT, and TCP plus TLS 1.2 takes `3` RTTs. TLS 1.3 adds only 1 RTT, so TCP plus TLS 1.3 takes `2` RTTs. On a long path, that saves a whole round trip before the first byte of the request can even be sent.
 
 In TLS 1.2, the handshake had client hello, server hello, certificate, server key exchange, client key exchange, change cipher spec and finished messages. In older RSA key transport, the client encrypted a random pre-master secret under the server's public key. Stealing the server key later could then decrypt recorded sessions. Forward secrecy fixes exactly that. The change cipher spec and finished messages still do their jobs. One signals that encryption starts. The other authenticates the whole handshake transcript to detect tampering.
 
-Several extensions matter in practice. SNI (Server Name Indication) lets the client name the host in `ClientHello`. One IP address can then serve many certificates, which is virtual hosting, and load balancers route on that name. Encrypted ClientHello can hide it. If you test an IP address directly, without SNI, you often get a default certificate. Use `--resolve` with `curl`, or `-servername` with `openssl`, to send the right name.
+Several extensions matter in practice. SNI (Server Name Indication) lets the client name the host in `ClientHello`. One IP address can then serve many certificates, which is virtual hosting, and load balancers route on that name. It is like telling a switchboard which person you want before it picks up. Encrypted ClientHello can hide it. If you test an IP address directly, without SNI, you often get a default certificate. Use `--resolve` with `curl`, or `-servername` with `openssl`, to send the right name.
 
 ALPN negotiates the application protocol inside the handshake, such as `h2`, `http/1.1` or `h3`. Session tickets or PSKs let a returning client skip the full handshake, which lowers latency and CPU use. With OCSP stapling, the server attaches a signed, recent revocation status to the handshake.
 
-Mutual TLS (mTLS) goes one step further. The server also requests and verifies a client certificate. Service meshes, the Kubernetes API and kubelet, etcd and Prometheus targets use it for service-to-service identity. That way, every workload proves its identity cryptographically.
+Mutual TLS (mTLS) goes one step further. In ordinary TLS only the server proves who it is. Here the server also requests and verifies a client certificate. Service meshes, the Kubernetes API and kubelet, etcd and Prometheus targets use it for service-to-service identity. That way, every workload proves its identity cryptographically.
 
 TLS costs CPU mainly at the handshake, where public-key operations run. Per byte, the cost is small, because AES-NI makes it cheap. Terminating at load balancers or ingress concentrates those handshakes in one place. Disable TLS 1.0, TLS 1.1 and SSLv3, and prefer TLS 1.3 with a TLS 1.2 fallback. Use modern cipher suites, such as the Mozilla "intermediate" profile, and enable HSTS for browsers. Re-check the configuration with `testssl.sh` or `nmap --script ssl-enum-ciphers`.
 
 ### Inspecting TLS with openssl
 
-The commands below show the handshake, the chain, the verify result and the certificate fields.
+The commands below show the handshake, the chain, the verify result and the certificate fields. They let you watch the handshake from the diagram happen against a real server.
 
 ```bash
 openssl s_client -connect api.example.com:443 -servername api.example.com -showcerts </dev/null    # handshake, chain, verify result
@@ -227,9 +227,9 @@ Start with the first command against your own endpoint, and compare its output w
 
 ## 4. Certificates and public-key infrastructure
 
-A client that refuses to connect is often reacting to a certificate. To read the error, you need to know what a certificate contains. A **certificate** (X.509) binds a public key to an identity, and a certificate authority (CA) signs it. The important fields are the subject, the issuer, the validity dates (notBefore and notAfter), the public key, and the Subject Alternative Names (SAN). The SAN lists the DNS names or IPs the certificate is valid for. Browsers and modern libraries ignore the old CN field. The remaining fields are key usage and extended key usage (serverAuth, clientAuth), basic constraints (whether this is a CA), authority and subject key identifiers, CRL and OCSP URLs, and the issuer's signature.
+A client that refuses to connect is often reacting to a certificate. To read the error, you need to know what a certificate contains. A **certificate** (X.509) binds a public key to an identity, and a certificate authority (CA) signs it. It is a bit like a passport, where a trusted office vouches that this photograph belongs to this name. The important fields are the subject, the issuer, the validity dates (notBefore and notAfter), the public key, and the Subject Alternative Names (SAN). The SAN lists the DNS names or IPs the certificate is valid for. Browsers and modern libraries ignore the old CN field. The remaining fields are key usage and extended key usage (serverAuth, clientAuth), basic constraints (whether this is a CA), authority and subject key identifiers, CRL and OCSP URLs, and the issuer's signature.
 
-The diagram shows how trust flows down from a root.
+The diagram shows how trust flows down from a root. The client does not know the server, but it knows the root, and the root vouches for an intermediate, which vouches for the server. Trust travels along that chain, one signature at a time.
 
 ```mermaid
 flowchart TD
@@ -239,25 +239,25 @@ flowchart TD
   T["Client trust store: OS / browser / /etc/ssl/certs / container image"] -. "contains" .-> R
 ```
 
-A client validates a certificate in several steps. It builds a chain from the leaf to a trusted root, using the intermediates the server presents. It checks each signature, the validity dates against its own clock, the key usage and basic constraints, the name against the SAN, and the revocation status if revocation checking is enabled.
+A client validates a certificate in several steps, and each step can fail for a different reason. It builds a chain from the leaf to a trusted root, using the intermediates the server presents. It checks each signature, the validity dates against its own clock, the key usage and basic constraints, the name against the SAN, and the revocation status if revocation checking is enabled.
 
-Who is trusted depends on the trust store. OS bundles live at `/etc/ssl/certs/ca-certificates.crt`. Others include Java `cacerts`, Python `certifi`, language-specific bundles, the Kubernetes service-account CA, and container images, which use `update-ca-certificates`. An "unknown authority" error usually means that a private CA is missing from the relevant store, or that the server left out its intermediate. Servers must send the full chain except the root. Missing intermediates work in browsers, which fetch them through Authority Information Access (AIA). The same gap makes curl, Java and Go fail.
+Who is trusted depends on the trust store, which is the list of roots a given program has decided to believe. OS bundles live at `/etc/ssl/certs/ca-certificates.crt`. Others include Java `cacerts`, Python `certifi`, language-specific bundles, the Kubernetes service-account CA, and container images, which use `update-ca-certificates`. An "unknown authority" error usually means that a private CA is missing from the relevant store, or that the server left out its intermediate. Servers must send the full chain except the root. Missing intermediates work in browsers, which fetch them through Authority Information Access (AIA). The same gap makes curl, Java and Go fail.
 
 ### Certificate authorities
 
-Public CAs, such as Let's Encrypt, DigiCert and Google Trust Services, issue certificates for names that the Internet can reach. They check control of the domain, using DV (domain validation) through a DNS or HTTP challenge. OV and EV certificates add organisation checks. ACME (RFC 8555) automates issuance and renewal. Tools include certbot, acme.sh, Caddy and cert-manager. Let's Encrypt certificates last 90 days, and the industry is moving toward even shorter lifetimes. Automation is therefore mandatory.
+Public CAs, such as Let's Encrypt, DigiCert and Google Trust Services, issue certificates for names that the Internet can reach. They check control of the domain, using DV (domain validation) through a DNS or HTTP challenge. In plain words, they ask you to prove you control the name by placing a specific value where only the owner could. OV and EV certificates add organisation checks. ACME (RFC 8555) automates issuance and renewal. Tools include certbot, acme.sh, Caddy and cert-manager. Let's Encrypt certificates last 90 days, and the industry is moving toward even shorter lifetimes. Automation is therefore mandatory.
 
-Private or internal CAs cover internal names, mTLS and cluster components. Options include HashiCorp Vault PKI, step-ca from Smallstep, cfssl and EJBCA. Cloud services include GCP CA Service and AWS Private CA. Others include Active Directory Certificate Services, Kubernetes' built-in cluster CA from kubeadm, and the service-mesh CAs in Istio and Linkerd. Keep the root offline, and issue certificates from intermediates. Also use name constraints, short lifetimes and automated rotation. Distribute the root to all trust stores through configuration management.
+Private or internal CAs cover internal names, mTLS and cluster components, where a public CA cannot or should not be used. Options include HashiCorp Vault PKI, step-ca from Smallstep, cfssl and EJBCA. Cloud services include GCP CA Service and AWS Private CA. Others include Active Directory Certificate Services, Kubernetes' built-in cluster CA from kubeadm, and the service-mesh CAs in Istio and Linkerd. Keep the root offline, and issue certificates from intermediates. Also use name constraints, short lifetimes and automated rotation. Distribute the root to all trust stores through configuration management.
 
-Certificate Transparency (CT) requires public CAs to log every issued certificate in append-only public logs. Monitor those logs for unexpected certificates issued for your domains. CAA DNS records restrict which CAs may issue certificates for a domain.
+Certificate Transparency (CT) requires public CAs to log every issued certificate in append-only public logs. Anyone can read them, so a certificate that should not exist cannot stay hidden. Monitor those logs for unexpected certificates issued for your domains. CAA DNS records restrict which CAs may issue certificates for a domain.
 
 ### Revocation and lifetimes
 
-Revocation is hard. CRLs are large lists, and OCSP offers online status checks, but it raises privacy and availability problems. Stapling helps with those. Browsers can also use pushed sets, such as CRLite. The modern answer is short-lived certificates with automated renewal, so revocation matters less. Always monitor expiry. Prometheus `x509-certificate-exporter` and the blackbox exporter's `probe_ssl_earliest_cert_expiry` both help. Alert at 21, 7 and 3 days. The first alert at 21 days leaves three weeks to renew.
+Revocation is hard. It means cancelling a certificate before its expiry date, like cancelling a stolen credit card. CRLs are large lists, and OCSP offers online status checks, but it raises privacy and availability problems. Stapling helps with those. Browsers can also use pushed sets, such as CRLite. The modern answer is short-lived certificates with automated renewal, so revocation matters less. Always monitor expiry. Prometheus `x509-certificate-exporter` and the blackbox exporter's `probe_ssl_earliest_cert_expiry` both help. Alert at 21, 7 and 3 days. The first alert at 21 days leaves three weeks to renew.
 
 ### Generating certificates (labs and private CAs)
 
-The commands below build a private CA and a server certificate with a SAN. They are meant for labs. For real use, prefer step-ca or Vault, as the code comment notes.
+The commands below build a private CA and a server certificate with a SAN. They are meant for labs. For real use, prefer step-ca or Vault, as the code comment notes. Building one by hand once is the best way to understand what the tools do for you.
 
 ```bash
 # Private CA + server cert with SAN (OpenSSL; for real use prefer step-ca/Vault)
@@ -276,13 +276,13 @@ sudo cp ca.pem /usr/local/share/ca-certificates/lab-root.crt && sudo update-ca-c
 # RHEL family: /etc/pki/ca-trust/source/anchors/ + update-ca-trust
 ```
 
-Generate private keys on the server, or in an HSM, TPM or KMS, and never email them. Give them mode 0600. A CSR, or certificate signing request, carries only the public key and the requested names. A client certificate for mTLS is built the same way, but with `extendedKeyUsage=clientAuth`. Keep each private key on the machine that uses it.
+Generate private keys on the server, or in an HSM, TPM or KMS, and never email them. Give them mode 0600. A CSR, or certificate signing request, carries only the public key and the requested names. In other words, it is the application form you send to the CA, and it never contains the secret. A client certificate for mTLS is built the same way, but with `extendedKeyUsage=clientAuth`. Keep each private key on the machine that uses it.
 
 ## 5. TLS and PKI in Kubernetes and AI platforms
 
-On the cluster itself, kubeadm creates a cluster CA, the API server serving certificate, kubelet client and serving certificates, and an etcd CA with peer certificates. They live in `/etc/kubernetes/pki`. Most of them expire after 1 year and must be rotated. Check them with `kubeadm certs check-expiration`, and renew them with `kubeadm certs renew all`. Kubelet client certificates rotate automatically if `rotateCertificates` is enabled and CSRs are approved. Expiry of these certificates is a classic cluster outage, so monitor it.
+On the cluster itself, kubeadm creates a cluster CA, the API server serving certificate, kubelet client and serving certificates, and an etcd CA with peer certificates. They live in `/etc/kubernetes/pki`. Most of them expire after 1 year and must be rotated. Check them with `kubeadm certs check-expiration`, and renew them with `kubeadm certs renew all`. Kubelet client certificates rotate automatically if `rotateCertificates` is enabled and CSRs are approved. Expiry of these certificates is a classic cluster outage, so monitor it. A cluster that ran happily for a year can stop answering on the anniversary of its installation.
 
-cert-manager is a controller that issues and renews certificates from `Issuer` or `ClusterIssuer` resources. It supports ACME with Let's Encrypt through HTTP-01 or DNS-01, Vault, a private CA and self-signed certificates. It stores the results in `Secret` objects, which Ingress, Gateway or pods consume. `Certificate` objects declare the names and renewal windows. DNS-01 is needed for wildcards and for clusters that the Internet cannot reach.
+cert-manager is a controller that issues and renews certificates from `Issuer` or `ClusterIssuer` resources. It takes the repetitive job of asking for and renewing certificates off people. It supports ACME with Let's Encrypt through HTTP-01 or DNS-01, Vault, a private CA and self-signed certificates. It stores the results in `Secret` objects, which Ingress, Gateway or pods consume. `Certificate` objects declare the names and renewal windows. DNS-01 is needed for wildcards and for clusters that the Internet cannot reach.
 
 Ingress and Gateway controllers, such as nginx, Envoy and cloud load balancers, can handle TLS in three ways. Terminating at the edge is simple, but the traffic is plaintext inside. You can re-encrypt to the backends. Or you can pass TLS through at layer 4, so the backend terminates it. Passthrough is needed for end-to-end mTLS.
 
@@ -292,7 +292,7 @@ For inference endpoints, terminate TLS at the gateway. Keep HTTP/2 or gRPC conne
 
 Private CAs must be installed on every node's container runtime and in CI images. For containerd, that means `/etc/containerd/certs.d/<registry>/hosts.toml`. For Docker, it means `/etc/docker/certs.d/<registry>/ca.crt`. A missing CA shows up as `x509: certificate signed by unknown authority` in `ctr`, `crictl` and kubelet events.
 
-Certificate validity depends on the clock. Install and monitor NTP or chrony (chapter 1.x). Skew produces "not yet valid" or "expired" errors across the cluster. It also breaks Kerberos and token expiry.
+Certificate validity depends on the clock, because every certificate carries a start and an end date. Install and monitor NTP or chrony (chapter 1.16). Skew produces "not yet valid" or "expired" errors across the cluster. It also breaks Kerberos and token expiry. A node whose clock is a day ahead may call a perfectly good certificate expired.
 
 BMC, Redfish and switch certificates often ship self-signed. Replace them with CA-issued certificates where possible, or pin their fingerprints in automation. Avoid blanket `verify=False`.
 
@@ -302,7 +302,7 @@ Check the expiry dates of the cluster certificates now, because cluster certific
 
 ## 6. Troubleshooting TLS and HTTP
 
-A TLS or HTTP failure usually comes down to one short error message. The table below maps common messages to their likely causes and to the check that confirms each one. Use it as a lookup when you see one of these messages.
+A TLS or HTTP failure usually comes down to one short error message. The table below maps common messages to their likely causes and to the check that confirms each one. Use it as a lookup when you see one of these messages, and read the message itself before you change anything.
 
 | Symptom (typical message) | Likely cause | Check |
 |---|---|---|
@@ -324,18 +324,18 @@ Work through the layers in order, rather than guessing at the application you ru
 
 ## 7. Hands-on lab: build a CA, serve HTTPS with mTLS, and break it on purpose
 
-Start with the self-checking Python lab in `code/part02/http_tls_pki_lab.py`, and run it on your own machine first. It checks RFC 6125 SAN wildcard matching, using `*.lab.internal`. It checks X.509 chain, validity and SAN validation, including `missing_intermediate`, `certificate_has_expired` and `unknown_authority`. It also checks connection setup RTTs: `TCP+TLS 1.2` takes `3` RTTs, `TCP+TLS 1.3` takes `2` RTTs, and `QUIC` takes `1` or `0` RTTs. Finally, it classifies HTTP status codes, including `401`, `403`, `413`, `429`, `499`, `502`, `503` and `504`.
+A word on status first. The Python lab below has been run, while the interactive VM commands after it have not been run for this chapter, so confirm each result yourself. Start with the self-checking Python lab in `code/part02/http_tls_pki_lab.py`, and run it on your own machine first. It checks RFC 6125 SAN wildcard matching, using `*.lab.internal`. It checks X.509 chain, validity and SAN validation, including `missing_intermediate`, `certificate_has_expired` and `unknown_authority`. It also checks connection setup RTTs: `TCP+TLS 1.2` takes `3` RTTs, `TCP+TLS 1.3` takes `2` RTTs, and `QUIC` takes `1` or `0` RTTs. Finally, it classifies HTTP status codes, including `401`, `403`, `413`, `429`, `499`, `502`, `503` and `504`.
 
 ```bash
 python3 code/part02/http_tls_pki_lab.py
 ```
 
-Next, use a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy`. Every interactive VM command below is marked `untested here`. Work through these steps in order.
+Next, use a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy`. Work through these steps in order.
 
 1. Observe a live site. Run `curl -v https://example.com`, then the timing format string, then `openssl s_client -showcerts`. Identify the chain, SAN, validity, ALPN and negotiated TLS version. Try `-tls1_2` and `-tls1_3`.
 2. Build a private CA. Generate the CA and server certificate as shown above, for `api.lab.internal`. Add the name to `/etc/hosts`. Then serve it with nginx, setting `ssl_certificate`, `ssl_certificate_key`, `ssl_protocols TLSv1.2 TLSv1.3` and `http2 on`, or serve it with `openssl s_server -www`.
 3. Establish trust. Run `curl https://api.lab.internal`, which fails with an unknown authority error. Fix that with `--cacert`, then install the CA system-wide. Confirm the result with `openssl verify`.
-4. Break it on purpose. Remove the SAN entry to cause a name mismatch. Issue a certificate valid for 1 day, then advance the clock in a VM, or use `faketime`, to expire it. Omit the intermediate by creating a two-level CA, and compare curl with browser behaviour. Finally, you connect by IP without SNI.
+4. Break it on purpose. Remove the SAN entry to cause a name mismatch. Issue a certificate valid for 1 day, then advance the clock in a VM, or use `faketime`, to expire it. Omit the intermediate by creating a two-level CA, and compare curl with browser behaviour. Finally, connect by IP without SNI.
 5. Test mTLS. Require client certificates in nginx with `ssl_client_certificate` and `ssl_verify_client on`. Issue a client certificate, then test with and without it. Inspect the handshake in Wireshark, using `SSLKEYLOGFILE`.
 6. Check resumption and versions. Run `openssl s_client -reconnect`, and check whether each connection shows `Reused` or `New`. Capture a full handshake and a resumed one, then compare their sizes.
 7. Measure timing. Use curl's timing variables with and without keep-alive. `curl URL URL` reuses a connection, which shows the handshake cost.
@@ -345,7 +345,7 @@ Next, use a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy`. 
 
 ## 8. Common mistakes
 
-The first mistake is turning off verification. Teams add `-k`, `verify=False` or `InsecureSkipVerify` to make an error go away, then leave it in production. Another is treating HTTPS as proof of a trustworthy site, or treating encryption as authentication.
+The first mistake is turning off verification. It is tempting, because it makes an error go away at once. Teams add `-k`, `verify=False` or `InsecureSkipVerify` to make an error go away, then leave it in production. Another is treating HTTPS as proof of a trustworthy site, or treating encryption as authentication.
 
 Expiry is the next group. If you have no expiry monitoring or automated renewal, cluster certificates are forgotten for a year. Servers that omit the intermediate certificate break many clients, and certificates without a SAN fail name checks. Wildcard certificates copied everywhere have a large blast radius.
 
@@ -357,7 +357,7 @@ Use this list as a checklist for your own certificate setup.
 
 ## 9. Interview angles
 
-These questions come up when the topic is interviewed. Each one points back to a part of this chapter.
+These questions come up when the topic is interviewed. Each one points back to a part of this chapter. Answer them as short stories, naming each party and what it knows at each step.
 
 - What happens in a TLS handshake, and how is TLS 1.3 different from 1.2?
 - How does a client decide to trust a server certificate? Think about the chain, the trust store, SAN, validity and revocation.
@@ -372,10 +372,10 @@ These questions come up when the topic is interviewed. Each one points back to a
 ## Exercises
 
 1. If you run an LLM inference gateway, start with status codes and protocol versions. Using `classify_http_status_code()` in `code/part02/http_tls_pki.py`, tell apart `401` from `403`, `413` from `429` from `499`, and `502` from `503` from `504`. Then use `compute_connection_setup_rtts()` to compare the cold-start RTTs before the first HTTP request byte. Cover HTTP/1.1 or HTTP/2 over `TCP + TLS 1.2` (`3` RTTs), over `TCP + TLS 1.3` (`2` RTTs), and HTTP/3 over `QUIC` (`1` RTT, or `0-RTT` resumption). Finally, explain why connection keep-alive pools must align with load-balancer idle timeouts (`60–350 s`).
-2. Work through cryptographic building blocks, forward secrecy, web of trust versus hierarchical PKI, and data-exhaust privacy, using chapter 10 of Computer Networking Problems and Solutions as the reference. First, explain why TLS combines asymmetric key exchange (`X25519` or `P-256` ECDHE), public-key signatures (`ECDSA`, `Ed25519` or `RSA`) and symmetric AEAD ciphers (`AES-GCM` or `ChaCha20-Poly1305`). Then explain how forward secrecy protects recorded sessions if a server's private key is stolen later. Next, contrast a decentralized Web of Trust with a hierarchical CA PKI. Finally, explain what metadata, or data exhaust, TLS still leaks, and how ECH, MAC randomization and onion routing mitigate it.
+2. Work through cryptographic building blocks, forward secrecy, web of trust versus hierarchical PKI, and data-exhaust privacy. First, explain why TLS combines asymmetric key exchange (`X25519` or `P-256` ECDHE), public-key signatures (`ECDSA`, `Ed25519` or `RSA`) and symmetric AEAD ciphers (`AES-GCM` or `ChaCha20-Poly1305`). Then explain how forward secrecy protects recorded sessions if a server's private key is stolen later. Next, contrast a decentralized Web of Trust with a hierarchical CA PKI. Finally, explain what metadata, or data exhaust, TLS still leaks, and how ECH, MAC randomization and onion routing mitigate it.
 3. Trace the messages of a TLS 1.3 handshake, from `ClientHello` through `ServerHello`, then the encrypted `EncryptedExtensions`, `Certificate`, `CertificateVerify` and `Finished`. Along the way, note where SNI and ALPN fit. Then state five improvements that TLS 1.3 makes over TLS 1.2. Finally, explain why `0-RTT` early data must only be used for idempotent requests.
 4. Using `match_san_dns_pattern()` and `validate_x509_leaf_certificate()`, decide whether a certificate with `SAN = DNS:*.lab.internal` matches `api.lab.internal`, `a.b.lab.internal` or `lab.internal`. Then explain why omitting the Intermediate CA from the server's TLS configuration makes `curl`, Python and Go fail with `unable to get local issuer certificate`, while Chrome and Firefox succeed.
-5. Write the exact commands for three tasks, and you can run each one from a shell. First, test the backend `10.0.0.5:443` directly with `curl`, sending SNI and `Host: api.example.com`, without editing `/etc/hosts` and without `-k`. Second, use `openssl s_client` to inspect the full certificate chain that `api.example.com:443` presents. Third, write a monitoring check that fails if `cert.pem` expires within `30` days (`2,592,000` seconds).
+5. Write the exact commands for three tasks, so that you can run each one from a shell. First, test the backend `10.0.0.5:443` directly with `curl`, sending SNI and `Host: api.example.com`, without editing `/etc/hosts` and without `-k`. Second, use `openssl s_client` to inspect the full certificate chain that `api.example.com:443` presents. Third, write a monitoring check that fails if `cert.pem` expires within `30` days (`2,592,000` seconds).
 6. Describe how you would manage and monitor PKI on Kubernetes and in AI platforms, covering four areas. First, the control-plane certificates in `/etc/kubernetes/pki`, checked with `kubeadm certs check-expiration`. Second, automated Ingress and internal certificates with cert-manager, comparing `HTTP-01` and `DNS-01` ACME challenges. Third, trust for a private container registry in containerd, through `/etc/containerd/certs.d/<registry>/hosts.toml`. Fourth, service-to-service mTLS, covering SPIFFE identities and preventing clock skew with `chrony`.
 
 ## Checkpoint questions (20)
@@ -517,3 +517,4 @@ You turn off response buffering, so generated tokens reach the client at once in
 - **Run here:** `python3 code/part02/http_tls_pki_lab.py` (13 passed, 0 failed).
 - **Explicitly labelled inferences:** The `openssl req`/`x509` EC P-256 SAN certificate generation workflow, Kubernetes PKI (`/etc/kubernetes/pki`, `cert-manager`, `containerd` `certs.d`), and LLM inference gateway troubleshooting table (`502`/`503`/`504`, `413`, `499`, streaming buffering) synthesize RFCs 5246 (TLS 1.2), 5280 (X.509), 8446 (TLS 1.3), 8555 (ACME), and 9113/9114/9000 (HTTP/2, HTTP/3, QUIC) and the OpenSSL, `cert-manager`, and Kubernetes documentation (cross-referenced with Chapters 1.16, 1.21, 2.6, 2.7, 2.8, 2.20, and 2.21, plus original study items 22, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** All interactive VM commands (`curl`, `openssl s_client`, `openssl req`, `openssl x509`, `openssl verify`, `update-ca-certificates`, `kubeadm certs`) are marked (untested here) and must be executed on a disposable Linux VM.
+

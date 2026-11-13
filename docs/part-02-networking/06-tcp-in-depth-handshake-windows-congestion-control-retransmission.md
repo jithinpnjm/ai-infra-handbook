@@ -22,21 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a cross-region checkpoint copy that runs far slower than the link should allow. Or picture an inference API that is fast most of the time, then stalls for no obvious reason. Both problems are TCP problems, and you will meet them often.
+Picture a cross-region checkpoint copy that runs far slower than the link should allow. The link is fast, the servers are idle, and the transfer still crawls. Or picture an inference API that is fast most of the time, then stalls for no obvious reason, and nothing in the logs explains it. Both problems are TCP problems, and you will meet them often.
 
 Almost everything outside the GPU fabric rides on TCP. SSH sessions, HTTPS, the Kubernetes API and container image pulls all use it. So do object-store downloads of datasets and checkpoints, the control paths of NFS and many parallel filesystems, inference APIs over gRPC and HTTP, and metrics scraping. NCCL depends on TCP too, for its bootstrap and as a fallback socket transport.
 
-Each kind of ticket points to a different part of TCP. Throughput on a long, fat path, such as a cross-region checkpoint copy, is governed by window sizes and congestion control. Tail latency in an inference service comes down to retransmissions, Nagle and delayed-ACK interactions, and connection reuse. A "connection refused", "reset" or "timeout" ticket is answered by handshake and state-machine details.
+Each kind of ticket points to a different part of TCP, and learning which part is most of the skill. Throughput on a long, fat path, such as a cross-region checkpoint copy, is governed by window sizes and congestion control. Tail latency in an inference service comes down to retransmissions, Nagle and delayed-ACK interactions, and connection reuse. A "connection refused", "reset" or "timeout" ticket is answered by handshake and state-machine details.
 
-RDMA fabrics, InfiniBand and RoCE, take a different route. They replace TCP's machinery with hardware-assisted transport. What they must build again is reliability, flow control and congestion control. You can only judge that choice once you understand TCP properly.
+RDMA fabrics, InfiniBand and RoCE, take a different route. They replace TCP's machinery with hardware-assisted transport. What they must build again is reliability, flow control and congestion control, because those problems do not go away just because the protocol changes. You can only judge that choice once you understand TCP properly.
 
-This chapter starts with the problems any transport protocol must solve. You will read the header and follow the state machine through the handshake and teardown. You will work through sliding windows, retransmission and congestion control, including Reno, CUBIC and BBR. Next come buffers, the bandwidth-delay product, offloads, socket options and Linux tuning. Along the way you will meet the tools that show what TCP is doing: `ss`, `tcpdump` and `nstat`. The chapter closes with QUIC and an overview of the transport models, DoD, OSI and RINA.
+The way in is to ask what an application actually wants from the network, which is simply a pipe between two programs that never loses or reorders anything, and then to see what it takes to build that pipe on top of a network that promises nothing. The header and the state machine show how a connection is born and how it ends. Windows explain how a sender avoids drowning the receiver, retransmission explains how it recovers from loss, and congestion control, in the forms called Reno, CUBIC and BBR, explains how it avoids drowning the network. Buffers, the bandwidth-delay product, offloads, socket options and Linux tuning follow naturally from there, along with the tools that show what TCP is doing: `ss`, `tcpdump` and `nstat`. The story ends with QUIC and an overview of the transport models, DoD, OSI and RINA.
 
 ## Prerequisites and outcomes
 
-You should be comfortable with layering and IP first. Chapters 2.2, 2.4 and 2.5 cover that ground.
+You should be comfortable with layering and IP first. Chapters 2.2, 2.4 and 2.5 cover that ground. Terms specific to TCP, such as window and ACK, are explained as they come up.
 
-By the end of this chapter, you should be able to:
+Use this list as a self-check when you reach the end of the chapter. Each line is something you should be able to do.
 
 - Name the problems a transport protocol solves (marshaling, errors, multiplexing, addressing, flow control and congestion control). Then say how TCP and UDP each choose among them.
 - Read a TCP header and trace the three-way handshake, the data transfer and the four-way close in `tcpdump`. For each step, name the state of each side.
@@ -48,7 +48,7 @@ By the end of this chapter, you should be able to:
 
 ## 1. What a transport protocol must solve
 
-Packets cross the network with no promises. They can be dropped, duplicated, reordered, corrupted or delayed. Applications want something much simpler: a pipe between two processes. The transport layer closes that gap, to varying degrees. The table shows which problems it covers and how TCP and UDP each handle them.
+Packets cross the network with no promises. They can be dropped, duplicated, reordered, corrupted or delayed, a bit like parcels sent through a postal system that sometimes loses them and sometimes delivers two copies. Applications want something much simpler: a pipe between two processes. The transport layer closes that gap, to varying degrees. The table shows which problems it covers and how TCP and UDP each handle them.
 
 | Problem | Mechanism | TCP | UDP |
 |---|---|---|---|
@@ -61,43 +61,43 @@ Packets cross the network with no promises. They can be dropped, duplicated, reo
 | **Congestion control** | Sender infers/obtains network capacity | Congestion window, many algorithms | None (application's job, e.g. QUIC, RTP) |
 | **Ordering/reliability** | Sequence numbers | Reliable, in-order byte stream | Neither |
 
-Notice how much UDP leaves to the application, which means you must add it yourself. For error correction, flow control, congestion control and ordering, UDP has no entry at all. QUIC and RTP do that work in their own code.
+Notice how much UDP leaves to the application, which means you must add it yourself. For error correction, flow control, congestion control and ordering, UDP has no entry at all. UDP is like handing a letter to the postman and walking away. QUIC and RTP do that work in their own code.
 
-Marshaling formats come in three families. Fixed-length fields are cheap to parse. They are also wasteful and inflexible, and the base IP and TCP headers use them. Type-length-value, or TLV, is self-describing and extensible. A parser reads it with a length-bounded loop. TCP options, BGP attributes, LLDP and many tunnel headers use TLV. Shared dictionaries let both sides agree on a schema in advance, as protobuf with gRPC, ASN.1 and YANG-modelled data do.
+Marshaling means turning a data structure in memory into bytes that can travel and be rebuilt on the other side. Marshaling formats come in three families. Fixed-length fields are cheap to parse. They are also wasteful and inflexible, and the base IP and TCP headers use them. Type-length-value, or TLV, is self-describing and extensible, like a label that says what a box is, how big it is and then what is inside. A parser reads it with a length-bounded loop. TCP options, BGP attributes, LLDP and many tunnel headers use TLV. Shared dictionaries let both sides agree on a schema in advance, as protobuf with gRPC, ASN.1 and YANG-modelled data do.
 
 Every family trades compactness and speed against flexibility and the ability to evolve. When you read a packet capture, you are reading marshaled data. The dissector is the part of the tool that knows the grammar.
 
-Detection is cheap, and parity, checksums and CRCs all do it. Correction costs more, and it comes in two forms. ARQ asks the sender to send again. That adds latency, and it needs buffers and timers. FEC sends redundancy up front. That adds constant overhead, but no round trip. Links use strong CRCs, such as Ethernet's 32-bit FCS. TCP and UDP use a weak checksum as an end-to-end safety net. It catches bugs in routers, NICs and offload engines, not only noise on the wire.
+Detection is cheap, and parity, checksums and CRCs all do it. Correction costs more, and it comes in two forms. ARQ asks the sender to send again, which is like asking someone to repeat a sentence you did not hear. That adds latency, and it needs buffers and timers. FEC sends redundancy up front, like saying every important sentence twice. That adds constant overhead, but no round trip. Links use strong CRCs, such as Ethernet's 32-bit FCS. TCP and UDP use a weak checksum as an end-to-end safety net. It catches bugs in routers, NICs and offload engines, not only noise on the wire.
 
-Checksums can be offloaded to NICs, and that explains a common surprise. `tcpdump` on the sending host sometimes shows `bad cksum`. The capture happens before the NIC fills in the checksum. So if you see `bad cksum` in a capture, you have not found corruption.
+Checksums can be offloaded to NICs, and that explains a common surprise. `tcpdump` on the sending host sometimes shows `bad cksum`. The capture happens before the NIC fills in the checksum, so you are looking at the packet one step too early. So if you see `bad cksum` in a capture, you have not found corruption.
 
-Ports are 16-bit numbers that let many applications share one host address. A TCP connection is identified by its **4-tuple**: source IP, source port, destination IP and destination port. Ports fall into three ranges. Well-known ports, 0 to 1023, name services. SSH uses 22, DNS 53, HTTP 80, HTTPS 443 and the Kubernetes API 6443. Registered ports, 1024 to 49151, are assigned by IANA. Ephemeral ports are chosen by clients. On Linux they default to 32768 to 60999, set by `net.ipv4.ip_local_port_range`.
+Ports are 16-bit numbers that let many applications share one host address. Think of the IP address as the building and the port as the apartment number. A TCP connection is identified by its **4-tuple**: source IP, source port, destination IP and destination port. Ports fall into three ranges. Well-known ports, 0 to 1023, name services. SSH uses 22, DNS 53, HTTP 80, HTTPS 443 and the Kubernetes API 6443. Registered ports, 1024 to 49151, are assigned by IANA. Ephemeral ports are chosen by clients. On Linux they default to 32768 to 60999, set by `net.ipv4.ip_local_port_range`.
 
-A server can accept a very large number of connections on one port, because each connection has its own 4-tuple. Exhaustion happens on the client side instead. When one source address connects to one destination address and port, only the source port varies. That leaves ~28k ports, and `TIME_WAIT` drains them too, as section 8 explains. If you see ports running out, look at the client side first.
+A server can accept a very large number of connections on one port, because each connection has its own 4-tuple. Exhaustion happens on the client side instead. When one source address connects to one destination address and port, only the source port varies. That leaves ~28k ports, and `TIME_WAIT` drains them too, as section 8 explains. If you see ports running out, look at the client side first, because that is where the shortage is.
 
-Delivery comes in four models. Unicast is one-to-one. Multicast is one-to-group, managed with IGMP and MLD. Some discovery protocols use it, as do market data feeds and InfiniBand's collective offload. Broadcast is IPv4 only and stays on the local network. Anycast announces the same address from several places, and routing delivers each packet to the nearest one. DNS roots, CDNs and load-balanced VIPs use it.
+Delivery comes in four models, and it helps to hold them side by side. Unicast is one-to-one. Multicast is one-to-group, managed with IGMP and MLD. Some discovery protocols use it, as do market data feeds and InfiniBand's collective offload. Broadcast is IPv4 only and stays on the local network. Anycast announces the same address from several places, and routing delivers each packet to the nearest one. DNS roots, CDNs and load-balanced VIPs use it.
 
 If you run a service on anycast, know the one catch with TCP. If a route changes mid-connection, packets can reach a different instance. Anycast TCP therefore needs services that hold little state, or consistent hashing.
 
-Flow control protects the receiver. Congestion control protects the network. The two use different signals, and people often confuse them. TCP implements both, and the sender never has more in flight than the smaller of the two windows allows. When a flow is slow, first ask whether the receiver or the network is the limit. The fix differs for each.
+Flow control protects the receiver. Congestion control protects the network. The two use different signals, and people often confuse them. A driver who slows down because the passenger feels sick is doing flow control. A driver who slows down because the road ahead is jammed is doing congestion control. TCP implements both, and the sender never has more in flight than the smaller of the two windows allows. When a flow is slow, first ask whether the receiver or the network is the limit. The fix differs for each.
 
 ## 2. Transport models: DoD, OSI, RINA, and connection-oriented versus connectionless
 
-Two models describe the layers of a network stack. The DoD model, also called the TCP/IP model, has four layers: link, internet, transport and application. It grew out of running real protocols. The OSI model has seven layers, from physical to application, and it was designed by committee. Engineers still use OSI numbers as shorthand. L2 means a switch, L3 a router, L4 a load balancer and L7 a proxy. They use that vocabulary while implementing the DoD stack.
+When engineers talk about layers, they usually have one of two models in mind. Two models describe the layers of a network stack. The DoD model, also called the TCP/IP model, has four layers: link, internet, transport and application. It grew out of running real protocols. The OSI model has seven layers, from physical to application, and it was designed by committee. Engineers still use OSI numbers as shorthand. L2 means a switch, L3 a router, L4 a load balancer and L7 a proxy. They use that vocabulary while implementing the DoD stack.
 
 Session and presentation concerns, such as TLS, serialization and RPC framing, live inside applications and libraries in practice.
 
-The Recursive Internet Architecture, or RINA, takes a different view. It argues that the layer structure should be one repeating layer for inter-process communication, which appears at different scopes. The same mechanisms come back at each scope: naming, error and flow control, and routing. They are not redesigned for every layer. RINA is a research model. Still, it explains why features like congestion control, multiplexing and addressing keep reappearing. You see them in VLAN and VXLAN tunnels, in MPLS and in QUIC over UDP.
+The Recursive Internet Architecture, or RINA, takes a different view. It argues that the layer structure should be one repeating layer for inter-process communication, which appears at different scopes. In a company, the same ideas of addressing, rules and records appear in a team, a department and the whole firm. The same mechanisms come back at each scope: naming, error and flow control, and routing. They are not redesigned for every layer. RINA is a research model. Still, it explains why features like congestion control, multiplexing and addressing keep reappearing. You see them in VLAN and VXLAN tunnels, in MPLS and in QUIC over UDP.
 
 The practical lesson is that layers are conventions. Real stacks tunnel one layer inside another, such as IP in UDP in IP in Ethernet. So asking which layer a feature belongs to is often a design choice, not a fact.
 
-A **connection-oriented** transport, TCP, sets up shared state at both ends before any data flows. That state covers sequence numbers, windows and timers. It buys reliability and ordering. You pay for it with setup latency, memory for each connection, and state that NATs and firewalls must track. A connectionless transport, UDP, keeps no state. Each datagram stands alone. That suits DNS queries, telemetry, real-time media and protocols that build their own reliability. QUIC is one such protocol. RoCE v2 uses UDP as its carrier, with reliability handled in the NIC.
+A **connection-oriented** transport, TCP, sets up shared state at both ends before any data flows, like a phone call that begins with "hello, can you hear me?" That state covers sequence numbers, windows and timers. It buys reliability and ordering. You pay for it with setup latency, memory for each connection, and state that NATs and firewalls must track. A connectionless transport, UDP, keeps no state, like dropping postcards in a postbox. Each datagram stands alone. That suits DNS queries, telemetry, real-time media and protocols that build their own reliability. QUIC is one such protocol. RoCE v2 uses UDP as its carrier, with reliability handled in the NIC.
 
 Layers can mix. IP is connectionless, TCP over it is connection-oriented, and HTTP over TCP is stateless again by design. When you debug a stack, read layer names as a way to talk about it, not as a fixed map of it.
 
 ## 3. The TCP header and options
 
-Every TCP segment carries this header. The options at the end decide how the connection behaves, so read those fields closely when you debug a connection.
+Every TCP segment carries this header, much like every parcel carries a label. The options at the end decide how the connection behaves, so read those fields closely when you debug a connection.
 
 ```mermaid
 flowchart LR
@@ -112,19 +112,19 @@ flowchart LR
   end
 ```
 
-The **sequence number** is the byte offset of the first payload byte in this direction's stream. SYN and FIN each use up one sequence number. The **acknowledgement number** is the next byte the receiver expects. It works as a cumulative ACK, which means "I have everything before this byte."
+The **sequence number** is the byte offset of the first payload byte in this direction's stream. SYN and FIN each use up one sequence number. The **acknowledgement number** is the next byte the receiver expects. It works as a cumulative ACK, which means "I have everything before this byte." If you have received everything up to byte 15 and say "I expect 16 next", the sender knows everything up to byte 15 arrived.
 
 The flags tell the other side what kind of segment this is. `SYN` opens a connection. `ACK` means the acknowledgement field is valid, and every segment except the first SYN sets it. `FIN` says the sender has finished. `RST` aborts the connection. `PSH` asks the receiver to pass the data to the application now. `URG` marks an urgent pointer, which is obsolete. `ECE` and `CWR` carry ECN signals.
 
-The window field gives the receive window in bytes. The window-scale option multiplies that value, as a later section explains. Options are type-length-value fields that both ends agree on during the handshake. The most important is MSS, the maximum segment size. It equals the MTU minus 40 for IPv4, or minus 60 for IPv6. On a 1500 MTU link the MSS is 1460. On a 9000 MTU link it is 8960.
+The window field gives the receive window in bytes, which is how much more data the receiver is willing to take. The window-scale option multiplies that value, as a later section explains. Options are type-length-value fields that both ends agree on during the handshake. The most important is MSS, the maximum segment size. It equals the MTU minus 40 for IPv4, or minus 60 for IPv6. On a 1500 MTU link the MSS is 1460. On a 9000 MTU link it is 8960.
 
 Window scale shifts the window by 0 to 14 bits. That allows windows up to about 1 GiB. SACK-permitted and SACK blocks support selective acknowledgements. Timestamps measure round-trip time, and they give PAWS protection against wrapped sequence numbers. TCP Fast Open is the last option. Options can only be negotiated on the SYN. A middlebox that strips them cripples every connection through it. That is a classic cause of "slow only through the firewall" tickets.
 
-TCP is a byte stream, so it has no message boundaries. One `send(100)` can arrive as two `recv`s of 50 bytes. Two sends can also be merged into one. The application must frame its own messages, for example with a length prefix or a delimiter. That is the marshaling problem again. If a middlebox sits on the path, check that you still see these options intact. When you capture a SYN, the options are the first thing to read.
+TCP is a byte stream, so it has no message boundaries. It is like water through a pipe, with no marks to show where one bucket ended. One `send(100)` can arrive as two `recv`s of 50 bytes. Two sends can also be merged into one. The application must frame its own messages, for example with a length prefix or a delimiter. That is the marshaling problem again. If a middlebox sits on the path, check that you still see these options intact. When you capture a SYN, the options are the first thing to read.
 
 ## 4. The handshake, data transfer and teardown
 
-Every TCP connection starts with a three-packet exchange. If that exchange fails, the client sees a specific error. The error tells you where to look.
+Every TCP connection starts with a three-packet exchange. If that exchange fails, the client sees a specific error. The error tells you where to look, so learn the exchange before you learn the errors.
 
 ```mermaid
 sequenceDiagram
@@ -140,13 +140,13 @@ sequenceDiagram
   C->>S: ACK  (client → TIME_WAIT for 2×MSL = 60 s on Linux, server → CLOSED)
 ```
 
-Why three packets? Each side has to prove it can both send and receive. Each side also has to agree on its starting sequence number. Two messages cannot do both things in both directions, so TCP needs three. The initial sequence numbers, or ISNs, are unpredictable. RFC 6528 describes a hash of the 4-tuple plus a secret. That stops off-path attackers from injecting data or forging connections. It also stops stale segments from an older connection on the same 4-tuple from being taken as new data.
+Why three packets? Each side has to prove it can both send and receive. Each side also has to agree on its starting sequence number. Think of two people on a bad phone line. One says "can you hear me?", the other says "yes, can you hear me?", and the first says "yes". Only then do both know the line works in both directions. Two messages cannot do both things in both directions, so TCP needs three. The initial sequence numbers, or ISNs, are unpredictable. RFC 6528 describes a hash of the 4-tuple plus a secret. That stops off-path attackers from injecting data or forging connections. It also stops stale segments from an older connection on the same 4-tuple from being taken as new data.
 
-On Linux, `listen(fd, backlog)` creates two queues. The SYN queue holds half-open connections, and `tcp_max_syn_backlog` sets its size. The accept queue holds completed handshakes that are waiting for `accept()`. Its size is `min(backlog, net.core.somaxconn)`. When the accept queue is full, the server drops the final ACK or ignores the SYN. The client believes it is connected, and then it retransmits. You see the result as latency spikes of 1, 3 and 7 seconds. The `ListenOverflows` and `ListenDrops` counters in `nstat` climb at the same time.
+On Linux, `listen(fd, backlog)` creates two queues, like the entrance and the waiting room of a clinic. The SYN queue holds half-open connections, and `tcp_max_syn_backlog` sets its size. The accept queue holds completed handshakes that are waiting for `accept()`. Its size is `min(backlog, net.core.somaxconn)`. When the accept queue is full, the server drops the final ACK or ignores the SYN. The client believes it is connected, and then it retransmits. You see the result as latency spikes of 1, 3 and 7 seconds. The `ListenOverflows` and `ListenDrops` counters in `nstat` climb at the same time.
 
-A SYN flood, or just a sudden burst, can fill the SYN queue. SYN cookies handle that case. Set `net.ipv4.tcp_syncookies=1`. The kernel then encodes the connection state in the sequence number of the SYN-ACK, so no queue entry is needed. The cost is that some options are lost. To tune the accept side, raise `somaxconn` to 4096 or more. Set the application's backlog too, such as nginx's `listen ... backlog=`. Go's `net.Listen` uses `somaxconn`. And fix any slow `accept()` loop, because that loop is what fills the queue.
+A SYN flood, or just a sudden burst, can fill the SYN queue. SYN cookies handle that case. Set `net.ipv4.tcp_syncookies=1`. The kernel then encodes the connection state in the sequence number of the SYN-ACK, so no queue entry is needed. It is like a clinic that stops keeping a waiting-room list and hands each visitor a ticket with the details written on it. The cost is that some options are lost. To tune the accept side, raise `somaxconn` to 4096 or more. Set the application's backlog too, such as nginx's `listen ... backlog=`. Go's `net.Listen` uses `somaxconn`. And fix any slow `accept()` loop, because that loop is what fills the queue.
 
-The error the client sees tells you which of these situations you are in.
+The error the client sees tells you which of these situations you are in, which is why the wording of the error message is worth reading carefully.
 
 | What the client sees | Meaning |
 |---|---|
@@ -155,15 +155,15 @@ The error the client sees tells you which of these situations you are in.
 | `No route to host` / `Network is unreachable` | ICMP unreachable from a router, or no local route (chapter 2.5) |
 | `Connection reset by peer` | RST during an established connection: peer crashed, app closed with unread data, firewall/NAT state expired, load balancer idle timeout |
 
-A refusal means the host answered, so the listener is the place to look. A timeout means the SYNs never got a reply, so look at the route and the firewall.
+A refusal means the host answered, so the listener is the place to look. Somebody was home and said no. A timeout means the SYNs never got a reply, so look at the route and the firewall. Nobody answered the door at all.
 
-Closing happens one direction at a time. This is a half-close: `shutdown(SHUT_WR)` sends a FIN, but the side can still read. The side that closes first is the active closer. It waits in `TIME_WAIT` for 2×MSL, which is 60 seconds on Linux, and that value is hard-coded. The wait absorbs delayed duplicates. It also lets the closer resend its last ACK if the peer's FIN arrives again. `TIME_WAIT` is normal in moderation. It becomes a problem only for a client that makes many short connections to one destination, which can exhaust its ports, or for clients behind NAT.
+Closing also needs care, and it happens one direction at a time. This is a half-close: `shutdown(SHUT_WR)` sends a FIN, but the side can still read. The side that closes first is the active closer. It waits in `TIME_WAIT` for 2×MSL, which is 60 seconds on Linux, and that value is hard-coded. The wait absorbs delayed duplicates. It also lets the closer resend its last ACK if the peer's FIN arrives again. `TIME_WAIT` is normal in moderation. It becomes a problem only for a client that makes many short connections to one destination, which can exhaust its ports, or for clients behind NAT.
 
-`CLOSE_WAIT` piling up on a server is a bug in your application. The peer has closed, but your code never called `close()`, so the socket leaks. A `RST` ends the connection at once and throws away any unsent data.
+`CLOSE_WAIT` piling up on a server is a bug in your application. The peer has closed, but your code never called `close()`, so the socket leaks. It is like leaving a phone off the hook after the other person has hung up. A `RST` ends the connection at once and throws away any unsent data.
 
 ### TCP states in the field
 
-Use `ss -tan state <state>` to count sockets in each state. The states are `LISTEN`, `SYN-SENT`, `SYN-RECV`, `ESTAB`, `FIN-WAIT-1/2`, `CLOSE-WAIT`, `LAST-ACK`, `TIME-WAIT` and `CLOSING`. Many sockets in `SYN-SENT` mean you cannot reach the remote service. Many in `SYN-RECV` mean a SYN flood or a slow handshake. Many in `CLOSE-WAIT` mean a leak in your application. Many in `FIN-WAIT-2` mean the remote side is not closing its end. Many in `TIME-WAIT` are normal churn from short connections. If `CLOSE_WAIT` keeps climbing, look at the application code before you touch any kernel setting.
+Use `ss -tan state <state>` to count sockets in each state, and treat the counts as symptoms. The states are `LISTEN`, `SYN-SENT`, `SYN-RECV`, `ESTAB`, `FIN-WAIT-1/2`, `CLOSE-WAIT`, `LAST-ACK`, `TIME-WAIT` and `CLOSING`. Many sockets in `SYN-SENT` mean you cannot reach the remote service. Many in `SYN-RECV` mean a SYN flood or a slow handshake. Many in `CLOSE-WAIT` mean a leak in your application. Many in `FIN-WAIT-2` mean the remote side is not closing its end. Many in `TIME-WAIT` are normal churn from short connections. If `CLOSE_WAIT` keeps climbing, look at the application code before you touch any kernel setting.
 
 ### Ports, connections and netstat
 
@@ -194,45 +194,45 @@ On Linux, only the superuser can listen on ports 1 through 1023. These are the s
 
 ### What TCP does for you
 
-TCP asks little of an application. The program only opens, reads from, writes to and closes a connection. To the program, the connection looks like a file with incoming and outgoing streams. Behind the scenes, TCP splits the outgoing stream into packets. It also reassembles incoming packets in order, even when they arrive out of order.
+TCP asks little of an application, and that is the whole point of it. The program only opens, reads from, writes to and closes a connection. To the program, the connection looks like a file with incoming and outgoing streams. Behind the scenes, TCP splits the outgoing stream into packets. It also reassembles incoming packets in order, even when they arrive out of order.
 
 Errors are another job for TCP. Packets can be lost or mangled on the internet, and TCP must detect and fix those cases. You rarely need the details. The Linux TCP code lives mostly in the kernel, and transport-layer tools work by changing kernel data structures. The iptables packet filter is one example.
 
 ## 5. Reliability: ACKs, retransmission and the RTO
 
-TCP counts bytes, not packets. Receivers send cumulative ACKs that name the next byte they expect. Senders retransmit anything that is not acknowledged in time. Two events trigger a retransmission.
+TCP counts bytes, not packets. Receivers send cumulative ACKs that name the next byte they expect. Senders retransmit anything that is not acknowledged in time. This is the same idea as a courier asking for a signature on each delivery and sending again if none comes back. Two events trigger a retransmission.
 
-The first trigger is the retransmission timeout, or RTO. The sender starts a timer for each segment. If no ACK arrives before the timer runs out, the sender retransmits and doubles the RTO. That is exponential backoff. The sender keeps going up to `tcp_retries2`, whose default is 15, or about 15 minutes. Then it declares the connection dead. The RTO comes from a smoothed RTT and its variance: `RTO = SRTT + 4 × RTTVAR`. Linux sets a minimum of 200 ms, `TCP_RTO_MIN`, and a maximum of 120 s. An RTO is the expensive loss signal. The pipe has gone quiet, so TCP collapses its congestion window to one segment, or to the initial window, and restarts slow start. When you see `TCPTimeouts` rise in `nstat`, you are paying that cost.
+The first trigger is the retransmission timeout, or RTO. The sender starts a timer for each segment. If no ACK arrives before the timer runs out, the sender retransmits and doubles the RTO. That is exponential backoff, which means each wait is twice the one before. The sender keeps going up to `tcp_retries2`, whose default is 15, or about 15 minutes. Then it declares the connection dead. The RTO comes from a smoothed RTT and its variance: `RTO = SRTT + 4 × RTTVAR`. Linux sets a minimum of 200 ms, `TCP_RTO_MIN`, and a maximum of 120 s. An RTO is the expensive loss signal. The pipe has gone quiet, so TCP collapses its congestion window to one segment, or to the initial window, and restarts slow start. When you see `TCPTimeouts` rise in `nstat`, you are paying that cost.
 
-The second trigger is fast retransmit, and it is much cheaper. When the receiver gets segments beyond a gap, it repeats the ACK for the last in-order byte. That repeat is a duplicate ACK. After three duplicate ACKs, the sender retransmits the missing segment straight away, without waiting for the timer. It then enters fast recovery. The sender halves its window and keeps the pipe full, instead of restarting slow start. RACK can also trigger a retransmit on time, when a later segment is acknowledged beyond a time threshold.
+The second trigger is fast retransmit, and it is much cheaper. When the receiver gets segments beyond a gap, it repeats the ACK for the last in-order byte. That repeat is a duplicate ACK. It is the receiver saying, "I am still waiting for the one I told you about." After three duplicate ACKs, the sender retransmits the missing segment straight away, without waiting for the timer. It then enters fast recovery. The sender halves its window and keeps the pipe full, instead of restarting slow start. RACK can also trigger a retransmit on time, when a later segment is acknowledged beyond a time threshold.
 
 Linux uses RACK-TLP. RACK detects loss by time rather than by packet count. TLP, the tail loss probe, resends the last segment after about 2 RTT. That avoids a full RTO when the tail of a burst is lost.
 
-SACK, the selective acknowledgement from RFC 2018, tells the sender exactly what arrived. The receiver reports the ranges it holds above the gap. The sender then retransmits only what is truly missing, not everything after the first hole. Without SACK, one loss in a large window can force a go-back-N style resend, or several RTTs of recovery. Keep SACK on with `net.ipv4.tcp_sack=1`, which is the default. Timestamps, set by `tcp_timestamps=1`, give an accurate RTT sample on every ACK. They cost 12 bytes per segment.
+SACK, the selective acknowledgement from RFC 2018, tells the sender exactly what arrived. Imagine a student who missed one page in a handout. Without SACK, the teacher hands over everything after that page again. With SACK, the student says exactly which page was missing. The receiver reports the ranges it holds above the gap. The sender then retransmits only what is truly missing, not everything after the first hole. Without SACK, one loss in a large window can force a go-back-N style resend, or several RTTs of recovery. Keep SACK on with `net.ipv4.tcp_sack=1`, which is the default. Timestamps, set by `tcp_timestamps=1`, give an accurate RTT sample on every ACK. They cost 12 bytes per segment.
 
-Receivers save packets by acknowledging every second full segment, or by waiting a short time first. On Linux that delay can reach 40 ms, and `quickack` modes override it. Senders using Nagle's algorithm hold small writes until earlier data is acknowledged. Put the two together and you get a trap. Nagle waits for an ACK, and delayed ACK waits to send one. The result can add about 40 ms to small request-response exchanges that write twice and then read. It is a notorious latency bug in RPC-style protocols.
+Receivers save packets by acknowledging every second full segment, or by waiting a short time first. On Linux that delay can reach 40 ms, and `quickack` modes override it. Senders using Nagle's algorithm hold small writes until earlier data is acknowledged. Put the two together and you get a trap. Nagle waits for an ACK, and delayed ACK waits to send one. Each is politely waiting for the other. The result can add about 40 ms to small request-response exchanges that write twice and then read. It is a notorious latency bug in RPC-style protocols.
 
 You have three fixes. Set `TCP_NODELAY` to disable Nagle in latency-sensitive services, such as gRPC, Redis clients and NCCL's sockets, which set it. Coalesce writes with `writev`, `MSG_MORE` or `TCP_CORK`, instead of splitting a message across several small writes. Use `TCP_QUICKACK` where it is needed.
 
-Reordering looks like loss to TCP. Parallel paths, multi-queue NICs and ECMP flaps can deliver packets out of order. That produces duplicate ACKs, which look exactly like loss. Linux adapts its reordering threshold, but heavy reordering still lowers throughput. Check with `nstat | grep -i reorder`, and watch the `TcpExtTCPSACKReorder` counter. When duplicate ACKs appear, look for reordering before you assume loss.
+Reordering looks like loss to TCP. Parallel paths, multi-queue NICs and ECMP flaps can deliver packets out of order. That produces duplicate ACKs, which look exactly like loss, so TCP may retransmit data that was never lost. Linux adapts its reordering threshold, but heavy reordering still lowers throughput. Check with `nstat | grep -i reorder`, and watch the `TcpExtTCPSACKReorder` counter. When duplicate ACKs appear, look for reordering before you assume loss.
 
 ## 6. Flow control: the sliding window
 
 Picture a receiver whose application is busy, with a buffer that is nearly full. The receiver cannot take much more data, so it has to say so. TCP does that with a receive window.
 
-The receiver advertises `rwnd`, which is how many more bytes it can buffer. The sender may have at most the smaller of `rwnd` and `cwnd` in flight. `cwnd` is the congestion window, covered in section 7. "In flight" means sent but not yet acknowledged. As ACKs arrive, the window slides forward. That lets the sender keep many segments on the wire, instead of sending one and waiting for its reply.
+The receiver advertises `rwnd`, which is how many more bytes it can buffer. The sender may have at most the smaller of `rwnd` and `cwnd` in flight. `cwnd` is the congestion window, covered in section 7. "In flight" means sent but not yet acknowledged. As ACKs arrive, the window slides forward, like a frame moving along a long sheet of paper and always covering the bytes that may be sent right now. That lets the sender keep many segments on the wire, instead of sending one and waiting for its reply.
 
-Here is a worked example with small numbers. The receiver advertises a window of 20 bytes. The sender sends bytes 1 to 10. The receiver acknowledges 10 and raises its window to 30. The sender may now send up to byte 40, so it sends bytes 11 to 15. The receiver acknowledges 15 and advertises 40. The exchange continues the same way.
+Here is a worked example with small numbers, so you can see the window slide. The receiver advertises a window of 20 bytes. The sender sends bytes 1 to 10. The receiver acknowledges 10 and raises its window to 30. The sender may now send up to byte 40, so it sends bytes 11 to 15. The receiver acknowledges 15 and advertises 40. The exchange continues the same way.
 
 Acknowledging byte N implicitly acknowledges everything before it. Now suppose an acknowledgement stops short. The sender had sent bytes 16 to 35, but the receiver acknowledges only 30. The sender then knows that bytes from 30 onward are missing, so it resends them.
 
-The receiving application can be the bottleneck too. If it reads slowly, its buffer fills, and the advertised window shrinks to zero. The sender then stops and sends periodic window probes until space opens. In `ss`, you can see this through `rcv_space` and `Recv-Q`. In Wireshark, a zero window means the receiving application is the bottleneck, not the network.
+The receiving application can be the bottleneck too. If it reads slowly, its buffer fills, and the advertised window shrinks to zero. The sender then stops and sends periodic window probes until space opens. It is like a conveyor belt that stops when the table at the end is full. In `ss`, you can see this through `rcv_space` and `Recv-Q`. In Wireshark, a zero window means the receiving application is the bottleneck, not the network.
 
 The window field is 16 bits, so it tops out at 65,535 bytes. That is far too small for modern paths. The window-scale option fixes this by multiplying the field by 2^shift. It is negotiated only in the SYN. Consider a 100 Gb/s link with a 1 ms RTT. Its bandwidth-delay product is 12.5 MB, which needs a scale factor of at least 8. Keep window scaling on with `tcp_window_scaling=1`, and watch for middleboxes that strip the option.
 
 ### Bandwidth-delay product and buffers
 
-The maximum throughput of one connection is about `window / RTT`. To fill a path, the window must be at least the BDP, which is bandwidth times RTT. The table shows the BDP for five kinds of path.
+Here is the idea behind the bandwidth-delay product. Imagine a pipe that you want to keep completely full of water. The amount of water in the pipe at any moment equals the pipe's flow rate times the time the water takes to travel its length. A network path is the same, with bandwidth as the flow rate and RTT as the travel time there and back. The maximum throughput of one connection is about `window / RTT`. To fill a path, the window must be at least the BDP, which is bandwidth times RTT. The table shows the BDP for five kinds of path.
 
 | Path | Bandwidth | RTT | BDP |
 |---|---|---|---|
@@ -242,9 +242,9 @@ The maximum throughput of one connection is about `window / RTT`. To fill a path
 | Cross-continent | 10 Gb/s | 70 ms | 87.5 MB |
 | Intercontinental | 10 Gb/s | 180 ms | 225 MB |
 
-Notice how fast the BDP grows with distance. A window that fills a rack-local path can fall far short on a long one. This arithmetic explains most slow cross-region copies. A 4 MB window over a 70 ms RTT tops out at about 457 Mb/s on a 10 Gb/s link, no matter how fast the NIC is. That is why tools such as `rclone`, `aws s3 cp` and `gsutil` open many parallel connections.
+Notice how fast the BDP grows with distance. A window that fills a rack-local path can fall far short on a long one. This arithmetic explains most slow cross-region copies. A 4 MB window over a 70 ms RTT tops out at about 457 Mb/s on a 10 Gb/s link, no matter how fast the NIC is. The sender simply runs out of permitted data to send and waits for ACKs. That is why tools such as `rclone`, `aws s3 cp` and `gsutil` open many parallel connections.
 
-Socket buffers hold unacknowledged data on the send side, and data the application has not read yet on the receive side. Linux autotunes both buffers for each connection, within limits. You can check the current limits with these commands.
+Socket buffers hold unacknowledged data on the send side, and data the application has not read yet on the receive side. They are the waiting areas at either end of the pipe. Linux autotunes both buffers for each connection, within limits. You can check the current limits with these commands.
 
 ```bash
 sysctl net.ipv4.tcp_rmem net.ipv4.tcp_wmem       # min default max, bytes  (e.g. 4096 131072 6291456)
@@ -262,7 +262,7 @@ The first lines show the current limits. The commented lines show the maxima to 
 
 ## 7. Congestion control
 
-Flow control protects the receiver. But the network between two hosts can be the bottleneck too. Without a throttle, many senders would overload shared links together. That failure is called congestion collapse, and it was observed in 1986. Van Jacobson's answer, from 1988, is that each sender keeps a congestion window, `cwnd`, and probes for spare capacity. When it infers congestion, it backs off. The sender's usable window is the smaller of `cwnd` and `rwnd`. The `rwnd` value arrives in the header. `cwnd` stays private to the sender. If you have ever wondered why a fresh connection feels slow, slow start is the reason.
+Flow control protects the receiver. But the network between two hosts can be the bottleneck too. Without a throttle, many senders would overload shared links together. That failure is called congestion collapse, and it was observed in 1986. Van Jacobson's answer, from 1988, is that each sender keeps a congestion window, `cwnd`, and probes for spare capacity. When it infers congestion, it backs off. Think of cars joining a motorway. Each driver eases forward until the traffic thickens, then slows down. The sender's usable window is the smaller of `cwnd` and `rwnd`. The `rwnd` value arrives in the header. `cwnd` stays private to the sender. If you have ever wondered why a fresh connection feels slow, slow start is the reason.
 
 Several variables matter here. `cwnd` is the congestion window. `ssthresh` is the slow-start threshold. `rwnd` is the receive window. The initial window, IW10, is 10 segments on modern Linux, and you can set it per route with `initcwnd`. MSS is the segment size.
 
@@ -276,19 +276,19 @@ flowchart LR
   SS -- "loss" --> FR
 ```
 
-**Slow start** is anything but slow. The window doubles each RTT, because TCP adds one MSS for every ACK, and each RTT brings back as many ACKs as segments sent. The window keeps growing from IW up to `ssthresh`. Short flows, such as a small HTTP response or an RPC, finish inside slow start and never reach line rate. For them, the initial window and the RTT decide the completion time. That is why IW10 matters, and why tricks that skip handshakes, such as QUIC, TLS 1.3 0-RTT and connection reuse, help.
+**Slow start** is anything but slow, despite its name. The window doubles each RTT, because TCP adds one MSS for every ACK, and each RTT brings back as many ACKs as segments sent. The window keeps growing from IW up to `ssthresh`. Short flows, such as a small HTTP response or an RPC, finish inside slow start and never reach line rate. For them, the initial window and the RTT decide the completion time. That is why IW10 matters, and why tricks that skip handshakes, such as QUIC, TLS 1.3 0-RTT and connection reuse, help.
 
-Once `cwnd` reaches `ssthresh`, congestion avoidance takes over. The window grows by one segment per RTT. That is additive increase. On loss, the window is cut, which is multiplicative decrease. Together they form AIMD, which is proven to converge to a fair share among competing flows.
+Once `cwnd` reaches `ssthresh`, congestion avoidance takes over. The window grows by one segment per RTT, a cautious step instead of a doubling. That is additive increase. On loss, the window is cut, which is multiplicative decrease. Together they form AIMD, which is proven to converge to a fair share among competing flows. Add slowly, cut quickly, and everyone ends up with a similar slice.
 
 Tahoe and Reno react to loss differently. On any loss, Tahoe sets `ssthresh = cwnd/2` and `cwnd = IW`, then restarts slow start. Reno handles loss found by duplicate ACKs differently. It halves `cwnd` and stays in congestion avoidance, using fast recovery. Only an RTO sends Reno back to slow start. NewReno and SACK-based recovery handle several losses within one window.
 
-CUBIC has been the Linux default for many years. Its window growth is a cubic function of the time since the last loss. The curve is concave as it nears the previous maximum, `W_max`, so growth is cautious there. It is flat near `W_max`, and then it turns convex, probing for more. Growth depends on elapsed time, not on RTT, so CUBIC fills high-BDP paths far faster than Reno. Reno can need hundreds of RTTs to recover on a fat path. After a loss, CUBIC cuts `cwnd` by a factor of β=0.7.
+CUBIC has been the Linux default for many years. Its window growth is a cubic function of the time since the last loss. The curve is concave as it nears the previous maximum, `W_max`, so growth is cautious there. It is flat near `W_max`, and then it turns convex, probing for more. In plain words, it climbs quickly back to where it was, pauses near that point in case the limit is still there, and then tries gently to go beyond. Growth depends on elapsed time, not on RTT, so CUBIC fills high-BDP paths far faster than Reno. Reno can need hundreds of RTTs to recover on a fat path. After a loss, CUBIC cuts `cwnd` by a factor of β=0.7.
 
-BBR, from Google, works differently. It is model-based, not loss-based. BBR estimates the bottleneck bandwidth and the minimum RTT. It paces packets at the estimated rate, and it keeps in-flight data near the BDP. So it avoids filling buffers, which keeps latency low. It also does not treat random loss as congestion, which helps on lossy paths such as Wi-Fi, satellite and long WAN links. There are caveats. BBRv1 can be unfair to loss-based flows, and it can cause many retransmits on shallow-buffered paths. BBRv2 and v3 address some of that. Older kernels need the `fq` pacing qdisc. BBR is often used on edge and egress servers, and rarely inside a data-centre fabric.
+BBR, from Google, works differently. It is model-based, not loss-based. Where CUBIC waits for a collision to learn the road is full, BBR tries to measure the road directly. BBR estimates the bottleneck bandwidth and the minimum RTT. It paces packets at the estimated rate, and it keeps in-flight data near the BDP. So it avoids filling buffers, which keeps latency low. It also does not treat random loss as congestion, which helps on lossy paths such as Wi-Fi, satellite and long WAN links. There are caveats. BBRv1 can be unfair to loss-based flows, and it can cause many retransmits on shallow-buffered paths. BBRv2 and v3 address some of that. Older kernels need the `fq` pacing qdisc. BBR is often used on edge and egress servers, and rarely inside a data-centre fabric.
 
-ECN, Explicit Congestion Notification, lets routers mark packets instead of dropping them when queues build. The router sets the CE bit. The receiver echoes it with `ECE`, and the sender reduces `cwnd` without any loss. Enable it with `net.ipv4.tcp_ecn=1`. The value 2 means reply to peers that request ECN. DCTCP goes further. It uses the fraction of marked packets to scale back in proportion, which keeps queueing delay low in data centres. It needs ECN marking in the switches. RoCE congestion control, DCQCN, uses the same ECN idea, and chapter 2.20 covers it.
+ECN, Explicit Congestion Notification, lets routers mark packets instead of dropping them when queues build. It is a polite warning, where the loss signal is a rude one. The router sets the CE bit. The receiver echoes it with `ECE`, and the sender reduces `cwnd` without any loss. Enable it with `net.ipv4.tcp_ecn=1`. The value 2 means reply to peers that request ECN. DCTCP goes further. It uses the fraction of marked packets to scale back in proportion, which keeps queueing delay low in data centres. It needs ECN marking in the switches. RoCE congestion control, DCQCN, uses the same ECN idea, and chapter 2.19 covers it.
 
-Loss-based TCP struggles in AI data centres for a specific reason. Collectives send synchronized bursts from many senders to one receiver. This pattern is called incast. It overflows shallow switch buffers. One dropped packet can trigger a 200 ms RTO, and that can stall a whole all-reduce. The mitigations include DCTCP with ECN, a lower `tcp_rto_min` set through `ip route ... rto_min`, larger switch buffers, and keeping the collective path off TCP altogether. RDMA with PFC, ECN and adaptive routing does the last one.
+Loss-based TCP struggles in AI data centres for a specific reason. Collectives send synchronized bursts from many senders to one receiver. This pattern is called incast. Picture a hundred people trying to squeeze through one door at the same instant. It overflows shallow switch buffers. One dropped packet can trigger a 200 ms RTO, and that can stall a whole all-reduce. The mitigations include DCTCP with ECN, a lower `tcp_rto_min` set through `ip route ... rto_min`, larger switch buffers, and keeping the collective path off TCP altogether. RDMA with PFC, ECN and adaptive routing does the last one.
 
 ```bash
 sysctl net.ipv4.tcp_congestion_control net.ipv4.tcp_available_congestion_control
@@ -301,7 +301,7 @@ When you run them, you see the algorithms available, switch to BBR, and show the
 
 ## 8. Linux tuning reference and what each knob is for
 
-Once you know what TCP is doing, you can adjust it. Most of the knobs below are sysctl settings in the kernel. Use the table as a map of what each setting affects, not as a list to copy.
+Once you know what TCP is doing, you can adjust it, but adjust with care, because a wrong setting can be worse than the default. Most of the knobs below are sysctl settings in the kernel. Use the table as a map of what each setting affects, not as a list to copy.
 
 | Concern | Settings | Notes |
 |---|---|---|
@@ -324,7 +324,7 @@ Every setting in this table has a reason behind it. Change one setting at a time
 
 ### `ss`
 
-Start with `ss`. It lists each socket, and with `-ti` it also shows the internals of each connection.
+Start with `ss`. It is the tool you will reach for most often, because it asks the kernel directly instead of guessing from the outside. It lists each socket, and with `-ti` it also shows the internals of each connection.
 
 ```bash
 ss -tan                         # all TCP sockets, numeric
@@ -335,11 +335,11 @@ ss -tm                          # memory: skmem (rb, tb, f, w, o, bl, d)
 ss -s                           # socket summary by state
 ```
 
-Read the output with a few patterns in mind. A persistent non-zero `Send-Q` with growing `retrans` points to loss or a stalled receiver. A high `Recv-Q` on an established socket means the local application is not reading. A small `cwnd` with high `retrans` means congestion or loss. Newer `ss -ti` output also shows `rwnd_limited`, `sndbuf_limited` and `cwnd_limited`. Together with `rcv_space`, these fields tell you which limit constrains the flow.
+Read the output with a few patterns in mind, like a doctor reading a chart. A persistent non-zero `Send-Q` with growing `retrans` points to loss or a stalled receiver. A high `Recv-Q` on an established socket means the local application is not reading. A small `cwnd` with high `retrans` means congestion or loss. Newer `ss -ti` output also shows `rwnd_limited`, `sndbuf_limited` and `cwnd_limited`. Together with `rcv_space`, these fields tell you which limit constrains the flow.
 
 ### `tcpdump`
 
-Use `tcpdump` to see the packets themselves. Keep the capture narrow, so the output stays small enough to read.
+Use `tcpdump` to see the packets themselves, when the summary from `ss` is not enough. Keep the capture narrow, so the output stays small enough to read.
 
 ```bash
 sudo tcpdump -ni eth0 -c 20 'tcp port 443 and host 10.0.0.5'           # basic
@@ -348,13 +348,13 @@ sudo tcpdump -ni eth0 -w /tmp/c.pcap -s 128 'host 10.0.0.5'            # capture
 sudo tcpdump -nr /tmp/c.pcap -tttt | head
 ```
 
-Here is what one line says: `IP 10.0.0.2.51234 > 10.0.0.5.443: Flags [S], seq 1000, win 64240, options [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0`. The flags are `S` for SYN, `.` for ACK, `P` for PSH, `F` for FIN and `R` for RST. Watch for a few patterns. A retransmitted segment shows the same sequence number twice. Duplicate ACKs, RST responses and a window that shrinks to 0 all stand out. A `[S]` with no `[S.]` reply means the SYN was blocked or dropped. Check that the MSS and wscale options appear in both SYNs. Time gaps show up when you add `-ttt`.
+Here is what one line says, and it is worth reading slowly once: `IP 10.0.0.2.51234 > 10.0.0.5.443: Flags [S], seq 1000, win 64240, options [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0`. The flags are `S` for SYN, `.` for ACK, `P` for PSH, `F` for FIN and `R` for RST. Watch for a few patterns. A retransmitted segment shows the same sequence number twice. Duplicate ACKs, RST responses and a window that shrinks to 0 all stand out. A `[S]` with no `[S.]` reply means the SYN was blocked or dropped. Check that the MSS and wscale options appear in both SYNs. Time gaps show up when you add `-ttt`.
 
 In Wireshark, open *Statistics → TCP Stream Graphs* for the time-sequence, throughput and RTT views. The *Expert Information* window lists retransmissions, duplicate ACKs, zero windows, window-full and out-of-order segments.
 
 ### `nstat` and `/proc/net/netstat`
 
-`nstat` reads the kernel's TCP counters. The counters are cumulative, so what matters is how fast each one climbs.
+`nstat` reads the kernel's TCP counters. The counters are cumulative, so what matters is how fast each one climbs. A counter that has sat at the same value for a week tells you little, and one that jumps while a job runs tells you a lot.
 
 ```bash
 nstat -az | egrep 'TcpRetransSegs|TcpExtTCPLostRetransmit|TcpExtListenOverflows|TcpExtListenDrops|TcpExtTCPTimeouts|TcpExtTCPSynRetrans|TcpExtTCPBacklogDrop|TcpExtTCPRcvCollapsed|TcpExtTCPSACKReorder|TcpExtTCPSpuriousRTOs|TcpExtTCPAbortOn'
@@ -365,7 +365,7 @@ An increase in `TCPTimeouts` means RTOs, and that is bad. `ListenOverflows` mean
 
 ### A diagnostic flow
 
-When a TCP symptom appears, start with whether the connection succeeds, and follow the branch that matches.
+When a TCP symptom appears, start with whether the connection succeeds, and follow the branch that matches. Following the order stops you from tuning buffers when the real problem is a closed port.
 
 ```mermaid
 flowchart TD
@@ -386,7 +386,7 @@ Each branch names the first place to look. Confirm the branch with the commands 
 
 ## 10. TCP and AI workloads
 
-NCCL uses TCP sockets for its bootstrap, which is the rank exchange. It also uses them as a fallback transport when no IB/RoCE is available. Socket performance depends on `NCCL_SOCKET_IFNAME`, on how many sockets you open per connection with `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD`, and on `TCP_NODELAY`, buffer sizes, IRQ affinity and MTU. Throughput over TCP stays far below RDMA, because every byte passes through kernel copies and costs CPU. That gap is why GPUDirect RDMA exists, and Part 11 covers it.
+NCCL uses TCP sockets for its bootstrap, which is the rank exchange. It also uses them as a fallback transport when no IB/RoCE is available. Everything you have learned about TCP applies to those sockets. Socket performance depends on `NCCL_SOCKET_IFNAME`, on how many sockets you open per connection with `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD`, and on `TCP_NODELAY`, buffer sizes, IRQ affinity and MTU. Throughput over TCP stays far below RDMA, because every byte passes through kernel copies and costs CPU. That gap is why GPUDirect RDMA exists, and Part 11 covers it.
 
 Data loading and checkpoint I/O over NFS, S3 or HTTP is limited by the window and the BDP on long paths. On 100G+ links without offloads, it is limited by CPU instead. The usual fixes are parallel streams, a large MTU on internal networks, and tuned buffers.
 
@@ -394,15 +394,15 @@ Inference serving over HTTP/2 and gRPC is sensitive to several things. Connectio
 
 Kubernetes adds layers on top of TCP. Node-to-node and pod-to-pod traffic crosses overlays, which can shrink the MTU (chapter 2.7). It also passes through conntrack and kube-proxy NAT, which keep state and timeouts. Service load balancing can reset long-lived connections whenever endpoints change.
 
-Incast and tail latency come from many-to-one bursts and synchronized all-reduce barrier waits. A single 200 ms RTO costs hundreds of milliseconds of GPU idle time per step. Capture the `TCPTimeouts` counter and the retransmit rates during any training job that uses socket transports. When you run such a job, you pay these costs on every step.
+Incast and tail latency come from many-to-one bursts and synchronized all-reduce barrier waits. A single 200 ms RTO costs hundreds of milliseconds of GPU idle time per step. Every GPU in the job waits for the slowest one, so one unlucky packet stalls the whole group. Capture the `TCPTimeouts` counter and the retransmit rates during any training job that uses socket transports. When you run such a job, you pay these costs on every step.
 
 ## 11. QUIC and where TCP is going
 
-QUIC, defined in RFC 9000, started at Google. It is now the transport under HTTP/3. It runs over UDP and implements the transport in user space. That lets it fix several pain points of TCP.
+QUIC, defined in RFC 9000, started at Google. It is now the transport under HTTP/3. It runs over UDP and implements the transport in user space, rather than in the kernel. That lets it fix several pain points of TCP, because changing a library is far easier than changing every operating system.
 
-The first fix is startup speed. QUIC combines the transport handshake with TLS 1.3. A new connection takes 1 RTT, and a resumed one can send 0-RTT data, which must be safe to replay. TCP with TLS needs 2 to 3 RTTs. An early gQUIC design used source-address tokens. As the networking textbook notes, those tokens could be stolen and used to spoof addresses. The standardised version authenticates differently.
+The first fix is startup speed. QUIC combines the transport handshake with TLS 1.3, so security and transport are set up together. A new connection takes 1 RTT, and a resumed one can send 0-RTT data, which must be safe to replay. TCP with TLS needs 2 to 3 RTTs. An early gQUIC design used source-address tokens, and those tokens could be stolen and used to spoof addresses. The standardised version authenticates differently.
 
-The second fix is head-of-line blocking. Streams inside one QUIC connection are independent. A lost packet stalls only the stream or streams it carried. On a single TCP connection, one loss stalls every stream, as section 10 explains.
+The second fix is head-of-line blocking. Streams inside one QUIC connection are independent, like separate lanes on a road. A lost packet stalls only the stream or streams it carried. On a single TCP connection, one loss stalls every stream, as section 10 explains.
 
 Connection IDs let a connection survive a change of IP address, such as moving from Wi-Fi to cellular. Encryption is mandatory, and it covers most of the transport header. Middleboxes therefore cannot meddle with the traffic or optimise it.
 
@@ -414,7 +414,7 @@ ICMP is the companion protocol that carries errors and diagnostics, such as unre
 
 ## 12. Hands-on lab: observe TCP behaviour
 
-Start with the self-checking Python lab, which runs on your own machine. It verifies the bandwidth-delay product, `BDP = bandwidth * RTT`, and the window-scale shift math. For example, `12.5 MB` needs shift `8`, and the lab also checks `87.5 MB` and `125.0 MB`. It checks window-limited throughput too, where `4 MB / 70 ms ≈ 457.1 Mb/s`. It also covers Jacobson's RTO formula, with Linux's `200 ms` `TCP_RTO_MIN` floor. Last, it compares how Tahoe, Reno and CUBIC (`β = 0.7`) respond to 3 duplicate ACKs versus an RTO.
+A word on status first. The Python lab below has been run, while the VM commands after it have not been run for this chapter, so check each result yourself before you rely on it. Start with the self-checking Python lab, which runs on your own machine. It verifies the bandwidth-delay product, `BDP = bandwidth * RTT`, and the window-scale shift math. For example, `12.5 MB` needs shift `8`, and the lab also checks `87.5 MB` and `125.0 MB`. It checks window-limited throughput too, where `4 MB / 70 ms ≈ 457.1 Mb/s`. It also covers Jacobson's RTO formula, with Linux's `200 ms` `TCP_RTO_MIN` floor. Last, it compares how Tahoe, Reno and CUBIC (`β = 0.7`) respond to 3 duplicate ACKs versus an RTO.
 
 Run the lab with this command.
 
@@ -422,7 +422,7 @@ Run the lab with this command.
 python3 code/part02/tcp_in_depth_lab.py
 ```
 
-Next, use a disposable Linux VM. Build two network namespaces joined by a `veth` pair, and shape the link with `tc netem`. All interactive VM commands below are `untested here`, so check each result yourself before you rely on it.
+Next, use a disposable Linux VM. Build two network namespaces joined by a `veth` pair, and shape the link with `tc netem`.
 
 ```bash
 sudo ip netns add c; sudo ip netns add s # (untested here)
@@ -450,7 +450,7 @@ If a step does not match what you expect, check it against the formulas in the l
 
 ## 13. Common mistakes
 
-Many people blame the network first. But when `ss -ti` shows that the flow is limited by the receiver, the application or the buffer, the network is not the problem. Check the limit before you blame the path.
+Many people blame the network first, because it is the part they cannot see. But when `ss -ti` shows that the flow is limited by the receiver, the application or the buffer, the network is not the problem. Check the limit before you blame the path.
 
 Setting `SO_RCVBUF` or `SO_SNDBUF` explicitly disables autotuning, and oversized buffers on short paths only add cost. The same goes for sysctl lists copied from the internet. Some of them include removed options, such as `tcp_tw_recycle`. Measure every setting before you keep it.
 
@@ -475,9 +475,9 @@ The fix for each of these mistakes starts with a measurement, not with a setting
 
 ## Exercises
 
-Work through these six exercises after reading the chapter. Each one pairs a calculation with an explanation in your own words.
+Work through these six exercises after reading the chapter. Each one pairs a calculation with an explanation in your own words. If a calculation gives a surprising number, that is usually the exercise doing its job.
 
-1. Start with transport problems and flow control. Use chapters 2 and 3 of *Computer Networking Problems and Solutions* as your reference. (a) Contrast the three digital marshaling grammars: fixed-length fields, Type-Length-Value (TLV), and shared schemas or dictionaries. Then say where TCP uses the first two. (b) Distinguish flow control (`rwnd`) from congestion control (`cwnd`). State the formula for the most bytes a TCP sender may have in flight at any instant.
+1. Start with transport problems and flow control. (a) Contrast the three digital marshaling grammars: fixed-length fields, Type-Length-Value (TLV), and shared schemas or dictionaries. Then say where TCP uses the first two. (b) Distinguish flow control (`rwnd`) from congestion control (`cwnd`). State the formula for the most bytes a TCP sender may have in flight at any instant.
 2. Work through the handshake, the server queues and the close states. (a) Explain why TCP needs a three-way handshake with unpredictable Initial Sequence Numbers (`RFC 6528`). Then explain how Linux's two listen queues cause connect stalls of 1 s, 3 s and 7 s when the `accept()` loop is slow. Use `tcp_max_syn_backlog`, `tcp_syncookies` and `min(backlog, net.core.somaxconn)` in your answer, and check `ListenOverflows` in `nstat`. (b) Contrast a server with 20,000 sockets in `TIME_WAIT` with one that has 20,000 sockets in `CLOSE_WAIT`.
 3. Work through reliability, Nagle and delayed ACK. (a) Use `compute_jacobson_rto_ms()` in `code/part02/tcp_in_depth.py` to compute the RTO for a datacenter path (`SRTT = 0.2 ms, RTTVAR = 0.05 ms`) and for a WAN path (`SRTT = 150 ms, RTTVAR = 30 ms`). Then explain how Fast Retransmit (`3` dup ACKs), `SACK` (`RFC 2018`) and `RACK-TLP` avoid the `200 ms` `TCP_RTO_MIN` penalty. (b) Why does an RPC client that calls `write(header)` followed by `write(body)` suffer `~40 ms` latency spikes? Name the two fixes.
 4. Compute the window and the BDP. (a) Using `compute_bdp_and_window_scale()`, compute the BDP in MB and the minimum window-scale shift for `100 Gb/s x 1 ms`, `10 Gb/s x 70 ms`, and `25 Gb/s x 40 ms`. (b) Using `compute_window_limited_throughput_mbps()`, calculate the maximum single-stream throughput of a `4 MB` window over `70 ms` RTT (`~457.1 Mb/s`) and over `80 ms` RTT (`400.0 Mb/s`). Then explain why calling `setsockopt(SO_RCVBUF)` in application code is an anti-pattern on Linux.
@@ -615,3 +615,4 @@ QUIC runs over UDP so that its encrypted transport headers can pass through exis
 - **Run here:** `python3 code/part02/tcp_in_depth_lab.py` (14 passed, 0 failed).
 - **Explicitly labelled inferences:** The BDP and window-scaling table (`25 Gb/s * 0.04 s = 125 MB`, `4 MB / 0.08 s = 50 MB/s = 400 Mb/s`), Linux `sysctl` tuning reference (`somaxconn`, `tcp_rmem`/`tcp_wmem`, `tcp_tw_reuse`, `tcp_slow_start_after_idle=0`, `tcp_notsent_lowat`), `ss -ti` diagnostic flowchart, and AI workload notes (`NCCL_SOCKET_IFNAME`, `NCCL_SOCKET_NTHREADS`, `NCCL_NSOCKS_PERTHREAD`, incast RTO penalties, and gRPC/HTTP2 head-of-line blocking) synthesize kernel documentation (`ip-sysctl`), RFCs 793, 2018, 5681, 6298, 6528, 8312 (CUBIC), and 9000 (QUIC), and `ss(8)` (cross-referenced with Chapters 1.25, 2.2, 2.4, 2.5, 2.7, 2.20, 2.22, 2.23, and Part 11, plus original study items 21, 23, 26, 27, 29, 31, 33, 34, 36, 37, 38, and 39).
 - **Not verified on live hardware:** All interactive VM commands (`ip netns`, `tc qdisc netem`, `iperf3`, `ss -ti`, `tcpdump`, `nstat`, `sysctl`) are marked (untested here) and must be executed on a disposable Linux VM.
+

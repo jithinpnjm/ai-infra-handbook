@@ -22,29 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a design review where someone asks why the back-end network is built the way it is. You need a real answer, and it starts with the topology. The topology is the one decision that is hard to change after racks are cabled. It fixes how many GPUs a cluster can hold and the latency between any two of them. It also sets how much bandwidth survives a failure, whether collectives run at line rate or stall behind a hot link, and what the whole thing costs in switches, optics and cables.
+Picture a design review where someone asks why the back-end network is built the way it is. You need a real answer, and it starts with the topology. The topology is the one decision that is hard to change after racks are cabled. Software can be patched on Monday, and a protocol timer can be tuned on Tuesday, but moving a cable to ten thousand ports is a construction project. The topology fixes how many GPUs a cluster can hold and the latency between any two of them. It also sets how much bandwidth survives a failure, whether collectives run at line rate or stall behind a hot link, and what the whole thing costs in switches, optics and cables.
 
-NVIDIA, Meta, Google, Microsoft and others publish reference designs, such as rail-optimised leaf-spine, multi-plane Clos and dragonfly variants. You need to read them, size them in ports, switches and oversubscription, and then defend or critique them in a design review or interview. This chapter follows that path. It starts with general network design patterns and what makes a network a fabric. Next come the leaf-spine and Clos scaling math, and oversubscription with contention. After that it covers the AI-specific variants: rail-optimised, rail-unified, rail-only, scheduled fabrics, dragonfly, torus and multi-planar. The chapter ends with rack and cabling layout, failure domains with information hiding examples, and resilience, which covers redundancy, SRLGs, graceful restart and multi-plane cores.
+NVIDIA, Meta, Google, Microsoft and others publish reference designs, such as rail-optimised leaf-spine, multi-plane Clos and dragonfly variants. You need to read them, size them in ports, switches and oversubscription, and then defend or critique them in a design review or interview. The path to that skill starts with a plain question, which is what a network designer is actually trying to achieve, and it grows from there to the arithmetic of leaf-spine, the special shapes that AI clusters use, and the physical and failure questions that decide whether a paper design survives contact with a real data hall.
 
 ## Prerequisites and outcomes
 
-You should already know ECMP and LAG (2.12), routing (2.13 to 2.16), overlays (2.17) and how a switch moves a packet (2.11). The trade-offs in this chapter build on those topics.
+You should already know ECMP and LAG (2.12), routing (2.13 to 2.16), overlays (2.17) and how a switch moves a packet (2.11). The trade-offs in this chapter build on those topics. If you can explain why a flow stays on one path under ECMP, and why a switch with a full table forwards packets without asking anyone, you have enough background.
 
-After this chapter you can:
-
-- Turn business requirements into network requirements, and judge a design by cost, performance, resilience, operability and growth.
-- Describe hierarchical designs, and ring, mesh, hub-and-spoke, planar and nonplanar, and regular topologies, along with their trade-offs.
-- Define a fabric as a regular topology that scales out toward specific performance goals, and tell it apart from a hierarchical network. Define leaf, spine, super-spine, stage count, oversubscription, and non-blocking versus non-contending.
-- Size a 3-stage and a 5-stage Clos, covering radix, the number of leaves and spines, GPUs supported, links and optics. Then compute oversubscription and failure-case capacity.
-- Describe rail-optimised, rail-unified and rail-only designs, intra-rail versus inter-rail traffic, and ToR, MoR and EoR rack layouts.
-- Describe scheduled, cell-based fabrics with VOQ, dragonfly (and sparse dragonfly), torus and multi-planar architectures, and their trade-offs for AI.
-- Apply information hiding (summarisation, aggregation, layering, exponential backoff and flooding reduction), and use it to design failure domains.
-- Define MTBF, MTTR, availability ("nines"), single points of failure, SRLGs, ISSU, graceful restart, dual and multi-plane cores, and modularity.
-- Produce and critique a topology design for a given GPU count.
+New vocabulary appears as the story needs it. Leaf, spine, stage, oversubscription and the many cousins of the word "fabric" all get a plain definition at first use, usually next to a small worked example with real port counts.
 
 ## 1. Network design patterns
 
-Networks exist to support applications, and applications support the business. A design that starts from a product list tends to miss what the business needs. Start from the requirements instead. Suppose a manager says a training run must finish in a fixed number of days. You need to know what that means for the network, and the table below shows one workable translation.
+Picture a planning meeting. A manager asks whether the new training cluster can finish a model in the time the business has promised. An engineer who starts by listing switch models will struggle to answer. An engineer who starts by turning the promise into throughput, latency and failure budgets can answer clearly, and can say what would change the answer. This section is about that second habit. Read the table below as the translation work the meeting needs, before any diagram of leaves and spines is drawn.
+
+Networks exist to support applications, and applications support the business. A design that starts from a product list tends to miss what the business needs, so start from the requirements instead. Suppose a manager says a training run must finish in a fixed number of days. You need to know what that means for the network, and the table below shows one workable translation.
 
 ### From business needs to a network
 
@@ -56,44 +48,48 @@ Networks exist to support applications, and applications support the business. A
 | "Budget is fixed; plan 3-year growth" | Cost per port, oversubscription decisions, expansion by adding pods without recabling |
 | "Run in two regions" | Inter-site bandwidth, latency, failure domains, replication |
 
-Read each row as a question the network must answer. The left column is what the business says, and the right column is what you measure.
+Read each row as a question the network must answer. The left column is what the business says, and the right column is what you measure. A sentence such as "we cannot afford to lose a week of training" is not yet a network requirement. It becomes one when you turn it into things a switch can be tested against, such as failure-case bandwidth and recovery time.
 
-A **good network design** meets the requirements at an acceptable cost. It also has to be operable, which means simple enough to understand, automate, troubleshoot and upgrade. It should be scalable, growing by adding repeatable units. It should be resilient, handling failures automatically and locally. It must also be secure and measurable. The recurring theme is a set of trade-offs among state, optimality, surface and cost. More optimal paths need more state. More resilience needs more redundancy and complexity. Simple designs may waste capacity. Avoid any design that only its author can operate.
+A **good network design** meets the requirements at an acceptable cost. It also has to be operable, which means simple enough to understand, automate, troubleshoot and upgrade. It should be scalable, growing by adding repeatable units. It should be resilient, handling failures automatically and locally. It must also be secure and measurable. The recurring theme is a set of trade-offs among state, optimality, surface and cost. More optimal paths need more state, and more resilience needs more redundancy and complexity. Simple designs may waste capacity. Avoid any design that only its author can operate, because the author will not always be on call.
 
 ### Hierarchical design
 
-The classic campus and enterprise model has three layers. Access is where hosts attach. Distribution, also called aggregation, applies policy, summarisation and the L2/L3 boundary. Core provides fast transport.
+Think of an office tower with a lobby, floors and a basement. Visitors enter at the lobby, each floor groups desks into neighbourhoods, and the basement holds the heavy plant that serves the whole building. Two colleagues on the same floor talk without leaving it. Two colleagues on different floors may still have to go down to the lobby and back up, if the building routes everyone through one security desk. A hierarchical network works the same way. Traffic between neighbours can stay low, but traffic that crosses groups climbs to the top and back down. That climb is where the oversubscription and hairpinning described below come from.
 
-The benefits are real. Summarisation points limit failure domains, policy is applied at known layers, growth is modular, and the mental model stays clear. The costs are just as real. Capacity has to grow up, with bigger core links and boxes. Oversubscription compounds layer by layer. East-west traffic hairpins through the upper layers.
+The classic campus and enterprise model has three layers, and you have probably seen it drawn as a pyramid. Access is where hosts attach. Distribution, also called aggregation, applies policy, summarisation and the L2/L3 boundary. Core provides fast transport.
+
+The benefits are real. Summarisation points limit failure domains, policy is applied at known layers, growth is modular, and the mental model stays clear. The costs are just as real. Capacity has to grow up, with bigger core links and boxes. Oversubscription compounds layer by layer, and east-west traffic hairpins through the upper layers. Hairpinning means that two servers in neighbouring racks send their traffic up to the core and back down again, even though they could have been next to each other.
 
 ### Common topologies
 
+Think about the streets of a town you know. Some streets form a loop, so you can drive around a blocked corner. Some streets form a grid, where most crossings give you a choice of route. Some streets lead only to a single dead end. Each layout is cheap or expensive in its own way, and each one fails differently. When a road closes on a ring, traffic goes the other way round, but a second closure splits the ring. When a grid junction closes, cars route around it, and the grid carries on. The shapes below are the same streets seen from a network designer's chair. Read each one by asking what happens on the day the first road closes.
+
 Each shape below suits a different job, and each has a cost you must accept.
 
-- Ring: each node has two neighbours. A ring is cheap and simple. It survives one cut, because traffic reverses direction. Latency grows with ring size, though, and a second failure splits the ring in two. You find rings in metro and transport networks and in some campus backbones. A torus extends the ring into several dimensions.
+- Ring: each node has two neighbours. A ring is cheap and simple, and it survives one cut, because traffic reverses direction. Latency grows with ring size, though, and a second failure splits the ring in two. You find rings in metro and transport networks and in some campus backbones. A torus extends the ring into several dimensions.
 - Mesh: a full mesh gives every pair of nodes a direct path, but it needs n(n-1)/2 links, so it does not scale. A partial mesh links only selected pairs. Meshes suit small cores and the groups inside a dragonfly.
 - Hub-and-spoke: sites connect to a hub. This design is cheap and easy to control, because policy lives at the hub. The hub is also a bottleneck and a single point of failure, and spoke-to-spoke traffic hairpins through it. Typical WAN and branch networks use this design, and a dual hub reduces the risk.
 - Planar, non-planar and regular: a planar topology can be drawn without crossing links, as rings and trees can. Meshes, hypercubes and Clos networks are non-planar, so they cannot. Regular topologies repeat identical units, which simplifies configuration, automation and spare parts.
 
-Keep the requirement table in front of you as you read the shapes. Each one answers a different part of it. Pick the shape whose failure and cost trade-offs your business can accept, and write those trade-offs down.
+Keep the requirement table in front of you as you read the shapes, because each one answers a different part of it. Pick the shape whose failure and cost trade-offs your business can accept, and write those trade-offs down.
 
 ## 2. What makes a fabric?
 
-"Fabric" is overused in marketing, so it helps to pin down the useful definition. A fabric has three parts.
+"Fabric" is overused in marketing, so it helps to pin down the useful definition. When a vendor calls a product a fabric, ask three questions, because a real fabric has three parts.
 
-1. Topological regularity. The topology is built from many identical, interchangeable sub-topologies, such as pods or leaf-spine blocks that all look the same. That sameness lets you replicate hardware, software and configuration.
+1. Topological regularity. The topology is built from many identical, interchangeable sub-topologies, such as pods or leaf-spine blocks that all look the same. That sameness lets you replicate hardware, software and configuration. If you know how to build one block, you know how to build the hundredth.
 
-2. Scale-out growth. Bandwidth and port count grow by adding more of the same equipment, such as another pod or another spine. You do not replace devices with bigger ones. A hierarchical network scales up, using bigger aggregation or core boxes and links. A fabric scales out, within the port-count limit of each device.
+2. Scale-out growth. Bandwidth and port count grow by adding more of the same equipment, such as another pod or another spine. You do not replace devices with bigger ones. A hierarchical network scales up, using bigger aggregation or core boxes and links, while a fabric scales out, within the port-count limit of each device. Think of adding checkout lanes to a supermarket versus replacing the one lane with a faster conveyor belt.
 
-3. Specific performance goals. Failures are measured and handled at the pod, rack or link level, because applications can tolerate being moved. Workload mobility has to converge very quickly. The metric to watch is oversubscription, which compares edge bandwidth with fabric bandwidth. The goal is low jitter and low queueing delay as well as low latency. You usually reach it by avoiding contention, not by elaborate QoS.
+3. Specific performance goals. Failures are measured and handled at the pod, rack or link level, because applications can tolerate being moved. Workload mobility has to converge very quickly. The metric to watch is oversubscription, which compares edge bandwidth with fabric bandwidth. The goal is low jitter and low queueing delay as well as low latency, and you usually reach it by avoiding contention, not by elaborate QoS.
 
 An overlay alone does not make a fabric. Neither does a high-bandwidth network, a network full of ECMP, or any network treated as one single thing. The disaggregation trend explains why fabrics became important. Storage, memory and compute became network-attached or distributed, so east-west traffic now dwarfs north-south traffic.
 
 ### East-west, disaggregation and the jitter problem
 
-In converged servers, all component traffic runs on an internal bus, so the network sees mostly north-south traffic. Disaggregated storage, virtualised services, microservices and distributed training change that. Processors fetch data across the network. Hyperscale operators see roughly ten bits of east-west traffic for every bit of north-south traffic.
+In converged servers, all component traffic runs on an internal bus, so the network sees mostly north-south traffic, which is traffic entering and leaving the building. Disaggregated storage, virtualised services, microservices and distributed training change that, because processors now fetch data across the network. Hyperscale operators see roughly ten bits of east-west traffic for every bit of north-south traffic. East-west traffic is the conversation between machines inside the data centre.
 
-As a result, application performance depends on network delay and jitter. Congestion that adds a fraction of a second to a transfer slows the whole application, and one slow service can cascade into others. AI training is an extreme case. Synchronous collectives make every step wait for the slowest transfer.
+As a result, application performance depends on network delay and jitter. Jitter is the variation in delay from one packet to the next, and it hurts because an application that waits for many replies is as slow as the slowest. Congestion that adds a fraction of a second to a transfer slows the whole application, and one slow service can cascade into others. AI training is an extreme case, because synchronous collectives make every step wait for the slowest transfer.
 
 A few terms come up here. Converged means all resources sit in one server. Disaggregated means storage, memory and network resources are reachable as virtual resources across the network, and standard virtual interfaces make brands interchangeable, so the hardware can be white-box. Hyperconverged means resources stay with the compute node but are virtualised and shared across nodes. Composable means resources are assembled on demand. Disaggregation reached networking too. White-box switches run open NOS such as SONiC or Cumulus on merchant silicon, which separates hardware, NOS and applications. It also enables the network-as-software operating models discussed in chapters 2.28 and 2.29.
 
@@ -101,17 +97,21 @@ For any AI design, treat the network as part of the computer, and size it with j
 
 ## 3. Leaf-spine (folded Clos)
 
-Picture a data center that needs more ports than any single switch can offer. A Clos network solves that by building one large non-blocking switch out of stages of smaller switches. Charles Clos described the idea in 1953, for telephone switching. A data center leaf-spine is a folded Clos.
+Picture a team that has been given a room and a budget and told to fit as many servers into it as the switches allow. The first thing they must decide is not which brand to buy. It is the shape of the wiring, because the shape sets how many servers the room can ever hold. The leaf-spine idea answers that question with two rules that are easy to remember: every leaf reaches every spine, and no spine talks to another spine. Those two rules make the sums in the next pages come out cleanly, and the walkthrough below shows each sum in turn.
 
-Leaves, also called ToR switches, are where servers and other devices attach. All external connectivity enters through the leaves. Spines connect the leaves to each other. Two standard rules keep the design simple. Spines never connect to other spines, and no devices attach to spines. Cross-links would add complexity, so the design avoids them.
+Picture a data center that needs more ports than any single switch can offer. The biggest switch you can buy has, say, a few dozen ports, and you need thousands. A Clos network solves that by building one large non-blocking switch out of stages of smaller switches. Charles Clos described the idea in 1953, for telephone switching. A data center leaf-spine is a folded Clos. "Folded" means that instead of drawing the input stage on the left and the output stage on the right, you fold the picture so that the same leaf switches serve as both.
 
-In a 3-stage fabric, every leaf connects to every spine. Any two leaves are therefore exactly two hops apart, through any one of the S spines. That gives you S equal-cost paths. The control plane stays simple, because equal paths and loop-free connectivity come built in. The complexity in real fabrics comes from cross-links, overlays and traffic engineering.
+Leaves, also called ToR switches, are where servers and other devices attach, and all external connectivity enters through the leaves. Spines connect the leaves to each other. Two standard rules keep the design simple. Spines never connect to other spines, and no devices attach to spines. Cross-links would add complexity, so the design avoids them.
+
+In a 3-stage fabric, every leaf connects to every spine. Any two leaves are therefore exactly two hops apart, through any one of the S spines, which gives you S equal-cost paths. The control plane stays simple, because equal paths and loop-free connectivity come built in. The complexity in real fabrics comes from cross-links, overlays and traffic engineering.
 
 The number of stages decides how far the fabric can grow. Counted unfolded, a leaf-spine is a 3-stage Clos: leaf, spine, leaf. Add a super-spine tier and you get a 5-stage fabric: leaf, spine, super-spine, spine, leaf. A 7-stage fabric adds another tier. More stages give you more ports, but also more hops and more latency.
 
 ### Sizing a 3-stage fabric
 
-Start with switches that have R ports, all at the same speed. In a non-oversubscribed (1:1) leaf, half the ports face servers and half face spines. The arithmetic follows from that split.
+Let us count it out loud, one line at a time, the way you would on a whiteboard in a design review. Start with the switch and ask how many ports it has in total. Half of them face servers, so the other half must face the spines. That fixes the number of spines, because each leaf needs one uplink to each spine. Next, ask how many leaves one spine can serve, since each spine port faces one leaf. That fixes the number of leaves. Multiply the leaves by the servers per leaf and you have the answer to the room question. Each line depends on the one before it, so when someone changes the switch model, you can rerun the whole sum in a minute.
+
+Start with switches that have R ports, all at the same speed. Suppose you are asked how many servers you can attach, and you want to be able to work it out on paper. In a non-oversubscribed (1:1) leaf, half the ports face servers and half face spines. The arithmetic follows from that split.
 
 - The number of spines is R/2, with one uplink from each leaf to each spine.
 - Each spine has R ports, one to each leaf, so the maximum number of leaves is R.
@@ -119,9 +119,11 @@ Start with switches that have R ports, all at the same speed. In a non-oversubsc
 
 Take 64-port, 400G switches as a worked example. Each leaf uses 32 downlinks and 32 uplinks, so the fabric has 32 spines and up to 64 leaves. That gives up to 2,048 endpoint ports. In AI terms, each GPU NIC is one endpoint, so 2,048 endpoints means 256 servers with eight GPUs each. The leaves carry 2,048 spine-facing links. The fabric needs 64 leaves plus 32 spines, which is 96 switches. The cabling comes to 2,048 server cables and 2,048 leaf-spine links.
 
-Oversubscription changes that split. A leaf with d downlinks and u uplinks runs at a ratio of d:u. For example, 48 downlinks and 16 uplinks give 3:1. Hyperscale general compute often runs at 3:1. AI back-end networks target 1:1 at the leaf-spine tier, meaning no oversubscription, because collectives saturate every NIC at the same time.
+Oversubscription changes that split. A leaf with d downlinks and u uplinks runs at a ratio of d:u. For example, 48 downlinks and 16 uplinks give 3:1. That means that if every server on the leaf transmitted at full speed together, they would need three times what the uplinks can carry. Hyperscale general compute often runs at 3:1, because web servers rarely all transmit at once. AI back-end networks target 1:1 at the leaf-spine tier, meaning no oversubscription, because collectives saturate every NIC at the same time.
 
 ### Five-stage fabrics
+
+Imagine a room that is too large for one leaf-spine block, no matter how the switches are chosen. Building one bigger block would run out of spine ports, so the designer builds several blocks, which the text calls pods, and then connects the pods through a layer of super-spines. The reason is the same as for a city that grows past one town centre: each district keeps its own roads, and a ring road joins the districts. A packet that stays inside one pod behaves as it did in the smaller design. A packet that crosses pods takes one extra step up and down, which costs a little latency. The walkthrough below follows one such packet.
 
 Beyond R²/2 endpoints, build pods. Each pod is a 3-stage fabric, and super-spines connect the pods. With R-port switches, each pod spine uses half its ports downward to leaves and half upward to super-spines. A 1:1 5-stage Clos reaches R³/4 endpoints. For R = 64, that is 65,536 endpoints. Smaller sizes use partial pods and fewer super-spines. The table below is an illustrative sizing from a design reference, built from 64 × 400G switches in a rail-optimised layout.
 
@@ -138,23 +140,27 @@ Three lessons follow from the table. First, once a fabric grows beyond one 3-sta
 
 ### Oversubscription and contention
 
-Oversubscription is the ratio of the bandwidth offered to endpoints over the bandwidth into the fabric. Put another way, it is the worst-case contention when every endpoint sends at line rate across the tier. Take a ToR with 320 Gb/s of server ports and 180 Gb/s of uplinks. The ratio is 1.78:1, or about 2:1 oversubscribed.
+Oversubscription is the ratio of the bandwidth offered to endpoints over the bandwidth into the fabric. Put another way, it is the worst-case contention when every endpoint sends at line rate across the tier. Take a ToR with 320 Gb/s of server ports and 180 Gb/s of uplinks. The ratio is 1.78:1, or about 2:1 oversubscribed. A road with more lanes feeding the junction than leaving it behaves the same way: it is fine when traffic is light and jams the moment everyone drives at once.
 
-Non-blocking and non-contending are different properties. A non-blocking fabric has enough internal capacity that no connection pattern is blocked by the fabric's internals. Packet-switched networks cannot be truly non-blocking, though. Several sources can send to one destination, and that destination's link becomes the bottleneck, even when the fabric itself is rich. A non-contending fabric is a stronger scheduling property. It avoids any two flows competing for a link at the same time, much as circuit-switched networks do when scheduling on the inbound side prevents conflicts.
+Non-blocking and non-contending are different properties, and people mix them up. A non-blocking fabric has enough internal capacity that no connection pattern is blocked by the internals of the fabric. Packet-switched networks cannot be truly non-blocking, though. Several sources can send to one destination, and the link of that destination becomes the bottleneck, even when the fabric itself is rich. A non-contending fabric is a stronger scheduling property. It avoids any two flows competing for a link at the same time, much as circuit-switched networks do when scheduling on the inbound side prevents conflicts.
 
-Packet-switched fabrics handle incast in one of two ways. One is scheduling, through source-side admission or credit-based or request-grant flow control. The other is adequate buffers, congestion signalling with ECN, DCQCN or PFC, and load balancing. Collectives create deterministic, synchronous, many-to-one patterns, so AI fabrics combine a 1:1 topology with congestion control and load balancing. They also rely on all-reduce algorithms, such as ring and tree, which are designed to use bandwidth-optimal patterns.
+Packet-switched fabrics handle incast in one of two ways. Incast is the many-to-one burst, where many senders answer one receiver in the same instant. One way is scheduling, through source-side admission or credit-based or request-grant flow control. The other is adequate buffers, congestion signalling with ECN, DCQCN or PFC, and load balancing. Collectives create deterministic, synchronous, many-to-one patterns, so AI fabrics combine a 1:1 topology with congestion control and load balancing. They also rely on all-reduce algorithms, such as ring and tree, which are designed to use bandwidth-optimal patterns.
 
 ### Capacity under failure
 
-Always size the fabric for the failure case, because a 1:1 design has no slack. With S spines and one spine down, each leaf keeps (S-1)/S of its uplink capacity. For 32 spines that is 96.9%. For 4 spines it is 75%. A 1:1 design stays oversubscribed until the failure is repaired. Spare capacity, such as N+1 spines or rails, belongs in the design. So do fast detection with BFD, rerouting, and job-level resilience such as checkpointing and elastic training. The question to answer is concrete: what fraction of leaf-to-leaf bandwidth survives losing a spine, a leaf, a link, a whole rail group or a power domain?
+Picture the morning after a spine fails in the night. The dashboards show that jobs are still running, but one uplink from every leaf has gone quiet, and the training step times are a little longer than yesterday. Nobody is hurt, yet the fabric is no longer the design it was on paper. The arithmetic in this section is what you would have needed to predict that morning. It tells you how much bandwidth remains, which failure to plan for, and which parts of the design have no slack at all.
+
+Always size the fabric for the failure case, because a 1:1 design has no slack. With S spines and one spine down, each leaf keeps (S-1)/S of its uplink capacity. For 32 spines that is 96.9%. For 4 spines it is 75%. A 1:1 design stays oversubscribed until the failure is repaired. Spare capacity, such as N+1 spines or rails, belongs in the design, and so do fast detection with BFD, rerouting, and job-level resilience such as checkpointing and elastic training. The question to answer is concrete: what fraction of leaf-to-leaf bandwidth survives losing a spine, a leaf, a link, a whole rail group or a power domain?
 
 Before you commit to a 1:1 leaf tier, work out what survives losing one spine, one leaf and one rail group.
 
 ## 4. AI back-end designs: rails
 
-A server such as a DGX or HGX H100 holds 8 GPUs. An internal NVSwitch fabric moves data between those GPUs inside the server, which is the fastest path you have. Each GPU typically gets its own NIC for the compute fabric, and the server adds storage and management NICs. Once a job spans servers, its traffic crosses the network. How the NICs attach to the leaves decides the topology.
+A server such as a DGX or HGX H100 holds 8 GPUs. An internal NVSwitch fabric moves data between those GPUs inside the server, which is the fastest path you have. Each GPU typically gets its own NIC for the compute fabric, and the server adds storage and management NICs. Once a job spans servers, its traffic crosses the network, and how the NICs attach to the leaves decides the topology. It also decides how much of the job's traffic is a short hop and how much is a long one.
 
 ### Rail-optimised design (ROD)
+
+Picture eight GPUs in one server, each with its own network card. Now picture eight leaf switches in one row. In the rail-optimised design, card one of every server plugs into leaf one, card two into leaf two, and so on. Follow a single collective step. The first GPU of server A wants to send to the first GPU of server B. Both sit on leaf one, so the traffic crosses one switch and nothing else. Now the first GPU of server A wants to reach the second GPU of server B. That is a different rail, so the packet climbs to a spine and comes back down to leaf two. The design works because the collective library mostly sends along the matching rail, and it keeps the expensive climb rare.
 
 ```mermaid
 flowchart TB
@@ -175,27 +181,31 @@ flowchart TB
   LR0 & LR1 --- SP1 & SP2
 ```
 
-In this design, GPU i of every server connects to leaf i of a group of 8 leaves. That group is called a stripe or a row. All GPUs with the same index, across different servers, sit one hop apart through their shared leaf. Each such set is a rail. Collective algorithms in NCCL are written to use this. They reduce inside the server over NVLink first, then communicate across servers along the rails, which keeps traffic between rails to a minimum.
+In this design, GPU i of every server connects to leaf i of a group of 8 leaves. That group is called a stripe or a row. All GPUs with the same index, across different servers, sit one hop apart through their shared leaf, and each such set is a rail. Picture eight parallel train lines, one per GPU number. Every server has a station on every line, and trains on one line never need to change lines to reach another station on the same line. Collective algorithms in NCCL are written to use this. They reduce inside the server over NVLink first, then communicate across servers along the rails, which keeps traffic between rails to a minimum.
 
-Intra-rail traffic is the cheap case. It means the same GPU index on different servers, and it goes through one leaf, so latency is minimal. Inter-rail traffic, with different GPU indices, goes leaf to spine to leaf. That doubles the hops and the latency, so it should be rare. PXN is an NCCL feature that helps here. It uses NVLink to send data through the GPU on the destination's rail, which avoids the inter-rail hops.
+Intra-rail traffic is the cheap case. It means the same GPU index on different servers, and it goes through one leaf, so latency is minimal. Inter-rail traffic, with different GPU indices, goes leaf to spine to leaf. That doubles the hops and the latency, so it should be rare. PXN is an NCCL feature that helps here. It uses NVLink to send data through the GPU on the rail of the destination, which avoids the inter-rail hops.
 
-Read the sizing example slowly, because later designs in this chapter use the same steps. Here is the sizing arithmetic for a 64 × 400G leaf at 1:1, so you can check each step. Each leaf has 32 ports down and 32 up, so one rail group holds 32 servers. An arrow points upwards from the leaf toward the spine, labeled as 32 uplink ports. Another arrow points downwards toward the servers, labeled as 32 downlink ports. A label beside the leaf gives its total of 64 x 400 Gbps. Eight leaves plus four spines support those 32 servers, which is 256 GPUs. That works if each leaf's 32 uplinks go to four spines with eight links each. Two rows, with 16 leaves and 8 spines, support 64 servers, or 512 GPUs. Scaling further means more spines, chassis spines or a super-spine.
+Read the sizing example slowly, because later designs in this chapter use the same steps. Take a 64 × 400G leaf at 1:1. Each leaf has 32 ports down and 32 up, so one rail group holds 32 servers, and the leaf offers 64 x 400 Gbps in total. Eight leaves plus four spines support those 32 servers, which is 256 GPUs. That works if the 32 uplinks of each leaf go to four spines with eight links each. Two rows, with 16 leaves and 8 spines, support 64 servers, or 512 GPUs. Scaling further means more spines, chassis spines or a super-spine.
 
 A leaf failure removes one rail for every server in its stripe, so each server loses 1/8 of its bandwidth. The job may keep running in a degraded state, or it may restart, depending on library behaviour. A server NIC or cable failure removes one rail for that server alone.
 
 ### Rail-only design
 
-If inter-rail traffic can be carried inside the servers over NVLink and NVSwitch, the fabric does not need to connect rails to each other at all. Traffic first reaches the target rail's GPU inside the server, then leaves through that GPU's NIC. Each rail becomes an independent network. Rails are cheaper and simpler to troubleshoot, because a fault in one rail does not touch the others. The trade-off is dependence on in-server forwarding capacity and software, and less flexibility for non-collective traffic. Adoption is still being evaluated.
+Picture a shared kitchen in a large restaurant where each cook has a dedicated stove, and the stoves never need to share pans. If every cook only ever cooks with their own stove, the kitchen can be built as eight separate kitchens side by side, each with its own pipes and extractor. That is the rail-only idea. The rails stay apart, and the only place they meet is inside the server, where the internal fabric moves data from one GPU to another. Troubleshooting becomes simpler too, because a fault on one rail has nowhere to spread. The cost is that the design now trusts the server's internal path to do the crossing work.
+
+If inter-rail traffic can be carried inside the servers over NVLink and NVSwitch, the fabric does not need to connect rails to each other at all. Traffic first reaches the GPU of the target rail inside the server, then leaves through the NIC of that GPU. Each rail becomes an independent network. Rails are cheaper and simpler to troubleshoot, because a fault in one rail does not touch the others. The trade-off is dependence on in-server forwarding capacity and software, and less flexibility for non-collective traffic. Adoption is still being evaluated.
 
 ### Extending rail-only across a stripe
 
-Rail-only design can also extend rails across the stripe. In that case the spine layer connects different stripes, not different rails. The spine also follows the rail pattern. Spine-to-leaf links need to be 32 × 400 Gbps for a 1:1 ratio. The scaling limits stay the same as in the earlier designs.
+Rail-only design can also extend rails across the stripe. In that case the spine layer connects different stripes, not different rails, and the spine also follows the rail pattern. Spine-to-leaf links need to be 32 × 400 Gbps for a 1:1 ratio. The scaling limits stay the same as in the earlier designs.
 
 Take a rail-only example with 16 leaves. Servers 1 and 32 connect their NICs to leaf1 through leaf8. Servers 33 and 64 connect theirs to leaf9 through leaf16. Eight spines then link the leaves in a cross-connected pattern, so the spine layer carries rail traffic across the stripe.
 
 The payoff is simplicity. When rails never talk to each other, a fault in one rail stays in that rail, and troubleshooting gets simpler. Adoption is still being evaluated, so check current vendor guidance before you commit.
 
 ### Rail-unified design (RUD)
+
+Imagine a small team that wants the simplest possible cabling. Instead of spreading each server's cards across many leaves, they plug all of a server's cards into one leaf. The cabling is short, the switches are standard, and a new server joins by plugging in one bundle. The trade-off shows up on a bad day. If that single leaf fails, the whole server loses its network at once, and not one rail out of eight. The walkthrough below compares this with the rail-optimised case, so you can see exactly what is traded for what.
 
 In a rail-unified design, several GPUs in one server connect to the same leaf. All eight might go to one leaf, or four to each of two leaves. The advantages are simple cabling, easy scaling and a well-understood classic ToR design. The design can use copper DAC or AEC cables for short reaches. Servers on one leaf reach each other in a single hop, so a handful of servers works well. The design can even use the external leaf for in-server traffic instead of the internal NVSwitch, if that leaf offers higher throughput.
 
@@ -209,13 +219,15 @@ Which leaf a server sits on sets its hop count. Four servers on the same leaf re
 
 Take a concrete layout with 16 leaves and 8 spines. Some servers attach to Leaf1 through Leaf8, and others attach to Leaf9 through Leaf16. Each leaf connects to all spines, which forms a fully meshed fabric. Server 1 and Server X join the first group, while Server 4 and Server X plus 4 join the second. That gives two independent fabric planes.
 
-Each leaf now carries several rails, so it must keep rail traffic apart. Deterministic path forwarding does that job. It makes each rail follow a predictable path through the leaf.
+Each leaf now carries several rails, so it must keep rail traffic apart. Deterministic path forwarding does that job, because it makes each rail follow a predictable path through the leaf.
 
-Some builders skip the internal switch and send in-server GPU traffic through a leaf instead. The NVSwitch moves GPU-to-GPU traffic at 900 Gbps. An external leaf can take over that role if it offers higher throughput. The external switch costs more than the internal one, so compare prices before you choose.
+Some builders skip the internal switch and send in-server GPU traffic through a leaf instead. The NVSwitch moves GPU-to-GPU traffic at 900 Gbps, and an external leaf can take over that role if it offers higher throughput. The external switch costs more than the internal one, so compare prices before you choose.
 
 ### Rack and cable layout
 
-Where the leaves sit decides how much cable you buy and how much rack space you spend. Three placements are common.
+Picture a technician who must run four hundred cables between two rows of racks, all of them to be labelled, measured and laid without tangling. Cable length, the path through the tray, and the power budget of each rack all decide whether the job takes one afternoon or one week. The rack layout is therefore a design decision and not a tidy-up task. The three placements below are three answers to the question of where the switches should live, and each answer changes how long the cables are and how much power each rack must carry.
+
+Where the leaves sit decides how much cable you buy and how much rack space you spend. Three placements are common, and the table puts them side by side.
 
 | Layout | Description | Pros | Cons |
 |---|---|---|---|
@@ -229,35 +241,37 @@ Before you pick a rail design, work out the cabling plan and the power per rack,
 
 ### Leaves in their own racks: ToR, MoR and EoR layouts
 
-Picture a row of eight server racks, with four servers in each rack. That row holds 32 servers and 256 GPUs. Where you place the leaves in that row decides the cable plan.
+Picture a row of eight server racks, with four servers in each rack. That row holds 32 servers and 256 GPUs. Where you place the leaves in that row decides the cable plan. We take the three placements in turn.
 
-In a top-of-rack diagram, each rack is labeled Rack at the top. Each rack holds one component labeled Switch, and four servers labeled Server sit stacked below it. A dashed line above the racks marks all eight as one rail-optimized row. The top-of-rack setup has eight distinct racks arranged horizontally. Below each leaf switch, four components are stacked vertically, each labeled Server.
+In the top-of-rack example, each rack holds one leaf switch at the top and four servers below it. Eight such racks form one rail-optimized row, and a dashed line marks the row. The spines can sit in two spine racks above the row. Each spine rack in the example holds seven spine switches, and a dashed line marks more spines that a drawing would leave out. Each spine rack feeds one line down to the leaf layer, and all eight leaf racks join that line. The spine racks therefore act as the aggregation layer.
 
-In the top-of-rack example, each rack holds one leaf switch at the top and four servers below it. Eight such racks form one rail-optimized row, and a dashed line marks the row. The spines can sit in two spine racks above the row. Each spine rack in the example holds seven spine switches, and a dashed line marks more spines the figure leaves out. Each spine rack feeds one line down to the leaf layer, and all eight leaf racks join that line. The overall structure has two spine racks at the top, each labeled Rack and holding seven rectangular components labeled Spine. A dashed line shows more spine components between the top four and the bottom two. Below them sit eight racks of leaf switches and servers, so the spine racks act as the aggregation layer.
+Spines can also share the leaf racks. In that layout each rack holds one leaf, one spine and four servers, so the spine and leaf counts match. Cable runs now cross the rack and span all eight racks, and the power and cooling needs of each rack also go up. This layout suits a rail-unified design, because the cables are easier and copper DAC or AEC cables can be used to cut cost.
 
-Spines can also share the leaf racks. In that layout each rack holds one leaf, one spine and four servers, so the spine and leaf counts match. Cable runs now cross the rack and span all eight racks. The power and cooling needs of each rack also go up. This layout suits a rail-unified design, because the cables are easier and copper DAC or AEC cables can be used to cut cost.
+In the middle-of-row example, the leaf racks sit in the middle of the row. Four server racks come first, then two switch racks with eight switch units each, then four more server racks, which makes ten tall racks in a line. Each server connects to eight leaf switches in those middle racks, and the leaves can spread over more than one rack for better failure handling. Cable runs from servers to leaves cross a maximum of five or six racks. Switches in the middle racks add nothing to the power budget of a server rack, but the layout needs more rack space.
 
-In the middle-of-row example, the leaf racks sit in the middle of the row. Four server racks come first, then two switch racks with eight switch units each, then four more server racks. Each server connects to eight leaf switches in those middle racks. The leaves can spread over more than one rack for better failure handling. Cable runs from servers to leaves cross a maximum of five or six racks. Think of the middle-of-row layout as ten tall racks in a line, each labeled Rack at the top. The first four racks each contain four rectangular server units, stacked vertically and labeled Server. The fifth and sixth racks each contain eight rectangular switch units, stacked vertically and labeled Switch. The last four racks hold servers again. Switches in the middle racks add nothing to the power budget of a server rack, but the layout needs more rack space.
-
-In the end-of-row example, eight server racks come first, with four servers each. The ninth rack holds eight leaf switches. The tenth rack holds the spine switches, and a dashed line encloses all ten racks as one rail-optimized row. Each server connects to eight leaves in racks at the end of the row. Cable runs can cross a maximum of 10 racks, so the cabling costs more. Picture the end-of-row layout as ten racks in a horizontal row. The first eight racks are identical in structure, each labeled Rack at the top. Each of those eight racks contains four rectangular shapes, vertically stacked and labeled Server, for 32 servers in all. The ninth rack holds eight leaf switches, and the tenth holds the spine switches inside a dashed line. The leaves can also spread across more than one rack for failure isolation.
+In the end-of-row example, eight server racks come first, with four servers each, for 32 servers in all. The ninth rack holds eight leaf switches. The tenth rack holds the spine switches, and a dashed line encloses all ten racks as one rail-optimized row. Each server connects to eight leaves in racks at the end of the row. Cable runs can cross a maximum of 10 racks, so the cabling costs more. The leaves can also spread across more than one rack for failure isolation.
 
 Pick the placement from the cable length, rack power and rack space you can afford. Count each of those before you draw the rows.
 
 ## 5. Scheduled (cell-based) fabrics
 
-Instead of hashing each packet onto one of several equal paths, a scheduled fabric works like one large chassis. It treats leaves as line cards and spines as the backplane. Packets arriving at the ingress leaf are cut into small cells, 64 to 256 bytes each. The cells are sprayed evenly across all fabric links, reassembled at the egress leaf and then forwarded. Broadcom Jericho3-AI with Ramon3 fabric elements and Cisco Silicon One are two implementations.
+Here is a small example of the difference that cells make. Suppose two big files leave one leaf at the same time, and each one is a single long stream of packets. In a normal fabric, each file picks a path by hashing, and the two may land on the same link. In a scheduled fabric, the leaf chops both files into small equal cells and sprays the cells across every link in turn. The cells of the two files interleave, so no single link carries one file alone. The receiving leaf puts the cells back together before forwarding. The walkthrough shows how the scheduler decides which cells may enter the fabric and when.
 
-The benefits follow from that design. Link utilisation stays near perfect, because cell spraying removes ECMP imbalance. The ingress keeps a virtual output queue for each egress port, and it holds those queues across the whole fabric. A scheduler grants credits, so the fabric is never oversubscribed, and contention is avoided before it happens. That approaches non-contending behaviour. Tail latency drops, and congestion is simpler to handle than with DCQCN alone.
+What if the fabric never had to hash flows onto paths at all? Remember the ECMP problem so far: a hash picks one road for each flow, and two big flows can pick the same road by bad luck. Instead of hashing each packet onto one of several equal paths, a scheduled fabric works like one large chassis. It treats leaves as line cards and spines as the backplane. Packets arriving at the ingress leaf are cut into small cells, 64 to 256 bytes each. The cells are sprayed evenly across all fabric links, reassembled at the egress leaf and then forwarded. Broadcom Jericho3-AI with Ramon3 fabric elements and Cisco Silicon One are two implementations.
+
+The benefits follow from that design. Link utilisation stays near perfect, because cell spraying removes ECMP imbalance. Imagine dealing cards to every player in turn rather than letting each player grab a pile. The ingress keeps a virtual output queue for each egress port, and it holds those queues across the whole fabric. A scheduler grants credits, so the fabric is never oversubscribed, and contention is avoided before it happens. That approaches non-contending behaviour. Tail latency drops, and congestion is simpler to handle than with DCQCN alone.
 
 Evaluate the constraints before you adopt one. Check the scale limits of the scheduled domain. Check what happens on a link or node failure, including cell loss and reassembly. Check latency under congestion, the vendor lock-in for the pod, which this chapter calls a brick, and your operations model.
 
-A quick recap of VOQ helps here, because the rest of the section depends on it. Each input keeps a virtual queue for each output port. Congestion at one output therefore does not block traffic headed to the others, which removes head-of-line blocking. With a fabric-wide VOQ, the same principle extends across the whole network.
+A quick recap of VOQ helps here, because the rest of the section depends on it. Each input keeps a virtual queue for each output port. Congestion at one output therefore does not block traffic headed to the others, which removes head-of-line blocking. Head-of-line blocking is what happens in a supermarket queue when the person at the front has a problem and everyone behind them waits, even those who only need the other counter. With a fabric-wide VOQ, the same principle extends across the whole network.
 
 Evaluate the failure behaviour and the operations model before you commit to a scheduled fabric.
 
 ## 6. Dragonfly, torus and other low-diameter topologies
 
-A Clos has a diameter of 2 switch hops in a 3-stage build and 4 in a 5-stage build. When you size a cluster in the tens of thousands of GPUs, each extra stage adds latency and cost. Low-diameter topologies cut the number of hops and the long links.
+Picture a set of villages scattered across a valley. In one design, every village has a road to every other village, which is expensive but short. In another design, villages form groups, each group is well connected inside, and a few long roads link the groups. The second design reaches far destinations in a few hops, and it needs fewer long roads. That is the dragonfly idea in one picture. The torus is a different picture: villages stand on a grid, and the edge villages wrap around to meet the far edge. Both shapes trade hop count and cable length against the traffic they can carry comfortably, and the paragraphs below work through that trade.
+
+A Clos has a diameter of 2 switch hops in a 3-stage build and 4 in a 5-stage build. Diameter is the number of hops on the longest of the shortest paths, so it tells you how far apart the two most distant endpoints are. When you size a cluster in the tens of thousands of GPUs, each extra stage adds latency and cost. Low-diameter topologies cut the number of hops and the long links.
 
 A dragonfly splits the network into groups, which this chapter also calls blocks, bricks or pods. Each group is richly connected inside, as a full mesh or, in the DF+ and sparse variants, as a small Clos. Every group also connects to every other group through global links, often all-to-all at the group level. The diameter stays at about three hops, whatever the size. The benefits are fewer hops, lower latency, fewer spine layers and links, modular growth by adding groups, and tolerance of group or component failures at reduced capacity. The costs are complex cabling between groups and routing that is not shortest-path. Routing such as Valiant or UCMP, plus adaptive routing, is needed for uniform traffic. Uneven bandwidth also appears with adversarial patterns. If every node in one group talks to another group over limited global links, bandwidth becomes uneven. So applications and collectives should communicate mostly inside their groups. A sparse dragonfly keeps each group as a leaf-spine Clos and connects only the top-of-group spines between groups.
 
@@ -278,49 +292,53 @@ Compare the options in the table before you pick one, because diameter, cabling 
 
 Look at the risk column. Each option buys fewer hops or cheaper links, and each brings a specific risk, such as NIC complexity or hot global links. Choose the topology from the traffic pattern first. Nearest-neighbour jobs suit a torus, while all-to-all jobs need a Clos or a well-routed dragonfly.
 
-If you pick a torus for an all-to-all job, expect poor bisection bandwidth.
+If you pick a torus for an all-to-all job, expect poor bisection bandwidth. Bisection bandwidth is what you get if you cut the network in half and count what can cross the cut, and a torus has little to spare there.
 
 ### Torus connections in one, two and three dimensions
 
-The number of connections per node shows how a torus grows. In a one-dimensional torus, each node links to its neighbor on either side. The edge nodes link to each other as well, so the layout forms a ring. Every node has two connections.
+The number of connections per node shows how a torus grows. In a one-dimensional torus, each node links to its neighbor on either side. The edge nodes link to each other as well, so the layout forms a ring, and every node has two connections.
 
 A two-dimensional torus adds links up and down. Each node links to its neighbor on the left, right, up and down. Nodes on one edge wrap around to the opposite edge, so every node has four connections. A three-dimensional torus adds a third axis. Each node links to neighbors along the x, y and z axes, so it has six connections.
 
-The one-dimensional form can also build a rail topology. Each server's NIC1 connects to leaf1, NIC2 to leaf2, and so on for every server. The leaves link to each other in a shared ring, which carries inter-rail traffic in place of spines. To connect many rails, a two-dimensional or three-dimensional torus fits better.
+The one-dimensional form can also build a rail topology. The NIC1 of each server connects to leaf1, NIC2 to leaf2, and so on for every server. The leaves link to each other in a shared ring, which carries inter-rail traffic in place of spines. To connect many rails, a two-dimensional or three-dimensional torus fits better.
 
 A torus has three strengths. It is cost-effective at high scale, because each node needs few ports. It is relatively easy to scale out. It performs best when applications talk to their nearest nodes, so pick it only for that traffic pattern.
 
 ## 7. Multi-planar scale-out
 
-Suppose a single 3-tier Clos fails. It has one control plane and one data plane, so a bug or failure can affect the entire fabric. A 5-stage path also adds a hop for any job that spans blocks. Multi-planar architectures address both problems. They replace one deep fabric with several independent 2-tier planes.
+Imagine a city with one main motorway. A crash on that motorway stops the whole city, because every route depends on it. A city with three independent motorways that share no bridges is more resilient. A crash on one still leaves two working routes, and drivers can split their trips. Multi-planar scale-out builds that second kind of city for a GPU cluster. Each plane is a complete two-tier fabric with its own control plane, and each GPU server uses a piece of its bandwidth on every plane. The walkthrough below follows what happens to one server when one plane goes quiet.
+
+Suppose a single 3-tier Clos fails. It has one control plane and one data plane, so a bug or failure can affect the entire fabric. A 5-stage path also adds a hop for any job that spans blocks. Multi-planar architectures address both problems by replacing one deep fabric with several independent 2-tier planes. Think of one big motorway replaced by several smaller, separate motorways between the same cities.
 
 Each GPU NIC breaks out, so its 400G or 800G port splits into 2 or 4 lower-speed links. Each of those links connects to 2 or 4 planes at once. The NIC, through its hardware and firmware, sprays the packets of a single queue pair across all planes. The receiver then reorders them, so the application sees one in-order flow.
 
-Fault isolation comes first. Planes have disjoint control and data planes. If one plane goes down, a path to the GPU still exists, at reduced capacity.
+Fault isolation comes first. Planes have disjoint control and data planes, so if one plane goes down, a path to the GPU still exists, at reduced capacity.
 
 Latency stays low too. Two-tier planes keep inter-leaf traffic at spine depth. A large job can be placed within one plane, or spread across planes with only NIC spraying. Super-spines remain only to connect plane sets.
 
 The complexity moves to the host. Packet spraying, reordering and failure handling become NIC and library features. This is also the direction of Ultra Ethernet and vendor multi-plane NICs. Bridging on the server side must avoid Ethernet loops. Designs use EVPN-VXLAN MAC-VRF bridging over the IP underlay, or pure IP planes with ACL and RADIUS-based tenant control.
 
-Here is a concrete case. Take two planes with two rails each. A server's NIC1..8 connect to the Rail A and Rail B leaves in both planes. GPU-to-GPU traffic between servers on the same rail stays in the leaf. Traffic across rails uses the plane spines. Super-spines connect plane sets only for the largest jobs.
+Here is a concrete case. Take two planes with two rails each. The NIC1..8 of a server connect to the Rail A and Rail B leaves in both planes. GPU-to-GPU traffic between servers on the same rail stays in the leaf, and traffic across rails uses the plane spines. Super-spines connect plane sets only for the largest jobs.
 
 Before you adopt multi-planar cabling, settle how the server side will bridge the planes without creating Ethernet loops.
 
 ### One NIC, four planes: breakouts and packet spraying
 
+Follow one large message through a four-plane design, one step at a time. The application hands the message to the network card. The card splits it into packets and sends each packet out through a different breakout link, one per plane. The four planes each carry a quarter of the traffic and may deliver their packets at slightly different moments. The receiving card holds the packets, puts them back in order, and only then hands the complete message to the application. The application never sees the spraying, but the card and the host libraries must do that reordering work for every flow.
+
 Consider how one GPU server joins a multi-plane design. Its NIC does not use one 400G or 800G link into one switch. Breakout cables split each port, and each piece goes to a different plane. With four planes, FP1 through FP4, each NIC has four links. An 800G port can break out into four 200G links, one for each plane.
 
-Server 1 reaches Leaf 1 in each of the four planes. Server 2 reaches Leaf 8 in each plane. The gain shows up at the leaf. A ToR switch with 64 ports at 800G offers 128 × 200G links to GPU servers. It keeps 64 × 400G or 32 × 800G ports for the spines. Each plane therefore serves more GPU connections per leaf. Software still sees 800 GB of capacity, because reordering happens lower in the stack.
+Server 1 reaches Leaf 1 in each of the four planes. Server 2 reaches Leaf 8 in each plane. The gain shows up at the leaf. A ToR switch with 64 ports at 800G offers 128 × 200G links to GPU servers, and it keeps 64 × 400G or 32 × 800G ports for the spines. Each plane therefore serves more GPU connections per leaf. Software still sees 800 GB of capacity, because reordering happens lower in the stack.
 
-The NIC firmware and host libraries handle the traffic work. A single queue pair sprays its packets across all planes at once. The receiving NIC collects them and coalesces them before the application sees them. Packets can take different paths, so they may arrive out of order. The NIC or host software holds completion until the data is in order. RDMA applications need that in-order delivery.
+The NIC firmware and host libraries handle the traffic work. A single queue pair sprays its packets across all planes at once, and the receiving NIC collects them and coalesces them before the application sees them. Packets can take different paths, so they may arrive out of order. The NIC or host software holds completion until the data is in order, because RDMA applications need that in-order delivery.
 
 ### Dual-plane and four-plane domains with super-spines
 
-Larger clusters can use two domains. Each domain holds two planes, such as Fabric Plane 1a and Fabric Plane 2a. Each plane has two rail groups, Rail A and Rail B. Every server NIC connects to two different planes, so the reliability of each GPU goes up.
+Larger clusters can use two domains. Each domain holds two planes, such as Fabric Plane 1a and Fabric Plane 2a, and each plane has two rail groups, Rail A and Rail B. Every server NIC connects to two different planes, so the reliability of each GPU goes up.
 
-In the upper domain, Rail A uses Spine 1 and Spine 2, and Rail B uses Spine 3 and Spine 4. Server 1 and server 4 can talk without crossing the super spines. Server 4 reaching server 8 does cross them. In the two-plane, two-rail example, when server 4 GPU 1 needs to reach server 2 GPU 1, the traffic does not need spine devices. Reaching server 1 GPU 1 in Rail A means forwarding packets across the Fabric Plane 1 spine devices. A scheduled collective may hide that extra latency, while the reliability gain stays. Four super spines in the middle interconnect in a high-bandwidth mesh, and the lower domain repeats the same structure. Both domains connect upward to the same super-spine layer. In a larger-scale GPU cluster, the super spines may still have to interconnect two different sets of multi-planar fabrics. A dual-planar design, with two rails per plane, has each GPU server NIC connect to two different planes.
+In the upper domain, Rail A uses Spine 1 and Spine 2, and Rail B uses Spine 3 and Spine 4. Server 1 and server 4 can talk without crossing the super spines, while server 4 reaching server 8 does cross them. In the two-plane, two-rail example, when server 4 GPU 1 needs to reach server 2 GPU 1, the traffic does not need spine devices. Reaching server 1 GPU 1 in Rail A means forwarding packets across the Fabric Plane 1 spine devices. A scheduled collective may hide that extra latency, while the reliability gain stays. Four super spines in the middle interconnect in a high-bandwidth mesh, and the lower domain repeats the same structure. Both domains connect upward to the same super-spine layer. In a larger-scale GPU cluster, the super spines may still have to interconnect two different sets of multi-planar fabrics. A dual-planar design, with two rails per plane, has each GPU server NIC connect to two different planes.
 
-A four-plane design follows the same idea with four planes per domain. GPU server 1 sprays its packets across all four planes. The spines and super spines must deliver them efficiently to server 8. Server 8 reassembles the packets before passing them to the RDMA application layer. Shuffle cables and LPO or LRO optics can cut the cabling and power for designs like this.
+A four-plane design follows the same idea with four planes per domain. GPU server 1 sprays its packets across all four planes, and the spines and super spines must deliver them efficiently to server 8. Server 8 reassembles the packets before passing them to the RDMA application layer. Shuffle cables and LPO or LRO optics can cut the cabling and power for designs like this.
 
 ## 8. Inference data centres and the front-end
 
@@ -340,17 +358,19 @@ The storage data center holds all the gathered data. Small data sets may sit in 
 
 The training data center, also called the backend data center, does the learning. Research clusters hold many GPUs. They work through a broad list of models, then narrow the list to a focused set of trained models. An enterprise GPU cluster is much smaller and runs focused models on focused data sets. Its network needs are similar to those of a storage data center.
 
-The inference data center is the production site, where a trained model answers outside requests. Its design resembles an enterprise, cloud or telco data center. In most cases it looks like a collapsed three-stage or five-stage Clos. The storage fabric can be distributed or dedicated to the data center. The inference fabric is the front end for user traffic, and the training fabric is the back end for learning traffic.
+The inference data center is the production site, where a trained model answers outside requests. Its design resembles an enterprise, cloud or telco data center, and in most cases it looks like a collapsed three-stage or five-stage Clos. The storage fabric can be distributed or dedicated to the data center. The inference fabric is the front end for user traffic, and the training fabric is the back end for learning traffic.
 
 ## 9. Information hiding and failure domains: worked examples
 
+Consider a single rack whose uplink flaps several times in one afternoon. If every device in the fabric must recompute its paths each time, the whole fabric pays for one rack's bad cable. The worked examples below show how information hiding stops that spread. Each one names what is hidden, which devices are protected from the noise, and what the hiding costs in return. Keep the rack-flap picture in mind as you read, because every technique here tries to shrink it.
+
 Chapter 2.16 introduced these techniques. This section shows concrete instances, so you can see what each one hides and what it costs you in return.
 
-Summarising topology is the first. IS-IS levels hide an area's internal topology behind L1 and L2 routers. OSPF areas hide intra-area links behind ABRs, which send type 3 summaries. The price is suboptimal inter-area routing and less visibility. A traffic-engineering controller needs BGP-LS or a hierarchical view to see the detail.
+Summarising topology is the first. IS-IS levels hide the internal topology of an area behind L1 and L2 routers. OSPF areas hide intra-area links behind ABRs, which send type 3 summaries. The price is suboptimal inter-area routing and less visibility. A traffic-engineering controller needs BGP-LS or a hierarchical view to see the detail.
 
-Aggregation hides failures too. Advertise 10.10.0.0/16 for 256 racks, and use the specifics inside. A failure of one rack's /24 does not ripple outward, because the aggregate hides it. The cost is blackholing. If the aggregate is advertised while a specific route is unreachable, traffic sent into that gap is dropped.
+Aggregation hides failures too. Advertise 10.10.0.0/16 for 256 racks, and use the specifics inside. A failure of the /24 of one rack does not ripple outward, because the aggregate hides it. The cost is blackholing. If the aggregate is advertised while a specific route is unreachable, traffic sent into that gap is dropped.
 
-Layering separates the planes. BGP acts as a reachability overlay. The IGP carries only loopbacks and link reachability, while BGP carries the bulk: customer, service or server prefixes. A change in a server prefix therefore never triggers an IGP SPF run. EVPN applies the same idea to MAC and IP. Segment routing with a controller overlay goes further. The network's own control plane provides only node and adjacency SIDs. A controller computes and installs paths for policies, so the number of states stays small while policy richness stays centralised.
+Layering separates the planes. BGP acts as a reachability overlay. The IGP carries only loopbacks and link reachability, while BGP carries the bulk: customer, service or server prefixes. A change in a server prefix therefore never triggers an IGP SPF run. EVPN applies the same idea to MAC and IP. Segment routing with a controller overlay goes further. The own control plane of the network provides only node and adjacency SIDs, and a controller computes and installs paths for policies, so the number of states stays small while policy richness stays centralised.
 
 Slowing down state velocity keeps the control plane calm. Exponential backoff delays each successive recomputation or advertisement after repeated events. The first change is handled at once, the next after 50 ms, then 100 ms and 200 ms, up to a cap. The delay resets after a quiet period. This keeps flapping from saturating the control plane. Link-state flooding reduction takes the same idea to the flooding itself. In dense topologies, you elect a subset of links for flooding, as IS-IS distributed optimised flooding and OSPF flood reduction (RFC 8099 and mesh groups) do. That way each LSA is not re-received dozens of times. This is essential in dense Clos link-state fabrics.
 
@@ -358,19 +378,23 @@ Every piece of state needs a scope and every source of change needs a rate limit
 
 ## 10. Resilience and redundancy
 
-Picture a link that fails in the middle of a training run. The link is down, but a clean outage is only the simplest outcome. Applications feel a failure in several other ways.
+Picture a training run that has been going for two days when a cable in one rack starts to fail. The link does not go down cleanly. It drops packets in bursts, comes back for a few seconds, and drops again. The job slows, the retransmissions climb, and the monitoring graph looks noisy rather than broken. This section explains why a partial failure is harder to handle than a clean one, why redundancy alone does not solve it, and what the team must measure to tell the difference.
+
+Picture a link that fails in the middle of a training run. The link is down, but a clean outage is only the simplest outcome. Applications feel a failure in several other ways, and it helps to know them by name.
 
 ### What failures look like to applications
 
-A link failure can cause complete flow failure, if filters or policy block the alternate path. It can cause a step change in delay, from more hops, queues and serialisation. A burst of jitter is possible. Packets in flight at the failure moment are dropped. Duplicate packets can appear when microloops combine with short retransmit timers. Reordering happens when a microloop resolves while a later packet passes an earlier one. Packet networks cannot eliminate these fully, and technologies that try often add complexity that hurts more than it helps. The tools you have are fast reroute, exponential backoff, graceful restart, ECMP, and application tolerance, meaning retries, idempotency and checkpointing.
+A link failure can cause complete flow failure, if filters or policy block the alternate path. It can cause a step change in delay, from more hops, queues and serialisation. A burst of jitter is possible, and packets in flight at the failure moment are dropped. Duplicate packets can appear when microloops combine with short retransmit timers. A microloop is a brief routing loop that lasts while routers update at slightly different moments. Reordering happens when a microloop resolves while a later packet passes an earlier one. Packet networks cannot eliminate these fully, and technologies that try often add complexity that hurts more than it helps. The tools you have are fast reroute, exponential backoff, graceful restart, ECMP, and application tolerance, meaning retries, idempotency and checkpointing.
 
 ### Measures
 
-MTBF, the mean time between failures, equals total time divided by the number of failures. MTTR, the mean time to repair, equals total outage time divided by the number of outages. Availability equals MTBF divided by MTBF plus MTTR, which is uptime divided by uptime plus downtime.
+Walk through one availability calculation as if it were your own. Suppose a component fails about once in a long stretch of time, and each failure takes a short time to repair. The average time between failures and the average repair time together give the share of time the component is up. The more often it fails and the longer it takes to fix, the lower that share. The nines in this section are simply a short way of naming that share. Work the figure out yourself once, and the nines will stop feeling like jargon.
+
+To compare designs you need a few measures. MTBF, the mean time between failures, equals total time divided by the number of failures. MTTR, the mean time to repair, equals total outage time divided by the number of outages. Availability equals MTBF divided by MTBF plus MTTR, which is uptime divided by uptime plus downtime.
 
 Availability is usually stated in nines. Three nines, 99.9%, allows about 8.8 hours of downtime per year. Four nines, 99.99%, allows about 52.6 minutes, which is close to an hour. Five nines, 99.999%, allows about 5.3 minutes. Define what counts as down before you quote a number. It might be the whole network, a service, a tenant, a rail, or a percentage of capacity. For AI, a degraded fabric such as 7/8 rails may be available for a job but still fail the SLO.
 
-Two informal measures help too. MTBM, the mean time between mistakes, depends on configuration complexity and change processes. The 2 a.m. rule says not to build what you cannot fix at 2 a.m. MTTI, the mean time to innocence, measures how long it takes to prove the network is not at fault. That requires before-and-after telemetry.
+Two informal measures help too. MTBM, the mean time between mistakes, depends on configuration complexity and change processes. The 2 a.m. rule says not to build what you cannot fix at 2 a.m. MTTI, the mean time to innocence, measures how long it takes to prove the network is not at fault, and that requires before-and-after telemetry.
 
 ### Redundancy as a tool
 
@@ -388,7 +412,9 @@ Before you sign off a design, list every shared risk and decide which ones the d
 
 ## 11. A design exercise and calculator
 
-Suppose you are asked to design the back-end fabric for 4,096 H100 GPUs. That is 512 servers with eight GPUs each, and each GPU has one 400G NIC. The target is 1:1 at the leaf-spine tier, rail-optimised. The design must survive the loss of any single spine with at most a 5% capacity loss.
+Suppose a colleague stops by your desk with a napkin sketch and asks whether it can support four thousand GPUs at full speed. You have the arithmetic from this chapter, so you can answer in minutes rather than days. The exercise below walks through that answer one decision at a time. Each step uses the result of the step before, so when one number changes, you can see exactly which later numbers change with it.
+
+Suppose you are asked to design the back-end fabric for 4,096 H100 GPUs. That is 512 servers with eight GPUs each, and each GPU has one 400G NIC. The target is 1:1 at the leaf-spine tier, rail-optimised. The design must survive the loss of any single spine with at most a 5% capacity loss. We work it the way you would on a whiteboard, one decision at a time, and each step uses the answer of the one before.
 
 Work the arithmetic with 64 × 400G switches.
 
@@ -425,7 +451,7 @@ Start by running the self-checking Python lab on your own machine, so you can se
 python3 code/part02/dc_topologies_clos_lab.py
 ```
 
-Next, use a disposable Linux VM with containerlab and network namespaces. All interactive VM commands below are `untested here`. Work through these steps in order.
+Next, use a disposable Linux VM with containerlab and network namespaces. The interactive VM commands below were not run on live hardware. Work through these steps in order, because later steps reuse what you build earlier.
 
 1. Paper. Complete the design exercise above. Produce a bill of materials for switches, optics and cables. Build a failure table covering spine, leaf, link, rail group and power domain, with the percentage of bandwidth that survives each case.
 2. Build a 2-spine × 4-leaf Clos in containerlab with FRR, reusing the lab in chapter 2.16. Run `iperf3` all-to-all with 16 flows and measure per-link utilisation. Then fail a spine and measure the throughput and the recovery time.
@@ -440,13 +466,15 @@ Keep the lab results next to the paper design, and note every place where they d
 
 ## 13. Common mistakes
 
+Picture a design review that goes well until someone asks what happens when the single leaf in a rack fails. The room goes quiet, because the design was drawn as if no part ever broke. The mistakes below are the ones that produce that silence. Each one looks reasonable on a diagram and turns into an outage on the day something fails, so read them as a checklist to run against your own drawing before the review.
+
 Check your design against each of the mistakes below before you show it to anyone, and note which ones your draft already avoids.
 
-Do not choose a topology from a diagram alone. Compute ports, switches, optics, power and failure-case capacity first. Do not call a hierarchical network a fabric, and do not scale up when scale-out was available.
+Do not choose a topology from a diagram alone. Compute ports, switches, optics, power and failure-case capacity first. A drawing never runs out of ports, and a real switch does. Do not call a hierarchical network a fabric, and do not scale up when scale-out was available.
 
 Do not set oversubscription by habit. Using 3:1 for collectives that need 1:1 is a common error, and so is ignoring oversubscription at the top tier. Also avoid connecting devices to spines, or cross-linking spines, without understanding the control-plane consequences.
 
-Watch for shared risk behind redundant links. A power feed, a cable tray, a line card or an optic vendor's firmware bug can take down links that look independent.
+Watch for shared risk behind redundant links. A power feed, a cable tray, a line card or a firmware bug from an optic vendor can take down links that look independent.
 
 Rail cabling errors are easy to make. Two rails can land on one leaf, or rails can be swapped between servers. Check the cabling with LLDP, `ibnetdiscover` and NCCL tests.
 
@@ -474,21 +502,22 @@ Pick the three questions you find hardest, and write a two-minute answer for eac
 
 ## Exercises
 
-Work through these in order. Exercises 2 and 6 ask for arithmetic you can check against the lab.
+Work through these in order. Exercises 5 and 11 ask for arithmetic you can check against the lab.
 
-1. A new engineer asks what makes a network a fabric. State the three defining properties of a packet-switched fabric, and contrast it with a classic three-tier campus network of access, distribution and core. Use *Computer Networking Problems and Solutions*, chapters 22 and 25.
-2. Explain the difference between a non-blocking Clos and a non-contending scheduled fabric. Then explain why hyperscale data centers see about 10 bits of east-west traffic for every bit of north-south traffic.
-3. Use `size_clos3_fabric()` in `code/part02/dc_topologies_clos.py`. Size a three-stage Clos from 64-port switches, which gives 2,048 endpoints, and again from 32-port switches, which gives 512. Report the leaves, spines, total switches and cables for each.
-4. Use `compute_5stage_max_endpoints_1to1()` to find the 1:1 five-stage ceiling for 64-port switches. The answer is 65,536.
-5. Use `compute_oversubscription_and_spine_loss()`. A leaf has 320 Gb/s of downlinks and 180 Gb/s of uplinks, so its oversubscription is 1.78:1. Then find the capacity that survives when 1 of 32 spines fails. The answer is 96.9%.
-6. Compare rail-optimised, rail-only and rail-unified GPU cluster topologies. Look at hop counts, the blast radius when one leaf switch dies, and the cabling layout. Then say where top-of-rack, middle-of-row and end-of-row placements fit. Use *AI Data Center Network Design and Technologies*, chapter 3.
-7. Explain how a scheduled cell-based fabric removes ECMP elephant-flow collisions. It uses cells of 64 to 256 B and credit-scheduled virtual output queues across the fabric.
-8. Compare dragonfly, the k-D torus and multi-planar scale-out. For the torus, `compute_torus_diameter([4, 4, 4])` gives 6 hops. For multi-planar scale-out, explain how NIC port breakouts spray packets across independent two-tier planes, and where reordering happens.
-9. Give one protocol example for each of the five mechanisms in section 9 that hide information or limit rates. They are summarising topology, aggregating reachability, layering control planes, exponential backoff and reducing link-state flooding. Use chapters 19 and 20 of *Computer Networking Problems and Solutions*.
-10. Use `compute_availability_and_downtime()`. With MTBF of 9,999 h and MTTR of 1 h, show 99.99% availability and 52.6 minutes of downtime a year. With MTBF of 99,999 h and MTTR of 1 h, show 99.999% and 5.3 minutes. Then define MTBM with the 2 a.m. rule, and define MTTI.
-11. Reproduce the bill of materials for the 4,096-GPU design in section 11, which has 512 servers of 8 GPUs. It has 128 leaves, 128 spines and 32 super-spines, so 288 switches. The cables are 4,096, 4,096 and 2,048.
+1. A new engineer asks what makes a network a fabric. State the three defining properties of a packet-switched fabric, and contrast it with a classic three-tier campus network of access, distribution and core.
+2. A colleague mixes up two terms. Explain the difference between a non-blocking Clos and a non-contending scheduled fabric.
+3. A manager doubts the traffic numbers. Explain why hyperscale data centers see about 10 bits of east-west traffic for every bit of north-south traffic.
+4. You need to size a fabric from two switch models. Use `size_clos3_fabric()` in `code/part02/dc_topologies_clos.py` to size a three-stage Clos from 64-port switches, which gives 2,048 endpoints, and again from 32-port switches, which gives 512. Report the leaves, spines, total switches and cables for each.
+5. A cluster needs more than one pod. Use `compute_5stage_max_endpoints_1to1()` to find the 1:1 five-stage ceiling for 64-port switches. The answer is 65,536.
+6. A leaf has 320 Gb/s of downlinks and 180 Gb/s of uplinks. Use `compute_oversubscription_and_spine_loss()` to show that its oversubscription is 1.78:1. Then find the capacity that survives when 1 of 32 spines fails. The answer is 96.9%.
+7. A design review compares three GPU cluster topologies. Compare rail-optimised, rail-only and rail-unified designs by hop counts, the blast radius when one leaf switch dies, and the cabling layout. Then say where top-of-rack, middle-of-row and end-of-row placements fit.
+8. Explain how a scheduled cell-based fabric removes ECMP elephant-flow collisions. It uses cells of 64 to 256 B and credit-scheduled virtual output queues across the fabric.
+9. A team compares low-diameter options. Compare dragonfly, the k-D torus and multi-planar scale-out. For the torus, `compute_torus_diameter([4, 4, 4])` gives 6 hops. For multi-planar scale-out, explain how NIC port breakouts spray packets across independent two-tier planes, and where reordering happens.
+10. Give one protocol example for each of the five mechanisms in section 9 that hide information or limit rates. They are summarising topology, aggregating reachability, layering control planes, exponential backoff and reducing link-state flooding.
+11. A design must state its downtime. Use `compute_availability_and_downtime()`. With MTBF of 9,999 h and MTTR of 1 h, show 99.99% availability and 52.6 minutes of downtime a year. With MTBF of 99,999 h and MTTR of 1 h, show 99.999% and 5.3 minutes. Then define MTBM with the 2 a.m. rule, and define MTTI.
+12. Reproduce the bill of materials for the 4,096-GPU design in section 11, which has 512 servers of 8 GPUs. It has 128 leaves, 128 spines and 32 super-spines, so 288 switches. The cables are 4,096, 4,096 and 2,048.
 
-Run the lab code for exercises 2 and 6 before you rely on the numbers in your answers. Write each answer in your own words, and show the arithmetic step by step.
+Run the lab code for exercises 5 and 11 before you rely on the numbers in your answers. Write each answer in your own words, and show the arithmetic step by step.
 
 ## Checkpoint questions (20)
 

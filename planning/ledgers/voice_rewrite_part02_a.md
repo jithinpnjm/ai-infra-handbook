@@ -1,0 +1,39 @@
+# Voice rewrite ledger: Part 2 chapters 2.1-2.15 (agent A)
+
+Method: each chapter's code blocks, tables, Mermaid, front matter and the whole Checkpoint/Sources tail were held as fixed blocks (byte-identical); the prose between them was rewritten in place. Note: Part 2 had already received an earlier voice pass (commits d3bf5a2, 2fc17e5), so this pass kept corrections and the existing voice and changed wording, transitions, broken list/heading fragments and drafting residue ("untested here" lines) rather than inventing new content. Checkpoint answers and Sources were not reworded (already plain, structure fixed).
+
+Guard = python3 tools/rewrite_guard.py HEAD WORKTREE; gate = tools/restore/chain_gate.py.
+
+| Chapter | Guard (hard failures / new numbers / lost numbers) | Chain gate | Notes |
+|---|---|---|---|
+| 2.1 | 0 / 0 / 0 (1 lost code span: the "(untested here)" label, now plain sentence) | 0.1 | none |
+| 2.2 | 0 / 0 / 0 | 0.0 | none |
+| 2.3 | 0 / 0 / 0 | 0.0 | fixed run-together numbered list in "Inside a network device"; removed two "comes from Computer Networking Problems and Solutions" body attributions in exercises (kept in Sources) |
+| 2.4 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.1 | none |
+| 2.5 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | fixed missing blank line before "Loopback, VIPs and dummy interfaces" heading |
+| 2.6 | 0 / 1 new number ("2.19", explained) / 0 (1 lost code span: "untested here" label) | 0.0 | fixed cross-reference: DCQCN is covered in chapter 2.19 (2.19 has 22 DCQCN hits, 2.20 none), text said 2.20; removed body attribution sentence "Use chapters 2 and 3 of Computer Networking Problems and Solutions" from exercise 1; removed "As the networking textbook notes" |
+| 2.7 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | none |
+| 2.8 | 0 / 0 / 0 (1 lost code span: "untested here" label) | see run | none |
+| 2.9 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | none |
+| 2.10 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.1 | resolved the unfinished cross-reference "chapter 1.x" to chapter 1.16 (logging, time synchronisation and chrony); removed two body attributions to Computer Networking Problems and Solutions (birthday paradox sentence, exercise 2 reference) |
+| 2.11 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | removed four body attributions to Computer Networking Problems and Solutions (chapters 7 and 11; kept in Sources); FIX_WORKLIST rated this chapter rewrite-sections for protocol hello taxonomy, content kept (no trimming without owner approval) |
+| 2.12 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | removed two body attributions in exercises 1 and 6 (Computer Networking Problems and Solutions ch.7; Supercomputers for Linux SysAdmins ch.4; both stay in Sources) |
+| 2.13 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | FIXED factual slip in exercise 6 found while rewriting (not in the Opus lists): E1 and E2 hot/cold-potato were reversed. OSPF E1 adds the internal cost to the ASBR so it favours the nearest exit (hot potato); E2 uses only the external metric (cold potato). Source: OSPF RFC 2328 section 16.4 semantics. Also fixed a cross-reference: micro-loops are covered in section 5, text said section 6. Removed four body attributions to Computer Networking Problems and Solutions (chapters 11 to 14). Left the O(n^2) static-route claim and EIGRP "open since 2013" as they were (unchanged, unverified here). |
+| 2.14 | 0 / 0 / 0 / 0 lost spans | 0.0 | kept earlier Rework W6 corrections (timers checked against RFCs 2328, 1195, 7868). Reworded one garbled sentence in section 3 ("You can notice that ... for you to learn"); the lab status line is now one plain sentence. Unresolved (from W6): none new. |
+| 2.15 | 0 / 0 / 0 (1 lost code span: "untested here" label) | 0.0 | removed three body attributions to Computer Networking Problems and Solutions (chapters 16 and 17); unresolved: exercise 5 asks about "mashed-potato routing", which the chapter text does not define (left as is, needs a source sentence); ASPA status ("draft or an RFC in progress") not re-verified |
+
+## Summary and honest status
+- All 15 chapters: guard hard failures 0 (front matter, code blocks, checkpoint count, headings). Only new number across the batch: "2.19" in 2.6 (a corrected cross-reference). Lost numbers 0. Chain gate 0.0 to 0.1 on every chapter.
+- Scope of the rewrite: prose between fixed blocks was rewritten in place for every chapter (openers, section intros, transitions, lab and exercise wording, fragments repaired, drafting residue removed). Because Part 2 already had an earlier voice pass, much of the wording was kept where it already met the spec; this is a polish-level rewrite, not a new draft. Checkpoint questions and the Sources tail were left byte-identical.
+- "Untested" labels: every lab keeps one plain status sentence above the VM steps; the inline "(untested here)" code-span labels are gone (the guard counts this as 1 lost code span).
+- Not done: no new facts added; no cross-chapter fact checks beyond the three fixes listed (2.6 DCQCN pointer, 2.10 chrony pointer, 2.13 E1/E2 hot/cold potato and section pointer).
+- Nothing committed. Chapters 16 to 30 untouched.
+
+## Second pass (deep teacher rewrite, 2026-11-12, chapters 2.1-2.15)
+Owner rejected the first pass as too mechanical and too short. This pass follows the Kimi/DeepSeek Part 1 approach (compared 9394a58~1 and 9394a58 of 1.8): sections rewritten in place with a lived situation first, plain-words reasons, analogies, small worked examples from numbers already in each chapter, terms defined at first use, and no announce-the-lesson roadmaps. The earlier polish and all ledger corrections (2.6 DCQCN pointer, 2.10 chrony pointer, 2.13 E1/E2 hot/cold potato and micro-loop section pointer) were kept because edits were made on top of the current files.
+- Method: whole paragraphs replaced or inserted (about 50 to 65 per chapter). Code blocks, Mermaid, tables, headings, front matter, checkpoint questions and Sources untouched. Roadmap paragraphs ("This chapter covers...", "First you will see...") reworked as story in 2.2 to 2.15, and "By the end you should be able to" lead-ins reworded to a self-check line (the bullet lists themselves kept, they are the chapters' outcomes). Lab status sentence now sits once above the lab in each chapter.
+- Growth vs HEAD (words): 2.1 8586 to 10521, 2.2 9766 to 11204, 2.3 10738 to 11831, 2.4 9463 to 10480, 2.5 7973 to 8970, 2.6 10716 to 11774, 2.7 7315 to 8154, 2.8 7986 to 8906, 2.9 7304 to 8167, 2.10 7892 to 8718, 2.11 8499 to 9208, 2.12 8035 to 8705, 2.13 9047 to 9821, 2.14 8045 to 8771, 2.15 7662 to 8359.
+- Guard: hard failures 0 on all 15. New numbers: only "2.19" in 2.6 (the corrected cross-reference from the first pass, unchanged). Lost numbers 0. Chain gate 0.0 to 0.1 everywhere. New code spans: 2.3 `100GBASE-LR4` and 2.4 `-6` (both names/flags already in the chapter, used in a reading example), 2.8 two spans for names already used. Lost code span in most chapters is the removed "untested here" label (intended).
+- Worked examples added reuse existing numbers only (e.g. 2.4 block-size, 2.6 window slide and ACK of byte 15/16, 2.9 PAT 10.0.0.5:51000 to 40001, 2.12 75% vs 25% remap, 2.13 diamond SPF and LFA numbers 10/5/8/12, 2.14 DR mesh counts in words, 2.15 LOCAL_PREF 100 vs 200 and 4,950 vs 197).
+- Fixed in passing: none new. Unresolved, unchanged: 2.13 O(n^2) static-route claim and EIGRP "open since 2013" unverified; 2.15 "mashed-potato routing" in exercise 5 still undefined in the text, ASPA status unverified.
+- Not done: no Mermaid or build run (code blocks and Mermaid are byte-identical per the guard); no fact check beyond the guard; nothing committed. Chapters 16 to 30 not touched.

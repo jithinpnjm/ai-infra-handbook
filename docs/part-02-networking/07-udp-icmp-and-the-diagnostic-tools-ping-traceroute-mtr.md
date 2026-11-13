@@ -22,15 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A training job has hung, or an inference endpoint has suddenly slowed down. The first question is whether the network is the problem, and if it is, where. A small toolkit built on UDP and ICMP answers that. You use `ping` to check reachability and latency. You use `traceroute` or `mtr` to see the path and the loss at each hop. For path MTU, `tracepath` and `ping -M do` do the work, and for UDP behaviour you reach for `nc -u` and `iperf3 -u`.
+A training job has hung, or an inference endpoint has suddenly slowed down. People are asking in the channel, and the first question is whether the network is the problem, and if it is, where. You need an answer in minutes, not hours. A small toolkit built on UDP and ICMP gives you that. You use `ping` to check reachability and latency. You use `traceroute` or `mtr` to see the path and the loss at each hop. For path MTU, `tracepath` and `ping -M do` do the work, and for UDP behaviour you reach for `nc -u` and `iperf3 -u`.
 
-UDP also carries traffic you depend on every day. It is the carrier for DNS, VXLAN and Geneve overlays, WireGuard, QUIC and RoCE v2, so understanding it helps when you debug the fabric. A large share of outages look the same way: small requests work, but large ones hang. Many of those are **path MTU** problems in overlays, VPNs and clouds, where blocked ICMP stops Path MTU Discovery from working. When a slow job lands on your desk, decide early whether you are looking at reachability, the path or packet size, because each has its own tool.
+UDP also carries traffic you depend on every day, even when you never think about it. It is the carrier for DNS, VXLAN and Geneve overlays, WireGuard, QUIC and RoCE v2, so understanding it helps when you debug the fabric. A large share of outages look the same way: small requests work, but large ones hang. Many of those are **path MTU** problems in overlays, VPNs and clouds, where blocked ICMP stops Path MTU Discovery from working. When a slow job lands on your desk, decide early whether you are looking at reachability, the path or packet size, because each has its own tool.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with IP, routing (chapter 2.5) and TCP (chapter 2.6).
+Before you start, you should be comfortable with IP, routing (chapter 2.5) and TCP (chapter 2.6). New terms such as datagram, hop and path MTU are explained where they first appear.
 
-By the end of this chapter you should be able to:
+When you finish, check yourself against this list. Each line is something you should be able to do.
 
 - Describe UDP's header and semantics, and say when UDP is the right transport.
 - Read ICMP and ICMPv6 types and codes, and explain which are essential and which firewalls must never block.
@@ -39,11 +39,11 @@ By the end of this chapter you should be able to:
 - Diagnose "small works, large hangs" and design MTU for clusters with jumbo frames.
 - Measure UDP loss, jitter and throughput with `iperf3`.
 
-Treat that list as the test you should be able to pass when you finish the chapter.
+Treat that list as the test you should be able to pass once you have read the chapter and done the lab.
 
 ## 1. UDP: the minimal transport
 
-Imagine sending a short metrics datagram, the kind StatsD uses, to a collector on another host. You want the packet to leave now, and you do not want a handshake in front of it. UDP, defined in RFC 768, was built for that kind of message. It adds only two things to IP: ports and an optional checksum.
+Imagine sending a short metrics datagram, the kind StatsD uses, to a collector on another host. You want the packet to leave now, and you do not want a handshake in front of it. A handshake would take longer than the message is worth. UDP, defined in RFC 768, was built for that kind of message. It adds only two things to IP: ports and an optional checksum. A **datagram** is simply one self-contained message that travels alone, like a postcard.
 
 ```text
  0      7 8     15 16    23 24    31
@@ -57,17 +57,17 @@ Imagine sending a short metrics datagram, the kind StatsD uses, to a collector o
 
 The header is 8 bytes. There is no connection, no ordering, no retransmission, and no flow or congestion control. Each datagram arrives whole or not at all. A `recvfrom` call returns exactly one datagram, so message boundaries survive. TCP's byte stream does not keep them. The checksum covers the header, the data and an IP pseudo-header. It is optional in IPv4, where 0 means no checksum, and mandatory in IPv6.
 
-Datagrams up to 65,507 bytes are possible, but anything above the path MTU gets fragmented at IP. A single lost fragment loses the whole datagram. Well-behaved UDP applications therefore keep datagrams under the MTU. DNS used 512 bytes historically, EDNS(0) negotiates larger sizes, and QUIC aims for 1200 bytes or more.
+Datagrams up to 65,507 bytes are possible, but anything above the path MTU gets fragmented at IP. A single lost fragment loses the whole datagram, which is like a postcard torn in pieces where one missing piece makes the rest useless. Well-behaved UDP applications therefore keep datagrams under the MTU. DNS used 512 bytes historically, EDNS(0) negotiates larger sizes, and QUIC aims for 1200 bytes or more.
 
 **When should you pick UDP?** UDP fits small request and response traffic, such as DNS, NTP, DHCP, SNMP and syslog. It also fits latency-critical real-time media such as RTP, where a late packet is useless. Multicast and broadcast discovery use it too. UDP is also the carrier for protocols that bring their own reliability and congestion control: QUIC, RoCE v2 (where the NIC implements reliability), WireGuard, VXLAN and Geneve tunnels, game networking and metrics such as StatsD.
 
-The catch is that the application has to supply what TCP would have supplied. That means retries and timeouts, sequence numbers, rate limiting and congestion control. Unbounded UDP senders can overwhelm a network, which is why some operators rate-limit UDP.
+The catch is that the application has to supply what TCP would have supplied. That means retries and timeouts, sequence numbers, rate limiting and congestion control. If you choose UDP, you accept the job of building those parts yourself, or of picking a protocol such as QUIC that already did. Unbounded UDP senders can overwhelm a network, which is why some operators rate-limit UDP.
 
-**UDP sockets are cheap, but the kernel can drop datagrams without telling you.** You `bind` a port and `recvfrom` from any sender. When a socket's receive buffer overflows, the kernel silently drops datagrams. You can see that in `netstat -su` as `receive buffer errors`, or in `nstat` as `UdpRcvbufErrors`. The fix is to raise `net.core.rmem_max` and set `SO_RCVBUF`. You can inspect the sockets with `ss -u -a -m`.
+**UDP sockets are cheap, but the kernel can drop datagrams without telling you.** You `bind` a port and `recvfrom` from any sender. When a socket's receive buffer overflows, the kernel silently drops datagrams. Picture a postbox that is full: the postman simply throws away the next letters. You can see that in `netstat -su` as `receive buffer errors`, or in `nstat` as `UdpRcvbufErrors`. The fix is to raise `net.core.rmem_max` and set `SO_RCVBUF`. You can inspect the sockets with `ss -u -a -m`.
 
-UDP has no "connection refused" of its own. A datagram sent to a closed port makes the host reply with ICMP port unreachable. A *connected* UDP socket reports that reply as `ECONNREFUSED` on its next call. Otherwise the sender never finds out. Firewalls and NATs track UDP flows by timeout, typically 30 to 180 seconds. Long-idle UDP sessions, such as VPNs and QUIC, therefore need keepalives.
+UDP has no "connection refused" of its own. A datagram sent to a closed port makes the host reply with ICMP port unreachable. A *connected* UDP socket reports that reply as `ECONNREFUSED` on its next call. Otherwise the sender never finds out. Firewalls and NATs track UDP flows by timeout, typically 30 to 180 seconds. Long-idle UDP sessions, such as VPNs and QUIC, therefore need keepalives, small messages that keep the firewall from forgetting the flow.
 
-The commands below cover the common checks.
+The commands below cover the common checks, from sending a single datagram by hand to measuring loss at a chosen rate.
 
 ```bash
 nc -u -l 5000                         # UDP listener
@@ -77,11 +77,11 @@ nstat -az | egrep 'Udp(InErrors|NoPorts|RcvbufErrors|SndbufErrors)'
 iperf3 -s ; iperf3 -c 10.0.0.5 -u -b 1G -l 1400 -t 10     # UDP throughput, loss %, jitter
 ```
 
-`iperf3 -u` reports loss and jitter at the receiver, so it shows you the rate at which a path starts to drop. Run the test at the rate your application really uses, or the loss you measure will not mean much. A full-rate UDP test that shows 0% loss in a lab but more than 1% in production usually points at a policer, a shallow buffer or an unexpected bottleneck link on the path.
+`iperf3 -u` reports loss and jitter at the receiver, so it shows you the rate at which a path starts to drop. Jitter is the variation in delay between packets. Run the test at the rate your application really uses, or the loss you measure will not mean much. A full-rate UDP test that shows 0% loss in a lab but more than 1% in production usually points at a policer, a shallow buffer or an unexpected bottleneck link on the path.
 
 ## 2. ICMP: the network layer's error and diagnostic channel
 
-Suppose a firewall team wants to block "all ICMP" to tighten things up. Before you agree, you need to know what ICMP is for. ICMP (RFC 792; ICMPv6 RFC 4443) rides directly on IP as protocol 1, and ICMPv6 uses next-header 58. It reports errors about *other* packets, and it carries diagnostic queries. Each message has a type and a code. For errors, it quotes the start of the offending packet, so the sender can match the error to a flow.
+Suppose a firewall team wants to block "all ICMP" to tighten things up. It sounds sensible, because ping is the thing people associate with ICMP. Before you agree, you need to know what ICMP is for. ICMP (RFC 792; ICMPv6 RFC 4443) rides directly on IP as protocol 1, and ICMPv6 uses next-header 58. It reports errors about *other* packets, and it carries diagnostic queries. Each message has a type and a code. For errors, it quotes the start of the offending packet, so the sender can match the error to a flow. Think of it as the network's way of returning a letter marked "undeliverable, and here is why".
 
 The two tables below list the types you will meet most often. The IPv4 table comes first.
 
@@ -102,17 +102,17 @@ The two tables below list the types you will meet most often. The IPv4 table com
 | 128 / 129 | Echo request / reply |
 | 133 to 137 | Router solicitation/advertisement, **neighbour solicitation/advertisement** (replace ARP), redirect |
 
-Notice that type 3 code 4 is the one that makes Path MTU Discovery work. Without it, a sender has no way to learn a smaller MTU.
+Notice that type 3 code 4 is the one that makes Path MTU Discovery work. Without it, a sender has no way to learn a smaller MTU. That one small message is the reason a blanket block is dangerous.
 
 **Some ICMP messages must never be blocked.** In IPv4, that means type 3 code 4, which fragmentation needs, along with type 11 and type 3 in general. In IPv6, it means types 1, 2, 3 and 4. It also means all neighbour discovery. Neighbour discovery is types 133 to 137. Block these and the network breaks. You get no addresses, no neighbours and no PMTUD. Blanket "drop all ICMP" firewall policies are a recurring cause of mysterious large-transfer hangs. It is fine, and common, to rate-limit ICMP and to block echo from outside.
 
-Hosts and routers also limit how fast they generate ICMP. On Linux, that is controlled by `net.ipv4.icmp_ratelimit` and `icmp_ratemask`. Routers deprioritise ICMP that they handle on the control plane. This changes how you read a traceroute. A hop that shows `* * *`, or high latency at one hop with normal latency after it, is usually control-plane rate limiting. It is not a real problem.
+Hosts and routers also limit how fast they generate ICMP, because an unlimited flood of error messages could itself cause trouble. On Linux, that is controlled by `net.ipv4.icmp_ratelimit` and `icmp_ratemask`. Routers deprioritise ICMP that they handle on the control plane. This changes how you read a traceroute. A hop that shows `* * *`, or high latency at one hop with normal latency after it, is usually control-plane rate limiting. It is not a real problem. The router is busy forwarding real traffic and treats your probe as low priority.
 
 Before you block any ICMP type on a firewall, check which of the types above it would break.
 
 ## 3. ping
 
-Your first instinct, when a node stops answering, is to run `ping`. It sends ICMP echo requests (type 8) and reports the echo replies (type 0). From that exchange you learn three things: whether the target is reachable, how long a round trip takes, and whether any packets are lost.
+Your first instinct, when a node stops answering, is to run `ping`. It sends ICMP echo requests (type 8) and reports the echo replies (type 0). It is the network equivalent of calling out "are you there?" From that exchange you learn three things: whether the target is reachable, how long a round trip takes, and whether any packets are lost.
 
 ```bash
 ping -c 4 10.0.0.5                       # 4 probes
@@ -124,11 +124,13 @@ ping -f -c 100000 host                   # flood (root, lab only)
 ping -D -O 10.0.0.5                      # timestamps; report outstanding replies
 ```
 
-The reply line `64 bytes from 10.0.0.5: icmp_seq=1 ttl=62 time=0.31 ms` tells you more than it seems to. The TTL shows roughly how many hops away the target is. Linux starts packets at 64, Windows starts at 128, and network gear starts at 255. A TTL of 62 on a Linux host means 64 minus 62, which is 2 routers. Variation in round-trip time, shown as `mdev`, hints at queueing.
+The reply line `64 bytes from 10.0.0.5: icmp_seq=1 ttl=62 time=0.31 ms` tells you more than it seems to. The TTL shows roughly how many hops away the target is. Linux starts packets at 64, Windows starts at 128, and network gear starts at 255. A TTL of 62 on a Linux host means 64 minus 62, which is 2 routers. Variation in round-trip time, shown as `mdev`, hints at queueing, which is packets waiting in line inside a device.
 
-When `ping` fails, the message tells you where to look. `Destination Host Unreachable` from your own address means ARP or NDP failed on the local subnet. The same message coming from a router means that router had no route. `Destination Net Unreachable` and `Packet filtered` point to routing or to a filter. `Request timeout`, or no output at all, means the packet was dropped silently somewhere.
+When `ping` fails, the message tells you where to look, if you read it carefully. `Destination Host Unreachable` from your own address means ARP or NDP failed on the local subnet. The same message coming from a router means that router had no route. `Destination Net Unreachable` and `Packet filtered` point to routing or to a filter. `Request timeout`, or no output at all, means the packet was dropped silently somewhere.
 
-Ping has limits you need to keep in mind. ICMP can be treated differently from your real traffic. It may get low priority, be blocked, be rate limited, or take different paths with different ECMP hashing. So a successful ping does not prove that an application can connect. Test the real port with `nc -zv host 443` or `curl -v`. A failed ping does not prove the host is down either.
+Think of a concrete case. You ping a server on your own subnet and get `Destination Host Unreachable` with your own address as the source. The reply came from yourself, not from a router, so your host gave up asking for the neighbour's MAC address. That points at ARP or NDP on the local link, not at routing. The same words from a router's address would point somewhere else entirely, which is why the source of the message matters as much as the message.
+
+Ping has limits you need to keep in mind. ICMP can be treated differently from your real traffic. It may get low priority, be blocked, be rate limited, or take different paths with different ECMP hashing. So a successful ping does not prove that an application can connect. Test the real port with `nc -zv host 443` or `curl -v`. A failed ping does not prove the host is down either. Ping answers only one narrow question, whether ICMP echo gets through.
 
 On a cluster, `ping` has a few practical jobs. Use `fping -a -g 10.0.0.0/24` or `fping -f hosts` to sweep nodes quickly. Run `ping -c 3 <peer rail IP> -I <rail NIC>` to prove that each rail works. And `ping -M do -s 8972 <peer>` verifies 9000-byte jumbo paths end to end.
 
@@ -136,7 +138,7 @@ Before you call a node down, ping it, and then test the port your application ac
 
 ### Reading ping output
 
-`ping` is often the first tool to reach for when a host seems dead. It sends ICMP echo requests, and a host set to reply sends back an echo response. By default, it sends one packet per second.
+`ping` is often the first tool to reach for when a host seems dead. It sends ICMP echo requests, and a host set to reply sends back an echo response. By default, it sends one packet per second. A closer reading of one real output shows how much it can say.
 
 Run `ping 10.23.2.1` and you see lines like these, from a wireless network:
 
@@ -150,13 +152,13 @@ PING 10.23.2.1 (10.23.2.1) 56(84) bytes of data.
 
 The first line means 56 bytes of data, or 84 bytes with headers. Each reply carries a sequence number (`icmp_req`) and a round-trip time (`time`). The returned size is the request size plus 8 bytes. The packet contents do not matter for diagnosis.
 
-Watch the sequence numbers. A gap, such as the jump from 2 to 4, usually means a connectivity problem. Packets should not arrive out of order, because `ping` sends only one a second. A reply taking more than 1,000 ms means the link is extremely slow. If the destination cannot be reached, the last router that sees the packet returns an ICMP "host unreachable" message.
+Watch the sequence numbers. A gap, such as the jump from 2 to 4, usually means a connectivity problem, because one request or reply went missing. Packets should not arrive out of order, because `ping` sends only one a second. A reply taking more than 1,000 ms means the link is extremely slow. If the destination cannot be reached, the last router that sees the packet returns an ICMP "host unreachable" message.
 
 On a wired LAN you should see no loss and very low round-trip times. Some internet hosts disable echo replies for security, so a site can load while `ping` gets no answer. Use `-4` or `-6` to force IPv4 or IPv6.
 
 ## 4. traceroute, tracepath and mtr
 
-A user says the service is slow, and you suspect a router somewhere along the path. `traceroute` finds that path for you, one router at a time. It sends probes with an increasing TTL (IPv4) or hop limit (IPv6). Each router that decrements the TTL to 0 returns ICMP time exceeded (type 11), and that reply reveals the router's address. The destination answers in its own way. It sends ICMP port unreachable for UDP probes, an echo reply for ICMP probes, and SYN-ACK or RST for TCP probes.
+A user says the service is slow, and you suspect a router somewhere along the path. `traceroute` finds that path for you, one router at a time. It uses an old trick: it sends probes with an increasing TTL (IPv4) or hop limit (IPv6). Each router that decrements the TTL to 0 returns ICMP time exceeded (type 11), and that reply reveals the router's address. The first probe dies at the first router, the second at the second router, and so on, so each router introduces itself in turn. The destination answers in its own way. It sends ICMP port unreachable for UDP probes, an echo reply for ICMP probes, and SYN-ACK or RST for TCP probes.
 
 The diagram below shows three probes, one TTL at a time.
 
@@ -188,31 +190,35 @@ mtr -n -r -c 100 -T -P 443 host          # TCP mode
 sudo mtr -n -r -c 100 -u host            # UDP
 ```
 
-Reading the output correctly takes a few rules. A `* * *` at one hop only means that router does not send TTL-exceeded replies, or it rate-limits them. That matters little if the later hops respond. High latency at one hop, with low latency after it, is control-plane deprioritisation of ICMP at that hop. Only a latency or loss that persists all the way to the destination is real.
+Reading the output correctly takes a few rules, and they save you from false alarms. A `* * *` at one hop only means that router does not send TTL-exceeded replies, or it rate-limits them. That matters little if the later hops respond. High latency at one hop, with low latency after it, is control-plane deprioritisation of ICMP at that hop. Only a latency or loss that persists all the way to the destination is real.
 
-Loss at an intermediate hop is rate limiting if the loss does not carry on to the final hop. Loss that starts at hop N and continues to every later hop is genuine. It sits at or after hop N.
+A short example shows the rules at work. Suppose a trace shows eight hops. Hop five prints `* * *`, but hops six, seven and eight reply normally. Nothing is wrong at hop five. That router simply declined to answer the probes. Now suppose hop five shows a sudden jump in loss and every later hop shows the same loss. That pattern is real, and the trouble begins at hop five or just after it.
 
-Asymmetric paths can mislead you. Traceroute shows only the forward path. The return path can differ, and the reported round-trip time includes it. For serious analysis, run `mtr` from both ends.
+Loss at an intermediate hop is rate limiting if the loss does not carry on to the final hop. Loss that starts at hop N and continues to every later hop is genuine. It sits at or after hop N. In the `mtr` pattern from exercise 3, one hot hop followed by clean hops is noise, while a step that persists is a real fault.
+
+Asymmetric paths can mislead you. Traceroute shows only the forward path. The return path can differ, and the reported round-trip time includes it. For serious analysis, run `mtr` from both ends, so you see both directions.
 
 ECMP and load balancers can make a trace look wrong. Different probes may take different equal-cost paths, so you see hops from several routers or inconsistent paths. Flow-aware tools fix this by keeping the 5-tuple constant. Use `paris-traceroute`, `dublin-traceroute`, or `mtr` with fixed ports.
 
 MPLS and tunnels can hide hops when the TTL is not propagated, or they can show label stacks. NAT and cloud networks often hide intermediate hops entirely, because virtual routers do not decrement the TTL or respond. A cloud VPC trace typically shows only the first and last hops.
 
-Probes are small, at 60 bytes each. Problems that affect only large packets, such as MTU problems, will not show up in them. For those, use `tracepath` or `ping -M do -s`.
+Probes are small, at 60 bytes each. Problems that affect only large packets, such as MTU problems, will not show up in them. The probe passes through a link that would reject a bigger packet. For those, use `tracepath` or `ping -M do -s`.
 
 When a trace looks wrong, check the forward path with `mtr` from both ends before you blame a router.
 
 ## 5. MTU, MSS, fragmentation and Path MTU Discovery
 
-A file copy starts, and then it stalls. The small requests all work, and the big transfer goes nowhere. The cause is often a size limit somewhere on the path. **MTU** is the largest IP packet a link carries. Ethernet's default is 1500. Jumbo frames go to 9000, and switches often run at 9216 to leave room for headers. **MSS** is the largest TCP payload per segment, and TCP negotiates it from the MTU.
+A file copy starts, and then it stalls. The small requests all work, and the big transfer goes nowhere. The cause is often a size limit somewhere on the path, like a narrow doorway that a small box fits through and a big one does not. **MTU** is the largest IP packet a link carries. Ethernet's default is 1500. Jumbo frames go to 9000, and switches often run at 9216 to leave room for headers. **MSS** is the largest TCP payload per segment, and TCP negotiates it from the MTU.
 
-Here is the arithmetic. Start with an MTU of 1500. Subtract the 20-byte IP header and the 20-byte TCP header. The result is an MSS of 1460. On IPv6 the MSS is 1440. If timestamps are on, it is 12 bytes less.
+Here is the arithmetic, so you can check it yourself. Start with an MTU of 1500. Subtract the 20-byte IP header and the 20-byte TCP header. The result is an MSS of 1460. On IPv6 the MSS is 1440. If timestamps are on, it is 12 bytes less.
 
 Sometimes a packet is larger than the next link's MTU. For IPv4, if the DF (Don't Fragment) bit is clear, the router splits the packet into fragments, and the destination reassembles them. Lose one fragment and you lose the whole packet. Fragments also cause trouble with firewalls, NAT and ECMP, because later fragments carry no ports. That, along with the performance cost, is why modern practice avoids fragmentation. IPv6 routers never fragment. Only the source can, through a fragment extension header.
 
-**Path MTU Discovery (PMTUD, RFC 1191/8201)** avoids fragmentation altogether. The sender sets DF on its packets. When a router cannot forward a packet, it replies with ICMP "fragmentation needed" (IPv4 type 3 code 4), and that reply carries the next-hop MTU. IPv6 uses ICMPv6 Packet Too Big instead. The sender lowers its path MTU estimate and caches it per destination. You can see the cache with `ip route get`, which shows `cache expires ... mtu 1400`. The sender then re-segments its data. TCP also limits the segment size through MSS negotiation at connect time.
+**Path MTU Discovery (PMTUD, RFC 1191/8201)** avoids fragmentation altogether. Instead of cutting packets up on the way, the sender finds out the smallest size the whole path allows and sends only packets that fit. The sender sets DF on its packets. When a router cannot forward a packet, it replies with ICMP "fragmentation needed" (IPv4 type 3 code 4), and that reply carries the next-hop MTU. IPv6 uses ICMPv6 Packet Too Big instead. The sender lowers its path MTU estimate and caches it per destination. You can see the cache with `ip route get`, which shows `cache expires ... mtu 1400`. The sender then re-segments its data. TCP also limits the segment size through MSS negotiation at connect time.
 
 The diagram below shows the exchange when a router has a 1400-byte egress link.
+
+Follow the story in the diagram step by step. The sender builds a 1500-byte packet with DF set and sends it. The router sees that its next link carries only 1400 bytes, so it cannot forward the packet and must not split it. It discards the packet and sends back a small ICMP message that says "too big, the limit here is 1400". The sender reads that message, remembers 1400 for this destination, and sends the data again in smaller pieces. The whole exchange costs one lost packet and one round trip, after which the transfer runs normally.
 
 ```mermaid
 sequenceDiagram
@@ -228,11 +234,11 @@ sequenceDiagram
 
 ### The PMTU black hole
 
-Now suppose the ICMP error is blocked. The sender never learns the limit. The TCP handshake still succeeds, because its packets are tiny, and small requests pass as well. But any packet above the path MTU is dropped silently and retransmitted forever. So large transfers hang. TLS handshakes with big certificates (the ServerHello flight), SSH key exchange and `scp` of big files hang the same way. Watch for these symptoms: `ssh` connects but hangs after `SSH2_MSG_KEXINIT`, `curl https://...` hangs after `Connected`, a website loads only partly, `git clone` stalls, or a small `ping` works while `ping -s 1472 -M do` fails.
+Now suppose the ICMP error is blocked. The sender never learns the limit, like a driver who is never told the bridge ahead is too low. The TCP handshake still succeeds, because its packets are tiny, and small requests pass as well. But any packet above the path MTU is dropped silently and retransmitted forever. So large transfers hang. TLS handshakes with big certificates (the ServerHello flight), SSH key exchange and `scp` of big files hang the same way. Watch for these symptoms: `ssh` connects but hangs after `SSH2_MSG_KEXINIT`, `curl https://...` hangs after `Connected`, a website loads only partly, `git clone` stalls, or a small `ping` works while `ping -s 1472 -M do` fails.
 
 Black holes show up in VPNs, GRE, IPsec and WireGuard tunnels, VXLAN and Geneve overlays (Kubernetes CNIs), cloud interconnects such as the GCP default VPC MTU of 1460, PPPoE links and any firewall that drops ICMP.
 
-To detect a black hole, start with a step-down test. Try `ping -M do -s 1472 host && echo ok`. Then step down through 1452, 1432, 1400 and so on until you find the largest size that passes.
+To detect a black hole, start with a step-down test. It is the same trick as finding the widest doorway by trying smaller and smaller boxes. Try `ping -M do -s 1472 host && echo ok`. Then step down through 1452, 1432, 1400 and so on until you find the largest size that passes.
 
 ```bash
 ping -M do -s 1472 host && echo ok              # step down: 1472, 1452, 1432, 1400 ... find the largest that passes
@@ -244,11 +250,11 @@ sysctl net.ipv4.tcp_mtu_probing                  # 0 off, 1 on after black hole 
 
 `tracepath` shows the PMTU changes at each hop. `ip route get` shows any cached PMTU. `tcpdump` tells you whether the "need frag" messages arrive at all. The `tcp_mtu_probing` setting controls the fallback: 0 is off, 1 turns probing on after a black hole is detected, and 2 keeps it always on.
 
-Fix black holes in this order of preference. First, make the MTUs consistent end to end. Set the same MTU on all hops in a segment, and set the overlay MTU to the underlay MTU minus the encapsulation overhead. Second, allow ICMP type 3 code 4 and ICMPv6 type 2 through every firewall. Third, clamp MSS at the tunnel or NAT gateway. You can use `iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu`, or the nftables rule `tcp option maxseg size set rt mtu`. Fourth, enable `tcp_mtu_probing=1` on the client as a safety net. This is Packetization-Layer PMTUD, defined in RFC 4821. Last, and only as a last resort, lower the interface MTU.
+Fix black holes in this order of preference, from the cleanest cure to the roughest. First, make the MTUs consistent end to end. Set the same MTU on all hops in a segment, and set the overlay MTU to the underlay MTU minus the encapsulation overhead. Second, allow ICMP type 3 code 4 and ICMPv6 type 2 through every firewall. Third, clamp MSS at the tunnel or NAT gateway. You can use `iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu`, or the nftables rule `tcp option maxseg size set rt mtu`. Fourth, enable `tcp_mtu_probing=1` on the client as a safety net. This is Packetization-Layer PMTUD, defined in RFC 4821. Last, and only as a last resort, lower the interface MTU.
 
 ### Encapsulation overhead (compute, don't guess)
 
-Each encapsulation adds bytes to the packet, and the overlay MTU has to shrink by the same amount. The table below does that arithmetic for the common cases.
+Each encapsulation adds bytes to the packet, and the overlay MTU has to shrink by the same amount. It is the same logic as putting a parcel inside a bigger parcel: the outer wrapper takes up room. The table below does that arithmetic for the common cases.
 
 | Encapsulation | Added bytes (IPv4 underlay) | Overlay MTU on a 1500 underlay | On a 9000 underlay |
 |---|---|---|---|
@@ -266,15 +272,15 @@ Kubernetes CNIs such as Calico (VXLAN or IPIP), Flannel and Cilium set the pod M
 
 ### Jumbo frames for AI clusters
 
-Larger MTUs cut the per-packet CPU cost and the header overhead. At a 9000-byte MTU, TCP/IP overhead is about 0.9%. At 1500 it is about 3.5%. Storage and bulk transfers gain throughput as a result. RoCE v2 typically runs at the NIC's MTU of 4096. The InfiniBand MTU values are 256, 512, 1024, 2048 and 4096. RoCE v2 then runs inside an Ethernet MTU of 9000 or so.
+Larger MTUs cut the per-packet CPU cost and the header overhead, because the same amount of data travels in fewer, bigger packets. At a 9000-byte MTU, TCP/IP overhead is about 0.9%. At 1500 it is about 3.5%. Storage and bulk transfers gain throughput as a result. RoCE v2 typically runs at the NIC's MTU of 4096. The InfiniBand MTU values are 256, 512, 1024, 2048 and 4096. RoCE v2 then runs inside an Ethernet MTU of 9000 or so.
 
-The rules are simple. Configure the MTU end to end, and keep it consistent across hosts, switch ports, VLAN interfaces, bond members and the overlay. Never mix MTUs within an L2 domain. Set the switches to at least the host MTU plus headers, which is 9216. Then test every pair of nodes with `ping -M do -s 8972` or `nccl-tests`.
+The rules are simple, and the trouble comes from forgetting one of them. Configure the MTU end to end, and keep it consistent across hosts, switch ports, VLAN interfaces, bond members and the overlay. Never mix MTUs within an L2 domain. Set the switches to at least the host MTU plus headers, which is 9216. Then test every pair of nodes with `ping -M do -s 8972` or `nccl-tests`.
 
 Before you call a fabric ready, test every node pair at the jumbo size.
 
 ## 6. More tools
 
-Sometimes `ping` and `traceroute` are blocked, and you still need to know whether a port answers. The commands below probe TCP, check ports and watch packets. Each one answers a different question, from port reachability up to the full stack.
+Sometimes `ping` and `traceroute` are blocked, and you still need to know whether a port answers. Firewalls often allow the traffic that matters and block the probes you would normally use. The commands below probe TCP, check ports and watch packets. Each one answers a different question, from port reachability up to the full stack.
 
 ```bash
 sudo hping3 -S -p 443 -c 5 host                 # TCP SYN probes, shows RTT and flags, bypasses ICMP blocks
@@ -293,7 +299,7 @@ Pick the tool that matches the question you need answered, and keep probing to n
 
 ## 7. A layered reachability checklist
 
-Picture a node that you cannot get to a service on another subnet. The temptation is to jump straight to the application logs. Work through the layers in order instead. Each step isolates one layer, and skipping ahead wastes your time.
+Picture a node that cannot reach a service on another subnet. The temptation is to jump straight to the application logs. Work through the layers in order instead. Each step isolates one layer, and skipping ahead wastes your time. The list is the whole chapter in the order you would use it on a bad day.
 
 1. Check A's own interface and address with `ip -br addr`. Confirm the link is up.
 2. Check the local subnet and gateway. Run `ping <gateway>`, then `ip neigh`. REACHABLE or STALE, set against FAILED or INCOMPLETE, shows whether neighbour resolution worked.
@@ -306,13 +312,13 @@ Picture a node that you cannot get to a service on another subnet. The temptatio
 
 ## 8. Hands-on lab: UDP, ICMP, traceroute, and an MTU black hole
 
-Start with the self-checking Python lab. Run it on your own machine with `python3 code/part02/udp_icmp_pmtu_lab.py`. It checks the overlay and tunnel MTU values and the inner TCP MSS calculations. The expected values are `VXLAN` `1450`/`8950`, `WireGuard` `1420`/`1400`, `GRE` `1476` and `IPIP` `1480`. It also checks the largest `ping -M do -s` payloads, which are `1472` for IPv4, `1452` for IPv6 and `8972` for jumbo frames. Finally, it classifies `mtr` hop loss, so you can tell control-plane ICMP rate limiting from genuine forwarding loss.
+A word on status first. The Python lab below has been run, while the VM steps that follow have not been run for this chapter, so treat those results as something you still need to confirm. Start with the self-checking Python lab. Run it on your own machine with `python3 code/part02/udp_icmp_pmtu_lab.py`. It checks the overlay and tunnel MTU values and the inner TCP MSS calculations. The expected values are `VXLAN` `1450`/`8950`, `WireGuard` `1420`/`1400`, `GRE` `1476` and `IPIP` `1480`. It also checks the largest `ping -M do -s` payloads, which are `1472` for IPv4, `1452` for IPv6 and `8972` for jumbo frames. Finally, it classifies `mtr` hop loss, so you can tell control-plane ICMP rate limiting from genuine forwarding loss.
 
 ```bash
 python3 code/part02/udp_icmp_pmtu_lab.py
 ```
 
-The rest of the lab runs on a disposable Linux VM. It uses the three-namespace topology from Chapter 2.5: `hA - r - hB`, with forwarding on in `r` and default routes set. Every interactive VM command below is `untested here`, so treat the results as something you still need to confirm. Run the steps in order, and keep a `tcpdump` capture open while you work.
+The rest of the lab runs on a disposable Linux VM. It uses the three-namespace topology from chapter 2.5: `hA - r - hB`, with forwarding on in `r` and default routes set. Run the steps in order, and keep a `tcpdump` capture open while you work.
 
 1. Start with UDP basics. Run `ip netns exec hB nc -u -l 5000`, send from hA, and capture the traffic with tcpdump. Show that there is no handshake. Then send to a closed port and capture the ICMP port unreachable message (type 3 code 3). Finally, show the connected-socket error by using `nc -u` after a first send.
 2. Run an iperf3 UDP test. Start the server in hB, and run the client in hA at `-b 100M -l 1400`. Next, add `tc qdisc add dev rB root tbf rate 50mbit burst 32kbit latency 50ms` in r, and watch the loss and jitter. Then repeat the test with `netem loss 1%`.
@@ -324,7 +330,7 @@ The rest of the lab runs on a disposable Linux VM. It uses the three-namespace t
 
 ## 9. Common mistakes
 
-Most of these mistakes come from reading one signal too literally.
+Most of these mistakes come from reading one signal too literally. A single ping, a single hop or a single counter can mislead, and the cure is to cross-check.
 
 - Treating a failed ping as proof of an outage, when ICMP may simply be filtered. The reverse is just as wrong: a successful ping does not prove the service works.
 - Believing that `* * *` or one hot hop in a traceroute means a fault.
@@ -336,7 +342,7 @@ When you catch yourself taking one of these shortcuts, go back to the checklist 
 
 ## 10. Interview angles
 
-Use these questions to test your own understanding. Each one has a mechanism behind it, so aim to explain the mechanism and not just name the tool.
+Use these questions to test your own understanding. Each one has a mechanism behind it, so aim to explain the mechanism and not just name the tool. A calm explanation of what the packet does at each step beats a list of commands.
 
 - "Explain how traceroute works. Why might a hop be missing or show high latency?"
 - "Large file transfers hang but small requests work. What do you check?" (PMTUD, MSS clamping.)
@@ -348,7 +354,7 @@ Use these questions to test your own understanding. Each one has a mechanism beh
 
 ## Exercises
 
-These exercises check the ideas in the chapter. Some ask for a calculation, and others ask you to explain a failure in your own words.
+These exercises check the ideas in the chapter. Some ask for a calculation, and others ask you to explain a failure in your own words. Picture the failing path as you answer, because most of them describe something you could really meet on a cluster.
 
 1. Start with UDP semantics. State the size of the UDP header, `8` bytes, and name its four fields (RFC 768). Explain how UDP keeps message boundaries, unlike TCP. Then name the `nstat` counter that goes up when a receiver's UDP socket buffer overflows. Finally, explain how a sender learns that a remote UDP port has no listener, and list the metrics `iperf3 -u` reports at the receiver that TCP `iperf3` does not.
 2. List the essential ICMPv4 types and codes: `0`, `3/3`, `3/4`, `8` and `11/0`. Then list the essential ICMPv6 types: `1`, `2`, `3`, `128` and `129`, and `133` to `137`. Explain the exact failure modes that a blanket "drop all ICMP/ICMPv6" firewall policy causes.
@@ -533,3 +539,4 @@ Work through these eight steps, in order:
 - **Run here:** `python3 code/part02/udp_icmp_pmtu_lab.py` (15 passed, 0 failed).
 - **Explicitly labelled inferences:** The encapsulation-overhead table (`VXLAN`, `Geneve`, `GRE`, `IPIP`, `WireGuard`, `IPsec ESP`, `MPLS`), PMTU black-hole troubleshooting workflow (`TCPMSS --clamp-mss-to-pmtu`, `tcp_mtu_probing=1`), RoCEv2 `4096` IB MTU / `9000` Ethernet jumbo-frame rules, and 8-step layered reachability checklist synthesize RFCs 768, 792, 1191, 4443, 4821, and 8201 and the `ping(8)`, `traceroute(8)`, `tracepath(8)`, and `mtr(8)` manual pages (cross-referenced with Chapters 2.3, 2.5, 2.6, and 2.25, plus original study items 21–25).
 - **Not verified on live hardware:** All interactive VM commands (`nc -u`, `iperf3 -u`, `ping -M do`, `traceroute`, `tracepath`, `mtr`, `hping3`, `nping`, `fping`, `tcpdump`, `iptables`) are marked (untested here) and must be executed on a disposable Linux VM.
+

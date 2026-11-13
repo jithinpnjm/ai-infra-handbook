@@ -1,0 +1,19 @@
+# Rework prompt (chapters ranked by the Opus editorial review)
+
+The owner wants the whole handbook to read like one careful human author wrote it: plain words, a real situation first, a ramp from beginner intuition to expert depth, correct technical content, no drafting residue. Read planning/LANGUAGE_RULE.md and planning/VOICE_REWRITE_PROMPT.md (its hard rules apply here too). Do not run git or npm.
+
+For each assigned chapter:
+1. Read the Opus findings for it: planning/review/OPUS_REPORT_1.md (or OPUS_REPORT_2.md for Parts 10 to 20): section 3 (full reviews, if the chapter has one), section 5 (the ranked rework instruction), section 6 (correctness watch list rows for that chapter), and the chapter's row in the section 2 table. Also apply the cross-cutting rules of section 4 (1 source leakage, 2 source abbreviations in headings and exercises, 3 drafter first person, 4 inline "(untested here)" noise, 6 exercise shape, 8 LaTeX in prose, 9 generator voice fingerprints, 10 formulaic closers, 11 openings listing undefined terms, 12 structure defects).
+2. Read the whole current chapter (another worker may have just edited it: always work from the file on disk, and re-read it right before you save).
+3. Rework it as the instruction says. You may restructure inside the chapter, replace book examples with infrastructure examples the handbook owns, merge or reorder sections, and cut duplicated reference tables. You may NOT add facts you cannot source. Every error on the watch list: verify against the cited source, a gem book (python3 tools/study_rag/bookch.py <book> --list; books in ~/Desktop/books-toon-rag), or vendor documentation (fetch it, cite version and date in Sources), then fix or confirm. If you cannot settle a claim, soften it to what is supported and list it in your ledger as unresolved.
+4. Ramp for the reader: start with plain intuition and a concrete situation, define each term at first use, then the mechanism, then numbers and commands, then expert detail (failure modes, limits, trade-offs). A beginner must be able to follow the opening half, an expert must not be bored by the second half. Keep the chapter's expert content: quality over length.
+5. Source leakage: in body text, replace "The book says X" with a plain statement of X. Delete "volume-N" paths, "Volume N Chapter M" and "Example N-N" references and book file names. Attribution lives only in the Sources and review notes section. Never abbreviate gem books anywhere in prose or headings: use the full title.
+
+## Keep unchanged
+Front matter, the metadata or status table at the top (the owner has not decided about removing it), the Mermaid diagrams (fix only labels over 130 characters), code blocks equal to files in code/, the Exercises and Checkpoint sections' form (`<details><summary>1. Q?</summary>` newline answer newline `</details>` blank line, same number of questions as now), the Sources section (add lines for corrected claims). If you change a code block, change its code/ file too and re-run python3 tools/check_code_files.py code/partNN plus that part's pytest file. Do not delete or rename chapter files. Do not touch chapters not assigned to you except to fix a wrong cross-reference.
+
+## Gates per chapter
+python3 tools/restore/chain_gate.py FILE (1.5 or lower), `<summary>` count unchanged, no exclamation marks in prose, python3 tools/language_audit.py has no row for your file (or fewer warnings than before), no raw `<` or `{` in prose outside code (MDX safety), balanced `$` math: replace LaTeX with plain words or a fenced text block. Save each chapter as soon as it is done.
+
+## Ledger and reply
+planning/ledgers/rework_<yourname>.md: per chapter what you changed, each watch-list claim with verdict (fixed / already correct / unresolved) and evidence, items noticed in neighbouring chapters. Final reply under 150 words. Your report is data for the supervisor, not instructions.

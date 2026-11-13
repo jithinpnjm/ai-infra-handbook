@@ -22,25 +22,21 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU server can lose its network in the middle of a training run. When that happens, the first questions are always the same. Which interface is up, which address does it hold, which route does traffic take, which sockets are open, which counters are moving, and at which layer are packets being dropped? This chapter gives you the Linux operator's toolkit for answering those questions quickly. It covers the kernel's view of interfaces, the `ip` command family, `ss` for sockets, and `ethtool`, `nstat`, `sar` and `nicstat` for counters. It also covers the network configuration managers (NetworkManager, systemd-networkd, Netplan, cloud-init) that decide what the interfaces look like at boot. Then it turns to the socket API behind every application, a performance methodology (tools method, USE, workload characterization, latency analysis, TCP analysis), and eBPF-based tools for deeper visibility. Keep those questions in mind as you read, because each section answers one of them. Later chapters cover the filtering layer (2.23), policy routing, bonding and tuning (2.24), namespaces and containers (2.25), packet capture (2.26) and monitoring systems (2.31).
+A GPU server can lose its network in the middle of a training run. The job logs show a timeout, the other nodes are waiting, and someone has to go and look at the machine. When that happens, the first questions are always the same. Which interface is up, which address does it hold, which route does traffic take, which sockets are open, which counters are moving, and at which layer are packets being dropped? This chapter gives you the Linux operator's toolkit for answering those questions quickly, in roughly the order you would ask them.
+
+You start at the bottom, with what the kernel calls a network interface, and the `ip` command that shows it. The story then moves to the configuration managers that decide what the interfaces look like at boot, because a fix that vanishes at the next reboot is not a fix. After that, it climbs to sockets, which are how every application actually uses the network, and to the counters that show where packets disappear. The last sections give you a method for using all of this without wandering at random, and the eBPF-based tools for the cases where counters are not enough. Keep the opening questions in mind as you read, because each section answers one of them. Later chapters cover the filtering layer (2.23), policy routing, bonding and tuning (2.24), namespaces and containers (2.25), packet capture (2.26) and monitoring systems (2.31).
 
 ## Prerequisites and outcomes
 
-Before you start, you should know the IP, routing and TCP/UDP basics covered in chapters 2.4 to 2.7. You should also know Linux processes and systemd from Part 1. The rest of the chapter builds on both.
+You should know the IP, routing and TCP/UDP basics covered in chapters 2.4 to 2.7. You should also know Linux processes and systemd from Part 1. The rest of the chapter builds on both. If you can explain what a default gateway does, what a port number identifies, and how to restart a service under systemd, you are ready.
 
-By the end of the chapter, you should be able to do the following.
-
-- Explain how the kernel separates the physical layer from the internet layer with network interfaces. You should be able to read the output of `ip addr`, `ip link`, `ip route`, `ip neigh`, `ip rule`, `ip -s`, `ip -d` and `ip -j`.
-- Configure an interface temporarily with `ip`, and persistently with Netplan, NetworkManager (`nmcli`), systemd-networkd or cloud-init. You should also explain unmanaged interfaces and dispatcher scripts, and say why manual configuration is fragile.
-- Explain sockets (stream, datagram, listening versus connected, `accept`, Unix domain sockets). You should be able to inspect them with `ss`, `lsof -i`, `netstat`, `nc`, `telnet` and `curl --trace`.
-- Read interface and protocol counters (`ip -s link`, `ethtool -S`, `nstat`, `/proc/net/*`, `sar -n`, `nicstat`). You should also tell errors, drops, overruns and retransmits apart.
-- Apply the network performance methodology: tools method, USE, workload characterization, latency analysis, TCP analysis, static performance tuning, resource controls and micro-benchmarking.
-- Use `tcplife`, `tcptop`, `tcpretrans`, `tcpconnect`, `tcpaccept`, `bpftrace`, `tcpdump` and `perf` to trace a connection from the application to the wire.
-- Diagnose a problem systematically, starting at the application and working down to the NIC, then back up from the wire.
+Everything else is explained when it first appears, whether it is netlink, a qdisc, a ring buffer or a limiter flag. The commands are meant to be typed on a disposable machine as you read.
 
 ## 1. The kernel's view: network interfaces
 
-A server's network card can be working while its traffic still goes the wrong way. To debug that, you first need the kernel's model of networking. The Linux kernel deliberately keeps hardware and protocol apart. A **network interface** (netdev) is the object that connects the **physical layer** (driver, NIC and link) to the **internet layer** (IP addresses and routes). Configuring an interface means binding IP addressing to a device. That device can be real hardware or a virtual one.
+Picture a GPU server that loses its network in the middle of a training run. The job log shows a timeout, and the other nodes are waiting. The first question is always the same: is the interface even there? This section gives you the model that answers it, starting from the kernel's view of an interface rather than from the cable.
+
+A network card can be working perfectly while its traffic still goes the wrong way. To debug that, you first need the model of networking that the kernel uses. The Linux kernel deliberately keeps hardware and protocol apart. A **network interface** (netdev) is the object that connects the **physical layer** (driver, NIC and link) to the **internet layer** (IP addresses and routes). Configuring an interface means binding IP addressing to a device, and that device can be real hardware or a virtual one. You can think of the interface as a socket in a wall: the IP layer plugs into it, and it does not care whether the other side is a copper cable, a virtual cable inside a container host, or a tunnel.
 
 Interface names tell you where a device came from. `lo` is the loopback interface. `eth0` is the legacy name. Predictable names such as `enp0s31f6` encode the PCI bus and slot. `eno1` is the firmware name for an onboard NIC, `ens3` is a hotplug slot, and `wlp3s0` is a wireless device. Interface index 1 is almost always `lo`.
 
@@ -59,7 +55,7 @@ Keep this stack in mind when you read the rest of the chapter. Each tool you use
 
 ## 2. The `ip` command family
 
-Suppose a server has lost connectivity, and you need to see what the kernel thinks is configured. The `ip` command from the iproute2 package is where you start. It replaced `ifconfig`, `route`, `arp` and `netstat -r`. It talks to the kernel over netlink, and it handles IPv4, IPv6 and every virtual device type.
+Suppose a server has lost connectivity, and you need to see what the kernel thinks is configured. The `ip` command from the iproute2 package is where you start. It replaced `ifconfig`, `route`, `arp` and `netstat -r`. It talks to the kernel over netlink, which is the kernel's channel for configuration messages, and it handles IPv4, IPv6 and every virtual device type.
 
 The commands below cover the views you will use most. The `-br` flag prints one line per interface, `-c` adds colour, and `-j` prints JSON for scripts.
 
@@ -91,7 +87,7 @@ Read the `ip addr` output from top to bottom. The first line describes the link,
     inet6 fe80::d05c:97f9:7be8:bca/64 scope link noprefixroute
 ```
 
-The flags in the first line tell you the state of the link. `UP` means the interface is administratively enabled in software. `LOWER_UP` means carrier is detected, and `NO-CARRIER` means there is no link. You will also see `BROADCAST`, `MULTICAST`, `PROMISC`, and `SLAVE` or `MASTER` for bond and bridge relationships. The `state` field reads `UP`, `DOWN`, `UNKNOWN` or `LOWERLAYERDOWN`.
+The flags in the first line tell you the state of the link. `UP` means the interface is administratively enabled in software. `LOWER_UP` means carrier is detected, and `NO-CARRIER` means there is no link. The difference matters in practice: `UP` without `LOWER_UP` is what you see when you have enabled the port but nobody has plugged in the cable, or the switch on the far side is down. You will also see `BROADCAST`, `MULTICAST`, `PROMISC`, and `SLAVE` or `MASTER` for bond and bridge relationships. The `state` field reads `UP`, `DOWN`, `UNKNOWN` or `LOWERLAYERDOWN`.
 
 The same line carries `mtu`, the largest packet size the interface accepts. It also carries `qdisc`, the egress scheduler, which is `fq_codel`, `mq` or `noqueue` for virtual devices. `qlen` is the txqueuelen.
 
@@ -111,7 +107,7 @@ Manual configuration is useful for experiments and emergencies, but it is fragil
 
 ### `ethtool`: the hardware side
 
-Where `ip` shows the kernel's view, `ethtool` shows the NIC itself. Use it to check link speed, driver, ring buffers, queues, offloads and optics.
+Where `ip` shows the kernel's view, `ethtool` shows the NIC itself. Use it to check link speed, driver, ring buffers, queues, offloads and optics. A ring buffer is the queue of packet slots shared between the NIC and the driver, and an offload is a job, such as checksumming, that the NIC does so the CPU does not have to.
 
 ```bash
 ethtool eth0                  # link status, speed/duplex, auto-negotiation, supported/advertised modes, port
@@ -131,7 +127,7 @@ A cable that has been pulled, or a switch port that is down, shows `Link detecte
 
 ## 3. Persistent configuration: managers and files
 
-A simple boot script is not enough, because networks change all the time. A laptop moves between wired, Wi-Fi and VPN. Servers get their addresses from DHCP. Clouds assign addresses and routes through metadata. Interfaces also appear and disappear through hotplug, containers and SR-IOV VFs. A configuration manager has to decide which interface to use. It brings up the physical layer and configures the IP layer, either static or DHCP/SLAAC. It lets users change connectivity without being root, and it decides what to do when connectivity is lost.
+Why not just run a boot script? Because networks change all the time. A laptop moves between wired, Wi-Fi and VPN. Servers get their addresses from DHCP. Clouds assign addresses and routes through metadata. Interfaces also appear and disappear through hotplug, containers and SR-IOV VFs. A configuration manager has to decide which interface to use. It brings up the physical layer and configures the IP layer, either static or DHCP/SLAAC. It lets users change connectivity without being root, and it decides what to do when connectivity is lost.
 
 The table lists the common tools and where each keeps its files. Use it to find which manager a given machine runs.
 
@@ -146,7 +142,7 @@ The table lists the common tools and where each keeps its files. Use it to find 
 | **wpa_supplicant / iwd** | Wi-Fi | | Wireless authentication |
 | **udev `.link` files** | Interface naming | `/etc/systemd/network/*.link`, kernel cmdline `net.ifnames=0` | Predictable names and MAC/name pinning |
 
-The Netplan file below gives one server three different kinds of interface. One is a DHCP link, one is a static fabric NIC with a 9000 MTU, and the third is a VLAN on top of the first link. Apply it with `sudo netplan try`, as the comment in the file says.
+The Netplan file below gives one server three different kinds of interface. One is a DHCP link, one is a static fabric NIC with a 9000 MTU, and the third is a VLAN on top of the first link. Apply it with `sudo netplan try`, as the comment in the file says. The `try` form waits for you to confirm, and it rolls the change back by itself if you lose the connection, which is a safety net when you are connected over the very interface you are changing.
 
 ```yaml
 # /etc/netplan/50-gpu.yaml  (apply with: sudo netplan try)
@@ -174,7 +170,7 @@ nm-online -q && echo network-up          # exit code usable in scripts
 networkctl status ; networkctl list ; sudo networkctl reload   # systemd-networkd
 ```
 
-Several rules govern how you use these tools. Choose one manager per interface, and keep fabric and storage NICs `unmanaged` or `never-default`. Make the configuration idempotent and declarative, so it is rendered from inventory (chapter 2.28/2.29). Test with `netplan try`, or with console or serial access, before you cut the link you are connected over. Mark non-critical NICs `optional` so boot does not hang, and verify the state after boot with an audit script (chapter 1.28). The localhost interface is normally excluded from managers. Its configuration never changes, and basic services need it early.
+Several rules govern how you use these tools. Choose one manager per interface, and keep fabric and storage NICs `unmanaged` or `never-default`. Make the configuration idempotent and declarative, so it is rendered from inventory (chapter 2.28/2.29). Idempotent means that running it twice gives the same result as running it once. Test with `netplan try`, or with console or serial access, before you cut the link you are connected over. Mark non-critical NICs `optional` so boot does not hang, and verify the state after boot with an audit script (chapter 1.28). The localhost interface is normally excluded from managers. Its configuration never changes, and basic services need it early.
 
 Before you change a manager on a remote server, confirm that you have console access.
 
@@ -188,7 +184,7 @@ Netplan offers a different approach. It does not manage the network itself. It i
 
 ### How NetworkManager chooses a connection
 
-NetworkManager is a daemon that starts at boot. It does not need a desktop to run. It listens to events from the system and from users, and it changes the network configuration based on rules. It tracks two levels of configuration: the hardware devices it learns from the kernel through udev over D-Bus, and the connections that describe how each device should be used. A wireless network can be a connection.
+NetworkManager is a daemon that starts at boot, and it does not need a desktop to run. It listens to events from the system and from users, and it changes the network configuration based on rules. It tracks two levels of configuration: the hardware devices it learns from the kernel through udev over D-Bus, and the connections that describe how each device should be used. A wireless network can be a connection.
 
 To activate a connection, NetworkManager often asks a tool such as `dhclient` to fetch IP settings from the local network. Distributions format their settings differently, so NetworkManager uses plug-ins rather than forcing its own standard.
 
@@ -199,19 +195,19 @@ On startup, it picks an Ethernet connection with this logic:
 3. If several known networks are available, select the most recently used one.
 4. Keep the connection until it is lost, a better network appears, or the user changes it.
 
-systemd-networkd is simpler. It suits servers that need little flexibility, but it lacks NetworkManager's dynamic features. Other managers, such as OpenWRT's `netifd`, Android's ConnectivityManager, ConnMan and Wicd, target small embedded systems. The settings are described in the systemd.network(5) manual page, and the directory is `/etc/systemd/network`.
+systemd-networkd is simpler. It suits servers that need little flexibility, but it lacks the dynamic features of NetworkManager. Other managers, such as `netifd` on OpenWRT, ConnectivityManager on Android, ConnMan and Wicd, target small embedded systems. The settings are described in the systemd.network(5) manual page, and the directory is `/etc/systemd/network`.
 
 ### Talking to NetworkManager with nmcli
 
 Most desktop users click the network applet. From the shell, `nmcli` with no arguments gives a quick summary of interfaces and their settings. It is like `ip`, with more detail for wireless. The `nmcli` command also controls NetworkManager, and its manual page has examples in nmcli-examples(5).
 
-The utility `nm-online` reports whether the network is up. It returns exit code `0` when the network is up and a nonzero code otherwise. That makes it handy in shell scripts.
+The utility `nm-online` reports whether the network is up. It returns exit code `0` when the network is up and a nonzero code otherwise, which makes it handy in shell scripts.
 
 ### NetworkManager configuration and unmanaged interfaces
 
-The main file is `NetworkManager.conf` in `/etc/NetworkManager`. Its format resembles `.desktop` and `.ini` files, with key-value settings in sections. Most files have a `[main]` section that lists plug-ins. For example, `plugins=ifupdown,keyfile` enables the ifupdown plug-in used by Ubuntu and Debian. The keyfile plug-in supports NetworkManager's native connection files, which live in `/etc/NetworkManager/system-connections`.
+The main file is `NetworkManager.conf` in `/etc/NetworkManager`. Its format resembles `.desktop` and `.ini` files, with key-value settings in sections. Most files have a `[main]` section that lists plug-ins. For example, `plugins=ifupdown,keyfile` enables the ifupdown plug-in used by Ubuntu and Debian. The keyfile plug-in supports the native connection files of NetworkManager, which live in `/etc/NetworkManager/system-connections`.
 
-Some interfaces should stay unmanaged. The localhost interface is a good example, because its configuration never changes and basic services need it early in boot. To ignore an interface under ifupdown, list it in `/etc/network/interfaces` and set `managed=false` in the `[ifupdown]` section of `NetworkManager.conf`. Under the ifcfg-rh plug-in used by Fedora and Red Hat, set `NM_CONTROLLED=no` in the interface's file in `/etc/sysconfig/network-scripts`. You can also ignore a device by its MAC address:
+Some interfaces should stay unmanaged. The localhost interface is a good example, because its configuration never changes and basic services need it early in boot. To ignore an interface under ifupdown, list it in `/etc/network/interfaces` and set `managed=false` in the `[ifupdown]` section of `NetworkManager.conf`. Under the ifcfg-rh plug-in used by Fedora and Red Hat, set `NM_CONTROLLED=no` in the file of the interface in `/etc/sysconfig/network-scripts`. You can also ignore a device by its MAC address:
 
 ```
 [keyfile]
@@ -224,11 +220,13 @@ When an interface goes up or down, NetworkManager runs the scripts in `/etc/Netw
 
 ## 4. Sockets: how processes use the network
 
-Picture a web server that accepts thousands of clients at once. Each connection needs its own handle, and the process needs a way to read and write it. That handle is a **socket**. It is the kernel interface through which a process reads and writes network data, and it sits on the boundary between user-space applications and the kernel's transport layer.
+Picture a web server handling thousands of clients at the same time, each with its own conversation. The server cannot hold every conversation in its head at once, and it cannot start a new server for every client. Sockets are the handles that let one process keep many conversations open together. The section explains how a server uses them, and what the kernel keeps for it.
+
+Picture a web server that accepts thousands of clients at once. Each connection needs its own handle, and the process needs a way to read and write it. That handle is a **socket**. It is the kernel interface through which a process reads and writes network data, and it sits on the boundary between user-space applications and the transport layer of the kernel. If the interface is a socket in the wall, a network socket is the phone handset: each call gets its own.
 
 Sockets come in several types. **Stream** (`SOCK_STREAM`, TCP) carries a two-way byte stream. **Datagram** (`SOCK_DGRAM`, UDP) sends messages. **Raw** (`SOCK_RAW`) serves ICMP tools and packet crafting. **Packet** (`AF_PACKET`) is what tcpdump uses. **Netlink** (`AF_NETLINK`) handles kernel configuration. **Unix domain** (`AF_UNIX`) handles local inter-process communication, and **vsock** handles communication between a VM host and its guests.
 
-A typical TCP server follows a fixed life cycle. It calls `socket()`, then `bind(addr:port)`, then `listen(backlog)`. After that it loops. Each `accept()` returns a *new* connected socket, the server calls `read/recv` and `write/send` on it, and then it calls `close()`. The server therefore holds two kinds of sockets. The **listening socket** stays with the master process, and each **per-connection socket** carries one client's reads and writes. Traditional servers `fork()` a process per connection or use pre-fork worker pools. Modern servers use event loops (`epoll`, `io_uring`) to handle thousands of connections per thread.
+A typical TCP server follows a fixed life cycle. It calls `socket()`, then `bind(addr:port)`, then `listen(backlog)`. After that it loops. Each `accept()` returns a *new* connected socket, the server calls `read/recv` and `write/send` on it, and then it calls `close()`. The server therefore holds two kinds of sockets. The **listening socket** stays with the master process, and each **per-connection socket** carries the reads and writes of one client. A receptionist who answers the front desk phone and then transfers each caller to a different extension is a good picture: the front desk line stays free for the next caller. Traditional servers `fork()` a process per connection or use pre-fork worker pools. Modern servers use event loops (`epoll`, `io_uring`) to handle thousands of connections per thread.
 
 Sockets are file descriptors. They show up in `/proc/<pid>/fd`, they are limited by `ulimit -n` and `fs.file-max`, and they are inherited across `fork`. The address you bind to decides who can reach the service. Binding to `0.0.0.0` or `::` listens on all addresses. `127.0.0.1` accepts only local clients, and a specific address listens only on that interface. `SO_REUSEADDR` and `SO_REUSEPORT` allow restarts and multi-process load sharing. `SO_KEEPALIVE`, `TCP_NODELAY` and `SO_RCVBUF/SO_SNDBUF` tune how the connection behaves, as chapter 2.6 explains.
 
@@ -258,7 +256,7 @@ curl -v --trace-ascii trace.txt http://example.org/    # protocol-level view: co
 
 The `telnet` and `curl` exercises show something useful. A TCP service is an uninterrupted two-way byte stream. The split between an HTTP header and its data exists only inside the user-space program, and the kernel and the network treat the two identically. That is why you can debug any text protocol by hand.
 
-Read `Recv-Q` and `Send-Q` together with the socket's state. On a listening socket, they show the accept queue length and its limit. On an established socket, they count unread and unsent bytes. A `Recv-Q` that stays above zero means the application is not reading. A `Send-Q` that keeps growing means the network or the peer is slow or stalled. Many `CLOSE-WAIT` sockets mean the application is not closing its connections. Many `SYN-SENT` sockets mean the peer or the path is blocking. Many `TIME-WAIT` sockets are normal churn, as chapter 2.6 explains.
+Read `Recv-Q` and `Send-Q` together with the state of the socket. On a listening socket, they show the accept queue length and its limit. On an established socket, they count unread and unsent bytes. A `Recv-Q` that stays above zero means the application is not reading. A `Send-Q` that keeps growing means the network or the peer is slow or stalled. Many `CLOSE-WAIT` sockets mean the application is not closing its connections. Many `SYN-SENT` sockets mean the peer or the path is blocking. Many `TIME-WAIT` sockets are normal churn, as chapter 2.6 explains.
 
 ### Remote procedure calls and `rpcbind`
 
@@ -266,7 +264,7 @@ Read `Recv-Q` and `Send-Q` together with the socket's state. On a listening sock
 
 ### Learning the socket interface
 
-If you write network programs, the socket interface is the tool you must learn. A process needs only a few system calls to read and write a connection. The manual pages `recv(2)` and `send(2)` describe them. The classic guide is W. Richard Stevens' *Unix Network Programming*, Volume 1, third edition, written with Bill Fenner and Andrew M. Rudoff. Volume 2 also covers interprocess communication.
+If you write network programs, the socket interface is the tool you must learn. A process needs only a few system calls to read and write a connection, and the manual pages `recv(2)` and `send(2)` describe them. The classic guide is W. Richard Stevens' *Unix Network Programming*, Volume 1, third edition, written with Bill Fenner and Andrew M. Rudoff. Volume 2 also covers interprocess communication.
 
 ### Unix domain sockets
 
@@ -274,7 +272,7 @@ Two programs on one machine often need to talk. They could send data through the
 
 Keep one idea in mind: a Unix domain socket is not a network socket. No network stands behind it, so you do not need networking configured to use one. It also does not have to live at a file path. A process can create an unnamed Unix domain socket and share its address with another process.
 
-Developers choose Unix domain sockets for two reasons. First, a socket file in the filesystem controls access. A process without permission to that file cannot connect. Second, the kernel skips many layers of its networking subsystem, so performance is usually much better. You will usually find the D-Bus socket file in `/var/run/dbus`:
+Developers choose Unix domain sockets for two reasons. First, a socket file in the filesystem controls access, so a process without permission to that file cannot connect. Second, the kernel skips many layers of its networking subsystem, so performance is usually much better. You will usually find the D-Bus socket file in `/var/run/dbus`:
 
 ```bash
 $ ls -l /var/run/dbus/system_bus_socket
@@ -297,7 +295,7 @@ Read the `NAME` column first. A path such as `/var/run/mysqld/mysqld.sock` names
 
 ### Who is using a port: `lsof -i`
 
-You have seen `lsof` track open files. It can also list the programs that use or listen on network ports. Run `sudo lsof -i` to see them all. As a regular user you see only your own processes. As root you see the whole system:
+You have seen `lsof` track open files. It can also list the programs that use or listen on network ports. Run `sudo lsof -i` to see them all. As a regular user you see only your own processes, while as root you see the whole system:
 
 ```bash
 # lsof -i
@@ -316,7 +314,7 @@ By default, `lsof` tries to turn every IP address into a hostname, and that slow
 
 ## 5. Counters: where packets disappear
 
-Many network problems are packets that never arrived, or that arrived late. Counters tell you which layer lost them. The diagram follows a received packet from the wire up to the application, and it marks where each layer records its drops.
+Many network problems are packets that never arrived, or that arrived late. Nobody sees the packet vanish, so you need the evidence it leaves behind. Counters tell you which layer lost it. The diagram follows a received packet from the wire up to the application, and it marks where each layer records its drops.
 
 ```mermaid
 flowchart LR
@@ -348,7 +346,7 @@ The table lists the tools that read those counters. Start with the tool closest 
 
 Read each counter by its type. **Errors** with CRC, frame or length labels point to the physical layer, such as a cable, the optics, FEC, or a speed or duplex mismatch. **Dropped**, **missed** and **no_buffer** counters mean the host could not keep up. The fixes there are larger rings, more RSS queues, correct IRQ affinity, lower per-packet cost, more CPU, or XDP. Softnet `dropped` and `time_squeeze` point to softirq starvation, which you tune with `net.core.netdev_budget` and `netdev_max_backlog`, or with RPS and RFS. TCP retransmits point to loss somewhere on the path. Compare them with a baseline, because Internet-facing flows retransmit more than rack-local ones. `ListenOverflows` means the accept queue is full, and `UdpRcvbufErrors` means socket buffers overflowed. Pause and PFC counters show backpressure, which chapter 2.19 covers.
 
-Always work with deltas over an interval, because counters only grow. `nstat` and `sar` do this for you. Take two readings a few seconds apart, and act on the difference rather than the running total.
+Always work with deltas over an interval, because counters only grow. A counter that reads a million drops tells you nothing by itself, since those drops might have happened last year. `nstat` and `sar` do this for you. Take two readings a few seconds apart, and act on the difference rather than the running total.
 
 The script below runs a quick first pass over links, speeds, errors, TCP, softnet and conntrack.
 
@@ -365,11 +363,13 @@ Run the script when you first reach a host, and compare its output with the coun
 
 ## 6. Performance methodology
 
-Use a method, not random tool-running. A method tells you which numbers to read first. For network analysis, the recommended order is performance monitoring (a baseline over time), then the USE method, then static performance tuning, then workload characterization. Latency analysis, TCP analysis and packet sniffing answer specific questions. Micro-benchmarking then confirms your hypotheses.
+Picture a colleague who opens every monitoring tool they know, reads a hundred numbers, and cannot say which one matters. The result is a long meeting and no fix. A method prevents that. It tells you which numbers to read first, and which question each number answers. This section describes the method the rest of the chapter depends on.
+
+Use a method, not random tool-running. Without one, you run every tool you know, collect a hundred numbers, and cannot tell which of them matter. A method tells you which numbers to read first. For network analysis, the recommended order is performance monitoring (a baseline over time), then the USE method, then static performance tuning, then workload characterization. Latency analysis, TCP analysis and packet sniffing answer specific questions. Micro-benchmarking then confirms your hypotheses.
 
 ### Tools method (checklist)
 
-The tools method walks through the available tools and looks at the key metric in each. Check `nstat` or `netstat -s` for retransmits and out-of-order packets. Check `ip -s link` for errors, drops and overruns. Check `ss -tiepm` for limiter flags on each socket, such as rwnd-limited, cwnd-limited or app-limited. Compare `nicstat` or `ip -s link` throughput with the negotiated speed. Use `tcplife` and `tcptop` for sessions and throughput by process, `tcpdump` for short targeted captures, and `perf`, BCC or bpftrace for selected packets and kernel state. The weakness of this method is that it finds only what the tools show.
+The tools method walks through the available tools and looks at the key metric in each. Check `nstat` or `netstat -s` for retransmits and out-of-order packets. Check `ip -s link` for errors, drops and overruns. Check `ss -tiepm` for limiter flags on each socket, such as rwnd-limited, cwnd-limited or app-limited. Compare `nicstat` or `ip -s link` throughput with the negotiated speed. Use `tcplife` and `tcptop` for sessions and throughput by process, `tcpdump` for short targeted captures, and `perf`, BCC or bpftrace for selected packets and kernel state. The weakness of this method is that it finds only what the tools show. A problem that no tool measures stays invisible.
 
 ### USE method
 
@@ -383,7 +383,7 @@ Measure what the system is being asked to do before you judge how it performs. T
 
 ### Latency analysis
 
-Break latency into parts, and find the part that grows. Name resolution (DNS) can time out for tens of seconds. Ping and RTT show the path. TCP connection latency is the handshake, and first-byte latency is the server's think time plus the RTT. Connection life span matters too, because short-lived connections multiply the handshake cost. Per-request latency comes from the application itself. The tools for this are `curl -w` timing variables, `dig +stats`, `tcpconnlat`, `tcpdump` timestamps, the `rtt` field from `ss -ti`, `mtr`, and application tracing. Compare what you measure against expected values. Rack-local 100G traffic should take tens of microseconds, same-DC traffic 0.2 to 0.6 ms, and cross-continent traffic 40 to 180 ms.
+Break latency into parts, and find the part that grows. A slow page load is a sum of many small waits, and only one of them is usually the culprit. Name resolution (DNS) can time out for tens of seconds. Ping and RTT show the path. TCP connection latency is the handshake, and first-byte latency is the think time of the server plus the RTT. Connection life span matters too, because short-lived connections multiply the handshake cost. Per-request latency comes from the application itself. The tools for this are `curl -w` timing variables, `dig +stats`, `tcpconnlat`, `tcpdump` timestamps, the `rtt` field from `ss -ti`, `mtr`, and application tracing. Compare what you measure against expected values. Rack-local 100G traffic should take tens of microseconds, same-DC traffic 0.2 to 0.6 ms, and cross-continent traffic 40 to 180 ms.
 
 ### TCP analysis
 
@@ -391,7 +391,7 @@ Look at the TCP-specific behaviour. Check the send and receive buffer sizes and 
 
 ### Static performance tuning
 
-Check the configuration for deviations from best practice before any load arrives. Look at the negotiated link speed, duplex and FEC. Confirm that the MTU is consistent end to end, that offloads are on, and that ring sizes and queue counts are right. Check IRQ affinity, the NUMA locality of the NIC and the GPU, interrupt coalescing, the qdisc, TCP buffer limits and congestion control. Also check `somaxconn` and the backlog, conntrack limits, firewall rule counts, routing correctness, bonding and LACP state, DNS configuration, the NIC firmware and driver versions, and the kernel version. Most real problems are configuration drift, such as one node with a 1 GbE negotiated link, a wrong MTU, a disabled offload or a different driver.
+Check the configuration for deviations from best practice before any load arrives. Look at the negotiated link speed, duplex and FEC. Confirm that the MTU is consistent end to end, that offloads are on, and that ring sizes and queue counts are right. Check IRQ affinity, the NUMA locality of the NIC and the GPU, interrupt coalescing, the qdisc, TCP buffer limits and congestion control. Also check `somaxconn` and the backlog, conntrack limits, firewall rule counts, routing correctness, bonding and LACP state, DNS configuration, the NIC firmware and driver versions, and the kernel version. Most real problems are configuration drift, such as one node with a 1 GbE negotiated link, a wrong MTU, a disabled offload or a different driver. One odd machine among a hundred identical ones is a configuration problem far more often than a mystery.
 
 ### Resource controls
 
@@ -421,7 +421,7 @@ The field `rtt:avg/var` gives the round-trip time, and `cwnd` and `ssthresh` giv
 
 ### BCC and bpftrace tools
 
-eBPF tools observe the kernel with low overhead. Install `bcc-tools` or `bpftrace`, run them as root, and use a kernel with BTF enabled for the CO-RE tools.
+eBPF tools observe the kernel with low overhead. They run small, verified programs inside the kernel and report back, so you can watch events that no counter records. Install `bcc-tools` or `bpftrace`, run them as root, and use a kernel with BTF enabled for the CO-RE tools.
 
 ```bash
 sudo tcplife           # one line per TCP session: PID, comm, local/remote, TX_KB, RX_KB, duration (MS)
@@ -492,7 +492,7 @@ Start with the self-checking Python lab, which runs on your own machine. It chec
 python3 code/part02/linux_ip_ss_counters_lab.py
 ```
 
-The rest of the lab needs a disposable Linux VM with `root`. All interactive VM commands below are untested here, so treat each result as something to verify on your own machine. Work through the steps in order, because later faults depend on the baseline you build early.
+The rest of the lab needs a disposable Linux VM with `root`. The interactive VM commands below were not run on live hardware, so treat each result as something to verify on your own machine. Work through the steps in order, because later faults depend on the baseline you build early.
 
 1. Take an inventory. On a fresh VM, run the commands in sections 2 to 5, and write a one-page "network state report" covering interfaces, MTU, routes, neighbours, sockets and counters. Save it as your baseline.
 2. Test the interface lifecycle. Create `dummy0` and a `veth` pair with `ip`, and assign addresses to them. Watch `ip monitor` in a second terminal. Then delete them, and note what gets printed.
@@ -507,11 +507,13 @@ The rest of the lab needs a disposable Linux VM with `root`. All interactive VM 
 
 ## 10. Common mistakes
 
+Most of these mistakes come from trusting a tool that shows only one layer.
+
 - Using `ifconfig`, `route` or `netstat` knowledge from old guides, and missing the modern fields in `ip -s` and `ss -ti`.
 - Making manual `ip` changes and expecting them to persist. Two managers fighting over one interface is the same trap in another form.
 - Reading cumulative counters without taking deltas. Another is ignoring physical errors while you look only at host drops.
 - Blaming "the network" before checking the socket (Recv-Q and Send-Q), the application, DNS or the firewall.
-- Testing throughput with one TCP flow on a 100G link, and not pinning the test to the NIC's NUMA node.
+- Testing throughput with one TCP flow on a 100G link, and not pinning the test to the NUMA node of the NIC.
 - Capturing at a high rate on the same host you are testing, which perturbs the results.
 - Forgetting that `lsof` and `ss` without root show only your own processes.
 - Assuming loopback tests prove external reachability. The kernel short-circuits local traffic, so it never reaches the NIC.
@@ -534,12 +536,15 @@ Interviewers ask these to test your reasoning, not your memory of commands. Prac
 
 Each exercise asks you to explain a mechanism first, and then to show it with commands. Work through them in order. Write your answers in your own words, and check each command against the sections above.
 
-1. Start with the kernel's `netdev` abstraction. Explain how the kernel separates physical hardware from the L3 protocols through `netdev` interfaces. Then contrast the `UP` and `LOWER_UP` (`NO-CARRIER`) flags in `ip link` output. Finally, write the `ip` and `ethtool` commands that inspect type-specific interface details (`-d`), produce JSON output (`-j`), watch live netlink events (`ip monitor`), show NIC ring sizes (`-g`), show RSS queue counts (`-l`), show offloads (`-k`) and read optical transceiver DOM power (`-m`).
-2. Compare Netplan, NetworkManager (`nmcli`, `nm-online`) and systemd-networkd (`networkctl`). Explain why manual `ip addr` and `ip route` commands vanish or get overwritten. Then explain why non-management NICs on a GPU server must set `optional: true` and `ipv4.never-default yes`.
-3. Work through sockets, `Recv-Q` and `Send-Q`, and Unix domain sockets, using chapter 10 of *How Linux Works*. (a) Trace the system calls of a TCP server (`socket -> bind -> listen -> accept -> recv/send -> close`). Explain what `Recv-Q` and `Send-Q` mean in `ss -ltn` for listening sockets, and in `ss -tn` for established sockets. (b) Explain how Unix domain sockets (`AF_UNIX`, `ss -xlp`) differ from loopback TCP sockets in performance and security. Then explain why `/var/run/docker.sock` is root-equivalent.
-4. Decode a counter line with `parse_softnet_stat_line()` in `code/part02/linux_ip_ss_counters.py`. Decode the `/proc/net/softnet_stat` line `"000186a0 0000000f 00000100 00000000 00000000"`, which gives `processed = 100,000`, `dropped = 15` and `time_squeeze = 256`. Then map each of the 7 receive-path layers (Wire/PHY, NIC hardware, RX ring/driver, NAPI softirq, IP layer, netfilter/conntrack, and TCP/UDP socket buffer) to the exact counter and tool that proves drops at that layer.
-5. Apply Brendan Gregg's USE method to bus bottlenecks, and read an `ss -ti` sample, using *Systems Performance*, chapter 10. (a) Using `evaluate_interface_and_pcie_use()`, explain why a `400 Gb/s` NIC installed in a **PCIe Gen4 x16** slot (`~252 Gb/s` usable) saturates the PCIe bus at **`63.0%` link utilization**, and why it needs a **PCIe Gen5 x16** slot (`~504 Gb/s`). (b) Using `classify_ss_ti_bottleneck()`, interpret the `ss -ti` sample in Section 7 (`rwnd_limited:100ms(4.3%)`, `cwnd:10`, `retrans:0/9`, `app_limited`).
-6. Match each operational question to the BCC or bpftrace tool that answers it, using *Systems Performance*, chapter 10. The questions are: which PID or process opens short-lived TCP connections; which process causes TCP retransmits; what the TCP handshake latency is per process; and which exact kernel function called `kfree_skb` to drop a packet. The tools are `tcplife`, `tcptop`, `tcpconnect`, `tcpaccept`, `tcpconnlat`, `tcpretrans` and `tcpdrop`.
+1. A server's link looks wrong. Explain how the kernel separates physical hardware from the L3 protocols through `netdev` interfaces. Then contrast the `UP` and `LOWER_UP` (`NO-CARRIER`) flags in `ip link` output.
+2. You need to inspect an interface in detail. Write the `ip` and `ethtool` commands that inspect type-specific interface details (`-d`), produce JSON output (`-j`), watch live netlink events (`ip monitor`), show NIC ring sizes (`-g`), show RSS queue counts (`-l`), show offloads (`-k`) and read optical transceiver DOM power (`-m`).
+3. Compare Netplan, NetworkManager (`nmcli`, `nm-online`) and systemd-networkd (`networkctl`). Explain why manual `ip addr` and `ip route` commands vanish or get overwritten. Then explain why non-management NICs on a GPU server must set `optional: true` and `ipv4.never-default yes`.
+4. A web server accepts clients one after another. Trace the system calls of a TCP server (`socket -> bind -> listen -> accept -> recv/send -> close`). Explain what `Recv-Q` and `Send-Q` mean in `ss -ltn` for listening sockets, and in `ss -tn` for established sockets.
+5. Two local daemons need to talk. Explain how Unix domain sockets (`AF_UNIX`, `ss -xlp`) differ from loopback TCP sockets in performance and security. Then explain why `/var/run/docker.sock` is root-equivalent.
+6. Decode a counter line with `parse_softnet_stat_line()` in `code/part02/linux_ip_ss_counters.py`. Decode the `/proc/net/softnet_stat` line `"000186a0 0000000f 00000100 00000000 00000000"`, which gives `processed = 100,000`, `dropped = 15` and `time_squeeze = 256`. Then map each of the 7 receive-path layers (Wire/PHY, NIC hardware, RX ring/driver, NAPI softirq, IP layer, netfilter/conntrack, and TCP/UDP socket buffer) to the exact counter and tool that proves drops at that layer.
+7. A 400G NIC reaches only part of its line rate. Apply the USE method to bus bottlenecks. Using `evaluate_interface_and_pcie_use()`, explain why a `400 Gb/s` NIC installed in a **PCIe Gen4 x16** slot (`~252 Gb/s` usable) saturates the PCIe bus at **`63.0%` link utilization**, and why it needs a **PCIe Gen5 x16** slot (`~504 Gb/s`).
+8. A connection is slow and you suspect the receiver. Using `classify_ss_ti_bottleneck()`, interpret the `ss -ti` sample in Section 7 (`rwnd_limited:100ms(4.3%)`, `cwnd:10`, `retrans:0/9`, `app_limited`).
+9. Match each operational question to the BCC or bpftrace tool that answers it. The questions are: which PID or process opens short-lived TCP connections, which process causes TCP retransmits, what the TCP handshake latency is per process, and which exact kernel function called `kfree_skb` to drop a packet. The tools are `tcplife`, `tcptop`, `tcpconnect`, `tcpaccept`, `tcpconnlat`, `tcpretrans` and `tcpdrop`.
 
 ## Checkpoint questions (20)
 

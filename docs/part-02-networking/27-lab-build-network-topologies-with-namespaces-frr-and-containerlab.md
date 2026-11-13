@@ -22,17 +22,23 @@ lab_venue: "GCP / GKE"
 
 ## Why this lab chapter exists
 
-Reading about BGP is one thing. Watching a route disappear when you pull a cable is another. Networking is learned by building, breaking and measuring it. This chapter turns the theory of chapters 2.2 to 2.26 into a series of reproducible labs on a single VM, and it uses only free software.
+Reading about BGP is one thing. Watching a route disappear when you pull a cable is another. You can read that a link failure converges in under a second, and then see, with a running ping, that three pings were lost and the fourth got through, and that fact stays with you in a way a sentence cannot. Networking is learned by building, breaking and measuring it. This chapter turns the theory of chapters 2.2 to 2.26 into a series of reproducible labs on a single VM, and it uses only free software.
 
-Linux network namespaces build the smallest topologies. FRR, which stands for Free Range Routing, runs the routing protocols. containerlab describes a whole fabric as code, so a YAML file defines the nodes, the links and the start-up configuration.
+A diagram of a fabric is easy to agree with and easy to forget. A running fabric is harder to ignore. When a ping drops and a route table changes under your fingers, you start asking why, and the answer then sticks. The labs in this chapter are built around that moment of surprise. Each one gives you a result to explain before it gives you the explanation.
 
-Network teams use these same techniques to test a change before they touch real switches. They also use them to teach, to reproduce a production incident and to validate automation, which chapters 2.28 and 2.29 cover. By the end you will have a small leaf-spine data-centre fabric. It runs an eBGP unnumbered underlay and an EVPN-VXLAN overlay with tenant VRFs. Hosts run BGP and anycast services, you run failure and convergence experiments against it, and a validation harness checks the result in CI.
+Linux network namespaces build the smallest topologies. A namespace is a private copy of the network stack, so one machine can pretend to be a whole row of routers and hosts. FRR, which stands for Free Range Routing, runs the routing protocols. containerlab describes a whole fabric as code, so a YAML file defines the nodes, the links and the start-up configuration. Because the fabric is text, you can build it, break it, and rebuild it in minutes.
+
+Think of a namespace as a separate room with its own doors and its own address book. Two rooms cannot talk to each other until someone runs a cable between them, and a veth pair is that cable. Each end of the cable lives in a different room, and whatever goes in one end comes out of the other. Once you see that a namespace is only a room, the rest of the labs are just rooms joined by cables, with a router that chooses which door a packet leaves by.
+
+Network teams use these same techniques to test a change before they touch real switches. They also use them to teach, to reproduce a production incident and to validate automation, which chapters 2.28 and 2.29 cover. The labs here build up in steps. The first two are tiny, three namespaces with a router, then a diamond of routers running OSPF. The third builds a real leaf-spine data-centre fabric with eBGP unnumbered and ECMP. The fourth adds an EVPN-VXLAN overlay with tenant VRFs, the fifth examines tunnels, the sixth places load balancers and anycast on the fabric and breaks it on purpose, and the last turns all of it into tests that a CI system can run. By the end you will have a small fabric that behaves like the ones in the earlier chapters, and a harness that checks it.
 
 ## Lab environment
 
 ### VM and tooling
 
 Start with a GCP VM running Ubuntu 22.04 or 24.04. An e2-standard-8 or similar machine with a 50 GB disk is enough. Any Linux machine with root access also works. Install the tools below before you run any lab, because every later section assumes they are present.
+
+Why use a VM and not your laptop? Every lab changes routing tables, creates bridges and sets kernel switches such as the forwarding flag. On a laptop those changes leak into your normal network, and one mistake can cut off your own connection. On a disposable VM a mistake costs one teardown, and a fresh start is one command away.
 
 ```bash
 sudo apt-get update
@@ -49,7 +55,11 @@ docker pull ghcr.io/hellt/network-multitool    # alpine host image with ping/ipe
 
 The host FRR service is disabled on purpose. The labs use the FRR binaries and containers, and a host service would conflict with them. Check the containerlab install page for the current instructions before you run the install line.
 
-Every lab follows the same conventions, so learn them once.
+Read the install block as a checklist rather than as a script to run without thought. The first line refreshes the package list. The apt line installs the tools that later experiments call. The systemctl line stops the host routing daemon, and the usermod line lets your account run Docker without sudo. The last lines install containerlab and pull the two images. If one step fails, the later labs fail in confusing ways, so confirm each step before you go on.
+
+Every lab follows the same conventions, so learn them once. They keep the labs tidy and make your notes comparable from one lab to the next.
+
+Here is what the convention does for you. Suppose a leaf is the third one in the fabric. Its server subnet is 10.10.3.0/24, and its address follows the pattern you have just read. When you see an address in a capture, you can place it on the fabric without looking at a diagram, because the address itself says which leaf owns it.
 
 - Keep your work in a directory called `~/netlab`, with one sub-directory per lab.
 - Loopbacks come from `10.255.0.0/24`, with one /32 per router. Server subnets follow the pattern `10.10.<leaf>.0/24`. Spines use ASN `65000`, and leaves use `65101..65104`.
@@ -61,7 +71,11 @@ Every lab follows the same conventions, so learn them once.
 
 ## Lab 1: three namespaces and a router (routing, forwarding, MTU, ICMP)
 
-This lab reproduces the ideas from chapters 2.5 and 2.7, and you can finish it in under five minutes. Start by building the three namespaces and their links with the script below.
+Picture two hosts that cannot talk to each other, and one machine in the middle that seems connected to both. Why would a router refuse to pass packets, even when its interfaces look correct? This first lab answers that with the smallest network that can show it. You build three namespaces, watch a ping fail, change a single setting, and watch it succeed. Each experiment after that changes one thing and measures what moves.
+
+This lab reproduces the ideas from chapters 2.5 and 2.7, and you can finish it in under five minutes. It is the smallest network that has a router in it: two hosts that cannot see each other, and one router in the middle that can see both. Start by building the three namespaces and their links with the script below.
+
+Read the script in the order it runs. First it creates three namespaces, one each for hA, r and hB, and brings up their loopback interfaces. Then it creates two veth pairs. One end of each pair goes into a host, and the other end goes into the router. It gives each link an address on its own subnet, and the router holds the gateway address on both. Last, it points each host's default route at the router. Nothing forwards yet, and that is exactly why the first ping in the next part fails.
 
 ```bash
 mkdir -p ~/netlab/lab1 && cd ~/netlab/lab1
@@ -88,9 +102,13 @@ sudo ip netns exec r tcpdump -ni rA -e -c4 icmp &   # observe MAC rewrite and TT
 sleep 1; sudo ip netns exec hA ping -c2 10.2.0.2; wait
 ```
 
-The first ping is expected to fail. The router does not forward packets until you turn on `net.ipv4.ip_forward`, so the failure shows you what forwarding actually does. Once the sysctl is set, the second ping goes through.
+The first ping is expected to fail. The router does not forward packets until you turn on `net.ipv4.ip_forward`, so the failure shows you what forwarding actually does. Without it, the router behaves like a host: it accepts packets addressed to itself and silently discards the rest. Once the sysctl is set, the second ping goes through.
 
-Run the experiments below and write down what you see.
+Think of the router as a receptionist who answers only for their own extension. A packet for 10.2.0.2 reaches the router, which is not its destination, and the kernel drops it unless forwarding is on. Setting the sysctl is the switch that tells the receptionist to pass calls along. The second ping is the same packet, sent again with one setting changed. That single change is the lesson of the first step, and every later experiment depends on it.
+
+Run the experiments below and write down what you see. Each one changes a single thing, so the effect is easy to attribute.
+
+Take the first experiment as a worked example. `ip -n hA route get 10.2.0.2` asks the kernel which route a packet to 10.2.0.2 would take. The answer names the default route through 10.1.0.1 on the vA interface. Then `traceroute -n` sends probes with rising TTL values. The first probe expires at the router, which returns a time exceeded message, so the router appears as hop 1. If hop 1 were missing, the trouble would be the router's forwarding, not the far host.
 
 1. Run `ip -n hA route get 10.2.0.2`, then run `traceroute -n 10.2.0.2` from hA. The router should appear as hop 1.
 2. Add `ip -n hA route add blackhole 10.2.0.2/32`. Then compare it with `unreachable` and `prohibit`, and read the ICMP codes in tcpdump. Delete the routes when you finish.
@@ -104,9 +122,13 @@ Run `./down.sh` when you finish.
 
 ## Lab 2: install FRR in namespaces and run OSPF (link state)
 
-This lab shows you neighbour states, LSAs, SPF, ECMP and convergence, using only a handful of routers. It runs the FRR binaries directly on the VM, so you do not need containers.
+This lab shows you neighbour states, LSAs, SPF, ECMP and convergence, using only a handful of routers. It runs the FRR binaries directly on the VM, so you do not need containers. If chapter 2.14 felt abstract, this is the lab that makes it concrete, because you can watch two routers move from first hello to a shared map.
+
+Here is what the OSPF daemons do on each link. A router sends a hello at a regular interval. When a hello from the other end arrives, both routers agree that they are neighbours. They then swap their link-state databases, step by step, until both hold the same map. Each router runs the shortest path first calculation on that shared map, and the result goes into the kernel route table. Every step in that chain can be watched in the lab, one state at a time.
 
 The topology is a diamond. Traffic from h1 reaches R4 through R2 or R3, and both paths have equal cost: `h1 - R1 -(R2,R3)- R4 - h2`. Each router is its own namespace, and each one runs its own `frr` daemons from a separate config directory.
+
+Walk through the diamond from h1. R1 has two ways to reach R4, one through R2 and one through R3. When both paths have the same total cost, the shortest path calculation finds both, and the routing table installs both as equal-cost next hops. Traffic is then spread over the two links by a hash of each flow. One connection always sticks to one path, while different connections use both. That is the ECMP you will see in the route table later in this lab.
 
 Build the namespaces, the veth links and the config files first. The `start_frr` helper starts `zebra` and `ospfd` inside one namespace. Every router gets its own PID file, socket and VTY socket, so several routers can run on the same host.
 
@@ -141,9 +163,13 @@ EOF
 
 You can skip hand-started daemons in Lab 3, because containerlab starts them for each container. This lab keeps the namespace version so you can see what a router really is: a network namespace plus routing daemons.
 
-Work through these experiments.
+Compare the two ways a router comes to life. In this lab you start the daemons yourself, and you see each piece: a namespace, a config file, a zebra process and an ospfd process. In Lab 3, containerlab hides those pieces inside a container image. The result is the same routing table, so the hand-built version is worth the time. Once you know what the container is doing, you can read its logs and find a missing daemon without guessing.
 
-1. Run `vtysh --vty_socket /tmp/frr/R1 -c 'show ip ospf neighbor'` and watch the states move from ExStart to Full. Then run `show ip ospf database` and `show ip route ospf`. R1 should show two equal-cost paths to R4's loopback.
+Work through these experiments. The second is the one that answers the question most people ask first, how long a failure takes to heal.
+
+Consider what the second experiment means in practice. A link fails, traffic stops, and somebody asks how long the outage lasted. The honest answer comes from measurement. The loss count in the ping output gives you the gap in packets, and multiplying that gap by the ping interval gives you the outage time. The hello and dead intervals you set in the config decide the floor below which the outage cannot go. Running the experiment is how you learn whether the number you were quoted is real.
+
+1. Run `vtysh --vty_socket /tmp/frr/R1 -c 'show ip ospf neighbor'` and watch the states move from ExStart to Full. Then run `show ip ospf database` and `show ip route ospf`. R1 should show two equal-cost paths to the loopback of R4.
 2. Pull the `veth` between R1 and R2 down. Time the convergence with `ping -i 0.01` from h1 to h2, and watch `ip monitor route` while you do it.
 3. Shorten the OSPF timers and add BFD with `bfdd`. Then compare the convergence time with the earlier run.
 4. Create an MTU mismatch on one link. Then watch the adjacency get stuck in ExStart or Exchange.
@@ -155,6 +181,10 @@ If you want to see convergence before anything else, start with experiment 2.
 ---
 
 ## Lab 3: leaf-spine fabric with containerlab, eBGP unnumbered, ECMP
+
+Picture a team that wants to test a change to a data-centre fabric before it touches real switches. They cannot afford an outage, and they cannot test on production. A small fabric written as code, running on one virtual machine, gives them a safe copy. This lab builds that copy. It follows the design of chapter 2.16, but now you can start it, change it, and destroy it in minutes.
+
+Why not test on a few real switches? A fabric carries live traffic, and a bad routing change can take out a whole rack. A containerised copy lets the team try the same configuration, watch the same route tables, and throw the attempt away. The fabric you build here is cheap to repeat, and a lesson from one run becomes a check in the next.
 
 Suppose you need to test a change to a data-centre fabric before it reaches production. This lab builds the standard fabric from chapter 2.16 as code. The fabric has 2 spines, 4 leaves and 2 hosts per leaf, which makes 8 hosts in total. Every link is point-to-point and unnumbered.
 
@@ -184,6 +214,8 @@ flowchart TB
 ```
 
 Before you read the topology file, count its links, because the count is a quick check that you understood the design. For example, each of the 2 spines connects to each of the 4 leaves. That gives 8 uplinks. Each leaf also has 2 host links, which adds 8 more. The file therefore declares 16 links.
+
+Counting is a useful habit with any topology file. Each link line is one cable, and each cable has two ends that must match the interface names on the nodes. A mistyped endpoint is one of the most common reasons a deploy fails. Counting the links first tells you what the file should contain, so you can spot a missing line before the deploy does.
 
 ### Topology file `fabric.clab.yml`
 
@@ -231,11 +263,13 @@ topology:
 
 The host `exec` lines assume that the data interface is `eth1`. containerlab gives the management interface the name `eth0`, and it names the data links `eth1...`, in the order that each node declares them. Each leaf has two server-facing ports, `eth3` and `eth4`, and you can handle them in two ways. You can address them one at a time, with `eth3` for the first host and `eth4` for the second. Or, for a one-subnet-per-leaf design, you can bridge both into `br0` and put `10.10.N.1/24` on `br0`.
 
+A lived example shows why the names matter. You deploy the fabric, run a ping from h11, and get no reply. The host has an address on one interface, but the route points at the leaf. Your first suspicion is the fabric, and that suspicion is wrong. The likely cause is a naming mismatch, where the exec line ran before the interface existed, or ran against an interface with another name. Look at the host's addresses first. Only when the host shows the address you expect should you look at BGP.
+
 containerlab runs `exec` commands after a node starts. To build `br0` on each leaf, add `exec: [ "ip link add br0 type bridge", "ip link set eth3 master br0", "ip link set eth4 master br0", "ip link set br0 up", "ip link set eth3 up", "ip link set eth4 up" ]` to each leaf node. A start-up script or the `kind: linux` `cmd` option does the same job in practice. Timing matters here. FRR reads `frr.conf` at startup, so create `br0` before FRR starts. If that is not possible, restart FRR after `exec` runs, with `docker exec clab-fabric-leaf1 /usr/lib/frr/frrinit.sh restart`.
 
 ### Config generator (Python + Jinja2)
 
-Rather than write each `daemons` and `frr.conf` file by hand, generate them from variables. The lab then scales, and its configuration stays data-driven. This is a preview of chapter 2.28.
+Rather than write each `daemons` and `frr.conf` file by hand, generate them from variables. The lab then scales, and its configuration stays data-driven. This is a preview of chapter 2.28. Adding a ninth leaf then means changing one number, not copying a file and editing six places.
 
 ```python
 #!/usr/bin/env python3
@@ -313,6 +347,8 @@ print("generated")
 
 Generate the configs, deploy the fabric, and then check it from the leaves and the hosts.
 
+Read the verification commands as a sequence of questions. The first asks whether the BGP sessions came up. The second asks what the leaf actually installed in its route table. The third asks whether the BFD sessions are running, which decides how quickly a dead link is noticed. The last two commands test the data path itself, first with a ping and then with a traceroute that shows which spine carried the packet. Work down the list, and stop at the first answer that is wrong.
+
 ```bash
 cd ~/netlab/lab3 && pip install jinja2 && python3 gen.py
 sudo containerlab deploy -t fabric.clab.yml
@@ -324,11 +360,15 @@ docker exec clab-fabric-leaf1 ip route show 10.10.4.0/24                # expect
 docker exec clab-fabric-leaf1 ip route get 10.10.4.11 ipproto tcp sport 40000 dport 80
 ```
 
-A healthy fabric looks like this. Every leaf has two ECMP next hops to every other leaf's subnet and loopback. Sessions show as Established, with neighbours named after their interfaces. The routes point at `inet6 fe80::...` link-local next hops. To check how the sessions come up, capture an OPEN message with `docker exec clab-fabric-leaf1 tcpdump -ni eth1 -c 20 port 179 -w -`, pipe it into tshark, and locate capability 5, which is the extended next hop.
+A healthy fabric looks like this. Every leaf has two ECMP next hops to the subnet and the loopback of every other leaf. Sessions show as Established, with neighbours named after their interfaces. The routes point at `inet6 fe80::...` link-local next hops. To check how the sessions come up, capture an OPEN message with `docker exec clab-fabric-leaf1 tcpdump -ni eth1 -c 20 port 179 -w -`, pipe it into tshark, and locate capability 5, which is the extended next hop.
+
+Read the healthy picture against the checks. Every leaf should show two next hops to a remote subnet, one per spine. Each session should be established. If one session is missing, the route table shows one next hop, and the fabric still carries traffic, but only over half of its paths. That is one of the most common quiet failures in a fabric, and it is why the ECMP check is on the list.
 
 ### Experiments
 
-Work through these experiments once the fabric is up.
+Work through these experiments once the fabric is up. Each one reproduces something from chapters 2.12 and 2.16 that you have so far only read about.
+
+Read the experiments as small stories. The first asks whether the load spreads over both spines. The second asks how long a link failure hurts. The third tests a design choice about ASNs, which decides whether routes can loop. Run each one, record what changed in the route table, and only then move on to the next.
 
 1. **ECMP distribution**: Start `docker exec clab-fabric-h11 iperf3 -c 10.10.4.11 -P 16` and watch the per-link counters on leaf1 with `watch -n1 'ip -s link show eth1; ip -s link show eth2'`. Then repeat the test with `-P 1`. To force a collision, try source ports until `ip route get ... sport N` shows the same next hop for two large flows, sometimes called elephant flows.
 2. **Failure and convergence**: Run `ping -i 0.05` from h11 to h41 and leave it running. Take a spine link down with `docker exec clab-fabric-spine1 ip link set eth1 down`, or use `containerlab tools netem` or `docker network disconnect`. Count the lost pings and time how long recovery takes. Repeat the test with BFD disabled and with default timers, and record the results in a table.
@@ -345,7 +385,9 @@ Tear the lab down with `sudo containerlab destroy -t fabric.clab.yml --cleanup` 
 
 ## Lab 4: EVPN-VXLAN overlay with tenant VRFs on the same fabric
 
-This lab adds the L2 and L3 overlays from chapter 2.17 to the Lab 3 fabric. Each step runs on the leaves. The first step creates a VLAN-aware bridge and one VXLAN device in external (metadata) mode. It maps VLAN 100 to VNI 10100, which is tenant A's L2 segment. It also creates a VRF called `tenantA` with an L3 VNI of 5001.
+This lab adds the L2 and L3 overlays from chapter 2.17 to the Lab 3 fabric. The underlay does not change. It is the same cables and the same BGP sessions, and the overlay is a new layer of meaning on top of them. Each step runs on the leaves. The first step creates a VLAN-aware bridge and one VXLAN device in external (metadata) mode. It maps VLAN 100 to VNI 10100, which is the L2 segment of tenant A. It also creates a VRF called `tenantA` with an L3 VNI of 5001.
+
+Picture two servers on the same subnet, one behind each of two leaves. An ARP request from one server should reach the other, even though the leaves are not joined at layer 2. The overlay makes that happen. The leaf wraps the Ethernet frame in a VXLAN packet, sends it across the spines, and the far leaf unwraps it. The steps below build that path one piece at a time, so you can check each piece before you add the next.
 
 1. Run these commands inside each leaf, before or while FRR runs. Replace `LOOP` with the leaf loopback.
 
@@ -368,13 +410,15 @@ bridge vlan add dev vxlan0 vid 100 ; bridge vni add dev vxlan0 vni 10100 ; bridg
 
 Check the syntax before you rely on it. The exact `vnifilter`, single VXLAN device (SVD) and VLAN-to-VNI mapping syntax depends on your kernel version (6.x) and your FRR version (9.x or 10.x). If it does not work, fall back to per-VNI `vxlan` devices, such as `ip link add vxlan100 type vxlan id 10100 local LOOP dstport 4789 nolearning`, and bridge them per VLAN. FRR supports that setup too.
 
-Confirm each leaf's bridge and VNI mapping before you move on to the FRR configuration.
+Confirm the bridge and VNI mapping of each leaf before you move on to the FRR configuration.
 
 ---
 
 ## Lab 5: overlays, VPNs and tunnels with namespaces
 
-Every tunnel adds bytes to each packet, and those bytes lower the usable MTU. This lab shows you the encapsulation overhead and the path MTU that result from it, using the ideas from chapter 2.17.
+Every tunnel adds bytes to each packet, and those bytes lower the usable MTU. A packet that fitted on the plain link no longer fits once an outer header is added, and that is the root of most "it works for ping but not for real traffic" stories. This lab shows you the encapsulation overhead and the path MTU that result from it, using the ideas from chapter 2.17.
+
+A short calculation shows why the lost bytes matter. Suppose a physical link carries a full-size packet exactly at its MTU. A tunnel header then adds bytes on top, so the same packet no longer fits. The sender must either shrink the packet, or the path must allow fragmentation. If neither happens, the transfer stalls, and the stall looks like a random network fault. You will see this in the MTU tests of the first item below.
 
 1. Build two sites, in namespaces `s1` and `s2`, and join them with a router called `core`. Build GRE, IPIP, VXLAN and WireGuard tunnels between `s1` and `s2`, and assign overlay addresses. Ping through each tunnel. Then capture traffic on the core, and compare the outer and inner headers.
 2. Compute the usable MTU of each tunnel, and verify it with `ping -M do -s N`. Compare your results with the table in chapter 2.17. Clamp the MSS, and then test a large `iperf3` transfer.
@@ -388,7 +432,11 @@ Work through the items in order, because item 2 gives you the MTU figures you ne
 
 ## Lab 6: load balancing, anycast and failure testing
 
-This lab combines chapters 2.12, 2.16 and 2.20. You place load balancers and an anycast address on the Lab 3 fabric, then break parts of it on purpose and measure the result.
+Picture a service behind one virtual address, served by several load balancers. One balancer fails in the middle of a busy hour. Users see errors for a short time, and then the errors stop. Was the recovery fast enough for the business? This lab answers that by breaking the service on purpose and writing down exactly what each kind of client experienced.
+
+Consider a client that connects to a virtual address. Behind it, load balancers answer, and one of them fails in the middle of a connection. Whether the client sees an error depends on where the failure happens, and on whether the surviving balancer can tell which backend already holds the connection. The items below make that question measurable, instead of leaving it to a diagram.
+
+This lab combines chapters 2.12, 2.16 and 2.20. You place load balancers and an anycast address on the Lab 3 fabric, then break parts of it on purpose and measure the result. It is the closest the chapter gets to a real incident: something fails while traffic is flowing, and you measure what the users would have felt.
 
 1. On the Lab 3 fabric, run nginx or a small HTTP server on h11 and h12. On another host, add an L4 load balancer node, either HAProxy or IPVS in DR mode. Announce its VIP to the leaf over BGP from FRR. Then verify that remote hosts reach several LB nodes through ECMP.
 2. From h41, run `wrk` or `hey` against the VIP. Kill one LB node and one backend, then measure the error rates and the recovery time.
@@ -402,7 +450,9 @@ Fill in the failure matrix row by row as you go, so the results can be compared 
 
 ## Lab 7: a validation harness (tests as code)
 
-Goal: make the lab self-checking, so that a topology change is verified automatically. You will start with a check that needs no lab hardware at all.
+Goal: make the lab self-checking, so that a topology change is verified automatically. Instead of looking at `show` output and deciding by eye whether the fabric is healthy, you write the question down once, as code, and the machine answers it every time. You will start with a check that needs no lab hardware at all.
+
+The harness turns a verbal claim into a repeatable test. Instead of saying the fabric has ECMP, the script asks each leaf for its next hops and fails if there are fewer than expected. The same script runs after every change, so a regression in a config file shows up as a red line rather than as a slow complaint from a user.
 
 Run the standalone Python lab first. It needs neither Docker nor root. The script checks the containerlab link generator for the Lab 3 fabric, which is a 2-spine by 4-leaf by 2-host design and should produce 16 links. It also checks the FRR eBGP-unnumbered leaf config renderer, and it runs the Lab 7 JSON checks for BGP and ECMP.
 
@@ -410,7 +460,7 @@ Run the standalone Python lab first. It needs neither Docker nor root. The scrip
 python3 code/part02/containerlab_frr_topologies_lab.py
 ```
 
-Next comes the check against the running fabric. Deploy the containerlab topology on your lab VM first. Every interactive VM and containerlab command in this chapter is marked `untested here`, so treat the script below as unverified until you run it. Then run `validate.py`.
+Next comes the check against the running fabric. Deploy the containerlab topology on your lab VM first. The interactive VM and containerlab commands in this chapter were not run on live hardware, so treat the script below as unverified until you run it. Then run `validate.py`.
 
 ```python
 #!/usr/bin/env python3
@@ -449,7 +499,9 @@ Run the harness in CI. A GitHub Actions job works, as long as the runner can run
 
 ## Evidence checklist
 
-Every lab needs a record. Write down the exact command and the time you ran it, the output or a screenshot, what the result proves, and what you changed. Keep these records in `labs/part02/` of your handbook repository. Mark a lab as tested in the chapter only after it has run end to end on a clean VM.
+Every lab needs a record. A lab that ran once and left no notes cannot be trusted a month later, because nobody remembers what exactly was seen. Write down the exact command and the time you ran it, the output or a screenshot, what the result proves, and what you changed. Keep these records in `labs/part02/` of your handbook repository. Mark a lab as tested in the chapter only after it has run end to end on a clean VM.
+
+Think of the record as the lab's memory. Months from now, a colleague asks whether a change broke ECMP. The record shows the command, the output and the date, so the question has an answer. Without it, the lab is only a story someone told. Write down the FRR version and the containerlab release with each run, because a route output can change between versions.
 
 | Lab | Concepts exercised | Chapters |
 |---|---|---|
@@ -467,6 +519,8 @@ The table shows which concepts each lab exercises and which chapters they come f
 
 When a lab misbehaves, find the symptom in the left column and work through the checks in the right column. The table covers deployment, BGP sessions, routing, EVPN and performance.
 
+Use the table as a set of questions rather than a list of fixes. Each row names a symptom and the first thing to check. The check tells you whether the cause sits in the container, in the routing protocol or on the path. Change one thing at a time, so that the fix you settle on is one you can trust.
+
 | Problem | Check |
 |---|---|
 | `containerlab deploy` fails | Docker running? image pulled? run as root; name collisions (`containerlab destroy --cleanup`); kernel modules (`modprobe vxlan`, `bridge`) |
@@ -481,14 +535,18 @@ Start from the symptom you see, and check the matching row before you change any
 
 ## Exercises
 
-1. Lab 1 covers three namespaces, routing, the PMTU black hole, NAT and `rp_filter`. Trace the commands that build `hA (10.1.0.2/24) — r — hB (10.2.0.2/24)`. Explain why the initial ping fails before `sysctl -w net.ipv4.ip_forward=1` runs, and what changes in the Ethernet and IP headers as a packet crosses `r`, which `tcpdump -e` lets you see. Then explain how lowering the `rB` MTU to `1400` while dropping ICMP Type 3 creates a TCP hang, and how `TCPMSS --clamp-mss-to-pmtu` fixes it.
-2. Lab 2 runs per-namespace FRR `zebra` and `ospfd`, plus `isisd`. Explain how `start_frr()` isolates several FRR router instances on one VM without containers. Show how it does this with per-namespace `-i` PID files, `-z /tmp/frr/$n/zserv.api` Zebra sockets and `--vty_socket /tmp/frr/$n`. Then describe how you trigger and observe an OSPF `ExStart` MTU mismatch in Lab 2.
-3. Lab 3 is the leaf-spine fabric built with containerlab. Use `build_clos_clab_links(2, 4, 2)` and `render_frr_ebgp_unnumbered_leaf()` in `code/part02/containerlab_frr_topologies.py` to generate the 16 link endpoint pairs for the 2-spine × 4-leaf × 2-host Clos. Then explain why `route-map CONN` redistributes only `lo` and `br0`. Finally, explain why `br0` must exist before FRR reads `frr.conf`.
-4. Lab 4 builds an EVPN-VXLAN overlay. Walk through the commands that create a VLAN-filtering bridge `br0`, a Single VXLAN Device `vxlan0` (`external vnifilter`), VLAN-to-VNI mappings (`vid 100 -> vni 10100`), a distributed anycast gateway (`10.100.1.1/24` with MAC `00:00:5e:00:01:01`), and a tenant VRF, `tenantA`, with `L3VNI 5001`. Then explain how you test MAC mobility across leaves.
-5. The tunnel and load-balancer labs cover tunnel MTU and entropy, SRv6/MPLS encapsulation, and the anycast load-balancer failure matrix. First, explain why GRE and IPIP tunnels stay on a single underlay ECMP path unless `sysctl net.ipv4.fib_multipath_hash_policy=2` is set, while VXLAN and WireGuard spread across ECMP paths on their own. Then design the failure matrix, covering link, spine, leaf, load-balancer node and backend failures.
-6. Lab 7 turns the checks into code. Using `validate_frr_bgp_and_ecmp_state()`, explain how `validate.py` queries `vtysh -c 'show bgp summary json'` and `vtysh -c 'show ip route <prefix> json'`. Show how those queries verify BGP peer state and 2-way ECMP across all leaves. Then explain how the script runs as a CI gate in GitHub Actions.
-
 Pick the exercises that match the labs you have already run, and start there.
+
+1. Lab 1 covers three namespaces, routing, the PMTU black hole, NAT and `rp_filter`. Trace the commands that build `hA (10.1.0.2/24) — r — hB (10.2.0.2/24)`. Explain why the initial ping fails before `sysctl -w net.ipv4.ip_forward=1` runs, and what changes in the Ethernet and IP headers as a packet crosses `r`, which `tcpdump -e` lets you see.
+2. A TCP transfer hangs after you lower the `rB` MTU to `1400` and drop ICMP Type 3. Explain how that combination creates the hang, and how `TCPMSS --clamp-mss-to-pmtu` fixes it.
+3. Lab 2 runs per-namespace FRR `zebra` and `ospfd`, plus `isisd`. Explain how `start_frr()` isolates several FRR router instances on one VM without containers. Show how it does this with per-namespace `-i` PID files, `-z /tmp/frr/$n/zserv.api` Zebra sockets and `--vty_socket /tmp/frr/$n`. Then describe how you trigger and observe an OSPF `ExStart` MTU mismatch in Lab 2.
+4. Lab 3 is the leaf-spine fabric built with containerlab. Use `build_clos_clab_links(2, 4, 2)` and `render_frr_ebgp_unnumbered_leaf()` in `code/part02/containerlab_frr_topologies.py` to generate the 16 link endpoint pairs for the 2-spine × 4-leaf × 2-host Clos. Then explain why `route-map CONN` redistributes only `lo` and `br0`.
+5. Explain why `br0` must exist before FRR reads `frr.conf` in Lab 3.
+6. Lab 4 builds an EVPN-VXLAN overlay. Walk through the commands that create a VLAN-filtering bridge `br0`, a Single VXLAN Device `vxlan0` (`external vnifilter`), VLAN-to-VNI mappings (`vid 100 -> vni 10100`), a distributed anycast gateway (`10.100.1.1/24` with MAC `00:00:5e:00:01:01`), and a tenant VRF, `tenantA`, with `L3VNI 5001`. Then explain how you test MAC mobility across leaves.
+7. A tunnel lab shows that GRE and IPIP stay on a single path. Explain why GRE and IPIP tunnels stay on a single underlay ECMP path unless `sysctl net.ipv4.fib_multipath_hash_policy=2` is set, while VXLAN and WireGuard spread across ECMP paths on their own.
+8. Design the failure matrix for the anycast load-balancer lab, covering link, spine, leaf, load-balancer node and backend failures.
+9. Lab 7 turns the checks into code. Using `validate_frr_bgp_and_ecmp_state()`, explain how `validate.py` queries `vtysh -c 'show bgp summary json'` and `vtysh -c 'show ip route <prefix> json'`. Show how those queries verify BGP peer state and 2-way ECMP across all leaves.
+10. Explain how `validate.py` runs as a CI gate in GitHub Actions.
 
 ## Checkpoint questions (20)
 

@@ -22,32 +22,28 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture an AI fabric with thousands of ports, hundreds of switches and tens of thousands of cables. One wrong DSCP-to-queue map, a missing PFC priority, one MTU of 1500 among nine thousands, or a leaf with the wrong ASN can degrade a 10,000-GPU job. Nothing raises an alarm when that happens. Humans typing CLI commands cannot keep a configuration that large consistent.
+Picture an AI fabric with thousands of ports, hundreds of switches and tens of thousands of cables. One wrong DSCP-to-queue map, a missing PFC priority, one MTU of 1500 among nine thousands, or a leaf with the wrong ASN can degrade a 10,000-GPU job. Nothing raises an alarm when that happens. The job simply runs a little slower, and somebody spends a week finding out why. Humans typing CLI commands cannot keep a configuration that large consistent, however careful they are, because the mistake is never in the commands they remember, but in the one they typed on a tired Thursday.
 
-That is why you automate the network. Instead of hand-typed configuration, you describe the network as **data (inventory and intent)**. Templates and models turn that data into configuration, and APIs deliver and verify it. Everything lives under version control and is tested before deployment.
+Count what one change means on such a fabric. Suppose a new VLAN must exist on every leaf. A person who types it on each switch repeats the same steps again and again, and each repetition is a chance for a typo. The same change, written once as data and applied by a script, is one step with one review. The gain is not speed alone. The second method leaves a record that anyone can read.
 
-This chapter teaches the foundations. It explains why and what to automate, and how management interfaces evolved from SNMP to CLI scraping, then to NETCONF and RESTCONF, and finally to gNMI. Next come structured data formats and data models: YAML, JSON, XML, Protocol Buffers, YANG and JSON Schema. You will also learn templating with Jinja2, working with network APIs from Python, streaming telemetry, and software-defined networking, which moves control into centralised control planes in several forms. Chapter 2.29 covers the tools (Ansible, Nornir, CI/CD, controllers, VNFs) and architectures.
+That is why you automate the network. Instead of hand-typed configuration, you describe the network as **data (inventory and intent)**. Templates and models turn that data into configuration, and APIs deliver and verify it. Everything lives under version control and is tested before deployment. A new rack then becomes a few lines in a file, and the work of turning those lines into thirty switch configurations is done by a program that never gets tired.
+
+The foundations come in a natural order. First comes the question of what to automate and why so many automation projects hurt people. After that, the history of how devices were managed, from SNMP and screen scraping to model-driven APIs, which explains why the newer interfaces look the way they do. Then the data formats those APIs speak, the models that say what the data may contain, and the templates that turn data into configuration. The chapter then works through the network APIs themselves, from REST and NETCONF to gNMI and streaming telemetry, before stepping back to software-defined networking and its trade-offs. Chapter 2.29 covers the tools (Ansible, Nornir, CI/CD, controllers, VNFs) and architectures.
 
 ## Prerequisites and outcomes
 
-You should be comfortable with basic Python (Part 3) and Git. You also need the routing/switching background from chapters 2.4 to 2.18.
+You should be comfortable with basic Python (Part 3) and Git. You also need the routing/switching background from chapters 2.4 to 2.18. If you can write a short Python function, read a dictionary, make a Git commit, and explain what a BGP session and a VLAN are, you have what you need.
 
-By the end of this chapter, you will be able to explain the benefits and types of network automation. Those types are provisioning, data collection, migrations, configuration management, compliance, state validation, reporting and troubleshooting. You will also know the lessons from automation outages.
-
-You will trace how device interfaces evolved, and you will compare SNMP, CLI/SSH, NETCONF, RESTCONF, gNMI/gRPC and vendor REST/eAPI. You will use YAML, JSON and XML in Python. You will explain binary formats such as Protocol Buffers, and you will keep documents separate from data.
-
-Next, you will define data models with YANG, JSON Schema and XSD, and validate data before you use it. You will explain OpenConfig and IETF models. You will write Jinja2 templates with variables, conditionals, loops, filters, inheritance and macros, and you will know when XSLT or Go templates fit.
-
-For APIs, you will call REST with `requests` or cURL. You will use NETCONF with `ncclient`, RESTCONF, and gNMI with gNMIc or pygnmi. For CLI-only devices, you will use Netmiko, Scrapli or NAPALM, and you will consume streaming telemetry.
-
-Finally, you will design automation that is safe to run. That means idempotency, dry runs and diffs, validation, staged rollout, rollback, secrets and concurrency. You will also explain SDN and centralised control planes, including the southbound and northbound interfaces, the distributed, augmented, hybrid and replace models, subsidiarity and the CAP trade-offs.
+Everything else is explained as it appears. YAML, JSON and XML, YANG, Jinja2, NETCONF and gNMI each start from a small example you can type and run, and each is introduced with a reason, namely the problem that the older approach had.
 
 ## 1. Why automate, and what
 
 ### Benefits
 
+Why would a team take on the work? Five benefits usually decide it.
+
 - Simpler architectures and operations. One tested workflow replaces many hand procedures, so operators stop acting as the integration layer between systems.
-- Deterministic outcomes. The same input produces the same configuration every time, on every device, so snowflake configurations disappear.
+- Deterministic outcomes. The same input produces the same configuration every time, on every device, so snowflake configurations disappear. A snowflake is a device that is slightly different from all the others, for reasons that nobody remembers.
 - Business agility. New racks, tenants, VLANs or BGP peers are provisioned in minutes through a pipeline, not in weeks through tickets.
 - Security and lower risk. Compliance is checked continuously, access is audited, changes are reviewed and secrets are handled centrally.
 - Scale. Work that grows with the number of devices (O(n) typing) becomes work that grows with the size of the data model.
@@ -69,21 +65,31 @@ Automation covers far more than pushing configuration, so know which type a task
 | **Reporting** | Inventory, capacity, compliance dashboards | HTML reports, Grafana, CMDB |
 | **Troubleshooting** | Automated data gathering on alarm; guided diagnosis | ChatOps, runbooks as code, packet capture triggers |
 
-Read the table row by row. For each row, you can ask whether the task changes a device or only reads it.
+Read the table row by row. For each row, you can ask whether the task changes a device or only reads it. Read-only automation, such as data collection or compliance reports, is the safest place to start, because the worst a mistake can do is show a wrong number.
+
+A quick way to place a task in the table is to ask two questions. Does it change a device, or only read one? Does it run once, or again and again on a schedule? A nightly report reads state and changes nothing. A new BGP peer changes a device once. A drift check reads state every hour. Once you have the two answers, you know how much care the task needs before it runs anywhere near production.
 
 ### Lessons learned from a network automation outage
 
-Here is the failure pattern that keeps repeating. A job contains a mistake in its data or logic. It runs against every device at once, and every device accepts the change. Management connectivity is then lost, and recovery needs console access everywhere.
+Here is the failure pattern that keeps repeating. A job contains a mistake in its data or logic. It runs against every device at once, and every device accepts the change. Management connectivity is then lost, and recovery needs console access everywhere. The same speed that makes automation valuable turns a typo into an outage in seconds.
+
+Imagine a script that removes a prefix list from every spine at the same moment. Within a minute the spines drop the routes that the leaves depend on, and the fabric goes dark for the whole data hall. Nobody meant to break the fabric. The script ran exactly as written, against exactly the wrong input, and it ran everywhere at once. That is the picture behind every rule in the paragraphs that follow.
 
 The remedies are well known, and they all slow the change down on purpose. Start with a canary and staged rollout: one device, then one rack, one pod, and only then everything. Pair the rollout with pre-checks that ask whether the device is healthy and whether the change is safe.
 
-Protect the change itself next. Use post-checks with automatic rollback, and use commit-confirmed or candidate configurations where the platform supports them. Limit the blast radius with a maximum percentage of devices per batch, batched by failure domain.
+Protect the change itself next. Use post-checks with automatic rollback, and use commit-confirmed or candidate configurations where the platform supports them. A confirmed commit is like a sign-in-or-be-removed rule: the device applies the change, and if nobody confirms within the timer, it quietly goes back. Limit the blast radius with a maximum percentage of devices per batch, batched by failure domain.
 
 Protect your own access too. Keep out-of-band management that does not depend on the production network. Add change windows and freeze rules, review both templates and data in code review, and test in a lab or emulation (chapter 2.27). Treat the automation system itself as production software.
 
+Consider what happens if an automation change breaks the management network. Your only path into the device is gone, and no script can repair a device it cannot reach. An out-of-band console server, reached through a separate network, is the way back in. Test that path before you need it, because the day you need it is the day the change went wrong.
+
 ## 2. The evolution of device management interfaces
 
-Device interfaces have changed a great deal since the 1990s. The table shows each era, what it gave operators and where it fell short. Read the weaknesses column closely, because those gaps explain why the newer interfaces exist.
+Picture a script that reads the fourth column of a CLI table to find the interface state. One software release later, a new column appears before it, and the script keeps running without an error. It now reports the wrong state for every interface, and nobody notices for a week. This is why the newer interfaces return structured data with named fields. A missing field is an error you can see, not a silent shift you cannot. The history below shows how each generation tried to fix that kind of fragility.
+
+Walk through what happens to that script. It splits each line on spaces, takes the fourth field, and compares it with the word up. Then a vendor adds a column, and the fourth field becomes something else. The comparison fails quietly, every interface looks down, and the script raises an alarm for nothing. Nobody changed the network. The output format changed, and the script trusted the position of a word instead of its meaning.
+
+Device interfaces have changed a great deal since the 1990s. Each generation was a reaction to the weaknesses of the one before it. The table shows each era, what it gave operators and where it fell short. Read the weaknesses column closely, because those gaps explain why the newer interfaces exist.
 
 | Era | Interface | Strengths | Weaknesses |
 |---|---|---|---|
@@ -95,7 +101,9 @@ Device interfaces have changed a great deal since the 1990s. The table shows eac
 | now | **Vendor REST APIs and eAPI/NX-API/Meraki/Cumulus NVUE** | Easy and device-specific | Not portable; vary by vendor/version |
 | now | **Open networking/Linux NOS** (SONiC, Cumulus, FRR) | Standard Linux tooling (ssh, systemd, files, netlink); Ansible/Python native; Redis-based config DB in SONiC | Different operational model; feature gaps |
 
-Why use APIs instead of the CLI? The CLI is built for human eyes. Its output formats change between releases, parsing needs brittle regexes, and there is no atomic way to apply a multi-line change or roll it back. Model-driven APIs avoid these problems. They return and accept **structured data that conforms to a schema**, so the same code can talk to many devices.
+Why use APIs instead of the CLI? The CLI is built for human eyes. Its output formats change between releases, parsing needs brittle regexes, and there is no atomic way to apply a multi-line change or roll it back. If the script reads a column by position and a new release adds a column, the script keeps running and quietly reads the wrong number. Model-driven APIs avoid these problems. They return and accept **structured data that conforms to a schema**, so the same code can talk to many devices.
+
+Consider the same question asked two ways. The CLI answers with a table meant for a person, so the script has to guess where each column starts. An API answers with a field named state, and the script reads that field by name. The second version survives a new column, and the first version does not.
 
 Open networking changes the picture further. If the network operating system is Linux, as with SONiC, Cumulus or ONIE-installed images on white-box switches, you can reuse server practices. Those include package management, systemd, configuration files, Git, Ansible and eBPF or netlink observability. The management plane then converges with infrastructure-as-code (Part 4).
 
@@ -105,7 +113,9 @@ Before you pick tools for a switch, check which network operating system it runs
 
 ### Why structured data
 
-Scripts can only act on data they can read reliably. Good automation data is **structured**, so each field has a known name and type. It is also **supported**, with libraries in every language, and **portable**, so you can move it between tools and systems. Compare the text output of `show interface` with the same facts as data.
+Scripts can only act on data they can read reliably. A person can read "Ethernet1 is up, line protocol is up" and understand it at a glance. A script needs to know which word is the name and which is the state. Good automation data is **structured**, so each field has a known name and type. It is also **supported**, with libraries in every language, and **portable**, so you can move it between tools and systems. Compare the text output of `show interface` with the same facts as data.
+
+A person reads the line that says the interface is up, and knows what it means. A program needs a named field with a value it can compare. Structured data gives each fact a name, so the program asks for the field instead of searching the sentence for a word that looks right.
 
 ```json
 { "name": "Ethernet1", "admin_state": "up", "oper_state": "up", "mtu": 9214, "speed_gbps": 400,
@@ -119,6 +129,8 @@ Keep two kinds of content apart. A **document** is text written for people, with
 ### YAML
 
 YAML is usually the first format people write by hand. It is indentation-based, supports comments (`#`), anchors and aliases, and multi-document files. It is the default for **inventory, variables and intent**, as in Ansible, Kubernetes, NetBox exports and cloud-init.
+
+Read the YAML example as a tree. Indentation says what belongs to what. A key such as `bgp` holds a block of lines indented under it, and the lines under the interface key form a list, where each dash starts a new item. Each two spaces of indentation move you one level deeper. A tab where a space belongs breaks the whole file, and the parser refuses it before any device is touched.
 
 Here is a small leaf inventory. Read it as data: a role, a BGP block and a list of interfaces.
 
@@ -141,11 +153,13 @@ yaml.safe_dump(data, open("out.yml", "w"), sort_keys=False)
 
 The `safe_load` call is the line to remember. Using it instead of `load` keeps untrusted input from running code.
 
-YAML has traps that catch beginners. Whitespace matters, and tabs are errors. The parser also guesses types. The so-called Norway problem happens when `no` or `NO` becomes boolean false. A value such as `010` is read as octal, and `1.10` becomes a float. Quote any string that could be misread, and watch for indentation errors and anchors that hide duplication. Run `yamllint` in CI to catch these early.
+YAML has traps that catch beginners. Whitespace matters, and tabs are errors. The parser also guesses types. The so-called Norway problem happens when `no` or `NO` becomes boolean false, so a list of country codes quietly turns Norway into the word false. A value such as `010` is read as octal, and `1.10` becomes a float. Quote any string that could be misread, and watch for indentation errors and anchors that hide duplication. Run `yamllint` in CI to catch these early.
 
 ### XML
 
-XML is tag-based. It supports attributes, namespaces and schemas, and it is the native encoding of NETCONF and many older APIs.
+XML is tag-based. It supports attributes, namespaces and schemas, and it is the native encoding of NETCONF and many older APIs. It is more verbose than YAML or JSON, but its strictness is useful when two systems must agree exactly.
+
+Think of XML as a labelled envelope inside another envelope. Each opening tag starts a box, and the closing tag seals it, and boxes nest inside one another. The extra text is the price of that structure. Each box says exactly what it holds, which is why NETCONF chose XML for replies that must be checked against a schema.
 
 ```xml
 <interface xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
@@ -160,11 +174,14 @@ ns = {"if": "urn:ietf:params:xml:ns:yang:ietf-interfaces"}
 for i in root.findall(".//if:interface", ns): print(i.find("if:name", ns).text)
 # or lxml / xmltodict for convenience: xmltodict.parse(xml_text) -> dict
 ```
+
 For queries and transforms, XML has its own tools. XPath queries XML, and **XSLT** (W3C stylesheets that transform XML into other XML/text) rewrites it. Both are useful for reshaping NETCONF replies.
 
 ### JSON
 
 JSON is light and common on the web. Its types are object, array, string, number, boolean and null. It has **no comments** and no trailing commas. It is the default for REST APIs, for RESTCONF (alongside XML), for OpenConfig JSON encodings and for `ip -j` output.
+
+Compare the same fact in JSON. A key called `mtu` holds a number, and the parser turns it straight into a number in the program. Nothing has to be cut out of the surrounding text. A missing key is an error you can catch, instead of a silent blank in the middle of a sentence.
 
 You will meet this pattern often when you work with REST APIs. The next snippet fetches interface data over RESTCONF and parses the JSON reply.
 
@@ -175,7 +192,7 @@ r = requests.get("https://sw1/restconf/data/ietf-interfaces:interfaces", auth=("
 r.raise_for_status(); ifaces = r.json()["ietf-interfaces:interfaces"]["interface"]
 ```
 
-The `raise_for_status` call stops the script on a failed request, before you read any data.
+The `raise_for_status` call stops the script on a failed request, before you read any data. Without it, an error page would be parsed as if it were interface data, and the script would fail later in a confusing place.
 
 On the command line, `jq` filters and transforms JSON. Libraries such as `jsonpath` and `jmespath` do the same in code, and `jmespath` is what Ansible and the AWS CLI use. The `json.tool` module is also available.
 
@@ -204,15 +221,23 @@ The compile step produces `interface_pb2.py`. The Python code then builds a mess
 
 Binary formats win on size and speed, which matters for telemetry at high rates. They also give typed schemas and code generation across languages. They lose on human readability, so when you debug them, use `protoc --decode`, `grpcurl` or JSON mappings. Other formats have their place. **Thrift** handles RPC and serialisation, **FlatBuffers** gives zero-copy access, and **BSON** serves MongoDB. **Pickle** works only in Python and is unsafe on untrusted input, so never unpickle network data.
 
+Think of protobuf as a shorthand that both sides agreed on in advance. Both ends know the schema, so the message can skip the field names and send only numbered fields. A telemetry stream that reports thousands of counters every second spends far fewer bytes this way. The collector decodes it with a fixed recipe, instead of parsing text on every line.
+
 Choose by need. Human-edited, Git-tracked config takes YAML or JSON, web APIs take JSON, and streaming telemetry or RPC takes protobuf.
 
 ## 4. Data modelling
 
-Suppose someone types a nonsense MTU into a file. A **data model** is the formal description that catches it before it reaches a device. It defines what data may exist, including names, types, ranges, relationships and constraints. Tools use it to validate inputs, to generate code and documentation, and to keep different systems consistent.
+Picture a change with an MTU value the switch cannot accept. The command reaches the device, the device rejects it, and the rollout stops halfway through. A data model would have caught the bad value on the engineer's laptop, before any device saw it. This section explains how models describe what data may exist, so bad values are stopped at the earliest point, where they are cheapest to fix.
+
+Here is what a data model adds. Before a value reaches the device, a checker asks three questions. Does the field exist? Is the value of the right type? Does it fall inside the allowed range? Each question is cheap to ask, and each one stops a bad value earlier than the device would. The model is the rule book that the checker reads.
+
+Suppose someone types a nonsense MTU into a file. A **data model** is the formal description that catches it before it reaches a device. It defines what data may exist, including names, types, ranges, relationships and constraints. Tools use it to validate inputs, to generate code and documentation, and to keep different systems consistent. If a format is the alphabet, the model is the grammar: it says which sentences are allowed.
 
 ### YANG
 
 YANG is the modelling language for network configuration and state. It is defined in RFC 7950. A YANG module describes a **tree** of containers, lists, leaves and leaf-lists. Each node has a type and constraints, such as ranges, patterns, `must` and `when` rules, and keys. A module can also define RPCs and notifications. The same model is encoded as XML for NETCONF or as JSON for RESTCONF, and gNMI paths refer to it.
+
+Think of YANG as a form that the device publishes. The form has named fields, each field has a type, and some fields have limits. Anyone who fills in the form can see what is allowed before they submit it, and the device rejects anything outside the form.
 
 Here is a small module. It defines one list, `interface`, keyed by name.
 
@@ -233,13 +258,17 @@ module example-interfaces {
 
 Read the `leaf` lines first. Each one names a value, its type and any limits. The MTU leaf accepts only values from 68 to 9216.
 
-Three families of models matter. **IETF** models are standards-track, such as `ietf-interfaces`, `ietf-ip` and `ietf-routing`. **OpenConfig** models are operator-driven and vendor-neutral, such as `openconfig-interfaces`, `openconfig-bgp` and `openconfig-network-instance`. They focus on gNMI telemetry. **Native vendor models** expose each platform's own features, as with Cisco-IOS-XE-native, Junos and Arista EOS.
+Suppose a script sends an MTU value that the model's range does not allow. The device refuses the whole change, and the error names the field. You fix the value, rather than hunting for a silent failure that shows up later as slow traffic.
+
+Three families of models matter. **IETF** models are standards-track, such as `ietf-interfaces`, `ietf-ip` and `ietf-routing`. **OpenConfig** models are operator-driven and vendor-neutral, such as `openconfig-interfaces`, `openconfig-bgp` and `openconfig-network-instance`. They focus on gNMI telemetry. **Native vendor models** expose the own features of each platform, as with Cisco-IOS-XE-native, Junos and Arista EOS.
 
 Several tools work with YANG. `pyang` validates modules, prints a tree with `pyang -f tree`, and can generate XML skeletons and JSON schemas. `yanglint` is the companion checker. `pyangbind` builds Python classes from YANG, and `ygot` does the same for Go. The YANG catalog and the OpenConfig GitHub repository are good places to find models.
 
 ### JSON Schema and XSD
 
 For your own data, such as inventory and intent (not device models), use **JSON Schema**. It validates structure and values, and it works with YAML data too.
+
+Consider why this check matters before any device is involved. Inventory says which switch owns which port. A JSON Schema can insist that every switch has a name, a role and a loopback. A file that misses one of those fields fails inside the pipeline, and the device never sees the bad file.
 
 ```json
 { "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -263,11 +292,15 @@ Put the schema check in CI so a bad value stops before it reaches a device.
 
 ## 5. Templates
 
-Imagine writing a switch configuration by hand for every leaf in a fabric. A **template** avoids that work. It combines **static text with placeholders and logic**, and it renders the configuration from data. Web development made templates popular with Jinja, Django templates and Handlebars. Network automation uses them to generate device configs, reports and API payloads. The value is simple. You write one template per role, such as leaf, spine or border, keep the data per device, and review the template once instead of every config.
+Imagine writing a switch configuration by hand for every leaf in a fabric. Thirty leaves are thirty nearly identical files, and the differences hide among the similarities. A **template** avoids that work. It combines **static text with placeholders and logic**, and it renders the configuration from data. Web development made templates popular with Jinja, Django templates and Handlebars. Network automation uses them to generate device configs, reports and API payloads. The value is simple. You write one template per role, such as leaf, spine or border, keep the data per device, and review the template once instead of every config.
+
+Here is the work that a template removes. You write the configuration once, with placeholders where the leaves differ. The engine reads the variables for one leaf, fills the placeholders, and writes a finished file. Then it repeats the work for the next leaf. A change to the template changes every output at once, and a reviewer reads one file rather than one file per leaf.
 
 ### Jinja2
 
 Start with the environment. It tells Jinja2 where the templates live and how to treat missing values.
+
+Think of the environment as the workshop settings. It says where the stencils are kept, and what to do when a part is missing. The stencil is the template itself. The environment decides whether a missing part is quietly ignored or stops the job with an error.
 
 ```python
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -302,13 +335,15 @@ router bgp {{ bgp.asn }}
 
 Two flags in the environment matter most. `StrictUndefined` turns a missing variable into an error. `trim_blocks` and `lstrip_blocks` control the whitespace that tags leave behind.
 
+Suppose a leaf template uses `{{ router_id }}`, and the variable is missing from the data. With the strict setting, rendering stops and names the missing variable. Without it, the line comes out empty, and the device gets a configuration with no router ID at all. The strict behaviour costs one error message, and it saves you from a broken device.
+
 Variables use `{{ x.y }}`, comments use `{# ... #}`, and statements use `{% ... %}`. Conditionals (`if/elif/else`) and loops (`for`, `loop.index`, `loop.first`) let the template react to data. A `for` loop can carry an `else` branch that runs when the list is empty. You can iterate over dicts with `.items()`, walk nested data, and test values with `is defined`, `is none` or `is iterable`.
 
 Filters transform values through the pipe symbol, and you can chain them. Built-in filters include `upper`, `lower`, `default`, `join`, `sort`, `unique`, `map`, `selectattr` and `tojson`. Network logic needs more, so you can write **custom filters** in Python. For example, `env.filters["cidr_to_mask"] = fn` converts a CIDR prefix to a netmask, and the `ipaddress` module handles address arithmetic. Ansible adds `ipaddr`, `ansible.utils.ipaddr` and `ipmath`.
 
 Template inheritance uses `{% extends "base.j2" %}` with `{% block %}`. Includes and macros, such as `{% macro bgp_neighbor(n) %}`, let you reuse fragments, and you can import shared macros from another file. Whitespace control matters because configs are whitespace-sensitive. Manage it with `trim_blocks`, `lstrip_blocks` and the `-` markers.
 
-Safety comes first. Use `StrictUndefined` so a missing variable raises an error instead of rendering as blank. Autoescape is for HTML, not for configs. Never render untrusted templates. The sandbox option is `jinja2.sandbox.SandboxedEnvironment`.
+Safety comes first. Use `StrictUndefined` so a missing variable raises an error instead of rendering as blank. A blank in the middle of a configuration is dangerous because the result still looks like a configuration, only a wrong one. Autoescape is for HTML, not for configs. Never render untrusted templates. The sandbox option is `jinja2.sandbox.SandboxedEnvironment`.
 
 ### Other template languages
 
@@ -322,7 +357,7 @@ The most durable design runs as a pipeline. It starts with a **source of truth**
 
 Keep three things apart. Inventory covers devices, interfaces, IP and VLAN assignments, and cables. Policy covers BGP design and QoS. Secrets live in a store such as Vault or SOPS.
 
-Data enrichment removes manual addressing errors. For example, a deterministic allocation function can derive the P2P /31 addresses, loopbacks, ASNs and VNIs from a device's role and index.
+Data enrichment removes manual addressing errors. For example, a deterministic allocation function can derive the P2P /31 addresses, loopbacks, ASNs and VNIs from the role and index of a device.
 
 Before you write a template, decide which system is the source of truth for its data.
 
@@ -332,11 +367,13 @@ Before you write a template, decide which system is the source of truth for its 
 
 Suppose your script changes an interface and gets back `404`. You need to know what that status code means before you can debug further. REST, short for representational state transfer, is a style of HTTP API. Its main traits are **client-server** design, **stateless** requests where each request carries all the context it needs, and a **uniform interface**. In that interface, resources are identified by URLs and manipulated through standard methods. REST APIs are also cacheable and layered.
 
-The methods do most of the work. `GET` reads configuration or state. `PUT` creates or replaces a resource, and it is idempotent. `PATCH` makes a partial update or merge. `POST` creates a child resource or invokes an action, and it is not idempotent. `DELETE` removes a resource.
+Read the response in order. The status line comes first, then the headers, then the body. A 404 tells you the path is wrong before you look at anything else. A 401 would point at the login, and a 500 at the server. Checking the status first saves you from reading a long error body that does not matter to the problem in front of you.
+
+The methods do most of the work. `GET` reads configuration or state. `PUT` creates or replaces a resource, and it is idempotent. Idempotent means that sending the same request twice leaves the device in the same state as sending it once, which is what you want when a retry is needed after a timeout. `PATCH` makes a partial update or merge. `POST` creates a child resource or invokes an action, and it is not idempotent. `DELETE` removes a resource.
 
 Status codes sort into classes. The 2xx class means success, as with 200 OK, 201 Created and 204 No Content. The 4xx class means the client sent something wrong, as with 400 bad request, 401 unauthenticated, 403 forbidden, 404 not found, 409 conflict, 422 unprocessable or 429 rate limited. The 5xx class means the server failed. The 1xx class is informational, and 3xx means redirect. For example, when you see a 404, check the URL and the resource path before you debug anything else.
 
-Many so-called REST network APIs are not strictly RESTful. They use RPC-style endpoints and custom verbs, so treat each vendor's documentation as the authority.
+Many so-called REST network APIs are not strictly RESTful. They use RPC-style endpoints and custom verbs, so treat the documentation of each vendor as the authority.
 
 ```bash
 curl -sk -u admin:$PW -H 'Accept: application/yang-data+json' https://sw1/restconf/data/ietf-interfaces:interfaces/interface=Ethernet1 | jq .
@@ -353,6 +390,8 @@ Plan authentication early. Options include HTTP basic over TLS, bearer tokens or
 
 NETCONF, defined in RFC 6241, is a layered protocol. Each layer has its own job.
 
+Start from the bottom of the stack and climb. The transport carries bytes, usually inside SSH. The message layer wraps each request in a framed envelope, so the parser knows where one message ends and the next begins. The operations layer holds the verbs, such as get and edit-config. The content layer holds the data itself, shaped by a YANG model. Each layer answers one question, and a failure in one layer does not change the others.
+
 | Layer | Content |
 |---|---|
 | Content | Configuration and state data, modelled by YANG (encoded as XML) |
@@ -362,9 +401,11 @@ NETCONF, defined in RFC 6241, is a layered protocol. Each layer has its own job.
 
 Read the table from the bottom up. SSH carries framed messages, the messages carry operations, and the operations act on YANG-modelled content.
 
-Three concepts do most of the work. **Datastores** are `running`, `candidate` and `startup`. You make changes in `candidate`, validate them, and then `commit` them atomically. You can add a `confirmed-commit`, which rolls back automatically unless someone confirms it. **Locks** stop two editors from changing the configuration at once. Devices advertise **capabilities** in the hello message, such as `:candidate`, `:validate`, `:confirmed-commit`, `:rollback-on-error`, `:xpath`, `:notification` and the YANG library. Per-node edit operations are `merge`, `replace`, `create`, `delete` and `remove`.
+Three concepts do most of the work. **Datastores** are `running`, `candidate` and `startup`. You make changes in `candidate`, validate them, and then `commit` them atomically. Think of the candidate as a draft that nobody sees until you press publish. You can add a `confirmed-commit`, which rolls back automatically unless someone confirms it. **Locks** stop two editors from changing the configuration at once. Devices advertise **capabilities** in the hello message, such as `:candidate`, `:validate`, `:confirmed-commit`, `:rollback-on-error`, `:xpath`, `:notification` and the YANG library. Per-node edit operations are `merge`, `replace`, `create`, `delete` and `remove`.
 
 The snippet below edits a candidate configuration safely. It locks the candidate, merges the change, validates it and commits with a timer.
+
+Read the flow as the steps of a careful change. Lock the candidate so that nobody else edits it while you work. Load the change into the candidate, and validate it. Commit with a confirm timer. If the script's later check passes, confirm the commit. If the timer runs out first, the device rolls back. The lock is released at the end either way. Each step protects the step that follows it.
 
 ```python
 from ncclient import manager                 # pip install ncclient
@@ -400,6 +441,8 @@ To see which modules a device supports, read `/restconf/data/ietf-yang-library:m
 
 **gRPC**, short for Google RPC, runs over HTTP/2 and uses Protocol Buffers. It is high performance and independent of payload. It supports four communication patterns: unary, server streaming, client streaming and bidirectional streaming. Code generation gives you many languages, and TLS or mTLS comes built in.
 
+Think of a gRPC call as a function call that crosses the network. The client names the method and passes a typed message, and the server returns a typed reply. Because the message has a schema, both sides agree on the field names and types before any data moves, and a wrong type is caught at the boundary.
+
 **gNMI**, the gRPC Network Management Interface from OpenConfig, defines a small service. `Capabilities` reports the supported models, encodings and gNMI version. `Get` reads state or configuration. `Set` updates, replaces or deletes, with transactional semantics for each request. `Subscribe` streams telemetry in `STREAM`, `ONCE` or `POLL` mode, either sampled or on change.
 
 gNMI paths are YANG-based, such as `/interfaces/interface[name=Ethernet1]/state/counters`. Payloads can use the JSON, JSON_IETF, PROTO or ASCII encodings.
@@ -418,6 +461,8 @@ gnmic ... --encoding json_ietf ... ; gnmic ... -e proto
 ```
 
 The `subscribe` line is the telemetry command. It samples interface counters every 10 seconds.
+
+A subscription has three parts. It names the path to watch, it sets a sample interval, and it asks for a mode. The collector then keeps the connection open, and the device pushes a value each time the interval passes. Nothing is polled, so the device never waits for a question it has to answer.
 
 ```python
 from pygnmi.client import gNMIclient          # pip install pygnmi
@@ -449,9 +494,11 @@ Model families mature at different speeds. IETF models are standards-track but s
 
 ### Streaming (model-driven) telemetry
 
-Streaming telemetry reverses the direction of data. Instead of polling SNMP every minute, the device **pushes** counters and state at high resolution. In **dial-in**, the collector connects with a gNMI Subscribe. In **dial-out**, the device connects to a collector. The dial-out method is vendor-specific and runs over gRPC or UDP/TCP.
+Streaming telemetry reverses the direction of data. Instead of polling SNMP every minute, the device **pushes** counters and state at high resolution. It is the difference between phoning a friend every hour to ask how they are and having them text you the moment anything changes. In **dial-in**, the collector connects with a gNMI Subscribe. In **dial-out**, the device connects to a collector. The dial-out method is vendor-specific and runs over gRPC or UDP/TCP.
 
-Data then flows to collectors such as gNMIc, Telegraf's `gnmi` input, Cisco Pipeline, and Juniper JTI with Telegraf or OpenNTI. From there it reaches time-series stores such as Prometheus through exporters, InfluxDB or VictoriaMetrics. Dashboards and alerts come last, and chapter 2.31 covers them.
+Picture a link that flaps for under a second every few minutes. A poll every minute almost never sees the flap, so the graph looks clean while users complain. A subscription that reports on change sends each state transition as it happens, and the flap appears on the dashboard. The difference is in how often the question is asked, and who is asked to wait.
+
+Data then flows to collectors such as gNMIc, the `gnmi` input of Telegraf, Cisco Pipeline, and Juniper JTI with Telegraf or OpenNTI. From there it reaches time-series stores such as Prometheus through exporters, InfluxDB or VictoriaMetrics. Dashboards and alerts come last, and chapter 2.31 covers them.
 
 The benefits are granularity of 1 to 10 seconds, on-change events for things like link flaps and BGP state, less device CPU than polling at scale, and typed data. Granularity of 1 to 10 seconds is coarse for microbursts, so those need finer sampling. The costs are volume and cardinality, collector scaling, model and path differences across vendors, and clock sync.
 
@@ -495,15 +542,21 @@ Start every new script in dry-run mode, and remove that default only when the di
 
 ## 7. Software-defined networking and centralised control planes
 
+Picture a central controller that computes every path for a fabric of hundreds of switches. The controller goes down for an hour during a power problem in its own data hall. The question an engineer should ask before adopting such a design is simple: what do the switches do while the controller is gone? The section below describes the models and their trade-offs, and it keeps returning to that question, because the honest answer shapes the whole design.
+
+Why would anyone move decisions away from the switch? A controller sees the whole fabric in one place, so it can compute a path that no single switch could know about. The price is that each switch now depends on the controller staying reachable. The rest of this section weighs that trade-off, one model at a time.
+
 Network designs have swung between distributed and centralised control planes more than once. SDN is often framed as either/or, with distributed protocols on one side and a controller on the other. Yet every routing protocol is software too. A more useful definition follows. **SDN moves some part of the control plane off the individual forwarding devices and into a logically centralised component.** Here, centralised does not mean carried hop by hop or computed separately by every device. It does not mean a single "god box" either.
 
 ### Interfaces
 
-The **southbound interface** sits between the controller and the network devices. Protocols there include BGP, NETCONF and gNMI, PCEP, OpenFlow, P4Runtime, OVSDB, vendor APIs and I2RS. The **northbound interface** sits between the controller and applications or business logic. It runs through REST or gRPC APIs, intent languages and GitOps.
+The **southbound interface** sits between the controller and the network devices. Protocols there include BGP, NETCONF and gNMI, PCEP, OpenFlow, P4Runtime, OVSDB, vendor APIs and I2RS. The **northbound interface** sits between the controller and applications or business logic. It runs through REST or gRPC APIs, intent languages and GitOps. A useful picture is a building manager: the manager talks down to the lift engineers in their language, and up to the tenants in theirs.
 
 ### Four models of interaction
 
 The four models differ mainly in where the control plane runs. The table lists each one.
+
+Imagine the same link failure under each model. In the first, the switches reroute on their own, and the controller hears about the failure later. In the last, the controller must compute the new path and push it down before traffic moves. The difference lies in who holds the decision when the link breaks, and how long the traffic waits for that decision.
 
 | Model | Description | Examples |
 |---|---|---|
@@ -518,6 +571,8 @@ Notice that the first model keeps everything on the device, and the last one rem
 
 A control plane supplies three things: **topology**, **reachability** and **policy**. Topology and reachability are tangled together. RIP and EIGRP combine them, and in IS-IS reachability hangs off the shortest-path tree as leaves. Policy is different. It only *modifies* what topology and reachability computed, so it separates cleanly into an upper layer.
 
+Take a packet from one rack to another and ask which of the three things each step needs. Topology says which links exist. Reachability says which destination a link leads toward. Policy says whether the packet may travel that way at all. Separating the three helps you see which part a controller should own, and which part should stay on the switch.
+
 That leads to a common pattern. Keep a distributed lower layer for topology and reachability, because it gives resilience and speed. Add centralised policy for traffic engineering, segmentation and intent.
 
 When you evaluate any SDN design, ask these questions. Which functions are centralised? What happens when the controller, or its connectivity, fails? How fast can it react, how does it scale, and what is the complexity cost?
@@ -525,6 +580,8 @@ When you evaluate any SDN design, ask these questions. Which functions are centr
 ### Examples
 
 BGP as an SDN works when BGP already runs fabric-wide. A controller joins as an iBGP or eBGP speaker, reads the topology and injects better-metric paths hop by hop. That pins a flow to a chosen path. If you are new to SDN, start here. This is the augmented model, where the same protocol carries both topology and policy. It is simple to deploy. But automating a complicated process does not remove its complexity. It only relocates it.
+
+The attraction of this example is that nothing new has to run on the switches. The controller speaks BGP, the protocol that the fabric already uses. The routes it injects stay in place only as long as its BGP session stays up, so a controller failure removes its routes rather than leaving a device unreachable.
 
 Fibbing takes a different route. In link-state protocols, tags are never used for traffic engineering, because all routers must hold the same database. So Fibbing has a controller join the IGP and inject **fake nodes and links**. These arrive as OSPF external LSAs, which can carry a third-party next hop. The unmodified shortest-path calculation then produces the desired path. For example, a chain of fake nodes with lowered costs and specific forwarding addresses steers traffic from A to H along a longer but desired route. Nothing in the protocols changes. The approach is limited to what external routes can express, and you must watch the scale of the injected LSAs.
 
@@ -540,11 +597,15 @@ Controllers also run fabrics and overlays. Examples include EVPN route servers, 
 
 A centralised control plane is, at heart, a distributed database problem. During a network partition, you cannot have both consistency and availability. This is the **CAP theorem**, and partitions are unavoidable, so you must choose. The **subsidiarity principle** gives a practical rule. Make each decision at the lowest level that can make it correctly, and centralise only what truly needs a global view.
 
+Suppose the link between the controller and one rack breaks. The controller still sees the rest of the fabric, and it may decide that the rack is gone. The rack keeps forwarding, and the two sides now hold different pictures of the same network. CAP is the name for the trade you must make in such a split. You can have an answer that is consistent, or an answer that is always available, but during the split you cannot always have both.
+
 In practice, keep fast, local and safety-critical reactions in the distributed layer. Failure detection, ECMP rerouting and fast reroute belong there. Centralise slow-changing, global policy such as traffic engineering, intent and segmentation. Finally, make sure the network keeps forwarding if the controller disappears. Fail static, or fall back to the distributed control plane.
 
 Before you centralise a function, ask what the fabric does when the controller is gone.
 
 ## 8. Putting it together: a minimal automation pipeline
+
+The pieces from this chapter fit into one pipeline, shown below. Follow it from left to right, and notice that every stage has a way to say no.
 
 ```mermaid
 flowchart LR
@@ -574,7 +635,9 @@ python3 code/part02/net_automation_apis_yang_lab.py
 
 Run the lab first, so you know the Python checks work before you move on to the VM.
 
-Next, move to a disposable Linux VM with Python 3 and containerlab with FRR. Every interactive VM command below is marked `untested here`, so verify each one on your own system. Work through these steps in order.
+The Python lab uses no devices, so a failure there points at your code and not at a network. Once it passes, any failure on the VM means the device or the lab setup, and you know where to look first.
+
+Next, move to a disposable Linux VM with Python 3 and containerlab with FRR. The interactive VM commands below were not run on live hardware, so verify each one on your own system. Work through these steps in order. They follow the pipeline of section 8: formats first, then schemas and templates, then each kind of API, and last a safe rollout.
 
 1. Start with formats. Write one switch's interface table in YAML, JSON and XML. Convert between them with `yq`, `jq` and `xmltodict`, and round-trip the data through Python. Watch for type differences, such as the YAML Norway problem, and notice that JSON has no comments.
 2. Next, write a JSON Schema for the fabric inventory. It should cover the VLAN range, the ASN range, hostnames and IPv4 prefixes. Write failing and passing examples, then add a pytest that validates all files in `inventory/`.
@@ -592,9 +655,15 @@ Do the Python lab first, then work through the VM steps in order.
 
 ## 10. Common mistakes
 
+Most automation failures trace back to a short list of mistakes.
+
 The first is parsing CLI output with regexes in production when structured APIs exist, and assuming the CLI format will never change. The second is treating YAML as always safe. Its implicit typing causes trouble, and running `yaml.load` on untrusted data is dangerous.
 
+Here is how the mistake looks in practice. A regex matches the word up in a line, and a vendor later changes the word to established. The regex now matches nothing, and the check passes every time. A structured read would have failed loudly on the missing field, which is the behaviour you want from a check.
+
 Unvalidated data is the third mistake. It flows into templates, missing variables render without an error, and secrets end up in repositories. The fourth is pushing to all devices at once, with no canary, no rollback and no out-of-band access. The fifth is one monolithic template full of logic, with no tests or golden files.
+
+Consider the missing variable from the template section again. Without a check, the output looks complete, and the device accepts a half-written line. The mistake stays silent until traffic fails. A schema check before rendering, together with a strict template, turns that silence into an error at build time, when the fix is cheap.
 
 The sixth mistake is believing that NETCONF-capable means portable. Models and capabilities differ by vendor and version. The seventh is over-centralising, which makes the controller a single point of failure, or under-specifying what happens when it fails. The eighth is automating an undocumented, inconsistent network before you simplify it.
 
@@ -602,7 +671,7 @@ Check your plan against each of these.
 
 ## 11. Interview angles
 
-Use these questions to test your understanding before an interview.
+Use these questions to test your understanding before an interview. Answer each in your own words, and name the trade-off, not only the tool.
 
 - "Why NETCONF/gNMI instead of SSH and screen scraping? Differences among NETCONF, RESTCONF and gNMI?"
 - "What is YANG? What are IETF vs OpenConfig vs native models?"
@@ -618,12 +687,17 @@ Use these questions to test your understanding before an interview.
 
 Try each exercise on paper first, then check your answer against the chapter. You will see what you can explain and where you still need to read.
 
-1. Drawing on Network Programmability and Automation, chapter 2, work through the automation types, outage lessons and interface history. (a) List the eight types of network automation, and explain why automating a complex, non-standard network relocates complexity rather than removing it. (b) Design a safe rollout for a 500-switch AI fabric change, using canaries, failure-domain batches, pre- and post-checks, `commit confirmed` and out-of-band access. Then trace how management moved from SNMP (UDP 161/162) and CLI scraping to NETCONF (RFC 6241, port 830), RESTCONF (RFC 8040) and gNMI.
-2. Study structured formats and data models. (a) Compare YAML (`yaml.safe_load`, and the Norway problem), JSON, XML and Protocol Buffers, and say where each belongs in an automation stack. (b) Using `validate_switch_inventory_schema()` in `code/part02/net_automation_apis_yang.py`, explain how JSON Schema validates intent data before templating. Then explain how YANG (RFC 7950) models containers, lists, leaves and constraints, and compare IETF, `OpenConfig` and native models.
-3. Work on Jinja2 templating, drawing on chapter 9 of Network Programmability and Automation. Using `render_leaf_config_strict()`, explain why `StrictUndefined` (with `trim_blocks=True, lstrip_blocks=True`) is mandatory when rendering switch configurations. Then contrast Jinja2 with XSLT and Go `text/template`.
-4. Study model-driven APIs and streaming telemetry, drawing on chapter 10 of Network Programmability and Automation. (a) Compare NETCONF, RESTCONF (with YANG Patch, RFC 8072) and gNMI, which offers Capabilities, Get, Set and Subscribe operations, across encoding, transport, transaction scope and telemetry. (b) Using `simulate_netconf_confirmed_commit()`, trace a transactional `ncclient` session: `locked("candidate")`, then `edit_config`, then `validate`, then `commit(confirmed=True, timeout="120")`, and finally `commit()`.
-5. Match each Python library to its role: `requests` or `httpx`, `ncclient`, `pygnmi`, `netmiko` or `scrapli`, `napalm`, `textfsm` with `ntc-templates`, `pyang` or `pyangbind`, and `pybatfish` or `suzieq`. Then list the eight engineering rules for writing safe network automation scripts.
-6. Work on SDN and centralized control planes, drawing on chapter 18 of Computer Networking Problems and Solutions. (a) Contrast the four control-plane interaction models, Distributed, Augmented, Hybrid and Replace, with concrete examples: BGP route injection, Fibbing fake LSAs, PCEP, I2RS, `OpenFlow` and P4Runtime. (b) Apply the CAP theorem and the subsidiarity principle to decide which functions in an AI fabric should stay local or distributed, and which belong in a controller.
+1. A manager asks what network automation covers. List the eight types of network automation, and explain why automating a complex, non-standard network relocates complexity rather than removing it.
+2. Design a safe rollout for a 500-switch AI fabric change, using canaries, failure-domain batches, pre- and post-checks, `commit confirmed` and out-of-band access.
+3. Trace how management moved from SNMP (UDP 161/162) and CLI scraping to NETCONF (RFC 6241, port 830), RESTCONF (RFC 8040) and gNMI.
+4. A new teammate asks which data format to pick. Compare YAML (`yaml.safe_load`, and the Norway problem), JSON, XML and Protocol Buffers, and say where each belongs in an automation stack.
+5. Bad intent data reaches a template. Using `validate_switch_inventory_schema()` in `code/part02/net_automation_apis_yang.py`, explain how JSON Schema validates intent data before templating. Then explain how YANG (RFC 7950) models containers, lists, leaves and constraints, and compare IETF, `OpenConfig` and native models.
+6. A template renders a blank where a variable is missing. Using `render_leaf_config_strict()`, explain why `StrictUndefined` (with `trim_blocks=True, lstrip_blocks=True`) is mandatory when rendering switch configurations. Then contrast Jinja2 with XSLT and Go `text/template`.
+7. You must pick a model-driven API. Compare NETCONF, RESTCONF (with YANG Patch, RFC 8072) and gNMI, which offers Capabilities, Get, Set and Subscribe operations, across encoding, transport, transaction scope and telemetry.
+8. Using `simulate_netconf_confirmed_commit()`, trace a transactional `ncclient` session: `locked("candidate")`, then `edit_config`, then `validate`, then `commit(confirmed=True, timeout="120")`, and finally `commit()`.
+9. Match each Python library to its role: `requests` or `httpx`, `ncclient`, `pygnmi`, `netmiko` or `scrapli`, `napalm`, `textfsm` with `ntc-templates`, `pyang` or `pyangbind`, and `pybatfish` or `suzieq`. Then list the eight engineering rules for writing safe network automation scripts.
+10. A vendor pitches a controller. Contrast the four control-plane interaction models, Distributed, Augmented, Hybrid and Replace, with concrete examples: BGP route injection, Fibbing fake LSAs, PCEP, I2RS, `OpenFlow` and P4Runtime.
+11. Apply the CAP theorem and the subsidiarity principle to decide which functions in an AI fabric should stay local or distributed, and which belong in a controller.
 
 ## Checkpoint questions (20)
 

@@ -22,17 +22,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU server whose storage connection goes dark because the switch it plugs into reboots. A GPU server needs bandwidth and resilience at the same time. A management or storage connection must survive a switch reboot. A leaf pair must be upgradable without draining racks, and every parallel link in the fabric should carry traffic.
+Picture a GPU server whose storage connection goes dark because the switch it plugs into reboots. The training job was mid-epoch, and one planned maintenance window has just taken it down. A GPU server needs bandwidth and resilience at the same time. A management or storage connection must survive a switch reboot. A leaf pair must be upgradable without draining racks, and every parallel link in the fabric should carry traffic.
 
-The first tool is link aggregation, built from bonding and LACP on the host and at the first hop. Multi-chassis variants such as MLAG, vPC and EVPN multihoming stretch the same idea across two switches. ECMP at layer 3 spreads traffic across the spines.
+The first tool is link aggregation, built from bonding and LACP on the host and at the first hop. Several cables are bound together so that they behave like one. Multi-chassis variants such as MLAG, vPC and EVPN multihoming stretch the same idea across two switches. ECMP at layer 3 spreads traffic across the spines.
 
 The catch is hashing. Aggregated links do not scale linearly, because each flow pins to one member. A few large flows, called elephant flows, such as all-reduce traffic or checkpoint writes, can saturate one link while its siblings sit idle. Understanding the hash and its failure behaviour is what separates 800 Gb/s of useful bandwidth from a congested link nobody can explain. So decide how you hash before you count on the bond's bandwidth.
 
 ## Prerequisites and outcomes
 
-Before you start, you should know Ethernet, VLANs and STP from chapters 2.3 and 2.11. You should also know host routing from chapter 2.5.
+Before you start, you should know Ethernet, VLANs and STP from chapters 2.3 and 2.11. You should also know host routing from chapter 2.5. New terms such as bond, member and hash are explained where they first appear.
 
-After this chapter, you will be able to do the following.
+When you have finished, use this list as a self-check. Each line is something you should now be able to do.
 
 - Explain why parallel links need a flow-to-member mapping. You will also see why per-packet round robin is avoided, and how hash inputs decide the balance.
 - Describe LACP as defined in 802.1AX and 802.3ad. That covers its actors, partners, system priority, keys, active and passive modes, fast and slow timers, aggregation selection and failure detection.
@@ -43,11 +43,11 @@ After this chapter, you will be able to do the following.
 
 ## 1. The problem: many parallel links, one conversation
 
-Suppose you join two switches with two 100G links and expect traffic to split evenly. The obvious approach is round-robin: frame 1 goes on link A, frame 2 on link B, and so on. Round-robin maximises utilisation. The trouble is ordering. Frame 2 can overtake frame 1 on a faster or less congested path, so the receiver has to put them back in order.
+Suppose you join two switches with two 100G links and expect traffic to split evenly. The obvious approach is round-robin: frame 1 goes on link A, frame 2 on link B, and so on. It is how a dealer hands out cards. Round-robin maximises utilisation. The trouble is ordering. Frame 2 can overtake frame 1 on a faster or less congested path, so the receiver has to put them back in order.
 
-TCP treats that reordering as loss. The result is duplicate ACKs, spurious fast retransmits and collapsed throughput. A few implementations use round-robin where reordering is tolerated. Linux `balance-rr` is one, and some RDMA fabrics use packet spraying with reordering-aware NICs. Almost everything else uses flow hashing.
+TCP treats that reordering as loss, because from its point of view a packet that arrives late looks the same as one that never arrived. The result is duplicate ACKs, spurious fast retransmits and collapsed throughput. A few implementations use round-robin where reordering is tolerated. Linux `balance-rr` is one, and some RDMA fabrics use packet spraying with reordering-aware NICs. Almost everything else uses flow hashing.
 
-Flow hashing computes a hash over fields that stay constant for a flow, takes it modulo the number of members, and sends every packet of that flow down the same member. Ordering is preserved. Utilisation, however, becomes statistical.
+Flow hashing computes a hash over fields that stay constant for a flow, takes it modulo the number of members, and sends every packet of that flow down the same member. In plain words, all the packets of one conversation take the same cable, so they stay in order. Ordering is preserved. Utilisation, however, becomes statistical.
 
 ```mermaid
 flowchart LR
@@ -60,17 +60,17 @@ flowchart LR
 
 ### Hash functions and why balance is imperfect
 
-A hash maps a large input to a small fixed output, and it spreads inputs roughly evenly across the buckets. Imagine a toy hash that sums the digits of a number. The same input always gives the same output, so a flow sticks to one link. You cannot recover the input from the output, and different inputs can collide into the same bucket. For load sharing, you want those collisions spread evenly, not avoided.
+A hash maps a large input to a small fixed output, and it spreads inputs roughly evenly across the buckets. Imagine a toy hash that sums the digits of a number. The same input always gives the same output, so a flow sticks to one link. You cannot recover the input from the output, and different inputs can collide into the same bucket. For load sharing, you want those collisions spread evenly, not avoided. Think of sorting a crowd into queues by the last digit of their ticket number. Everyone with the same last digit joins the same queue.
 
 Real switches and the kernel use CRC variants, XOR folds, or Jenkins and Toeplitz style hashes. Many of them add a per-device seed.
 
-Balance is statistical. It depends on the entropy of the hash inputs, the sizes of the flows and the layer you hash on. Entropy means how much the inputs vary. Many hosts in one broadcast domain that talk to each other have varied MACs. A few hosts that talk to a single server show little MAC or IP variety, so hashing on the L4 source and destination ports adds the entropy you need. A single TCP connection between two hosts has exactly one 5-tuple, so it uses one member no matter how many links exist.
+Balance is statistical, which means it improves with numbers, like coin tosses. It depends on the entropy of the hash inputs, the sizes of the flows and the layer you hash on. Entropy means how much the inputs vary. Many hosts in one broadcast domain that talk to each other have varied MACs. A few hosts that talk to a single server show little MAC or IP variety, so hashing on the L4 source and destination ports adds the entropy you need. A single TCP connection between two hosts has exactly one 5-tuple, so it uses one member no matter how many links exist.
 
-Flow sizes matter just as much. Elephant flows, such as storage transfers, backups, collective communication and checkpoint writes, carry most of the bytes. Mouse flows, such as web requests and RPCs, are small. If two elephants hash to the same link, that link saturates while the others sit idle. Aggregated bandwidth scales only statistically, and only with many flows.
+Flow sizes matter just as much. Elephant flows, such as storage transfers, backups, collective communication and checkpoint writes, carry most of the bytes. Mouse flows, such as web requests and RPCs, are small. If two elephants hash to the same link, that link saturates while the others sit idle. It is like two lorries picking the same lane on a motorway while the other lanes carry only small cars. Aggregated bandwidth scales only statistically, and only with many flows.
 
 Hashing only on MAC addresses, which is layer 2, fails when all traffic goes to one gateway. Every packet leaves through the router's MAC, so every packet hashes to the same member. Hashing on layer 3 or layer 4 fields fixes that.
 
-Polarization happens when successive tiers, such as leaf and then spine, use the same hash function and seed on the same fields. The flows picked for one link at the first tier all pick the same link at the second. Paths go unused as a result. Vendors avoid this with per-device seeds, different hash functions or fields per tier, or packet fields that change, such as inner headers.
+Polarization happens when successive tiers, such as leaf and then spine, use the same hash function and seed on the same fields. The flows picked for one link at the first tier all pick the same link at the second. Paths go unused as a result. It is like two sorting offices in a row that sort letters by the same rule, so the second office never sees any mix. Vendors avoid this with per-device seeds, different hash functions or fields per tier, or packet fields that change, such as inner headers.
 
 The network engineer's job is to understand the traffic mix and pick the hash fields that spread it best. Use L2, the source and destination MAC, for many hosts in one domain. Use L3, the source and destination IP, for routed traffic with many endpoints. Use L3 plus L4, the 5-tuple, for a few hosts with many connections.
 
@@ -78,13 +78,15 @@ Encapsulated traffic, such as VXLAN, GRE or IPsec, needs inner-header hashing or
 
 ## 2. Link aggregation and LACP
 
-Link aggregation is standardised as IEEE 802.1AX, which was formerly 802.3ad. It bundles several physical links between two devices into one logical link. Spanning tree and routing see the bundle as a single link, so STP does not block the members. The bundle carries more aggregate bandwidth than one member, and it survives member failures because traffic rehashes onto the remaining members.
+Link aggregation is standardised as IEEE 802.1AX, which was formerly 802.3ad. It bundles several physical links between two devices into one logical link. Spanning tree and routing see the bundle as a single link, so STP does not block the members. The bundle carries more aggregate bandwidth than one member, and it survives member failures because traffic rehashes onto the remaining members. If one cable fails, the bundle shrinks but does not break.
 
-Vendors each choose their own name for the idea, so you will meet EtherChannel, port-channel, bond, LAG, team and trunk. The word trunk is the confusing one.
+Vendors each choose their own name for the idea, so you will meet EtherChannel, port-channel, bond, LAG, team and trunk. The word trunk is the confusing one, because chapter 2.11 used it for a link that carries many VLANs, and some vendors use it for a bundle.
 
-**LACP**, the Link Aggregation Control Protocol, negotiates and maintains the bundle. Each end is an actor. It advertises to its partner a system ID built from the system priority and the MAC, a port key, a port priority and state flags. These arrive in LACPDUs, which go to the slow-protocols multicast address 01:80:C2:00:00:02.
+**LACP**, the Link Aggregation Control Protocol, negotiates and maintains the bundle. It is the conversation that lets the two ends agree on which cables belong together. Each end is an actor. It advertises to its partner a system ID built from the system priority and the MAC, a port key, a port priority and state flags. These arrive in LACPDUs, which go to the slow-protocols multicast address 01:80:C2:00:00:02.
 
-Active mode sends LACPDUs proactively, while passive mode only responds. At least one side must be active. If you leave both sides passive, nothing gets negotiated. Static `on` mode creates a bundle without any protocol, and that is dangerous. A miswired or misconfigured member silently blackholes traffic.
+Active mode sends LACPDUs proactively, while passive mode only responds. At least one side must be active. If you leave both sides passive, nothing gets negotiated, because each waits for the other to speak first. Static `on` mode creates a bundle without any protocol, and that is dangerous. A miswired or misconfigured member silently blackholes traffic.
+
+Here is how the pairing works out in practice. If one end is active and the other is passive, the active end speaks first and the passive end answers, so the bundle forms. If both ends are active, both speak and the bundle forms quickly. If both ends are passive, the line stays silent and no bundle ever forms. The cables are plugged in and the lights are green, and yet no traffic is aggregated.
 
 A member joins the aggregate when its partner presents a consistent system ID and key, and when its port matches in speed, duplex and VLAN configuration. When more members are offered than the limits allow, the side with the lower system priority decides which members are active. The limits are 8 active members, with up to 16 members in hot standby.
 
@@ -92,11 +94,11 @@ Timers decide how quickly you learn about a failure. The slow setting sends hell
 
 Frames only flow on members that have reached the "collecting/distributing" state after negotiation. That rule stops traffic being sent into a bundle the other side has not accepted.
 
-The hash applies separately in each direction. The switch chooses the member for server-bound traffic with its own hash. The host chooses the member for switch-bound traffic with its own policy. A flow can leave on member 1 and return on member 2. That is normal, and it works as long as both members are in the bundle. Use fast timers for servers, and keep static `on` mode out of any bundle you rely on.
+The hash applies separately in each direction, which surprises many people. The switch chooses the member for server-bound traffic with its own hash. The host chooses the member for switch-bound traffic with its own policy. A flow can leave on member 1 and return on member 2. That is normal, and it works as long as both members are in the bundle. Use fast timers for servers, and keep static `on` mode out of any bundle you rely on.
 
 ## 3. Linux bonding
 
-The kernel `bonding` driver creates a bond device, such as `bond0`, and enslaves physical NICs to it. Before you pick a mode, look at the table below. The mode decides what the switch must support.
+The kernel `bonding` driver creates a bond device, such as `bond0`, and enslaves physical NICs to it. From then on the applications talk to `bond0`, and the driver decides which physical cable carries each frame. Before you pick a mode, look at the table below. The mode decides what the switch must support.
 
 | Mode | Name | Behaviour | Switch support needed |
 |---|---|---|---|
@@ -108,15 +110,15 @@ The kernel `bonding` driver creates a bond device, such as `bond0`, and enslaves
 | 5 | `balance-tlb` | Adaptive transmit load balancing, receives on one | None |
 | 6 | `balance-alb` | Adaptive TLB plus receive balancing via ARP replies | None |
 
-For servers, two modes are the practical choices. Mode 1, `active-backup`, suits NICs that go to two unrelated switches with no MLAG. Mode 4, LACP, suits NICs that go to one switch or to an MLAG pair.
+For servers, two modes are the practical choices. Mode 1, `active-backup`, suits NICs that go to two unrelated switches with no MLAG. It is a spare tyre: one link does the work and the other waits. Mode 4, LACP, suits NICs that go to one switch or to an MLAG pair.
 
-When you tune a bond, start with link monitoring. `miimon=100` sets the link-state polling interval in milliseconds. `arp_interval` and `arp_ip_target` turn on ARP-probe monitoring, which can detect upstream failures that carrier cannot. The catch is that ARP probing conflicts with LACP, so you cannot run both.
+When you tune a bond, start with link monitoring, because that is how the bond learns that a member has died. `miimon=100` sets the link-state polling interval in milliseconds. `arp_interval` and `arp_ip_target` turn on ARP-probe monitoring, which can detect upstream failures that carrier cannot. The catch is that ARP probing conflicts with LACP, so you cannot run both.
 
 `lacp_rate` takes `fast` or `slow`. `ad_select` sets how the aggregator is selected. `min_links` sets the minimum number of active members before the bond counts as up, so a bond cannot stay up with too little bandwidth. `updelay` and `downdelay` add damping to state changes.
 
-`xmit_hash_policy` decides what the hash looks at. `layer2` is the default, and it hashes the source and destination MAC. `layer2+3` adds the IP addresses. `layer3+4` adds the ports, which gives the best spread for routed traffic, although it may reorder fragments. `encap2+3` and `encap3+4` hash on the inner headers of tunnelled traffic, and `vlan+srcmac` is the last option. The default is a poor choice for traffic going to one gateway, because every packet carries the same gateway MAC.
+`xmit_hash_policy` decides what the hash looks at, which is the most important choice after the mode itself. `layer2` is the default, and it hashes the source and destination MAC. `layer2+3` adds the IP addresses. `layer3+4` adds the ports, which gives the best spread for routed traffic, although it may reorder fragments. `encap2+3` and `encap3+4` hash on the inner headers of tunnelled traffic, and `vlan+srcmac` is the last option. The default is a poor choice for traffic going to one gateway, because every packet carries the same gateway MAC.
 
-Here is the arithmetic that makes the hash choice matter. Take the two 100G links from the earlier example. A single TCP connection uses one of them, so it tops out near 100G, even though the bond carries 200G in total.
+Here is the arithmetic that makes the hash choice matter. Take the two 100G links from the earlier example. A single TCP connection uses one of them, so it tops out near 100G, even though the bond carries 200G in total. Two connections may share one link or may use both, depending on the luck of the hash, and sixteen connections will usually come close to using both evenly.
 
 `primary` names the preferred active member in active-backup mode. `fail_over_mac` and `arp_validate` complete the list.
 
@@ -151,7 +153,7 @@ Check the result in `/proc/net/bonding/bond0`, which reports the state of each m
 
 `Partner Mac Address` should show the switch or MLAG virtual MAC. The value `00:00:00:00:00:00` means there is no LACP partner. Check `MII Status: up` for the link itself. A non-zero `Actor/Partner Churn State` means the negotiation is flapping. Also watch the failure counts for each member.
 
-To check the balance yourself, run a multi-flow test and watch the per-member counters. Use `ip -s link`, `sar -n DEV` or `iperf3 -P 16`. A single flow will not show balance, so run many.
+To check the balance yourself, run a multi-flow test and watch the per-member counters. Use `ip -s link`, `sar -n DEV` or `iperf3 -P 16`. A single flow will not show balance, so run many. A test with one flow can only ever prove that one cable works.
 
 Teaming with `teamd` and OVS bonds are alternatives. Modern distributions are returning to bonding, so start there. SR-IOV and DPDK have their own bonding approaches. These include VF LAGs and the `mlx5` "LAG" in hardware, configured with `devlink`. GPU servers with ConnectX NICs may offload LAG to the NIC, so RDMA traffic can survive a bond. Check your NIC documentation before you rely on it.
 
@@ -163,7 +165,7 @@ Picture a server whose two links both land on one switch. When that switch is up
 
 MLAG goes by different names on each vendor's platform. You will see Cisco vPC, Arista MLAG, Juniper MC-LAG or ESI-LAG, Cumulus or NVIDIA MLAG (CLAG), and Dell VLT.
 
-Under the hood, MLAG relies on a proprietary control protocol. A peer link between the two switches synchronises MAC tables, LACP state, and ARP and ND. Both switches use a common virtual system ID, so the server sees one LACP partner. A keepalive path, often through the management network, detects peer failure and avoids split brain.
+Under the hood, MLAG relies on a proprietary control protocol. The two switches have to behave like one, so they constantly tell each other what they know. A peer link between the two switches synchronises MAC tables, LACP state, and ARP and ND. Both switches use a common virtual system ID, so the server sees one LACP partner. A keepalive path, often through the management network, detects peer failure and avoids split brain. Split brain means both switches believe the other has failed and both act as the sole owner.
 
 On the server-facing side, both switches forward at once, active and active. An entire switch can fail, or be upgraded one at a time, while servers stay connected.
 
@@ -173,7 +175,7 @@ MLAG is also proprietary. There is no multivendor MLAG, so both peers must come 
 
 The standards-based replacement is EVPN multihoming, known as ESI-LAG and defined in RFC 7432. BGP EVPN type-1 and type-4 routes coordinate a shared Ethernet Segment Identifier across leaves. That gives active-active multihoming without a peer link. Chapter 2.17 covers the details.
 
-The design direction is to shrink the L2 domains and run routed connections to servers. You can use BGP on the host, or ECMP with `/32` loopbacks, and that needs no MLAG at all. Many hyperscale and AI designs have dropped MLAG in favour of L3 to the host or to the leaf. They keep MLAG only for legacy or appliance attachment and management networks.
+The design direction is to shrink the L2 domains and run routed connections to servers. If the layer-2 problem is too large to manage, remove the layer-2 problem. You can use BGP on the host, or ECMP with `/32` loopbacks, and that needs no MLAG at all. Many hyperscale and AI designs have dropped MLAG in favour of L3 to the host or to the leaf. They keep MLAG only for legacy or appliance attachment and management networks.
 
 Most GPU servers mix several attachment types, one for each network. The table shows the typical choice for each network and the reason behind it.
 
@@ -185,19 +187,21 @@ Most GPU servers mix several attachment types, one for each network. The table s
 | Storage | LACP or independent NICs with multipath (NFS nconnect, Lustre multi-rail, NVMe-oF multipath) | Higher storage throughput |
 | Compute fabric (IB/RoCE) | One NIC per GPU, no bonding, rail-optimised leaves | Deterministic collectives |
 
-Notice that the compute fabric row is the only one with no bonding. It trades bonding for deterministic collectives. Decide each network's attachment from this table before you cable the server.
+Notice that the compute fabric row is the only one with no bonding. It trades bonding for deterministic collectives, so that every GPU knows exactly which path its traffic takes. Decide each network's attachment from this table before you cable the server.
 
 ## 5. Routed parallel links: ECMP
 
-Suppose a router must reach a destination over several equally good paths. When parallel paths are **routed**, the routing protocol installs them all as equal-cost next hops for the same prefix, as described in chapter 2.13. Take A, which can reach D through three paths of cost 10: A-B-D, A-D and A-C-D. All three go into the forwarding table, and a hash chooses one path per flow.
+Suppose a router must reach a destination over several equally good paths. Instead of picking one and leaving the others idle, it can use them all. When parallel paths are **routed**, the routing protocol installs them all as equal-cost next hops for the same prefix, as described in chapter 2.13. Take A, which can reach D through three paths of cost 10: A-B-D, A-D and A-C-D. All three go into the forwarding table, and a hash chooses one path per flow.
 
-Unlike link aggregation, ECMP paths need not connect the same two devices. No negotiation protocol is needed beyond the routing protocol itself.
+Unlike link aggregation, ECMP paths need not connect the same two devices. They can lead through entirely different routers. No negotiation protocol is needed beyond the routing protocol itself.
 
 Four details shape how ECMP behaves in practice, and the first is the hash fields. The hash typically uses the source and destination IP, the protocol, and the source and destination port, which is the 5-tuple. Sometimes it also uses the IPv6 flow label or inner headers for tunnels. The same hash function applies at every router, so seeds or fields must differ per tier to avoid polarization.
 
-The second detail is resilient hashing. With plain `hash mod N`, removing one next hop changes N, and that remaps almost all flows. Those flows are then reordered and disrupted. Resilient hashing allocates a fixed table of buckets mapped to next hops, so only the flows on the failed hop are reassigned. It is essential for stateful backends such as load balancers, anycast services and firewalls, and it is desirable for TCP.
+The second detail is resilient hashing. With plain `hash mod N`, removing one next hop changes N, and that remaps almost all flows. Those flows are then reordered and disrupted. Imagine a hotel that reassigns every guest to a new room whenever one room becomes unavailable. Resilient hashing allocates a fixed table of buckets mapped to next hops, so only the flows on the failed hop are reassigned. It is essential for stateful backends such as load balancers, anycast services and firewalls, and it is desirable for TCP.
 
-The third detail concerns elephant flows. Standard ECMP cannot split one flow, so a large flow stays on one path. Several techniques work around that. Flowlet switching re-hashes when a gap in the flow exceeds the path-delay difference, so reordering is impossible. Packet spraying works with reordering-tolerant endpoints. Adaptive routing lets the switch pick the least-loaded path per packet or flowlet, as in InfiniBand AR and NVIDIA Spectrum-X for Ethernet. Host-side multipathing uses multiple connections or QPs with varied ports, which is what NCCL and MPTCP do. These techniques are central to AI fabric performance, covered in chapter 2.19 and Part 11.
+The numbers in the lab make the difference concrete. With four equal paths and plain modulo hashing, losing one path moves 75% of all flows to a different path, even though only a quarter of them were using the failed one. With resilient hashing, only the 25% that were on the failed path move. The three healthy paths keep every flow they already had, so nothing on them is reordered or reset.
+
+The third detail concerns elephant flows. Standard ECMP cannot split one flow, so a large flow stays on one path. Several techniques work around that. Flowlet switching re-hashes when a gap in the flow exceeds the path-delay difference, so reordering is impossible. A flowlet is a burst of packets from one flow, separated from the next burst by a quiet gap. Packet spraying works with reordering-tolerant endpoints. Adaptive routing lets the switch pick the least-loaded path per packet or flowlet, as in InfiniBand AR and NVIDIA Spectrum-X for Ethernet. Host-side multipathing uses multiple connections or QPs with varied ports, which is what NCCL and MPTCP do. These techniques are central to AI fabric performance, covered in chapter 2.19 and Part 11.
 
 The fourth detail is Linux, which gives you a few tools. `ip route` handles multipath, as chapter 2.5 explains, and `fib_multipath_hash_policy` controls its hashing. To see which next hop a given flow uses, run `ip route get` with different source ports, for example `ip route get 10.200.0.1 ipproto tcp sport 40000 dport 443`. Inside the NIC, `ethtool -N` and the RSS hash functions (`ethtool -x`, `-X`) do the analogous job across receive queues.
 
@@ -205,7 +209,7 @@ To verify the distribution, look at per-interface counters on the switch with `s
 
 ## 6. Cluster roles and networks (a practical map)
 
-Before you wire anything, you need a map of which machine plays which role on which network. HPC and AI clusters use a stable set of node roles and networks. Those roles and networks decide where aggregation, ECMP and bonding appear.
+Before you wire anything, you need a map of which machine plays which role on which network. A cluster is not a pile of identical servers, and the cabling differs by role. HPC and AI clusters use a stable set of node roles and networks. Those roles and networks decide where aggregation, ECMP and bonding appear.
 
 Start with the nodes. Compute nodes are the ones you count when you size a cluster, so keep them homogeneous and lean. They need sshd, a network file-system client, a monitoring agent and the scheduler daemon. Minimise services such as cron, mail or NetworkManager where practical.
 
@@ -231,7 +235,7 @@ The storage attachment options, DAS, NAS, SAN, RAID levels and multipath, belong
 
 ## 7. Failure behaviour and troubleshooting
 
-When you debug a bond or an ECMP path, most problems show up as one of a few symptoms. The table maps each symptom to its likely cause and the check to run next.
+When you debug a bond or an ECMP path, most problems show up as one of a few symptoms. The table maps each symptom to its likely cause and the check to run next. Use it as a lookup, and still confirm the cause with the check before you change anything.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -252,7 +256,7 @@ Step 6 is the failover test. Bring each member down, and measure the recovery ti
 
 ## 8. Hands-on lab: build and break bonds and ECMP
 
-Start with the self-checking Python lab, which runs on your own machine. It checks how `xmit_hash_policy` spreads flows across bond members, comparing `layer2` with `layer3+4`. It also compares plain `hash mod N`, which moves `75%` of flows, with resilient hashing, which moves `25%`, when 1 of 4 ECMP links fails. Finally, it checks the LACP `active` and `passive` negotiation rules and the `/proc/net/bonding/bond0` health checks. Run it with the command below.
+A word on status first. The Python lab below has been run, while the interactive VM commands after it have not been run for this chapter, so treat each step as a first attempt and keep notes on what you see. Start with the self-checking Python lab, which runs on your own machine. It checks how `xmit_hash_policy` spreads flows across bond members, comparing `layer2` with `layer3+4`. It also compares plain `hash mod N`, which moves `75%` of flows, with resilient hashing, which moves `25%`, when 1 of 4 ECMP links fails. Finally, it checks the LACP `active` and `passive` negotiation rules and the `/proc/net/bonding/bond0` health checks. Run it with the command below.
 
 ```bash
 python3 code/part02/lacp_mlag_ecmp_lab.py
@@ -260,7 +264,7 @@ python3 code/part02/lacp_mlag_ecmp_lab.py
 
 The script checks its own results, so a clean run tells you the lab logic passed.
 
-Next, move to a disposable Linux VM with `root` access. Every interactive VM command below is `untested here`, so treat each step as a first attempt and keep notes on what you see.
+Next, move to a disposable Linux VM with `root` access.
 
 1. In two namespaces, or on two VMs, create a bond on each side with two veth pairs between them, using `mode=802.3ad`. Then inspect `/proc/net/bonding`, see the partner MAC, and set one side to `active-backup`, or remove LACP, to watch the negotiation fail.
 2. With `xmit_hash_policy=layer2`, run `iperf3 -P 8`. Note that one member carries everything when the src/dst MACs are fixed. Switch to `layer3+4` and watch the spread with `ip -s link` and `watch -d`. Use different destination ports to show the hash effect, then repeat the test with a single flow.
@@ -275,7 +279,7 @@ Run the Python lab first, and move to the VM steps only after it passes.
 
 ## 9. Common mistakes
 
-Most of these mistakes come from testing the wrong thing or trusting a default. Check your setup against this list before you call a bond broken.
+Most of these mistakes come from testing the wrong thing or trusting a default. Check your setup against this list before you call a bond broken. Many bonds that seem broken are working exactly as configured.
 
 - You expect a bond to speed up a single TCP stream, but it will not. If you test with one flow and conclude the bond is broken, you have tested the wrong thing.
 - You leave the default `layer2` hash policy in place for routed traffic, or you ignore polarization across tiers.
@@ -288,7 +292,7 @@ Most of these mistakes come from testing the wrong thing or trusting a default. 
 
 ## 10. Interview angles
 
-Interviewers use these questions to see whether you can reason about balance and failure, not just recite settings. Try to answer each one in plain words before you read further.
+Interviewers use these questions to see whether you can reason about balance and failure, not just recite settings. Try to answer each one in plain words before you read further. A good answer explains what happens to one packet, then to one flow, then to a hundred flows.
 
 - "Why doesn't link aggregation scale linearly? How would you improve balance?"
 - "Difference between LACP and a static port-channel; why prefer LACP?"
@@ -301,14 +305,14 @@ Interviewers use these questions to see whether you can reason about balance and
 
 ## Exercises
 
-You can answer most of these on paper, using the chapter as your reference.
+You can answer most of these on paper, using the chapter as your reference. Where an exercise gives numbers, work them out by hand first, and let the code confirm you afterwards.
 
-1. Start with why per-packet round robin fails for TCP, and why flow hashing and hash polarization matter. This exercise draws on chapter 7 of *Computer Networking Problems and Solutions*. (a) Explain why alternating packets of a single TCP flow across parallel links (`balance-rr`) makes TCP throughput collapse. (b) Use `select_bond_member_by_hash()` in `code/part02/lacp_mlag_ecmp.py`. Explain why `xmit_hash_policy=layer2` pins all 16 parallel TCP streams destined for an off-subnet NFS server onto a single bond member, while `layer3+4` spreads them across all 4 members. Then define hash polarization in your own words, so you can explain it to a colleague.
+1. Start with why per-packet round robin fails for TCP, and why flow hashing and hash polarization matter. (a) Explain why alternating packets of a single TCP flow across parallel links (`balance-rr`) makes TCP throughput collapse. (b) Use `select_bond_member_by_hash()` in `code/part02/lacp_mlag_ecmp.py`. Explain why `xmit_hash_policy=layer2` pins all 16 parallel TCP streams destined for an off-subnet NFS server onto a single bond member, while `layer3+4` spreads them across all 4 members. Then define hash polarization in your own words, so you can explain it to a colleague.
 2. Check your grasp of LACP (802.1AX and 802.3ad) mechanics, timers and bond diagnostics. (a) State the multicast MAC (`01:80:C2:00:00:02`) and the EtherType (`0x8809`) that LACPDUs use. Evaluate `evaluate_lacp_negotiation()` for each `active`, `passive` and `off` combination. Then compare the `slow` timers (`30 s / 90 s`) with the `fast` timers (`1 s / 3 s`). (b) Using `audit_proc_bonding_status()`, explain what `Partner Mac Address: 00:00:00:00:00:00` and mismatched per-slave `Aggregator ID`s in `/proc/net/bonding/bond0` indicate.
 3. Work through Linux bonding modes `0` to `6`, `xmit_hash_policy`, and why GPU compute rails are never bonded. Compare modes `0` (`balance-rr`), `1` (`active-backup`), `2` (`balance-xor`) and `4` (802.3ad, LACP). State which mode to use for two uncoordinated switches, and which to use for an MLAG pair. Then explain why the 8 back-end RoCE or InfiniBand NICs on an 8-GPU server are never placed in a bond.
 4. Compare three designs: MLAG or vPC, EVPN multihoming, and L3 routed hosts. Describe how a proprietary MLAG or vPC switch pair works, using its peer link, keepalive and virtual system MAC. List four failure modes of MLAG: split brain, peer-link failure, orphan ports and upgrade lockstep. Then contrast MLAG with EVPN multihoming (ESI-LAG, RFC 7432) and with L3 BGP and ECMP to the host.
 5. Routed ECMP is the subject here, and the remapping numbers sit at its core. (a) Using `compare_modulo_vs_resilient_remap_pct(4)`, calculate what percentage of existing flows get remapped onto different links when 1 of 4 ECMP paths fails. Do this for plain `hash mod N`, which gives 75.0%, and for resilient (consistent) hashing, which gives 25.0%. (b) Explain four techniques that prevent elephant-flow collisions in AI fabrics: RoCEv2 UDP source-port variation across multiple QPs, flowlet switching, packet spraying with reordering-tolerant NICs, and adaptive routing.
-6. This exercise draws on Supercomputers for Linux SysAdmins, chapter 4. (a) Contrast the four cluster node classes: compute, control or management, login or access, and service nodes. Service nodes need 256 GB+ RAM for pre- and post-processing. Then explain why running a storage or NFS server on a compute node is forbidden. (b) List the five cluster networks. Compare the MPI latencies of 1G Ethernet (30–100 µs), 10G Ethernet, and 100G+ InfiniBand or RoCE (1–3 µs). Then compare fat-tree, hypercube, torus and dragonfly topologies.
+6. Look at the cluster map in section 6. (a) Contrast the four cluster node classes: compute, control or management, login or access, and service nodes. Service nodes need 256 GB+ RAM for pre- and post-processing. Then explain why running a storage or NFS server on a compute node is forbidden. (b) List the five cluster networks. Compare the MPI latencies of 1G Ethernet (30–100 µs), 10G Ethernet, and 100G+ InfiniBand or RoCE (1–3 µs). Then compare fat-tree, hypercube, torus and dragonfly topologies.
 
 ## Checkpoint questions (20)
 
@@ -449,3 +453,4 @@ If you compare them, 1 GbE over TCP/IP runs at roughly 30 to 100 µs of latency.
 - **Run here:** `python3 code/part02/lacp_mlag_ecmp_lab.py` (12 passed, 0 failed).
 - **Explicitly labelled inferences:** The Linux `bonding` mode table (`0`–`6`), Netplan/`nmcli` LACP `layer3+4` configuration, GPU-server 5-network attachment table (never bonding compute rails), EVPN multihoming (`RFC 7432`), and resilient-hashing / flowlet / packet-spraying notes synthesize the Linux kernel bonding documentation, IEEE 802.1AX, and RFC 7432 (cross-referenced with Chapters 1.18, 1.28, 2.3, 2.5, 2.9, 2.11, 2.13, 2.17–2.19, 2.27, and Part 11, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
 - **Not verified on live hardware:** All interactive VM commands (`ip link`, `/proc/net/bonding/bond0`, `nmcli`, `ethtool`, `iperf3 -P`, `tc netem`) are marked (untested here) and must be executed on a disposable Linux VM.
+

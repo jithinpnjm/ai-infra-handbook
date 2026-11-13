@@ -22,35 +22,25 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a training pod that cannot reach the parameter server. Or picture a job that runs, but where NCCL keeps choosing `eth0` instead of the RDMA interface. Both failures come from the networking that Kubernetes builds around each container.
+Picture a training pod that cannot reach the parameter server. Or picture a job that runs, but where NCCL keeps choosing `eth0` instead of the RDMA interface. Both failures come from the networking that Kubernetes builds around each container, and neither shows up in the application logs in a form anyone can act on. The job says "timeout", and the real story lives in a part of the kernel that the job has never heard of.
 
 Every containerised GPU workload gets its networking from a handful of kernel primitives. These are a network namespace per pod or container, a veth pair into the host, a bridge or routed path, and NAT or an overlay between nodes. When a training pod cannot reach the parameter server, or when a CNI upgrade breaks pod-to-pod traffic, you debug these primitives. CNI is the plugin system that wires up pod networking.
 
-GPU clusters add a twist. Their pods often need several NICs, which means secondary RDMA interfaces from Multus, SR-IOV or macvlan. They also use host networking for collective libraries, and they choose CNIs for performance rather than convenience. A pod that gets only a fraction of the host's throughput is another case where you debug these primitives.
+GPU clusters add a twist. Their pods often need several NICs, which means secondary RDMA interfaces from Multus, SR-IOV or macvlan. They also use host networking for collective libraries, and they choose CNIs for performance rather than convenience. A pod that gets only a fraction of the throughput of the host is another case where you debug these primitives.
 
-This chapter builds container networking from first principles: namespaces, veth, bridges, routing and NAT. It then covers Docker's network modes, the CNI specification and common plugins, how Kubernetes pod networking works across nodes, and how to design and debug networking for GPU pods. Hold on to the list of primitives above, because every later section reuses them.
+The story here begins with the kernel's idea of a private network, a namespace, and builds up a working container network by hand, with plain commands, so that nothing is magic. Then it shows how Docker packages the same pieces, how CNI standardises them for Kubernetes, how a pod's packet travels on one node and between nodes, and what changes when the pod needs GPUs and RDMA. Hold on to the list of primitives above, because every later section reuses them.
 
 ## Prerequisites and outcomes
 
-Before you start, make sure you know the material this chapter builds on. You should know IP routing and forwarding from chapter 2.5, VLAN and bridging from 2.11, netfilter and NAT from 2.23, and overlays from 2.17. You also need cgroups and namespaces from Part 1, chapters 1.18 to 1.20.
+Make sure you know the material this chapter builds on. You should know IP routing and forwarding from chapter 2.5, VLAN and bridging from 2.11, netfilter and NAT from 2.23, and overlays from 2.17. You also need cgroups and namespaces from Part 1, chapters 1.18 to 1.20. In short, you should be able to say what a bridge does, what masquerade does, what a VXLAN tunnel wraps around a packet, and what the word "namespace" means for a Linux process.
 
-This chapter prepares you to do the following.
-
-- You can create, inspect and debug network namespaces. You can connect them with veth pairs, Linux bridges, routing, macvlan and ipvlan, and give them NAT and DNS.
-- You can explain what a container's network is: its own interfaces, routes, conntrack, iptables rules, and `/etc/resolv.conf`.
-- You can describe Docker's network modes (bridge, host, none, overlay, macvlan, container) and the container network model with its sandbox, endpoint and network.
-- You can explain CNI, covering the plugin interface (ADD, DEL and CHECK with a JSON config), IPAM plugins, chained plugins, and how kubelet and containerd invoke it. You can also compare Flannel, Calico, Cilium, AWS VPC CNI, Antrea and Multus.
-- You can trace pod-to-pod traffic on one node and across nodes, through bridge, routed or overlay paths, and follow pod-to-service and pod-to-external flows.
-- You can design pod networking for GPU workloads. That covers host network versus CNI, secondary networks with Multus, SR-IOV VFs and RDMA, MTU, NUMA and topology alignment, and NetworkPolicy.
-- You can debug container networking with `nsenter`, `ip netns`, `crictl` and `tcpdump` inside namespaces, by following each hop.
-
-Read this list now, then check it again at the end of the chapter.
+Docker, CNI, Multus and SR-IOV are all introduced from scratch, because each one is easier to understand once you have seen the primitives it is built from.
 
 ## 1. Network namespaces
 
 Suppose two containers on one host both want to serve on port 8080. You can run both, because each container has its own port space. That isolation comes from the network namespace, a mechanism you need to understand before anything else in this chapter.
 
-A **network namespace** is a complete, independent copy of the network stack. Each copy has its own network interfaces, IP addresses, routing tables, ARP and ND neighbour tables, netfilter rules, conntrack table, `/proc/net`, sockets, port numbers, and sysctls under `net.*`. Processes inside a namespace see only that namespace. The namespace also solves the "one TCP/IP stack per OS" problem that motivated hypervisors, and it does so without a separate kernel.
+A **network namespace** is a complete, independent copy of the network stack. Each copy has its own network interfaces, IP addresses, routing tables, ARP and ND neighbour tables, netfilter rules, conntrack table, `/proc/net`, sockets, port numbers, and sysctls under `net.*`. Processes inside a namespace see only that namespace. It is like giving each tenant of a building their own private phone exchange, with their own extension numbers, instead of one shared switchboard. The namespace also solves the "one TCP/IP stack per OS" problem that motivated hypervisors, and it does so without a separate kernel.
 
 ```bash
 sudo ip netns add red                             # creates /run/netns/red (a bind mount to the namespace)
@@ -66,9 +56,11 @@ ls -l /proc/<pid>/ns/net                          # identity of a process's netn
 
 The commands above create a namespace, run commands inside it, and compare namespace identities. Run them in order, and delete the namespace when you finish.
 
-Container runtimes create anonymous namespaces that do not live under `/run/netns`. To inspect one, find the container's PID with `docker inspect -f '{{.State.Pid}}'`, `crictl inspectp`, or `kubectl` plus access to the node. Then run `nsenter -t PID -n`. A Kubernetes pod shares one namespace among its containers. The `pause` container, also called the sandbox, creates that namespace, so containers in a pod talk to each other over `localhost`.
+Container runtimes create anonymous namespaces that do not live under `/run/netns`. To inspect one, find the PID of the container with `docker inspect -f '{{.State.Pid}}'`, `crictl inspectp`, or `kubectl` plus access to the node. Then run `nsenter -t PID -n`. A Kubernetes pod shares one namespace among its containers. The `pause` container, also called the sandbox, creates that namespace, so containers in a pod talk to each other over `localhost`.
 
 ### Interfaces across namespaces
+
+Walk through the moment a new container gets its network. A virtual cable, a veth pair, is created with two ends. One end is pushed into the container's namespace and becomes its eth0. The other end stays on the host, where a bridge or a route can reach it. Whatever goes into one end comes out of the other, so the container's packets travel out through the host side. The steps below perform that wiring by hand, so you can see that the container really is only a namespace plus a cable.
 
 A physical NIC lives in exactly one namespace. A virtual interface can be moved into another namespace with `ip link set X netns Y`. To connect namespaces, you use virtual devices, which the table below describes.
 
@@ -81,11 +73,13 @@ A physical NIC lives in exactly one namespace. A virtual interface can be moved 
 | **dummy / tun / tap / wireguard / vxlan / vrf** | Special devices used by VPNs, overlays, VMs, routing isolation |
 | **SR-IOV VF** | Hardware virtual function placed directly into a namespace |
 
-The veth pair is the basic link between namespaces. A bridge joins several interfaces together, and macvlan and ipvlan put a container on the parent NIC's network. Read the table as a menu, where each row answers a different question about how a namespace reaches the network. When a container misbehaves, find its namespace before you run any network command, because host tools only see the host's stack.
+The veth pair is the basic link between namespaces. Think of it as a short patch cable with one plug in each room: whatever goes into one end comes out of the other. A bridge joins several interfaces together, and macvlan and ipvlan put a container on the network of the parent NIC. Read the table as a menu, where each row answers a different question about how a namespace reaches the network. When a container misbehaves, find its namespace before you run any network command, because host tools only see the stack of the host.
 
 ## 2. Building container networking by hand
 
-Container networking is nothing more than the primitives from the last section, assembled by software. You learn what the software does by building the same thing yourself, once, with plain commands.
+Picture a host with two containers that each believe they are alone on the network. Each has its own address, its own routes and its own ports. The host has to connect them, let them reach the outside, and let the outside reach one chosen port. Container runtimes do this quietly, so people rarely see the parts. Building it once by hand shows you the parts, and after that a CNI plugin or Docker's network driver is just a script you have already run.
+
+Container networking is nothing more than the primitives from the last section, assembled by software. You learn what the software does by building the same thing yourself, once, with plain commands. After that, a CNI plugin or Docker's network driver reads as a long script that you have already run.
 
 The first script creates two containers, `c1` and `c2`, on a host bridge. It adds NAT so they can reach the outside.
 
@@ -116,11 +110,11 @@ sudo mkdir -p /etc/netns/c1 && echo "nameserver 1.1.1.1" | sudo tee /etc/netns/c
 
 Each numbered step adds one capability: connectivity through the bridge, outbound access, inbound port publishing, and DNS. Run the steps in order, because later steps depend on the bridge and the addresses from earlier ones.
 
-This is almost literally what Docker's default bridge network does. It creates `docker0`, a veth for each container, and an IPAM-assigned address from a private pool. It adds a default route via the bridge, masquerade for outbound traffic, DNAT for published ports, and a bind-mounted `/etc/resolv.conf`.
+This is almost literally what the default bridge network of Docker does. It creates `docker0`, a veth for each container, and an IPAM-assigned address from a private pool. It adds a default route via the bridge, masquerade for outbound traffic, DNAT for published ports, and a bind-mounted `/etc/resolv.conf`.
 
-Follow a packet from container A to container B on the same bridge. A's own stack routes the packet, because both containers share a subnet, and ARP finds B. The packet leaves through A's `eth0`, which is the veth peer, and enters the host-side veth. The bridge learns the MAC address and forwards the frame to B's veth, and then to B's `eth0`. Netfilter hooks in the bridge path, through `br_netfilter` and `net.bridge.bridge-nf-call-iptables=1`, let iptables see this bridged traffic. Kubernetes requires that setting, so that kube-proxy rules apply to pod-to-pod traffic through bridges.
+Follow a packet from container A to container B on the same bridge, slowly, one step at a time. The own stack of A routes the packet, because both containers share a subnet, and ARP finds B. The packet leaves through the `eth0` of A, which is the veth peer, and enters the host-side veth. The bridge learns the MAC address and forwards the frame to the veth of B, and then to the `eth0` of B. Netfilter hooks in the bridge path, through `br_netfilter` and `net.bridge.bridge-nf-call-iptables=1`, let iptables see this bridged traffic. Kubernetes requires that setting, so that kube-proxy rules apply to pod-to-pod traffic through bridges.
 
-A packet from A to the internet takes a different path. A's default route points at the bridge IP, and the packet enters the host IP stack. It passes FORWARD and then POSTROUTING masquerade, and it leaves through the NIC with the host's address. Return traffic is un-NATed by conntrack and delivered back through the bridge.
+A packet from A to the internet takes a different path. The default route of A points at the bridge IP, and the packet enters the host IP stack. It passes FORWARD and then POSTROUTING masquerade, and it leaves through the NIC with the address of the host. Return traffic is un-NATed by conntrack and delivered back through the bridge. The outside world never learns that the container exists. It only talks to the host.
 
 ```mermaid
 flowchart LR
@@ -139,7 +133,7 @@ flowchart LR
   NIC --> W["Network"]
 ```
 
-Bridge and NAT are not the only option. A routed veth has no bridge. Instead, it uses one /32 route per container that points at the veth's host end, with proxy ARP or a routing protocol. This is Calico's model. Macvlan puts the container directly on the physical LAN with its own MAC address. Host-to-container traffic on the same parent does not work unless the host has a macvlan sub-interface too. Ipvlan L3 routes container IPs through the parent, so there is no MAC explosion. Host networking skips the namespace entirely, and SR-IOV and DPDK bypass the kernel with hardware or user-space paths.
+Bridge and NAT are not the only option. A routed veth has no bridge. Instead, it uses one /32 route per container that points at the host end of the veth, with proxy ARP or a routing protocol. This is the model of Calico. Macvlan puts the container directly on the physical LAN with its own MAC address. Host-to-container traffic on the same parent does not work unless the host has a macvlan sub-interface too. Ipvlan L3 routes container IPs through the parent, so there is no MAC explosion. Host networking skips the namespace entirely, and SR-IOV and DPDK bypass the kernel with hardware or user-space paths.
 
 The next commands, which you can run in order, put one container on the LAN with macvlan and another behind an ipvlan L3 interface.
 
@@ -151,15 +145,17 @@ sudo ip -n c1 addr add 192.168.1.60/24 dev mv0 ; sudo ip -n c1 link set mv0 up
 sudo ip link add ipv0 link eth0 type ipvlan mode l3 ; sudo ip link set ipv0 netns c2
 ```
 
-If you run the macvlan commands, the container gets its own address on the physical LAN. The ipvlan container shares the parent NIC's MAC address while keeping its own IP. Choose the model that matches what the workload needs: a NAT path, a LAN address, or a bypass.
+If you run the macvlan commands, the container gets its own address on the physical LAN. The ipvlan container shares the MAC address of the parent NIC while keeping its own IP. Choose the model that matches what the workload needs: a NAT path, a LAN address, or a bypass.
 
 ## 3. Docker networking
+
+Picture a developer who runs a web server in a container, publishes port 8080, and expects only the office network to reach it. The firewall on the host has a rule that should block outside access, yet the port answers from anywhere. The Docker network model explains why. Docker inserts its own rules ahead of the firewall's rules, so a published port takes a path the firewall never checks. The paragraphs below follow the model from its three concepts to the places where the surprise hides.
 
 Picture a container that publishes port 8080, yet the host firewall seems to ignore the rule you wrote. That is a Docker networking question, and the answer lies in how Docker builds its networks.
 
 Containers began in LXC, which combined cgroups and namespaces. Docker made them popular with a friendly image format, a registry and a runtime. The Open Container Initiative (OCI) later standardised the formats. Its specs are composable, decentralised and minimalist. runc is the reference runtime, and containerd and CRI-O are the container runtimes Kubernetes uses.
 
-Docker's network model is libnetwork's container network model, or CNM. It has three concepts. A sandbox is a container's network namespace configuration. An endpoint is a container's attachment point to a network, typically a veth. A network is a group of endpoints that can communicate. The drivers come in two kinds. Local drivers (bridge, host, none, macvlan, ipvlan) work per host. The global driver, overlay, needs a distributed key-value store to coordinate hosts.
+The network model of Docker is the container network model of libnetwork, or CNM. It has three concepts. A sandbox is the network namespace configuration of a container. An endpoint is the attachment point of a container to a network, typically a veth. A network is a group of endpoints that can communicate. The drivers come in two kinds. Local drivers (bridge, host, none, macvlan, ipvlan) work per host. The global driver, overlay, needs a distributed key-value store to coordinate hosts.
 
 The table lists the six modes. Each row gives a behaviour and a typical use, so you can match a mode to the job in front of you.
 
@@ -184,15 +180,17 @@ bridge link ; bridge fdb show br docker0 ; cat /proc/sys/net/bridge/bridge-nf-ca
 
 Host mode gives the best performance, but it provides no isolation, and the table lists NCCL and HPC containers as its typical use. The `container:` mode is what a Kubernetes pod does internally, with sidecars sharing one namespace.
 
-Published ports can surprise you. Docker inserts its own NAT and FORWARD rules, so published ports bypass firewalls managed by ufw or firewalld. Netfilter and NAT are covered in chapter 2.23. To restrict a port, use `DOCKER-USER` or bind the port to a specific address. Docker's default subnet, 172.17.0.0/16, may overlap with corporate or VPN ranges. In that case, set `default-address-pools` in `/etc/docker/daemon.json`.
+Published ports can surprise you. Docker inserts its own NAT and FORWARD rules, so published ports bypass firewalls managed by ufw or firewalld. Netfilter and NAT are covered in chapter 2.23. To restrict a port, use `DOCKER-USER` or bind the port to a specific address. The default subnet of Docker, 172.17.0.0/16, may overlap with corporate or VPN ranges. In that case, set `default-address-pools` in `/etc/docker/daemon.json`.
 
-Production GPU clusters rarely use Docker's network features directly. Kubernetes with CNI takes over that role. If a published port must stay private on a shared host, restrict it in `DOCKER-USER` before you publish it.
+Production GPU clusters rarely use the network features of Docker directly. Kubernetes with CNI takes over that role. If a published port must stay private on a shared host, restrict it in `DOCKER-USER` before you publish it.
 
 ## 4. CNI: the Container Network Interface
 
-Kubernetes does not use Docker's CNM. It uses CNI, a simpler specification that came from CoreOS and now belongs to the CNCF. A CNI **plugin** is an executable. You give it a JSON network configuration and some environment variables that describe the container, and it configures networking for that container. CNI needs no daemon, and it is cross-platform.
+Kubernetes does not use the CNM of Docker. It uses CNI, a simpler specification that came from CoreOS and now belongs to the CNCF. A CNI **plugin** is an executable. You give it a JSON network configuration and some environment variables that describe the container, and it configures networking for that container. CNI needs no daemon, and it is cross-platform. The whole contract fits in one sentence: when a container starts, the runtime runs the plugin once with the word ADD, and when the container ends, it runs it once with DEL.
 
 ### How it works
+
+Walk through the life of one new pod, step by step. The runtime creates the empty namespace that the pod will live in. It then looks in the configuration folder and finds the network plugin's instructions. It runs the plugin with the word ADD, and passes in the namespace path and the name of the interface. The plugin creates the cable, asks the address manager for a free address, sets the routes, and reports back what it did. When the pod is deleted, the same plugin runs again with the word DEL, so nothing is left behind.
 
 When a new pod starts, you can trace the steps that the runtime and the plugin take. Each step hands work to the next one.
 
@@ -201,7 +199,7 @@ When a new pod starts, you can trace the steps that the runtime and the plugin t
 3. The plugin creates interfaces such as veth or macvlan and moves one end into the namespace. It then calls an **IPAM plugin** for an address. IPAM stands for IP address management. The IPAM plugin can be `host-local`, `dhcp`, `static`, or a CNI-specific allocator. The plugin then sets routes and returns a JSON result with the IPs, routes and DNS.
 4. When the pod is deleted, the runtime calls `DEL` to clean up. Plugins can also be chained. A `.conflist` file runs several plugins in order, for example `bridge`, then `portmap`, `bandwidth` and `tuning`.
 
-A bridge-based network with chained plugins looks like the JSON below. Notice the `ipam` block inside the bridge plugin, which hands out addresses from the node's subnet.
+A bridge-based network with chained plugins looks like the JSON below. Notice the `ipam` block inside the bridge plugin, which hands out addresses from the subnet of the node.
 
 ```json
 {
@@ -226,6 +224,8 @@ Kubernetes makes four assumptions about the network. Each pod gets its own IP. A
 
 ### Common CNI implementations
 
+Picture three ways to build a house. One builder uses a plain, reliable design that anyone can maintain. Another adds locks and alarms to every room. A third brings its own power and water supply. Each CNI plugin in the table is one of those builders. The table is easier to use when you ask what each plugin adds beyond basic connectivity, such as policy, encryption or secondary interfaces, and what it costs in return.
+
 Many CNI implementations exist, and they differ in their data path and in what they add. The table compares the common ones. Use it as a lookup when you choose a CNI for a cluster.
 
 | CNI | Data path | Notes |
@@ -243,15 +243,19 @@ Flannel is the simplest of these, and it does not enforce NetworkPolicy by itsel
 
 ## 5. Kubernetes pod networking walkthrough
 
+The walkthrough follows a packet in four situations: the same node, different nodes, out to a service or the Internet, and host networking. In each case the question is the same, which is what the packet looks like on every wire it crosses.
+
 ### Same node, bridge-based CNI (e.g. bridge/Flannel host-gw)
 
-Start with two pods on one node that share a bridge, and follow the packet as you read. Pod A sends traffic out of its `eth0`, which is a veth. The packet reaches the host-side `vethXXX` on the bridge `cni0`, then the veth of pod B, and finally pod B. The node's pod CIDR, such as 10.244.1.0/24, is local, and the node's bridge IP is the gateway.
+Start with two pods on one node that share a bridge, and follow the packet as you read. Pod A sends traffic out of its `eth0`, which is a veth. The packet reaches the host-side `vethXXX` on the bridge `cni0`, then the veth of pod B, and finally pod B. The pod CIDR of the node, such as 10.244.1.0/24, is local, and the bridge IP of the node is the gateway.
 
-Routed CNIs take a different path, and you can see it in the routes. Calico gives each pod a /32 route on the host, such as `10.244.1.5 dev caliXXXX scope link`. Proxy ARP answers the pod's ARP request for its default gateway at 169.254.1.1. Pod-to-pod traffic on the same node then goes pod, veth, host routing, veth, pod, with no bridge at all.
+Routed CNIs take a different path, and you can see it in the routes. Calico gives each pod a /32 route on the host, such as `10.244.1.5 dev caliXXXX scope link`. Proxy ARP answers the ARP request of the pod for its default gateway at 169.254.1.1. Pod-to-pod traffic on the same node then goes pod, veth, host routing, veth, pod, with no bridge at all.
 
 ### Different nodes
 
-With an overlay such as VXLAN, IPIP or Geneve, the packet is wrapped in an outer packet. Take pod A at 10.244.1.5. Its packet goes to the host, where the route says that 10.244.2.0/24 goes via the tunnel device, which might be `flannel.1`, `tunl0` or `vxlan.calico`. The packet is encapsulated in UDP, or in IP-in-IP, and sent to node 2's IP. Node 2 decapsulates it and delivers it to pod B at 10.244.2.7. The costs are MTU, CPU, and pod IPs that the fabric cannot see. To debug this path, run `ip route | grep 10.244`, `bridge fdb show dev flannel.1`, and `tcpdump -ni eth0 udp port 8472` for Flannel or Cilium VXLAN. For the port `4789` case, run the same `tcpdump` command with `4789` in place of `8472`.
+Follow one request from a pod on node 1 to a pod on node 2, step by step. The packet leaves the first pod through its veth and reaches the node's routing table. The route says the destination lives on another node, and it points at a tunnel device. The tunnel wraps the whole packet inside a new outer packet addressed to node 2. Node 2 unwraps it, sees the inner packet is for its local pod, and delivers it. The walkthrough is the same whichever overlay you use. Only the names of the devices and the port numbers change.
+
+With an overlay such as VXLAN, IPIP or Geneve, the packet is wrapped in an outer packet. Take pod A at 10.244.1.5. Its packet goes to the host, where the route says that 10.244.2.0/24 goes via the tunnel device, which might be `flannel.1`, `tunl0` or `vxlan.calico`. The packet is encapsulated in UDP, or in IP-in-IP, and sent to the IP of node 2. Node 2 decapsulates it and delivers it to pod B at 10.244.2.7. The costs are MTU, CPU, and pod IPs that the fabric cannot see. To debug this path, run `ip route | grep 10.244`, `bridge fdb show dev flannel.1`, and `tcpdump -ni eth0 udp port 8472` for Flannel or Cilium VXLAN. For the port `4789` case, run the same `tcpdump` command with `4789` in place of `8472`.
 
 Routed setups skip the encapsulation. Node 1 holds a route such as `10.244.2.0/24 via <node2 IP>`, which static config, BIRD or the CNI daemon installs. This needs L2 adjacency between the nodes for host-gw, or a fabric that learns the pod prefixes over BGP. It gives the best performance, and pod IPs stay visible in the fabric, which makes firewalling and monitoring easier.
 
@@ -259,19 +263,23 @@ In cloud-native setups, the pod IPs you see come from the VPC subnet, and the fa
 
 ### Pod to service and to the outside
 
+Picture a pod that calls a service by a stable name. The pod has no idea which backend will answer. The packet is addressed to the service's virtual address, and the node's rules rewrite it to one real pod address chosen from a list. The reply is rewritten back, so the calling pod never sees the change. Traffic to the internet takes a different route, where the node replaces the pod address with its own address. The walkthrough below shows each of these two paths.
+
 Traffic from a pod to a `ClusterIP` goes through kube-proxy, using iptables or IPVS, or through eBPF. These DNAT the traffic to a backend pod, as chapters 2.20 and 2.23 explain. Traffic from a pod to the outside is masqueraded, meaning SNAT to the node IP, unless pod IPs are routable and `ipMasq` is off. External traffic reaches pods through NodePort, LoadBalancer or Ingress.
 
 ### Host networking, pause containers, DNS
 
-Pods with `hostNetwork: true` share the node's namespace. They skip the CNI and use host ports. Their DNS policy is `dnsPolicy: ClusterFirstWithHostNet`, which uses the host's DNS config. Node agents such as kube-proxy, the CNI daemon, node-exporter and the DCGM exporter run this way. So do performance-critical workloads like NCCL over sockets.
+Pods with `hostNetwork: true` share the namespace of the node. They skip the CNI and use host ports. Their DNS policy is `dnsPolicy: ClusterFirstWithHostNet`, which uses the DNS config of the host. Node agents such as kube-proxy, the CNI daemon, node-exporter and the DCGM exporter run this way. So do performance-critical workloads like NCCL over sockets.
 
 Every pod normally has a `pause` container. It owns the namespace and keeps the namespace alive across container restarts. The kubelet writes `/etc/resolv.conf` so that it points at CoreDNS, with search domains and `ndots:5` (chapter 2.8). Kubernetes `Service` and `NetworkPolicy` semantics are covered in Part 5.
 
-Host-network pods share the node's IP and port space, so check for port conflicts before you schedule them there.
+Host-network pods share the IP and port space of the node, so check for port conflicts before you schedule them there.
 
 ## 6. Networking for GPU and HPC pods
 
-A GPU pod usually needs more than one network. Its primary interface handles control traffic, while the heavy GPU-to-GPU and storage traffic needs faster rails. Decide on the rails before you write the pod spec, since the spec refers to them by name.
+Picture a training job that starts cleanly, passes its health checks, and then runs far slower than the hardware should allow. The logs show that the collective library chose the overlay interface rather than the fast rail. Nothing was broken in the sense of an error. The job took the path it was offered by default. This section is about making the fast path the default, by deciding which network each pod sees, and by naming the interfaces the library should use.
+
+A GPU pod usually needs more than one network. Its primary interface handles control traffic, while the heavy GPU-to-GPU and storage traffic needs faster rails. Think of a hospital that has one entrance for visitors and a separate loading dock for heavy supplies: the same building, two doors, built for different loads. Decide on the rails before you write the pod spec, since the spec refers to them by name. The ten points below follow the pod from its network attachment to its upgrade plan.
 
 1. Primary network versus data plane. The primary CNI interface, `eth0`, carries control traffic, service access, logs, and perhaps NCCL bootstrap. High-bandwidth GPU-to-GPU and storage traffic needs secondary interfaces instead. These are RDMA-capable NICs (ConnectX in RoCE or IB mode) that reach the pod through the NVIDIA Network Operator, Multus (`NetworkAttachmentDefinition`), the SR-IOV device plugin with the SR-IOV CNI (which places VFs into the pod), the host-device, macvlan or ipvlan CNI, and the RDMA shared device plugin (`rdma/hca_shared_devices_a`). The pod requests resources such as `nvidia.com/gpu: 8`, `nvidia.com/rdma_shared_device_a: 1`, or `nvidia.com/sriov_net: 8`, and it sets the annotation `k8s.v1.cni.cncf.io/networks: rail0,rail1,...`.
 
@@ -305,11 +313,17 @@ Notice the `IPC_LOCK` capability at the end. You need it for RDMA memory registr
 
 2. NCCL interface selection. NCCL picks network interfaces by name or pattern. `NCCL_SOCKET_IFNAME` controls the bootstrap and socket transport, `NCCL_IB_HCA` selects the RDMA devices, and `NCCL_IB_GID_INDEX` selects the RoCE GIDs. Inside a pod, `eth0` may be the overlay, so set these variables explicitly, for example `NCCL_SOCKET_IFNAME=net1` and `NCCL_IB_HCA=mlx5_0,mlx5_1`. Alternatively, run the job with hostNetwork.
 
+Walk through a training job that starts. NCCL reads its environment, looks at the network interfaces it can see, and picks one for its bootstrap traffic. Inside a pod, the first interface it sees may be the overlay, which is slower than the rail. The job then runs, but every collective crosses the overlay. Setting the interface name explicitly removes the guessing, and the example below shows how to make the choice visible in the pod spec, so anyone reading the spec knows which path the job uses.
+
 3. Host networking for training jobs. This is the simplest high-performance option: `hostNetwork: true` with `dnsPolicy: ClusterFirstWithHostNet`. The costs are port conflicts, less isolation, and no per-pod `NetworkPolicy`. Single-tenant clusters and MPI or Slurm-on-Kubernetes setups often use it.
 
 4. Pod overlay costs. Small packets, many connections and large flows all suffer when they cross a veth, a bridge and an overlay. The cost shows up as CPU softirq work and a smaller MTU. For TCP-heavy services such as inference APIs and data loaders, prefer native routing CNIs or eBPF host routing. Keep the overlay MTU correct, which means the underlay MTU minus 50 for VXLAN, and verify it with `ping -M do`.
 
+Picture a small web service that serves many short requests. Each request crosses the pod's veth, the node bridge and the overlay, and each crossing takes some processor time. The service looks fine at low load and slows down as the request rate climbs. The paragraph above names the costs. Follow one request through them, and you can see why the advice is to prefer native routing for latency-sensitive services, and to check the overlay MTU carefully.
+
 5. Topology alignment. Use the kubelet Topology Manager, with its `single-numa-node` or `best-effort` policy, together with the CPU Manager and the device plugins. That keeps the GPU, its NIC VF or RDMA device, and the CPUs on the same NUMA node or PCIe root. Verify the layout with `nvidia-smi topo -m` and `ibdev2netdev`.
+
+Picture a GPU, its network card and the CPU cores that feed it, all sitting on the same NUMA node. Data moves quickly between them, because the path never crosses the link between sockets. If the scheduler places the pod's CPUs on one node and its network card on the other, every transfer takes the slower road. The steps below describe how the policies keep the three parts together, and how to check the placement after the pod starts.
 
 6. MTU consistency. Pod MTU is the node MTU minus the encapsulation overhead. Secondary RDMA rails often use jumbo frames of 9000, and the CNI config `mtu` must match the fabric.
 
@@ -317,15 +331,19 @@ Notice the `IPC_LOCK` capability at the end. You need it for RDMA memory registr
 
 8. IPAM. Size the pod CIDR against your node count and your pods per node. A /24 per node gives 254 pods. Secondary networks may use `whereabouts` or static ranges, one per rail.
 
-9. Observability. Use Hubble or Cilium flow logs, Calico flow logs, kube-state and CNI metrics, `ethtool -S` for VFs at the node level, and RDMA counters. Use `nsenter` to inspect an individual pod's namespace.
+9. Observability. Use Hubble or Cilium flow logs, Calico flow logs, kube-state and CNI metrics, `ethtool -S` for VFs at the node level, and RDMA counters. Use `nsenter` to inspect the namespace of an individual pod.
 
 10. Upgrades. CNI changes can reset pod networks. Stage them, drain the nodes, and test on canary clusters first. Keep `/opt/cni/bin` and `/etc/cni/net.d` consistent across nodes.
 
 ## 7. Debugging container networking
 
+Picture an on-call engineer at night with a pod that cannot reach its peer. The fastest route to the answer is to stop guessing and to walk the path, one hop at a time, with the same checks each time. The checklist below does that. The commands run in the pod's namespace, not on the host, so they show the view the pod actually has.
+
+Picture pod A that cannot reach pod B. Both pods report healthy, and both have an address. Someone suggests restarting the pods. This section offers a better habit. You find the namespace of the pod from the node, walk the path one hop at a time, and check each hop before moving on. Each check removes one layer from the suspect list, so the search narrows with every step.
+
 When pod A cannot reach pod B, guessing wastes time. Work through a fixed order of checks instead, starting on the node where the pods run.
 
-The commands below find the pod's network namespace from the node, then inspect it.
+The commands below find the network namespace of the pod from the node, then inspect it.
 
 ```bash
 # Find the pod's netns on the node
@@ -342,22 +360,22 @@ ip route | grep -E 'cali|cni|flannel|vxlan|tunl' ; bridge fdb show ; iptables-sa
 cat /etc/cni/net.d/* ; ls /opt/cni/bin ; journalctl -u containerd | grep -i cni ; kubectl -n kube-system logs <cni-pod>
 ```
 
-Notice that `nsenter` runs the host's tools inside the pod's namespace. That is how you can use `ip`, `ss` and `tcpdump` on a pod that ships without them.
+Notice that `nsenter` runs the tools of the host inside the namespace of the pod. That is how you can use `ip`, `ss` and `tcpdump` on a pod that ships without them.
 
 Work through the following eight checks in order. Each one rules out a layer before you move to the next.
 
 1. Confirm that both pods have IPs and routes, using `ip route` in each namespace.
 2. Confirm that A can reach its gateway and the host. That means the ARP entry resolves, the veth is up, and the host-side interface is up.
 3. Check host forwarding (`net.ipv4.ip_forward`), `rp_filter`, and `bridge-nf-call-iptables` on the node.
-4. For cross-node traffic, confirm that a route or tunnel to B's node exists, and that the nodes can reach each other. Check the underlay ping, the MTU, and whether UDP 8472 or 4789, or BGP on TCP 179, is allowed by security groups or firewalls.
+4. For cross-node traffic, confirm that a route or tunnel to the node of B exists, and that the nodes can reach each other. Check the underlay ping, the MTU, and whether UDP 8472 or 4789, or BGP on TCP 179, is allowed by security groups or firewalls.
 5. Check NetworkPolicy and iptables rules, using counters and `conntrack -L`.
 6. Confirm that the destination listens on the right address, using `ss -tulpn` inside pod B. A service bound to localhost will not accept traffic from other pods.
 7. If names are involved, check DNS.
-8. Capture packets on A's veth, the uplink of node 1, the uplink of node 2 and B's veth. The captures show where the packet stops.
+8. Capture packets on the veth of A, the uplink of node 1, the uplink of node 2 and the veth of B. The captures show where the packet stops.
 
 ## 8. Hands-on lab: build container networking and a mini-CNI
 
-Start with the self-checking Python lab, `code/part02/container_netns_cni_lab.py`, which runs on your own machine. It verifies the CNI `ADD`, `CHECK` and `DEL` lifecycle and the `host-local` IPAM subnet allocation (`10.244.1.0/24`). It also checks how a pod's `eth0` `peer_ifindex` resolves to the host veth, compares `macvlan` with `ipvlan` L3 properties, and audits a GPU pod's RDMA, Multus, `IPC_LOCK` and `NCCL_SOCKET_IFNAME` spec.
+Start with the self-checking Python lab, `code/part02/container_netns_cni_lab.py`, which runs on your own machine. It verifies the CNI `ADD`, `CHECK` and `DEL` lifecycle and the `host-local` IPAM subnet allocation (`10.244.1.0/24`). It also checks how the `eth0` `peer_ifindex` of a pod resolves to the host veth, compares `macvlan` with `ipvlan` L3 properties, and audits the RDMA, Multus, `IPC_LOCK` and `NCCL_SOCKET_IFNAME` spec of a GPU pod.
 
 ```bash
 python3 code/part02/container_netns_cni_lab.py
@@ -365,7 +383,7 @@ python3 code/part02/container_netns_cni_lab.py
 
 Run the script first, and check that it passes before you move on.
 
-Next, work on a disposable Linux VM with `root`, Docker or containerd, and `kind`. The interactive VM commands in the steps below are `untested here`, so treat each one as something to verify on your own machine.
+Next, work on a disposable Linux VM with `root`, Docker or containerd, and `kind`. The interactive VM commands in the steps below were not run on live hardware, so treat each one as something to verify on your own machine. The steps run from the plain primitives up to a working CNI and a GPU-style pod, so each one prepares the next.
 
 1. Build the manual bridge network from section 2. Use two namespaces, a bridge, NAT and a port publish. Check it with `ping`, `nc`, `conntrack -L`, and `tcpdump` at each hop: the veth, the bridge and the uplink.
 2. Build a routed veth setup in the Calico style. Remove the bridge, give the host `/32` routes per veth, and enable `proxy_arp` on the host-side veths. Then set the pod default route via `169.254.1.1 dev eth0 onlink`, and compare the packet paths.
@@ -381,7 +399,10 @@ Next, work on a disposable Linux VM with `root`, Docker or containerd, and `kind
 
 ## 9. Common mistakes
 
+Picture a team that spent a day chasing a slow training job, only to find that the job used the overlay interface, which nobody had named. Each mistake below leaves a similar trail. Read the list as a set of questions to ask before the first pod is scheduled, not after the first complaint.
+
 Eight mistakes come up again and again. Keep them in mind when you debug.
+
 - Forgetting to bring `lo` up inside a namespace is common. So are forgetting `ip_forward` or masquerade, and letting container subnets overlap with host or VPN ranges.
 - Assuming bridged traffic is visible to iptables without `br_netfilter` settings. Kubernetes requires those settings.
 - Using `eth0` inside GPU pods for NCCL, then wondering why the traffic goes through the overlay.
@@ -392,6 +413,8 @@ Eight mistakes come up again and again. Keep them in mind when you debug.
 - Changing the CNI configuration without draining nodes, or leaving stale `/etc/cni/net.d` files from an old CNI. The lexically first file wins.
 
 ## 10. Interview angles
+
+Interviewers ask these questions to see whether you can walk a packet through the layers in your own words. Start from the namespace, then describe the cable, then the bridge or route, then the NAT or tunnel, and finally the policy. Naming the layers in that order is itself a sign of understanding.
 
 Interviewers use these questions to check whether you can explain the layers, not just name them. Practise answering each one out loud, in a few plain sentences.
 
@@ -408,14 +431,18 @@ Interviewers use these questions to check whether you can explain the layers, no
 
 ## Exercises
 
-You can work through these six exercises in order.
+Work through these in order. Each one ties back to a section above.
 
-1. Start with network namespaces, `veth` pairs, Linux bridges and `br_netfilter`. First, list the eight kernel networking structures that a network namespace isolates, using `ip netns` and `/proc/<pid>/ns/net`. Next, write the `ip`, `sysctl` and `iptables` commands from section 2 that connect `c1` (`10.10.0.11/24`) and `c2` (`10.10.0.12/24`) through the host bridge `br0` (`10.10.0.1/24`). Your commands must also add outbound NAT and forward port `8080` to `80`. Finally, explain why Kubernetes requires `net.bridge.bridge-nf-call-iptables = 1`.
-2. Compare `macvlan`, `ipvlan` and routed `veth`. Use `evaluate_macvlan_ipvlan_properties()` in `code/part02/container_netns_cni.py` to compare `macvlan` (`mode bridge`), `ipvlan` (`mode l3`), and Calico's routed `veth`, which uses a `/32` host route and `proxy_arp` with `169.254.1.1`. Then explain why a parent host cannot talk directly to its own macvlan child containers on the same NIC, and how you work around that.
-3. Compare Docker's CNM with the CNCF CNI. The topic covers ADD, DEL and CHECK, IPAM, and chained `.conflist` plugins. The reference for this part is Networking and Kubernetes, chapter 3. (a) Contrast Docker's container network model, with its sandbox, endpoint and network, and its six network modes (`bridge`, `host`, `none`, `container:<name>`, `overlay`, `macvlan`), with the CNI specification. (b) Using `run_cni_ipam_action()`, trace how containerd or CRI-O calls the plugins in `/opt/cni/bin/`, reading `/etc/cni/net.d/*.conflist` JSON and setting `CNI_COMMAND` to `ADD`, `DEL` or `CHECK`.
-4. This exercise compares overlay, routed, eBPF (Cilium) and cloud-native pod networking. State the three fundamental rules of the Kubernetes network model. Then trace a cross-node pod-to-pod packet through three setups: (a) a VXLAN overlay, using `flannel.1` and UDP 8472, (b) native BGP routing, as in Calico or Cilium, and (c) cloud-native ENI or alias IPs.
-5. Design a multi-NIC GPU pod. Using `audit_gpu_pod_rdma_spec()`, explain how to attach high-speed RDMA rails with MTU 9000, named `net1..net8`, to a Kubernetes training pod. The primary CNI interface stays as `eth0`. Use Multus (`NetworkAttachmentDefinition`) and the NVIDIA Network Operator. Then explain why `IPC_LOCK`, `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` are required, and why `NetworkPolicy` does not filter secondary SR-IOV or RDMA interfaces.
-6. Debug container networking with `crictl`, `nsenter` and `peer_ifindex` pairing. Write the exact node commands that find a pod's host PID with `crictl inspectp`. Then run `ip route`, `ss -tulpn` and `tcpdump` inside the pod's network namespace, using `sudo nsenter -t <pid> -n`. Finally, use `resolve_veth_host_peer()`, which runs `ethtool -S eth0 | grep peer_ifindex`, to identify which host veth belongs to the pod.
+1. A container runtime hides what a namespace isolates. List the eight kernel networking structures that a network namespace isolates, using `ip netns` and `/proc/<pid>/ns/net`.
+2. Connect two containers by hand. Write the `ip`, `sysctl` and `iptables` commands from section 2 that connect `c1` (`10.10.0.11/24`) and `c2` (`10.10.0.12/24`) through the host bridge `br0` (`10.10.0.1/24`). Your commands must also add outbound NAT and forward port `8080` to `80`.
+3. A kube-proxy rule does not apply to bridged pod traffic. Explain why Kubernetes requires `net.bridge.bridge-nf-call-iptables = 1`.
+4. A team must choose how to attach containers to the LAN. Use `evaluate_macvlan_ipvlan_properties()` in `code/part02/container_netns_cni.py` to compare `macvlan` (`mode bridge`), `ipvlan` (`mode l3`), and the routed `veth` of Calico, which uses a `/32` host route and `proxy_arp` with `169.254.1.1`. Then explain why a parent host cannot talk directly to its own macvlan child containers on the same NIC, and how you work around that.
+5. A colleague mixes up Docker and Kubernetes networking. Contrast the container network model of Docker, with its sandbox, endpoint and network, and its six network modes (`bridge`, `host`, `none`, `container:<name>`, `overlay`, `macvlan`), with the CNI specification.
+6. Using `run_cni_ipam_action()`, trace how containerd or CRI-O calls the plugins in `/opt/cni/bin/`, reading `/etc/cni/net.d/*.conflist` JSON and setting `CNI_COMMAND` to `ADD`, `DEL` or `CHECK`.
+7. State the three fundamental rules of the Kubernetes network model. Then trace a cross-node pod-to-pod packet through three setups: a VXLAN overlay, using `flannel.1` and UDP 8472, native BGP routing, as in Calico or Cilium, and cloud-native ENI or alias IPs.
+8. A training pod needs several RDMA rails. Using `audit_gpu_pod_rdma_spec()`, explain how to attach high-speed RDMA rails with MTU 9000, named `net1..net8`, to a Kubernetes training pod. The primary CNI interface stays as `eth0`. Use Multus (`NetworkAttachmentDefinition`) and the NVIDIA Network Operator.
+9. Explain why `IPC_LOCK`, `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` are required for that pod, and why `NetworkPolicy` does not filter secondary SR-IOV or RDMA interfaces.
+10. A pod cannot reach its peer and the node is the only place to look. Write the exact node commands that find the host PID of a pod with `crictl inspectp`. Then run `ip route`, `ss -tulpn` and `tcpdump` inside the network namespace of the pod, using `sudo nsenter -t <pid> -n`. Finally, use `resolve_veth_host_peer()`, which runs `ethtool -S eth0 | grep peer_ifindex`, to identify which host veth belongs to the pod.
 
 ## Checkpoint questions (20)
 

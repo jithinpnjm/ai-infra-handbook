@@ -22,17 +22,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a GPU node that will not boot after its rack is re-cabled. Before it can load anything, it has to ask the network for help. Bare-metal GPU nodes are provisioned by network boot. The node's BMC and NIC send DHCP requests, and a provisioning server (Base Command Manager, MAAS, Foreman or Ironic) answers with an address plus PXE/iPXE boot options. The whole fleet comes up through a DHCP/TFTP/HTTP chain, so one broken link stalls every node that depends on it.
+Picture a GPU node that will not boot after its rack is re-cabled. Nothing on the machine has changed, and yet it sits at the boot screen. Before it can load anything, it has to ask the network for help. Bare-metal GPU nodes are provisioned by network boot. The node's BMC and NIC send DHCP requests, and a provisioning server (Base Command Manager, MAAS, Foreman or Ironic) answers with an address plus PXE/iPXE boot options. The whole fleet comes up through a DHCP/TFTP/HTTP chain, so one broken link stalls every node that depends on it.
 
-NAT is the other half of the story. It is how private cluster nodes reach package mirrors and registries through a gateway. It is how cloud VMs with no public IP get outbound access (Cloud NAT, NAT gateway). It is also how Kubernetes services and Docker publish ports, using iptables DNAT and masquerade.
+NAT is the other half of the story, and it solves the opposite problem. DHCP gives a machine its address. NAT lets a machine with a private address reach the world. It is how private cluster nodes reach package mirrors and registries through a gateway. It is how cloud VMs with no public IP get outbound access (Cloud NAT, NAT gateway). It is also how Kubernetes services and Docker publish ports, using iptables DNAT and masquerade.
 
-Both technologies cause confusing failures. You will meet DHCP leases that expire during a long job, rogue DHCP servers, NAT tables that fill up, conntrack drops, hairpin NAT surprises, and port exhaustion on a shared egress address. You will also meet the classic "it works from my laptop but not from the node" problem.
+Both technologies cause confusing failures, partly because both do their work silently. You will meet DHCP leases that expire during a long job, rogue DHCP servers, NAT tables that fill up, conntrack drops, hairpin NAT surprises, and port exhaustion on a shared egress address. You will also meet the classic "it works from my laptop but not from the node" problem.
 
 ## Prerequisites and outcomes
 
-Before you start, you should already know IP addressing (2.4), routing and forwarding (2.5), and UDP (2.7). This chapter builds on all three.
+Before you start, you should already know IP addressing (2.4), routing and forwarding (2.5), and UDP (2.7). This chapter builds on all three. Terms such as lease, relay and conntrack are explained where they first appear.
 
-When you finish, you will be able to:
+Use this list as a self-check when you finish. Each line is something you should be able to do.
 
 - Walk through DHCPv4 (DORA), renewals, relays, options (router, DNS, domain, NTP, classless routes, PXE), and DHCPv6/SLAAC.
 - Configure ISC Kea, dnsmasq or dhcpd for static reservations and PXE, read client leases, and troubleshoot with `tcpdump`.
@@ -43,13 +43,13 @@ When you finish, you will be able to:
 
 ## 1. DHCP: automatic configuration
 
-Picture a new GPU node with no address, no gateway and no DNS server. Something has to hand it those settings, or it cannot talk to anyone. That job belongs to the Dynamic Host Configuration Protocol (RFC 2131 for IPv4). DHCP gives a host what it needs to join a network: an IP address and mask, a default gateway, DNS servers, a search domain, NTP servers, a lease time, and vendor options such as the PXE boot file, the MTU or classless static routes.
+Picture a new GPU node with no address, no gateway and no DNS server. It cannot call anyone, because it does not even know who is on the line. Something has to hand it those settings, or it cannot talk to anyone. That job belongs to the Dynamic Host Configuration Protocol (RFC 2131 for IPv4). DHCP gives a host what it needs to join a network: an IP address and mask, a default gateway, DNS servers, a search domain, NTP servers, a lease time, and vendor options such as the PXE boot file, the MTU or classless static routes.
 
-Without DHCP, an administrator configures each host by hand. With DHCP, hosts are configured from one place. Addresses are leased, which means they are handed out for a fixed time and reused after they expire.
+Without DHCP, an administrator configures each host by hand, which is like writing a name badge for every visitor in a hotel lobby. With DHCP, hosts are configured from one place. Addresses are leased, which means they are handed out for a fixed time and reused after they expire. It works like a coat check ticket that is valid for an evening.
 
 ### DORA
 
-The exchange between client and server has four messages. Read the diagram from top to bottom, because the first two messages are broadcasts. The client has no address yet and does not know where the server is.
+The exchange between client and server has four messages, remembered as DORA: Discover, Offer, Request and Acknowledge. Read the diagram from top to bottom, because the first two messages are broadcasts. The client has no address yet and does not know where the server is. So it shouts to the whole network, "is there a DHCP server here?", and any server that hears it can answer.
 
 ```mermaid
 sequenceDiagram
@@ -68,17 +68,19 @@ sequenceDiagram
 
 The messages travel over UDP. If you capture this traffic, you will see these ports on every packet. The client uses port 68 and the server uses port 67. The client identifies itself by its MAC address (chaddr), and it can also send a client identifier (option 61). A server that sees the same client ID again can give it the same address, which is how a static reservation works.
 
-The REQUEST is broadcast so that every other server that made an offer learns that the client chose a different one. After the ACK, the client may run an ARP probe to check that the address is unused. If it finds a conflict, it sends a decline.
+Walk through it as a short conversation. The new node says "I need an address" to everyone. A server answers "you can have this one, for this long". The node replies "yes, I will take that one", again to everyone, so that any other server whose offer was ignored knows to withdraw it. The server then confirms "it is yours". Only after that last message does the node configure the address on its interface and start using it.
 
-When you troubleshoot a lease, start with these timers. They control renewal. T1 is the renewal point, at 50 percent of the lease. T2 is the rebind point, at 87.5 percent. Take a 12-hour lease from the dnsmasq example later in this section. The client tries to renew 6 hours in. If the server never answers, rebinding starts at 10.5 hours. When the lease runs out, the client has to stop using the address and start over. A long job on a node with a short lease and an unreachable DHCP server is a failure waiting to happen. For servers, use long leases or static addressing.
+The REQUEST is broadcast so that every other server that made an offer learns that the client chose a different one. After the ACK, the client may run an ARP probe to check that the address is unused. If it finds a conflict, it sends a decline. In effect, the client checks that nobody is already sitting in the seat it was just given.
 
-Two less common messages matter too. INFORM asks for options only, which suits a host that already has a static address. A NAK tells a client that the address it requested is not valid here, usually because it moved networks, so the client must restart.
+When you troubleshoot a lease, start with the timers, because they control renewal. T1 is the renewal point, at 50 percent of the lease. T2 is the rebind point, at 87.5 percent. Take a 12-hour lease from the dnsmasq example later in this section. The client tries to renew 6 hours in, quietly asking the same server to extend the lease. If the server never answers, rebinding starts at 10.5 hours, and now the client asks any server it can reach. When the lease runs out, the client has to stop using the address and start over. A long job on a node with a short lease and an unreachable DHCP server is a failure waiting to happen. For servers, use long leases or static addressing.
+
+Two less common messages matter too. INFORM asks for options only, which suits a host that already has a static address and just wants the DNS settings. A NAK tells a client that the address it requested is not valid here, usually because it moved networks, so the client must restart.
 
 ### Relays, scopes and options
 
-A broadcast does not cross routers. That is why a central DHCP server cannot hear a request from a rack VLAN by default. A DHCP relay agent fixes this. It runs on the switch or router, listens for the broadcast, and forwards it on. You will see it configured with `ip helper-address` on a switch SVI or router interface, with `dhcrelay`, or with `dnsmasq --dhcp-relay`.
+A broadcast does not cross routers, since routers exist to keep broadcasts local. That is why a central DHCP server cannot hear a request from a rack VLAN by default. A DHCP relay agent fixes this. It runs on the switch or router, listens for the broadcast, and forwards it on. You will see it configured with `ip helper-address` on a switch SVI or router interface, with `dhcrelay`, or with `dnsmasq --dhcp-relay`.
 
-The relay adds its interface address to the `giaddr` field and unicasts the request to the central DHCP server. The server reads `giaddr` to pick the scope, meaning the subnet pool, for the answer. Option 82 (relay agent information) can carry a circuit ID or remote ID that identifies the switch port. That lets data centres assign addresses based on the port a server is plugged into.
+The relay adds its interface address to the `giaddr` field and unicasts the request to the central DHCP server. The server reads `giaddr` to pick the scope, meaning the subnet pool, for the answer. It is like a receptionist who notes which office a request came from and picks the right box of keys. Option 82 (relay agent information) can carry a circuit ID or remote ID that identifies the switch port. That lets data centres assign addresses based on the port a server is plugged into.
 
 The table below lists the options a DHCP server commonly sends. Look for options 66 and 67 when you troubleshoot PXE, because they carry the boot server and the boot file.
 
@@ -100,7 +102,7 @@ The table below lists the options a DHCP server commonly sends. Look for options
 
 ### PXE boot of bare-metal GPU nodes
 
-A bare-metal GPU node is provisioned by network boot, and the steps run in a fixed order. Each step hands the node a little more of what it needs.
+A bare-metal GPU node is provisioned by network boot, and the steps run in a fixed order. Each step hands the node a little more of what it needs. Think of a person waking up in an empty room: first they need light, then directions, then tools. The node needs an address, then the name of a boot file, then the operating system.
 
 1. The NIC firmware (PXE ROM or UEFI HTTP boot) sends a DHCP DISCOVER with vendor class `PXEClient` and its architecture (option 93).
 2. The server replies with an address, plus `next-server` (TFTP) and `filename` (for example `ipxe.efi` for UEFI x86-64). For HTTP boot, it sends an HTTP URL instead.
@@ -109,17 +111,17 @@ A bare-metal GPU node is provisioned by network boot, and the steps run in a fix
 
 Provisioning systems pair a DHCP, TFTP and HTTP service with an inventory that maps each MAC address to a hostname, an address and a profile. When a node stalls during boot, capture DHCP traffic on the provisioning VLAN first, with `tcpdump -ni eth0 -vv port 67 or port 68`. Then check the firmware boot mode (UEFI or legacy), the architecture match, the TFTP firewall rules (UDP 69 plus ephemeral ports), and whether DHCP replies reach the node through the relay and VLAN configuration.
 
-Only one DHCP server may answer a subnet, unless the servers form a coordinated failover pair. A rogue server, such as a forgotten lab router, hands out wrong gateways. Switches guard against this with DHCP snooping.
+Only one DHCP server may answer a subnet, unless the servers form a coordinated failover pair. Two servers answering independently is like two receptionists handing out the same desk numbers. A rogue server, such as a forgotten lab router, hands out wrong gateways. Switches guard against this with DHCP snooping.
 
 ### Linux clients and servers
 
-On a Linux host, several DHCP clients can do the work: `dhclient` (legacy), `systemd-networkd` (built in), NetworkManager (`internal` or `dhclient`), `dhcpcd`, and cloud-init with netplan. To see what a host received, check `ip addr` (look for `dynamic` and `valid_lft`), `networkctl status eth0`, `nmcli device show eth0`, and the lease files, such as `/var/lib/dhcp/dhclient.leases` or `/run/systemd/netif/leases/`. The logs from `journalctl -u systemd-networkd` show what the client did.
+On a Linux host, several DHCP clients can do the work, so the first step is to find out which one is in charge. They are `dhclient` (legacy), `systemd-networkd` (built in), NetworkManager (`internal` or `dhclient`), `dhcpcd`, and cloud-init with netplan. To see what a host received, check `ip addr` (look for `dynamic` and `valid_lft`), `networkctl status eth0`, `nmcli device show eth0`, and the lease files, such as `/var/lib/dhcp/dhclient.leases` or `/run/systemd/netif/leases/`. The logs from `journalctl -u systemd-networkd` show what the client did.
 
 To force a renewal, run `sudo networkctl renew eth0`, `sudo dhclient -r eth0 && sudo dhclient eth0`, or `nmcli device reapply eth0`.
 
 On the server side, you have several choices. ISC dhcpd is end-of-life but still widely deployed. ISC Kea is the modern option, with JSON configuration, a REST API, HA hooks and database backends. dnsmasq is a small DHCP, DNS and TFTP server that suits labs and appliances. Cloud-provided DHCP (VPC metadata services) and the built-in DHCP in routers and BMCs are the other options.
 
-A small dnsmasq file is enough for a provisioning VLAN. It hands out addresses, pins one node to a fixed address, and points UEFI clients at iPXE.
+A small dnsmasq file is enough for a provisioning VLAN. It hands out addresses, pins one node to a fixed address, and points UEFI clients at iPXE. Read it as a short list of promises the server makes.
 
 ```text
 # dnsmasq: DHCP + PXE for a provisioning VLAN
@@ -146,31 +148,31 @@ The `dhcp-match` line picks out UEFI x86-64 clients, and only those clients rece
 
 ### DHCPv6, SLAAC and IPv6
 
-IPv6 hosts can configure themselves in several ways. With SLAAC (stateless address autoconfiguration), the router advertises the prefix in a Router Advertisement (RA, ICMPv6 type 134). The host then builds its own interface ID, either EUI-64 or randomised with stable privacy.
+IPv6 hosts can configure themselves in several ways, and the relationship to DHCP is different from IPv4. With SLAAC (stateless address autoconfiguration), the router advertises the prefix in a Router Advertisement (RA, ICMPv6 type 134). The host then builds its own interface ID, either EUI-64 or randomised with stable privacy. No server keeps a record of who has what.
 
-DHCPv6 works in one of two modes. In stateful mode, it assigns addresses, and the M flag asks for that. In stateless mode, it supplies only other configuration, such as DNS, and the O flag asks for that. Prefix delegation (IA_PD) gives a router a whole prefix to carve up.
+DHCPv6 works in one of two modes. In stateful mode, it assigns addresses, and the M flag asks for that. In stateless mode, it supplies only other configuration, such as DNS, and the O flag asks for that. Prefix delegation (IA_PD) gives a router a whole prefix to carve up, like giving a landlord a whole building to divide into flats.
 
 DHCPv6 does not carry the default gateway. The gateway comes only from RAs. DHCPv6 uses UDP 546 for the client and 547 for the server. It identifies the client by a DUID rather than by its MAC address. Most data-centre fabrics use static addressing, SLAAC or BGP-unnumbered designs for the fabric itself. DHCP is for management and provisioning networks.
 
 ### Hardening and diagnostics
 
-On switches, turn on DHCP snooping and dynamic ARP inspection, and restrict which ports may answer as DHCP servers. Reserve infrastructure addresses by MAC or client ID instead of leaving them in the pool. Keep pools separate from static ranges, because a static address inside the pool can produce duplicate IPs.
+On switches, turn on DHCP snooping and dynamic ARP inspection, and restrict which ports may answer as DHCP servers. Snooping teaches the switch which ports are allowed to speak as servers. Reserve infrastructure addresses by MAC or client ID instead of leaving them in the pool. Keep pools separate from static ranges, because a static address inside the pool can produce duplicate IPs.
 
 To capture DHCP traffic, run `sudo tcpdump -ni eno2 -vvv 'port 67 or port 68'` and read the options. The tools `dhcping` and `nmap --script broadcast-dhcp-discover` can probe servers, but only on networks you are authorised to test. On the server, check the lease database and logs, and watch pool utilisation so you can alert before the pool runs out.
 
-Several symptoms point to specific causes. A node that gets a 169.254.x.x address has fallen back to link-local, which means no DHCP reply arrived. Check the VLAN, the relay, the server and the pool. A wrong gateway points to a rogue server. Duplicate IPs mean a static address sits inside the pool. A PXE boot that hangs at "TFTP" suggests a firewall or MTU problem, and a PXE loop suggests a boot order or UEFI/BIOS mismatch.
+Several symptoms point to specific causes, so each one is worth memorising as a clue. A node that gets a 169.254.x.x address has fallen back to link-local, which means no DHCP reply arrived. Check the VLAN, the relay, the server and the pool. A wrong gateway points to a rogue server. Duplicate IPs mean a static address sits inside the pool. A PXE boot that hangs at "TFTP" suggests a firewall or MTU problem, and a PXE loop suggests a boot order or UEFI/BIOS mismatch.
 
 Decide on lease lengths and pool sizes before you add the next rack, not after a node stops booting.
 
 ## 2. Private addressing and why NAT exists
 
-Picture a site with far more devices than public addresses. IPv4 has only 32 bits of address space, which is not enough for every device to have a unique public address. To cope, RFC 1918 reserved private blocks that are not routed on the public Internet: `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`.
+Picture a site with far more devices than public addresses, like an office building with one street number and hundreds of desks. IPv4 has only 32 bits of address space, which is not enough for every device to have a unique public address. To cope, RFC 1918 reserved private blocks that are not routed on the public Internet: `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`.
 
 Two more ranges matter here. `100.64.0.0/10` is the carrier-grade NAT shared space from RFC 6598. `169.254.0.0/16` is the link-local range.
 
-Many networks reuse the same private ranges. A Network Address Translator at the boundary therefore rewrites addresses and ports in packets. That lets private hosts reach public ones through one or a few public addresses.
+Many networks reuse the same private ranges, so a private address means nothing outside its own network. A Network Address Translator at the boundary therefore rewrites addresses and ports in packets. That lets private hosts reach public ones through one or a few public addresses. It is the building's reception desk, which makes calls on everyone's behalf and routes the answers back to the right desk.
 
-NAT also became an accidental security boundary, because inbound connections are not forwarded without an explicit mapping. It is not a firewall, though, and by itself it gives no real security.
+NAT also became an accidental security boundary, because inbound connections are not forwarded without an explicit mapping. It is not a firewall, though, and by itself it gives no real security. A closed door is not the same as a lock.
 
 ## 3. Types of NAT
 
@@ -188,11 +190,13 @@ NAT comes in several forms, and each one rewrites a different part of the packet
 | **NAT64 / DNS64, 464XLAT** | Translate IPv6 clients to IPv4 servers | IPv6-only networks reaching IPv4 content |
 | **NAT66 / NPTv6** | Stateless prefix translation for IPv6 | Rare; multihoming |
 
-PAT is the type you will meet most often, because it lets many hosts share one address. If you see `MASQUERADE` in a rule, you are looking at PAT. The rest are narrower tools for specific jobs.
+PAT is the type you will meet most often, because it lets many hosts share one address. If you see `MASQUERADE` in a rule, you are looking at PAT. The rest are narrower tools for specific jobs. The trick that makes sharing possible is the port number. Many hosts can use the same address because each connection gets its own port.
 
 ### How PAT works
 
 Follow one connection through the gateway in the diagram. The inside host sends from `10.0.0.5:51000`, and the gateway rewrites that source to its own outside address and a new port.
+
+Say it in words as well. The inside host `10.0.0.5` opens a connection from port 51000. The gateway rewrites the source to its own outside address and picks a new port, 40001. It writes the pair in its table. When the reply comes back addressed to port 40001, the gateway looks it up, rewrites the destination back to `10.0.0.5` and port 51000, and passes it inside. The outside server never learns that the inside address exists.
 
 ```mermaid
 sequenceDiagram
@@ -207,13 +211,15 @@ sequenceDiagram
   N-->>H: src 198.51.100.7:443 → dst 10.0.0.5:51000
 ```
 
-The gateway keeps a translation table. On Linux, this is the conntrack table, which chapter 2.23 covers in detail. The table is keyed by the flow's 5-tuple. The first outbound packet creates an entry, and replies match that entry and are rewritten back. Entries expire on timers. A TCP connection in the established state lasts hours, a TCP connection after FIN lasts seconds, UDP lasts 30 to 120 s, and ICMP lasts 30 s. NAT also fixes up the IP and TCP/UDP checksums and the payloads of ICMP errors.
+The gateway keeps a translation table, which is its memory of who started what. On Linux, this is the conntrack table, which chapter 2.23 covers in detail. The table is keyed by the flow's 5-tuple. The first outbound packet creates an entry, and replies match that entry and are rewritten back. Entries expire on timers. A TCP connection in the established state lasts hours, a TCP connection after FIN lasts seconds, UDP lasts 30 to 120 s, and ICMP lasts 30 s. NAT also fixes up the IP and TCP/UDP checksums and the payloads of ICMP errors.
 
-NAT has consequences you have to plan for. The first is that inbound connections are blocked. With PAT, outside hosts cannot start a connection to an inside host unless a DNAT or static mapping exists. Port forwarding, UPnP or NAT-PMP, and STUN or ICE hole punching for peer-to-peer traffic are the usual ways around this.
+NAT has consequences you have to plan for, and each one has caught real teams by surprise. The first is that inbound connections are blocked. With PAT, outside hosts cannot start a connection to an inside host unless a DNAT or static mapping exists. Port forwarding, UPnP or NAT-PMP, and STUN or ICE hole punching for peer-to-peer traffic are the usual ways around this.
 
-The second consequence is that NAT is stateful, so its state becomes a failure domain. A gateway reboot drops every connection. HA pairs must sync their state, and asymmetric routing around a NAT breaks flows. The table also consumes memory, and it can fill up. When it does, Linux logs `nf_conntrack: table full, dropping packet`.
+The second consequence is that NAT is stateful, so its state becomes a failure domain. If the memory is lost, the connections that depended on it are lost too. A gateway reboot drops every connection. HA pairs must sync their state, and asymmetric routing around a NAT breaks flows. The table also consumes memory, and it can fill up. When it does, Linux logs `nf_conntrack: table full, dropping packet`.
 
-Port exhaustion is the quieter problem. One outside address has about 64k ports per destination 3-tuple. When many clients connect to the same destination, such as a package mirror, an API endpoint or an object store, they can use up the mapping space. Cloud NAT gateways document this problem. The fixes are to allocate more addresses or ports per VM, reuse connections, shorten TCP time-wait on the gateway, and spread traffic across destinations.
+Port exhaustion is the quieter problem. Imagine a hotel switchboard that has only so many outside lines. One outside address has about 64k ports per destination 3-tuple. When many clients connect to the same destination, such as a package mirror, an API endpoint or an object store, they can use up the mapping space. Cloud NAT gateways document this problem. The fixes are to allocate more addresses or ports per VM, reuse connections, shorten TCP time-wait on the gateway, and spread traffic across destinations.
+
+A rough count shows how it happens. If one outside address offers about 64,000 ports toward a single destination, then 64,000 simultaneous connections to that destination use every port, and the next connection has nothing to map to. Exercise 5 asks you to run exactly this arithmetic for a 500-node cluster pulling from one registry.
 
 Some protocols carry IP addresses and ports inside their payload. Active FTP, SIP, H.323 and IRC DCC do this, and some RPC protocols do too. These need an application-level gateway (ALG) helper, or they fail. Modern protocols such as TLS and HTTP avoid the problem.
 
@@ -227,7 +233,7 @@ Before you put a NAT gateway in front of a service, decide which inbound paths i
 
 ## 4. NAT on Linux
 
-On Linux, NAT is done by netfilter, and conntrack tracks each flow. Packets pass through hooks along the way. DNAT happens at PREROUTING, before routing. SNAT and masquerade happen at POSTROUTING, after routing. Only the first packet of a flow walks the NAT chains. Later packets are translated by the conntrack entry that the first packet created. Chapter 2.23 covers the full ruleset model. The essentials are below.
+On Linux, NAT is done by netfilter, and conntrack tracks each flow. Packets pass through hooks along the way, which are fixed points where rules can act. DNAT happens at PREROUTING, before routing. SNAT and masquerade happen at POSTROUTING, after routing. Only the first packet of a flow walks the NAT chains. Later packets are translated by the conntrack entry that the first packet created. Chapter 2.23 covers the full ruleset model. The essentials are below.
 
 The block below sets up a gateway. Forwarding must be on first, as chapter 2.5 explains.
 
@@ -259,17 +265,17 @@ sudo conntrack -E                   # live events (NEW, UPDATE, DESTROY)
 
 The last four lines show you what the gateway is doing. Use them to confirm that a rule works, rather than assuming it does.
 
-Reading a conntrack entry takes some practice. Here is one: `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED]`. The first tuple is the original direction, with the inside address. The second is the expected reply tuple, whose destination is the translated address and port. The difference between the two tuples shows the NAT mapping.
+Reading a conntrack entry takes some practice, so take it in two halves. Here is one: `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED]`. The first tuple is the original direction, with the inside address. The second is the expected reply tuple, whose destination is the translated address and port. The difference between the two tuples shows the NAT mapping. Here the inside host `10.0.0.5` appears as `203.0.113.9` on port 40001 to the outside world.
 
-Masquerade and SNAT do the same job in different ways. `MASQUERADE` looks up the outgoing interface address for every new flow, and it flushes mappings when the interface goes down. That suits dynamic addresses from DHCP or PPP. `SNAT --to-source` uses a fixed address. It is slightly cheaper, and it does not drop conntrack entries on link flaps. Use it with static public IPs.
+Masquerade and SNAT do the same job in different ways, and the difference is how they find the address to write. `MASQUERADE` looks up the outgoing interface address for every new flow, and it flushes mappings when the interface goes down. That suits dynamic addresses from DHCP or PPP. `SNAT --to-source` uses a fixed address. It is slightly cheaper, and it does not drop conntrack entries on link flaps. Use it with static public IPs.
 
-Hairpin NAT happens when an inside client reaches a DNAT-published inside server through the public address. Trace the packet to see the problem. DNAT delivers it to the server with the client's inside source address. The server then replies directly to the client, bypassing the NAT. The client sees a reply from an unexpected address and drops it.
+Hairpin NAT happens when an inside client reaches a DNAT-published inside server through the public address. It is like a colleague calling the company's public phone number to reach someone who sits in the next room. Trace the packet to see the problem. DNAT delivers it to the server with the client's inside source address. The server then replies directly to the client, bypassing the NAT. The client sees a reply from an unexpected address and drops it.
 
-You have two fixes. You can also SNAT, or masquerade, such traffic on the way, using `-s 10.0.0.0/24 -d 10.0.0.20 -j MASQUERADE`. Or you can use split DNS, so inside clients resolve the server's inside address. Split DNS is usually the better choice.
+You have two fixes. The first is to SNAT, or masquerade, such traffic on the way, using `-s 10.0.0.0/24 -d 10.0.0.20 -j MASQUERADE`. The second is to use split DNS, so inside clients resolve the server's inside address. Split DNS is usually the better choice.
 
 ### Container and Kubernetes NAT
 
-Docker's default `bridge` network gives containers addresses from 172.17.0.0/16 on `docker0`. Outbound traffic is masqueraded with a `POSTROUTING ... MASQUERADE` rule. Published ports, such as `-p 8080:80`, add DNAT rules in a `DOCKER` chain. Docker also changes iptables itself, including the FORWARD policy. To inspect this, run `iptables -t nat -S` and `docker network inspect`.
+Docker's default `bridge` network gives containers addresses from 172.17.0.0/16 on `docker0`. Containers are just processes in their own small networks, so Docker uses NAT to let them out. Outbound traffic is masqueraded with a `POSTROUTING ... MASQUERADE` rule. Published ports, such as `-p 8080:80`, add DNAT rules in a `DOCKER` chain. Docker also changes iptables itself, including the FORWARD policy. To inspect this, run `iptables -t nat -S` and `docker network inspect`.
 
 Kubernetes Services of type ClusterIP, NodePort and LoadBalancer are built from DNAT rules that kube-proxy installs. In iptables mode, the chains are `KUBE-SERVICES`, `KUBE-SVC-*` and `KUBE-SEP-*`, and they balance load with probabilities. IPVS mode uses virtual servers with DNAT. Cilium offers an eBPF replacement for kube-proxy. Pod egress to the Internet is usually SNATed to the node address through masquerade, unless the CNI uses routable pod IPs. `externalTrafficPolicy: Local` preserves client IPs. NAT adds conntrack load, which matters at high connection rates. Inspect these rules with `iptables-save | grep KUBE-`, `ipvsadm -Ln` and `conntrack -L`.
 
@@ -277,11 +283,11 @@ Connections through kube-proxy depend on conntrack. That makes node conntrack tu
 
 ### Cloud NAT
 
-Instances without external IPs go out through a managed NAT gateway: GCP Cloud NAT, AWS NAT Gateway or Azure NAT Gateway. You configure it per subnet or per region. You set the allocated external IPs and the port allocation limits, which include a minimum number of ports per VM and dynamic allocation.
+Instances without external IPs go out through a managed NAT gateway: GCP Cloud NAT, AWS NAT Gateway or Azure NAT Gateway. You configure it per subnet or per region. You set the allocated external IPs and the port allocation limits, which include a minimum number of ports per VM and dynamic allocation. It is the same PAT idea you saw on Linux, run as a service for you.
 
 A cloud NAT is outbound only, so nothing can start a connection inward. It logs translations, enforces quotas and per-destination port limits, and charges per GB.
 
-For AI clusters that pull from public registries or Hugging Face, plan the NAT address and port capacity. Hundreds of nodes starting at once can exhaust the ports. The alternative is a private access path, such as Private Google Access, VPC endpoints, or internal mirrors and registries. That avoids NAT altogether (chapter 2.32).
+For AI clusters that pull from public registries or Hugging Face, plan the NAT address and port capacity. Hundreds of nodes starting at once can exhaust the ports, and the pulls then fail in a way that looks random. The alternative is a private access path, such as Private Google Access, VPC endpoints, or internal mirrors and registries. That avoids NAT altogether (chapter 2.32).
 
 Before a large cluster starts, check how many public IPs and ports the NAT gateway can offer.
 
@@ -295,7 +301,7 @@ Most of what you learn here applies to these systems, with some changes. Embedde
 
 ## 5. NAT and the fabric: where NAT does not belong
 
-Inside AI back-end fabrics, such as InfiniBand or RoCE v2, you do not use NAT. RDMA verbs exchange queue-pair numbers and GIDs or addresses during connection setup, so each endpoint must see the other's true address. NAT state would also get in the way of line-rate transport.
+Inside AI back-end fabrics, such as InfiniBand or RoCE v2, you do not use NAT. RDMA verbs exchange queue-pair numbers and GIDs or addresses during connection setup, so each endpoint must see the other's true address. If the address is rewritten on the way, the information inside the setup messages no longer matches the packet, and the connection fails. NAT state would also get in the way of line-rate transport.
 
 Design each fabric as a routed or L2 private network with its own addressing plan (chapter 2.4). Use NAT only at the edges, such as management or front-end internet access.
 
@@ -303,7 +309,7 @@ Overlapping private ranges cause trouble later. If every cluster uses 10.0.0.0/8
 
 ## 6. Troubleshooting
 
-When an inside host cannot reach the Internet, work through the flowchart from the top. Each question rules out one layer, so you never have to guess which layer failed.
+When an inside host cannot reach the Internet, work through the flowchart from the top. Each question rules out one layer, so you never have to guess which layer failed. The point is to replace theories with checks.
 
 ```mermaid
 flowchart TD
@@ -319,7 +325,7 @@ flowchart TD
   D -- "reply arrives, not delivered" --> D3["conntrack drop (table full, timeouts), rp_filter, FORWARD rules"]
 ```
 
-Counters tell you what the gateway actually did. Run `conntrack -S` to see the insert_failed, drop and early_drop counters, and `dmesg | grep conntrack` for kernel messages. `ss -s` gives a summary of sockets. `iptables -t nat -L -v -n` shows packet counters on each rule, and `nft list ruleset` shows counters too. Run `tcpdump -ni any host X` on both interfaces to compare what goes in and what comes out.
+Counters tell you what the gateway actually did, which is often different from what the rules say it should do. Run `conntrack -S` to see the insert_failed, drop and early_drop counters, and `dmesg | grep conntrack` for kernel messages. `ss -s` gives a summary of sockets. `iptables -t nat -L -v -n` shows packet counters on each rule, and `nft list ruleset` shows counters too. Run `tcpdump -ni any host X` on both interfaces to compare what goes in and what comes out.
 
 For inbound DNAT, ask three questions. Does the reply leave through the same gateway? Is the server's default gateway the NAT box? Is a conflicting firewall sitting in the FORWARD chain? Also check `sysctl net.ipv4.conf.*.rp_filter`.
 
@@ -327,13 +333,13 @@ Work through the flowchart in order, because each check depends on the one above
 
 ## 7. Hands-on lab: DHCP server and NAT gateway with namespaces
 
-Start with the self-checking Python lab, which you can run on your own machine. It checks four things. It verifies the DHCP lease timers, where T1 is 50% for renewal and T2 is 87.5% for rebind. It parses a conntrack SNAT/PAT tuple, from `10.0.0.5:51000` to `203.0.113.9:40001`. It tests NAT gateway source-port exhaustion toward a single destination, and it checks the hairpin NAT loopback flow.
+A word on status first. The Python lab below has been run, while the interactive VM commands after it have not been run for this chapter, so confirm each result yourself. Start with the self-checking Python lab, which you can run on your own machine. It checks four things. It verifies the DHCP lease timers, where T1 is 50% for renewal and T2 is 87.5% for rebind. It parses a conntrack SNAT/PAT tuple, from `10.0.0.5:51000` to `203.0.113.9:40001`. It tests NAT gateway source-port exhaustion toward a single destination, and it checks the hairpin NAT loopback flow.
 
 ```bash
 python3 code/part02/dhcp_nat_pat_lab.py
 ```
 
-Next, on a disposable Linux VM with `root` access, work through the steps below. Every interactive VM command in them is `untested here`.
+Next, on a disposable Linux VM with `root` access, work through the steps below.
 
 1. Reuse the three-namespace topology (hA - r - hB) from chapter 2.5. Make `r` the gateway with an "outside" interface. That can be a veth to the host's bridge, or a dummy "Internet" namespace `inet` that holds 198.51.100.7.
 2. Run dnsmasq in `r` on the inside interface: `ip netns exec r dnsmasq --no-daemon --interface=rA --dhcp-range=10.1.0.50,10.1.0.60,12h --dhcp-option=option:router,10.1.0.1 --log-dhcp`. In `hA`, run `dhclient -v vA` without an address configured. Capture the DORA exchange with tcpdump and inspect the lease. Then kill the server and watch the renewal attempts at T1 and T2, using a 60 s lease for the experiment. Add a MAC reservation. Last, start a second, rogue dnsmasq and see which one wins.
@@ -347,7 +353,7 @@ Next, on a disposable Linux VM with `root` access, work through the steps below.
 
 ## 8. Common mistakes
 
-The first group of mistakes you will meet is about DHCP. Two DHCP servers on one segment, or a lab router left on, cause trouble. So do pools that overlap static addresses. Short leases for servers and reliance on one DHCP instance are mistakes too. A routed VLAN without a relay (`helper-address`), or a relay that points at the wrong server, leaves clients with no answer.
+The first group of mistakes you will meet is about DHCP. Two DHCP servers on one segment, or a lab router left on, cause trouble. So do pools that overlap static addresses. Short leases for servers and reliance on one DHCP instance are mistakes too. A routed VLAN without a relay (`helper-address`), or a relay that points at the wrong server, leaves clients with no answer. In each case the symptom is a machine that cannot get an address, and the cause is one step upstream.
 
 Gateway mistakes come next. A masquerade rule with the wrong interface or source does nothing useful. Forgetting `ip_forward`, or the FORWARD allow for DNAT traffic, breaks forwarding. Treating NAT as a firewall is a mistake, and so is leaving the FORWARD policy at accept.
 
@@ -357,7 +363,7 @@ Check each of these before you bring up a new gateway or subnet.
 
 ## 9. Interview angles
 
-These questions ask you to follow a lease or a packet through the network. The hints in brackets show where a good answer starts.
+These questions ask you to follow a lease or a packet through the network. The hints in brackets show where a good answer starts. Tell each answer as a short story with a beginning and an end.
 
 - "Walk through DHCP DORA; what if there is a relay?"
 - "A node PXE boots but hangs after getting an IP. What do you check?" (TFTP/HTTP boot server, filename option, firewall, UEFI/BIOS arch.)
@@ -372,7 +378,7 @@ These questions ask you to follow a lease or a packet through the network. The h
 
 1. Start with DHCPv4 lease timers (T1/T2), relays and Option 82. If you are new to DHCP, read the DORA exchange first. (a) Trace the four DHCPv4 DORA messages (UDP 68 -> 67). Explain why DISCOVER and REQUEST stay broadcast (255.255.255.255) even after the client receives an OFFER. (b) Use `compute_dhcp_lease_timers_sec()` in `code/part02/dhcp_nat_pat.py` to compute T1 (50%) and T2 (87.5%) for a 12-hour (43,200 s) lease. Then explain how a router DHCP relay (`ip helper-address`, `giaddr` and Option 82) lets one central DHCP server serve dozens of routed rack VLANs.
 2. Imagine you are provisioning a rack. Walk through a bare-metal GPU node's 4-stage PXE and iPXE network boot. Use DHCP Options 60, 93 (`arch=7`), 66 (`next-server`) and 67 (`filename` `ipxe.efi`) to show what each stage carries. Then explain what happens when a rogue DHCP server appears on the provisioning VLAN, and how switch DHCP snooping stops it.
-3. You should compare IPv6 SLAAC with stateful and stateless DHCPv6 (UDP 546/547, DUID), using the M and O flags as your guide. State where an IPv6 host always learns its default gateway. Then explain what it means when an IPv4 host configures itself with a `169.254.0.0/16` address (`169.254.x.x`).
+3. Compare IPv6 SLAAC with stateful and stateless DHCPv6 (UDP 546/547, DUID), using the M and O flags as your guide. State where an IPv6 host always learns its default gateway. Then explain what it means when an IPv4 host configures itself with a `169.254.0.0/16` address (`169.254.x.x`).
 4. Look at the NAT types, then read a conntrack entry that you may see on a gateway. (a) Contrast `SNAT --to-source`, `MASQUERADE` and `DNAT --to-destination`, and name the netfilter hook (PREROUTING or POSTROUTING) that runs each one. (b) Use `parse_conntrack_nat_entry()` to decode `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED]`.
 5. Work through hairpin NAT and cloud NAT port exhaustion. (a) Use `check_hairpin_nat_flow()` to explain why an inside client (`10.0.0.5`) that connects to a sibling server (`10.0.0.20`) through the NAT gateway's public IP (`203.0.113.9:8443`) fails unless a hairpin `MASQUERADE` rule or split DNS is configured. (b) Use `evaluate_nat_port_exhaustion()` to decide whether one public NAT IP (`64,000` ports) can sustain `80,000` simultaneous connections from a 500-node GPU cluster to a single container registry IP. Then give four production fixes.
 6. Explain how Docker (`docker0`) and Kubernetes (kube-proxy `KUBE-SERVICES` DNAT and egress `MASQUERADE`) use Linux netfilter and conntrack. Then explain why NAT is never used inside InfiniBand or RoCEv2 GPU back-end fabrics.
@@ -508,3 +514,4 @@ Start on the node. Check the IP, the default route and ARP to the gateway with `
 - **Run here:** `python3 code/part02/dhcp_nat_pat_lab.py` (13 passed, 0 failed).
 - **Explicitly labelled inferences:** The `dnsmasq` and ISC Kea PXE provisioning snippets (`ipxe.efi`, `client-arch 7`), `conntrack` tuple walkthrough, Hairpin NAT diagram, and Cloud NAT / RoCEv2 non-NAT design rules synthesize RFCs 1918, 2131, 2132, 3022, 3315/8415 (DHCPv6), 6146 (NAT64), and 6598 (CGNAT) and the `dnsmasq`, Kea, `nftables`, and `conntrack-tools` documentation (cross-referenced with Chapters 2.3, 2.4, 2.5, 2.7, 2.8, 2.23, and 2.32, plus original study items 21, 22, 23, 24, and 25).
 - **Not verified on live hardware:** All interactive VM commands (`dnsmasq`, `dhclient`, `networkctl`, `nmcli`, `iptables`, `nft`, `conntrack`, `tcpdump`) are marked (untested here) and must be executed on a disposable Linux VM.
+

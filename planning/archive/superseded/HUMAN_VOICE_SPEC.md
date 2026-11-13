@@ -30,3 +30,6 @@ The owner approved the style of the Part 1 (30 chapters) and Part 3 (17 chapters
 ## Order of work (suggestion)
 Part 2 (networking), Part 4 (automation), Part 5 (Kubernetes), Part 6 (Slurm), Part 7 and 8 (BMC, BCM), Part 9 (systems), Part 10 (CUDA), Part 11 (GPU Kubernetes, except 11.31 to 11.34), Part 12 to 15, Part 16 to 19, then Part 20 (the Nebius interview volume) and Part 0.
 Part 20 note: its first-person lines record what was verified. Keep the honest uncertainty in a natural voice, move test-log language to the Verification log.
+
+## Owner correction 2026-11-12: length is not a gate
+Adding words is how the Kimi/DeepSeek rewrite made chapters understandable and warm. Never trim to hit a count, and a rewrite that leaves the word count flat has failed. Expand freely: more situations, more "why", more plain-words explanation, more walkthroughs of what happens step by step. The reader must be taught as if meeting each idea for the first time: do not announce what they will learn, no objectives lists, no "in this section we cover". Let the situation raise the question and let the explanation answer it. Only facts, numbers, commands and code stay fixed.

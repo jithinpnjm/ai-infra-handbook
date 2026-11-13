@@ -22,40 +22,27 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-What would an attacker want from a GPU cluster? The answer is more than one thing, and that is why these clusters draw attention. Compute is valuable on its own, because it can be used for cryptomining or resold. Data is valuable too, including training sets, model weights and customer prompts. Privileged access paths such as BMCs, schedulers, registries and CI let an attacker reach everything else.
+What would an attacker want from a GPU cluster? The answer is more than one thing, and that is why these clusters draw attention. Compute is valuable on its own, because it can be used for cryptomining or resold. Data is valuable too, including training sets, model weights and customer prompts. Privileged access paths such as BMCs, schedulers, registries and CI let an attacker reach everything else. A BMC is the small management computer inside each server, and anyone who controls it controls the machine underneath, even when the operating system is switched off.
 
-The networks are unusual as well. Flat, high-speed RDMA fabrics bypass the host kernel. Management planes use out-of-band controllers that run their own firmware. Multi-tenant environments let tenants share switches. Fast-moving software stacks, such as drivers, container runtimes and serving frameworks, bring a steady stream of CVEs.
+The networks are unusual as well. Flat, high-speed RDMA fabrics bypass the host kernel, so the usual host-level checks never see that traffic. Management planes use out-of-band controllers that run their own firmware. Multi-tenant environments let tenants share switches. Fast-moving software stacks, such as drivers, container runtimes and serving frameworks, bring a steady stream of CVEs, which are the public numbers given to known security flaws.
 
-Network security here is not only firewalls. It is also segmentation, identity, key management, least privilege and monitoring. The hard part is applying all of them without strangling performance.
+Network security here is not only firewalls. It is also segmentation, identity, key management, least privilege and monitoring. The hard part is applying all of them without strangling performance. A control that halves the speed of an all-reduce will be switched off by someone in a hurry, and then it protects nothing.
 
-This chapter works through the problem in three steps. First comes the security model: definitions, defense in depth, access control, data protection, availability and the OODA loop. Next comes the practical network toolkit: packet filters, stateful firewalls, SSH hardening, scanning, DDoS and control-plane protections, and L2 security. Last, the chapter looks at what changes in AI clusters: BMC and management isolation, RDMA and InfiniBand partitioning, tenant isolation, secrets and zero trust. Linux firewall mechanics, nftables and conntrack, are in chapter 2.23. TLS and PKI are in chapter 2.10, and kernel-level hardening is in chapter 1.21.
+The path through this chapter follows the order in which you would think about a real cluster. First comes the vocabulary and the habit of asking who might attack and why. Then come the defensive layers, the tools you actually type, such as SSH and scanners, the protections for routers and switches, and the zero-trust ideas that replace the old trusted-inside model. The last part looks at what changes in AI clusters: BMC and management isolation, RDMA and InfiniBand partitioning, tenant isolation, secrets, and the habit of running security as a loop and not a one-time project. Linux firewall mechanics, nftables and conntrack, are in chapter 2.23. TLS and PKI are in chapter 2.10, and kernel-level hardening is in chapter 1.21.
 
 Decide early which of these assets you are protecting, because that choice changes the controls you need.
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with a few earlier topics: TCP/IP (2.4 to 2.7), TLS and PKI (2.10), NAT and DHCP (2.9), and Linux user and permission basics.
+You should be comfortable with a few earlier topics: TCP/IP (2.4 to 2.7), TLS and PKI (2.10), NAT and DHCP (2.9), and Linux user and permission basics. Concretely, you should know how a TCP connection starts, what a certificate proves, how NAT hides an internal address, and why a Linux user without root cannot read another user's files.
 
-When you finish this chapter, you should be able to do the following.
-
-- Define threat actor, exploit, attack, vulnerability, attack surface, asset and risk, and build a simple threat model for a network or a cluster.
-- Apply defense in depth with layered filters, route validation, telemetry, stateful inspection, exfiltration monitoring and per-service access control.
-- Explain AAA (authentication, authorisation, accounting), RADIUS and TACACS+, 802.1X and MFA, and say where access control is enforced.
-- Explain data protection, meaning encryption in transit and at rest and key management, and the limits of biometrics and data-exhaust privacy.
-- Explain DoS and DDoS types and their mitigations: rate limiting, SYN cookies, anycast and scrubbing, RTBH, BCP38/uRPF and capacity.
-- Harden SSH, including keys, certificates, `sshd_config`, bastions with `ProxyJump`, agent forwarding, tunnels and fail2ban.
-- Explain host key verification and MITM warnings in SSH.
-- Use `nmap` and related tools responsibly to audit exposure, interpret the results, and reduce the attack surface by running few services and firewalling by default.
-- Secure the control plane and L2: routing protocol authentication, CoPP, GTSM, DHCP snooping, DAI, port security and 802.1X.
-- Apply zero trust and segmentation with VLAN, VRF, VXLAN, Kubernetes NetworkPolicy, mTLS and microsegmentation.
-- Secure AI-specific surfaces such as BMC/Redfish, IB partition keys, RoCE tenancy, registries and model artifacts.
-- Use the OODA loop for detection and response, and know basic incident handling.
-
-Check these prerequisites first, because the SSH and threat-model sections assume them.
+Check these prerequisites first, because the SSH and threat-model sections assume them. Every security term that follows is defined when it first appears, always next to an example of how it goes wrong.
 
 ## 1. Vocabulary and threat modelling
 
-Security conversations go wrong fast when people use words loosely. Before you can protect anything, you need to know who might attack, where the weak points are, and what is worth protecting. The table defines the terms this chapter uses.
+Picture a locked office with a cleaner who holds a key, a visitor with a badge, and a window left slightly open. Each is a different kind of risk, and each needs a different response. Security work becomes manageable when everyone uses the same words for these risks. This section gives those words, and it asks you to draw the building before you decide where the locks go.
+
+Security conversations go wrong fast when people use words loosely. One engineer says "vulnerability" and means a break-in, and another means a missing patch. Before you can protect anything, you need to know who might attack, where the weak points are, and what is worth protecting. The table defines the terms this chapter uses.
 
 | Term | Meaning |
 |---|---|
@@ -67,19 +54,19 @@ Security conversations go wrong fast when people use words loosely. Before you c
 | **Asset** | What matters: data, models, credentials, compute, availability |
 | **Risk** | Likelihood × impact of a negative outcome (breach, downtime, reputational damage) |
 
-The terms link together. A vulnerability is the weakness, an exploit is the method that uses it, and an attack is the actual use of that exploit by an actor. Risk combines how likely a bad outcome is with how much it would hurt.
+The terms link together. A vulnerability is the weakness, an exploit is the method that uses it, and an attack is the actual use of that exploit by an actor. Risk combines how likely a bad outcome is with how much it would hurt. A door with a weak lock is a vulnerability, a lock-pick is the exploit, a burglar using it is the attack, and the risk depends on what is behind the door and how likely a burglar is to try.
 
 Three problem areas come up from a network point of view. Area 1 is access: how legitimate users and processes reach the data they need while others cannot. Area 2 is confidentiality and integrity: whether data in transit and at rest stays private and unmodified. Area 3 is availability: whether the network and its services stay usable under denial-of-service attack.
 
-Threat modelling turns those areas into questions you can answer for one system. What are you protecting? Who might attack, and why? How could they get in, and where are the trust boundaries? What would the impact be, and which controls reduce the likelihood or the impact? A simple data-flow diagram helps. The STRIDE categories (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) work as a checklist. Revisit the model whenever the architecture changes.
+Threat modelling turns those areas into questions you can answer for one system. What are you protecting? Who might attack, and why? How could they get in, and where are the trust boundaries? What would the impact be, and which controls reduce the likelihood or the impact? A simple data-flow diagram helps. You draw where data enters, where it is stored and where it leaves, and mark every line that crosses from a more trusted zone to a less trusted one. The STRIDE categories (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) work as a checklist at each of those lines. Revisit the model whenever the architecture changes.
 
-**A caution on biometrics and "secrets you cannot change".** Fingerprints are convenient, but they are not secret, because you leave them on almost every surface you touch. Once a biometric is digitised and stored online, it becomes a permanent credential. After a breach, you cannot rotate it. Use biometrics as a convenience factor on a device, where the check stays local and hardware-protected. Do not rely on them as your only remote identity. Treat data exhaust with the same care. That means metadata such as who talks to whom, when, and how much. It can reveal behaviour even when the payloads are encrypted (chapter 2.10).
+**A caution on biometrics and "secrets you cannot change".** Fingerprints are convenient, but they are not secret, because you leave them on almost every surface you touch. Once a biometric is digitised and stored online, it becomes a permanent credential, and after a breach you cannot rotate it. You can change a leaked password in a minute, but you cannot change your finger. Use biometrics as a convenience factor on a device, where the check stays local and hardware-protected. Do not rely on them as your only remote identity. Treat data exhaust with the same care. That means metadata such as who talks to whom, when, and how much, and it can reveal behaviour even when the payloads are encrypted (chapter 2.10).
 
 Decide which assets matter most before you draw the data-flow diagram, because the threat model depends on that answer.
 
 ## 2. Defense in depth
 
-Picture a network protected by one firewall and nothing else. If that single control fails, nothing else stands in the way. Defense in depth avoids that trap by stacking overlapping controls. No single control stops a determined attacker, but layered controls give you several chances to detect and contain an intrusion, and they make every attack more costly.
+Picture a network protected by one firewall and nothing else. If that single control fails, nothing else stands in the way. A medieval castle is a better model: a moat, a wall, a gate, an inner keep, and guards who watch all of them. Defense in depth avoids the single-firewall trap by stacking overlapping controls. No single control stops a determined attacker, but layered controls give you several chances to detect and contain an intrusion, and they make every attack more costly.
 
 ```mermaid
 flowchart TB
@@ -93,27 +80,27 @@ flowchart TB
 
 Each layer does a different job. At the edge, packet filters and rate limits control what arrives, and route validation guards against hijacked address space. Behind the edge, a stateful packet filter lets in only responses to connections that started inside. Each service adds access control of its own. Telemetry watches all of these layers together, looking for top talkers, anomalies and large, unusual transfers out of sensitive databases.
 
-The time an attacker needs to cross each layer is time for your defenders to notice. More layers also mean more places to apply specific controls. Think of the whole network as one defensive system. Routers, switches, load balancers, hosts and applications each contribute controls.
+The time an attacker needs to cross each layer is time for your defenders to notice. More layers also mean more places to apply specific controls. Think of the whole network as one defensive system, in which routers, switches, load balancers, hosts and applications each contribute controls.
 
 When you review a design, count the layers an attacker must cross, not just the perimeter.
 
 ## 3. Access control and AAA
 
-Who gets in, and what can they do once they are in? Access control answers both questions. It checks that users and processes are who they claim to be (authentication). It checks that they may do what they request (authorisation). It records what they did (accounting). Together, these three are called AAA.
+Who gets in, and what can they do once they are in? Access control answers both questions. It checks that users and processes are who they claim to be (authentication). It checks that they may do what they request (authorisation). It records what they did (accounting). Together, these three are called AAA. A bank branch is a good picture: the clerk checks your identity, then checks that your account allows the withdrawal, and then the transaction goes into the ledger.
 
 Access is checked at several points, and you should combine them. Before a device joins the network, port-based access control with 802.1X, Wi-Fi WPA-Enterprise or VPN login can check it. After it connects, network ACLs and segmentation limit where it can go. Before each service, application authentication or mTLS checks the caller. Before the most sensitive resources, privileged access management adds the strongest check. Use stronger factors for more sensitive resources.
 
 The protocols divide this work. RADIUS (UDP 1812 and 1813) handles network access. It uses a shared secret and encrypts only the password field, so protect it with IPsec or RadSec. TACACS+ (TCP 49) handles device administration. It encrypts the whole packet body and supports per-command authorisation and accounting. LDAP, Active Directory and Kerberos back directory-based identity. SAML, OIDC and OAuth2 handle web and API identity, and SPIFFE and SPIRE give workloads their own identity.
 
-Use MFA for administrative access and VPNs, because it combines something you know, something you have and something you are. Hardware keys (FIDO2) resist phishing well. Pair MFA with least privilege and just-in-time access. Keep admin accounts separate, and avoid shared accounts.
+Use MFA for administrative access and VPNs, because it combines something you know, something you have and something you are. Hardware keys (FIDO2) resist phishing well. Pair MFA with least privilege and just-in-time access. Least privilege means giving each account only what its job needs, and just-in-time access means granting the rights only for the hours the task takes. Keep admin accounts separate, and avoid shared accounts.
 
-Logging closes the loop. Send central logs through syslog or journald, account for commands on network devices, store logs in immutable storage, and sync time with NTP.
+Logging closes the loop. Send central logs through syslog or journald, account for commands on network devices, store logs in immutable storage, and sync time with NTP. Without a shared clock, you cannot line up events from different machines into one story.
 
 Start with administrative access and VPNs when you add MFA, because the chapter names them first for that control.
 
 ## 4. Firewalls and filtering (overview)
 
-Not every firewall works the same way. The table shows the main types, and each one fits a different place in the network.
+Not every firewall works the same way. A firewall is a checkpoint that decides which packets may pass, and some checkpoints only read the address label while others open the parcel. The table shows the main types, and each one fits a different place in the network.
 
 | Type | What it does | Notes |
 |---|---|---|
@@ -123,25 +110,25 @@ Not every firewall works the same way. The table shows the main types, and each 
 | **Host-based firewall** | Policy on each server (nftables, firewalld, ufw), cloud security groups | Protects against lateral movement; enforce by configuration management |
 | **Microsegmentation / NetworkPolicy** | Per-workload policies enforced in the data plane (Kubernetes NetworkPolicy via Calico/Cilium, VXLAN GBP, NSX) | Identity-based rather than IP-based rules |
 
-Stateless filters are fast, because they run in switch hardware, but they have no memory of connections. Stateful firewalls track each connection and let return traffic back in automatically, which makes them the default for hosts and perimeters. NGFWs, proxies and WAFs look deeper into the application, at the cost of CPU and TLS inspection trade-offs. Host-based firewalls and microsegmentation protect against lateral movement.
+Stateless filters are fast, because they run in switch hardware, but they have no memory of connections. Stateful firewalls track each connection and let return traffic back in automatically, which makes them the default for hosts and perimeters. NGFWs, proxies and WAFs look deeper into the application, at the cost of CPU and TLS inspection trade-offs. Host-based firewalls and microsegmentation protect against lateral movement, which is the way an intruder who has taken one machine moves sideways to the next.
 
-Your default stance should be deny. Block all inbound traffic by default, then explicitly allow the services you need. Restrict outbound traffic too, because egress filtering limits exfiltration and command-and-control. Log the drops that matter. Split the network into zones for users, servers, management, storage and the fabric. Place management interfaces such as SSH, BMCs and switch consoles only on a dedicated management network. Review rules regularly, remove unused ones, and test from outside and inside. Chapter 2.23 covers the detailed mechanics and rule examples.
+Your default stance should be deny. Block all inbound traffic by default, then explicitly allow the services you need. Restrict outbound traffic too, because egress filtering limits exfiltration and command-and-control. Exfiltration is stolen data leaving the building, and command-and-control is the channel an attacker uses to give orders to a compromised machine. Log the drops that matter. Split the network into zones for users, servers, management, storage and the fabric. Place management interfaces such as SSH, BMCs and switch consoles only on a dedicated management network. Review rules regularly, remove unused ones, and test from outside and inside. Chapter 2.23 covers the detailed mechanics and rule examples.
 
 Before you open any port, decide which zone and which management network it belongs to.
 
 ## 5. Data protection: encryption and keys
 
-Access controls and systems fail, and when they do, encryption is the last line of defense. Use encryption in transit, meaning TLS and mTLS, SSH, IPsec, WireGuard and MACsec on links. Use encryption at rest for disks and volumes, object stores and databases. Keys need the same care. Generate them on the device or in an HSM or KMS, rotate them, separate duties, restrict access, never embed them in images or repositories, and audit their use.
+Access controls and systems fail, and when they do, encryption is the last line of defense. If a stolen disk or a copied network capture shows only noise, the attacker has gained little. Use encryption in transit, meaning TLS and mTLS, SSH, IPsec, WireGuard and MACsec on links. Use encryption at rest for disks and volumes, object stores and databases. Keys need the same care. Generate them on the device or in an HSM or KMS, rotate them, separate duties, restrict access, never embed them in images or repositories, and audit their use. An HSM is a tamper-resistant hardware box that holds keys and performs cryptographic operations without ever letting the key out, and a KMS is the service that manages such keys.
 
-Model weights and datasets deserve the care you give source code and credentials. Sign your artifacts, control who can reach the registry, keep versions immutable, and record where each artifact came from. That last part is supply-chain security. It uses a software bill of materials and signature checks on containers and packages.
+Model weights and datasets deserve the care you give source code and credentials. Sign your artifacts, control who can reach the registry, keep versions immutable, and record where each artifact came from. That last part is supply-chain security, and it uses a software bill of materials and signature checks on containers and packages.
 
-AI traffic is fast, so encrypting it has a cost. For RDMA fabrics you have three options: MACsec on links (line rate in hardware on some switches and NICs), IPsec offload on NICs and DPUs, or logical isolation combined with physical security. Do not assume TLS inside the fabric is feasible for GPUDirect traffic. Make that threat-model decision on purpose instead. Shared tenants need stronger isolation and encryption. A single tenant in a locked cage can rely on segmentation and physical controls.
+AI traffic is fast, so encrypting it has a cost. For RDMA fabrics you have three options: MACsec on links (line rate in hardware on some switches and NICs), IPsec offload on NICs and DPUs, or logical isolation combined with physical security. Do not assume TLS inside the fabric is feasible for GPUDirect traffic. Make that threat-model decision on purpose instead. Shared tenants need stronger isolation and encryption, while a single tenant in a locked cage can rely on segmentation and physical controls.
 
 Make the encryption decision for each fabric explicitly, based on whether tenants share it.
 
 ## 6. Availability: denial of service
 
-Picture a service that is healthy in every way except one: nobody can reach it. That is what a denial-of-service (DoS) attack does. A distributed attack (DDoS) does the same thing with many sources at once. The table lists four classes, and each one needs a different defense.
+Picture a service that is healthy in every way except one: nobody can reach it. That is what a denial-of-service (DoS) attack does. It does not steal anything. It simply fills the shop with so many fake customers that real ones cannot get in. A distributed attack (DDoS) does the same thing with many sources at once. The table lists four classes, and each one needs a different defense.
 
 | Type | Mechanism | Mitigation |
 |---|---|---|
@@ -152,23 +139,25 @@ Picture a service that is healthy in every way except one: nobody can reach it. 
 
 Volumetric attacks saturate bandwidth, so you absorb them upstream with scrubbing or anycast, and you stop spoofed sources with BCP38. Protocol attacks exhaust connection state, which SYN cookies and connection limits address. Application-layer attacks go after expensive requests, so rate limiting, a WAF, caching and request cost limits help. Control-plane floods hit the router CPU, so CoPP and routing authentication protect it.
 
-The main techniques are rate limiting and policing, SYN cookies with sensible backlogs (chapter 2.6), and anycast to spread load across sites. Blackhole routing (RTBH) drops traffic bound for an attacked destination. Selective BGP traffic diversion uses the `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links. BCP 38 and uRPF drop packets with spoofed sources, which prevents reflection. Traffic scrubbing services, overprovisioning and autoscaling with budget caps add capacity. Separating critical services, such as putting management on its own network, limits the damage. Finally, rehearse your runbooks before you need them.
+The main techniques are rate limiting and policing, SYN cookies with sensible backlogs (chapter 2.6), and anycast to spread load across sites. Blackhole routing (RTBH) drops traffic bound for an attacked destination. It sacrifices the victim address to save the rest of the network. Selective BGP traffic diversion uses the `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links. BCP 38 and uRPF drop packets with spoofed sources, which prevents reflection. Traffic scrubbing services, overprovisioning and autoscaling with budget caps add capacity. Separating critical services, such as putting management on its own network, limits the damage. Finally, rehearse your runbooks before you need them.
 
-Inference APIs are attractive targets, because each request can consume GPU seconds. That makes them a resource-exhaustion target. Use authentication, per-key quotas, token-based rate limits and admission control (chapter 2.20).
+Inference APIs are attractive targets, because each request can consume GPU seconds. That makes them a resource-exhaustion target. One expensive prompt costs far more than a web page, so a modest stream of them can starve a cluster. Use authentication, per-key quotas, token-based rate limits and admission control (chapter 2.20).
 
 Set your rate limits and quotas before traffic spikes, not during an attack.
 
 ## 7. SSH in depth (and hardening)
 
-SSH is the tool you reach for on a Linux fleet. It gives you an encrypted shell, command execution, file transfer with scp and sftp, port forwarding and tunnelling (including X11), and key-based authentication. It is the de facto remote-administration protocol, and it replaced telnet and rlogin for good reason. Infrastructure engineers cannot skip understanding it.
+Picture a new engineer who logs in to a production server for the first time. The terminal asks whether to trust a key it has never seen, and the engineer types yes without reading the question. Later, a colleague's laptop shows a warning that the server's key has changed. Both moments are about trust, and SSH is built around making trust explicit. The paragraphs below explain the keys, the warnings, and the settings that make logins safer.
+
+SSH is the tool you reach for on a Linux fleet. It gives you an encrypted shell, command execution, file transfer with scp and sftp, port forwarding and tunnelling (including X11), and key-based authentication. It is the de facto remote-administration protocol, and it replaced telnet and rlogin for good reason. Infrastructure engineers cannot skip understanding it, and almost every cluster compromise story has an SSH key somewhere in it.
 
 ### Public-key cryptography in a paragraph
 
-Symmetric ciphers need both sides to share one secret key. If someone steals that key, everything it protects falls with it. Public-key schemes solve this with a key pair. You can share the public key freely. Only the holder of the private key can decrypt what was encrypted to the public key, or produce a signature that the public key verifies. SSH uses public keys in both directions. Host keys let the client verify the server, and user keys let the server verify the client. Both sides then agree on a symmetric session key for the bulk of the traffic. The private key must never be exposed.
+Symmetric ciphers need both sides to share one secret key. If someone steals that key, everything it protects falls with it, and the two sides also had to find a safe way to share it in the first place. Public-key schemes solve this with a key pair. You can share the public key freely. It is like an open padlock that anyone can snap shut, while only you hold the key that opens it. Only the holder of the private key can decrypt what was encrypted to the public key, or produce a signature that the public key verifies. SSH uses public keys in both directions. Host keys let the client verify the server, and user keys let the server verify the client. Both sides then agree on a symmetric session key for the bulk of the traffic. The private key must never be exposed.
 
 ### Host keys and trust
 
-Every server has host key pairs. The private halves live at `/etc/ssh/ssh_host_ed25519_key`, `_rsa_key` and `_ecdsa_key`, and the `.pub` files hold the public parts. The install process creates them with `ssh-keygen -A`. On your first connection, the client receives the server's public key and stores it in `~/.ssh/known_hosts`. This is called trust on first use. On later connections, a mismatch triggers the "REMOTE HOST IDENTIFICATION HAS CHANGED" warning. That warning can be harmless, for example after a reinstall, a replaced cloud instance or regenerated keys. It can also be a man-in-the-middle attack, so the warning alone does not tell you which one you face.
+Every server has host key pairs. The private halves live at `/etc/ssh/ssh_host_ed25519_key`, `_rsa_key` and `_ecdsa_key`, and the `.pub` files hold the public parts. The install process creates them with `ssh-keygen -A`. On your first connection, the client receives the public key of the server and stores it in `~/.ssh/known_hosts`. This is called trust on first use. On later connections, a mismatch triggers the "REMOTE HOST IDENTIFICATION HAS CHANGED" warning. That warning can be harmless, for example after a reinstall, a replaced cloud instance or regenerated keys. It can also be a man-in-the-middle attack, so the warning alone does not tell you which one you face. A man-in-the-middle is someone who sits between you and the real server and pretends to be each to the other.
 
 Verify the new fingerprint through a second channel before you trust it. Use `ssh-keygen -lf`, the cloud serial console output, or a configuration-managed `known_hosts` file. Then remove the stale line with `ssh-keygen -R host`. When you replace a machine, copy the old host keys so that users see no mismatch. In clouds, publish host keys through metadata, or use SSH host certificates, covered below.
 
@@ -176,11 +165,11 @@ Prefer ed25519 keys. Use ECDSA or RSA of at least 3072 bits only where you must.
 
 ### Where SSH falls short
 
-SSH has one weak spot, and it comes at the start. Before you connect, your client needs the server's public host key, and you do not always receive that key through a safe channel. You can compare fingerprints by hand so that a spoofed server does not fool you, or you can use SSH host certificates, which the later sections describe.
+SSH has one weak spot, and it comes at the start. Before you connect, your client needs the public host key of the server, and you do not always receive that key through a safe channel. You can compare fingerprints by hand so that a spoofed server does not fool you, or you can use SSH host certificates, which the later sections describe.
 
 ### Client
 
-The block below shows the everyday client commands. The comments show the flags that change each command's behaviour.
+The block below shows the everyday client commands. The comments show the flags that change the behaviour of each command.
 
 ```bash
 ssh user@host                          # login ; use -p for another port ; -i key ; -J jump
@@ -215,7 +204,7 @@ This config sends every `gpu-*` host through the bastion. It also reuses one con
 
 ### Server (`sshd_config`) hardening
 
-Remember that `sshd_config` configures the server, while `ssh_config` configures the client. Verify each directive with `man sshd_config`. Apply them through `/etc/ssh/sshd_config.d/*.conf`, and test with `sshd -t` while a second session stays open. The key directives look like this:
+Remember that `sshd_config` configures the server, while `ssh_config` configures the client. Verify each directive with `man sshd_config`. Apply them through `/etc/ssh/sshd_config.d/*.conf`, and test with `sshd -t` while a second session stays open. That second session is your lifeline: if the new configuration locks you out, the old session lets you fix it. The key directives look like this:
 
 ```text
 Port 22
@@ -249,7 +238,7 @@ The sshd daemon is a prime target. Keep OpenSSH updated, limit the versions and 
 
 ### fail2ban
 
-On an Internet-facing host, SSH brute-force attempts never stop. fail2ban watches the logs, either journald or `/var/log/auth.log`. After a set number of failures from one address within a window, it adds a firewall rule that bans that address for a period, then removes the rule. You configure jails in `/etc/fail2ban/jail.d/*.local`, with `[sshd] enabled = true`, `maxretry`, `findtime` and `bantime`. Prefer nftables actions. fail2ban cuts log noise and CPU load, but it does not replace keys-only logins or network restriction. It only slows a brute-force attack, and a shared NAT address can lock out legitimate users. Check its state with `fail2ban-client status sshd`.
+On an Internet-facing host, SSH brute-force attempts never stop. Within minutes of a server getting a public address, robots start guessing passwords. fail2ban watches the logs, either journald or `/var/log/auth.log`. After a set number of failures from one address within a window, it adds a firewall rule that bans that address for a period, then removes the rule. You configure jails in `/etc/fail2ban/jail.d/*.local`, with `[sshd] enabled = true`, `maxretry`, `findtime` and `bantime`. Prefer nftables actions. fail2ban cuts log noise and CPU load, but it does not replace keys-only logins or network restriction. It only slows a brute-force attack, and a shared NAT address can lock out legitimate users. Check its state with `fail2ban-client status sshd`.
 
 ### Legacy services
 
@@ -259,7 +248,7 @@ Replace cleartext services with SSH, SFTP or rsync wherever you can.
 
 ## 8. Scanning and auditing exposure
 
-Before an attacker finds an open port, you should find it yourself. `nmap` discovers hosts and ports, and it fingerprints the services behind them.
+Before an attacker finds an open port, you should find it yourself. An attacker's first move is nearly always a scan, and you can run the same scan first. `nmap` discovers hosts and ports, and it fingerprints the services behind them.
 
 ```bash
 nmap -sn 10.0.0.0/24                  # host discovery only (ping/ARP sweep)
@@ -271,7 +260,7 @@ nmap --script ssl-enum-ciphers -p 443 host     # TLS protocol/cipher audit
 ss -tulpn                             # compare with what the host itself says it listens on
 ```
 
-Run scans from at least two vantage points, the host itself and another network, ideally one outside your perimeter. That shows what the firewall really blocks. Scan only networks you own or have written permission to test. Scans get logged, they can disrupt fragile devices, and they may break policy or the law.
+Run scans from at least two vantage points, the host itself and another network, ideally one outside your perimeter. That shows what the firewall really blocks. What a server believes about its own ports and what the outside world sees can be very different, and the gap is exactly where surprises hide. Scan only networks you own or have written permission to test. Scans get logged, they can disrupt fragile devices, and they may break policy or the law.
 
 Add vulnerability scanners such as OpenVAS, Nessus and Trivy for images. Add configuration baselines such as CIS benchmarks and Lynis, and keep a continuous asset inventory. The `rpcbind` service on port 111, along with NFS and NIS, is a common unwanted exposure, so disable it if you do not use it. Typical findings are forgotten dev servers, default credentials and management ports exposed beyond need. Watch for BMC on 623 and 443, Redis on 6379, the Docker API on 2375, and kubelet on 10250. Also watch etcd on 2379, Jupyter on 8888, TensorBoard on 6006, Triton on 8000-8002, the Ray dashboard on 8265, and MLflow on 5000.
 
@@ -281,7 +270,7 @@ Scan from outside, compare the result with `ss`, and close every port you cannot
 
 Most intrusions into a GPU cluster start with something small and ordinary. A forgotten dashboard, a stolen cloud key or an unpatched service gives the attacker a foothold. The rules below shrink that exposure, and the table shows the paths attackers use in practice.
 
-Run as few services as possible. Block everything you do not need with a firewall, both on the host and at the perimeter. Track and patch every service you expose, and subscribe to security advisories. Use long-term support releases on servers, because security teams concentrate their work on stable, supported releases. Give accounts only to people who need them, because local access makes privilege escalation far easier than a remote attack. Verify signatures and hashes on every download, and install software only from sources you trust.
+Run as few services as possible. Every running service is a door, and a door nobody uses is a door nobody watches. Block everything you do not need with a firewall, both on the host and at the perimeter. Track and patch every service you expose, and subscribe to security advisories. Use long-term support releases on servers, because security teams concentrate their work on stable, supported releases. Give accounts only to people who need them, because local access makes privilege escalation far easier than a remote attack. Verify signatures and hashes on every download, and install software only from sources you trust.
 
 Attackers pursue three main outcomes. Full compromise means gaining root, through a service exploit or through a weak account combined with a privilege-escalation bug. Denial of service takes the service away, as section 6 describes. Malware is the third outcome, and on GPU clusters it is mostly cryptominers and botnet agents. ASLR, stack protections, least privilege, SELinux or AppArmor, and containers with seccomp make compromise harder.
 
@@ -294,17 +283,17 @@ Attackers pursue three main outcomes. Full compromise means gaining root, throug
 | Shared RDMA fabric without partitions | Reading or disturbing another tenant's traffic | P_Key or VRF isolation, secured Subnet Manager |
 | Cleartext passwords and reused credentials | A valid login that looks normal | MFA, keys instead of passwords, unique secrets |
 
-For advisories, read the CISA and national CERT advisories, the SANS newsletters and vendor bulletins. For GPU stacks, that means the NVIDIA Security Bulletins for drivers, DCGM, Triton and the Container Toolkit. Also follow your distribution's security tracker, the NVD and CVE feeds, and MITRE ATT&CK.
+For advisories, read the CISA and national CERT advisories, the SANS newsletters and vendor bulletins. For GPU stacks, that means the NVIDIA Security Bulletins for drivers, DCGM, Triton and the Container Toolkit. Also follow the security tracker of your distribution, the NVD and CVE feeds, and MITRE ATT&CK.
 
 **Track and patch every service you expose, and close every port you cannot justify.**
 
 ## 10. Securing routing and the control plane
 
-Strong data-plane security does not help if someone can hijack the control plane. Routing protocols decide where traffic goes, so they need protection of their own. Start by authenticating them. OSPF and IS-IS use HMAC-SHA, and BGP uses TCP-AO or MD5. For eBGP, use GTSM with TTL 255. Restrict BGP and OSPF to specific interfaces and peers, and make `passive-interface` the default.
+Strong data-plane security does not help if someone can hijack the control plane. Routing protocols decide where traffic goes, so they need protection of their own. If a stranger can whisper a better route into your router, your carefully filtered traffic will happily flow through the stranger's machine. Start by authenticating them. OSPF and IS-IS use HMAC-SHA, and BGP uses TCP-AO or MD5. For eBGP, use GTSM with TTL 255. GTSM is a trick that accepts a BGP packet only if its TTL is still at the maximum, which proves the sender is directly attached, because every router in between would have lowered it. Restrict BGP and OSPF to specific interfaces and peers, and make `passive-interface` the default.
 
 Filter the routes that come in. On every peer, apply prefix lists and max-prefix limits, and use RPKI origin validation. Reject bogons, default routes from the wrong peer and overly specific prefixes. Make sure you never carry transit traffic by accident.
 
-Control-plane policing (CoPP) and hardware rate limits protect the CPU from traffic punted to it, such as ARP, ICMP, routing, SSH, SNMP and NTP. Restrict management protocols with ACLs. Disable the services you do not use on network devices. That includes HTTP management, SNMPv1 and SNMPv2c, CDP and LLDP on untrusted ports, IP source routing and redirects.
+Control-plane policing (CoPP) and hardware rate limits protect the CPU from traffic punted to it, such as ARP, ICMP, routing, SSH, SNMP and NTP. Punted traffic is traffic that the forwarding hardware hands up to the slow, general-purpose processor because it is addressed to the router itself. Restrict management protocols with ACLs. Disable the services you do not use on network devices. That includes HTTP management, SNMPv1 and SNMPv2c, CDP and LLDP on untrusted ports, IP source routing and redirects.
 
 Stop spoofing at the edge. Apply BCP 38 ingress filtering, and use uRPF in strict mode at edges and loose mode on transit. Add DHCP snooping and IP source guard to the same design.
 
@@ -316,7 +305,7 @@ Decide which of these controls you will enforce before you add a new BGP peer.
 
 ## 11. Layer-2 security
 
-Each attack below targets the local network itself. The table pairs every attack with its control.
+Some attacks target the local network itself, below anything a perimeter firewall sees. A device plugged into the wrong port, or a laptop that starts handing out addresses, can disturb a whole VLAN. The table pairs every attack with its control.
 
 | Attack | Control |
 |---|---|
@@ -334,7 +323,7 @@ Check each row against the switches on your own network first.
 
 ## 12. Zero trust and segmentation
 
-Zero trust replaces the old rule that anything inside the perimeter is trusted. Instead, you authenticate and authorise every request based on identity, device posture and context. You assume a breach has already happened. You apply least privilege, encrypt everywhere, and verify continuously while you log. Four building blocks make that practical.
+Zero trust replaces the old rule that anything inside the perimeter is trusted. The old rule resembled an office where the receptionist checks you at the front door and, after that, you can walk into any room. Instead, you authenticate and authorise every request based on identity, device posture and context. You assume a breach has already happened. You apply least privilege, encrypt everywhere, and verify continuously while you log. Four building blocks make that practical.
 
 Identity-aware access comes first. Identity-aware proxies, ZTNA, Teleport, Tailscale or WireGuard meshes, and cloud IAP replace broad VPNs. Service identity comes next. Services use mTLS and short-lived certificates, issued through SPIFFE or SPIRE, a service mesh or cert-manager (chapter 2.10).
 
@@ -368,15 +357,15 @@ Test enforcement before you rely on the default-deny policy, because a policy do
 
 ## 13. Security specifics for AI clusters
 
-Picture a bare-metal GPU cluster that several tenants share. Their traffic crosses shared switches, and each node has a management controller.
+Picture a bare-metal GPU cluster that several tenants share. Their traffic crosses shared switches, and each node has a management controller. The sections below follow the attack paths from the management controller outward.
 
 Start with the BMC. Out-of-band management, through IPMI, Redfish, iDRAC, iLO, XClarity or the DGX BMC, has a weak history. Default credentials, the old IPMI 2.0 cipher-zero, exposed web UIs and unauthenticated firmware vectors have all caused trouble. Put BMCs on an isolated management network with strict ACLs. Give each one a unique, strong credential, and disable IPMI-over-LAN if you do not use it. Keep firmware current, serve HTTPS with real certificates, and allow access only through jump hosts. Watch for Redfish events and firmware changes.
 
-Next comes provisioning. PXE, DHCP, TFTP and image servers are trust anchors for every node. Protect them with signed images, HTTPS boot, secure boot and TPM measured boot where you use them. Isolate their VLAN, and treat a compromise there as a fleet-wide problem.
+Next comes provisioning. PXE, DHCP, TFTP and image servers are trust anchors for every node. A node that boots from the network believes whatever the image server tells it, so whoever controls that server controls the fleet. Protect them with signed images, HTTPS boot, secure boot and TPM measured boot where you use them. Isolate their VLAN, and treat a compromise there as a fleet-wide problem.
 
 InfiniBand has its own keys. Partition keys (P_Key) segment the fabric per tenant, and the Subnet Manager programs them. M_Key and the SM key protect management, and Q_Key applies to datagram queue pairs. Secure the SM and UFM. RoCE tenancy relies on VRFs, VLANs and QoS isolation instead. GPU-to-GPU RDMA traffic is generally unencrypted, so physical and logical isolation both matter. NIC firmware and DPUs such as BlueField add isolation features, including ARM-side network policy and host isolation modes.
 
-Take one port with P_Key 0x8042 and another with 0x0042. Bits 0 to 14 hold the Partition ID, and both ports share the ID 0x0042. The 0x8000 bit is the membership bit, and only 0x8042 has it set, so that port is a full member. Two ports that both show 0x0042 are limited members, and they cannot communicate with each other.
+A worked example makes the P_Key format concrete. Take one port with P_Key 0x8042 and another with 0x0042. Bits 0 to 14 hold the Partition ID, and both ports share the ID 0x0042. The 0x8000 bit is the membership bit, and only 0x8042 has it set, so that port is a full member. Two ports that both show 0x0042 are limited members, and they cannot communicate with each other.
 
 Isolation has to cover every layer: network (VRFs, VXLAN or IB partitions), compute (MIG, separate nodes or confidential computing), and storage (per-tenant namespaces and encryption keys). Schedulers such as Slurm/K8s enforce quotas, cgroups and user namespaces.
 
@@ -388,13 +377,15 @@ Keep secrets out of images and environment dumps. Use Kubernetes Secrets with en
 
 Egress filtering from GPU nodes should allow only the package mirrors and registries on an allow-list. Watch DNS, keep flow logs, and alert on large outbound transfers.
 
-Finally, monitor each node. Per-node anomaly detection can catch unexpected GPU processes, such as cryptominers. Collect audit logs from schedulers and the Kubernetes API, flow logs from fabric edges, and host IDS data from auditd and Falco. Send everything to a central SIEM.
+Finally, monitor each node. Per-node anomaly detection can catch unexpected GPU processes, such as cryptominers. Collect audit logs from schedulers and the Kubernetes API, flow logs from fabric edges, and host IDS data from auditd and Falco. Send everything to a central SIEM, the system that gathers logs from everywhere so that one analyst can search them together.
 
 Decide which tenants may share each fabric, and write that decision down before you put them on the same hardware.
 
 ## 14. The OODA loop for security operations
 
-An alert fires, and the clock starts. Security work is a cycle you repeat, not a state you reach. Colonel John Boyd's OODA loop describes that cycle in four steps: Observe, Orient, Decide and Act. The side that completes the loop faster usually wins.
+Picture an alert at three in the morning that shows a GPU node sending unexpected traffic. The team has minutes to decide what to do, and the attacker is moving too. A structured loop helps, because it stops the team from reacting to the first noise and from waiting too long for certainty. The loop below is the one military pilots first used, and it fits security work well.
+
+An alert fires, and the clock starts. Security work is a cycle you repeat, not a state you reach. Colonel John Boyd's OODA loop describes that cycle in four steps: Observe, Orient, Decide and Act. The side that completes the loop faster usually wins. Boyd first described it for fighter pilots, and it fits an incident well, because the attacker is also running a loop of their own.
 
 1. **Observe**: Collect telemetry such as flow records, logs, packet captures on demand, IDS alerts, authentication events, vulnerability scans and threat intelligence. Without observation there is no detection. Tune what you collect, because data overload hides the signal.
 2. **Orient**: Put the observations in context. Ask what is normal, which asset is affected, what the attacker is likely after (MITRE ATT&CK technique), and what the business impact would be. Orientation is where experience and a good inventory pay off, and bias and assumptions are its main enemies.
@@ -415,13 +406,13 @@ python3 code/part02/network_security_zerotrust_lab.py
 
 The lab checks four things. It verifies `sshd_config` hardening compliance, meaning `PermitRootLogin no`, `PasswordAuthentication no` and `AllowAgentForwarding no`. It checks InfiniBand 16-bit Partition Key (`P_Key`) isolation between full and limited members, using `0x8042`, `0x0042` and `0x8043`. It evaluates a Kubernetes `NetworkPolicy` with default-deny and label-based ingress. It also simulates fail2ban sliding-window bans.
 
-Next, use two or three disposable VMs or network namespaces in a lab you own. The interactive commands below were not run on live hardware, so run them only on disposable VMs or namespaces.
+Next, use two or three disposable VMs or network namespaces in a lab you own. The interactive commands below were not run on live hardware, so run them only on disposable VMs or namespaces. Never point the attack steps at a machine that you do not own.
 
 1. **Exposure audit**: On a fresh VM, run `ss -tulpn` and `nmap -p- -sV localhost`, then scan from a second host. List any service you do not need, disable it, and scan again.
 2. **Firewall default-deny**: With nftables, allow SSH only from the management subnet, plus established flows (chapter 2.23). Verify with nmap from inside and outside, and log the drops.
 3. **SSH hardening**: Set keys-only authentication, `AllowGroups`, no root login, and no forwarding. Test with `sshd -t` while a second session stays open. Try a password login, which should fail. Use `ssh -vvv` to read the negotiation, and set `LogLevel VERBOSE`.
 4. **Bastion, ProxyJump and certificates**: Create an SSH CA with `ssh-keygen`. Issue a user certificate valid for 1 hour and a host certificate. Configure `TrustedUserCAKeys` and `@cert-authority`, then connect through a bastion with `ProxyJump`. Wait for the certificate to expire and confirm that access is denied.
-5. **Host key mismatch**: Regenerate a server's host keys and watch the client warning appear. Then fix it the right way: verify the fingerprint, and run `ssh-keygen -R`.
+5. **Host key mismatch**: Regenerate the host keys of a server and watch the client warning appear. Then fix it the right way: verify the fingerprint, and run `ssh-keygen -R`.
 6. **fail2ban**: Install fail2ban and enable the sshd jail with `maxretry=3`. Attempt failures from a second host with a wrong key or password. Watch the ban in `fail2ban-client status sshd` and `nft list ruleset`, then unban the address.
 7. **L2 attack and defense**: In namespaces with a Linux bridge, run a rogue DHCP server and watch clients take its lease. Apply a bridge-level ebtables or nft rule that drops DHCP offers from untrusted ports. ARP-spoof inside the lab with `arpspoof` or scapy, then mitigate it with static ARP entries and `arp_filter` or `arptables`.
 8. **SYN flood**: Run `hping3 --flood -S -p 80` against a lab web server, and only in the lab. Watch the ListenOverflows and SYN cookie counters with `nstat`. Tune `tcp_syncookies` and `somaxconn`, and rate-limit with the nft `limit` or `meter` options.
@@ -464,12 +455,17 @@ Each question maps to a section above, so use the section headings to check your
 
 Each exercise below asks you to use one of the chapter's code functions, or to apply an idea from a section. Work through them in order.
 
-1. Start with threat modelling, STRIDE, biometrics and defense in depth. (a) Define threat actor, vulnerability, exploit, attack surface, asset and risk, where risk is likelihood times impact. Then apply STRIDE across an AI training and inference cluster. (b) Explain why fingerprints and biometrics make a poor sole remote credential. Then trace the six defense-in-depth layers in section 2.
-2. Compare AAA protocols, 802.1X and Layer-2 switch security. (a) Contrast RADIUS (UDP 1812 and 1813) with TACACS+ (TCP 49) across transport, packet encryption and per-command router authorisation. (b) Match the six Layer-2 attacks, which are MAC flooding, rogue DHCP, ARP and ND spoofing, a rogue STP switch, VLAN hopping and link eavesdropping, to their switch controls. The controls are Port Security, DHCP Snooping, DAI with RA Guard, BPDU and Root Guard, native VLAN pruning, 802.1X, and MACsec 802.1AE.
-3. Work through DoS and DDoS mitigation, BGP traffic diversion and control-plane protection. Compare the four DoS classes: volumetric, protocol and state exhaustion, application and GPU exhaustion, and control-plane CPU floods. For each class, name its mitigations: BCP 38 and uRPF, `tcp_syncookies`, RTBH with community `65535:666`, `NO_PEER` and `NO_ADVERTISE` BGP steering, CoPP, GTSM with `TTL 255`, and `TCP-AO` or `HMAC-SHA`.
-4. Study SSH cryptography, host-key verification, `ProxyJump` against agent forwarding, `sshd_config` hardening and SSH certificates. (a) Using `audit_sshd_config()` in `code/part02/network_security_zerotrust.py`, audit a server's `sshd_config`. Then explain why `ProxyJump` (`-J`) must replace `AllowAgentForwarding yes` when you jump through a bastion. (b) Explain what `REMOTE HOST IDENTIFICATION HAS CHANGED` means. Explain how SSH CA certificates (`ssh-keygen -s ca`, `TrustedUserCAKeys`, `@cert-authority`) remove TOFU at scale. Finally, explain how `simulate_fail2ban_window()` models fail2ban.
-5. Audit exposure with nmap and `ss -tulpn`, then look at zero-trust microsegmentation with Kubernetes NetworkPolicy. (a) Why must you run nmap from outside a host and compare the result with local `ss -tulpn` output? Which high-risk AI and infrastructure ports are common? They are 111, 623, 2375, 2379, 6379, 8000–8002, 8265, 8888 and 10250. (b) Using `evaluate_k8s_ingress_network_policy()`, explain how the section 12 `default-deny` and `allow-gateway-to-triton` `NetworkPolicy` enforces zero trust (NIST SP 800-207). Explain also why you must permit DNS (UDP and TCP 53) egress when you default-deny egress.
-6. Secure the AI-specific surfaces, meaning BMCs, InfiniBand `P_Keys` and the supply chain, and then apply Boyd's OODA loop. (a) Using `evaluate_ib_pkey_communication()`, decide whether InfiniBand ports with 16-bit Partition Keys can communicate. Test the pairs (0x8042, 0x8042), (0x8042, 0x8043), (0x0042, 0x0042) and (0x0042, 0x8042). Then state the hardening rules for out-of-band BMCs, which use IPMI on 623 and Redfish on 443. (b) Apply Colonel John Boyd's OODA loop (Observe, Orient, Decide, Act) to an alert that shows unexpected outbound traffic from a GPU training node.
+1. You are asked to model the threats to an AI training and inference cluster. Define threat actor, vulnerability, exploit, attack surface, asset and risk, where risk is likelihood times impact. Then apply STRIDE across the cluster.
+2. A manager wants to log in to the cluster with a fingerprint only. Explain why fingerprints and biometrics make a poor sole remote credential. Then trace the six defense-in-depth layers in section 2.
+3. A new switch needs an authentication protocol. Contrast RADIUS (UDP 1812 and 1813) with TACACS+ (TCP 49) across transport, packet encryption and per-command router authorisation.
+4. A campus switch faces six local attacks. Match the six Layer-2 attacks, which are MAC flooding, rogue DHCP, ARP and ND spoofing, a rogue STP switch, VLAN hopping and link eavesdropping, to their switch controls. The controls are Port Security, DHCP Snooping, DAI with RA Guard, BPDU and Root Guard, native VLAN pruning, 802.1X, and MACsec 802.1AE.
+5. An inference API is under attack. Compare the four DoS classes: volumetric, protocol and state exhaustion, application and GPU exhaustion, and control-plane CPU floods. For each class, name its mitigations: BCP 38 and uRPF, `tcp_syncookies`, RTBH with community `65535:666`, `NO_PEER` and `NO_ADVERTISE` BGP steering, CoPP, GTSM with `TTL 255`, and `TCP-AO` or `HMAC-SHA`.
+6. A server's `sshd_config` needs an audit. Use `audit_sshd_config()` in `code/part02/network_security_zerotrust.py` to audit it. Then explain why `ProxyJump` (`-J`) must replace `AllowAgentForwarding yes` when you jump through a bastion.
+7. A user reports `REMOTE HOST IDENTIFICATION HAS CHANGED`. Explain what the message means. Then explain how SSH CA certificates (`ssh-keygen -s ca`, `TrustedUserCAKeys`, `@cert-authority`) remove TOFU at scale, and how `simulate_fail2ban_window()` models fail2ban.
+8. You are auditing a host. Explain why you must run nmap from outside a host and compare the result with local `ss -tulpn` output. Then name the high-risk AI and infrastructure ports that are common: 111, 623, 2375, 2379, 6379, 8000–8002, 8265, 8888 and 10250.
+9. A namespace must accept traffic only from its gateway. Use `evaluate_k8s_ingress_network_policy()` to explain how the section 12 `default-deny` and `allow-gateway-to-triton` `NetworkPolicy` enforces zero trust (NIST SP 800-207). Explain also why you must permit DNS (UDP and TCP 53) egress when you default-deny egress.
+10. Two InfiniBand tenants share a fabric. Use `evaluate_ib_pkey_communication()` to decide whether ports with 16-bit Partition Keys can communicate. Test the pairs (0x8042, 0x8042), (0x8042, 0x8043), (0x0042, 0x0042) and (0x0042, 0x8042). Then state the hardening rules for out-of-band BMCs, which use IPMI on 623 and Redfish on 443.
+11. An alert shows unexpected outbound traffic from a GPU training node. Apply Colonel John Boyd's OODA loop (Observe, Orient, Decide, Act) to it.
 
 ## Checkpoint questions (20)
 

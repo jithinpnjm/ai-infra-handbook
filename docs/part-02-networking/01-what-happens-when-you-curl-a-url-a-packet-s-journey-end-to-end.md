@@ -22,31 +22,35 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost every network problem you will ever debug in an AI cluster is a question about *where in a path something went wrong*. Picture a few of them. A container image does not pull. A training job cannot reach the dataset bucket. `torchrun` hangs at rendezvous. NCCL falls back from InfiniBand to sockets. A node cannot be reached by SSH after a switch change. A pod resolves a name to the wrong address. Each of these is a failure at one particular step of a journey. That journey starts in a process and ends in another process on another machine. Start by naming the step that failed.
+Imagine it is late in the evening and a container image will not pull. Or a training job cannot reach the dataset bucket. Or `torchrun` hangs at rendezvous, NCCL quietly falls back from InfiniBand to sockets, a node stops answering SSH after a switch change, or a pod resolves a name to the wrong address. These look like different problems. They are all the same question: where in the path did something go wrong? The path starts in a process on one machine and ends in a process on another, and every failure sits at one particular step of it. Your first job in any of these cases is to name the step that failed.
 
-Interview loops ask the classic question "what happens when you type a URL into a browser, or `curl` it?" A candidate who can narrate that journey in detail, with the commands that prove each step, has the mental model for everything in this Part. That model covers name resolution, routing, ARP/ND, switching, NAT, TCP, TLS, HTTP and teardown.
+Here is how that evening usually goes. A colleague writes in the team channel that the pull is "stuck", and you open a terminal. You do not yet know whether the registry is down, whether the node cannot find it, whether the node finds it but cannot reach it, or whether it reaches it and then quietly distrusts what it hears. The person who finds the answer fastest is rarely the one who knows the most commands. It is the one who can picture the trip a request takes and ask, at each stop on that trip, "did it get this far?" Everything in this chapter exists to give you that picture.
 
-This chapter is that narrative. It is deliberately a *tour* that touches every layer once. Later chapters go deeper on each stop: 2.2 layers, 2.3 Ethernet, 2.4 IP addressing, 2.5 host routing, 2.6 TCP, 2.7 ICMP and diagnostics, 2.8 DNS, 2.9 DHCP and NAT, and 2.10 HTTP/TLS/PKI.
+Interviewers know this, which is why they ask the classic question "what happens when you type a URL into a browser, or `curl` it?" If you can narrate the journey in detail and name a command that proves each step, you already hold the mental model for the rest of this Part. That model covers name resolution, routing, ARP/ND, switching, NAT, TCP, TLS, HTTP and teardown.
 
-We use `curl https://example.com/` as the running example. At the end, we show how the same journey, and its shortcuts, look for the traffic that matters most in AI clusters: container image pulls, object storage and NCCL.
+There is a second reason to learn the trip once, early, and in order. Almost every later chapter in this Part zooms in on one stop of it. If you have already seen the whole road, each zoomed-in chapter has somewhere to land in your head, and you never have to wonder why a topic matters. Think of it as walking a route on foot before you study the map of each street.
+
+This chapter is that narrative. It is a tour, and it touches every layer once without stopping long at any of them. Later chapters slow down at each stop: 2.2 layers, 2.3 Ethernet, 2.4 IP addressing, 2.5 host routing, 2.6 TCP, 2.7 ICMP and diagnostics, 2.8 DNS, 2.9 DHCP and NAT, and 2.10 HTTP/TLS/PKI. If a detail feels rushed here, that is deliberate, because it gets its own chapter.
+
+We will follow one command all the way, `curl https://example.com/`, the way you would follow a parcel on a tracking page. At the end we come back to the traffic that matters most in AI clusters, such as container image pulls, object storage and NCCL, and see how the same journey changes shape for each of them.
 
 ## Prerequisites and outcomes
 
-Come in with a working Linux shell. Part 1, chapters 1.1 to 1.9, covers that. You do not need any networking background.
+You need a working Linux shell, which Part 1, chapters 1.1 to 1.9, covers. You do not need any networking background. Every term is explained the first time it appears, so a word you have never seen before is not a gap in your knowledge, it is simply the next thing to learn.
 
-By the end of this chapter, you should be able to do the following.
+Once you have read the chapter and done the lab, use this list as a self-check. Each line is something you should now be able to do.
 
-- Tell the whole story, in order and with the right terms, of what happens between pressing Enter on `curl https://example.com/` and seeing the response. That includes every protocol that takes part.
-- Name the kernel data structures and system calls involved. These are the resolver, `socket`, `connect`, the routing table, the neighbour table, the qdisc, the NIC and the socket buffers.
+- Tell the whole story, in order and with the right terms, of what happens between pressing Enter on `curl https://example.com/` and seeing the response, including every protocol that takes part.
+- Name the kernel pieces involved: the resolver, `socket`, `connect`, the routing table, the neighbour table, the qdisc, the NIC and the socket buffers.
 - Run the commands that expose each step: `strace`, `getent`, `resolvectl`, `dig`, `ip route get`, `ip neigh`, `tcpdump`, `ss`, `openssl s_client` and `curl -w`.
-- Split a request's latency into DNS, TCP connect, TLS handshake, time to first byte and transfer. Then read a `curl -w` timing report.
-- Take a symptom such as "connection refused", "no route to host", "certificate verify failed" or "timeout", and point to the layer that produced it.
+- Split a request's latency into DNS, TCP connect, TLS handshake, time to first byte and transfer, and read a `curl -w` timing report.
+- Take a symptom such as "connection refused", "no route to host", "certificate verify failed" or "timeout" and point to the layer that produced it.
 - Explain what stays inside a host, what crosses a switch, what crosses a router, and what NAT rewrites.
-- Explain how RDMA/InfiniBand traffic in AI clusters differs from this journey, given that it bypasses the kernel, and where it stays the same.
+- Explain how RDMA/InfiniBand traffic in AI clusters differs from this journey, because it bypasses the kernel, and where it stays the same.
 
 ## 1. The whole journey in one picture
 
-Read the diagram from top to bottom. The numbered arrows show the order in which the steps happen.
+Before we go step by step, look at the whole trip once. Think of sending a parcel to a friend in another city. You write a name on it, someone has to find the street address for that name, the local post office decides which truck takes it, the truck hands it on at depots, and at the far end somebody checks it is really for them. A network request is the same story told in milliseconds. Read the diagram from top to bottom. The numbered arrows show the order in which things happen.
 
 ```mermaid
 sequenceDiagram
@@ -72,13 +76,15 @@ sequenceDiagram
   U->>S: FIN / close (or connection reuse)
 ```
 
-Every packet between user and server crosses the same physical sequence: process → socket → TCP/IP stack → queueing discipline → NIC driver → wire → switch → router(s) → … → server NIC → stack → process. Keep that order in mind. The next sections walk along it one stop at a time.
+Every packet between user and server crosses the same physical sequence: process → socket → TCP/IP stack → queueing discipline → NIC driver → wire → switch → router(s) → … → server NIC → stack → process. Do not worry yet about what each word means. You will meet every one of them in its own section, and by the end the sequence will read like a sentence. Keep that order in your head. The next sections walk along it one stop at a time.
 
 ## 2. Step 0: the process and the URL
 
-Suppose you press Enter on a `curl` command. Nothing about the network has happened yet. The first job is to read the URL. `curl` splits it into three parts: the scheme `https`, whose default port is 443, the host `example.com`, and the path `/`. It uses **libcurl** to do the networking work, and libcurl calls the C library for name resolution and the kernel for sockets.
+Start with what you actually did. You typed a command and pressed Enter, and at this moment nothing has touched the network. The first job belongs to `curl` alone, and it is simply to read what you typed. `curl` splits the URL into three parts: the scheme `https`, whose default port is 443, the host `example.com`, and the path `/`. The scheme tells it which language to speak. The host tells it who to talk to. The path tells it what to ask for once the conversation starts.
 
-Three commands let you watch this stage from outside. The first shows the steps `curl` reports about itself. The second prints the timing numbers. The third traces the system calls.
+`curl` does not do the networking work itself. It hands that job to **libcurl**, and libcurl in turn asks the C library to resolve names and asks the kernel for sockets. A **socket** is the kernel's handle for one conversation, a bit like a numbered phone line the kernel lends to your program. You will see that word again in a moment.
+
+You cannot see any of this by staring at the screen, so let the machine tell you. Three commands let you watch this stage from the outside. The first shows the steps `curl` reports about itself. The second prints timing numbers. The third traces the system calls, which are the requests a program makes to the kernel.
 
 ```bash
 curl -v https://example.com/ -o /dev/null        # -v shows the steps curl itself reports
@@ -86,25 +92,25 @@ curl -sS -o /dev/null -w 'dns=%{time_namelookup} connect=%{time_connect} tls=%{t
 strace -f -tt -e trace=openat,socket,connect,sendto,recvfrom,sendmsg,recvmsg,close curl -s https://example.com/ -o /dev/null 2>&1 | head -80
 ```
 
-The `strace` output shows the story most clearly. You will see `curl` open `/etc/resolv.conf`, `/etc/nsswitch.conf` and `/etc/hosts`. Then it creates a `socket(AF_INET, SOCK_DGRAM, ...)` for DNS. After that come a `socket(AF_INET6 or AF_INET, SOCK_STREAM, ...)` and a `connect(...)` for TCP. The `sendto` and `recvfrom` calls that follow carry the TLS and HTTP bytes.
+The `strace` output tells the story best, because it is the program's own diary. You will see `curl` open `/etc/resolv.conf`, `/etc/nsswitch.conf` and `/etc/hosts`, which is it looking up how to find a name. Then it creates a `socket(AF_INET, SOCK_DGRAM, ...)` for DNS, which is the phone line it will use to ask the question. After that come a `socket(AF_INET6 or AF_INET, SOCK_STREAM, ...)` and a `connect(...)` for TCP, which is a second line for the real conversation. The `sendto` and `recvfrom` calls that follow carry the TLS and HTTP bytes.
 
 ## 3. Step 1: name resolution (what is the IP address?)
 
-Start with a name such as `example.com` and no address to send to. Computers route by numbers, which are IP addresses, while people use names. The C library function `getaddrinfo()` turns `example.com` into one or more addresses. On a typical Linux system the lookup runs in 7 stages, in this order.
+Right now `curl` has a name and nowhere to send anything. Computers route by numbers, which are IP addresses, and people type names. It is like having a friend's name but no street address, so the parcel cannot leave the house. The C library function `getaddrinfo()` bridges the two by turning `example.com` into one or more addresses. On a typical Linux system the lookup runs in 7 stages, in this order. Picture a person looking someone up, starting with the cheapest places to look and only then walking to the library.
 
-Stage 1 is the C library reading `/etc/nsswitch.conf`. Its `hosts:` line sets the lookup order. On older systems that line is usually `files dns`. On systemd systems it is usually `files mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] dns`. In both cases, `files` means `/etc/hosts` is read first.
+Stage 1 is the C library reading `/etc/nsswitch.conf`. This file is a short rule sheet that says where to look for each kind of answer and in what order. Its `hosts:` line sets the lookup order. On older systems that line is usually `files dns`. On systemd systems it is usually `files mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] dns`. In both cases, `files` comes first, so `/etc/hosts` is read before anything else.
 
-Stage 2 is `/etc/hosts`, which holds static overrides, such as `127.0.0.1 localhost`. A match ends the lookup there. Keep the file short, because entries that DNS can serve do not belong in it.
+Stage 2 is `/etc/hosts`, which is your machine's private address book. It holds static overrides such as `127.0.0.1 localhost`. A match ends the lookup right there, with no network traffic at all. That speed is useful, but it is also why a forgotten line in this file can make a name point somewhere you did not expect, and nobody else can see why. Keep the file short, because entries that DNS can serve do not belong in it.
 
-Stage 3 is a stub resolver or a local cache, which may answer. On systemd distributions, `/etc/resolv.conf` often points at `127.0.0.53`, the `systemd-resolved` stub. It may also point at a local caching daemon such as `dnsmasq`, `unbound` or `nscd`. Run `resolvectl status` to see the real upstream servers for each interface and the DNS domains for each link.
+Stage 3 is a stub resolver or a local cache, which may answer next. On systemd distributions, `/etc/resolv.conf` often points at `127.0.0.53`, the `systemd-resolved` stub. It may also point at a local caching daemon such as `dnsmasq`, `unbound` or `nscd`. To see the real upstream servers for each interface and the DNS domains for each link, run `resolvectl status`.
 
-Stage 4 covers `search` domains. A name with fewer dots than `ndots` is tried with each `search` suffix first. The default `ndots` is 1, and Kubernetes sets it to 5. A bare `myhost` may therefore become `myhost.corp.example.com` before it is tried as it stands.
+Stage 4 is the `search` domains. Suppose you type just `myhost`, the way you would at the office. The resolver does not know which company domain you mean, so it has a list of suffixes to try. If a name has fewer dots than `ndots`, the resolver tries it with each `search` suffix first. The default `ndots` is 1, and Kubernetes sets it to 5. So a bare `myhost` may become `myhost.corp.example.com` before it is tried as typed. This helps with short names, and it is also the reason one lookup can quietly turn into several.
 
-Stage 5 is the DNS query itself, which the resolver sends. It sends a UDP datagram to port 53 of the configured name server. It retries when needed, and it switches to TCP when the answer is truncated or large. Modern resolvers ask for both **A** (IPv4) and **AAAA** (IPv6) records in parallel. The question travels through the same routing, ARP/ND and Ethernet steps as any other packet, which sections 4 and 5 cover.
+Stage 5 is the DNS query itself. Now the machine really does ask someone else. The resolver sends a UDP datagram to port 53 of the configured name server, retries when needed, and switches to TCP when the answer is truncated or large. Modern resolvers ask for both **A** (IPv4) and **AAAA** (IPv6) records in parallel. An A record is the answer that holds an IPv4 address, and an AAAA record holds an IPv6 address. The question travels through the same routing, ARP/ND and Ethernet steps as any other packet, which sections 4 and 5 cover. So the very first packet your command sends is not to the website at all. It is a question to a name server.
 
-Stage 6 is the recursive resolver. It may be your ISP, your cloud provider or an internal server. It either answers from its cache or walks the DNS hierarchy: the root, then the `.com` TLD servers, then the `example.com` authoritative servers. It caches each answer for its **TTL**.
+Stage 6 is the recursive resolver, which does the legwork on your behalf. It may be your ISP, your cloud provider or an internal server. It either answers from its cache or walks the DNS hierarchy: the root, then the `.com` TLD servers, then the `example.com` authoritative servers. It caches each answer for its **TTL**, the number of seconds the owner of the name says the answer may be remembered. A long TTL makes lookups fast and changes slow to spread. A short TTL does the opposite.
 
-Stage 7 is answer selection. The addresses are ordered. `getaddrinfo` orders them by the RFC 6724 rules, which prefer IPv6 when it is usable. Many clients also use "Happy Eyeballs", which tries IPv6 and IPv4 with a small head start. That avoids long waits on broken IPv6 paths.
+Stage 7 is choosing among the answers, because a name often has more than one address. `getaddrinfo` orders the addresses by the RFC 6724 rules, which prefer IPv6 when it is usable. Many clients also use "Happy Eyeballs", which tries IPv6 and IPv4 with a small head start, so a broken IPv6 path does not leave you waiting. In plain words, the client races the two families and keeps whichever connects first.
 
 Each of these commands shows one stage of the lookup.
 
@@ -118,24 +124,24 @@ dig example.com AAAA +short ; dig +trace example.com | head -40     # walk the h
 time getent hosts example.com               # first call vs repeated call: cache effect
 ```
 
-Run `time getent hosts example.com` twice. The second call shows the cache effect.
+Run `time getent hosts example.com` twice. The first call may take noticeable time, because someone has to ask the DNS hierarchy. The second call shows the cache effect, because the answer is already close at hand.
 
-Name resolution fails in more ways than most people expect. Chapter 2.8 covers DNS in detail. Common causes include a wrong resolver in `/etc/resolv.conf`, whether it was set by hand or by DHCP, and split-horizon DNS that gives internal and external answers. A stale cache after a change, which the TTL controls, is another cause.
+Name resolution fails in more ways than most people expect, and chapter 2.8 covers DNS in detail. Think of the lookup chain as a row of doors. Any door can be locked, and each one fails with a different symptom. Common causes include a wrong resolver in `/etc/resolv.conf`, whether it was set by hand or by DHCP, and split-horizon DNS that gives internal and external answers. A stale cache after a change, which the TTL controls, is another.
 
-Other causes are `search`/`ndots` settings that multiply queries in Kubernetes pods, IPv6 AAAA answers for hosts you cannot reach over IPv6, and firewalls that block UDP/53 or TCP/53. DNSSEC failures and a slow first lookup, caused by timeouts to a dead first resolver, also appear here.
+Other causes are `search`/`ndots` settings that multiply queries in Kubernetes pods, IPv6 AAAA answers for hosts you cannot reach over IPv6, and firewalls that block UDP/53 or TCP/53. DNSSEC failures also appear here, and so does a slow first lookup caused by timeouts to a dead first resolver.
 
-The symptom is usually `Could not resolve host`, which comes with curl exit code 6. You may instead see `Temporary failure in name resolution`. Or you may see a long pause before anything else happens, which shows up as a large `time_namelookup`.
+When resolution fails, the symptom is usually `Could not resolve host`, which comes with curl exit code 6. You may instead see `Temporary failure in name resolution`. Or you may see a long pause before anything else happens, which shows up as a large `time_namelookup`. A long pause followed by success is the quiet one, and it is easy to blame the server for something the resolver did.
 
 ## 4. Step 2: the socket, the route and the source address
 
-Now `curl` has an address and wants a connection to it. Before any packet leaves the host, the kernel must decide where it goes. Say the address is 93.184.216.34, which is the one you will see in the examples below. `curl` makes these two calls.
+Now `curl` has an address and wants a connection to it. Before any packet leaves the host, the kernel has to decide where it goes, in the same way a driver must pick a road before leaving the garage. Say the address is 93.184.216.34, the one you will see in the examples below. `curl` makes these two calls.
 
 ```c
 fd = socket(AF_INET, SOCK_STREAM, 0);      // or AF_INET6; creates a TCP socket (a kernel object with send/receive buffers)
 connect(fd, {93.184.216.34, port 443});    // triggers the whole connection setup
 ```
 
-`connect()` asks the kernel to deliver a packet to that destination. So the kernel first answers one question: **where do I send it?** It does this with a **routing table lookup**.
+`connect()` asks the kernel to deliver a packet to that destination. So the kernel first answers one question: **where do I send it?** It answers with a **routing table lookup**.
 
 ```bash
 ip route show                                 # the host's table
@@ -144,25 +150,25 @@ ip route get 93.184.216.34                    # the decision for THIS destinatio
 ip -6 route get 2606:2800:220:1:248:1893:25c8:1946
 ```
 
-When you read the output, you will see that `via` gives the gateway, `dev` gives the outgoing interface, and `src` gives the source address. Routing follows a few rules, and chapter 2.5 covers them in depth.
+In the output, `via` gives the gateway, `dev` gives the outgoing interface, and `src` gives the source address. Routing follows a few rules, and chapter 2.5 covers them in depth.
 
-Each route pairs a destination prefix with a way to reach it. That way is either directly on a link, as in `dev ens4 scope link`, or through a **gateway**, as in `via 10.0.0.1`. When several routes match, the kernel picks the **longest matching prefix**. The **default route**, `default via 10.0.0.1`, matches anything that no more specific route covers. Its IPv4 form is `0.0.0.0/0`, and its IPv6 form is `::/0`. Ties are broken by metric.
+Each route pairs a destination prefix with a way to reach it. A **prefix** is a block of addresses written with a slash, and the routing table is simply a list of such blocks with directions beside each. The way to reach a block is either directly on a link, as in `dev ens4 scope link`, or through a **gateway**, as in `via 10.0.0.1`. When several routes match, the kernel picks the **longest matching prefix**, which means the most specific directions win, like preferring "take the first left onto Mill Street" over "head toward the city". The **default route**, `default via 10.0.0.1`, matches anything that no more specific route covers. Its IPv4 form is `0.0.0.0/0`, and its IPv6 form is `::/0`. Ties are broken by metric.
 
-If the destination sits inside a connected subnet, such as 10.0.0.0/24, the host sends straight to it. Otherwise it sends to the gateway, which is the router, and the router lets the rest of the Internet worry about the destination.
+A worked example makes the choice concrete. If the destination sits inside a connected subnet, such as 10.0.0.0/24, the host sends straight to it, because it is a neighbour on the same street. Otherwise it hands the packet to the gateway, which is the router, and the router worries about the rest of the Internet. For our `curl`, the address 93.184.216.34 is nowhere near 10.0.0.0/24, so the kernel falls back on the default route and hands the packet to 10.0.0.1.
 
-The kernel also chooses the source IP. It takes the primary address of the outgoing interface in the same subnet as the next hop, unless a configured `src` overrides it. The source port is an **ephemeral port** chosen from `net.ipv4.ip_local_port_range`, whose default range is 32768 to 60999. The connection is then identified by its 5-tuple: protocol, source IP, source port, destination IP and destination port.
+The kernel also has to write a return address on the packet. It chooses the source IP, and it takes the primary address of the outgoing interface in the same subnet as the next hop, unless a configured `src` overrides it. The source port is an **ephemeral port**, a short-lived port number the kernel picks for this one connection, drawn from `net.ipv4.ip_local_port_range`, whose default range is 32768 to 60999. The connection is then identified by its 5-tuple: protocol, source IP, source port, destination IP and destination port. Two connections from your machine to the same server differ only in the source port, which is how replies find the right one.
 
 Policy routing with multiple tables, VRFs, VPN interfaces and container networks can all change the answer. `ip rule show` and `ip route show table all` reveal them.
 
-Two errors come from this step. `Network is unreachable` (`ENETUNREACH`) means there is no route at all, such as when you have no default gateway. `No route to host` (`EHOSTUNREACH`) means the route exists, but the next hop could not be resolved, or an ICMP unreachable came back.
+Two errors come from this step, and they sound alike but mean different things. `Network is unreachable` (`ENETUNREACH`) means there is no route at all, for example when you have no default gateway. The kernel could not even pick a road. `No route to host` (`EHOSTUNREACH`) means a route exists, but the next hop could not be resolved, or an ICMP unreachable came back. The kernel picked a road and found it blocked.
 
 A route that sends traffic out the wrong interface, or with the wrong source address, is a classic cause of connections that work in one direction only. Asymmetric routing and multiple NICs are two common ways to end up there. When a connection fails right away, run `ip route get` for the destination before you check anything else.
 
 ## 5. Step 3: from IP to Ethernet (ARP or NDP) and out of the NIC
 
-Routing has picked the next hop, but you can see that the kernel still cannot build a frame yet. An IP packet needs a link-layer destination before it can go into an Ethernet frame. The next hop's IP address, which is the gateway `10.0.0.1` or the destination itself when it is on the same link, must be mapped to a **MAC address**.
+Routing has picked the next hop, but the kernel still cannot build a frame. Think of the router's address as a name and the device's hardware address as the actual door the parcel is handed through. An IP packet needs a link-layer destination before it can go into an Ethernet frame. So the next hop's IP address, which is the gateway `10.0.0.1` or the destination itself when it is on the same link, must be mapped to a **MAC address**, the hardware address of that device's network card.
 
-In IPv4 the host uses **ARP**, the Address Resolution Protocol. It broadcasts "who has 10.0.0.1? tell 10.0.0.15" to `ff:ff:ff:ff:ff:ff`, and the owner replies unicast with its MAC. The result goes into the **neighbour table**, which `ip neigh` displays with the states `REACHABLE`, `STALE`, `DELAY`, `PROBE` and `FAILED`. In IPv6 the host uses **NDP**, Neighbor Discovery. It sends a neighbour solicitation to a solicited-node multicast address, and the owner answers with a neighbour advertisement.
+In IPv4 the host uses **ARP**, the Address Resolution Protocol. It shouts a question to the whole local network: broadcasts "who has 10.0.0.1? tell 10.0.0.15" to `ff:ff:ff:ff:ff:ff`, and the owner replies unicast with its MAC. The result goes into the **neighbour table**, which is a small cache so the shout does not have to be repeated for every packet. `ip neigh` displays it with the states `REACHABLE`, `STALE`, `DELAY`, `PROBE` and `FAILED`. In IPv6 the host uses **NDP**, Neighbor Discovery. It sends a neighbour solicitation to a solicited-node multicast address, and the owner answers with a neighbour advertisement.
 
 ```bash
 ip neigh show                      # IP -> MAC mappings and their states
@@ -171,29 +177,29 @@ sudo tcpdump -nn -e -i ens4 arp or icmp6        # watch ARP/NDP with Ethernet he
 arping -I ens4 10.0.0.1            # active ARP probe (also detects duplicate addresses)
 ```
 
-The kernel then builds the packet one layer at a time. Each layer adds its own **Protocol Data Unit (PDU)**. The chain runs from application **Data** to TCP **Segment**, which carries the source and destination ports. Next comes the IP **Packet**, which carries the source and destination IP and the TTL. Then comes the Ethernet **Frame**, and finally the physical **Bits** on the wire. The standards behind these layers come from Networking and Kubernetes, chapter 1. ISO/IEC 7498-1..4 defines the 7-layer OSI model. IETF RFCs define the 4-layer TCP/IP model, such as `RFC 1122`, and they move from *Proposed Standard* to *Internet Standard*.
+The kernel then builds the packet one layer at a time, like packing a parcel inside a box inside a bigger box. Each layer adds its own **Protocol Data Unit (PDU)**, which is just the name for the unit of data at that layer. The chain runs from application **Data** to TCP **Segment**, which carries the source and destination ports. Next comes the IP **Packet**, which carries the source and destination IP and the TTL. Then comes the Ethernet **Frame**, and finally the physical **Bits** on the wire. The standards behind these layers come from Networking and Kubernetes, chapter 1. ISO/IEC 7498-1..4 defines the 7-layer OSI model. IETF RFCs define the 4-layer TCP/IP model, such as `RFC 1122`, and they move from *Proposed Standard* to *Internet Standard*.
 
-As you read the frame layout, keep in mind that the next hop's MAC is the one that goes in it. On the wire, an Ethernet II frame starts with an **8-byte Preamble + Start Frame Delimiter (`SFD`)**, which reads `10101010...10101011`. Next comes the **6-byte Destination MAC**. For traffic that leaves the subnet, this is the next hop's MAC, which is the gateway's, not the final destination's. The **6-byte Source MAC** is this NIC. The **2-byte EtherType** says what is inside: `0x0800` for IPv4, `0x86DD` for IPv6 or `0x0806` for ARP. Then come the **46 to 1,500-byte payload** and a **4-byte Frame Check Sequence (`FCS`)**, which is a CRC trailer.
+Now look at the frame itself, keeping in mind that the next hop's MAC is the one that goes in it. On the wire, an Ethernet II frame starts with an **8-byte Preamble + Start Frame Delimiter (`SFD`)**, which reads `10101010...10101011`. Next comes the **6-byte Destination MAC**. For traffic that leaves the subnet, this is the next hop's MAC, which is the gateway's, not the final destination's. The **6-byte Source MAC** is this NIC. The **2-byte EtherType** says what is inside: `0x0800` for IPv4, `0x86DD` for IPv6 or `0x0806` for ARP. Then come the **46 to 1,500-byte payload** and a **4-byte Frame Check Sequence (`FCS`)**, which is a CRC trailer.
 
-This detail trips up many beginners. **MAC addresses change at every router hop, but IP addresses stay the same end to end unless NAT is involved.**
+This detail trips up many beginners, so say it out loud once. **MAC addresses change at every router hop, but IP addresses stay the same end to end unless NAT is involved.** The postal comparison helps here. The street address on the parcel never changes on the way to your friend, but each truck driver only cares about which depot is next, and that "next depot" label is rewritten at every stop. The IP address is the street address. The MAC address is the next-depot label.
 
-The frame then passes through the egress **queueing discipline (qdisc)**. You can inspect it with `tc qdisc show dev ens4`, and the default is `fq_codel`, or `fq`/`mq`. From there the frame goes to the NIC driver and into a transmit ring in DMA-able memory. The NIC reads the frame and may compute checksums, which is called offload. It also segments large TCP chunks through TSO/GSO, and it serialises the bits onto the medium.
+The frame then passes through the egress **queueing discipline (qdisc)**, which is the waiting line that decides the order in which frames leave. You can inspect it with `tc qdisc show dev ens4`, and the default is `fq_codel`, or `fq`/`mq`. From there the frame goes to the NIC driver and into a transmit ring in DMA-able memory. The NIC reads the frame and may compute checksums, which is called offload. It also segments large TCP chunks through TSO/GSO, and it serialises the bits onto the medium. In short, the kernel hands the work to the hardware as soon as the frame is ready, so the CPU can get on with other things.
 
 On a VM, the "NIC" is a virtual device, such as virtio-net or a cloud-specific NIC. Its next hop is the cloud's virtual network, which chapter 2.32 covers.
 
-When you find that a host cannot reach its gateway, check `ip neigh show` before you look anywhere else.
+When a host cannot reach its gateway, check `ip neigh show` before you look anywhere else. A neighbour entry stuck in `FAILED` tells you the shout got no answer, which is a very different problem from a bad route.
 
 ## 6. Step 4: the switch, the router, NAT and the Internet
 
-Suppose your frame reaches the first switch in the rack. What happens to it next? A **switch**, which works at layer 2, receives the frame on a port. It **learns** that the source MAC lives on that port and records it in the MAC address table. It then forwards the frame to the port where the destination MAC was learned. If the destination is unknown or broadcast, it **floods** the frame to every port except the one it came in on. For plain L2 switching, switches ignore IP addresses. What they define is the **broadcast domain**. ARP broadcasts reach every host in the VLAN or subnet, which chapters 2.3 and 2.11 cover.
+Suppose your frame reaches the first switch in the rack. What happens to it? A **switch** works at layer 2 and receives the frame on a port. It **learns** that the source MAC lives on that port and records it in the MAC address table, the way a receptionist writes down which desk each visitor came from. It then forwards the frame to the port where the destination MAC was learned. If the destination is unknown or broadcast, it **floods** the frame to every port except the one it came in on. For plain L2 switching, the switch ignores IP addresses. What it does define is the **broadcast domain**, the set of machines that hear each other's shouts. ARP broadcasts reach every host in the VLAN or subnet, which chapters 2.3 and 2.11 cover.
 
-The default gateway is a router. It receives frames addressed to its own MAC, strips the Ethernet header and examines the IP header. Then it works through four steps.
+The default gateway is a router, and it behaves differently from the switch. It receives frames addressed to its own MAC, strips the Ethernet header and examines the IP header. That is the moment the local conversation ends and the wider journey begins. Then it works through four steps.
 
-Step 1: the router checks the destination against its **routing table**, using a longest prefix match in the FIB. Step 2: it decrements the **TTL**, also called the hop limit, and recomputes the header checksum for IPv4. If the TTL reaches zero, the router drops the packet and sends back an ICMP **Time Exceeded** message. That is how `traceroute` works.
+In step 1, the router checks the destination against its **routing table**, using a longest prefix match in the FIB. In step 2, it decrements the **TTL**, also called the hop limit, and recomputes the header checksum for IPv4. If the TTL reaches zero, the router drops the packet and sends back an ICMP **Time Exceeded** message. That is how `traceroute` works.
 
-Step 3: the router chooses the egress interface and the next hop, resolves the next hop's MAC with ARP or ND, builds a new Ethernet header and forwards the frame. Step 4: if the packet is larger than the egress MTU, the router fragments it for IPv4 when DF is not set. Otherwise it drops the packet and sends ICMP **Fragmentation Needed** or **Packet Too Big**. That is Path MTU Discovery, and blackholed ICMP breaks it.
+In step 3, the router chooses the egress interface and the next hop, resolves the next hop's MAC with ARP or ND, builds a new Ethernet header and forwards the frame. This is exactly the point where the "next depot" label gets rewritten. In step 4, if the packet is larger than the egress MTU, the router fragments it for IPv4 when DF is not set. Otherwise it drops the packet and sends ICMP **Fragmentation Needed** or **Packet Too Big**. The MTU is the largest packet a link will carry. That exchange is Path MTU Discovery, and blackholed ICMP breaks it.
 
-At the **edge of a private network**, such as a home router, a corporate firewall or a cloud NAT gateway, NAT/PAT rewrites outgoing packets. It replaces a private source address and port with a public one. RFC 1918 defines the private ranges: 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. The device keeps a translation table, also known as connection tracking, and reverses the rewrite for replies. The server therefore sees the NAT's public IP, not your private address. Chapter 2.9 covers this.
+At the **edge of a private network**, such as a home router, a corporate firewall or a cloud NAT gateway, NAT/PAT rewrites outgoing packets. Your laptop has a private address that is meaningless on the public Internet, so something has to swap in a public one on the way out. It replaces a private source address and port with a public one. RFC 1918 defines the private ranges: 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. The device keeps a translation table, also known as connection tracking, and reverses the rewrite for replies. The server therefore sees the NAT's public IP, not your private address. Chapter 2.9 covers this.
 
 Across the Internet, each router on the path repeats the same lookup and forward step. A typical path has 8 to 20 hops. The routers build their tables with routing protocols: OSPF/IS-IS inside networks, and BGP between them. Chapters 2.13 to 2.16 cover those.
 
@@ -205,17 +211,17 @@ ping -c 4 example.com                # ICMP echo: reachability and RTT
 ip -s link show dev ens4             # TX/RX packets, errors, drops on the first hop
 ```
 
-`traceroute` and `mtr` show each hop through TTL expiry. `ping` gives reachability and round-trip time. `ip -s link show` shows errors and drops on the first hop.
+`traceroute` and `mtr` show each hop through TTL expiry, which means they send packets that are designed to die early so each router along the road introduces itself. `ping` gives reachability and round-trip time. `ip -s link show` shows errors and drops on the first hop.
 
-If the destination looks slow, trace the path first to learn whether the delay is in the network or at the server.
+If the destination looks slow, trace the path first. That tells you whether the delay is in the network or at the server, and it saves you from tuning a server that was never the problem.
 
 ## 7. Step 5: TCP connection establishment
 
-Before a single byte of your request moves, both ends must agree to talk. TCP does that with a handshake, and many connection failures show up right here.
+Before a single byte of your request moves, both ends must agree to talk. It is like a phone call, where each side says "hello, can you hear me" before the real conversation begins. TCP does that with a handshake, and many connection failures show up right here.
 
-`connect()` on a TCP socket triggers the **three-way handshake**, which has three steps. In step 1, the client sends a **SYN**. It carries the client's initial sequence number and its options: MSS, the maximum segment size, which is typically the MTU minus 40, for example 1460; window scale; SACK permitted; timestamps; and optionally ECN.
+`connect()` on a TCP socket triggers the **three-way handshake**. In step 1, the client sends a **SYN**. It carries the client's initial sequence number and its options: MSS, the maximum segment size, which is typically the MTU minus 40, for example 1460; window scale; SACK permitted; timestamps; and optionally ECN.
 
-In step 2, the server answers with a **SYN-ACK**. It acknowledges the client and carries the server's own sequence number and options. If no process listens on port 443, the server's kernel answers with **RST** instead, and the client sees `Connection refused` at once. If a firewall silently drops the SYN, the client gets nothing back. It retries after 1 s, then 2 s, then 4 s, with backoff, and the attempt ends with `Connection timed out`.
+In step 2, the server answers with a **SYN-ACK**. It acknowledges the client and carries the server's own sequence number and options. Two quite different things can go wrong here, and the difference is worth learning. If no process listens on port 443, the server's kernel answers with **RST** instead, and the client sees `Connection refused` at once. Somebody is home and says "no". If a firewall silently drops the SYN, the client gets nothing back. Nobody answers the door. It retries after 1 s, then 2 s, then 4 s, with backoff, and the attempt ends with `Connection timed out`.
 
 In step 3, the client sends an **ACK**. The connection is now **ESTABLISHED** on both sides, and `connect()` returns.
 
@@ -229,19 +235,19 @@ ss -s ; ss -ltnp                                                # summary; liste
 
 `tcpdump` shows the handshake and the TLS bytes as they cross the wire, so you can watch each step yourself. `ss -tni` shows per-connection numbers such as RTT, congestion window, MSS and retransmissions. `ss -s` and `ss -ltnp` give a summary and the listening sockets with their owning processes.
 
-`time_connect` in `curl -w` equals about one round-trip time (RTT) to the server, plus any DNS time before it. Intra-datacentre RTTs are about 0.05 to 0.5 ms. Across continents, RTTs reach 100 ms or more. That gap is why connection reuse and fewer round trips matter.
+`time_connect` in `curl -w` equals about one round-trip time (RTT) to the server, plus any DNS time before it. The RTT is the time a message needs to go there and for the reply to come back. Intra-datacentre RTTs are about 0.05 to 0.5 ms. Across continents, RTTs reach 100 ms or more. That gap is why connection reuse and fewer round trips matter. A page that needs many separate connections pays that price many times.
 
-If `time_connect` is far above the RTT that `ping` reports, you should look for loss or an overloaded accept queue.
+If `time_connect` is far above the RTT that `ping` reports, look for loss or an overloaded accept queue. The handshake should cost about one round trip, so anything much larger means a SYN was lost and retried, or the server was too busy to answer.
 
 ## 8. Step 6: TLS handshake (HTTPS)
 
-A server that answers on port 443 is reachable, but it is not yet trusted. You need proof that you reached the right server before any request goes out, and the TLS handshake supplies it. For `https://`, the client and server now set up an encrypted, authenticated channel on top of the TCP connection.
+A server that answers on port 443 is reachable, but you have no reason to trust it yet. Anyone can answer on a port. Before any request goes out, you need proof that you reached the right server and that nobody on the road can read or alter the conversation, and the TLS handshake supplies it. For `https://`, the client and server now set up an encrypted, authenticated channel on top of the TCP connection.
 
-In step 1, the client sends a **ClientHello**. It lists the supported TLS versions and cipher suites, along with a random value and a key share. In TLS 1.3, the client guesses a key-exchange group and sends its public key in that share. The hello also carries **SNI**, the Server Name Indication, which sends `example.com` in clear text. A shared front end uses that name to pick the right certificate. Last, **ALPN** offers the application protocols the client can speak, such as `h2` and `http/1.1`.
+In step 1, the client sends a **ClientHello**. It lists the supported TLS versions and cipher suites, along with a random value and a key share. In TLS 1.3, the client guesses a key-exchange group and sends its public key in that share. The hello also carries **SNI**, the Server Name Indication, which sends `example.com` in clear text so that a shared front end can pick the right certificate. Last, **ALPN** offers the application protocols the client can speak, such as `h2` and `http/1.1`.
 
 In step 2, the server replies with a **ServerHello**, its key share and its certificate chain, followed by **Finished**. The server chooses the parameters and proves its identity with an X.509 certificate chain that runs leaf → intermediate → root. It signs the handshake in a CertificateVerify message. Both sides then derive the session keys, and ephemeral Diffie-Hellman gives forward secrecy. In TLS 1.3 this costs one round trip before application data can flow. TLS 1.2 needs two round trips. 0-RTT resumption can send data earlier, but it has replay caveats.
 
-In step 3, the client **verifies** the chain against its trust store, `/etc/ssl/certs` and a CA bundle. It checks that the hostname matches a SAN, which must be `example.com` here, and it checks the validity period and key usage. It also checks revocation through OCSP stapling or CRLs, which is often soft-fail.
+In step 3, the client **verifies** the chain, in the way a bouncer checks an ID. It checks the chain against its trust store, `/etc/ssl/certs` and a CA bundle, which is a list of authorities it already trusts. It checks that the hostname matches a SAN, which must be `example.com` here, and it checks the validity period and key usage. It also checks revocation through OCSP stapling or CRLs, which is often soft-fail, meaning a failed check is tolerated rather than fatal.
 
 ```bash
 openssl s_client -connect example.com:443 -servername example.com -tls1_3 </dev/null 2>/dev/null | egrep 'Protocol|Cipher|Verify|subject|issuer'
@@ -250,17 +256,17 @@ curl -v --tlsv1.3 https://example.com/ -o /dev/null 2>&1 | egrep 'TLS|ALPN|subje
 echo | openssl s_client -connect example.com:443 -servername example.com 2>/dev/null | openssl x509 -noout -dates -subject -ext subjectAltName
 ```
 
-`curl -v` shows the TLS and ALPN details in one place.
+`curl -v` shows the TLS and ALPN details in one place, so it is a good first look before you reach for heavier tools.
 
 Chapter 2.10 covers the failures that show up here. A missing intermediate or CA bundle in a minimal container image produces `certificate verify failed: unable to get local issuer certificate`. An expired certificate fails here too, and so does a hostname mismatch, such as using an IP address or the wrong SNI. A corporate proxy with an unknown CA can intercept TLS. Clock skew can make a valid certificate look "not yet valid", and old servers can cause protocol and cipher mismatches.
 
-The TLS cost is `time_appconnect - time_connect`. It covers one RTT plus the cryptography.
+The TLS cost is `time_appconnect - time_connect`. It covers one RTT plus the cryptography. When you read a timing report later in this chapter, this is the slice to look at if the secure part feels slow.
 
 When TLS fails, test the exact hostname with `openssl s_client` before you change anything on the server.
 
 ## 9. Step 7: the HTTP request and response
 
-Once the encrypted channel is ready, `curl` sends its request inside it. What comes back depends on which HTTP version the two sides agreed on.
+The encrypted channel is ready, so `curl` finally sends its request through it. This is the step most people think of as "the web", and it turns out to be the last of many. What comes back depends on which HTTP version the two sides agreed on.
 
 With **HTTP/1.1**, the request is plain text. It holds `GET / HTTP/1.1`, `Host: example.com`, `User-Agent`, `Accept`, optional `Authorization`, and a blank line. The response starts with a status line such as `HTTP/1.1 200 OK`. Headers follow, such as `Content-Type`, `Content-Length` or `Transfer-Encoding: chunked`, caching headers and `Set-Cookie`. A blank line comes next, then the body. Persistent connections, called keep-alive, reuse the TCP and TLS connection for several requests.
 
@@ -270,7 +276,7 @@ With **HTTP/1.1**, the request is plain text. It holds `GET / HTTP/1.1`, `Host: 
 
 A redirect with status 301/302/307/308 triggers a new request, which may need a new connection. `curl -L` follows redirects for you. Proxies, CDNs and load balancers may terminate TLS, rewrite headers such as `X-Forwarded-For`, cache responses and retry requests.
 
-The time to first byte, or TTFB, is `time_starttransfer`. It adds up DNS, connect, TLS, server think time and one RTT for the response to start arriving. `time_total` adds the body transfer, which depends on size, bandwidth, the TCP congestion window and loss.
+The time to first byte, or TTFB, is `time_starttransfer`. It adds up DNS, connect, TLS, server think time and one RTT for the response to start arriving. In other words, it is how long you waited before anything at all came back. `time_total` adds the body transfer, which depends on size, bandwidth, the TCP congestion window and loss.
 
 ```bash
 curl -sS -D - -o /dev/null https://example.com/                 # response headers only
@@ -280,17 +286,17 @@ curl --resolve example.com:443:93.184.216.34 https://example.com/ -o /dev/null -
 curl -H 'Host: example.com' http://93.184.216.34/ -I                                  # virtual hosting check without DNS
 ```
 
-The last two commands skip DNS. One tests a specific backend, and the other checks virtual hosting without DNS.
+The last two commands skip DNS. One tests a specific backend, and the other checks virtual hosting without DNS. They are handy when you suspect the name lookup and want to take it out of the picture.
 
 If the headers look right but the page is still slow, compare `time_starttransfer` with `time_total` to see whether the wait or the body is the cost.
 
 ## 10. Step 8: transfer, acknowledgements and teardown
 
-The response body arrives as TCP segments, and the receiving kernel must put them back in order. It reassembles them in the socket receive buffer. It sends **ACKs**, often one for every second segment, with delayed ACK timers. It also advertises its **window**. Then `curl` reads the data with `recv`.
+The response body arrives as TCP segments, and the receiving kernel has to put them back in order, because packets can arrive shuffled. It reassembles them in the socket receive buffer. It sends **ACKs**, often one for every second segment, with delayed ACK timers. It also advertises its **window**, the amount of data it is ready to accept right now. Then `curl` reads the data with `recv`.
 
-Loss triggers a fast retransmit after three duplicate ACKs, or through SACK. Otherwise a retransmission timeout fires. Either way, the congestion window collapses and then regrows.
+Loss triggers a fast retransmit after three duplicate ACKs, or through SACK. Otherwise a retransmission timeout fires. Either way, the congestion window collapses and then regrows. You can think of the window as TCP's cautious estimate of how much the road can carry, which it shrinks quickly after a scare and rebuilds slowly.
 
-When both sides are done, TCP closes with **FIN/ACK** exchanges, or with **RST** on abort. The side that closes first keeps the connection in **TIME_WAIT** for about 60 seconds on Linux. That delay stops late packets from corrupting a new connection that reuses the same 5-tuple.
+When both sides are done, TCP closes with **FIN/ACK** exchanges, or with **RST** on abort. The side that closes first keeps the connection in **TIME_WAIT** for about 60 seconds on Linux. That delay stops late packets from corrupting a new connection that reuses the same 5-tuple. It is a little like keeping a closed file on your desk for a minute in case a late letter about it arrives.
 
 Thousands of short connections can exhaust ephemeral ports or fill the table with `TIME_WAIT` entries. Chapter 2.6 covers this, and chapter 1.22 covers the tuning.
 
@@ -298,7 +304,7 @@ If your service opens thousands of short connections, watch the `TIME_WAIT` coun
 
 ## 11. Timing: reading `curl -w`
 
-A single total time hides where the wait happened. The `curl -w` report splits the request into phases.
+A single total time hides where the wait happened. Imagine telling a doctor only "I felt unwell for a while". A slow request is only useful to you once you know which phase was slow, and `curl -w` splits the request into phases.
 
 ```bash
 cat > curl-format.txt <<'EOF'
@@ -315,15 +321,15 @@ curl -sS -o /dev/null -w @curl-format.txt https://example.com/
 
 All values count from the start, so each phase is a difference between two of them. DNS is namelookup. TCP is connect minus namelookup. TLS is appconnect minus connect. The request, server time and first byte together are starttransfer minus pretransfer. The transfer is total minus starttransfer.
 
-Take the numbers from exercise 5. Suppose `time_namelookup` is 0.012 s and `time_connect` is 0.032 s. DNS takes 0.012 s. TCP takes 0.032 minus 0.012, which is 0.020 s.
+Let us work one example with the numbers from exercise 5. Suppose `time_namelookup` is 0.012 s and `time_connect` is 0.032 s. DNS takes 0.012 s, because the clock started at zero. TCP takes 0.032 minus 0.012, which is 0.020 s, because the connect number already includes the time DNS took. Every other phase follows the same pattern of taking one number and subtracting the one before it.
 
-Read each phase against its likely cause. A large DNS phase points to the resolver or a search-domain explosion. A large TCP phase points to distance, loss (a SYN retransmit adds 1 s) or an overloaded accept queue. A large TLS phase points to distance, the certificate chain or CPU load. A large TTFB points to the server, the application or the backend. A large transfer points to bandwidth, loss, window limits or response size.
+Then read each phase against its likely cause. A large DNS phase points to the resolver or a search-domain explosion. A large TCP phase points to distance, loss (a SYN retransmit adds 1 s) or an overloaded accept queue. A large TLS phase points to distance, the certificate chain or CPU load. A large TTFB points to the server, the application or the backend. A large transfer points to bandwidth, loss, window limits or response size.
 
-Check the largest phase first, since that is where you should look.
+Start with the largest phase, since that is where the time went.
 
 ## 12. A map from symptom to layer
 
-When `curl` fails, the message and the exit code point to a layer. Use the table below as a lookup, and match your symptom to a row.
+When `curl` fails, the message and the exit code point to a layer. You now know every layer in the trip, so you can use the table below as a lookup. Match your symptom to a row and start with the layer that row names.
 
 | Symptom (curl) | Exit code / message | Layer and likely cause | First tools |
 |---|---|---|---|
@@ -339,13 +345,13 @@ When `curl` fails, the message and the exit code point to a layer. Use the table
 | Works for small, stalls for big transfers | | MTU/PMTUD blackhole (ICMP filtered), TCP window/loss | `ping -M do -s 1472`, `tracepath`, `ss -ti`, `tcpdump` |
 | Works from A, fails from B | | Different route, firewall, DNS view, proxy settings (`HTTP(S)_PROXY`) | `curl -v` from both, `env \| grep -i proxy` |
 
-The method is in chapter 2.30. You can test each layer from the bottom up: link, address, route, ARP, ping the gateway, ping the destination, DNS, TCP port, TLS and HTTP. Or you can bisect from the middle. Ask whether you can reach the gateway, then whether you can reach an IP on the Internet, then whether you can resolve names.
+The method is in chapter 2.30. You can test each layer from the bottom up: link, address, route, ARP, ping the gateway, ping the destination, DNS, TCP port, TLS and HTTP. Or you can bisect from the middle. Ask whether you can reach the gateway, then whether you can reach an IP on the Internet, then whether you can resolve names. Bisecting is like finding a break in a long string of lights by testing the middle bulb first.
 
-Start with the layer that the message points to, and test one layer at a time.
+Either way, start with the layer that the message points to, and test one layer at a time.
 
 ## 13. The same journey in AI infrastructure
 
-Every AI workload walks some version of this journey, but each one adds steps or skips them. Here is how it changes for the traffic you will meet most often.
+Every AI workload walks some version of this journey, but each one adds steps or skips them. If you can say which steps a workload uses, you know where to look when it breaks. Here is how it changes for the traffic you will meet most often.
 
 Container image pulls come first. `containerd` or Docker resolves the registry name with DNS. It then connects over TLS, often through a corporate proxy or mirror, and authenticates. Layers download over HTTP/2 or HTTP/1.1. A slow pull can come from DNS, from a TLS chain or proxy problem, from MTU black holes on cloud overlays, from rate limits or from a congested NAT gateway.
 
@@ -353,23 +359,23 @@ Object storage, such as GCS or S3, uses HTTPS with many parallel connections. Th
 
 Cluster bootstrap comes next. `torchrun`, MPI and NCCL rendezvous over ordinary TCP connections on the management or front-end network. That path depends on hostnames, DNS, `/etc/hosts` and `NCCL_SOCKET_IFNAME`. The bulk transfers then use RDMA verbs over InfiniBand or RoCE, which **bypass the kernel TCP/IP stack**. User-space libraries post work requests directly to the NIC, and the NIC does its own segmentation, reliability and memory access. GPUDirect RDMA reads GPU memory without CPU copies.
 
-The "journey" is shorter in this case, with no routing table, qdisc or TCP in the kernel. The lower layers still exist, though. You still find Ethernet or IB addressing, switches and routing in the fabric. The control plane still uses TCP/IP for connection setup.
+So the journey is shorter here, with no routing table, qdisc or TCP in the kernel. The lower layers still exist, though. You still find Ethernet or IB addressing, switches and routing in the fabric, and the control plane still uses TCP/IP for connection setup. This is why a cluster can show perfectly healthy RDMA traffic and still fail to start a job, because the ordinary TCP part of the story broke first.
 
 A pod's request adds steps of its own. CoreDNS lookups use `ndots:5`. Service virtual IPs are translated by kube-proxy or eBPF through DNAT. A CNI-managed veth or bridge, or an overlay with VXLAN encapsulation, carries the packet, and NetworkPolicy applies. Then the node's normal path takes over. Chapters 2.23 and 2.25, and Part 5, cover this.
 
 In the cloud, the router and the switch are virtual. VPC routing, firewall rules, NAT gateways, load balancers and peering decide what happens to your packet. Chapter 2.32 covers this case.
 
-For each workload, list which of these steps it uses before you start troubleshooting its network.
+For each workload, list which of these steps it uses before you start troubleshooting its network. A two-minute list saves an afternoon of looking in the wrong place.
 
 ## 14. Hands-on lab: trace one request end to end
 
-Start with the self-checking Python lab. Run it locally from `code/part02/curl_packet_journey_lab.py`. It checks three things. First, the `curl -w` phase subtraction for DNS, TCP connect, TLS handshake, TTFB wait and body transfer. Second, the hop-by-hop L2 MAC rewrites, against the constant L3 IP and the decrementing `TTL`. Third, the layer diagnosis for the `curl` exit codes `6`, `7`, `22`, `28`, `35` and `60`.
+A word on status first. The self-checking Python lab below runs locally and has been run, while the interactive VM commands that follow have not been run for this chapter. Start with the Python lab, which runs locally from `code/part02/curl_packet_journey_lab.py`. It checks three things. First, the `curl -w` phase subtraction for DNS, TCP connect, TLS handshake, TTFB wait and body transfer. Second, the hop-by-hop L2 MAC rewrites, against the constant L3 IP and the decrementing `TTL`. Third, the layer diagnosis for the `curl` exit codes `6`, `7`, `22`, `28`, `35` and `60`.
 
 ```bash
 python3 code/part02/curl_packet_journey_lab.py
 ```
 
-Next, move to a disposable Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl`, `iproute2` and `mtr` installed. All the interactive VM commands below are `untested here`, so treat each result as something you still need to confirm. Then work through these steps.
+Next, move to a disposable Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl`, `iproute2` and `mtr` installed. Treat each result as something you still need to confirm on your own machine. Then work through these steps.
 
 1. Record your configuration. Run `ip -br addr`, `ip route`, `ip neigh`, `cat /etc/resolv.conf`, `resolvectl status` and `cat /etc/nsswitch.conf | grep hosts`. Then draw your host's view: interface, address, gateway and resolver.
 2. Narrate the request with strace. Run the `strace` command from section 2, and list in order the files opened, the sockets created and the addresses connected. Then identify the DNS query socket and the TCP socket.
@@ -380,23 +386,23 @@ Next, move to a disposable Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `op
 7. Trace the path. Run `traceroute -n` and `mtr -n -c 30 --report` to the server. Note the hop count, how the RTT grows and where it increases. Compare the RTT with `ping`'s result and with `time_connect`.
 8. On an optional GPU VM, run `ss -tnp` while a PyTorch distributed job rendezvous runs. Compare what you see with `rdma link` and `ibv_devinfo`, and note which traffic is TCP and which is RDMA.
 
-Finish by writing down which phase of your own run was the largest, and which layer that phase points to.
+Finish by writing down which phase of your own run was the largest, and which layer that phase points to. That one sentence is the habit this whole chapter is training.
 
 ## 15. Common mistakes
 
-Most network debugging goes wrong in the same few ways. Treating "the network" as one thing is the first mistake. It is a path with layers, and each layer fails in its own way. Forgetting DNS is another, including `search`/`ndots` and IPv6 AAAA, when the network feels slow.
+Most network debugging goes wrong in the same few ways, and nearly all of them come from losing the picture of the path. The first is treating "the network" as one thing. It is a path with layers, and each layer fails in its own way. Another is forgetting DNS when the network feels slow, including `search`/`ndots` and IPv6 AAAA.
 
-If you think the destination MAC belongs to the final server, you are wrong, because MAC addresses change at every hop. Forgetting that NAT hides your address leads to the same confusion. Testing with `ping` alone is another trap. ICMP may be filtered, and `ping` says nothing about TCP ports, TLS or HTTP.
+If you think the destination MAC belongs to the final server, you will be confused, because MAC addresses change at every hop. Forgetting that NAT hides your address leads to the same confusion. Testing with `ping` alone is another trap. ICMP may be filtered, and `ping` says nothing about TCP ports, TLS or HTTP. A reply to `ping` is real evidence, but only about ICMP.
 
 Using the IP in place of the name for HTTPS surprises people with certificate errors, and so does omitting SNI. Ignoring MTU and ICMP filtering breaks large transfers. Reading `time_total` without the phase breakdown hides the cause.
 
-Assuming that the client's problem is the server's problem ignores proxy variables, split DNS and different routes from different hosts. In AI clusters, the mistake is assuming RDMA traffic is visible to `tcpdump`, `iptables` or `ss`. It is not, so use RDMA tools and NIC counters instead.
+Assuming that the client's problem is the server's problem ignores proxy variables, split DNS and different routes from different hosts. In AI clusters, the classic mistake is assuming RDMA traffic is visible to `tcpdump`, `iptables` or `ss`. It is not, so use RDMA tools and NIC counters instead.
 
-Check the client side first, including its proxy settings and DNS view.
+Check the client side first, including its proxy settings and DNS view. It is the cheapest place to look, and it is surprisingly often where the answer is.
 
 ## 16. Interview angles
 
-Interviewers use these questions to check whether you can narrate the path step by step, with a command for each step.
+Interviewers use these questions to check whether you can narrate the path step by step, with a command for each step. A calm walk through the trip, in order, impresses more than a list of memorised facts.
 
 - "Walk me through what happens when you run `curl https://example.com`." Follow the sections of this chapter in order, and name a command for each step.
 - "How does a packet get from your laptop to a server in another continent? What changes at each hop?" The MAC address and the TTL change at every hop. The IP address stays constant, except where NAT changes it at the edge.
@@ -409,11 +415,11 @@ Interviewers use these questions to check whether you can narrate the path step 
 
 ## Exercises
 
-Work through these six exercises in order. Each one uses the commands from the earlier sections.
+Work through these six exercises in order. Each one uses the commands from the earlier sections, and each starts from a situation you could meet on a real machine.
 
 1. Write out the 9 ordered stages of `curl https://example.com/`, from URL parsing through the `FIN`/`ACK` exchange and the `TIME_WAIT` state. Then match each `strace` system call (`openat`, `socket`, `connect`, `sendto`, `recvfrom`, `close`) to its stage: the `/etc/nsswitch.conf` and `/etc/hosts` lookup, the UDP/53 DNS query, or the TCP/443 connection.
 2. Name resolution raises two questions, one about `systemd-resolved` and one about Kubernetes. (a) Explain how `getent ahosts example.com`, `resolvectl query example.com` and `dig +trace example.com` differ in what they test. (b) Explain why setting `ndots:5` in a Kubernetes Pod's `/etc/resolv.conf` multiplies DNS queries when you look up `example.com`.
-3. Given a host at `10.0.0.15/24` with default gateway `10.0.0.1` (`bb:bb:bb:00:00:01`), which sends a packet to `93.184.216.34`: (a) What does `ip route get 93.184.216.34` return, and whose MAC address goes into the outgoing frame's Destination MAC field? (b) Use `simulate_router_hop_headers()` in `code/part02/curl_packet_journey.py` to trace which header fields change and which stay constant across three router hops.
+3. Take a host at `10.0.0.15/24` with default gateway `10.0.0.1` (`bb:bb:bb:00:00:01`) that sends a packet to `93.184.216.34`. (a) What does `ip route get 93.184.216.34` return, and whose MAC address goes into the outgoing frame's Destination MAC field? (b) Use `simulate_router_hop_headers()` in `code/part02/curl_packet_journey.py` to trace which header fields change and which stay constant across three router hops.
 4. Compare two failures at the packet level. (a) What is the difference, in `tcpdump`, between a host where no process listens on port 443, which gives `Connection refused`, and a host where a firewall drops the `SYN`, which gives `Connection timed out`? (b) Why does filtering ICMP `Fragmentation Needed` / `Packet Too Big` let `curl` handshakes and tiny responses succeed, while large container layer downloads stall? How does `ping -M do -s 1472` test this?
 5. Work with `curl -w` numbers and exit codes. (a) Given `curl -w` output `namelookup=0.012s, connect=0.032s, appconnect=0.072s, pretransfer=0.073s, starttransfer=0.123s, total=0.153s`, use `decompose_curl_timings()` to compute the exact duration of the DNS, TCP connect, TLS handshake, server TTFB wait and body transfer phases. (b) Map `curl` exit codes `6`, `7`, `22`, `28`, `35` and `60` (`diagnose_curl_exit_code()`) to their exact network layers and first diagnostic commands.
 6. Contrast two paths. Trace a `torchrun`/`NCCL` TCP bootstrap connection (`getaddrinfo` -> `socket` -> routing table -> ARP -> `qdisc` -> NIC) with an InfiniBand or RoCEv2 GPUDirect RDMA collective transfer. Then explain why `tcpdump`, `ss` and `iptables` do not see the RDMA data-plane packets.
@@ -556,3 +562,4 @@ First, DNS queries go to CoreDNS, which expands names with `ndots:5` and the sea
 - **Run here:** `python3 code/part02/curl_packet_journey_lab.py` (16 passed, 0 failed).
 - **Explicitly labelled inferences:** The Section 13 AI-infrastructure comparison (container registry pulls, S3/GCS parallel HTTPS streams, `torchrun` TCP rendezvous vs `NCCL` kernel-bypass GPUDirect RDMA, and Kubernetes `ndots:5` + CNI path) connects the classic `curl` packet walkthrough to Part 5, Part 8, and Part 9 GPU cluster networking (plus original study items 23, 26, 27, and 29).
 - **Not verified on live hardware:** All interactive VM commands (`curl`, `strace`, `getent`, `resolvectl`, `dig`, `ip route`, `ip neigh`, `tcpdump`, `arping`, `traceroute`, `mtr`, `ss`, `openssl s_client`) are marked (untested here) and should be executed on a disposable Linux VM.
+
