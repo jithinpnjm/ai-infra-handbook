@@ -107,14 +107,14 @@ Three cautions apply before you copy any of these values. A forced `Gen5` link o
 
 ### 2.4 The tool
 
-The tool works in two stages, and you should always run them in that order. Start with `plan`, which only reads the live system and compares it with your target file. Nothing is sent to the BMC during a plan. Then run `apply`, which sends the changes. The split matters because a plan shows you exactly what a change would do before you commit to it.
+The tool works in two stages, and you should always run them in that order. Start with `plan`, which only reads the live system and compares it with your target file. Nothing is sent to the BMC during a `plan`. Then run `apply`, which sends the changes. The split matters because a `plan` shows you exactly what a change would do before you commit to it.
 
 ```bash
 python3 rf_bios.py plan  http://<bmc> <user> <password> --target profiles/ai_node_bios.json
 python3 rf_bios.py apply http://<bmc> <user> <password> --target profiles/ai_node_bios.json --yes --reset
 ```
 
-On the practice mock, the plan reported six differences, two of which were already right. After `apply --yes --reset`, the last line read `LIVE and verified`. A second plan then showed `0 to change`, which is the sign that the node now matches the target. Without `--yes`, `apply` only prints what it would send. The tool changes only the attributes that differ, so you can run it again and again without harm. Engineers call this property idempotent, which means running the same action twice gives the same end state as running it once. Run `plan` before every `apply`, and send the change only when the plan shows what you expect.
+On the practice mock, the `plan` reported six differences, two of which were already right. After `apply --yes --reset`, the last line read `LIVE and verified`. A second `plan` then showed `0 to change`, which is the sign that the node now matches the target. Without `--yes`, `apply` only prints what it would send. The tool changes only the attributes that differ, so you can run it again and again without harm. Engineers call this property idempotent, which means running the same action twice gives the same end state as running it once. Run `plan` before every `apply`, and send the change only when the plan shows what you expect.
 
 ## 3. Boot override: one time or forever
 
@@ -220,7 +220,7 @@ The gate comes last. Only nodes with clean evidence enter the pool. The notes na
 
 *The BMC does not answer ping, SSH or Redfish. The host is up, and the fans are at 100 percent.* A bricked BMC is one whose firmware is damaged, so it cannot run its own services. The fans run at full speed because the BMC can no longer manage them, so the chassis plays safe. Ping, SSH and Redfish all fail because they all depend on the BMC's network stack.
 
-The notes give a recovery order with three steps. First, reset the BMC from the host, through the in-band interface. In-band means the reset travels from the host's operating system to the BMC over an internal channel, so it works even when the BMC's network is dead. The notes write `ipmitool bmc reset cold`. Chapter 7.1 and the firmware steps use `ipmitool mc reset cold` instead. The two forms may be aliases, and this chapter does not check that, so use whichever form your ipmitool version documents. Second, if the flash is corrupted, field staff use the chassis BMC reset or a recovery image. The flash is the memory chip that holds the BMC firmware. Third, do a full AC power drain through the PDU. That means cutting the power at the PDU so the BMC's standby power also goes off, and then restoring it.
+The notes give a recovery order with three steps. First, reset the BMC from the host, through the in-band interface. In-band means the reset travels from the host's operating system to the BMC over an internal channel, so it works even when the BMC's network is dead. The notes write `ipmitool bmc reset cold`. Chapter 7.1 and the firmware steps use `ipmitool mc reset cold` instead. I believe `bmc` is an alias of `mc` in ipmitool, but I did not check. The two forms may be aliases, and this chapter does not check that, so use whichever form your ipmitool version documents. Second, if the flash is corrupted, field staff use the chassis BMC reset or a recovery image. The flash is the memory chip that holds the BMC firmware. Third, do a full AC power drain through the PDU. That means cutting the power at the PDU so the BMC's standby power also goes off, and then restoring it.
 
 Prevention matters more than recovery. Update the BMC in a first small wave, keep the recovery procedure written down, and never update BMC firmware on a whole rack at once. Keep `Manager.Reset` in mind too, from chapter 7.7. A restart request over Redfish needs a working BMC, so this scenario needs the in-band route.
 
