@@ -22,13 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A platform team serves dozens of research groups across several clusters. An administrator asks who is allowed to spend which department's GPU budget, and no single cluster scheduler can answer. A researcher spends an hour writing Kubernetes manifests just to start a short notebook. Another team assumes that separate queues also mean separate hardware, and a neighbor can then read its model weights and metrics.
+Picture a platform team that runs GPU capacity for dozens of research groups spread across several clusters. One morning an administrator asks a simple question. Who is allowed to spend which department's GPU budget? No single cluster scheduler can answer that, because each scheduler only sees the cluster it runs in. Meanwhile a researcher spends most of an hour writing Kubernetes manifests just to start a short notebook session. Another team quietly assumes that separate queues also mean separate hardware. Then a neighbor's job reads its model weights and metrics, and the assumption turns out to be wrong.
 
-Chapters 11.13 through 11.18 covered the open-source NVIDIA KAI Scheduler. NVIDIA released that core scheduling engine under the Apache 2.0 license in early 2025, after acquiring Run:ai. KAI Scheduler handles Pod placement inside one cluster, along with gang scheduling and queue priorities. The commercial NVIDIA Run:ai platform sits above that engine. It adds multi-cluster fleet management, single sign-on, departmental showback, and self-service workload templates.
+Chapters 11.13 through 11.18 covered the open-source NVIDIA KAI Scheduler. NVIDIA released that core scheduling engine under the Apache 2.0 license in early 2025, after acquiring Run:ai. A license of this kind is the legal text that says what other people may do with the code, such as use it, change it, and share it. KAI Scheduler handles Pod placement inside one cluster, along with gang scheduling and queue priorities. A Pod is the smallest unit that Kubernetes runs, and gang scheduling means a group of Pods starts together or not at all. The commercial NVIDIA Run:ai platform sits above that engine. It adds multi-cluster fleet management, single sign-on (one login that works across several tools), departmental showback (reports that show each department what its GPU use would cost, without sending a bill), and self-service workload templates (ready-made forms that let a researcher start a workspace without writing YAML by hand).
 
 > **Update, November 2026.** The enterprise control plane described in this chapter is no longer closed. NVIDIA published the Run:ai platform as open source on 2026-10-13 in the `dsx-ai-factory/run-ai` repository, and a separate support-entitled release is the commercial path with enterprise support. The architecture below still holds. Chapter 11.31 covers what is open, what remains commercial, and how Run:ai fits with the other NVIDIA open-source Kubernetes projects. It also records what was not verified, such as a feature comparison between the community and support-entitled releases.
 
-Architecture reviews often make one mistake and treat Run:ai as a way to share a GPU in hardware. Run:ai is a queueing, fairness, and quota layer above Kubernetes. It does not slice silicon, and it does not replace Multi-Instance GPU (MIG) partitions or device-plugin time-slicing. It places workloads on whole GPUs, MIG slices, and fractional reservations, and it applies fairness and preemption rules to them.
+Architecture reviews often make one mistake. They treat Run:ai as a way to share a GPU in hardware. Run:ai is a queueing, fairness, and quota layer above Kubernetes. It does not slice silicon, and it does not replace Multi-Instance GPU (MIG) partitions or device-plugin time-slicing. MIG is a feature that cuts one physical GPU into separate slices, each with its own memory. Device-plugin time-slicing is a setting that lets several Pods take turns on one GPU. Run:ai places workloads on whole GPUs, MIG slices, and fractional reservations, and it applies fairness and preemption rules to them. Preemption means stopping a running job so that a more important job can use its resources.
 
 ```text
 Enterprise Scale Challenges Addressed by the Platform Layer:
@@ -39,34 +39,31 @@ Enterprise Scale Challenges Addressed by the Platform Layer:
 - Separation of scheduling/fairness/quota policy from MIG and time-slicing hardware sharing
 ```
 
-This chapter connects the open-source KAI Scheduler engine to the NVIDIA Run:ai platform. It covers a seven-layer security model for tenants and two worked designs, one for a research cluster and one for a 1,024-GPU AI Factory. Before you evaluate any multi-tenant GPU platform, separate the scheduling policy from the hardware isolation underneath it.
+This chapter connects the open-source KAI Scheduler engine to the NVIDIA Run:ai platform. It covers a seven-layer security model for tenants and two worked designs, one for a research cluster and one for a 1,024-GPU AI Factory. An AI Factory here means a large facility built to train and serve models at scale. Before you evaluate any multi-tenant GPU platform, separate the scheduling policy from the hardware isolation underneath it. Most of the confusion in this topic comes from mixing those two layers.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-Before you start, work through Chapters 11.13 through 11.18. They cover KAI Scheduler architecture, hierarchical queues, gang scheduling, fractional GPUs, and MIG.
+Before you start, work through Chapters 11.13 through 11.18. They cover KAI Scheduler architecture, hierarchical queues, gang scheduling, fractional GPUs, and MIG. If one of those ideas feels unfamiliar when you read this chapter, go back to the earlier chapter first, since this one builds on it.
 
-You should also know the basics of Kubernetes role-based access control, namespaces, and persistent storage provisioning.
+You should also know the basics of Kubernetes role-based access control, namespaces, and persistent storage provisioning. Role-based access control (RBAC) is the system that decides who may do what inside a cluster. A namespace is a named section of a cluster that keeps one team's objects apart from another team's. Persistent storage provisioning is the step where a cluster creates a disk or file share that outlasts the Pod using it.
 
 ### Outcomes
 
-By the end of this chapter, you should be able to do the following.
-
-- Tell apart the NVIDIA Run:ai enterprise control plane and the open-source KAI Scheduler engine. Explain why Run:ai complements MIG and time-slicing rather than replacing them.
-- Design a seven-layer multi-tenant threat model. It spans four administrative planes, three fairness time scales, and six tenant onboarding gates.
-- Architect a 50-team, 200-GPU research cluster. It uses contribution-weighted deficit fair-share, graceful checkpoint preemption, tiered storage, and full total cost of ownership math.
-- Present the full-stack 1,024-GPU AI Factory. It spans bare-metal provisioning, InfiniBand and RoCEv2 fabrics, Lustre storage, Slurm, and Kubernetes with Run:ai.
+A new platform engineer often sees the words Run:ai and KAI on the same slide and assumes they name one product. This chapter untangles that first. It then walks through a seven-layer security model, a split of administrative duties into four planes, and the fairness rules that tie the two together. Last, it works through two worked designs. The first is a 50-team, 200-GPU research cluster that uses contribution-weighted deficit fair-share, graceful checkpoint preemption, tiered storage, and a full total cost of ownership calculation. The second is a full-stack 1,024-GPU AI Factory that spans bare-metal provisioning, InfiniBand and RoCEv2 fabrics, Lustre storage, Slurm, and Kubernetes with Run:ai. Fair-share here means each team gets a share of the cluster that matches what it funded. Total cost of ownership, or TCO, is the full cost of owning the system over its life, not only the purchase price.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: How the Run:ai Platform relates to KAI Scheduler, MIG, and Time-Slicing
 
-As an organization grows past a single Kubernetes cluster, managing GPU quotas through raw custom resources becomes error-prone. Platform engineers need a central control plane instead. It maps organizational budgets to cluster queues, so researchers do not have to write complex YAML files.
+Think about what happens when a department grows past a single Kubernetes cluster. Each cluster keeps its own list of queues. The budget that finance approved in one place now has to be typed in again, by hand, for every other cluster. Managing GPU quotas through raw custom resources works well enough for one cluster, but it grows fragile as the count of clusters grows. A custom resource is an extra kind of object that you add to Kubernetes, so that the scheduler can read it. A Queue, for example, is a custom resource that describes a team's quota.
 
-NVIDIA split the architecture into two tiers after acquiring Run:ai. The first tier is the cluster-level scheduling engine. It runs inside each Kubernetes cluster as the KAI Scheduler or the Run:ai cluster agent. During its six-stage scheduling session, the engine evaluates custom resources for queues, pod groups, bind requests, and network topologies.
+Platform engineers need a central place to make these decisions. A control plane is the layer that decides things for the whole fleet, as opposed to the workers that carry out those decisions inside each cluster. The Run:ai control plane maps organizational budgets to cluster queues, so researchers do not have to write complex YAML files. YAML is the text format used to describe Kubernetes objects, and it is easy to get wrong in small ways.
 
-The second tier is the NVIDIA Run:ai enterprise control plane. It sits above one or more Kubernetes clusters. Administrators use this central portal and REST API to organize tenants into Departments and Projects. Departments map to level-one parent queues. Projects map to level-two child queues and managed Kubernetes namespaces. Corporate single sign-on binds researchers, department leads, and platform administrators to their respective scopes.
+NVIDIA split the architecture into two tiers after acquiring Run:ai. The first tier is the cluster-level scheduling engine. It runs inside each Kubernetes cluster as the KAI Scheduler or the Run:ai cluster agent. During its six-stage scheduling session, the engine evaluates custom resources for queues, pod groups, bind requests, and network topologies. A pod group is a set of Pods that the scheduler treats as one unit. A bind request is the instruction that attaches a Pod to a node after the scheduler has chosen one. A topology describes how nodes and their network links are arranged.
+
+The second tier is the NVIDIA Run:ai enterprise control plane. It sits above one or more Kubernetes clusters. Administrators use this central portal and REST API to organize tenants into Departments and Projects. A REST API is a web address that a program can call to read or change settings, and the portal is the screen that a person uses for the same job. Departments map to level-one parent queues. Projects map to level-two child queues and managed Kubernetes namespaces. Corporate single sign-on binds researchers, department leads, and platform administrators to their respective scopes. A scope is the set of things a person is allowed to see and change.
 
 The block below lays out both tiers side by side, with the microservices, custom resources, and session pipeline for the first tier.
 
@@ -86,7 +83,9 @@ Two-Tier Run:ai and KAI Scheduler Architecture (Generative AI on Kubernetes, Cha
    - Fleet Governance: Showback, chargeback, Jain's fairness analytics, and reusable asset catalog (NFS, S3, PVC)
 ```
 
-If you read the diagram from the top, the path is clear. The enterprise plane feeds the cluster layer, and the cluster scheduler decides how workloads reach the GPU resources at the bottom.
+The session pipeline in that block is a fixed order of checks that the engine runs each time it decides where work goes. Preempt means stopping lower-priority work when a higher-priority job needs room. Reclaim means taking back GPUs that a team borrowed beyond its quota. Staleness means ignoring a job whose request has gone out of date. Over-quota means handling jobs that ask for more than their team's guaranteed share. Allocate means placing a job on resources that are free. Consolidate means moving work together so that fewer nodes stay partly filled. You do not need to memorize the order. You need to know that the engine makes these decisions in one cycle, every time.
+
+If you read the diagram from the top, the path is clear. The enterprise plane feeds the cluster layer, and the cluster scheduler decides how workloads reach the GPU resources at the bottom. The top is where budgets are set, and the bottom is where the GPUs sit.
 
 ```mermaid
 flowchart TD
@@ -118,17 +117,23 @@ flowchart TD
 
 Customers and interview candidates often confuse Run:ai with the mechanisms that share a GPU in hardware. **Run:ai is an orchestration, queueing, fairness, and quota layer above Kubernetes, not a hardware sharing mechanism.**
 
-Hardware and driver sharing boundaries come from MIG, device-plugin time-slicing, CUDA Multi-Process Service, or NVIDIA vGPU. The NVIDIA GPU Operator and device plugin expose those resources in the Kubernetes node capacity table. Run:ai and KAI Scheduler sit above the device plugin. They decide which tenant workload receives which published GPU resource. Along the way, they enforce fair-share quotas, over-quota borrowing, and gang scheduling across those allocations. Always choose your hardware isolation primitive first, then layer Run:ai above it for quota governance.
+Hardware and driver sharing boundaries come from MIG, device-plugin time-slicing, CUDA Multi-Process Service, or NVIDIA vGPU. CUDA Multi-Process Service (MPS) lets several processes share one GPU's compute with less isolation than MIG. NVIDIA vGPU offers a virtual GPU to a virtual machine. Each of these sets a hard or semi-hard limit on what a tenant can touch on the chip or the driver. The NVIDIA GPU Operator and device plugin expose those resources in the Kubernetes node capacity table. The node capacity table is the list that tells the scheduler how many of each resource a node offers.
+
+Run:ai and KAI Scheduler sit above the device plugin. They decide which tenant workload receives which published GPU resource. Along the way, they enforce fair-share quotas, over-quota borrowing, and gang scheduling across those allocations. Over-quota borrowing means a team uses GPUs beyond its guaranteed share while the owner is idle, and it gives them back when the owner returns.
+
+A parking garage makes the split easy to remember. The garage's floor plan decides how many spaces exist and how big each one is. That is the hardware layer. The attendant decides which car gets which space and who waits in line. That is the scheduling layer. Changing who parks where never changes the size of the spaces, and changing the floor plan never settles who gets priority.
+
+Always choose your hardware isolation primitive first, then layer Run:ai above it for quota governance. A primitive here means the basic tool the hardware offers, such as a MIG slice. If you start with the quota rules and only then decide how the chip is cut, you will often find that the cut no longer matches the quota.
 
 ---
 
 ### 2. Intermediate: Multi-tenant security, threat modeling, and fairness governance
 
-Putting two research teams into separate Run:ai Projects, on separate GPU devices, does not isolate them by itself. Both teams might still share an unhardened Linux host, a common NFS storage credential, or an unscoped Prometheus dashboard. In that setup, a compromised notebook in one project can still steal model weights or starve host memory in the other.
+Putting two research teams into separate Run:ai Projects, on separate GPU devices, does not isolate them by itself. Both teams might still share an unhardened Linux host, a common NFS storage credential, or an unscoped Prometheus dashboard. An unhardened host is a machine whose settings were never tightened against misuse. NFS (Network File System) is a shared disk that many machines mount at once. A Prometheus dashboard shows metrics, and an unscoped one shows everything to everyone. In that setup, a compromised notebook in one project can still steal model weights or starve host memory in the other.
 
 #### 1. The 7-Layer Multi-Tenant Boundary and Threat Model
 
-Your actual blast radius in a shared cluster depends on the weakest control along the end-to-end execution path. A complete multi-tenant design therefore enforces isolation across seven distinct boundary layers. The table walks through each layer, the controls that enforce it, and the threat and check that go with it.
+Your actual blast radius in a shared cluster depends on the weakest control along the end-to-end execution path. Blast radius is the amount of damage that one failure can reach before it stops. A complete multi-tenant design therefore enforces isolation across seven distinct boundary layers. A useful picture is a building with seven doors. Each door checks a different thing, and a visitor who gets past one door still meets the next. The table walks through each layer, the controls that enforce it, and the threat and check that go with it.
 
 | Tenant Boundary Layer | Example Controls in a Run:ai / KAI Cluster | Concrete Threat & Verification |
 |---|---|---|
@@ -140,13 +145,17 @@ Your actual blast radius in a shared cluster depends on the weakest control alon
 | **6. Host** | Restricted SSH, immutable BCM/node image, change-controlled MIG/device-plugin config | *Threat:* User modifies MIG geometry or device-plugin ConfigMap on a live node. *Check:* Node operations restricted to platform admins. |
 | **7. Observability** | Role-scoped Run:ai / Grafana views and redacted audit logs | *Threat:* Team B queries Prometheus `nvidia_smi_memory_used_mib \| grep -i "team_a"` and discovers Team A's model names. *Check:* Two-identity scope test proves cross-tenant queries return empty. |
 
-Each row pairs a control with the threat it stops and a check that proves the boundary holds. You can read the last column as the proof for that row.
+Each row pairs a control with the threat it stops and a check that proves the boundary holds. You can read the last column as the proof for that row. A control that nobody checks is only a hope, so every row names a test you could run.
+
+Take the GPU row as a walkthrough. The control is the choice of how the GPU is shared. A dedicated whole GPU gives the tenant the chip alone, which is the strongest choice. MIG gives hard partitions on one chip, so a tenant cannot see the other tenant's slice. Time-slicing lets several workloads take turns, which is only safe between parties who trust each other. The threat is that one team sees or kills another team's process. The check runs `nvidia-smi` inside the pod and confirms that only that team's process appears in the output. If the output lists another team's process, the boundary is broken, whatever the dashboard says.
 
 #### 2. Separating the Four Administrative Planes
 
-To prevent privilege escalation, platform architects split cluster operations into four administrative planes. A researcher identity in the Workload plane must never gain permissions in the Node, Management, or Observability planes.
+To prevent privilege escalation, platform architects split cluster operations into four administrative planes. Privilege escalation means a user gains powers that were never granted to them, for example by moving from a notebook account into an account that can change the host. A researcher identity in the Workload plane must never gain permissions in the Node, Management, or Observability planes.
 
-The block below names each plane, along with the six fairness contract elements that go with them.
+Think of the planes as four rooms in an office. The people who work in the workload room can use the tools there, but they do not hold the keys to the server room, the admin office, or the reporting room. Each room has its own keys, and a key to one room opens nothing in another. When a design keeps the rooms separate, a single compromised account stays in one room.
+
+The block below names each plane, along with the six fairness contract elements that go with them. A fairness contract is the written agreement that says what each team is promised and what it must accept in return.
 
 ```text
 Four Administrative Planes and Six Fairness Contract Elements:
@@ -159,13 +168,13 @@ Four Administrative Planes and Six Fairness Contract Elements:
   1. Entitlement | 2. Priority | 3. Borrowing | 4. Limits | 5. Cost | 6. Appeals
 ```
 
-The point of the split is to stop privilege escalation from one plane into another.
+The point of the split is to stop privilege escalation from one plane into another. A BMC, which is the small management controller on each server, sits in the Management plane, and a user with access to the Workload plane should never reach it. The plane names are simple, but they settle a lot of arguments. When someone asks whether a team lead may change a MIG layout, the answer depends on which plane that change lives in.
 
 #### 3. Fairness Across Three Time Scales and Six Onboarding Gates
 
-Picture one lab that floods the queue with multi-day training runs. Every other lab, including the students who need a five-minute debugging session, waits behind it. Fairness rules fix this at three time scales. Within seconds, at admission, queue quotas and security policies decide which jobs may start. Within minutes to hours, concurrency caps, MIG partitions, and graceful preemption protect running services from noisy neighbors. Over weeks to months, showback reports and reservation expiry reviews keep teams from hoarding idle quota.
+Picture one lab that floods the queue with multi-day training runs. Every other lab, including the students who need a five-minute debugging session, waits behind it. The problem here is not one bad job. It is the lack of a rule that works at the right speed. Fairness rules fix this at three time scales. Within seconds, at admission, queue quotas and security policies decide which jobs may start. Within minutes to hours, concurrency caps, MIG partitions, and graceful preemption protect running services from noisy neighbors. A noisy neighbor is a workload that uses more than its share and slows down everyone else. Over weeks to months, showback reports and reservation expiry reviews keep teams from hoarding idle quota. Hoarding means holding a reservation that nobody uses.
 
-Before a new project gets any GPU quota, the platform team passes it through six sequential onboarding control gates. The gates run one after another, in the order shown.
+Before a new project gets any GPU quota, the platform team passes it through six sequential onboarding control gates. A gate is a test that a project must pass before the next step is allowed. The gates run one after another, in the order shown. If a project fails an early gate, the later gates do not run, because there is no point testing capacity for an account that cannot yet be trusted.
 
 ```text
 Six Sequential Tenant Onboarding Control Gates:
@@ -178,21 +187,23 @@ Gate 6. Observability -> Perform two-identity dashboard and Prometheus query tes
 + Offboarding Gate   -> Revoke credentials, release Queue quotas, and purge saved dashboard exports at project end.
 ```
 
-Audit all seven boundary layers and complete all six onboarding gates before allowing a new tenant to launch a single GPU pod.
+The first gate asks who the project's users are and what they may do. The second gate asks whether the software they run is approved and whether it is allowed to touch the host. The third gate checks the network paths between pods. The fourth gate checks that the storage access is as narrow as the project needs. The fifth gate proves that the quota and the priority settings work as the paperwork says. The sixth gate uses two different identities to confirm that one tenant cannot see another tenant's dashboards or metrics. The offboarding gate closes the loop, so that a finished project leaves no credentials or quota behind.
+
+Audit all seven boundary layers and complete all six onboarding gates before allowing a new tenant to launch a single GPU pod. Skipping a gate because the team is in a hurry is the most common way that a boundary fails in practice.
 
 ---
 
 ### 3. Advanced: End-to-end system design — Research GPU cluster and the 1,024-GPU AI Factory
 
-The two case studies below apply the Run:ai and KAI platform model to a research cluster and to a full AI Factory.
+Imagine being asked to size a GPU cluster for a whole university, with a budget that someone else approved. The two case studies below work through that kind of design, first for a research cluster and then for a full AI Factory. Read them in order. The first shows how a shared pool of GPUs stays fair across many labs. The second shows how the same ideas scale to a fleet that needs two different kinds of scheduler.
 
 #### Case Study A: Designing a 50-Team, 200-GPU Research Infrastructure
 
-Picture a university or corporate research center where 50 labs share 200 NVIDIA L40S GPUs across 25 nodes. Without fair-share accounting and preemption guardrails, a single well-funded lab can flood the queue with multi-day training runs. Those runs then block every student's five-minute interactive debugging session. The opposite problem is also real. Aggressive preemption without checkpointing destroys hours of training progress and saturates shared NFS storage.
+Picture a university or corporate research center where 50 labs share 200 NVIDIA L40S GPUs across 25 nodes. Without fair-share accounting and preemption guardrails, a single well-funded lab can flood the queue with multi-day training runs. Those runs then block every student's five-minute interactive debugging session. The opposite problem is also real. Aggressive preemption without checkpointing destroys hours of training progress and saturates shared NFS storage. A checkpoint is a saved copy of a training job's state, so that the job can resume later instead of starting over.
 
-The design combines four ideas: a bimodal workload policy, contribution-weighted deficit fair-share, graceful 30-second checkpoint preemption, and a three-tier storage hierarchy. Each $10,000 of hardware funding grants a lab 50 GPU-hours per month. Self-funded students receive a guaranteed baseline floor. If a lab borrows idle GPUs beyond its monthly quota, the scheduler records a deficit. That deficit lowers the lab's effective quota the following month.
+The design combines four ideas. The first is a bimodal workload policy, which means the workload mix is split into short jobs and long jobs, each handled differently. The second is contribution-weighted deficit fair-share, which means a lab's share of the cluster depends on what it paid into it. The third is graceful 30-second checkpoint preemption, which gives a running job half a minute to save its state before it is stopped. The fourth is a three-tier storage hierarchy, which puts checkpoints in three places with different speeds and different risks. Each $10,000 of hardware funding grants a lab 50 GPU-hours per month. A GPU-hour is one GPU running for one hour. Self-funded students receive a guaranteed baseline floor. If a lab borrows idle GPUs beyond its monthly quota, the scheduler records a deficit. That deficit lowers the lab's effective quota the following month.
 
-The specification below covers the workload profile, the quota math, the scoring formula, the preemption timeline, and the costs. Each item builds on the one before it, from workload mix to cost per GPU-hour.
+The specification below covers the workload profile, the quota math, the scoring formula, the preemption timeline, and the costs. Each item builds on the one before it, from workload mix to cost per GPU-hour. Read it top to bottom once before you try to check any single number.
 
 ```text
 50-Team, 200-GPU (25 Nodes x 8 L40S) Research Cluster Specifications:
@@ -232,13 +243,23 @@ The specification below covers the workload profile, the quota math, the scoring
    - Admin Alert Thresholds: Jain's Fairness Index target > 0.85 (alert & deprioritize if < 0.80); utilization < 50% for 1 week or > 90%; failed checkpoint recovery > 5%
 ```
 
----
+Start with the workload profile. The three duration bands tell the scheduler how long a job is expected to run, and that expectation drives how the job may be interrupted. A short interactive workspace that gets stopped in the middle is a nuisance. A long training run that gets stopped with no checkpoint is a disaster, which is why the long band is protected more strongly than the medium band.
+
+The quota math is the heart of the design. Read the Professor A line first. A quota of 500 GPU-hours means the lab may use 500 hours in a month without any penalty. Using 600 hours overspends by 100 hours. That overspend becomes a deficit, and the deficit cuts the next month's effective quota from 500 to 400. Professor B shows the opposite case. Using only 100 of 250 hours leaves a surplus of 150, which raises the next month's effective quota to 400. The two labs end up with the same effective quota even though they paid different amounts. That is the contribution-weighted rule at work, and it is also the reason a fair-share chart needs both the quota and the history behind it.
+
+The scoring formula turns the quota into a queue position. A team using less than its quota has a negative deficit, so the minus sign in front of the deficit makes its priority positive, and its jobs move toward the front. A team above its quota gets a negative priority and waits. The small bonus of 0.1 favors jobs that ask for fewer than 4 GPUs. Small requests are easier to fit into the gaps that large jobs leave behind, so the bonus keeps the nodes from filling up with partial space that nothing can use.
+
+The preemption timeline walks through what happens when a job must give up its GPUs. Preemption is the scheduler's way of making room for a more urgent job. The graceful version gives the job time to save first. At time zero, the job is asked to stop with a SIGTERM signal. SIGTERM is the standard Linux request for a process to shut down cleanly, and a program can catch it and run its own code. If the job does not exit within 30 seconds, the scheduler sends SIGKILL, which stops the process with no chance to clean up. Between 30 and 45 seconds, the freed GPUs go to the higher-priority job. At 90 seconds, the preempted job comes back on whatever GPUs are free and loads its last checkpoint.
+
+The three checkpoint tiers trade speed against safety. Local NVMe is the fast disk inside the node, so it saves quickly and costs nothing extra in hardware. Its weakness is that it stays with the node, so it does not help if the node itself dies. Shared NFS is slower but survives a full node failure, because every node can reach it. Nightly tape is the slowest tier, and it protects long runs against the loss of the shared storage. The point of having all three is that each one covers a different kind of failure, and no single tier covers all of them.
 
 #### Case Study B: The Full-Stack 1,024-GPU AI Factory
 
-Now consider an enterprise that buys four DGX SuperPODs, for 128 nodes and 1,024 GPUs in total. Executive leadership wants 75 percent of the fleet dedicated to pre-training a flagship foundation model. The other 25 percent is shared across ten internal research and inference teams. Forcing the 768-GPU foundation model onto a multi-tenant Kubernetes cluster adds unnecessary overlay complexity. Forcing ten interactive research teams onto bare-metal Slurm login nodes, on the other hand, gives up cloud-native service isolation and MIG flexibility.
+Now consider an enterprise that buys four DGX SuperPODs, for 128 nodes and 1,024 GPUs in total. A DGX SuperPOD is a large group of DGX GPU servers that the design treats as one building block. Executive leadership wants 75 percent of the fleet dedicated to pre-training a flagship foundation model. Pre-training means the long first phase of teaching a model from a large data set. The other 25 percent is shared across ten internal research and inference teams. Inference means running a trained model to answer requests. Forcing the 768-GPU foundation model onto a multi-tenant Kubernetes cluster adds unnecessary overlay complexity. An overlay is an extra software layer that sits on top of the base system and must be kept working. Forcing ten interactive research teams onto bare-metal Slurm login nodes, on the other hand, gives up cloud-native service isolation and MIG flexibility. Slurm is the batch scheduler common in supercomputing, and a login node is the machine where users sign in to submit their work.
 
-The flowchart below traces the stack from bare metal to fleet observability.
+The design therefore splits the fleet by workload physics. The large training job needs tight, synchronized communication between many nodes, so it gets a fabric and a scheduler built for that. The many small teams need flexible sharing and strong separation, so they get a Kubernetes layer. A fabric here means the network that connects the nodes. Both halves still share the same bottom layers, which keeps the fleet easier to run.
+
+The flowchart below traces the stack from bare metal to fleet observability. Bare metal means a physical server with no virtual machine in between.
 
 ```mermaid
 flowchart TD
@@ -250,7 +271,7 @@ flowchart TD
     P2 --> Obs
 ```
 
-We solve this by provisioning the entire 128-node fleet from one bare-metal control plane. We also split the compute partitions by workload physics. Out-of-band Redfish APIs configure the Baseboard Management Controllers across all 128 nodes. They standardize BIOS settings and trigger PXE network boot. NVIDIA Base Command Manager then streams an identical Linux OS, GPU driver, and OFED image into node RAM across all 1,024 GPUs.
+We solve this by provisioning the entire 128-node fleet from one bare-metal control plane. We also split the compute partitions by workload physics. Out-of-band Redfish APIs configure the Baseboard Management Controllers across all 128 nodes. Redfish is a standard web interface for managing servers, and the Baseboard Management Controller (BMC) is a small computer on each server board that stays on even when the main system is off. They standardize BIOS settings and trigger PXE network boot. PXE boot lets a server load its operating system over the network instead of from its own disk. NVIDIA Base Command Manager then streams an identical Linux OS, GPU driver, and OFED image into node RAM across all 1,024 GPUs. OFED is the software stack that drives the high-speed network cards.
 
 The block below lists each layer, from out-of-band management to the two orchestration partitions.
 
@@ -268,11 +289,11 @@ Full-Stack 4-DGX-SuperPOD (128 Nodes, 1,024 GPUs) AI Factory Split:
 - Layer 6 Fleet Observability: DCGM-Exporter -> Prometheus & Grafana -> automatic node cordoning in BCM, Slurm, and Kubernetes on double-bit ECC errors
 ```
 
-Notice that the two partitions differ in their fabric and their scheduler. Both sit on the same provisioning and storage layers.
+Notice that the two partitions differ in their fabric and their scheduler. Both sit on the same provisioning and storage layers. That shared base is what keeps the design from becoming two separate data centers.
 
 #### Comparing Slurm, Vanilla Kubernetes, and Kubernetes with Run:ai Across the AI Factory
 
-When you present this hybrid architecture to an enterprise architecture board, contrast how Pure Slurm, Vanilla Kubernetes, and Kubernetes with Run:ai handle each operational requirement. The table compares the three options on each one.
+When you present this hybrid architecture to an enterprise architecture board, contrast how Pure Slurm, Vanilla Kubernetes, and Kubernetes with Run:ai handle each operational requirement. Vanilla Kubernetes here means the stock scheduler with no extra fairness layer. The board will usually ask the same questions. Can the system start a big job all at once? Can it share GPUs fairly? Can it protect a tenant from its neighbors? The table compares the three options on each one.
 
 | Architectural Dimension | Pure Slurm (`75%` / `768`-GPU Partition) | Vanilla Kubernetes (Default `kube-scheduler`) | Kubernetes + NVIDIA Run:ai / KAI Scheduler (`25%` / `256`-GPU Partition) |
 |---|---|---|---|
@@ -287,13 +308,13 @@ Pure Slurm fits the 768-GPU training partition, while Kubernetes with Run:ai fit
 
 #### Exception Management and Three-Contract Service Catalog
 
-Running a shared AI platform sustainably requires packaging GPU capacity into three explicit service contracts, not one unstructured pool.
+Running a shared AI platform sustainably requires packaging GPU capacity into three explicit service contracts, not one unstructured pool. A service contract is a promise about what a team gets, what it must accept, and how it is protected. Without the contracts, every team asks for the best hardware, and every exception becomes a special case that nobody can track.
 
-1. Contract 1 covers best-effort development for student and exploratory notebooks. It uses fractional GPUs or time-sliced pools that may be reclaimed under load, and access stays restricted.
-2. Contract 2 covers scheduled research and fine-tuning across the 50 research teams. It uses contribution-weighted fair-share quotas, over-quota borrowing, and verified checkpoint preemption.
-3. Contract 3 covers protected production serving and regulated workloads. It uses hardware-isolated MIG slices or vGPU virtual machines, with non-preemptible reservations and zero cross-tenant visibility.
+1. Contract 1 covers best-effort development for student and exploratory notebooks. Best-effort means the team gets capacity when it is free and may lose it under load. It uses fractional GPUs or time-sliced pools that may be reclaimed under load, and access stays restricted.
+2. Contract 2 covers scheduled research and fine-tuning across the 50 research teams. Fine-tuning means adapting an existing model to a new task. It uses contribution-weighted fair-share quotas, over-quota borrowing, and verified checkpoint preemption.
+3. Contract 3 covers protected production serving and regulated workloads. These are the services that must not slow down or leak data. It uses hardware-isolated MIG slices or vGPU virtual machines, with non-preemptible reservations and zero cross-tenant visibility.
 
-The catalog below spells out each contract, its limits, and the fields every exception record needs.
+The catalog below spells out each contract, its limits, and the fields every exception record needs. An exception is a request to step outside the normal contract, and each one needs a record so that someone can review it later.
 
 ```text
 Three-Contract Service Catalog & Policy Exception Governance:
@@ -303,15 +324,15 @@ Three-Contract Service Catalog & Policy Exception Governance:
 - Exception Record Fields: Requester, approver, scope, business reason, compensating security controls, start timestamp, and automatic expiry date.
 ```
 
-Every exception record carries the fields in the last line of that block.
+Every exception record carries the fields in the last line of that block. The requester and the approver are different people, so that no one can grant an exception to themselves. The compensating controls describe what extra protection covers the risk the exception creates. The automatic expiry date keeps a temporary exception from quietly becoming permanent.
 
-Never grant permanent cluster-admin exceptions that bypass your tenant boundary. Require an expiring exception record with compensating controls for every emergency override.
+Never grant permanent cluster-admin exceptions that bypass your tenant boundary. Require an expiring exception record with compensating controls for every emergency override. An emergency override is a fast change made under pressure, and it is exactly the kind of change that is easiest to forget after the emergency ends.
 
 ## Commands and configurations that matter
 
 ### 1. Declarative Department and Project Hierarchy in Run:ai and KAI Scheduler
 
-The manifest below defines a department queue and a project queue beneath it. Each queue sets a guaranteed quota, a burst limit, and an over-quota weight.
+A declarative setup means you write down the desired state in a file, and the cluster works to match it. Instead of clicking through a portal, you keep the queues in a file that can be reviewed, stored in version control, and applied again after a rebuild. The manifest below defines a department queue and a project queue beneath it. Each queue sets a guaranteed quota, a burst limit, and an over-quota weight. The burst limit is the ceiling a queue may climb to when other queues are idle. The over-quota weight decides how the spare capacity is shared among queues that want more than their guarantee.
 
 ```yaml
 # runai-department-and-project-queues.yaml
@@ -339,11 +360,11 @@ spec:
       overQuotaWeight: 2
 ```
 
-You can see the link in `parentQueue`, where the project queue names its parent.
+You can see the link in `parentQueue`, where the project queue names its parent. That one field is what makes the project a child of the department. If the name in `parentQueue` does not match a real department, the project has no parent to draw from, so a typo here is worth checking first. The two queues share the same shape, which makes the file easy to scan. Each `---` line separates one object from the next.
 
 ### 2. Verifying Multi-Tenant MIG Process Isolation and Prometheus Scoping
 
-Two checks confirm the process and telemetry boundaries from the earlier sections. The first runs inside Team A's pod. The second uses Team B's bearer token.
+Two checks confirm the process and telemetry boundaries from the earlier sections. The first runs inside Team A's pod. It asks the GPU which processes are visible from inside that container. The second uses Team B's bearer token. A bearer token is a secret string that a client sends to prove who it is, and the Prometheus query then shows what that identity can see. The two checks look at different things, so you need both. One proves that the GPU hides other teams' processes. The other proves that the metrics system hides other teams' data.
 
 ```bash
 # 1. Verify inside Team A's MIG container that Team B's host PIDs are invisible
@@ -355,11 +376,11 @@ curl -s -H "Authorization: Bearer $TEAM_B_TOKEN" \
   "http://prometheus:9090/api/v1/query?query=nvidia_smi_memory_used_mib" | grep -i "proj_prof_a"
 ```
 
-If you run the first command, it should list only Team A's process. The second should return no series that belong to Team A.
+If you run the first command, it should list only Team A's process. The second should return no series that belong to Team A. A series here means one stream of metric values with its labels. Both results are a pass only when they are empty of the other team's data. If either one shows another team's name or process, treat it as a boundary failure and stop the rollout until it is fixed.
 
 ### 3. Graceful SIGTERM Checkpoint Handler for Preemptible Research Jobs
 
-A preemptible job needs a handler that saves its state before the scheduler kills it. The class below traps `SIGTERM` and writes a checkpoint to NFS before it exits.
+A preemptible job needs a handler that saves its state before the scheduler kills it. A handler is a function that runs when a specific signal arrives. The class below traps `SIGTERM` and writes a checkpoint to NFS before it exits. The idea is simple. When the scheduler says stop, the job writes out what it has done so far, and when it runs again, it can pick up from that point.
 
 ```python
 # Graceful 30-second SIGTERM checkpoint handler
@@ -392,11 +413,11 @@ class CheckpointedTrainer:
         sys.exit(0)
 ```
 
-The handler saves the model, optimizer, epoch, and step, then exits with status `0`.
+The handler saves the model, optimizer, epoch, and step, then exits with status `0`. The optimizer is the part of training that keeps track of how the model should change next, so it is saved too. Without it, the resumed run would take a different path than the original one. The job ID comes from environment variables, which are named settings that the scheduler puts into the container. Exit status `0` tells the system that the job ended normally.
 
 ## How it fails
 
-When a multi-tenant Run:ai or KAI cluster fails in production, the cause almost always comes back to one of three things. The first is an unverified checkpoint handler. The second is a leaky observability or storage boundary. The third is missing preemption guardrails. You will find five failure modes below. The table pairs each one with its symptom, its root cause, and the fix. Read each row from left to right, starting with the symptom you would see. If you have seen one of these symptoms before, find its row first.
+A multi-tenant Run:ai or KAI cluster rarely fails in a dramatic way. More often, a job that was supposed to resume comes back with its progress gone, or a dashboard shows a number it should not show. When that happens in production, the cause almost always comes back to one of three things. The first is an unverified checkpoint handler. The second is a leaky observability or storage boundary. The third is missing preemption guardrails. You will find five failure modes below. The table pairs each one with its symptom, its root cause, and the fix. Read each row from left to right, starting with the symptom you would see. If you have seen one of these symptoms before, find its row first.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -406,23 +427,25 @@ When a multi-tenant Run:ai or KAI cluster fails in production, the cause almost 
 | **4. Over-quota research lab's `72-hour` job is preempted every `2 hours` ("preemption thrashing")** | A long-running job repeatedly checkpoints and restarts every `2 hours` during daytime interactive notebook bursts, wasting network/NFS bandwidth. | **Missing Long-Job Preemption Guardrails:** Medium and long jobs were placed in the same flat preemption pool without age-based priority or over-quota thresholds. | Protect long jobs (`> 8 hours`) so they are only preempted when a team is `> 2x` over quota, add age-based priority boosting for older jobs, or schedule long jobs into a reserved off-peak window (`3:00 AM – 7:00 AM`). |
 | **5. Simultaneous checkpoint writes from `1,000` GPUs saturate NFS and exceed `> 5%` checkpoint failure rate** | At the `1,000`-GPU scale, synchronized preemption or hourly checkpoints cause NFS timeouts and the `Failed checkpoint recovery > 5%` alert fires. | **Unsharded Storage & Unstaggered Checkpoint Burst:** `1,000` workers writing multi-gigabyte state dicts to a single NFS mount simultaneously saturate the storage fabric. | Write high-frequency (`every 100 steps`) checkpoints to node-local NVMe (`< 5 min` recovery), shard NFS mounts per department/team, and stagger/throttle asynchronous NFS flushes (`1–2%` overhead). |
 
-Preemption should stay off for any template that has not proven it can resume correctly in staging. If you cannot show that resume works, leave preemption disabled for that template.
+Failure mode 1 is the one that costs the most, because it looks like a normal preemption on the dashboard. The job was stopped, the GPUs were freed, and the cluster behaved correctly. Only when the job restarts at epoch 0 does the loss become visible. The fix is to test resume in staging before preemption is ever turned on for that template.
+
+Preemption should stay off for any template that has not proven it can resume correctly in staging. If you cannot show that resume works, leave preemption disabled for that template. A job that cannot be stopped safely should run with a reservation, not with a preemptible share.
 
 ## Hands-on lab
 
 ### Venue and scope
 
-This lab runs locally with the Python 3 standard library, using `code/part11/run_ai_platform_view.py` and `code/part11/run_ai_platform_view_lab.py`. It checks the seven-layer threat model, the four administrative planes, the six onboarding gates, and the contribution-weighted deficit fair-share scheduler. It also checks the preemption timeline, the research cluster total cost of ownership model, and the 1,024-GPU hybrid AI Factory design. The cluster commands in this chapter were not run on live hardware.
+Picture a change that has to pass review before it reaches a production cluster. A quick local check that the figures still agree is the first gate. This lab runs locally with the Python 3 standard library, using `code/part11/run_ai_platform_view.py` and `code/part11/run_ai_platform_view_lab.py`. The standard library is the set of modules that ship with Python, so you do not need to install anything extra. It checks the seven-layer threat model, the four administrative planes, the six onboarding gates, and the contribution-weighted deficit fair-share scheduler. It also checks the preemption timeline, the research cluster total cost of ownership model, and the 1,024-GPU hybrid AI Factory design. The cluster commands in this chapter were not run on live hardware. Treat the lab as a check on the arithmetic and the design rules, not as proof that a real cluster behaves this way.
 
 ### Step 1: Run the self-checking Run:ai platform view and AI Factory design lab
 
-From the repository root, you run the lab script.
+The lab is a short script that prints a pass or fail line for each check. Each check repeats one fact from the chapter, so a failing line tells you which number or rule has drifted. From the repository root, you run the lab script.
 
 ```bash
 python3 code/part11/run_ai_platform_view_lab.py
 ```
 
-The output below was captured from this repository, so you can compare your own run against it.
+The block below shows what a passing run prints, so you can compare your own output against it.
 
 ```text
 === Chapter 11.19 Lab: The Run:ai Platform View, Governance & AI Factory Design ===
@@ -459,12 +482,12 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 Try these six exercises on your own, using the lab output above as a reference.
 
-- A customer says Run:ai slices the GPU. Why is that wrong? Say what the GPU Operator, the KAI Scheduler, and the Run:ai control plane each do instead.
-- Open `code/part11/run_ai_platform_view.py` and list the seven tenant boundary layers and the four administrative planes. Then name the two checks that show Team A and Team B cannot see each other's MIG processes or Prometheus metrics.
-- Two professors share the research cluster. Work out each one's Month 1 balance and Month 2 effective quota, and the cluster's Month 1 utilization. Then score the priority of an under-quota two-GPU job and an over-quota eight-GPU job.
-- A medium training job is preempted. Trace what happens at 0, 30, 45, and 90 seconds. Then compare recovery time and failure domain for checkpoints on Local NVMe, Shared NFS, and Nightly Tape.
-- Cost the 200-GPU L40S cluster. Calculate the hardware CapEx, the total CapEx, and the annual power and total OpEx. Then work out the delivered GPU-hours per year at 60 percent utilization and the cost per GPU-hour. Finish with the figures for scaling to 1,000 GPUs.
-- Walk through the six layers of the 128-node, 1,024-GPU AI Factory. Cover provisioning, the InfiniBand and RoCEv2 fabrics, Lustre with GPUDirect Storage, Slurm versus Kubernetes with Run:ai, and monitoring. At each layer, say which choice the design made and why.
+- A customer says Run:ai slices the GPU. Is the customer right? Say what the GPU Operator does instead. Then say what the KAI Scheduler does, and what the Run:ai control plane does.
+- Open `code/part11/run_ai_platform_view.py` and list the seven tenant boundary layers. Then list the four administrative planes. Finally, name the two checks that show Team A and Team B cannot see each other's MIG processes or Prometheus metrics.
+- Two professors share the research cluster. Work out each one's Month 1 balance and Month 2 effective quota. Then find the cluster's Month 1 utilization. Last, score the priority of an under-quota two-GPU job and an over-quota eight-GPU job.
+- A medium training job is preempted. Trace what happens at 0 seconds. Then trace what happens at 30 seconds, 45 seconds, and 90 seconds. Finally, compare recovery time and failure domain for checkpoints on Local NVMe, Shared NFS, and Nightly Tape.
+- Cost the 200-GPU L40S cluster. What is the hardware CapEx? What is the total CapEx? What are the annual power cost and the total OpEx? Then work out the delivered GPU-hours per year at 60 percent utilization and the cost per GPU-hour. Finish with the figures for scaling to 1,000 GPUs.
+- Walk through the six layers of the 128-node, 1,024-GPU AI Factory. Start with provisioning. Then cover the InfiniBand and RoCEv2 fabrics, Lustre with GPUDirect Storage, Slurm versus Kubernetes with Run:ai, and monitoring. For each layer, which choice did the design make? Why was it the right choice for that workload?
 
 ## Checkpoint questions
 

@@ -23,9 +23,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a fresh Kubernetes cluster that you have just built, with a server that has eight NVIDIA H100 GPUs. The node turns green and reports a healthy Ready status, so it looks finished. Then the training team submits a distributed PyTorch job. Every Pod stays Pending, because Kubernetes sees zero GPUs on the machine.
+Picture a fresh Kubernetes cluster that you have just built, with a server that has eight NVIDIA H100 GPUs. The node turns green and reports a healthy Ready status, so it looks finished. You send the cluster a small test job, expecting it to run on the new hardware. Then the training team submits a distributed PyTorch job, and every Pod stays Pending. Kubernetes sees zero GPUs on the machine, even though the eight cards are sitting right there in the chassis.
 
-Standard Kubernetes was built around CPU cores and system memory. The Linux kernel exposes those resources natively, through `/proc`, and enforces limits through control groups. A GPU works differently. It needs a dedicated platform layer between the hardware and the container scheduler.
+This is the moment when a platform engineer realizes that Kubernetes does not know what a GPU is. Standard Kubernetes was built around CPU cores and system memory. The Linux kernel exposes those resources natively, through `/proc`, and enforces limits through control groups. A GPU works differently. It needs a dedicated platform layer between the hardware and the container scheduler, and that layer has to be installed, checked and kept in step with the rest of the stack.
+
+The table below gives a sense of how large the ecosystem around Kubernetes has become. The numbers come from the sources named in the last column, and they describe scale, not GPU behavior.
 
 | Adoption or Performance Metric | Value | Source |
 |---|---|---|
@@ -35,23 +37,25 @@ Standard Kubernetes was built around CPU cores and system memory. The Linux kern
 | Gartner projection for global organizations running containerized workloads by 2027 | 90%+ | *Kubernetes for Generative AI Solutions* Ch 2 |
 | Container overhead vs bare metal with NVIDIA Container Toolkit on MLPerf Inference v5.0 | < 2% | *AI Systems Performance Engineering* Ch 3 |
 
-Three architectural boundaries explain why out-of-the-box Kubernetes cannot run a GPU workload on its own. The first boundary is the kernel. A container shares the host Linux kernel, so it cannot bundle its own kernel driver module inside the application image. The host must enumerate the PCIe device and load a signed, version-matched kernel driver. Only then can any container or Kubernetes agent touch the silicon.
+Three architectural boundaries explain why out-of-the-box Kubernetes cannot run a GPU workload on its own. Each boundary is a place where a GPU request can fail even though every Kubernetes object looks correct.
 
-The second boundary is that a GPU Pod needs two independent paths to agree before CUDA can execute. On the control path, the Device Plugin queries the NVIDIA Management Library and registers `nvidia.com/gpu` with kubelet, so kube-scheduler can bind the Pod. On the runtime path, kubelet passes the allocated GPU identifier to containerd. There, the NVIDIA Container Toolkit mounts the device nodes and user-space libraries into the container sandbox.
+The first boundary is the kernel. A container shares the host Linux kernel, so it cannot bundle its own kernel driver module inside the application image. The kernel driver is the piece of software that talks to the GPU hardware at the lowest level. The host must enumerate the PCIe device, which means the operating system must find the card on the PCIe bus, and then load a signed, version-matched kernel driver. Only then can any container or Kubernetes agent touch the silicon.
 
-The third boundary is the built-in Node Ready condition. It checks only CPU, disk, memory, PID pressure, and runtime heartbeats. A worker node can therefore report Ready while its GPU kernel module failed to load after a kernel upgrade. Another node can advertise four allocatable GPUs while a stale runtime configuration makes every bound Pod fail during container creation.
+The second boundary is that a GPU Pod needs two independent paths to agree before CUDA can execute. CUDA is NVIDIA's programming platform for running code on the GPU. On the control path, the Device Plugin queries the NVIDIA Management Library, which is the library that reports GPU health and state, and registers `nvidia.com/gpu` with kubelet. Kube-scheduler can then bind the Pod to the node. On the runtime path, kubelet passes the allocated GPU identifier to containerd. There, the NVIDIA Container Toolkit mounts the device nodes and user-space libraries into the container sandbox. The sandbox is the isolated environment that the container runs in.
 
-Keep these three boundaries in mind as you read the rest of this chapter.
+The third boundary is the built-in Node Ready condition. It checks only CPU, disk, memory, PID pressure, and runtime heartbeats. A worker node can therefore report Ready while its GPU kernel module failed to load after a kernel upgrade. Another node can advertise four allocatable GPUs while a stale runtime configuration makes every bound Pod fail during container creation. In both cases the node looks healthy to Kubernetes, and the GPU problem stays hidden until a job arrives.
+
+Keep these three boundaries in mind as you read the rest of this chapter. Each later section is a closer look at one of them.
 
 ## Prerequisites and outcomes
 
-Part 5 covers the Kubernetes control plane, kubelet, containerd, DaemonSets, taints, and affinity. Make sure you know these before you start. You should also review Chapters 10.8 and 10.9, which cover `nvidia-smi`, the NVIDIA driver stack, CUDA compatibility, and the NVIDIA Container Toolkit.
+Suppose a teammate hands you a GPU node on Monday and asks you to make it ready for training by Friday. You would need to know what Kubernetes expects from a node, what the GPU stack adds underneath, and where the two meet. This section sets the scene for that work.
 
-After this chapter, you will be able to follow a GPU from the hardware to a running container. You will trace the control allocation path and the runtime execution path, from a physical PCIe GPU to a running CUDA container. You will also compare the NVIDIA stack with the AMD, Intel, Google Cloud TPU, and AWS Neuron device plugins.
+Part 5 covers the Kubernetes control plane, kubelet, containerd, DaemonSets, taints, and affinity. Make sure you know these before you start, because the chapter uses them every time it talks about scheduling. You should also review Chapters 10.8 and 10.9, which cover `nvidia-smi`, the NVIDIA driver stack, CUDA compatibility, and the NVIDIA Container Toolkit. Those chapters explain the host side of the GPU, and this chapter explains how Kubernetes builds on top of it.
 
-You will audit the six-layer platform responsibility table. You will also compute pool fragmentation and whole-GPU memory waste across quantized and shared models.
+This chapter walks from the physical GPU to a running container. It follows the control allocation path, which decides where a Pod goes, and the runtime execution path, which decides whether the container can actually use the card. It also compares the NVIDIA stack with the device plugins for AMD, Intel, Google Cloud TPU and AWS Neuron hardware. Then it audits the six-layer platform responsibility table and works through the pool fragmentation and whole-GPU memory waste math.
 
-Finally, you will collapse an unbounded qualification matrix into locked node profiles that reduce testing overhead sixfold. You will choose between Host-Managed, Operator-Managed, and Hybrid ownership models for the six NVIDIA GPU Operator operand families. You will also implement the five-gate automated node acceptance protocol to isolate failures across real production node incidents.
+The later sections turn these ideas into operating decisions. They show how to collapse an unbounded qualification matrix into a small set of locked node profiles, how to choose between three ownership models for the GPU Operator, and how to run a five-gate acceptance check on each node. Each gate is designed to isolate one kind of failure before a tenant workload lands on the node.
 
 Work through the prerequisites first, since the later sections assume them.
 
@@ -63,17 +67,19 @@ Work through the prerequisites first, since the later sections assume them.
 
 Platform engineers often expect kubelet to find a GPU the same way it finds CPU cores. When that expectation fails, a new GPU node cannot advertise its capacity. Understanding why the Linux kernel treats CPUs differently from GPUs stops you from debugging the scheduler when the host driver is the real problem.
 
-When a standard Linux worker node starts, kubelet reads `/proc/cpuinfo` and `/proc/meminfo` straight from the host filesystem. In the baseline primer, kubelet immediately recognizes 32 CPU cores and 128 GB of system RAM. It enforces container requests and limits through Linux kernel namespaces and control groups v2, without needing any external vendor daemon.
+When a standard Linux worker node starts, kubelet reads `/proc/cpuinfo` and `/proc/meminfo` straight from the host filesystem. These two files are part of the kernel's view of the machine, and they describe the processors and the memory in plain text. In the simple example used in this chapter, kubelet immediately recognizes 32 CPU cores and 128 GB of system RAM. It enforces container requests and limits through Linux kernel namespaces and control groups v2, without needing any external vendor daemon. A namespace hides part of the system from a process, and a control group caps how much of a resource the process can use.
 
-A GPU breaks three core assumptions of that CPU-era model. The first assumption you meet is memory. Linux control groups do not partition or cap GPU High-Bandwidth Memory. Without hardware Multi-Instance GPU partitioning or an external device plugin, any process granted access to `/dev/nvidia0` can allocate 100% of the card memory.
+A GPU breaks three core assumptions of that CPU-era model. The first assumption you meet is memory. Linux control groups do not partition or cap GPU High-Bandwidth Memory, which is the fast memory on the card itself. Without hardware Multi-Instance GPU partitioning or an external device plugin, any process granted access to `/dev/nvidia0` can allocate 100% of the card memory. A single greedy job can therefore fill the whole card, and nothing in the kernel stops it.
 
-The second assumption concerns the boundary between the kernel and user space, and the GPU driver straddles it. Because `nvidia.ko` is a kernel module, it must load into the shared host OS kernel, or run inside a privileged driver container compiled against the exact host kernel headers. Meanwhile, user-space libraries like `libcuda.so` and device nodes like `/dev/nvidia0`, `/dev/nvidiactl`, and `/dev/nvidia-uvm` must be injected dynamically into each container sandbox at startup.
+The second assumption concerns the boundary between the kernel and user space, and the GPU driver straddles it. Because `nvidia.ko` is a kernel module, it must load into the shared host OS kernel, or run inside a privileged driver container compiled against the exact host kernel headers. Kernel headers are the definitions that a module needs in order to compile against a specific kernel version. Meanwhile, user-space libraries like `libcuda.so` and device nodes like `/dev/nvidia0`, `/dev/nvidiactl`, and `/dev/nvidia-uvm` must be injected dynamically into each container sandbox at startup. A container image cannot carry them in advance, because they must match the host driver.
 
-The third assumption is about how you request a GPU. Kubernetes exposes third-party hardware through the Device Plugin framework as integer extended resources, such as `nvidia.com/gpu: 1`. Unlike CPU millicores or memory bytes, extended resources cannot be requested as decimals like `0.5`. Every GPU request must therefore be a whole integer under `resources.limits`, either alone or with an identical `resources.requests` value.
+The third assumption is about how you request a GPU. Kubernetes exposes third-party hardware through the Device Plugin framework as integer extended resources, such as `nvidia.com/gpu: 1`. An extended resource is a named resource that a plugin adds to the cluster, outside the built-in CPU and memory types. Unlike CPU millicores or memory bytes, extended resources cannot be requested as decimals like `0.5`. Every GPU request must therefore be a whole integer under `resources.limits`, either alone or with an identical `resources.requests` value. A Pod that asks for half a GPU is not a valid request, so the scheduler has nothing to match it against.
 
 ### 1.2 The Two-Path Agreement Model: Bound? vs. CudaInit?
 
 During a GPU outage, engineers often lose hours in the wrong place. They read scheduler logs looking for a container crash, or they inspect container images for a Pending Pod. Both mistakes happen because Kubernetes separates GPU scheduling from GPU container creation. Every GPU Pod depends on two independent paths, and those paths converge only when the container starts.
+
+The diagram below shows the two paths side by side. The left branch is the control path, which ends at the scheduler, and the right branch is the runtime path, which ends at CUDA inside the container. Follow each arrow from the physical card to the final box, and notice where each gate sits.
 
 ```mermaid
 flowchart TD
@@ -99,11 +105,11 @@ flowchart TD
     CudaInit -->|"Yes (CUDA_CHECK_OK)"| Healthy
 ```
 
-Start with the control and advertisement path. The host driver initializes the GPU and exposes it to the NVIDIA Management Library. The Device Plugin queries that library and registers `nvidia.com/gpu` with kubelet over a local gRPC socket. Kubelet then publishes `status.allocatable["nvidia.com/gpu"]` to the API Server, so kube-scheduler can pass the first gate and bind the Pod.
+Start with the control and advertisement path. The host driver initializes the GPU and exposes it to the NVIDIA Management Library. The Device Plugin queries that library and registers `nvidia.com/gpu` with kubelet over a local gRPC socket. gRPC is the remote procedure call protocol that kubelet and device plugins use to talk to each other. Kubelet then publishes `status.allocatable["nvidia.com/gpu"]` to the API Server, so kube-scheduler can pass the first gate and bind the Pod. Gate 1 is the question "Did the Pod bind to a node?" If the answer is no, the Pod sits in Pending, and the cause is in scheduling or advertisement.
 
-The runtime and execution path starts after the Pod is bound to the node. Kubelet calls the plugin `Allocate()` RPC and passes the chosen GPU UUID to containerd or CRI-O. There, the NVIDIA Container Toolkit or Container Device Interface mounts the device nodes and driver libraries into the sandbox. The second gate passes only when `nvidia-smi` or `torch.cuda.is_available()` succeeds inside the running container.
+The runtime and execution path starts after the Pod is bound to the node. Kubelet calls the plugin `Allocate()` RPC and passes the chosen GPU UUID to containerd or CRI-O. The UUID is the unique identifier of one physical GPU. containerd and CRI-O are the container runtimes that actually start the container on the node. There, the NVIDIA Container Toolkit or Container Device Interface mounts the device nodes and driver libraries into the sandbox. The second gate passes only when `nvidia-smi` or `torch.cuda.is_available()` succeeds inside the running container. Gate 2 is the question "Does CUDA initialize inside the container?" If the answer is no, the failure is in the runtime, the driver or the image, and the scheduler is usually innocent.
 
-Here is what healthy evidence looks like on a node. The first block shows the host driver, and the second shows the control-plane view.
+Here is what healthy evidence looks like on a node. The first block shows the host driver, and the second shows the control-plane view. Read the first block as the truth about the machine, and read the second as what Kubernetes has been told about it.
 
 ```text
 # Path 1 — Host Driver Evidence on healthy A100-SXM4-80GB node gpu-node-07:
@@ -123,11 +129,13 @@ Allocated resources:
   nvidia.com/gpu     1     1
 ```
 
-Notice that the two blocks check different layers. A GPU can pass one check and still fail the other.
+Notice that the two blocks check different layers. A GPU can pass one check and still fail the other. A node can show a perfect `nvidia-smi` table while its allocatable count is still zero, because the device plugin has not registered yet. The reverse also happens, where the control plane advertises GPUs that the host driver can no longer see. Checking both paths is what separates a scheduling problem from a runtime problem.
 
 ### 1.3 The accelerator device-plugin ecosystem
 
 Most AI platforms eventually run more than one accelerator family. If you add AMD Instinct GPUs, Google Cloud TPUs, or AWS Trainium instances, you need to know how Kubernetes abstracts each vendor's hardware. The Device Plugin framework is a vendor-neutral gRPC contract. So every major AI accelerator plugs in through its own DaemonSet and its own extended resource name.
+
+A DaemonSet runs one copy of a Pod on every node that matches it, which is why each vendor's plugin appears as a DaemonSet in the table. The vendor name in the extended resource tells Kubernetes which plugin owns the request. The PCI vendor ID in the last column is the number the operating system uses to recognize the hardware maker. That ID is what Node Feature Discovery reads.
 
 | Vendor & Accelerator Family | Kubernetes Device Plugin DaemonSet | Extended Resource Name in Pod `resources.limits` | Software Stack & Key Operational Facts (*Generative AI on Kubernetes* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10) |
 |---|---|---|---|
@@ -137,7 +145,7 @@ Most AI platforms eventually run more than one accelerator family. If you add AM
 | **Google Cloud TPUs (v5p, v5e, Trillium)** | `google-cloud-tpu-device-plugin` (managed in **GKE**) | `google.com/tpu: <N>` | Purpose-built matrix ASICs available exclusively in Google Kubernetes Engine, compiled via **OpenXLA**. |
 | **AWS Trainium (Trn1, Trn2) & Inferentia (Inf2)** | `aws-neuron-device-plugin` (on EKS-optimized Accelerated AMIs) | `aws.amazon.com/neuroncore: <N>` or `aws.amazon.com/neuron: <N>` | Powered by the **AWS Neuron SDK** (PyTorch/JAX/TensorFlow, supporting **100,000+** Hugging Face models). Trn1 delivers up to **50%** lower training cost; **Trn2 (Trn2 UltraServers)** delivers **4x** the performance of Trn1 and **30%–40%** better price-performance than P5e/P5en (with Databricks reporting up to **30%** cost savings). AWS **EC2 Capacity Blocks for ML** allow reserving P5/P5e/P5en/P4d/Trn1/Trn2 UltraClusters for **1 to 14 days** (extendable up to **6 months**) up to **8 weeks in advance**. |
 
-Each vendor's extended resource name is what a Pod asks for under `resources.limits`. Check that name first when you add hardware from a new vendor.
+Each vendor's extended resource name is what a Pod asks for under `resources.limits`. Check that name first when you add hardware from a new vendor. A Pod that asks for the wrong name stays Pending forever, even on a node that has the right hardware, because no node advertises that name.
 
 ---
 
@@ -145,7 +153,11 @@ Each vendor's extended resource name is what a Pod asks for under `resources.lim
 
 ### 2.1 The 6-layer platform responsibility and false-positive table
 
-Many developers assume that a request for `nvidia.com/gpu: 1` gives them a working GPU of the right size. In production, that bare integer only reserves one countable token from kube-scheduler. It says nothing about VRAM capacity or compute capability. It also says nothing about NVLink adjacency, NUMA locality, or whether the six software layers underneath are healthy.
+Many developers assume that a request for `nvidia.com/gpu: 1` gives them a working GPU of the right size. A new team member writes that line, the Pod schedules, and the team considers the problem solved. In production, that bare integer only reserves one countable token from kube-scheduler. It says nothing about VRAM capacity or compute capability. It also says nothing about NVLink adjacency, NUMA locality, or whether the six software layers underneath are healthy.
+
+NVLink is the high-speed link that connects GPUs to each other inside a server. NUMA, which stands for Non-Uniform Memory Access, describes the fact that a CPU reaches nearby memory faster than distant memory. Both affect how well a multi-GPU job runs, and neither is visible in the integer count.
+
+The table below lists the six layers that a GPU node depends on. Each row names what the layer does and a false positive that looks healthy from the outside. A false positive is a symptom that suggests the layer is fine when it is not.
 
 | Platform Layer | Platform Responsibility | Typical Production False Positive (`V10 Ch 1 & Ch 2`) |
 |---|---|---|
@@ -156,15 +168,17 @@ Many developers assume that a request for `nvidia.com/gpu: 1` gives them a worki
 | **5. Scheduling & Pool Policy** | Steer Pods to the right GPU model, VRAM tier, MIG slice, and NVLink or NUMA domain. | Cluster has 24 idle GPUs (75% free), but the Pod stays Pending because policy taints lock those GPUs into a different pool. |
 | **6. Workload & Framework Image** | Initialize CUDA runtime and execute kernels compiled for the target `sm_` architecture. | Platform minimal test (`CUDA_CHECK_OK`) passes on the node, but the PyTorch image crashes with `RuntimeError: CUDA error: no kernel image is available for execution on the device`. |
 
-Read each row as a question. When you see a symptom from the right-hand column, ask which layer is actually failing.
+Read each row as a question. When you see a symptom from the right-hand column, ask which layer is actually failing. A PCI device that appears in `lspci` does not prove the card is usable, and a package on disk does not prove the module is loaded. Walking down the layers one at a time keeps you from fixing the wrong thing.
 
 ### 2.2 Worked math: Pool fragmentation
 
-Platform teams partition GPU nodes with labels, taints, and affinity. The goal is to stop noisy-neighbor interference between distributed training and latency-sensitive inference. Every scheduling constraint buys you predictability, but it comes at a direct cost in capacity fragmentation.
+Platform teams partition GPU nodes with labels, taints, and affinity. A label is a key-value tag on a node, a taint is a rule that keeps ordinary Pods off a node, and affinity is a rule that pulls a Pod toward certain nodes. The goal is to stop noisy-neighbor interference between distributed training and latency-sensitive inference. A noisy neighbor is a workload that slows others down by using shared resources too heavily. Every scheduling constraint buys you predictability, but it comes at a direct cost in capacity fragmentation.
 
-A cluster can sit mostly idle while new jobs wait in Pending queues, because free GPUs are locked inside specialized pools. Take a 32-GPU cluster split into three tainted workload pools, as. The training pool holds 16 GPUs, tainted for eight-GPU NVLink jobs. The distributed-inference pool holds eight GPUs, tainted for multi-GPU serving. The remaining eight GPUs form an unconstrained general pool, and Job A already uses four of them.
+Fragmentation means that free capacity exists, but it is split into pieces that the next job cannot use. A cluster can sit mostly idle while new jobs wait in Pending queues, because free GPUs are locked inside specialized pools. Take a 32-GPU cluster split into three workload pools, two of them tainted. The training pool holds 16 GPUs, tainted for eight-GPU NVLink jobs. The distributed-inference pool holds eight GPUs, tainted for multi-GPU serving. The remaining eight GPUs form an unconstrained general pool, and Job A already uses four of them.
 
-Now Job B arrives. It requests four GPUs with no special tolerations, so the taints on the training and distributed-inference pools repel it. Job B therefore lands in the general pool and consumes its last four free GPUs. At that point, 24 of the 32 cluster GPUs sit physically idle. Even so, the next unconstrained single-GPU notebook stays Pending, because the general pool has zero free capacity.
+Now Job B arrives. It requests four GPUs with no special tolerations, so the taints on the training and distributed-inference pools repel it. A toleration is the matching exception that lets a Pod enter a tainted pool. Job B has no toleration, so it lands in the general pool and consumes its last four free GPUs. At that point, 24 of the 32 cluster GPUs sit physically idle. Even so, the next unconstrained single-GPU notebook stays Pending, because the general pool has zero free capacity.
+
+The arithmetic is the important part. The general pool is the only pool the notebook can use, and that pool is full. The 24 idle GPUs are real, but they are reserved for other kinds of work. A dashboard that shows total utilization would hide this problem, which is why pool-level numbers matter more than cluster-wide ones.
 
 ```text
 32-GPU Cluster Pool Fragmentation Breakdown (V10 Ch 1):
@@ -175,19 +189,21 @@ Now Job B arrives. It requests four GPUs with no special tolerations, so the tai
 - Next unconstrained 1-GPU Job C:        Stays Pending (0/8 available in general pool)
 ```
 
-Notice the last two lines. The cluster is 75.0% idle, yet Job C still finds 0 of the 8 general-pool GPUs available.
+Notice the last two lines. The cluster is 75.0% idle, yet Job C still finds 0 of the 8 general-pool GPUs available. The fix is not to buy more GPUs. The fix is to change the boundaries of the pools, or to add a matching toleration to the jobs that are allowed to use the idle capacity.
 
 ### 2.3 Worked math: Whole-GPU memory waste, 70B quantization, and GB vs. GiB
 
-Whole-GPU allocation wastes a large amount of High-Bandwidth Memory, even in a pool with no constraints. When you serve a small model, most of the card sits empty. Large models have the opposite problem. They overflow a single GPU unless you quantize them. Unit mismatches add a third trap, because decimal gigabytes and binary gibibytes can cause scheduling failures nobody expects. Calculate the exact memory footprint before you choose a sharing strategy or write a node selector.
+A product manager asks why the GPU bill for a small chatbot is so high. The team looks at the cluster and finds that each small model owns a whole GPU, while most of the card sits empty. This section works through that question with real numbers. It also shows the two other traps that catch people when they size memory: very large models that do not fit on one card, and unit mismatches between decimal gigabytes and binary gibibytes.
 
-Take a Pod that runs Meta Llama-3.2-1B on an AWS `g6.2xlarge` instance. The instance has one 24 GB NVIDIA L4 GPU, and the model weights and runtime need only 1.8 GB of VRAM. Give that Pod the whole GPU, and 24.0 minus 1.8 leaves 22.2 GB unused. That is 92.5% of the card memory wasted.
+Whole-GPU allocation wastes a large amount of High-Bandwidth Memory, even in a pool with no constraints. When you serve a small model, most of the card sits empty. Large models have the opposite problem. They overflow a single GPU unless you quantize them. Quantization stores each weight in fewer bits, which makes the model smaller at some cost in precision. Unit mismatches add a third trap, because decimal gigabytes and binary gibibytes can cause scheduling failures nobody expects. Calculate the exact memory footprint before you choose a sharing strategy or write a node selector.
 
-Now enable NVIDIA Device Plugin time-slicing with 10 replicas. Five Llama-3.2-1B Pods can share the same L4 GPU. Five times 1.8 GB is 9.0 GB, which is well within the 24.0 GB of VRAM.
+Take a Pod that runs Meta Llama-3.2-1B on an AWS `g6.2xlarge` instance. The instance has one 24 GB NVIDIA L4 GPU, and the model weights and runtime need only 1.8 GB of VRAM. VRAM is the memory on the GPU card itself. Give that Pod the whole GPU, and 24.0 minus 1.8 leaves 22.2 GB unused. That is 92.5% of the card memory wasted. The Pod is paying for the full card while using a small part of it.
 
-The other extreme is a 70B-parameter model. In 32-bit floating point, each parameter takes 4 bytes. Multiply the 70B parameters by 4 bytes and you get 280.0 GB of VRAM, which needs at least four 80 GB GPUs. Quantizing those weights to 4-bit precision cuts the footprint to 0.5 bytes per parameter. That shrinks weight memory eightfold, to 35.0 GB, so it fits on a single 48 GB L40S GPU.
+Now enable NVIDIA Device Plugin time-slicing with 10 replicas. Time-slicing lets several Pods take turns on the same GPU, and the replica count tells the plugin how many Pods it may hand out per card. Five Llama-3.2-1B Pods can share the same L4 GPU. Five times 1.8 GB is 9.0 GB, which is well within the 24.0 GB of VRAM. The same card now serves five small models instead of one. Time-slicing shares compute time, so it does not give each Pod a hard memory wall, and the memory math above is the reason it fits.
 
-Units cause a second kind of trap. Hardware datasheets quote decimal gigabytes, while Kubernetes manifests often use binary gibibytes. So requesting `40Gi` will fail to match a nominal 40 GB A100 GPU that reports 37.25 GiB.
+The other extreme is a 70B-parameter model. In 32-bit floating point, each parameter takes 4 bytes. Multiply the 70B parameters by 4 bytes and you get 280.0 GB of VRAM, which needs at least four 80 GB GPUs. Quantizing those weights to 4-bit precision cuts the footprint to 0.5 bytes per parameter. That shrinks weight memory eightfold, to 35.0 GB, so it fits on a single 48 GB L40S GPU. The weights are only part of the memory story, because the runtime also needs room for activations and the cache. Those extras are why the sizing step should always leave headroom.
+
+Units cause a second kind of trap. Hardware datasheets quote decimal gigabytes, while Kubernetes manifests often use binary gibibytes. A gigabyte is 10 to the power of 9 bytes, and a gibibyte is 2 to the power of 30 bytes, so the two numbers never match exactly. So requesting `40Gi` will fail to match a nominal 40 GB A100 GPU that reports 37.25 GiB. The request looks reasonable on paper, but the card does not report enough memory to satisfy it.
 
 | Calculation Scenario | Input Parameters | Result & Operational Impact | Source |
 |---|---|---|---|
@@ -197,7 +213,7 @@ Units cause a second kind of trap. Hardware datasheets quote decimal gigabytes, 
 | **Decimal GB vs Binary GiB** | 40 GB (`40 * 10^9` B) and 80 GB (`80 * 10^9` B) in base-2 GiB (`2^30` B) | `40 GB == 37.25 GiB` (`40,537 MiB` on A100-40GB); `80 GB == 74.5 GiB` (`81,920 MiB` on A100-80GB) | *Generative AI on Kubernetes* Ch 3 |
 | **Multi-slice MIG single-node rule** | 2x `nvidia.com/mig-2g.45gb` on 132-SM GPU; `p5.48xlarge` (8x H100) & H200 (141 GB) | `~38` SMs/slice (`~76` SMs total, `4/7` of GPU, `90 GB`) must fit on 1 node. `p5.48xlarge` yields 56 (`1g.10gb`), 24 (`2g.20gb`), 16 (`3g.40gb`), or 8 (`4g.40gb`/`7g.80gb`) slices; H200 supports 7x `1g.18gb`, 1x `1g.18gb+me`, 4x `1g.35gb`, 3x `2g.35gb`, 2x `3g.70gb`, 1x `4g.70gb`, 1x `7g.141gb` | *AI Systems Performance Engineering* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10 |
 
-Before you choose a sharing strategy, calculate the footprint in both GB and GiB.
+Before you choose a sharing strategy, calculate the footprint in both GB and GiB. The table above lists the calculations used in this section, along with the multi-slice MIG rule. MIG stands for Multi-Instance GPU, which splits one physical card into hardware-isolated slices.
 
 ---
 
@@ -205,11 +221,11 @@ Before you choose a sharing strategy, calculate the footprint in both GB and GiB
 
 ### 3.1 Why manual configuration fails at fleet scale and how to bound the qualification matrix
 
-A hand-built GPU setup works on a single lab server. It falls apart across a production Kubernetes fleet. Each time the OS team patches the Linux kernel, or the AI team upgrades PyTorch, a new version combination can reach production untested. That combination can break GPU initialization. Bounding the qualification matrix is the only way you can test upgrades before they roll out.
+A hand-built GPU setup works on a single lab server. It falls apart across a production Kubernetes fleet. Each time the OS team patches the Linux kernel, or the AI team upgrades PyTorch, a new version combination can reach production untested. That combination can break GPU initialization. Bounding the qualification matrix is the practical way to test upgrades before they roll out. Qualification means running a fixed set of checks on a version combination and recording that it passed.
 
-Every GPU node stacks six versioned layers. They run from hardware firmware and the OS kernel, up through the kernel driver, the container runtime toolkit, the device plugin, and the workload framework image. Now suppose a platform lets three things vary independently: 3 OS kernel versions, 2 NVIDIA driver branches, and 4 workload base-image families. Qualifying every combination takes 3 times 2 times 4, which is 24 test runs. Add 2 Kubernetes minor versions, and the matrix doubles to 48 combinations. That happens before you even vary containerd or GPU Operator versions.
+Every GPU node stacks six versioned layers. They run from hardware firmware and the OS kernel, up through the kernel driver, the container runtime toolkit, the device plugin, and the workload framework image. Each layer has its own version, and each version can change on its own schedule. Now suppose a platform lets three things vary independently: 3 OS kernel versions, 2 NVIDIA driver branches, and 4 workload base-image families. A driver branch is a family of driver releases that share the same major version line. Qualifying every combination takes 3 times 2 times 4, which is 24 test runs. Add 2 Kubernetes minor versions, and the matrix doubles to 48 combinations. That happens before you even vary containerd or GPU Operator versions.
 
-Production platforms avoid this explosion by banning arbitrary version combinations. Instead of testing every layer on its own, the platform team defines 2 locked, immutable Node Profiles. One represents the current known-good stack, and the other represents the previous one. Test those 2 node profiles against the 4 approved workload image families, and the matrix drops from 48 combinations to 8. That is a 6.0x reduction, and it can run automatically on a canary node.
+Production platforms avoid this explosion by banning arbitrary version combinations. Instead of testing every layer on its own, the platform team defines 2 locked, immutable Node Profiles. A Node Profile is a fixed bundle of OS kernel, driver, runtime and plugin versions that moves as one unit. One represents the current known-good stack, and the other represents the previous one. Test those 2 node profiles against the 4 approved workload image families, and the matrix drops from 48 combinations to 8. That is a 6.0x reduction, and it can run automatically on a canary node. A canary node is one machine that receives the new profile first, so a bad combination fails on one node instead of the whole fleet.
 
 ```text
 Combinatorial vs. Profile-Based Qualification Math (V10 Ch 2):
@@ -218,11 +234,11 @@ Combinatorial vs. Profile-Based Qualification Math (V10 Ch 2):
 - Locked Node Profile matrix: 2 Node Profiles (current + previous known-good) * 4 image families = 8 runs (6.0x reduction)
 ```
 
-The last line is the payoff. The matrix shrinks from 48 runs to 8.
+The last line is the payoff. The matrix shrinks from 48 runs to 8. The trade-off is that you give up the freedom to mix any kernel with any driver. In return, every node that passes the qualification is one you already know works.
 
 ### 3.2 What the NVIDIA GPU Operator reconciles
 
-Doing this by hand means six separate DaemonSets. They cover drivers, runtime hooks, device plugins, node labels, MIG partitions, and telemetry. That setup invites configuration drift across node pools. The NVIDIA GPU Operator fixes this with one declarative custom resource, named `ClusterPolicy`. That single resource reconciles all six operand families across the cluster.
+Picture a new node pool that comes online on a Friday afternoon. Someone copies the driver version from the last pool, forgets the runtime hook, and the nodes join with half of their GPU stack missing. Doing this by hand means six separate DaemonSets. They cover drivers, runtime hooks, device plugins, node labels, MIG partitions, and telemetry. That setup invites configuration drift across node pools. Drift means that nodes which should match slowly end up different from each other. The NVIDIA GPU Operator fixes this with one declarative custom resource, named `ClusterPolicy`. A custom resource is an object that extends the Kubernetes API with a new type, and a declarative resource states what you want rather than the steps to get there. That single resource reconciles all six operand families across the cluster. An operand is one of the components the operator deploys and keeps running.
 
 ```mermaid
 flowchart LR
@@ -235,7 +251,9 @@ flowchart LR
     Op --> O6["6. Validators & DCGM\nRuns preflight checks &\nexports :9400/metrics"]
 ```
 
-Apply a `ClusterPolicy` manifest, and the operator controller inspects each node. It then launches the required DaemonSet pods in dependency order. The driver and container toolkit must finish initializing first. Only then does the controller start the Device Plugin, GPU Feature Discovery, MIG Manager, and DCGM Exporter.
+Apply a `ClusterPolicy` manifest, and the operator controller inspects each node. A controller is a loop that keeps comparing the actual state with the desired state and corrects the difference. It then launches the required DaemonSet pods in dependency order. The driver and container toolkit must finish initializing first, because the other operands depend on them. Only then does the controller start the Device Plugin, GPU Feature Discovery, MIG Manager, and DCGM Exporter. DCGM is NVIDIA's Data Center GPU Manager, and the DCGM Exporter turns its readings into metrics that Prometheus can scrape.
+
+The manifest below is the declarative form of that policy. Most of the blocks are empty, which tells the operator to use its defaults. The sharing and MIG sections are the parts a platform team usually edits.
 
 ```yaml
 # Declarative NVIDIA GPU Operator ClusterPolicy example (GAK Ch 3 Example 3-11) (untested here)
@@ -262,9 +280,11 @@ spec:
     strategy: mixed
 ```
 
+The point of the manifest is that it is short. The operator does the ordering, the restarts and the upgrades. Your job is to decide which parts of the stack the operator owns, and that decision is the next section.
+
 ### 3.3 Choosing an ownership model: Host-Managed vs. Operator-Managed vs. Hybrid
 
-Deploy the GPU Operator without deciding who owns the host kernel driver, and it often triggers outages during OS patching. Suppose an unattended host package manager and the GPU Operator both try to manage `nvidia.ko` or `/etc/containerd/config.toml`. Then nodes can randomly lose their GPU runtime hooks after reboots. Platform teams need to pick one of three explicit ownership models, and they must enforce the single-reconciler rule.
+Picture an unattended security update that runs on a Tuesday night. The host package manager upgrades the kernel and reinstalls the driver. The GPU Operator is also trying to install the same driver through a container. Deploy the GPU Operator without deciding who owns the host kernel driver, and it often triggers outages during OS patching. Suppose an unattended host package manager and the GPU Operator both try to manage `nvidia.ko` or `/etc/containerd/config.toml`. The second file is the containerd configuration, which tells the runtime how to load the NVIDIA hooks. Then nodes can randomly lose their GPU runtime hooks after reboots. Platform teams need to pick one of three explicit ownership models, and they must enforce the single-reconciler rule. A reconciler is anything that keeps a layer in the state it wants, and the rule says that each layer should have exactly one.
 
 | Ownership Model | How It Works (`ClusterPolicy` Settings) | Best When | Principal Trade-Off & Golden Rule |
 |---|---|---|---|
@@ -272,7 +292,7 @@ Deploy the GPU Operator without deciding who owns the host kernel driver, and it
 | **2. Operator-Managed Node Stack** | GPU Operator deploys the privileged Driver container, Container Toolkit, Device Plugin, NFD/GFD, MIG Manager, Validators, and DCGM (`driver.enabled=true, toolkit.enabled=true`). | Kubernetes is the primary infrastructure control plane and all GPU nodes run a homogeneous, supported OS kernel. | Operator, kernel headers, driver, and runtime versions must be qualified and rolled back together as one profile. |
 | **3. Hybrid Ownership** | Host image provides the signed kernel driver (`driver.enabled=false`), while GPU Operator reconciles the Container Toolkit, Device Plugin, GFD, MIG Manager, and DCGM (`toolkit.enabled=true`). | Enterprise security policies require host-signed kernel modules, while platform teams want declarative Kubernetes control over MIG, sharing, and telemetry. | **Single-Reconciler Rule:** Document every boundary explicitly so two systems never reconcile the same layer. |
 
-Choose the model before you deploy, and write down which system owns each layer.
+Choose the model before you deploy, and write down which system owns each layer. A written ownership map is the cheapest way to stop two reconcilers from fighting over the same file during a patch window.
 
 ---
 
@@ -280,11 +300,11 @@ Choose the model before you deploy, and write down which system owns each layer.
 
 ### 4.1 Why Node Ready is never a promotion condition
 
-Picture a maintenance window. An operator sees a Ready status in the output of `kubectl get nodes`, so they uncordon the worker node right away. On a GPU cluster, trusting Node Ready turns a routine OS kernel update into a silent black-hole outage. New jobs land on the node, and you watch them crash at once. Volume 10 Chapter 2 shows this failure in a production incident on `gpu-node-22`.
+Picture a maintenance window. An operator sees a Ready status in the output of `kubectl get nodes`, so they uncordon the worker node right away. Uncordon means letting the scheduler place new Pods on a node again. On a GPU cluster, trusting Node Ready turns a routine OS kernel update into a silent black-hole outage. A black hole is a node that accepts work and never completes it. New jobs land on the node, and you watch them crash at once. A kernel-update incident on `gpu-node-22` shows exactly this pattern, and the rest of this section walks through it.
 
 In that incident, an OS team rolled a minor kernel update across half of a GPU pool. Every patched node rebooted cleanly and rejoined Kubernetes with `STATUS = Ready` on version `v1.29.4`. To the control plane, the nodes looked healthy. So the scheduler immediately began placing GPU Pods onto `gpu-node-22`.
 
-Every GPU Pod scheduled onto `gpu-node-22` failed to run. When engineers inspected the host, `lsmod` showed zero loaded NVIDIA modules. `nvidia-smi` could not talk to the driver. The kernel ring buffer showed Secure Boot rejecting the unsigned kernel module for the new kernel with `error -1`. That is proof that you cannot rely on kubelet readiness to show whether `nvidia.ko` is actually loaded.
+Every GPU Pod scheduled onto `gpu-node-22` failed to run. When engineers inspected the host, `lsmod` showed zero loaded NVIDIA modules. `lsmod` lists the kernel modules that are currently loaded. `nvidia-smi` could not talk to the driver. The kernel ring buffer showed Secure Boot rejecting the unsigned kernel module for the new kernel with `error -1`. The kernel ring buffer is the log of kernel messages that `dmesg` prints. Secure Boot is the firmware feature that refuses to load kernel code that has no trusted signature. That is proof that you cannot rely on kubelet readiness to show whether `nvidia.ko` is actually loaded.
 
 ```text
 $ kubectl get node gpu-node-22
@@ -300,9 +320,11 @@ $ ssh gpu-node-22 'dmesg -T | grep -i nvidia | tail -3'
 [Thu Aug  6 08:02:11 2026] nvidia: probe of 0000:07:00.0 failed with error -1
 ```
 
+The lesson is simple. Ready describes the health of the node as Kubernetes sees it, and it says nothing about the GPU. A node needs its own proof of GPU health before it takes tenant work.
+
 ### 4.2 The 5-Gate Automated Node Acceptance Checklist
 
-Platform teams keep every new, rebooted, or upgraded GPU node tainted with `nvidia.com/gpu-unverified=true:NoSchedule`. That keeps black-hole nodes away from tenant traffic. An automated canary job must pass five ordered acceptance gates. Only then does the controller remove that onboarding taint.
+Picture a canary node that has just finished a driver upgrade. Before it takes any tenant traffic, someone has to decide whether it is actually ready. Platform teams keep every new, rebooted, or upgraded GPU node tainted with `nvidia.com/gpu-unverified=true:NoSchedule`. That keeps black-hole nodes away from tenant traffic. An automated canary job must pass five ordered acceptance gates. Only then does the controller remove that onboarding taint. Each gate tests one boundary, and each one assumes the gates before it have already passed.
 
 | Gate # | Boundary Tested | Question Answered | Concrete Pass Evidence (`V10 Ch 1, Ch 2` & *Generative AI on Kubernetes* Ch 3) |
 |---:|---|---|---|
@@ -314,7 +336,7 @@ Platform teams keep every new, rebooted, or upgraded GPU node tainted with `nvid
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-Run the gates in order, because each one assumes the gates before it have passed. Always drain a node before any maintenance change that unloads a kernel driver, resets a GPU, or restarts containerd. If you see any of the five gates fail on the canary node, halt the rollout right away. Roll back the entire coherent Node Profile as one unit. Do not revert individual driver or runtime packages on their own.
+Run the gates in order, because each one assumes the gates before it have passed. Always drain a node before any maintenance change that unloads a kernel driver, resets a GPU, or restarts containerd. Draining moves the running Pods off the node first, so the change does not kill them unexpectedly. If you see any of the five gates fail on the canary node, halt the rollout right away. Roll back the entire coherent Node Profile as one unit. Do not revert individual driver or runtime packages on their own, because the profile was qualified as a set.
 
 ---
 
@@ -322,7 +344,11 @@ Run the gates in order, because each one assumes the gates before it have passed
 
 ### 5.1 Inspect the Two-Path Evidence Chain and run the minimal CUDA acceptance check (untested here)
 
-Say a GPU node looks suspicious, or you have just provisioned a new machine. Run the checks in strict bottom-up order. Start with the host kernel driver. Then inspect what the control plane advertises. Last, launch a one-shot CUDA container to prove that runtime device injection works. Commands that need a live Kubernetes GPU cluster are marked untested here.
+Say a GPU node looks suspicious, or you have just provisioned a new machine. You have no reason yet to blame the driver, the plugin or the workload, so you need a fixed order of checks. Run the checks in strict bottom-up order. Start with the host kernel driver. Then inspect what the control plane advertises. Last, launch a one-shot CUDA container to prove that runtime device injection works. Bottom-up matters because each check depends on the one before it. If the host driver is missing, the advertisement check will look wrong, and the container check will fail for a reason you cannot see from the Pod.
+
+The first block runs on the node itself. It checks that the kernel module is loaded, that the driver reports the GPU, and that the kernel log shows no Xid errors. Xid errors are the codes the NVIDIA driver writes to the kernel log when the GPU hits a fault. The second block runs from your workstation with `kubectl`, and it checks what the control plane believes about the node. The third block starts a short-lived Pod that asks for one GPU and runs `nvidia-smi` inside it. If that Pod prints the table, the runtime path works for that node.
+
+Commands that need a live Kubernetes GPU cluster are marked untested here, because they depend on the cluster you run them against.
 
 ```bash
 # 1. Path 1 (Host Driver): verify kernel module loaded, driver version, and 0 Xids (V10 Ch 1 & 2) (untested here)
@@ -343,13 +369,15 @@ kubectl run --rm -it gpu-acceptance-check \
   --overrides="$patch" --override-type=json -- nvidia-smi
 ```
 
-Keep to that order, so the host driver is verified before anything above it.
+Keep to that order, so the host driver is verified before anything above it. If the first block fails, stop there and fix the host. Running the later blocks against a broken host only adds noise to the evidence you need.
 
 ---
 
 ## 6. How It Fails: Six GPU Platform Layer Failure Modes
 
-If you restart Pods at random, you only destroy forensic evidence. When a GPU workload fails to schedule or crashes at container startup, use the symptom table below instead. It helps you map the exact error message from `kubectl` or `dmesg` to the failing layer in the six-layer platform model.
+If you restart Pods at random, you only destroy forensic evidence. A restarted Pod hides the error message that would have told you which layer broke, and the node keeps the same fault. A better habit is to read the failure first and then change one thing.
+
+Picture a Pod that has been stuck in `CreateContainerError` since the night shift, with several teams waiting for the node. When a GPU workload fails to schedule or crashes at container startup, use the symptom table below instead. It helps you map the exact error message from `kubectl` or `dmesg` to the failing layer in the six-layer platform model. The table lists six failure modes that appear again and again in GPU clusters, each with the layer that is actually at fault and the fix that proves it.
 
 | # | Failure Mode | Production Symptom (`kubectl` / `dmesg`) | Failing Layer & Root Cause | Fix & Verification |
 |---|---|---|---|---|
@@ -360,21 +388,23 @@ If you restart Pods at random, you only destroy forensic evidence. When a GPU wo
 | **5** | **Pods stay Pending when 24 of 32 cluster GPUs (75%) are idle** | Dashboard shows 25% cluster GPU utilization (24 GPUs idle), yet a 4-GPU or 1-GPU job without special tolerations cannot schedule. | **Layer 5 (Pool Fragmentation):** 16 GPUs are tainted for `training` and 8 for `distributed-inference`, leaving only 8 GPUs in the `general` pool (`0/8` free after two 4-GPU jobs). | Export per-pool allocatable metrics in Grafana, right-size pool taint boundaries, or add matching tolerations and nodeAffinity for eligible workloads. |
 | **6** | **Two reconcilers fighting over the driver or runtime** | Nodes randomly lose GPU runtime hooks or experience driver version flip-flopping during image updates or Operator upgrades. | **Ownership Violation:** Both host configuration management and the GPU Operator (`driver.enabled=true`) are reconciling the same driver and runtime files. | Enforce the single-reconciler contract: if the OS team owns the driver in the golden image, set `driver.enabled=false` in `ClusterPolicy`. |
 
-When you see an error like these, start from the Production Symptom column, then find the layer it points to.
+When you see an error like these, start from the Production Symptom column, then find the layer it points to. The fix column tells you what to check next, and the verification step tells you when the problem is really gone.
 
 ---
 
 ## 7. Hands-On Lab: Verify the Two-Path Triage Engine, 32-GPU Pool Fragmentation, 48-to-8 Qualification Matrix, and Whole-GPU Waste Math
 
-You can run this lab on any Linux machine with Python 3.10 or newer. That includes a GCP or GKE workstation, or a Nebius VM. It uses only the Python standard library. The lab checks four things: the two-path triage engine, the 32-GPU pool fragmentation model, the qualification matrix reduction, and the model memory calculations. The cluster `kubectl` and `nvidia-smi` commands are in Section 5, and they are marked untested here.
+Imagine you are reviewing a platform design before it goes to a change board. You want to confirm that the triage logic and the sizing math say what the text says. The lab lets you check that without a cluster. You can run this lab on any Linux machine with Python 3.10 or newer. That includes a GCP or GKE workstation, or a Nebius VM. It uses only the Python standard library, so there is nothing to install. The lab checks four things: the two-path triage engine, the 32-GPU pool fragmentation model, the qualification matrix reduction, and the model memory calculations. The cluster `kubectl` and `nvidia-smi` commands are in Section 5, and they are marked untested here.
 
-Run `code/part11/gpu_platform_layer_lab.py` to execute all 25 verification checks.
+The commands in Section 5 need a live cluster and a GPU node, and they were not run for this chapter.
+
+Run `code/part11/gpu_platform_layer_lab.py` to execute all 25 verification checks. Each check prints a PASS or FAIL line, and the last line counts them.
 
 ```bash
 python3 code/part11/gpu_platform_layer_lab.py
 ```
 
-Here is the output a passing run should print.
+Here is the output a passing run should print. Each line names the scenario it tests, so a failure points you straight to the section of the chapter that explains it.
 
 ```text
 === Chapter 11.1 Lab: Why Kubernetes Needs a GPU Platform Layer (V10 Ch 1-2 + GAK + K8GS + ASP) ===
@@ -407,18 +437,18 @@ Here is the output a passing run should print.
 Summary: 25 passed, 0 failed (total 25)
 ```
 
-Compare your summary line with the one above before you move on.
+Compare your summary line with the one above before you move on. If the counts differ, look at the first FAIL line and find the matching scenario in the sections above.
 
 ---
 
 ## Exercises
 
-1. Trace the Two-Path Agreement Model for each of the four node scenarios (`gpu-node-07`, `gpu-node-11`, `gpu-node-22`, and `gpu-node-30`). For each node, state whether the control allocation path succeeded and whether the runtime execution path succeeded. Then identify the exact failing layer, from Layer 1 through Layer 6, and the diagnostic command output you would use to prove it.
-2. Do the pool fragmentation math. A 32-GPU cluster is split into a 16-GPU tainted training pool with 0 used, an 8-GPU tainted distributed-inference pool with 0 used, and an 8-GPU unconstrained general pool with four used by Job A. Calculate the free GPUs left in the general pool after scheduling a four-GPU unconstrained Job B. Then calculate the cluster-wide idle GPU count and percentage, and explain why an unconstrained 1-GPU Job C stays Pending.
-3. Work through the whole-GPU underutilization, 70B quantization, and GB vs. GiB calculations. Calculate the unused VRAM in gigabytes and as a percentage when a 1.8 GB Llama-3.2-1B model runs alone on a 24.0 GB NVIDIA L4 GPU. Then calculate the total VRAM used when 5 pods share the GPU across 10 time-sliced replicas. Next, calculate the weight memory a 70B model needs in FP32 versus 4-bit precision, and state the binary GiB equivalents of 40 GB and 80 GB.
-4. Compare the combinatorial and profile-based qualification matrices. Calculate the total number of test combinations for 3 kernel versions, two driver branches, 4 workload base-image families, and two Kubernetes versions when each is tested independently. Then show how collapsing to two approved Node Profiles, tested against 4 image families, reduces the test burden by 6.0x.
-5. Walk through the GPU Operator operands and ownership models. List the six operand families managed by the NVIDIA GPU Operator `ClusterPolicy`. Compare the Host-Managed, Operator-Managed, and Hybrid ownership models. Then state the single-reconciler rule you would apply to prevent configuration drift.
-6. Design the 5-gate automated node acceptance suite. Write out the ordered five-gate acceptance checklist that must pass before a canary node's onboarding taint is removed. Then explain why you need both Gate 2 with a minimal CUDA image and Gate 4 with a production framework image.
+1. Take four nodes, `gpu-node-07`, `gpu-node-11`, `gpu-node-22`, and `gpu-node-30`, and trace the Two-Path Agreement Model for each one. Did the control allocation path succeed on that node? Did the runtime execution path succeed on that node? Which layer, from Layer 1 through Layer 6, is failing? Which command output would prove it?
+2. Do the pool fragmentation math for a 32-GPU cluster. The training pool has 16 GPUs with 0 used. The distributed-inference pool has 8 GPUs with 0 used. The general pool has 8 GPUs, and Job A uses four of them. How many free GPUs are left in the general pool after an unconstrained four-GPU Job B arrives? What is the cluster-wide idle count, and what is the idle percentage? Why does an unconstrained 1-GPU Job C stay Pending?
+3. Work through the whole-GPU underutilization, 70B quantization, and GB vs. GiB calculations. How much VRAM is unused, in gigabytes and as a percentage, when a 1.8 GB Llama-3.2-1B model runs alone on a 24.0 GB NVIDIA L4 GPU? How much VRAM is used when 5 pods share the GPU across 10 time-sliced replicas? How much weight memory does a 70B model need in FP32, and how much in 4-bit precision? What are the binary GiB equivalents of 40 GB and 80 GB?
+4. Compare the combinatorial and profile-based qualification matrices. How many test combinations do you get when 3 kernel versions, 2 driver branches, 4 workload base-image families and 2 Kubernetes versions are each tested independently? How much does collapsing to 2 approved Node Profiles, tested against 4 image families, reduce the test burden?
+5. Walk through the GPU Operator operands and ownership models. Which six operand families does the NVIDIA GPU Operator `ClusterPolicy` manage? How do the Host-Managed, Operator-Managed and Hybrid ownership models differ? Which single-reconciler rule would you apply to prevent configuration drift?
+6. Design the 5-gate automated node acceptance suite. What is the ordered five-gate checklist that must pass before a canary node's onboarding taint is removed? Why do you need Gate 2 with a minimal CUDA image and Gate 4 with a production framework image?
 
 ---
 

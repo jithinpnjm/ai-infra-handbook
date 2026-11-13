@@ -84,3 +84,6 @@ Literal Counter comparison (HEAD vs worktree, code fences removed) shows inline 
 ## Status update: Part 10 committed (2026-11-13)
 Part 10 GPU and CUDA (22 chapters, 182,197 -> 252,122 words, +38 percent): gates green, span check clean, Mermaid and build pass. Guard shows 2 expected "hard" failures in 10.17 (9 fences) and 10.18 (11 fences): prose that the original had wrongly placed inside ```text fences was turned into normal paragraphs; content preserved, accepted. Open: 10.14 section 1.2 contradiction (Not Selected explanation vs table row); 10.17 PDL "supported on Hopper and Blackwell" sentence needs confirming; 10.21 Xid 62/79 kept per catalog but not rechecked; Needs-source lists in voice_rewrite_part10_*.md.
 Part 11 (GPU Kubernetes): 11.1-11.3 done, 11.4-11.6 and 11.7-11.9 delegated, rest not started. Skip 11.31-11.34 (NVKE) per README. Next after Part 11: Parts 12-15, 16-19, 20, 0.
+
+## Part 11 status (2026-11-14)
+Chapters 11.1-11.30 rewritten in the warm voice (+37% words, guard 0 hard, chain <=0.1, spans 0 lost, Mermaid 776 ok, build ok). 11.31-11.34 (NVKE) untouched on purpose. Open: "(tested here)" headings in 11.21-11.27, 11.25 time-slicing field names. Part 12 in progress (12.1-12.6 running).

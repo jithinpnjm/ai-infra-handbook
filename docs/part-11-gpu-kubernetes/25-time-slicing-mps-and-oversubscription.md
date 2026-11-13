@@ -22,17 +22,19 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a platform team with a busy cluster and a queue of developers who cannot get a GPU. Many GPUs in production clusters lack hardware Multi-Instance GPU silicon. NVIDIA T4, L4, L40S and A10G inference cards cannot split their compute engines or memory controllers in hardware. Even on A100 or H100 nodes that support MIG, interactive Jupyter notebooks, continuous integration runners and lightweight microservices sit idle most of the time between short bursts. You feel that pressure when dozens of developers wait in pending queues while the allocated accelerators burn budget at low utilization.
+Picture a platform team with a busy cluster and a queue of developers who cannot get a GPU. The queue looks strange at first, because the racks already hold accelerators. Many GPUs in production clusters lack hardware Multi-Instance GPU silicon, which is the feature that cuts one physical card into several isolated slices. NVIDIA T4, L4, L40S and A10G inference cards cannot split their compute engines or memory controllers in hardware. Even on A100 or H100 nodes that support MIG, interactive Jupyter notebooks, continuous integration runners and lightweight microservices sit idle most of the time between short bursts. You feel that pressure when dozens of developers wait in pending queues while the allocated accelerators burn budget at low utilization.
 
-Without hardware partitioning, NVIDIA offers two software ways to share a GPU, and each one trades hard isolation for higher density. The first is temporal sharing, known as Time-Slicing. The NVIDIA Device Plugin advertises several logical tokens for each physical GPU. Every scheduled Pod mounts the exact same `/dev/nvidia0` device file and takes its turn through round-robin GPU context switching.
+A helpful picture is a shared office kitchen with a single good oven. Several people want to bake at once, and the real question is whether they take turns or work side by side. The two software answers in this chapter are the two ways that kitchen can be shared, and each one comes with a cost.
 
-The second is spatial sharing, known as CUDA Multi-Process Service or MPS. A background proxy daemon runs in exclusive process compute mode. That proxy funnels CUDA calls from multiple client processes into a single shared GPU context, so small kernels run side by side on the Streaming Multiprocessors.
+Without hardware partitioning, NVIDIA offers two software ways to share a GPU. Each one trades hard isolation for higher density. Density here means how many workloads fit on one card, and isolation means how well each workload is walled off from the others. The first way is temporal sharing, known as Time-Slicing. Temporal means the sharing happens over time, so the workloads take turns. The NVIDIA Device Plugin, which is the software that tells Kubernetes how many GPUs a node offers, advertises several logical tokens for each physical GPU. Every scheduled Pod mounts the exact same `/dev/nvidia0` device file and takes its turn through round-robin GPU context switching. Round-robin means the turns follow a fixed rotation, so each workload gets its slot in order.
 
-Both mechanisms raise access density, and both cause outages when a logical replica token gets mistaken for a hardware reservation. Standard Linux memory cgroups govern host system RAM, not GPU high-bandwidth memory. If one Pod leaks memory on a time-sliced card, every neighbor Pod on that physical GPU crashes with an out-of-memory error.
+The second way is spatial sharing, known as CUDA Multi-Process Service or MPS. Spatial means the workloads sit side by side on the chip instead of taking turns. CUDA is NVIDIA's programming platform for GPUs, and a kernel is one piece of GPU work launched from a program. A background proxy daemon, which is a helper process that keeps running without anyone at the keyboard, runs in exclusive process compute mode. That proxy funnels CUDA calls from multiple client processes into a single shared GPU context, so small kernels run side by side on the Streaming Multiprocessors (SMs). The SMs are the groups of compute cores inside the GPU that do the arithmetic.
 
-Even under CUDA MPS, you can cap active threads and pinned device memory for each client. All connected clients still share a single hardware fault domain.
+Both mechanisms raise access density, and both can cause outages. The outage pattern is the same in each case. A logical replica token gets mistaken for a hardware reservation. A cgroup is the Linux feature that caps how much of a resource a group of processes can use. Standard Linux memory cgroups govern host system RAM, not GPU high-bandwidth memory (HBM). HBM is the fast memory on the card, and this chapter also calls it VRAM. If one Pod leaks memory on a time-sliced card, every neighbor Pod on that physical GPU crashes with an out-of-memory error. The neighbors did nothing wrong. They simply share the same pool.
 
-The three failure modes below come from this chapter's sources. Each one is worth recognizing on sight.
+Even under CUDA MPS, you can cap active threads and pinned device memory for each client. A cap is a ceiling that the control daemon enforces, so one client cannot take every thread or every byte. The caps do not change the core fact, though. All connected clients still share a single hardware fault domain. A fault domain is the set of workloads that one hardware failure can take down together, and under MPS that set is every client on the GPU.
+
+The block below lists three failure modes. Each one is worth recognizing on sight, because each one looks different on a dashboard and each one needs a different fix.
 
 ```text
 Software GPU Sharing Failure Modes (volume-11/chapter-04 and volume-04/03):
@@ -43,7 +45,7 @@ Software GPU Sharing Failure Modes (volume-11/chapter-04 and volume-04/03):
    Root cause: per-client CUDA_MPS_PINNED_DEVICE_MEM_LIMIT cap (for example 8 GB vs a 12 GB burst) or transient neighbor spike.
 ```
 
-Notice that the first two modes come from one shared memory pool, while the third comes from a per-client MPS cap or a neighbor's spike. Decide early which workloads can tolerate shared memory, because that decision sets the failure modes you must guard against.
+Notice that the first two modes come from one shared memory pool, while the third comes from a per-client MPS cap or a neighbor's spike. The difference matters on call. A pool-level problem shows up as several Pods dying together. A cap-level problem shows up as one Pod dying while the card still looks mostly empty. Decide early which workloads can tolerate shared memory, because that decision sets the failure modes you must guard against. A notebook that a data scientist restarts by hand can tolerate a lot. A customer-facing API cannot.
 
 ## Prerequisites and outcomes
 
@@ -54,12 +56,9 @@ Notice that the first two modes come from one shared memory pool, while the thir
 
 ### Outcomes
 
-By the end of this chapter, you should be able to do the following.
+A notebook pool that works well on Monday can fail on Tuesday, when a new team joins and the bursts start to overlap. This chapter walks through how each sharing mechanism behaves under that kind of pressure, so you can judge a design before you roll it out.
 
-- Explain the architectural difference between Kubernetes Device-Plugin Time-Slicing and CUDA Multi-Process Service across context switching, SM execution and HBM isolation.
-- Configure safe Time-Slicing ConfigMaps with explicit shared resource naming and single-token admission guards, plus CUDA MPS daemons with thread and memory limits.
-- Run the five-phase replica-ratio benchmark on an A100 node, so you can choose a safe concurrency envelope with adequate memory headroom.
-- Implement the six-step safe rollout sequence, the ten-field operating policy contract, the eight-item contention evidence package and production namespace ResourceQuota guards.
+The first part explains the architectural difference between device-plugin time-slicing and CUDA Multi-Process Service across context switching, SM execution and HBM isolation. The second part shows how to write a safe time-slicing ConfigMap with explicit naming and single-token guards, and how to start CUDA MPS daemons with thread and memory limits. The third part covers a five-phase replica-ratio benchmark on an A100 node, which helps you choose a safe concurrency envelope with adequate memory headroom. The last part covers the six-step rollout sequence, the ten-field operating policy contract, the eight-item contention evidence package and the production namespace ResourceQuota guards.
 
 ## Concepts: basics to intermediate to advanced
 
@@ -67,9 +66,9 @@ By the end of this chapter, you should be able to do the following.
 
 #### What device-plugin time-slicing actually changes
 
-Suppose a platform team sets `replicas: N` in the NVIDIA Device Plugin ConfigMap. They picture the GPU sliced into smaller virtual cards. That picture causes noisy-neighbor incidents and surprise crashes for data scientists who share development nodes. In reality, the replica count changes only the Kubernetes control-plane accounting token count. Nothing changes on the GPU silicon, the memory controller or the Linux device driver.
+Suppose a platform team sets `replicas: N` in the NVIDIA Device Plugin ConfigMap. A ConfigMap is a Kubernetes object that stores configuration text, and this one tells the device plugin how to advertise GPUs. The team pictures the GPU sliced into smaller virtual cards. That picture causes noisy-neighbor incidents and surprise crashes for data scientists who share development nodes. A noisy neighbor is a workload that uses so much of a shared resource that other workloads slow down or fail. In reality, the replica count changes only the Kubernetes control-plane accounting token count. The control plane is the set of Kubernetes components that make scheduling decisions, and the token count is the number it uses to decide how many Pods fit. Nothing changes on the GPU silicon, the memory controller or the Linux device driver. The card is the same card it was before the ConfigMap was applied.
 
-Every Pod admitted onto a time-sliced GPU gets permission to open the same underlying device node. Asking for two shared tokens in one Pod does not double the memory or compute share. That trap is why production configurations always reject multi-token requests on shared pools. The table below compares what the Kubernetes control plane reports with what happens on the physical hardware.
+Every Pod admitted onto a time-sliced GPU gets permission to open the same underlying device node. A device node is the special file that Linux uses to talk to a device, and here it is the file every Pod opens. Asking for two shared tokens in one Pod does not double the memory or compute share. Two tokens are two tickets to the same room, not two rooms. That trap is why production configurations always reject multi-token requests on shared pools. The table below compares what the Kubernetes control plane reports with what happens on the physical hardware. Read the left column as what the dashboard says, and the right column as what the card does.
 
 | Control-Plane Claim | Actual Hardware and Runtime Reality |
 |---|---|
@@ -78,17 +77,17 @@ Every Pod admitted onto a time-sliced GPU gets permission to open the same under
 | A Pod requests `nvidia.com/gpu: 2` on a shared node | Requesting `2` time-sliced tokens does not grant `2x` the compute or `2x` the memory, which is why production configs set `failRequestsGreaterThanOne: true`. |
 | Linux `cgroups` will protect neighbor pods from OOM | False: standard Linux `memory` cgroups only govern host system RAM, not GPU HBM/VRAM. If `Pod 1` leaks `16 GB` on a `16 GB` T4 with `replicas: 10`, `Pods 2..10` (`9` pods) crash with `CUDA OOM`. |
 
-Pay close attention to the last row. The cgroup assumption is false for GPU memory, so a leak on one Pod can reach its neighbors.
+Pay close attention to the last row, because it is the row that changes how you should think about a shared card. The cgroup assumption is false for GPU memory, so a leak on one Pod can reach its neighbors. The leak does not need to be malicious. A bug that keeps a buffer alive after a request finishes is enough. Once the card's memory is full, the next allocation on any neighbor fails, no matter how small that neighbor's own request was.
 
 #### Temporal time-slicing versus spatial CUDA MPS
 
-Under standard Time-Slicing, each container gets its own independent CUDA context on the GPU. When MIG is not active, only one CUDA context can execute on the Streaming Multiprocessors at any instant. The hardware scheduler must pause the first process, save its register state, load the next process state and run the next time quantum.
+Picture two containers on the same card, each waiting for its turn on the chip. Under standard Time-Slicing, each container gets its own independent CUDA context on the GPU. A CUDA context is the bookkeeping the GPU keeps for one program, including its memory mappings and its work queue. When MIG is not active, only one CUDA context can execute on the Streaming Multiprocessors at any instant. The hardware scheduler must pause the first process, save its register state, load the next process state and run the next time quantum. Register state is the set of working values a process holds while it runs, and a time quantum is the short slice of time it gets before the scheduler moves on. Each switch costs time, and that cost is one source of the jitter discussed below.
 
-Consider two inference microservices that each launch small kernels needing only twenty percent of the SMs. Temporal switching still serializes them, and it adds context-switch jitter.
+Consider two inference microservices that each launch small kernels needing only twenty percent of the SMs. Each kernel leaves most of the chip idle while it runs. Temporal switching still serializes them, which means one waits while the other runs, and it adds context-switch jitter. Jitter is the uneven delay that shows up as an occasional slow request. Users notice those slow requests even when the average looks fine.
 
-CUDA Multi-Process Service removes this serialization by replacing separate contexts with one shared context. An administrator locks the GPU into exclusive process compute mode and starts the `nvidia-cuda-mps-control` background daemon. Client containers then connect to the `nvidia-cuda-mps-server` over UNIX domain sockets, not through separate hardware contexts.
+CUDA Multi-Process Service removes this serialization by replacing separate contexts with one shared context. The change happens at setup time, so it is the administrator's job. An administrator locks the GPU into exclusive process compute mode and starts the `nvidia-cuda-mps-control` background daemon. Exclusive process mode means only one process may hold the GPU's compute context, and in this design that process is the MPS server. Client containers then connect to the `nvidia-cuda-mps-server` over UNIX domain sockets, which are file-based connections between processes on the same machine, not through separate hardware contexts.
 
-The MPS server merges the client CUDA streams. Kernels from different containers can therefore run side by side on separate SMs at the exact same instant.
+The MPS server merges the client CUDA streams. A stream is an ordered line of GPU work from one client, so merging streams means the server feeds work from several clients into one context. Kernels from different containers can therefore run side by side on separate SMs at the exact same instant. Picture two short kernels on a chip large enough to hold both. The chip does not need to finish one before it starts the other.
 
 ```mermaid
 flowchart TD
@@ -103,7 +102,7 @@ flowchart TD
     end
 ```
 
-In the diagram, the top branch shows separate contexts taking turns, and the bottom branch shows one shared context running kernels together.
+Read the diagram from the top down. The top branch shows separate contexts taking turns, with a switching cost between them. The bottom branch shows clients that send their work through one server and one shared context, so their kernels run together. The labels on each client also name the thread caps that limit how much of the chip each one may use.
 
 ---
 
@@ -111,11 +110,11 @@ In the diagram, the top branch shows separate contexts taking turns, and the bot
 
 #### The five-phase replica-ratio measurement protocol
 
-Suppose you copy a replica ratio of eight or ten from an online tutorial. That is one of the fastest ways to destabilize a cluster. Without load testing, your team finds the true memory high-water mark only when notebooks start crashing during peak daytime hours. Treat the replica count as a capacity envelope that you measure for one workload class on one GPU model. Every shared pool needs a structured five-phase measurement protocol before it admits tenant traffic.
+Suppose you copy a replica ratio of eight or ten from an online tutorial. That is one of the fastest ways to destabilize a cluster. Without load testing, your team finds the true memory high-water mark only when notebooks start crashing during peak daytime hours. A high-water mark is the highest level a value ever reaches, so the memory high-water mark is the most memory your workload ever asked for. Copying a number from a tutorial skips the step that matters most, which is measuring your own workload on your own card. Treat the replica count as a capacity envelope that you measure for one workload class on one GPU model. Every shared pool needs a structured five-phase measurement protocol before it admits tenant traffic.
 
-Engineers begin with a single-tenant baseline. That run measures normal tail latency and memory footprint with zero peer interference. Next they step through concurrent active neighbors, burst queueing, neighbor failure recovery and post-upgrade regression checks.
+Engineers begin with a single-tenant baseline. A tenant here means one workload using the shared card. That run measures normal tail latency and memory footprint with zero peer interference, so every later number has something to compare against. Next they step through concurrent active neighbors, burst queueing, neighbor failure recovery and post-upgrade regression checks. A regression check asks whether something that worked before has quietly gotten worse.
 
-During each run, host telemetry tools sample SM utilization, memory consumption, power and thermal counters every second over a five-minute window. Take an eighty-gigabyte A100 hosting interactive PyTorch notebooks as an example. Keeping at least twenty gigabytes of free HBM headroom stops sudden allocation spikes from triggering out-of-memory kills.
+During each run, host telemetry tools sample SM utilization, memory consumption, power and thermal counters every second over a five-minute window. Telemetry means the numbers a machine reports about itself while it works, and the thermal counters report how hot the card runs. Take an eighty-gigabyte A100 hosting interactive PyTorch notebooks as an example. PyTorch is a common Python library for building and running neural networks, and a notebook is a browser-based coding page that data scientists use. Keeping at least twenty gigabytes of free HBM headroom stops sudden allocation spikes from triggering out-of-memory kills. Headroom is the free space you hold back for the moments when a workload asks for more than its average. Without it, one busy minute can push the card past its limit.
 
 ```text
 5-Phase Replica-Ratio Measurement Protocol:
@@ -129,7 +128,7 @@ During each run, host telemetry tools sample SM utilization, memory consumption,
 - Phase 5 (Upgrade repeat): Re-run the concurrency test after driver, CUDA runtime, or model updates.
 ```
 
-The table below shows what happened as the notebook count rose on one 80 GB A100.
+The table below shows what happened as the notebook count rose on one 80 GB A100. Read it from the top row down. Watch the free memory shrink while the latency climbs, and notice where the verdict changes from safe to unsafe.
 
 | Concurrent Notebooks on `1 × A100 80GB` | Per-Notebook SM Activity (`%`) | Combined HBM Used (`GB` of `80 GB`) | Observed `p99` Kernel Launch Latency | Engineering Verdict |
 |---|---|---|---|---|
@@ -138,17 +137,19 @@ The table below shows what happened as the notebook count rose on one 80 GB A100
 | `4` Concurrent Notebooks | `~55%` SM | `48 GB` (`32 GB >= 20 GB` headroom) | `120 ms` (noticeable, acceptable for dev) | Selected Safe Envelope: `replicas: 4` |
 | `8` Concurrent Notebooks | `~65%` SM | `96 GB > 80 GB` (`+16 GB` overflow) | `500 ms` (severe thrashing / host RAM spill) | UNSAFE: `nvidia-smi` shows process OOM-killed |
 
-Walk through the arithmetic. One notebook uses 12 GB. Four notebooks use 4 × 12 GB, which is 48 GB. That leaves 32 GB free on the 80 GB card, more than the 20 GB headroom you need. Eight notebooks need 8 × 12 GB, or 96 GB. That is 16 GB more than the card holds, so four is the highest count that keeps the headroom.
+Walk through the arithmetic, because the table is only as good as the sums behind it. One notebook uses 12 GB. Four notebooks use 4 × 12 GB, which is 48 GB. That leaves 32 GB free on the 80 GB card, more than the 20 GB headroom you need. Eight notebooks need 8 × 12 GB, or 96 GB. That is 16 GB more than the card holds, so four is the highest count that keeps the headroom. The sum assumes each notebook takes the same 12 GB, which is why you should measure the real spread in your own pool before you copy the number.
+
+Here is the same check written as a routine you can repeat before every rollout. First, measure the memory of one workload at its peak. Second, multiply that peak by the candidate replica count. Third, compare the product with the card size minus the headroom you planned to keep. If the product fits, the count is a candidate for the load test. If it does not fit, lower the count and measure again rather than arguing with the arithmetic.
 
 #### Configuring CUDA MPS and diagnosing the Ghost OOM
 
-Suppose several inference microservices share one GPU through CUDA MPS. A client without a cap can take over the compute threads or use up the device memory. To prevent that starvation, operators set an active thread percentage cap and a pinned device memory limit in the MPS control daemon.
+Suppose several inference microservices share one GPU through CUDA MPS. A client without a cap can take over the compute threads or use up the device memory. Starvation here means one client gets so little of the GPU that its requests stall. To prevent that starvation, operators set an active thread percentage cap and a pinned device memory limit in the MPS control daemon. The thread cap limits how much of the chip each client may use at once. The memory limit sets a hard ceiling on the device memory each client may pin for itself.
 
-Each client then sees only its permitted share of SM warps. It hits a software allocation ceiling before it can exhaust the physical HBM. These software ceilings, however, can produce a confusing failure when on-call responders check standard host tools.
+Each client then sees only its permitted share of SM warps. A warp is a group of threads that the SM runs together. The client hits a software allocation ceiling before it can exhaust the physical HBM, so the card itself still has memory left. These software ceilings, however, can produce a confusing failure when on-call responders check standard host tools. The on-call engineer sees a crash, while the host tool shows a card that looks half empty. That mismatch is why this failure deserves its own name.
 
-Here is the classic Ghost OOM. Two inference containers share a forty-gigabyte A100 under CUDA MPS. One container crashes again and again with a CUDA out-of-memory exception. Yet `nvidia-smi` on the host shows only ten gigabytes in use. An on-call engineer can waste hours suspecting a driver bug, because thirty gigabytes of physical HBM look free. Three mechanisms explain the gap, and the architectural cure for strict, non-overlapping isolation is hardware MIG.
+Here is the classic Ghost OOM, which is an out-of-memory crash that the host tool cannot explain. Two inference containers share a forty-gigabyte A100 under CUDA MPS. One container crashes again and again with a CUDA out-of-memory exception. Yet `nvidia-smi` on the host shows only ten gigabytes in use. The memory looks like a ghost, present in the crash but absent from the dashboard. An on-call engineer can waste hours suspecting a driver bug, because thirty gigabytes of physical HBM look free. Three mechanisms explain the gap, and the architectural cure for strict, non-overlapping isolation is hardware MIG.
 
-The block below lists the controls and the three root causes.
+The block below lists the controls first, then the three root causes. Use it as a checklist when the crash and the dashboard disagree.
 
 ```text
 CUDA MPS Controls and the Ghost OOM Diagnosis (volume-04/03 Part 1.2 and Part 6 Scenario 1):
@@ -161,7 +162,9 @@ CUDA MPS Controls and the Ghost OOM Diagnosis (volume-04/03 Part 1.2 and Part 6 
 - Architectural Fix: Migrate workloads requiring guaranteed hardware memory walls and separate fault domains to MIG (Chapter 11.24).
 ```
 
-Notice that the three causes are different: a software cap, a late sample and a neighbor's spike.
+Notice that the three causes are different. The first is a software cap that someone set on purpose. The second is a late sample, which is a measurement taken after the evidence is gone. The third is a neighbor's spike, which is a real burst by someone else. Each one needs a different check. Look at the cap setting first, then the time of the sample, then the neighbor's memory history.
+
+Walk the three checks in that order, because each one rules out a different cause. The cap check needs only the MPS settings. The timing check needs the time the crash was logged, set against the time of the sample. The neighbor check needs the memory history of every client on the card. If you skip straight to suspecting the driver, you spend the most time on the one cause this chapter has not listed.
 
 ---
 
@@ -169,9 +172,9 @@ Notice that the three causes are different: a software cap, a late sample and a 
 
 #### Six controls that protect a shared pool and guarding production namespaces
 
-Kubernetes treats each logical GPU token as a binary admission ticket. The default scheduler does not check physical HBM pressure, context-switch queue depth or tail latency before it places a Pod. Now picture a time-sliced node pool that advertises the default `nvidia.com/gpu` name. A latency-sensitive production deployment can land next to noisy development notebooks. Every Pod then reports healthy in Kubernetes, while customer tail latency triples.
+Picture a time-sliced node pool that advertises the default `nvidia.com/gpu` name, and a latency-sensitive deployment that lands on it. Kubernetes treats each logical GPU token as a binary admission ticket. A binary ticket is either granted or refused, with no in-between state, and it says nothing about how busy the card is. The default scheduler does not check physical HBM pressure, context-switch queue depth or tail latency before it places a Pod. The scheduler is the Kubernetes component that picks a node for each new Pod. A latency-sensitive production deployment can therefore land next to noisy development notebooks. Every Pod then reports healthy in Kubernetes, while customer tail latency triples. The cluster looks fine, and the customers are the first to notice.
 
-You protect a cluster with six layered controls. They keep best-effort sharing apart from guaranteed production capacity. The first control renames the shared resource to `nvidia.com/gpu.shared`, so workloads must opt in to time-slicing on purpose. The second control is a ResourceQuota in every production namespace, with the shared resource hard limit set to zero. Controls three through six add application concurrency limits, bounded request queueing, workload-correlated host telemetry and a pre-approved dedicated escape pool.
+You protect a cluster with six layered controls, and each one covers a gap the others leave open. Layered means that a second guard still stands when the first one fails. The controls keep best-effort sharing apart from guaranteed production capacity. Best-effort means the workload gets whatever capacity is left over. The first control renames the shared resource to `nvidia.com/gpu.shared`, so workloads must opt in to time-slicing on purpose. The second control is a ResourceQuota in every production namespace, with the shared resource hard limit set to zero. A ResourceQuota is a Kubernetes limit on how much of a resource a namespace can request. Controls three through six add application concurrency limits, bounded request queueing, workload-correlated host telemetry and a pre-approved dedicated escape pool.
 
 ```text
 Six Operational Controls for Shared GPU Pools:
@@ -186,7 +189,7 @@ Six Operational Controls for Shared GPU Pools:
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-The block above gives each control with the failure it prevents. Controls one and two work as a pair: the rename makes the shared pool visible in manifests, and the quota refuses shared requests in production. The manifest below puts the quota into practice.
+The block above gives each control with the failure it prevents. Controls one and two work as a pair. The rename makes the shared pool visible in manifests, so a reviewer can see the word shared in the YAML. The quota then refuses shared requests in production, so that word cannot slip past review. The manifest below puts the quota into practice.
 
 ```yaml
 # Deny shared best-effort GPUs in production namespaces
@@ -201,13 +204,15 @@ spec:
     nvidia.com/gpu: "unlimited"     # Permit dedicated GPUs
 ```
 
-Notice the `0` on the shared line. That single value keeps best-effort pods out of the production namespace.
+Notice the `0` on the shared line. That single value keeps best-effort pods out of the production namespace. The unlimited line on the dedicated resource does the opposite job, because it leaves dedicated GPUs open to the namespace. A namespace is a Kubernetes boundary that groups objects such as Pods and quotas, so the quota applies to everything inside it.
+
+Here is how the quota plays out in a normal week. A developer applies a Pod that asks for `nvidia.com/gpu.shared` in the prod-serving namespace. The quota refuses the request at admission, so the Pod never starts on a shared card. The developer gets a clear reason from the API, and the production team does not have to hunt for the cause after a latency incident.
 
 #### Safe rollout sequence, operating policy, and contention evidence package
 
-Suppose you turn on time-slicing across a live cluster with no staged rollout. That invites immediate contention incidents. If a change goes wrong, responders need a rehearsed rollback path and a standard diagnostic bundle before users escalate. Platform teams therefore follow a six-step rollout sequence. It starts on a noncritical node pool labeled explicitly for sharing. The team validates allocation transitions, verifies latency and memory high-water marks, and rehearses reverting the ClusterPolicy to a single replica.
+Suppose you turn on time-slicing across a live cluster with no staged rollout. That invites immediate contention incidents. A staged rollout means you change one small group first and watch it before you change the rest. If a change goes wrong, responders need a rehearsed rollback path and a standard diagnostic bundle before users escalate. A rollback path is the set of steps that returns the cluster to its old state, and a diagnostic bundle is the evidence collected in the same format every time. Platform teams therefore follow a six-step rollout sequence. It starts on a noncritical node pool labeled explicitly for sharing, so the first mistakes land on the least important workloads. The team validates allocation transitions, verifies latency and memory high-water marks, and rehearses reverting the ClusterPolicy to a single replica. ClusterPolicy is the GPU Operator's main configuration object, so reverting it is the switch that turns sharing back off.
 
-Every shared pool publishes a ten-field operating policy contract, and it defines an eight-item contention evidence package. The operating policy says which workloads may enter the pool, what memory ceiling each Pod must obey and who owns escalation when contention strikes. When a slowdown happens, responders collect the eight time-correlated evidence items, which close the container attribution gap in standard telemetry. The reference block below summarizes all three operational checklists.
+Every shared pool publishes a ten-field operating policy contract, and it defines an eight-item contention evidence package. A contract here means a written agreement that the owning team signs off on. The operating policy says which workloads may enter the pool, what memory ceiling each Pod must obey and who owns escalation when contention strikes. When a slowdown happens, responders collect the eight time-correlated evidence items. Those items close the container attribution gap in standard telemetry, because standard telemetry cannot say which container caused a given number. The reference block below summarizes all three operational checklists.
 
 ```text
 6-Step Safe Rollout Sequence, 10-Field Policy, and 8-Item Evidence Package (volume-11/chapter-04, labs/lab-02, GAK Ch. 3):
@@ -229,13 +234,13 @@ Every shared pool publishes a ten-field operating policy contract, and it define
   6. Node/device-plugin config & events | 7. Quota/admission decisions | 8. Actions taken & time to recovery
 ```
 
-Notice that the policy template settles the rules in advance, while the evidence package covers the moment a slowdown happens.
+Notice that the policy template settles the rules in advance, while the evidence package covers the moment a slowdown happens. Write the first one on a quiet afternoon. Pull the second one during the incident, while the numbers are still fresh.
 
 #### Kubernetes primitives versus shared-GPU realities and post-upgrade validation
 
-In architecture reviews, it is easy to assume that Kubernetes scheduling enforces fairness at runtime on a shared accelerator. You might expect resource requests, node selectors, taints, quotas and priority classes to police GPU memory and kernel execution. In practice, each of those objects works only at pod admission or placement time. Once two containers open the same physical device node, the Kubernetes control plane has zero visibility into their CUDA kernels or HBM allocations.
+Imagine an architecture review where someone asks whether the scheduler will keep two teams fair on one shared card. Fairness here means each tenant gets a fair share while the work runs. In architecture reviews, it is easy to assume that Kubernetes scheduling enforces fairness at runtime on a shared accelerator. You might expect resource requests, node selectors, taints, quotas and priority classes to police GPU memory and kernel execution. Each of those is a Kubernetes object with a clear job. In practice, each of those objects works only at pod admission or placement time. Admission is the moment the scheduler decides a Pod may start, and placement is the choice of node. Once two containers open the same physical device node, the Kubernetes control plane has zero visibility into their CUDA kernels or HBM allocations. After that moment the scheduler is out of the picture.
 
-So each scheduling primitive needs a complementary runtime control, at the application, MPS or hardware MIG layer. Upgrades add another risk: a cluster upgrade can silently reset device-plugin ConfigMaps, alter node labels or change driver scheduling behavior. After every GPU Operator, device-plugin, driver or node-image update, you must run the eight-step pre-production and post-upgrade acceptance checklist. The table and checklist below map each Kubernetes primitive to its hardware gap and to its verification steps.
+So each scheduling primitive needs a complementary runtime control, at the application, MPS or hardware MIG layer. A primitive here means a basic Kubernetes building block. Upgrades add another risk, because a cluster upgrade can silently reset device-plugin ConfigMaps, alter node labels or change driver scheduling behavior. After every GPU Operator, device-plugin, driver or node-image update, you must run the eight-step pre-production and post-upgrade acceptance checklist. The table and checklist below map each Kubernetes primitive to its hardware gap and to its verification steps.
 
 | Kubernetes Primitive | What It Contributes to a Shared GPU Pool | What It Cannot Protect on the Physical GPU | Complementary Runtime / Platform Control Required |
 |---|---|---|---|
@@ -245,7 +250,7 @@ So each scheduling primitive needs a complementary runtime control, at the appli
 | 4. `ResourceQuota` | Bounds total logical GPU tokens requested by a namespace (`one-logical-gpu` in `labs/lab-02`, or `nvidia.com/gpu.shared: "0"` in prod) | Does not arbitrate GPU kernel launch frequency or SM context-switch fairness | Application-level request queues, token-bucket rate limiters, or CUDA MPS `set_default_active_thread_percentage` |
 | 5. `PriorityClass` | Controls which pending Pod schedules first and which Pod is evicted under node pressure | Does not create physical GPU capacity or pause an already-running CUDA kernel mid-flight | Graceful `SIGTERM` checkpoint handlers and a dedicated whole-GPU / MIG escape pool for critical services |
 
-Notice that each row pairs a Kubernetes primitive with a runtime or platform control it still needs.
+Notice that each row pairs a Kubernetes primitive with a runtime or platform control it still needs. Read across one row at a time, starting with the primitive in the first column and ending with the control in the last.
 
 ```text
 8-Step Pre-Production and Post-Upgrade Acceptance Checklist:
@@ -259,13 +264,13 @@ Notice that each row pairs a Kubernetes primitive with a runtime or platform con
 8. Re-execute this checklist (and the 5 upgrade checks: allocatable names/counts, labels/selectors, namespace policy, concurrent smoke test, dashboard attribution) after every GPU Operator, device-plugin, driver, or runtime upgrade.
 ```
 
-Run this checklist once before you admit traffic, and again after every upgrade.
+Run this checklist once before you admit traffic, and again after every upgrade. The first run proves the design. The later runs prove that an upgrade did not quietly undo it.
 
 ## Commands and configurations that matter
 
 ### 1. Device-plugin time-slicing ConfigMap with explicit shared naming
 
-Suppose a cluster turns on time-slicing but never renames the resource or blocks multi-token requests. Users inevitably schedule multi-GPU jobs or production APIs onto shared nodes. The ConfigMap below enables four logical replicas per physical GPU. It renames the resource to `nvidia.com/gpu.shared` and rejects any Pod that requests more than one token.
+Suppose a cluster turns on time-slicing but never renames the resource or blocks multi-token requests. Users inevitably schedule multi-GPU jobs or production APIs onto shared nodes. The ConfigMap below enables four logical replicas per physical GPU. It renames the resource to `nvidia.com/gpu.shared` and rejects any Pod that requests more than one token. Read the YAML from the top. The metadata names the object, and the data block holds the sharing settings as text.
 
 ```yaml
 # time-slicing-safe-configmap.yaml
@@ -286,7 +291,7 @@ data:
             replicas: 4
 ```
 
-After you create the ConfigMap, the operator patches the ClusterPolicy and verifies the updated allocatable count on the target node. The commands below do the patch and the check.
+After you create the ConfigMap, the operator patches the ClusterPolicy and verifies the updated allocatable count on the target node. Allocatable means the number of GPUs a node tells the scheduler it can hand out. The commands below do the patch and the check. A patch is a small update to an existing object, so you do not need to rewrite the whole policy.
 
 ```bash
 # Select the time-slicing ConfigMap in ClusterPolicy and check node allocatable
@@ -295,11 +300,13 @@ kubectl patch clusterpolicy gpu-cluster-policy --type merge \
 kubectl get node gpu-node-1 -o jsonpath='{.status.allocatable.nvidia\.com/gpu\.shared}{" shared allocatable\n"}'
 ```
 
-Check the allocatable count before any workload requests the shared name.
+Check the allocatable count before any workload requests the shared name. If the count is wrong, a Pod that asks for the shared name waits in Pending, which is the state where Kubernetes has accepted the Pod but cannot place it yet.
+
+If the count looks like the number of physical GPUs rather than the number of replicas, the new ConfigMap probably never reached the node. Check the ClusterPolicy selection first, then check the node again. A green Pod status does not prove that the sharing setting is active.
 
 ### 2. Enabling CUDA Multi-Process Service with thread and memory caps
 
-Picture several small inference servers running under the default compute mode. They waste SM capacity on context-switch stalls. Locking the GPU into exclusive process mode and starting the CUDA MPS control daemon lets those servers run kernels spatially, side by side, inside one shared context. The script below sets the pipe and log directories, starts the daemon, caps each client at twenty percent of active threads and enforces an eight-gigabyte pinned memory limit.
+Picture several small inference servers running on a GPU that uses the default compute mode. They waste SM capacity on context-switch stalls, because the chip sits idle during each switch. Locking the GPU into exclusive process mode and starting the CUDA MPS control daemon lets those servers run kernels spatially, side by side, inside one shared context. The script below sets the pipe and log directories, starts the daemon, caps each client at twenty percent of active threads and enforces an eight-gigabyte pinned memory limit. The pipe directory is where clients find the daemon, and the log directory is where the daemon writes its messages.
 
 ```bash
 #!/usr/bin/env bash
@@ -319,11 +326,13 @@ echo "set_default_active_thread_percentage 20" | nvidia-cuda-mps-control
 echo "set_default_device_pinned_mem_limit 0 8G" | nvidia-cuda-mps-control
 ```
 
-Notice the order: the GPU is locked first, the daemon starts second, and the caps go in last. Set the caps before any client connects to the daemon.
+Notice the order: the GPU is locked first, the daemon starts second, and the caps go in last. The order matters because the caps belong to the daemon, so set them before any client connects.
+
+Read the script line by line before you run it on a shared node. Each line changes the state of the whole GPU, and every container on that card feels the change, not only the one you are working on.
 
 ### 3. Live contention triage on a time-sliced node
 
-Suppose users report slow kernel execution on a shared node. Standard container metrics cannot show which neighbor Pod is hogging the GPU. On-call responders must read host-level device telemetry and process tables directly on the node. The commands below stream three hundred one-second samples of SM, memory, power and thermal counters. They also list the exact host PIDs and memory footprints on each GPU.
+Suppose users report slow kernel execution on a shared node. Standard container metrics cannot show which neighbor Pod is hogging the GPU. Hogging means using far more than an equal share. On-call responders must read host-level device telemetry and process tables directly on the node, which means the machine the containers run on rather than the containers themselves. The commands below stream three hundred one-second samples of SM, memory, power and thermal counters. They also list the exact host PIDs and memory footprints on each GPU.
 
 ```bash
 # Stream 5 minutes of 1-second SM/memory/power/thermal samples and list active PIDs
@@ -332,11 +341,11 @@ nvidia-smi pmon -c 1
 nvidia-smi --query-processes=gpu_uuid,pid,process_name,gpu_memory_usage --format=csv
 ```
 
-The first command samples over time, while the other two show which processes are on the GPU at that moment. Run them during the slowdown, because the Ghost OOM example earlier in this chapter shows how a late sample can mislead you.
+The first command samples over time, while the other two show which processes are on the GPU at that moment. Run them during the slowdown, because a late sample can mislead you, as the Ghost OOM example earlier in this chapter shows.
 
 ## How it fails
 
-Software GPU sharing fails when the combined demand from workloads crosses physical HBM capacity, a latency budget or a shared fault boundary. The Kubernetes scheduler counts only logical admission tokens, so these failures show up as latency spikes, mysterious out-of-memory kills or crashes that hit several containers at once. When you see one of these symptoms, the table tells you which boundary failed. It maps the five main production failure modes to their exact symptoms, root cause boundaries and architectural fixes.
+Picture a Tuesday morning when the daytime notebook crowd arrives, and latency climbs while the dashboard stays green. Software GPU sharing fails when the combined demand from workloads crosses physical HBM capacity, a latency budget or a shared fault boundary. The Kubernetes scheduler counts only logical admission tokens, so these failures show up as latency spikes, mysterious out-of-memory kills or crashes that hit several containers at once. When you see one of these symptoms, the table tells you which boundary failed. It maps the five main production failure modes to their exact symptoms, root cause boundaries and architectural fixes.
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -346,13 +355,15 @@ Software GPU sharing fails when the combined demand from workloads crosses physi
 | 4. Pod requesting `nvidia.com/gpu: 2` on a time-sliced node receives two tokens on the same contended physical GPU | User requests `nvidia.com/gpu: 2` expecting `2x` the compute/memory of `1` replica, but gets zero extra memory isolation and still contends with `6` other pods. | Misunderstood Logical Replica Semantics: device-plugin replicas are access tokens, not additive hardware slices. | Set `failRequestsGreaterThanOne: true` in the time-slicing ConfigMap so any pod requesting `> 1` shared token is rejected clearly, and route multi-GPU jobs to dedicated whole-GPU nodes. |
 | 5. Fatal GPU context fault (`XID 13` / `XID 31` / `XID 48`) in one CUDA MPS client terminates all co-running MPS containers | One buggy inference container triggers an uncontained GPU fault, and all `5` containers connected to `/tmp/nvidia-mps` crash simultaneously. | Shared MPS Hardware Context Fault Domain: because `nvidia-cuda-mps-server` funnels all clients into a single hardware GPU context, a fatal context error tearing down that context kills every connected client. | Never use CUDA MPS across untrusted tenants; restrict MPS to cooperative single-tenant microservices and use MIG (Chapter 11.24) or vGPU (Chapter 11.23) for fault-isolated multi-tenancy. |
 
-Notice that the fixes differ, so you can match each one to its symptom. Some change `replicas` or add an admission cap, while others move the workload to MIG or vGPU. If your workload needs a hard memory wall, act on the MIG fix in the table.
+Notice that the fixes differ, so you can match each one to its symptom. Some change `replicas` or add an admission cap, while others move the workload to MIG or to NVIDIA virtual GPUs (vGPU). If your workload needs a hard memory wall, act on the MIG fix in the table.
+
+Take the symptoms in the order you see them. Row one fits a pool that crashes once the notebook count climbs. Row two fits a production service that is slow while every Pod reports green. Row three fits a CUDA crash under MPS with a small host reading. Row four fits a Pod that asked for more than one token and got no extra headroom. Row five fits several MPS containers that crash together.
 
 ## Hands-on lab
 
 ### Venue and scope
 
-Without a local simulation model, platform engineers often test oversubscription ratios on shared development clusters, and that causes preventable outages. This lab runs on your own machine with the Python 3 standard library. It checks every capacity envelope, failure boundary and governance rule before you touch a live node. It covers the T4 ten-replica memory leak model, the five-phase A100 notebook concurrency benchmark, the CUDA MPS Ghost OOM analyzer and the operational policy checklists. Host and cluster commands elsewhere in this chapter are marked untested here.
+Without a local simulation, platform engineers often test oversubscription ratios on shared development clusters, and that causes preventable outages. Oversubscription means promising more capacity than the card holds. This lab runs on your own machine with the Python 3 standard library. It checks every capacity envelope, failure boundary and governance rule before you touch a live node. It covers the T4 ten-replica memory leak model, the five-phase A100 notebook concurrency benchmark, the CUDA MPS Ghost OOM analyzer and the operational policy checklists. The host and cluster commands elsewhere in this chapter were not run on live hardware, so treat them as a reference until you check them on your own nodes.
 
 ```text
 Local Verification Scope (code/part11/time_slicing_mps_oversubscription.py and time_slicing_mps_oversubscription_lab.py):
@@ -362,17 +373,17 @@ Local Verification Scope (code/part11/time_slicing_mps_oversubscription.py and t
 - Governance Checklists: 10-field Operating Policy Template, 8-item Contention Evidence Package, and volume-11/labs/lab-01..04 suite.
 ```
 
-Each line in the scope block points to a model or checklist covered in this chapter.
+Each line in the scope block points to a model or checklist covered in this chapter. Read the scope block as a map of the lab. The first two lines are the memory and benchmark models, the third is the MPS model, and the last is the set of governance checklists.
 
 ### Step 1: Run the self-checking time-slicing, MPS and oversubscription lab (tested here)
 
-Run the self-checking lab script from the repository root. It verifies all twenty-five assertions.
+Run the self-checking lab script from the repository root, which is the top folder of the checkout. It verifies all twenty-five assertions. An assertion is a check that a stated fact holds in the code, and the script prints one line for each check.
 
 ```bash
 python3 code/part11/time_slicing_mps_oversubscription_lab.py
 ```
 
-This is the output captured from this repository:
+The block below shows what a passing run prints:
 
 ```text
 === Chapter 11.25 Lab: Time-Slicing, CUDA MPS & Oversubscription Governance ===
@@ -405,20 +416,20 @@ This is the output captured from this repository:
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-The last line gives the result: 25 passed and 0 failed, so every check held.
+The last line gives the result: 25 passed and 0 failed, so every check held. If any line says FAIL, stop and find that check before you move on. A failed check means the code and the chapter no longer agree.
 
 ### Exercises
 
-Try the six exercises below once the lab passes.
+Try the six exercises below once the lab passes. Each one asks you to explain a result, so write the answer in your own words before you check the code.
 
-1. On a 16 GB T4 configured with ten replicas, what happens when Pod 1 leaks 16 GB of VRAM? Work through the case with `simulate_t4_ten_replica_memory_leak()` in `code/part11/time_slicing_mps_oversubscription.py`. Then state why Linux memory cgroups do not stop Pod 1.
-2. Using `evaluate_a100_timeslicing_envelope()`, list the five test phases in `FIVE_REPLICA_TEST_PHASES`. Then trace SM percentage, combined memory and p99 latency across one, two, four and eight concurrent notebooks on an 80 GB A100. Finish by stating why four replicas is the maximum safe setting.
-3. Using `evaluate_cuda_mps_configuration()`, write the commands that start `nvidia-cuda-mps-control` in exclusive process mode with a twenty percent active thread cap. Then explain why Client A crashed with a CUDA out-of-memory error during a 12 GB burst on a 40 GB A100, even though `nvidia-smi` showed only 10 GB in use.
-4. Write the device-plugin ConfigMap settings and the production namespace ResourceQuota manifest that keep a latency-sensitive service from landing on a shared pool.
-5. List all ten fields in `TEN_OPERATING_POLICY_FIELDS` for a shared development notebook pool.
-6. List all eight time-correlated items in `EIGHT_CONTENTION_EVIDENCE_ITEMS`. Then explain how operators work around the DCGM Exporter container-attribution limitation during a shared-pool slowdown.
+1. A 16 GB T4 runs with ten replicas. Pod 1 leaks 16 GB of VRAM, so work through the case with `simulate_t4_ten_replica_memory_leak()` in `code/part11/time_slicing_mps_oversubscription.py`. Then say why Linux memory cgroups do not stop Pod 1.
+2. Using `evaluate_a100_timeslicing_envelope()`, list the five test phases in `FIVE_REPLICA_TEST_PHASES`. Then trace the SM percentage across one, two, four and eight concurrent notebooks on an 80 GB A100. Trace the combined memory and the p99 latency for the same counts. Finish by stating why four replicas is the maximum safe setting.
+3. Using `evaluate_cuda_mps_configuration()`, write the commands that start `nvidia-cuda-mps-control` in exclusive process mode with a twenty percent active thread cap. Then explain why Client A crashed with a CUDA out-of-memory error during a 12 GB burst. Remember that the crash happened on a 40 GB A100, while `nvidia-smi` showed only 10 GB in use.
+4. Write the device-plugin ConfigMap settings that keep a latency-sensitive service off the shared pool. Then write the production namespace ResourceQuota manifest that does the same job.
+5. List all ten fields in `TEN_OPERATING_POLICY_FIELDS`. Apply them to a shared development notebook pool.
+6. List all eight time-correlated items in `EIGHT_CONTENTION_EVIDENCE_ITEMS`. Explain the DCGM Exporter container-attribution limitation in one or two sentences. Then say how operators work around that limitation during a shared-pool slowdown.
 
-Keep the lab script open while you work, since most of these exercises reuse its functions.
+Keep the lab script open while you work, since most of these exercises reuse its functions. Open the file next to this page, and run each function once before you answer.
 
 ## Checkpoint questions
 

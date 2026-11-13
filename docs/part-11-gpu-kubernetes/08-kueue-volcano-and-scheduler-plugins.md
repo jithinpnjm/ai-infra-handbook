@@ -22,13 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a four-Pod training job where 3 Pods fit on the cluster and the fourth cannot find a node. In Chapter 11.7, we saw why multi-node GPU jobs cannot run inside a single Pod. We also saw why standard per-Pod scheduling deadlocks distributed training runs when only a subset of Pods can fit on the cluster. Fixing that in a multi-tenant production AI cluster means answering three control-plane questions, one for each layer of Kubernetes involved.
+Picture a four-Pod training job where 3 Pods fit on the cluster and the fourth cannot find a node. The three Pods that fit sit there holding their GPUs, and the job makes no progress. In Chapter 11.7, we saw why multi-node GPU jobs cannot run inside a single Pod. We also saw why standard per-Pod scheduling deadlocks distributed training runs when only a subset of Pods can fit on the cluster. Fixing that in a multi-tenant production AI cluster means answering three control-plane questions, one for each layer of Kubernetes involved. A multi-tenant cluster is one shared cluster that several teams use at the same time, and each team expects its own fair share.
 
-The first question is about kube-scheduler itself. How does the scheduler hold 3 already-filtered Pods of a 4-Pod job in memory, without binding them to kubelet, until the fourth Pod also finds a valid node? If the fourth Pod fails before the timeout expires, how does the scheduler roll back those tentative reservations? The Kubernetes Scheduling Framework and the Coscheduling PodGroup plugin answer both parts. They use the Reserve, Permit, and Unreserve extension points, which are hooks where a plugin can step into the scheduling flow.
+The first question is about kube-scheduler itself. How does the scheduler hold 3 already-filtered Pods of a 4-Pod job in memory, without binding them to a node, until the fourth Pod also finds a valid node? Filtered means the Pod has passed the checks that decide which nodes could run it. If the fourth Pod fails before the timeout expires, how does the scheduler roll back those tentative reservations? The Kubernetes Scheduling Framework and the Coscheduling PodGroup plugin answer both parts. They use the Reserve, Permit, and Unreserve extension points, which are hooks where a plugin can step into the scheduling flow.
 
-The second question sits above kube-scheduler. Standard Kubernetes ResourceQuota objects act as rigid namespace ceilings, and those ceilings leave expensive GPUs sitting idle. Say Team A has a guaranteed quota of 10 GPUs while Team B and Team C each have 16 GPUs. With hard ResourceQuotas, Team A cannot borrow the idle GPUs when Team B and Team C are inactive. A second cost follows. If unadmitted batch jobs immediately create thousands of Pending Pods in kube-apiserver, the etcd watch caches and Raft consensus can stall or crash. Kueue fixes both problems by sitting above the scheduler as a job-level admission controller. It keeps each job suspended, with zero Pods created, until nominal or borrowed cohort quota is reserved.
+The second question sits above kube-scheduler. Standard Kubernetes ResourceQuota objects act as rigid namespace ceilings, and those ceilings leave expensive GPUs sitting idle. Say Team A has a guaranteed quota of 10 GPUs while Team B and Team C each have 16 GPUs. With hard ResourceQuotas, Team A cannot borrow the idle GPUs when Team B and Team C are inactive. A second cost follows. If unadmitted batch jobs immediately create thousands of Pending Pods in kube-apiserver, the etcd watch caches and Raft consensus can stall or crash. Kueue fixes both problems by sitting above the scheduler as a job-level admission controller. It keeps each job suspended, with zero Pods created, until nominal or borrowed cohort quota is reserved. Nominal quota is the share a team is guaranteed, and a cohort is a group of queues that can lend unused quota to each other.
 
-The third question comes from organizations that run heterogeneous high-performance computing (HPC), MPI, Ray, PyTorch, and Apache Spark workloads. They often need one engine that offers gang scheduling, task failure policies, Dominant Resource Fairness, and backfill together. Volcano is a full replacement batch scheduler built for that environment.
+The third question comes from organizations that run heterogeneous high-performance computing (HPC), MPI, Ray, PyTorch, and Apache Spark workloads. HPC means large parallel computing for scientific and engineering work. MPI is the message-passing standard those programs use, and Ray and Apache Spark are distributed frameworks for Python and data processing. These teams often need one engine that offers gang scheduling, task failure policies, Dominant Resource Fairness, and backfill together. Volcano is a full replacement batch scheduler built for that environment.
 
 ```text
 Three Control-Plane Layers for Multi-Tenant GPU Batch Scheduling:
@@ -38,22 +38,17 @@ Three Control-Plane Layers for Multi-Tenant GPU Batch Scheduling:
 - Control-Plane Protection: etcd Raft quorum (3, 5, or 7 nodes on port 2379) and API Priority and Fairness (50 shares, 100 queues x 200 length = 20,000 buffered requests, handSize: 5).
 ```
 
-Read the block from top to bottom. Each line names one layer and the job that layer does for the cluster.
+Read the block from top to bottom. Each line names one layer and the job that layer does for the cluster. The first line is about the scheduler's own steps, the second is about admission above the scheduler, and the third is about a batch scheduler that replaces it. The last line protects the control plane that all three layers depend on.
 
-This chapter walks through the internal mechanics of the scheduler plugins, the custom resource (CRD) schemas, the rules for flavor fungibility, the cohort borrowing and preemption rules, and the control-plane guards that keep the API server stable. It covers Scheduler Plugins, Kueue, and Volcano in that order. When a batch job stalls, start by asking which of these three layers is holding it back.
+This chapter walks through the internal mechanics of the scheduler plugins, the custom resource (CRD) schemas, the rules for flavor fungibility, the cohort borrowing and preemption rules, and the control-plane guards that keep the API server stable. A CRD is a custom resource definition, which adds a new object type to the cluster. Flavor fungibility is the set of rules that decides what Kueue does when the first hardware tier is busy. The chapter covers Scheduler Plugins, Kueue, and Volcano in that order. When a batch job stalls, start by asking which of these three layers is holding it back.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-This chapter builds on two earlier ones. You should have finished Chapter 11.6, which covers the kubelet Topology Manager and Guaranteed QoS. You should also have finished Chapter 11.7, which covers the single-node Pod boundary, PyTorch rendezvous barriers, and gang scheduling concepts. You will also need to be comfortable with Kubernetes Custom Resources, Admission Webhooks, and Namespaces, because the rest of the chapter depends on them.
+This chapter builds on two earlier ones. Finish Chapter 11.6 first, since it covers the kubelet Topology Manager and Guaranteed QoS. Quality of Service, or QoS, is the class Kubernetes gives a Pod based on its resource requests. Then finish Chapter 11.7, which covers the single-node Pod boundary, PyTorch rendezvous barriers, and gang scheduling concepts. You also need to be comfortable with Kubernetes Custom Resources, Admission Webhooks, and Namespaces, because the rest of the chapter depends on them. An admission webhook is a check that runs before an object is saved, and a namespace is a named slice of the cluster that keeps one team's objects apart from another's.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-- Trace a Pod through all 11 extension points of the Kubernetes Scheduling Framework, and explain how the Coscheduling PodGroup plugin uses Reserve, Permit, and Unreserve.
-- Design a multi-tenant Kueue GPU-as-a-Service platform with ResourceFlavor, ClusterQueue, LocalQueue, Workload, and WorkloadPriorityClass.
-- Predict the exact Kueue placement under `TryNextFlavor` and under `MayStopSearch`, and follow how `reclaimWithinCohort` and `withinClusterQueue` preempt GPU workloads.
-- Configure Volcano Job, PodGroup, and RestartJob policies, and decide when to layer Kueue above Coscheduling, KAI Scheduler, or Volcano.
-- Protect the kube-apiserver and the etcd Raft quorum during heavy batch job churn, using API Priority and Fairness shuffle sharding.
+The chapter covers the path a Pod takes through the 11 extension points of the Kubernetes Scheduling Framework, and how the Coscheduling PodGroup plugin uses Reserve, Permit, and Unreserve. It shows how to design a multi-tenant Kueue platform with ResourceFlavor, ClusterQueue, LocalQueue, Workload, and WorkloadPriorityClass. It explains what Kueue does under `TryNextFlavor` and under `MayStopSearch`, and how `reclaimWithinCohort` and `withinClusterQueue` preempt GPU workloads. It covers Volcano Job, PodGroup, and RestartJob policies, and it helps you decide when to layer Kueue above Coscheduling, KAI Scheduler, or Volcano. The last part shows how to protect the kube-apiserver and the etcd Raft quorum during heavy batch churn, using API Priority and Fairness with shuffle sharding.
 
 If the prerequisites feel unfamiliar, read those two chapters before you move on to the intermediate material.
 
@@ -62,9 +57,9 @@ If the prerequisites feel unfamiliar, read those two chapters before you move on
 ### 1. Basics: The Kubernetes Scheduling Framework and the Coscheduling PodGroup plugin
 
 #### The two-cycle kube-scheduler pipeline
-Picture Pods from several training jobs reaching kube-scheduler at the same moment. A naive concurrent scheduler would race, and it could book the same physical GPU twice. The opposite design fails too. If the scheduler waited for every write to kube-apiserver to finish before it looked at the next Pod, scheduling throughput would collapse.
+Picture Pods from several training jobs reaching kube-scheduler at the same moment. A naive concurrent scheduler would race, and it could book the same physical GPU twice. The opposite design fails too. If the scheduler waited for every write to kube-apiserver to finish before it looked at the next Pod, scheduling throughput would collapse. Both problems push the design toward a split between thinking and writing.
 
-To prevent GPU double-booking while keeping throughput high, kube-scheduler splits every Pod placement into two sequential cycles. In the Scheduling Cycle, the scheduler works on one Pod at a time, in memory, to pick the best node and mark that node's resources as tentatively taken. In the Binding Cycle, the scheduler writes `spec.nodeName` to kube-apiserver asynchronously, with many goroutines running at once. The main scheduling loop never waits on the network.
+To prevent GPU double-booking while keeping throughput high, kube-scheduler splits every Pod placement into two sequential cycles. In the Scheduling Cycle, the scheduler works on one Pod at a time, in memory, to pick the best node and mark that node's resources as tentatively taken. In the Binding Cycle, the scheduler writes `spec.nodeName` to kube-apiserver asynchronously, with many goroutines running at once. A goroutine is a lightweight Go task, and the main scheduling loop never waits on the network.
 
 ```mermaid
 flowchart LR
@@ -85,7 +80,7 @@ flowchart LR
     end
 ```
 
-Every Pod passes through 11 ordered extension points across these two cycles. The table lists them in order, and each row says what that gate does for a GPU Pod. Once you see what happens at each gate, it becomes clear how the Coscheduling PodGroup plugin implements gang scheduling without forking upstream Kubernetes.
+Every Pod passes through 11 ordered extension points across these two cycles. An extension point is a named step where a plugin can run its own logic. The table lists them in order, and each row says what that step does for a GPU Pod. Once you see what happens at each step, it becomes clear how the Coscheduling PodGroup plugin implements gang scheduling without forking upstream Kubernetes. Forking means maintaining a private copy of the scheduler, which is expensive to keep up to date.
 
 | Phase # | Extension Point | Cycle | Role in GPU & Coscheduling Placement |
 |---|---|---|---|
@@ -98,18 +93,20 @@ Every Pod passes through 11 ordered extension points across these two cycles. Th
 | 8 | **Permit** | Scheduling | Gang-scheduling gate returning Approve (`Success`), Deny (`Reject`), or `Wait` in `WaitOnPermit` up to `scheduleTimeoutSeconds: 300`. |
 | 9–11 | **PreBind, Bind, PostBind** | Binding | Once all 4 members reach Permit, all 4 goroutines wake up and patch `Pod.spec.nodeName` concurrently; if 300 seconds expire, `Unreserve` frees held GPUs. |
 
-Take a four-Pod gang as an example. Pods 0, 1, and 2 pass Filter and Score. The Reserve step holds their GPUs in memory, and the Permit step parks them in the `WaitOnPermit` map. Once Pod 3 reaches Permit within 300 seconds, the Coscheduling plugin signals `Success` to all 4 waiting goroutines, so they bind together.
+Take a four-Pod gang as an example. Pods 0, 1, and 2 pass Filter and Score. The Reserve step holds their GPUs in memory, and the Permit step parks them in the `WaitOnPermit` map. Once Pod 3 reaches Permit within 300 seconds, the Coscheduling plugin signals `Success` to all 4 waiting goroutines, so they bind together. The three early Pods never touched a node in the meantime. They only held a reservation in memory.
 
-Now take the failure case. If 300 seconds pass while Pod 3 is still unschedulable, the timeout fires. Permit returns `Reject`, and `Unreserve` releases the held GPUs on all 3 nodes.
+Think about what the parked Pods look like from outside. In the Permit step they are not running, and they are not failed either. They sit in a waiting state inside the scheduler, and an operator who runs a list command sees them as Pending. That is why a gang that is waiting for its last member can look the same as a gang that is stuck. The only way to tell them apart is to read the scheduler's events and check how long the group has been waiting. The timer is the honest signal, because it decides when the waiting stops.
+
+Now take the failure case. If 300 seconds pass while Pod 3 is still unschedulable, the timeout fires. Permit returns `Reject`, and `Unreserve` releases the held GPUs on all 3 nodes. Nothing was bound, so nothing has to be cleaned up on the nodes. The scheduler simply forgets the reservation and the job tries again later.
 
 ---
 
 ### 2. Intermediate: Kueue architecture in depth
 
 #### Why PodGroup alone is not enough for multi-tenant GPUaaS
-PodGroup gives you gang waiting inside kube-scheduler. On its own, though, it leaves three gaps in a multi-tenant cluster. First, every job still creates all of its Pending Pods right away in kube-apiserver and etcd, so a large batch submission can overwhelm the control plane. Second, PodGroup has no notion of multi-tenant quotas, cohort borrowing, or hardware-tier fallback. Third, it works on raw Pods rather than on higher-level batch objects such as PyTorchJob, TrainJob, RayJob, JobSet, or MPIJob.
+Imagine a platform team that adopts PodGroup on a shared cluster. Gang waiting now works inside the scheduler, which is a real improvement. Then a second team submits a large batch of jobs, and a third team asks for a share of the same H100 nodes. The gang rule does not answer either request. PodGroup gives you gang waiting inside kube-scheduler. On its own, though, it leaves three gaps in a multi-tenant cluster. GPUaaS stands for GPU-as-a-Service, a model where a central platform sells GPU capacity to internal teams. First, every job still creates all of its Pending Pods right away in kube-apiserver and etcd, so a large batch submission can overwhelm the control plane. Second, PodGroup has no notion of multi-tenant quotas, cohort borrowing, or hardware-tier fallback. Third, it works on raw Pods rather than on higher-level batch objects such as PyTorchJob, TrainJob, RayJob, JobSet, or MPIJob.
 
-Kueue (`kueue.x-k8s.io/v1beta2`), developed by Kubernetes SIG Scheduling, closes all three gaps. It acts as a job-level admission controller and queue manager above the scheduler. When a user submits a job, Kueue's mutating webhook sets `spec.suspend: true` right away. Because of that flag, zero Pods are created in etcd while the job waits in the queue.
+Kueue (`kueue.x-k8s.io/v1beta2`), developed by Kubernetes SIG Scheduling, closes all three gaps. SIG Scheduling is the Kubernetes special interest group that owns scheduling work. Kueue acts as a job-level admission controller and queue manager above the scheduler. When a user submits a job, Kueue's mutating webhook sets `spec.suspend: true` right away. A mutating webhook is a check that can change an object before it is saved. Because of that flag, zero Pods are created in etcd while the job waits in the queue. The job exists, but it is asleep until Kueue says it can run.
 
 ```mermaid
 flowchart TD
@@ -122,10 +119,12 @@ flowchart TD
     Inject --> Sched["7. Underlying Scheduler (kube-scheduler / KAI / Volcano) binds Pods"]
 ```
 
-Read the diagram as one path. The job is suspended first, then queued, and its Pods appear only after quota is reserved.
+Read the diagram as one path. The job is suspended first, then queued, and its Pods appear only after quota is reserved. Each arrow is a handoff. Kueue owns the first five steps, and the underlying scheduler owns the last one. That split is why Kueue can sit on top of any of the schedulers in this chapter.
+
+Walk the path with one concrete job in mind. A data scientist applies a PyTorchJob to the team's namespace. The job object appears, but its suspend flag is already set, so the job controller does nothing yet. Kueue then writes a Workload object that records what the job asks for, such as 8 GPUs of the `nvidia.com/gpu` kind. The LocalQueue passes that Workload to its ClusterQueue, which checks the nominal quota and the cohort. If there is room, the ClusterQueue reserves it and Kueue records the flavor it chose. Only then does Kueue clear the suspend flag. From that point, the job controller creates the Pods, and the scheduler places them on nodes that carry the flavor's labels. If there is no room, the Workload waits with the `InsufficientQuota` reason, and the data scientist sees a frozen job with no Pods at all. That frozen look is expected, and it is the reason the troubleshooting section starts with the Workload rather than the Pods.
 
 #### The four core Kueue resources and persona separation
-Kueue separates two groups of people. Platform administrators work at the cluster level, and they define hardware tiers and cluster quotas once. Data scientists work in their own namespaces. They attach a single queue label (`kueue.x-k8s.io/queue-name`) to their training manifests and never hardcode node selectors.
+Consider two people on the same cluster. A platform administrator decides which GPUs exist, how many each team may use, and which hardware tier is preferred. A data scientist wants to submit a training run and does not want to know any of those details. Kueue is built around that split. Platform administrators work at the cluster level, and they define hardware tiers and cluster quotas once. Data scientists work in their own namespaces. They attach a single queue label (`kueue.x-k8s.io/queue-name`) to their training manifests and never hardcode node selectors.
 
 | Kueue Resource | Scope & Owner | Operational Purpose | Concrete Example from Corpus |
 |---|---|---|---|
@@ -134,16 +133,18 @@ Kueue separates two groups of people. Platform administrators work at the cluste
 | **3. LocalQueue** | Namespace-scoped (Admin creates; Data Scientist targets) | Namespace pointer mapping a team's namespace to a ClusterQueue; workloads bind via label `kueue.x-k8s.io/queue-name: team-queue` | `team-queue` -> `topology-aware-cluster-queue`; `team-a-training-queue` -> `team-a-queue` |
 | **4. Workload & WorkloadPriorityClass** | Namespace-scoped (Workload) & Cluster-scoped (WorkloadPriorityClass) | Tracks job admission state (`QuotaReserved` vs `InsufficientQuota`), `podSetAssignments` (head: 1, worker: 1), and job priority | `production-priority` (value 10000) referenced by label `kueue.x-k8s.io/priority-class: production-priority` |
 
-Look at the scope column first. The cluster-scoped rows are the platform team's job, and the namespace-scoped rows are what each team touches. That split is what lets one platform team serve many teams.
+Look at the scope column first. The cluster-scoped rows are the platform team's job, and the namespace-scoped rows are what each team touches. That split is what lets one platform team serve many teams without reviewing every job by hand. A ResourceFlavor describes the hardware, a ClusterQueue describes how much of it a group may use, and a LocalQueue is the door a team walks through.
 
-When you use Kubeflow Trainer's higher-level TrainJob API (`trainer.kubeflow.org/v1alpha1`) with Kueue or KAI Scheduler, the data scientist applies `kueue.x-k8s.io/queue-name` directly to the TrainJob metadata. The platform administrator sets the low-level Pod fields in the ClusterTrainingRuntime or TrainingRuntime template. Those template fields include `schedulerName`, Multus network annotations, and NCCL environment variables.
+Two units matter when you read the quota numbers in the table. In Kueue, `nominalQuota` for `nvidia.com/gpu` counts whole GPU devices, so `nominalQuota: 16` means 16 GPUs. The borrowing limit is counted the same way. A team with `nominalQuota: 10` and `borrowingLimit: 22` can hold up to 32 GPUs in total. The number is never a fraction of a GPU or a size in memory.
+
+When you use Kubeflow Trainer's higher-level TrainJob API (`trainer.kubeflow.org/v1alpha1`) with Kueue or KAI Scheduler, the data scientist applies `kueue.x-k8s.io/queue-name` directly to the TrainJob metadata. The platform administrator sets the low-level Pod fields in the ClusterTrainingRuntime or TrainingRuntime template. Those template fields include `schedulerName`, Multus network annotations, and NCCL environment variables. The split keeps the data scientist's file short, and it keeps network and scheduler details in one place that the platform team can review.
 
 #### Ordered ResourceFlavor evaluation and flavorFungibility
-A ClusterQueue can list several hardware tiers, and Kueue checks them in list order. Say the first flavor is `gpu-nvlink-infiniband` with 16 GPUs, and the second is `gpu-standard-ethernet` with 32 GPUs. Kueue first asks whether the job fits in the free nominal quota of the first flavor. If 8 free nominal GPUs exist in `gpu-nvlink-infiniband`, the job is admitted there right away, and its status reads `QuotaReserved`.
+Picture a data scientist who submits an 8-GPU job while the fast NVLink tier is already full. Kueue has to decide whether to wait, borrow, or move the job to the slower tier. A ClusterQueue can list several hardware tiers, and Kueue checks them in list order. Say the first flavor is `gpu-nvlink-infiniband` with 16 GPUs, and the second is `gpu-standard-ethernet` with 32 GPUs. Kueue first asks whether the job fits in the free nominal quota of the first flavor. If 8 free nominal GPUs exist in `gpu-nvlink-infiniband`, the job is admitted there right away, and its status reads `QuotaReserved`.
 
-Now change the picture. All 16 nominal GPUs in the first flavor are busy, and 8 borrowable GPUs sit in the cohort for that flavor. The second flavor has 32 free nominal GPUs. Should the job borrow in the first flavor right away? If it does, the job runs on NVLink hardware, but it becomes exposed to preemption when the lending team reclaims its cohort quota. The `flavorFungibility.whenCanBorrow` setting controls that choice.
+Now change the picture. All 16 nominal GPUs in the first flavor are busy, and 8 borrowable GPUs sit in the cohort for that flavor. The second flavor has 32 free nominal GPUs. Should the job borrow in the first flavor right away? If it does, the job runs on NVLink hardware, but it becomes exposed to preemption when the lending team reclaims its cohort quota. The `flavorFungibility.whenCanBorrow` setting controls that choice. Fungibility here means how willing Kueue is to swap one flavor for another.
 
-Work through the numbers for an 8-GPU job. The first flavor has no free nominal GPUs, so the job can only run there by borrowing 8 from the cohort. The second flavor has 32 free nominal GPUs, so the same job fits there without borrowing at all.
+Work through the numbers for an 8-GPU job. The first flavor has no free nominal GPUs, so the job can only run there by borrowing 8 from the cohort. The second flavor has 32 free nominal GPUs, so the same job fits there without borrowing at all. The choice is between a faster tier that can be taken back at any time and a slower tier that stays put.
 
 ```text
 Kueue Flavor Fungibility Behavior (Flavor 1: 16/16 used, 8 borrowable; Flavor 2: 0/32 used nominal):
@@ -153,16 +154,18 @@ Kueue Flavor Fungibility Behavior (Flavor 1: 16/16 used, 8 borrowable; Flavor 2:
   Skips borrowing in Flavor 1 and assigns 8 free NOMINAL GPUs in Flavor 2 (gpu-standard-ethernet) so the job cannot be cohort-preempted.
 ```
 
-The first setting, `MayStopSearch`, is the default. It borrows in the first flavor and stops looking. The second setting, `TryNextFlavor`, spends the free nominal quota of the second flavor first, so the job cannot be preempted by cohort reclaim.
+Think of the flavor list as a menu with a preference order. The first item is the one you would like most, and the later items are fallbacks you accept when the first is sold out. The order matters because Kueue reads the menu top to bottom and takes the first item that works under the current rule. Reordering the list changes which hardware a job lands on, even when the quotas stay the same. That is why the platform team should decide the order on purpose, and why it should match the order the data scientists expect.
 
-Once Kueue selects a flavor, it records the assignment in `status.admission.podSetAssignments` for each role. It then injects that flavor's `nodeLabels` into the Pod templates and sets `spec.suspend` to false.
+The first setting, `MayStopSearch`, is the default. It borrows in the first flavor and stops looking. The second setting, `TryNextFlavor`, spends the free nominal quota of the second flavor first, so the job cannot be preempted by cohort reclaim. Choose `TryNextFlavor` when a long job cannot tolerate being preempted, and keep the default when the fast tier matters more than stability.
+
+Once Kueue selects a flavor, it records the assignment in `status.admission.podSetAssignments` for each role. It then injects that flavor's `nodeLabels` into the Pod templates and sets `spec.suspend` to false. The `nodeLabels` are what steer the Pods toward the right hardware, and changing `spec.suspend` to false is what finally lets the job create its Pods.
 
 #### Multi-tenant Cohort Borrowing and Preemption
-Standard ResourceQuota objects create rigid silos between teams. Suppose Team A has a hard ceiling of 10 GPUs and needs 28 GPUs for a weekend training run. Team B and Team C sit idle with 16 GPUs each. Under standard ResourceQuotas, Team A is blocked, and 32 expensive GPUs stay dark.
+Standard ResourceQuota objects create rigid silos between teams. Suppose Team A has a hard ceiling of 10 GPUs and needs 28 GPUs for a weekend training run. Team B and Team C sit idle with 16 GPUs each. Under standard ResourceQuotas, Team A is blocked, and 32 expensive GPUs stay dark. A silo here means a team's quota is walled off, even when its neighbors are not using theirs.
 
-Kueue lets you join several ClusterQueues into a shared cohort, such as `shared-gpu-cohort`. That makes opportunistic sharing low-risk. Team A gets a guaranteed baseline of `nominalQuota: 10` GPUs plus a `borrowingLimit: 22`, so it can grow to 32 effective GPUs when its cohort peers are idle. To make lending safe for Team B and Team C, Kueue enforces two distinct preemption mechanisms alongside `BestEffortFIFO` queueing.
+Kueue lets you join several ClusterQueues into a shared cohort, such as `shared-gpu-cohort`. That makes opportunistic sharing low-risk. Team A gets a guaranteed baseline of `nominalQuota: 10` GPUs plus a `borrowingLimit: 22`, so it can grow to 32 effective GPUs when its cohort peers are idle. Opportunistic sharing means using capacity that someone else is not using right now. To make lending safe for Team B and Team C, Kueue enforces two distinct preemption mechanisms alongside `BestEffortFIFO` queueing. BestEffortFIFO admits jobs in order when they fit, and it lets a smaller job pass a larger one that cannot fit yet.
 
-Follow the example below as a story. Team A is already running 28 GPUs, which is 10 nominal plus 18 borrowed. When Team B submits an 8-GPU job to reclaim its own quota, the first rule applies. When Team A submits a 36-GPU total (28 + 8), that is more than its 32-GPU maximum, so the second rule applies.
+Follow the example below as a story. Team A is already running 28 GPUs, which is 10 nominal plus 18 borrowed. When Team B submits an 8-GPU job to reclaim its own quota, the first rule applies. When Team A submits a 36-GPU total (28 + 8), that is more than its 32-GPU maximum, so the second rule applies. Read each preemption rule as an answer to one question. The first asks who gets its quota back. The second asks who gets to go first inside one team.
 
 ```text
 Kueue Cohort Borrowing & Preemption Mechanics (GAK Example 7-9):
@@ -174,11 +177,13 @@ Kueue Cohort Borrowing & Preemption Mechanics (GAK Example 7-9):
   When Team A submits a job with WorkloadPriorityClass production-priority (value: 10000) and cannot fit (28 + 8 = 36 > 32 max), Kueue preempts Team A's lower-priority experimental job (value: 100).
 ```
 
-Under the first rule, Team A's borrowed workload is preempted no matter what its priority is. Under the second, Team A's own lower-priority job is preempted to make room for the higher-priority one.
+Look at the situation from Team B's side first. Team B owns its 16 GPUs, and it was lending the idle ones so the cluster would not sit still. When Team B returns with real work, it should not have to wait for Team A to finish. The first rule exists for exactly that moment. The cohort is a loan with a recall clause, and the recall is what makes lending safe enough to offer in the first place. Without the recall, no team would lend its idle capacity, and the cluster would be back to rigid silos.
 
-Notice the separation between three different settings. ResourceFlavor decides which hardware tier a job lands on. The WorkloadPriorityClass, with value 10000, decides which queued job is admitted first at the queue layer. A standard Kubernetes PriorityClass, such as `critical-inference` with value 1000000, works inside kube-scheduler and kubelet to control Pod-level node preemption and eviction order.
+Under the first rule, Team A's borrowed workload is preempted no matter what its priority is. Under the second, Team A's own lower-priority job is preempted to make room for the higher-priority one. The first rule protects the lender, and the second protects the more important work inside a single team.
 
-ClusterQueue quota accounting tracks admitted resource requests, not physical node health. Suppose `cluster-queue-h100` has `nominalQuota: 128` GPUs across 16 nodes. If 2 nodes are cordoned or NotReady, quota accounting may still admit two 64-GPU jobs. The second job then cannot find 8 healthy nodes.
+Notice the separation between three different settings. ResourceFlavor decides which hardware tier a job lands on. The WorkloadPriorityClass, with value 10000, decides which queued job is admitted first at the queue layer. A standard Kubernetes PriorityClass, such as `critical-inference` with value 1000000, works inside kube-scheduler and kubelet to control Pod-level node preemption and eviction order. Each one answers a different question, so you should set all three on purpose.
+
+ClusterQueue quota accounting tracks admitted resource requests, not physical node health. Suppose `cluster-queue-h100` has `nominalQuota: 128` GPUs across 16 nodes. If 2 nodes are cordoned or NotReady, quota accounting may still admit two 64-GPU jobs. A cordoned node is one marked as unavailable for new Pods. The second job then cannot find 8 healthy nodes. Quota says the capacity exists on paper, and the nodes say otherwise.
 
 Enabling `waitForPodsReady` in Kueue closes this gap. If an admitted job's Pods do not reach Ready within a timeout, Kueue suspends and requeues the workload, so it cannot block the queue forever. When you size a shared queue, count healthy nodes as well as quota.
 
@@ -187,14 +192,14 @@ Enabling `waitForPodsReady` in Kueue closes this gap. If an admitted job's Pods 
 ### 3. Advanced: Volcano batch scheduling, layered architectures, and control-plane protection
 
 #### Volcano architecture
-Kueue is a job-level admission controller that hands Pod-to-node binding to an underlying scheduler. Volcano takes a different route. It is a monolithic batch scheduling system from the Cloud Native Computing Foundation (CNCF), and it replaces kube-scheduler when you set `schedulerName: volcano`. Teams that run a mix of PyTorch, MPI, Ray, and Apache Spark workloads often choose it. They want gang scheduling, task-level failure recovery, Dominant Resource Fairness, and backfill inside a single scheduler binary.
+Picture a mixed cluster where the same nodes run PyTorch jobs in the morning, MPI simulations at noon, and Spark jobs in the evening. Kueue can admit all of them, but something still has to bind each Pod to a node with gang rules and fair sharing. Kueue is a job-level admission controller that hands Pod-to-node binding to an underlying scheduler. Volcano takes a different route. The choice between them is less about features and more about who owns the scheduler. If your organization wants one batch engine for everything, Volcano is the fit. If it already runs kube-scheduler or the NVIDIA KAI Scheduler and wants governance on top, Kueue is the fit. Both can exist in one cluster, and the table later in this section shows how they layer. It is a monolithic batch scheduling system from the Cloud Native Computing Foundation (CNCF), and it replaces kube-scheduler when you set `schedulerName: volcano`. Monolithic means one scheduler handles the whole job, from queueing to binding. Teams that run a mix of PyTorch, MPI, Ray, and Apache Spark workloads often choose it. They want gang scheduling, task-level failure recovery, Dominant Resource Fairness, and backfill inside a single scheduler binary. Dominant Resource Fairness, or DRF, shares a cluster by each user's largest resource type, so a GPU-heavy user and a CPU-heavy user both get a fair turn.
 
-Volcano adds three tightly coupled custom resources: Job (`batch.volcano.sh/v1alpha1`), PodGroup (`scheduling.volcano.sh/v1beta1`), and Queue (`scheduling.volcano.sh/v1beta1`). A Volcano Job can combine several task templates. It sets `minAvailable: 8` at the job level and applies event-driven lifecycle policies to the whole gang.
+Volcano adds three tightly coupled custom resources: Job (`batch.volcano.sh/v1alpha1`), PodGroup (`scheduling.volcano.sh/v1beta1`), and Queue (`scheduling.volcano.sh/v1beta1`). A Volcano Job can combine several task templates. It sets `minAvailable: 8` at the job level and applies event-driven lifecycle policies to the whole gang. An event-driven policy reacts to something that happened to a Pod, such as an eviction, rather than running on a timer.
 
-Consider an 8-Pod distributed training job. Suppose one worker Pod is evicted or crashes. If the other 7 Pods keep running, they hang inside NCCL AllReduce until the collective timer expires. Configuring `event: PodEvicted` with `action: RestartJob` in the Volcano Job spec tells the controller to tear down all 7 surviving Pods at once. Volcano then requeues the entire 8-Pod gang cleanly from its last checkpoint.
+Consider an 8-Pod distributed training job. Suppose one worker Pod is evicted or crashes. If the other 7 Pods keep running, they hang inside NCCL AllReduce until the collective timer expires. NCCL is the NVIDIA library that runs those collectives, and AllReduce is the step where every worker sums its gradients with the others. Configuring `event: PodEvicted` with `action: RestartJob` in the Volcano Job spec tells the controller to tear down all 7 surviving Pods at once. Volcano then requeues the entire 8-Pod gang cleanly from its last checkpoint. A half-alive gang is worse than a dead one, because it holds GPUs and makes no progress.
 
 #### Architectural trade-offs: Coscheduling vs Kueue vs Volcano vs KAI Scheduler
-The table compares the four options on the questions that matter most. It covers whether each one replaces kube-scheduler, whether it creates Pending Pods while a job waits, and how it combines with the others.
+A platform lead has to choose one of these four options, or stack two of them. The first question is whether the option replaces kube-scheduler. The second is whether it creates Pending Pods while a job waits. The third is how it combines with the others. The table compares the four options on those questions, and a few other criteria that matter in practice.
 
 | Criterion | Coscheduling (PodGroup) | Kueue | Volcano | NVIDIA KAI Scheduler |
 |---|---|---|---|---|
@@ -204,12 +209,12 @@ The table compares the four options on the questions that matter most. It covers
 | **Hardware Topology Awareness?** | Manual node labels / affinity only | Admission-level ResourceFlavor tiering + Topology TAS | Built-in topology scoring plugins | Native NVLink, NVSwitch, MIG & fractional GPU awareness |
 | **Layered Combination?** | Can run under Kueue | Can sit above kube-scheduler, KAI, or Volcano | Usually standalone or under Kueue | Runs standalone or under Kueue |
 
-Look at the Pending Pods row first. Kueue is the only option that creates no Pending Pods while a job waits, and the last row shows it can sit above the others.
+Look at the Pending Pods row first. Kueue is the only option that creates no Pending Pods while a job waits, and the last row shows it can sit above the others. That single difference explains much of the rest. A scheduler that holds Pending Pods must keep every one of them in etcd and in the scheduler's memory, which costs control-plane work even when nothing can run. A scheduler that never sees the job until quota is ready avoids that cost entirely. When you read the rows, ask which cost your cluster can afford to pay. The KAI row carries a unit detail worth noting. Its `gpuQuota` on the Project CRD is a count of GPUs, the same kind of unit that Kueue uses for `nvidia.com/gpu`. Read the quota rows as counts of devices, and compare them that way across the four options.
 
 #### Protecting etcd quorum and kube-apiserver with API Priority and Fairness
-Large-scale batch scheduling sends intense bursts of Workload, PodGroup, Pod, and Event writes. An undersized control plane can become unstable under that load. If etcd loses Raft quorum or suffers high disk write latency, kube-apiserver rejects writes, and gang-scheduling timeouts misfire across the whole cluster.
+Late one night, a batch submission lands on a control plane that was sized for ordinary traffic. kubectl starts timing out, and the scheduler's bindings fall behind. Large-scale batch scheduling sends intense bursts of Workload, PodGroup, Pod, and Event writes. An undersized control plane can become unstable under that load. If etcd loses Raft quorum or suffers high disk write latency, kube-apiserver rejects writes, and gang-scheduling timeouts misfire across the whole cluster.
 
-Raft consensus needs a strict majority to commit any state change. That majority is `(N // 2) + 1` healthy nodes. You should always deploy an odd number of etcd nodes, typically 3 or 5, on dedicated low-latency NVMe storage. Never deploy an even number such as 4 or 6. Adding a 4th node raises the required quorum from 2 to 3, yet the cluster still tolerates only 1 node failure. That adds write replication latency for no extra fault tolerance.
+Raft consensus needs a strict majority to commit any state change. That majority is `(N // 2) + 1` healthy nodes. The `//` operator is integer division, so it drops any fraction. You should always deploy an odd number of etcd nodes, typically 3 or 5, on dedicated low-latency NVMe storage. Never deploy an even number such as 4 or 6. Adding a 4th node raises the required quorum from 2 to 3, yet the cluster still tolerates only 1 node failure. That adds write replication latency for no extra fault tolerance.
 
 The block below works through the quorum math. Each line gives the quorum for a node count and the number of failures the cluster survives.
 
@@ -226,17 +231,19 @@ etcd Raft Quorum Math (Quorum = N // 2 + 1) and Operational Rules (volume-03):
   If AZ-A and AZ-B partition, AZ-A (2 >= 2) keeps quorum and serves traffic; AZ-B (1 < 2) loses quorum and rejects writes.
 ```
 
-The dead-node rule is the one to remember. Run `etcdctl member remove` before you add the replacement node, because adding it first pushes quorum up while only 3 nodes are alive.
+The dead-node rule is the one to remember. Run `etcdctl member remove` before you add the replacement node, because adding it first pushes quorum up while only 3 nodes are alive. Think of it as removing a seat from a committee before you add a new one, so the vote still reaches a majority. A split-brain is the case where a network partition leaves two halves of the cluster each believing it is in charge. Quorum is what stops both halves from accepting writes at once.
 
-In production, platform teams watch four golden control-plane metrics: `apiserver_request_total`, `apiserver_request_duration_seconds`, `etcd_disk_wal_fsync_duration_seconds`, and `scheduler_scheduling_algorithm_duration_seconds`. To stop runaway batch controllers or user scripts from starving kubelet heartbeats, configure an API Priority and Fairness (APF) PriorityLevelConfiguration named `ai-workload-level`. It sets 50 concurrency shares, 100 queues, a hand size of 5, and a queue length limit of 200. Together those settings buffer up to 20,000 in-flight batch requests.
+In production, platform teams watch four golden control-plane metrics: `apiserver_request_total`, `apiserver_request_duration_seconds`, `etcd_disk_wal_fsync_duration_seconds`, and `scheduler_scheduling_algorithm_duration_seconds`. Golden here means the small set of signals that tell you the most about health. To stop runaway batch controllers or user scripts from starving kubelet heartbeats, configure an API Priority and Fairness (APF) PriorityLevelConfiguration named `ai-workload-level`. A heartbeat is the regular signal a kubelet sends to say it is alive. The configuration sets 50 concurrency shares, 100 queues, a hand size of 5, and a queue length limit of 200. Together those settings buffer up to 20,000 in-flight batch requests.
 
-Shuffle sharding with a hand size of 5 means a single noisy tenant can use at most 5 of the 100 queues. That is 5% of the pool. Size the APF queues before the first large batch submission, and treat the four metrics as your early warning.
+A quorum is the smallest group whose agreement counts. The even-number trap comes from that rule. With four members, a split into two halves of two leaves neither half with a majority, so the cluster stops, even though it has more members than the three-node setup. The extra member adds cost and delay without adding a single failure that the cluster can survive. Odd sizes avoid that waste.
+
+Shuffle sharding with a hand size of 5 means a single noisy tenant can use at most 5 of the 100 queues. That is 5% of the pool. Each tenant is dealt a hand of queues from the pool, and the tenant only uses those queues. A noisy neighbor can fill its own hand, but it cannot fill the whole pool. Size the APF queues before the first large batch submission, and treat the four metrics as your early warning.
 
 ## Commands and configurations that matter
 
 ### 1. Defining Kueue ResourceFlavors, ClusterQueue, and LocalQueue
 
-Platform administrators write these objects once. Two ResourceFlavors describe the hardware tiers, a ClusterQueue draws quota from both, and a LocalQueue points a team's namespace at it.
+Platform administrators write these objects once. Two ResourceFlavors describe the hardware tiers, a ClusterQueue draws quota from both, and a LocalQueue points a team's namespace at it. Read the objects in the order they depend on each other. The flavors come first, because the ClusterQueue refers to them by name, and the LocalQueue comes last because it refers to the ClusterQueue.
 
 ```yaml
 # kueue-topology-flavors-and-queues.yaml (Kueue v1beta2, checked against the v0.20.5 CRDs)
@@ -290,11 +297,11 @@ spec:
   clusterQueue: topology-aware-cluster-queue
 ```
 
-Kueue evaluates flavors in list order, so the NVLink flavor comes first. The `flavorFungibility` block sets the borrowing behavior covered earlier.
+Kueue evaluates flavors in list order, so the NVLink flavor comes first. The `flavorFungibility` block sets the borrowing behavior covered earlier. The `nominalQuota` values here are GPU counts, so `16` and `32` are device counts for `nvidia.com/gpu`.
 
 ### 2. Configuring Kueue Cohort Borrowing, Priority Preemption, and APF PriorityLevelConfiguration
 
-This file adds the cohort, the preemption rules, a WorkloadPriorityClass, and an APF PriorityLevelConfiguration. The team's ClusterQueue can borrow up to 32 GPUs, which is its nominal 10 plus the 22 it may borrow.
+This file adds the cohort, the preemption rules, a WorkloadPriorityClass, and an APF PriorityLevelConfiguration. The team's ClusterQueue can borrow up to 32 GPUs, which is its nominal 10 plus the 22 it may borrow. The file also shows how the three layers of priority fit into one manifest, each in its own object.
 
 ```yaml
 # kueue-cohort-priority-and-apf.yaml (Kueue v1beta2, checked against the v0.20.5 CRDs)
@@ -340,11 +347,11 @@ spec:
         queueLengthLimit: 200
 ```
 
-The `preemption` block holds the two rules from earlier. `reclaimWithinCohort: Any` lets a lender take back borrowed GPUs, and `withinClusterQueue: LowerPriority` lets a higher-priority job preempt a lower one in the same queue.
+The `preemption` block holds the two rules from earlier. `reclaimWithinCohort: Any` lets a lender take back borrowed GPUs, and `withinClusterQueue: LowerPriority` lets a higher-priority job preempt a lower one in the same queue. The `ai-workload-level` object is a separate layer. It shapes how the API server queues requests, and it does not decide which job runs.
 
 ### 3. Inspecting Kueue Workload admission status and taking an etcd snapshot
 
-The first two commands show why a Workload is waiting or admitted. The last two check etcd health and save a snapshot before an upgrade.
+The first two commands show why a Workload is waiting or admitted. The last two check etcd health and save a snapshot before an upgrade. A snapshot is a copy of the etcd data that you can restore if an upgrade goes wrong, so take one before you change anything in the control plane.
 
 ```bash
 # 1. Inspect Kueue Workload admission and podSetAssignments (untested here)
@@ -365,7 +372,7 @@ ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   snapshot save /var/lib/etcd-backup.db
 ```
 
-Once the Workload is admitted, its status looks like the block below. When you read it, the admission section tells you the ClusterQueue and the flavor chosen for each role.
+Once the Workload is admitted, its status looks like the block below. When you read it, the admission section tells you the ClusterQueue and the flavor chosen for each role. Each role, head and worker, gets its own assignment, so you can see which tier each part of the job landed on.
 
 ```yaml
 status:
@@ -391,7 +398,7 @@ When a job looks stuck, start with `kubectl get workloads`, and take the etcd sn
 
 ## How it fails
 
-Each row below starts with a symptom you can see on screen and traces it to the layer where the cause lives. Read a row from left to right, and the remediation sits at the end. The first and second symptoms both look like a job that is not running, but the causes sit in different places.
+Picture an on-call page late at night. A PyTorchJob shows no Pods, a Volcano job hangs with seven Pods waiting, and etcd reports trouble on a control-plane node. Each symptom points at a different layer, so the first step is to match the symptom to a row. Each row below starts with a symptom you can see on screen and traces it to the layer where the cause lives. Read a row from left to right, and the remediation sits at the end. The first and second symptoms both look like a job that is not running, but the causes sit in different places.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -401,17 +408,18 @@ Each row below starts with a symptom you can see on screen and traces it to the 
 | **4. Evicted Volcano worker Pod leaves 7 sibling Pods hanging until NCCL timeout** | One node reboots under an 8-Pod Volcano training job; the evicted Pod is not recreated as a full gang reset, leaving the remaining 7 Pods hung in AllReduce. | **Missing `PodEvicted -> RestartJob` Task Policy:** The Volcano Job spec omitted `policies: [{event: PodEvicted, action: RestartJob}]` and `PodFailed`. | Add `event: PodEvicted` and `event: PodFailed` with `action: RestartJob` to `VolcanoJob.spec.policies` so any single-rank failure cleanly restarts the entire gang. |
 | **5. Adding a 4th etcd node to replace a dead 3rd node crashes the control plane** | In a 3-node etcd cluster (`etcd-0`, `etcd-1`, `etcd-2`) where `etcd-2` died (2/3 healthy, quorum 2 intact), an operator adds `etcd-3` before removing dead `etcd-2`. During state sync, `etcd-1` restarts or blips, and the entire Kubernetes API server goes down (`raft: lost quorum`). | **etcd Even-Node Quorum Trap:** Adding `etcd-3` first raises cluster membership to 4 nodes, which increases required Raft quorum from 2 to 3 (`4 // 2 + 1 = 3`). With `etcd-2` already dead, any transient blip on 1 of the 3 remaining nodes drops live nodes to 2 < 3. | Always run `etcdctl member remove <dead-member-id>` to reduce the cluster from 3 to 2 before adding the replacement 3rd node. |
 
+Two habits help when you work through these rows. First, write down the symptom exactly as you see it, including the reason string or the event message. A vague note such as "the job is stuck" hides which layer owns the problem. Second, check the layer that owns the symptom before you touch anything else. Restarting Pods does not fix a suspended Workload, and editing a flavor does not fix a Volcano policy. Matching the symptom to the layer saves you from fixing the wrong thing.
 
-When a job misbehaves, match its symptom to one of these rows before you change any manifest, so you know which layer to check first. If you see the first symptom, start with the workloads, not the Pods.
+When a job misbehaves, match its symptom to one of these rows before you change any manifest, so you know which layer to check first. If you see the first symptom, start with the workloads, not the Pods. If you see the fourth, check the policies on the Volcano Job before you touch the nodes.
 
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs on your own machine, using only the Python 3 standard library. The two scripts are `code/part11/kueue_volcano_and_plugins.py` and `code/part11/kueue_volcano_and_plugins_lab.py`. Together they simulate the 11-phase Kubernetes Scheduling Framework, the Coscheduling Permit and Unreserve gate, Kueue's ordered ResourceFlavor selection, cohort borrowing and preemption, Volcano RestartJob policies, APF shuffle-sharding queue capacity, and etcd Raft quorum math. Cluster commands are marked `(untested here)`, so treat them as the intended form rather than something this lab ran.
+This lab runs on your own machine, using only the Python 3 standard library, so no cluster is needed to work through it. The two scripts are `code/part11/kueue_volcano_and_plugins.py` and `code/part11/kueue_volcano_and_plugins_lab.py`. Together they simulate the 11-phase Kubernetes Scheduling Framework, the Coscheduling Permit and Unreserve gate, Kueue's ordered ResourceFlavor selection, cohort borrowing and preemption, Volcano RestartJob policies, APF shuffle-sharding queue capacity, and etcd Raft quorum math. Cluster commands are marked `(untested here)`. They were not run on a live cluster, so treat them as the intended form rather than something this lab ran.
 
 ### Step 1: Run the self-checking Kueue, Volcano, and scheduler plugins lab (tested here)
 
-Run the lab script from the repository root. It checks its own results, so you do not need to compare output by hand.
+Run the lab script from the repository root. It checks its own results, so you do not need to compare output by hand. Each check states the behavior it tests, which makes it easy to match a failure to a concept.
 
 ```bash
 python3 code/part11/kueue_volcano_and_plugins_lab.py
@@ -450,20 +458,22 @@ The output below was captured from this repository. Each line is one check, and 
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-The summary line at the bottom confirms that every check passed.
+The summary line at the bottom confirms that every check passed. If a single line shows a failure, find the concept it names in the sections above before you change any code.
+
+The lab proves that the model in the code agrees with the rules in this chapter. It does not prove that a real cluster behaves the same way. Kubernetes versions, admission webhooks and cloud quotas all add details that a standard-library script cannot reproduce. Use the lab to check your reasoning, and use a staging cluster to check the manifests.
 
 ### Exercises
 
-The exercises reuse the same functions as the lab, so you can test your reasoning against the code. Work through the six items in order. Each one gives you the function to call and the inputs to use.
+The exercises reuse the same functions as the lab, so you can test your reasoning against the code. Work through the six items in order. Each one gives you the function to call and the inputs to use. Use the values exactly as written.
 
-1. Use `evaluate_coscheduling_permit_gate()` in `code/part11/kueue_volcano_and_plugins.py` to compare the Permit status, and whether Unreserve is triggered, for `llm-training-group`. Check the three timing scenarios in the input block below.
-2. Use `select_kueue_resource_flavor()` with the two flavor quota states from the input block. Work out the selected flavor and the borrowing status for an 8-GPU job under `TryNextFlavor`, and then under `MayStopSearch`.
-3. Team A in `team-a-queue` has a nominal quota of 10 GPUs and a borrowing limit of 22 GPUs in `shared-gpu-cohort`. Assume Team A is actively using 28 GPUs. Calculate how many GPUs Team A is borrowing and how many more it can still borrow. Then trace what happens when Team B submits an 8-GPU job under `reclaimWithinCohort: Any`.
-4. Use `evaluate_kueue_cohort_and_preemption()` to trace the case where Team A is already at 28 GPUs and submits another 8-GPU job with priority 10000. A lower-priority experimental job with priority 100 is running in the same queue. What happens to it?
-5. Use `evaluate_volcano_job_event()` to explain why an 8-Pod Volcano distributed training job sets `event: PodEvicted` to `action: RestartJob`. Why does it not restart only the single evicted container?
-6. Compute the required Raft quorum and the maximum tolerated node failures for 3, 4, 5, and 7 etcd nodes. Then call `compute_apf_queue_capacity()` with the parameters in the input block to get the total maximum buffered requests across all 100 queues.
+1. Call `evaluate_coscheduling_permit_gate()` in `code/part11/kueue_volcano_and_plugins.py` for `llm-training-group`. Read the Permit status for each timing case in the input block. Then say whether Unreserve is triggered in each case.
+2. Call `select_kueue_resource_flavor()` with the two flavor quota states from the input block. Find the selected flavor for an 8-GPU job under `TryNextFlavor`. Then find it again under `MayStopSearch`. Note whether the job borrows in each case.
+3. Team A in `team-a-queue` has a nominal quota of 10 GPUs. Its borrowing limit is 22 GPUs, in `shared-gpu-cohort`. Assume Team A is actively using 28 GPUs. Calculate how many GPUs Team A is borrowing, and how many more it can still borrow. Then trace what happens when Team B submits an 8-GPU job under `reclaimWithinCohort: Any`.
+4. Use `evaluate_kueue_cohort_and_preemption()` to trace the case where Team A is at 28 GPUs. Team A submits another 8-GPU job with priority 10000. A lower-priority experimental job with priority 100 is running in the same queue. Say what happens to that experimental job.
+5. Use `evaluate_volcano_job_event()` to explain why an 8-Pod Volcano distributed training job sets `event: PodEvicted` to `action: RestartJob`. Then explain why it does not restart only the single evicted container.
+6. Compute the required Raft quorum for 3, 4, 5, and 7 etcd nodes. Then call `compute_apf_queue_capacity()` with the parameters in the input block to get the total maximum buffered requests across all 100 queues.
 
-The inputs for all six exercises are listed below. Use these values exactly as written.
+The inputs for all of these exercises are listed below. Use these values exactly as written.
 
 ```text
 Exercise Input Parameters:

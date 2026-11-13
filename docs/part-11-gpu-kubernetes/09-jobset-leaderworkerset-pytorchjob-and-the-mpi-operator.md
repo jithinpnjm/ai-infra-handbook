@@ -22,15 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose your platform team tries to run multi-node training on native Kubernetes controllers. The queue controllers and gang schedulers can admit and bind Pods, but only Pods that already exist in the Kubernetes API server. They do not create those Pods, configure peer discovery or manage distributed failure domains. Someone still has to set up rank zero DNS discovery, inject environment variables, distribute SSH keys and decide whether one crashed container means restarting the entire job. Teams that do this by hand end up maintaining fragile bash wrappers, and those wrappers break on the first node preemption.
+Suppose your platform team tries to run multi-node training on native Kubernetes controllers. The queue controllers and gang schedulers can admit and bind Pods, but only Pods that already exist in the Kubernetes API server. They do not create those Pods, configure peer discovery or manage distributed failure domains. Someone still has to set up rank zero DNS discovery, inject environment variables, distribute SSH keys and decide whether one crashed container means restarting the entire job. Teams that do this by hand end up maintaining fragile bash wrappers, and those wrappers break on the first node preemption. A preemption is when the cluster reclaims a node, and the Pods on it are removed.
 
-Kubernetes ships with workload primitives such as Deployment, StatefulSet and batch Job. Those were built for stateless web servers and for batch tasks where every worker is the same. Distributed AI workloads need something different: several roles inside one job, and a lifecycle that treats a group of Pods as one unit. The built-in primitives do not provide that.
+Kubernetes ships with workload primitives such as Deployment, StatefulSet and batch Job. Those were built for stateless web servers and for batch tasks where every worker is the same. Distributed AI workloads need something different: several roles inside one job, and a lifecycle that treats a group of Pods as one unit. The built-in primitives do not provide that. A role is one kind of Pod inside the job, such as a coordinator or a worker. A lifecycle is the sequence of start, run, fail and restart that the controller manages.
 
-Take a standard batch Job first. It manages a single, homogeneous Pod template, even in Indexed mode. That means it cannot describe a heterogeneous topology, such as one Master Pod paired with several Worker Pods. It also cannot group a dataset initializer and a trainer under one shared failure policy.
+Take a standard batch Job first. It manages a single, homogeneous Pod template, even in Indexed mode. Indexed mode gives each Pod a number, so the Pods can tell themselves apart. That means it cannot describe a heterogeneous topology, such as one Master Pod paired with several Worker Pods. It also cannot group a dataset initializer and a trainer under one shared failure policy.
 
-A Deployment treats every replica as an independent, single-Pod instance. Suppose a large model is sharded across four nodes using vLLM or TensorRT-LLM. A Deployment cannot manage those four Pods as one atomic group. It cannot scale, gang-schedule and restart a multi-Pod replica group together.
+A Deployment treats every replica as an independent, single-Pod instance. Suppose a large model is sharded across four nodes using vLLM or TensorRT-LLM. vLLM and TensorRT-LLM are inference servers for large language models. A Deployment cannot manage those four Pods as one atomic group. It cannot scale, gang-schedule and restart a multi-Pod replica group together. If one of the four Pods dies, the Deployment replaces that Pod alone, and the remaining three keep running with a broken shard.
 
-The table compares the five workload APIs covered in this chapter. Each one pairs a particular role layout with its own discovery mechanism.
+The table compares the five workload APIs covered in this chapter. Each one pairs a particular role layout with its own discovery mechanism. Discovery is how a Pod learns the address of its peers, and each API handles it in its own way.
 
 | Workload API and Group | Primary Target Workload | Role Topology | Discovery and Coordination Mechanism |
 |---|---|---|---|
@@ -40,39 +40,33 @@ The table compares the five workload APIs covered in this chapter. Each one pair
 | LeaderWorkerSet (`leaderworkerset.x-k8s.io/v1`) | Multi-node sharded LLM inference serving | `replicas` groups of 1 Leader + `size - 1` Workers | Per-group headless DNS where ingress Service targets Leaders only and failures restart only the affected group |
 | Kubeflow MPIJob (`kubeflow.org/v2beta1`) | MPI workloads, `nccl-tests` (`all_reduce_perf`), Horovod | `Launcher` (1) + `Worker` (N, `slotsPerWorker: 8`) | Ephemeral SSH keys, generated `/etc/mpi/hostfile`, and `mpirun -np 16` execution |
 
-Notice that each API handles discovery in its own way. The rest of the chapter takes you through how these controllers work, which YAML contracts they expose and how Kubeflow Trainer separates platform runtime templates from the Python code a data scientist writes. We also cover how to diagnose DNS, SSH and rank-synchronization failures across all four controllers.
+Notice that each API handles discovery in its own way. Read the table as a set of answers to one question: who are my peers, and how do I find them? The rest of the chapter takes you through how these controllers work, which YAML contracts they expose and how Kubeflow Trainer separates platform runtime templates from the Python code a data scientist writes. It also covers how to diagnose DNS, SSH and rank-synchronization failures across all four controllers. Rank synchronization is the agreement among workers about who is who, and it fails when one of them cannot find the others.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Finish Chapter 11.7 on PyTorch rendezvous barriers and gang scheduling, and Chapter 11.8 on Kueue, Volcano, and PodGroup coscheduling. You should also be comfortable with Kubernetes Headless Services, StatefulSets and batch Jobs.
+Finish Chapter 11.7 on PyTorch rendezvous barriers and gang scheduling, and Chapter 11.8 on Kueue, Volcano, and PodGroup coscheduling. Those two chapters explain why a group of Pods must start together, and this chapter explains who builds that group. You should also be comfortable with Kubernetes Headless Services, StatefulSets and batch Jobs. A Headless Service is a Service with no virtual IP of its own, so DNS returns the address of each Pod directly. A StatefulSet gives Pods stable names and stable storage, and a batch Job runs Pods until they finish.
 
 ### Outcomes
-By the end of this chapter, you will be able to do five things.
+This chapter covers five things, and each one is a section below. The first is the four steps the Kubeflow PyTorchJob controller takes. The controller identifies roles, resolves headless Service DNS names, injects environment variables and applies gang-aware restart policies. The second is how a Kubeflow Trainer v2 platform is built with ClusterTrainingRuntime and the Python TrainerClient. The chapter also shows how a TrainJob compiles into a JobSet, so a code change does not require a container image rebuild. The third is the trade-off between full fine-tuning and Parameter-Efficient Fine-Tuning with Low-Rank Adaptation, measured by dataset size, parameter count and GPU serving memory. The fourth is a LeaderWorkerSet deployment for sharded multi-node LLM inference, and the boundary where its per-group atomic restart sits. The fifth is an MPIJob with Launcher and Worker replicas, used to run a multi-node collective benchmark with `all_reduce_perf`.
 
-- Follow the four steps the Kubeflow PyTorchJob controller takes. You will see how it identifies roles, resolves headless Service DNS names, injects environment variables and applies gang-aware restart policies.
-- Build a Kubeflow Trainer v2 platform with ClusterTrainingRuntime and the Python TrainerClient. You will also see how a TrainJob compiles into a JobSet, so a code change does not require a container image rebuild.
-- Measure the trade-offs between Full Fine-Tuning and Parameter-Efficient Fine-Tuning with Low-Rank Adaptation, covering dataset size, parameter count and GPU serving memory.
-- Design a LeaderWorkerSet deployment for sharded multi-node LLM inference, and explain where its per-group atomic restart boundary sits.
-- Deploy a Kubeflow MPIJob with Launcher and Worker replicas, and use it to run a multi-node collective benchmark with `all_reduce_perf`.
-
-Check that you have the two prerequisite chapters in hand before you go on, since this chapter builds directly on their barriers and gang scheduling.
+Check that you have the two prerequisite chapters in hand before you go on. This chapter builds directly on their barriers and gang scheduling, and it will make little sense without them.
 
 ## Concepts: basics to intermediate to advanced
 
-Start with the basics, then move through the intermediate and advanced controllers. Each one handles a problem that the simpler one leaves open.
+Start with the basics, then move through the intermediate and advanced controllers. Each one handles a problem that the simpler one leaves open. The advanced section shows that the four controllers are not competitors. Each one fits a different shape of work.
 
 ### 1. Basics: Why native Job and Deployment primitives fall short, and how PyTorchJob works
 
-Suppose you run a four-node distributed PyTorch job on a standard Kubernetes Deployment. The job fails right away, either during startup or at completion. Distributed data parallel and fully sharded data parallel scripts need two things. They need deterministic peer discovery, and they need run-to-completion lifecycle management. Stateless web controllers provide neither.
+Suppose you run a four-node distributed PyTorch job on a standard Kubernetes Deployment. The job fails right away, either during startup or at completion. Distributed data parallel and fully sharded data parallel scripts need two things. They need deterministic peer discovery, and they need run-to-completion lifecycle management. Stateless web controllers provide neither. A stateless web controller assumes every replica can be replaced at any time without anyone noticing, which is exactly the opposite of how a training job behaves.
 
-The first gap is peer discovery. PyTorch distributed initialization, through `torch.distributed.init_process_group`, requires each Pod to know four things. Those are the exact DNS hostname or IP address of rank zero, a shared port, the total world size and the Pod's own unique integer rank. A standard Deployment gives its Pods random hashes. It has no deterministic rank index and no rank-zero DNS record.
+The first gap is peer discovery. PyTorch distributed initialization, through `torch.distributed.init_process_group`, requires each Pod to know four things. Those are the exact DNS hostname or IP address of rank zero, a shared port, the total world size and the Pod's own unique integer rank. A standard Deployment gives its Pods random hashes. It has no deterministic rank index and no rank-zero DNS record. Without those, each Pod has no reliable way to say which Pod is the coordinator, or which slot it fills in the group.
 
-The second gap is the end of the job. Training is a batch workload, and it must finish cleanly once the final epoch is done. When the script exits with code zero after that last epoch, a Deployment treats the clean exit as a crash. It then restarts the training loop indefinitely.
+The second gap is the end of the job. Training is a batch workload, and it must finish cleanly once the final epoch is done. An epoch is one full pass over the training data. When the script exits with code zero after that last epoch, a Deployment treats the clean exit as a crash. It then restarts the training loop indefinitely. The job never ends, and it keeps consuming GPUs for work that is already finished.
 
 #### Dissecting the Kubeflow PyTorchJob controller
 
-The Kubeflow Training Operator provides the PyTorchJob custom resource, which automates distributed PyTorch setup on Kubernetes. Suppose an engineer submits a PyTorchJob with one Master replica and three Worker replicas. Before training begins, the controller runs a four-step setup sequence.
+The Kubeflow Training Operator provides the PyTorchJob custom resource, which automates distributed PyTorch setup on Kubernetes. Suppose an engineer submits a PyTorchJob with one Master replica and three Worker replicas. Before training begins, the controller runs a four-step setup sequence. Each step hands a piece of the job to the next, so a failure at any step leaves the others incomplete.
 
 ```mermaid
 flowchart TD
@@ -85,17 +79,17 @@ flowchart TD
     Gang --> Rendezvous
 ```
 
-The diagram shows the setup tasks that all lead into the rendezvous, where the four Pods connect.
+The diagram shows the setup tasks that all lead into the rendezvous, where the four Pods connect. A rendezvous is the meeting point at which every worker checks in, so each one learns who else is present. Read the three arrows into the rendezvous as three ingredients. The DNS name tells each Pod where to call, the environment variables tell it who it is, and the gang rule tells it when everyone is ready.
 
-First, the controller reads `spec.pytorchReplicaSpecs` and identifies the Master role and the Worker role. The single Master replica always acts as rank zero. It hosts the TCP rendezvous store and also trains on the GPUs alongside the three Worker replicas.
+First, the controller reads `spec.pytorchReplicaSpecs` and identifies the Master role and the Worker role. The single Master replica always acts as rank zero. It hosts the TCP rendezvous store and also trains on the GPUs alongside the three Worker replicas. A TCP rendezvous store is a small server that workers contact at startup to find each other. Rank zero is the coordinator, and every other rank needs to know its address.
 
-Second, the controller creates a Kubernetes Headless Service with `clusterIP: None` for the job. As soon as the Master Pod receives an IP address, every Worker Pod can resolve the rank-zero Pod over CoreDNS.
+Second, the controller creates a Kubernetes Headless Service with `clusterIP: None` for the job. Setting `clusterIP: None` makes the Service headless, so CoreDNS returns the Pod addresses directly instead of a single virtual address. As soon as the Master Pod receives an IP address, every Worker Pod can resolve the rank-zero Pod over CoreDNS. CoreDNS is the DNS server that runs inside the cluster.
 
-Third, the controller injects `MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE` and `RANK` into every container. PyTorch can then initialize its process group without any manual bash scripting.
+Third, the controller injects `MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE` and `RANK` into every container. PyTorch can then initialize its process group without any manual bash scripting. A process group is the set of workers that will communicate during training. Every container gets the same address and port, and each one gets its own rank.
 
-Fourth, when the Master Pod exits with code zero, the controller marks the whole PyTorchJob as Succeeded. If any Pod fails, the controller applies the configured `restartPolicy`. It also works with Kueue, Volcano or the KAI Scheduler to restart the gang cleanly.
+Fourth, when the Master Pod exits with code zero, the controller marks the whole PyTorchJob as Succeeded. If any Pod fails, the controller applies the configured `restartPolicy`. It also works with Kueue, Volcano or the KAI Scheduler to restart the gang cleanly. The restart policy tells the controller whether a failed Pod should be recreated, and the gang scheduler makes sure the recreated group starts together.
 
-The table shows what each Pod receives, and you can check each row against the others. Notice that `RANK` is the only injected value that changes from Pod to Pod.
+The table shows what each Pod receives, and you can check each row against the others. Notice that `RANK` is the only injected value that changes from Pod to Pod. Everything else is shared, so every worker agrees on where the coordinator lives and how big the group is.
 
 | Injected Variable or Resource | Master Pod (`llm-training-master-0`) | Worker Pods (`llm-training-worker-0..2`) | Purpose in PyTorch Rendezvous |
 |---|---|---|---|
@@ -105,27 +99,27 @@ The table shows what each Pod receives, and you can check each row against the o
 | `WORLD_SIZE` | `"4"` | `"4"` | Total participating nodes or processes in the gang |
 | `RANK` | `"0"` | `"1"`, `"2"`, `"3"` | Unique integer rank index assigned to each Pod |
 
-Every Worker depends on the Master's DNS name and on its own `RANK`. If a PyTorchJob stalls, you should check those two values first.
+Every Worker depends on the Master's DNS name and on its own `RANK`. If a PyTorchJob stalls, you should check those two values first. A wrong DNS name makes every Worker wait for a coordinator it cannot find. A wrong rank makes two Pods claim the same slot, and the rendezvous never completes.
 
 ---
 
 ### 2. Intermediate: Kubeflow Trainer v2, JobSet, and PEFT/LoRA
 
-PyTorchJob has been the standard Kubernetes training controller for years. Even so, data scientists still struggle when asked to write complex Kubernetes YAML manifests or to rebuild Docker images for every code change. Kubeflow Trainer v2 solves this problem. It splits cluster infrastructure templates from Python training code, then compiles both into a Kubernetes JobSet.
+Picture a data scientist with a working training script on a laptop. They want the same run on the cluster by tomorrow morning. The script is ready, but the cluster asks for a Kubernetes manifest, a container image with the right CUDA version, and a scheduler name. PyTorchJob has been the standard Kubernetes training controller for years. Even so, data scientists still struggle when asked to write complex Kubernetes YAML manifests or to rebuild Docker images for every code change. Kubeflow Trainer v2 solves this problem. It splits cluster infrastructure templates from Python training code, then compiles both into a Kubernetes JobSet. CUDA is NVIDIA's programming platform for GPUs, and a container image bundles the libraries a program needs.
 
 #### Why JobSet is the unified batch building block
 
-A native Kubernetes batch Job in Indexed mode can assign completion indices to identical Pods. It cannot coordinate several distinct Pod templates under one network and failure boundary. Complex AI pipelines often need a dataset initializer job, a parameter server or leader job, and a worker job. Those jobs must start in order and fail together.
+A native Kubernetes batch Job in Indexed mode can assign completion indices to identical Pods. It cannot coordinate several distinct Pod templates under one network and failure boundary. Complex AI pipelines often need a dataset initializer job, a parameter server or leader job, and a worker job. A parameter server holds the shared model state that workers read and update. Those jobs must start in order and fail together. A dataset initializer that is still downloading data should not let the trainer start early, and a trainer that dies should not leave the initializer running alone.
 
-JobSet is a standalone Kubernetes SIG-Apps custom resource. It manages a coordinated group of Indexed Jobs, defined under `spec.replicatedJobs`.
+JobSet is a standalone Kubernetes SIG-Apps custom resource. SIG-Apps is the Kubernetes special interest group for application workloads. It manages a coordinated group of Indexed Jobs, defined under `spec.replicatedJobs`. Each entry in that list is one kind of child Job, and each child can run a different container and a different number of replicas.
 
-JobSet creates one shared headless Service across all child `replicatedJobs`. Every Pod gets a deterministic DNS hostname that follows the pattern `<jobset>-<replicatedJob>-<jobIndex>-<podIndex>.<subdomain>`. JobSet also sets the startup order, so a dataset or model initializer finishes before the trainer nodes launch.
+JobSet creates one shared headless Service across all child `replicatedJobs`. Every Pod gets a deterministic DNS hostname that follows the pattern `<jobset>-<replicatedJob>-<jobIndex>-<podIndex>.<subdomain>`. The pattern is built from the names you chose, so you can work out a Pod's address from its role and index without looking it up. JobSet also sets the startup order, so a dataset or model initializer finishes before the trainer nodes launch.
 
-JobSet also treats the whole set as a single failure domain. If any child Job fails beyond its backoff limit, JobSet tears down and recreates all child `replicatedJobs` together. That keeps distributed ranks from drifting out of sync.
+JobSet also treats the whole set as a single failure domain. A failure domain is the boundary that a failure can spread across. If any child Job fails beyond its backoff limit, JobSet tears down and recreates all child `replicatedJobs` together. That keeps distributed ranks from drifting out of sync. Drifting out of sync means one part of the job restarted and another part kept an old view of the group.
 
 #### Kubeflow Trainer v2: Separating Platform Admin from Data Scientist
 
-Think about who edits what on a shared training cluster, and you will see the split quickly. Kubeflow Trainer v2 splits distributed training between two personas. The controller then merges their artifacts into a JobSet at runtime.
+Think about who edits what on a shared training cluster, and you will see the split quickly. The platform team owns the image, the scheduler setting and the network wiring. The data scientist owns the training function and its hyperparameters. Kubeflow Trainer v2 splits distributed training between those two personas. The controller then merges their artifacts into a JobSet at runtime. A hyperparameter is a setting chosen before training, such as the learning rate or the number of epochs.
 
 ```mermaid
 flowchart LR
@@ -136,13 +130,13 @@ flowchart LR
     JS --> K8sJobs["Creates Indexed Kubernetes Jobs & GPU Pods"]
 ```
 
-The platform administrator defines a cluster-wide ClusterTrainingRuntime, or a namespace-scoped TrainingRuntime. This template specifies the framework label, a curated CUDA container image, default multi-node policy settings and a JobSet template. It can also hold any cluster-specific Kueue labels, scheduler names or Multus RDMA annotations.
+The platform administrator defines a cluster-wide ClusterTrainingRuntime, or a namespace-scoped TrainingRuntime. This template specifies the framework label, a curated CUDA container image, default multi-node policy settings and a JobSet template. It can also hold any cluster-specific Kueue labels, scheduler names or Multus RDMA annotations. Multus is a meta-plugin that gives a Pod extra network interfaces, and RDMA annotations attach a fast network for GPU-to-GPU traffic.
 
-Data scientists never write Kubernetes YAML. They use the Python `TrainerClient` with a `BuiltinTrainer`, such as TorchTune, or with a `CustomTrainer`. A `CustomTrainer` wraps a self-contained Python training function. That function can use Hugging Face TRL `SFTTrainer`, PEFT `LoraConfig` or DeepSpeed.
+Data scientists never write Kubernetes YAML. They use the Python `TrainerClient` with a `BuiltinTrainer`, such as TorchTune, or with a `CustomTrainer`. A `BuiltinTrainer` runs a training loop that already exists, and the user only sets options. A `CustomTrainer` wraps a self-contained Python training function. That function can use Hugging Face TRL `SFTTrainer`, PEFT `LoraConfig` or DeepSpeed. TRL is the Hugging Face library for post-training, and PEFT is its library for parameter-efficient methods.
 
-When the data scientist calls `client.train`, the Kubeflow SDK serializes the Python function and embeds it into the TrainJob custom resource. At runtime, the base container image deserializes the function and runs it right away, so the image never has to be rebuilt.
+When the data scientist calls `client.train`, the Kubeflow SDK serializes the Python function and embeds it into the TrainJob custom resource. Serializing means turning the function into bytes that can be stored in an object. At runtime, the base container image deserializes the function and runs it right away, so the image never has to be rebuilt. The image stays fixed, and only the function changes between runs.
 
-The table lists each component with its persona and its key fields. As you read it, treat it as a map of who controls which part of the job.
+The table lists each component with its persona and its key fields. As you read it, treat it as a map of who controls which part of the job. The first row is the platform's blueprint, the second row is the data scientist's request, and the third row is a separate family that serves other purposes.
 
 | Kubeflow Trainer Component | Persona | Key Fields and Values | Role in Execution |
 |---|---|---|---|
@@ -150,15 +144,15 @@ The table lists each component with its persona and its key fields. As you read 
 | TrainJob via `CustomTrainer` / `BuiltinTrainer` | Data Scientist | `num_nodes=8`, `cpu: 4`, `memory: "64Gi"`, `nvidia.com/gpu: 1` (total 8 GPUs and 32 CPUs); `Llama-3.2-3B` on `openai/gsm8k` with `num_epochs: 3`, `learning_rate: 2.0e-4`, `checkpoint-100`; or DeepSpeed `dist_backend="nccl"`, `batch_size=16` | Embeds serialized Python function and hyperparameters without rebuilding container images |
 | KubeRay RayJob vs Katib / Ray Tune | Platform / MLOps Team | RayJob requires baking code into images or external mounts; Ray Tune and Kubeflow Katib run hyperparameter optimization such as Population Based Training | Distinguishes post-training model customization from hyperparameter sweeps |
 
-In short, the runtime controls the image, the scheduler and the JobSet topology. The TrainJob carries the function and its hyperparameters. KubeRay sits apart, because RayJob needs code baked into images or mounted from outside, while Ray Tune and Katib handle hyperparameter sweeps.
+In short, the runtime controls the image, the scheduler and the JobSet topology. The TrainJob carries the function and its hyperparameters. KubeRay sits apart, because RayJob needs code baked into images or mounted from outside, while Ray Tune and Katib handle hyperparameter sweeps. KubeRay is the Kubernetes operator for Ray, the distributed Python framework. Katib is the Kubeflow component for automated tuning. Each tool answers a different question, so choose by the question you are asking.
 
 #### Full Fine-Tuning vs Parameter-Efficient Fine-Tuning on Kubernetes
 
-Training a foundation model from scratch across thousands of GPUs is prohibitively expensive for most enterprise teams. Knowing where customization fits in the LLM lifecycle helps architects right-size their Kubernetes GPU clusters.
+Imagine a team that wants a model to answer questions in its own internal style. It has a few hundred good examples and a budget for one modest GPU group. Training a foundation model from scratch across thousands of GPUs is prohibitively expensive for most enterprise teams. Knowing where customization fits in the LLM lifecycle helps architects right-size their Kubernetes GPU clusters. A foundation model is a large base model trained on general data, and the lifecycle decides which of its stages the team actually needs to run.
 
-The LLM creation pipeline has three phases. Pre-training runs for weeks across thousands of GPUs on raw text, and it produces a base model. Alignment teaches safety and task boundaries using reinforcement learning from human feedback, Direct Preference Optimization, Group Relative Policy Optimization or IBM InstructLab. The alignment stage plays a role similar to Asimov's Three Laws of Robotics. Model customization, or post-training, then specializes an aligned model or a Small Language Model for domain tasks.
+The LLM creation pipeline has three phases. Pre-training runs for weeks across thousands of GPUs on raw text, and it produces a base model. Alignment teaches safety and task boundaries using reinforcement learning from human feedback, Direct Preference Optimization, Group Relative Policy Optimization or IBM InstructLab. RLHF, DPO and GRPO are three ways of teaching a model from preference signals, and InstructLab is an IBM approach that uses structured instruction data. The alignment stage plays a role similar to Asimov's Three Laws of Robotics. It sets the rules a model must keep to. Model customization, or post-training, then specializes an aligned model or a Small Language Model for domain tasks. A Small Language Model, or SLM, is a compact model that is cheap to run.
 
-When you customize a model on Kubernetes, the choice between Full Supervised Fine-Tuning and Low-Rank Adaptation changes your storage and GPU memory footprint dramatically. Two specialized variants matter here. X-LoRA is for Mixture-of-Experts architectures, and QLoRA is for 4-bit quantized tuning. Inside the training container, kernel libraries such as FlashAttention and Liger Kernel further reduce GPU HBM usage, the high-bandwidth memory on each GPU.
+When you customize a model on Kubernetes, the choice between Full Supervised Fine-Tuning and Low-Rank Adaptation changes your storage and GPU memory footprint dramatically. Full Supervised Fine-Tuning, or SFT, updates every weight in the model. Low-Rank Adaptation, or LoRA, freezes the base weights and trains two small matrices that sit beside each layer. Two specialized variants matter here. X-LoRA is for Mixture-of-Experts architectures, which route each input to a few specialist sub-networks. QLoRA is for 4-bit quantized tuning, which stores the frozen base model in very compact form. Inside the training container, kernel libraries such as FlashAttention and Liger Kernel further reduce GPU HBM usage, the high-bandwidth memory on each GPU. A kernel library replaces slow generic operations with fused, faster versions.
 
 The table compares the two approaches on the things that drive cost.
 
@@ -172,36 +166,38 @@ The table compares the two approaches on the things that drive cost.
 
 Take the first row as an example, and you will see the arithmetic behind it. `0.8%` of an `8B` model is `64.0M` parameters, and those sit in the low-rank matrices A and B. In the last row, ten full models need `10.0x` the base model GPU memory. One frozen base model with ten `5%` adapters needs `1.5x`. Dividing 10.0 by 1.5 gives about 6.67, which matches the savings ratio in the table.
 
-Count your labeled examples first, then compare that count with the 100 to 1,000 range that LoRA needs.
+Catastrophic forgetting is the risk in the Full Fine-Tuning column. It means the model loses general skills it had before, because the update overwrote them. LoRA leaves the base weights untouched, so the general skills stay in place. That is one reason teams with small datasets reach for it first.
+
+Count your labeled examples first, then compare that count with the 100 to 1,000 range that LoRA needs. If you have far fewer than 100 examples, neither approach is a good start, and a better prompt may be enough. If you have more than 100,000, full fine-tuning becomes a real option to weigh.
 
 #### When training is the right tool
 
-Platform teams should not start a multi-node training job when a lighter pattern meets the requirement. The lightest option needs no job at all. A better system prompt changes no weights and uses no training GPUs, so try it before you submit a TrainJob.
+Platform teams should not start a multi-node training job when a lighter pattern meets the requirement. The lightest option needs no job at all. A better system prompt changes no weights and uses no training GPUs, so try it before you submit a TrainJob. A prompt is the instruction and context you send with each request, and it can often get a model most of the way to the behavior you want.
 
-Training earns its cost when the model must learn domain rules or a fixed output format that prompts cannot hold. A compact model fine-tuned with LoRA is then the usual first step, or a smaller model distilled from a larger teacher. Multi-step alignment pipelines such as DPO, GRPO and InstructLab map directly to JobSet, because each step is a group of pods with its own start order.
+Training earns its cost when the model must learn domain rules or a fixed output format that prompts cannot hold. A compact model fine-tuned with LoRA is then the usual first step, or a smaller model distilled from a larger teacher. Distillation trains a small student model to copy the outputs of a larger teacher. Multi-step alignment pipelines such as DPO, GRPO and InstructLab map directly to JobSet, because each step is a group of pods with its own start order. A step that runs before another is exactly what JobSet's startup ordering is for.
 
-Before you submit a TrainJob, write down why a prompt change was not enough.
+Before you submit a TrainJob, write down why a prompt change was not enough. A short written reason makes the decision reviewable, and it stops a team from paying for training that a prompt would have solved.
 
 #### End-to-End Kubeflow Ecosystem Integration
 
-In a production platform, training is only one stage. TrainJob and PyTorchJob form the compute stage of a four-component Kubeflow lifecycle.
+In a production platform, training is only one stage. TrainJob and PyTorchJob form the compute stage of a four-component Kubeflow lifecycle. Each component hands its output to the next, so the lifecycle reads like a relay. The notebook prepares the code, the trainer runs it, the pipeline repeats it on a schedule, and the registry remembers what came out.
 
-- Kubeflow Notebooks provisions web-based Jupyter pods where data scientists prototype their `SFTTrainer` and `LoraConfig` functions interactively. Inside a notebook, engineers use `%load_ext yamlmagic` with `%%yaml training_config` to manage hyperparameters cleanly.
-- Kubeflow Trainer executes the distributed fine-tuning job across GPU nodes via JobSet. It writes periodic adapter checkpoints, such as `/opt/app-root/Meta-Llama-3.1-8B-Instruct/checkpoint-100/`, to shared ReadWriteMany persistent storage. It streams metrics to TensorBoard, MLflow, or Weights & Biases while it trains.
-- Kubeflow Pipelines converts the interactive notebook or Python `TrainerClient` script into a repeatable Directed Acyclic Graph for scheduled retraining and evaluation.
-- Kubeflow Model Registry catalogs the resulting LoRA adapter or merged model checkpoint, with its lineage, hyperparameters and evaluation metrics. It then hands the versioned artifact off to KServe or LeaderWorkerSet for production inference.
+- Kubeflow Notebooks provisions web-based Jupyter pods where data scientists prototype their `SFTTrainer` and `LoraConfig` functions interactively. Inside a notebook, engineers use `%load_ext yamlmagic` with `%%yaml training_config` to manage hyperparameters cleanly. A magic command is a notebook shortcut that runs a special action on a cell.
+- Kubeflow Trainer executes the distributed fine-tuning job across GPU nodes via JobSet. It writes periodic adapter checkpoints, such as `/opt/app-root/Meta-Llama-3.1-8B-Instruct/checkpoint-100/`, to shared ReadWriteMany persistent storage. It streams metrics to TensorBoard, MLflow, or Weights & Biases while it trains. Those are common dashboards for watching a training run.
+- Kubeflow Pipelines converts the interactive notebook or Python `TrainerClient` script into a repeatable Directed Acyclic Graph for scheduled retraining and evaluation. A Directed Acyclic Graph is a set of steps with arrows between them and no loops.
+- Kubeflow Model Registry catalogs the resulting LoRA adapter or merged model checkpoint, with its lineage, hyperparameters and evaluation metrics. Lineage records where an artifact came from. It then hands the versioned artifact off to KServe or LeaderWorkerSet for production inference.
 
-As you plan, treat the four components together, because each one hands its output to the next.
+As you plan, treat the four components together, because each one hands its output to the next. If the registry has no record of a checkpoint, you lose the ability to say which data and settings produced the model in production.
 
 ---
 
 ### 3. Advanced: LeaderWorkerSet for multi-node inference and the MPIJob Operator
 
-PyTorchJob and JobSet are built for batch training jobs that run to completion and exit. LLM inference is different. It is a long-running service that sits behind a Kubernetes Service or Gateway API Inference Extension, and it scales horizontally with traffic.
+PyTorchJob and JobSet are built for batch training jobs that run to completion and exit. LLM inference is different. It is a long-running service that sits behind a Kubernetes Service or Gateway API Inference Extension, and it scales horizontally with traffic. A Gateway API Inference Extension is an add-on that routes requests to model servers based on their load. Serving must stay up, and a restart in the middle of a request is a visible outage.
 
 #### LeaderWorkerSet for Sharded Multi-Node Inference
 
-Suppose a model is too large for the memory of a single eight-GPU node. One replica then has to span several nodes. The server uses tensor parallelism within each node and pipeline parallelism across nodes. Now suppose one model instance spans four nodes, and you want two replicas for high availability. A standard Deployment cannot manage the resulting eight Pods as two four-Pod groups.
+Suppose a model is too large for the memory of a single eight-GPU node. One replica then has to span several nodes. The server uses tensor parallelism within each node and pipeline parallelism across nodes. Tensor parallelism splits each layer's math across GPUs, and pipeline parallelism splits the stack of layers into stages on different nodes. Now suppose one model instance spans four nodes, and you want two replicas for high availability. A standard Deployment cannot manage the resulting eight Pods as two four-Pod groups. It has no idea which Pods belong together.
 
 ```mermaid
 flowchart TD
@@ -219,16 +215,16 @@ flowchart TD
     end
 ```
 
-The diagram shows two replica groups. Each group has one leader and three workers, so each group holds four Pods.
+The diagram shows two replica groups. Each group has one leader and three workers, so each group holds four Pods. Think of each group as one copy of the model, spread across four machines. The leader takes the requests, and the workers hold the rest of the model's shards.
 
-LeaderWorkerSet provides four capabilities that neither Deployment nor StatefulSet can express for multi-node inference.
+LeaderWorkerSet provides four capabilities that neither Deployment nor StatefulSet can express for multi-node inference. The first is the grouping. The second is the restart rule for each group. The third is placement that keeps each group together on the network. The fourth is a Service that only sees the leaders.
 
 1. It defines a two-level hierarchy. `spec.replicas` sets the number of model replica groups. `spec.leaderWorkerTemplate.size` sets the number of Pods inside each group, so each group holds one Leader Pod and size minus one Worker Pods.
 2. It enforces per-group atomic restarts through `RecreateGroupOnPodRestart`. If one Worker Pod in Group 0 crashes, the missing shard makes that replica group unusable. LeaderWorkerSet tears down and recreates all Pods in Group 0 atomically, while Group 1 keeps serving live traffic.
-3. It coordinates per-group gang scheduling and topology co-location with Kueue, Volcano and the KAI Scheduler. Each replica group is placed inside a single InfiniBand leaf switch or NVLink rack domain, while separate groups spread across failure domains.
-4. It exposes a Leader-only Service endpoint. Incoming HTTP or gRPC inference requests route only to the Leader Pods, which coordinate the distributed forward pass across their Worker Pods.
+3. It coordinates per-group gang scheduling and topology co-location with Kueue, Volcano and the KAI Scheduler. Each replica group is placed inside a single InfiniBand leaf switch or NVLink rack domain, while separate groups spread across failure domains. A leaf switch is the switch that connects a set of servers, and an NVLink domain is the group of GPUs that share fast NVLink links.
+4. It exposes a Leader-only Service endpoint. Incoming HTTP or gRPC inference requests route only to the Leader Pods, which coordinate the distributed forward pass across their Worker Pods. gRPC is a remote procedure call protocol that many inference servers use alongside HTTP.
 
-The table works through one example, with two replicas of four Pods each and eight GPUs per Pod.
+The table works through one example, with two replicas of four Pods each and eight GPUs per Pod. Read the rows in order, because each row builds on the one above it. The first two rows give the shape of the deployment, and the last row shows what a single failure costs.
 
 | LeaderWorkerSet Parameter | Example Value | Computed Cluster Impact | Operational Meaning |
 |---|---|---|---|
@@ -237,23 +233,23 @@ The table works through one example, with two replicas of four Pods each and eig
 | GPUs per Pod (`nvidia.com/gpu`) | `8` | `32` GPUs per replica group (`64` GPUs total across `2` groups) | Full-node GPU allocation per Pod |
 | `restartPolicy: RecreateGroupOnPodRestart` | `1` Pod fails in Group 0 | `4` Pods restarted in Group 0; `1` surviving group (`4` Pods) stays online | Fault isolation prevents a single node reboot from taking down the entire service |
 
-Here is the arithmetic you need. Four Pods with eight GPUs each give 32 GPUs per group. Two groups give 64 GPUs in total. If one Pod fails in Group 0, four Pods restart, and the four Pods in the surviving group stay online.
+Here is the arithmetic you need. Four Pods with eight GPUs each give 32 GPUs per group. Two groups give 64 GPUs in total. If one Pod fails in Group 0, four Pods restart, and the four Pods in the surviving group stay online. The failure costs half the capacity for a while, but the service keeps answering. That trade is the main point of the design.
 
-When one model copy spans several Pods, choose LeaderWorkerSet, because a Deployment cannot restart those Pods as one group.
+When one model copy spans several Pods, choose LeaderWorkerSet, because a Deployment cannot restart those Pods as one group. If you use a Deployment anyway, a broken shard keeps receiving traffic, and users see errors that look random. The restart rule is what turns a silent, partial failure into a clean, whole-group recovery.
 
 #### The Kubeflow MPIJob Operator
 
-Many HPC benchmarks, such as `nccl-tests`, and MPI-based frameworks, such as Horovod or DeepSpeed, launch their ranks with `mpirun` over SSH. They do not use a TCP rendezvous store. If you do that by hand, you set up passwordless SSH keys, configure file permissions, discover dynamic Pod IPs and write an OpenMPI hostfile yourself.
+Many HPC benchmarks, such as `nccl-tests`, and MPI-based frameworks, such as Horovod or DeepSpeed, launch their ranks with `mpirun` over SSH. The Message Passing Interface, or MPI, is the standard way those programs start and coordinate processes. They do not use a TCP rendezvous store. If you do that by hand, you set up passwordless SSH keys, configure file permissions, discover dynamic Pod IPs and write an OpenMPI hostfile yourself. A hostfile is the list of machines and slots that mpirun reads before it starts processes.
 
-The Kubeflow MPIJob Operator automates the whole Message Passing Interface lifecycle. It runs one Launcher Pod alongside several GPU Worker Pods.
+The Kubeflow MPIJob Operator automates the whole Message Passing Interface lifecycle. It runs one Launcher Pod alongside several GPU Worker Pods. The Launcher is the Pod that starts the job, and the Workers are the Pods that do the GPU work. Picture a conductor and an orchestra. The conductor does not play an instrument, and the orchestra cannot start without the conductor's signal.
 
-First, the controller creates a Kubernetes Secret that holds an ephemeral SSH keypair. It mounts that Secret into the Launcher Pod and into all Worker Pods, with `0600` file permissions.
+First, the controller creates a Kubernetes Secret that holds an ephemeral SSH keypair. A Secret is an object that stores sensitive values, and an ephemeral keypair lives only as long as the job. It mounts that Secret into the Launcher Pod and into all Worker Pods, with `0600` file permissions. Those permissions mean only the owner can read the key.
 
-Second, the controller generates a ConfigMap, mounted at `/etc/mpi/hostfile` inside the Launcher Pod. That file lists every Worker Pod DNS name with its configured `slotsPerWorker` count.
+Second, the controller generates a ConfigMap, mounted at `/etc/mpi/hostfile` inside the Launcher Pod. A ConfigMap holds plain configuration data. That file lists every Worker Pod DNS name with its configured `slotsPerWorker` count. A slot is one place to run one process, and `slotsPerWorker` sets how many of them each Worker offers.
 
-Third, the controller waits until all Worker Pods are running `sshd`, and then it executes the `mpirun` command inside the Launcher container. When `cleanPodPolicy: Running` is set, the controller terminates all Worker Pods automatically once the Launcher exits with code zero.
+Third, the controller waits until all Worker Pods are running `sshd`, and then it executes the `mpirun` command inside the Launcher container. The `sshd` process is the SSH server that lets the Launcher reach each Worker. When `cleanPodPolicy: Running` is set, the controller terminates all Worker Pods automatically once the Launcher exits with code zero. Without that setting, the Workers would keep running their SSH loop and holding GPUs after the work is done.
 
-The generated hostfile and the launch command look like this for two Workers with eight slots each.
+The generated hostfile and the launch command look like this for two Workers with eight slots each. Read the hostfile first, since it tells mpirun where to place processes. Then read the launch line, which tells mpirun how many ranks to start in total.
 
 ```text
 # Generated OpenMPI hostfile (/etc/mpi/hostfile) for slotsPerWorker: 8 and 2 Workers:
@@ -264,15 +260,15 @@ mpi-nccl-test-worker-1 slots=8
 mpirun -np 16 /opt/nccl-tests/build/all_reduce_perf -b 8 -e 128M -f 2
 ```
 
-Each Worker contributes eight slots, so the launch asks for sixteen ranks.
+Each Worker contributes eight slots, so the launch asks for sixteen ranks. A rank is one process in the MPI job, and with one GPU per rank, sixteen ranks use sixteen GPUs across the two Workers.
 
-If you write an MPIJob, give the Launcher CPU and memory only, and request GPUs on the Workers, since the Launcher runs `mpirun` over SSH and uses no GPUs.
+If you write an MPIJob, give the Launcher CPU and memory only, and request GPUs on the Workers, since the Launcher runs `mpirun` over SSH and uses no GPUs. The Launcher is coordination work, and it has no reason to hold a GPU that a training rank could use.
 
 ## Commands and configurations that matter
 
 ### 1. Installing Kubeflow Trainer and defining a ClusterTrainingRuntime
 
-Before anyone submits a job, the platform administrator installs the Kubeflow Trainer controller and registers a ClusterTrainingRuntime. That gives data scientists a verified PyTorch and CUDA base image for distributed jobs.
+Before anyone submits a job, the platform administrator installs the Kubeflow Trainer controller and registers a ClusterTrainingRuntime. That gives data scientists a verified PyTorch and CUDA base image for distributed jobs. Think of this step as stocking the kitchen before the cooks arrive. The controller does the cooking, and the runtime is the pantry that every job draws from.
 
 ```bash
 # Install Kubeflow Trainer v2.1.0 controller and built-in runtimes (untested here)
@@ -282,7 +278,7 @@ kubectl apply --server-side -k "${URL}/manager?ref=${VERSION}"
 kubectl apply --server-side -k "${URL}/runtimes?ref=${VERSION}"
 ```
 
-The first `kubectl apply` installs the controller, and you run the second one for the built-in runtimes. Both use the same version tag.
+The first `kubectl apply` installs the controller, and you run the second one for the built-in runtimes. Both use the same version tag, so the controller and its runtimes stay in step. Server-side apply lets the API server track which fields each owner manages.
 
 ```yaml
 # clustertrainingruntime-torch.yaml (GAK Example 6-4, untested here)
@@ -312,11 +308,11 @@ spec:
                       image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 ```
 
-As you read it, notice the framework label and the image line. The label marks this runtime as Torch, and the image holds the PyTorch and CUDA base that the jobs run on.
+As you read it, notice the framework label and the image line. The label marks this runtime as Torch, and the image holds the PyTorch and CUDA base that the jobs run on. Its `numNodes: 1` line is a different value from the `num_nodes=8` request in the TrainJob example below, so keep both in mind when you read that example.
 
 ### 2. Submitting an eight-node LoRA TrainJob via the Kubeflow Python SDK
 
-Data scientists submit their training function from Python. They use `TrainerClient` and `CustomTrainer`. The client serializes `my_custom_trainer` into the TrainJob resource and scales it across the requested nodes.
+Data scientists submit their training function from Python. They use `TrainerClient` and `CustomTrainer`. The client serializes `my_custom_trainer` into the TrainJob resource and scales it across the requested nodes. From the data scientist's point of view, the whole cluster is one function call away.
 
 ```python
 # submit_trainjob.py (GAK Example 6-6, untested on live cluster)
@@ -341,11 +337,11 @@ job_name = client.train(
 client.wait_for_job_status(name=job_name, status={"Running"})
 ```
 
-The `num_nodes` and `resources_per_node` arguments set the size. This example asks for eight nodes, each with four CPUs, 64Gi of memory and one GPU. The last line waits until the job reaches the Running status.
+The `num_nodes` and `resources_per_node` arguments set the size. This example asks for eight nodes, each with four CPUs, 64Gi of memory and one GPU. The `func_args` dictionary carries the hyperparameters into the function at runtime, so you can change them without touching the image. The last line waits until the job reaches the Running status, which is a useful check before you walk away.
 
 ### 3. Deploying MPIJob to run multi-node `all_reduce_perf`
 
-Before a multi-day training run starts, infrastructure engineers run an MPIJob with `all_reduce_perf`. The benchmark checks that inter-node collective bandwidth matches the hardware specifications.
+Before a multi-day training run starts, infrastructure engineers run an MPIJob with `all_reduce_perf`. The benchmark checks that inter-node collective bandwidth matches the hardware specifications. It is a short test that answers a simple question: is the network as fast as the spec sheet claims? If the answer is no, the team fixes the network before it burns days of GPU time.
 
 ```yaml
 # mpijob-nccl-allreduce.yaml (volume-06 Part 2.4, untested here)
@@ -388,11 +384,11 @@ spec:
                   nvidia.com/gpu: 8
 ```
 
-As you read the manifest, only the Worker spec asks for GPUs. The Launcher spec runs on CPU alone.
+As you read the manifest, only the Worker spec asks for GPUs. The Launcher spec runs on CPU alone. The `command` list is the exact `mpirun` line the Launcher will run, split into one item per argument. The `-b`, `-e` and `-f` flags set the smallest message size, the largest message size and the step factor for the sweep.
 
 ### 4. Deploying LeaderWorkerSet for sharded multi-node LLM inference
 
-This manifest deploys two replica groups of a four-node sharded vLLM server. Each Pod gets eight GPUs, and a Pod failure restarts its whole group.
+This manifest deploys two replica groups of a four-node sharded vLLM server. Each Pod gets eight GPUs, and a Pod failure restarts its whole group. Read it as two halves. The top part sets the group shape and the restart rule, and the bottom part describes the leader and worker containers.
 
 ```yaml
 # lws-multinode-vllm.yaml (untested here)
@@ -426,13 +422,13 @@ spec:
                 nvidia.com/gpu: "8"
 ```
 
-The `restartPolicy` line sets `RecreateGroupOnPodRestart`, so a failure restarts the whole group rather than one Pod.
+The `restartPolicy` line sets `RecreateGroupOnPodRestart`, so a failure restarts the whole group rather than one Pod. The `size` line sets how many Pods make up one group, and the `replicas` line sets how many groups run side by side. Both leader and worker ask for eight GPUs, because each Pod in the group holds part of the model.
 
-Apply the Trainer runtime before you ask data scientists to submit jobs, because their jobs depend on it.
+Apply the Trainer runtime before you ask data scientists to submit jobs, because their jobs depend on it. A TrainJob that names a missing runtime will fail to start, and the error can look like a problem with the job rather than the platform. Make the runtime the first thing you publish.
 
 ## How it fails
 
-Picture an on-call page at night, when you are the one who gets paged. The workers of a PyTorchJob show `Running`, then crash after logging a timeout. A misconfigured multi-node controller can fail in three visible ways: jobs hang at startup barriers, crash during Python function deserialization, or waste idle GPU nodes. The table maps each symptom to its root cause boundary and fix.
+Picture an on-call page at night, when you are the one who gets paged. The workers of a PyTorchJob show `Running`, then crash after logging a timeout. A misconfigured multi-node controller can fail in three visible ways: jobs hang at startup barriers, crash during Python function deserialization, or waste idle GPU nodes. The table maps each symptom to its root cause boundary and fix. Read each symptom as a question you can ask the cluster, and let the row tell you which layer to check next.
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -442,24 +438,26 @@ Picture an on-call page at night, when you are the one who gets paged. The worke
 | 4. Requesting `nvidia.com/gpu: 8` on the MPIJob Launcher Pod wastes an entire `8`-GPU node | A `2`-worker (`16`-GPU) MPIJob stays `Pending` on a `2`-node (`16`-GPU) cluster with `Insufficient nvidia.com/gpu`, or consumes `24` GPUs across `3` nodes with `8` GPUs at `0%` utilization | Launcher vs Worker resource spec mistake: the engineer copied `nvidia.com/gpu: 8` into `mpiReplicaSpecs.Launcher` even though the Launcher only runs `mpirun` over SSH and uses `0` GPUs | Request `nvidia.com/gpu: 8` only under `mpiReplicaSpecs.Worker` and give the Launcher only CPU and memory requests (`cpu: "2"`, `memory: "4Gi"`) |
 | 5. Multi-node sharded LLM inference deployed as a plain Deployment or StatefulSet serves broken requests when `1` node reboots | A `4`-node sharded vLLM deployment loses `1` worker Pod during a node drain; the other `3` Pods stay `Running` with broken Ray/NCCL shards while the Service keeps routing traffic to them | Missing group-atomic lifecycle boundary: standard Deployment and StatefulSet controllers do not know that `4` Pods form `1` indivisible model shard group | Migrate multi-node sharded inference to LeaderWorkerSet with `restartPolicy: RecreateGroupOnPodRestart` so losing `1` Pod restarts all `4` Pods in that group atomically |
 
-As you scan the rows, each one pairs a symptom with the boundary that owns it. Find that boundary first, because the remediation only makes sense once you know which layer failed.
+As you scan the rows, each one pairs a symptom with the boundary that owns it. Find that boundary first, because the remediation only makes sense once you know which layer failed. The DNS row and the SSH row look alike, since both show a connection failure, but one lives in name resolution and the other in the Worker's SSH server.
 
-If you read the fourth row, you see a cost problem, not a crash. The Launcher only sends work over SSH, so a GPU request there leaves a whole node idle.
+If you read the fourth row, you see a cost problem, not a crash. The Launcher only sends work over SSH, so a GPU request there leaves a whole node idle. That row is easy to miss because the job still runs, and the bill quietly grows.
+
+Work the rows from the top down when a job is failing for an unknown reason. The first two rows are about getting the job started, and the last three are about keeping it correct once it runs. A job that never starts rarely needs a change to its training code.
 
 ## Hands-on lab
 
 ### Venue and scope
-You run this lab locally with only the Python 3 standard library. The scripts are `code/part11/jobset_lws_pytorch_mpi.py` and `code/part11/jobset_lws_pytorch_mpi_lab.py`. They simulate PyTorchJob headless DNS and environment variable injection, Kubeflow Trainer v2 compilation into a JobSet, Full Fine-Tuning versus LoRA memory math, LeaderWorkerSet group sizing and atomic group restarts, and MPIJob hostfile synthesis. Cluster commands from earlier in the chapter are marked untested here.
+You run this lab locally with only the Python 3 standard library, so no cluster or cloud account is needed. The scripts are `code/part11/jobset_lws_pytorch_mpi.py` and `code/part11/jobset_lws_pytorch_mpi_lab.py`. They simulate PyTorchJob headless DNS and environment variable injection, Kubeflow Trainer v2 compilation into a JobSet, Full Fine-Tuning versus LoRA memory math, LeaderWorkerSet group sizing and atomic group restarts, and MPIJob hostfile synthesis. The cluster commands in this chapter were not run on a live cluster. They are marked `untested here` in their comment lines, so read them as templates.
 
 ### Step 1: Run the self-checking workload operators lab (tested here)
 
-Run the lab script from the repository root. It checks twenty-five workload controller assertions.
+Run the lab script from the repository root. It checks twenty-five workload controller assertions. Each assertion covers one behavior from the sections above, so a failure points you to the concept it belongs to.
 
 ```bash
 python3 code/part11/jobset_lws_pytorch_mpi_lab.py
 ```
 
-The output below, which you can compare line by line, comes from this repository. Every line should read PASS, and the summary confirms the count.
+The output below, which you can compare line by line, comes from this repository. Every line should read PASS, and the summary confirms the count. If a line does not read PASS, compare the input values with the exercise inputs before you change any code.
 
 ```text
 === Chapter 11.9 Lab: JobSet, LeaderWorkerSet, PyTorchJob & MPI Operator ===
@@ -494,14 +492,16 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 ### Exercises
 
-1. Call `synthesize_pytorchjob_env` in `code/part11/jobset_lws_pytorch_mpi.py` for the job llm-training in namespace ml-team-a, with one Master, three Workers and port 23456. Write out the exact Pod name, rank, world size and master address for the Master Pod and for the third Worker Pod.
-2. Use `merge_trainjob_with_runtime` in `code/part11/jobset_lws_pytorch_mpi.py` to merge an eight-node TrainJob with my-torch-distributed-runtime. Work out the Kubernetes kind that results, the total GPUs and CPUs, and whether a code change forces a rebuild of the container image.
-3. Run `compare_full_finetuning_vs_lora` for an 8B base model, where LoRA tunes 0.8% of the weights and each adapter takes 5% of the base model size. Compute how many millions of parameters LoRA updates, and the serving memory savings ratio across ten deployed variants.
-4. Use `evaluate_leader_worker_set` for two replicas of size four, with eight GPUs per Pod, when a Pod in Group 0 fails. State the total Pods, the GPUs per replica group, the total GPUs, the restarted Pods and the groups still serving during recovery.
-5. Call `build_mpijob_spec` for mpi-nccl-test with two Workers and eight slots per Worker. State the exact lines of the generated hostfile, the process count passed to `mpirun`, and why the Launcher Pod must request zero GPUs.
+1. Call `synthesize_pytorchjob_env` in `code/part11/jobset_lws_pytorch_mpi.py` for the job llm-training in namespace ml-team-a. Use one Master, three Workers and port 23456. Write out the Pod name, rank, world size and master address for the Master Pod. Then write out the same four values for the third Worker Pod.
+2. Use `merge_trainjob_with_runtime` in `code/part11/jobset_lws_pytorch_mpi.py` to merge an eight-node TrainJob with my-torch-distributed-runtime. Work out the Kubernetes kind that results. Then work out the total GPUs and CPUs. Last, decide whether a code change forces a rebuild of the container image.
+3. Run `compare_full_finetuning_vs_lora` for an 8B base model, where LoRA tunes 0.8% of the weights. Each adapter takes 5% of the base model size. Compute how many millions of parameters LoRA updates. Then find the serving memory savings ratio across ten deployed variants.
+4. Use `evaluate_leader_worker_set` for two replicas of size four, with eight GPUs per Pod. A Pod in Group 0 fails. State the total Pods and the GPUs per replica group. Then state the total GPUs, the restarted Pods and the groups still serving during recovery.
+5. Call `build_mpijob_spec` for mpi-nccl-test with two Workers and eight slots per Worker. State the exact lines of the generated hostfile. Then state the process count passed to `mpirun`, and explain why the Launcher Pod must request zero GPUs.
 6. When you load an adapter checkpoint with `PeftModel.from_pretrained`, find the method that merges the low-rank matrices back into the base weights and unloads the wrapper. Then explain why production multi-adapter inference servers normally keep adapters unmerged.
 
 ## Checkpoint questions
+
+The questions below test whether the chapter's main ideas hold together. Each answer restates one point in shorter form, so try the question before you open the answer.
 
 <details>
 <summary>**1. What four automated actions does the Kubeflow PyTorchJob controller perform when a user submits a PyTorchJob custom resource?**</summary>

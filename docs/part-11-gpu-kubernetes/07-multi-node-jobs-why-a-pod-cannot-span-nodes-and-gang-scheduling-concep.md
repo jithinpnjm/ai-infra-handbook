@@ -22,11 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a researcher who submits one Pod that asks for 64 GPUs on a cluster built from 8-GPU servers. The Pod stays Pending forever. Everything you learned about single-node Kubernetes hits a hard wall once a model or training run needs more capacity than one server can offer.
+Picture a researcher who submits one Pod that asks for 64 GPUs on a cluster built from 8-GPU servers. The Pod stays Pending forever, and the scheduler's event log says it cannot find enough GPUs. The total may look large enough on a dashboard, since the cluster holds many servers. What it lacks is one server with 64 GPUs inside it. Everything you learned about single-node Kubernetes hits a hard wall once a model or training run needs more capacity than one server can offer.
 
-A Kubernetes Pod cannot span multiple nodes. In the Kubernetes object model, a Pod is the smallest atomic unit of placement. Its `spec.nodeName` field holds one string that names one Node. Every container inside that Pod shares a single Linux network namespace, an IPC namespace and a local kubelet lifecycle. Physical GPU servers typically hold at most 8 or 16 GPUs per baseboard. That is why any large training job or sharded inference pipeline must be split into a group of coordinated Pods across multiple nodes.
+A Kubernetes Pod cannot span multiple nodes. A node is one machine in the cluster. A Pod is the smallest unit the scheduler places, and you can think of it as a sealed box that holds one or more containers. The box is never split across machines, so it lands on one node or it does not land at all. In the Kubernetes object model, a Pod is the smallest atomic unit of placement. Its `spec.nodeName` field holds one string that names one Node. Every container inside that Pod shares a single Linux network namespace, which is a private set of network interfaces and routes. The containers also share an IPC namespace, which holds the shared memory and message queues that processes use to talk on one machine. They share one local kubelet lifecycle too. The kubelet is the agent on each node that starts and watches the containers. Physical GPU servers typically hold at most 8 or 16 GPUs per baseboard, which is the main circuit board that carries the GPU sockets. That is why any large training job or sharded inference pipeline must be split into a group of coordinated Pods across multiple nodes.
 
-The block below lists the failure modes and the scales at which they appear, so you can match a symptom to its cause.
+The block below lists the failure modes and the scales at which they appear. Read each line as a symptom, the size of job that triggers it, and the cost it causes. That way you can match what you see on screen to its cause.
 
 ```text
 Multi-Node Scheduling Failure Modes and Scales:
@@ -38,42 +38,39 @@ Multi-Node Scheduling Failure Modes and Scales:
 - Thundering herd & impossible gang: 50,000 jobs in 2 seconds (25,000 jobs/s) or minAvailable: 1000 on a 500-node cluster OOM-kills etcd/kube-apiserver.
 ```
 
-Once one training run becomes several Pods, three failure modes appear. The first is partial-allocation rendezvous deadlock. Standard per-Pod scheduling can place only some of the Pods a job needs, and the job can then deadlock at its rendezvous. The second is head-of-line blocking, which strict all-or-nothing gang scheduling causes unless the queue supports wall-time backfill scheduling. The third is control-plane overload. Unthrottled bursts of job submissions and oversized gang requests can exhaust etcd memory and stall the cluster control plane.
+Once one training run becomes several Pods, three failure modes appear. The first is partial-allocation rendezvous deadlock. A rendezvous is the meeting point where every worker must check in before training starts. Standard per-Pod scheduling can place only some of the Pods a job needs, and the job can then deadlock at that meeting point. The second is head-of-line blocking. The head of a queue is the first job waiting in line. Strict all-or-nothing gang scheduling can let that head job block everything behind it, unless the queue supports wall-time backfill scheduling. Backfill, covered later in this chapter, lets short jobs run in the gap. The third is control-plane overload. Unthrottled bursts of job submissions and oversized gang requests can exhaust etcd memory and stall the cluster control plane. etcd is the database that stores the cluster state, and the control plane is the set of components that manage it.
 
-Here is the path through the rest of this chapter. You will see why a Pod is bounded to one node and how PyTorch rendezvous barriers tie multi-Pod jobs together. Then you will look at how gang scheduling, through PodGroup, Kueue, Volcano, NVIDIA KAI Scheduler and KEP-4671, removes partial-allocation deadlocks. Finally, the chapter covers bin packing, descheduling, backfill queues, Slurm integration, shared checkpoint storage and network policies.
+The rest of this chapter follows one thread. It starts with why a Pod is bounded to one node, and how PyTorch rendezvous barriers tie multi-Pod jobs together. Then it looks at how gang scheduling removes partial-allocation deadlocks, through PodGroup, Kueue, Volcano, NVIDIA KAI Scheduler and KEP-4671. KEP is a Kubernetes Enhancement Proposal, the formal design document for a change to Kubernetes. The chapter finishes with bin packing, descheduling, backfill queues, Slurm integration, shared checkpoint storage and network policies.
 
-If a job needs more GPUs than one server holds, plan it as a group of Pods from the start.
+If a job needs more GPUs than one server holds, plan it as a group of Pods from the start. Waiting until the scheduler rejects it only wastes the time you spent on the single-Pod version.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-You should have completed Chapters 11.1 through 11.6, especially the four placement questions of capacity, eligibility, locality and coordination. You should also be familiar with basic distributed training ideas, including worker ranks, world size, data parallelism and model parallelism.
+
+Start with Chapters 11.1 through 11.6, especially the four placement questions of capacity, eligibility, locality and coordination. Those questions decide where any Pod can go. This chapter adds a rule about how many Pods must go together. You should also know the basic vocabulary of distributed training. A worker is one process that trains on its own GPUs. Its rank is its integer index in the group, and the world size is the total number of workers. Data parallelism copies the whole model to every worker and splits the data among them. Model parallelism splits the model itself across workers.
 
 ### Outcomes
-When you finish this chapter, you should be able to do the following:
-- Explain why a Kubernetes Pod cannot span multiple Nodes, and split a multi-node GPU workload into coordinated worker Pods.
-- Trace the four steps of a PyTorch distributed rendezvous barrier, and measure the waste caused by partial placements and mutual deadlocks.
-- Compare the four Kubernetes gang-scheduling architectures alongside KEP-4671 Workload support, and protect running gangs with a PodDisruptionBudget.
-- Configure kube-scheduler bin packing with `MostAllocated` weights, and pair it safely with the Kubernetes Descheduler without creating eviction loops.
-- Solve queue head-of-line blocking with wall-time backfill scheduling, and stop thundering herds and oversized gangs from crashing the control plane.
-- Size shared ReadWriteMany checkpoint storage for fine-tuning runs, and enforce zero-trust NetworkPolicy isolation around PyTorch and Ray clusters.
 
-Each outcome maps to one of the concept sections that follow, so you can check your progress as you read.
+The chapter covers why a Pod cannot span nodes, how a PyTorch rendezvous barrier ties a group of Pods together, and how gang schedulers keep that group from starting in pieces. It then covers bin packing and descheduling, which keep the rest of the cluster busy. It continues with backfill queues, the control-plane limits a careless submission can hit, storage for checkpoints, and the network rules that protect a training cluster. Each part maps to one of the concept sections below, so you can follow along as you read.
+
+If the prerequisites feel unfamiliar, read those chapters before you move on to the intermediate material.
 
 ## Concepts: basics to intermediate to advanced
 
-Why can't one Pod simply hold the whole job? The answer shapes everything else in this chapter. So the sections below start there and work toward the harder failures.
+Why can't one Pod simply hold the whole job? That question shapes everything else in this chapter. A single Pod cannot cross the boundary of one machine, so the answer starts there. The sections below begin with that boundary and then work toward the harder failures that appear once a job becomes several Pods.
 
 ### 1. Basics: Why a Pod cannot span nodes and why microservices scheduling breaks batch AI
 
 #### Why a Kubernetes Pod is strictly bound to one Node
-If you are new to Kubernetes, you will likely ask why one Pod manifest cannot request 64 GPUs across an 8-node cluster. When a user tries it, the Pod stays permanently Pending and reports an insufficient GPU event. Kubernetes never splits a single Pod across machines, so the request cannot be satisfied.
 
-A Pod is a co-located execution sandbox, and a single kubelet on a single Node manages it. That has two consequences. First, when kube-scheduler binds a Pod, it writes one host string into `spec.nodeName`. Only the kubelet watching that specific node creates the Pod sandbox. Second, all containers inside a Pod share one Linux network namespace and one IPC namespace for `/dev/shm` shared memory. Sharing one kernel IPC or network namespace across separate physical servers is impossible without a distributed operating system hypervisor.
+Imagine a new engineer who writes a Pod manifest asking for 64 GPUs on a cluster of 8-GPU nodes. They apply the file, run `kubectl get pods`, and see the Pod stuck in Pending. The event log shows an insufficient GPU event. A manifest is the YAML file that describes the object you want, and an event is the message Kubernetes writes when something notable happens. Kubernetes never splits a single Pod across machines, so no amount of waiting will satisfy that request.
 
-The scheduler applies the same boundary when it picks a node. During the Filter phase, the NodeResourcesFit plugin asks whether one single node has enough allocatable GPUs for the Pod request. As shown in Chapter 11.6, even a request for two MIG slices needs one node that holds both free slices at the same time. Picture two nodes that each hold one free slice. A Pod requesting 2 slices stays Pending, because neither node holds both.
+A Pod is a co-located execution sandbox, which means its containers are placed together and run in one isolated environment. A single kubelet on a single Node manages that sandbox. That has two consequences. First, when kube-scheduler binds a Pod, it writes one host string into `spec.nodeName`. Only the kubelet watching that specific node creates the Pod sandbox. Second, all containers inside a Pod share one Linux network namespace and one IPC namespace for `/dev/shm` shared memory. Each physical server has its own kernel, with its own network stack and its own shared memory. Those cannot merge across machines. Sharing one kernel IPC or network namespace across separate physical servers is impossible without a distributed operating system hypervisor.
 
-The block below shows where you will hit the single-node boundary for three kinds of request.
+The scheduler applies the same boundary when it picks a node. During the Filter phase, the scheduler checks each candidate node and removes the ones that cannot run the Pod. The NodeResourcesFit plugin asks whether one single node has enough allocatable GPUs for the Pod request. Allocatable is the amount a node advertises as free for Pods, after the system keeps its own share. As shown in Chapter 11.6, even a request for two MIG slices needs one node that holds both free slices at the same time. MIG, or Multi-Instance GPU, is the NVIDIA feature that splits one physical GPU into isolated slices. Picture two nodes that each hold one free slice. A Pod requesting 2 slices stays Pending, because neither node holds both.
+
+The block below shows three requests that run into the single-node boundary, and what each one looks like from the scheduler's side.
 
 ```text
 Single-Node Pod Resource Boundary Examples:
@@ -82,12 +79,13 @@ Single-Node Pod Resource Boundary Examples:
 - Multi-node decomposition: 64-GPU training job or 175B-parameter inference server -> 8 coordinated Pods (1 Pod x 8 GPUs per node).
 ```
 
-The result is a simple rule you can apply to any job. Any workload that needs more GPUs than one physical server holds must run as multiple Pods across the network. Each worker Pod typically claims all 8 GPUs on its host node, and it coordinates with its peers over InfiniBand, RoCE or Ethernet.
+The result is a simple rule you can apply to any job. Any workload that needs more GPUs than one physical server holds must run as multiple Pods across the network. Before you write a manifest, ask two questions. How many GPUs does one server hold? How many does the job need? If the second number is larger, you have a multi-Pod job. Each worker Pod typically claims all 8 GPUs on its host node, and it coordinates with its peers over InfiniBand, RoCE or Ethernet. InfiniBand is a high-speed network fabric common in GPU clusters. RoCE, RDMA over Converged Ethernet, carries the same kind of direct memory transfers over standard Ethernet hardware. RDMA, or Remote Direct Memory Access, lets one machine read or write another machine's memory without going through the operating system on either side.
 
 #### The paradigm shift: Microservices vs Distributed AI Batch Jobs
-When platform teams run multi-Pod training jobs on a default Kubernetes cluster, operational friction shows up quickly. Kubernetes was originally engineered for stateless web microservices, where replicas are independent and interchangeable. Distributed AI training behaves more like a tightly coupled supercomputer job. Every replica must run at the same time, or the entire job stalls.
 
-The table compares the two workload styles one dimension at a time, so you can see where default Kubernetes assumptions stop fitting. The Pod Coupling and Scheduling row is the one this chapter spends the most time on.
+When platform teams run multi-Pod training jobs on a default Kubernetes cluster, operational friction shows up quickly. The nodes look healthy, and the jobs still do not run. The cause is a mismatch between what Kubernetes was built for and what an AI job needs. Kubernetes was originally engineered for stateless web microservices, where replicas are independent and interchangeable. A stateless service keeps no memory of past requests, so losing one replica costs only that replica's traffic. Distributed AI training behaves more like a tightly coupled supercomputer job. Every replica must run at the same time, or the entire job stalls.
+
+The table compares the two workload styles one dimension at a time, so you can see where default Kubernetes assumptions stop fitting. Read it row by row. The Pod Coupling and Scheduling row carries most of the weight in this chapter.
 
 | Architectural Dimension | Traditional Microservices (Default Kubernetes) | Distributed AI Training & Multi-Node Inference |
 |---|---|---|
@@ -98,13 +96,14 @@ The table compares the two workload styles one dimension at a time, so you can s
 | **Network Traffic Pattern** | Primarily **North-South** client-to-API ingress and light East-West RPCs over TCP/IP CNI overlays | Massive synchronous **East-West** collective bursts (`AllReduce`, `AllGather`, `ReduceScatter`) requiring `200–400 Gbps` InfiniBand / RoCE with GPUDirect RDMA (`40%–60%` latency reduction) |
 
 #### PyTorch Rendezvous and the 7-of-8 Partial-Allocation Deadlock
-Why can't 7 out of 8 training Pods make partial progress while the 8th waits to schedule? They cannot train without the eighth. Suppose 7 Pods start on 7 nodes while the 8th Pod waits in Pending. Each node costs $20 per hour, so 7 nodes cost $140 per hour. All 56 allocated GPUs sit at 0% compute utilization and burn that $140 per hour for zero training steps.
 
-Distributed training frameworks such as PyTorch DDP, FSDP, DeepSpeed and Megatron-LM run a synchronous rendezvous and collective communication loop. The rendezvous comes first, at startup. Every worker connects to a shared rendezvous endpoint on `MASTER_ADDR` and `MASTER_PORT`, using a c10d TCP store or etcd. The rendezvous store then waits until every expected participant, from rank 0 through `world_size - 1`, has registered. Finally, an atomic barrier blocks each worker inside `torch.distributed.init_process_group()` until all `world_size` workers arrive.
+Imagine the scheduler places seven of the eight Pods in a training job. Each running Pod shows Running in the dashboard, and the GPU graphs read zero. The eighth Pod waits in Pending for a node that is still busy. Nothing crashes, and nothing trains. Why can't 7 out of 8 training Pods make partial progress while the 8th waits to schedule? They cannot train without the eighth. Suppose 7 Pods start on 7 nodes while the 8th Pod waits in Pending. Each node costs $20 per hour, so 7 nodes cost $140 per hour. All 56 allocated GPUs sit at 0% compute utilization and burn that $140 per hour for zero training steps.
 
-The loop does not end at startup. Even after initialization completes, every training step runs synchronous collective operations across the whole gang. Data parallelism runs AllReduce to average tens of gigabytes of gradients. Tensor parallelism and FSDP run per-layer AllGather and ReduceScatter collectives instead. If one worker is missing or stalled, every other worker blocks at the collective barrier.
+Distributed training frameworks such as PyTorch DDP, FSDP, DeepSpeed and Megatron-LM run a synchronous rendezvous and collective communication loop. DDP is PyTorch's DistributedDataParallel, FSDP is Fully Sharded Data Parallel, and DeepSpeed and Megatron-LM are two large-model training libraries. The rendezvous comes first, at startup. Think of it as a roll call before a field trip, where the bus does not leave until every student answers. Every worker connects to a shared rendezvous endpoint on `MASTER_ADDR` and `MASTER_PORT`, using a c10d TCP store or etcd. c10d is PyTorch's distributed communication layer, and a TCP store is a small key-value server that the workers use to find each other. The rendezvous store then waits until every expected participant, from rank 0 through `world_size - 1`, has registered. Finally, an atomic barrier blocks each worker inside `torch.distributed.init_process_group()` until all `world_size` workers arrive. An atomic barrier releases everyone together, once the last worker arrives, and never releases a partial group.
 
-The flowchart below shows the two paths side by side, so you can see where the gang rule changes the outcome.
+The loop does not end at startup. Even after initialization completes, every training step runs synchronous collective operations across the whole gang. A collective operation is one step in which every worker exchanges data with the others. Data parallelism runs AllReduce to average tens of gigabytes of gradients. Gradients are the numbers that tell the model how to change after each batch. Tensor parallelism and FSDP run per-layer AllGather and ReduceScatter collectives instead. If one worker is missing or stalled, every other worker blocks at the collective barrier and waits for it.
+
+The flowchart below shows the two paths side by side, so you can see where the gang rule changes the outcome. Read the top path first, the one without gang scheduling. Then read the bottom path, which holds all eight Pods until the whole set fits.
 
 ```mermaid
 flowchart TD
@@ -121,18 +120,19 @@ flowchart TD
     end
 ```
 
-The problem gets worse on a shared cluster, and you can see it in the numbers. Suppose a cluster has 12 nodes with 96 GPUs free, and two researchers each submit an 8-node training job that requests 64 GPUs. Under default per-Pod scheduling, Job A claims 6 nodes and waits for 2 more. Job B then claims the other 6 nodes and also waits for 2 more. Six plus six uses all 12 nodes, so neither job can reach 8 nodes. All 96 GPUs stay deadlocked forever until an operator deletes one job.
+The problem gets worse on a shared cluster, and you can see it in the numbers. Suppose a cluster has 12 nodes with 96 GPUs free, and two researchers each submit an 8-node training job that requests 64 GPUs. Under default per-Pod scheduling, Job A claims 6 nodes and waits for 2 more. Job B then claims the other 6 nodes and also waits for 2 more. Six plus six uses all 12 nodes, so neither job can reach 8 nodes. All 96 GPUs stay deadlocked forever until an operator deletes one job. No single job did anything wrong. Each scheduling decision looked reasonable on its own, and the two together locked the cluster.
 
 ---
 
 ### 2. Intermediate: Gang scheduling architectures, bin packing, and the Descheduler
 
 #### Gang scheduling and the PodGroup contract
-Partial placement is expensive. Without group awareness, a job that lands only partly strands costly GPUs, and other tenants cannot run their smaller workloads. The cluster scheduler therefore has to stop treating multi-node training Pods as independent microservices. Gang scheduling is the mechanism that does this.
 
-Gang scheduling, also called coscheduling, enforces an all-or-nothing placement contract across a group of Pods. The scheduler holds every Pod in the group as pending or reserved. It binds them to nodes only when the entire minimum group can be placed at the same time, within a configured timeout. Four main gang-scheduling solutions are in production use for Kubernetes today. The upstream KEP-4671 proposal, which covers a native Workload API, sits alongside them.
+Picture a job that lands on only some of its nodes. Those GPUs are paid for, but they sit idle and cannot run the job. Other teams cannot use them either, because the held nodes look busy to the scheduler. Partial placement is expensive for exactly this reason. Without group awareness, a job that lands only partly strands costly GPUs, and other tenants cannot run their smaller workloads. A tenant is a team or customer that shares the cluster. The cluster scheduler therefore has to stop treating multi-node training Pods as independent microservices. Gang scheduling is the mechanism that does this.
 
-The table compares the four options by architectural layer, gang mechanism and best fit.
+Gang scheduling, also called coscheduling, enforces an all-or-nothing placement contract across a group of Pods. You can think of a gang as a team that either boards the bus together or waits at the stop. The scheduler holds every Pod in the group as pending or reserved. It binds them to nodes only when the entire minimum group can be placed at the same time, within a configured timeout. Four main gang-scheduling solutions are in production use for Kubernetes today. The upstream KEP-4671 proposal, which covers a native Workload API, sits alongside them. An API here means the set of object types and fields that a program uses to talk to the cluster.
+
+The table compares the four options by architectural layer, gang mechanism and best fit. Read the layer column first, because it tells you whether a solution replaces the scheduler or works beside it.
 
 | Solution | Architectural Layer | Gang & Topology Mechanism | Best Production Fit |
 |---|---|---|---|
@@ -141,12 +141,13 @@ The table compares the four options by architectural layer, gang mechanism and b
 | **3. NVIDIA KAI Scheduler (`kai.run.ai/v1`)** | Full alternative GPU scheduler open-sourced from Run:ai by NVIDIA | Native gang scheduling (`schedulerName: kai-scheduler`) + `Project` quotas (`gpuQuota: 8`) + fractional/time-sliced GPUs + deep NVLink/NVSwitch/InfiniBand topology placement. | Large-scale NVIDIA GPU clusters (`100s–1,000s` of GPUs) requiring unified gang scheduling, fractional sharing, and hardware topology optimization. |
 | **4. Volcano (`batch.volcano.sh/v1alpha1`)** | Monolithic batch scheduler (`schedulerName: volcano`) | Replaces or complements `kube-scheduler` with `Job`, `PodGroup` (`minAvailable: 8`), `Queue`, `RestartJob` policies on `PodEvicted`, backfill, and topology plugins. | HPC-style Kubernetes clusters running mixed PyTorch, MPI, Ray, and Apache Spark batch workloads. |
 
-Teams in enterprise production often layer Kueue on top of a gang-aware scheduler or a workload operator. Common workload operators include Kubeflow PyTorchJob, TrainJob and LeaderWorkerSet for multi-node sharded LLM inference. The division of labor is simple. Kueue decides which job is admitted and which hardware tier it may consume. Once Kueue unsuspends the job, the underlying scheduler handles atomic gang binding and intra-rack placement.
+In a real enterprise cluster, these solutions are often stacked rather than chosen one at a time. A team might run Kueue as the admission layer, and then let a gang-aware scheduler or a workload operator handle placement. An operator is a controller that knows how one kind of job should run. Common workload operators include Kubeflow PyTorchJob, TrainJob and LeaderWorkerSet for multi-node sharded LLM inference. The division of labor is simple. Kueue decides which job is admitted and which hardware tier it may consume. Once Kueue unsuspends the job, the underlying scheduler handles atomic gang binding and intra-rack placement. Unsuspending means clearing the flag that tells the job's controller to hold off on creating Pods. Intra-rack placement keeps the Pods of one job on machines in the same rack, so they stay close on the network.
 
 #### Resource Bin Packing vs Default Spreading
-Gang scheduling alone does not stop waste, because default node scoring can still fragment GPU capacity across the cluster. By default, the `NodeResourcesFit` plugin in kube-scheduler uses the `LeastAllocated` strategy. That strategy spreads Pods across as many nodes as possible, so a hardware failure touches fewer replicas.
 
-Spreading is costly when each node costs $10 to $30 per hour. Imagine 1-GPU or 2-GPU jobs spread across 8-GPU servers. Every node stays partly occupied. Fragmentation then blocks 4-GPU or 8-GPU jobs from finding contiguous free nodes, and the Cluster Autoscaler cannot terminate empty machines. The fix is a `binpack-scheduler` profile. It uses `MostAllocated`, with a weight of 5 on `nvidia.com/gpu` and a weight of 1 on CPU and memory, to pack GPU Pods onto fuller nodes.
+Imagine a cluster where many small jobs each take one GPU. If the scheduler gives each job its own server, the cluster looks full while most of its GPUs sit idle. Gang scheduling alone does not stop this kind of waste, because default node scoring can still fragment GPU capacity across the cluster. Scoring is how the scheduler ranks the nodes that can run a Pod. Fragmentation means the free GPUs are scattered in small pieces that large jobs cannot use. By default, the `NodeResourcesFit` plugin in kube-scheduler uses the `LeastAllocated` strategy. That strategy spreads Pods across as many nodes as possible, so a hardware failure touches fewer replicas.
+
+Spreading is costly when each node costs $10 to $30 per hour. Imagine 1-GPU or 2-GPU jobs spread across 8-GPU servers. Every node stays partly occupied. Fragmentation then blocks 4-GPU or 8-GPU jobs from finding contiguous free nodes. The Cluster Autoscaler, which adds and removes cloud machines, cannot terminate empty machines, because none of them are empty. The fix is a `binpack-scheduler` profile. A profile is a named scheduler setup, so a Pod that asks for this scheduler name gets this scoring. The profile uses `MostAllocated`, with a weight of 5 on `nvidia.com/gpu` and a weight of 1 on CPU and memory, to pack GPU Pods onto fuller nodes.
 
 ```text
 MostAllocated Bin-Packing Node Score Formula (Weights: GPU = 5, CPU = 1, Memory = 1):
@@ -154,18 +155,19 @@ MostAllocated Bin-Packing Node Score Formula (Weights: GPU = 5, CPU = 1, Memory 
 - Node 2 (2/8 GPUs = 25%, 48/64 CPUs = 75%, 384/512 GiB = 75%): (25*5 + 75*1 + 75*1) / 7 = 39.29
 ```
 
-The scores above show how the scheduler chooses between two candidate nodes. Node 1 wins at 67.86, and Node 2 scores 39.29. The GPU term carries a weight of 5, so Node 1's 75% GPU share counts for more than Node 2's higher CPU and memory shares.
+The scores above show how the scheduler chooses between two candidate nodes. Each term is a utilization percentage multiplied by its weight, and the sum is divided by the total weight, which is 7. Node 1 wins at 67.86, and Node 2 scores 39.29. Node 2 has higher CPU and memory shares, but the GPU term carries a weight of 5, so Node 1's 75% GPU share counts for more than Node 2's higher CPU and memory shares. The packing preference follows from the weights you choose.
 
 #### Dynamic re-optimization with the Kubernetes Descheduler
-Bin packing does not stay perfect. Short jobs finish at different rates and leave fragmented "Swiss cheese" nodes across the cluster. When nodes become fragmented, multi-GPU training jobs sit in the queue, even though total free GPUs across the cluster exceed the job request.
 
-The Kubernetes Descheduler runs periodically, as a CronJob or a Deployment. It evicts sub-optimally placed Pods so kube-scheduler can pack them cleanly. Without strict guardrails, though, the Descheduler on a GPU cluster can tear down active training gangs or trigger infinite eviction loops. Whenever it is active on GPU nodes, you must enforce two rules.
+Picture a cluster on a Friday afternoon. Some jobs finished early, and others are still running. The placement was tidy when the jobs first landed, but the gaps they left are scattered. Bin packing does not stay perfect. Short jobs finish at different rates and leave fragmented "Swiss cheese" nodes across the cluster. When nodes become fragmented, multi-GPU training jobs sit in the queue, even though total free GPUs across the cluster exceed the job request. The cluster has plenty of free GPUs in total, but the holes are in the wrong places.
 
-The first rule is to protect every running gang job with a PodDisruptionBudget. Evicting one worker Pod from a running 4-node LLM training job breaks the rendezvous group. It also forces an expensive checkpoint-and-resume cycle. A PodDisruptionBudget with `minAvailable: 4`, matching `scheduling.x-k8s.io/pod-group: llm-training-group`, stops the Descheduler from evicting any active gang worker.
+The Kubernetes Descheduler runs periodically, as a CronJob or a Deployment. A CronJob runs on a schedule, and a Deployment keeps a process running. The Descheduler evicts sub-optimally placed Pods so kube-scheduler can pack them cleanly. Eviction deletes the Pod, and its controller creates a replacement that the scheduler places again. Without strict guardrails, though, the Descheduler on a GPU cluster can tear down active training gangs or trigger infinite eviction loops. Whenever it is active on GPU nodes, you must enforce two rules.
 
-The second rule is to match the Descheduler plugin to the scheduler's scoring strategy. The `HighNodeUtilization` plugin evicts Pods from underutilized nodes, so a `MostAllocated` bin-packing scheduler can pack them onto fuller nodes. Pair `HighNodeUtilization` with the default `LeastAllocated` scheduler, though, and you get an infinite eviction loop. `LeastAllocated` schedules the evicted Pods right back onto lightly loaded nodes.
+The first rule is to protect every running gang job with a PodDisruptionBudget. A PodDisruptionBudget, or PDB, is a Kubernetes object that tells the cluster how many Pods of a set must stay running during voluntary evictions. Evicting one worker Pod from a running 4-node LLM training job breaks the rendezvous group. It also forces an expensive checkpoint-and-resume cycle. A checkpoint is a saved snapshot of the model and optimizer state, and resume means restarting training from that snapshot. A PodDisruptionBudget with `minAvailable: 4`, matching `scheduling.x-k8s.io/pod-group: llm-training-group`, stops the Descheduler from evicting any active gang worker.
 
-Each plugin has one matching strategy, and enabling both plugins at once is invalid in every case. The table lays out those pairings.
+The second rule is to match the Descheduler plugin to the scheduler's scoring strategy. The `HighNodeUtilization` plugin evicts Pods from underutilized nodes, so a `MostAllocated` bin-packing scheduler can pack them onto fuller nodes. Pair `HighNodeUtilization` with the default `LeastAllocated` scheduler, though, and you get an infinite eviction loop. `LeastAllocated` schedules the evicted Pods right back onto lightly loaded nodes. The two tools undo each other, so the loop never settles. It is like one person emptying a room of chairs while another puts them back in the same spots.
+
+Each plugin has one matching strategy, and enabling both plugins at once is invalid in every case. The table lays out those pairings. Read each row as a pair. The plugin on the left needs the strategy in the middle, and the right column says what happens when they disagree.
 
 | Descheduler Plugin | Required `kube-scheduler` Strategy | Behavior When Misaligned |
 |---|---|---|
@@ -178,11 +180,12 @@ Each plugin has one matching strategy, and enabling both plugins at once is inva
 ### 3. Advanced: Head-of-line blocking, backfill, thundering herds, Slurm/Slinky, storage, and security
 
 #### 1. Head-of-Line Blocking and Backfill Scheduling
-Strict gang scheduling creates a traffic jam. A naive First-In-First-Out queue lets one massive job block everything behind it. Suppose a 1,024-GPU job reaches the head of the queue while 1,000 GPUs are free. The missing 24 GPUs will finish in 45 minutes. Strict FIFO then holds those 1,000 GPUs idle for 45 minutes. That is 750 GPU-hours of waste, while short 8-GPU and 16-GPU jobs wait behind the head job.
 
-Backfill scheduling fixes this without delaying the head job. Slurm (`SchedulerType=sched/backfill`), Volcano and KAI all use it. The scheduler works out the shadow start time of the 1,024-GPU head job, which is `T + 45` minutes. It then scans the queue behind the head job. A smaller job may run immediately if its declared `TimeLimit` finishes within 45 minutes.
+Picture the front of a queue on a busy cluster. A 1,024-GPU job is first in line, and the cluster has 1,000 free GPUs. The job is 24 GPUs short, and running jobs will release those 24 in 45 minutes. A naive First-In-First-Out queue serves jobs strictly in arrival order, so it holds every job behind the head job until the head job starts. Strict gang scheduling creates that traffic jam. The 1,000 free GPUs sit idle for 45 minutes, which is 750 GPU-hours of waste, while short 8-GPU and 16-GPU jobs wait behind the head job. A GPU-hour is one GPU running for one hour.
 
-As you read the scenario below, check which candidates pass that test.
+Backfill scheduling fixes this without delaying the head job. Backfill means letting smaller jobs slip into a gap, as long as they finish before the gap closes. Slurm (`SchedulerType=sched/backfill`), Volcano and KAI all use it. The scheduler works out the shadow start time of the 1,024-GPU head job, which is `T + 45` minutes. The shadow start time is the moment the head job could start if nothing else changed, and `T` is the current time. The scheduler then scans the queue behind the head job. A smaller job may run immediately if its declared `TimeLimit` finishes within 45 minutes. Declared means the user states the maximum runtime when submitting the job.
+
+As you read the scenario below, ask one question for each candidate. Will it finish before the shadow start time? The scenario lists four candidates with different time limits.
 
 ```text
 Backfill Scheduling Scenario (Head Job: 1,024 GPUs; Free: 1,000 GPUs; Missing 24 GPUs free in 45 min):
@@ -192,23 +195,25 @@ Backfill Scheduling Scenario (Head Job: 1,024 GPUs; Free: 1,000 GPUs; Missing 24
 - Candidate no-timelimit-c (8 GPUs, TimeLimit = None / NO_VAL): BLOCKED (cannot prove completion before T + 45 min).
 ```
 
-Two candidates are admitted and two are blocked. The 30-minute and 45-minute jobs finish inside the window. The 90-minute job and the job with no time limit do not.
+Two candidates are admitted and two are blocked. The reasoning is simple once you apply it to each candidate. A job that ends before the head job can start leaves the head job's GPUs alone. A job that runs past that moment would hold GPUs the head job needs. The 30-minute and 45-minute jobs finish inside the window, so they pass. The 90-minute job runs past it, so it fails.
 
-Backfill math does not work when users leave out job runtimes. If a job has no maximum wall time, meaning `time_limit == NO_VAL`, the scheduler cannot prove it will finish before the head job starts. For that reason, production AI factories enforce mandatory wall-clock time limits. They do this with Kubernetes admission webhooks, or with Slurm `job_submit` plugins that return `ESLURM_INVALID_TIME_LIMIT`.
+Backfill math does not work when users leave out job runtimes. If a job has no maximum wall time, meaning `time_limit == NO_VAL`, the scheduler cannot prove it will finish before the head job starts. Wall time is the elapsed clock time a job takes, as opposed to the CPU or GPU time it uses. For that reason, production AI factories enforce mandatory wall-clock time limits. They do this with Kubernetes admission webhooks, or with Slurm `job_submit` plugins that return `ESLURM_INVALID_TIME_LIMIT`. Making the limit mandatory at submission time is what gives the scheduler the proof it needs.
 
 #### 2. Control-Plane Thundering Herds and Impossible Gangs
-At AI factory scale, a careless submission script can take down a cluster control plane. There are two failure patterns. The first starts with a user loop that submits 50,000 individual hyperparameter sweep jobs in 2 seconds. In Kubernetes, creating 50,000 Pod objects overwhelms etcd Raft consensus and kube-apiserver memory. In Slurm, 50,000 `sbatch` RPCs saturate `slurmctld` state locks on one CPU core. That causes `slurmd` pings to time out and flips healthy nodes to `UNKNOWN`.
 
-Platform teams guard against thundering-herd lockups on each platform. In Kubernetes, they enforce API Priority and Fairness alongside JobSet or Indexed Job completions. In Slurm, administrators require Job Arrays, such as `sbatch --array=1-50000`. They also raise `MaxArraySize` above its default of 1001 in `slurm.conf`, alongside `MaxJobCount=500000` and `MinJobAge=300`. A `job_submit.lua` or C `job_submit` plugin rejects rapid single-job loops automatically.
+Imagine a researcher who writes a loop to submit hyperparameter sweeps, and the loop runs without a pause. A hyperparameter sweep tries many settings for the same model, and each setting becomes its own job. At AI factory scale, a careless submission script like this can take down a cluster control plane. An AI factory here means a large GPU cluster run as a production service. There are two failure patterns. The first starts with a user loop that submits 50,000 individual hyperparameter sweep jobs in 2 seconds. In Kubernetes, creating 50,000 Pod objects overwhelms etcd Raft consensus and kube-apiserver memory. Raft is the agreement protocol that etcd uses to keep its copies of the data in step. kube-apiserver is the front door of the Kubernetes control plane. In Slurm, 50,000 `sbatch` RPCs saturate `slurmctld` state locks on one CPU core. Slurm is the workload manager used on many supercomputers. `sbatch` is its job submission command, and an RPC is one request sent to the controller. The flood causes `slurmd` pings to time out and flips healthy nodes to `UNKNOWN`. The slurmd daemon runs on each compute node and sends regular pings, so the controller knows the node is alive.
 
-The second pattern is an impossible gang. Suppose a user submits a Volcano Job with `minAvailable: 1000` to a cluster that has only 500 physical nodes. If all 1,000 Pods are created directly in kube-apiserver, the gang condition can never be met. The 1,000 Pending Pods then churn through scheduler retry loops and event emission, until etcd and kube-apiserver crash with `MemoryPressure` OOM.
+Platform teams guard against thundering-herd lockups on each platform. A thundering herd is a sudden burst of requests that arrives all at once. In Kubernetes, they enforce API Priority and Fairness alongside JobSet or Indexed Job completions. API Priority and Fairness sorts incoming API requests into queues by priority, so one noisy client cannot starve the rest. In Slurm, administrators require Job Arrays, such as `sbatch --array=1-50000`. A job array submits many similar tasks under one submission, which is far cheaper for the controller than 50,000 separate jobs. They also raise `MaxArraySize` above its default of 1001 in `slurm.conf`, alongside `MaxJobCount=500000` and `MinJobAge=300`. `slurm.conf` is the main Slurm configuration file. A `job_submit.lua` or C `job_submit` plugin rejects rapid single-job loops automatically. A plugin here is a small hook that runs on each submission and can refuse it.
 
-The fix is to keep impossible gangs out of etcd in the first place. Gate all batch job creation with Kueue, via `kueue.x-k8s.io/queue-name`. Kueue keeps the job suspended as a single, lightweight Workload object, marked `reason: InsufficientQuota`. No Pod is created in etcd until quota is available. Admission webhooks can also reject any job whose `minAvailable` or `min_nodes > 16` request exceeds the target partition or cluster capacity.
+The second pattern is an impossible gang. Suppose a user submits a Volcano Job with `minAvailable: 1000` to a cluster that has only 500 physical nodes. A gang that needs more nodes than exist can never start. If all 1,000 Pods are created directly in kube-apiserver, the gang condition can never be met. The 1,000 Pending Pods then churn through scheduler retry loops and event emission, until etcd and kube-apiserver crash with `MemoryPressure` OOM. OOM means out of memory, and MemoryPressure is the node condition that reports low memory. Each retry and each event adds more objects for etcd to hold and watch, which is how the damage builds up.
+
+The fix is to keep impossible gangs out of etcd in the first place. Gate all batch job creation with Kueue, via `kueue.x-k8s.io/queue-name`. Think of Kueue as a waiting room in front of the cluster. The job waits there as one lightweight object, and nothing reaches the scheduler until a place is free. Kueue keeps the job suspended as a single, lightweight Workload object, marked `reason: InsufficientQuota`. No Pod is created in etcd until quota is available. Admission webhooks can also reject any job whose `minAvailable` or `min_nodes > 16` request exceeds the target partition or cluster capacity. An admission webhook is a check that runs before an object is saved, and it can refuse the object. A partition is a named group of nodes in Slurm.
 
 #### 3. Slurm vs Kubernetes and Hybrid Orchestration
-Many supercomputing centers run Slurm alongside Kubernetes, or inside it, to orchestrate large training runs. Slurm uses four lightweight components: the `slurmctld` central controller, the `slurmd` compute node daemon, the `slurmdbd` accounting daemon and the `MUNGE` authentication service. Separating `slurmdbd` from `slurmctld` means MariaDB or MySQL database latency never blocks the main scheduling loop.
 
-The block below is a reference configuration for a 128-node DGX H100 cluster, so you can see how the node, scheduler and launch settings fit together.
+Imagine a supercomputing center that has run Slurm for years and now wants its AI teams on Kubernetes too. Many centers face this choice, and the answer is often to run both. They run Slurm alongside Kubernetes, or inside it, to orchestrate large training runs. Slurm uses four lightweight components. The `slurmctld` central controller decides which job runs where. The `slurmd` compute node daemon starts the work on each machine. The `slurmdbd` accounting daemon keeps the usage records, and the `MUNGE` authentication service proves who sent each request. Separating `slurmdbd` from `slurmctld` means MariaDB or MySQL database latency never blocks the main scheduling loop. MariaDB and MySQL are database engines. Slow database writes stay in their own process, so the scheduler keeps moving.
+
+The block below is a reference configuration for a 128-node DGX H100 cluster, so you can see how the node, scheduler and launch settings fit together. DGX H100 is NVIDIA's eight-GPU server built on H100 GPUs. Read the block in three parts. The node line describes the hardware, the scheduler line describes how Slurm places and tracks work, and the launch line describes how a job starts.
 
 ```text
 Reference 128-Node DGX H100 Slurm & MPI Configuration (volume-06):
@@ -218,14 +223,15 @@ Reference 128-Node DGX H100 Slurm & MPI Configuration (volume-06):
 - Job launch: srun --mpi=pmix -n 1024 ./train_script or Kubeflow MPIJob (2 Worker pods x 8 slotsPerWorker) running mpirun -np 16 all_reduce_perf -b 8 -e 128M -f 2.
 ```
 
-The node line shows the GPU count. 128 nodes with 8 H100 GPUs each make 1,024 GPUs.
+The node line shows the GPU count. 128 nodes with 8 H100 GPUs each make 1,024 GPUs. The launch line shows the same cluster from the job side. A single `srun` can start 1,024 ranks, while the Kubeflow MPIJob form starts 16 ranks on two Workers.
 
-SchedMD provides Slinky to bridge Slurm and Kubernetes cleanly. It includes a Kubernetes Slurm Operator, a REST client and a Prometheus exporter. Another pattern is Sunk or Virtual Kubelet. It exposes a Slurm cluster as a virtual Kubernetes node that turns Kubernetes Jobs into `sbatch` submissions. Never run unpartitioned co-resident `kubelet` and `slurmd` daemons that both claim the same 8 GPUs on one host. Without static node partitioning, MIG slices, and disjoint `slurmstepd` versus `kubepods` cgroups, both schedulers will double-book GPUs and trigger immediate CUDA OOM crashes.
+SchedMD provides Slinky to bridge Slurm and Kubernetes cleanly. SchedMD is the company that develops Slurm. Slinky includes a Kubernetes Slurm Operator, a REST client and a Prometheus exporter. The REST client lets other tools call the Slurm REST API, and the exporter publishes metrics for Prometheus to collect. Another pattern is Sunk or Virtual Kubelet. A virtual kubelet makes an outside system look like one more node to the Kubernetes scheduler. Sunk exposes a Slurm cluster as a virtual Kubernetes node that turns Kubernetes Jobs into `sbatch` submissions. Never run unpartitioned co-resident `kubelet` and `slurmd` daemons that both claim the same 8 GPUs on one host. Partitioning means dividing the node so that each scheduler owns a fixed set of devices. Without static node partitioning, MIG slices, and disjoint `slurmstepd` versus `kubepods` cgroups, both schedulers will double-book GPUs and trigger immediate CUDA OOM crashes. A cgroup is the Linux mechanism that groups processes and limits their resources. CUDA OOM is an out-of-memory error raised by CUDA.
 
 #### 4. High-Speed Collectives, Checkpoint Storms, RWX Storage Sizing, and Zero-Trust Security
-Multi-node jobs also put pressure on East-West networks, shared storage and security boundaries. Start with the network. During distributed training, standard 10 to 100 Gbps TCP/IP Ethernet is enough for 2 to 8 data-parallel nodes, as long as communication stays below 15% of step time. Once communication passes 20% to 25% of step time, the cluster needs 200 to 400 Gbps InfiniBand with `MTU 4,096`, or RoCEv2 with GPUDirect RDMA.
 
-The block below comes from Generative AI on Kubernetes, Chapter 7. It lists the secondary network, NCCL and storage settings.
+Picture a job that trains well on a few nodes and slows badly as the team adds more. The GPUs look busy on the dashboard, but a large share of each step goes to waiting on the network. Multi-node jobs also put pressure on East-West networks, shared storage and security boundaries. East-West traffic is the traffic between servers inside the cluster, as opposed to North-South traffic that enters from outside. Start with the network. During distributed training, standard 10 to 100 Gbps TCP/IP Ethernet is enough for 2 to 8 data-parallel nodes, as long as communication stays below 15% of step time. Gbps means gigabits per second, and TCP/IP is the standard network protocol suite. A step is one pass of forward and backward computation plus the weight update. Once communication passes 20% to 25% of step time, the cluster needs 200 to 400 Gbps InfiniBand with `MTU 4,096`, or RoCEv2 with GPUDirect RDMA. MTU is the largest packet size a link carries. GPUDirect RDMA lets the network card read and write GPU memory directly.
+
+The block below comes from Generative AI on Kubernetes, Chapter 7, and it lists the secondary network, NCCL and storage settings. A secondary network is an extra network interface added to a Pod, alongside the normal cluster network. NCCL is the NVIDIA Collective Communications Library that carries collective operations between GPUs. Read the settings as a set. The network line sets up the fast path, the NCCL lines tell the library which adapters to use, and the storage lines size the shared disk.
 
 ```text
 Multus Secondary RDMA Pod Environment & Storage Sizing Parameters (GAK Ch. 7):
@@ -238,19 +244,19 @@ Multus Secondary RDMA Pod Environment & Storage Sizing Parameters (GAK Ch. 7):
 - Ray head node NetworkPolicy TCP ports: 6379 (Ray GCS), 8265 (Ray dashboard via oauth2-proxy), 10001 (Ray client server).
 ```
 
-Storage is the next bottleneck. When a 10,000-GPU gang job writes a checkpoint at the same moment, storage I/O stalls can block every GPU in the cluster. Production platforms therefore combine S3, GCS or MinIO object storage for datasets with local NVMe burst buffers, such as `burst_buffer/datawarp` or CSI scratch volumes, for write spikes. Shared filesystems with ReadWriteMany access, abbreviated `RWX`, such as CephFS, Lustre, WEKA, VAST, EFS or Filestore, let resumed Pods on any node read the latest checkpoint.
+Storage is the next bottleneck. Think of the moment when every worker in a large job saves a checkpoint at once. The writes arrive together, and the shared disk has to absorb them. If it cannot keep up, every GPU in the job waits. When a 10,000-GPU gang job writes a checkpoint at the same moment, storage I/O stalls can block every GPU in the cluster. Production platforms therefore combine S3, GCS or MinIO object storage for datasets with local NVMe burst buffers, such as `burst_buffer/datawarp` or CSI scratch volumes, for write spikes. S3 and GCS are cloud object stores, and MinIO is an open-source object store you can run yourself. Object storage holds datasets well, but it is not built for sudden write bursts. NVMe is a fast flash interface for local drives, and a burst buffer is a fast layer that absorbs a sudden write before it trickles to slower storage. CSI, the Container Storage Interface, is how Kubernetes attaches storage volumes to Pods. Shared filesystems with ReadWriteMany access, abbreviated `RWX`, such as CephFS, Lustre, WEKA, VAST, EFS or Filestore, let resumed Pods on any node read the latest checkpoint. ReadWriteMany means many Pods on different nodes can mount the same volume at once.
 
-Security is the last piece. PyTorch Distributed and Ray use `cloudpickle` serialization without built-in authentication. So wrap every job in a default-deny ingress NetworkPolicy. Allow only intra-job pod traffic, and restrict Ray head node ports 6379, 8265 and 10001 to authorized internal pods.
+Security is the last piece. PyTorch Distributed and Ray use `cloudpickle` serialization without built-in authentication. Serialization turns objects into bytes so they can travel over a network, and cloudpickle can ship functions as well as data. Anyone who can reach the port can therefore send code for the cluster to run, so the network must be the first line of defense. So wrap every job in a default-deny ingress NetworkPolicy. A NetworkPolicy is a Kubernetes rule that controls which Pods may talk to which. Default-deny means nothing gets in unless a rule allows it. Allow only intra-job pod traffic, meaning traffic between Pods of the same job. Then restrict Ray head node ports 6379, 8265 and 10001 to authorized internal pods. Ray is the distributed Python framework that these ports belong to.
 
-If a job needs more GPUs than one node holds, plan it as a gang of Pods with a queue in front of it.
+If a job needs more GPUs than one node holds, plan it as a gang of Pods with a queue in front of it. The queue decides when the gang may start, and the gang decides where its Pods run together.
 
 ## Commands and configurations that matter
 
-Each manifest below is marked untested, so treat it as a template.
+The manifests in this section were not run on a live cluster, so treat them as templates to adapt. Each one is marked untested in its comment line, and each one is a starting point for your own cluster.
 
 ### 1. Configuring kube-scheduler for GPU Bin Packing
 
-This profile tells kube-scheduler to pack GPU Pods onto fuller nodes, using the weights from the scoring example above.
+This profile tells kube-scheduler to pack GPU Pods onto fuller nodes, using the weights from the scoring example above. Read the file from top to bottom. The profile name is what a Pod asks for in its `schedulerName` field. The scoring strategy is `MostAllocated`, and the weights sit under each resource.
 
 ```yaml
 # binpack-scheduler-config.yaml (untested here)
@@ -274,7 +280,7 @@ profiles:
 
 ### 2. Defining a Coscheduling PodGroup and protecting it with a PodDisruptionBudget
 
-The PodGroup sets the gang's size, and the PodDisruptionBudget guards it from eviction.
+The PodGroup holds the gang's size and its wait timeout. The PodDisruptionBudget keeps the Descheduler from pulling workers out of a running group. The Pod at the bottom carries the group label, so the scheduler knows it belongs to the gang.
 
 ```yaml
 # podgroup-and-pdb.yaml (untested here)
@@ -315,7 +321,7 @@ spec:
 
 ### 3. Volcano Gang Job and Kubeflow MPIJob
 
-The Volcano job below asks for eight workers, each with 8 GPUs. With `minAvailable: 8`, it will not start unless all eight can be placed.
+The Volcano job below asks for eight workers, each with 8 GPUs. Read the `minAvailable` line first. It is the gang's floor, the smallest number of Pods that must be placeable together. With `minAvailable: 8`, the job will not start unless all eight can be placed.
 
 ```yaml
 # volcano-gang-job.yaml (untested here)
@@ -342,11 +348,11 @@ spec:
                   nvidia.com/gpu: 8
 ```
 
-Check the `apiVersion` values and resource names against your own cluster before you apply any of these files.
+API versions change between releases, so check the `apiVersion` values and resource names against your own cluster before you apply any of these files. A resource name such as `nvidia.com/gpu` has to match the device plugin you actually run.
 
 ## How it fails
 
-Each row below pairs a symptom with its command evidence, its root cause and the fix. Scan the first column for the symptom you see, then read across to the remediation. When you triage, you can start with the row whose symptom matches yours.
+When a multi-node job misbehaves, start with what you can see. Each row below pairs a symptom with the evidence that shows it, the boundary where the cause lives, and the fix. Scan the first column for the symptom on your screen, then read across to the remediation. When you triage, start with the row whose symptom matches yours.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -358,22 +364,23 @@ Each row below pairs a symptom with its command evidence, its root cause and the
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-Find the row that matches the symptom you see. Its root cause column names the boundary involved, and its remediation column names the change that fixes it.
+Find the row that matches the symptom you see. Its root cause column names the boundary involved, and its remediation column names the change that fixes it. If the cause sits in the scheduler, the fix is almost always a change to the scheduler profile or the gang rule, not a restart of the Pods.
 
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally with the Python 3 standard library. Two scripts do the work: `code/part11/multi_node_and_gang_scheduling.py` and `code/part11/multi_node_and_gang_scheduling_lab.py`. Together they simulate the single-node Pod boundary and the partial-allocation rendezvous deadlock, and they compare that deadlock with all-or-nothing gang scheduling. They also cover `MostAllocated` bin-packing node scoring, Scheduler and Descheduler alignment checks, head-of-line backfill scheduling and ReadWriteMany checkpoint storage sizing. Cluster manifests are marked `(untested here)`.
+
+You can run this lab on your own machine with only the Python 3 standard library, so no cluster or cloud account is needed. Two scripts do the work: `code/part11/multi_node_and_gang_scheduling.py` and `code/part11/multi_node_and_gang_scheduling_lab.py`. Together they simulate the single-Pod node boundary and the partial-allocation rendezvous deadlock. They compare that deadlock with all-or-nothing gang scheduling. They also cover `MostAllocated` bin-packing node scoring, Scheduler and Descheduler alignment checks, head-of-line backfill scheduling and ReadWriteMany checkpoint storage sizing. The Kubernetes manifests in this chapter were not run on a live cluster. They are marked `(untested here)`.
 
 ### Step 1: Run the self-checking multi-node and gang scheduling lab (tested here)
 
-Run the lab script from the repository root, and you will see the output below.
+From the repository root, run the lab script. Its checks print as they run, so you can read them from top to bottom.
 
 ```bash
 python3 code/part11/multi_node_and_gang_scheduling_lab.py
 ```
 
-The output below is what this repository produced. Every check should show PASS, and the summary should read 25 passed and 0 failed.
+The output below is the capture from this repository. Each line is one check. A PASS line means the check held. The summary line should read 25 passed and 0 failed.
 
 Captured output from this repository:
 ```text
@@ -409,17 +416,19 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 ### Exercises
 
-Start with the single-Pod boundary. Call `validate_pod_vs_multi_node_job()` from `code/part11/multi_node_and_gang_scheduling.py`, and explain why a single Pod asking for 64 GPUs on 8-GPU nodes returns `schedulable=False`. Then work out how many Pods you need, and how many GPUs each Pod gets, when `requested_as_single_pod=False`.
+Work through the six exercises in order. Each one names the function to call, so you can test your reasoning against the code.
 
-Next, measure the cost of the 7-of-8 deadlock. Run `simulate_partial_vs_gang_scheduling()` with 56 free GPUs, 8 Pods of 8 GPUs each, and a price of 20.0 USD per hour. Compare the placed Pods, the pending Pods, the wasted idle GPUs and the hourly dollar waste, first with `gang_enabled=False` and then with `gang_enabled=True`.
+Start with the single-Pod boundary. Call `validate_pod_vs_multi_node_job()` from `code/part11/multi_node_and_gang_scheduling.py`. Explain why a single Pod asking for 64 GPUs on 8-GPU nodes returns `schedulable=False`. Then work out how many Pods you need when `requested_as_single_pod=False`. Also work out how many GPUs each Pod gets.
 
-Score the two nodes from the input parameters below. Call `score_node_most_allocated()` with GPU weight 5, CPU weight 1 and memory weight 1, and record the exact score for each node. Then explain why Node 1 wins even though Node 2 has higher CPU and memory utilization.
+Next, measure the cost of the 7-of-8 deadlock. Run `simulate_partial_vs_gang_scheduling()` with 56 free GPUs. Use 8 Pods, each with 8 GPUs. Set the price to 20.0 USD per hour. Compare the placed Pods, the pending Pods, the wasted idle GPUs and the hourly dollar waste. Do that first with `gang_enabled=False`. Then repeat it with `gang_enabled=True`.
 
-Test the scheduler and Descheduler pairings. Use `validate_scheduler_descheduler_alignment()` to check all four combinations of `MostAllocated` and `LeastAllocated` against `HighNodeUtilization`, `LowNodeUtilization`, and both plugins together. Note which combinations are valid and which ones cause eviction loops.
+Score the two nodes from the input parameters below. Call `score_node_most_allocated()` with GPU weight 5, CPU weight 1 and memory weight 1. Record the exact score for each node. Then explain why Node 1 wins even though Node 2 has higher CPU and memory utilization.
 
-Next, check the backfill decision. A 1,024-GPU job waits at the head of the queue while 1,000 GPUs are free, and the missing 24 GPUs free up in 45 minutes. Call `evaluate_backfill_candidates()` with the parameters below. Work out which of the four queued jobs get backfilled, and how many idle GPUs remain.
+Test the scheduler and Descheduler pairings next. Use `validate_scheduler_descheduler_alignment()` to check the combinations of `MostAllocated` and `LeastAllocated` against `HighNodeUtilization`, `LowNodeUtilization`, and both plugins together. Note which combinations are valid. Then note which ones cause eviction loops.
 
-Finally, check the storage math. Call `estimate_checkpoint_storage_gb()` and confirm the total ReadWriteMany storage for the 8B LoRA job and the 70B full fine-tuning job listed below.
+Next, check the backfill decision. The head job needs 1,024 GPUs. Only 1,000 are free. The missing 24 free up in 45 minutes. Call `evaluate_backfill_candidates()` with the parameters below. Work out which of the four queued jobs get backfilled. Then count how many idle GPUs remain.
+
+Finally, check the storage math. Call `estimate_checkpoint_storage_gb()`. Confirm the total ReadWriteMany storage for the 8B LoRA job. Then confirm it for the 70B full fine-tuning job listed below.
 
 The parameters below cover all six exercises.
 
@@ -432,11 +441,11 @@ Exercise Input Parameters:
 - Exercise 6: Llama 3.1 8B LoRA (16 GB base + 68 GB overhead = 100 GB); 70B fine-tuning (140 GB base + 220 GB overhead = 500 GB).
 ```
 
-Compare your results against the captured output above, which is the baseline this repository produced.
+Compare your results against the captured output above, which is the baseline this repository produced. If your numbers differ, check the input values first.
 
 ## Checkpoint questions
 
-Use these questions to check your understanding before you move on. Each answer gives the chapter's point in shorter form.
+The questions below let you test yourself before you move on. Each answer restates one point from this chapter in shorter form, so cover it and try the question first.
 
 <details>
 <summary>**1. Why can a single Kubernetes Pod never span multiple physical worker nodes?**</summary>

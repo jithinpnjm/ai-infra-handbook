@@ -22,11 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a mixed AI cluster with older inference GPUs in one set of nodes and newer training GPUs in another. An allocator can assign only the resources it knows about. A scheduler can filter nodes only with facts that reach the Kubernetes API.
+Picture a mixed AI cluster with older inference GPUs in one set of nodes and newer training GPUs in another. A platform engineer opens the scheduler logs on a busy morning and sees a training job waiting, while a small inference server has landed on the expensive training nodes. Nothing in the logs says the placement was wrong, because the scheduler did exactly what it was told. An allocator can assign only the resources it knows about. A scheduler can filter nodes only with facts that reach the Kubernetes API. If the facts are missing, the scheduler is working blind.
 
-The NVIDIA Device Plugin tells Kubernetes how many healthy GPU units exist on a node. It intentionally does not describe what kind of GPU is installed or how much high-bandwidth memory each card holds. It also does not report whether the silicon supports BF16 or FP8 instructions, whether Multi-Instance GPU partitioning is active, or whether the node passed validation.
+The NVIDIA Device Plugin tells Kubernetes how many healthy GPU units exist on a node. It intentionally does not describe what kind of GPU is installed or how much high-bandwidth memory each card holds. High-bandwidth memory, or HBM, is the fast memory package that sits right next to the GPU die. The plugin also does not report whether the silicon supports BF16 or FP8 instructions, whether Multi-Instance GPU partitioning is active, or whether the node passed validation. BF16 and FP8 are two compact number formats that newer tensor cores can compute with directly.
 
-Now consider what a bare resource request does in that cluster. Asking for one GPU treats every accelerator node as interchangeable. Without descriptive node metadata, a small quantized inference model can land on an expensive Hopper training node and strand scarce HBM3 capacity. Go the other way, and a large language model that needs modern tensor cores can land on an older Turing or Volta node. That misplaced Pod crashes immediately with an out-of-memory error or an unsupported instruction exception.
+Now consider what a bare resource request does in that cluster. Asking for one GPU treats every accelerator node as interchangeable. Without descriptive node metadata, a small quantized inference model can land on an expensive Hopper training node and strand scarce HBM3 capacity. Go the other way, and a large language model that needs modern tensor cores can land on an older Turing or Volta node. That misplaced Pod crashes immediately with an out-of-memory error or an unsupported instruction exception. In both directions the scheduler saw a valid GPU and made a valid placement, and the mismatch only surfaced once the workload started.
 
 The table below shows three pool types where this mismatch appears. Each row describes a placement the scheduler accepts without complaint, even though the hardware does not suit the workload.
 
@@ -36,36 +36,39 @@ The table below shows three pool types where this mismatch appears. Each row des
 | Heterogeneous training pool | `10` NVIDIA H100 GPU nodes (`80 GB` HBM3 each, Hopper architecture) across `20` total GPU nodes | A small `7B`-parameter quantized model requiring `8 GB` of VRAM lands on an `80 GB` H100 node under a bare `limits.nvidia.com/gpu: 1` request |
 | Manual labeling at scale | `1,000` GPU worker nodes across kernel upgrades, MIG changes, and RMA replacements | Manual node labels drift after maintenance windows (`09:15` MIG reconfiguration after an `08:40:11` probe) and cause silent scheduler misplacements |
 
-Labeling hundreds of GPU worker nodes by hand cannot keep up with kernel upgrades, MIG reconfigurations, and hardware replacements. Kubernetes handles this with a two-stage automated discovery pipeline. The first stage inspects the PCI Express (PCIe) bus, and the second stage introspects the GPU through the NVIDIA driver.
+Labeling hundreds of GPU worker nodes by hand cannot keep up with kernel upgrades, MIG reconfigurations, and hardware replacements. A label is a key-value tag attached to a node, and a human has to remember to update it every time the hardware changes. Kubernetes handles this with a two-stage automated discovery pipeline. The first stage inspects the PCI Express (PCIe) bus, which is the internal connection that carries the GPU card to the motherboard. The second stage introspects the GPU through the NVIDIA driver, so it can read the details that PCIe alone cannot show.
 
-Node Feature Discovery (NFD) is a vendor-neutral Kubernetes project. It runs a worker on every node and inspects `/sys`, `/proc`, CPUID flags, kernel versions, and PCIe vendor IDs before any GPU driver is installed.
+Node Feature Discovery (NFD) is a vendor-neutral Kubernetes project. It runs a worker on every node and inspects `/sys`, `/proc`, CPUID flags, kernel versions, and PCIe vendor IDs before any GPU driver is installed. CPUID is the instruction set that reports what a processor supports, and the vendor ID is the number that identifies the company that made a PCI device.
 
-GPU Feature Discovery (GFD) is an NVIDIA DaemonSet, meaning one Pod that runs on every matching node. It starts once the host driver is loaded. It then queries the NVIDIA Management Library (NVML) and publishes product SKU, memory size, architecture family, CUDA versions, and sharing strategy labels.
+GPU Feature Discovery (GFD) is an NVIDIA DaemonSet, meaning one Pod that runs on every matching node. It starts once the host driver is loaded. It then queries the NVIDIA Management Library (NVML) and publishes product SKU, memory size, architecture family, CUDA versions, and sharing strategy labels. The SKU is the product name the manufacturer uses for the card, such as an A100 or an H100 variant.
 
-Exposing raw discovery labels directly to application teams creates a second production trap, known as SKU-coupled manifest fragility. When dozens of workload manifests hard-code a specific GPU product string, retiring an older node pool forces a coordinated edit across every application repository. Stale labels are the other side of the same problem. When discovery daemons fail to re-run after a maintenance window, the scheduler keeps placing Pods onto broken hardware states, and no error is logged.
+Exposing raw discovery labels directly to application teams creates a second production trap, known as SKU-coupled manifest fragility. When dozens of workload manifests hard-code a specific GPU product string, retiring an older node pool forces a coordinated edit across every application repository. Picture a platform team that wants to retire the oldest pool on a Friday. Every team that pinned that product string now has a broken Deployment, and each one needs its own change. Stale labels are the other side of the same problem. When discovery daemons fail to re-run after a maintenance window, the scheduler keeps placing Pods onto broken hardware states, and no error is logged.
 
-This chapter covers both halves of the node discovery problem. You will learn how NFD and GFD generate labels across exclusive, time-sliced, and MIG-partitioned nodes. You will also build a three-tier platform governance model that separates discovered facts, lifecycle assertions, and portable service classes. Decide which of these labels application teams may depend on before they write their first manifest, because every label they reference becomes a coupling point.
+This chapter covers both halves of the node discovery problem. It shows how NFD and GFD generate labels across exclusive, time-sliced, and MIG-partitioned nodes. It also builds a three-tier platform governance model that separates discovered facts, lifecycle assertions, and portable service classes. Decide which of these labels application teams may depend on before they write their first manifest, because every label they reference becomes a coupling point.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Before you start, you should have finished Chapter 11.1 on the seven-layer GPU platform model and Chapter 11.2 on the Kubernetes Device Plugin contract. You also need a working feel for Kubernetes node selectors, node affinity rules, and node taints and tolerations.
+
+Before you start, you should have finished Chapter 11.1 on the seven-layer GPU platform model and Chapter 11.2 on the Kubernetes Device Plugin contract. You also need a working feel for Kubernetes node selectors, node affinity rules, and node taints and tolerations. Those three tools are how a Pod is pointed at a node, and this chapter uses them on every page.
 
 ### Outcomes
-By the end of this chapter, you will be able to explain how NFD probes PCIe class and vendor IDs to start GPU Operator reconciliation. The trigger is the label `feature.node.kubernetes.io/pci-10de.present=true`. You will also be able to read every GFD label in the `nvidia.com/*` namespace, whether the node uses physical GPUs, time-slicing replicas, or single or mixed MIG strategies. You will design a three-tier label taxonomy that keeps discovered hardware facts, platform lifecycle assertions, and tenant-facing service classes apart. You will see why service-class labels stop application manifests from churning during hardware refreshes across fleets with several GPU generations. You will write node selector, node affinity, and taint and toleration specifications that keep CPU workloads off GPU node pools. Finally, you will diagnose Pending Pods and silent misplacements caused by NFD and GFD timestamp drift and by per-node label asymmetry.
+
+This chapter walks through how NFD probes PCIe class and vendor IDs to start GPU Operator reconciliation, and the trigger it sets is the label `feature.node.kubernetes.io/pci-10de.present=true`. It then reads every GFD label in the `nvidia.com/*` namespace, whether the node uses physical GPUs, time-slicing replicas, or single or mixed MIG strategies. From there it designs a three-tier label taxonomy that keeps discovered hardware facts, platform lifecycle assertions, and tenant-facing service classes apart. The taxonomy is what stops application manifests from churning during hardware refreshes across fleets with several GPU generations. The chapter then writes node selector, node affinity, and taint and toleration specifications that keep CPU workloads off GPU node pools. It finishes with diagnosing Pending Pods and silent misplacements caused by NFD and GFD timestamp drift and by per-node label asymmetry.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: Node Feature Discovery (NFD) and GPU Feature Discovery (GFD)
 
-Picture a freshly booted GPU worker node that is about to join a cluster pool. It may not have an NVIDIA kernel driver or the `nvidia-smi` binary installed yet. Any discovery daemon that relies on the NVML library fails to see a GPU on a driverless host, so the cluster stays blind to the hardware. This is a classic chicken-and-egg problem.
+Picture a freshly booted GPU worker node that is about to join a cluster pool. It may not have an NVIDIA kernel driver or the `nvidia-smi` binary installed yet. Any discovery daemon that relies on the NVML library fails to see a GPU on a driverless host, so the cluster stays blind to the hardware. This is a classic chicken-and-egg problem. The tool that reads the GPU needs the driver, and the driver is what the cluster is trying to confirm.
 
-The Linux kernel enumerates the PCI Express bus at boot, whether or not a vendor driver is loaded. Kubernetes therefore splits hardware discovery into two stages. The cluster detects raw PCIe hardware first, and it queries NVML capabilities second.
+The Linux kernel enumerates the PCI Express bus at boot, whether or not a vendor driver is loaded. Enumerating means the kernel walks every slot and records each device it finds, so the device is known to the system even before anyone can talk to it. Kubernetes therefore splits hardware discovery into two stages. The cluster detects raw PCIe hardware first, and it queries NVML capabilities second. The first stage works without a driver, and the second stage depends on one.
 
 #### Stage 1: Node Feature Discovery (NFD) — OS, CPU, and PCIe bus discovery
-NFD runs a lightweight worker agent as a DaemonSet on every CPU and GPU node. A control-plane master controller works alongside it. The worker inspects `/sys`, `/proc`, CPUID instructions, kernel configuration, and PCIe configuration space. It then sends a labeling request to the master controller, which patches the Node object in the Kubernetes API.
 
-Every NFD label starts with the prefix `feature.node.kubernetes.io/`. For PCIe devices, NFD publishes presence flags keyed by device class and vendor code. The GPU Operator reads these flags to decide where to schedule driver containers. The table below explains the codes NFD uses and what each one tells you.
+NFD runs a lightweight worker agent as a DaemonSet on every CPU and GPU node. A control-plane master controller works alongside it. The worker inspects `/sys`, `/proc`, CPUID instructions, kernel configuration, and PCIe configuration space. It then sends a labeling request to the master controller, which patches the Node object in the Kubernetes API. The worker does the reading on the node, and the master does the writing to the cluster, so only one component holds the permission to change Node objects.
+
+Every NFD label starts with the prefix `feature.node.kubernetes.io/`. For PCIe devices, NFD publishes presence flags keyed by device class and vendor code. The GPU Operator reads these flags to decide where to schedule driver containers. A presence flag is a simple true-or-missing answer, so it tells the operator whether a card exists without telling it anything about the card's model or memory. The table below explains the codes NFD uses and what each one tells you.
 
 | PCIe Class / Vendor Code | Meaning | Example NFD Label | Operational significance |
 |---|---|---|---|
@@ -76,9 +79,9 @@ Every NFD label starts with the prefix `feature.node.kubernetes.io/`. For PCIe d
 | **Vendor `8086`** | Intel Corporation | `feature.node.kubernetes.io/pci-0302_8086.present: "true"` | Identifies Intel discrete/integrated GPU devices |
 | **Vendor `1d0f`** | Amazon Web Services (AWS) | `feature.node.kubernetes.io/pci-0300_1d0f.present: "true"` | Identifies AWS EC2 virtual display hardware |
 
-Two of these codes matter most for GPU nodes. Vendor `10de` is NVIDIA, and the GPU Operator watches that label to know when to deploy its components.
+Two of these codes matter most for GPU nodes. Vendor `10de` is NVIDIA, and the GPU Operator watches that label to know when to deploy its components. Class `0302` tells you that the device is a headless 3D controller, which is how data-center GPUs without a display identify themselves. A node with `10de` and `0302` is almost certainly a data-center NVIDIA GPU.
 
-Beyond PCIe vendor IDs, NFD publishes CPU instruction flags, processor model numbers, SELinux status, and the exact host kernel version string. The GPU Operator also reads the kernel version label to select or compile the matching host driver container. The snippet below shows what you will find in the CPU and kernel labels on one node.
+Beyond PCIe vendor IDs, NFD publishes CPU instruction flags, processor model numbers, SELinux status, and the exact host kernel version string. SELinux is the Linux security policy layer that can restrict what containers may touch. The GPU Operator also reads the kernel version label to select or compile the matching host driver container. That is why the kernel version matters so much. A driver built for one kernel will not load on another. The snippet below shows what you will find in the CPU and kernel labels on one node.
 
 ```text
 Representative NFD CPU and Kernel Labels (Generative AI on Kubernetes Example 3-2):
@@ -91,10 +94,13 @@ Representative NFD CPU and Kernel Labels (Generative AI on Kubernetes Example 3-
   feature.node.kubernetes.io/kernel-version.full: "5.14.0-427.62.1.el9_4.x86_64"
 ```
 
-These labels let the scheduler and the GPU Operator match on CPU features and kernel version, not only on GPUs.
+Here is how the pieces fit on a node that has just booted. NFD sees the PCIe device first, because the kernel lists it at boot even with no driver present. The `pci-10de` flag then tells the GPU Operator that an NVIDIA card is present, and the operator can start its driver container for the matching kernel version. Only after that does GFD appear, once the driver is loaded, and only then do the `nvidia.com/*` labels describe the card. Each step depends on the one before it, which is why a missing NFD flag blocks everything that follows it.
+
+These labels let the scheduler and the GPU Operator match on CPU features and kernel version, not only on GPUs. A workload that needs a wide vector instruction flag, such as one of the CPU flags shown above, can be pinned to nodes that report that flag.
 
 #### Stage 2: GPU Feature Discovery (GFD) — NVML hardware and sharing introspection
-Once the NVIDIA kernel driver is loaded on the worker node, GFD starts as a DaemonSet on GPU-equipped machines. GFD queries NVML and `nvidia-smi` to read card firmware and driver state. It then publishes detailed `nvidia.com/*` node labels that describe exact GPU capabilities. The table below lists the GFD labels you will meet most often, with example values from two nodes.
+
+Once the NVIDIA kernel driver is loaded on the worker node, GFD starts as a DaemonSet on GPU-equipped machines. GFD queries NVML and `nvidia-smi` to read card firmware and driver state. It then publishes detailed `nvidia.com/*` node labels that describe exact GPU capabilities. Because GFD runs after the driver, its labels say more about the card than NFD's presence flags do. The table below lists the GFD labels you will meet most often, with example values from two nodes.
 
 | GFD Node Label Key | Description | Example Value (A100 40GB) | Example Value (H100 80GB `gpu-node-03`) |
 |---|---|---|---|
@@ -113,17 +119,20 @@ Once the NVIDIA kernel driver is loaded on the worker node, GFD starts as a Daem
 | `nvidia.com/mig-<profile>.count` | Count of a specific MIG profile when `mig.strategy=mixed` | `"2"` (for `nvidia.com/mig-1g.5gb.count`) | Per-profile count in `mixed` mode |
 | `nvidia.com/gpu.replicas` | Virtual GPU overcommit multiplier per physical GPU (or MIG slice) under time-slicing | `"8"` (when `replicas: 8` is set) | `"1"` (when exclusive) |
 
-When you compare the two example columns side by side, you see that each label describes one property of the card. A node needs several labels to be described fully.
+When you compare the two example columns side by side, you see that each label describes one property of the card. A node needs several labels to be described fully. Read the family and compute capability labels together when you choose a workload, because the family tells you the generation and the compute capability tells you which instructions the card can run.
 
 #### How GFD labels mutate under Time-Slicing and MIG
-When sub-GPU sharing is enabled on a node, the scheduler needs to know what a GPU resource really is. It might be a full physical card, a time-sliced replica, or a hardware MIG partition. Without label updates, a latency-sensitive training job could land on an oversubscribed time-sliced GPU by accident. GFD prevents this by changing the product and count labels whenever time-slicing or MIG is active.
 
-- With time-slicing, GFD multiplies the advertised GPU count by the replica factor, sets the replica count label, and appends `-SHARED` to the GPU product name.
-- With the single MIG strategy, every GPU on the node uses identical partitions, advertised under the standard GPU resource name. GFD appends the MIG profile suffix to the product label.
-- With the mixed MIG strategy, slices are advertised under profile-specific extended resource names. GFD publishes a separate count label for each active MIG profile.
-- When MIG slices are also oversubscribed with time-slicing, GFD appends both the MIG profile name and the `-SHARED` suffix to the product label.
+When sub-GPU sharing is enabled on a node, the scheduler needs to know what a GPU resource really is. It might be a full physical card, a time-sliced replica, or a hardware MIG partition. Without label updates, a latency-sensitive training job could land on an oversubscribed time-sliced GPU by accident. GFD prevents this by changing the product and count labels whenever time-slicing or MIG is active. Each sharing mode changes the labels in its own way.
 
-The table below works through the four sharing modes with concrete counts, so you can see what each mode publishes. Time-slicing multiplies the physical count by the replica factor. Single MIG multiplies it by the number of slices per GPU.
+- With time-slicing, GFD multiplies the advertised GPU count by the replica factor, sets the replica count label, and appends `-SHARED` to the GPU product name. The suffix warns anyone who reads the label that the card is shared.
+- With the single MIG strategy, every GPU on the node uses identical partitions, advertised under the standard GPU resource name. GFD appends the MIG profile suffix to the product label. Every slice on the node has the same shape, so one suffix describes them all.
+- With the mixed MIG strategy, slices are advertised under profile-specific extended resource names. GFD publishes a separate count label for each active MIG profile. A mixed node can therefore hold a 1g slice and a 3g slice at the same time, and each one is counted separately.
+- When MIG slices are also oversubscribed with time-slicing, GFD appends both the MIG profile name and the `-SHARED` suffix to the product label. The label then reads both facts at once.
+
+Take a concrete case. A node has 10 physical A100 GPUs, and the time-slicing config sets `replicas: 8`. The plugin multiplies 10 by 8 and advertises 80 units, so the count label reads 80. The product label gains the `-SHARED` suffix, so anyone who reads it knows the cards are shared before they schedule anything. If the same node were switched to single MIG with seven slices per card, the count would follow the MIG slice total instead, and the product label would carry the MIG profile suffix instead. Every change of sharing mode therefore changes the numbers a scheduler sees, and that is why GFD must rewrite the labels each time.
+
+The table below works through the four sharing modes with concrete counts, so you can see what each mode publishes. Time-slicing multiplies the physical count by the replica factor. Single MIG multiplies it by the number of slices per GPU. Read the input column first, then the output column, and check the multiplication yourself before you trust the label.
 
 | Sharing Mode | Physical Hardware Input | Resulting GFD Labels and Extended Resources |
 |---|---|---|
@@ -136,7 +145,7 @@ The table below works through the four sharing modes with concrete counts, so yo
 
 ### 2. Intermediate: Label-based scheduling patterns (nodeSelector, nodeAffinity, and taints)
 
-Once NFD and GFD fill in node labels, platform and application engineers need a reliable way to steer Pods onto matching hardware. Pick the wrong scheduling primitive, and workloads get locked to a single hardware SKU. Or expensive GPU nodes stay open to ordinary CPU microservices. Kubernetes gives you three complementary mechanisms to filter, score, and protect GPU node pools.
+Once NFD and GFD fill in node labels, platform and application engineers need a reliable way to steer Pods onto matching hardware. Pick the wrong scheduling primitive, and workloads get locked to a single hardware SKU. Or expensive GPU nodes stay open to ordinary CPU microservices. Kubernetes gives you three complementary mechanisms to filter, score, and protect GPU node pools. Filtering removes nodes that cannot run the Pod. Scoring ranks the nodes that remain. Protecting keeps unwanted Pods away from a pool entirely.
 
 | Mechanism | Direction of control | Expressiveness | Best production use case |
 |---|---|---|---|
@@ -144,10 +153,11 @@ Once NFD and GFD fill in node labels, platform and application engineers need a 
 | **`nodeAffinity`** | **Pod selects Node** (`required` hard filter + `preferred` weighted soft scoring) | Set/comparison operators (`In`, `NotIn`, `Exists`, `DoesNotExist`, `Gt`, `Lt`) and weighted preferences (`weight: 1..100`) | Heterogeneous multi-generation clusters (e.g., require `gpu.memory Gt 40000` MiB, prefer `gpu.family In [hopper]`) |
 | **`Taints` and `Tolerations`** | **Node repels Pod** unless Pod carries matching `toleration` | `NoSchedule`, `PreferNoSchedule`, `NoExecute` with `Equal` or `Exists` operators | Protecting expensive GPU pools from CPU-only Pods; note that **a toleration grants eligibility but does NOT select the GPU node** |
 
-The first two mechanisms let a Pod choose its node. Taints work the other way, letting a node turn Pods away. The table above compares them by direction of control, expressiveness, and typical use.
+The first two mechanisms let a Pod choose its node. Taints work the other way, letting a node turn Pods away. The table above compares them by direction of control, expressiveness, and typical use. Read the direction column first, because it is the quickest way to remember which side holds the decision.
 
 #### Pattern 1: Exact matching with nodeSelector
-The simplest way to target a specific GPU model is to add a `nodeSelector` field to the Pod specification. One key-value line pins an inference server to nodes with a particular GPU product or compute capability.
+
+The simplest way to target a specific GPU model is to add a `nodeSelector` field to the Pod specification. One key-value line pins an inference server to nodes with a particular GPU product or compute capability. It is the right tool when the fleet is small and the rule is a plain match. The example below pins one inference server to T4 nodes.
 
 ```yaml
 # Example 3-3: Direct selection with nodeSelector (untested here)
@@ -166,16 +176,17 @@ spec:
     nvidia.com/gpu.product: Tesla-T4
 ```
 
-Exact string matching has a sharp edge when it is applied to numeric labels such as GPU memory. Suppose a vLLM deployment selects an exact string for forty gigabytes of memory. It fails to schedule on eighty-gigabyte nodes. Worse, it stays Pending on forty-gigabyte A100 nodes too, if GFD reports usable framebuffer memory as `40537` MiB instead of `40960` MiB. The table below shows what you get from that one selector across the node types.
+A nodeSelector is an exact match on a string. The scheduler does not compare numbers, it compares characters. So `"40960"` and `"40537"` are simply two different values, even though a human reads them as nearly the same size. Exact string matching has a sharp edge when it is applied to numeric labels such as GPU memory. Suppose a vLLM deployment selects an exact string for forty gigabytes of memory. It fails to schedule on eighty-gigabyte nodes. Worse, it stays Pending on forty-gigabyte A100 nodes too, if GFD reports usable framebuffer memory as `40537` MiB instead of `40960` MiB. The framebuffer is the memory the driver reports as usable, and in these examples it sits a little below the marketing number. The table below shows what you get from that one selector across the node types.
 
 | Workload / Node Scenario | Label Selector / Reported Value | Scheduling Outcome |
 |---|---|---|
 | `vllm/vllm-openai:latest` (`4` GPUs) | `nvidia.com/gpu.compute.major: "8"` and `nvidia.com/gpu.memory: "40960"` | Rejects older Volta V100 (`compute.major: "7"`) lacking hardware `BF16`, but also rejects `"81920"` MiB H100 and `"40537"` MiB A100-40GB nodes |
 
-Each rejection in that row comes from the same cause. The selector asks for one exact string, and the node reports a slightly different value.
+Each rejection in that row comes from the same cause. The selector asks for one exact string, and the node reports a slightly different value. The fix is not to change the hardware. The fix is to stop asking for an exact string when the rule is really a threshold.
 
 #### Pattern 2: Numeric bounds and soft preferences with nodeAffinity
-Suppose your workload needs at least forty gigabytes of VRAM and prefers Hopper over Ampere when it can. Exact string matching cannot express that rule. Kubernetes `nodeAffinity` solves this by combining hard numeric thresholds with weighted soft preferences.
+
+Suppose your workload needs at least forty gigabytes of VRAM and prefers Hopper over Ampere when it can. Exact string matching cannot express that rule. Kubernetes `nodeAffinity` solves this by combining hard numeric thresholds with weighted soft preferences. A hard rule must hold, or the Pod does not land on the node at all. A soft rule only adds points, so it nudges the choice without blocking anything.
 
 ```yaml
 # Example 3-4: Node affinity with Gt memory threshold and Hopper preference (untested here)
@@ -207,7 +218,7 @@ spec:
                 values: ["hopper"]
 ```
 
-During scheduling, Kubernetes evaluates this rule in two phases across every candidate node pool. First, the Filter phase removes any node whose GPU memory label is forty thousand MiB or less. Second, the Score phase adds the preferred weight to surviving nodes in the Hopper family. The workload can then fall back to Ampere when the Hopper nodes are full.
+During scheduling, Kubernetes evaluates this rule in two phases across every candidate node pool. First, the Filter phase removes any node whose GPU memory label is forty thousand MiB or less. Second, the Score phase adds the preferred weight to surviving nodes in the Hopper family. The workload can then fall back to Ampere when the Hopper nodes are full. The fallback is the point of the soft rule. It keeps the Pod schedulable when the preferred hardware is busy, without giving up the memory floor.
 
 The table below follows three candidate nodes through both phases.
 
@@ -217,10 +228,13 @@ The table below follows three candidate nodes through both phases.
 | `A100-SXM4-40GB` node | `nvidia.com/gpu.memory: "40537"`, `family: "ampere"` | Passes required filter (`40537 > 40000`) with preferred score contribution `0` |
 | `NVIDIA-H100-80GB-HBM3` node | `nvidia.com/gpu.memory: "81920"`, `family: "hopper"` | Passes required filter (`81920 > 40000`) and receives `+1` (`weight: 1`) during `Score` phase |
 
-The T4 never reaches scoring, because the first phase removes it. The H100 ranks above the A100 because it is the only candidate that receives the preferred weight.
+The T4 never reaches scoring, because the first phase removes it. The H100 ranks above the A100 because it is the only candidate that receives the preferred weight. The A100 still passes the hard floor, so it stays eligible as a fallback. The gap between 40537 MiB and 40000 MiB is small, but it is enough to pass the filter, and it is the reason the threshold is written as a bound instead of an exact value.
 
 #### Pattern 3: Pool protection with Taints and Tolerations
-Node selectors and affinity rules attract GPU Pods to GPU nodes. They do nothing to keep other Pods away. Without pool protection, ordinary CPU microservices that do not request a GPU can land on a GPU worker node. They then consume its host CPU cores and system RAM. Later, legitimate GPU workloads can become unschedulable there, because host CPU or memory is used up.
+
+Think of the two directions as a guest list and a door. A nodeSelector or affinity rule is the guest list, because it names the Pods that should come in. A taint is the door policy, because it turns away anyone who is not on the list. You usually need both. A list without a door lets strangers in, and a door without a list keeps out everyone, including the people you wanted.
+
+Node selectors and affinity rules attract GPU Pods to GPU nodes. They do nothing to keep other Pods away. Without pool protection, ordinary CPU microservices that do not request a GPU can land on a GPU worker node. They then consume its host CPU cores and system RAM. Later, legitimate GPU workloads can become unschedulable there, because host CPU or memory is used up. Think of a GPU node as an expensive machine whose GPUs are only part of its value. A web service sitting on it can starve the training job that needs the CPU to feed the cards.
 
 ```text
 Host Resource Starvation Example & Taint Conventions:
@@ -229,14 +243,14 @@ Host Resource Starvation Example & Taint Conventions:
   EKS managed node group (eks-gpu-mng on g6.2xlarge): key = "nvidia.com/gpu", value = "true", effect = "NO_SCHEDULE" with label hardware-type=gpu
 ```
 
-To fence off GPU pools, administrators taint every GPU node with a `NoSchedule` effect. Any Pod without a matching toleration is repelled from those nodes during scheduling. The command below taints every node that carries the GFD `nvidia.com/gpu.count` label.
+To fence off GPU pools, administrators taint every GPU node with a `NoSchedule` effect. A taint is a rule on the node, and `NoSchedule` means that the scheduler will not place a Pod there unless the Pod has a matching toleration. Any Pod without a matching toleration is repelled from those nodes during scheduling. The command below taints every node that carries the GFD `nvidia.com/gpu.count` label.
 
 ```bash
 # Taint all nodes that carry the GFD nvidia.com/gpu.count label (untested here)
 kubectl taint nodes -l nvidia.com/gpu.count nvidia.com/gpu=true:NoSchedule
 ```
 
-Once the taint is in place, a GPU Pod needs more than a toleration to land on a GPU node. A GPU serving Deployment must pair three elements in its Pod template: a toleration to pass the node taint, a node selector or affinity rule to target the right GPU class, and an extended-resource limit to claim the hardware.
+Once the taint is in place, a GPU Pod needs more than a toleration to land on a GPU node. A GPU serving Deployment must pair three elements in its Pod template: a toleration to pass the node taint, a node selector or affinity rule to target the right GPU class, and an extended-resource limit to claim the hardware. Each element answers a different question. The toleration asks whether the Pod may enter the pool, the selector asks which pool it should prefer, and the limit asks for the GPU itself.
 
 ```yaml
 # Pairing toleration + selector + extended-resource limit (untested here)
@@ -262,11 +276,13 @@ spec:
               nvidia.com/gpu: 1
 ```
 
-Remember the basic distinction between taints and selectors when you review workload manifests, such as `gpu-demo-pod` in Chapter 10 of *Kubernetes for Generative AI Solutions*. A toleration only grants permission for a Pod to be considered on a tainted node. It does not attract the Pod to that node. A Pod with a GPU toleration but no GPU resource request or node selector can therefore still schedule onto a CPU-only node.
+Remember the basic distinction between taints and selectors when you review workload manifests, such as `gpu-demo-pod` in Chapter 10 of *Kubernetes for Generative AI Solutions*. A toleration only grants permission for a Pod to be considered on a tainted node. It does not attract the Pod to that node. A Pod with a GPU toleration but no GPU resource request or node selector can therefore still schedule onto a CPU-only node. That mistake is easy to miss in review, because the toleration looks like it targets the GPU pool.
 
 ---
 
 ### 3. Advanced: Facts, assertions, service classes, and discovery drift
+
+A label that was correct last month can be wrong today, and the scheduler has no way to notice. The scheduler reads whatever is on the Node object and trusts it. It has no idea that a card was reconfigured an hour ago, and it does not check the hardware itself. That trust is what makes a stale label dangerous. Picture a node that went through a MIG change during a maintenance window. The labels still describe the old layout until the discovery workers run again. The diagram below shows how the host, the two discovery workers and the Kubernetes API connect, and where a stale label turns into a silent misplacement.
 
 ```mermaid
 flowchart LR
@@ -281,10 +297,13 @@ flowchart LR
     Stale --> Sched
 ```
 
-#### The three-tier label taxonomy: Discovered Facts vs Lifecycle Assertions vs Service Classes
-Treating every node label as an interchangeable scheduling target causes outages during maintenance and hardware refreshes. A raw GFD label proves only that a GPU model was observed when the discovery probe last ran. It does not prove that the host driver is healthy right now, that the InfiniBand fabric passed validation, or that tenant manifests should couple themselves to that hardware SKU.
+Read the diagram from left to right. The left side of the diagram is the source of truth, which is the host hardware and the driver. The two discovery workers read that truth and write labels to the API. The decision point asks whether the labels still match the node. When they do, the platform controller can admit the node into a service class. When they do not, the scheduler keeps making decisions from old facts.
 
-Platform teams avoid this failure by dividing node metadata into three strict ownership tiers. Each tier has a single authoritative writer and a dedicated consumer boundary. The table lists each tier with an example label, its writer, and its consumer.
+#### The three-tier label taxonomy: Discovered Facts vs Lifecycle Assertions vs Service Classes
+
+Treating every node label as an interchangeable scheduling target causes outages during maintenance and hardware refreshes. A raw GFD label proves only that a GPU model was observed when the discovery probe last ran. It does not prove that the host driver is healthy right now, that the InfiniBand fabric passed validation, or that tenant manifests should couple themselves to that hardware SKU. InfiniBand is the high-speed network fabric that connects GPU nodes in a training cluster.
+
+Platform teams avoid this failure by dividing node metadata into three strict ownership tiers. Each tier has a single authoritative writer and a dedicated consumer boundary. The writer is the one component allowed to set those labels, and the consumer is the one that reads them to make a decision. Separating the writers keeps any single component from quietly overwriting another tier's facts. The table lists each tier with an example label, its writer, and its consumer.
 
 | Label Tier | Example Label Key & Value | Authoritative Writer | Intended Consumer | Why this boundary matters |
 |---|---|---|---|---|
@@ -292,14 +311,15 @@ Platform teams avoid this failure by dividing node metadata into three strict ow
 | **2. Lifecycle Assertion** | `gpu-validation=passed`, `platform.example/network-validated=true`, `platform.example/maintenance=pending` | Controlled platform validation / lifecycle controller | Admission webhooks, node-readiness gates, SRE automation | Proves that the driver, container toolkit, device plugin, and a real CUDA validation workload (`GPU_NODE_VALIDATED`) succeeded after the last change. |
 | **3. Service Class** | `gpu.platform.example/class=training-topology`, `gpu.platform.example/class=inference-general`, `gpu.platform.example/class=mig-serving` | Platform engineering (governed controller / node-pool config) | Application workload manifests (`nodeSelector` / `nodeAffinity`) | Decouples tenant manifests from specific hardware SKUs so the platform can refresh hardware underneath a stable SLO class. |
 
-When you see a tier 1 label, you know what was observed. Tier 2 records what was verified after the last change, and tier 3 records what the platform promises. Keep each tier in its own lane.
+When you see a tier 1 label, you know what was observed. Tier 2 records what was verified after the last change, and tier 3 records what the platform promises. Keep each tier in its own lane. A tier 1 label should never be used as proof of readiness, and a tier 3 label should never expose a hardware name to a tenant.
 
-Consider why `nvidia.com/gpu.product=NVIDIA-H100-80GB-HBM3` is not enough evidence that a node is ready for production traffic. If you see that label alone, you know only what the probe observed. GFD writes that label when its probe runs. The label stays on the Node object even if the GPU driver crashes minutes later. Similarly, `nvidia.com/mig.capable=true` only says the GPU silicon supports partitioning. It does not say that MIG mode is enabled or that `nvidia.com/mig-1g.10gb` slices exist.
+Consider why `nvidia.com/gpu.product=NVIDIA-H100-80GB-HBM3` is not enough evidence that a node is ready for production traffic. If you see that label alone, you know only what the probe observed. GFD writes that label when its probe runs. The label stays on the Node object even if the GPU driver crashes minutes later. Similarly, `nvidia.com/mig.capable=true` only says the GPU silicon supports partitioning. It does not say that MIG mode is enabled or that `nvidia.com/mig-1g.10gb` slices exist. A capable card and an active MIG layout are two different facts, and only the second one changes what the scheduler can place.
 
 #### Quantifying SKU-coupling blast radius across an 80-node fleet
-When application teams hard-code raw GPU product names in their manifests, every hardware lifecycle event becomes a cross-team migration. Retiring an aging node pool breaks every Deployment that pinned that exact SKU string. That happens even when newer compatible GPUs have free capacity in the same cluster. A governed service-class label decouples tenant YAML from physical SKU changes.
 
-The fleet has 30 A100-80GB nodes and 30 H100 nodes. It also has 20 older A100-40GB nodes, which makes 80 nodes in total. If you retire the 20 oldest nodes, 60 nodes remain. If you run a fleet like this one, the table compares the two designs on the same 45 manifests.
+When application teams hard-code raw GPU product names in their manifests, every hardware lifecycle event becomes a cross-team migration. Retiring an aging node pool breaks every Deployment that pinned that exact SKU string. That happens even when newer compatible GPUs have free capacity in the same cluster. A governed service-class label decouples tenant YAML from physical SKU changes. The tenant keeps asking for the same class, and the platform decides which hardware sits behind it.
+
+The fleet has 30 A100-80GB nodes and 30 H100 nodes. It also has 20 older A100-40GB nodes, which makes 80 nodes in total. If you retire the 20 oldest nodes, 60 nodes remain. If you run a fleet like this one, the table compares the two designs on the same 45 manifests. Work through the arithmetic in the table yourself, because the difference between the two columns is the whole argument for service classes.
 
 | Fleet Metric / Scenario | Direct SKU Coupling (`nvidia.com/gpu.product`) | Governed Service Class (`gpu.platform.example/class=inference-general`) |
 |---|---|---|
@@ -307,14 +327,15 @@ The fleet has 30 A100-80GB nodes and 30 H100 nodes. It also has 20 older A100-40
 | Node pool composition | `30` `NVIDIA-A100-80GB` nodes, `30` `NVIDIA-H100-80GB-HBM3` nodes, and `20` older `NVIDIA-A100-40GB` nodes | Same `30` + `30` + `20` nodes qualified under platform controller rules |
 | Retiring `20` oldest `NVIDIA-A100-40GB` nodes (with `45` manifests) | All `45` application manifests break simultaneously (`0` matching nodes) and cannot overflow onto the other `60` nodes | `0` application manifests change; platform team updates `1` platform controller rule |
 
-In the direct-SKU column, all 45 manifests break at once. In the service-class column, one controller rule changes and no manifests do.
+In the direct-SKU column, all 45 manifests break at once. In the service-class column, one controller rule changes and no manifests do. That contrast is the reason the governance model exists. The cost of the service class is one extra layer of mapping that the platform team must maintain. Someone has to decide which physical nodes belong to which class, and that decision needs an owner and a review step. The effort is worth it, because the mapping is written in one place, while the manifests that depend on it are written in many places across many teams.
 
 #### Security and RBAC integrity of node labels
-Node labels control workload placement, multi-tenant isolation, hardware licensing boundaries, and compliance zones. A tenant service account, or a compromised container on a worker node that can patch Node objects, can forge service-class labels. It can also strip maintenance markers. Platform teams therefore enforce three security controls to protect label integrity.
 
-- Restrict Node label write permissions to the `NodeRestriction` admission plugin, `nfd-master`, `gpu-feature-discovery`, and the platform validation controller, and to nothing else.
-- Place manual operator override labels in a separate namespace prefix, with an automated time-to-live expiry audit.
-- Gate production scheduling on `gpu-validation=passed`, and remove that label automatically before any driver upgrade, MIG change, or node drain begins.
+Node labels control workload placement, multi-tenant isolation, hardware licensing boundaries, and compliance zones. RBAC, or role-based access control, decides which accounts may change which objects in Kubernetes. A tenant service account, or a compromised container on a worker node that can patch Node objects, can forge service-class labels. The attack is quiet, because the scheduler accepts the forged label without question and places the tenant's Pods on hardware it was never meant to touch. It can also strip maintenance markers. A forged label can send tenant traffic to a pool the tenant was never allowed to use. Platform teams therefore enforce three security controls to protect label integrity.
+
+- Restrict Node label write permissions to the `NodeRestriction` admission plugin, `nfd-master`, `gpu-feature-discovery`, and the platform validation controller, and to nothing else. The question is who may write the label, and the answer is a short, named list.
+- Place manual operator override labels in a separate namespace prefix, with an automated time-to-live expiry audit. A manual override is useful during an incident, but it should expire on its own, so that it does not outlive the reason for it.
+- Gate production scheduling on `gpu-validation=passed`, and remove that label automatically before any driver upgrade, MIG change, or node drain begins. Removing the label first means the node leaves the production pool before the risky change starts.
 
 Put these three controls in place before you open a GPU pool to tenants. A label that anyone can write is a label you cannot trust.
 
@@ -322,7 +343,7 @@ Put these three controls in place before you open a GPU pool to tenants. A label
 
 ### 1. Deploying NFD and inspecting both NFD and GFD labels on a GPU node
 
-Picture a standalone cluster you have just built, or an existing environment you have inherited. Before you trust its scheduling, confirm that both the NFD and GFD DaemonSets are running and publishing labels. You can deploy NFD directly with Kustomize, or let the NVIDIA GPU Operator Helm chart enable it for you.
+Picture a standalone cluster you have just built, or an existing environment you have inherited. Before you trust its scheduling, confirm that both the NFD and GFD DaemonSets are running and publishing labels. You can deploy NFD directly with Kustomize, or let the NVIDIA GPU Operator Helm chart enable it for you. Kustomize is the built-in Kubernetes tool that applies a set of manifests from a directory, and Helm is the package manager that installs charts.
 
 ```bash
 # Deploy Node Feature Discovery via Kustomize (untested here)
@@ -330,7 +351,7 @@ NFD_REPO=https://github.com/kubernetes-sigs/node-feature-discovery
 kubectl apply -k "$NFD_REPO/deployment/overlays/default"
 ```
 
-On managed clusters that use the `aws-ia/eks-data-addons/aws` Terraform module with `enable_nvidia_device_plugin = true`, the device plugin chart deploys three DaemonSets side by side. The next command confirms that the device plugin, GFD, and NFD worker Pods are all present.
+On managed clusters that use the `aws-ia/eks-data-addons/aws` Terraform module with `enable_nvidia_device_plugin = true`, the device plugin chart deploys three DaemonSets side by side. Terraform is the tool that builds the cluster from configuration files, so the module setting controls what lands on each node. The next command confirms that the device plugin, GFD, and NFD worker Pods are all present.
 
 ```bash
 # Verify device plugin, GFD, and NFD worker DaemonSets (untested here)
@@ -345,7 +366,7 @@ nvidia-device-plugin-gpu-feature-discovery
 nvidia-device-plugin-node-feature-discovery-worker
 ```
 
-Once the DaemonSets are running, check the Node object itself. Both `feature.node.kubernetes.io/*` and `nvidia.com/*` labels should be populated. The command below filters the node labels on an H100 worker node.
+Once the DaemonSets are running, check the Node object itself. Both `feature.node.kubernetes.io/*` and `nvidia.com/*` labels should be populated. The command below filters the node labels on an H100 worker node. The `tr` step turns the comma-separated label list into one label per line, so `grep` can match each key.
 
 ```bash
 # Inspect NFD and GFD labels on gpu-node-03 (untested here)
@@ -366,9 +387,11 @@ nvidia.com/mig.capable=true
 nvidia.com/mig.strategy=single
 ```
 
+Read the list from top to bottom. If a line is missing, do not edit the label by hand, because the next discovery run would overwrite your edit anyway. Find out which discovery worker should have written the line, and check its logs. The PCI line proves the card is attached, the driver line proves the host driver is loaded, and the count and memory lines describe the card that the scheduler will see. If any of those lines is missing, the matching discovery worker has not finished its job.
+
 ### 2. Verifying NFD worker probe freshness in logs
 
-A label on a Node object does not tell you when it was last refreshed. After host maintenance or a kernel change, read the `nfd-worker` Pod logs. They show the exact timestamp of the last probe and how many labels changed.
+A label on a Node object does not tell you when it was last refreshed. After host maintenance or a kernel change, read the `nfd-worker` Pod logs. They show the exact timestamp of the last probe and how many labels changed. That timestamp is the evidence you need to decide whether the labels describe the node as it is today.
 
 ```bash
 # Check NFD worker probe timestamp and change count (untested here)
@@ -383,9 +406,11 @@ I0812 11:00:02.771312       1 nfd-worker.go:452] 42 label(s), 3 changed since la
 I0812 11:00:02.803009       1 nfd-worker.go:470] sending labeling request to nfd-master
 ```
 
+A timestamp by itself can mislead you, because a recent probe that happened before a change still describes the old state. Compare the probe time with the time of the last maintenance event, and the answer becomes clear. Read the change count as well as the time. A probe that ran recently but changed nothing is fine after a routine restart. A probe that ran before the last maintenance window is the warning sign, because the labels predate the change.
+
 ### 3. Auditing label consistency across a uniform node pool
 
-In a uniform node pool, every worker node should carry the same hardware capability and MIG strategy labels. If one node drops a label after a partial reconfiguration, workloads quietly avoid that host or fail on it. Loop across the peer nodes in the pool, and you can spot missing MIG labels right away.
+In a uniform node pool, every worker node should carry the same hardware capability and MIG strategy labels. If one node drops a label after a partial reconfiguration, workloads quietly avoid that host or fail on it. Loop across the peer nodes in the pool, and you can spot missing MIG labels right away. The comparison is cheap, and it catches drift that no single node check would show.
 
 ```bash
 # Compare MIG discovery labels across peer nodes in the same pool (untested here)
@@ -409,7 +434,7 @@ Run this peer comparison whenever a node pool changes, and fix any node that dif
 
 ## How it fails
 
-If you are on call, an alert usually starts with one of two symptoms. A GPU Pod sits in Pending, or it runs on hardware that no longer matches what the workload expects. Discovery failures fall into two categories. Loud scheduling blocks leave Pods Pending, because a required label is missing or misspelled. Silent misplacements are more dangerous, because stale labels lead the scheduler to a wrong hardware state with zero errors logged. The diagram below shows how you can tell the two apart.
+If you are on call, an alert usually starts with one of two symptoms. A GPU Pod sits in Pending, or it runs on hardware that no longer matches what the workload expects. Discovery failures fall into two categories. Loud scheduling blocks leave Pods Pending, because a required label is missing or misspelled. Silent misplacements are more dangerous, because stale labels lead the scheduler to a wrong hardware state with zero errors logged. The diagram below shows how you can tell the two apart. Start with the event message, because it names the label the scheduler could not match. Once you know the missing label, you know which discovery worker or platform controller to examine. Silent misplacements need a different first step, which is to compare timestamps before you look at any Pod.
 
 ```mermaid
 flowchart TD
@@ -422,7 +447,7 @@ flowchart TD
     F -->|"Timestamps current"| H["Check SKU-coupling / nodeSelector exact-match trap (e.g. 40960 vs 40537 MiB)"]
 ```
 
-The table pairs each failure with the symptom you will see, its root cause boundary, and what you can do about it.
+The table pairs each failure with the symptom you will see, its root cause boundary, and what you can do about it. Read the symptom column first, since it contains the exact text you will find in `kubectl describe`, `kubectl logs` and the node labels.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -432,22 +457,23 @@ The table pairs each failure with the symptom you will see, its root cause bound
 | **4. `nodeSelector` exact-string trap on memory or SKU (`40960` vs `40537` MiB)** | A Deployment with `nodeSelector: {nvidia.com/gpu.memory: "40960"}` stays `Pending` on an A100-40GB cluster where GFD reports `nvidia.com/gpu.memory: "40537"` (or on an upgraded H100 cluster reporting `"81920"`). | **Manifest Over-Specification Boundary:** `nodeSelector` performs exact string equality (`"40960" != "40537"` and `"40960" != "81920"`). | Replace exact-string `nodeSelector` memory checks with `nodeAffinity` using `operator: Gt` and `values: ["40000"]`, or select on a governed platform service class. |
 | **5. `nvidia.com/mig.capable=true` mistaken for active MIG resources** | A Pod requesting `limits: {nvidia.com/mig-1g.10gb: 1}` targets `nodeSelector: {nvidia.com/mig.capable: "true"}`, binds or stays `Pending` with `Insufficient nvidia.com/mig-1g.10gb`. | **Inventory vs Configuration Boundary:** `mig.capable=true` only means the A100/H100 hardware supports MIG; it does not mean MIG mode is enabled or that `1g.10gb` slices have been created. | Coordinate label selectors with the actual extended resources advertised by the device plugin (`nvidia.com/mig.strategy` and `nvidia.com/mig-1g.10gb.count`). |
 
-Rows 2 and 3 are the ones to check first after maintenance, because both point to labels that no longer match the node. When your GPU Pod is Pending, check whether any node carries the required label before you change the workload.
+Row 2 is a timeline problem. The probe ran at 08:40:11, the MIG change happened at 09:15, and no probe ran in between, so the Node object kept describing the old layout. Row 3 is a consistency problem, where two peers in one pool disagree. Rows 2 and 3 are the ones to check first after maintenance, because both point to labels that no longer match the node. When your GPU Pod is Pending, check whether any node carries the required label before you change the workload. A label that is missing from every node is a discovery or publishing problem. A label that is present on some nodes and absent on others is a pool asymmetry problem, and it needs a different fix.
 
 ## Hands-on lab
 
 ### Venue and scope
-You run this lab locally, using only the Python standard library, with `code/part11/nfd_and_gfd.py` and `code/part11/nfd_and_gfd_lab.py`. The lab simulates NFD label generation for PCIe, CPU, and kernel facts. It also simulates GFD NVML label synthesis in exclusive, time-sliced, and MIG modes. Beyond that, it tests the three-tier label governance model, the fleet refresh blast-radius calculator, node affinity scoring, and post-maintenance drift detection. The `kubectl` commands earlier in the chapter are marked untested here, so they have not been run against a live GKE or Kubernetes cluster.
+
+You run this lab locally, using only the Python standard library, with `code/part11/nfd_and_gfd.py` and `code/part11/nfd_and_gfd_lab.py`. The lab simulates NFD label generation for PCIe, CPU, and kernel facts. It also simulates GFD NVML label synthesis in exclusive, time-sliced, and MIG modes. Beyond that, it tests the three-tier label governance model, the fleet refresh blast-radius calculator, node affinity scoring, and post-maintenance drift detection. The lab does not need a GPU or a cluster, so it can run on a laptop. A passing run proves that the label rules behave as the chapter describes. It does not prove that your cluster publishes the same labels, which is why the live commands still matter. The `kubectl` commands earlier in the chapter are the part that needs a cluster, and they were not run against a live GKE or Kubernetes cluster for this chapter.
 
 ### Step 1: Run the self-checking NFD and GFD simulation lab (tested here)
 
-Start the lab from the repository root. Its output shows whether every check passed.
+Start the lab from the repository root. Its output shows whether every check passed. Each line names the behavior it checks, so a failure tells you which label rule to re-read.
 
 ```bash
 python3 code/part11/nfd_and_gfd_lab.py
 ```
 
-The output below was captured from this repository.
+The output below shows what a passing run prints.
 
 ```text
 === Chapter 11.3 Lab: Node Feature Discovery (NFD) and GPU Feature Discovery (GFD) ===
@@ -483,13 +509,13 @@ Summary: 26 passed, 0 failed out of 26 checks.
 
 ### Exercises
 
-The six exercises below reuse the lab's functions with new inputs. Each one asks you to compute or explain something specific.
+The six exercises below reuse the lab's functions with new inputs. Each one asks you to compute or explain something specific. Start with the table, because it fixes the inputs, and then check each answer against the lab output. If your answer and the lab output differ, the difference is usually in one input value, not in the function.
 
 1. Exercise 1 starts with an AWS EC2 GPU node that exposes two PCIe display and accelerator devices in NFD. Use `code/part11/nfd_and_gfd.py` to identify the device class and vendor behind both labels in the table below. Then state which label an AMD Instinct GPU node publishes.
-2. Exercise 2 tests GFD labels under single MIG. Call `generate_gfd_labels()` for the two-GPU A100 node in the parameter table, and compute the exact `nvidia.com/gpu.count`, `nvidia.com/gpu.product`, and `nvidia.com/mig.strategy` labels.
+2. Exercise 2 tests GFD labels under single MIG. Call `generate_gfd_labels()` for the two-GPU A100 node in the parameter table. Compute the exact `nvidia.com/gpu.count`, `nvidia.com/gpu.product`, and `nvidia.com/mig.strategy` labels.
 3. Exercise 3 combines MIG with time-slicing. Suppose a single physical A100 GPU is partitioned into two MIG instances, and each instance is oversubscribed with two time-slicing replicas. Compute the resulting `nvidia.com/gpu.count`, `nvidia.com/gpu.replicas`, and `nvidia.com/gpu.product` labels.
 4. Exercise 4 covers nodeAffinity filtering and scoring. Use `evaluate_node_affinity_candidate()` with the memory threshold and Hopper preference from the table below. Determine the eligibility flag and score for the T4, A100, and H100 candidate nodes.
-5. Exercise 5 measures fleet refresh blast radius. Compare how many application manifests break, and how many controller configuration updates are needed, when you retire the oldest A100-40GB pool. Run the comparison twice, once under direct SKU affinity and once under a governed `gpu.platform.example/class` service class.
+5. Exercise 5 measures fleet refresh blast radius. How many application manifests break, and how many controller configuration updates are needed, when you retire the oldest A100-40GB pool under direct SKU affinity? Run the same comparison under a governed `gpu.platform.example/class` service class.
 6. Exercise 6 audits drift after maintenance. Use `detect_discovery_drift()` to explain why the node pool in the table below returns `safe_for_admission=False`. Then state which two conditions must change before admission can succeed.
 
 The table below lists the exact inputs for each exercise.

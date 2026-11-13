@@ -22,34 +22,29 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture an application engineer who submits a training Pod. The Pod requests a single GPU, on a cluster where every node reports eight allocatable GPUs. The scheduler binds the Pod at once, and the container starts running. Seconds later, PyTorch crashes with `CUDA_ERROR_NO_DEVICE`, because `/etc/containerd/config.toml` lost its NVIDIA runtime handler during an OS image update.
+Picture an application engineer who submits a training Pod. The Pod requests a single GPU, on a cluster where every node reports eight allocatable GPUs. The scheduler binds the Pod at once, and the container starts running. Everything looks right in the dashboard. Seconds later, PyTorch crashes with `CUDA_ERROR_NO_DEVICE`, because `/etc/containerd/config.toml` lost its NVIDIA runtime handler during an OS image update. The scheduler did its job, and the container runtime quietly lost the piece that gives the container a GPU.
 
-Scheduling a GPU in Kubernetes is not the same operation as giving a Linux container process a usable GPU. Three distinct software contracts stand between a Pod manifest and a working CUDA context. Each one runs across a different infrastructure boundary. Confusing those boundaries is the single largest source of wasted incident-response hours on Kubernetes GPU platforms.
+That story is the core of this chapter. Scheduling a GPU in Kubernetes is not the same operation as giving a Linux container process a usable GPU. Three distinct software contracts stand between a Pod manifest and a working CUDA context. A CUDA context is the state that CUDA creates before any kernel can run on a GPU. Each contract runs across a different infrastructure boundary, and each one can fail on its own. Confusing those boundaries is the single largest source of wasted incident-response hours on Kubernetes GPU platforms, because people fix the layer that looks guilty instead of the layer that actually broke.
 
-The first contract sits on the inventory and scheduling boundary. The NVIDIA Device Plugin queries the host driver through the NVIDIA Management Library. It opens a gRPC stream to the local kubelet and advertises healthy devices as the extended resource `nvidia.com/gpu`. Only after kubelet patches the Node status object in the API server can kube-scheduler bind a GPU Pod to that machine.
+The first contract sits on the inventory and scheduling boundary. The NVIDIA Device Plugin queries the host driver through the NVIDIA Management Library. It opens a gRPC stream to the local kubelet and advertises healthy devices as the extended resource `nvidia.com/gpu`. Only after kubelet patches the Node status object in the API server can kube-scheduler bind a GPU Pod to that machine. Think of this contract as the list of parking spaces the node claims to have. It says how many spaces exist and whether they are usable, but it does not say which car sits in which space.
 
-The second contract sits on the device allocation boundary. Binding a Pod to a node only reserves an integer count in control-plane accounting. Before the container starts, kubelet calls the device plugin's allocation gRPC method to select specific physical GPU UUIDs. That call returns the exact device paths, environment variables, or Container Device Interface annotations the container runtime needs.
+The second contract sits on the device allocation boundary. Binding a Pod to a node only reserves an integer count in control-plane accounting. Before the container starts, kubelet calls the device plugin's allocation gRPC method to select specific physical GPU UUIDs. That call returns the exact device paths, environment variables, or Container Device Interface annotations the container runtime needs. A UUID is the unique identifier of one physical GPU card, and the Container Device Interface, or CDI, is a standard file format that describes how to attach a device to a container. This is the step that turns "one of the eight" into "this particular card."
 
-The third contract sits on the sandbox construction boundary. Standard Linux containers isolate filesystems and device access through kernel namespaces and control groups. By default, a container cannot see host character devices such as `/dev/nvidia0`, or the host user-mode driver library. So at container creation, containerd or CRI-O must invoke the NVIDIA Container Toolkit or apply a Container Device Interface specification. That step bind-mounts the allocated devices and driver libraries into the sandbox.
+The third contract sits on the sandbox construction boundary. Standard Linux containers isolate filesystems and device access through kernel namespaces and control groups. By default, a container cannot see host character devices such as `/dev/nvidia0`, or the host user-mode driver library. So at container creation, containerd or CRI-O must invoke the NVIDIA Container Toolkit or apply a Container Device Interface specification. That step bind-mounts the allocated devices and driver libraries into the sandbox. A bind mount makes a file or device on the host appear at a path inside the container, without copying it.
 
-Before you change anything, decide which of these three boundaries the failure sits on.
+Before you change anything, decide which of these three boundaries the failure sits on. A missing allocatable count points at the first contract. A Pod that binds and then cannot open a device points at the second or third. Knowing which contract failed tells you which logs and which node files to read first.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-You should already know the GPU readiness dependency chain from Chapter 11.1. That chain runs through PCIe, the host driver, the container runtime, the device plugin, node labels, the scheduler, and workload validation. You also need working knowledge of Linux character devices, shared-library dynamic linking with `LD_LIBRARY_PATH`, and Kubernetes Pod resource requests and limits.
+You should already know the GPU readiness dependency chain from Chapter 11.1. That chain runs through PCIe, the host driver, the container runtime, the device plugin, node labels, the scheduler, and workload validation. PCIe is the bus that connects the GPU to the motherboard. You also need working knowledge of Linux character devices, shared-library dynamic linking with `LD_LIBRARY_PATH`, and Kubernetes Pod resource requests and limits. A character device is a file under `/dev` that a program reads and writes as a stream of bytes. The dynamic linker is the part of Linux that loads shared libraries when a program starts, and `LD_LIBRARY_PATH` is the environment variable that tells it where to look first.
 
 ### Outcomes
 
-By the end of this chapter, you will be able to do the following.
+This chapter walks through the host kernel-mode driver, the host user-mode driver and the container CUDA runtime, and it explains how CUDA Forward Compatibility lets a newer container run on an older host driver. It then traces the four generations of NVIDIA container integration, from the legacy Docker wrappers to CNCF Container Device Interface 0.5.0, and shows what `nvidia-ctk cdi generate` writes into `/var/run/cdi/nvidia.yaml`. The CNCF is the Cloud Native Computing Foundation, the group that hosts Kubernetes.
 
-- You will tell apart the host kernel-mode driver, the host user-mode driver, and the container CUDA runtime. You will also explain how CUDA Forward Compatibility bridges older host drivers.
-- You will trace the four generations of NVIDIA container integration, from legacy Docker wrappers to CNCF Container Device Interface 0.5.0. You will inspect what `nvidia-ctk cdi generate` writes into `/var/run/cdi/nvidia.yaml`.
-- You will separate three runtime mechanisms: NVIDIA Container Toolkit node configuration, Kubernetes RuntimeClass handler selection, and CDI device specifications. You will explain why neither RuntimeClass nor CDI makes a GPU schedulable on its own.
-- You will trace the kubelet Device Plugin gRPC lifecycle across registration, device streaming, and allocation over the local device-plugin socket. You will read Capacity, Allocatable, and Allocated resources on a Node.
-- You will work out why a bare single-GPU request is a quantity contract rather than a hardware-intent contract on a mixed 40-node fleet.
-- You will run a dependency-ordered diagnostic playbook with `lspci`, `lsmod`, `nvidia-smi`, `crictl inspect`, and `kubectl describe node`. It isolates GPU platform failures without blind restarts.
+Next, the chapter separates three runtime mechanisms: NVIDIA Container Toolkit node configuration, Kubernetes RuntimeClass handler selection, and CDI device specifications. It explains why neither RuntimeClass nor CDI makes a GPU schedulable on its own. The device plugin lifecycle comes after that, covering registration, device streaming and allocation over the local device-plugin socket, and reading Capacity, Allocatable and Allocated resources on a Node. The chapter then shows why a bare single-GPU request is a quantity contract rather than a hardware-intent contract on a mixed fleet. It ends with a dependency-ordered diagnostic playbook built from `lspci`, `lsmod`, `nvidia-smi`, `crictl inspect`, and `kubectl describe node`. That playbook isolates GPU platform failures without blind restarts.
 
 If the Chapter 11.1 chain is new to you, read that chapter before you go on.
 
@@ -57,13 +52,15 @@ If the Chapter 11.1 chain is new to you, read that chapter before you go on.
 
 ### 1. Basics: The host kernel/user-space split and Linux container isolation
 
-When a GPU container fails to initialize CUDA, engineers often rebuild the application image. In many cases, though, the real fault sits in the host kernel driver or in the character device nodes. Before any container runtime or device plugin can expose a GPU, the Linux host must drive the physical hardware. The NVIDIA UNIX driver stack divides that work between two privilege domains: the Kernel-Mode Driver and the User-Mode Driver.
+When a GPU container fails to initialize CUDA, engineers often rebuild the application image. It feels like the natural move, because the error appears inside the container. In many cases, though, the real fault sits in the host kernel driver or in the character device nodes, and a new image will fail the same way. Before any container runtime or device plugin can expose a GPU, the Linux host must drive the physical hardware. The NVIDIA UNIX driver stack divides that work between two privilege domains: the Kernel-Mode Driver and the User-Mode Driver. The first runs inside the kernel with full hardware access. The second runs as an ordinary library in user space, where normal programs live.
+
+The split matters because each side fails in its own way. A kernel problem stops every program on the host from touching the GPU, and it usually shows up as a missing module or a message in the kernel log. A user-space problem affects only the programs that load a particular library, and it usually shows up as a version error when CUDA starts. Learning to tell the two apart is the first step in any GPU incident.
 
 #### The Kernel-Mode Driver and character devices
 
-The Kernel-Mode Driver is a set of loadable kernel modules, compiled against the exact running host kernel. These modules talk to the GPU directly over the PCIe bus. They manage initialization, memory tables, interrupts, and DMA mappings. If you find any required kernel module or character node missing, every call to `cuInit(0)` or `cudaMalloc()` fails immediately.
+The Kernel-Mode Driver is a set of loadable kernel modules, compiled against the exact running host kernel. These modules talk to the GPU directly over the PCIe bus. They manage initialization, memory tables, interrupts, and DMA mappings. DMA, or direct memory access, lets the card move data to and from memory without the CPU copying each byte. If you find any required kernel module or character node missing, every call to `cuInit(0)` or `cudaMalloc()` fails immediately. Those two calls are the first things CUDA does, so a missing module blocks the whole program before any real work starts.
 
-The table below lists the modules and what each one is responsible for. Notice that `nvidia.ko` is the core module, and it carries the hardware initialization and power work.
+The table below lists the modules and what each one is responsible for. Notice that `nvidia.ko` is the core module, and it carries the hardware initialization and power work. The other modules add memory sharing, display support and direct network transfers on top of that core.
 
 | Kernel Module (lsmod Name) | Typical lsmod Size (Bytes) | Operational Responsibility (`volume-04` & `Lab 03`) |
 |---|---|---|
@@ -72,7 +69,7 @@ The table below lists the modules and what each one is responsible for. Notice t
 | `nvidia-modeset.ko` (nvidia_modeset) & nvidia_drm | 1249280 to 1314816 (69632 for nvidia_drm) | Display mode-setting and Direct Rendering Manager modules loaded alongside the core module even on headless servers. |
 | `nvidia-peermem.ko` | Varies by kernel | Enables GPUDirect RDMA so InfiniBand or RoCE NICs can DMA directly into GPU BAR1 memory over PCIe without staging through host CPU RAM. |
 
-When these kernel modules initialize on the host, they create character device nodes under `/dev`. User-space processes open those nodes and issue `ioctl()` system calls against them. The next table gives the device paths. You can match each one to its major and minor numbers, and to what the node is for.
+When these kernel modules initialize on the host, they create character device nodes under `/dev`. User-space processes open those nodes and issue `ioctl()` system calls against them. An `ioctl()` call is the standard Linux way for a program to send a device-specific command to a driver. The next table gives the device paths. You can match each one to its major and minor numbers, and to what the node is for. The major number tells the kernel which driver owns the device, and the minor number tells that driver which device it means.
 
 | Character Device Path | Device Type | Major Number | Minor Number | Operational Purpose |
 |---|---|---|---|---|
@@ -82,13 +79,15 @@ When these kernel modules initialize on the host, they create character device n
 | `/dev/nvidia-uvm-tools` | Character (c) | 238 (dynamic) | 1 | Profiling and diagnostic companion node for Unified Virtual Memory. |
 | `/dev/nvidia-caps/*` | Character (c) | Dynamic | Dynamic | Capability device nodes used to enforce fine-grained MIG partition access. |
 
+Read the table as a map from names to jobs. `/dev/nvidia0` is the handle for one GPU. `/dev/nvidiactl` is the control handle that a library uses to ask questions about the whole driver. `/dev/nvidia-uvm` is the memory handle that CUDA needs for every context. If a container has the first two but not the third, you can expect CUDA to fail at startup even though the GPU is visible.
+
 #### The User-Mode Driver vs the CUDA Runtime
 
-Two distinct sets of shared libraries sit above the character-device boundary. Mixing up the host user-mode driver with the container CUDA runtime leads to version mismatch errors. Those errors break container startup across the whole fleet.
+Two distinct sets of shared libraries sit above the character-device boundary. Mixing up the host user-mode driver with the container CUDA runtime leads to version mismatch errors. Those errors break container startup across the whole fleet. The mix-up is easy to make, because both are called "CUDA" in everyday talk, and both show up in the same error messages.
 
-The User-Mode Driver includes `libcuda.so.1` and `libnvidia-ml.so.1`. Both ship as part of the host NVIDIA driver package. The library implements the low-level CUDA Driver API, and it talks to the kernel module through a private, version-locked system-call ABI. Because it must match the exact version of the kernel module loaded in the host kernel, the host owns it and bind-mounts it into containers at runtime.
+The User-Mode Driver includes `libcuda.so.1` and `libnvidia-ml.so.1`. Both ship as part of the host NVIDIA driver package. The library implements the low-level CUDA Driver API, and it talks to the kernel module through a private, version-locked system-call ABI. ABI stands for application binary interface, the exact low-level contract that two pieces of compiled code agree on. Because it must match the exact version of the kernel module loaded in the host kernel, the host owns it and bind-mounts it into containers at runtime. The container never carries its own copy of this library.
 
-The CUDA Runtime and Toolkit libraries, including `libcudart.so`, `libcublas.so`, and `libnccl.so`, ship inside the application container image. PyTorch links against the CUDA Runtime, which turns high-level runtime calls into Driver API calls. The host-injected user-mode driver handles those calls. Keeping the kernel module and user-mode driver on the host means you can patch a driver defect across a 500-node fleet once, without rebuilding hundreds of tenant images.
+The CUDA Runtime and Toolkit libraries, including `libcudart.so`, `libcublas.so`, and `libnccl.so`, ship inside the application container image. PyTorch links against the CUDA Runtime, which turns high-level runtime calls into Driver API calls. The host-injected user-mode driver handles those calls. Keeping the kernel module and user-mode driver on the host means you can patch a driver defect across a 500-node fleet once, without rebuilding hundreds of tenant images. That split is what makes GPU fleets manageable. Teams can update the host driver on its own schedule, and the application images stay the same.
 
 The example below shows what a version mismatch looks like in practice.
 
@@ -100,39 +99,41 @@ Version-Locked Kernel vs. User-Mode ABI Mismatch Example (volume-04):
   NVRM: API mismatch: the client has the version 535.104.05, but this kernel module has the version 525.105.17
 ```
 
-The last line is the message to look for. It names both versions, so the gap is visible at a glance.
+The last line is the message to look for. It names both versions, so the gap is visible at a glance. When you see this line in `dmesg`, the fix is on the host. The container image does not need a rebuild.
 
 #### CUDA Forward Compatibility
 
-Here is a common bottleneck. A research team wants a container built on a newer CUDA Toolkit, such as CUDA 12.2. Meanwhile, the production fleet kernel driver is pinned to an older enterprise branch, such as Driver 525.105.17 from CUDA 12.0. Unloading the kernel module across 500 production nodes would mean draining every GPU Pod or rebooting the hosts.
+Here is a common bottleneck. A research team wants a container built on a newer CUDA Toolkit, such as CUDA 12.2. Meanwhile, the production fleet kernel driver is pinned to an older enterprise branch, such as Driver 525.105.17 from CUDA 12.0. Unloading the kernel module across 500 production nodes would mean draining every GPU Pod or rebooting the hosts. Neither choice is cheap, so the team needs another way for the new image to run on the old driver.
 
-NVIDIA solves this across supported major and minor version boundaries with CUDA Forward Compatibility. A forward-compatible container image packages a newer user-mode driver bundle inside `/usr/local/cuda/compat/`. That bundle includes the forward-compatible `libcuda.so.535.104.05`, the NVVM compiler library, and the PTX JIT compiler library.
+NVIDIA solves this across supported major and minor version boundaries with CUDA Forward Compatibility. A forward-compatible container image packages a newer user-mode driver bundle inside `/usr/local/cuda/compat/`. That bundle includes the forward-compatible `libcuda.so.535.104.05`, the NVVM compiler library, and the PTX JIT compiler library. PTX is NVIDIA's portable intermediate code, and a JIT compiler turns it into machine code for the GPU at run time.
 
-The trick works through the dynamic linker. When the container entrypoint prepends `/usr/local/cuda/compat` to `LD_LIBRARY_PATH`, the Linux dynamic linker resolves the newer compat library before the older host-mounted one. That newer user-mode library translates CUDA 12.2 runtime calls down to the older 525 kernel-mode driver ABI. If the version gap exceeds the supported compatibility matrix, the user-mode driver returns an initialization error, and the workload exits cleanly.
+The trick works through the dynamic linker. When the container entrypoint prepends `/usr/local/cuda/compat` to `LD_LIBRARY_PATH`, the Linux dynamic linker resolves the newer compat library before the older host-mounted one. That newer user-mode library translates CUDA 12.2 runtime calls down to the older 525 kernel-mode driver ABI. If the version gap exceeds the supported compatibility matrix, the user-mode driver returns an initialization error, and the workload exits cleanly. A clean exit is better than a silent wrong answer, because it tells you the gap is too wide.
 
 ```bash
 # Inside container entrypoint to activate CUDA Forward Compatibility (untested here)
 export LD_LIBRARY_PATH=/usr/local/cuda/compat:$LD_LIBRARY_PATH
 ```
 
-Before you blame the application image, check the host kernel driver, the device nodes, and the driver versions.
+Before you blame the application image, check the host kernel driver, the device nodes, and the driver versions. Forward Compatibility is a bridge across a version gap, and it is not a repair for a missing kernel module. A container that uses the compat path on a host with no loaded driver will still fail.
 
 ---
 
 ### 2. Intermediate: Evolution of GPU containerization — Toolkit, RuntimeClass, and CDI
 
-Standard Linux containers use kernel namespaces to isolate filesystem mounts, process trees, and network stacks. They use control groups to meter CPU and RAM. When containerd starts a standard container through runc, the container gets a private temporary device filesystem. That filesystem holds only safe pseudo-devices, such as `/dev/null` and `/dev/zero`. Without special runtime injection, the container has neither `/dev/nvidia0` nor the host user-mode driver library.
+Standard Linux containers use kernel namespaces to isolate filesystem mounts, process trees, and network stacks. They use control groups to meter CPU and RAM. When containerd starts a standard container through runc, the container gets a private temporary device filesystem. runc is the low-level tool that actually creates a container from its specification. That filesystem holds only safe pseudo-devices, such as `/dev/null` and `/dev/zero`. Without special runtime injection, the container has neither `/dev/nvidia0` nor the host user-mode driver library. The isolation is working as designed, and the GPU stack has to punch a controlled hole through it.
+
+The intermediate question is how that hole gets punched. The answer has changed several times, and the history explains why today's clusters contain several overlapping settings.
 
 #### The four generations of NVIDIA container integration
 
-Over the past decade, the mechanism that injects GPU device nodes and host driver libraries into a container went through four architectural generations. Knowing these four stages explains why legacy environment variables still coexist with modern Container Device Interface YAML files.
+Over the past decade, the mechanism that injects GPU device nodes and host driver libraries into a container went through four architectural generations. Knowing these four stages explains why legacy environment variables still coexist with modern Container Device Interface YAML files. Old settings tend to stay in clusters long after the tool that needed them is gone, so when you read a node, you may see parts of more than one generation.
 
-1. Generation 1 (`nvidia-docker`) was a standalone CLI wrapper around the Docker daemon. It queried the host driver and passed `--device=/dev/nvidia0` and volume-mount flags on the command line. That approach was brittle, and it did not work with Kubernetes CRI runtimes.
-2. Generation 2 (`nvidia-docker2`) replaced the Docker runtime with a custom one, tied specifically to the Docker daemon architecture.
-3. Generation 3 (NVIDIA Container Toolkit with OCI pre-start hooks) arrived as Kubernetes standardized on containerd and CRI-O and removed dockershim. The NVIDIA runtime became a thin wrapper around runc. When a container starts with `NVIDIA_VISIBLE_DEVICES` set, an OCI pre-start hook calls `nvidia-container-cli`. That hook bind-mounts the device nodes and host driver libraries into the container namespace.
-4. Generation 4 (CDI, the Container Device Interface) is the modern CNCF-standardized specification. It replaces custom OCI hook wrappers with a declarative file at `/var/run/cdi/nvidia.yaml` or `/etc/cdi/nvidia.yaml`. When containerd with `enable_cdi = true` receives a request for a qualified device name such as `nvidia.com/gpu=0`, it parses the CDI specification directly. It then attaches the character nodes and read-only library mounts.
+1. Generation 1 (`nvidia-docker`) was a standalone CLI wrapper around the Docker daemon. It queried the host driver and passed `--device=/dev/nvidia0` and volume-mount flags on the command line. That approach was brittle, because every run needed the right flags typed in exactly, and it did not work with Kubernetes CRI runtimes. CRI, the Container Runtime Interface, is the API that kubelet uses to talk to containerd or CRI-O.
+2. Generation 2 (`nvidia-docker2`) replaced the Docker runtime with a custom one, tied specifically to the Docker daemon architecture. This removed the need for wrapper flags, but it still depended on Docker, which Kubernetes stopped using as its runtime.
+3. Generation 3 (NVIDIA Container Toolkit with OCI pre-start hooks) arrived as Kubernetes standardized on containerd and CRI-O and removed dockershim. The NVIDIA runtime became a thin wrapper around runc. When a container starts with `NVIDIA_VISIBLE_DEVICES` set, an OCI pre-start hook calls `nvidia-container-cli`. An OCI hook is a program that the runtime runs at a fixed point in the container's startup, and this one runs before the process starts. That hook bind-mounts the device nodes and host driver libraries into the container namespace.
+4. Generation 4 (CDI, the Container Device Interface) is the modern CNCF-standardized specification. It replaces custom OCI hook wrappers with a declarative file at `/var/run/cdi/nvidia.yaml` or `/etc/cdi/nvidia.yaml`. When containerd with `enable_cdi = true` receives a request for a qualified device name such as `nvidia.com/gpu=0`, it parses the CDI specification directly. It then attaches the character nodes and read-only library mounts. A declarative file is easier to review than a hook, because you can read exactly what will be mounted before any container starts.
 
-The sequence diagram below traces one GPU Pod from scheduling to a running process.
+The sequence diagram below traces one GPU Pod from scheduling to a running process. Each numbered arrow is one hand-off between components, and the last step is the one that proves the path worked.
 
 ```mermaid
 sequenceDiagram
@@ -154,18 +155,18 @@ sequenceDiagram
     C-->>CRI: 8. kubectl exec nvidia-smi -L succeeds (UUID matches step 2)
 ```
 
-The last step is the proof. `kubectl exec` must print the same UUID that the device plugin handed out in step 2.
+The last step is the proof. `kubectl exec` must print the same UUID that the device plugin handed out in step 2. If the UUIDs differ, the container is looking at a different card than the one the scheduler reserved, and that is a serious fault that a simple "it runs" check would miss.
 
 #### Inside a generated CDI specification
 
-On a GPU worker node, `nvidia-ctk` inspects the loaded driver and the hardware topology. It then generates the CDI specification on the fly.
+On a GPU worker node, `nvidia-ctk` inspects the loaded driver and the hardware topology. It then generates the CDI specification on the fly. The command below is the one that writes the file, and it needs root because it writes into a system directory.
 
 ```bash
 # Generate CDI specification on a GPU worker node (untested here)
 sudo nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml
 ```
 
-When you open `/var/run/cdi/nvidia.yaml`, you see the exact container edits applied when a container requests `nvidia.com/gpu=0`. Every host binary and shared library is bind-mounted with `[ro, nosuid, nodev, bind]`, so a compromised container process cannot overwrite `/usr/bin/nvidia-smi` or the user-mode driver on the worker host.
+When you open `/var/run/cdi/nvidia.yaml`, you see the exact container edits applied when a container requests `nvidia.com/gpu=0`. Every host binary and shared library is bind-mounted with `[ro, nosuid, nodev, bind]`, so a compromised container process cannot overwrite `/usr/bin/nvidia-smi` or the user-mode driver on the worker host. The options mean read-only, no setuid programs, no device nodes, and a plain bind. Each of those choices removes a way for a container to change the host.
 
 ```yaml
 # /var/run/cdi/nvidia.yaml (illustrative, abbreviated)
@@ -198,9 +199,11 @@ devices:
     # Aggregates all discovered GPU indices and common driver mounts
 ```
 
+Read the file from top to bottom. The `deviceNodes` block says which character devices to create inside the container, and the `mounts` block says which host files to bind in. The file is a plan, and the runtime carries it out when a container asks for that device.
+
 #### Three mechanisms, three distinct questions
 
-Platform engineers, and interview candidates, regularly conflate the NVIDIA Container Toolkit, Kubernetes RuntimeClass, and CDI. Each mechanism works at a different architectural scope, and each answers a different question. The table sets them side by side.
+Platform engineers, and interview candidates, regularly conflate the NVIDIA Container Toolkit, Kubernetes RuntimeClass, and CDI. Each mechanism works at a different architectural scope, and each answers a different question. The mix-up usually happens because all three appear in the same GPU setup guide, and they all seem to "turn on the GPU." The table sets them side by side, so you can see which question each one answers.
 
 | Mechanism | Question It Answers | Architectural Scope | What It Does NOT Do |
 |---|---|---|---|
@@ -208,9 +211,9 @@ Platform engineers, and interview candidates, regularly conflate the NVIDIA Cont
 | **RuntimeClass (`node.k8s.io/v1`)** | Which configured runtime handler (runc vs nvidia) should kubelet ask containerd to use for this Pod? | Cluster-wide Kubernetes API object referenced by `Pod.spec.runtimeClassName`. | It has zero awareness of GPU inventory and never allocates or makes a GPU schedulable by itself. |
 | **Container Device Interface (`/var/run/cdi/nvidia.yaml`)** | What exact character device nodes, bind mounts, environment variables, and hooks define device `nvidia.com/gpu=0`? | Node-local declarative device specification consumed by containerd or CRI-O. | It does not discover node capacity for kube-scheduler or replace the device plugin. |
 
-A RuntimeClass object is only a pointer. It names a handler, such as `handler: nvidia`, and that handler must already exist in each eligible node's `/etc/containerd/config.toml`. Suppose a Pod sets `runtimeClassName: nvidia` and lands on a node where nobody wrote the nvidia handler stanza. The Pod fails at sandbox creation, before the container image entrypoint ever runs.
+A RuntimeClass object is only a pointer. It names a handler, such as `handler: nvidia`, and that handler must already exist in each eligible node's `/etc/containerd/config.toml`. Suppose a Pod sets `runtimeClassName: nvidia` and lands on a node where nobody wrote the nvidia handler stanza. The Pod fails at sandbox creation, before the container image entrypoint ever runs. The entrypoint is the first command the image runs, so a failure before it means the image never got a chance to act.
 
-The snippet below shows a containerd configuration with an nvidia handler.
+The snippet below shows a containerd configuration with an nvidia handler. Read it as two parts. The runc handler is the default, and the nvidia handler points to the NVIDIA runtime binary.
 
 ```toml
 # /etc/containerd/config.toml (untested here)
@@ -232,17 +235,17 @@ version = 2
             BinaryName = "/usr/bin/nvidia-container-runtime"
 ```
 
-When a Pod fails at sandbox creation, check the containerd handler stanza before you look at the image.
+When a Pod fails at sandbox creation, check the containerd handler stanza before you look at the image. The stanza is the part of the file that names the handler, and a missing or misspelled name is a common cause of this failure.
 
 ---
 
 ### 3. Advanced: The Kubernetes Device Plugin gRPC contract and resource model
 
-Once the host kernel driver and container runtime are configured on a worker node, the Kubernetes control plane still has no idea that the machine owns eight healthy GPUs. Until a device plugin advertises those devices to kubelet, kube-scheduler leaves every GPU Pod stuck in Pending.
+Once the host kernel driver and container runtime are configured on a worker node, the Kubernetes control plane still has no idea that the machine owns eight healthy GPUs. Until a device plugin advertises those devices to kubelet, kube-scheduler leaves every GPU Pod stuck in Pending. This is the same gap that Chapter 11.1 describes, seen here from the plugin's side.
 
-Kubernetes closes this gap through the Device Plugin Framework under `k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1`. Every major AI accelerator vendor implements the same four-function gRPC contract. That contract covers device discovery, resource allocation, health monitoring, and scheduler integration.
+Kubernetes closes this gap through the Device Plugin Framework under `k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1`. Every major AI accelerator vendor implements the same four-function gRPC contract. That contract covers device discovery, resource allocation, health monitoring, and scheduler integration. Because every vendor uses the same contract, kubelet does not need to know anything special about NVIDIA, AMD or Google hardware. It only needs the plugin to speak the contract.
 
-The table pairs each vendor plugin with the extended resource name that Pods request, along with the facts the source notes for it.
+The table pairs each vendor plugin with the extended resource name that Pods request, along with the facts the source notes for it. The name is the handle a Pod uses in `resources.limits`, and it is how kube-scheduler matches the Pod to a node.
 
 | Accelerator Vendor Plugin | Extended Resource Name | Key Ecosystem & Performance Facts (*Generative AI on Kubernetes* Ch 3 & *Kubernetes for Generative AI Solutions* Ch 10) |
 |---|---|---|
@@ -254,7 +257,7 @@ The table pairs each vendor plugin with the extended resource name that Pods req
 
 #### The Kubelet gRPC handshake: Register, ListAndWatch, and Allocate
 
-On an NVIDIA GPU node, the `nvidia-device-plugin` DaemonSet talks to the local kubelet over UNIX domain sockets inside `/var/lib/kubelet/device-plugins/`. The sequence diagram below shows the full path, from registration through allocation.
+On an NVIDIA GPU node, the `nvidia-device-plugin` DaemonSet talks to the local kubelet over UNIX domain sockets inside `/var/lib/kubelet/device-plugins/`. A UNIX domain socket is a file-based channel between two programs on the same machine, which is why it never leaves the node. The sequence diagram below shows the full path, from registration through allocation.
 
 ```mermaid
 sequenceDiagram
@@ -284,7 +287,9 @@ sequenceDiagram
     DP-->>K: 6. AllocateResponse (device_specs, mounts, env / CDI annotations)
 ```
 
-The startup log of a healthy device-plugin Pod shows three steps, in order. First, the plugin starts a filesystem watcher on `/var/lib/kubelet/device-plugins/`. That lets it notice socket removal and register again whenever kubelet restarts. Second, the plugin starts its gRPC server on `/var/lib/kubelet/device-plugins/nvidia-gpu.sock` or `nvidia.sock`. Third, it dials `/var/lib/kubelet/device-plugins/kubelet.sock` to call `Register()`, which prompts kubelet to open the long-lived `ListAndWatch()` stream.
+The diagram has three branches in the middle, and they are the part that matters in production. A healthy node advertises all eight devices. A node with three failing devices advertises five. A plugin that crashes leaves the node with its old capacity and no allocatable GPUs, which is why a crashed plugin looks different from a sick GPU in `kubectl`.
+
+The startup log of a healthy device-plugin Pod shows three steps, in order. First, the plugin starts a filesystem watcher on `/var/lib/kubelet/device-plugins/`. That lets it notice socket removal and register again whenever kubelet restarts. Second, the plugin starts its gRPC server on `/var/lib/kubelet/device-plugins/nvidia-gpu.sock` or `nvidia.sock`. Third, it dials `/var/lib/kubelet/device-plugins/kubelet.sock` to call `Register()`, which prompts kubelet to open the long-lived `ListAndWatch()` stream. The stream stays open for the life of the plugin, so kubelet hears about health changes as they happen.
 
 ```text
 $ kubectl logs -n gpu-operator nvidia-device-plugin-daemonset-4kxqz
@@ -296,11 +301,11 @@ I0812 09:14:03.006771       1 server.go:139] Starting to serve 'nvidia.com/gpu' 
 I0812 09:14:03.011552       1 server.go:146] Registered device plugin for 'nvidia.com/gpu' with Kubelet
 ```
 
-As you read the log, each line matches one of those steps. The line that reads `Registered device plugin for 'nvidia.com/gpu' with Kubelet` is the sign that registration succeeded.
+As you read the log, each line matches one of those steps. The line that reads `Registered device plugin for 'nvidia.com/gpu' with Kubelet` is the sign that registration succeeded. If that line is missing, the plugin has not reached kubelet, and nothing that happens later on the node will fix it.
 
 #### Reading Capacity, Allocatable, and Allocated resources with surgical precision
 
-Running `kubectl describe node gpu-node-07` shows three separate numbers for `nvidia.com/gpu`. Read them as three layers of state. If you mix them up, you may blame the scheduler for a problem that is really a failed health check or a GPU already in use by a running Pod.
+Running `kubectl describe node gpu-node-07` shows three separate numbers for `nvidia.com/gpu`. Read them as three layers of state. If you mix them up, you may blame the scheduler for a problem that is really a failed health check or a GPU already in use by a running Pod. A short example makes the difference clear. Imagine a node that shows Capacity 8 and Allocatable 8, with 6 GPUs allocated. The plugin sees all eight cards, and Kubernetes can give out eight, and six of them are already in use. Only two are free for the next Pod.
 
 ```text
 $ kubectl describe node gpu-node-07
@@ -320,7 +325,7 @@ Allocated resources:
   nvidia.com/gpu     6           6
 ```
 
-Each field in the node status is one layer between hardware discovery and Pod binding. The table shows what each state means, and what it does not prove.
+Each field in the node status is one layer between hardware discovery and Pod binding. The table shows what each state means, and what it does not prove. Use it as a checklist when you read a node, and remember that a field showing a number does not prove that number is still true today.
 
 | Node / Pod State | Exact Meaning | What It Does NOT Prove |
 |---|---|---|
@@ -333,43 +338,43 @@ Each field in the node status is one layer between hardware discovery and Pod bi
 
 #### Extended resource rules in Pod manifests
 
-Because `nvidia.com/gpu` is an extended resource, the Kubernetes API server enforces three strict admission rules on every Pod manifest. A Pod that breaks any of these rules is rejected before kube-scheduler ever sees it.
+Because `nvidia.com/gpu` is an extended resource, the Kubernetes API server enforces three strict admission rules on every Pod manifest. Admission is the step where the API server checks a new object before it is stored. A Pod that breaks any of these rules is rejected before kube-scheduler ever sees it. The rules are short, but each one catches a mistake that people make often.
 
-1. Quantities must be integers. You cannot request a fractional value such as 0.5 GPUs. Sub-GPU sharing means configuring the device plugin to advertise discrete MIG resources, such as `nvidia.com/mig-1g.5gb: 1`, or time-sliced replicas. For example, `replicas: 10` on an 8-GPU node advertises 80 virtual units to kubelet. The card in the next example is a single 24 GB NVIDIA L4 GPU on a `g6.2xlarge` instance. Running one 1.8 GB Llama-3.2-1B replica without sharing leaves 92% of its VRAM unused. Enabling time-slicing with 10 replicas lets multiple Pods share the card.
-2. The request must be specified in limits. A Pod may specify `resources.limits["nvidia.com/gpu"]: 1` alone, or specify both requests and limits with identical integer values. Specifying requests without limits, or mismatched integers such as 1 and 2, gets the Pod rejected by the API server.
-3. There is no implicit overcommit. Without explicit time-slicing or Multi-Process Service configuration, each unit of `nvidia.com/gpu` maps to exclusive physical device assignment during allocation.
+1. Quantities must be integers. You cannot request a fractional value such as 0.5 GPUs. Sub-GPU sharing means configuring the device plugin to advertise discrete MIG resources, such as `nvidia.com/mig-1g.5gb: 1`, or time-sliced replicas. For example, `replicas: 10` on an 8-GPU node advertises 80 virtual units to kubelet. The card in the next example is a single 24 GB NVIDIA L4 GPU on a `g6.2xlarge` instance. Running one 1.8 GB Llama-3.2-1B replica without sharing leaves 92% of its VRAM unused. Enabling time-slicing with 10 replicas lets multiple Pods share the card. Sharing is therefore a plugin setting, and a Pod cannot ask for a fraction on its own.
+2. The request must be specified in limits. A Pod may specify `resources.limits["nvidia.com/gpu"]: 1` alone, or specify both requests and limits with identical integer values. Specifying requests without limits, or mismatched integers such as 1 and 2, gets the Pod rejected by the API server. The limit is the number the scheduler counts, so it has to be present and it has to be the same number on both sides.
+3. There is no implicit overcommit. Without explicit time-slicing or Multi-Process Service configuration, each unit of `nvidia.com/gpu` maps to exclusive physical device assignment during allocation. Multi-Process Service is NVIDIA's mechanism for letting several processes share a GPU at the same time. Overcommit would mean handing out more units than the hardware has, and the default setting never does that.
 
-If you want more than one Pod on a card, configure time-slicing or Multi-Process Service explicitly before you schedule them.
+If you want more than one Pod on a card, configure time-slicing or Multi-Process Service explicitly before you schedule them. A Pod that asks for a shared card without the plugin setting in place will simply wait, or it will get an exclusive card, depending on the request.
 
 #### Quantifying the underspecified request trap
 
-The kube-scheduler treats `nvidia.com/gpu` as a plain integer counter. So a bare resource request states a capacity need, not a hardware need. Put a latency-sensitive workload with no node affinity on a mixed cluster, and it guarantees intermittent SLA violations.
+The kube-scheduler treats `nvidia.com/gpu` as a plain integer counter. So a bare resource request states a capacity need, not a hardware need. Put a latency-sensitive workload with no node affinity on a mixed cluster, and it guarantees intermittent SLA violations. An SLA violation is a missed service target, such as a response time that goes above the agreed limit. The scheduler is not making a mistake here. It is simply counting, and it does not know which GPUs are the fast ones.
 
-Consider the production fleet chapter 4. It has 40 GPU worker nodes, each advertising eight allocatable GPUs. Of those, 25 newer nodes have NVLink-connected GPUs. Those links run at NV12, which is 600 GB/s on A100 or 900 GB/s on H100. The same nodes also show NIC-local PCIe switch placement, labelled PIX. The other 15 older nodes have PCIe-only GPUs that traverse cross-socket SYS links.
+Consider a production fleet of 40 GPU worker nodes, each advertising eight allocatable GPUs. Of those, 25 newer nodes have NVLink-connected GPUs. Those links run at NV12, which is 600 GB/s on A100 or 900 GB/s on H100. The same nodes also show NIC-local PCIe switch placement, labelled PIX. The other 15 older nodes have PCIe-only GPUs that traverse cross-socket SYS links. Cross-socket traffic has to cross the link between the two CPU sockets, which is slower than a path that stays local.
 
-Suppose a developer deploys the latency-sensitive service with only a single-GPU limit, and no nodeSelector or nodeAffinity. Then all 40 nodes satisfy the scheduler predicate. Under uniform availability, kube-scheduler has a `15 / 40 = 37.5%` chance of placing the Pod on one of the 15 unqualified PCIe nodes. Publishing a node label such as `gpu.platform.example/class=latency-optimized` on the 25 qualified nodes, and enforcing `requiredDuringSchedulingIgnoredDuringExecution` node affinity, reduces the wrong-pool placement risk from 37.5% to 0.0%.
+Suppose a developer deploys the latency-sensitive service with only a single-GPU limit, and no nodeSelector or nodeAffinity. Then all 40 nodes satisfy the scheduler predicate. A predicate is a test that the scheduler applies to decide whether a node is a candidate. Under uniform availability, kube-scheduler has a `15 / 40 = 37.5%` chance of placing the Pod on one of the 15 unqualified PCIe nodes. Publishing a node label such as `gpu.platform.example/class=latency-optimized` on the 25 qualified nodes, and enforcing `requiredDuringSchedulingIgnoredDuringExecution` node affinity, reduces the wrong-pool placement risk from 37.5% to 0.0%. The label gives the nodes a name, and the required affinity makes the scheduler respect that name every time.
 
-Before you deploy, decide which node pool the service needs, and enforce that choice with node affinity.
+Before you deploy, decide which node pool the service needs, and enforce that choice with node affinity. The label alone does nothing until a Pod asks for it.
 
 #### PID namespaces and why `nvidia-smi` inside a container hides host PIDs
 
-You run `nvidia-smi` inside a busy GPU container. It shows 98% GPU utilization and 40000MiB of framebuffer memory in use, yet the process table is empty. That looks like a broken driver, but it is an expected result of Linux PID namespace isolation.
+You run `nvidia-smi` inside a busy GPU container. It shows 98% GPU utilization and 40000MiB of framebuffer memory in use, yet the process table is empty. That looks like a broken driver, but it is an expected result of Linux PID namespace isolation. The framebuffer is the memory on the card that holds the data and the model weights, so the number tells you the GPU really is busy. The empty table is a question of which process IDs the container is allowed to see.
 
-On the worker node host, `nvidia-smi` queries NVML in the root PID namespace. It lists every GPU process with its host PID, such as 2051234. It also shows the physical device UUID, such as `GPU-e461a384-5f4c-7c08-0131-0dfbc6c483b2` or `GPU-173ced1d-4c1d-072d-6819-86522b018187`.
+On the worker node host, `nvidia-smi` queries NVML in the root PID namespace. It lists every GPU process with its host PID, such as 2051234. It also shows the physical device UUID, such as `GPU-e461a384-5f4c-7c08-0131-0dfbc6c483b2` or `GPU-173ced1d-4c1d-072d-6819-86522b018187`. The root namespace is the view that sees every process on the machine, and that is why the host can name the owner of each GPU job.
 
-Inside the container, the workload runs in its own PID namespace, where the Python entrypoint is PID 1. When `nvidia-smi` inside the container queries the host driver through `/dev/nvidia0`, the driver returns host PID 2051234. That PID does not exist in the container process tree, so the tool leaves it out.
+Inside the container, the workload runs in its own PID namespace, where the Python entrypoint is PID 1. When `nvidia-smi` inside the container queries the host driver through `/dev/nvidia0`, the driver returns host PID 2051234. That PID does not exist in the container process tree, so the tool leaves it out. The GPU is shared, but the names of the processes are hidden, which is the point of the isolation.
 
-Never set `hostPID: true` on tenant workloads just to see process IDs, because that setting breaks container process isolation. Attribute GPU processes to Pods on the worker host instead, or scrape `dcgm-exporter` metrics on port 9400. The useful metrics are `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_FB_USED`, and `DCGM_FI_DEV_MEM_COPY_UTIL`.
+Never set `hostPID: true` on tenant workloads just to see process IDs, because that setting breaks container process isolation. Attribute GPU processes to Pods on the worker host instead, or scrape `dcgm-exporter` metrics on port 9400. The useful metrics are `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_FB_USED`, and `DCGM_FI_DEV_MEM_COPY_UTIL`. These metrics are per GPU, so they tell you which card is busy, and a join with the Pod labels can tell you which Pod owns that card.
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-Use host-side attribution or DCGM metrics, so you can find which Pod is using the GPU.
+Use host-side attribution or DCGM metrics, so you can find which Pod is using the GPU. The process list inside the container is never the right place to look for that answer.
 
 ## Commands and configurations that matter
 
 ### 1. Verifying the host driver and character devices on a worker node
 
-Before you inspect any Kubernetes DaemonSet, check the worker host itself. Confirm PCIe enumeration, the loaded kernel modules, and the major and minor numbers of the `/dev/nvidia*` character devices directly on the node. These checks show whether the problem sits below Kubernetes at all.
+Before you inspect any Kubernetes DaemonSet, check the worker host itself. A DaemonSet is the object that runs the device plugin on each node, and it is easy to start there, because it is what the cluster shows. Confirm PCIe enumeration, the loaded kernel modules, and the major and minor numbers of the `/dev/nvidia*` character devices directly on the node. These checks show whether the problem sits below Kubernetes at all. If they fail, no change to the cluster will help.
 
 ```bash
 # Run on the GPU worker node via approved SSH / node-debug session (untested here)
@@ -379,7 +384,7 @@ ls -l /dev/nvidia*
 nvidia-smi -L
 ```
 
-On a healthy eight-GPU A100 or H100 worker node, the output looks like the example below.
+On a healthy eight-GPU A100 or H100 worker node, the output looks like the example below. Check it line by line against the commands above, so you know what each line proves.
 
 ```text
 1b:00.0 3D controller: NVIDIA Corporation GA100 [A100 SXM4 80GB] (rev a1)
@@ -395,11 +400,11 @@ crw-rw-rw- 1 root root 238,   0 Sep 17 08:00 /dev/nvidia-uvm
 GPU 0: NVIDIA A100-SXM4-80GB (UUID: GPU-3a1e9f2b-...)
 ```
 
-Read the output from the top. The PCIe line, the module list, and the device nodes should all be present. The `nvidia-smi -L` line should list each GPU with its UUID.
+Read the output from the top. The PCIe line, the module list, and the device nodes should all be present. The `nvidia-smi -L` line should list each GPU with its UUID. If the PCIe line is missing, the card is not visible to the operating system, and the driver never had a chance to start.
 
 ### 2. Inspecting CDI specifications and `crictl` container device injection
 
-Suppose you need to prove that the NVIDIA Container Toolkit or CDI actually put `/dev/nvidia0` into a running container sandbox named `resnet-train`. Check both sides of that boundary. Start with the CRI container spec on the node, using `crictl inspect`. Then test user space inside the container with `kubectl exec`.
+Suppose you need to prove that the NVIDIA Container Toolkit or CDI actually put `/dev/nvidia0` into a running container sandbox named `resnet-train`. Check both sides of that boundary. Start with the CRI container spec on the node, using `crictl inspect`. Then test user space inside the container with `kubectl exec`. The first check looks at what the runtime was told to build, and the second looks at what the program inside actually sees. Both are needed, because a correct plan can still fail to run.
 
 ```bash
 # 1. Node side: verify that the CRI container spec contains /dev/nvidia0 (untested here)
@@ -431,11 +436,11 @@ The expected output prints the matching physical GPU UUID.
 GPU 0: NVIDIA A100-SXM4-80GB (UUID: GPU-3a1e9f2b-...)
 ```
 
-You need both commands to separate runtime bugs from image bugs. An entry for `/dev/nvidia0` in `crictl inspect` proves that runtime device injection succeeded. An empty devices array proves the toolkit or CDI configuration failed. A matching UUID from `kubectl exec` proves that user-space library linking succeeded inside the container image.
+You need both commands to separate runtime bugs from image bugs. An entry for `/dev/nvidia0` in `crictl inspect` proves that runtime device injection succeeded. An empty devices array proves the toolkit or CDI configuration failed. A matching UUID from `kubectl exec` proves that user-space library linking succeeded inside the container image. If the first check passes and the second fails, the problem is usually in the image or its library path, not in the node.
 
 ### 3. Configuring RuntimeClass, Device Plugin flags, and GPU Operator toolkit/plugin values
 
-When a cluster exposes an explicit NVIDIA runtime handler in containerd, publish a RuntimeClass object. GPU Pods can then select that handler, and they inherit the matching nodeSelector and tolerations automatically.
+When a cluster exposes an explicit NVIDIA runtime handler in containerd, publish a RuntimeClass object. GPU Pods can then select that handler, and they inherit the matching nodeSelector and tolerations automatically. The inheritance is what saves the platform team from repeating the same selectors in every Pod spec, and it keeps GPU Pods on nodes that have the handler.
 
 ```yaml
 # runtimeclass-nvidia.yaml (untested here)
@@ -453,7 +458,7 @@ scheduling:
       effect: "NoSchedule"
 ```
 
-When you deploy the NVIDIA Container Toolkit and Device Plugin through the GPU Operator `values.yaml`, set the runtime socket paths, the CDI strategy, and the fail-fast initialization flags explicitly.
+When you deploy the NVIDIA Container Toolkit and Device Plugin through the GPU Operator `values.yaml`, set the runtime socket paths, the CDI strategy, and the fail-fast initialization flags explicitly. A values file is the set of options the Helm chart reads when it installs the operator. Setting these paths explicitly means the operator does not have to guess which runtime your cluster uses.
 
 ```yaml
 # gpu-operator-runtime-and-plugin-values.yaml (untested here)
@@ -497,13 +502,13 @@ devicePlugin:
       value: "true"
 ```
 
-Four device-plugin settings are worth enforcing across production clusters. The first is `--fail-on-init-error=true`. It forces the plugin into `CrashLoopBackOff` when NVML fails to initialize. If you leave it false, a broken plugin can stay Running while it silently advertises zero GPUs. The second is `DEVICE_LIST_STRATEGY=cdi-annotations`, or `cdi-cri`, which tells the plugin to request CDI injection from the CRI runtime. The third is `--pass-device-specs=true`, which passes explicit device node paths in allocation responses. The fourth is `--device-discovery-strategy=auto|nvml|tegra`, which selects the discovery backend.
+Four device-plugin settings are worth enforcing across production clusters. The first is `--fail-on-init-error=true`. It forces the plugin into `CrashLoopBackOff` when NVML fails to initialize. If you leave it false, a broken plugin can stay Running while it silently advertises zero GPUs. The second is `DEVICE_LIST_STRATEGY=cdi-annotations`, or `cdi-cri`, which tells the plugin to request CDI injection from the CRI runtime. The third is `--pass-device-specs=true`, which passes explicit device node paths in allocation responses. The fourth is `--device-discovery-strategy=auto|nvml|tegra`, which selects the discovery backend. Tegra is the NVIDIA platform for embedded Jetson-class boards, so the flag matters only when you run that kind of hardware.
 
-Pin these settings in your values file, so that a broken plugin fails visibly instead of hiding behind a Running status.
+Pin these settings in your values file, so that a broken plugin fails visibly instead of hiding behind a Running status. A visible crash is much easier to act on than a healthy-looking Pod that advertises nothing.
 
 ### 4. Running a one-line Kubernetes GPU validation Pod
 
-Chapter 3, Example 3-13, of *Generative AI on Kubernetes* shows this pattern. You launch an ephemeral validation Pod that requests `nvidia.com/gpu: 1` and runs `nvidia-smi`. The Pod leaves no orphaned objects behind.
+Chapter 3, Example 3-13, of *Generative AI on Kubernetes* shows this pattern. You launch an ephemeral validation Pod that requests `nvidia.com/gpu: 1` and runs `nvidia-smi`. The Pod leaves no orphaned objects behind, because the `--rm` flag deletes it when the command finishes. This is the same check the earlier sections described, packaged as one command.
 
 ```bash
 # Ephemeral one-GPU validation Pod (untested here)
@@ -521,11 +526,13 @@ kubectl run --rm -it gpu-pod \
   --overrides="$patch" --override-type=json -- nvidia-smi
 ```
 
-Use this one-GPU check as a last step, after the host and plugin checks above.
+Use this one-GPU check as a last step, after the host and plugin checks above. Running it first would tell you that something failed, but it would not tell you where.
 
 ## How it fails
 
-A live outage is the worst moment to start restarting things. When a node drops its allocatable GPUs, or containers fail at startup, resist the urge to restart the device plugin DaemonSet before you preserve evidence. Follow the dependency-ordered decision tree instead. It helps you isolate the exact failing boundary, working from the bottom up.
+A live outage is the worst moment to start restarting things. Picture a GPU node that drops its allocatable GPUs during a busy afternoon, with jobs queued behind it and a manager asking for an update every ten minutes. The reflex is to restart the device plugin DaemonSet and hope. When a node drops its allocatable GPUs, or containers fail at startup, resist that urge until you have preserved evidence. A restart erases the logs and the Pod state that would have told you which boundary broke. Follow the dependency-ordered decision tree instead. It helps you isolate the exact failing boundary, working from the bottom up.
+
+The tree starts with the hardware and moves upward, one question at a time. Each question has a yes branch that goes further up the stack and a no branch that stops at the layer that is broken. Because the layers depend on each other, a failure low in the tree makes everything above it look broken too.
 
 ```mermaid
 flowchart TD
@@ -542,7 +549,7 @@ flowchart TD
     F -->|"Yes"| G["6. Check container nvidia-smi vs CUDA Forward Compat / Pod affinity & taints"]
 ```
 
-The table below lists six failure modes. For each one, it gives the symptom and the command evidence, the boundary where the root cause sits, and the remediation. Read the diagram first, then use the table to match what you see on your node.
+The table below lists six failure modes. For each one, it gives the symptom and the command evidence, the boundary where the root cause sits, and the remediation. Read the diagram first, then use the table to match what you see on your node. The symptoms are the exact messages that show up in `kubectl`, `journalctl` and `dmesg`, so you can search for them directly.
 
 | Failure Mode | Exact Symptom & Command Evidence | Root Cause Boundary | Remediation |
 |---|---|---|---|
@@ -553,25 +560,25 @@ The table below lists six failure modes. For each one, it gives the symptom and 
 | **5. Unpatched containerd config (`CUDA_ERROR_NO_DEVICE` inside Running Pod)** | Pod enters Running state with 1 GPU allocated, but PyTorch fails with `CUDA_ERROR_NO_DEVICE`. On the node, `crictl inspect` shows `"devices": []` and `nvidia-smi` inside the container returns command not found. | **Container Toolkit / `config.toml` Boundary:** `CONTAINERD_CONFIG` pointed to the wrong path for the Kubernetes distribution or RuntimeClass was omitted. | Point `CONTAINERD_CONFIG` and `CONTAINERD_SOCKET` to the active containerd config path, let the toolkit operand reconcile and restart containerd, and verify `crictl inspect` shows `/dev/nvidia0`. |
 | **6. Fleet version drift across node pools (1.15.0 vs 1.13.5)** | Identical Pod manifest succeeds on `gpu-pool-a-3` but fails on `gpu-pool-b-7`. Running `nvidia-ctk --version` across pools reveals version 1.15.0 on the first pool versus 1.13.5 on the second pool. | **Fleet Configuration Drift Boundary:** An image refresh or manual node edit left two node pools running different toolkit versions and runtime handler stanzas. | Enforce a single version-controlled node image and GPU Operator `ClusterPolicy` across pools, and gate node-pool rollout on an automated validation job. |
 
-Notice how many of these rows point to a layer below the plugin. That is why the decision tree starts at the hardware, with `lspci`. When you see a symptom, find its row first.
+Notice how many of these rows point to a layer below the plugin. That is why the decision tree starts at the hardware, with `lspci`. A device plugin that crashes often looks like the root cause, when in fact it is reporting a driver problem underneath it. When you see a symptom, find its row first, and then check the layer it names before you change anything.
 
-Before you touch any component, preserve the node and event evidence, and find the boundary the symptom points to.
+Before you touch any component, preserve the node and event evidence, and find the boundary the symptom points to. Save the node object and the events to files, as the runbook in Step 2 shows, and then act.
 
 ## Hands-on lab
 
 ### Venue and scope
 
-You run this lab locally, with the Python 3 standard library. The code lives in `code/part11/device_plugin_toolkit_cdi.py` and `code/part11/device_plugin_toolkit_cdi_lab.py`. The simulation walks through the kubelet Device Plugin gRPC state machine, covering registration, device streaming, and allocation. It also runs the CDI 0.5.0 specification generator, the mixed-fleet placement risk calculator, and the six-boundary dependency-ordered triage engine. The cluster commands need a live GCP or GKE GPU cluster, so treat them as untested here until you verify them on your target node pool.
+You run this lab locally, with the Python 3 standard library. The code lives in `code/part11/device_plugin_toolkit_cdi.py` and `code/part11/device_plugin_toolkit_cdi_lab.py`. The simulation walks through the kubelet Device Plugin gRPC state machine, covering registration, device streaming, and allocation. It also runs the CDI 0.5.0 specification generator, the mixed-fleet placement risk calculator, and the six-boundary dependency-ordered triage engine. A state machine here means a set of states, such as registered or streaming, with fixed rules for moving between them. The lab checks that those rules behave as the chapter describes. The cluster commands need a live GCP or GKE GPU cluster, and they were not run for this chapter, so verify them on your target node pool before you rely on them.
 
 ### Step 1: Run the self-checking simulation lab (tested here)
 
-Run the lab script from the repository root. It executes all 26 verification checks.
+Run the lab script from the repository root. It executes all 26 verification checks. Each check prints a PASS or FAIL line, and the summary at the end counts them. The lab needs nothing beyond the standard library.
 
 ```bash
 python3 code/part11/device_plugin_toolkit_cdi_lab.py
 ```
 
-The output below was captured from this repository. Every check should show PASS, and the summary line should report no failures.
+The output below shows what a passing run prints. Every check should show PASS, and the summary line should report no failures. If one line shows FAIL, find its scenario in the sections above, because each check is named after the behavior it protects.
 
 ```text
 === Chapter 11.2 Lab: Device Plugin, Container Toolkit, CDI & RuntimeClass ===
@@ -607,7 +614,7 @@ Summary: 26 passed, 0 failed out of 26 checks.
 
 ### Step 2: Live GKE / Kubernetes node evidence collection runbook (untested here)
 
-When a suspect GPU node looks wrong, compare it with a known-good peer on the live cluster. Save the before-state evidence first. Then compare Capacity against Allocatable on both nodes, so you can see where they differ.
+When a suspect GPU node looks wrong, compare it with a known-good peer on the live cluster. Save the before-state evidence first. The reason is simple. Every command after the first one can change the node, so the first copy of the state is the only clean one. Then compare Capacity against Allocatable on both nodes, so you can see where they differ.
 
 ```bash
 # Preserve initial node and event evidence before touching any component (untested here)
@@ -623,16 +630,20 @@ kubectl get node "$GPU_NODE" -o jsonpath='{.status.capacity.nvidia\.com/gpu}{" c
 kubectl get node "$HEALTHY_GPU_NODE" -o jsonpath='{.status.capacity.nvidia\.com/gpu}{" capacity\n"}{.status.allocatable.nvidia\.com/gpu}{" allocatable\n"}'
 ```
 
+Once the evidence is saved, the comparison tells you whether the problem is local to the suspect node or shared by the pool. If both nodes show the same numbers, the cause is probably in the pool configuration. If only the suspect node is short, start at the lowest failing layer on that node.
+
 ### Exercises
 
-Work through these six exercises with the lab module open.
+Work through these six exercises with the lab module open. Each one has a single main question, and the lab functions give you the numbers to check your answers.
 
-1. In exercise 1, use `generate_cdi_spec()` in `code/part11/device_plugin_toolkit_cdi.py` to generate a CDI 0.5.0 specification for a 4-GPU node. The GPUs run from GPU-0 through GPU-3, and the UVM device uses dynamic major number 238. Then state the major and minor number pairs for `/dev/nvidia3`, `/dev/nvidiactl`, and `/dev/nvidia-uvm`.
-2. Exercise 2 looks at degraded health versus a crashed plugin. A node has 8 GPUs, and 2 of them are allocated to running Pods. Next, 3 unallocated GPUs hit double-bit ECC errors with Xid 48, and they report Unhealthy over the device stream. Use the state helper in the lab module to compute the resulting capacity, allocatable, allocated, and free schedulable counts.
-3. Exercise 3 asks you to explain why a request of 2 GPUs with a limit of 4 GPUs makes `validate_extended_resource_spec()` return false. Then state the two valid ways to request 4 GPUs in a Kubernetes Pod manifest.
-4. Exercise 4 is a placement probability calculation. Suppose a cluster has 40 GPU nodes: 25 H100 NVLink nodes and 15 older PCIe nodes. If 10 of the 25 H100 nodes are full, with 0 free GPUs, while all 15 older PCIe nodes have free GPUs, compute the probability that a bare eight-GPU Pod lands on the older PCIe pool. Work across the 30 remaining available nodes.
-5. Exercise 5 uses `triage_gpu_node_or_pod()`. On an 8-GPU node, PCIe discovery, host driver checks, plugin enumeration, kubelet registration, and container device mounts all pass. But `nvidia-smi` inside the container fails. Determine the failing boundary and the next action.
-6. Exercise 6 covers time-slicing oversubscription. An 8-GPU node and a 1-GPU `g6.2xlarge` L4 node with 24 GB VRAM, running Llama-3.2-1B at 1.8 GB per replica, are both configured with 10 time-slicing replicas. Compute the Allocatable GPU count that the 8-GPU node advertises. Then calculate what percentage of the 24 GB L4 GPU memory stays unused when only a single 1.8 GB Llama-3.2-1B replica runs without sharing.
+1. Use `generate_cdi_spec()` in `code/part11/device_plugin_toolkit_cdi.py` to build a CDI 0.5.0 specification for a 4-GPU node. The GPUs run from GPU-0 through GPU-3. The UVM device uses dynamic major number 238. What major and minor number pairs do `/dev/nvidia3`, `/dev/nvidiactl`, and `/dev/nvidia-uvm` get? Check each pair against the device table in the first section.
+2. A node has 8 GPUs, and 2 of them are allocated to running Pods. Next, 3 unallocated GPUs hit double-bit ECC errors with Xid 48, and they report Unhealthy over the device stream. Which capacity, allocatable, allocated and free schedulable counts does the state helper in the lab module compute?
+3. Why does a request of 2 GPUs with a limit of 4 GPUs make `validate_extended_resource_spec()` return false? Name the two valid ways to request 4 GPUs in a Kubernetes Pod manifest.
+4. The cluster has 40 GPU nodes, made up of 25 H100 NVLink nodes and 15 older PCIe nodes. If 10 of the 25 H100 nodes are full, with 0 free GPUs, what is the probability that a bare eight-GPU Pod lands on the older PCIe pool? Work across the 30 remaining available nodes to compute it.
+5. On an 8-GPU node, PCIe discovery, host driver checks, plugin enumeration, kubelet registration and container device mounts all pass. The `nvidia-smi` command inside the container still fails. Which boundary does `triage_gpu_node_or_pod()` report as failing? What is the next action?
+6. An 8-GPU node and a 1-GPU `g6.2xlarge` L4 node with 24 GB VRAM are both configured with 10 time-slicing replicas. How many Allocatable GPUs does the 8-GPU node advertise? If the L4 node runs one 1.8 GB Llama-3.2-1B replica without sharing, what percentage of its 24 GB stays unused?
+
+---
 
 ## Checkpoint questions
 

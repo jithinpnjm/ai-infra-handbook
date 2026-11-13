@@ -22,9 +22,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A training run slows to a crawl, and the cause turns out to be one network card that dropped a single frame. In a synchronous collective job, every GPU waits at a barrier until the slowest rank finishes sending. The card waits out a retransmission timeout, and thousands of other accelerators sit idle behind it. The team sees Model Flops Utilization fall across the whole cluster while the hardware keeps drawing power.
+A training run slows to a crawl, and the cause turns out to be one network card that dropped a single frame. In a synchronous collective job, every GPU waits at a barrier until the slowest rank finishes sending. A barrier is a point where every participant must arrive before any of them may continue. The card waits out a retransmission timeout, and thousands of other accelerators sit idle behind it. The team sees Model Flops Utilization fall across the whole cluster while the hardware keeps drawing power. Model Flops Utilization, often shortened to MFU, is the share of the GPUs' peak arithmetic capacity that the job actually uses.
 
-The summary below shows how the chapter divides the work. It separates the two operators and the three networks that every GPU server uses.
+Nobody sees the single dropped frame on the GPU dashboard. What the team sees is a cluster that looks busy and produces less work. Finding the cause means walking down from the job to the fabric, one layer at a time, and that walk is the subject of this chapter.
+
+The summary below shows how the chapter divides the work. It separates the two operators and the three networks that every GPU server uses. Read it as a map before you read the detail.
 
 ```text
 Straggler Amplification and Node Fabric Split:
@@ -37,28 +39,25 @@ Straggler Amplification and Node Fabric Split:
 - Management fabric:Standard Ethernet (eth0) for control plane, SSH, IPMI, Prometheus, and NetQ
 ```
 
-Notice that each operator owns its own resource, ClusterPolicy or NicClusterPolicy. Earlier chapters drew a clean line on every Kubernetes worker node. The NVIDIA GPU Operator manages only the accelerator stack through ClusterPolicy. The NVIDIA Network Operator manages the high-speed network and storage stack through NicClusterPolicy.
+Notice that each operator owns its own resource, ClusterPolicy or NicClusterPolicy. Earlier chapters drew a clean line on every Kubernetes worker node. The NVIDIA GPU Operator manages only the accelerator stack through ClusterPolicy. The NVIDIA Network Operator manages the high-speed network and storage stack through NicClusterPolicy. A resource in this sense is a Kubernetes custom object that describes the state you want, and the operator's controller works to make the node match it.
 
-Doing the network half by hand is where things break. Someone must compile host drivers, load the peer-memory bridge module, split the card into Virtual Functions, and wire secondary networks on every node. One mismatched kernel module or missing device plugin can quietly push a job from hardware RDMA back to slow host TCP sockets.
+Doing the network half by hand is where things break. Someone must compile host drivers, load the peer-memory bridge module, split the card into Virtual Functions, and wire secondary networks on every node. One mismatched kernel module or missing device plugin can quietly push a job from hardware RDMA back to slow host TCP sockets. Each of those steps has to happen in the right order on every node, and a fleet of hundreds of machines makes that impossible to do reliably by hand.
 
-Every multi-GPU server connects to three separate physical networks at once. The backend compute fabric carries east-west GPU collectives over InfiniBand or RoCEv2, across eight dedicated rails. The frontend storage fabric streams training datasets and absorbs multi-terabyte checkpoint bursts. It moves data between local NVMe drives, parallel filesystems and GPU memory, using GPUDirect Storage. The management fabric handles control-plane traffic, SSH, hardware telemetry and cluster monitoring over standard Ethernet.
+Every multi-GPU server connects to three separate physical networks at once. The backend compute fabric carries east-west GPU collectives over InfiniBand or RoCEv2, across eight dedicated rails. The frontend storage fabric streams training datasets and absorbs multi-terabyte checkpoint bursts. It moves data between local NVMe drives, parallel filesystems and GPU memory, using GPUDirect Storage. The management fabric handles control-plane traffic, SSH, hardware telemetry and cluster monitoring over standard Ethernet. Keeping the three apart matters, because a storage burst should never slow down the gradient traffic.
 
-This chapter shows how the NVIDIA Network Operator automates that whole host and container networking stack. You will start with its five node-level operands. Then you will compare native InfiniBand with Ethernet RoCEv2 packet framing and flow control, and check link health with hardware diagnostics. The last part connects the network stack to GPUDirect Storage and parallel filesystem CSI drivers, so training pipelines never starve for data.
+This chapter shows how the NVIDIA Network Operator automates that whole host and container networking stack. You will start with its five node-level operands. An operand here means one component the operator deploys and keeps running on each node. Then you will compare native InfiniBand with Ethernet RoCEv2 packet framing and flow control, and check link health with hardware diagnostics. The last part connects the network stack to GPUDirect Storage and parallel filesystem CSI drivers, so training pipelines never starve for data. CSI, the Container Storage Interface, is the standard plugin API that lets Kubernetes mount storage systems into Pods.
 
 Before you change anything, decide which of the three fabrics the problem lives on.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Before you start, finish Chapter 11.4, which explains the separation between the GPU Operator and the Network Operator. Then complete Chapter 11.10, which covers Multus CNI, Whereabouts IPAM, the RDMA Shared Device Plugin and the SR-IOV Network Device Plugin. You should also be comfortable with Ethernet and IP headers, PCIe Peer-to-Peer topologies and Linux kernel module management.
+
+A network engineer opens a ticket that says a new GPU rack trains slower than the rack next to it. Before you can read that ticket, you need the background in this section. Before you start, finish Chapter 11.4, which explains the separation between the GPU Operator and the Network Operator. Then complete Chapter 11.10, which covers Multus CNI, Whereabouts IPAM, the RDMA Shared Device Plugin and the SR-IOV Network Device Plugin. You should also be comfortable with Ethernet and IP headers, PCIe Peer-to-Peer topologies and Linux kernel module management. A Peer-to-Peer topology describes which PCIe devices can talk to each other directly, without going through the CPU.
 
 ### Outcomes
-When you finish this chapter, you will be able to:
-- Explain the five node-level operands that the NVIDIA Network Operator reconciles, and deploy a production Helm configuration.
-- Contrast native InfiniBand framing, credit-based flow control and Subnet Manager addressing with Ethernet RoCEv2 encapsulation, Priority Flow Control and Explicit Congestion Notification.
-- Read every field of `ibstat` on InfiniBand and RoCEv2 ports, and validate line-rate bandwidth with `ib_write_bw`.
-- Deploy the NVIDIA NetQ Operator for microsecond buffer telemetry, and configure GPUDirect Storage with `nvidia-fs.ko` and `/etc/cufile.json`.
-- Upgrade the Network Operator safely, read NicClusterPolicy status, and resolve Priority Flow Control deadlocks, microburst jitter, uninterruptible sleep hangs and Metadata Server small-file saturation.
+
+The chapter moves from the operator down to the wire and then up to storage. It starts with the five operands the Network Operator reconciles, and it shows how to deploy them with a production Helm configuration. Helm is the package manager that installs Kubernetes applications from charts. It then sets native InfiniBand framing, credit-based flow control and Subnet Manager addressing beside Ethernet RoCEv2 encapsulation, Priority Flow Control and Explicit Congestion Notification, so you can see how each fabric stops a drop. Next, the chapter reads the fields of `ibstat` on InfiniBand and RoCEv2 ports and checks line-rate bandwidth with `ib_write_bw`. After that, it covers the NVIDIA NetQ Operator for microsecond buffer telemetry and the GPUDirect Storage setup with `nvidia-fs.ko` and `/etc/cufile.json`. The final part covers upgrading the Network Operator safely, reading the NicClusterPolicy status, and working through four incident patterns: Priority Flow Control deadlocks, microburst jitter, uninterruptible sleep hangs, and Metadata Server small-file saturation.
 
 Work through Chapter 11.10 first if the Multus and SR-IOV pieces are new to you.
 
@@ -66,11 +65,11 @@ Work through Chapter 11.10 first if the Multus and SR-IOV pieces are new to you.
 
 ### 1. Basics: The NVIDIA Network Operator architecture and its five operands
 
-Suppose a kernel upgrade lands on a GPU node. Without automation, RDMA networking on that node breaks at once.
+Suppose a kernel upgrade lands on a GPU node. Without automation, RDMA networking on that node breaks at once. The upgrade replaces the kernel, and the drivers that were built for the old kernel no longer load. The GPUs still work, but the fast network does not.
 
-An administrator must recompile the OpenFabrics drivers, reload the peer-memory module in the right order, recreate the SR-IOV Virtual Functions, and restart the CNI plugins. If a step runs out of order, containers lose their InfiniBand device files or fall back to copying tensors through host RAM. The NVIDIA Network Operator takes over that work. It describes the wanted node state in Kubernetes custom resources and keeps the node matching it.
+An administrator must recompile the OpenFabrics drivers, reload the peer-memory module in the right order, recreate the SR-IOV Virtual Functions, and restart the CNI plugins. If a step runs out of order, containers lose their InfiniBand device files or fall back to copying tensors through host RAM. The NVIDIA Network Operator takes over that work. It describes the wanted node state in Kubernetes custom resources and keeps the node matching it. Each time the kernel changes, the operator notices the mismatch and rebuilds the pieces on that node, in the order the hardware needs.
 
-Just as the GPU Operator watches Node Feature Discovery labels for NVIDIA GPUs, the Network Operator watches the same kind of labels for Mellanox and NVIDIA ConnectX network adapters. When a node advertises PCI vendor ID 15b3 and SR-IOV capability, the controller reconciles the cluster-wide NicClusterPolicy resource into five coordinated node-level DaemonSets. The diagram below traces that chain from the node label to the pod.
+Just as the GPU Operator watches Node Feature Discovery labels for NVIDIA GPUs, the Network Operator watches the same kind of labels for Mellanox and NVIDIA ConnectX network adapters. When a node advertises PCI vendor ID 15b3 and SR-IOV capability, the controller reconciles the cluster-wide NicClusterPolicy resource into five coordinated node-level DaemonSets. A DaemonSet runs one copy of a Pod on every matching node. The diagram below traces that chain from the node label to the pod.
 
 ```mermaid
 flowchart TD
@@ -86,7 +85,7 @@ flowchart TD
     SecNet --> Pod
 ```
 
-Picture the five operands as separate DaemonSets on each node. The table below tells you which NicClusterPolicy stanza drives each operand, and what each one does on the worker node.
+Picture the five operands as separate DaemonSets on each node. The table below tells you which NicClusterPolicy stanza drives each operand, and what each one does on the worker node. A stanza is one named block inside the policy file, so each row points to the block you edit to change that operand.
 
 | Network Operator Operand | NicClusterPolicy Stanza | Kernel Modules / Binaries | Operational Role on Worker Node |
 | --- | --- | --- | --- |
@@ -96,19 +95,21 @@ Picture the five operands as separate DaemonSets on each node. The table below t
 | **4. SR-IOV Network Operator** | `sriovNetworkOperator` | `SriovNetworkNodePolicy`, `SriovNetwork` (`pfNames: ["enp1s0f0"]`, `numVfs: 8`, `mtu: 9000`, `vlan: 100`, `isRdma: true`) | Partitions physical ConnectX ports into hardware-isolated Virtual Functions and injects dedicated `rdma_vf` devices into Pods. |
 | **5. Secondary Network Stack** | `secondaryNetwork` | `multus`, `macvlan`, `ipoib`, `sriov`, `ib-sriov`, `whereabouts` | Deploys the Multus meta-CNI, secondary rail CNI plugins, and the Whereabouts cluster-wide IPAM allocator. |
 
-After the table, notice that the peer-memory operand sits on top of the OFED operand in the diagram. Module load order on the worker node is a strict hardware requirement. The Mellanox OFED driver stack must initialize in the kernel before the NVIDIA GPU driver and the peer-memory driver load. The peer-memory bridge links directly against kernel symbols exported by both `ib_core` and `nvidia.ko`, which it needs to register GPU BAR1 pages. If the GPU stack loads before `ib_core` is present, peer-memory registration fails and GPUDirect RDMA cannot activate.
+After the table, notice that the peer-memory operand sits on top of the OFED operand in the diagram.
+
+It helps to read the five operands as a stack, with the driver at the bottom and the workload at the top. The OFED operand is the foundation, because it supplies the RDMA verbs that everything else uses. The peer-memory operand builds on it and adds the GPU side of the bridge. The two device plugins sit above those drivers and tell the kubelet what the node can hand out. The secondary network stack sits beside them, and it gives each Pod its second interface. When one layer is missing, the layers above it usually fail in a way that looks unrelated, which is why the order of the stack matters when you troubleshoot. OFED here means the OpenFabrics Enterprise Distribution, the RDMA driver stack that the Mellanox OFED operand installs. Module load order on the worker node is a strict hardware requirement. The Mellanox OFED driver stack must initialize in the kernel before the NVIDIA GPU driver and the peer-memory driver load. The peer-memory bridge links directly against kernel symbols exported by both `ib_core` and `nvidia.ko`, which it needs to register GPU BAR1 pages. If the GPU stack loads before `ib_core` is present, peer-memory registration fails and GPUDirect RDMA cannot activate. A kernel symbol is a function or variable that one kernel module publishes so that another module can call it.
 
 ---
 
 ### 2. Intermediate: InfiniBand vs Ethernet (RoCEv2), packet framing, and fabric validation
 
-Standard TCP/IP expects packet loss. It uses kernel sockets, sliding windows and software retransmissions to recover gently. RDMA takes a different route. It offloads the entire transport state machine onto the ConnectX NIC hardware, using Queue Pairs, Send and Receive Queues, pinned Memory Regions, Work Requests and Completion Queues.
+A team builds a fabric and watches its collective steps stall, even though every link shows up as healthy. The stall is not a broken cable. It is a dropped packet that the RDMA transport was never designed to recover from. To understand why, you need to see how RDMA differs from ordinary TCP/IP. Standard TCP/IP expects packet loss. It uses kernel sockets, sliding windows and software retransmissions to recover gently. RDMA takes a different route. It offloads the entire transport state machine onto the ConnectX NIC hardware, using Queue Pairs, Send and Receive Queues, pinned Memory Regions, Work Requests and Completion Queues. A state machine here is the set of rules the NIC follows to track each connection, and offloading moves those rules from the kernel into the card.
 
-That lightweight hardware transport assumes the network underneath loses no packets. If a switch buffer overflows and drops an RDMA packet, hardware sequence errors trigger expensive timeouts. Those timeouts stall every GPU in the collective.
+That lightweight hardware transport assumes the network underneath loses no packets. If a switch buffer overflows and drops an RDMA packet, hardware sequence errors trigger expensive timeouts. Those timeouts stall every GPU in the collective. A switch buffer is the small memory a switch uses to hold packets while they wait for an outgoing link.
 
-AI architects pick one of two physical fabrics to get that lossless RDMA transport. Native InfiniBand prevents buffer overflow at the link layer with hardware credit-based flow control. A transmitter never sends data unless the receiver has advertised free buffer credits. Ethernet RoCEv2 takes another route. It wraps RDMA packets inside standard UDP datagrams on port 4791, and it relies on Priority Flow Control pause frames and Explicit Congestion Notification to prevent drops. Modern Ethernet AI fabrics such as NVIDIA Spectrum-X add hardware-assisted adaptive routing and congestion control to RoCEv2, using Spectrum-4 switches paired with BlueField-3 SuperNICs.
+AI architects pick one of two physical fabrics to get that lossless RDMA transport. Native InfiniBand prevents buffer overflow at the link layer with hardware credit-based flow control. A transmitter never sends data unless the receiver has advertised free buffer credits. Ethernet RoCEv2 takes another route. It wraps RDMA packets inside standard UDP datagrams on port 4791, and it relies on Priority Flow Control pause frames and Explicit Congestion Notification to prevent drops. A pause frame tells the neighboring switch to stop sending on one priority for a moment. Modern Ethernet AI fabrics such as NVIDIA Spectrum-X add hardware-assisted adaptive routing and congestion control to RoCEv2, using Spectrum-4 switches paired with BlueField-3 SuperNICs.
 
-The table compares the two fabrics across five dimensions, from packet framing to addressing. As you read it, ask how each fabric stops a drop and who picks the path.
+The table compares the two fabrics across five dimensions, from packet framing to addressing. As you read it, ask how each fabric stops a drop and who picks the path. The InfiniBand column relies on credits and a central manager. The Ethernet column relies on pause frames, marking and distributed routing. Those are two different answers to the same problem.
 
 | Architectural Dimension | InfiniBand (`HDR` `200G` / `NDR` `400G` / `XDR` `800G`) | Ethernet RoCEv2 (`100G` / `400G` / `Spectrum-X`) |
 | --- | --- | --- |
@@ -120,9 +121,13 @@ The table compares the two fabrics across five dimensions, from packet framing t
 
 Notice where the control sits in each fabric. InfiniBand relies on a centralized Subnet Manager, while RoCEv2 relies on distributed IP routing.
 
-Always verify the physical ports and measure raw RDMA wire speed on the host before you launch a multi-node training job in Kubernetes. Start with `ibstat`, which queries the local ConnectX HCA firmware and link state. Then run `ib_write_bw` from the perftest suite, which measures hardware RDMA Write throughput between two nodes.
+The difference in control also changes how you troubleshoot. On InfiniBand, a problem with the Subnet Manager can stop every port in the fabric from being routed, even when the cables are fine. On RoCEv2, the routing protocols run on each switch, so a problem usually appears as a path that stops carrying traffic rather than a whole fabric that stops. Knowing which model you run tells you which command to run first. Centralized control means one manager computes every route. Distributed control means each router decides for itself, using the routing protocols it runs with its neighbors.
 
-The sample below shows the fields you read on each port, one fault signature and one benchmark result.
+Always verify the physical ports and measure raw RDMA wire speed on the host before you launch a multi-node training job in Kubernetes.
+
+A quick check before the job starts saves a long search later. If the benchmark is slow on two nodes, you can test each node alone and then each cable alone. Narrowing the problem to one port in a few minutes is far easier than finding it inside a job that runs for hours. A slow or flapping port is much cheaper to find on an empty node than in the middle of a run. Start with `ibstat`, which queries the local ConnectX HCA firmware and link state. Then run `ib_write_bw` from the perftest suite, which measures hardware RDMA Write throughput between two nodes. Throughput here means how many bytes per second the wire actually carries once the headers are paid for.
+
+The sample below shows the fields you read on each port, one fault signature and one benchmark result. Read the InfiniBand port first, then the RoCEv2 port, and then the benchmark. Each part answers one question about the link.
 
 ```text
 Host RDMA Link Verification and Line-Rate Benchmarks:
@@ -140,9 +145,11 @@ Host RDMA Link Verification and Line-Rate Benchmarks:
 
 Notice that the RoCEv2 port reports zero lids, which is normal for IP routing rather than a fault.
 
-Traditional SNMP monitoring reads switch counters every ten to sixty seconds. A burst that lasts microseconds never shows up in a counter read that rarely. Synchronized AI traffic produces exactly such bursts, called incast microbursts, which fill switch buffers and trigger pause frames within a few microseconds. In NVIDIA Base Command Manager 11, administrators deploy the NVIDIA NetQ Operator to stream high-resolution fabric telemetry directly into Kubernetes.
+When you read the sample, check the three lines in the same order every time. First confirm that the physical state is up, because that proves the cable and optics are working. Then check the logical state and the lid values, because those prove that the fabric manager has accepted the port. Last, compare the benchmark against the raw line rate. A gap of a few percent below the line rate is normal after headers are paid for. A large gap points back to the port, the fabric or the host configuration. A LID is the local identifier that InfiniBand assigns to each port, so an Ethernet port that never receives one is expected.
 
-The NetQ sizing block below lists what that deployment needs in Base Command Manager 11.
+Traditional SNMP monitoring reads switch counters every ten to sixty seconds. SNMP, the Simple Network Management Protocol, is the older polling method that most network dashboards still use. A burst that lasts microseconds never shows up in a counter read that rarely. Synchronized AI traffic produces exactly such bursts, called incast microbursts, which fill switch buffers and trigger pause frames within a few microseconds. An incast happens when many senders aim at one receiver at the same moment, so the receiver's port fills faster than it can drain. In NVIDIA Base Command Manager 11, administrators deploy the NVIDIA NetQ Operator to stream high-resolution fabric telemetry directly into Kubernetes. Telemetry here means the measurements a switch reports about its own queues and counters, sent to a collector as they change.
+
+The NetQ sizing block below lists what that deployment needs in Base Command Manager 11. Read the software version first, then the mode you choose, and then the per-node minimums. The mode decides how many nodes you need, and the minimums apply to each of them.
 
 ```text
 NVIDIA NetQ Operator Deployment Sizing (bcm11-containerization Section 6.9, pp. 139-142):
@@ -153,7 +160,7 @@ NVIDIA NetQ Operator Deployment Sizing (bcm11-containerization Section 6.9, pp. 
 - Head-node port shift: Move BCM cmd port 8081 to 8083 (HTTP) and 8084 (HTTPS) before NetQ installation
 ```
 
-If you plan a NetQ deployment, the per-node minimums apply to every node in the mode you choose. The head-node port shift has to happen before NetQ installation, so run the command below on the head nodes first.
+If you plan a NetQ deployment, the per-node minimums apply to every node in the mode you choose. The head-node port shift has to happen before NetQ installation, so run the command below on the head nodes first. The head node is the management server that runs the cluster's control services, and moving its port frees the address NetQ needs.
 
 ```bash
 # Shift BCM default ports from 8081 to 8083/8084 before installing NetQ Operator (untested here)
@@ -164,11 +171,11 @@ cm-cmd-ports --http 8083 --https 8084 && systemctl restart cmd
 
 ### 3. Advanced: Storage fabric integration, GPUDirect Storage, and CSI drivers
 
-Fast GPU-to-GPU networking does not help you if accelerators sit idle while they wait for training batches from storage. Accelerators also stall during multi-terabyte checkpoint saves. Standard POSIX storage I/O works in two copies. It copies files from an NVMe drive or storage network card into the Linux CPU page cache in system RAM. The host CPU then copies those buffers a second time across the PCIe bus into GPU High Bandwidth Memory. At multi-gigabyte-per-second streaming rates, that double bounce saturates host memory bandwidth and starves training workers.
+A data engineer watches the GPU utilization graph drop in a regular sawtooth. Each dip lines up with the moment the next batch of training data is read from disk. The network is fast, yet the accelerators still sit idle, so the bottleneck has moved to storage. Fast GPU-to-GPU networking does not help you if accelerators sit idle while they wait for training batches from storage. Accelerators also stall during multi-terabyte checkpoint saves. A checkpoint save writes the model's current state to storage, so the training run can resume after a failure. Standard POSIX storage I/O works in two copies. POSIX is the standard file interface that most programs use to read and write files. It copies files from an NVMe drive or storage network card into the Linux CPU page cache in system RAM. The page cache is the memory area where the kernel keeps recently used file data. The host CPU then copies those buffers a second time across the PCIe bus into GPU High Bandwidth Memory. At multi-gigabyte-per-second streaming rates, that double bounce saturates host memory bandwidth and starves training workers.
 
-The NVIDIA Network Operator powers the frontend RDMA storage fabric. That fabric feeds the four-tier AI Factory storage hierarchy. Combining the Network Operator RDMA stack with GPUDirect Storage from NVIDIA Magnum IO eliminates that double bounce. Storage controllers transfer data straight across the PCIe bus into GPU memory, without touching the CPU page cache.
+The NVIDIA Network Operator powers the frontend RDMA storage fabric. That fabric feeds the four-tier AI Factory storage hierarchy. Combining the Network Operator RDMA stack with GPUDirect Storage from NVIDIA Magnum IO eliminates that double bounce. Magnum IO is NVIDIA's family of libraries for moving data efficiently between storage, networks and GPUs. Storage controllers transfer data straight across the PCIe bus into GPU memory, without touching the CPU page cache.
 
-The table lists the four tiers, from GPU memory down to object storage.
+The table lists the four tiers, from GPU memory down to object storage. Each tier trades speed for capacity. Tier 0 is the fastest and smallest, and Tier 3 is the largest and slowest. A training pipeline moves data down the tiers as it needs more room, and back up as it needs speed.
 
 | Storage Tier | Hardware Location & Capacity | Typical Bandwidth | Role in the AI Factory Pipeline |
 | --- | --- | --- | --- |
@@ -179,9 +186,11 @@ The table lists the four tiers, from GPU memory down to object storage.
 
 When you read the table, notice that Tier 0 holds the active tensors, while Tier 3 holds the long-term data.
 
-GPUDirect Storage depends on two pieces. The first is the `nvidia-fs.ko` kernel module. The second is the user-space cuFile library, which is configured by `/etc/cufile.json`. A container mounts a parallel filesystem volume through a CSI driver such as `csi.weka.io`. The cuFile library then intercepts file reads and writes, and it registers GPU BAR1 memory directly with the storage NIC or local NVMe controller.
+A practical question follows from the table. When a training job slows down, which tier is it waiting on? The answer decides where you look. A stall between Tier 1 and Tier 0 points at the cache or the PCIe path. A stall between Tier 2 and Tier 1 points at the parallel filesystem or its fabric. Only then should you look at the object store, which is usually the slowest tier and often the least connected to the job's hot path. The middle tiers exist to bridge that gap, so a batch does not have to travel all the way from the object store each time it is needed.
 
-Consider the configuration below, which covers the module check, the cuFile settings and the Kubernetes mounts.
+GPUDirect Storage depends on two pieces. The first is the `nvidia-fs.ko` kernel module. The second is the user-space cuFile library, which is configured by `/etc/cufile.json`. A container mounts a parallel filesystem volume through a CSI driver such as `csi.weka.io`. The cuFile library then intercepts file reads and writes, and it registers GPU BAR1 memory directly with the storage NIC or local NVMe controller. Think of the kernel module as the part that lets storage and GPU memory meet, and the cuFile library as the part that the application calls to ask for that meeting.
+
+Consider the configuration below, which covers the module check, the cuFile settings and the Kubernetes mounts. Read it in three parts: the host modules, the cuFile file, and the Pod's volumes. Each part is checked by a different command.
 
 ```text
 GPUDirect Storage (GDS) and Container Volume Configuration:
@@ -198,15 +207,15 @@ GPUDirect Storage (GDS) and Container Volume Configuration:
   * Tier 1 scratch cache: /mnt/nvme_raid_0/ai_scratch or Fluid dataset caching for locality-aware scheduling
 ```
 
-Run the platform check and confirm the module before you rely on these mounts. Before you blame the training code for slow batches, check whether the storage path is still copying data through the CPU.
+Run the platform check and confirm the module before you rely on these mounts. Before you blame the training code for slow batches, check whether the storage path is still copying data through the CPU. A slow batch can come from the code, the mount or the fabric, and the platform check tells you which one to suspect first.
 
 ## Commands and configurations that matter
 
 ### 1. Deploying the NVIDIA Network Operator via Helm
 
-Suppose you deploy the Network Operator onto a cluster that has no drivers installed yet. A single Helm values file enables all five operands. It deploys the MOFED driver and loads the peer-memory module. It exposes Mellanox ConnectX adapters under `rdma/rdma_shared_device_a`. It also enables the SR-IOV Network Operator and installs Multus CNI.
+Suppose you deploy the Network Operator onto a cluster that has no drivers installed yet. A single Helm values file enables all five operands. It deploys the MOFED driver and loads the peer-memory module. It exposes Mellanox ConnectX adapters under `rdma/rdma_shared_device_a`. It also enables the SR-IOV Network Operator and installs Multus CNI. The values file is the list of switches and settings that the chart reads when it renders the Kubernetes objects.
 
-Save the values below as `values-network-operator.yaml`. The install commands after it add the NVIDIA Helm repository and deploy the chart into the `nvidia-network-operator` namespace.
+Save the values below as `values-network-operator.yaml`. The install commands after it add the NVIDIA Helm repository and deploy the chart into the `nvidia-network-operator` namespace. A namespace is the Kubernetes boundary that groups related objects, so the operator's Pods stay separate from your workloads.
 
 ```yaml
 # values-network-operator.yaml (volume-06/02 Section 5.2, untested here)
@@ -239,11 +248,13 @@ helm install network-operator nvidia/network-operator \
   -f values-network-operator.yaml
 ```
 
+After the install, check the operator's Pods and the NicClusterPolicy before you schedule any RDMA job. The values file says what you asked for, and the cluster status says what was actually built on each node.
+
 ### 2. Configuring Lossless RoCEv2 Switch Ports and Capturing Congestion Packets
 
-Picture an Ethernet switch that drops RoCEv2 packets under load. When that happens, distributed training throughput collapses. Network engineers set Explicit Congestion Notification marking thresholds well below the Priority Flow Control pause threshold on Traffic Class 3. Receiving NICs then send Congestion Notification Packets back to the senders. DCQCN slows transmission smoothly, before ingress buffers fill completely.
+Picture an Ethernet switch that drops RoCEv2 packets under load. When that happens, distributed training throughput collapses. Network engineers set Explicit Congestion Notification marking thresholds well below the Priority Flow Control pause threshold on Traffic Class 3. A traffic class is the label that decides which queue a packet joins inside the switch. Receiving NICs then send Congestion Notification Packets back to the senders. DCQCN slows transmission smoothly, before ingress buffers fill completely. DCQCN, the Data Center Quantized Congestion Notification, is the rate control algorithm that the sending NIC runs when those notifications arrive.
 
-The sample below is an illustrative Mellanox Onyx configuration for lossless RoCEv2 on Priority 3.
+The sample below is an illustrative Mellanox Onyx configuration for lossless RoCEv2 on Priority 3. Onyx is the switch operating system that these commands belong to. Read the first line for the ECN thresholds, and then the lines that turn on the pause mechanism for the same priority.
 
 ```text
 # Illustrative Mellanox Onyx switch configuration for lossless RoCEv2 on Priority 3 (untested here)
@@ -254,7 +265,9 @@ switch (config) # interface ethernet 1/1 dcb priority-flow-control mode on force
 switch (config) # interface ethernet 1/1-1/32 traffic-class 3 bind strict-priority
 ```
 
-The two ECN values control when senders begin to slow down. The commands below cover two jobs. One inspects RoCEv2 packets on UDP port 4791. The other isolates flapping InfiniBand optical transceivers across the fabric. Because RDMA bypasses the host OS kernel, `tcpdump` misses hardware-offloaded frames. Use hardware packet capture with `ibdump`, or a switch mirror port, instead.
+The two ECN values control when senders begin to slow down.
+
+Think of the switch as a queue with two marks painted on its wall. Below the lower mark, the queue is healthy and nothing happens. Between the two marks, the switch starts stamping packets so senders can ease off. Above the upper mark, the queue is nearly full and marking is certain. Pause frames are the emergency brake after that, and the goal of the settings is to pull the senders back before the brake is needed. The lower value is where marking starts, and the upper value is where marking is certain. Between them, the switch marks a growing share of packets. The commands below cover two jobs. One inspects RoCEv2 packets on UDP port 4791. The other isolates flapping InfiniBand optical transceivers across the fabric. Because RDMA bypasses the host OS kernel, `tcpdump` misses hardware-offloaded frames. Use hardware packet capture with `ibdump`, or a switch mirror port, instead. A mirror port copies every packet from one switch port to a capture host, so the capture sees traffic that never reached the kernel.
 
 ```bash
 # 1. Capture RoCEv2 UDP port 4791 headers (use ibdump or switch SPAN for kernel-bypassed RDMA) (untested here)
@@ -266,9 +279,9 @@ ibdiagnet -c 1000
 
 ### 3. Upgrading the Network Operator and checking NicClusterPolicy
 
-An upgrade of the Network Operator touches the network stack of every GPU node, so plan it like a driver change. The operator is installed with Helm, but Helm does not normally upgrade custom resource definitions. The chart therefore ships a hook that applies the new definitions before the upgrade, and it is on by default. If your team manages definitions through its own pipeline, set `upgradeCRDs: false` in the chart values and apply them yourself.
+An upgrade of the Network Operator touches the network stack of every GPU node, so plan it like a driver change. A driver change is risky because it can take a node offline until the new module loads. The operator is installed with Helm, but Helm does not normally upgrade custom resource definitions. A custom resource definition, or CRD, is the schema that teaches Kubernetes a new object type, such as NicClusterPolicy. The chart therefore ships a hook that applies the new definitions before the upgrade, and it is on by default. If your team manages definitions through its own pipeline, set `upgradeCRDs: false` in the chart values and apply them yourself. A hook is a step the chart runs at a particular point in the release, here before the upgrade begins.
 
-The commands below follow the chart's documented path. Pull the chart for the target version, apply the definitions, then run the upgrade with a values file you have reviewed.
+The commands below follow the chart's documented path. Pull the chart for the target version, apply the definitions, then run the upgrade with a values file you have reviewed. Replace the version placeholder with the release you chose, and keep the same placeholder in each command so the files match.
 
 ```bash
 helm pull nvidia/network-operator --version <VERSION> --untar --untardir network-operator-chart
@@ -281,20 +294,22 @@ helm upgrade -n network-operator network-operator nvidia/network-operator \
               --version=<VERSION> -f values-<VERSION>.yaml
 ```
 
-The vendor chart documentation says that upgrade capabilities are limited and that a containerized OFED driver needs extra manual actions. It does not list them, so read the release notes for your target version before you touch a production pool. Upgrade one node pool first and run `ib_write_bw` between two pods before you continue.
+The vendor chart documentation says that upgrade capabilities are limited and that a containerized OFED driver needs extra manual actions. It does not list them, so read the release notes for your target version before you touch a production pool. Upgrade one node pool first and run `ib_write_bw` between two pods before you continue. A node pool is a group of nodes with the same hardware, and testing one pool first keeps a bad upgrade contained.
 
-After the upgrade, read the state of the policy object. The operator acts only on a NicClusterPolicy named `nic-cluster-policy`, and it ignores any other name. Its `status.appliedStates` field lists one entry per component, and the top-level `status.state` is ready only when every component is ready. A component that your policy does not define shows the state `ignore`, which is normal.
+After the upgrade, read the state of the policy object. The operator acts only on a NicClusterPolicy named `nic-cluster-policy`, and it ignores any other name. Its `status.appliedStates` field lists one entry per component, and the top-level `status.state` is ready only when every component is ready. A component that your policy does not define shows the state `ignore`, which is normal. The two commands below print the top-level state first and then the state of each component.
 
 ```bash
 kubectl get nicclusterpolicy nic-cluster-policy -o jsonpath='{.status.state}{"\n"}'
 kubectl get nicclusterpolicy nic-cluster-policy -o jsonpath='{range .status.appliedStates[*]}{.name}{" "}{.state}{"\n"}{end}'
 ```
 
-Two failure cases are worth knowing. A policy with the wrong name never reconciles and shows no status, so check the name first. A policy stuck in a not-ready state points to one component in `appliedStates`, and the pods of that component hold the reason in their events. Before you change a component, find the one that is not ready and read its pod events.
+Two failure cases are worth knowing.
+
+Both cases come from the same habit. Read the state the operator reports before you touch a node. The policy name tells the operator whether to act at all, and the component list tells you where the work is stuck. Starting from those two facts keeps an upgrade from turning into a guessing game. A policy with the wrong name never reconciles and shows no status, so check the name first. A policy stuck in a not-ready state points to one component in `appliedStates`, and the pods of that component hold the reason in their events. Before you change a component, find the one that is not ready and read its pod events. Changing several components at once makes it impossible to tell which change helped.
 
 ## How it fails
 
-Picture a training run that hangs or slows down on the network or storage fabric. From the GPU side, the symptoms look identical to you. Use switch pause counters, `ibstat` states, kernel stacks and system call profiles to isolate the exact fault boundary. The table below pairs each failure mode with its symptom, its root cause and its fix.
+Picture a training run that hangs or slows down on the network or storage fabric. From the GPU side, the symptoms look identical to you. A GPU at low utilization could be waiting on any of the three fabrics, so the GPU dashboard alone cannot name the fault. Use switch pause counters, `ibstat` states, kernel stacks and system call profiles to isolate the exact fault boundary. Each of those tools looks at a different layer, so you use them in the order that narrows the search. The table below pairs each failure mode with its symptom, its root cause and its fix.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 | --- | --- | --- | --- |
@@ -304,16 +319,21 @@ Picture a training run that hangs or slows down on the network or storage fabric
 | **4. Cascading `D`-State Node Hang (`load average: 500+`, `0%` CPU, `kill -9` fails)** | `4` nodes in a `64`-node run drop off; SSH takes `30s`; `top` shows load average `500+` with `0%` CPU; `htop` shows hundreds of `python3` processes in `D` state. `dmesg` logs `INFO: task python3:12345 blocked for more than 120 seconds` in `rpc_wait_bit_killable`. | Storage Fabric Link Drop on Hard Blocking Mount (`volume-06/03` Scenario A): A degraded storage link (`symbol_error_counter > 1000` or `DOWN` in `ibstat`) caused the kernel filesystem client to block inside an uninterruptible lock waiting for storage router ACKs. | Hard-reboot wedged nodes via BMC (`ipmitool chassis power reset`), replace the faulty storage fabric cable, and configure bounded timeouts on read-only dataset mounts so I/O errors fail cleanly. |
 | **5. Metadata Server (`MDS`) `100%` CPU saturation at `5 GB/s` bandwidth (`85.12%` time in `stat`)** | GPU SM activity drops from `95%` to `30%`; PFS throughput is only `5 GB/s` on a `400 GB/s` array, while MDS CPU hits `100%`. Running `strace -c -p <PID>` shows `85.12%` of time in `stat` (`10,000` calls), `10.05%` in `openat`, `4.02%` in `close`, and `0.81%` in `read`. | The Small File Problem (`14` Million `20KB` `.png` Files, `volume-06/03` Scenario B): Every tiny image requires separate metadata RPCs (`stat`, `openat`, `close`) to the MDS before reading `20KB`. | Stop the job, stage small files to Tier 1 Local NVMe (`/mnt/nvme_raid_0`), and repackage datasets into contiguous `WebDataset` (`.tar`) or `TFRecord` shards (`1 GB` shard of `50,000` images = `280` tar files, cutting `stat` calls by `50,000x`). |
 
-Notice that each row starts from a symptom you can measure, then names the boundary where the fault sits. Match your own evidence to one row before you change any configuration.
+Notice that each row starts from a symptom you can measure, then names the boundary where the fault sits.
+
+A useful way to work through a failing run is to begin with the cheapest evidence. Read the switch counters first, since they cost nothing to read. Next, read the `ibstat` state for the InfiniBand ports, and then the kernel log for the storage client. Only after those steps should you reboot a node or change a configuration. A reboot clears the evidence, so capture the counters and the kernel messages before you take that step. Match your own evidence to one row before you change any configuration. Rows 1 and 2 concern the Ethernet fabric, row 3 concerns InfiniBand, row 4 concerns the storage path, and row 5 concerns the parallel filesystem's metadata server. Starting from the symptom keeps you from applying a fix that belongs to a different row.
 
 ## Hands-on lab
 
 ### Venue and scope
-You can run this lab locally with only the Python 3 standard library. It uses `code/part11/nvidia_network_operator.py` and `code/part11/nvidia_network_operator_lab.py`. The lab simulates four things. Those are Network Operator operand reconciliation, InfiniBand and RoCEv2 framing and link speed calculations, GPUDirect Storage and WebDataset metadata math, and the five-scenario fabric and storage incident triage engine. Cluster and switch commands are marked untested here, so the lab does not verify them.
+
+You can run this lab locally with only the Python 3 standard library. It uses `code/part11/nvidia_network_operator.py` and `code/part11/nvidia_network_operator_lab.py`. The lab simulates four things. Those are Network Operator operand reconciliation, InfiniBand and RoCEv2 framing and link speed calculations, GPUDirect Storage and WebDataset metadata math, and the five-scenario fabric and storage incident triage engine. Cluster and switch commands were not run in this lab, so the lab does not verify them.
+
+The lab is a model of the decisions, not a live test of the hardware. It checks that the reconciliation logic chooses the right operands, that the framing arithmetic is right, that the storage math adds up, and that each incident pattern routes to the right root cause. Because the checks are offline, they cannot prove that a switch is configured correctly. They do protect the reasoning, so a wrong rule shows up before it reaches a production runbook. The lab script itself does run locally, and its captured output is shown below.
 
 ### Step 1: Run the self-checking NVIDIA Network Operator lab (tested here)
 
-Start from the repository root, since that is where you run the lab script.
+Start from the repository root, since that is where you run the lab script. The script prints one line per check, so a failure points you straight at the function that disagreed with the expected value.
 
 ```bash
 python3 code/part11/nvidia_network_operator_lab.py
@@ -354,14 +374,18 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 Run the self-check first, and then you can work through the exercises.
 
+If a check fails, read the line before you read the code. Each check name says which rule it tests, so the failure message points at the rule that changed. Fix the rule, rerun the whole script, and confirm that the total returns to 25 passed before you move on.
+
 ### Exercises
 
+Work through the six exercises below. Each one calls a function from the lab modules. As you go, note the value each function returns before you move on to the next exercise.
+
 1. A node has a ConnectX card, but the host GPU driver is not ready yet. Call `reconcile_network_operator_operands()` in `code/part11/nvidia_network_operator.py` with `node_has_mellanox_15b3=True`, once with the GPU driver not ready and once with it ready. Compare the scheduled operands and the GPUDirect RDMA readiness. Why does the peer-memory DaemonSet depend on both driver stacks?
-2. You must compare InfiniBand with RoCEv2 on the wire. Call `analyze_ib_vs_roce_port_and_headers()` and read the framing byte count and the line rate in gigabytes per second. Do this for a 200 Gbps HDR link inside one subnet and for a 400 Gbps NDR link routed across subnets. Then explain why `ibstat` shows both LIDs as 0 on a RoCEv2 port.
+2. You must compare InfiniBand with RoCEv2 on the wire. Call `analyze_ib_vs_roce_port_and_headers()` for a 200 Gbps HDR link inside one subnet. Read the framing byte count and the line rate in gigabytes per second. Then do the same for a 400 Gbps NDR link routed across subnets. Last, explain why `ibstat` shows both LIDs as 0 on a RoCEv2 port.
 3. You are sizing storage for a DGX H100 node. Call `evaluate_gds_and_storage_tiers()` and read the raw Tier 1 NVMe capacity. Convert the pinned GPU memory setting into GiB. Then work out how many 1 GB WebDataset tar files replace 14 million raw 20 KB PNG files.
 4. Two RoCEv2 clusters misbehave. In the first, switch ports show huge PFC pause counts and no data packets. In the second, collective steps swing between 10 ms and 500 ms while ECN marks stay low. Call `diagnose_fabric_or_storage_incident()` for both. What are the root cause and the fix in each case?
 5. Four training nodes show a load average above 500 and almost no CPU use. Their Python processes sit in uninterruptible sleep inside `rpc_wait_bit_killable`. Why can `kill -9` not end them? Which error counter do you inspect, and how do you recover the nodes?
-6. You plan to install the NVIDIA NetQ Operator in Base Command Manager 11. State the node count, disk space, and RAM it needs. Then write the command the head nodes need when port 8081 is still in use.
+6. You plan to install the NVIDIA NetQ Operator in Base Command Manager 11. State the node count the NetQ Operator needs. State the disk space and RAM each node needs. Then write the command the head nodes need when port 8081 is still in use.
 
 ## Checkpoint questions
 

@@ -24,11 +24,15 @@ lab_venue: "GCP / GKE"
 
 A developer submits a single-GPU Pod to a dedicated cluster, and it stays pending. On that cluster the troubleshooting has only two branches. Either the cluster is out of GPUs, or a worker node is broken. Running NVIDIA KAI Scheduler on a shared, multi-tenant cluster changes that picture. You now manage hierarchical Queue quotas, PodGroup gang scheduling, BindRequest reservation Pods, hardware MIG partitions, and software Time-Slicing or fractional GPUs. Each of these adds its own place to fail, so the failure surface spreads across six distinct layers.
 
-The failures show up at different layers depending on where the workload is. A Pod that asks for a MIG profile or a fractional GPU share can stay pending for several reasons. A hardware XID fault sits at the first layer. MIG mode disabled on the host sits at the second, and a crashed device plugin sits at the third. At the fourth layer, the request can be blocked by a namespace ResourceQuota admission denial, a missing PodGroup, an exhausted Queue limit, or MIG slice fragmentation.
+Think of the six layers as floors in a building.
 
-A Pod that is already running can still fail its users. The Binder microservice can stall while it waits for a fractional GPU reservation Pod, and that is the fifth layer. At the sixth layer, a noisy neighbor on a shared, time-sliced pool can push GPU memory past ninety percent. That contention drives tail latency beyond the service level objective, while the physical hardware health graphs stay green.
+The picture helps with one habit in particular. When you go up a floor, you should already trust everything below it. If you find yourself doubting a lower floor while you work on a higher one, stop and go back down before you continue. A problem on a lower floor makes everything above it look broken, so a responder who starts on the top floor chases ghosts. The failures show up at different layers depending on where the workload is. A Pod that asks for a MIG profile or a fractional GPU share can stay pending for several reasons. A hardware XID fault sits at the first layer. MIG mode disabled on the host sits at the second, and a crashed device plugin sits at the third. At the fourth layer, the request can be blocked by a namespace ResourceQuota admission denial, a missing PodGroup, an exhausted Queue limit, or MIG slice fragmentation.
 
-Guessing is the costly habit here. A responder who restarts the device plugin or reboots a host on a hunch destroys the evidence and interrupts every co-tenant on the server. The rest of this chapter gives you a disciplined six-layer triage order, a shared-GPU telemetry contract, step-by-step incident playbooks, and chaos engineering Game Days.
+A Pod that is already running can still fail its users. The Binder microservice can stall while it waits for a fractional GPU reservation Pod, and that is the fifth layer. At the sixth layer, a noisy neighbor on a shared, time-sliced pool can push GPU memory past ninety percent. That contention drives tail latency beyond the service level objective, while the physical hardware health graphs stay green. The users see a slow service, and the hardware dashboards say everything is fine. Both statements can be true at once, which is why the sixth layer checks the service itself.
+
+Guessing is the costly habit here. A responder who restarts the device plugin or reboots a host on a hunch destroys the evidence and interrupts every co-tenant on the server. The rest of this chapter gives you a disciplined six-layer triage order, a shared-GPU telemetry contract, step-by-step incident playbooks, and chaos engineering Game Days. A Game Day is a planned drill in which the team injects a controlled fault on purpose and watches how the platform responds.
+
+Read the rest of the chapter with that drill in mind. Each playbook is written so that you can follow it at two in the morning, with one question answered before the next command is typed.
 
 The summary below collects the thresholds and rules that the rest of the chapter depends on. Treat it as the reference you come back to when a page fires. Notice that the stale-telemetry rule is written as UNKNOWN, never as healthy.
 
@@ -51,29 +55,30 @@ Shared-GPU & KAI Scheduler Operational Thresholds Summary
     * Schedule discipline:        10:00 AM on a Tuesday instead of 3:00 AM on a Sunday
 ```
 
-Use this summary to decide whether a symptom is a real breach or a gap in your telemetry. If the numbers look healthy but the scrape age is above 120 seconds, the first job is to restore the data, not to trust the dashboard.
+Use this summary to decide whether a symptom is a real breach or a gap in your telemetry. If the numbers look healthy but the scrape age is above 120 seconds, the first job is to restore the data, not to trust the dashboard. A dashboard that has not updated is not evidence that the hardware is well.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
 - You should have finished Chapters 11.13 through 11.17. They cover KAI Scheduler architecture, custom resources, gang scheduling, fractional GPUs, Time-Slicing, and MIG.
-- You should be comfortable with `kubectl`, `nvidia-smi`, Prometheus PromQL queries, and the DCGM exporter.
+- You should be comfortable with `kubectl`, `nvidia-smi`, Prometheus PromQL queries, and the DCGM exporter. PromQL is the query language that Prometheus uses to read its stored metrics.
 
 ### Outcomes
 
-- Walk the six-layer shared-GPU and KAI Scheduler triage order, from physical hardware up to service telemetry. Before you change any cluster state, capture a five-file read-only forensic bundle.
-- Map any stuck or failing workload to the exact KAI Scheduler microservice and custom resource definition that owns it. The owner tells you where to look first.
-- Implement the shared-GPU telemetry contract and the service-class Prometheus rules. A stale scrape target is marked unknown, never healthy.
-- Run the safe policy fault injection lab to tell an API admission ResourceQuota denial apart from a scheduler capacity event. Then run AI Game Days for hardware faults, RDMA blackholes, and control-plane leader elections.
+Picture your first week on call for a shared GPU cluster. A page arrives at night about a slow inference service, and the dashboard shows nothing obviously wrong. This chapter gives you the steps to work through that page without guessing. It walks through the six-layer triage order from physical hardware up to service telemetry, and it starts with a read-only evidence bundle that you capture before you change anything. It then maps each stuck or failing workload to the KAI Scheduler microservice and custom resource that owns it, so you know where to look first. The chapter builds the shared-GPU telemetry contract and the service-class Prometheus rules, where a stale scrape target counts as unknown rather than healthy. Last, it covers the safe policy fault injection lab, the Game Day drills for hardware faults, RDMA blackholes and control-plane leader elections, and the playbooks for each of them.
 
-If any prerequisite is new to you, go back to Chapters 11.13 through 11.17 before you continue.
+If any prerequisite is new to you, go back to Chapters 11.13 through 11.17 before you continue. Each later section assumes you already know the terms those chapters introduced.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: The six-layer triage model for KAI Scheduler and shared GPUs
 
 The pager goes off on a KAI-scheduled cluster, and the quick move is to restart the device plugin DaemonSet or reboot the worker node. A restart wipes the logs, the Pod events, and the driver state that show what actually failed, and it interrupts every other tenant on that node. The first safe step is to freeze automated rollouts in the affected scope and pick one healthy peer node for comparison. Then capture a read-only evidence bundle and walk the six layers from the bottom up.
+
+Bottom up means you start with the physical card and finish with the user's experience.
+
+The bottom-up order also protects the evidence. Lower layers hold the facts that disappear fastest, such as driver state and XID messages, so checking them first keeps those facts available while the higher layers are investigated. Each layer answers one question, and you move up only when the answer is yes. The diagram below shows the order of those questions.
 
 ```mermaid
 flowchart TD
@@ -90,11 +95,11 @@ flowchart TD
     L5 -->|"Yes"| L6["Layer 6: Service Outcome & Telemetry Freshness (p99 SLO & DCGM <= 120s)"]
 ```
 
-Follow the diagram from the symptom at the top. A "No" or "Uncertain" answer sends you to the action on that branch. Only a "Yes" moves you one layer up.
+Follow the diagram from the symptom at the top. A "No" or "Uncertain" answer sends you to the action on that branch. Only a "Yes" moves you one layer up. Uncertain counts as a no, because a half-answer at a low layer makes every higher layer unreliable.
 
 #### Mapping Layer 4 and Layer 5 failures to KAI Scheduler microservices and CRDs
 
-Layers four and five are where KAI Scheduler splits its work. Seven specialized microservices and six Custom Resource Definitions share those duties. Once you know which microservice owns which object, you can isolate a control-plane stall in seconds.
+Layers four and five are where KAI Scheduler splits its work. Seven specialized microservices and six Custom Resource Definitions share those duties. A Custom Resource Definition, or CRD, is the schema that teaches the cluster a new object type, such as a PodGroup or a Queue. Once you know which microservice owns which object, you can isolate a control-plane stall in seconds.
 
 | KAI Microservice | CRD / Object Owned | Failure Symptom When This Component Breaks | Exact Triage Command |
 |---|---|---|---|
@@ -106,7 +111,11 @@ Layers four and five are where KAI Scheduler splits its work. Seven specialized 
 | **`pod-group-controller`** | `PodGroup` lifecycle & status sync | `PodGroup` phase fails to update when member pods complete or fail | `kubectl logs -n kai-scheduler deploy/pod-group-controller` |
 | **`binder`** | `BindRequest` & Fractional GPU Reservation Pods | `kai-scheduler` allocated the `PodGroup`, but member Pods remain `Pending` (or fractional pods wait for their integer `nvidia.com/gpu: 1` reservation pod) | `kubectl get bindrequests -n <ns>` and `kubectl logs -n kai-scheduler deploy/binder` |
 
-Start with the row whose symptom matches what you see. Then run its triage command before you change anything in the cluster.
+Queue quotas use the same units as Chapter 11.15. GPUs are counted as whole devices, CPU is counted in millicores, and memory is counted in MB. Keep those units in mind when you read a Queue status, because a number in the wrong unit can look like a failure when it is not.
+
+Start with the row whose symptom matches what you see.
+
+Then check that the owning microservice in that row matches the symptom you are looking at. A mismatch means the row is probably the wrong one, and it is better to re-read the table than to run a command that does not apply. Then run its triage command before you change anything in the cluster. A useful habit is to write the owning microservice next to the symptom in your incident notes. That short line tells the next responder where you have already looked.
 
 ---
 
@@ -114,9 +123,11 @@ Start with the row whose symptom matches what you see. Then run its triage comma
 
 A shared GPU node can report perfectly healthy hardware while one tenant suffers unacceptable tail latency. The reverse happens too. A node can show low average utilization while it properly holds reserved MIG capacity for a latency-critical service. Observability on a KAI-scheduled platform has to answer two separate questions. First, can the platform foundation allocate and run work safely? Second, is each service class delivering the latency and throughput it promised its tenants?
 
+An SLI, or service level indicator, is a measurement of what users experience, such as the fraction of successful requests. An SLO, or service level objective, is the target that measurement must meet. The two words describe one contract from two sides. The measurement tells you how the service is doing, and the objective tells you when to worry.
+
 #### Build three audience-specific views rather than a single GPU health score
 
-A single dashboard that collects all cluster telemetry leaks data across teams. It also hides localized saturation behind fleet-wide averages. Platform teams should publish three distinct views instead, all governed by a six-part telemetry contract. That contract covers node coverage, identity anchored on node and GPU UUID, metric semantics, bounded label cardinality, retention history, and multi-tenant access control.
+A single dashboard that collects all cluster telemetry leaks data across teams. It also hides localized saturation behind fleet-wide averages. A tenant who sees one shared number cannot tell whether a spike came from their own notebook or from a neighbor. Platform teams should publish three distinct views instead, all governed by a six-part telemetry contract. That contract covers node coverage, identity anchored on node and GPU UUID, metric semantics, bounded label cardinality, retention history, and multi-tenant access control. Label cardinality means how many distinct label values a metric carries, and unbounded values make a time-series database slow and expensive.
 
 | Operational View | Primary Audience | Core Questions Answered | Permitted vs Prohibited Data (Multi-Tenant Safety) |
 |---|---|---|---|
@@ -124,17 +135,17 @@ A single dashboard that collects all cluster telemetry leaks data across teams. 
 | **2. Service Delivery** | Tenant & Service Owner | Is our `Queue` wait time, allocation rate, and application `p99` latency / error rate meeting our service tier's promise? | Sees only the tenant's own `Queue`, `PodGroup`, quota, and app metrics; **never** sees competing tenants' names or host inventory. |
 | **3. Capacity & Fairness** | Platform Product & Finance | Which `Queue` or MIG profile shape is blocked, fragmented, or holding idle reservations? | Sees aggregated `gpu-hours` by `Queue`, Pending reasons by shape, and MIG fragmentation; no per-request traces. |
 
-The last column is the rule that matters most. Each view sees only what its audience needs. The service delivery view, for example, never sees competing tenants' names or host inventory.
+The last column is the rule that matters most. Each view sees only what its audience needs. The service delivery view, for example, never sees competing tenants' names or host inventory. That rule is what lets a team share one platform without sharing one another's secrets.
 
 #### Concrete service-class SLIs, SLOs, and Prometheus rules
 
-A best-effort time-sliced pool should not carry a strict tail-latency target. Its admission policy cannot enforce hardware isolation, so the target could not be kept. Match each service level indicator to the isolation the sharing mechanism actually gives. That covers reserved MIG inference, best-effort time-sliced development, and platform scrape freshness.
+A best-effort time-sliced pool should not carry a strict tail-latency target. Its admission policy cannot enforce hardware isolation, so the target could not be kept. Match each service level indicator to the isolation the sharing mechanism actually gives. That covers reserved MIG inference, best-effort time-sliced development, and platform scrape freshness. Setting a target that the mechanism cannot meet is a promise the on-call team will break at night.
 
 - For the reserved MIG inference tier, track request success rate and ninety-ninth percentile latency over five-minute rolling windows. Page on-call when latency breaches the upper threshold, or when Pods queue on missing MIG slices.
 - For the best-effort time-sliced development pool, track ninety-fifth percentile queue wait time and physical GPU memory utilization. Those two metrics show operators when high notebook concurrency drives expected memory pressure.
 - For platform foundation and telemetry freshness, track the advertised GPU and MIG resource counts alongside the age of the latest DCGM exporter scrape. Flag stale metrics as unknown rather than healthy.
 
-The recording rules below turn those targets into Prometheus queries. Each comment line carries the target or the alert threshold.
+The recording rules below turn those targets into Prometheus queries. Each comment line carries the target or the alert threshold. The first group covers the reserved MIG tier, and the second group covers the time-sliced pool and the telemetry freshness checks.
 
 ```yaml
 # Reserved MIG inference SLI/SLO recording rules
@@ -173,11 +184,11 @@ dcgm_exporter_scrape_age_seconds: |
   # Alert if > 120 seconds: stale telemetry means hardware health is UNKNOWN, never healthy
 ```
 
-Read the comment next to each expression as the contract. A stale series means the state is unknown, not healthy.
+Read the comment next to each expression as the contract. A stale series means the state is unknown, not healthy. The count queries answer a simpler question, which is whether the expected devices are advertised at all. If the count drops to zero, the rest of the dashboard has nothing to measure.
 
 #### The five actionable alert families
 
-Every alert that pages an on-call engineer needs two things. It needs a safe first containment action, and it needs an explicit guardrail that says what not to do first. That guardrail is what stops a responder from turning a single-node registration glitch into a cluster-wide outage.
+Every alert that pages an on-call engineer needs two things. It needs a safe first containment action, and it needs an explicit guardrail that says what not to do first. That guardrail is what stops a responder from turning a single-node registration glitch into a cluster-wide outage. An alert without a safe first action sends the responder to improvise, and improvising under pressure is how small faults become large ones.
 
 | Alert Family | Trigger Condition | Safe First Action | Do NOT Do First |
 |---|---|---|---|
@@ -189,6 +200,8 @@ Every alert that pages an on-call engineer needs two things. It needs a safe fir
 
 Each row pairs the first safe action with the move that makes things worse. Read the last column as carefully as the first.
 
+The last column is where most mistakes happen. A responder under pressure is tempted by the quickest-looking move, and the last column names the move that looks quick and does damage. The fourth row deserves the most care, because raising the replica count feels like adding capacity, when it only adds more tenants to the same memory.
+
 ---
 
 ### 3. Advanced: Production incident playbooks and AI Game Days
@@ -197,13 +210,15 @@ Each row pairs the first safe action with the move that makes things worse. Read
 
 A workload that asks for a hardware MIG slice stays pending. Before anyone restarts anything, you need to know where the break is. It could sit in the host driver, in the host MIG partition table, or in the Kubernetes device-plugin registration layer. Five read-only checks, run in order, isolate the fault without disturbing the Pods already running on the node.
 
+The checks go from the bottom up, the same way as the six-layer model. The first check asks whether the card is still in MIG mode. The second asks whether the slices still exist on the card. The third asks whether Kubernetes can see those slices. The fourth is the only step that changes anything, and it is a single Pod restart. The fifth is a comparison with a healthy peer.
+
 - At layer one, query `mig.mode.current` on the host to confirm MIG mode is still enabled. An unscheduled host reboot or driver reset can wipe MIG mode back to disabled.
 - At layer two, list the active GPU Instances on the host. This confirms the expected slices still exist in silicon, and you should do it before you touch any Kubernetes DaemonSet.
 - At layer three, inspect the node's allocatable resource counts in the Kubernetes API. That reveals whether the control plane can see the host slices.
 - At layer four, suppose the host slices exist at layer two but the node advertises zero allocatable slices at layer three. Delete only that node's device-plugin Pod, then wait thirty seconds for registration to recover.
 - At layer five, compare the affected node's description with a healthy peer node. Never change MIG mode on a node that carries live Pods without cordoning and draining it first.
 
-Here are the same five checks as commands. Each step's arrow line says what a healthy answer looks like.
+Here are the same five checks as commands. Each step's arrow line says what a healthy answer looks like. Read the arrow lines as the decision rules. If a step gives the healthy answer, move to the next step. If it does not, the step tells you what to do about it.
 
 ```text
 Playbook A: 5-Step Read-Only MIG Absence Commands
@@ -230,6 +245,8 @@ Playbook A: 5-Step Read-Only MIG Absence Commands
    kubectl describe node gpu-node-1 vs gpu-node-2 (never change MIG mode without cordon & drain).
 ```
 
+If the walk stops at layer four and the restart fixes the count, write down the time of the restart and the device-plugin log line that explained the gap. That record turns a one-time fix into a pattern the team can recognize the next time.
+
 #### Playbook B: Proving policy admission denial versus scheduler capacity shortage
 
 In a multi-tenant incident, a namespace that has simply hit its policy ceiling can look exactly like a broken GPU. Responders often confuse a namespace ResourceQuota admission denial with a missing hardware resource in the scheduler. Telling the two apart stops the team from hunting for broken GPUs that are fine.
@@ -239,9 +256,15 @@ In a multi-tenant incident, a namespace that has simply hit its policy ceiling c
 
 When a namespace hits its quota, look at the policy first, not at the GPUs.
 
+A short example makes the difference concrete. A data scientist applies a notebook manifest on a Friday afternoon and gets an error back at once. The error comes from the API server and names the quota, so nothing was ever scheduled. The fix is a policy conversation, and nobody needs to reboot a GPU node. The same notebook, applied to a namespace with room in its quota, would be created, sit pending for a while, and then either start or show a scheduling event that explains the wait. The question to ask is where the refusal happened. A refusal at the API server means the policy said no, and a pending Pod with a scheduling event means the cluster said not yet.
+
 #### Playbook C: AI chaos engineering and Game Days
 
-Suppose an unscheduled outage hits early on a Sunday morning, and nobody has ever tested fault recovery. Configuration drift will have built up by then, and it can turn one failure into a total platform blackout. Hope is not a strategy for multi-tenant GPU clusters, so run Game Days on a schedule instead. Run them during normal business hours, using the Incident Command System. That system splits the work into three roles. The Incident Commander coordinates decisions and the timeline without touching a keyboard. The Subject Matter Expert inspects cluster and host diagnostics, and the Communications Lead updates stakeholders.
+Suppose an unscheduled outage hits early on a Sunday morning, and nobody has ever tested fault recovery. Configuration drift will have built up by then, and it can turn one failure into a total platform blackout. Hope is not a strategy for multi-tenant GPU clusters, so run Game Days on a schedule instead.
+
+A scheduled drill also builds the muscle memory that a real outage needs. Teams that have practiced the roles know who speaks first, who types, and who writes the timeline, so they lose less time when the real page arrives. Run them during normal business hours, using the Incident Command System. That system splits the work into three roles. The Incident Commander coordinates decisions and the timeline without touching a keyboard. The Subject Matter Expert inspects cluster and host diagnostics, and the Communications Lead updates stakeholders.
+
+Running the drill in business hours matters because the people who know the system are at their desks. A drill at three in the morning on a Sunday tests the team's worst version of itself, with the fewest people awake and the slowest access to help.
 
 ```mermaid
 flowchart LR
@@ -251,13 +274,13 @@ flowchart LR
     Observe --> Fix["5. Postmortem & Architectural Fix (Tune Device Plugin Liveness Probes)"]
 ```
 
-The flow runs left to right. It starts with a hypothesis, and it ends with a postmortem and a fix.
+The flow runs left to right. It starts with a hypothesis, and it ends with a postmortem and a fix. The hypothesis is written before the injection, so the team cannot change the goal after seeing the result. The blast radius is the set of workloads that could be hurt, and the rule is to keep it inside a staging mirror or a canary pool.
 
 Every AI infrastructure platform should execute three mandatory Game Day fault injections. Together they test hardware isolation, RDMA network recovery, and control-plane resilience.
 
-- Start with a simulated GPU hardware death. Inject a double-bit ECC error on an isolated test GPU using `dcgmi test --inject`. Verify that the device plugin marks the card unhealthy, evicts the affected Pod, and cordons the node automatically.
-- Next, test an RDMA and InfiniBand network blackhole. Disable a single InfiniBand switch port using `ibportstate` while a multi-node job runs collective benchmarks. Remember that host `iptables` rules only filter kernel TCP/IP sockets. They never touch RDMA verbs traffic that bypasses the OS kernel.
-- Last, test control-plane master failover and device-plugin liveness probes. Power off one of three control-plane master nodes during synthetic peak load. Verify that worker-node device plugins tolerate transient API server leader elections without restarting and unregistering extended GPU resources.
+- Start with a simulated GPU hardware death. Inject a double-bit ECC error on an isolated test GPU using `dcgmi test --inject`. Verify that the device plugin marks the card unhealthy, evicts the affected Pod, and cordons the node automatically. ECC is error-correcting memory, and a double-bit error is one it cannot repair, so the card must be taken out of service.
+- Next, test an RDMA and InfiniBand network blackhole. Disable a single InfiniBand switch port using `ibportstate` while a multi-node job runs collective benchmarks. Remember that host `iptables` rules only filter kernel TCP/IP sockets. They never touch RDMA verbs traffic that bypasses the OS kernel. A blackhole is a path that silently drops traffic, so the drill checks whether the job notices and recovers.
+- Last, test control-plane master failover and device-plugin liveness probes. Power off one of three control-plane master nodes during synthetic peak load. Verify that worker-node device plugins tolerate transient API server leader elections without restarting and unregistering extended GPU resources. A leader election is the brief moment when the control plane picks a new active node.
 
 The postmortem below shows why the failover test matters. The hypothesis looked safe on paper, and the outcome was not.
 
@@ -280,11 +303,11 @@ Game Day Postmortem: The 99.999% Control-Plane Master Failover Trap
   and device-plugin Helm chart so control-plane blips never restart worker-node device plugins.
 ```
 
-Read the root cause chain in order. The fix changes the device-plugin probe settings in the Helm chart, not the control plane.
+Read the root cause chain in order. The fix changes the device-plugin probe settings in the Helm chart, not the control plane. The lesson is that a platform can be fully redundant on paper and still fail through a component that was never part of the failover plan.
 
 #### Change-surface review, containment gates, and tabletop exercises
 
-Most shared-GPU and KAI Scheduler incidents start with a legitimate change. A kernel upgrade, a driver bump, a MIG layout update, a Queue quota change, or a new model release with a larger key-value cache can each do it. Blaming the latest commit or rolling back unrelated components wastes time. Compare the affected node against the preserved healthy peer across all six change surfaces instead.
+Most shared-GPU and KAI Scheduler incidents start with a legitimate change. A kernel upgrade, a driver bump, a MIG layout update, a Queue quota change, or a new model release with a larger key-value cache can each do it. Blaming the latest commit or rolling back unrelated components wastes time. Compare the affected node against the preserved healthy peer across all six change surfaces instead. A key-value cache is the memory a language model uses to remember the tokens it has already processed, and a longer context makes it grow.
 
 | Change Surface | First Boundary Likely to Break | Authoritative Evidence to Compare | Unsafe Shortcut to Avoid |
 |---|---|---|---|
@@ -295,11 +318,11 @@ Most shared-GPU and KAI Scheduler incidents start with a legitimate change. A ke
 | **5. `Queue` Quota, `ResourceQuota`, or Admission Policy** | Layer 4: API admission or KAI `Queue` scheduling | Git policy revision, `quota-denial.txt` admission error or `PodGroup` event, `kubectl get queues` | Bypassing namespace or `Queue` governance with privileged cluster-admin overrides |
 | **6. Model Weights, Context Length, or Batch Release** | Layer 6: HBM footprint, `p99` latency, and OOM rate | Application baseline metrics, concurrency count, `nvidia-smi --query-processes` memory usage | Declaring a physical GPU hardware defect when a new model checkpoint grew past its slice ceiling |
 
-Each row names the first boundary likely to break, the evidence to compare against the healthy peer, and the shortcut to avoid. Use the evidence column as your checklist.
+Each row names the first boundary likely to break, the evidence to compare against the healthy peer, and the shortcut to avoid. Use the evidence column as your checklist. Work through the rows in order, because the first boundary that differs from the peer is usually the one that changed.
 
 #### Containment gates and service-specific acceptance workloads
 
-An incident is not over just because a DaemonSet shows as running, or because `nvidia-smi` prints a table on the host. Every containment action has to pass a service-class recovery gate. A version-controlled validation workload verifies that gate before the node or pool goes back to production traffic.
+An incident is not over just because a DaemonSet shows as running, or because `nvidia-smi` prints a table on the host. Every containment action has to pass a service-class recovery gate. A version-controlled validation workload verifies that gate before the node or pool goes back to production traffic. A gate is a checklist with a pass condition, and the node stays out of service until every item on it passes.
 
 - For a suspected host or hardware fault at layer one, cordon the node to stop new placements. Then verify that host diagnostics and DCGM health checks pass, that allocatable counts match the baseline, and that the bounded diagnostic Pod prints `DIAGNOSTIC_GPU_OK`.
 - For MIG discovery or layout drift at layers two and three, pause automated rollout propagation across the node pool so healthy peer nodes stay untouched. Then verify that host MIG instances match the node's advertised `nvidia.com/mig-*` counts, and that a test Pod initializes CUDA cleanly.
@@ -309,9 +332,13 @@ An incident is not over just because a DaemonSet shows as running, or because `n
 
 Do not return a node to production until its gate has passed.
 
+Write down which gate you used and when it passed. That record lets the next responder see what was verified, rather than trusting a memory of the fix. The gate is the only thing that decides when a node goes back into service, and a manual decision made under pressure does not count as a pass.
+
 #### Running the tabletop exercise before production launch
 
-Picture a canary node upgrade going wrong. A protected inference tenant requests a MIG profile that is temporarily exhausted in its primary pool. A neighboring best-effort time-sliced pool has free capacity, but the protected tenant cannot silently move onto it. Before you certify an on-call rotation for a shared KAI and MIG cluster, platform leaders should run this tabletop exercise. Incident commanders grade the team on six concrete behaviors.
+Picture a canary node upgrade going wrong. A protected inference tenant requests a MIG profile that is temporarily exhausted in its primary pool. A neighboring best-effort time-sliced pool has free capacity, but the protected tenant cannot silently move onto it. Before you certify an on-call rotation for a shared KAI and MIG cluster, platform leaders should run this tabletop exercise. A tabletop exercise is a discussion-based drill, where the team talks through the scenario around a table and nothing on a real cluster changes.
+
+The value of the exercise is in the disagreements. When two people at the table give different first steps, the team learns where its playbook is unclear, and it can fix the document before the real night. Incident commanders grade the team on six concrete behaviors.
 
 - Classify before mutating. Decide whether the pending Pod is blocked by device discovery, quota policy, total capacity exhaustion, or MIG geometry fragmentation. Do this before you touch any worker node.
 - Freeze the canary rollout. Halt the node upgrade at once, so the remaining healthy comparison nodes stay available for side-by-side diffs.
@@ -320,13 +347,17 @@ Picture a canary node upgrade going wrong. A protected inference tenant requests
 - Preserve the forensic scene. Capture the complete five-file read-only evidence bundle before you apply any cluster change.
 - Verify with acceptance workloads. Confirm full recovery with both a bounded diagnostic Pod and the tenant's application-level tail-latency indicator.
 
-Run the exercise before the rotation goes live, so that the first classification is practice.
+Run the exercise before the rotation goes live, so that the first classification is practice. A team that has rehearsed the classification step makes fewer rushed mutations on the night a real page arrives.
 
 ## Commands and configurations that matter
 
 ### 1. Preserving the read-only scene bundle
 
 Before you restart a component or drain a node, preserve the scene. Capture the five-file read-only evidence bundle first. The files record node state, Pod placement, cluster events, allocatable resources, and KAI Scheduler custom resources. Once they exist, you can compare the node's state before and after any change.
+
+The bundle also helps the people who arrive after you. A second responder who reads the five files can see the state of the node before anyone changed it, without relying on a verbal summary from the first responder. Think of the bundle as a photograph taken before anyone touches the room.
+
+A photograph is only useful if it is taken with the same care every time. Use the same folder name, the same commands and the same order during every incident, so that the files from different incidents can be compared side by side.
 
 ```bash
 # Preserve node, pod, event, allocatable, and KAI state before any mutation
@@ -342,11 +373,11 @@ kubectl get node "$GPU_NODE" -o jsonpath='{.status.capacity}{"\n"}{.status.alloc
 kubectl get resourcequota,queues,podgroups,bindrequests -A > "$EVIDENCE_DIR/kai-and-quotas.txt"
 ```
 
-Each command writes one file into `shared-gpu-incident`. Run them all before you apply any fix, so the evidence reflects the incident and not your repair.
+Each command writes one file into `shared-gpu-incident`. Run them all before you apply any fix, so the evidence reflects the incident and not your repair. The files are read-only commands, so running them cannot disturb the workloads on the node. Keep the folder with the incident record, because the evidence is most useful after the page is closed.
 
 ### 2. Bounded diagnostic Pod and safe ResourceQuota fault injection
 
-A bounded diagnostic Pod in a disposable namespace tests GPU access on a single node. Pair it with a reversible zero-capacity ResourceQuota to test API admission denial. Neither object touches production workloads, because the lab namespace is the only place they run.
+A bounded diagnostic Pod in a disposable namespace tests GPU access on a single node. Pair it with a reversible zero-capacity ResourceQuota to test API admission denial. Neither object touches production workloads, because the lab namespace is the only place they run. The Pod is bounded because it runs once and exits, so it cannot hold a GPU for an unknown length of time.
 
 ```yaml
 # diagnostic-gpu-pod-and-quota-test.yaml
@@ -386,9 +417,11 @@ spec:
 
 The Pod runs `nvidia-smi -L` and then prints `DIAGNOSTIC_GPU_OK`. The ResourceQuota is the control. With a zero GPU limit, the API server refuses the Pod at admission, before the Pod exists.
 
+That difference is the reason the test is useful. A refusal at admission proves the policy works, while a pending Pod with an event proves the scheduler is busy or short of capacity. The two outcomes look alike from a distance, and they call for different fixes. Because the quota lives in its own namespace and can be deleted at any time, the test is safe to run during an incident.
+
 ### 3. Time-correlated host contention triage
 
-When a shared node suffers latency spikes, capture timestamped host metrics. The timestamps let you line up GPU memory, clocks, power, and processes against the moment users complained. Record GPU memory utilization, Streaming Multiprocessor clocks, power draw, active container process identifiers, and host swap state.
+When a shared node suffers latency spikes, capture timestamped host metrics. The timestamps let you line up GPU memory, clocks, power, and processes against the moment users complained. Record GPU memory utilization, Streaming Multiprocessor clocks, power draw, active container process identifiers, and host swap state. Swap is disk space that the host uses when it runs short of RAM, and heavy swapping makes every process slower.
 
 ```bash
 # Capture timestamped host GPU memory, SM clock, power, and PID breakdown
@@ -399,6 +432,8 @@ ssh gpu-node-1 'cat /proc/meminfo | grep -E "MemTotal|MemAvailable|SwapFree"'
 ```
 
 The `INCIDENT_TIME` variable records when the capture started, so keep it with the output.
+
+Compare the timestamps of the capture with the timestamps of the user complaints. If the slow periods line up with the moments when memory use crossed the threshold, the contention story is supported. If they do not line up, look at other causes before you move the tenant. Without that timestamp, the numbers are just a log with no link to the complaint that started the investigation. Run the capture while the symptom is still happening, because a capture taken after recovery shows a healthy node and proves nothing.
 
 ## How it fails
 
@@ -414,15 +449,21 @@ When you run a KAI-scheduled shared GPU cluster, most operational failures fall 
 
 Read each row from left to right. The symptom is what you see, the root cause boundary is where the break sits, and the remediation is the narrowest fix you can apply. Try the narrowest one first.
 
+The narrowest fix changes the least. Restarting one Pod affects one node, while restarting a DaemonSet affects every node it covers. Starting narrow keeps the blast radius of your own repair small.
+
+Here is each pattern as a short story, in the same order as the table. The first story is the device plugin that loses its registration. A node looks as if it has no MIG slices, while the host still lists active instances. The check is the device-plugin log, and the decision is to restart only that one Pod and wait thirty seconds. The second story is a Pod that waits with no PodGroup behind it. The first check is the pod-grouper log, and the decision depends on whether the label or the controller is at fault.
+
+The third story is a PodGroup that the scheduler accepted while its fractional Pods never start. The BindRequest sits unfinished, and the reservation Pod on the target node is stuck. The check is the BindRequest object and the binder log, and the decision is to confirm the device plugin on that node can hand out its integer GPU. The fourth story is the one with the quiet dashboard. Users complain, the GPU graphs look flat, and the scrape age is far past its limit. The decision is to move the protected service first and repair the telemetry second. The fifth story is the control-plane blip. A master node goes down, the plugin restarts, and the GPU tokens vanish for a while. The fix lives in the device-plugin probe settings, not in the control plane.
+
 ## Hands-on lab
 
 ### Venue and scope
 
-You run this lab on your own machine, and it needs only the Python standard library. The two scripts, `code/part11/kai_operations_and_troubleshooting.py` and `code/part11/kai_operations_and_troubleshooting_lab.py`, check the six-layer triage classifier. The checks cover hardware, MIG state, device-plugin registration, scheduling policy, Binder runtime, and service telemetry. The lab also tests the Prometheus service level objective evaluator and the AI Game Day fault models. The host and cluster commands earlier in the chapter were not run on live hardware, because this lab does not run them.
+You run this lab on your own machine, and it needs only the Python standard library. The two scripts, `code/part11/kai_operations_and_troubleshooting.py` and `code/part11/kai_operations_and_troubleshooting_lab.py`, check the six-layer triage classifier. The checks cover hardware, MIG state, device-plugin registration, scheduling policy, Binder runtime, and service telemetry. The lab also tests the Prometheus service level objective evaluator and the AI Game Day fault models. The host and cluster commands earlier in the chapter were not run on live hardware, because this lab does not run them. The lab checks the classifier, and a live cluster still needs its own runs of the commands.
 
-### Step 1: Run the self-checking KAI operations and troubleshooting lab (tested here)
+### Step 1: Run the self-checking KAI operations and troubleshooting lab
 
-From the repository root, run the verification script. It checks its own results and prints one line per check.
+From the repository root, run the verification script. It checks its own results and prints one line per check. The script is the same classifier you would use on a page, so a passing run means the rules in the chapter are applied consistently.
 
 ```bash
 python3 code/part11/kai_operations_and_troubleshooting_lab.py
@@ -461,14 +502,16 @@ The captured output below comes from this repository. Each line should read PASS
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-The classifier checks Layer 2 before Layer 3, and Layer 4 before Layer 5. That is the same six-layer order you saw earlier in this chapter.
+The classifier checks Layer 2 before Layer 3, and Layer 4 before Layer 5.
+
+The order of the checks is not an accident. A device-plugin problem at Layer 3 can look like a scheduling problem at Layer 4, because the Pod stays pending in both cases. Checking the lower layer first keeps you from tuning the scheduler for a fault that lives in the driver. That is the same six-layer order you saw earlier in this chapter. If a future change reorders those checks, the test output shows it right away.
 
 ### Exercises
 
-1. Open `SIX_TRIAGE_LAYERS` in `code/part11/kai_operations_and_troubleshooting.py`. List the six triage layers in order, and state the primary diagnostic evidence collected at each layer.
-2. A Pod that asks for a MIG slice stays pending. In one case `nvidia-smi mig -lgi` shows zero instances on the host. In the other it shows active instances, but the node's allocatable MIG count is zero. Use `classify_kai_and_shared_gpu_incident()` on both. How do the diagnosis and the safe fix differ?
+1. Open `SIX_TRIAGE_LAYERS` in `code/part11/kai_operations_and_troubleshooting.py`. List the six triage layers in order. For each layer, what is the main evidence you collect?
+2. A Pod that asks for a MIG slice stays pending, and `nvidia-smi mig -lgi` shows zero instances on the host. Use `classify_kai_and_shared_gpu_incident()` on that case. What is the diagnosis, and what is the safe fix? Then take the second case, where the host shows active instances but the node's allocatable MIG count is zero. How do the diagnosis and the safe fix differ?
 3. Three Pods are stuck for three different reasons. One is blocked by the `diagnostic-gpu-denial` ResourceQuota. One never got a PodGroup because the PodGrouper failed. One is waiting on a BindRequest that the Binder has stalled on. What Kubernetes evidence tells the three apart?
-4. Read `evaluate_shared_gpu_slo()`. Which thresholds does it use for reserved MIG inference success and latency? Which does it use for time-sliced queue wait and memory use? What scrape age marks DCGM telemetry as unknown?
+4. Read `evaluate_shared_gpu_slo()`. Which thresholds does it use for reserved MIG inference success and latency? Which thresholds does it use for time-sliced queue wait and memory use? What scrape age marks DCGM telemetry as unknown?
 5. You want to test failures on a lab cluster. Which tool injects a double-bit ECC error on a test GPU? Which command takes down an InfiniBand link during a collective benchmark? Why can host `iptables` rules not simulate an RDMA link failure?
 6. In a Game Day, powering off one of three master nodes terminated every Triton Pod on the workers. Why did that happen? Why did PodDisruptionBudgets not protect the Pods? Which Helm configuration change fixes the flaw?
 

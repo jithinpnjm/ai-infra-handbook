@@ -22,9 +22,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture a platform team that asks for four GPUs for one training job. Under the classic Kubernetes Device Plugin API, the scheduler receives nothing more than a flat integer count. The control plane cannot tell whether those accelerators have enough framebuffer memory. It cannot tell whether MIG slicing is disabled, or whether the GPUs and RDMA NICs sit on the same PCIe switch and NUMA node.
+Picture a platform team that asks for four GPUs for one training job. Under the classic Kubernetes Device Plugin API, the scheduler receives nothing more than a flat integer count. The control plane cannot tell whether those accelerators have enough framebuffer memory. The framebuffer is the memory on the GPU card itself. The control plane also cannot tell whether MIG slicing is disabled, or whether the GPUs and RDMA NICs sit on the same PCIe switch and NUMA node. MIG, Multi-Instance GPU, is the feature that splits one physical GPU into smaller isolated pieces.
 
-The result is a poor placement. kube-scheduler often binds a multi-GPU Pod to a node with fragmented sockets. The local kubelet Topology Manager then rejects the Pod right away with a `TopologyAffinityError`. Platform engineers and researchers end up fighting fragile node-label selectors, wasted scheduling cycles and rigid single-container device locks.
+The result is a poor placement. kube-scheduler often binds a multi-GPU Pod to a node with fragmented sockets. A socket is one physical CPU package, and a node with two sockets has two NUMA nodes. The local kubelet Topology Manager then rejects the Pod right away with a `TopologyAffinityError`. Platform engineers and researchers end up fighting fragile node-label selectors, wasted scheduling cycles and rigid single-container device locks. Each retry adds delay, and each label someone forgot to update adds another failure that looks random from the outside.
 
 These are the three limits of the classic model. Each one shows up in the request, so you can read them as the problems that DRA has to solve.
 
@@ -41,30 +41,27 @@ Three Architectural Limits of Classic Device Plugins vs DRA (resource.k8s.io/v1 
    - Cannot share a single allocated claim across cooperating Pods or dynamically configure MIG / MNNVL domains at claim time.
 ```
 
-Notice the second limit in particular. kube-scheduler subtracts integers and never sees the NVLink domains, PCIe switches or NUMA alignment, so a bad socket only fails later.
+Notice the second limit in particular. kube-scheduler subtracts integers and never sees the NVLink domains, PCIe switches or NUMA alignment, so a bad socket only fails later. NVLink is NVIDIA's high-speed link between GPUs inside one server, and it is invisible to a plain integer count.
 
-To remove those limits, Kubernetes introduced Dynamic Resource Allocation, or DRA. It graduated to stable General Availability under `resource.k8s.io/v1`, and it is enabled by default in Kubernetes 1.34. DRA replaces the earlier experimental `v1alpha2`, `v1beta1` and `v1beta2` iterations.
+To remove those limits, Kubernetes introduced Dynamic Resource Allocation, or DRA. It graduated to stable General Availability under `resource.k8s.io/v1`, and it is enabled by default in Kubernetes 1.34. DRA replaces the earlier experimental `v1alpha2`, `v1beta1` and `v1beta2` iterations. Stable here means the API is no longer expected to change in ways that break existing manifests.
 
-DRA follows the same pattern as the Container Storage Interface, or CSI, dynamic volume workflow. Instead of counting opaque integers, the scheduler matches structured hardware attributes. It also checks topology relationships before a Pod is bound to a node.
+DRA follows the same pattern as the Container Storage Interface, or CSI, dynamic volume workflow. Instead of counting opaque integers, the scheduler matches structured hardware attributes. It also checks topology relationships before a Pod is bound to a node. The storage world already works this way: a Pod asks for a volume by name, and the storage system decides which disk to create. DRA asks for a device by its properties and lets the scheduler decide which card fits.
 
-DRA spans both the Kubernetes control plane and the worker node data plane. Running it reliably therefore means understanding the machinery on both sides. This chapter gives a complete walkthrough of DRA, covering ResourceSlice, DeviceClass, ResourceClaim and ResourceClaimTemplate. It then covers the control-plane and node-level mechanics that keep production AI servers healthy. Those include Optimistic Concurrency Control, the kubelet health loop called the Pod Lifecycle Event Generator, or PLEG, QoS OOM scoring, CSI storage staging and multi-tenant admission guardrails.
+DRA spans both the Kubernetes control plane and the worker node data plane. The control plane is the set of components that make scheduling decisions, and the data plane is the set of components that run on each worker. Running it reliably therefore means understanding the machinery on both sides. This chapter gives a complete walkthrough of DRA, covering ResourceSlice, DeviceClass, ResourceClaim and ResourceClaimTemplate. It then covers the control-plane and node-level mechanics that keep production AI servers healthy. Those include Optimistic Concurrency Control, the kubelet health loop called the Pod Lifecycle Event Generator, or PLEG, QoS OOM scoring, CSI storage staging and multi-tenant admission guardrails. QoS OOM scoring decides which Pods the Linux out-of-memory killer sacrifices first.
 
 Keep those three limits in mind as you read the rest of the chapter.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Finish three earlier chapters before you start. Chapter 11.2 covers Device Plugins and CDI. Chapter 11.3 covers node labels from Node Feature Discovery, or NFD, and GPU Feature Discovery, or GFD. Chapter 11.6 covers the Topology Manager and Guaranteed QoS.
 
-You should also have a working knowledge of Kubernetes PersistentVolumes, PersistentVolumeClaims and StorageClasses.
+A GPU platform engineer gets a page at night. A multi-GPU Pod is stuck, and the event log mentions a claim, a topology error and a node label in the same breath. Before you can follow that page, you need the background that the earlier chapters provide. Finish three earlier chapters before you start. Chapter 11.2 covers Device Plugins and CDI. Chapter 11.3 covers node labels from Node Feature Discovery, or NFD, and GPU Feature Discovery, or GFD. Chapter 11.6 covers the Topology Manager and Guaranteed QoS. A Guaranteed QoS Pod is one whose requests equal its limits, which gives the kubelet the strongest guarantee.
+
+You should also have a working knowledge of Kubernetes PersistentVolumes, PersistentVolumeClaims and StorageClasses. Those three objects are the storage pattern that DRA copies, so the comparison in the first section will feel familiar.
 
 ### Outcomes
-After you complete this chapter, you will be able to:
-- Explain the four core Dynamic Resource Allocation API objects. Describe how Structured Parameters let kube-scheduler match GPU attributes, and judge how mature the NVIDIA GPU DRA driver is.
-- Compare the DRA claim lifecycle with the CSI volume attachment pipeline. Cover `WaitForFirstConsumer` and recovery from the `node.kubernetes.io/out-of-service` taint.
-- Trace `ResourceVersion` Optimistic Concurrency Control and long-lived HTTP Watch streams. Use them to prevent API server `LIST` thrashing.
-- Configure and debug the kubelet Sync Loop, Pod Lifecycle Event Generator timeouts, QoS `oom_score_adj` values and `crictl` zombie sandbox cleanup.
-- Enforce multi-tenant AI platform guardrails. Those guardrails use Kyverno webhook exclusions, Karpenter GPU node pools, ArgoCD GitOps and the five-stage AI Factory cluster upgrade sequence.
+
+The chapter starts with the four core DRA API objects and how Structured Parameters let kube-scheduler match GPU attributes. It then judges how mature the NVIDIA GPU DRA driver is, and it compares the DRA claim lifecycle with the CSI volume attachment pipeline, including `WaitForFirstConsumer` and recovery from the `node.kubernetes.io/out-of-service` taint. Next, it traces `ResourceVersion` Optimistic Concurrency Control and long-lived HTTP Watch streams, which keep a busy controller from overloading the API server with `LIST` calls. After that, it walks through the kubelet Sync Loop, the Pod Lifecycle Event Generator timeouts, the QoS `oom_score_adj` values and `crictl` zombie sandbox cleanup. The last part covers multi-tenant AI platform guardrails. Those guardrails use Kyverno webhook exclusions, Karpenter GPU node pools, ArgoCD GitOps and the five-stage AI Factory cluster upgrade sequence.
 
 If one of these prerequisites is unfamiliar, read that chapter before you start the lab.
 
@@ -72,9 +69,11 @@ If one of these prerequisites is unfamiliar, read that chapter before you start 
 
 ### 1. Basics: Dynamic Resource Allocation architecture and the CSI analogy
 
-If every application had to hardcode physical disk serial numbers and host mount paths inside Pod manifests, portable storage on Kubernetes would be impossible. Kubernetes solved that problem years ago with the Container Storage Interface. It separates admin-defined storage classes from user-requested volume claims. Before DRA, GPU workloads had no equivalent abstraction, so they had to encode hardware details into sprawling node selector labels.
+If every application had to hardcode physical disk serial numbers and host mount paths inside Pod manifests, portable storage on Kubernetes would be impossible. Kubernetes solved that problem years ago with the Container Storage Interface. It separates admin-defined storage classes from user-requested volume claims. Before DRA, GPU workloads had no equivalent abstraction, so they had to encode hardware details into sprawling node selector labels. A node selector label is a key and value on a Node that a Pod must match, and every hardware detail became one more label to keep in sync.
 
-Dynamic Resource Allocation applies the same four-part CSI design pattern to GPUs, NICs and rack-scale compute domains. Node plugins publish the hardware inventory. Administrators define logical device classes. Workloads create per-Pod claims from reusable templates.
+Dynamic Resource Allocation applies the same four-part CSI design pattern to GPUs, NICs and rack-scale compute domains. Node plugins publish the hardware inventory. Administrators define logical device classes. Workloads create per-Pod claims from reusable templates. Each of those four roles has one clear owner, and that separation is what keeps the workload from knowing the hardware details.
+
+This split is the reason DRA scales better than label-based selection. The vendor driver knows the hardware and keeps the inventory current. The platform administrator knows which classes the organization offers. The team writing a training job only states what it needs. When a new GPU model arrives, the driver publishes it and the administrator adds a class, and the training manifests can stay the same.
 
 The table below maps each storage object to its accelerator counterpart. Read each row as a pair, because you will use the accelerator column through the rest of this chapter.
 
@@ -85,7 +84,7 @@ The table below maps each storage object to its accelerator counterpart. Read ea
 | **`PersistentVolumeClaim` (`PVC`)** | **`ResourceClaim`** | Namespace-scoped object representing a concrete request for one or more devices (`count: 4`, `allocationMode: ExactCount`), tracking allocation status and bound device IDs. |
 | **`StatefulSet.spec.volumeClaimTemplates` (`500Gi`)** | **`ResourceClaimTemplate` (`a100-claim-template`, `gpu-claim`)** | Namespace-scoped template referenced in `Pod.spec.resourceClaims` so controllers (`Deployment`, `StatefulSet`, `JobSet`) automatically instantiate and clean up a dedicated ResourceClaim per Pod replica. |
 
-Notice that each row plays the same role on both sides. Only the object names and the kind of hardware change.
+Notice that each row plays the same role on both sides. Only the object names and the kind of hardware change. Once you know the storage pair, the accelerator object is easier to remember, because it does the same job for a different kind of device.
 
 The diagram follows one claim from the moment a plugin reports a GPU to the moment that GPU appears inside a container.
 
@@ -99,26 +98,30 @@ flowchart TD
     Sched -->|"5. Writes allocation into ResourceClaim.status & binds Pod"| Kubelet["6. Node Kubelet calls NodePrepareResources -> CDI Injects GPU into Container"]
 ```
 
-The old `v1alpha2` prototype worked differently, and it has been removed. During every scheduling cycle, kube-scheduler had to pause and exchange remote procedure calls, or RPCs, with vendor controller Pods. That out-of-tree callback loop used opaque `ResourceClass` and `parametersRef` objects, and it slowed scheduling dramatically in large clusters. Modern DRA avoids this with Structured Parameters. They appeared in `v1beta1` and `v1beta2`, graduated to stable `resource.k8s.io/v1` in Kubernetes 1.34, and let the scheduler make every decision in memory.
+The old `v1alpha2` prototype worked differently, and it has been removed. During every scheduling cycle, kube-scheduler had to pause and exchange remote procedure calls, or RPCs, with vendor controller Pods. An RPC is a request that one program sends to another and waits on for an answer. That out-of-tree callback loop used opaque `ResourceClass` and `parametersRef` objects, and it slowed scheduling dramatically in large clusters. Modern DRA avoids this with Structured Parameters. They appeared in `v1beta1` and `v1beta2`, graduated to stable `resource.k8s.io/v1` in Kubernetes 1.34, and let the scheduler make every decision in memory. In memory means the scheduler reads the cached inventory it already holds, instead of waiting on a remote call for each Pod.
 
-1. **Advertisement via ResourceSlice.** The node-local DRA plugin queries NVML, the NVIDIA Management Library, and publishes a ResourceSlice object to the API server. The object lists every device on the node. For each device, it records the product name, memory capacity, compute capability, MIG state, PCIe root complex and NUMA node ID.
-2. **Declaration via ResourceClaimTemplate.** The workload states its hardware needs in a ResourceClaimTemplate. It can use structured fields or Common Expression Language selectors, called CEL for short. Watch the unit here. GPU vendors advertise memory in decimal gigabytes, while Kubernetes uses binary gibibytes, as Footnote 1 of *Generative AI on Kubernetes* Chapter 3 explains. A 40 GB GPU therefore provides roughly 37.25 GiB, and an 80 GB GPU provides roughly 74.5 GiB.
-3. **In-Memory Scheduler Matching.** During the Filter and Score phases, kube-scheduler checks the claim against cached ResourceSlice objects. It confirms the NUMA alignment across the devices before it binds the Pod. Then it writes the chosen device IDs into `ResourceClaim.status.allocation`.
+A claim moves through four steps, and each step hands the next one a clearer picture.
+
+1. **Advertisement via ResourceSlice.** The node-local DRA plugin queries NVML, the NVIDIA Management Library, and publishes a ResourceSlice object to the API server. The object lists every device on the node. For each device, it records the product name, memory capacity, compute capability, MIG state, PCIe root complex and NUMA node ID. A PCIe root complex is the point inside the CPU where a PCIe tree starts.
+2. **Declaration via ResourceClaimTemplate.** The workload states its hardware needs in a ResourceClaimTemplate. It can use structured fields or Common Expression Language selectors, called CEL for short. Watch the unit here. GPU vendors advertise memory in decimal gigabytes, while Kubernetes uses binary gibibytes, as Footnote 1 of *Generative AI on Kubernetes* Chapter 3 explains. A 40 GB GPU therefore provides roughly 37.25 GiB, and an 80 GB GPU provides roughly 74.5 GiB. The gap comes from the two counting systems, not from lost memory, and a request written in GiB that ignores it can silently exclude a card you meant to allow.
+3. **In-Memory Scheduler Matching.** During the Filter and Score phases, kube-scheduler checks the claim against cached ResourceSlice objects. Filter removes nodes that cannot run the Pod, and Score ranks the rest. The scheduler confirms the NUMA alignment across the devices before it binds the Pod. Then it writes the chosen device IDs into `ResourceClaim.status.allocation`.
 4. **Node-Level Preparation via CDI.** When the bound Pod reaches the worker node, kubelet calls the DRA plugin's `NodePrepareResources` gRPC endpoint. The plugin writes a Container Device Interface, or CDI, specification under `/var/run/cdi/`. containerd then uses that specification to inject the exact allocated GPUs into the container sandbox.
 
-Plan your cluster roadmap by separating two questions. The first is how stable the core Kubernetes API is. The second is how mature the vendor ecosystem around it is. The core `resource.k8s.io/v1` API is Generally Available and enabled by default in Kubernetes 1.34. The NVIDIA GPU DRA driver (`gpu.nvidia.com`), however, is still maturing from technical preview toward full production parity. Ecosystem pieces such as Cluster Autoscaler CEL simulation and structured quota enforcement are also still maturing.
+Plan your cluster roadmap by separating two questions. The first is how stable the core Kubernetes API is. The second is how mature the vendor ecosystem around it is. The core `resource.k8s.io/v1` API is Generally Available and enabled by default in Kubernetes 1.34. The NVIDIA GPU DRA driver (`gpu.nvidia.com`), however, is still maturing from technical preview toward full production parity. Ecosystem pieces such as Cluster Autoscaler CEL simulation and structured quota enforcement are also still maturing. A platform can be stable at the API level while the driver and its surrounding tools are not, so check both before you commit a production queue to DRA.
 
-Most production AI clusters today keep the NVIDIA Device Plugin, with NFD, GFD and Kueue ResourceFlavors, as their baseline. While they do, they pilot DRA for attribute selection, multi-Pod GPU sharing and Multi-Node NVLink compute domains.
+Most production AI clusters today keep the NVIDIA Device Plugin, with NFD, GFD and Kueue ResourceFlavors, as their baseline. While they do, they pilot DRA for attribute selection, multi-Pod GPU sharing and Multi-Node NVLink compute domains. Kueue is the job queueing controller, and ResourceFlavors are its named groups of hardware. A pilot here means one team runs a small workload on DRA while everyone else keeps the proven path.
 
-Keep the four objects and their storage analogs in mind, because later sections refer to them. Treat DRA as a pilot for now, and keep the baseline running until the ecosystem pieces you need are mature.
+Keep the four objects and their storage analogs in mind, because later sections refer to them.
+
+Here is a short walk through the four objects for a single request. A node's driver publishes a ResourceSlice that lists its GPUs. An administrator has already created a DeviceClass for the card type the company buys. A team creates a ResourceClaimTemplate that asks for one device from that class with enough memory. The Deployment then creates one ResourceClaim per replica. The scheduler matches each claim to a free device on a node, and the kubelet prepares that device for the container. Each object does one job, and no object has to know the details of the others. Treat DRA as a pilot for now, and keep the baseline running until the ecosystem pieces you need are mature.
 
 ---
 
 ### 2. Intermediate: Control-plane API machinery (`ResourceVersion` OCC) and Kubelet node lifecycle (`PLEG`, QoS, and `CSI`)
 
-Every ResourceSlice publication and every ResourceClaim allocation passes through the API server and etcd. Picture a custom controller that polls the cluster with unpaginated, cluster-wide `LIST` requests. Or picture one that overwrites stale objects while other writers are active. Either way, control-plane latency spikes and scheduling stalls spread across the cluster. Understanding Optimistic Concurrency Control and streaming watches keeps the control plane responsive.
+A custom controller that polls the cluster too often can slow the whole control plane, even when it does nothing wrong. Every ResourceSlice publication and every ResourceClaim allocation passes through the API server and etcd. Picture a custom controller that polls the cluster with unpaginated, cluster-wide `LIST` requests. Or picture one that overwrites stale objects while other writers are active. Either way, control-plane latency spikes and scheduling stalls spread across the cluster. Understanding Optimistic Concurrency Control and streaming watches keeps the control plane responsive. etcd is the key-value store that holds all cluster state, and the API server is the only component that talks to it directly.
 
-Every Kubernetes object carries a `metadata.resourceVersion` string. That string is backed by the etcd revision counter, which only goes up. Suppose two controllers read the same Pod at version 154329 and try to update it at the same time. The API server accepts the first write and advances the version to 154330. It rejects the second write at once with HTTP `409 Conflict`. Well-behaved controllers also avoid costly full `LIST` calls. They use SharedInformers, which open a lightweight streaming `WATCH` connection from the last version they saw.
+Every Kubernetes object carries a `metadata.resourceVersion` string. That string is backed by the etcd revision counter, which only goes up. Suppose two controllers read the same Pod at version 154329 and try to update it at the same time. The API server accepts the first write and advances the version to 154330. It rejects the second write at once with HTTP `409 Conflict`. Well-behaved controllers also avoid costly full `LIST` calls. They use SharedInformers, which open a lightweight streaming `WATCH` connection from the last version they saw. An informer keeps a local cache of objects, so the controller reads from memory instead of asking the API server again and again.
 
 The block below traces the two writes from that example.
 
@@ -131,9 +134,9 @@ Control-Plane Optimistic Concurrency Control (OCC) and Watch Streams (volume-03/
 - Failure metric on bad LIST polling: Spikes in apiserver_request_duration_seconds_bucket across kube-apiserver
 ```
 
-Notice that the rejected write is not lost. Controller B must re-read version 154330 before it retries.
+Notice that the rejected write is not lost. Controller B must re-read version 154330 before it retries. A blind retry with the old version would only repeat the conflict, so the re-read is what makes the second attempt safe.
 
-On a worker node, kubelet looks after expensive eight-GPU servers. An unexpected eviction there wastes hours of training progress. The kubelet's main Sync Loop depends on the Pod Lifecycle Event Generator, or PLEG. PLEG polls containerd over `/run/containerd/containerd.sock` every second to track container states. Now suppose un-isolated DataLoader threads or checkpoint writes saturate the host CPUs or disk I/O. If PLEG cannot finish a relist within three minutes, kubelet marks the entire GPU server `NotReady`. It then triggers mass Pod evictions.
+On a worker node, kubelet looks after expensive eight-GPU servers. An unexpected eviction there wastes hours of training progress. The kubelet's main Sync Loop depends on the Pod Lifecycle Event Generator, or PLEG. PLEG polls containerd over `/run/containerd/containerd.sock` every second to track container states. Now suppose un-isolated DataLoader threads or checkpoint writes saturate the host CPUs or disk I/O. If PLEG cannot finish a relist within three minutes, kubelet marks the entire GPU server `NotReady`. It then triggers mass Pod evictions. A relist is the full pass where PLEG asks containerd for every container's state, and that pass is what takes longer when the host is starved.
 
 The next block lists the kubelet settings, eviction thresholds and QoS scores that protect a GPU node.
 
@@ -156,6 +159,8 @@ Kubelet Node Lifecycle, PLEG Timeout, and QoS OOM Scoring (volume-03/02 Sections
 
 Notice the order of the QoS scores. The kubelet is protected most, Guaranteed Pods come next, and BestEffort Pods are killed first.
 
+The scores matter most during memory pressure. When a node runs low on memory, the kernel picks a victim by reading each process's score, and it starts with the highest value. A training job that is Guaranteed sits near the end of that line, so the kernel reaches for other Pods first. Burstable Pods fall in between, and their score moves with how much memory they use. Setting requests equal to limits is how you tell the kubelet that a training Pod must be the last one touched. Read the list as a ranking of who the kernel is allowed to sacrifice. A BestEffort Pod has no requests and no limits, so it is the cheapest one to lose.
+
 When PLEG starves, the kubelet logs record it. The two lines below show what that looks like.
 
 ```text
@@ -163,11 +168,11 @@ E1024 14:32:11.123456   12345 kubelet.go:1934] "PLEG is not healthy"
 W1024 14:32:11.123567   12345 sync_loop.go:215] "Sync loop failed" error="pleg was last seen active 3m5s ago; threshold is 3m0s"
 ```
 
-The log line names the threshold, so you can compare the time since PLEG was last active against the 3m0s limit.
+The log line names the threshold, so you can compare the time since PLEG was last active against the 3m0s limit. If the time in the message is already past the threshold, the kubelet has no choice but to mark the node unhealthy, so the fix is to free the CPU or disk the kubelet needs.
 
-Storage works alongside these GPU claims. When kubelet attaches volumes next to DRA GPU claims, the Container Storage Interface runs a three-stage gRPC pipeline. That pipeline spans the Identity, Controller and Node services. The StorageClass setting `volumeBindingMode: WaitForFirstConsumer` delays volume creation. The PersistentVolume is not created until kube-scheduler picks the exact GPU node.
+Storage works alongside these GPU claims. When kubelet attaches volumes next to DRA GPU claims, the Container Storage Interface runs a three-stage gRPC pipeline. That pipeline spans the Identity, Controller and Node services. The Identity service reports what the driver is, the Controller service handles attach and detach at the cluster level, and the Node service handles the mount on one host. The StorageClass setting `volumeBindingMode: WaitForFirstConsumer` delays volume creation. The PersistentVolume is not created until kube-scheduler picks the exact GPU node. That delay matters, because a volume created too early may land on a disk that the chosen node cannot reach.
 
-Now consider a node that crashes hard while it holds a ReadWriteOnce volume for a StatefulSet such as `milvus-datanode-0`. The replacement Pod stalls with a `Multi-Attach error`. The administrator must first verify that the dead host is powered off. Then the administrator applies the `node.kubernetes.io/out-of-service:NoExecute` taint, which was introduced in Kubernetes 1.28+.
+Now consider a node that crashes hard while it holds a ReadWriteOnce volume for a StatefulSet such as `milvus-datanode-0`. The replacement Pod stalls with a `Multi-Attach error`. The administrator must first verify that the dead host is powered off. Then the administrator applies the `node.kubernetes.io/out-of-service:NoExecute` taint, which was introduced in Kubernetes 1.28+. A taint marks a node so that Pods are pushed off it, and the `NoExecute` effect removes the Pods that are already there. Verifying power first is essential, because releasing a volume while the old host still writes can corrupt the data.
 
 The block below walks through the three mount steps and the nine deletion steps.
 
@@ -184,7 +189,9 @@ CSI Volume Pipeline and the 9-Step Pod Deletion Sequence (volume-03/02 Sections 
   7. CSI NodeUnpublishVolume & NodeUnstageVolume -> 8. kubelet reports final termination -> 9. CSI ControllerUnpublishVolume.
 ```
 
-Notice that `NodeStageVolume` mounts the device once per node. `NodePublishVolume` then bind-mounts that shared staging path into each Pod.
+Notice that `NodeStageVolume` mounts the device once per node.
+
+The two steps exist for a reason. Staging does the expensive work once, such as formatting and mounting the device on the host. Publishing is cheap, so it can be repeated for each Pod that shares the volume. If the publish step failed, you would look at the Pod mount path. If the stage step failed, you would look at the global staging directory on the node. `NodePublishVolume` then bind-mounts that shared staging path into each Pod. A bind mount makes one directory appear at a second path, so each Pod sees the same device without the device being mounted again.
 
 Keep the two QoS rules in mind when you size a training job, and check that the storage mode matches the Pod's access needs.
 
@@ -192,9 +199,9 @@ Keep the two QoS rules in mind when you size a training job, and check that the 
 
 ### 3. Advanced: Platform guardrails (Kyverno, Karpenter, GitOps) and the 5-step upgrade sequence
 
-A shared AI cluster has many tenants, and one bad manifest can hurt all of them. A single misconfigured container with `hostNetwork: true` or an unrestricted `hostPath` mount can compromise node security or corrupt host GPU drivers. Worse, a poorly scoped admission webhook that matches `kube-system` can deadlock the entire cluster when its webhook Pods crash. An unattended Linux kernel minor upgrade on a worker node can also break compiled GPU and MOFED kernel modules overnight.
+A shared AI cluster has many tenants, and one bad manifest can hurt all of them. A single misconfigured container with `hostNetwork: true` or an unrestricted `hostPath` mount can compromise node security or corrupt host GPU drivers. Worse, a poorly scoped admission webhook that matches `kube-system` can deadlock the entire cluster when its webhook Pods crash. An admission webhook is a service the API server calls before it saves an object, so a broken webhook can block every create or update it matches. An unattended Linux kernel minor upgrade on a worker node can also break compiled GPU and MOFED kernel modules overnight. Overnight is the worst time for that failure, because nobody is watching the node when it happens.
 
-Production AI platforms prevent these outages with four layered controls. The first is least-privilege RBAC with Kyverno admission policies. Karpenter provisions GPU nodes just in time. ArgoCD GitOps manages the operators. Finally, a strict five-stage cluster upgrade sequence governs every change.
+Production AI platforms prevent these outages with four layered controls. The first is least-privilege RBAC with Kyverno admission policies. RBAC, role-based access control, decides who may do what in the cluster. Karpenter provisions GPU nodes just in time. ArgoCD GitOps manages the operators. GitOps means the cluster's desired state lives in a Git repository, and a controller keeps the cluster matched to it. Finally, a strict five-stage cluster upgrade sequence governs every change. Layering the controls means that if one fails, the others still stop the damage.
 
 The block below lists the guardrails, the node pool settings and the five upgrade stages.
 
@@ -215,9 +222,9 @@ Multi-Tenant Platform Guardrails and Upgrade Runbook (volume-03/03 Sections 3-7)
    Stage 4: Operator Upgrades (GPU Operator, Network Operator, DRA Driver) -> Stage 5: Node Pool Rolling Restart (cordon, checkpoint, drain, replace AMI).
 ```
 
-Notice the webhook exclusion in item 1. It is the setting that stops the deadlock described above.
+Notice the webhook exclusion in item 1. It is the setting that stops the deadlock described above. Without it, a crashed policy engine can block its own replacement Pods, because the API server keeps calling a webhook that cannot answer.
 
-When a worker node suffers PLEG starvation, leaks a CNI IP on a `/24` subnet or gets stuck with a container sandbox, `kubectl` only reports high-level Pod states from the control plane. Engineers therefore log directly onto the node. There they use `crictl` over `/run/containerd/containerd.sock` to inspect images and remove zombie sandboxes, without waiting for a wedged kubelet.
+When a worker node suffers PLEG starvation, leaks a CNI IP on a `/24` subnet or gets stuck with a container sandbox, `kubectl` only reports high-level Pod states from the control plane. Engineers therefore log directly onto the node. A sandbox is the small set of namespaces and network setup that wraps a Pod's containers. There they use `crictl` over `/run/containerd/containerd.sock` to inspect images and remove zombie sandboxes, without waiting for a wedged kubelet. A zombie sandbox is one that still exists on the node even though Kubernetes has forgotten the Pod.
 
 The block below lists the `crictl` commands, from inspection to removal.
 
@@ -236,9 +243,11 @@ Runtime-Level Inspection and Zombie Sandbox Cleanup with crictl (volume-03/02 Se
 
 Notice that the container is stopped and removed before its sandbox is stopped and removed.
 
-Storage choices follow the same logic as the GPU claims. Pick the PVC access mode based on data gravity and on how much failure you can tolerate. Local NVMe `ReadWriteOnce` volumes give the lowest latency, which suits scratch space or vector-database shards. Take a three-replica Milvus datanode StatefulSet that requests 500 GiB per Pod on port 9091. It gets fast local storage. However, each Pod is bound to that specific physical host.
+Work through the commands in order, and check the result after each one. Run `crictl pods` first, then list the containers that belong to the sandbox. Only then stop and remove them. A stopped container that is still listed means the step did not finish, and it is safer to fix that before you remove the sandbox around it. Doing it in the other order leaves a container pointing at a sandbox that has already gone.
 
-Network parallel filesystem volumes behave differently. `ReadOnlyMany` supports concurrent dataset streaming. `ReadWriteMany` supports shared multi-node checkpoints that survive a single-node hardware failure.
+Storage choices follow the same logic as the GPU claims. Pick the PVC access mode based on data gravity and on how much failure you can tolerate. Data gravity is the idea that large data pulls work toward where it lives. Local NVMe `ReadWriteOnce` volumes give the lowest latency, which suits scratch space or vector-database shards. Take a three-replica Milvus datanode StatefulSet that requests 500 GiB per Pod on port 9091. It gets fast local storage. However, each Pod is bound to that specific physical host. If that host fails, the Pod that depended on its disk cannot simply start somewhere else.
+
+Network parallel filesystem volumes behave differently. `ReadOnlyMany` supports concurrent dataset streaming. `ReadWriteMany` supports shared multi-node checkpoints that survive a single-node hardware failure. The trade-off is speed. Network volumes give up some latency in exchange for a copy that every node can reach.
 
 The table below compares the classic device plugin with DRA on each dimension that matters for scheduling.
 
@@ -254,13 +263,15 @@ The table below compares the classic device plugin with DRA on each dimension th
 
 Read the table row by row. You will see which rows depend on node labels and which move the check into the scheduler.
 
-Before you choose a model for a workload, decide which rows that workload depends on.
+Two rows deserve extra attention on a real cluster. The sharing row changes how you pack workloads, because a single claim can serve several containers or Pods with explicit access control. The partitioning row changes how MIG is used, because the driver can configure the device when the claim is allocated instead of relying on a fixed layout set in advance. Both are useful, and both are still maturing in production, so test them on a non-critical queue first. Rows about attributes and topology favor DRA, while rows about ecosystem maturity still favor the classic plugin. That split is the same one the roadmap section described.
+
+Before you choose a model for a workload, decide which rows that workload depends on. A small inference service that needs one GPU may only care about the first and last rows. A training job that spans a rack may depend on the topology and multi-node rows. Writing that list first keeps the choice honest.
 
 ## Commands and configurations that matter
 
 ### 1. Defining a `ResourceClaimTemplate` and `Deployment` with Structured Parameters
 
-The manifest below comes from Examples 3-8 and 3-9 in Chapter 3 of *Generative AI on Kubernetes*. It asks for one NVIDIA A100 GPU with at least 40 GiB of memory and MIG mode disabled. The template matters because the Deployment controller then creates a dedicated ResourceClaim for each replica and cleans it up automatically.
+An inference team runs a model that needs at least 40 GiB of GPU memory, and it must not share the card with a MIG slice. The manifest below expresses that requirement as a claim instead of a node label. The manifest below comes from Examples 3-8 and 3-9 in Chapter 3 of *Generative AI on Kubernetes*. It asks for one NVIDIA A100 GPU with at least 40 GiB of memory and MIG mode disabled. The template matters because the Deployment controller then creates a dedicated ResourceClaim for each replica and cleans it up automatically.
 
 ```yaml
 # dra-a100-claim-template.yaml (GAK Examples 3-8 & 3-9, untested here)
@@ -305,13 +316,15 @@ spec:
           resourceClaimTemplateName: a100-claim-template
 ```
 
-Notice that the name `high-memory-gpu` appears in two places. The container refers to it under its resource claims, and the Pod refers to the template by name.
+Notice that the name `high-memory-gpu` appears in two places. The container refers to it under its resource claims, and the Pod refers to the template by name. The two names must match, or the Pod will wait forever for a claim it can never find.
 
 Reach for this pattern when every replica needs its own GPU with the same requirements.
 
+The `parameters` block carries the requirement itself. `minMemory` is a floor that the driver compares against each device's memory. `migMode` says whether the device must be free of MIG slicing. Because these values are checked against the ResourceSlice inventory, a request that no node can satisfy stays pending with a clear reason, and nothing is quietly placed on the wrong card. Each replica then gets its own claim, and scaling the Deployment creates new claims without any manual step.
+
 ### 2. Using the Stable Kubernetes `1.34` (`resource.k8s.io/v1`) `ResourceClaimTemplate` API
 
-Kubernetes 1.34 and later use the stable `resource.k8s.io/v1` API. In that API, an exact device count goes under the `devices.requests[].exactly` stanza. The manifest below claims four GPUs from the `gpu.nvidia.com` DeviceClass. It then mounts them into a PyTorch training container.
+A team that upgrades to Kubernetes 1.34 finds that the request shape has changed. The stable API moves the request fields one level deeper, so a manifest copied from an older example needs a small edit. Kubernetes 1.34 and later use the stable `resource.k8s.io/v1` API. In that API, an exact device count goes under the `devices.requests[].exactly` stanza. The manifest below claims four GPUs from the `gpu.nvidia.com` DeviceClass. It then mounts them into a PyTorch training container.
 
 ```yaml
 # dra-v1-4gpu-claim.yaml (volume-03/01 Section 8.2, untested here)
@@ -344,13 +357,13 @@ spec:
       resourceClaimTemplateName: gpu-claim
 ```
 
-Notice that the request now sits under `exactly`. The earlier example put its fields directly under the request name.
+Notice that the request now sits under `exactly`. The earlier example put its fields directly under the request name. When you migrate, move the count and the class name under `exactly` and keep the container's claim name the same.
 
 If your cluster runs Kubernetes 1.34 or later, prefer this form over the `v1beta1` example.
 
 ### 3. Inspecting DRA `ResourceSlice`s, `ResourceClaim`s, and cleaning up orphaned CRI sandboxes
 
-Use this procedure when a DRA Pod stays pending, or when a node runs out of CNI IP addresses after a crash. Start by inspecting the ResourceSlice inventory that the node published. Then remove the orphaned container sandboxes directly with `crictl`.
+A DRA Pod sits in `Pending` for a long time, and the scheduler event says the claim is not allocated. You want to see what the nodes actually published before you change anything. Use this procedure when a DRA Pod stays pending, or when a node runs out of CNI IP addresses after a crash. Start by inspecting the ResourceSlice inventory that the node published. Then remove the orphaned container sandboxes directly with `crictl`. An orphaned sandbox is one whose Pod no longer exists in the API server, and it can keep an IP address reserved on the node.
 
 ```bash
 # 1. Inspect DRA ResourceClaims and node ResourceSlices (untested here)
@@ -366,11 +379,13 @@ done
 
 Notice that the loop touches only Pod sandboxes in the `NotReady` state.
 
-Run the inspection commands first. Remove sandboxes only after you have confirmed that they are orphaned.
+A simple way to check the loop is to run the listing part alone first. The `crictl pods --state NotReady` command prints the sandboxes it would touch. Read that list, match it against the Pods you expect to be gone, and only then run the loop. The loop itself has no confirmation step, so the listing is your safety check. A sandbox in the `Ready` state still belongs to a running Pod, so the loop leaves it alone.
+
+Run the inspection commands first. Remove sandboxes only after you have confirmed that they are orphaned. Deleting a live sandbox stops a running Pod, and the cost of that mistake is far higher than the cost of one more minute of inspection.
 
 ## How it fails
 
-When DRA scheduling, PLEG health checks, CSI attachments or admission webhooks break, they leave traces in Kubernetes events and node logs. Start with the symptom you see, then find the matching row in the table below. Each row shows you the evidence, the root cause and the fix.
+A DRA Pod stays pending, a node flaps, a volume refuses to attach, or a cluster stops accepting new Pods. Those symptoms look unrelated, but each one traces to a different layer. When DRA scheduling, PLEG health checks, CSI attachments or admission webhooks break, they leave traces in Kubernetes events and node logs. Start with the symptom you see, then find the matching row in the table below. Each row shows you the evidence, the root cause and the fix.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 | --- | --- | --- | --- |
@@ -380,22 +395,27 @@ When DRA scheduling, PLEG health checks, CSI attachments or admission webhooks b
 | **4. Core cluster Pods (`coredns`, `calico-node`) blocked by Kyverno webhook timeout deadlock** | Cluster recovery stalls; `kubectl get events` shows `Internal error occurred: failed calling webhook ... context deadline exceeded` for `kyverno-resource-mutating-webhook-cfg`. | Self-Referential Admission Webhook Deadlock (`volume-03/03` Scenario 2): A Kyverno policy matched all namespaces (`*`), Kyverno Pods crashed, and `kube-apiserver` blocked Kyverno replacement Pods trying to call the dead webhook. | Delete `validatingwebhookconfiguration` and `mutatingwebhookconfiguration` to break the deadlock, and always exclude `["kube-system", "kyverno"]` (`operator: NotIn`) in `namespaceSelector`. |
 | **5. `kube-apiserver` latency spikes and `409 Conflict` storms on large clusters** | `kubectl` times out; `apiserver_request_duration_seconds_bucket` spikes on `LIST` requests; controller logs fill with HTTP `409 Conflict` errors. | Unpaginated `LIST` Calls & Stale `ResourceVersion` Writes (`volume-03/01` §3.2 & §3.3): A custom controller is polling full-cluster `LIST` calls without Informer Watch streams (`?watch=true&resourceVersion=...`) or mutating stale objects without re-reading the latest `resourceVersion`. | Refactor controllers to use `client-go` SharedInformers (`LIST` once + streaming `WATCH`), use Server-Side Apply or retry-on-conflict loops, and rate-limit rogue service accounts with APF. |
 
-Read each row from left to right: the symptom, the evidence, the cause, then the fix. Find your symptom in the first column, and the evidence column tells you which cause applies.
+Read each row from left to right: the symptom, the evidence, the cause, then the fix. Find your symptom in the first column, and the evidence column tells you which cause applies. Several rows share a first symptom, such as a Pod that will not start, so the evidence column is what separates them.
+
+Take the PLEG row as a walkthrough. Training Pods are evicted in the middle of an epoch, and `journalctl -u kubelet` shows the PLEG message. The next question is what was using the CPU or disk at that time. If a DataLoader or checkpoint writer was saturating the host, the fix is to reserve capacity for the kubelet and to protect its score. Only then should you raise any timeout, because a longer timeout hides the starvation instead of removing it. A Pending Pod with an unallocated claim points at DRA, while a stuck `ContainerCreating` Pod points at storage.
 
 ## Hands-on lab
 
 ### Venue and scope
-You do not need a cluster for this lab. It runs locally with the Python 3 standard library, using `code/part11/dynamic_resource_allocation_dra.py` and `code/part11/dynamic_resource_allocation_dra_lab.py`. The scripts simulate ResourceSlice publication and ResourceClaimTemplate matching against structured parameters. They also cover decimal GB to binary GiB conversions, `ResourceVersion` Optimistic Concurrency Control, and kubelet PLEG and QoS `oom_score_adj` behavior. Cluster commands are marked untested here, so treat them as unverified until you run them yourself.
+
+You do not need a cluster for this lab. It runs locally with the Python 3 standard library, using `code/part11/dynamic_resource_allocation_dra.py` and `code/part11/dynamic_resource_allocation_dra_lab.py`. The scripts simulate ResourceSlice publication and ResourceClaimTemplate matching against structured parameters. They also cover decimal GB to binary GiB conversions, `ResourceVersion` Optimistic Concurrency Control, and kubelet PLEG and QoS `oom_score_adj` behavior. Cluster commands were not run for this chapter, so treat them as unverified until you run them yourself. The lab script itself was run in this repository, and its output is shown below.
 
 ### Step 1: Run the self-checking DRA and node operations lab (tested here)
 
-Start from the repository root and run the lab script. It runs its own self-checks and reports which ones pass.
+Start from the repository root and run the lab script. It runs its own self-checks and reports which ones pass. Each check names one rule from the chapter, so a failing line tells you which idea the code got wrong.
 
 ```bash
 python3 code/part11/dynamic_resource_allocation_dra_lab.py
 ```
 
 The output below was captured from this repository, so you can compare your run against it.
+
+Run the lab once without changing anything, and then compare its output with the captured lines. If your run differs, the difference tells you that the code or the Python version changed. Either way, the 25 checks are a fast way to confirm that the scheduling and kubelet rules still behave as the chapter describes.
 ```text
 === Chapter 11.12 Lab: Dynamic Resource Allocation (DRA), API Machinery & Kubelet Node Ops ===
   [PASS] DRA ResourceClaimTemplate (minMemory=40, migMode=disabled) skips 16GB T4 and MIG-enabled A100 to pick node-a100-full
@@ -427,16 +447,22 @@ The output below was captured from this repository, so you can compare your run 
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-Notice the final summary line. It should read 25 passed and 0 failed.
+Notice the final summary line. It should read 25 passed and 0 failed. If it does not, read the first failing line before you touch the code, because it names the rule that broke.
 
 ### Exercises
 
-1. Call `match_dra_resource_claim()` in `code/part11/dynamic_resource_allocation_dra.py`. Follow its logic and explain why a claim for at least 40 GB of memory with MIG disabled skips the T4 node and the MIG-enabled A100 node, and selects the full A100 node.
-2. On the full A100 node, two GPUs sit on NUMA 0 and two sit on NUMA 1. Call `match_dra_resource_claim()` with two GPUs and same-NUMA required, then confirm which devices it selects. Next, explain why solving this inside kube-scheduler is better than failing later at kubelet admission with `TopologyAffinityError`.
-3. Check the conversion in Footnote 1 of *Generative AI on Kubernetes* Chapter 3 yourself. Convert 40 decimal gigabytes and 80 decimal gigabytes into binary gibibytes, and confirm the results.
-4. Call `simulate_resource_version_occ(154329, 154329, 154329)`. Then state the HTTP status code that Controller A receives and the one that Controller B receives. Also state the new version stored in etcd, and what Controller B must do before it retries.
-5. Call `evaluate_pleg_and_qos_oom()` to inspect node health and OOM scoring. State the PLEG health threshold in seconds. Then give the OOM scores for the kubelet, Guaranteed Pods and BestEffort Pods. Finally, explain why exit code 137 points to an OOM kill.
-6. Explain why the CSI Node service mounts a volume in two steps. It first stages the device to a global directory. Then it publishes that directory into the Pod mount path.
+1. Call `match_dra_resource_claim()` in `code/part11/dynamic_resource_allocation_dra.py`. Follow its logic. Explain why a claim for at least 40 GB of memory with MIG disabled skips the T4 node. Explain why it also skips the MIG-enabled A100 node.
+2. Confirm that it selects the full A100 node.
+3. On the full A100 node, two GPUs sit on NUMA 0 and two sit on NUMA 1. Call `match_dra_resource_claim()` with two GPUs and same-NUMA required. Confirm which devices it selects.
+4. Explain why solving this inside kube-scheduler is better than failing later at kubelet admission with `TopologyAffinityError`.
+5. Check the conversion in Footnote 1 of *Generative AI on Kubernetes* Chapter 3 yourself. Convert 40 decimal gigabytes into binary gibibytes. Convert 80 decimal gigabytes into binary gibibytes. Confirm the results.
+6. Call `simulate_resource_version_occ(154329, 154329, 154329)`. State the HTTP status code that Controller A receives. State the HTTP status code that Controller B receives.
+7. State the new version stored in etcd. Explain what Controller B must do before it retries.
+8. Call `evaluate_pleg_and_qos_oom()` to inspect node health and OOM scoring. State the PLEG health threshold in seconds.
+9. Give the OOM scores for the kubelet, Guaranteed Pods and BestEffort Pods.
+10. Explain why exit code 137 points to an OOM kill.
+11. Explain why the CSI Node service mounts a volume in two steps. The first step stages the device to a global directory.
+12. Explain why the second step publishes that directory into the Pod mount path.
 
 Run the lab first, then work the exercises against the same functions.
 

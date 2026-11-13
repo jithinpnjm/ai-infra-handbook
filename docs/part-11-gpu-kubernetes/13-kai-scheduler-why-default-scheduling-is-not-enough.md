@@ -12,7 +12,7 @@ lab_venue: "GCP / GKE"
 
 # 11.13 KAI Scheduler: why default scheduling is not enough
 
-Use the table below to see the level, the lab venue, and the sources behind this chapter. You can read the rest of the chapter to see why the default scheduler falls short on a shared GPU cluster.
+Start with the table below. It gives the level, the lab venue and the sources behind this chapter. If you want to check a claim later, the sources are the place to begin, because the rest of the chapter builds on them.
 
 | | |
 |---|---|
@@ -22,13 +22,15 @@ Use the table below to see the level, the lab venue, and the sources behind this
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
 | Coverage file | `planning/coverage/chapters/11-13.md` |
 
-If you want to trace a claim, start with the sources listed here, because everything later in the chapter builds on them.
+The chapter answers one practical question. Why does the default Kubernetes scheduler struggle once a GPU cluster is shared by many teams, and what does a scheduler built for that job do differently? You will not need any prior experience with KAI Scheduler to follow along. You do need to know how Pods, Nodes and namespaces work in Kubernetes, and the prerequisites section below says which earlier chapters cover them.
 
 ## Why this matters for AI infrastructure
 
-Picture a company that starts with a few dedicated GPU servers and then turns them into one shared platform for many teams. At that point the default Kubernetes scheduler often becomes the bottleneck. Hardware sits idle while researchers wait in long queues, and both the infrastructure budget and engineering speed suffer.
+Picture a company that starts with a few dedicated GPU servers. Each team gets one server, and the arrangement works for a while. Then leadership decides to turn those servers into one shared platform for many teams. The hardware has not changed, but the people using it have. At that point the default Kubernetes scheduler often becomes the bottleneck. Hardware sits idle while researchers wait in long queues, and both the infrastructure budget and engineering speed suffer.
 
-Why does kube-scheduler fail so predictably on shared GPU infrastructure? It was designed around six assumptions that hold for stateless CPU microservices. The same assumptions break down when you apply them to AI and machine learning workloads. The six problems below show where they break, so you can check which ones apply to your own cluster.
+A useful comparison is a shared kitchen. When one cook uses every burner for a long banquet, the cooks who only need one burner for a quick sauce are stuck waiting. When each cook owns a fixed set of burners, the burners sit empty whenever their owner steps away. A good kitchen needs a rule that lets quick jobs slip in, lets long jobs use spare burners, and hands a burner back when its owner returns. A scheduler for shared GPUs has the same job.
+
+Why does kube-scheduler fail so predictably on shared GPU infrastructure? It was designed around six assumptions that hold for stateless CPU microservices. A stateless service can be restarted at any time, it needs only a little memory, and it does not care which neighbor it shares a machine with. AI and machine learning workloads break those assumptions. The six problems below show where they break, so you can check which ones apply to your own cluster.
 
 First, a shared AI cluster mixes very different jobs. Short interactive notebooks run alongside multi-day distributed training runs. Under a naive first-in-first-out queue or a static ResourceQuota, you can watch a large training job block a five-minute notebook. Static namespace walls, on the other hand, stop training from borrowing idle GPUs overnight.
 
@@ -38,9 +40,9 @@ Third, the default scheduler binds Pods one by one instead of placing a group to
 
 Fourth, the default scheduler counts GPUs only as whole integers. A lightweight notebook that needs a few gigabytes of VRAM still takes an entire physical GPU. VRAM is the memory on the GPU card itself. If you want that notebook to share a card, the scheduler has to pack fractions or time slices. Without that, the notebook monopolizes the card.
 
-Fifth, the default scheduler cannot see the GPU interconnect. As *Generative AI on Kubernetes* highlights in Chapter 7, it treats eight GPUs scattered across Ethernet nodes as equal to eight GPUs on one NVSwitch server. Collective operations, where many GPUs exchange data together, slow down sharply when the ranks cross slow network links.
+Fifth, the default scheduler cannot see the GPU interconnect. As *Generative AI on Kubernetes* highlights in Chapter 7, it treats eight GPUs scattered across Ethernet nodes as equal to eight GPUs on one NVSwitch server. An NVSwitch is the switch chip inside a server that links its GPUs at high speed. Collective operations, where many GPUs exchange data together, slow down sharply when the ranks cross slow network links.
 
-Sixth (problem 6), PriorityClass values are fixed numbers with no memory. They cannot tell you whether one team already used its monthly GPU-hour budget while a peer team still has unused quota credit.
+Sixth (problem 6), PriorityClass values are fixed numbers with no memory. They cannot tell you whether one team already used its monthly GPU-hour budget while a peer team still has unused quota credit. A PriorityClass is a Kubernetes object that gives a Pod a fixed importance number, and the scheduler reads that number at one moment in time with no record of what happened before.
 
 The table below compares three scenarios from the sources. As you read it, look at the last column, which reports what each scenario costs in utilization.
 
@@ -50,42 +52,42 @@ The table below compares three scenarios from the sources. As you read it, look 
 | Bimodal research cluster (`volume-23/chapter-12`) | `200` L40S GPUs across `25` nodes (`8` GPUs/node) shared by `50` teams | `60%` short (`< 1` hr / `5` min), `30%` medium (`1–8` hr, median `2` hr), `10%` long (`> 24` hr up to `72` hr / `3` months) | `93%` (`700 / 750` GPU-hours) with deficit scoring and `30`-second `SIGTERM` preemption |
 | Gang and interconnect placement (*Generative AI on Kubernetes* Ch. 7) | Multi-node and single-node distributed training (`8` to `64` GPUs) | `7`-of-`8` partial deadlock (`56` GPUs at `0%` compute) or scattered Ethernet placement vs `900 GB/s` NVSwitch | Full-bandwidth `900 GB/s` NVSwitch co-location and `0.25` / `0.5` fractional packing (`10 GiB` on `80 GB` card) |
 
+The three scenarios point in one direction. Static splits waste hardware, bimodal workloads starve one group or the other, and interconnect-blind placement slows the training itself. KAI Scheduler was built to handle all three in one engine.
+
 NVIDIA open-sourced the KAI Scheduler from Run:ai to solve all six problems in a single engine. To use it, a workload sets `schedulerName: kai-scheduler` and binds to the `kai.run.ai/v1` API group. This chapter covers why the engine exists, how its fair-share deficit scoring works, and how its graceful checkpoint-preemption protocol works. These fundamentals prepare you for the deep dives in Chapters 11.14 through 11.19.
 
-Check which of the six problems your own cluster shows first, because that tells you how much of KAI Scheduler you need.
+Check which of the six problems your own cluster shows first, because that tells you how much of KAI Scheduler you need. A cluster with only one or two of these problems may need only one or two of KAI's features.
 
 :::caution Checked against the upstream KAI Scheduler docs
-The corpus contains only one KAI example in *Generative AI on Kubernetes*. Most other KAI detail in chapters 11.13 to 11.19 was written from working knowledge and was not in the corpus or notes. On 2026-10-25 it was compared with the public docs at `github.com/kai-scheduler/KAI-scheduler` and a Go API listing.
+The sources used here contain only one KAI example, in *Generative AI on Kubernetes*. Most other KAI detail in chapters 11.13 to 11.19 was written from working knowledge and was not in those sources or notes. On 2026-10-25 it was compared with the public docs at `github.com/kai-scheduler/KAI-scheduler` and a Go API listing.
 
 - **Confirmed.** The scheduler name is `schedulerName: kai-scheduler`. Queue objects use `scheduling.run.ai/v2` with cpu, memory, and gpu resources holding quota, limit, and overQuotaWeight, plus parentQueue and priority. Only leaf queues run jobs. PodGroup uses `scheduling.run.ai/v2alpha2`, BindRequest uses `scheduling.run.ai/v1alpha2`, and Topology uses `kai.scheduler/v1alpha1`. The `gpu-fraction` and `gpu-memory` annotations and GPU reservation pods in namespace `kai-resource-reservation` are confirmed. Core components include admission, podgrouper, binder, queuecontroller, and podgroupcontroller, driven by a Config resource. Fair share gives each queue its deserved quota first and divides surplus by overQuotaWeight.
 - **Corrected in these chapters.** The queue is assigned with the label `kai.scheduler/queue` rather than `kai.run.ai/queue`. Topology constraints use the annotations `kai.scheduler/topology`, `kai.scheduler/topology-required-placement`, and `kai.scheduler/topology-preferred-placement` with a `kai.scheduler/v1alpha1` Topology object.
-- **Not confirmed.** The Project kind in `kai.run.ai/v1` and the annotation `kai.run.ai/project` come from the book example. Upstream queue docs describe Queue objects rather than Project, so treat the Project path as book-specific and prefer Queue with `kai.scheduler/queue` on new clusters. Component names in this handbook use hyphens like `pod-grouper` and `queue-controller`, whereas upstream writes them without hyphens. Always verify API groups against your target release.
+- **Not confirmed.** The Project kind in `kai.run.ai/v1` and the annotation `kai.run.ai/project` come from the *Generative AI on Kubernetes* example. Upstream queue docs describe Queue objects rather than Project, so treat the Project path as book-specific and prefer Queue with `kai.scheduler/queue` on new clusters. Component names in this handbook use hyphens like `pod-grouper` and `queue-controller`, whereas upstream writes them without hyphens. Always verify API groups against your target release.
 :::
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Finish Chapters 11.6 through 11.9 first. They cover Topology Manager, gang scheduling, Kueue, Volcano, PyTorchJob, TrainJob, and LeaderWorkerSet. You also need to be comfortable with the Kubernetes Namespace, ResourceQuota, and PriorityClass objects.
+Finish Chapters 11.6 through 11.9 first. They cover Topology Manager, gang scheduling, Kueue, Volcano, PyTorchJob, TrainJob, and LeaderWorkerSet. Those chapters give you the vocabulary this chapter uses for groups of Pods that must start together. If you skipped them, you can still follow the first two sections, because the failure modes stand on their own. The custom resource details will go faster once you have read the gang scheduling chapter. You also need to be comfortable with the Kubernetes Namespace, ResourceQuota, and PriorityClass objects, because every failure in this chapter starts from one of them.
 
 ### Outcomes
-By the end of this chapter, you should be able to do five things.
-
-- Describe the six structural failure modes of the default kube-scheduler on shared GPU clusters.
-- Explain what the NVIDIA KAI Scheduler is, how it relates to the commercial Run:ai platform on NVIDIA Base Command Manager 11, and how Project and Queue resources bind distributed jobs.
-- Compute weighted fair-share deficit scores and priority boosts across multi-team clusters.
-- Design a graceful 30-second preemption and three-tier checkpoint recovery protocol that loses zero training steps.
-- Decide when to run KAI Scheduler standalone versus layered underneath Kueue.
+This chapter walks through the six structural failure modes of the default kube-scheduler on a shared GPU cluster. It then explains what the NVIDIA KAI Scheduler is, how it relates to the commercial Run:ai platform on NVIDIA Base Command Manager 11, and how Project and Queue resources bind distributed jobs. After that, it works through fair-share deficit scores and priority boosts on a multi-team cluster. It ends with a graceful 30-second preemption and three-tier checkpoint recovery protocol, and a short guide to choosing between KAI Scheduler on its own and KAI Scheduler under Kueue.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: The six failure modes of default Kubernetes scheduling on shared GPU clusters
 
+Before you learn any KAI feature, you need to see the failures it answers. Each failure mode below starts from a situation that real platform teams run into. The six modes are not rare edge cases. They show up as soon as a second team shares the cluster.
+
 #### Failure Mode 1: Static ResourceQuota silos vs dynamic fair-share
 Picture a platform team that splits its cluster by department, using fixed node pools or hard ResourceQuota limits. GPUs then sit idle in one namespace while jobs wait in another. Researchers face queue delays even when half the cluster is unallocated, and static partitioning wastes expensive hardware each time team demand shifts.
 
-Take the multi-tenant enterprise cluster. The platform runs 32 GPUs across 4 nodes, with three competing namespaces. Suppose the research namespace sits behind a hard ResourceQuota ceiling of 16 GPUs. Research can then never use more than half the cluster, even when the other two teams have zero running jobs. Interns, in turn, can never borrow idle research GPUs overnight.
+Take the multi-tenant enterprise cluster. The platform runs 32 GPUs across 4 nodes, with three competing namespaces. Suppose the research namespace sits behind a hard ResourceQuota ceiling of 16 GPUs. Research can then never use more than half the cluster, even when the other two teams have zero running jobs. The cost shows up in two places. The first is idle hardware, which the finance team sees on an invoice. The second is waiting, which the researchers feel on their own schedule. A quota that looks sensible on paper can still produce both, because the paper never sees the overnight hours when nobody is using the research desks.
 
-In the author's design notes for this cluster, the static split reaches about 60% average utilization. A dynamic fair-share scheduler works differently. Teams borrow idle GPUs above their guaranteed quota, and they give them back after a 30-second grace period when the owner returns. The same notes put utilization at 85% with borrowing. The notes do not state how either figure was measured, so read them as an illustration of the direction of the effect and not as a benchmark.
+Think of it as a library with reserved desks. Each department gets a fixed number of desks, and a desk that sits empty stays empty even while students stand at the door. A fair-share scheduler works more like a shared reading room. Each team keeps its guaranteed desks, and it may use a neighbor's empty desk until the neighbor walks back in. The neighbor then gets the desk back after a short grace period.
+
+In the author's design notes for this cluster, the static split reaches about 60% average utilization. A dynamic fair-share scheduler works differently. Teams borrow idle GPUs above their guaranteed quota, and they give them back after a 30-second grace period when the owner returns. The same notes put utilization at 85% with borrowing. This matters for how you use the numbers. A design note is a reasoned estimate written by someone who planned the cluster. It is useful for explaining why borrowing helps. It is not evidence that your own cluster will move by the same amount, so measure your own utilization before you promise a gain.
 
 The table below lists each namespace's PriorityClass, guaranteed share and quota, so you can see the setup behind the 60% and 85% figures. Notice that the three guaranteed shares add up to the full 32 GPUs.
 
@@ -99,9 +101,11 @@ The table below lists each namespace's PriorityClass, guaranteed share and quota
 #### Failure Mode 2: The bimodal research cluster problem
 Now picture a shared research cluster where a five-minute debugging session has to wait behind multi-day training runs. If you launch a short notebook on that cluster, you get stuck behind massive batch jobs. Long training jobs, in turn, get starved by fragments of interactive pods. Without duration-aware and history-aware scheduling, neither group gets predictable service.
 
-Volume 23, Chapter 12 describes a shared research cluster with 200 L40S GPUs across 25 nodes, serving 50 competing teams. Its job durations follow a sharp bimodal distribution across short, medium, and long workloads. Default Kubernetes scheduling uses static PriorityClass integers, and those integers have no memory of past usage. If one high-priority group submits back-to-back 64-GPU training runs for a month, it permanently starves every peer team on the cluster.
+Bimodal means the job lengths cluster at both ends, with very little in the middle. A research cluster has many short jobs and a smaller number of very long ones. A scheduler that treats them the same way ends up serving one group badly. The scheduler needs to know how long a job is likely to run, and it needs to remember how much each team has already used.
 
-The table below sorts the cluster's jobs into three tiers. Each tier needs a different preemption policy. You can see that the long tier is only 10% of jobs, yet it can run for up to 72 hours or 3 months.
+One of the design notes behind this chapter describes a shared research cluster with 200 L40S GPUs across 25 nodes, serving 50 competing teams (`volume-23/chapter-12`). Its job durations follow a sharp bimodal distribution across short, medium, and long workloads. Default Kubernetes scheduling uses static PriorityClass integers, and those integers have no memory of past usage. If one high-priority group submits back-to-back 64-GPU training runs for a month, it permanently starves every peer team on the cluster.
+
+The table below sorts the cluster's jobs into three tiers. Each tier needs a different preemption policy. You can see that the long tier is only 10% of jobs, yet it can run for up to 72 hours or 3 months. Why does one policy not fit all three tiers? A notebook that gets preempted loses only a few minutes of unsaved work, so the scheduler can take its GPU back quickly. A multi-day run that gets preempted can lose a day of progress unless it saved a checkpoint, so the scheduler has to protect it more carefully. One rule applied to both groups is either too harsh on notebooks or too gentle on training.
 
 | Workload Tier | Share of Cluster Jobs | Typical Duration | Preemption & Scheduling Policy |
 |---|---|---|---|
@@ -112,15 +116,19 @@ The table below sorts the cluster's jobs into three tiers. Each tier needs a dif
 #### Failure Modes 3 to 6: Gang deadlocks, integer-only GPUs, topology blindness, and flat quotas
 Static quotas and bimodal contention are not the whole story. The default scheduler also fails at four hardware and workload boundaries that production AI depends on. The third failure mode is the lack of native gang scheduling. It causes 7-of-8 partial allocation deadlocks, where 56 GPUs sit idle while they wait for an eighth node.
 
-The fourth failure mode is whole-integer GPU requests. Take a 2 GB notebook. Whole-integer requests force it to lock up an entire 48 GB L40S or 80 GB H100 card. A card like that is worth over 30,000 dollars.
+A gang is a set of Pods that must start together. Imagine a relay race where the runners cannot start until everyone is at the line. If only some of the runners reach the line, the ones who arrived stand around waiting, and nobody runs. Distributed training works the same way, because each rank waits for the others before the first step begins.
 
-The fifth failure mode is topology blindness. The default kube-scheduler has no native awareness of NVLink, NVSwitch, or InfiniBand fabrics. It treats eight GPUs scattered across eight Ethernet nodes as identical to eight GPUs connected at 900 GB/s on a single NVSwitch node. The sixth failure mode is flat quotas. The default scheduler lacks hierarchical Department-to-Project quota trees that continuously track and reclaim borrowed capacity across teams.
+The fourth failure mode is whole-integer GPU requests. Take a 2 GB notebook. Whole-integer requests force it to lock up an entire 48 GB L40S or 80 GB H100 card. A card like that is worth over 30,000 dollars. Locking the whole card for a notebook that uses a sliver of its memory is like booking a whole conference room for one person's phone call.
+
+The fifth failure mode is topology blindness. The default kube-scheduler has no native awareness of NVLink, NVSwitch, or InfiniBand fabrics. It treats eight GPUs scattered across eight Ethernet nodes as identical to eight GPUs connected at 900 GB/s on a single NVSwitch node. The practical effect shows up in training speed. A gradient exchange that stays on one NVSwitch node finishes at the speed of that fast link. The same exchange that crosses an Ethernet link waits on a much slower path, and every training step pays that cost again. The job looks healthy in the Pod list, yet it takes longer per step. Topology means how the hardware is physically wired together. NVLink is a high-speed link between GPUs, and InfiniBand is a high-speed network between servers.
+
+The sixth failure mode is flat quotas. The default scheduler lacks hierarchical Department-to-Project quota trees that continuously track and reclaim borrowed capacity across teams. A flat list of quotas cannot say that one project belongs to one department, so it cannot lend capacity to a sibling project first. Put together, the six failures share one root cause. The default scheduler looks at one Pod at a time, works from one fixed number, and keeps no memory of earlier decisions. Each KAI feature in the next sections gives back one of the pieces that is missing.
 
 ---
 
 ### 2. Intermediate: What is the NVIDIA KAI Scheduler?
 
-Many teams try to fix these problems with separate point tools for gang scheduling, quotas, fractional GPUs, and topology placement. Those tools can make decisions that conflict with one another. Platform teams need one scheduler that checks quota fairness, gang atomicity, sub-GPU slicing, and NVLink topology in a single pass.
+Many teams try to fix these problems with separate point tools for gang scheduling, quotas, fractional GPUs, and topology placement. Those tools can make decisions that conflict with one another. A simple way to see the difference is to ask who makes the final call. With separate tools, each tool makes its own call, and someone has to reconcile the results later. With one scheduler, one decision covers the quota, the gang, the fraction and the placement together. Picture a gang tool that reserves a set of nodes while a quota tool, running at the same moment, has already spent the quota those four nodes need. Platform teams need one scheduler that checks quota fairness, gang atomicity, sub-GPU slicing, and NVLink topology in a single pass.
 
 As *Generative AI on Kubernetes* explains in Chapter 7, the NVIDIA KAI Scheduler is the open-source release of the core Kubernetes scheduling engine built by Run:ai. It is not a generic batch add-on. It is built for clusters that scale from hundreds to thousands of NVIDIA GPUs. A workload selects it with `schedulerName: kai-scheduler`, so one decision loop can unify four scheduling pillars.
 
@@ -140,13 +148,15 @@ flowchart TD
     P4 --> Place
 ```
 
+Read the diagram from the top. The diagram also shows where to look when something stalls. If a job is stuck before it reaches any pillar, the problem is probably in the queue binding. If it is stuck at one pillar, that pillar's rule is the place to check. A workload enters, it gets bound to a queue, and then the KAI scheduler checks every pillar at once. Those checks meet at one placement decision, so the node and GPU are chosen with all four rules in view.
+
 The first pillar is quota. Administrators define Project or Queue resources arranged in department hierarchies. In *Generative AI on Kubernetes* Example 7-5, a Project named `ml-team-a` sets an 8-GPU quota, and workloads bind to it through metadata annotations or queue labels. When `ml-team-a` needs more than 8 GPUs and sibling teams are idle, KAI Scheduler lets the team borrow spare GPUs. It reclaims them through fair-share preemption when the owners submit work.
 
-The second pillar is gang scheduling, applied to the whole job at once. You do not need to hand-craft low-level PodGroup manifests for every job. KAI Scheduler works directly with distributed AI workload operators. It natively recognizes Kubeflow PyTorchJob, Kubeflow Trainer TrainJob and JobSet, LeaderWorkerSet, and RayJob resources, and it schedules all members of a distributed job atomically.
+The second pillar is gang scheduling, applied to the whole job at once. You do not need to hand-craft low-level PodGroup manifests for every job. KAI Scheduler works directly with distributed AI workload operators. It natively recognizes Kubeflow PyTorchJob, Kubeflow Trainer TrainJob and JobSet, LeaderWorkerSet, and RayJob resources, and it schedules all members of a distributed job atomically. Atomically here means all members are placed in the same decision, or none of them are.
 
-The third pillar is GPU topology, which needs no extra setup. KAI Scheduler integrates with the NVIDIA GPU Operator and GPU Feature Discovery labels. From those labels it reads NVLink bridges, NVSwitch full-mesh domains, MIG profiles, and InfiniBand leaf switches. Suppose a training job requests 8 GPUs. The scheduler then prefers one NVSwitch node at 900 GB/s rather than splitting those GPUs across Ethernet nodes.
+The third pillar is GPU topology, which needs no extra setup. KAI Scheduler integrates with the NVIDIA GPU Operator and GPU Feature Discovery labels. From those labels it reads NVLink bridges, NVSwitch full-mesh domains, MIG profiles, and InfiniBand leaf switches. A MIG profile is a fixed slice of one physical GPU, and a leaf switch is the switch a group of servers connects to. Suppose a training job requests 8 GPUs. The scheduler then prefers one NVSwitch node at 900 GB/s rather than splitting those GPUs across Ethernet nodes.
 
-The fourth pillar is fractional GPU packing. KAI Scheduler schedules sub-GPU fractions, such as 0.25 or 0.5 of a GPU, alongside explicit VRAM ceilings. It packs interactive notebooks and small inference servers onto shared physical GPUs. Whole cards stay free for multi-GPU training.
+The fourth pillar is fractional GPU packing. KAI Scheduler schedules sub-GPU fractions, such as 0.25 or 0.5 of a GPU, alongside explicit VRAM ceilings. It packs interactive notebooks and small inference servers onto shared physical GPUs. Whole cards stay free for multi-GPU training. Here is how the four pillars look for one small notebook. The notebook asks for a fraction of a GPU, so the fractional pillar looks for a card with room. The quota pillar checks that the notebook's team still has budget. The gang pillar treats the single Pod as a group of one. The topology pillar has little to say about one small Pod, so it does not change the answer. The notebook then lands on a card that a large training job can still avoid.
 
 The table compares KAI Scheduler with the other options on the same five capabilities. As you read it, you will see that the default scheduler and Coscheduling both lack quota borrowing, while KAI Scheduler covers all five rows.
 
@@ -165,7 +175,9 @@ The table compares KAI Scheduler with the other options on the same five capabil
 #### 1. Weighted Fair-Share Deficit Scoring
 Consider a scheduler that lets teams borrow idle GPUs but never tracks their history. An aggressive team can then monopolize the cluster while still claiming fair access. A scheduler that forbids borrowing has the opposite problem, because unused GPUs go to waste whenever a funded team takes a break. Platform engineers therefore need a scoring model. It must keep total utilization above 90% and still put under-quota teams at the front of the queue.
 
-Volume 23, Chapter 12 solves this by tracking monthly GPU-hour consumption against each group's capital contribution. Every $10,000 of hardware funding grants 50 GPU-hours per month. Graduate students get a baseline minimum of 50 GPU-hours per month. When teams queue jobs, the scheduler calculates each team's normalized usage deficit. It also applies a small boost for small jobs, which reduces fragmentation.
+A scoring model turns a fairness rule into a number that the scheduler can sort by. The number has to answer two questions for every team. How far above or below its quota is the team right now? And how urgent is the job it just submitted? The deficit answers the first question, and the priority score combines the deficit with the job's size to answer the second.
+
+One of the design notes behind this chapter solves this by tracking monthly GPU-hour consumption against each group's capital contribution (`volume-23/chapter-12`). Every $10,000 of hardware funding grants 50 GPU-hours per month. Graduate students get a baseline minimum of 50 GPU-hours per month. When teams queue jobs, the scheduler calculates each team's normalized usage deficit. It also applies a small boost for small jobs, which reduces fragmentation.
 
 A team that has used less than its quota gets a negative deficit ratio. That negative ratio becomes a positive priority score, which places its jobs ahead of over-quota borrowers.
 
@@ -190,14 +202,20 @@ Fair-Share Deficit and Priority Scoring Model (volume-23/chapter-12):
     Professor A submits 8-GPU job (gpu_count = 8):     priority = -(+0.20) + 0.0 = -0.20 (runs behind under-quota teams)
 ```
 
-Professor B's 2-GPU job lands at the front of the queue with a score of +0.70. Professor A's 8-GPU job runs behind it with a score of -0.20. Notice that the 0.1 boost applies only to jobs with fewer than 4 GPUs.
+Professor B's 2-GPU job lands at the front of the queue with a score of +0.70. The 0.1 boost is small on purpose. It nudges small jobs ahead without letting them outrank a team that is far below its quota. Professor A's 8-GPU job runs behind it with a score of -0.20. Notice that the 0.1 boost applies only to jobs with fewer than 4 GPUs.
+
+Try the arithmetic yourself before you trust the code. Professor A's usage of 600 is compared with the quota of 500, which gives a deficit ratio of (600 - 500) / 500, or +0.20. Professor A is over quota, so the deficit is positive and the priority is negative. Professor B's usage of 100 against the quota of 250 gives (100 - 250) / 250, which is -0.60. The sign flips in the priority formula, so Professor B's score becomes +0.70.
+
+Read the block one line at a time. The first lines are the funding rule and the two quotas. The middle lines are what each professor actually used. The last lines turn those usages into the two scores. Each sign has a reason. A team under its quota has a negative deficit, and the priority formula flips that sign, so under-quota teams move to the front.
 
 #### 2. Graceful 30-Second SIGTERM Preemption and Tiered Checkpointing
 When an over-quota borrower gets preempted, killing the container immediately throws away hours of training progress. The engineers lose compute steps, and the cluster wastes power repeating work it already finished. Production GPU platforms therefore have to coordinate scheduler preemption with application-level signal handlers and tiered storage.
 
-Volume 23, Chapters 7 and 12 show the pattern. The workload sets a 30-second termination grace period and registers a Python `SIGTERM` handler inside the training script. When KAI Scheduler preempts a borrowed Pod, kubelet sends `SIGTERM` at second zero. The training script flushes its model and optimizer state dictionaries to shared storage within 5 to 10 seconds. It then exits cleanly before the 30-second `SIGKILL` deadline.
+Preemption means the scheduler takes a running Pod off its node so a more important job can use the GPU. A signal is a short message the operating system sends to a process. `SIGTERM` is the polite signal that says "please stop now," and `SIGKILL` is the forceful one that stops the process with no chance to clean up. The gap between the two is where a checkpoint can be saved.
 
-When GPUs open up later, the preempted job resumes from the exact saved step. It loses about two minutes of wall-clock time, and it loses zero computation steps.
+One of the design notes behind this chapter shows the pattern (`volume-23/chapter-07` and `volume-23/chapter-12`). The workload sets a 30-second termination grace period and registers a Python `SIGTERM` handler inside the training script. When KAI Scheduler preempts a borrowed Pod, kubelet sends `SIGTERM` at second zero. Kubelet is the agent on each node that starts and stops Pods. The training script flushes its model and optimizer state dictionaries to shared storage within 5 to 10 seconds. It then exits cleanly before the 30-second `SIGKILL` deadline.
+
+When GPUs open up later, the preempted job resumes from the exact saved step. It loses about two minutes of wall-clock time, and it loses zero computation steps. A simple way to picture the timeline is a fire drill with a warning bell. The bell is `SIGTERM`, and it gives people time to save their work and walk out. The power cut is `SIGKILL`, and it arrives only when the grace period runs out. A training job that saves its state while the bell rings is safe. A job that is still writing when the power is cut loses that write.
 
 The table below follows the timeline of one preemption, then lists the three storage tiers that protect the checkpoints. Notice that each tier covers a larger failure, from a process crash up to the loss of the primary storage array.
 
@@ -210,12 +228,16 @@ The table below follows the timeline of one preemption, then lists the three sto
 | **Tier 2: Shared NFS / RWX PVC** | `/nfs/checkpoints` (`1 TB` quota per team) | Every `8` hours and on `SIGTERM` | `1%–2%` async write overhead; survives full node failure (`8` jobs killed on node) |
 | **Tier 3: Cold / Tape Archive** | Offline object or tape archive | Daily during off-hours | Protects `72`-hour training runs against catastrophic primary storage array failure |
 
+Consider a failure at each tier. A crash of one process restores from the local NVMe checkpoint, so the job loses only the steps since the last local save. A full node failure cannot reach that local disk, so the job restores from the shared NFS checkpoint. Only a loss of the primary storage array needs the cold archive.
+
+Read the timeline first, then the tiers. The timeline shows what happens in one preemption, minute by minute. The tiers show how often the state is saved, so a failure at any point costs as little work as possible.
+
 #### 3. Operating KAI Scheduler and Run:ai on NVIDIA Base Command Manager 11
-A multi-tenant scheduler on bare-metal enterprise clusters can fail when certificates, DNS records, or ingress load balancers are misconfigured. If you administer such a cluster, you need one repeatable install and verification pipeline. That pipeline has to work in both cloud-managed and air-gapped data centers.
+A multi-tenant scheduler on bare-metal enterprise clusters can fail when certificates, DNS records, or ingress load balancers are misconfigured. If you administer such a cluster, you need one repeatable install and verification pipeline. That pipeline has to work in both cloud-managed and air-gapped data centers. An air-gapped data center has no direct link to the internet, so every file has to be brought in by hand.
 
 In Chapter 6 of the *NVIDIA Base Command Manager 11 Containerization Manual*, the commercial Run:ai Operator, built around KAI Scheduler, supports two deployment models. In the SaaS model, the control plane runs in the Run:ai cloud, and the GPU cluster connects outbound over HTTPS through Kgateway. The self-hosted mode runs both the control plane and the GPU cluster on premises. It can run in Connected mode or in fully disconnected Air-Gapped mode.
 
-Starting with Base Command Manager 11.33, installation splits into two stages. Administrators first deploy Kubernetes with `cm-kubernetes-setup`. Then they run `cm-runai-setup` with a restricted configuration file.
+Starting with Base Command Manager 11.33, installation splits into two stages. Administrators first deploy Kubernetes with `cm-kubernetes-setup`. Then they run `cm-runai-setup` with a restricted configuration file. The split matters because a failed Kubernetes deployment should not leave a half-written Run:ai configuration behind. Before you run the second stage, check the basics. The control-plane name must resolve in DNS, the certificate must verify against your local CA, and the name must appear in the certificate's SAN list. A SAN is the list of names a certificate is valid for. Fixing these before the installer runs saves a long debugging session afterward.
 
 The table below lists the setup facts and the validation rule for each one. You can see that the setup file is locked down with `chmod 600` and deleted after use, so those steps are part of the procedure.
 
@@ -230,7 +252,7 @@ The table below lists the setup facts and the validation rule for each one. You 
 Use the Helm and kubectl checks in the table to confirm the install before you go further.
 
 #### Architectural Preview: How Chapters 11.14 to 11.19 Build on This Foundation
-Knowing why the default Kubernetes scheduler falls short sets up the internal workings of KAI Scheduler and the Run:ai platform. The next six chapters cover those workings.
+Knowing why the default Kubernetes scheduler falls short sets up the internal workings of KAI Scheduler and the Run:ai platform. The next six chapters cover those workings. Each one takes a piece of the story told here and opens it up.
 
 - Chapter 11.14 breaks down the five internal microservices of KAI Scheduler and its custom resources, including Queue, PodGroup, Topology, and BindRequest.
 - Chapter 11.15 formalizes hierarchical Department-to-Project queue trees, nominal quotas, over-quota borrowing limits, lending weights, and fair-share reclamation math.
@@ -238,13 +260,15 @@ Knowing why the default Kubernetes scheduler falls short sets up the internal wo
 - Chapter 11.17 explains how KAI Scheduler implements fractional GPU requests such as `gpu-fraction: 0.25` and `gpu-memory: 10000`, dynamic time-slicing, and MIG integration without code changes.
 - Chapters 11.18, 11.19, and 11.20 provide production troubleshooting runbooks, Prometheus metrics, the enterprise Run:ai platform view, and an apples-to-apples comparison across KAI Scheduler, Kueue, Volcano, YuniKorn, and Slurm.
 
-Keep this map handy, because each of these chapters builds on the failures and fixes described above.
+Read the list as a map of the rest of Part 11. It names the component, custom resource or operational topic that each chapter opens, so you can jump ahead when a question comes up. Keep this map handy, because each of these chapters builds on the failures and fixes described above. If a later chapter feels abstract, come back to the failure mode it answers.
 
 ## Commands and configurations that matter
 
 ### 1. Defining a KAI Scheduler Project and gang-scheduled PyTorchJob
 
 Start with a manifest that defines an 8-GPU Project quota and binds a distributed PyTorchJob to KAI Scheduler. It comes from *Generative AI on Kubernetes* Chapter 7, Example 7-5. Both the Master and Worker templates set `schedulerName: kai-scheduler` and a 30-second termination grace period. That combination makes the job gang-scheduled and checkpoint-safe.
+
+A quick reading tip helps here. The manifest has a quota document and a job document, separated by a three-dash line. The first one is the quota, and the second one is the job. Read them in that order, because the job points back at the quota by name.
 
 ```yaml
 # kai-project-and-pytorchjob.yaml (GAK Example 7-5, untested here)
@@ -290,11 +314,11 @@ spec:
                   nvidia.com/gpu: 4
 ```
 
-You can see that the quota lives in the Project, while the job points at that Project through its annotation.
+You can see that the quota lives in the Project, while the job points at that Project through its annotation. In practice, a platform engineer creates the Project once for the team, and the team reuses it for every job. The job file then stays short, because it only needs the annotation and the scheduler name.
 
 ### 2. Implementing a 30-Second SIGTERM Checkpoint Handler in PyTorch
 
-If KAI Scheduler or Kueue reclaims borrowed GPUs, you want a preempted job to lose zero steps. To make that happen, register a signal handler inside the training entrypoint. When kubelet sends `SIGTERM`, the callback writes the latest weights and step counter to shared storage and exits cleanly.
+If KAI Scheduler or Kueue reclaims borrowed GPUs, you want a preempted job to lose zero steps. To make that happen, register a signal handler inside the training entrypoint. When kubelet sends `SIGTERM`, the callback writes the latest weights and step counter to shared storage and exits cleanly. The entrypoint is the script the container runs first, and a handler is a function the operating system calls when a signal arrives.
 
 ```python
 # sigterm_checkpoint_trainer.py (volume-23/chapter-07 & chapter-12, untested on cluster)
@@ -323,11 +347,11 @@ def register_preemption_checkpoint(model, optimizer, state_dict_Provider, checkp
     signal.signal(signal.SIGTERM, _handle_sigterm)
 ```
 
-When you read the handler, notice that it ends with `sys.exit(0)`, so the process exits cleanly.
+When you read the handler, notice that it ends with `sys.exit(0)`, so the process exits cleanly. Exit code 0 tells Kubernetes that the process finished normally, so the job is not counted as a crash. Before that exit, the handler saves the fields the restart needs, which are the model, the optimizer, the epoch, the step and the loss. Notice where the handler does its work. It runs inside the main training process, so the write has to finish quickly. If the write takes longer than the grace period, the forceful `SIGKILL` stops it mid-write, which is the failure covered in the table in the How it fails section.
 
 ### 3. Verifying and managing the Run:ai and KAI installation on BCM 11
 
-On Base Command Manager 11.33 and newer, administrators lock the generated setup file before they run the installer. After the deployment finishes, Helm and kubectl show whether the installer and cluster operator pods are healthy inside the `runai` namespace.
+On Base Command Manager 11.33 and newer, administrators lock the generated setup file before they run the installer. After the deployment finishes, Helm and kubectl show whether the installer and cluster operator pods are healthy inside the `runai` namespace. Helm is the package manager that records each release, so you can see its history.
 
 ```bash
 # 1. Run two-stage non-interactive deployment from restricted config in BCM 11.33+ (untested here)
@@ -340,7 +364,7 @@ helm history -n runai runai-cluster
 kubectl get all -n runai
 ```
 
-After you install, run the three checks. They confirm that both Helm releases and their pods are present in the `runai` namespace.
+After you install, run the three checks. They confirm that both Helm releases and their pods are present in the `runai` namespace. If one of the checks fails, read the install log before you rerun anything. Rerunning the installer on top of a half-finished install can leave two releases competing for the same namespace.
 
 ## How it fails
 
@@ -354,12 +378,12 @@ When KAI Scheduler or fair-share preemption is misconfigured, the symptoms show 
 | **4. Multi-GPU training job runs 3x slower across Ethernet nodes** | An `8`-GPU training job shows `8/8` Pods `Running`, but `AllReduce` bandwidth is `10 Gbps` instead of `900 GB/s` NVSwitch speed. | Missing GPU Operator / GFD topology labels (*Generative AI on Kubernetes* Ch. 7). Unlabeled nodes prevent KAI Scheduler from distinguishing NVSwitch domains. | Ensure `gpu-feature-discovery` is `1/1 Running` on all GPU nodes and request `8` GPUs per Pod (`1` full node) or enable KAI topology constraints. |
 | **5. BCM cm-runai-setup aborts during consistency validation** | Running `cm-runai-setup` on BCM `11.25.08+` aborts before deploying `cluster-installer` with a CA certificate mismatch. | Custom CA and Helm values mismatch (`bcm11-containerization` §6.11.1). Local CA `.crt` was supplied without enabling custom CA in Helm, or FQDN is missing from `SAN`. | Verify chain with `openssl verify -CAfile <local-ca.crt> <domain.crt>`, confirm FQDN is in the certificate `SAN` list, and align Helm custom-CA settings. |
 
-When you compare the first and fourth rows, you see that both come from missing configuration, so check the Pod spec and node labels before you tune quotas.
+When you compare the first and fourth rows, you see that both come from missing configuration, so check the Pod spec and node labels before you tune quotas. A quick triage order helps. Start with the evidence column on the failing job, check the Pod spec, check the node labels, and only then change a quota. That order fixes the cause before the symptom, and it keeps you from tuning quotas for a problem that lives in a label. Rows two and three are different. They point at preemption behavior, so the fix lives in the checkpoint handler and the quota policy, not in the Pod spec.
 
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally with two Python 3 standard library scripts, `code/part11/kai_why_default_not_enough.py` and `code/part11/kai_why_default_not_enough_lab.py`. They model the multi-tenant quota split, the fair-share deficit scorer, the scheduler capability matrix, and the graceful preemption timeline in a fixed, repeatable way. Cluster commands are marked `(untested here)`.
+This lab runs locally with two Python 3 standard library scripts, `code/part11/kai_why_default_not_enough.py` and `code/part11/kai_why_default_not_enough_lab.py`. They model the multi-tenant quota split, the fair-share deficit scorer, the scheduler capability matrix, and the graceful preemption timeline in a fixed, repeatable way. Cluster commands are marked `(untested here)`, so these steps were not run on a live cluster. Only the local simulation is checked by the lab. Running it on your own machine does not need a GPU, a Kubernetes cluster or a cloud account. It needs only Python 3. If the lab prints a FAIL line, the message names the check that broke, so start from that check and read the matching section of the chapter.
 
 Before you run anything, read the three scenarios the lab verifies. Each one matches a worked example earlier in the chapter.
 
@@ -378,7 +402,7 @@ From the repository root, run the self-checking script. It checks all 25 asserti
 python3 code/part11/kai_why_default_not_enough_lab.py
 ```
 
-The block below shows the output captured from this repository.
+The block below shows what a passing run prints.
 
 ```text
 === Chapter 11.13 Lab: KAI Scheduler — Why Default Scheduling Is Not Enough ===
@@ -411,19 +435,21 @@ The block below shows the output captured from this repository.
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
+Each PASS line checks one fact from the chapter. Read the summary line last, since it tells you whether all 25 checks passed.
+
 ### Exercises
 
-You can work through the six exercises in order. Each one calls a function from the lab script, and the table below gives the inputs and the expected output for each.
+Work through the six exercises in order. Work each one on paper first, then run the function and compare. Your hand result and the code result should match, and a mismatch usually means a sign or a unit has slipped. Each one calls a function from the lab script, and the table below gives the inputs and the expected output for each.
 
-Exercise 1 checks the quota split. Run `evaluate_three_team_cluster_quotas` in `code/part11/kai_why_default_not_enough.py` with the parameters in the table. Verify each team's percentage share. Then explain why dedicated nodes yield 60.0% utilization, compared with 85.0% under dynamic fair-share quotas.
+Exercise 1 checks the quota split. Run `evaluate_three_team_cluster_quotas` in `code/part11/kai_why_default_not_enough.py` with the parameters in the table. Do the three shares match the research and data-eng percentages? Why do dedicated nodes yield 60.0% utilization, while dynamic fair-share quotas yield 85.0%?
 
-Exercise 2 scores two professors. Call `score_fair_share_job` for Professor A and Professor B, using the quota, usage, and GPU counts in the table. Compare their resulting balance, deficit ratio, and priority score.
+Exercise 2 scores two professors. Call `score_fair_share_job` for Professor A. Call it again for Professor B, using the quota, usage, and GPU counts in the table. Which professor has the higher priority score?
 
-Exercise 3 looks at one month of burst borrowing. Run `evaluate_professor_a_vs_b_month` with the monthly numbers in the table to confirm the total GPU-hours used and the cluster utilization. Then state how many GPU-hours would have been wasted if Professor A had been hard-capped at nominal quota.
+Exercise 3 looks at one month of burst borrowing. Run `evaluate_professor_a_vs_b_month` with the monthly numbers in the table. Does the total come to the GPU-hours the table lists? How many GPU-hours would have been wasted if Professor A had been hard-capped at nominal quota?
 
-Exercise 4 compares the two schedulers. Call `compare_default_vs_kai_scheduler` for a single-Pod fractional job and a four-Pod NVSwitch gang job. Explain why the default kube-scheduler returns false while KAI Scheduler returns true for both workloads.
+Exercise 4 compares the two schedulers. Call `compare_default_vs_kai_scheduler` for a single-Pod fractional job. Call it again for a four-Pod NVSwitch gang job. Why does the default kube-scheduler return false for both, while KAI Scheduler returns true?
 
-Exercise 5 tests the preemption timing. Call `simulate_graceful_preemption_timeline` for an 8-second fast checkpoint and a 45-second slow checkpoint under a 30-second grace period. Compare whether each checkpoint finishes before `SIGKILL`, and how many steps each one loses.
+Exercise 5 tests the preemption timing. Call `simulate_graceful_preemption_timeline` for an 8-second fast checkpoint. Call it again for a 45-second slow checkpoint under a 30-second grace period. Does each checkpoint finish before `SIGKILL`? How many steps does each one lose?
 
 Exercise 6 asks what to do about thrashing. A 72-hour training job gets preempted every 2 hours. List the four operational mitigations.
 
@@ -436,7 +462,7 @@ Exercise 6 asks what to do about thrashing. A 72-hour training job gets preempte
 | **5** | `simulate_graceful_preemption_timeline()` | `grace_period_seconds=30`, write times `8` s vs `45` s | `8` s: `saved_before_sigkill=True`, `0` steps lost; `45` s: `False`, killed at `30s` |
 | **6** | Operational mitigation review | `72`-hour job preempted every `2` hours (`> 5` preemptions/day) | Raise guaranteed quota, lower oversubscription, age-based boost / `> 2x` rule, `3 AM – 7 AM` window |
 
-As you check the outputs, you will find that most repeat a number you have already seen in this chapter.
+As you check the outputs, you will find that most repeat a number you have already seen in this chapter. If an output differs from the table, reread the input row before you suspect the code. Most mismatches come from a copied value that changed a fraction or a sign.
 
 ## Checkpoint questions
 

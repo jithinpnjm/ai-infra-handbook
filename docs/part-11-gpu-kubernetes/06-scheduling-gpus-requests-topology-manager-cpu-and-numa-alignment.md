@@ -22,13 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture two training Pods on the same cluster that request the same number of GPUs. The default scheduler treats each GPU request as a simple integer subtraction against a node allocatable counter. That count is necessary, but for high-performance AI workloads it is rarely sufficient.
+Picture two training Pods on the same cluster that request the same number of GPUs. Both show `Running`, both report the same requests, and the dashboard looks identical for each of them. Then the training steps on one Pod take almost three times as long as the steps on the other. Nothing in the manifests explains the gap. The default scheduler treats each GPU request as a simple integer subtraction against a node allocatable counter. That count is necessary, but for high-performance AI workloads it is rarely sufficient. The counter knows how many GPUs are free, and it knows nothing about which CPU socket or which network card sits closest to them.
 
-On a multi-socket GPU server, CPU cores, host memory, PCIe switches, network cards, and GPUs sit in separate hardware domains. When the scheduler or kubelet ignores that internal wiring, two Pods with identical requests can run at vastly different speeds.
+On a multi-socket GPU server, CPU cores, host memory, PCIe switches, network cards, and GPUs sit in separate hardware domains. A socket is one physical CPU package with its own cores and memory channels. A PCIe switch is a small chip that fans out lanes to several devices. When the scheduler or kubelet ignores that internal wiring, two Pods with identical requests can run at vastly different speeds.
 
-Data-loading threads on one CPU socket can be forced to fetch training batches across an inter-socket link. They do this to feed a GPU on the opposite socket. The problem can be worse inside a single worker Pod. Two GPUs assigned to that Pod might communicate across a slow host PCIe bridge instead of a high-speed NVLink fabric.
+Data-loading threads on one CPU socket can be forced to fetch training batches across an inter-socket link. They do this to feed a GPU on the opposite socket. The problem can be worse inside a single worker Pod. Two GPUs assigned to that Pod might communicate across a slow host PCIe bridge instead of a high-speed NVLink fabric. Each of these hops adds latency, and a training step waits for the slowest hop it has to make.
 
-Strict single-socket enforcement brings a different risk. If you turn it on without adjusting Pod CPU requests, the kubelet can reject Pods while healthy GPUs sit idle. Platform engineers and machine learning teams feel these mismatches as unpredictable training step times, degraded network throughput, and mysterious admission failures.
+Strict single-socket enforcement brings a different risk. If you turn it on without adjusting Pod CPU requests, the kubelet can reject Pods while healthy GPUs sit idle. Platform engineers and machine learning teams feel these mismatches as unpredictable training step times, degraded network throughput, and mysterious admission failures. The admission failure is the hardest to explain, because the node looks free on the dashboard and still refuses the Pod.
 
 The summary below collects the hardware numbers behind these symptoms.
 
@@ -52,35 +52,27 @@ Hardware Locality & Scheduling Impact Summary:
   - Right-sized to 12 cores/Pod: 4 * 12 = 48 cores/socket (96 total), leaving 16 cores/socket (14 after OS daemons) so all 8 Pods schedule
 ```
 
-Notice two figures that recur through the chapter. One is the latency gap between local and remote NUMA memory. The other is the 14 free cores that block the last Pod in the admission math.
+Notice two figures that recur through the chapter. One is the latency gap between local and remote NUMA memory. The other is the 14 free cores that block the last Pod in the admission math. You will see both again when the chapter reaches the Triton example, and by then the arithmetic should feel familiar.
 
-This chapter walks through the four-stage placement framework first. It then covers the internal motherboard data paths that topology tools reveal, along with the Kubernetes QoS and kubelet alignment policies. Last come host and PyTorch memory pinning, and the design of a service-class catalog.
-
-Decide early whether you are looking at a scheduler problem or a node-local problem.
+This chapter walks through the four-stage placement framework first. It then covers the internal motherboard data paths that topology tools reveal, along with the Kubernetes QoS and kubelet alignment policies. Last come host and PyTorch memory pinning, and the design of a service-class catalog. A service-class catalog is the short list of workload tiers that a platform team publishes, each with its own placement rules. Decide early whether you are looking at a scheduler problem or a node-local problem. The answer tells you which logs to read first.
 
 ## Prerequisites and outcomes
 
 This chapter builds on earlier work. Check the prerequisites first, then use the outcomes as a checklist while you read.
 
 ### Prerequisites
-- You should have finished Chapters 11.1 through 11.5. Those cover Device Plugin resource advertisement, CDI runtime injection, node feature labels, and GPU Operator lifecycle management.
-- You should be comfortable with Linux processes and threads, virtual memory paging, and PCIe bus basics.
+Imagine a Pending training Pod that your team has to explain to a machine learning engineer by the end of the day. You will be more useful to that engineer if you already know the building blocks. Finish Chapters 11.1 through 11.5 first. Those cover Device Plugin resource advertisement, CDI runtime injection, node feature labels, and GPU Operator lifecycle management. CDI, the Container Device Interface, is the standard that describes how a device is handed to a container. You should also be comfortable with Linux processes and threads, virtual memory paging, and PCIe bus basics. Paging is how the kernel moves memory between RAM and disk, and PCIe is the bus that connects GPUs and network cards to the CPU.
 
 ### Outcomes
-By the end, you should be able to do the following.
-- Use the four ordered placement questions to tell scheduler filter failures apart from node-local allocation errors.
-- Read every cell of an `nvidia-smi topo -m` affinity matrix, and measure the bandwidth cliff between HBM3, NVLink, and PCIe bridges.
-- Configure Guaranteed QoS, integer CPUs, the static CPU Manager, and Topology Manager policies to resolve `TopologyAffinityError` rejections.
-- Implement host and container NUMA, CPU, memory, and storage tuning for PyTorch training and low-latency inference workloads.
-- Diagnose Pending GPU Pods with scheduler predicate breakdowns, and fix slow running Pods caused by sub-optimal peer links.
+This chapter gives you four things. It starts with the ordered questions that separate a scheduler filter failure from a node-local allocation error. Then it shows how to read every cell of an `nvidia-smi topo -m` affinity matrix, and how to measure the gap between HBM3, NVLink and PCIe bridges. Next it covers the settings that resolve `TopologyAffinityError` rejections, namely Guaranteed QoS, integer CPUs, the static CPU Manager and the Topology Manager policies. After that it covers host and container tuning for PyTorch training and low-latency inference, and it ends with how to diagnose Pending GPU Pods and slow running Pods.
 
 ## Concepts: basics to intermediate to advanced
 
 ### 1. Basics: The four placement questions and the physical motherboard data path
 
-A GPU Pod can fail in two different places. It can stay Pending because no node qualifies. Or the scheduler can bind it to a node where the kubelet later refuses it.
+Think about the moment a Pod is stuck in Pending on Monday morning. Someone asks whether the cluster is out of GPUs, and the honest answer is that it depends on which step failed. A GPU Pod can fail in two different places. It can stay Pending because no node qualifies. Or the scheduler can bind it to a node where the kubelet later refuses it. These are two separate failures with two separate fixes, and mixing them up is the most common way to waste a morning.
 
-Kubernetes schedules and admits GPU Pods in two separate stages that run in different components. The central scheduler filters and scores candidate nodes using cluster-wide resource counters, labels, and taints. Once the Pod is bound to a node, the local kubelet coordinates with the CPU Manager, Topology Manager, and Device Plugin.
+Kubernetes schedules and admits GPU Pods in two separate stages that run in different components. The central scheduler filters and scores candidate nodes using cluster-wide resource counters, labels, and taints. A taint is a mark on a node that repels Pods unless they tolerate it. Once the Pod is bound to a node, the local kubelet coordinates with the CPU Manager, Topology Manager, and Device Plugin. The scheduler works from a cluster-wide view, and the kubelet works from the view of one machine.
 
 If the scheduler cannot find a matching node, the Pod stays Pending with a scheduling failure event. If the scheduler binds the Pod to a node where physical resources cannot align on the same socket, the kubelet rejects the Pod.
 
@@ -96,16 +88,20 @@ flowchart LR
     AllocOK -->|"Yes"| Run["4. Container Starts with Aligned CPUs, GPUs & NICs"]
 ```
 
-To avoid over-constraining the cluster, or under-specifying a critical job, platform teams ask four placement questions in strict order.
+Read the diagram as a two-door check. The left door is the scheduler, and a Pod that fails there stays Pending. The right door is the kubelet on the chosen node, and a Pod that fails there gets a `TopologyAffinityError` or sits in ContainerCreating. The two doors need different evidence, so the first question to answer is which door the Pod stopped at.
+
+To avoid over-constraining the cluster, or under-specifying a critical job, platform teams ask four placement questions in strict order. The order matters, because each answer narrows the set of nodes that the next question has to consider.
 - Capacity asks how many GPU units each Pod requires, and under which extended resource name, such as `nvidia.com/gpu` or `nvidia.com/mig-2g.45gb`.
 - Eligibility asks which validated node pool or service class label, such as `gpu.platform.example/class`, qualifies the workload to run.
 - Locality asks whether the workload has a measured sensitivity to CPU-to-GPU NUMA affinity, GPU-to-NIC PCIe switch proximity, or GPU-to-GPU NVLink connectivity.
 - Coordination asks whether the job consists of multiple coupled worker Pods that must start simultaneously, through gang scheduling or queue admission.
 
-#### Physical motherboard hierarchy: PCIe, NVLink, NVSwitch, and NUMA
-Why does hardware locality matter so much for distributed training and high-throughput inference? Before a tensor can reach an external 400G InfiniBand or RoCE network cable, it must cross the internal traces of the server motherboard. Moving data across an internal PCIe host bridge or an inter-socket CPU link is orders of magnitude slower than moving it across NVLink or local GPU memory.
+Answering the four questions in writing is a small habit with a large payoff. When a Pod is stuck, you can check each question in turn and see which one has no good answer yet. Most stuck Pods turn out to have an answer missing from the second or third question.
 
-The table compares each layer by its bandwidth or latency, and by how it behaves as a bottleneck.
+#### Physical motherboard hierarchy: PCIe, NVLink, NVSwitch, and NUMA
+Why does hardware locality matter so much for distributed training and high-throughput inference? Before a tensor can reach an external 400G InfiniBand or RoCE network cable, it must cross the internal traces of the server motherboard. A tensor is the multi-dimensional array of numbers that a model works on. Moving data across an internal PCIe host bridge or an inter-socket CPU link is orders of magnitude slower than moving it across NVLink or local GPU memory. The reason is distance and sharing. Each extra hop passes through more chips, and those chips are shared with other traffic.
+
+The table compares each layer by its bandwidth or latency, and by how it behaves as a bottleneck. Read the rows from the fastest path at the top to the slowest path at the bottom. The gap between the top row and the bottom row explains most of the performance you see on a real server.
 
 | Interconnect / Memory Layer | Typical Bandwidth / Latency | Architectural Role & Bottleneck Behavior |
 |---|---|---|
@@ -116,10 +112,10 @@ The table compares each layer by its bandwidth or latency, and by how it behaves
 | **PCIe Gen5 x16 (Hopper / Blackwell host bus)** | `64 GB/s` per direction (`16` lanes) | Doubles PCIe Gen4 x16 (`32 GB/s` per direction) used on Ampere A100 servers. Connects GPUs, ConnectX NICs, and NVMe SSDs to PCIe switches or CPU root complexes. |
 | **Local NUMA DRAM vs Cross-Socket UPI / xGMI** | `~80 ns` local vs `~139 ns` remote (`~75%` / `73.75%` latency penalty) | Dual-socket servers split CPUs, RAM, and PCIe lanes into NUMA Node `0` and NUMA Node `1`. Crossing the inter-socket Intel UPI or AMD xGMI link adds `59 ns` per memory access and saturates under DMA load. |
 
-Notice the first row. If you feed H100 HBM3 memory across a PCIe Gen5 slot, data transfer is throttled by a >52x ratio.
+Notice the first row. If you feed H100 HBM3 memory across a PCIe Gen5 slot, data transfer is throttled by a >52x ratio. That is the reason the GPU wants its data already sitting in its own memory before a step starts, and why the loader threads matter so much. NVLink and NVSwitch are the fast lanes that let GPUs trade data with each other without going through the CPU at all. The NUMA row is the one to watch when you see slow CPU-side behavior, because it is where a thread on one socket reaches for memory on the other.
 
 #### Reading `nvidia-smi topo -m` like a senior architect
-Run `nvidia-smi topo -m` when you need to know how a server is wired. It shows how GPUs, network cards, CPU cores, and NUMA nodes connect. The matrix gives the exact hardware path between every pair of devices on the motherboard.
+Run `nvidia-smi topo -m` when you need to know how a server is wired. Picture a new server that arrives on a Tuesday, and you have one afternoon to check its layout before it joins the pool. It shows how GPUs, network cards, CPU cores, and NUMA nodes connect. The matrix gives the exact hardware path between every pair of devices on the motherboard. You read it once per server model, write down the result, and use it to set the placement rules for that model.
 
 ```text
 # Illustrative output for an 8-GPU HGX system (untested here)
@@ -130,38 +126,40 @@ GPU2    NV12    NV12     X      NV12    NV12    NV12    NV12    NV12    SYS     
 GPU3    NV12    NV12    NV12     X      NV12    NV12    NV12    NV12    SYS     SYS     16-31           1
 ```
 
-Each code in the matrix has a precise hardware meaning, and that meaning sets the speed of peer-to-peer DMA. `X` marks the same physical device. `NV4`, `NV12`, and `NV18` connect directly over bonded NVLink lanes or an NVSwitch fabric, which bypasses the PCIe bus completely. `PIX` means the path crosses at most a single PCIe switch chip. That path enables direct Peer-to-Peer DMA and GPUDirect RDMA without touching the CPU.
+Read the matrix one cell at a time. Pick a row, such as GPU0, and walk across it. Each code in the matrix has a precise hardware meaning, and that meaning sets the speed of peer-to-peer DMA. Peer-to-peer DMA is a transfer that moves data directly between two devices without copying it through host memory. `X` marks the same physical device. `NV4`, `NV12`, and `NV18` connect directly over bonded NVLink lanes or an NVSwitch fabric, which bypasses the PCIe bus completely. `PIX` means the path crosses at most a single PCIe switch chip. That path enables direct Peer-to-Peer DMA and GPUDirect RDMA without touching the CPU.
 
-`PXB` traverses multiple cascaded PCIe switches without crossing a CPU PCIe Host Bridge. `PHB` shares the same PCIe Host Bridge inside one CPU socket, so traffic climbs to the CPU root complex and back down. `NODE` traverses multiple PCIe Host Bridges within the same NUMA node. `SYS` is the slowest path on a host. It crosses the inter-socket link between different NUMA nodes, and it can cut throughput by 50%.
+`PXB` traverses multiple cascaded PCIe switches without crossing a CPU PCIe Host Bridge. `PHB` shares the same PCIe Host Bridge inside one CPU socket, so traffic climbs to the CPU root complex and back down. The root complex is the part of the CPU that owns the PCIe lanes. `NODE` traverses multiple PCIe Host Bridges within the same NUMA node. `SYS` is the slowest path on a host. It crosses the inter-socket link between different NUMA nodes, and it can cut throughput by 50%. When you see `SYS` between two GPUs that a job needs to talk to, that job should not be placed on those two GPUs.
+
+The last two columns, CPU Affinity and NUMA Affinity, tell you which cores belong to each GPU. Those columns are the bridge between this matrix and the kubelet settings later in the chapter. A GPU whose affinity says NUMA 0 wants CPU cores from NUMA 0, and a Pod that mixes NUMA 0 GPUs with NUMA 1 cores pays the cross-socket price on every step.
 
 #### Why the default scheduler is blind to GPU links
 
-Take an 8-GPU server with two groups of four GPUs, linked by NVLink inside each group. Your job asks for four GPUs. The ideal is four GPUs on one NVLink fabric and one NUMA node.
+Take an 8-GPU server with two groups of four GPUs, linked by NVLink inside each group. Your job asks for four GPUs. The ideal is four GPUs on one NVLink fabric and one NUMA node. Picture the job as a set of four GPUs that must pass gradients to each other every step. Gradients are the numbers that describe how each model weight should change, and they are exchanged after every batch. Their path decides how long each step takes.
 
-The default scheduler does not see that layout. By default, Kubernetes counts each GPU as an identical resource. It does not know whether GPU 0 and GPU 1 share a NUMA node or an NVLink connection. That gap matters.
+The default scheduler does not see that layout. By default, Kubernetes counts each GPU as an identical resource. It does not know whether GPU 0 and GPU 1 share a NUMA node or an NVLink connection. That gap matters. The scheduler is doing its job correctly from its own point of view, because a GPU is a GPU to the counter. The missing piece is the topology, and the topology lives on the node, not in the counter.
 
-A blind scheduler can hand you two GPUs from one group and two from the other. The traffic between those GPUs then crosses the slower path, through InfiniBand or Ethernet. That can cut your inter-GPU bandwidth in half. The NVL72 rack shows what is at stake for you. It links 72 GPUs in one NVLink domain, with about 130 TB/s of combined throughput. A placement that ignores topology can throw that advantage away.
+A blind scheduler can hand you two GPUs from one group and two from the other. The traffic between those GPUs then crosses the slower path, through InfiniBand or Ethernet. That can cut your inter-GPU bandwidth in half. The NVL72 rack shows what is at stake for you. It links 72 GPUs in one NVLink domain, with about 130 TB/s of combined throughput. A placement that ignores topology can throw that advantage away. It does not feel like an error, because the job runs and the logs are clean. It just runs slower than the hardware allows, and nobody sees the cause until someone reads the matrix.
 
-Treat topology as a scheduling input, not an afterthought, when you request GPUs.
+Treat topology as a scheduling input, not an afterthought, when you request GPUs. That means writing the locality answer into the Pod spec, through a node label, a service class or a topology-aware admission policy, instead of hoping the default placement happens to be good.
 
 ---
 
 ### 2. Intermediate: Kubernetes QoS classes, static CPU Manager, and Topology Manager
 
-Picture a Pod that asks for 16 CPU cores, 1 GPU, and 1 RDMA network card. By default, Kubernetes is unaware of NUMA boundaries on a worker node. The default kubelet policies allocate those three resources independently. The Pod can easily receive CPU cores on socket 0, a GPU on socket 1, and a network interface on socket 0. That unaligned placement forces every batch transfer and network packet across the inter-socket link.
+Picture a Pod that asks for 16 CPU cores, 1 GPU, and 1 RDMA network card. By default, Kubernetes is unaware of NUMA boundaries on a worker node. The default kubelet policies allocate those three resources independently. The Pod can easily receive CPU cores on socket 0, a GPU on socket 1, and a network interface on socket 0. That unaligned placement forces every batch transfer and network packet across the inter-socket link. Each of the three allocations was correct on its own, and the combination is the problem.
 
-To enforce hardware locality on a Kubernetes worker node, three kubelet mechanisms must work together. You must configure the Pod Quality of Service class, enable the static CPU Manager policy, and select an appropriate Topology Manager policy.
+To enforce hardware locality on a Kubernetes worker node, three kubelet mechanisms must work together. You must configure the Pod Quality of Service class, enable the static CPU Manager policy, and select an appropriate Topology Manager policy. Each of the three answers a different question. QoS decides whether the Pod is eligible for exclusive CPUs at all, the CPU Manager decides which cores it gets, and the Topology Manager decides whether the cores, the GPU and the NIC can sit on the same socket.
 
 #### 1. Pod Quality of Service and integer CPU requests
-Kubernetes places every Pod into one of three Quality of Service classes. The class depends on the Pod's CPU and memory requests and limits.
+Kubernetes places every Pod into one of three Quality of Service classes. The class depends on the Pod's CPU and memory requests and limits. A request is the amount the scheduler reserves for the Pod, and a limit is the most the Pod may use.
 - A BestEffort Pod sets no CPU or memory requests or limits. That makes it the first candidate for eviction, and it rules the Pod out for pinned CPUs.
 - A Burstable Pod has at least one container that sets a request or limit. Its requests do not equal its limits, so its threads float across shared CPU cores.
 - A Guaranteed Pod gives every container explicit requests and limits for both CPU and memory. The requests equal the limits for both.
 
-Exclusive CPU core pinning and Topology Manager alignment apply only to Guaranteed Pods whose CPU request and limit are whole positive integers. Requesting `cpu: "16"` qualifies for exclusive core pinning under `cpuManagerPolicy: static`. A fractional request like `cpu: "15.5"` goes into the shared CPU pool instead. The request format decides whether your Pod gets dedicated cores.
+Exclusive CPU core pinning and Topology Manager alignment apply only to Guaranteed Pods whose CPU request and limit are whole positive integers. Requesting `cpu: "16"` qualifies for exclusive core pinning under `cpuManagerPolicy: static`. A fractional request like `cpu: "15.5"` goes into the shared CPU pool instead. The request format decides whether your Pod gets dedicated cores. It is easy to write `15.5` by accident when you are tuning a Pod down, and the Pod then quietly loses the pinning it needed.
 
 #### 2. The four kubelet Topology Manager policies
-Before it admits a Pod, the kubelet relies on the Topology Manager. The Topology Manager is a kubelet subsystem that queries Hint Providers. It collects NUMA affinity hints from the CPU Manager, the Memory Manager, and the Device Manager, which covers both GPUs and SR-IOV network interfaces. It then applies one of four configured policies to decide whether to admit or reject the Pod.
+Before it admits a Pod, the kubelet relies on the Topology Manager. The Topology Manager is a kubelet subsystem that queries Hint Providers. A hint provider is a kubelet component that reports where its resources sit on each NUMA node. It collects NUMA affinity hints from the CPU Manager, the Memory Manager, and the Device Manager, which covers both GPUs and SR-IOV network interfaces. It then applies one of four configured policies to decide whether to admit or reject the Pod.
 
 | `topologyManagerPolicy` | Kubelet Admission Behavior | Operational Trade-Off for AI Infrastructure |
 |---|---|---|
@@ -170,7 +168,7 @@ Before it admits a Pod, the kubelet relies on the Topology Manager. The Topology
 | **`restricted`** | Calculates the minimal number of NUMA nodes required by the Hint Providers and rejects the Pod with `TopologyAffinityError` if available resources cannot match that minimal count. | Allows multi-NUMA allocations when a Pod legitimately requests more GPUs or CPUs than exist on one socket, while rejecting sub-optimal splits. |
 | **`single-numa-node`** | Requires that all requested exclusive CPUs, memory, GPUs, and NICs reside on a single physical NUMA node, or rejects the Pod with `TopologyAffinityError`. | Guarantees zero cross-socket traffic for every admitted Pod, at the cost of strict per-socket capacity accounting. |
 
-The four policies form a range. `none` packs resources most freely but ignores locality. `single-numa-node` gives the strictest locality and the strictest capacity accounting. The diagram below shows the same Pod evaluated on two nodes under `single-numa-node`.
+The four policies form a range. `none` packs resources most freely but ignores locality. `single-numa-node` gives the strictest locality and the strictest capacity accounting. The middle two policies sit between them. `best-effort` is the one that surprises teams, because it looks like an alignment policy and it still admits misaligned Pods. The diagram below shows the same Pod evaluated on two nodes under `single-numa-node`.
 
 ```mermaid
 flowchart TD
@@ -180,12 +178,14 @@ flowchart TD
     EvalB -->|"single-numa-node"| Admit["Admitted: Pod Running with 100% NUMA-0 Locality"]
 ```
 
-On Node A, the GPU and the NIC sit on different NUMA nodes, so the Pod is rejected. Node B has all three resources on NUMA 0, so the Pod is admitted.
+On Node A, the GPU and the NIC sit on different NUMA nodes, so the Pod is rejected. Node B has all three resources on NUMA 0, so the Pod is admitted. The two nodes have the same total resources, and the only difference is where those resources sit. That is the lesson of the whole section. Locality is a property of placement, and the same hardware can admit or reject the same Pod depending on how its pieces line up.
 
 #### Deep dive: Solving the `TopologyAffinityError` 5th-Pod mystery on a 128-core, 8-GPU server
 Turning on `single-numa-node` changes the capacity math on a node. Many platform teams find this out only when a Pod is rejected. Suppose an infrastructure team configures `--topology-manager-policy=single-numa-node` and `--cpu-manager-policy=static` on a fleet of dual-socket servers. Each server has 128 CPU cores and 8 GPUs, split evenly across two sockets. The team deploys 8 Triton Inference Server Pods, and each requests 1 GPU and 16 CPU cores. The first several Pods start cleanly. The remaining Pod fails at once with `TopologyAffinityError`, while GPUs sit completely idle.
 
 Why did the kubelet reject a Pod when the server still had idle GPUs and free CPU cores? The first four Pods consumed all 64 CPU cores and all 4 GPUs on the first socket. On the second socket, all 4 GPUs were free, but Linux OS daemons, the kubelet, and monitoring agents consumed 2 CPU cores. That left only 14 free CPU cores when the last 16-core Pod arrived. Because the Topology Manager refuses to split a 16-core request across sockets or pair socket-0 CPUs with a socket-1 GPU, it rejected the Pod.
+
+The arithmetic is the whole story. Sixteen cores per Pod times four Pods is sixty-four cores, which is exactly what socket 0 has. Socket 1 has the same sixty-four cores, but two of them belong to the operating system. So the fifth Pod sees fourteen usable cores, and fourteen is less than sixteen. The GPUs on socket 1 are not the bottleneck at all. The CPU count is.
 
 The table compares two ways to pack the same 8 Pods. Read the last column to see which packing admits all of them.
 
@@ -194,15 +194,15 @@ The table compares two ways to pack the same 8 Pods. Read the last column to see
 | **Naive Full-Core Division** | `64` cores, `4` GPUs (`GPU 0..3` on NUMA `0`, `GPU 4..7` on NUMA `1`) | `1` GPU, `16` CPU cores (`8 * 16 = 128` cores) | `4 * 16 = 64` cores on NUMA `0` (`0` free) | Only `14` free cores left on NUMA `1` (`14 < 16`) | Rejects Pod with `TopologyAffinityError`, stranding idle GPUs |
 | **Right-Sized with OS Headroom** | `64` cores, `4` GPUs (`2` cores reserved for OS/kubelet per socket) | `1` GPU, `12` CPU cores (`8 * 12 = 96` cores) | `4 * 12 = 48` cores per NUMA node | `64 - 48 = 16` cores (`14` free after `2` OS cores) | Admits all `8` Pods with `100%` `single-numa-node` locality |
 
-The lesson is simple. Never divide total host CPU cores by total GPUs before you subtract the OS and DaemonSet reservations set in `systemReserved` and `kubeReserved`. Right-sizing each Triton Pod from 16 cores down to 12 cores consumes 48 CPU cores per socket. That leaves enough headroom for host daemons, so all 8 Pods schedule cleanly.
+The lesson is simple. Never divide total host CPU cores by total GPUs before you subtract the OS and DaemonSet reservations set in `systemReserved` and `kubeReserved`. Right-sizing each Triton Pod from 16 cores down to 12 cores consumes 48 CPU cores per socket. That leaves enough headroom for host daemons, so all 8 Pods schedule cleanly. Notice that the GPU count did not change. Only the CPU request changed, and that single change turned a rejected Pod into eight running ones.
 
 ---
 
 ### 3. Advanced: OS tuning, PyTorch DataLoader NUMA binding, MIG single-node constraints, and service classes
 
-Say the scheduler gives your Pod aligned GPUs and CPU cores, yet the GPU still waits between batches. OS-level and framework-level defaults can starve the GPU with data-loading stalls. Standard pageable host memory forces the CUDA driver to copy training batches through internal bounce buffers. Default kernel page sizes can cause excessive Translation Lookaside Buffer (TLB) misses across large datasets. CPU power-saving states add microsecond wake-up delays between kernel launches.
+Say the scheduler gives your Pod aligned GPUs and CPU cores, yet the GPU still waits between batches. Picture the GPU utilization graph in a Grafana panel, with a sawtooth pattern that drops to near zero between steps. The placement looks right, so the next suspects are the operating system and the framework. OS-level and framework-level defaults can starve the GPU with data-loading stalls. Standard pageable host memory forces the CUDA driver to copy training batches through internal bounce buffers. Pageable memory is memory the kernel is allowed to move or swap, so the driver has to copy it into a safe staging area first. Default kernel page sizes can cause excessive Translation Lookaside Buffer (TLB) misses across large datasets. The TLB is a small cache that maps virtual addresses to physical memory, and a miss means a slow lookup. CPU power-saving states add microsecond wake-up delays between kernel launches.
 
-To sustain maximum GPU utilization, platform engineers pair Kubernetes topology alignment with seven host and container tuning controls. Each row names one tuning domain, the setting to use, and the effect it has.
+To sustain maximum GPU utilization, platform engineers pair Kubernetes topology alignment with seven host and container tuning controls. Each row names one tuning domain, the setting to use, and the effect it has. Treat the table as a menu, not a checklist. Each setting helps a specific kind of workload, and a few of them help training and hurt inference, as you will see after the table.
 
 | Tuning Domain | Production Setting / Command | Measured Impact & Architectural Mechanism |
 |---|---|---|
@@ -214,10 +214,12 @@ To sustain maximum GPU utilization, platform engineers pair Kubernetes topology 
 | **6. OverlayFS bypass & direct I/O** | Bind-mount NVMe or parallel storage (`-v /data/dataset:/mnt/dataset:ro`), use `O_DIRECT` or `io_uring`, and call `posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED)` | Bypasses container Copy-on-Write (`CoW`) metadata overhead and prevents checkpoint bursts from evicting active dataset pages from the OS page cache. |
 | **7. GPU persistence daemon** | `systemctl enable nvidia-persistenced` | Keeps driver state initialized when `/dev/nvidia*` is closed, eliminating the `1–2` second cold-start delay and preserving dynamic MIG state. |
 
-Some rows differ between training and inference, and the THP row shows the clearest case. Training benefits from large pages, while latency-sensitive inference is better served by disabling THP.
+Some rows differ between training and inference, and the THP row shows the clearest case. Training benefits from large pages, while latency-sensitive inference is better served by disabling THP. The reason is that large pages cut the TLB misses that slow down big sequential scans, but the background work that builds large pages can pause a request for a few milliseconds at a bad moment. A training job absorbs that pause without noticing, and an inference request does not. Pick the setting per workload class, not per cluster.
+
+The pinned-memory row is the one most teams should apply first. Pinned memory is locked in RAM, so the GPU can read it directly. When you set `pin_memory=True` in the PyTorch DataLoader and move tensors with `non_blocking=True`, the copy can overlap with compute. The `ulimit -l unlimited` setting is required because Linux limits how much memory a process may lock by default, and a container with the default limit will quietly fall back to pageable copies.
 
 #### Explicit NUMA binding in Bash and PyTorch DataLoader workers
-Picture a multi-GPU job on a node where the kubelet did not isolate a single NUMA node per process. Each worker then needs an explicit bind to its local NUMA node. A simple startup loop can do that. It queries `nvidia-smi topo -m` for each GPU index and launches the training script under `numactl`.
+Picture a multi-GPU job on a node where the kubelet did not isolate a single NUMA node per process. Each worker then needs an explicit bind to its local NUMA node. A simple startup loop can do that. It queries `nvidia-smi topo -m` for each GPU index and launches the training script under `numactl`. The `numactl` tool sets which CPUs and which memory bank a process may use, so the process stays on its local socket.
 
 ```bash
 # Dynamically query each GPU's NUMA node via nvidia-smi topo -m and bind with numactl (untested here)
@@ -230,9 +232,11 @@ done
 wait
 ```
 
-DataLoader workers are a separate case. Spawned worker subprocesses do not reliably inherit `numactl` CPU and memory affinity across `exec` boundaries in PyTorch. You need to re-apply the binding inside each worker. To keep data-loading threads on the local socket, pass a closure-based `worker_init_fn` using `functools.partial`. In the parent process, query NVML or sysfs for the NUMA node and CPU list. Each worker then re-applies CPU affinity via `psutil` and memory policy via `libnuma`.
+Read the loop as a small recipe. It asks the hardware for each GPU's NUMA node, and it starts one training process per GPU, pinned to that node for both CPU and memory. The `&` at the end of each launch runs the process in the background, and `wait` keeps the script alive until all of them finish. The loop depends on the topology output being present on the node, so check that output first if the script behaves strangely.
 
-Watch out for one trap. Never call `torch.cuda` functions inside `worker_init_fn`. Doing so initializes duplicate CUDA contexts inside CPU worker processes.
+DataLoader workers are a separate case. Spawned worker subprocesses do not reliably inherit `numactl` CPU and memory affinity across `exec` boundaries in PyTorch. You need to re-apply the binding inside each worker. To keep data-loading threads on the local socket, pass a closure-based `worker_init_fn` using `functools.partial`. A closure is a function that remembers the values it was built with, and `functools.partial` is the standard way to build one with fixed arguments. In the parent process, query NVML or sysfs for the NUMA node and CPU list. Each worker then re-applies CPU affinity via `psutil` and memory policy via `libnuma`. The sysfs path is the Linux virtual filesystem that exposes the topology, and `libnuma` is the C library that sets the memory policy.
+
+Watch out for one trap. Never call `torch.cuda` functions inside `worker_init_fn`. Doing so initializes duplicate CUDA contexts inside CPU worker processes. A CUDA context is the per-process state that the driver builds before any GPU work can run, and each one costs GPU memory. The worker only needs the CPU binding, so keep the GPU calls in the parent process.
 
 ```text
 PyTorch NUMA-Aware DataLoader Reference Parameters (AI Systems Performance Engineering Ch. 3):
@@ -241,8 +245,10 @@ PyTorch NUMA-Aware DataLoader Reference Parameters (AI Systems Performance Engin
 - DataLoader settings: batch_size=32, num_workers=4, pin_memory=True, persistent_workers=True, prefetch_factor=2
 ```
 
+The reference block lists the discovery paths and the settings together, so you can check a script against them. The `persistent_workers` setting keeps the worker processes alive between epochs, so the binding work is done once rather than on every pass.
+
 #### The single-node MIG scheduling constraint
-Multi-Instance GPU, or MIG, splits one large GPU into smaller slices. When you partition GPUs this way, remember one limit. A Kubernetes Pod cannot span multiple nodes. If a Pod requests two MIG slices in a single container specification, the scheduler must find both slices free on the exact same physical machine.
+Multi-Instance GPU, or MIG, splits one large GPU into smaller slices. Each slice gets its own share of compute units, memory and copy engines, and each one is isolated from the others in hardware. When you partition GPUs this way, remember one limit. A Kubernetes Pod cannot span multiple nodes. If a Pod requests two MIG slices in a single container specification, the scheduler must find both slices free on the exact same physical machine. Free slices spread across different machines do not count, no matter how many there are in total.
 
 ```yaml
 resources:
@@ -258,10 +264,12 @@ Blackwell B200 MIG Profile Reference (132 SMs total, 1/7 = ~19 SMs per slice, Ta
 - Driver R570 MIG constraint: Cross-GPU MIG peer-to-peer (P2P), cross-instance CUDA IPC, and NCCL collectives across MIG instances are unsupported
 ```
 
-NCCL, the library that runs collective operations across GPUs, cannot use MIG slices across instances. Peer-to-peer DMA is also unsupported across MIG slices. For that reason, distributed multi-GPU training and expert-parallel inference should always request full GPUs.
+The limits block asks for two slices in one container. Read the profile reference below it to see what those two slices mean in SMs and memory. An SM (streaming multiprocessor) is the GPU's basic compute unit, and the count tells you how much of the chip a slice gets. The reference also shows why two slices on different machines are no help. The scheduler needs both on one node, and the NCCL line says that the two slices cannot talk to each other across instances anyway.
+
+NCCL, the library that runs collective operations across GPUs, cannot use MIG slices across instances. Peer-to-peer DMA is also unsupported across MIG slices. For that reason, distributed multi-GPU training and expert-parallel inference should always request full GPUs. Expert-parallel inference splits a mixture-of-experts model across GPUs, so tokens must travel between them at every layer. MIG is a good fit for many small, independent jobs, and a poor fit for a job whose GPUs must exchange data continuously.
 
 #### Designing the service-class catalog to control fragmentation
-Every hard locality rule you add shrinks the set of nodes and sockets a Pod can use. The smaller that set gets, the more likely GPUs are stranded and sit unused. Platform teams balance performance determinism against cluster utilization by publishing a four-tier service-class catalog.
+Every hard locality rule you add shrinks the set of nodes and sockets a Pod can use. The smaller that set gets, the more likely GPUs are stranded and sit unused. Fragmentation is the name for this effect, where free capacity exists but is split into pieces too small for the next Pod. Platform teams balance performance determinism against cluster utilization by publishing a four-tier service-class catalog. The catalog works as a menu that each team picks from, so that the strictest rules are only applied where they pay for themselves.
 
 | Service Class | Primary Objective | Kubernetes Scheduling & Locality Posture |
 |---|---|---|
@@ -270,21 +278,21 @@ Every hard locality rule you add shrinks the set of nodes and sockets a Pod can 
 | **3. Batch inference** | High throughput per dollar | Flexible placement across hardware generations (`preferredDuringScheduling`), queue-aware admission |
 | **4. Distributed training** | Predictable collective step time (`AllReduce`) | Topology-validated pool (`NV12`/`NV18` + `PIX` RDMA NICs), `single-numa-node` or `restricted`, gang-scheduled admission, checkpoint-aware preemption |
 
-Strict topology rules appear in the online inference and distributed training rows. The other two rows keep placement flexible.
+Strict topology rules appear in the online inference and distributed training rows. The other two rows keep placement flexible. The split is deliberate. Interactive users and batch jobs can tolerate a wait, so they should not pay the fragmentation cost of strict locality. Online inference and distributed training cannot tolerate either a slow path or a long wait, so they get the strict rules and the protected capacity that comes with them.
 
 #### Reducing orchestration jitter and requesting the whole node
 
-Kubernetes keeps background work running on every node. The kubelet, the container runtime, and monitoring agents all use some CPU and memory. Usually that is only a few percent of one core, so a training job barely notices. Consider what happens when a busy inference workload shares the same machine. If another container suddenly uses heavy CPU or I/O, your job feels it.
+Kubernetes keeps background work running on every node. The kubelet, the container runtime, and monitoring agents all use some CPU and memory. Usually that is only a few percent of one core, so a training job barely notices. Consider what happens when a busy inference workload shares the same machine. If another container suddenly uses heavy CPU or I/O, your job feels it. Jitter is the name for that small, unpredictable variation in step time, and it hurts most in jobs that wait on every step.
 
 Clusters that run only training, or only inference, are easier to debug and tune than a mix. Pods on the same node can still interrupt your job, though, when they share the network or the disks. Requests and limits help here, and so does cgroup control of CPU and I/O. Kubernetes supports CPU isolation, which gives a pod the dedicated cores and memory it requests. I/O is different. Kubernetes does not enforce I/O limits the same way, so I/O isolation may need manual node-level tuning.
 
-For performance-sensitive jobs, the cleanest setup is to request all of the CPUs and GPUs on the node. Then nothing else contends for those resources. That is hard to arrange in a shared cluster, but it remains the ideal setup for consistent performance. Decide early whether your job can have a node to itself, because that choice shapes the rest of the design.
+For performance-sensitive jobs, the cleanest setup is to request all of the CPUs and GPUs on the node. Then nothing else contends for those resources. That is hard to arrange in a shared cluster, but it remains the ideal setup for consistent performance. Decide early whether your job can have a node to itself, because that choice shapes the rest of the design. If the answer is yes, the placement problem gets much simpler, and most of the rules in this chapter stop mattering for that node.
 
 ## Commands and configurations that matter
 
 ### 1. Configuring kubelet for static CPU Manager and single-numa-node Topology Manager
 
-Start with the kubelet, because you configure it first. Without explicit kubelet configuration, every Pod gets shared CPU cores and unaligned devices, whatever its manifest says. To enable strict NUMA alignment on a GPU worker node, configure `/var/lib/kubelet/config.yaml`. Also make sure `--pass-device-specs=true` is enabled on the NVIDIA device plugin. Finally, make sure you reserve CPU and memory for host daemons. Otherwise user Pods can starve the kubelet or exhaust the cores of a socket.
+Start with the kubelet, because you configure it first. Without explicit kubelet configuration, every Pod gets shared CPU cores and unaligned devices, whatever its manifest says. Picture a platform engineer who writes perfect Pod manifests and still sees misaligned placement, because the node was never configured to honor them. To enable strict NUMA alignment on a GPU worker node, configure `/var/lib/kubelet/config.yaml`. Also make sure `--pass-device-specs=true` is enabled on the NVIDIA device plugin. Finally, make sure you reserve CPU and memory for host daemons. Otherwise user Pods can starve the kubelet or exhaust the cores of a socket.
 
 ```yaml
 # /var/lib/kubelet/config.yaml (untested here)
@@ -302,11 +310,13 @@ kubeReserved:
   memory: "4Gi"
 ```
 
-The pair to notice is `cpuManagerPolicy: static` with `topologyManagerPolicy: single-numa-node`. The `systemReserved` and `kubeReserved` blocks hold back the host's own share.
+The pair to notice is `cpuManagerPolicy: static` with `topologyManagerPolicy: single-numa-node`. The first decides how cores are handed out, and the second decides whether the cores, GPU and NIC must share a socket. The `systemReserved` and `kubeReserved` blocks hold back the host's own share. `systemReserved` covers the operating system daemons, and `kubeReserved` covers the kubelet and the container runtime. Those reservations are the cores that the Triton example above was missing.
+
+Apply the change on one node first, restart the kubelet there, and read the node's allocatable CPU before you touch the rest of the pool. If the allocatable number is lower than the physical core count by the amount you reserved, the change took effect. If the number has not moved, the kubelet did not pick up the file.
 
 ### 2. Deploying a Guaranteed QoS Pod that triggers static CPU pinning and single-numa-node
 
-A kubelet set to static CPU management is not enough by itself. The Pod must also meet the Guaranteed QoS contract, or it gets no exclusive cores. Every container needs identical requests and limits for CPU and memory, with whole integer CPU counts. This example requests 12 CPU cores rather than 16. Four Pods at 12 cores use 48 of the 64 cores on a socket, which leaves room for the OS reservations.
+A kubelet set to static CPU management is not enough by itself. The Pod must also meet the Guaranteed QoS contract, or it gets no exclusive cores. Every container needs identical requests and limits for CPU and memory, with whole integer CPU counts. This example requests 12 CPU cores rather than 16. Four Pods at 12 cores use 48 of the 64 cores on a socket, which leaves room for the OS reservations. The number is the reason the manifest looks slightly unusual. It is sized to the socket, not to the tenant's wish list.
 
 ```yaml
 # triton-numa-aligned-pod.yaml (untested here)
@@ -335,11 +345,11 @@ spec:
           nvidia.com/gpu: "1"
 ```
 
-Check the `requests` and `limits` blocks first, since you control both. A mismatch between them keeps the Pod out of Guaranteed QoS.
+Check the `requests` and `limits` blocks first, since you control both. A mismatch between them keeps the Pod out of Guaranteed QoS. The toleration lets the Pod land on the GPU taint, and the node selector keeps it in the online inference pool. Those two lines are the eligibility question from the four placement questions, and the resource block answers the capacity question. Read the manifest against those questions, and it will make sense even if the numbers look arbitrary.
 
 ### 3. Diagnosing Pending Pods and slow running Pods
 
-A Pending GPU Pod tempts engineers to assume the cluster is out of GPUs, and to scale up the node pool unnecessarily. Often the cluster has GPUs to spare. The scheduler can reject nodes for several independent reasons, including capacity, taints, and label selectors. Read the full `FailedScheduling` event message first, because it gives you the exact per-node breakdown.
+A Pending GPU Pod tempts engineers to assume the cluster is out of GPUs, and to scale up the node pool unnecessarily. Often the cluster has GPUs to spare. The scheduler can reject nodes for several independent reasons, including capacity, taints, and label selectors. Read the full `FailedScheduling` event message first, because it gives you the exact per-node breakdown. The breakdown tells you how many nodes failed for each reason, and those numbers add up to the total node count.
 
 ```bash
 # 1. Inspect predicate breakdown for a Pending GPU Pod (untested here)
@@ -357,7 +367,9 @@ Events:
     {pool: inference-only}, 2 node(s) didn't match Pod's node affinity/selector.
 ```
 
-A different symptom shows up in running workers. If a training worker's step times are three to four times slower than identical Pods on other nodes, check the GPU peer topology inside the container.
+Read the message as a small table. Each clause names one reason and the number of nodes that failed for it. A clause about GPUs means the pool is full. A clause about a taint means the nodes are protected for another workload. A clause about affinity or a selector means the Pod asked for labels that some nodes do not carry. The fix is different for each, so the message tells you which team to talk to.
+
+A different symptom shows up in running workers. If a training worker's step times are three to four times slower than identical Pods on other nodes, check the GPU peer topology inside the container. The Pod is running, so the scheduler is not the problem. The problem is what the two GPUs can reach each other through.
 
 ```bash
 # 2. Compare peer GPU interconnect inside the slow worker container (untested here)
@@ -372,11 +384,11 @@ GPU0     X    PHB   0-31          0
 GPU1    PHB    X    32-63         1
 ```
 
-In this output, GPU0 and GPU1 talk across a PCIe Host Bridge, and they sit on different NUMA nodes. That explains the severe collective slowdown next to an NVLink peer pair.
+In this output, GPU0 and GPU1 talk across a PCIe Host Bridge, and they sit on different NUMA nodes. That explains the severe collective slowdown next to an NVLink peer pair. A healthy placement for the same two GPUs would show NV12 or NV18 in the cell between them. If the cell shows PHB, the fix is in the placement, not in the code, so the training script is not the place to look first.
 
 ## How it fails
 
-Scheduling blocks, admission rejections, and silent locality regressions look different on the surface. Match the symptom to its cause before you change anything. The table below does that for the failures you can meet on multi-socket GPU servers.
+Scheduling blocks, admission rejections, and silent locality regressions look different on the surface. Match the symptom to its cause before you change anything. The table below does that for the failures you can meet on multi-socket GPU servers. Each row keeps the evidence and the boundary together, so you can see why the remedy belongs to that boundary and not to another.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -386,22 +398,26 @@ Scheduling blocks, admission rejections, and silent locality regressions look di
 | **4. Multi-slice MIG Pod (`nvidia.com/mig-2g.45gb: "2"`) stuck in `Pending` while cluster has `>= 2` free slices** | Cluster has `4` free `nvidia.com/mig-2g.45gb` slices spread `1` per node across `4` nodes, yet a Pod requesting `nvidia.com/mig-2g.45gb: "2"` (`~76` SMs) stays Pending (`Insufficient nvidia.com/mig-2g.45gb`). | **Single-Node Pod Boundary:** A Kubernetes Pod cannot span multiple nodes, so all `2` requested `2g.45gb` slices must be free on the same node. | Partition MIG nodes so multiple `2g.45gb` instances (`3` per B200 GPU) co-reside on the same node, or request `1` larger slice (`4g.90gb`). |
 | **5. Partial-start deadlock in multi-Pod distributed training** | A 4-worker PyTorch training job schedules `3` Pods holding `24` GPUs, while the 4th Pod stays Pending (`0/12 nodes are available: 4 Insufficient nvidia.com/gpu, 6 untolerated taint, 2 affinity mismatch`). The `24` allocated GPUs sit at `0%` compute waiting for rank 3 to join `dist.init_process_group`. | **Missing Coordinated / Gang Admission Boundary:** The default scheduler binds Pods one by one without checking whether the entire worker group can fit simultaneously. | Admit multi-Pod training jobs through a gang-aware queue or scheduler such as KAI Scheduler, Kueue, or Volcano covered in Chapters 11.7–11.20 so `0` GPUs are reserved until all `4` workers can start together. |
 
-Each row starts from a symptom you can see, then names the root cause and the fix. If you see `TopologyAffinityError` while GPUs on the node sit idle, start with row 1.
+Each row starts from a symptom you can see, then names the root cause and the fix. If you see `TopologyAffinityError` while GPUs on the node sit idle, start with row 1. If you see a slow training job with healthy Pods, start with row 2. Rows 3 and 4 are about the exact form of a request, so they are easy to miss in a manifest review. Row 5 is the one that wastes the most GPU time, because the allocated GPUs are paid for and doing nothing.
+
+Notice a pattern across the rows. Each failure looks like a scheduling problem in the first minute, and most of them turn out to be node-local problems or request-format problems. That is why the first question in the chapter, which door the Pod stopped at, is the question to ask again here.
 
 ## Hands-on lab
 
 ### Venue and scope
-This lab runs locally, so you do not need a cluster to follow it. Two Python 3 standard library scripts do the work: `code/part11/gpu_scheduling_and_topology.py` and `code/part11/gpu_scheduling_and_topology_lab.py`. Together they simulate six things: cross-NUMA memory latency, topology matrix link ranking, Guaranteed QoS and static CPU Manager eligibility, Topology Manager admission policies, dual-socket Triton Pod packing, and scheduler predicate decomposition. Commands that target a real cluster are marked untested here.
+This lab runs locally, so you do not need a cluster to follow it. Two Python 3 standard library scripts do the work: `code/part11/gpu_scheduling_and_topology.py` and `code/part11/gpu_scheduling_and_topology_lab.py`. Together they simulate six things: cross-NUMA memory latency, topology matrix link ranking, Guaranteed QoS and static CPU Manager eligibility, Topology Manager admission policies, dual-socket Triton Pod packing, and scheduler predicate decomposition. Each simulation is a small model of one rule from this chapter, so you can change an input and see the rule respond.
 
-### Step 1: Run the self-checking GPU scheduling and topology lab
+The commands that target a real cluster in this chapter were not run on one. They are marked as such in their code blocks, and they should be checked on your own hardware before you rely on them.
 
-Run the lab script from the repository root. It executes all 25 verification checks, and it prints a pass or fail line for each one.
+### Step 1: Run the self-checking GPU scheduling and topology lab (tested here)
+
+Run the lab script from the repository root. It executes all 25 verification checks, and it prints a pass or fail line for each one. The checks cover the arithmetic in this chapter, so a passing run means the simulator agrees with the numbers you have been reading.
 
 ```bash
 python3 code/part11/gpu_scheduling_and_topology_lab.py
 ```
 
-Captured output from this repository:
+The block below shows what a passing run prints.
 
 ```text
 === Chapter 11.6 Lab: GPU Scheduling, Topology Manager, CPU & NUMA Alignment ===
@@ -434,21 +450,21 @@ Captured output from this repository:
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-You should see every line read PASS. The summary at the end confirms that all 25 checks passed.
+You should see every line read PASS. The summary at the end confirms that all 25 checks passed. If one line reads FAIL, the matching check names the rule, and that is the first place to look before you trust any of the simulator's other answers.
 
 ### Exercises
 
-Start with the cross-NUMA latency calculation, which you can check by hand. Call `compute_numa_latency_penalty(80.0, 139.0)` in `code/part11/gpu_scheduling_and_topology.py`. Compute the exact nanosecond penalty, the exact percentage increase, and the rounded benchmark figure.
+Start with the cross-NUMA latency calculation, which you can check by hand. Call `compute_numa_latency_penalty(80.0, 139.0)` in `code/part11/gpu_scheduling_and_topology.py`. Compute the exact nanosecond penalty first. Then compute the exact percentage increase. Last, compare that with the rounded benchmark figure.
 
-Next, check QoS and CPU pinning eligibility. Use `classify_pod_qos_and_cpu_pinning()` on three Pods. Test integer CPU 16/16 with matching memory 65536/65536, fractional CPU 15.5/15.5, and unequal CPU 8/16.
+Next, check QoS and CPU pinning eligibility. Use `classify_pod_qos_and_cpu_pinning()` on three Pods. Test integer CPU 16/16 with matching memory 65536/65536. Test fractional CPU 15.5/15.5. Test unequal CPU 8/16. Which of the three Pods receives exclusive static CPU pinning?
 
-Then compare two admission policies on Node A. Socket 0 has 8 free CPUs and 1 free GPU, while socket 1 has 1 free NIC. Use `evaluate_topology_manager_admission()` to compare the outcome under `single-numa-node` and `best-effort`.
+Then compare two admission policies on Node A. Socket 0 has 8 free CPUs and 1 free GPU, while socket 1 has 1 free NIC. Use `evaluate_topology_manager_admission()` to compare the outcome under `single-numa-node`. Run it again under `best-effort`. Which policy rejects the Pod?
 
-Next, test the Triton packing problem. Call `simulate_dual_socket_hgx_pod_packing()` for 8 Pods on a dual-socket server with 62 available cores and 4 GPUs per socket. Compare the admitted Pod count and the remaining idle GPUs at 16 cores per Pod and at 12 cores per Pod.
+Next, test the Triton packing problem. Call `simulate_dual_socket_hgx_pod_packing()` for 8 Pods on a dual-socket server with 62 available cores and 4 GPUs per socket. Start with 16 cores per Pod. How many Pods are admitted, and how many GPUs stay idle? Then run it again with 12 cores per Pod. What changes?
 
-Then you can read a `FailedScheduling` event. Run `parse_failed_scheduling_event()` on the 12-node failure message for `train-worker-2`. Explain which node count shows a capacity shortage, which shows pool isolation, and which shows a selector mismatch.
+Then you can read a `FailedScheduling` event. Run `parse_failed_scheduling_event()` on the 12-node failure message for `train-worker-2`. Which node count shows a capacity shortage? Which node count shows pool isolation? Which node count shows a selector mismatch?
 
-Finish with the MIG slice math. Using the 132-SM Blackwell B200 profile table, calculate the SM count, HBM memory, copy engines, and maximum instances per GPU for `MIG 2g.45gb` and `MIG 3g.90gb`.
+Finish with the MIG slice math. Use the 132-SM Blackwell B200 profile table. Calculate the SM count for `MIG 2g.45gb`. Calculate the HBM memory for the same profile. Then calculate the copy engines and the maximum instances per GPU. Repeat the same steps for `MIG 3g.90gb`.
 
 ## Checkpoint questions
 

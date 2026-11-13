@@ -22,15 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture two nodes with identical hardware. On one of them, every distributed training step takes twice as long as on the other. The difference is where the cards sit. An NVIDIA H100 GPU has a lot of memory bandwidth inside the chip. The moment a tensor leaves the GPU over the motherboard PCIe bus, the transfer speed drops by more than fifty times.
+Picture two nodes with identical hardware. On one of them, every distributed training step takes twice as long as on the other. Nothing in the software differs, and the GPU model is the same. The difference is where the cards sit on the motherboard, and which path the data must take to reach them. An NVIDIA H100 GPU has a lot of memory bandwidth inside the chip. The moment a tensor leaves the GPU over the motherboard PCIe bus, the transfer speed drops by more than fifty times. PCIe is the standard high-speed wiring that connects GPUs, network cards, and storage to the CPU. Bandwidth is how much data can move per second, and it is the number that decides whether a GPU sits busy or waits.
 
-A server may lack dedicated PCIe switches. Kubernetes may also place a GPU and its RDMA network card on opposite CPU sockets. Then every network packet must cross the CPU Root Complex and the inter-socket link, which doubles distributed training step times across identical nodes.
+A server may lack dedicated PCIe switches. A switch here is a small chip that connects several devices to each other without sending their traffic through the CPU. Kubernetes may also place a GPU and its RDMA network card on opposite CPU sockets. A socket is the physical slot where a CPU chip sits, and a two-socket server has two CPUs that share the memory through a link between them. Then every network packet must cross the CPU Root Complex and the inter-socket link. The Root Complex is the part of the CPU that starts and ends every PCIe path. That detour is what doubles distributed training step times across otherwise identical nodes.
 
-Here is the arithmetic behind that gap. A PCIe Gen5 x16 link moves about 64 GB/s in one direction. Fifty times that is 3,200 GB/s. The H100's internal HBM3 bandwidth is 3,350 GB/s, so it is more than fifty times the PCIe Gen5 x16 figure.
+Here is the arithmetic behind that gap. A PCIe Gen5 x16 link moves about 64 GB/s in one direction. Fifty times that is 3,200 GB/s. The H100's internal HBM3 bandwidth is 3,350 GB/s, so it is more than fifty times the PCIe Gen5 x16 figure. The gap is the reason that the layout of cards on the board matters as much as the number of cards.
 
-Running GPUs or RDMA network cards inside virtual machines adds a second bottleneck. Under KVM, KubeVirt or Kata Containers, a traditional hypervisor proxies every packet or block request through a user-space emulator or a privileged management domain. Cloud platforms avoid that software tax by assigning a physical PCIe device, or an SR-IOV Virtual Function, straight to the guest OS. A Virtual Function is one slice of a physical network card. They make that assignment with PCIe Device Passthrough and the Linux VFIO subsystem.
+Running GPUs or RDMA network cards inside virtual machines adds a second bottleneck. Under KVM, KubeVirt or Kata Containers, a traditional hypervisor proxies every packet or block request through a user-space emulator or a privileged management domain. A hypervisor is the layer that runs virtual machines, and a user-space emulator is a program that imitates hardware for a guest. Each proxy step adds delay and uses CPU time. Cloud platforms avoid that software tax by assigning a physical PCIe device, or an SR-IOV Virtual Function, straight to the guest OS. A Virtual Function is one slice of a physical network card, presented as if it were its own card. They make that assignment with PCIe Device Passthrough and the Linux VFIO subsystem. VFIO is the Linux framework that hands a device to a user-space program or a virtual machine in a controlled way.
 
-Passthrough and SR-IOV also open a serious security hole when they are misconfigured. Direct Memory Access, or DMA, lets a device read and write memory without going through the host CPU or kernel. A compromised guest driver, or rogue network card firmware, can then read or write arbitrary host physical RAM addresses. A cloud penetration test showed how real that risk is. A tenant loaded a custom SR-IOV driver onto a host with no active IOMMU, and read the host management memory.
+Passthrough and SR-IOV also open a serious security hole when they are misconfigured. Direct Memory Access, or DMA, lets a device read and write memory without going through the host CPU or kernel. The kernel is the core of the operating system, and it normally checks every memory access. A compromised guest driver, or rogue network card firmware, can then read or write arbitrary host physical RAM addresses. A cloud penetration test showed how real that risk is. A tenant loaded a custom SR-IOV driver onto a host with no active IOMMU, and read the host management memory.
 
 The summary below collects the numbers this chapter returns to.
 
@@ -44,23 +44,21 @@ Motherboard, Passthrough, and Virtualization Summary Metrics:
 - Source: Systems Performance 2nd Ed. Ch. 11
 ```
 
-Two gaps stand out. The bus is far narrower than HBM3, and a cross-NUMA path loses about half its throughput.
+Two gaps stand out. The bus is far narrower than HBM3, and a cross-NUMA path loses about half its throughput. NUMA, or non-uniform memory access, describes a server where each CPU socket has its own local memory. Reaching memory on the other socket takes longer, so placement matters.
 
-This chapter connects the physical PCIe and NUMA data path with the IOMMU hardware firewall and the Linux VFIO group architecture. It also walks through Brendan Gregg's Cloud Virtualization Performance Model. You will see how Hardware Virtualization, OS Containers and Lightweight MicroVMs trade off CPU scheduling, memory translation and observability.
+This chapter connects the physical PCIe and NUMA data path with the IOMMU hardware firewall and the Linux VFIO group architecture. It also walks through Brendan Gregg's Cloud Virtualization Performance Model. You will see how Hardware Virtualization, OS Containers and Lightweight MicroVMs trade off CPU scheduling, memory translation and observability. A MicroVM is a very small virtual machine that boots quickly and carries only the parts a workload needs.
 
-Choose an isolation model with those trade-offs in mind, before you decide how to lay out the GPUs on a node.
+Choose an isolation model with those trade-offs in mind, before you decide how to lay out the GPUs on a node. The layout of the board sets the speed of the data path, and the isolation model sets how much a tenant can reach. Both decisions happen before any workload runs.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-Before you begin, finish Chapter 11.2 on the Device plugin, Container Toolkit, CDI and RuntimeClasses. Also finish Chapter 11.6, which covers Kubernetes Topology Manager and NUMA alignment. You should be comfortable with virtual memory page tables, MMU and TLB translation, and PCIe Bus:Device.Function addresses.
+Before you begin, finish Chapter 11.2 on the Device plugin, Container Toolkit, CDI and RuntimeClasses. Also finish Chapter 11.6, which covers Kubernetes Topology Manager and NUMA alignment. You should be comfortable with virtual memory page tables, MMU and TLB translation, and PCIe Bus:Device.Function addresses. The MMU is the memory management unit inside the CPU that turns program addresses into physical ones. A TLB is a small cache of recent translations, so the MMU does not have to look each one up again. A Bus:Device.Function address is the three-part name that identifies a PCIe device, such as the bus it sits on, its slot, and its function number.
 
 ### Outcomes
 
-The outcomes describe what you should be able to do by the end of the chapter. You will analyze PCIe Gen4 x16 and PCIe Gen5 x16 topologies on a motherboard, using `nvidia-smi topo -m`. You will eliminate cross-socket Intel UPI or AMD xGMI penalties with `kubelet --topology-manager-policy=single-numa-node`. You will explain how the Intel VT-d or AMD-Vi IOMMU translates Device Virtual Addresses to Host Physical Addresses. You will also see how it blocks unauthorized DMA with DMAR faults.
-
-You will enforce Linux VFIO isolation across IOMMU groups when you bind endpoints to `vfio-pci`. You will diagnose Hardware Virtualization overheads across KVM, Xen and AWS Nitro, using `perf kvm stat live`, `kvmexits.bt`, `vmstat` and guest BPF tools. Last, you will compare Hardware VMs, OS Containers and Lightweight MicroVMs on CPU share bursting, `cpu.stat` throttling, PID namespace mapping and observability.
+Picture a platform engineer who is handed a GPU node that is slow for no visible reason. The fix may start in the BIOS, the kernel command line, or the Kubernetes kubelet settings, so the engineer needs to know all three. This chapter covers how to read the PCIe topology on a motherboard with `nvidia-smi topo -m`, and how to keep a pod on one NUMA node with `kubelet --topology-manager-policy=single-numa-node`. It explains how the IOMMU translates device addresses to host physical addresses, and how it blocks unauthorized DMA with DMAR faults. It also shows how VFIO keeps each IOMMU group together when you bind endpoints to `vfio-pci`. Then it compares the overhead of KVM, Xen and AWS Nitro, using `perf kvm stat live`, `kvmexits.bt`, `vmstat` and guest BPF tools. It ends with a comparison of hardware VMs, OS containers and lightweight MicroVMs on CPU sharing, `cpu.stat` throttling, PID namespace mapping and observability.
 
 Work through the prerequisites first, so the topology commands and the VFIO steps make sense when you reach them.
 
@@ -70,13 +68,15 @@ Work through the prerequisites first, so the topology commands and the VFIO step
 
 #### 1. The Motherboard Highway: PCIe Gen4, PCIe Gen5, Root Complexes, Switches, and NUMA
 
-A distributed training job can stall on a network collective while the cluster fabric sits completely idle. The bottleneck frequently lies inside the server motherboard, not in the leaf-spine switches. Before a tensor reaches an optical cable or a guest VM, it has to cross PCIe lanes, switches or CPU sockets. If a GPU and its network card share no PCIe switch, every transfer bounces through the host CPU or crosses the inter-socket link.
+A distributed training job can stall on a network collective while the cluster fabric sits completely idle. The bottleneck frequently lies inside the server motherboard, not in the leaf-spine switches. Before a tensor reaches an optical cable or a guest VM, it has to cross PCIe lanes, switches or CPU sockets. A lane is one pair of wires that carries data in each direction, and a link bundles several lanes together. If a GPU and its network card share no PCIe switch, every transfer bounces through the host CPU or crosses the inter-socket link.
 
-A modern GPU or ConnectX network adapter connects to the motherboard through sixteen PCIe lanes. PCIe Gen5 x16 doubles the bandwidth of PCIe Gen4 x16. Even so, the external bus remains a narrow straw next to H100 HBM3 memory. How the server maker wires those lanes decides whether GPUDirect RDMA and Peer-to-Peer transfers run at full wire speed.
+A useful picture is a highway system. The lanes are the roads, the CPU Root Complex is the central junction that every road eventually reaches, and a PCIe switch is a local roundabout that lets two nearby devices talk without going to the junction. A transfer that stays on the roundabout never touches the busy center. A transfer that must go through the center waits in traffic, and it competes with everything else on the road.
 
-In a low-cost server, the PCIe slots wire straight into the CPU Root Complex. Traffic between a GPU and a network card must then climb to the CPU, pass through the PCIe Host Bridge, and come back down. That detour consumes host CPU memory bandwidth, and it often disables GPUDirect RDMA by default. AI-optimized servers avoid the detour by placing dedicated Broadcom or PLX PCIe switches between the CPU and the slots. Peer-to-Peer traffic then bypasses the host CPU completely.
+A modern GPU or ConnectX network adapter connects to the motherboard through sixteen PCIe lanes. PCIe Gen5 x16 doubles the bandwidth of PCIe Gen4 x16. Even so, the external bus remains a narrow straw next to H100 HBM3 memory. How the server maker wires those lanes decides whether GPUDirect RDMA and Peer-to-Peer transfers run at full wire speed. GPUDirect RDMA lets a network card read or write GPU memory directly. Peer-to-Peer transfers move data from one device to another without a copy in host memory.
 
-An eight-GPU server typically has two physical CPU sockets, called NUMA Node 0 and NUMA Node 1. NUMA stands for non-uniform memory access. The two sockets connect across an Intel UPI or AMD xGMI link. A pod that pairs a GPU on NUMA Node 1 with a network card on NUMA Node 0 forces every packet across that link. If you schedule that pod, the crossing cuts communication throughput in half, which doubles distributed training time.
+In a low-cost server, the PCIe slots wire straight into the CPU Root Complex. Traffic between a GPU and a network card must then climb to the CPU, pass through the PCIe Host Bridge, and come back down. A Host Bridge is the part of the CPU that connects PCIe to the rest of the system. That detour consumes host CPU memory bandwidth, and it often disables GPUDirect RDMA by default. AI-optimized servers avoid the detour by placing dedicated Broadcom or PLX PCIe switches between the CPU and the slots. Peer-to-Peer traffic then bypasses the host CPU completely.
+
+An eight-GPU server typically has two physical CPU sockets, called NUMA Node 0 and NUMA Node 1. The two sockets connect across an Intel UPI or AMD xGMI link. UPI and xGMI are the high-speed links that carry traffic between CPU sockets. A pod that pairs a GPU on NUMA Node 1 with a network card on NUMA Node 0 forces every packet across that link. If you schedule that pod, the crossing cuts communication throughput in half, which doubles distributed training time. Think of it as two office buildings joined by a single bridge. Work that stays inside one building moves quickly, and work that must cross the bridge waits in a queue.
 
 Each code that `nvidia-smi topo -m` reports names one physical path. The table below explains what each path means and how it affects GPUDirect P2P.
 
@@ -88,7 +88,7 @@ Each code that `nvidia-smi topo -m` reports names one physical path. The table b
 | **`NODE`** | Traverses **PCIe Host Bridges** within a single NUMA node | **Yes** | No | **Degraded** (hits CPU) |
 | **`SYS`** | Crosses the **inter-socket NUMA link (`Intel UPI` / `AMD xGMI`)** | **Yes** | **Yes** | **Worst on Host** (`~50%` throughput loss) |
 
-Only `PIX` and `PXB` keep Peer-to-Peer traffic off the CPU Root Complex. `SYS` is the worst case on a host, because it also crosses the inter-socket link.
+Read the table from the top down, and notice that each row adds one more obstacle. PIX stays on one switch. PXB goes through several switches, but still avoids the CPU. PHB and NODE reach the CPU, and SYS also crosses to the other socket. Only `PIX` and `PXB` keep Peer-to-Peer traffic off the CPU Root Complex. `SYS` is the worst case on a host, because it also crosses the inter-socket link. When you read a topology report, look for the code between each GPU and each NIC first, then decide whether the path is acceptable for the job.
 
 Keep these reference figures beside any topology report you audit.
 
@@ -101,11 +101,13 @@ Motherboard PCIe vs GPU Bandwidth Reference:
 - Cross-NUMA (SYS) GPU 2 on NUMA 1 to 400G NIC on NUMA 0: ~50% performance drop (2x training time)
 ```
 
-The cross-NUMA line deserves the most attention, because it roughly halves throughput.
+The cross-NUMA line deserves the most attention, because it roughly halves throughput. If a training run is slow and the topology shows a SYS path between a GPU and the NIC it uses, that single path may explain most of the slowdown.
 
 #### 2. The IOMMU Hardware Firewall and Linux VFIO
 
 Suppose you hand a physical GPU, or an SR-IOV Virtual Function, straight to a guest you do not trust. With no hardware memory protection in the way, that tenant can read host kernel memory. The route is Direct Memory Access, or DMA. DMA lets a PCIe card read and write system RAM without involving the host CPU or kernel. If the motherboard IOMMU is disabled, a malicious guest driver or compromised adapter firmware can read arbitrary host physical addresses. From there, the attacker can steal host root credentials or sibling VM memory straight off the motherboard.
+
+Think of the IOMMU as the door guard of a large office building. Every device that wants to enter a room must show a pass, and the guard checks the pass against a list of rooms that device may use. A guest driver that holds a valid pass gets into its own room. A driver that tries to open a door to another tenant's room is stopped at the desk, and the guard writes the attempt in a log. The guard does not care what the device intended. It only checks the list that the host has written.
 
 ```mermaid
 flowchart LR
@@ -116,13 +118,13 @@ flowchart LR
     Blocked -.->|"Protects"| HostRAM["Host Kernel & Sibling VM RAM (Root Keys Safe)"]
 ```
 
-The IOMMU does for devices what the CPU MMU does for processes. The Intel VT-d or AMD-Vi IOMMU sits between the PCIe bus and system RAM. Every PCIe Transaction Layer Packet carries the source Bus:Device.Function Requester ID of the device that sent it. When you enable the IOMMU with `intel_iommu=on` or `amd_iommu=on`, the hardware looks up that Requester ID in its DMA Remapping Access Table. It also caches recent translations in an internal IOTLB.
+The IOMMU does for devices what the CPU MMU does for processes. The Intel VT-d or AMD-Vi IOMMU sits between the PCIe bus and system RAM. Every PCIe Transaction Layer Packet carries the source Bus:Device.Function Requester ID of the device that sent it. A Transaction Layer Packet is one message on the PCIe bus, and the Requester ID is the return address that says which device sent it. When you enable the IOMMU with `intel_iommu=on` or `amd_iommu=on`, the hardware looks up that Requester ID in its DMA Remapping Access Table. That table is the guard's list of rooms for each device. The hardware also caches recent translations in an internal IOTLB, so the lookup does not have to repeat for every packet.
 
-Two cases follow from that lookup. A DMA request aimed at a valid I/O Virtual Address, mapped to the guest VM's pinned Host Physical Address, goes through. A compromised guest driver that tries to read host kernel RAM, or another tenant's memory, hits a wall. The IOMMU blocks that transaction in silicon and logs a hardware DMAR fault in the host kernel ring buffer. Single-tenant bare-metal HPC clusters sometimes boot with `iommu=pt` to avoid IOTLB lookup latency. Multi-tenant cloud nodes, however, must enforce strict IOMMU remapping.
+Two cases follow from that lookup. A DMA request aimed at a valid I/O Virtual Address, mapped to the guest VM's pinned Host Physical Address, goes through. An I/O Virtual Address is the address a device uses, which the IOMMU translates into a real physical address. Pinned means the host has locked those pages in RAM so they cannot move while a device is using them. A compromised guest driver that tries to read host kernel RAM, or another tenant's memory, hits a wall. The IOMMU blocks that transaction in silicon and logs a hardware DMAR fault in the host kernel ring buffer. DMAR is the name of the IOMMU's remapping table and fault reporting. The ring buffer is the kernel's log of recent messages. Single-tenant bare-metal HPC clusters sometimes boot with `iommu=pt` to avoid IOTLB lookup latency. Passthrough mode skips the translation for host devices, which trades some checking for speed. Multi-tenant cloud nodes, however, must enforce strict IOMMU remapping.
 
-Linux sorts PCIe devices into IOMMU groups, which you can list under `/sys/kernel/iommu_groups/<N>/devices/`. An IOMMU group is the smallest set of devices that the IOMMU hardware can isolate from all others. Two endpoints may sit behind a PCIe bridge that lacks PCIe Access Control Services source validation. Their peer-to-peer traffic could then bypass the IOMMU. So Linux places both endpoints into the same group.
+Linux sorts PCIe devices into IOMMU groups, which you can list under `/sys/kernel/iommu_groups/<N>/devices/`. An IOMMU group is the smallest set of devices that the IOMMU hardware can isolate from all others. Two endpoints may sit behind a PCIe bridge that lacks PCIe Access Control Services source validation. Access Control Services, or ACS, is a feature that makes a bridge check and redirect traffic between its devices. Without it, their peer-to-peer traffic could bypass the IOMMU. So Linux places both endpoints into the same group. Picture a hallway that all the rooms share. If one door along the hallway is not locked, the whole hallway must be treated as one space, so every door in that group has to be handled together.
 
-VFIO then exposes an isolated group to user-space hypervisors, such as QEMU or Cloud Hypervisor, through `/dev/vfio/<group_id>`. Before it allows passthrough, VFIO enforces a strict group viability rule. You cannot pass a GPU into a VM while any non-bridge sibling endpoint in its IOMMU group is still bound to a host driver. The GPU and any companion audio function must both bind to `vfio-pci` or `pci-stub`.
+VFIO then exposes an isolated group to user-space hypervisors, such as QEMU or Cloud Hypervisor, through `/dev/vfio/<group_id>`. A user-space hypervisor is a program that runs a virtual machine outside the kernel, and QEMU is the most common one. Before it allows passthrough, VFIO enforces a strict group viability rule. You cannot pass a GPU into a VM while any non-bridge sibling endpoint in its IOMMU group is still bound to a host driver. A bridge in this sense is a forwarding device, and the rule skips it. The GPU and any companion audio function must both bind to `vfio-pci` or `pci-stub`. Think of this rule as a lending desk that will hand over a whole hallway only when every key on that hallway has been returned to it.
 
 The example below shows one IOMMU group and the device node that VFIO creates from it.
 
@@ -134,7 +136,7 @@ IOMMU Group 42 and VFIO Viability Example:
 - VFIO device node: /dev/vfio/42 (exposed only when both 0000:4b:00.0 and 0000:4b:00.1 bind to vfio-pci)
 ```
 
-The node appears only after both endpoints bind to `vfio-pci`, so you should check each endpoint before you start the VM.
+The node appears only after both endpoints bind to `vfio-pci`, so you should check each endpoint before you start the VM. If the node is missing, the first question to ask is whether a sibling device in the same group still has a host driver attached.
 
 ---
 
@@ -142,11 +144,11 @@ The node appears only after both endpoints bind to `vfio-pci`, so you should che
 
 #### 1. Cloud Sizing and Hypervisor Architectures
 
-Fixed physical servers waste capacity whenever load drops off-peak. A poorly built hypervisor wastes CPU in another way, by emulating I/O in software. Cloud platforms solve the capacity problem by slicing large physical hosts into elastic virtual instances. Brendan Gregg describes this in *Systems Performance*, Chapter 11. The catch is latency. If the hypervisor proxies every packet or storage request through a management domain or a user-space emulator, high-speed GPU and NVMe workloads suffer high latency.
+Fixed physical servers waste capacity whenever load drops off-peak. A server sized for the busiest hour sits mostly idle the rest of the day. A poorly built hypervisor wastes CPU in another way, by emulating I/O in software. Cloud platforms solve the capacity problem by slicing large physical hosts into elastic virtual instances. Brendan Gregg describes this in *Systems Performance*, Chapter 11. The catch is latency. If the hypervisor proxies every packet or storage request through a management domain or a user-space emulator, high-speed GPU and NVMe workloads suffer high latency. NVMe is the fast interface that modern solid-state drives use.
 
-Rather than rely on the dated 1973 Type 1 and Type 2 taxonomy, Gregg sorts production cloud hypervisors into three practical architectures. In Configuration A, shown by Xen and VMware ESX, a bare-metal hypervisor runs directly on the CPU. It schedules virtual CPUs with Borrowed Virtual Time, Simple Earliest Deadline First, or Credit-based schedulers. A privileged management domain, called Domain-0 or `dom0`, administers the host. It either proxies I/O or offloads work to Isolated Driver Domains metered by SEDF-DC.
+Rather than rely on the dated 1973 Type 1 and Type 2 taxonomy, Gregg sorts production cloud hypervisors into three practical architectures. The older Type 1 and Type 2 labels split hypervisors by where they sit, but they do not explain how the I/O path behaves. In Configuration A, shown by Xen and VMware ESX, a bare-metal hypervisor runs directly on the CPU. It schedules virtual CPUs with Borrowed Virtual Time, Simple Earliest Deadline First, or Credit-based schedulers. A scheduler here decides which virtual CPU runs next and for how long. A privileged management domain, called Domain-0 or `dom0`, administers the host. It either proxies I/O or offloads work to Isolated Driver Domains metered by SEDF-DC. An Isolated Driver Domain is a separate guest that owns one device driver, so a fault in that driver does not reach the rest of the host.
 
-In Configuration B, shown by Linux KVM, the host kernel itself acts as the hypervisor, through the `kvm` kernel module. KVM schedules guest vCPUs as regular Linux kernel threads. Alongside them runs a per-VM `qemu-system-x86` user-space process, which emulates legacy hardware and proxies virtual I/O. AWS Nitro keeps KVM for processor virtualization, but adds dedicated SR-IOV and hardware-offload cards for networking, storage, interrupts and timers. Nitro eliminates the QEMU I/O proxy process completely, so guests achieve near-bare-metal I/O latency.
+In Configuration B, shown by Linux KVM, the host kernel itself acts as the hypervisor, through the `kvm` kernel module. KVM schedules guest vCPUs as regular Linux kernel threads. Alongside them runs a per-VM `qemu-system-x86` user-space process, which emulates legacy hardware and proxies virtual I/O. AWS Nitro keeps KVM for processor virtualization, but adds dedicated SR-IOV and hardware-offload cards for networking, storage, interrupts and timers. Nitro eliminates the QEMU I/O proxy process completely, so guests achieve near-bare-metal I/O latency. The difference is that the work of the emulator moves onto a card, and the card runs its own code without touching the host CPU.
 
 The reference below gathers the sizing cases and hypervisor figures from this part of the chapter.
 
@@ -161,19 +163,19 @@ Cloud Sizing and Hypervisor Architecture Benchmarks (Systems Performance 11.1 - 
 - AWS Nitro drivers: ena (networking) and nvme (storage) hardware offload cards
 ```
 
-When you read the step counts, keep the architecture descriptions above them in view.
+When you read the step counts, keep the architecture descriptions above them in view. A step count means little unless you know which path the steps follow. The sizing figures show the business side of the same choice, which is that elastic instances save money only when the I/O path is fast enough for the workload.
 
 #### 2. CPU Virtualization, Two-Stage Memory, and VM-EXIT Tracing
 
-Consider a GPU passed straight into a KVM guest through `vfio-pci`. Even so, the guest's CPU threads still run under hardware virtualization. Whenever a guest vCPU runs a privileged operation, or faults on an unmapped physical memory page, execution traps into the host hypervisor. Too many guest exits, or host CPU throttling, can stall GPU kernel launches and dataloader threads. Meanwhile, the guest operator has no view of the root cause.
+Consider a GPU passed straight into a KVM guest through `vfio-pci`. Even so, the guest's CPU threads still run under hardware virtualization. Whenever a guest vCPU runs a privileged operation, or faults on an unmapped physical memory page, execution traps into the host hypervisor. A VM-EXIT is the moment the CPU leaves guest mode and hands control to the hypervisor. Too many guest exits, or host CPU throttling, can stall GPU kernel launches and dataloader threads. Meanwhile, the guest operator has no view of the root cause. From inside the guest, the GPU looks slow, and nothing in the guest's logs says why.
 
-Early hypervisors used binary translation at run time. They ran the Virtual Machine Monitor in Ring 0 and moved the guest kernel to Ring 1. Applications stayed in Ring 3, while the hypervisor rewrote privileged instructions on the fly. Paravirtualization took another route. It changed the guest OS so that privileged instructions became explicit hypercalls or batched multicalls. Modern processors with Intel VT-x and AMD-V run the hypervisor in a root mode below Ring 0. There, the hypervisor traps through a VM-EXIT only on privileged operations.
+Early hypervisors used binary translation at run time. They ran the Virtual Machine Monitor in Ring 0 and moved the guest kernel to Ring 1. Ring 0 is the most privileged level of the CPU, where the kernel runs, and higher ring numbers have fewer rights. Applications stayed in Ring 3, while the hypervisor rewrote privileged instructions on the fly. Paravirtualization took another route. It changed the guest OS so that privileged instructions became explicit hypercalls or batched multicalls. A hypercall is a deliberate request from a guest to the hypervisor, the way a system call asks the kernel for help. Modern processors with Intel VT-x and AMD-V run the hypervisor in a root mode below Ring 0. There, the hypervisor traps through a VM-EXIT only on privileged operations. The guest kernel keeps its own code and runs at its normal level, and the CPU does the separation.
 
-Memory virtualization needs two stages of translation. The guest kernel first maps Guest Virtual addresses to Guest Physical addresses. Then the hypervisor maps Guest Physical addresses to Host Physical addresses. Without hardware help, the hypervisor had to trap every `CR3` and page-table change, and keep Shadow Page Tables up to date in software. Modern CPUs offer Intel Extended Page Tables and AMD Nested Page Tables instead. The hardware page-walker then resolves both stages in silicon, with no VM-EXIT.
+Memory virtualization needs two stages of translation. The guest kernel first maps Guest Virtual addresses to Guest Physical addresses. Then the hypervisor maps Guest Physical addresses to Host Physical addresses. Without hardware help, the hypervisor had to trap every `CR3` and page-table change, and keep Shadow Page Tables up to date in software. `CR3` is the CPU register that points to the current page table, and a shadow table is a software copy that combines the two stages. Modern CPUs offer Intel Extended Page Tables and AMD Nested Page Tables instead. The hardware page-walker then resolves both stages in silicon, with no VM-EXIT. A page walker is the part of the MMU that finds a translation when the TLB misses.
 
-Operators must never inflate a hypervisor memory balloon driver inside a guest that uses GPU passthrough with `vfio-pci`. VFIO pins all guest physical RAM pages in the host IOMMU. That pinning lets the GPU run Direct Memory Access transfers safely at any moment. A balloon driver reclaims pages, which conflicts with those pinned DMA mappings and breaks passthrough initialization.
+Operators must never inflate a hypervisor memory balloon driver inside a guest that uses GPU passthrough with `vfio-pci`. A balloon driver is a guest component that gives memory back to the host when the host is short of RAM. VFIO pins all guest physical RAM pages in the host IOMMU. That pinning lets the GPU run Direct Memory Access transfers safely at any moment. A balloon driver reclaims pages, which conflicts with those pinned DMA mappings and breaks passthrough initialization. In practice, the rule is simple. If a guest owns a passed-through device, its memory is reserved for that device and cannot be taken back.
 
-On the host, you can measure VM-EXIT overhead with `pidstat`, `perf kvm stat live`, or a `bpftrace` script such as `kvmexits.bt`. That script attaches to `tracepoint:kvm:kvm_exit` and `tracepoint:kvm:kvm_entry`. Passthrough and SR-IOV change what the host can see. A guest's device traffic bypasses the host kernel and the QEMU proxy completely. So host tools such as `iostat` or `sar` cannot see guest disk and network I/O. You need hardware Performance Monitoring Counters, DCGM metrics, or guest BPF tools such as `biosnoop` instead. Keep an eye on `vmstat` stolen CPU time while you work.
+On the host, you can measure VM-EXIT overhead with `pidstat`, `perf kvm stat live`, or a `bpftrace` script such as `kvmexits.bt`. `bpftrace` is a tool that attaches small programs to kernel events. That script attaches to `tracepoint:kvm:kvm_exit` and `tracepoint:kvm:kvm_entry`. Passthrough and SR-IOV change what the host can see. A guest's device traffic bypasses the host kernel and the QEMU proxy completely. So host tools such as `iostat` or `sar` cannot see guest disk and network I/O. You need hardware Performance Monitoring Counters, DCGM metrics, or guest BPF tools such as `biosnoop` instead. Keep an eye on `vmstat` stolen CPU time while you work. Stolen time is the time a guest wanted to run but the host gave its CPU to someone else.
 
 The reference below gathers the KVM exit counts and the passthrough observability figures.
 
@@ -199,7 +201,7 @@ KVM Host VM-EXIT, EPT, and Passthrough Observability Reference (Systems Performa
 - Throttled Xen guest vmstat 1 stolen CPU time (%st): jumps from 1-5% to 97-99%
 ```
 
-Read the HLT line as a sign of normal idling, since it accounts for most of the measured time.
+Read the HLT line as a sign of normal idling, since it accounts for most of the measured time. HLT is the instruction an idle vCPU uses to sleep, so a large share of exits that take a long time is expected in a mostly idle guest. The exits that matter more for a busy GPU job are the short, frequent ones, such as the I/O and EPT lines, because those are the ones that repeat during training.
 
 ---
 
@@ -207,13 +209,15 @@ Read the HLT line as a sign of normal idling, since it accounts for most of the 
 
 #### 1. Architecture, Security, and Observability Trade-offs
 
-If you architect a multi-tenant AI cluster, you have to trade isolation against agility. OS Containers boot in milliseconds and share host memory cleanly. The downside is that one host kernel panic, or one filesystem lock bug, reaches every tenant on the node. Full Hardware VMs do the opposite. They isolate each tenant's kernel behind an IOMMU and a hypervisor. Their cost is that traditional user-space emulators carry over a million lines of code, and they add memory and boot overhead.
+If you architect a multi-tenant AI cluster, you have to trade isolation against agility. OS Containers boot in milliseconds and share host memory cleanly. The downside is that one host kernel panic, or one filesystem lock bug, reaches every tenant on the node. A kernel panic is a fatal kernel error that halts the machine. Full Hardware VMs do the opposite. They isolate each tenant's kernel behind an IOMMU and a hypervisor. Their cost is that traditional user-space emulators carry over a million lines of code, and they add memory and boot overhead.
 
-Modern AI clouds match each workload to one of three runtime models. Brendan Gregg analyzes them in *Systems Performance*, Sections 11.3 through 11.6. Trusted internal training jobs usually run in OS Containers, managed by `containerd` and `nvidia-container-toolkit`. Untrusted multi-tenant GPU rentals run in full Hardware VMs, under KVM or KubeVirt, with `vfio-pci` passthrough or NVIDIA vGPU. Serverless inference and multi-tenant Kubernetes pods are increasingly moving to Lightweight MicroVMs, such as AWS Firecracker or Kata Containers.
+A simple way to hold the three models in your head is to think about housing. OS Containers are tenants who share one building and one roof. They have their own rooms and keys, but the roof is common, so a leak in the roof reaches everyone. Hardware VMs are separate houses on one lot. Each house has its own foundation and wiring, which costs more to build and takes longer to move into. Lightweight MicroVMs are small, separate cabins. They are quick to set up and cost little, and each one has its own walls and lock.
 
-OS Containers split one shared Linux kernel into partitions. They rely on namespaces, control groups and `seccomp-bpf` syscall filters. They also share the host page cache through OverlayFS. Lightweight MicroVMs combine the speed of containers with the hardware isolation of KVM. They do this by stripping the user-space VMM down to the bare essentials. AWS Firecracker and Intel Clear Containers, which merged into Kata Containers, boot a dedicated guest kernel in tens of milliseconds, with minimal memory overhead. Kata Containers attach GPUs straight into the MicroVM guest kernel, using `vfio-pci` passthrough and the Kata `runtimeClassName`.
+Modern AI clouds match each workload to one of three runtime models. Brendan Gregg analyzes them in *Systems Performance*, Sections 11.3 through 11.6. Trusted internal training jobs usually run in OS Containers, managed by `containerd` and `nvidia-container-toolkit`. Untrusted multi-tenant GPU rentals run in full Hardware VMs, under KVM or KubeVirt, with `vfio-pci` passthrough or NVIDIA vGPU. Serverless inference and multi-tenant Kubernetes pods are increasingly moving to Lightweight MicroVMs, such as AWS Firecracker or Kata Containers. Serverless inference means the platform starts a model's container on demand, so the start-up time matters a great deal.
 
-Observability splits these models sharply. OS Containers favor the host operator. Every container process is an ordinary host task, so host `top`, `perf` and `bpftrace` can see it. Container tenants, though, cannot run kernel tracing tools. They also see host-wide counters leak through `iostat`, `free`, `vmstat`, `mpstat` and `uptime`. Hardware VMs and Lightweight MicroVMs favor the end user instead. Each tenant gets a dedicated guest kernel for `perf`, Ftrace and BPF tools. The host operator, in exchange, sees only an opaque QEMU or Firecracker process.
+OS Containers split one shared Linux kernel into partitions. They rely on namespaces, control groups and `seccomp-bpf` syscall filters. A syscall filter is a rule set that blocks certain requests a program can make to the kernel. They also share the host page cache through OverlayFS. The page cache is the memory the kernel uses to keep recently read files. Lightweight MicroVMs combine the speed of containers with the hardware isolation of KVM. They do this by stripping the user-space VMM down to the bare essentials. AWS Firecracker and Intel Clear Containers, which merged into Kata Containers, boot a dedicated guest kernel in tens of milliseconds, with minimal memory overhead. Kata Containers attach GPUs straight into the MicroVM guest kernel, using `vfio-pci` passthrough and the Kata `runtimeClassName`. A runtime class is the Kubernetes setting that tells the cluster which runtime should start a pod.
+
+Observability splits these models sharply. OS Containers favor the host operator. Every container process is an ordinary host task, so host `top`, `perf` and `bpftrace` can see it. Container tenants, though, cannot run kernel tracing tools. They also see host-wide counters leak through `iostat`, `free`, `vmstat`, `mpstat` and `uptime`. Hardware VMs and Lightweight MicroVMs favor the end user instead. Each tenant gets a dedicated guest kernel for `perf`, Ftrace and BPF tools. Ftrace is the kernel's built-in tracing facility. The host operator, in exchange, sees only an opaque QEMU or Firecracker process. That is the trade. The tenant gains visibility, and the host loses it.
 
 The table below compares the three models on the attributes discussed above.
 
@@ -227,17 +231,21 @@ The table below compares the three models on the attributes discussed above.
 | **Observability from the Guest (`Table 11.6`)** | **High (Favors End Users):** Full dedicated kernel; `perf`, `Ftrace`, BPF (`biosnoop`), and `vmstat %st` all work | **Medium:** Kernel tracing (`perf`, `dmesg`, BPF) restricted; **`top`, `uptime`, `mpstat`, `vmstat`, `free`, `iostat` leak host-wide stats** (e.g. idle container `iostat` showing host `nvme0n1` at `2,578` tps / `100%` util while `blkio.throttle.io_serviced` stays flat at `804`) | **High (Favors End Users):** Full dedicated guest kernel; `mpstat` shows only guest `vCPUs` (`2` CPUs) and guest BPF/perf tools work |
 | **Kernel Blast Radius** | Guest kernel panic or custom kernel module affects **only that VM**; IOMMU blocks rogue DMA | **Shared kernel:** Any kernel panic crashes all containers on the node; `dcache`/`lstat` or `posix_fadvise()` contention affects neighbors (`[Borello 17]`, `[Leonovich 18]`) | Guest kernel panic affects **only that MicroVM**; combines container boot speed (`45–100 ms`) with hardware VM isolation |
 
-Read the kernel blast radius row last, because it shows what a single failure can reach.
+Read the kernel blast radius row last, because it shows what a single failure can reach. Blast radius is the amount of damage that one failure can cause before it stops. In a container host, the shared kernel is the largest shared thing, so a panic there reaches every tenant. In a VM or a MicroVM, the failure stays inside the guest kernel.
+
+A useful habit is to read the table column by column as well. Each column describes one kind of tenant. The host operator's column tells you what you can see and debug. The guest column tells you what the tenant can see. The middle rows show the costs, such as the memory pinning that VFIO needs or the shared page cache that containers use. Reading both sides keeps you from choosing a model only because one column looks attractive.
 
 #### 2. Diagnosing Container CPU Throttling and Bursting on Shared GPU Nodes
 
-Consider a containerized PyTorch dataloader that stalls on a shared GPU node. Your first habit is to check host `mpstat`. Plenty of idle CPU shows up there, so the operator concludes that the CPU is not the bottleneck. That conclusion is often wrong. Software cgroup limits, or changes to CFS shares, can throttle a container severely, even on a partly idle host. Worse, CFS share bursting can cut a container's available CPU by ten times when neighboring pods wake up.
+Consider a containerized PyTorch dataloader that stalls on a shared GPU node. A dataloader is the part of a training program that reads and prepares batches of data for the GPU. Your first habit is to check host `mpstat`. Plenty of idle CPU shows up there, so the operator concludes that the CPU is not the bottleneck. That conclusion is often wrong. Software cgroup limits, or changes to CFS shares, can throttle a container severely, even on a partly idle host. CFS is the Linux fair scheduler, and its shares are the relative weights that decide how much CPU each group gets. Worse, CFS share bursting can cut a container's available CPU by ten times when neighboring pods wake up.
 
-CFS CPU shares divide capacity in proportion to the tenants that are busy. The formula is `container CPU = all CPUs * container shares / total busy shares`. A container with a small share allocation can burst to use the entire host CPU during an isolated staging test. When the node fills up in production, that same container drops back to its guaranteed share. Operators prevent that tenfold bait-and-switch slowdown by capping bursting with an explicit CFS bandwidth quota. The block below works through the numbers.
+CFS CPU shares divide capacity in proportion to the tenants that are busy. The formula is `container CPU = all CPUs * container shares / total busy shares`. A container with a small share allocation can burst to use the entire host CPU during an isolated staging test. When the node fills up in production, that same container drops back to its guaranteed share. Operators prevent that tenfold bait-and-switch slowdown by capping bursting with an explicit CFS bandwidth quota. A bandwidth quota sets a hard ceiling on CPU time per period, so the container cannot grow past it even when the host is empty. The block below works through the numbers.
 
-To find out why a container is slow, follow the five-statistic sequence from Brendan Gregg's *Systems Performance*, Section 11.3.4 and Figure 11.13. Start with `throttled_time` and `nr_throttled` in the container's `cpu.stat` file. They show whether CFS bandwidth limits are pausing the pod. Next, check `nonvoluntary_ctxt_switches` in `/proc/PID/status`. If that counter is not climbing, the process is not being forced off the CPU.
+The idea is the one that surprises people. A share is a weight, not a reservation. When nobody else is busy, a weight of ten still gets the whole machine. When everybody is busy, that same weight gets only its fraction. A staging test runs on an empty machine, so it shows the burst. Production runs on a full machine, so it shows the fraction. The two results come from the same settings.
 
-Third, look at `mpstat %idle` to see whether the host has idle capacity. If it has idle cores while `nonvoluntary_ctxt_switches` keeps increasing, check whether the container's assigned `cpuset` cores are completely saturated. Full saturation of those pinned cores points to `cpuset` throttling. Finally, if the host has zero idle CPU and neighboring tenants are busy, the container is being throttled by CFS shares.
+To find out why a container is slow, follow the five-statistic sequence from Brendan Gregg's *Systems Performance*, Section 11.3.4 and Figure 11.13. Start with `throttled_time` and `nr_throttled` in the container's `cpu.stat` file. They show whether CFS bandwidth limits are pausing the pod. Next, check `nonvoluntary_ctxt_switches` in `/proc/PID/status`. A nonvoluntary context switch is one the kernel forces on a process, usually because its time slice ran out. If that counter is not climbing, the process is not being forced off the CPU.
+
+Third, look at `mpstat %idle` to see whether the host has idle capacity. If it has idle cores while `nonvoluntary_ctxt_switches` keeps increasing, check whether the container's assigned `cpuset` cores are completely saturated. A cpuset is the list of CPU cores a container is pinned to. Full saturation of those pinned cores points to `cpuset` throttling. Finally, if the host has zero idle CPU and neighboring tenants are busy, the container is being throttled by CFS shares. Each step narrows the cause, so you move from the most specific counter to the broadest one.
 
 The reference below gathers the namespace, cgroup and throttling figures from this part of the chapter.
 
@@ -263,13 +271,15 @@ Container Namespaces, Cgroups, Throttling, and MicroVM Metrics (Systems Performa
   * Firecracker host vs guest top (SP 11.4.4): host firecracker PID 30785 at 200% CPU (2 vCPUs, host load avg 4.48) vs guest load avg 1.89 with two bash processes (PIDs 1104, 1105) at 100% each
 ```
 
-When a container stalls, check the cgroup counters before you blame the hardware.
+When a container stalls, check the cgroup counters before you blame the hardware. The counters tell you whether the container is being held back by its own limits, by its pinned cores, or by its neighbors. Only after those answers does a hardware fault become a likely suspect.
+
+The same discipline applies to the other sections. A slow VM and a slow container can look identical from the outside, but the evidence you need is different. For a VM, you look at the exit counters and the stolen time. For a container, you look at the cgroup files and the pinned cores. Choosing the right set of counters first saves you from chasing the wrong layer.
 
 ## Commands and configurations that matter
 
 ### 1. Auditing PCIe and NUMA Topology and IOMMU Groups on a GPU Host
 
-Before you launch a distributed training job or bind a GPU to a VM, audit the host topology. Check how the GPU and the network card connect across PCIe switches and NUMA sockets. Then confirm that the motherboard IOMMU is active in the kernel ring buffer. These checks catch cross-socket wiring mistakes and missing BIOS virtualization settings before the workloads fail.
+Before you launch a distributed training job or bind a GPU to a VM, audit the host topology. Check how the GPU and the network card connect across PCIe switches and NUMA sockets. Then confirm that the motherboard IOMMU is active in the kernel ring buffer. These checks catch cross-socket wiring mistakes and missing BIOS virtualization settings before the workloads fail. The audit is quick to run, and it can prevent a long run from starting on a bad layout.
 
 ```bash
 # 1. Inspect GPU-to-NIC PCIe switch (PIX/PXB vs PHB/NODE/SYS) and NUMA affinity
@@ -287,11 +297,11 @@ for g in $(find /sys/kernel/iommu_groups/* -maxdepth 0 -type d | sort -V); do
 done
 ```
 
-The first command shows the topology codes, the second confirms the IOMMU, and the third lists every device in each IOMMU group.
+The first command shows the topology codes, the second confirms the IOMMU, and the third lists every device in each IOMMU group. Run them in that order. If the second command shows no DMAR or IOMMU lines, stop there and fix the firmware or kernel setting before you read the other two outputs. The IOMMU has to be on before the group listing means much.
 
 ### 2. Unbinding a GPU from Host Drivers and Binding its IOMMU Group to `vfio-pci`
 
-Preparing a host for GPU passthrough under KVM, KubeVirt or Kata Containers depends on clean IOMMU group isolation. Suppose the GPU, or one sibling endpoint in its group, still uses a host driver. Then VFIO initialization breaks. The commands below do four things in order. They load `vfio-pci`, unbind the GPU from the host driver, and bind it to `vfio-pci`. Last, they check that `/dev/vfio/<group_id>` is ready for the hypervisor.
+Preparing a host for GPU passthrough under KVM, KubeVirt or Kata Containers depends on clean IOMMU group isolation. Suppose the GPU, or one sibling endpoint in its group, still uses a host driver. Then VFIO initialization breaks. The commands below do four things in order. They load `vfio-pci`, unbind the GPU from the host driver, and bind it to `vfio-pci`. Last, they check that `/dev/vfio/<group_id>` is ready for the hypervisor. Unbinding detaches the driver from the device, and binding attaches a new one. Keep in mind that the sibling endpoints in the same group must follow the same steps.
 
 ```bash
 # Bind GPU (0000:4b:00.0, 10de:2330) to vfio-pci for VM passthrough
@@ -309,11 +319,11 @@ lspci -nnk -s 0000:4b:00.0
 ls -la /dev/vfio/
 ```
 
-After the binding, `lspci` should report `vfio-pci` as the driver in use, and `ls` should show the device node.
+After the binding, `lspci` should report `vfio-pci` as the driver in use, and `ls` should show the device node. If the driver still shows `nvidia`, the unbind step did not take effect, so check the device address before trying again. Remember that these commands change the host state, so they belong on a node you are preparing for passthrough, not on a node that is running other work.
 
 ### 3. Observing KVM VM-EXITs and Container Namespace and Cgroup Limits
 
-Virtualized and containerized GPU workloads sometimes show latency spikes that nothing explains, especially under multi-tenant load. The host operator then has three things to check. The first is the KVM guest exit rate. The second is the host PID behind a container process. The third is the cgroup throttling counters. The commands below trace live KVM exits and map container guest PID 753 to host PID 4915.
+Virtualized and containerized GPU workloads sometimes show latency spikes that nothing explains, especially under multi-tenant load. The host operator then has three things to check. The first is the KVM guest exit rate. The second is the host PID behind a container process. The third is the cgroup throttling counters. The commands below trace live KVM exits and map container guest PID 753 to host PID 4915. A guest PID is the process number inside the container, and a host PID is the number the host kernel uses for the same process. The two numbers differ because the container has its own process namespace.
 
 ```bash
 # 1. Live KVM VM-EXIT breakdown on a hypervisor host (SP 11.2.4)
@@ -325,11 +335,11 @@ ls -lh /proc/4915/ns/pid
 cat /sys/fs/cgroup/cpu,cpuacct/kubepods/burstable/pod*/cpu.stat
 ```
 
-The first command runs on the hypervisor host, and the remaining lines inspect the container from the host side. Once the awk line gives you the host PID, use that number for the namespace and cgroup checks.
+The first command runs on the hypervisor host, and the remaining lines inspect the container from the host side. Once the awk line gives you the host PID, use that number for the namespace and cgroup checks. The awk line scans every process status file for the matching guest PID, so the container's process list does not need to be visible from the host.
 
 ## How it fails
 
-Consider how a single wrong setting in one of four places can cause a serious security exposure or a slow job. Those places are the PCIe topology, the IOMMU BIOS settings, the VFIO group bindings and the container cgroups. If you are chasing one of these, the table below maps five production failure symptoms to their root causes and gives the exact remediation for each.
+Consider how a single wrong setting in one of four places can cause a serious security exposure or a slow job. Those places are the PCIe topology, the IOMMU BIOS settings, the VFIO group bindings and the container cgroups. If you are chasing one of these, the table below maps five production failure symptoms to their root causes and gives the exact remediation for each. Most of these failures share one trait. They do not crash anything, so they are easy to miss until someone tests the boundary on purpose.
 
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -339,13 +349,17 @@ Consider how a single wrong setting in one of four places can cause a serious se
 | **4. Containerized workload drops `10x` in CPU dataloader throughput when additional pods land on the node (`SP 11.3.3`)** | Dataloader ran fast during isolated staging tests (`100%` CPU via bursting), then slowed `10x` in production; `cpu.stat` shows `nr_throttled` or `nonvoluntary_ctxt_switches` climbing. | **CFS Share Bursting "Bait-and-Switch" (`SP 11.3.3`):** Container A (`10` shares of `100`) burst to `100%` on an idle host, then dropped to its `10%` guaranteed share once neighbors became busy. | Cap bursting with explicit **CFS bandwidth limits** (or use exclusive `cpuset` pinning via Kubernetes `Guaranteed` QoS + `static` CPU Manager) so staging benchmarks match production capacity. |
 | **5. Engineer inside an idle container runs `iostat -sxz 1` and sees `nvme0n1` at `2,578` tps and `100%` utilization (`SP 11.3.4` Table 11.6)** | User reports a mystery disk bottleneck inside their idle container because `iostat`, `free`, `vmstat`, `mpstat`, and `uptime` show heavy system load. | **Un-Namespaced `/proc` & `/sys` Host Statistics in Containers (`SP 11.3.4`):** Traditional Linux tools read host-wide kernel counters inside containers. | Inspect container-specific cgroup files (`cat /sys/fs/cgroup/blkio/blkio.throttle.io_serviced` and `io_service_bytes` across a `sleep 10` interval) or cgroup-aware monitoring (`cAdvisor`, `systemd-cgtop`). |
 
-When a job breaks, you should match its symptom to a row first, then read the root cause column before you change anything.
+When a job breaks, you should match its symptom to a row first, then read the root cause column before you change anything. A fix that targets the wrong layer, such as tuning the cgroup when the topology is wrong, costs time and changes nothing.
+
+It also helps to keep a written record of the topology report and the IOMMU groups for every node you build. When a symptom appears later, you can compare the current state with that known-good record instead of guessing. The record is also the quickest way to find which setting changed after a firmware update or a kernel upgrade.
+
+The first row is the one that matters most for security. A tenant that can reach host memory breaks the whole isolation model at once. The fix is firmware and kernel configuration, not a change to the scheduler. The second row is the most common day-to-day failure. A passthrough VM refuses to start, and the error names a group, which tells you where to look. The third row is the performance surprise. The job is correct, but half as fast as its twin node, and the topology report shows the cross-socket SYS path. The fourth row is about a fair-share trap in shared CPU, and the fifth is about reading the wrong counter inside a container.
 
 ## Hands-on lab
 
 ### Venue and scope
 
-Checking PCIe topology policies, IOMMU DMAR faults and VFIO group viability before you touch production nodes can prevent costly outages. This lab runs locally with the Python 3 standard library. It uses `code/part11/pcie_iommu_vfio_passthrough.py` and `code/part11/pcie_iommu_vfio_passthrough_lab.py`. The host commands shown earlier were not run on live hardware, so treat them as unverified.
+Checking PCIe topology policies, IOMMU DMAR faults and VFIO group viability before you touch production nodes can prevent costly outages. This lab runs locally with the Python 3 standard library. It uses `code/part11/pcie_iommu_vfio_passthrough.py` and `code/part11/pcie_iommu_vfio_passthrough_lab.py`. The host commands shown earlier were not run on live hardware, so treat them as unverified. The lab checks the arithmetic and the reference figures in the chapter. It does not show how your own motherboard is wired.
 
 The matrix below names the numbers the lab verifies, grouped by source. Each line covers one set of figures.
 
@@ -358,13 +372,13 @@ Lab Verification Coverage Matrix:
 
 ### Step 1: Run the self-checking PCIe, IOMMU, VFIO and passthrough lab (tested here)
 
-When you are in the repository root, run the lab script. It executes all twenty-five deterministic verification checks.
+When you are in the repository root, run the lab script. It executes all twenty-five deterministic verification checks. Deterministic means the same inputs give the same results every time, so a failing check always points to a change in the chapter's figures.
 
 ```bash
 python3 code/part11/pcie_iommu_vfio_passthrough_lab.py
 ```
 
-Captured output from this repository:
+The block below shows what a passing run prints, so you can compare your own output against it.
 
 ```text
 === Chapter 11.21 Lab: PCIe, IOMMU, VFIO, Device Passthrough & SP Ch. 11 ===
@@ -397,7 +411,7 @@ Captured output from this repository:
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-Each line is one check, and you can count them against the summary at the bottom.
+Each line is one check, and you can count them against the summary at the bottom. If the summary says 25 passed and 0 failed, every figure in the lab matched the chapter. If a line fails, compare the number in that line with the matching table or block in the chapter before you change anything else.
 
 ### Exercises
 
@@ -410,12 +424,11 @@ Work through the six exercises below.
 5. List the traditional Linux tools that leak host-wide statistics inside a container. Then write the commands that map container guest PID 753 to host PID 4915 and inspect `/sys/fs/cgroup/blkio/blkio.throttle.io_serviced`.
 6. Compare QEMU, AWS Firecracker and Intel Clear or Kata Containers on codebase size, boot latency and memory overhead. Then explain why OS Containers favor host operators for observability, while Hardware and Lightweight VMs favor end users.
 
-Work through them with the captured output open, so you can point to a figure the lab already verified.
+Work through them with the lab output open, so you can point to a figure the lab already verified.
 
 ## Checkpoint questions
 
 Use these questions to check whether you can explain the layers and numbers from memory. Try each answer before you open it.
-
 <details>
 <summary>**1. Compare the unidirectional bandwidth of PCIe Gen4 x16, PCIe Gen5 x16, and an NVIDIA H100 GPU's internal HBM3 memory.**</summary>
 

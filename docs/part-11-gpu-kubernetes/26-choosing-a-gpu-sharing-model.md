@@ -22,13 +22,13 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Many GPU sharing projects fail before they begin. The infrastructure team starts from a hardware feature instead of the workload contract. An engineer sees that H100 cards support MIG, or that the device plugin can advertise ten logical replicas, and switches the feature on. Nobody has checked latency sensitivity, peak memory bursts or tenant fault boundaries.
+Many GPU sharing projects fail before they begin. The usual story goes like this. The infrastructure team starts from a hardware feature instead of the workload contract. An engineer sees that H100 cards support MIG, or that the device plugin can advertise ten logical replicas, and switches the feature on. Nobody has checked latency sensitivity, peak memory bursts or tenant fault boundaries. The feature works exactly as documented, and the project still fails, because the question nobody asked was what the workload needs.
 
-Worse, a shared GPU platform can fail commercially before it fails technically. That happens when its capacity and chargeback model counts time-sliced replicas, MIG slices and whole GPUs as interchangeable units. The Volume 11 notes record a planning failure that shows the problem clearly. A platform team saw a low fleet utilization average and deferred a hardware purchase. Two weeks later, a new inference tenant was stuck in Pending state with nowhere to run.
+Worse, a shared GPU platform can fail commercially before it fails technically. That happens when its capacity and chargeback model counts time-sliced replicas, MIG slices and whole GPUs as interchangeable units. This chapter's planning example shows the problem clearly. A platform team saw a low fleet utilization average and deferred a hardware purchase. Two weeks later, a new inference tenant was stuck in Pending state with nowhere to run. The average looked comfortable, and the people who needed a GPU could not get one.
 
-The fleet average had blended incompatible MIG layouts, counted nodes undergoing maintenance drains and ignored the spare capacity reserved for tail-latency targets. Packing ten inference pods onto a single GPU with Time-Slicing gives a full allocation dashboard in Kubernetes. Meanwhile, context-switch jitter ruins the latency that users actually receive.
+The fleet average had blended incompatible MIG layouts, counted nodes undergoing maintenance drains and ignored the spare capacity reserved for tail-latency targets. A drain is the controlled emptying of a node before maintenance, so its GPUs stop counting as usable for the duration. Packing ten inference pods onto a single GPU with Time-Slicing gives a full allocation dashboard in Kubernetes. Meanwhile, context-switch jitter ruins the latency that users actually receive. The dashboard says the card is full, and the users say the service is slow. Both statements can be true at the same time.
 
-The block below sets the two classic failures side by side, with the cause of each.
+The block below sets the two classic failures side by side, with the cause of each. Read the first failure as a planning mistake, and the second as a measurement mistake. Both of them fool a dashboard that only counts assignments.
 
 ```text
 The Two Classic GPU Sharing Platform Failures (volume-11/chapter-06 & chapter-09)
@@ -44,24 +44,19 @@ The Two Classic GPU Sharing Platform Failures (volume-11/chapter-06 & chapter-09
    - Capacity Sizing Equation: N = ceil((D + F) / (A * (1 - H)))
 ```
 
-Notice that both failures look healthy on a dashboard and fail in production.
+Notice that both failures look healthy on a dashboard and fail in production. The dashboard measures what the scheduler assigned, and production measures what the user received. Keep those two measurements apart in every review you run.
 
-This chapter brings NVIDIA vGPU, MIG, Time-Slicing and CUDA MPS into one selection framework and one capacity planning model. You will learn how to choose the right sharing mechanism for each workload class. You will also learn how to tell which mechanism is active on a live node during an outage. Then you will size node pools with a conservative reserve equation and bill tenants fairly with Allocation Contracts. Start from the workload contract, and treat the hardware feature as the last question.
+This chapter brings NVIDIA vGPU, MIG, Time-Slicing and CUDA MPS into one selection framework and one capacity planning model. The first goal is to choose the right sharing mechanism for each workload class. The second is to tell which mechanism is active on a live node during an outage. After that, the chapter sizes node pools with a conservative reserve equation and bills tenants fairly with Allocation Contracts. Start from the workload contract, and treat the hardware feature as the last question.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-This chapter assumes three earlier chapters and some Kubernetes basics. Chapter 11.23 covers NVIDIA vGPU, Chapter 11.24 covers MIG in depth, and Chapter 11.25 covers Time-Slicing, MPS and oversubscription. You should also be familiar with Kubernetes extended resources and namespace resource quotas. Finish those chapters before you begin this one.
+Picture a new engineer who opens this chapter without the earlier material. The chapter would still read, but the terms would blur together. This chapter assumes three earlier chapters and some Kubernetes basics. Chapter 11.23 covers NVIDIA vGPU, Chapter 11.24 covers MIG in depth, and Chapter 11.25 covers Time-Slicing, MPS and oversubscription. The reader also needs to be familiar with Kubernetes extended resources, which are custom resource names such as the GPU counters, and namespace resource quotas. Finish those chapters before you begin this one.
 
 ### Outcomes
 
-By the end of this chapter, you will be able to do four things.
-
-- You will walk the five-way GPU sharing decision tree across Dedicated Whole GPU, Hardware MIG, NVIDIA vGPU, Time-Slicing and CUDA MPS. You will also compare their resource boundaries, operational costs and lifecycle traps.
-- You will run the three-step incident mechanism diagnostic playbook, which uses host queries, node statuses and pod UUID cross-referencing. It tells you at once which sharing mode a node and a pod are using.
-- You will apply the five-layer capacity chain and size node pools across the five named reserves. You will also design an Allocation-Contract showback and chargeback rate card.
-- You will run the cross-functional operational decision workshop across four owners. You will package the platform into a four-service catalog and carry out comparative benchmarking trials.
+Picture a GPU platform owner who has to answer a tenant's request for a new kind of slice tomorrow morning. This chapter gives that owner a path through the answer. It walks through the five-way decision tree across Dedicated Whole GPU, Hardware MIG, NVIDIA vGPU, Time-Slicing and CUDA MPS, and it compares their resource boundaries, operational costs and lifecycle traps. It then covers the three-step incident mechanism diagnostic playbook, which uses host queries, node statuses and pod UUID cross-referencing to show which sharing mode a node and a pod are using. The chapter continues with the five-layer capacity chain, the five named reserves that size a node pool, and an Allocation-Contract showback and chargeback rate card. The last part is a cross-functional decision workshop across four owners, a four-service catalog and comparative benchmarking trials.
 
 ## Concepts: basics to intermediate to advanced
 
@@ -69,11 +64,11 @@ By the end of this chapter, you will be able to do four things.
 
 #### 1. Starting from the Workload Contract
 
-Platform architects often feel pressure to share every GPU in the data center. That pressure causes severe outages when it is applied to tightly coupled distributed jobs. A dedicated whole-GPU allocation remains mandatory for large synchronous distributed training runs across multi-GPU nodes.
+Platform architects often feel pressure to share every GPU in the data center. Sharing looks like free money, because idle cards are wasted cards. That pressure causes severe outages when it is applied to tightly coupled distributed jobs. A dedicated whole-GPU allocation remains mandatory for large synchronous distributed training runs across multi-GPU nodes. Synchronous means every worker waits for the others at each step, so one slow or broken worker holds up the whole run.
 
-Consider what a single failure does in that setting. In a rail-optimized InfiniBand fabric, one GPU failure or noisy neighbor halts the entire multi-node training job. The job then has to restart from its last checkpoint, which is costly. For these workloads, sharing adds zero value and a massive blast-radius risk.
+Consider what a single failure does in that setting. In a rail-optimized InfiniBand fabric, which is a high-speed network that links GPU nodes, one GPU failure or noisy neighbor halts the entire multi-node training job. The job then has to restart from its last checkpoint, which is costly. A checkpoint is a saved copy of the training state, and the work since the last one is lost on restart. For these workloads, sharing adds zero value and a massive blast-radius risk. Blast radius is the amount of work one failure can destroy.
 
-The blast radius is easiest to see in numbers. The block below follows one training job through three kinds of failure.
+The blast radius is easiest to see in numbers. The block below follows one training job through three kinds of failure. Read each line as the same question asked at a different level of the network. What does one failure take down, and does the job keep running?
 
 ```text
 Synchronous Distributed Training Blast Radius (volume-04/03 Part 3)
@@ -86,11 +81,13 @@ Spine failure : Impacts 1 Pod     -> Halts entire multi-node synchronous run
 Decision      : Dedicated Whole-GPU Pool (nvidia.com/gpu: 1), never shared
 ```
 
-Notice that a failure at any of the three levels halts the same synchronous run. The decision therefore does not change with the level.
+Notice that a failure at any of the three levels halts the same synchronous run. The decision therefore does not change with the level. Whether the failed part is a node, a rack or a pod, the training job stops, so the answer stays the same. The job gets a dedicated whole-GPU pool either way.
 
-A candidate workload should pass three questions in order, from strongest isolation to best-effort concurrency. The first asks whether a virtual machine guest kernel boundary is required for regulatory or hypervisor isolation. The second asks whether hardware-partitioned quality of service, with dedicated memory controllers and fault isolation, is required. The third asks whether best-effort concurrency is acceptable for trusted, bursty and memory-light workloads. If it is, that third branch splits in two. Independent pods go to Time-Slicing, and cooperative single-tenant microservices go to CUDA MPS.
+A candidate workload should pass three questions in order, from strongest isolation to best-effort concurrency. The order matters, because each question rules out a whole family of options before the next one is asked. The first asks whether a virtual machine guest kernel boundary is required for regulatory or hypervisor isolation. The second asks whether hardware-partitioned quality of service, with dedicated memory controllers and fault isolation, is required. The third asks whether best-effort concurrency is acceptable for trusted, bursty and memory-light workloads. If it is, that third branch splits in two. Independent pods go to Time-Slicing, and cooperative single-tenant microservices go to CUDA MPS.
 
-The diagram below follows those questions from the top.
+The diagram below follows those questions from the top. Start at the request box, answer question one, and let each answer send you down one branch. Most workloads stop at the first or second question.
+
+Here is the tree applied to four situations you are likely to meet. A data scientist wants a notebook for exploring data. Nothing about that notebook needs a virtual machine boundary or a hard memory wall, so the answer is the best-effort branch. Independent notebooks land on the Time-Slicing pool, because each one only needs a turn on the card. A team that runs a group of small inference microservices, all owned by one team, takes the CUDA MPS branch, because those services cooperate and the team trusts every one of them. A bank that serves a customer-facing model with a strict latency promise takes the MIG branch, because it needs hardware walls between tenants. A company that must give employees Windows desktops inside virtual machines takes the vGPU branch, because the guests are virtual machines and the hypervisor is already part of the design.
 
 ```mermaid
 flowchart TD
@@ -106,11 +103,11 @@ flowchart TD
 
 #### 2. Comparing Resource Boundaries and Operational Costs
 
-Each sharing mechanism draws its boundary at a different layer of the hardware and software stack. Streaming multiprocessors are the compute units of a GPU. A dedicated GPU gives one workload every streaming multiprocessor on the card, plus all of its high-bandwidth memory, known as HBM.
+Each sharing mechanism draws its boundary at a different layer of the hardware and software stack. Streaming multiprocessors are the compute units of a GPU, and a dedicated GPU gives one workload every streaming multiprocessor on the card, plus all of its high-bandwidth memory, known as HBM. The boundary is the line that decides what one tenant can touch and what it can break for everyone else.
 
-Hardware MIG cuts the silicon into isolated GPU Instances and Compute Instances, each with its own memory controllers and cache slices. Time-Slicing and CUDA MPS share one physical card through software scheduling or a shared CUDA context. NVIDIA vGPU hands a virtualized device to a guest virtual machine, under control of the hypervisor.
+Hardware MIG cuts the silicon into isolated GPU Instances and Compute Instances, each with its own memory controllers and cache slices. Time-Slicing and CUDA MPS share one physical card through software scheduling or a shared CUDA context. NVIDIA vGPU hands a virtualized device to a guest virtual machine, under control of the hypervisor. A hypervisor is the software layer that runs virtual machines and keeps them apart from one another.
 
-The table below compares the four mechanisms on the same dimensions.
+The table below compares the four mechanisms on the same dimensions. Read the first column as the question, and read each other column as the answer that mechanism gives. Pick a row, then move across the table before you draw any conclusion.
 
 | Dimension | Dedicated Whole GPU | Hardware MIG | Time-Slicing and CUDA MPS | NVIDIA vGPU |
 |---|---|---|---|---|
@@ -121,19 +118,21 @@ The table below compares the four mechanisms on the same dimensions.
 | **Primary Observability** | Clean per-GPU and per-Pod DCGM metrics | Per-MIG-instance (`GI`/`CI`) + physical device telemetry | Physical device + host process (`nvidia-smi --query-processes`) + app latency | 4-tier: Host GPU + vGPU Manager + Guest OS driver + NLS license state |
 | **Suitable Default Workload** | Distributed training (`175B` LLM), large models, or unprofiled sensitive jobs | Repeatable model-serving shapes (Embedding, Chat LLM) needing predictable `p99` | Interactive dev Jupyter notebooks, CI runners, bursty best-effort tasks | Regulated VMs, virtual desktops (VDI), and VM-centric enterprise estates |
 
-Read across the rows. Hardware MIG carries geometric fragmentation risk, while Time-Slicing and CUDA MPS can hide saturation behind green replica counts.
+Read across the rows. Hardware MIG carries geometric fragmentation risk, while Time-Slicing and CUDA MPS can hide saturation behind green replica counts. Geometric fragmentation means the free pieces of a card are the wrong shape for the next request, even when the total looks large enough. Hidden saturation means the card is full in memory or compute while the replica count still says there is room.
+
+Suppose a team asks whether an embedding service belongs on MIG or on Time-Slicing. Start with the Primary Resource Boundary row. A MIG slice gives the service its own memory and compute wall, while a time-sliced replica only gives it a turn. Next read the Fragmentation and Saturation row. A MIG layout can run out of the right slice shape even when the total looks free, and a time-sliced card can look fine on replica count while its memory is full. Last, read the Suitable Default Workload row. Repeatable model-serving shapes that need a predictable tail match MIG, and interactive notebooks match Time-Slicing. The row that answers the team's real question is the one that describes its workload.
 
 #### 3. Quick Incident Diagnostic: Which Sharing Mechanism Is Active on This Node?
 
-Picture an on-call engineer paged into an unfamiliar cluster during a latency spike. Guessing the sharing mode at that moment wastes recovery time. A pod spec that asks for one GPU resource token might be backed by a whole card, a time-sliced replica or a virtualized slice. A structured three-step playbook, run on the worker node and inside the affected pod, identifies the active mechanism in under a minute.
+Picture an on-call engineer paged into an unfamiliar cluster during a latency spike. Guessing the sharing mode at that moment wastes recovery time. A pod spec that asks for one GPU resource token might be backed by a whole card, a time-sliced replica or a virtualized slice. A structured three-step playbook, run on the worker node and then inside the affected pod, identifies the active mechanism in under a minute. The first step looks at the host, the second looks inside the pod, and the third compares the two.
 
-Start on the host. Log in to the worker node over SSH and inspect the physical GPU state. If the MIG mode query prints Enabled, and the instance list shows active GPU Instances, Hardware MIG is active. If the vGPU query lists virtual devices attached to guest domains, NVIDIA vGPU is active.
+Start on the host. Log in to the worker node over SSH, which is the encrypted remote login used for servers, and inspect the physical GPU state. If the MIG mode query prints Enabled, and the instance list shows active GPU Instances, Hardware MIG is active. If the vGPU query lists virtual devices attached to guest domains, NVIDIA vGPU is active. A guest domain is the virtual machine running on top of the hypervisor.
 
-Time-Slicing has a different signature. Sometimes MIG is disabled on a single physical card while Kubernetes reports four or eight allocatable GPUs. When the host process table also shows multiple container processes on that same device, Time-Slicing is active.
+Time-Slicing has a different signature. Sometimes MIG is disabled on a single physical card while Kubernetes reports four or eight allocatable GPUs. That mismatch is the clue. When the host process table also shows multiple container processes on that same device, Time-Slicing is active. The card reports one physical device, but the scheduler sees several tokens that point at it.
 
-Next, look from inside the affected pod. Run `nvidia-smi` in the container and check the `NVIDIA_VISIBLE_DEVICES` environment variable. Then compare the device UUID that the pod reports with the UUIDs of its neighbors on the same node. If multiple pods report the exact same full physical GPU UUID, they are time-slicing that card. If each pod reports a distinct `MIG-...` UUID or a distinct virtual GPU UUID, the workload is running on MIG or vGPU.
+Next, look from inside the affected pod. Run `nvidia-smi` in the container and check the `NVIDIA_VISIBLE_DEVICES` environment variable. Then compare the device UUID that the pod reports with the UUIDs of its neighbors on the same node. A UUID is the unique identifier of a GPU or a MIG slice. If multiple pods report the exact same full physical GPU UUID, they are time-slicing that card. If each pod reports a distinct `MIG-...` UUID or a distinct virtual GPU UUID, the workload is running on MIG or vGPU.
 
-The same three steps appear below as a playbook.
+The same three steps appear below as a playbook. Use it as a checklist on the call, and write down each result as you get it, so the notes match what the host and the pod actually reported.
 
 ```text
 3-Step Live Incident Mechanism Diagnostic Playbook
@@ -154,7 +153,7 @@ Step 3: Host-to-Pod UUID Cross-Reference
   - Each pod shows distinct MIG-... or virtual UUID     -> MIG or vGPU
 ```
 
-Check the host first, then the pod, then the UUIDs. Together they settle which mechanism is active.
+Check the host first, then the pod, then the UUIDs. Together they settle which mechanism is active. If the host and the pod disagree, trust the host, because the host is closest to the hardware.
 
 ---
 
@@ -162,9 +161,9 @@ Check the host first, then the pod, then the UUIDs. Together they settle which m
 
 #### 1. Why Low Fleet Utilization Can Mean Zero Available Capacity: The Five Capacity Layers
 
-Leadership often relies on one fleet-wide GPU utilization percentage. That single number can freeze hardware purchases just before production services run out of room. A dashboard that shows forty-eight percent utilization does not show where the other fifty-two percent sits. Those free resources often sit on nodes with incompatible MIG geometries, on hosts cordoned for driver maintenance, or in latency headroom buffers. To avoid this planning failure, track five distinct capacity layers separately across every node pool.
+Leadership often relies on one fleet-wide GPU utilization percentage. That single number can freeze hardware purchases just before production services run out of room. A dashboard that shows forty-eight percent utilization does not show where the other fifty-two percent sits. Those free resources often sit on nodes with incompatible MIG geometries, on hosts cordoned for driver maintenance, or in latency headroom buffers. A cordoned host is one that the scheduler will not use for new work. To avoid this planning failure, track five distinct capacity layers separately across every node pool.
 
-Read the chain from left to right. Each layer narrows the one before it.
+Read the chain from left to right. Each layer narrows the one before it. Start with the hardware you own, and finish with the capacity you can actually sell to tenants.
 
 ```mermaid
 flowchart LR
@@ -174,15 +173,17 @@ flowchart LR
     L4 --> L5["5. Sellable Capacity (Remaining After 5 Named Reserves & Fragmentation)"]
 ```
 
-Physical inventory counts the installed, healthy GPUs, and it leaves out dead cards and RMA hardware. Configured inventory reflects the active MIG slice layouts, vGPU profiles and time-slicing replica policies that are currently applied to those cards. Allocatable inventory is what the kubelet or hypervisor advertises to the scheduler right now. Service capacity keeps only the allocations that meet your documented tail-latency and memory targets under load. Sellable capacity is what remains for tenants after you subtract operational reserves and profile fragmentation.
+Physical inventory counts the installed, healthy GPUs, and it leaves out dead cards and RMA hardware. RMA means a card sent back to the vendor for replacement. Configured inventory reflects the active MIG slice layouts, vGPU profiles and time-slicing replica policies that are currently applied to those cards. Allocatable inventory is what the kubelet or hypervisor advertises to the scheduler right now. The kubelet is the node agent that reports to Kubernetes. Service capacity keeps only the allocations that meet your documented tail-latency and memory targets under load. Sellable capacity is what remains for tenants after you subtract operational reserves and profile fragmentation.
 
-Report each layer separately, because a single number hides the gap between them.
+Report each layer separately, because a single number hides the gap between them. A reader who sees only the top layer assumes the whole stack is available. A reader who sees all five layers can find exactly where the capacity went.
+
+Here is how the layers look in a real pool. Suppose a rack holds a full set of cards, and some of them are in RMA. Those cards drop out at the first layer, because they are not healthy inventory. Some of the healthy cards may still carry an old MIG layout. Those cards count as configured, but they are not allocatable until someone changes the layout during a maintenance window. The cards that remain may be allocatable, yet they still fail the service layer if their tail latency misses the target under load. Only the last layer tells you what you can sell.
 
 #### 2. The Conservative Node Sizing Formula and the Five Named Reserves
 
-When you size a standard node pool for one service class, a guessed flat percentage buffer either wastes capital or leaves the service vulnerable. The Volume 11 capacity model avoids guessing by using five explicit variables. You add committed concurrent demand to the expected loss from profile geometry fragmentation. Then you divide that total by the usable slots per standard node, after you discount for the non-sellable reserve headroom.
+When you size a standard node pool for one service class, a guessed flat percentage buffer either wastes capital or leaves the service vulnerable. Too much buffer means idle hardware that you paid for. Too little means a failure or a rollout pushes the service past its targets. The capacity model in this chapter avoids guessing by using five explicit variables. You add committed concurrent demand to the expected loss from profile geometry fragmentation. Then you divide that total by the usable slots per standard node, after you discount for the non-sellable reserve headroom.
 
-The block below defines each variable and works the formula for one pool.
+The block below defines each variable and works the formula for one pool. Read the variables first, then the formula, then the worked numbers. Each step should match the one before it.
 
 ```text
 Conservative Node Pool Sizing Model (volume-11/chapter-09 & choosing_gpu_sharing_model.py)
@@ -203,25 +204,27 @@ Worked Verification (H100 node pool with 4 x 1g.10gb + 1 x 3g.40gb layout -> A =
   Required nodes N = ceil((70 + 6) / 4.0) = ceil(76 / 4.0) = 19 nodes
 ```
 
-Read the worked example from the bottom. Each node offers five slots, and a 20 percent headroom leaves 4.0 sellable slots per node. Dividing 76 by 4.0 gives 19 nodes.
+Read the worked example from the bottom. Each node offers five slots, and a 20 percent headroom leaves 4.0 sellable slots per node. Dividing 76 by 4.0 gives 19 nodes. Notice that the ceiling in the formula rounds up, because a fraction of a node is still a whole node you have to buy.
 
-Do not lump the headroom into a mysterious spreadsheet buffer, because finance teams will cut that buffer during budget reviews. Split the reserve fraction into five named reserves instead, so leadership can see which operational guarantee each one protects.
+Do not lump the headroom into a mysterious spreadsheet buffer, because finance teams will cut that buffer during budget reviews. A buffer with no name looks like waste to anyone who did not build it. Split the reserve fraction into five named reserves instead, so leadership can see which operational guarantee each one protects. Each named reserve can then be defended on its own terms.
 
-- **Node-failure reserve.** It protects committed service-level workloads when a whole worker node, or a rack's leaf switch, fails without warning.
-- **Maintenance reserve.** It lets operators drain a node pool for host operating system, driver or MIG layout updates without breaking commitments.
-- **Rollout reserve.** It keeps a healthy comparison canary pool running during staged model or runtime upgrades.
-- **Demand-variance reserve.** It absorbs forecast error, sudden traffic bursts and seasonal spikes without breaching latency targets.
-- **Fragmentation reserve.** It accounts for physically unused MIG or vGPU slices whose geometry cannot legally form the next requested profile shape.
+- Node-failure reserve: it protects committed service-level workloads when a whole worker node, or a rack's leaf switch, fails without warning.
+- Maintenance reserve: it lets operators drain a node pool for host operating system, driver or MIG layout updates without breaking commitments.
+- Rollout reserve: it keeps a healthy comparison canary pool running during staged model or runtime upgrades.
+- Demand-variance reserve: it absorbs forecast error, sudden traffic bursts and seasonal spikes without breaching latency targets.
+- Fragmentation reserve: it accounts for physically unused MIG or vGPU slices whose geometry cannot legally form the next requested profile shape.
 
-Give each reserve its own line in the sizing model, so every fraction can be defended.
+Give each reserve its own line in the sizing model, so every fraction can be defended. When a reviewer asks why the fraction is what it is, you can point to the single reserve that needs it.
+
+Try a second pass with a different headroom to see the effect. If H grows, the denominator shrinks, so N rises. The same logic explains why a reviewer should be suspicious of a headroom number that has no name attached. A bigger unexplained number is easy to hide, and a named reserve is much harder to hide.
 
 #### 3. Showback Before Chargeback: Billing on the Allocation Contract
 
-Imagine five engineering teams sharing one expensive multi-GPU server. If you bill them only on sampled compute utilization, you create perverse incentives. A tenant can request a large forty-gigabyte MIG slice and leave it idle at zero percent compute utilization. Even while idle, that reservation locks half of the physical HBM and streaming multiprocessors in silicon. It blocks every other team from using that capacity.
+Imagine five engineering teams sharing one expensive multi-GPU server. If you bill them only on sampled compute utilization, you create perverse incentives. A perverse incentive is a rule that rewards the wrong behavior. A tenant can request a large forty-gigabyte MIG slice and leave it idle at zero percent compute utilization. Even while idle, that reservation locks half of the physical HBM and streaming multiprocessors in silicon. It blocks every other team from using that capacity. A bill based on sampled utilization would show that tenant at a low figure while the slice stays locked.
 
-Start with Showback. It reports consumption and cost attribution to teams without issuing financial invoices. Once ownership labels and dispute rules are verified, move to Chargeback, which bills on the Allocation Contract. A Prometheus pipeline joins pod resource requests from kube-state-metrics with duration and tier rates. Tenants then pay for the exact capacity boundary that they reserve or strand.
+Start with Showback. It reports consumption and cost attribution to teams without issuing financial invoices. Showback is the honest report that shows each team what it used. Once ownership labels and dispute rules are verified, move to Chargeback, which bills on the Allocation Contract. A Prometheus pipeline joins pod resource requests from kube-state-metrics with duration and tier rates. Prometheus is the metrics database that stores these numbers over time, and kube-state-metrics is the component that exports the Kubernetes object state. Tenants then pay for the exact capacity boundary that they reserve or strand.
 
-The table below gives the defensible billable unit for each service model, along with its rate logic and the mistake to avoid.
+The table below gives the defensible billable unit for each service model, along with its rate logic and the mistake to avoid. Read each row as a small contract. It says what is billed, how the price is calculated and what the platform must never promise.
 
 | Service Model | Defensible Primary Billable Unit | Example Rate-Card Logic | Anti-Pattern to Avoid |
 |---|---|---|---|
@@ -230,7 +233,9 @@ The table below gives the defensible billable unit for each service model, along
 | **3. Best-Effort Time-Sliced Pool** | **Access-hour**, queue class, or agreed workload outcome | Requesting `1` of `10` logical replicas (`nvidia.com/gpu.shared: 1`), billed at `10%` of hardware access rate | Promising deterministic compute or memory isolation in exchange for that `10%` fee |
 | **4. NVIDIA vGPU Service** | **Assigned vGPU/VM-hour** or named workstation session tier | Bundles vGPU profile slot + mandatory hypervisor host, guest image, and NLS license entitlement costs | Billing the GPU separately from mandatory VM and licensing platform costs without disclosure |
 
-Notice that each row bills what the tenant reserves. Start with Showback, and move to Chargeback only after the labels and dispute rules check out.
+Notice that each row bills what the tenant reserves. Start with Showback, and move to Chargeback only after the labels and dispute rules check out. Reserved capacity is the honest unit, because it is the capacity the tenant keeps from everyone else.
+
+Think through one month for one tenant. The tenant reserves a profile for the whole month, even if the GPU sits idle on most days. Under the Allocation Contract, the bill follows the reservation. Under a sampled utilization bill, the bill follows the idle days. Both bills describe the same card, but only one of them describes what the tenant blocked from everyone else. The finance team can explain the first bill to a tenant. The second bill invites a dispute every month.
 
 ---
 
@@ -238,24 +243,30 @@ Notice that each row bills what the tenant reserves. Start with Showback, and mo
 
 #### 1. Allocation Efficiency versus Delivered Efficiency and the Four-Owner Decision Workshop
 
-Executives often push for higher cluster density. When they do, the platform team must separate scheduler assignment from real application performance. Allocation efficiency measures the percentage of logical GPU tokens or slices that appear assigned to pods in Kubernetes. Delivered efficiency measures the useful work that finishes within its documented latency, throughput and error-rate targets.
+Executives often push for higher cluster density. When they do, the platform team must separate scheduler assignment from real application performance. Allocation efficiency measures the percentage of logical GPU tokens or slices that appear assigned to pods in Kubernetes. Delivered efficiency measures the useful work that finishes within its documented latency, throughput and error-rate targets. The first number tells you what the scheduler believes. The second tells you what users receive.
 
-Packing extra replicas onto one card can lift allocation efficiency to one hundred percent. At the same time, delivered efficiency can fall to zero as requests time out.
+Suppose the dashboard shows every replica assigned, and users open tickets about slow answers. Ask three questions in order. Did the requests finish inside their latency target? Did the timeouts climb during the busy hour? Does the queue grow when the neighbors start their jobs? The answers tell you whether allocation or delivery is the real measure for this pool. Allocation alone cannot answer any of the three questions.
 
-Before you introduce any new shared GPU service class, hold a decision workshop with four accountable owners. That way, the technical and financial boundaries line up.
+Packing extra replicas onto one card can lift allocation efficiency to one hundred percent. At the same time, delivered efficiency can fall to zero as requests time out. A timeout is the moment a client gives up on a request that took too long. Both facts can hold together, so a dashboard that shows only allocation will look like a success while the service fails.
 
-- **Application Owner.** This owner supplies the measured cold, steady and peak memory footprints. They also supply request arrival patterns, tail-latency or completion targets, and checkpoint recovery behavior.
-- **Platform Owner.** This owner supplies the eligible GPU hardware SKUs, the driver and hypervisor support matrices, the standardized node-pool layouts and the node drain lifecycle rules.
-- **Security Owner.** This owner defines and validates the required tenant blast-radius boundary across all seven isolation layers from Chapter 11.19.
-- **Service and Finance Owner.** This owner defines the showback and chargeback unit, the reserve funding rules and the tenant entitlement policies.
+Before you introduce any new shared GPU service class, hold a decision workshop with four accountable owners. Accountable means each owner must sign off on their part. That way, the technical and financial boundaries line up, and no one discovers a gap after the class is live.
 
-Get all four owners' inputs before you approve a new class.
+Imagine the application owner measures a model that fits comfortably on average, then spikes during a load test. The platform owner says the MIG layout is fixed for the quarter. The security owner says the workload cannot share a card with a student project. The finance owner asks who pays for the slice when it sits idle. The workshop exists to put those four answers on one table before the class is approved.
+
+- Application Owner: this owner supplies the measured cold, steady and peak memory footprints. They also supply request arrival patterns, tail-latency or completion targets, and checkpoint recovery behavior.
+- Platform Owner: this owner supplies the eligible GPU hardware SKUs, the driver and hypervisor support matrices, the standardized node-pool layouts and the node drain lifecycle rules.
+- Security Owner: this owner defines and validates the required tenant blast-radius boundary across all seven isolation layers from Chapter 11.19.
+- Service and Finance Owner: this owner defines the showback and chargeback unit, the reserve funding rules and the tenant entitlement policies.
+
+Get all four owners' inputs before you approve a new class. Each owner sees a different risk, so a missing input leaves that risk unexamined.
 
 #### 2. The Four-Service Catalog and Safe Migration Between Sharing Classes
 
-Suppose your internal request form lists every MIG slice permutation and every time-slicing replica ratio. Developers get overwhelmed, and your hardware pools fragment. Each extra class multiplies capacity forecasting, admission policies, dashboards, upgrade testing and geometric slice fragmentation. Instead, package the platform into four standardized catalog services, and review them on a regular cadence.
+Suppose your internal request form lists every MIG slice permutation and every time-slicing replica ratio. Developers get overwhelmed, and your hardware pools fragment. Each extra class multiplies capacity forecasting, admission policies, dashboards, upgrade testing and geometric slice fragmentation. Instead, package the platform into four standardized catalog services, and review them on a regular cadence. A catalog gives a developer a few clear choices, and it gives the platform team a short list to test.
 
-The table below lists each service with its mechanism, admission posture and failure behavior.
+A developer who needs a sandbox for a notebook picks the interactive sandbox service. The request passes the bounded namespace quota and queue, and the developer accepts that a slowdown or recall is part of the deal. A product team that needs a stable endpoint picks protected inference, and it accepts the qualification step before its first deployment. Each choice carries a known failure behavior, so nobody is surprised when something goes wrong.
+
+The table below lists each service with its mechanism, admission posture and failure behavior. Admission posture means the rules a request must pass before it gets the service. Failure behavior means what the tenant should expect when something goes wrong.
 
 | Catalog Service Name | Underlying Sharing Mechanism | Admission Posture | Failure and Maintenance Behavior |
 |---|---|---|---|
@@ -264,17 +275,21 @@ The table below lists each service with its mechanism, admission posture and fai
 | **3. Large job** | **Dedicated Whole GPU** (`nvidia.com/gpu: 1`) | Capacity reservation and gang-scheduled start | Checkpoint-aware maintenance windows (`dcgmi dmon` drain) |
 | **4. Regulated VM** | **NVIDIA vGPU** (Time-Sliced or MIG-Backed) | VM template, RBAC, and NLS identity controls | Qualified 8-step host and guest lifecycle procedure |
 
-Treat a class migration as a full application release. Moving a workload from a time-sliced pool to a MIG profile pool often triggers unexpected out-of-memory crashes. On an eighty-gigabyte card, that workload had silently borrowed idle neighbor VRAM during bursts.
+Treat a class migration as a full application release. Moving a workload from a time-sliced pool to a MIG profile pool often triggers unexpected out-of-memory crashes. On an eighty-gigabyte card, that workload had silently borrowed idle neighbor VRAM during bursts. The workload never failed while the neighbors were idle, so the borrowed memory stayed invisible. A hard MIG wall takes that borrowed memory away, so the same burst now meets the wall.
 
-Run the comparative benchmark protocol across whole-GPU, MIG and time-sliced trials. Hold the container image digest, the model artifact and the node constant while you do. Keep the input distribution, precision and concurrency identical across every run. Never change a live service class in place. Instead, introduce a versioned successor pool, canary-test it under neighbor load, and verify rollback before you retire the old pool.
+Consider a team moving a feature-extraction job from time-sliced notebooks to a MIG slice. The team runs the job on a canary slice first, then watches its memory peak under the neighbor load it expects. If the peak fits the slice with room to spare, the team moves the next batch. If the peak does not fit, the team picks a larger profile or stays where it is for now.
 
-Plan every class change as a release, with rollback checked before the old pool goes.
+Run the comparative benchmark protocol across whole-GPU, MIG and time-sliced trials. Hold the container image digest, the model artifact and the node constant while you do. A digest is the fingerprint that identifies one exact container image. Keep the input distribution, precision and concurrency identical across every run, so that the only thing that changes is the sharing mechanism. Never change a live service class in place. Instead, introduce a versioned successor pool, canary-test it under neighbor load, and verify rollback before you retire the old pool. A canary test sends a small share of real traffic to the new pool first.
+
+Plan every class change as a release, with rollback checked before the old pool goes. A release that cannot be rolled back is a gamble, and this chapter treats it that way.
 
 #### 3. Capacity Decision Records, Idle Reservation Governance, and the Four Review Cadences
 
-Ad-hoc changes to MIG layouts or replica ratios break capacity forecasts and strand tenant budgets. Any material change to the GPU service catalog therefore needs a Capacity Decision Record, with eight fields, signed off before rollout. The record ties measured demand evidence and hardware compatibility to your reserve assumptions and rollback checks.
+Ad-hoc changes to MIG layouts or replica ratios break capacity forecasts and strand tenant budgets. Ad-hoc means done on the spot, without a record. Any material change to the GPU service catalog therefore needs a Capacity Decision Record, with eight fields, signed off before rollout. The record ties measured demand evidence and hardware compatibility to your reserve assumptions and rollback checks. A record is useful months later, when someone asks why the layout looks the way it does.
 
-The block below lists the eight fields and the four review cadences.
+Suppose a team wants to change a replica ratio after a good week of measurements. The team fills in the eight fields one at a time. The demand evidence comes from that week of measurements, and the compatibility field lists the driver and operator versions in use. The capacity model field shows the new reserve. The alternatives field records what else the team considered, such as keeping the current layout. A filled-in record gives the reviewer everything needed to say yes or no.
+
+The block below lists the eight fields and the four review cadences. Read the fields as the questions a reviewer will ask. Read the cadences as the calendar that keeps the record current.
 
 ```text
 8-Field Capacity Decision Record & 4 Review Cadences
@@ -296,11 +311,11 @@ The block below lists the eight fields and the four review cadences.
   - Before material change     : Canary capacity, rollback capacity, compatibility, tenant comms
 ```
 
-The weekly review catches day-to-day drift, while the review before a material change guards each rollout.
+The weekly review catches day-to-day drift, while the review before a material change guards each rollout. Drift is the slow gap that opens between the layout you planned and the layout that actually runs. The two reviews work on different time scales, so each one catches a different kind of problem.
 
-Suppose a weekly chart shows low streaming multiprocessor activity inside a reserved GPU or MIG slice. Do not reclaim that capacity automatically. Check the workload service contract first. A protected inference pool often holds reserved headroom to absorb sudden traffic bursts, or to survive a node failover within its latency target.
+Suppose a weekly chart shows low streaming multiprocessor activity inside a reserved GPU or MIG slice. Do not reclaim that capacity automatically. Check the workload service contract first. A protected inference pool often holds reserved headroom to absorb sudden traffic bursts, or to survive a node failover within its latency target. The chart shows the idle time, but the contract explains why the idle time is there.
 
-Use the four-stage governance matrix across your review cadences. It turns idle allocation metrics into structured right-sizing or borrowing conversations. The matrix below shows what to ask first, and who owns each response.
+Use the four-stage governance matrix across your review cadences. It turns idle allocation metrics into structured right-sizing or borrowing conversations. Each row starts with what you observe, then asks the question you must answer before acting. The matrix below shows what to ask first, and who owns each response.
 
 | Operational Observation | Diagnostic Question Before Acting | Approved Governance Response | Review Cadence Owner |
 |---|---|---|---|
@@ -309,27 +324,35 @@ Use the four-stage governance matrix across your review cadences. It turns idle 
 | **3. Best-effort Interactive sandbox pool is queued behind idle reserved pools** | Does the platform borrowing policy allow temporary over-quota use with bounded recall? | Enable revocable over-quota borrowing (KAI Queue `limit > quota` or Kueue Cohort borrowing) only for checkpointed jobs with a tested `30 s` `SIGTERM` eviction path. | **Monthly Service Review** (borrowing and preemption audit) |
 | **4. Recurring Pending backlog for `3g.40gb` while `1g.10gb` slices sit idle** | Has workload demand shifted away from the current static node-pool MIG layout? | Rebalance node-pool layouts (`mig-parted` labels) during a planned maintenance window (Before material change review) and update the Quarterly Planning Review forecast. | **Quarterly Planning Review** (catalog mix and procurement lead time) |
 
-Each row ends in a review, so an idle metric starts a conversation rather than an action.
+Each row ends in a review, so an idle metric starts a conversation rather than an action. The conversation decides whether the reservation stays, shrinks or moves. Nobody has to guess, and nobody has to evict a workload on the strength of one chart.
+
+Suppose a reserved MIG slice shows low activity every night. The monthly review asks whether the nightly lull is a failover buffer or a leftover. If the reservation holds a documented burst buffer, it stays. If it does not, the team can plan a smaller profile at renewal. Each answer comes from the service contract, not from the chart alone.
 
 #### 4. The Five Selection Anti-Patterns and Exit Criteria for a New Service Class
 
-Well-funded AI platforms still stumble when they design sharing tiers around vendor marketing instead of measured workload envelopes. Before you publish a new GPU sharing class in production, check that its design avoids five recurring selection anti-patterns.
+Well-funded AI platforms still stumble when they design sharing tiers around vendor marketing instead of measured workload envelopes. A workload envelope is the measured range of memory, compute and latency that a workload really uses. Before you publish a new GPU sharing class in production, check that its design avoids five recurring selection anti-patterns. An anti-pattern is a common design that looks sensible and then fails in the same way each time.
 
-- **Mechanism-first MIG.** Teams enable MIG only because Hopper or Ampere hardware supports it. They do not verify that target models and peak KV-cache footprints fit inside the supported profiles.
-- **Average-utilization time-slicing.** Teams turn on eight or ten logical replicas because a fleet dashboard shows low average utilization. Measure concurrent tail latency and memory high-water marks first.
-- **Unmanaged vGPU.** Teams adopt vGPU only because the enterprise runs virtual machines. Assign an engineering owner for the hypervisor, host manager, guest driver and license compatibility lifecycle first.
-- **Permanent whole-GPU default.** A small two-gigabyte embedding service or notebook gets an exclusive eighty-gigabyte GPU, and keeps it forever. A measured MIG pool or a shared development pool multiplies access safely.
-- **Average-memory sizing.** Teams pick a profile or replica density from average memory usage. They ignore burst allocations, model load peaks and post-failure recovery reserves.
+- Mechanism-first MIG: teams enable MIG only because Hopper or Ampere hardware supports it. They do not verify that target models and peak KV-cache footprints fit inside the supported profiles.
+- Average-utilization time-slicing: teams turn on eight or ten logical replicas because a fleet dashboard shows low average utilization. Measure concurrent tail latency and memory high-water marks first.
+- Unmanaged vGPU: teams adopt vGPU only because the enterprise runs virtual machines. Assign an engineering owner for the hypervisor, host manager, guest driver and license compatibility lifecycle first.
+- Permanent whole-GPU default: a small two-gigabyte embedding service or notebook gets an exclusive eighty-gigabyte GPU, and keeps it forever. A measured MIG pool or a shared development pool multiplies access safely.
+- Average-memory sizing: teams pick a profile or replica density from average memory usage. They ignore burst allocations, model load peaks and post-failure recovery reserves.
 
-A new sharing class clears the production exit gate only when five operational requirements are verified and documented. The first is that its supported hardware, software scope and excluded workloads are published. The second is that its namespace admission and `ResourceQuota` rules pass automated tests. The third is that its capacity unit can be reported in the Showback and Chargeback pipelines. The fourth is that its Lab 03 comparative benchmark can be reproduced. The fifth is that its named owner, recovery reserve fraction and next review date are recorded.
+Here is how to spot these early in a design review. Ask each team which of the five patterns it checked before it picked its class. A team that answers with a dashboard screenshot is describing average utilization. A team that answers with a load-test result is describing a measured envelope, and that is the answer the review needs.
 
-Treat the exit gate as a checklist you finish before the class goes live.
+A new sharing class clears the production exit gate only when five operational requirements are verified and documented. Think of the gate as a door that opens only after every check is complete. The first requirement is that its supported hardware, software scope and excluded workloads are published. The second is that its namespace admission and `ResourceQuota` rules pass automated tests. The third is that its capacity unit can be reported in the Showback and Chargeback pipelines. The fourth is that its Lab 03 comparative benchmark can be reproduced. The fifth is that its named owner, recovery reserve fraction and next review date are recorded.
+
+Treat the exit gate as a checklist you finish before the class goes live. Work skipped at the gate does not disappear. It shows up later, during an incident.
+
+A short example makes the gate concrete. A team wants a new MIG class for a chat model. Before go-live, the team must show the published hardware scope, the admission tests, the Showback unit, a reproduced Lab 03 benchmark and a named owner with a review date. If any one of those five items is missing, the class waits in the queue for its gate.
 
 ## Commands and configurations that matter
 
 ### 1. Live Incident Triage: Identifying the Active Sharing Mechanism
 
-In a production incident, you need to know how a worker node splits its GPUs. The node may partition them in hardware, multiplex them in a hypervisor or time-slice them in software. The first block below asks the host about MIG mode, active GPU Instances, virtual GPU attachments and process density on the physical card. The second block checks the Kubernetes allocatable counts and matches the device UUID seen inside the pod.
+In a production incident, you need to know how a worker node splits its GPUs. The node may partition them in hardware, multiplex them in a hypervisor or time-slice them in software. The first block below asks the host about MIG mode, active GPU Instances, virtual GPU attachments and process density on the physical card. The second block checks the Kubernetes allocatable counts and matches the device UUID seen inside the pod. Run the two blocks together, because either one alone can mislead you.
+
+If a listing comes back empty, record that as a finding, because an empty result also tells you something about the node. Write each command and its output into the incident notes as you go. Notes taken during the call are much more reliable than notes rebuilt after it.
 
 ```bash
 # 1. Host-side check: MIG vs vGPU vs Time-Slicing process density
@@ -343,11 +366,11 @@ kubectl get nodes -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.
 kubectl exec -n prod-serving pod/inference-0 -- nvidia-smi --query-gpu=uuid --format=csv
 ```
 
-Run the host commands first, then the Kubernetes commands.
+Run the host commands first, then the Kubernetes commands. The host answers the question about hardware, and the cluster answers the question about what the scheduler believes. When the two answers disagree, the host wins.
 
 ### 2. Comparative Sharing Benchmark Job Manifest
 
-Before you move a workload between whole GPUs, MIG slices and time-sliced pools, run a controlled trial. Keep the node, the container image and the runtime probe the same in every trial. The Kubernetes Job manifest below pins the trial pod to one test node and requests a single hardware MIG slice. The pod logs the visible device geometry and utilization, and then it prints the completion marker that you check in the logs.
+Before you move a workload between whole GPUs, MIG slices and time-sliced pools, run a controlled trial. Keep the node, the container image and the runtime probe the same in every trial, so the comparison measures the sharing mechanism and nothing else. The Kubernetes Job manifest below pins the trial pod to one test node and requests a single hardware MIG slice. A Job is a Kubernetes object that runs a pod to completion. The pod logs the visible device geometry and utilization, and then it prints the completion marker that you check in the logs.
 
 ```yaml
 # sharing-trial-comparative-probe.yaml
@@ -383,11 +406,11 @@ spec:
               nvidia.com/mig-1g.10gb: 1
 ```
 
-Look for the completion marker in the pod logs. Its presence confirms that the probe ran to the end.
+Look for the completion marker in the pod logs. Its presence confirms that the probe ran to the end. Its absence tells you the probe stopped early, so read the logs before you trust any number above the marker.
 
 ## How it fails
 
-When a sharing strategy or capacity model breaks, you usually see the symptoms as a stuck Pending pod, an erratic latency spike, an out-of-memory crash or a budget shortfall. The table below helps you map each symptom to its root cause boundary and to a fix.
+When a sharing strategy or capacity model breaks, you usually see the symptoms as a stuck Pending pod, an erratic latency spike, an out-of-memory crash or a budget shortfall. Each of those symptoms can look like a different problem, and that is why the table below matters. It helps you map each symptom to its root cause boundary and to a fix.
 
 | Failure mode | Exact symptom and command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
@@ -401,21 +424,23 @@ When a sharing strategy or capacity model breaks, you usually see the symptoms a
 
 Find the symptom you are seeing first, then trace it to its root cause before you apply the fix.
 
+Start with the symptom you can see on the first call, such as a Pending pod or a latency alarm. Then move to the evidence column for the exact command output that matches it. Next read the root cause boundary, and only then pick a remediation row. Skipping straight to the remediation is how a team applies a cure that never touched the cause. A fix applied to the wrong boundary changes the symptom without removing the cause.
+
 ## Hands-on lab
 
 ### Venue and scope
 
-A mistake in a capacity sizing equation or a sharing decision tree is far cheaper to catch in a local simulation. Catch it there before you repartition production H100 nodes. The lab runs locally with the Python 3 standard library, through `code/part11/choosing_gpu_sharing_model.py` and `code/part11/choosing_gpu_sharing_model_lab.py`. It checks the five-way decision tree, the active-mechanism diagnostic classifier, the five-layer capacity hierarchy and the five named reserves. It also checks the conservative node sizing formula, the Allocation-Contract chargeback rules and the four-service catalog. The host and cluster commands earlier in the chapter are marked untested here.
+A mistake in a capacity sizing equation or a sharing decision tree is far cheaper to catch in a local simulation. Catch it there before you repartition production H100 nodes. The lab runs locally with the Python 3 standard library, through `code/part11/choosing_gpu_sharing_model.py` and `code/part11/choosing_gpu_sharing_model_lab.py`. It checks the five-way decision tree, the active-mechanism diagnostic classifier, the five-layer capacity hierarchy and the five named reserves. It also checks the conservative node sizing formula, the Allocation-Contract chargeback rules and the four-service catalog. The host and cluster commands earlier in the chapter were not run on live hardware, so check them on your own nodes before you rely on them.
 
 ### Step 1: Run the self-checking GPU sharing model selection and capacity lab (tested here)
 
-From the repository root, run the self-checking script. It validates all twenty-five decision, capacity and chargeback invariants.
+From the repository root, run the self-checking script. It validates all twenty-five decision, capacity and chargeback invariants. An invariant is a rule that must stay true no matter what the inputs are, so each check protects one rule from an accidental change.
 
 ```bash
 python3 code/part11/choosing_gpu_sharing_model_lab.py
 ```
 
-The output below was captured from the repository.
+The block below shows what a passing run prints.
 
 ```text
 === Chapter 11.26 Lab: Choosing a GPU Sharing Model, Capacity & Chargeback ===
@@ -448,21 +473,21 @@ The output below was captured from the repository.
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-The summary line is the one you should check first. It should read 25 passed and 0 failed.
+The summary line is the one you should check first. It should read 25 passed and 0 failed. If it does not, read the failing line above it before you touch anything else.
 
 ### Exercises
 
-1. Walk the five-way GPU sharing decision tree. Call `select_gpu_sharing_model()` in `code/part11/choosing_gpu_sharing_model.py` on five common AI platform workloads. For each one, you should state the selected sharing model, its primary resource boundary and its billable unit. The workloads are regulated VM workstations, latency-bound inference, dev notebooks, cooperative MPS microservices and distributed LLM training.
+1. Start with the decision tree. Call `select_gpu_sharing_model()` in `code/part11/choosing_gpu_sharing_model.py` on five common AI platform workloads. For each one, state the selected sharing model. Then state its primary resource boundary and its billable unit. The workloads are regulated VM workstations, latency-bound inference, dev notebooks, cooperative MPS microservices and distributed LLM training.
 
-2. Find the mechanism on a live node. Suppose you are on a live cluster incident. State the exact host and Kubernetes observations in `detect_active_sharing_mechanism` that distinguish MIG, vGPU, Time-Slicing and Dedicated GPU.
+2. Find the mechanism on a live node. Suppose you are on a live cluster incident. Which exact host observation in `detect_active_sharing_mechanism` tells MIG apart from vGPU? Which Kubernetes observation tells Time-Slicing apart from Dedicated GPU?
 
 3. Work through the utilization paradox. List the five capacity layers in `FIVE_CAPACITY_LAYERS`, in order. Then explain how a cluster can report forty-eight percent average GPU utilization while it has zero sellable capacity for a new `3g.40gb` MIG request.
 
-4. Size a node pool with the reserve equation. Run `compute_required_nodes_vol11_ch9(70, 6, 5, 0.20)` in the chapter module. Calculate the effective sellable allocations per node and the required number of physical nodes. Then you list the five named reserves stored in `FIVE_NAMED_RESERVES`.
+4. Size a node pool with the reserve equation. Run `compute_required_nodes_vol11_ch9(70, 6, 5, 0.20)` in the chapter module. Calculate the effective sellable allocations per node. Then calculate the required number of physical nodes. Last, list the five named reserves stored in `FIVE_NAMED_RESERVES`.
 
-5. Design an Allocation-Contract rate card. Explain why billing shared GPUs only by sampled `DCGM_FI_DEV_GPU_UTIL` percentage fails when a tenant holds an idle `3g.40gb` MIG slice. Then you state the correct billable unit for Interactive sandbox, Protected inference, Large job and Regulated VM.
+5. Design an Allocation-Contract rate card. Explain why billing shared GPUs only by sampled `DCGM_FI_DEV_GPU_UTIL` percentage fails when a tenant holds an idle `3g.40gb` MIG slice. Then state the correct billable unit for Interactive sandbox, Protected inference, Large job and Regulated VM.
 
-6. Run a class migration and the Lab 03 comparative benchmark. Explain why moving a workload from Time-Slicing to MIG can uncover a hidden memory OOM crash. Then you describe the comparative probe protocol, using `SHARING_RUNTIME_PROBE_COMPLETE` and `SHARING_NEIGHBOR_PROBE_COMPLETE`.
+6. Run a class migration and the Lab 03 comparative benchmark. Explain why moving a workload from Time-Slicing to MIG can uncover a hidden memory OOM crash. Then describe the comparative probe protocol. Use `SHARING_RUNTIME_PROBE_COMPLETE` and `SHARING_NEIGHBOR_PROBE_COMPLETE` in your description.
 
 ## Checkpoint questions
 
