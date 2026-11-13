@@ -24,26 +24,21 @@ lab_venue: "Nebius GPU"
 
 Picture a rack of new GPU servers powering on. Half of them sit at a boot prompt, and the rest come up with last month's software. Provisioning exists to prevent that kind of day. BCM's job is to make 500 nodes identical. Each node boots, receives the same software image, and joins the cluster without anyone logging in to it.
 
-A GPU cluster is only as good as its worst node. When provisioning goes wrong, you get nodes that will not boot, nodes that quietly lost their local data, or nodes running an old image. This chapter follows a node from power-on to a working cluster member, step by step. It also points out where each step can break.
+Think of provisioning as a factory line for servers. Every machine that leaves the line gets the same parts, in the same order, from the same stock. If one station skips a step, that one machine ships wrong. Nobody notices until a job fails on it, and by then the machine has been in service for a while.
+
+A GPU cluster is only as good as its worst node. A training job spreads across many nodes, and the nodes have to agree at each step. One node with an old image or a missing disk can hold up the whole run, even when the other nodes are healthy. When provisioning goes wrong, you get nodes that will not boot, nodes that quietly lost their local data, or nodes running an old image. This chapter follows a node from power-on to a working cluster member, step by step. It also points out where each step can break. Read it as a story with thirteen scenes, and at each scene ask what would go wrong if that step failed.
 
 ## Prerequisites and outcomes
 
-Before you start, read chapters 8.1 to 8.3. When you finish this chapter, you should be able to do the following:
-
-- walk through the PXE boot and the 13 steps of the node installer.
-- choose and explain an install mode, and say which ones can erase local data.
-- explain how BCM recognises a new node and what the seven identification cases mean.
-- scale provisioning with boot and provisioning roles.
-- update a running node from the image safely, starting with a dry run.
-- manage software images and kernels without breaking the next reboot.
-- read node states and use `close`, `open`, `mute` and `drain` correctly.
-- work through the troubleshooting list in order.
+Read chapters 8.1 to 8.3 first, because this chapter uses their vocabulary. The chapter then walks through the boot path and the thirteen steps of the node installer. It covers how BCM recognises a new node, which install modes can erase local data, and how the boot and provisioning roles spread the load. It moves on to safe changes to images and kernels, live updates with a dry run first, and the node states, including what the `close`, `open`, `mute` and `drain` commands do. The chapter ends with the troubleshooting order to follow when a node will not come up.
 
 ## 1. The big picture
 
-Booting and provisioning are two different jobs, and it helps to keep them apart. Booting gets a small program onto the node: first the boot loader, then a kernel and a ramdisk. Provisioning copies the **software image** onto the node's disk. The image is a complete Linux filesystem that runs to many gigabytes.
+Booting and provisioning are two different jobs, and it helps to keep them apart. Booting gets a small program onto the node: first the boot loader, then a kernel and a ramdisk. The boot loader is the first program the firmware runs. The kernel is the core of the operating system, and the ramdisk is a small temporary filesystem loaded into memory that the kernel uses before the real disk is ready.
 
-By default, the head node does both jobs. When the cluster grows, you can hand each job to other nodes.
+Provisioning copies the **software image** onto the node's disk. The image is a complete Linux filesystem that runs to many gigabytes. Booting is like the knock on the door, and provisioning is the moving van that brings the furniture in after the door opens.
+
+By default, the head node does both jobs. The head node is the central management machine of the cluster. When the cluster grows, you can hand each job to other nodes.
 
 ```mermaid
 flowchart LR
@@ -55,25 +50,25 @@ flowchart LR
   F --> G[CMDaemon connects: UP]
 ```
 
-When a node fails to come up, first work out whether it failed while booting or while provisioning. The fixes for the two are different.
+When a node fails to come up, first work out whether it failed while booting or while provisioning. The fixes for the two are different. A node that never shows a boot menu has a booting problem, so the answer lies in the network or the boot files. A node that reaches the installer and then stops has a provisioning problem, and the installer's logs are the place to look. Sorting the failure into one of those two bins saves you from fixing the wrong layer.
 
 ## 2. Before the kernel loads (5.1)
 
-Suppose a node powers on and nobody is standing at its console. What happens next is decided before the Linux kernel loads. Nodes boot from the network by default. On `x86_64` that means PXE, and the head node runs a TFTP server. The files for that server live under `/tftpboot/pxelinux.cfg/`.
+Suppose a node powers on and nobody is standing at its console. What happens next is decided before the Linux kernel loads. Nodes boot from the network by default. PXE, short for Preboot Execution Environment, is the standard that lets a network card load a boot program before any operating system is on the disk. On `x86_64` that means PXE, and the head node runs a TFTP server. TFTP, the Trivial File Transfer Protocol, is a simple way to send small files over the network. The files for that server live under `/tftpboot/pxelinux.cfg/`.
 
-The boot loader then shows a menu. If nobody picks an entry before the timeout, the **AUTO** install mode runs. The timeout is 5 seconds, written `TIMEOUT 50` in deciseconds. Leave the menu files alone unless you really must change them.
+The boot loader then shows a menu. The menu is a small text file that tells the node which entry to start. If nobody picks an entry before the timeout, the **AUTO** install mode runs. The timeout is 5 seconds, written `TIMEOUT 50` in deciseconds. A decisecond is a tenth of a second, so 50 means five seconds. Leave the menu files alone unless you really must change them, because a mistake in them affects every node that reads that menu.
 
-A per-node PXE label overrides the menu default. For example, `set pxelabel MEMTEST` changes what one node boots, and it can change a whole category the same way. Setting the label to `localdrive` makes the node boot from its own disk instead. The manual discourages that, because it makes management harder.
+A per-node PXE label overrides the menu default. A label is a name for one boot choice. For example, `set pxelabel MEMTEST` changes what one node boots, and it can change a whole category the same way. Setting the label to `localdrive` makes the node boot from its own disk instead. The manual discourages that, because it makes management harder.
 
-The boot protocol is set by `bootloaderprotocol`, and its default is HTTP. Even then, the first stage is still TFTP on `x86_64`, and HTTP takes over only for the kernel and ramdisk. If your hardware cannot make that switch, set `tftp`. HTTPS almost never works. ARMv8 nodes boot over TFTP only, and they get a GRUB binary.
+The boot protocol is set by `bootloaderprotocol`, and its default is HTTP. HTTP is the same web protocol your browser uses, and here it carries the large files. Even then, the first stage is still TFTP on `x86_64`, and HTTP takes over only for the kernel and ramdisk. If your hardware cannot make that switch, set `tftp`. HTTPS almost never works. ARMv8 nodes boot over TFTP only, and they get a GRUB binary. GRUB is a common boot loader for Linux, and a binary here means the boot loader program itself.
 
-On nodes with a disk, BCM also installs iPXE on the drive. It acts as a fallback if the BIOS PXE attempt fails.
+On nodes with a disk, BCM also installs iPXE on the drive. iPXE is a more capable version of PXE firmware. It acts as a fallback if the BIOS PXE attempt fails. The BIOS is the firmware that runs when the machine first powers on, before the operating system is loaded.
 
-DHCP and TFTP can be overwhelmed when hundreds of nodes boot together. You see random nodes fail to boot, and a different set fails each time. The fix is to give the `boot` role to one regular node per rack or subnet. The head node always has the boot role. On a large cluster, plan the `boot` role before the first mass power-on, not after the first failed boot.
+DHCP and TFTP can be overwhelmed when hundreds of nodes boot together. Imagine a whole rack powering on at once, with every node asking for an address and a boot file in the same few seconds. You see random nodes fail to boot, and a different set fails each time. The fix is to give the `boot` role to one regular node per rack or subnet. The head node always has the boot role. On a large cluster, plan the `boot` role before the first mass power-on, not after the first failed boot.
 
 ## 3. The node installer: 13 steps (5.4)
 
-Once the ramdisk is running, a program called the **node installer** takes over. It works through 13 steps in a fixed order. The diagram shows that order. The numbered notes after it explain what each step does and where it can go wrong.
+A node that stalls halfway through an install gives you very little to go on, unless you already know the order of the work. The node installer is the program that does that work. Once the ramdisk is running, the node installer takes over. It works through 13 steps in a fixed order. The diagram shows that order. The numbered notes after it explain what each step does and where it can go wrong.
 
 ```mermaid
 flowchart TB
@@ -91,35 +86,35 @@ flowchart TB
   S12 --> S13[13 switch to local init]
 ```
 
-**1. Certificate.** The node asks the head node for a certificate. The setting `signinstallercertificates` is `AUTO` by default, or `MANUAL`. A network can refine this with `allowautosign`: Always, Automatic (the default, which applies only to networks of type internal), Never, or Secret (for edge sites). On an untrusted network, use MANUAL and approve each request in `cert` mode with `listrequests` and `issuecertificate`. The certificate is stored under `/cm/node-installer/certificates/<MAC>/`. If a node gets a bad certificate, delete that directory so the node can ask again.
+**1. Certificate.** The node asks the head node for a certificate. A certificate is a signed identity card. It proves to the head node that this node is the one it claims to be. The setting `signinstallercertificates` is `AUTO` by default, or `MANUAL`. A network can refine this with `allowautosign`: Always, Automatic (the default, which applies only to networks of type internal), Never, or Secret (for edge sites). On an untrusted network, use MANUAL and approve each request in `cert` mode with `listrequests` and `issuecertificate`. The certificate is stored under `/cm/node-installer/certificates/<MAC>/`. If a node gets a bad certificate, delete that directory so the node can ask again.
 
-**2. Who am I?** The installer asks CMDaemon whether the booting MAC address belongs to a known node, and which switch port the node is plugged into. Section 4 below covers the seven cases.
+**2. Who am I?** The installer asks CMDaemon, the management daemon that talks to the head node, whether the booting MAC address belongs to a known node. It also asks which switch port the node is plugged into. Section 4 below covers the seven cases.
 
-**3. Network.** The installer brings up the interfaces. First, though, it checks that each IP address is not already in use. `BOOTIF` is a special name for whichever interface the node booted from. Other interfaces stay down during install, unless you set `bringupduringinstall` to `yes` (up during install) or `yesandkeep` (up, and it stays up).
+**3. Network.** The installer brings up the interfaces. First, though, it checks that each IP address is not already in use. Imagine an address that another machine already holds. Two machines with one address cause failures that are hard to trace, so the installer looks first. `BOOTIF` is a special name for whichever interface the node booted from. Other interfaces stay down during install, unless you set `bringupduringinstall` to `yes` (up during install) or `yesandkeep` (up, and it stays up).
 
-**4. Install mode.** The installer decides the install mode. Section 5 explains the options.
+**4. Install mode.** The installer decides the install mode. The install mode is the rule for what happens to the disk. Section 5 explains the options.
 
-**5. Initialize script.** This script runs before the disks are touched. The category script runs first, then the node script. If you have hardware that the standard flow does not know how to start, use this script for it.
+**5. Initialize script.** This script runs before the disks are touched. Think of it as a hook that runs before anything on the disk changes. The category script runs first, then the node script. If you have hardware that the standard flow does not know how to start, use this script for it.
 
-**6. Partitions.** The installer checks the layout in the node's disk-layout XML, creates the partitions if they are missing, and then mounts them.
+**6. Partitions.** The installer checks the layout in the node's disk-layout XML, which is a file that describes the partitions. It creates the partitions if they are missing, and then mounts them. Mounting attaches a filesystem to a folder so that programs can use it.
 
-**7. Sync.** The installer copies the image to the node with rsync. The exclude lists in section 8 decide which files are skipped. `provisioninginterface` picks the interface that receives the data. Its default is `BOOTIF`, but you should choose the fastest one. `provisioningtransport` is either `rsyncdaemon`, which is unencrypted, or `rsyncssh`, which is encrypted and puts more load on the provisioner.
+**7. Sync.** The installer copies the image to the node with rsync. Rsync is a tool that copies only the differences between two trees of files, so a repeat sync is much quicker than a first one. The exclude lists in section 8 decide which files are skipped. `provisioninginterface` picks the interface that receives the data. Its default is `BOOTIF`, but you should choose the fastest one. `provisioningtransport` is either `rsyncdaemon`, which is unencrypted, or `rsyncssh`, which is encrypted and puts more load on the provisioner. Encryption costs CPU time on the sending side, so the choice matters more as the number of nodes grows.
 
-**8 and 9.** The installer writes the interface files and `/etc/fstab`.
+**8 and 9.** The installer writes the interface files and `/etc/fstab`. The fstab file lists the filesystems that the system mounts at boot.
 
-**10.** The installer can write a boot record, so the node can start from its own disk (`installbootrecord`). It also sets up SELinux if that is configured.
+**10.** The installer can write a boot record, so the node can start from its own disk (`installbootrecord`). A boot record tells the firmware how to start the operating system from that disk. It also sets up SELinux if that is configured. SELinux is a security layer in Linux that limits what each program may touch.
 
-**11. Finalize script.** This script runs just before the handover. It is the right place to append a setting that the installer would otherwise overwrite on every boot.
+**11. Finalize script.** This script runs just before the handover. It is the right place to append a setting that the installer would otherwise overwrite on every boot. Anything you put here is applied last, so it wins over the work the installer just did.
 
-**12. Unload drivers.** The IPMI drivers are needed to configure the BMC. After that they keep using CPU and power, so by default they are unloaded here (`removeModulesBeforeInit`).
+**12. Unload drivers.** The IPMI drivers are needed to configure the BMC. IPMI is the standard interface for talking to the baseboard management controller, which is the small controller that handles power and the remote console on a server. After that they keep using CPU and power, so by default they are unloaded here (`removeModulesBeforeInit`).
 
-**13. Hand over.** The node passes control to `/sbin/init` on the local disk. From then on, it behaves like any Linux machine.
+**13. Hand over.** The node passes control to `/sbin/init` on the local disk. The init program is the first process the kernel starts, and it brings up the rest of the system. From then on, the node behaves like any Linux machine.
 
-When a node stalls, find the step it reached before you change anything.
+When a node stalls, find the step it reached before you change anything. The step tells you which part of the install to examine, and the error message alone often does not.
 
 ## 4. Who is this node? The seven cases (5.4.2)
 
-A new or returning node can be recognised by its **MAC address**, by the **switch port** it is plugged into, or by both. The manual has a seven-row truth table. Read it as a set of questions about what the head node already knows.
+Picture a new server, plugged in on Monday, that the head node has never seen. Before it can receive an identity, the head node has to decide whether it knows this machine. It answers with two clues. The first is the **MAC address**, the hardware address burned into the network card. The second is the **switch port** the cable runs into. A new or returning node can be recognised by its MAC address, by the switch port it is plugged into, or by both. The manual has a seven-row truth table. Read it as a set of questions about what the head node already knows.
 
 | # | Node known? | Port detected? | Port configuration | Result |
 |---|---|---|---|---|
@@ -131,17 +126,19 @@ A new or returning node can be recognised by its **MAC address**, by the **switc
 | 6 | yes | no | the MAC's config expects a port | **manual**: port mismatch |
 | 7 | yes | yes | the MAC's config has no port | suggested, accepted |
 
-In practice, a brand-new node with no switch configuration always stops for a human. Those are cases 2 and 3. A port mismatch, in cases 5 and 6, usually means two nodes were swapped by mistake. The installer protects you by stopping. For case 6, the manual's simplest fix is `cmsh -c "device clear node001 switchports; commit"`. You can also enable port detection on the switch.
+Read the table one row at a time. Ask first whether the node is known. Then ask whether the switch port is detected. The last column tells you what the installer does with the answers. A "manual" result means a person has to act at the console, while a "suggested" result means the installer offers an answer and accepts it after a timeout.
 
-Naming new nodes is where `newnodes` comes in. In cmsh device mode, `newnodes` lists the MAC addresses that are waiting to be named. Running `newnodes -s -n node001..node032` assigns names in the order the nodes arrived. That is why you should power nodes on in the order you want them named. A few flags adjust this. `-w` assigns a name without saving it, and `-s` saves it. `-o 1` skips the first arrival. `-f` forces a name that is already taken and moves it to the new MAC, so use it with care. The lab checks the manual's `-o` example.
+In practice, a brand-new node with no switch configuration always stops for a human. Those are cases 2 and 3. A port mismatch, in cases 5 and 6, usually means two nodes were swapped by mistake. The installer protects you by stopping. For case 6, the manual's simplest fix is `cmsh -c "device clear node001 switchports; commit"`. You can also enable port detection on the switch. Think of the stop as a safety catch. It is much cheaper to answer a question at the console than to repair a node that received the wrong identity.
 
-You can also create node objects before the hardware arrives. Use `add physicalnode node002 10.141.0.2` in device mode, the Base View node creation wizard, or `foreach --clone`. A node object with no MAC address is a **placeholder**. The installer then lets someone pick the identity at the console.
+Naming new nodes is where `newnodes` comes in. cmsh is the command-line shell for BCM, and its device mode manages the hardware objects. In cmsh device mode, `newnodes` lists the MAC addresses that are waiting to be named. Running `newnodes -s -n node001..node032` assigns names in the order the nodes arrived. That is why you should power nodes on in the order you want them named. A few flags adjust this. `-w` assigns a name without saving it, and `-s` saves it. `-o 1` skips the first arrival. `-f` forces a name that is already taken and moves it to the new MAC, so use it with care. The lab checks the manual's `-o` example.
 
-Before the racks arrive, decide the naming order, so you do not have to rename nodes at the console.
+You can also create node objects before the hardware arrives. Use `add physicalnode node002 10.141.0.2` in device mode, the Base View node creation wizard, or `foreach --clone`. A node object with no MAC address is a **placeholder**. A placeholder is a node object that exists in BCM before the hardware does. The installer then lets someone pick the identity at the console.
+
+Before the racks arrive, decide the naming order, so you do not have to rename nodes at the console. A short written list of which MAC goes with which rack position is cheap insurance on installation day.
 
 ## 5. Install modes (5.4.4)
 
-The install mode tells the installer what to do with the node's disk. Pick the wrong one and the node can lose its local data. The table lists the five values.
+Picture a node that was repaired last week, and its disk still holds last year's data. Whether that data survives the next boot depends on one setting, the install mode. The install mode tells the installer what to do with the node's disk. Pick the wrong one and the node can lose its local data. The table lists the five values.
 
 | Mode | Disk check | What happens | Wipes data? |
 |---|---|---|---|
@@ -151,7 +148,9 @@ The install mode tells the installer what to do with the node's disk. Pick the w
 | **NOSYNC** | yes | healthy: **no sync**, local contents kept. Unhealthy: rewrite partitions and FULL sync | only if unhealthy |
 | **SKIP** | none | no check and no sync, for data recovery | no |
 
-The manual is blunt about NOSYNC. It says NOSYNC "should therefore not be regarded as a way to protect data". Its own example shows why. A burn run (chapter 8.2) destroys the partition layout. On the next reboot, the layout no longer matches, so even NOSYNC does a FULL sync. A failing drive that renumbers (`/dev/sdb` becomes `/dev/sda`), or a node with a new MAC address, can do the same thing to AUTO and NOSYNC.
+The manual is blunt about NOSYNC. It says NOSYNC "should therefore not be regarded as a way to protect data". Its own example shows why. A burn run (chapter 8.2) is a hardware test, and a destructive one destroys the partition layout. On the next reboot, the layout no longer matches, so even NOSYNC does a FULL sync. A failing drive that renumbers (`/dev/sdb` becomes `/dev/sda`), or a node with a new MAC address, can do the same thing to AUTO and NOSYNC. The lesson is that NOSYNC only keeps your data while the disk still looks the way the installer expects.
+
+Read the table as two questions. The first question is whether the installer checks the disk before it acts. The second is whether a mismatch leads to a wipe. FULL never checks, so it always wipes. AUTO and NOSYNC check, and they wipe only when the check fails. MAIN and SKIP leave the disk untouched, which is why they suit maintenance and recovery work.
 
 The installer looks for the install mode in a fixed order. The manual states: *"The node-installer looks for install-mode execution settings in this order:"*
 
@@ -162,17 +161,17 @@ The installer looks for the install mode in a fixed order. The manual states: *"
 5. The category's **`installmode`** property (default **`AUTO`**).
 6. A **console dialog** during the node-installer run, which *"gives the user a last opportunity to overrule the install-mode value as determined by the node-installer"* (default **`AUTO`**).
 
-Be careful with precedence here. Item 1 applies to new nodes. Item 4 is auto-linked to item 5 by default. Item 6 overrules whatever the earlier steps chose. The manual does not say whether a non-default PXE menu selection (item 2) beats an explicitly set `nextinstallmode` (item 3). It also does not say how that compares with an unlinked node `installmode` (item 4) when both are set. Treat that interaction as unresolved, and verify it on a test node before you rely on simultaneous overrides.
+Be careful with precedence here. Item 1 applies to new nodes. Item 4 is auto-linked to item 5 by default. Item 6 overrules whatever the earlier steps chose. The manual does not say whether a non-default PXE menu selection (item 2) beats an explicitly set `nextinstallmode` (item 3). It also does not say how that compares with an unlinked node `installmode` (item 4) when both are set. Treat that interaction as unresolved, and verify it on a test node before you rely on simultaneous overrides. A test node costs little. A wiped data disk costs a great deal more.
 
-Protecting nodes that hold data is the job of `datanode`. Set `datanode yes` on a node or a category. Because it is a Boolean, the category and node values combine as category OR node. Once it is set, any FULL install waits for a human to confirm, even when AUTO or NOSYNC falls back to FULL. Confirm at the console, or run `installerinteractions -w -n node001 --confirm`. The `--deny` flag sends the node to maintenance mode instead. The manual also describes XML assertions, which halt the install if the expected drive is missing. It describes `blockdevicesclearedonnextboot` too, which does the opposite. It erases the named devices on the next boot and ignores `datanode`, so be careful with it.
+Protecting nodes that hold data is the job of `datanode`. Set `datanode yes` on a node or a category. `datanode` is a Boolean, which means it is a simple yes or no switch. Because it is a Boolean, the category and node values combine as category OR node, so the setting is active if either one says yes. Once it is set, any FULL install waits for a human to confirm, even when AUTO or NOSYNC falls back to FULL. Confirm at the console, or run `installerinteractions -w -n node001 --confirm`. The `--deny` flag sends the node to maintenance mode instead. The manual also describes XML assertions, which halt the install if the expected drive is missing. It describes `blockdevicesclearedonnextboot` too, which does the opposite. It erases the named devices on the next boot and ignores `datanode`, so be careful with it.
 
-If you plan a mass reboot and do not want a re-sync, you can set the mode for many nodes at once: `device foreach -n node001..node999 (set nextinstallmode nosync)`, then commit.
+If you plan a mass reboot and do not want a re-sync, you can set the mode for many nodes at once: `device foreach -n node001..node999 (set nextinstallmode nosync)`, then commit. The commit step matters, because nothing changes until you save the change. Check the result on a few nodes before you rely on it for the whole range.
 
 Mark any node that holds local data with `datanode yes`, so that a FULL install waits for you.
 
 ## 6. Scaling provisioning: provisioning nodes (5.2)
 
-When many nodes install at once, they all pull the image from the head node. The provisioning role lets you hand that traffic to other nodes. The head node always has the provisioning role, and you can give it to other nodes to share the image traffic. Each parameter below controls one part of that job.
+Picture a Monday morning when a whole rack of nodes starts installing at the same moment. Every node asks for the image, and every request lands on the same machine. When many nodes install at once, they all pull the image from the head node. The provisioning role lets you hand that traffic to other nodes. The head node always has the provisioning role, and you can give it to other nodes to share the image traffic. Each parameter below controls one part of that job.
 
 | Parameter | Meaning |
 |---|---|
@@ -180,82 +179,86 @@ When many nodes install at once, they all pull the image from the head node. The
 | `allimages` | `onlocaldisk` (default), `onlocaldiskexceptsharedimages`, `onsharedstorage`, or `no` (then only `localimages` / `sharedimages`) |
 | `nodegroups` | If set, this provisioner serves only nodes in those groups, and those nodes only use provisioners that list the group. Nodes in no group use provisioners with no nodegroups. Use it to build a rack-by-rack hierarchy |
 
-The default of 10 slots is easy to reason about. Suppose you add a second provisioner and leave both at the default. Each one serves 10 nodes at once, so together they serve 20 (10 plus 10). If the NIC or disk saturates, lower the value on that provisioner.
+A slot is one node that a provisioner is serving at this moment. The default of 10 slots is easy to reason about. Suppose you add a second provisioner and leave both at the default. Each one serves 10 nodes at once, so together they serve 20 (10 plus 10). The arithmetic is simple, and that is the point. If the NIC or disk saturates, lower the value on that provisioner, so it serves fewer nodes at once and the others keep their share.
 
-The head node follows a few housekeeping rules. Requests are first come, first served. Among the eligible provisioners, the one with the fewest started tasks gets the request. A cluster-wide ceiling, `MaxNumberOfProvisioningThreads` in the head node's `cmd.conf`, limits all provisioning together. If no provisioner is free, the request is deferred and retried when a task finishes. A locked image also defers the request. A failed transfer is retried 5 times before it fails. A provisioner that loses connectivity keeps its requests for 180 seconds, and then they fail.
+The `nodegroups` setting is how you build a hierarchy. A rack-by-rack design lets each rack's nodes pull the image from a nearby provisioner, instead of all going to one place. Nodes in a group use only the provisioners that list that group. Nodes in no group use the provisioners that have no group. Read the rule as a two-way matching. A group on a provisioner matches the same group on the nodes.
 
-Cold-start order matters. Start the head node first, then the provisioning nodes, because they must be provisioned too. Start everything else after that. Provisioners also keep a copy of every image they serve, in the same path as the head node, so give them disk space for it.
+The head node follows a few housekeeping rules. Requests are first come, first served, which means the queue runs in arrival order. Among the eligible provisioners, the one with the fewest started tasks gets the request. A cluster-wide ceiling, `MaxNumberOfProvisioningThreads` in the head node's `cmd.conf`, limits all provisioning together. If no provisioner is free, the request is deferred and retried when a task finishes. A locked image also defers the request. A failed transfer is retried 5 times before it fails. A provisioner that loses connectivity keeps its requests for 180 seconds, and then they fail.
 
-Images reach the provisioners through `updateprovisioners`. It runs by itself after changes made through cmsh or Base View, and by default it also runs every midnight (UTC). If you change an image outside BCM, for example by copying a file in from the shell, you must run it yourself. A provisioner that is being updated serves nobody until the update finishes. The setting `dirtyautoupdatetimeout`, with a default of 300 s, stops the automatic run from firing too often. Setting it to 0 disables the automatic trigger.
+Cold-start order matters. Start the head node first, then the provisioning nodes, because they must be provisioned too. Start everything else after that. Provisioners also keep a copy of every image they serve, in the same path as the head node, so give them disk space for it. Plan for that copy when you size the disks, because it is easy to forget until a provisioner runs out of room.
 
-`drain` and `undrain`, in `softwareimage` mode, stop a provisioner from taking new requests while its active ones finish. `provisioningstatus` shows slots and state. `synclog` shows what rsync did, and `syncinfo` gives statistics.
+Images reach the provisioners through `updateprovisioners`. It runs by itself after changes made through cmsh or Base View, and by default it also runs every midnight (UTC). UTC is Coordinated Universal Time, the reference clock that does not change with daylight saving. If you change an image outside BCM, for example by copying a file in from the shell, you must run it yourself. A provisioner that is being updated serves nobody until the update finishes. The setting `dirtyautoupdatetimeout`, with a default of 300 s, stops the automatic run from firing too often. Setting it to 0 disables the automatic trigger.
 
-Provisioning nodes scale image delivery and booting. They do not move the whole management plane. CMDaemon, the database and the monitoring data still live on the head node and on its HA partner. If the head node is the limit, add provisioning nodes for image traffic, and plan the management services separately.
+`drain` and `undrain`, in `softwareimage` mode, stop a provisioner from taking new requests while its active ones finish. Draining is the gentle way to take a provisioner out of service, because the work already started can finish. `provisioningstatus` shows slots and state. `synclog` shows what rsync did, and `syncinfo` gives statistics.
+
+Provisioning nodes scale image delivery and booting. They do not move the whole management plane. CMDaemon, the database and the monitoring data still live on the head node and on its HA partner. HA means high availability, a second head node that takes over if the first one fails. If the head node is the limit, add provisioning nodes for image traffic, and plan the management services separately.
 
 ## 7. Software images and kernels (5.3, chapter 9)
 
-A software image is a directory on the head node, such as `/cm/images/default-image`. It holds a kernel and a ramdisk. The ramdisk carries the drivers a node needs to reach the network and the disk. The rest of the image arrives later, during provisioning.
+Suppose you update a package in the software image on a Friday, and on Monday the nodes come up without a network. The change happened in one place, the image, and the damage showed up at the next reboot. That gap in time is why image work needs care. A software image is a directory on the head node, such as `/cm/images/default-image`. It holds a kernel and a ramdisk. The ramdisk carries the drivers a node needs to reach the network and the disk. The rest of the image arrives later, during provisioning.
 
-A wrong kernel module list at a lower level can stop a node from booting, so image changes need care. Kernel modules for the ramdisk can be set on the image, on the category, or on the node. **A lower level replaces the higher level completely; it does not add to it.** Normally, set the list on the image only. Changing the list makes CMDaemon rebuild the ramdisk with `createramdisk`.
+A wrong kernel module list at a lower level can stop a node from booting, so image changes need care. Kernel modules are the driver pieces that the kernel loads on demand. Kernel modules for the ramdisk can be set on the image, on the category, or on the node. **A lower level replaces the higher level completely; it does not add to it.** Normally, set the list on the image only. Changing the list makes CMDaemon rebuild the ramdisk with `createramdisk`.
 
-The manual lists 11 safe habits, and following them keeps an image change from breaking the next reboot. Start with habit 1: clone a working image before you change it. Then change the image with `cm-chroot-sw-img /cm/images/default-image`, which mounts the special directories for you. Inside it, use `yum`, `zypper` or `apt`. You can also use `yum --installroot`. If the package tools complain that the image is being provisioned, lock it first with `softwareimage lock default-image`, and unlock it afterwards. A new kernel in an image is not used until you set the image's `kernelversion`. Commit the change, and tab completion lists the choices. BCM keeps old kernels instead of the distribution's "keep 3".
+The manual lists 11 safe habits, and following them keeps an image change from breaking the next reboot. Start with habit 1: clone a working image before you change it. A clone is a copy you can fall back on if the change goes wrong. Then change the image with `cm-chroot-sw-img /cm/images/default-image`, which mounts the special directories for you. A chroot is a folder that a program sees as the root of the system, so commands run inside it change the image and not the head node. Inside it, use `yum`, `zypper` or `apt`. You can also use `yum --installroot`. If the package tools complain that the image is being provisioned, lock it first with `softwareimage lock default-image`, and unlock it afterwards. A new kernel in an image is not used until you set the image's `kernelversion`. Commit the change, and tab completion lists the choices. BCM keeps old kernels instead of the distribution's "keep 3".
 
-Habits 5, 6 and 7 cover kernel and module checks. After a kernel or module change made with a package manager, run `createramdisk`. The package manager updates the normal ramdisk, not BCM's extended one. If you forget, nodes fail while loading the ramdisk. Inside a chroot, `uname -a` shows the kernel running outside the chroot. To see the kernel the node will load, run `cmsh -c "softwareimage; use default-image; get kernelversion"`. A `chrootprocess` health check warns you when a daemon is running inside an image.
+Habits 5, 6 and 7 cover kernel and module checks. After a kernel or module change made with a package manager, run `createramdisk`. The package manager updates the normal ramdisk, not BCM's extended one. If you forget, nodes fail while loading the ramdisk. Inside a chroot, `uname -a` shows the kernel running outside the chroot, which is the head node's kernel and not the one the node will load. To see the kernel the node will load, run `cmsh -c "softwareimage; use default-image; get kernelversion"`. A `chrootprocess` health check warns you when a daemon is running inside an image. A daemon running inside an image is a process that should not be there, so the warning is worth reading.
 
-Habit 8 is to keep the node-installer image at `/cm/node-installer` updated too. Habit 9 stops a kernel from changing, using `yum --exclude kernel update`, `apt-mark hold` or `zypper addlock`. Habit 10 applies to HA head nodes. Change the passive head first when you install a kernel, because the active head's network might stop and trigger a failover.
+Habit 8 is to keep the node-installer image at `/cm/node-installer` updated too. The node installer is a separate image from the software image, and both have to stay current. Habit 9 stops a kernel from changing, using `yum --exclude kernel update`, `apt-mark hold` or `zypper addlock`. A hold keeps a routine update from replacing the kernel you chose. Habit 10 applies to HA head nodes. Change the passive head first when you install a kernel, because the active head's network might stop and trigger a failover. A failover is the moment the passive head takes over, and you do not want it to happen during a kernel change.
 
-Habit 11 covers kernel parameters. They live in the `kernelparameters` property of `softwareimage` mode. For example, `append kernelparameters " VLANID=89"` adds one. Do not treat `numa_balancing=0` and `iommu=pt` as universal BCM defaults. NVIDIA's DOCA host-configuration documentation lists `iommu=pt` for specific cases, such as resolving `IO_PAGE_FAULT` DMA errors in `dmesg` or enabling certain DOCA services. Add a kernel parameter only for a documented reason, and test it on a canary category first.
+Habit 11 covers kernel parameters. They live in the `kernelparameters` property of `softwareimage` mode. A kernel parameter is a setting you pass to the kernel at boot. For example, `append kernelparameters " VLANID=89"` adds one. Do not treat `numa_balancing=0` and `iommu=pt` as universal BCM defaults. NVIDIA's DOCA host-configuration documentation lists `iommu=pt` for specific cases, such as resolving `IO_PAGE_FAULT` DMA errors in `dmesg` or enabling certain DOCA services. DMA is direct memory access, the way devices move data without the CPU copying it. Add a kernel parameter only for a documented reason, and test it on a canary category first. A canary category is a small group of nodes that receives a change before everyone else does.
 
-Sometimes you change a node first and save the result back into an image with `grabimage`. The cleaner route is to change the image directly, in a chroot. `grabimage` copies from a running node into the image, using `excludelistgrab`. `grabimage -i <newimage>` makes a new image instead, using `excludelistgrabnew`. The manual warns that unwanted changes can be captured this way. Compare the images before you trust the result. The manual's tip is `vimdiff <(cd image1; find . | sort) <(cd image2; find . | sort)`.
+Sometimes you change a node first and save the result back into an image with `grabimage`. The cleaner route is to change the image directly, in a chroot. `grabimage` copies from a running node into the image, using `excludelistgrab`. `grabimage -i <newimage>` makes a new image instead, using `excludelistgrabnew`. The manual warns that unwanted changes can be captured this way. A running node has logs, caches and temporary files that you never meant to keep. Compare the images before you trust the result. The manual's tip is `vimdiff <(cd image1; find . | sort) <(cd image2; find . | sort)`. That command lists every file in both trees, sorts the lists and opens them side by side, so you can spot the extra files.
 
 ### 7.1 InfiniBand and VLAN provisioning
 
-By default, BCM provisions nodes over Ethernet. The reason is that the `rdma` init script (or `openibd` on SLES) loads the InfiniBand kernel modules only after the node-provisioning stage finishes. To provision at InfiniBand speed during the pre-init stage, you need two changes. This assumes `ibnet` is already configured, as in chapter 8.3.
+Suppose your GPU nodes have fast InfiniBand cards, but the provisioning traffic still crosses the slower Ethernet link. By default, BCM provisions nodes over Ethernet. The reason is that the `rdma` init script (or `openibd` on SLES) loads the InfiniBand kernel modules only after the node-provisioning stage finishes. The fast path is not ready in time. To provision at InfiniBand speed during the pre-init stage, you need two changes. This assumes `ibnet` is already configured, as in chapter 8.3.
 
-1. **Put the HCA's InfiniBand drivers in the image's ramdisk.** First find the modules that `rdma` loads on a booted node. Run `lsmod | cut -f1 -d" " > /tmp/a`, then `systemctl start rdma-load-modules@rdma`, then `lsmod | cut -f1 -d" " > /tmp/b`, and finally `diff /tmp/a /tmp/b`. On RHEL 7 and later, `rdma` can only be started once per boot, and it cannot be stopped. Then add those modules, such as `mlx4_ib`, `ib_ipoib` and `ib_umad`, with `softwareimage use default-image; kernelmodules; add ...; commit`. That regenerates the ramdisk.
-2. **Set the provisioning interface to `ib0`.** Run `device; foreach -n node001..node150 (set provisioninginterface ib0); commit`.
-   - **Critical `BOOTIF` rule:** the interface a node boots from (`BOOTIF`) must not also be configured as a separate named interface for that node in CMDaemon. If `BOOTIF` is `ib0`, do not keep a separate `ib0` interface entry on the node. Change either `BOOTIF` or the `ib0` configuration, so that node installation can succeed.
+1. **Put the HCA's InfiniBand drivers in the image's ramdisk.** An HCA is a host channel adapter, the InfiniBand network card in a server. First find the modules that `rdma` loads on a booted node. Run `lsmod | cut -f1 -d" " > /tmp/a`, then `systemctl start rdma-load-modules@rdma`, then `lsmod | cut -f1 -d" " > /tmp/b`, and finally `diff /tmp/a /tmp/b`. The diff shows the modules that appear only after `rdma` starts. On RHEL 7 and later, `rdma` can only be started once per boot, and it cannot be stopped. Then add those modules, such as `mlx4_ib`, `ib_ipoib` and `ib_umad`, with `softwareimage use default-image; kernelmodules; add ...; commit`. That regenerates the ramdisk.
+2. **Set the provisioning interface to `ib0`.** Run `device; foreach -n node001..node150 (set provisioninginterface ib0); commit`. The `ib0` name is the first InfiniBand interface on the node.
+   - **Critical `BOOTIF` rule:** the interface a node boots from (`BOOTIF`) must not also be configured as a separate named interface for that node in CMDaemon. If `BOOTIF` is `ib0`, do not keep a separate `ib0` interface entry on the node. Change either `BOOTIF` or the `ib0` configuration, so that node installation can succeed. Two definitions of the same interface confuse the installer, so keep only one of them.
 
-**VLAN provisioning (supported since BCM 8.2)** needs four things together:
+**VLAN provisioning (supported since BCM 8.2)** needs four things together. A VLAN is a virtual network that splits one physical cable into several separate networks, and it needs all four of the following items to work for provisioning.
 
 1. A VLAN network and a node VLAN interface, as set up in chapter 8.3.
 2. The `8021q` (`rtnl-link-vlan`) kernel module in the software image. Recent distributions ship it as a module, not built into the base kernel, so add it with `softwareimage use default-image; kernelmodules; add 8021q; commit`. When the module is loaded on the node, `lsmod | grep 8021q` shows `8021q`, `garp` and `mrp`.
 3. BIOS VLAN support. The node's BIOS network options must have `VLANID` set. If the BIOS cannot set a VLAN ID, PXE over VLAN cannot work. In that case, check for a NIC firmware or BIOS update.
 4. `VLANID` in the image's `kernelparameters`, set with `softwareimage use default-image; append kernelparameters " VLANID=89"; commit`.
 
+If any one of the four is missing, the node may still boot, but it will not reach the provisioner over the VLAN. Check the items in order, starting with the network.
+
 ### 7.2 Creating custom, DGX, multi-distro, and multi-arch images (`cm-create-image` and `cm-image`)
 
-Sometimes you need a software image from scratch. That might be for a DGX platform, for a different Linux distribution (`multidistro` / `multiOS`), or for a different CPU architecture (`multiarch`: `x86_64` and `aarch64` / ARMv8). BCM provides two tools for this job.
+Suppose a new GPU server model arrives, and the image you use for the other nodes does not match its hardware. Sometimes you need a software image from scratch. That might be for a DGX platform, for a different Linux distribution (`multidistro` / `multiOS`), or for a different CPU architecture (`multiarch`: `x86_64` and `aarch64` / ARMv8). BCM provides two tools for this job. A distribution is a particular Linux family, such as RHEL or Ubuntu, and an architecture is the CPU instruction set the image was built for.
 
-**1. `cm-create-image`, from the `cluster-tools` package.** This tool builds an image from a base distribution archive, called the `basetar`. The archive can be `/data/UBUNTU2404.tar.gz` from the BCM ISO. It can also be a tar or rsync copy taken from a clean base host. A base host is a regular node, never a head node. When you take that copy, exclude `/proc`, `/sys`, `/tmp/*`, `/var/log/*`, `/etc/HOSTNAME`, `/etc/udev/rules.d/*persistent*.rules`, `/root/.ssh`, and so on.
+**1. `cm-create-image`, from the `cluster-tools` package.** This tool builds an image from a base distribution archive, called the `basetar`. The archive can be `/data/UBUNTU2404.tar.gz` from the BCM ISO. It can also be a tar or rsync copy taken from a clean base host. A base host is a regular node, never a head node. When you take that copy, exclude `/proc`, `/sys`, `/tmp/*`, `/var/log/*`, `/etc/HOSTNAME`, `/etc/udev/rules.d/*persistent*.rules`, `/root/.ssh`, and so on. Those paths hold live system state, device names or private keys, and none of them should travel into a new image.
 
-- **SELinux note:** to use SELinux on compute nodes, extended attributes must not be used. Run `fspart; foreach * (set rsyncxattr no)`.
-- **The main options.** `--fromarchive <tar.gz>` (`-a`) builds from an archive. `--fromdir <dir>` (`-d`) builds from a directory. `--fromhost <hostname>` works like `grabimage`, and it also works on unmanaged generic nodes, as long as passwordless SSH works. `--frombfb <file>` is the fourth source. Pair any of these with `--imagename <name>` (`-n`) and, optionally, `--imagedir <dir>` (`-i`). The image directory must already exist, and it defaults to `/cm/images/<name>`. If the image name already exists, `cm-create-image` exits unless you add `-f` or `--updateimage`.
+- **SELinux note:** to use SELinux on compute nodes, extended attributes must not be used. Extended attributes are small labels stored with files, and SELinux context labels are a common case. Run `fspart; foreach * (set rsyncxattr no)`.
+- **The main options.** `--fromarchive <tar.gz>` (`-a`) builds from an archive. `--fromdir <dir>` (`-d`) builds from a directory. `--fromhost <hostname>` works like `grabimage`, and it also works on unmanaged generic nodes, as long as passwordless SSH works. `--frombfb <file>` is the fourth source. Pair any of these with `--imagename <name>` (`-n`) and, optionally, `--imagedir <dir>` (`-i`). The image directory must already exist, and it defaults to `/cm/images/<name>`. If the image name already exists, `cm-create-image` exits unless you add `-f` or `--updateimage`. The exit is a safety measure, so you do not overwrite a working image by accident.
 - **`--skipdist`** skips installing extra base distribution packages. You need it when the source already contains them, such as a DGX OS image that already includes Ubuntu. Combining `--updateimage --skipdist` updates an existing DGX image in place.
-- **`--dgx` and `--dgx-type`.** `--dgx` builds a DGX platform image, for example from `UBUNTU2404.tar.gz`, and sets the standardized kernel parameters for that GPU platform. `--dgx-type` takes one of `{dgx_h100, dgx_b200, dgx_a100, dgx_gb200, dgx_h200, dgx_b300, dgx_gb300}`.
-- **`--extra-pkg-group <group>`** installs extra packages defined in `/cm/local/apps/cluster-tools/config/<DIST>-dist-extrapackages.xml`. The examples in that file include `doca_ofed_2.9.1-2`, `doca_ofed_2.9.3`, `doca_ofed_2.10.0-093520` and `doca_ofed_3.0.0`.
+- **`--dgx` and `--dgx-type`.** `--dgx` builds a DGX platform image, for example from `UBUNTU2404.tar.gz`, and sets the standardized kernel parameters for that GPU platform. `--dgx-type` takes one of `{dgx_h100, dgx_b200, dgx_a100, dgx_gb200, dgx_h200, dgx_b300, dgx_gb300}`. Pick the value that matches the hardware in the rack, because the kernel parameters depend on it.
+- **`--extra-pkg-group <group>`** installs extra packages defined in `/cm/local/apps/cluster-tools/config/<DIST>-dist-extrapackages.xml`. The examples in that file include `doca_ofed_2.9.1-2`, `doca_ofed_2.9.3`, `doca_ofed_2.10.0-093520` and `doca_ofed_3.0.0`. DOCA OFED is the NVIDIA package set for host-side networking drivers.
 - **`-e` and `-s`.** `-e` keeps custom repo files in the image from being overwritten, and `-s` skips the additional base distribution packages. Both suit offline image creation from local repos.
-- **Package selection and default kernel modules.** Package lists live in `/cm/local/apps/cluster-tools/config/<DIST>-config-dist.xml`. The `image="master"` entries cover head node packages, and `image="slave"` entries cover regular node images. Default boot kernel modules are read from `/cm/local/apps/cluster-tools/config/<DIST>-slavekernelmodules`. Logs go to `/var/log/cm-create-image-<imagename>.log`.
+- **Package selection and default kernel modules.** Package lists live in `/cm/local/apps/cluster-tools/config/<DIST>-config-dist.xml`. The `image="master"` entries cover head node packages, and `image="slave"` entries cover regular node images. Default boot kernel modules are read from `/cm/local/apps/cluster-tools/config/<DIST>-slavekernelmodules`. Logs go to `/var/log/cm-create-image-<imagename>.log`. When a build fails, that log is the first place to read.
 - **Pre-11.30.0 `doca.list` bug on B200 and GB200.** Before BCM 11.30.0, DGX images that `cm-create-image` builds for B200, GB200 and similar hardware need one fix. Remove `/etc/apt/sources.list.d/doca.list` inside the image, using `cm-chroot-sw-img` and `rm /etc/apt/sources.list.d/doca.list`, then reboot the nodes. If the file stays, `cm-kubernetes-setup` fails at around 22% progress.
 
-**2. Multi-distro, multi-arch, `nodearchosinfo`, and `cm-image`.** The compatibility matrix tells you which images a head node can serve. A head node running RHEL 8, RHEL 9, or Ubuntu (22.04, 24.04, 26.04) on `x86_64` or `aarch64` can serve compute node images of RHEL 8, RHEL 9, Ubuntu 22.04, Ubuntu 24.04, and Ubuntu 26.04, on both `x86_64` and `aarch64`. It can also serve SLES 15, but only on `x86_64`. SLES 15 is `x86_64`-only both as a head node and as an image.
+**2. Multi-distro, multi-arch, `nodearchosinfo`, and `cm-image`.** The compatibility matrix tells you which images a head node can serve. Think of it as a table of pairs. A head node running RHEL 8, RHEL 9, or Ubuntu (22.04, 24.04, 26.04) on `x86_64` or `aarch64` can serve compute node images of RHEL 8, RHEL 9, Ubuntu 22.04, Ubuntu 24.04, and Ubuntu 26.04, on both `x86_64` and `aarch64`. It can also serve SLES 15, but only on `x86_64`. SLES 15 is `x86_64`-only both as a head node and as an image. Check the matrix before you plan a mixed cluster, because the table lists the pairs this head node can serve.
 
-- **`device nodearchosinfo`** shows, for each node, the `Reported arch`, `Reported OS` and `Reported timestamp`, next to the `Configured arch` and `Configured OS`. It warns when the reported and configured OS differ. The reported fields update only when the node's CMDaemon connects. So an unchanged timestamp after a reboot means the node failed to come up into CMDaemon.
-- **`cm-image`**, loaded with `module load cm-image`, wraps `cm-create-image`. Its subcommands are `cm-image create {all|node-installer|swimage|fromfile|cmshared}`, `cm-image remove`, `cm-image package` and `cm-image shell`. Running `cm-image create all -a <arch> -d <distro> --source <basetar>` creates four things together, and it updates the `fspart` entries for `/cm/shared` and `/cm/node-installer`:
+- **`device nodearchosinfo`** shows, for each node, the `Reported arch`, `Reported OS` and `Reported timestamp`, next to the `Configured arch` and `Configured OS`. It warns when the reported and configured OS differ. The reported fields update only when the node's CMDaemon connects. So an unchanged timestamp after a reboot means the node failed to come up into CMDaemon. Use it as a quick check that a rebooted node really came back.
+- **`cm-image`**, loaded with `module load cm-image`, wraps `cm-create-image`. A wrapper is a friendlier front end that calls the underlying tool with the right options. Its subcommands are `cm-image create {all|node-installer|swimage|fromfile|cmshared}`, `cm-image remove`, `cm-image package` and `cm-image shell`. Running `cm-image create all -a <arch> -d <distro> --source <basetar>` creates four things together, and it updates the `fspart` entries for `/cm/shared` and `/cm/node-installer`:
   1. Software image: `/cm/images/default-image-<distro>-<arch>`
   2. Node-installer image: `/cm/node-installer-<distro>-<arch>`
   3. Shared directory: `/cm/shared-<distro>-<arch>`
   4. Category: `default-<distro>-<arch>`. It also sets `primaryimage` in `partition[base]->archos[<arch>/<os>]`. If you set `primaryimage` by hand, a category that uses that image should exist.
 
-**Switching a node's OS needs a FULL install.** Enabling a new distribution with `cm-image` changes critical paths, so all regular nodes should be rebooted. Any node moved to a new OS category should first get `set nextinstallmode FULL`, before it reboots. That keeps leftover files from the old OS from corrupting the new image. If you copy a `cm-image` directory from another cluster, register it in CMDaemon with `cm-image create swimage -a <arch> -d <distro> --add-only`.
+**Switching a node's OS needs a FULL install.** Enabling a new distribution with `cm-image` changes critical paths, so all regular nodes should be rebooted. Any node moved to a new OS category should first get `set nextinstallmode FULL`, before it reboots. That keeps leftover files from the old OS from corrupting the new image. Think of it as clearing the table before the new meal. If you copy a `cm-image` directory from another cluster, register it in CMDaemon with `cm-image create swimage -a <arch> -d <distro> --add-only`. Registering it tells CMDaemon the directory exists, without rebuilding it.
 
-**ARMv8 (`aarch64`) node settings.** On the ARMv8 category, set `set bootloaderprotocol tftp`. On the ARMv8 software image, set `set kerneloutputconsole ttyAMA0`. For Fujitsu A64FX ARMv8 nodes, also set `bmcsettings -> set extraarguments "-L USER -t 0x30"`, and switch the `ipmi` monitoring producer multiplexer to the `a64fx` resource.
+**ARMv8 (`aarch64`) node settings.** On the ARMv8 category, set `set bootloaderprotocol tftp`. On the ARMv8 software image, set `set kerneloutputconsole ttyAMA0`. The `ttyAMA0` value is the serial console name on these machines, so the console output reaches the serial port. For Fujitsu A64FX ARMv8 nodes, also set `bmcsettings -> set extraarguments "-L USER -t 0x30"`, and switch the `ipmi` monitoring producer multiplexer to the `a64fx` resource. A multiplexer here is the piece that chooses which monitoring source feeds the data.
 
-Decide which distributions and architectures you need before you run `cm-image create`.
+Decide which distributions and architectures you need before you run `cm-image create`. A new mix is much easier to plan on paper than to repair after nodes have already been moved.
 
 ## 8. Updating a running node: `imageupdate` and exclude lists (5.6)
 
-Suppose a node is busy running jobs, and you need to push a new image to it without a reboot. The safe approach is to see every change before you write any of them. Three directions, three lists:
+Suppose a node is busy running jobs, and you need to push a new image to it without a reboot. The safe approach is to see every change before you write any of them. Three directions, three lists. An exclude list is a set of paths that the sync skips, so those files keep whatever the node already has.
 
 | Operation | List used | Direction |
 |---|---|---|
@@ -265,19 +268,21 @@ Suppose a node is busy running jobs, and you need to push a new image to it with
 | `grabimage` | `excludelistgrab` | node to existing image (sync) |
 | `grabimage -i` | `excludelistgrabnew` | node to new image (full) |
 
-`imageupdate` is a dry run by default. It writes nothing. Read the result with `synclog`, then run `imageupdate -n node001 -w` to apply it.
+Notice the pattern in the table. Each list belongs to one operation and one direction of copying. The name tells you the operation, and the direction column tells you which side is the source. A list written for an install does not protect a running node during `imageupdate`, so check the name before you edit it.
 
-The update list has two parts. Paths on the first part are left alone if they exist on the node. If they are missing, they are copied from the image. Paths on the second part, prefixed `no-new-files:`, are left alone if they are present. They are not copied if they are missing. Everything on neither part is overwritten from the image, and files that exist only on the node are deleted. The manual notes that content not on the lists "is normally not protected from deletion".
+`imageupdate` is a dry run by default. It writes nothing. Read the result with `synclog`, then run `imageupdate -n node001 -w` to apply it. The `-w` flag is the switch that makes the change real, so leaving it off is the safe default.
 
-BCM protects some filesystems on its own. It skips statically imported filesystems of these types: NFS, Lustre, FUSE, CephFS, CIFS, PanFS, FhGFS, BeeGFS, GlusterFS and GPFS. It does not protect autofs mounts, because BCM cannot see them reliably. It also does not protect filesystems you mounted by hand into the image. Add those to the exclude list yourself, or an update can wipe them.
+The update list has two parts. Paths on the first part are left alone if they exist on the node. If they are missing, they are copied from the image. Paths on the second part, prefixed `no-new-files:`, are left alone if they are present. They are not copied if they are missing. Everything on neither part is overwritten from the image, and files that exist only on the node are deleted. The manual notes that content not on the lists "is normally not protected from deletion". Put a path on a list if you want it to survive. Leave it off if you want the image to win.
 
-Two traps catch people. (1) The first is the five-minute trap. If an image changed within `dirtyautoupdatetimeout`, the provisioners may not have the new copy yet, so the nodes do not get it. Run `updateprovisioners` right before `imageupdate`. (2) The second trap is the size of the change. For larger changes, the manual suggests a reboot instead. A reboot does an AUTO install of the latest image and restarts all services. Reinstall node in Base View is like a reboot, but it forces a FULL install.
+BCM protects some filesystems on its own. It skips statically imported filesystems of these types: NFS, Lustre, FUSE, CephFS, CIFS, PanFS, FhGFS, BeeGFS, GlusterFS and GPFS. Those are network and parallel filesystems, which are shared storage mounted from another machine. It does not protect autofs mounts, because BCM cannot see them reliably. Autofs mounts appear only when someone opens them, so the sync cannot see them in advance. It also does not protect filesystems you mounted by hand into the image. Add those to the exclude list yourself, or an update can wipe them.
 
-`excludelistmanipulatescript` lets you rewrite the lists on the fly. `excludelist get full /` shows what a node would really use. Be careful with the script, though. The manual notes that saving it with a single stray space can do harm. For a larger change, weigh the reboot the manual suggests against a live update.
+Two traps catch people. (1) The first is the five-minute trap. If an image changed within `dirtyautoupdatetimeout`, the provisioners may not have the new copy yet, so the nodes do not get it. Run `updateprovisioners` right before `imageupdate`. (2) The second trap is the size of the change. For larger changes, the manual suggests a reboot instead. A reboot does an AUTO install of the latest image and restarts all services. Reinstall node in Base View is like a reboot, but it forces a FULL install. A forced FULL install wipes the local disk, so it is the heaviest option of the three.
+
+`excludelistmanipulatescript` lets you rewrite the lists on the fly. A script that edits the list at run time is powerful, and it is also easy to get wrong. `excludelist get full /` shows what a node would really use, so run it to check the result before you trust the script. Be careful with the script, though. The manual notes that saving it with a single stray space can do harm. For a larger change, weigh the reboot the manual suggests against a live update.
 
 ## 9. Node states (5.5)
 
-A node's state tells you what it is doing, so read it before you touch anything. A healthy boot moves through BOOTING, then INSTALLING with messages such as "checking disks" and "provisioning started", then INSTALLER_CALLINGINIT, and finally UP. UP means the node's CMDaemon has connected to the head node.
+A node's state tells you what it is doing, so read it before you touch anything. A node that shows an unexpected state can be the first clue to a fault. A healthy boot moves through BOOTING, then INSTALLING with messages such as "checking disks" and "provisioning started", then INSTALLER_CALLINGINIT, and finally UP. UP means the node's CMDaemon has connected to the head node.
 
 ```mermaid
 stateDiagram-v2
@@ -294,40 +299,42 @@ stateDiagram-v2
   INSTALLER_CALLINGINIT --> INSTALLER_FAILED: too slow
 ```
 
-You only see BOOTING if an interface is called `BOOTIF`, or if one interface carries the revision tag bootif.
+Read the diagram as a path with side exits. The main line runs from DOWN through BOOTING and INSTALLING to UP. The side exits are the failure states. A node in INSTALLER_UNREACHABLE has stopped answering pings, and a node in INSTALLER_FAILED has hit a problem it could not recover from. Each side exit points you to a different part of the troubleshooting list in section 10.
 
-CLOSED is set by the administrator, for example with `close -m "fan dead" -n node001`. A closed node shows as `UP/CLOSED` or `DOWN/CLOSED`, and it stays closed through reboots. The only way out is `open`, which passes through a short OPENING state of about 5 seconds, and never more than 30. OPEN is never printed.
+You only see BOOTING if an interface is called `BOOTIF`, or if one interface carries the revision tag bootif. If you never see BOOTING in a log, the cause may be the interface naming, not the boot itself.
 
-A closed node keeps running its jobs, because the workload manager does not depend on CMDaemon. That is why you should drain a node before you close it, even though the manual does not require it. `mute` is a different tool. It keeps the state but silences alerts and triggers, which helps during maintenance. Remember to run `unmute` afterwards.
+CLOSED is set by the administrator, for example with `close -m "fan dead" -n node001`. The `-m` flag attaches a short note, so the next person knows why. A closed node shows as `UP/CLOSED` or `DOWN/CLOSED`, and it stays closed through reboots. The only way out is `open`, which passes through a short OPENING state of about 5 seconds, and never more than 30. OPEN is never printed. You see OPENING for a moment, and then the node is simply back in normal management.
 
-`restart-required` appears after you change network settings, disk setup, the software image or the category. It tells you the node needs a restart before the change takes effect.
+A closed node keeps running its jobs, because the workload manager does not depend on CMDaemon. The workload manager is the scheduler that places jobs on nodes, such as Slurm or Kubernetes. That is why you should drain a node before you close it, even though the manual does not require it. Draining lets the running work finish, so a closed node does not surprise anyone. `mute` is a different tool. It keeps the state but silences alerts and triggers, which helps during maintenance. Remember to run `unmute` afterwards, or the alerts stay quiet after the work is done.
+
+`restart-required` appears after you change network settings, disk setup, the software image or the category. It tells you the node needs a restart before the change takes effect. A change that is saved but not applied is easy to miss, so check for this flag after a batch of edits.
 
 ## 10. When a node will not boot: a checklist (5.8)
 
-A node that will not boot is frustrating, because the cause could be in the network, the BIOS, the image or the BMC. Work through this list in order. Each check rules out one layer before you move on to the next.
+A node that will not boot is frustrating, because the cause could be in the network, the BIOS, the image or the BMC. Work through this list in order. Each check rules out one layer before you move on to the next. The early checks are quick, so start there.
 
-1. **Does the network allow boot?** Run `network use internalnet; get nodebooting`, which must return yes. Check whether `lockdowndhcpd` is on, because then new nodes get no lease. Also look for a rogue DHCP server on the network. `nmap --script broadcast-dhcp-discover` can list them.
-2. **BIOS.** Check the boot order, and put the boot NIC first. UEFI network boot can be buggy, so try legacy boot. Spanning tree (STP) on the switch can make nodes fail to boot at random, so disable it on managed switches.
-3. **Cables, switch, and the wrong interface.** Test with a direct cable. Since BCM 9.0, the consistent naming scheme (`eno1`) is the default and the recommended choice.
-4. **TFTP hung.** Check with `ps ax | grep [t]ftp`. If the TFTP-to-HTTP switch is hung, set `bootloaderprotocol tftp`.
-5. **Node installer log.** The log is `/var/log/node-installer` on the head node, under facility `local5`. On the node console, press Alt+F7. Debug logging is a field in `node-installer.conf`. If there is no log at all, the image may be locked (`provisioningstatus -a` says "request deferred"), or `nodegroups` may be wrong.
-6. **Provisioning log.** Run `synclog`. An rsync exit code 23 means a transfer error. The manual's example is a missing `lscratch` mount point in the image.
-7. **Ramdisk fails after an image update.** Run `createramdisk`, and check the kernel module lists at every level. If you see "No space left on device" while the ramdisk is being made, raise `RamdiskCreationTmpfsSize`. The default tmpfs was 256 MB before 11.31.0, and 512 MB from 11.31.0 onwards.
-8. **Ramdisk cannot start the network.** Add the NIC's kernel module to the image. Use `kernelmodules`, then `add e1000`, as in the manual.
-9. **Cannot create the disk layout.** The log shows that the device was not found. Check the layout XML against the real device name.
-10. **Cannot start the BMC.** Add the IPMI modules to the image. If the BMC still fails, the settings `setupBmc`, `failOnMissingBmc` and `failOnFailedBmcCommand` in `node-installer.conf` loosen the checks. A BMC in a glitchy state may need a cold reset, with `ipmitool ... mc reset cold`. Read the BMC's SEL for CPU, ECC and memory errors before you decide a reset is needed. Part 7 shows the Redfish way.
+1. **Does the network allow boot?** Run `network use internalnet; get nodebooting`, which must return yes. Check whether `lockdowndhcpd` is on, because then new nodes get no lease. A lease is the address that DHCP hands a node for a period of time. Also look for a rogue DHCP server on the network, which is a second DHCP server that nobody meant to run. `nmap --script broadcast-dhcp-discover` can list them.
+2. **BIOS.** Check the boot order, and put the boot NIC first. UEFI network boot can be buggy, so try legacy boot. UEFI is the newer firmware standard, and legacy boot is the older mode. Spanning tree (STP) on the switch can make nodes fail to boot at random, so disable it on managed switches. STP is a switch protocol that blocks network loops. Its timing can get in the way of PXE, which expects the port to answer right away.
+3. **Cables, switch, and the wrong interface.** Test with a direct cable. A direct cable removes the switch from the picture, so you learn whether the problem lies there. Since BCM 9.0, the consistent naming scheme (`eno1`) is the default and the recommended choice. A consistent name stays the same across reboots, so the configuration keeps pointing at the right card.
+4. **TFTP hung.** Check with `ps ax | grep [t]ftp`. If the TFTP-to-HTTP switch is hung, set `bootloaderprotocol tftp`. This is the fallback that keeps the whole boot on TFTP.
+5. **Node installer log.** The log is `/var/log/node-installer` on the head node, under facility `local5`. A facility is a category of log messages in syslog. On the node console, press Alt+F7 to see the installer's own messages. Debug logging is a field in `node-installer.conf`. If there is no log at all, the image may be locked (`provisioningstatus -a` says "request deferred"), or `nodegroups` may be wrong. A missing log is a clue in itself, because it means the request never reached the installer.
+6. **Provisioning log.** Run `synclog`. An rsync exit code 23 means a transfer error. The manual's example is a missing `lscratch` mount point in the image. A mount point is the empty folder where a filesystem attaches, so a missing one stops the sync.
+7. **Ramdisk fails after an image update.** Run `createramdisk`, and check the kernel module lists at every level. If you see "No space left on device" while the ramdisk is being made, raise `RamdiskCreationTmpfsSize`. The tmpfs is a temporary filesystem held in memory, which the ramdisk is built in. The default tmpfs was 256 MB before 11.31.0, and 512 MB from 11.31.0 onwards.
+8. **Ramdisk cannot start the network.** Add the NIC's kernel module to the image. Use `kernelmodules`, then `add e1000`, as in the manual. The NIC is the network card, and the module is the driver that makes it work.
+9. **Cannot create the disk layout.** The log shows that the device was not found. Check the layout XML against the real device name. Device names can change when hardware changes, so the XML must match what the node reports.
+10. **Cannot start the BMC.** Add the IPMI modules to the image. If the BMC still fails, the settings `setupBmc`, `failOnMissingBmc` and `failOnFailedBmcCommand` in `node-installer.conf` loosen the checks. A BMC in a glitchy state may need a cold reset, with `ipmitool ... mc reset cold`. Read the BMC's SEL for CPU, ECC and memory errors before you decide a reset is needed. SEL is the system event log kept by the BMC, and ECC is the error-correcting memory check. Part 7 shows the Redfish way.
 
-Read the BMC's SEL before you reach for a cold reset.
+Read the BMC's SEL before you reach for a cold reset. A reset can hide the evidence you need.
 
 ## 11. Booting from the node's own disk (5.4.10)
 
-Suppose a node should boot from its own disk. Four things must all be true. First, `installbootrecord yes` must be set. Second, the BIOS must try the disk before the network. Third, the node needs a working bootloader. The default is syslinux, and a custom image may need `grub`. Fourth, `BOOTIF` must be renamed to a real device name such as `eth0`. `BOOTIF` means nothing when the node did not PXE boot, so the name has to change.
+Suppose a node should boot from its own disk. Netbooting is the default, and standalone booting is the exception. Four things must all be true. First, `installbootrecord yes` must be set. Second, the BIOS must try the disk before the network. Third, the node needs a working bootloader. The default is syslinux, and a custom image may need `grub`. Fourth, `BOOTIF` must be renamed to a real device name such as `eth0`. `BOOTIF` means nothing when the node did not PXE boot, so the name has to change. If any one of the four is missing, the node will not come up on its own disk.
 
-Most AI clusters keep netbooting instead. Unless you have a clear reason to run standalone nodes, leave them on netboot.
+Most AI clusters keep netbooting instead. The reason is that the image stays in one place, so every node gets the same software and a change reaches all of them. Unless you have a clear reason to run standalone nodes, leave them on netboot.
 
 ## 12. Common first mistakes
 
-Most of these mistakes are easy to make on a busy day. Here are ten to avoid.
+Picture the busy day again. A node is down, a manager is waiting, and the fastest-looking fix is one of the ten mistakes below. Each one is easy to make when you are in a hurry, and each one has a cost that shows up later. Check this list before you make the change.
 
 1. Treating NOSYNC as data protection.
 2. Not setting `datanode` on nodes that hold local data.
@@ -340,28 +347,28 @@ Most of these mistakes are easy to make on a busy day. Here are ten to avoid.
 9. Closing a node and assuming its jobs stopped.
 10. Leaving STP on a managed switch.
 
-Before your next image change, check the steps about provisioners, sync logs and kernel versions first.
+Before your next image change, check the steps about provisioners, sync logs and kernel versions first. Those three checks touch several of the mistakes above.
 
 ## Exercises
 
-These exercises use the lab script and the commands from this chapter. The commands were never run on a live BCM system, so treat the lab output as a rehearsal.
+These exercises use the lab script and the commands from this chapter. These steps were not run on a live cluster, so treat the lab output as a rehearsal.
 
-1. Run `python3 provision_lab.py`. Pick four checks, and explain each rule in your own words.
-2. Add a fourth provisioner with `nodegroups={"rack-b"}`. Then show where nodes in `rack-b` go, and where nodes in no group go.
-3. A node holds useful local data. Which settings keep that data safe if its drive renumbers? Test your answer with `install_plan`.
-4. Write the sequence of commands, taken from this chapter and untested, that puts a new kernel into `gpu-image` safely.
-5. Your update covers 200 nodes. Write a runbook with these steps in order: lock, update, `updateprovisioners`, dry run, review, `-w`, verify.
-6. Use `sync_update` to show what happens to a file that exists only on the node. Run it once with an exclude entry and once without one.
+1. Run `python3 provision_lab.py`. Pick four checks from its output. For each one, explain the rule in your own words. Start with the checks that cover install modes, because they are the easiest to connect to a real loss of data.
+2. Add a fourth provisioner with `nodegroups={"rack-b"}`. Then show where nodes in `rack-b` go. Then show where nodes in no group go. Write down the answer for each group before you run the lab, and compare it with the output.
+3. A node holds useful local data. Which settings keep that data safe if its drive renumbers? Test your answer with `install_plan`. Compare the plan with the install mode table in section 5.
+4. Write the sequence of commands from this chapter that puts a new kernel into `gpu-image` safely. Keep the order of the steps in section 7. Put the dry run and the check of `kernelversion` near the end.
+5. Your update covers 200 nodes. Write a runbook with these steps in order: lock, update, `updateprovisioners`, dry run, review, `-w`, verify. Add one sentence after each step that says what you check before moving on.
+6. Use `sync_update` to show what happens to a file that exists only on the node. Run it once with an exclude entry. Then run it once without one. Note which run deletes the file.
 
 ## 14. Interview angles
 
-These are the questions to be ready for, with a short answer for each.
+Interviewers like to start with a failure, so each question below opens with one. The short answers show the order of thought, and the order matters as much as the facts.
 
-- **"Walk me through a BCM node boot."** Start with PXE, then the kernel and ramdisk. After that come the certificate, identification, interfaces, install mode, disk check, rsync and config files. Then the finalize script and init run, and finally CMDaemon connects, and you have covered the whole chain.
+- **"Walk me through a BCM node boot."** Start with PXE, then the kernel and ramdisk. After that come the certificate, identification, interfaces, install mode, disk check, rsync and config files. Then the finalize script and init run, and finally CMDaemon connects, and you have covered the whole chain. Saying the steps in this order shows that you understand how the flow fits together.
 - **"A node lost its data after a reboot. Why?"** A FULL install did it. Either the mode was forced to FULL, or AUTO or NOSYNC fell back to FULL after a partition or MAC change. You can prevent it with `datanode` and assertions.
-- **"How do you roll an image out to 500 nodes?"** Edit in a chroot, lock if needed, run `updateprovisioners`, do an `imageupdate` dry run, review it, apply with `-w`, or reboot for larger changes.
+- **"How do you roll an image out to 500 nodes?"** Edit in a chroot, lock if needed, run `updateprovisioners`, do an `imageupdate` dry run, review it, apply with `-w`, or reboot for larger changes. The dry run and the review are the steps that make a 500-node change safe.
 - **"What does CLOSED mean?"** Monitoring stops, but jobs do not. Only `open` clears it.
-- **"How does the head node avoid being the bottleneck?"** Use the boot role, the provisioning role, slots and nodegroups. CMDaemon and the database still stay on the head node, though.
+- **"How does the head node avoid being the bottleneck?"** Use the boot role, the provisioning role, slots and nodegroups. CMDaemon and the database still stay on the head node, though. That last point is the honest limit of the design.
 
 ## Checkpoint questions (20)
 

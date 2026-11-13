@@ -22,23 +22,19 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Picture a setting that must change on a whole rack of GPU servers. Doing it by hand, one node at a time, is slow and easy to get wrong. Everything in chapters 8.3 and 8.4 was done through `cmsh` or Base View. Most real work on a cluster is repetition, though: the same change to 8 nodes, or 512, or one rack. `cmsh` is built for that repetition. Its habits, such as commit, listing a range and the dry run, are what separate a calm change from an outage. In an interview, "show me how you would change a setting on a rack" is a `cmsh` question.
+Picture a setting that must change on a whole rack of GPU servers. Doing it by hand, one node at a time, is slow and easy to get wrong. Everything in chapters 8.3 and 8.4 was done through `cmsh` or Base View. Most real work on a cluster is repetition, though: the same change to 8 nodes, or 512, or one rack. `cmsh` is built for that repetition. Its habits, such as commit, listing a range and the dry run, are what separate a calm change from an outage.
+
+Think of a cluster admin tool as a sharp kitchen knife. It is quick for repeated cuts, and it is unforgiving of one slip. The habits in this chapter are the guard on the blade. They slow your hand down at the moment it matters most, which is just before a change reaches many machines at once.
+
+In an interview, "show me how you would change a setting on a rack" is a `cmsh` question. The answer the interviewer wants is less about the command and more about the care around it.
 
 ## Prerequisites and outcomes
 
-Before you read on, you need chapters 8.1 to 8.4. This chapter builds on the tools those chapters introduced. When you finish, you should be able to do the following:
-
-- Choose between Base View and `cmsh`, knowing that both reach the same CMDaemon.
-- Move through `cmsh` modes and objects, and read the prompt, asterisks included.
-- Use the commit model safely with `modified`, `refresh` and `commit`.
-- Write node lists for a rack, a range, a stride or an exclusion.
-- Loop over many nodes with `foreach` and `range`, and clone and rename nodes.
-- Script `cmsh` and get JSON-like output.
-- Inspect and restart CMDaemon, and say which port it listens on.
+Read chapters 8.1 to 8.4 first. This chapter builds on the tools those chapters introduced. It starts with the choice between Base View and `cmsh`, which both reach the same CMDaemon. It then covers the modes and the prompt, asterisks included, and the commit model with `modified`, `refresh` and `commit`. After that come node lists for a rack, a range, a stride or an exclusion, loops with `foreach` and `range`, and cloning and renaming nodes. The chapter ends with scripting `cmsh` for JSON-like output, and with inspecting and restarting CMDaemon, including the port it listens on.
 
 ## 1. Two front ends, one daemon
 
-When you have Base View open in one window and `cmsh` in another, which program actually answers you? Both of them talk to CMDaemon on the head node, and never straight to the daemons on other nodes. The diagram shows the path.
+When you have Base View open in one window and `cmsh` in another, which program actually answers you? Both of them talk to CMDaemon on the head node, and never straight to the daemons on other nodes. Think of CMDaemon as the receptionist of the cluster. Every request, from either front end, passes through it, and it hands the work to the right place. The diagram shows the path.
 
 ```mermaid
 flowchart LR
@@ -48,9 +44,9 @@ flowchart LR
   D --> N[CMDaemon on each regular node]
 ```
 
-For all management traffic, CMDaemon uses SSL connections on TCP port 8081. That port is set by `SSLPort = 8081` in `cmd.conf`. Clients authenticate with client X509 certificates, which chapters 8.1 and 8.6 cover. The non-SSL `Port = 8080` is used only during `init` and HTTP boot, as chapter 8.1 explains.
+For all management traffic, CMDaemon uses SSL connections on TCP port 8081. SSL is the encryption layer that HTTPS uses, so the traffic is protected in transit. That port is set by `SSLPort = 8081` in `cmd.conf`. Clients authenticate with client X509 certificates, which are digital ID cards that prove who the client is. Chapters 8.1 and 8.6 cover them. The non-SSL `Port = 8080` is used only during `init` and HTTP boot, as chapter 8.1 explains.
 
-CMDaemon keeps its data in a MySQL database on the head node. If CMDaemon stops, you lose management, but your jobs keep running, because the workload manager is independent.
+CMDaemon keeps its data in a MySQL database on the head node. MySQL is the database engine behind it. The practical point is that the data lives on the head node, so a head node problem is a management problem first. If CMDaemon stops, you lose management, but your jobs keep running, because the workload manager is independent.
 
 The two front ends suit different jobs, as the table shows.
 
@@ -61,25 +57,27 @@ The two front ends suit different jobs, as the table shows.
 | Reach it | `https://<head>:8081/base-view` | run `cmsh` on the head node |
 | Caution | Changing many nodes is slow and hard to review | Typos act on many nodes at once |
 
-Check your browser first. The manual lists recent Chrome, Edge, Firefox and Safari versions, and mobile browsers are not supported. The head node's plain landing page is served by Apache. Its certificate is a distribution self-signed one by default, and you should replace it. Base View comes from the `base-view` package, so removing that package turns the GUI off.
+Read the Caution row as the price of each front end. Base View is comfortable to look at, but a large edit through it is hard to review. `cmsh` is fast and exact, so a single typo can reach every node in the selection.
 
-For a change you will repeat or need to record, reach for `cmsh`. Keep Base View for looking around.
+Check your browser first. The manual lists recent Chrome, Edge, Firefox and Safari versions, and mobile browsers are not supported. The head node's plain landing page is served by Apache. Its certificate is a distribution self-signed one by default, and you should replace it. A self-signed certificate is one that the system's maker created, not one from a trusted authority, so browsers warn about it. Base View comes from the `base-view` package, so removing that package turns the GUI off.
+
+For a change you will repeat or need to record, reach for `cmsh`. A recorded command is easier to review in a ticket than a series of clicks. Keep Base View for looking around.
 
 ## 2. Base View in a few lines
 
-Say you log in to Base View to see how the cluster is doing. The page you land on is Cluster > Overview. The left side holds a resource tree with Cluster, Networking, Provisioning, Grouping, Devices, Cloud, Containers and more. Selecting an item there opens its page.
+Say you log in to Base View to see how the cluster is doing. The page you land on is Cluster > Overview, which is the summary page for the whole cluster. The left side holds a resource tree with Cluster, Networking, Provisioning, Grouping, Devices, Cloud, Containers and more. Selecting an item there opens its page. Think of the tree as a map of the cluster, with each branch leading to one kind of object.
 
-The Overview page shows GPU, CPU and memory utilisation, job slots, cores and GPUs, and disk use. It also lists failing health checks, running and queued jobs, and license information. Device status counts cover nodes, switches, NVLink switches and power shelves, shown as closed, down, total and up.
+The Overview page shows GPU, CPU and memory utilisation, job slots, cores and GPUs, and disk use. It also lists failing health checks, running and queued jobs, and license information. Device status counts cover nodes, switches, NVLink switches and power shelves, shown as closed, down, total and up. Read the counts as a quick health snapshot before you dig into any one device. A snapshot like this tells you where to look first.
 
 For newer hardware, the Overview adds pages for leak detection, IMEX management and rack management.
 
-Two kinds of button do most of the work. One opens an existing object. The other, marked +, creates a new one. A breadcrumb trail at the top of each subwindow takes you back without saving anything.
+Two kinds of button do most of the work. One opens an existing object. The other, marked +, creates a new one. A breadcrumb trail at the top of each subwindow takes you back without saving anything. Using the breadcrumb is a safe way to leave a page, because it does not save an unfinished form.
 
-Every chapter in this part gives the Base View path next to its `cmsh` command, and the two do the same thing. Learn the Base View path first, then the matching `cmsh` line, so you can check one against the other.
+Every chapter in this part gives the Base View path next to its `cmsh` command, and the two do the same thing. Learn the Base View path first, then the matching `cmsh` line, so you can check one against the other. Doing both for the same task is also a good way to learn where each setting lives.
 
 ## 3. cmsh: starting it
 
-You are on the head node and need one quick answer. Four forms of `cmsh` cover most work.
+You are on the head node and need one quick answer. Four forms of `cmsh` cover most work. Think of `cmsh` as a command line that also remembers where you are. Each of the four forms matches one way of working.
 
 ```bash
 cmsh                      # interactive, on the head node
@@ -88,19 +86,19 @@ echo "device status" | cmsh                          # piped
 cmsh -f myscript.cmsh -q -x                          # run a file, quit on error, echo commands
 ```
 
-The first line opens an interactive session. The `-c` option runs semicolon-separated commands, then exits. Piping works too. The last line runs a file and combines `-q` and `-x`, which quit at the first error and echo each command.
+The first line opens an interactive session. The `-c` option runs semicolon-separated commands, then exits. Piping works too. The last line runs a file and combines `-q` and `-x`, which quit at the first error and echo each command. Quitting at the first error is a safety measure. A script that keeps going after an error can make a second change on top of a broken first one, and that is harder to undo.
 
-Some options are worth knowing. `--hide-events` hides events in an interactive session. `--disable-events` is meant for scripts, and it works together with `--wait`. `-u` starts unconnected, `-n` skips the rc file, `-Q` skips the quit confirmation, and `--color=no` turns colour off. `-i`/`-k` set an alternative certificate and key.
+Some options are worth knowing. `--hide-events` hides events in an interactive session. Events are the messages CMDaemon prints as things happen in the cluster. `--disable-events` is meant for scripts, and it works together with `--wait`. `-u` starts unconnected, `-n` skips the rc file, `-Q` skips the quit confirmation, and `--color=no` turns colour off. `-i`/`-k` set an alternative certificate and key. You will rarely need the certificate options, but they matter when you run `cmsh` as a different user.
 
-When `cmsh` starts, it reads `/etc/cmshrc` first, then your dotfiles `~/.cm/cmsh/.cmshrc`, `~/.cm/.cmshrc` and `~/.cmshrc`. The shortest path overrides earlier settings. Put your aliases and `groupingsyntax` there.
+When `cmsh` starts, it reads `/etc/cmshrc` first, then your dotfiles `~/.cm/cmsh/.cmshrc`, `~/.cm/.cmshrc` and `~/.cmshrc`. The shortest path overrides earlier settings. Put your aliases and `groupingsyntax` there. A dotfile is a settings file in your home directory, and it is where a personal habit should live, not in the shared system file.
 
-`cmsh` has built-in aliases: `..` exits one level, `/` goes home, `?` shows help, `ds` means `device status`, and `ls` means `list`. Make your own with `alias lv device list virtualnode`, and move them with `export > file` and `run file`. A script named `name.cmsh` in `~/.cm/cmsh/` becomes the alias `name`, and scripts can take defaults, such as `device use ${1-node001}`.
+`cmsh` has built-in aliases: `..` exits one level, `/` goes home, `?` shows help, `ds` means `device status`, and `ls` means `list`. Short aliases save typing, but they also make a command harder to read in a ticket. Make your own with `alias lv device list virtualnode`, and move them with `export > file` and `run file`. A script named `name.cmsh` in `~/.cm/cmsh/` becomes the alias `name`, and scripts can take defaults, such as `device use ${1-node001}`. A default means the script still works when you forget the argument.
 
-When a sequence must run the same way every time, put it in a file and run it with `-f`, `-q` and `-x`.
+When a sequence must run the same way every time, put it in a file and run it with `-f`, `-q` and `-x`. A file is also easy to review and to store under version control, which a one-off typed sequence is not.
 
 ## 4. Modes, objects and the prompt
 
-Lost in `cmsh`? The prompt tells you exactly where you are. `cmsh` groups its functions into modes, such as device, category, network, partition, softwareimage, monitoring and user. Appendix M shows the full tree. Inside a mode you work with objects, such as a single device or a category.
+Lost in `cmsh`? The prompt tells you exactly where you are. Picture landing in a shell with no idea which object you are changing. The prompt is the first thing to check. `cmsh` groups its functions into modes, such as device, category, network, partition, softwareimage, monitoring and user. Appendix M shows the full tree. Inside a mode you work with objects, such as a single device or a category. A mode is a room, and an object is the thing sitting in that room.
 
 Here is how the prompt changes as you go deeper, and as changes pile up.
 
@@ -111,19 +109,19 @@ Here is how the prompt changes as you go deeper, and as changes pile up.
 [basecm11->device*[node001*]]%   uncommitted changes in the mode and in the object
 ```
 
-The asterisks mark uncommitted changes. The first one, after `device`, means the device mode has pending changes. The second, after `node001`, means the node object has them too.
+The first line of the block is the top level, where you start before you enter any mode. The asterisks mark uncommitted changes. The first one, after `device`, means the device mode has pending changes. The second, after `node001`, means the node object has them too. Read the asterisks as a warning light. If you see one, your change is still on your side and not yet on the cluster.
 
-`path` prints a string that takes you back to this spot, such as `home;device;use node001;`. You can paste it after `cmsh -c`. One line can run a command in a mode without going there. `device status node001` does that. A semicolon does enter the mode, so `device; status node001` leaves you in device mode.
+`path` prints a string that takes you back to this spot, such as `home;device;use node001;`. You can paste it after `cmsh -c`. One line can run a command in a mode without going there. `device status node001` does that. A semicolon does enter the mode, so `device; status node001` leaves you in device mode. The difference matters in scripts, where a stray semicolon can leave the rest of the script running in the wrong mode.
 
-`home` goes to the top, `exit` goes up one level, and `goto -` returns to where you came from. `bookmark` and `goto` save places for later. Prefix a command with `!` to run a shell command, such as `!hostname -f`. Backticks substitute output, and `>`, `>>` and `|` redirect it.
+`home` goes to the top, `exit` goes up one level, and `goto -` returns to where you came from. `bookmark` and `goto` save places for later. Prefix a command with `!` to run a shell command, such as `!hostname -f`. Backticks substitute output, and `>`, `>>` and `|` redirect it. Redirection sends output to a file or to another command, which is useful when you want to keep a listing.
 
-Two more lines are handy. `ssh node001` works in device mode. `time ds node001` and `watch -n 3 status -n node001,node002` do what their names say.
+Two more lines are handy. `ssh node001` works in device mode. `time ds node001` and `watch -n 3 status -n node001,node002` do what their names say. The `watch` line refreshes the status every three seconds, so you can see a node change state as it happens.
 
 Read the prompt before every change, because the asterisks tell you what has not been committed yet.
 
 ## 5. The commit model: the habit that matters most
 
-Your `cmsh` edits stay local until you commit them. That delay is a safety net, and you need to know how to use it. Each command in the table fits one step of the cycle.
+Your `cmsh` edits stay local until you commit them. That delay is a safety net, and you need to know how to use it. Picture a change you typed, looked at, and decided against. Because nothing reached CMDaemon yet, you can throw it away with no harm done. Each command in the table fits one step of the cycle.
 
 | Command | Meaning |
 |---|---|
@@ -140,27 +138,27 @@ Your `cmsh` edits stay local until you commit them. That delay is a safety net, 
 | `swap A B` | exchange the names of two objects (useful for two nodes swapped in a rack) |
 | `usedby`, `validate` | what depends on it; check its properties |
 
-The safe routine is short. Make the change, run `modified`, read what it lists, then run `commit`. If the list looks wrong, run `refresh` to throw the changes away.
+The safe routine is short. Make the change, run `modified`, read what it lists, then run `commit`. If the list looks wrong, run `refresh` to throw the changes away. Treat `modified` as the checkpoint before every commit, because it shows you the whole pending set in one place.
 
-A forgotten `commit` after a `remove` leaves an asterisk, not a deletion. A `commit` executes pending removals whichever mode it runs in, though, even when the asterisk is not in the prompt. The lab tests this.
+A forgotten `commit` after a `remove` leaves an asterisk, not a deletion. A `commit` executes pending removals whichever mode it runs in, though, even when the asterisk is not in the prompt. A removal that you queued in one place can therefore run when you commit a change somewhere else. The lab checks this, and the rule is worth keeping in mind for the whole session.
 
-Boolean properties accept `yes`, `1`, `on` and `true`, or `no`, `0`, `off` and `false`, in any letter case.
+Boolean properties accept `yes`, `1`, `on` and `true`, or `no`, `0`, `off` and `false`, in any letter case. A Boolean is a setting with only two states, on or off, and `cmsh` accepts several spellings of each.
 
-When `get bootloaderprotocol` on a node shows `HTTP (mydefaultimage)`, the value comes from the category. Chapter 8.1 has the rules.
+When `get bootloaderprotocol` on a node shows `HTTP (mydefaultimage)`, the value comes from the category. The value in brackets tells you where it was inherited from, so you do not have to hunt for it. Chapter 8.1 has the rules for how a value flows down from a category to a node.
 
-When you clone a device, `cmsh` guesses its new IP. The lab reproduces the manual's examples. Cloning `node001`, whose IP is 10.141.0.1, to `node022..node024` gives `.22`, `.23` and `.24`. If the digit count differs, as with `node02` from `node001`, the manual prints `Base name mismatch, IP settings will not be modified!` and the IPs duplicate until you use `--next-ip`. Cloning copies object settings, not the software image data or switch port settings, so always inspect the result.
+When you clone a device, `cmsh` guesses its new IP. Cloning means copying an existing object to make a new one. The lab reproduces the manual's examples. Cloning `node001`, whose IP is 10.141.0.1, to `node022..node024` gives `.22`, `.23` and `.24`. The guess works because the number at the end of the name is reused in the address. If the digit count differs, as with `node02` from `node001`, the manual prints `Base name mismatch, IP settings will not be modified!` and the IPs duplicate until you use `--next-ip`. A duplicate address is a real conflict on the network, so do not ignore the warning. Cloning copies object settings, not the software image data or switch port settings, so always inspect the result.
 
-Make `modified` a reflex, and read its output before every commit.
+Make `modified` a reflex, and read its output before every commit. The habit costs a few seconds, and it catches the mistakes that cost hours.
 
 ## 6. Listing, formatting, JSON
 
-Long node listings are hard to scan, so `list` lets you choose the columns. `list` shows objects. Use `list -f hostname:14,switchports:15,ip` to pick columns and widths. Run `format` by itself to see the current format and every valid field, and `format -r` resets it.
+Long node listings are hard to scan, so `list` lets you choose the columns. `list` shows objects. Use `list -f hostname:14,switchports:15,ip` to pick columns and widths. Run `format` by itself to see the current format and every valid field, and `format -r` resets it. Think of the format as a set of column settings that stay in place until you change them.
 
-Width rules work like this. A number fixes the width. A `0` means the widest entry sets it. A range such as `[10-14]` fits text between 10 and 14 characters. Longer text is cut, and a `+` marks the cut, as in `largenameforn+`. Use `sort type mac` to sort the list.
+Width rules work like this. A number fixes the width. A `0` means the widest entry sets it. A range such as `[10-14]` fits text between 10 and 14 characters. Longer text is cut, and a `+` marks the cut, as in `largenameforn+`. Use `sort type mac` to sort the list. A cut name with a `+` at the end is a reminder that the full value is longer than the column.
 
-`list --json` and `show --json` print whole objects as JSON. If you only need some columns, `list -f hostname,ip,mac,status -d {}` turns the selected columns into JSON. The column names become the keys. Run `color off` first, or use `cmsh --color=no -c "device; list -f hostname,ip -d {}"`.
+`list --json` and `show --json` print whole objects as JSON. JSON is a plain text format for structured data, which scripts read easily. If you only need some columns, `list -f hostname,ip,mac,status -d {}` turns the selected columns into JSON. The column names become the keys. Run `color off` first, or use `cmsh --color=no -c "device; list -f hostname,ip -d {}"`. Colour codes in the output can break a script that parses it, so turning colour off matters for automation.
 
-If a script will read the output, choose the columns with `-f` and the JSON form with `-d {}`.
+If a script will read the output, choose the columns with `-f` and the JSON form with `-d {}`. That keeps the script's input small and predictable.
 
 ## 7. Node lists: say which nodes, once
 
@@ -177,17 +175,19 @@ Typing 512 node names by hand is slow and error-prone. A node list lets you name
 | mixed | `node[001-100],-node[004-100:4]` | all except every fourth |
 | from a file | `^/path/to/list` | one list per file |
 
-Two rules trip people up. You cannot mix square brackets and `..` in one argument. The `groupingsyntax bracket|dot|auto` setting controls how lists are printed. The `auto` setting reads both forms and prints dots.
+Read the forms as shortcuts for a list you would otherwise type out. The extended form multiplies: each name in the first bracket is paired with each name in the second, which is why it gives 10 names. The stride form skips, so `:2` picks every second node. Practise the forms on a small set first, and check the output before you use the list on a real command.
 
-Group options appear almost everywhere. `-n` selects nodes, `-g` a group, `-c` a category, `-r` a rack, `-h` a chassis, `-e` an overlay, `-l` a role, `-m` an image, `-t` a type, and `-s` a status. Add `-u` for union, which is the default, or `-i` for intersection. `-c gpu -r rack5` unions by default, so check which one you are using before a risky command.
+Two rules trip people up. You cannot mix square brackets and `..` in one argument. The `groupingsyntax bracket|dot|auto` setting controls how lists are printed. The `auto` setting reads both forms and prints dots. Set it once in your dotfile, so the printed lists look the way you expect.
+
+Group options appear almost everywhere. `-n` selects nodes, `-g` a group, `-c` a category, `-r` a rack, `-h` a chassis, `-e` an overlay, `-l` a role, `-m` an image, `-t` a type, and `-s` a status. Add `-u` for union, which is the default, or `-i` for intersection. A union takes everything that matches any of the options, and an intersection takes only what matches all of them. `-c gpu -r rack5` unions by default, so check which one you are using before a risky command.
 
 Decide whether you want union or intersection before you press Enter on any risky command.
 
-The simulator functions `cmsh_sim.expand_nodelist` and `format_nodelist` implement these forms.
+The simulator functions `cmsh_sim.expand_nodelist` and `format_nodelist` implement these forms. Running them on a list shows you exactly which names the forms produce.
 
 ## 8. Doing many things: `foreach`, `range`, `rename`
 
-Suppose you must set one category on four nodes. Typing each change by hand invites mistakes, so loop instead.
+Suppose you must set one category on four nodes. Typing each change by hand invites mistakes, so loop instead. A loop applies the same commands to each node in a list, one after another.
 
 ```text
 foreach -n node001..node004 (set category gpu; get hostname)
@@ -195,41 +195,41 @@ foreach -c default --status UP (get ip)
 foreach --clone node001 -n node022..node024 ()        # make 3 new nodes, then commit
 ```
 
-The first line sets a category and reads a hostname on four nodes. The second reads the IP of every UP node in the default category. The third makes three new nodes from `node001`, and you then commit them.
+The first line sets a category and reads a hostname on four nodes. The second reads the IP of every UP node in the default category. The third makes three new nodes from `node001`, and you then commit them. Read each line as a sentence: which nodes, then what to do to each.
 
-`foreach * (...)` loops over everything in the mode. `-v` prints a header for each object, `--status UP` filters by state, and `-q` stops at an unknown command.
+`foreach * (...)` loops over everything in the mode. `-v` prints a header for each object, `--status UP` filters by state, and `-q` stops at an unknown command. The `-q` flag protects a large loop from silently skipping a mistyped command on every node.
 
-Power commands are blocked inside `foreach` and `range`. The manual shows `foreach -n node001 (power status)` refused with "This command is not allowed inside foreach/range ... Specify the node selection directly on the command instead." Loop timing can stack up power-on operations. That means a large power demand, and trouble for cloud instances. So write `power on -n node001..node016` instead, as chapter 8.7 explains. `foreach -v` prints a time-stamped header per object, which helps when you debug.
+Power commands are blocked inside `foreach` and `range`. The manual shows `foreach -n node001 (power status)` refused with "This command is not allowed inside foreach/range ... Specify the node selection directly on the command instead." Loop timing can stack up power-on operations. That means a large power demand, and trouble for cloud instances. So write `power on -n node001..node016` instead, as chapter 8.7 explains. The power command takes the whole selection at once, so it can manage the timing itself. `foreach -v` prints a time-stamped header per object, which helps when you debug.
 
-`range -n node[001-024]` is the modal version. Later commands in that mode apply to the whole range, and the prompt shows `{...}`. To set values inside a submode, put the commands on one line with semicolons, such as `roles; assign slurmclient; commit`.
+`range -n node[001-024]` is the modal version. A modal command changes the mode you are in, so each later command applies to the whole range until you leave it. Later commands in that mode apply to the whole range, and the prompt shows `{...}`. To set values inside a submode, put the commands on one line with semicolons, such as `roles; assign slurmclient; commit`. A submode is a nested area inside a mode, such as the roles area inside a node.
 
-The `rename` command renames nodes in bulk. `rename node001..node003 test` gives `test1`, `test2` and `test3`. Numbering restarts at 1 and pads to the width of the count, so ten nodes give `test01..test10`. Use `test%04d` to set the digits yourself. `rename node[001-005] test0[1,2,5-7]` is an exact mapping, and the sizes must match. `rename node[001-004] alice,bob,charlie,dave` is exact as well. `rename node[001-100:2] left[001-050]` takes every second node.
+The `rename` command renames nodes in bulk. `rename node001..node003 test` gives `test1`, `test2` and `test3`. Numbering restarts at 1 and pads to the width of the count, so ten nodes give `test01..test10`. Use `test%04d` to set the digits yourself. `rename node[001-005] test0[1,2,5-7]` is an exact mapping, and the sizes must match. `rename node[001-004] alice,bob,charlie,dave` is exact as well. `rename node[001-100:2] left[001-050]` takes every second node. Each form tells the command where each new name comes from, so check the mapping before you commit it.
 
-Source names are sorted alphabetically first. Run `--dry-run` first, then `commit`. A `refresh` throws away the proposal, and any other pending change with it. Dry-run every rename, and commit only once the proposed names match what you expected.
+Source names are sorted alphabetically first. Run `--dry-run` first, then `commit`. A `refresh` throws away the proposal, and any other pending change with it. Dry-run every rename, and commit only once the proposed names match what you expected. A rename changes the names that other tools use to find a node, so a careless rename is hard to undo quietly.
 
 ## 9. Cluster-wide settings: the `partition` mode
 
-Cluster-wide settings live in the `partition` mode. There is exactly one partition, called `base`. It stands for the whole physical cluster, and the manual notes that cluster partitioning is a future idea.
+Cluster-wide settings live in the `partition` mode. There is exactly one partition, called `base`. It stands for the whole physical cluster, and the manual notes that cluster partitioning is a future idea. For now, there is one place to look for cluster-wide values, and it is `base`.
 
-`partition use base; show` lists the global settings from chapter 8.3. These include the cluster name, name servers, time servers, the default category, the burn configuration, and submodes for BMC, SNMP, SELinux and others.
+`partition use base; show` lists the global settings from chapter 8.3. These include the cluster name, name servers, time servers, the default category, the burn configuration, and submodes for BMC, SNMP, SELinux and others. A submode is again a nested area, here for one service or feature.
 
-Read these global settings once, so you know which values your later changes build on.
+Read these global settings once, so you know which values your later changes build on. A value you set on a node is only a local choice if the partition does not already decide it.
 
 ## 10. CMDaemon from the shell
 
-When Base View and `cmsh` both stop responding, look at the daemon behind them first. Use `systemctl status cmd.service`, or the same command with stop, start or restart. To restart it on every regular node that is up, run `pdsh -a "systemctl restart cmd; systemctl is-active cmd"`.
+When Base View and `cmsh` both stop responding, look at the daemon behind them first. CMDaemon is the process that answers both front ends, so if it is down, both tools fail together. Use `systemctl status cmd.service`, or the same command with stop, start or restart. `systemctl` is the standard Linux tool for starting and checking services. To restart it on every regular node that is up, run `pdsh -a "systemctl restart cmd; systemctl is-active cmd"`. `pdsh` runs one command on many machines at once, which makes it a fast way to check the same service everywhere.
 
-The `cmdaemonctl` tool has several subcommands: `full-status`, `debugon`, `debugoff`, `logconf` and `upgrade`, which upgrades the database. Do not leave debug on, because it costs performance.
+The `cmdaemonctl` tool has several subcommands: `full-status`, `debugon`, `debugoff`, `logconf` and `upgrade`, which upgrades the database. Do not leave debug on, because it costs performance. Debug output is verbose, and the extra logging slows the daemon down while it runs.
 
-The configuration file is `/cm/local/apps/cmd/etc/cmd.conf` on the head node. Regular nodes keep their copy inside the image. Appendix C covers `FrozenFile` and the other directives, as chapter 8.1 explains.
+The configuration file is `/cm/local/apps/cmd/etc/cmd.conf` on the head node. Regular nodes keep their copy inside the image. Appendix C covers `FrozenFile` and the other directives, as chapter 8.1 explains. A frozen file is one that BCM will not overwrite when it rewrites its configuration, so an edit you make by hand survives.
 
-`cmsh` writes its history to `~/.cm/.cmshhistory`. Use `history -t` to see timestamps. `environment node001` shows the `CMD_*` variables that scripts receive, and adding `-e` makes them exportable.
+`cmsh` writes its history to `~/.cm/.cmshhistory`. Use `history -t` to see timestamps. A timestamped history helps you reconstruct what happened during an incident. `environment node001` shows the `CMD_*` variables that scripts receive, and adding `-e` makes them exportable. An exportable variable is one that a child script can read.
 
-After any investigation, run `cmdaemonctl debugoff` before you move on.
+After any investigation, run `cmdaemonctl debugoff` before you move on. An investigation that ends with debug still on is a common way to leave the daemon slow for days.
 
 ## 11. Habits that keep clusters safe
 
-Seven habits keep your hands steady when you type fast.
+Picture a long afternoon of `cmsh` work, where the tenth command looks just like the first. Seven habits keep your hands steady when you type fast.
 
 1. Run `modified` before every `commit`.
 2. Pick nodes from a printed `list` with the same selection options, and check the count.
@@ -239,9 +239,11 @@ Seven habits keep your hands steady when you type fast.
 6. Use a dry run where the command has one, such as `imageupdate`, `rename --dry-run` or `updatedevicepowerconfig --dry-run`.
 7. Keep `--disable-events` in scripts, so event noise does not hide the output.
 
+The habits work together. The first one catches the change you did not mean to make. The second catches the node you did not mean to select. The sixth lets you see the result before it happens. A label on each change, the fifth habit, is what lets someone else reconstruct your reasoning later.
+
 ## 12. Common first mistakes
 
-Most first mistakes in `cmsh` come from habits you have not built yet. The list below names nine common ones, so you can spot them before they cost you.
+Most first mistakes in `cmsh` come from habits you have not built yet. The list below names nine common ones, so you can spot them before they cost you. Picture your first week with the tool. Each mistake looks harmless when you make it, and each one is much harder to notice when it is repeated across a large selection.
 
 1. Forgetting `commit` and wondering why nothing changed.
 2. Forgetting that `commit` also executes a pending `remove`.
@@ -255,48 +257,48 @@ Most first mistakes in `cmsh` come from habits you have not built yet. The list 
 
 ### 12.1 Mastering `cmsh` for zero-mistake fleet operations
 
-Picture a `cmsh` session on a live production cluster. One `foreach` or `range` command can modify or reboot five hundred GPU servers at once. The gap between a junior administrator and a senior systems engineer shows up in the first thirty seconds of that session. Disciplined operators follow the same four-step rhythm on every interactive change: **Scope → Mutate → Audit (`modified`) → Commit**.
+Picture a `cmsh` session on a live production cluster. One `foreach` or `range` command can modify or reboot five hundred GPU servers at once. The gap between a junior administrator and a senior systems engineer shows up in the first thirty seconds of that session. Disciplined operators follow the same four-step rhythm on every interactive change: **Scope → Mutate → Audit (`modified`) → Commit**. Each step guards against one kind of mistake, and skipping one of them is how a small slip becomes an outage.
 
-Here is how each step protects the cluster from fat-finger outages.
+Here is how each step protects the cluster from fat-finger outages. A fat-finger outage is one caused by a typing slip.
 
-First, scope the change with a dry-run `list`. Whenever you combine selection filters, such as `-c gpu-nodes` (category), `-r rack05` (rack), `-g maintenance` (group) or `--status DOWN`, remember that `cmsh` defaults to union (`-u`), not intersection (`-i`). Suppose you type `device power off -c gpu-nodes -r rack05` meaning only the GPU nodes inside Rack 5. The union default selects every GPU node in the entire data center, plus every device in Rack 5. For an intersection you must pass `-i` explicitly, as in `-i -c gpu-nodes -r rack05`. Run `device list -i -c gpu-nodes -r rack05` first, count the rows on screen, and run the mutating command only when the list matches your expectation.
+First, scope the change with a dry-run `list`. Whenever you combine selection filters, such as `-c gpu-nodes` (category), `-r rack05` (rack), `-g maintenance` (group) or `--status DOWN`, remember that `cmsh` defaults to union (`-u`), not intersection (`-i`). Suppose you type `device power off -c gpu-nodes -r rack05` meaning only the GPU nodes inside Rack 5. The union default selects every GPU node in the entire data center, plus every device in Rack 5. For an intersection you must pass `-i` explicitly, as in `-i -c gpu-nodes -r rack05`. Run `device list -i -c gpu-nodes -r rack05` first, count the rows on screen, and run the mutating command only when the list matches your expectation. The list is free, and the power-off is not.
 
-Second, make the change in local memory and watch the asterisks. When you run `set`, `add`, `clear`, `append`, `removefrom` or `remove`, nothing reaches CMDaemon yet. The edits sit in your local `cmsh` process, and the prompt changes from `[basecm11->device[node001]]%` to `[basecm11->device*[node001*]]%`. This local staging lets you inspect derived values with `get` and `show`, check dependencies with `usedby`, and run `validate` before touching live nodes.
+Second, make the change in local memory and watch the asterisks. When you run `set`, `add`, `clear`, `append`, `removefrom` or `remove`, nothing reaches CMDaemon yet. The edits sit in your local `cmsh` process, and the prompt changes from `[basecm11->device[node001]]%` to `[basecm11->device*[node001*]]%`. This local staging lets you inspect derived values with `get` and `show`, check dependencies with `usedby`, and run `validate` before touching live nodes. Staging is the cheapest place to find a mistake.
 
-Third, audit every pending object with `modified` before you type `commit`. Suppose ten minutes ago you ran `remove node042` while investigating a broken node. A Slack message then distracted you. You moved to `category use default`, changed a kernel parameter, and typed `commit`. Because `commit` flushes all pending modifications in the session, that forgotten `remove node042` executes right alongside your kernel parameter change. Running `modified` before every `commit` prints a concise table of every object queued for creation (`+`), deletion (`-`) or modification (blank). If anything in that table surprises you, run `refresh` to discard the local changes and start fresh.
+Third, audit every pending object with `modified` before you type `commit`. Suppose ten minutes ago you ran `remove node042` while investigating a broken node. A message then distracted you. You moved to `category use default`, changed a kernel parameter, and typed `commit`. Because `commit` flushes all pending modifications in the session, that forgotten `remove node042` executes right alongside your kernel parameter change. Running `modified` before every `commit` prints a concise table of every object queued for creation (`+`), deletion (`-`) or modification (blank). If anything in that table surprises you, run `refresh` to discard the local changes and start fresh.
 
-Fourth, use `commit -w` in scripts that image or clone. Some commits start heavy background work on the head node, such as cloning a thirty-gigabyte software image (`clone default-image cuda12-test`) or regenerating an initrd ramdisk. In a batch script, such as `cmsh -f rollout.cmsh -q -x`, a plain `commit` returns immediately while the background copy is still running. The next line then fails if it touches the image that is not finished. Passing **`commit -w`** blocks until all background tasks from that commit complete.
+Fourth, use `commit -w` in scripts that image or clone. Some commits start heavy background work on the head node, such as cloning a thirty-gigabyte software image (`clone default-image cuda12-test`) or regenerating an initrd ramdisk. An initrd is the temporary root filesystem that the kernel loads at boot. In a batch script, such as `cmsh -f rollout.cmsh -q -x`, a plain `commit` returns immediately while the background copy is still running. The next line then fails if it touches the image that is not finished. Passing `commit -w` blocks until all background tasks from that commit complete. Waiting costs a little time, and a script that does not wait can corrupt a half-finished image.
 
 ### 12.2 Scripting and exporting structured data from `cmsh` into Python and CI pipelines
 
-Interactive `cmsh` is optimized for human tab-completion. Day-2 operations, though, often need cluster inventory, switch-port mappings or job status in Python scripts, Ansible inventories or monitoring checks. BCM offers three escalating ways to connect `cmsh` to outside automation.
+Interactive `cmsh` is optimized for human tab-completion. Day-2 operations, though, often need cluster inventory, switch-port mappings or job status in Python scripts, Ansible inventories or monitoring checks. Day-2 means the work after the initial install, when the cluster is running and needs ongoing care. BCM offers three escalating ways to connect `cmsh` to outside automation. Start with the simplest one that fits your task.
 
 1. Formatted JSON column projections, written as `list -f ... -d {}`. When you need only a few fields across hundreds of devices, `list --json` gets verbose, because it serializes every property of every object. Combine `-f` for field selection with `-d {}` for the JSON delimiter, and add `--color=no`:
    ```bash
    cmsh --color=no -c "device; list -f hostname,ip,mac,category,status -d {}"
    ```
-   This prints clean JSON objects with only the five requested keys. You can pipe them straight into `jq` or into `python3 -c "import sys, json; ..."`.
-2. Idempotent `.cmsh` scripts, run with `-f -q -x --disable-events`. A repeatable setup, such as creating four networks, six categories and ten Slurm queues on a new test cluster, belongs in a version-controlled `.cmsh` file. Run it with `cmsh -f setup.cmsh -q -x --disable-events`. The `-q` flag halts the script at the first syntax or validation error, so it never commits a half-configured object. The `-x` flag echoes each command into the CI log. `--disable-events` keeps asynchronous cluster event banners out of your script's stdout.
-3. Custom parameterized aliases in `~/.cm/cmsh/`. Any script saved as `~/.cm/cmsh/<name>.cmsh` becomes a command called `<name>` inside an interactive session. It can take positional parameters with defaults, such as `${1-node001}`. Teams often keep read-only diagnostic macros this way. A `rackcheck.cmsh` script, for example, prints `status`, `ipaddresses --check`, `bmceventlog --tail 5` and `roles; list -p` for a given rack. Put such macros in `/etc/cmshrc` or shared dotfiles, and every on-call engineer gets the same one-word triage commands.
+   This prints clean JSON objects with only the five requested keys. You can pipe them straight into `jq` or into `python3 -c "import sys, json; ..."`. A projection is a chosen subset of the fields, and it keeps the output short.
+2. Idempotent `.cmsh` scripts, run with `-f -q -x --disable-events`. Idempotent means that running the script again gives the same result, so a second run does not break what the first one built. A repeatable setup, such as creating four networks, six categories and ten Slurm queues on a new test cluster, belongs in a version-controlled `.cmsh` file. Run it with `cmsh -f setup.cmsh -q -x --disable-events`. The `-q` flag halts the script at the first syntax or validation error, so it never commits a half-configured object. The `-x` flag echoes each command into the CI log. CI means continuous integration, the automated job system that runs your checks. `--disable-events` keeps asynchronous cluster event banners out of your script's stdout.
+3. Custom parameterized aliases in `~/.cm/cmsh/`. Any script saved as `~/.cm/cmsh/<name>.cmsh` becomes a command called `<name>` inside an interactive session. It can take positional parameters with defaults, such as `${1-node001}`. A positional parameter is a value passed by position, so the first argument fills the first slot. Teams often keep read-only diagnostic macros this way. A `rackcheck.cmsh` script, for example, prints `status`, `ipaddresses --check`, `bmceventlog --tail 5` and `roles; list -p` for a given rack. Put such macros in `/etc/cmshrc` or shared dotfiles, and every on-call engineer gets the same one-word triage commands. A macro that only reads state is the safest kind to share.
 
 ### 12.3 Diagnosing and recovering `CMDaemon` (`cmd.service`) on the head node
 
-Both `cmsh` and Base View are thin clients. They talk over TLS port `8081` to CMDaemon on the head node. So what do you do if `cmsh` hangs on startup, or prints `Unable to connect to 127.0.0.1:8081`?
+Both `cmsh` and Base View are thin clients. A thin client holds almost no logic of its own, and it leaves the work to the server. They talk over TLS port `8081` to CMDaemon on the head node. So what do you do if `cmsh` hangs on startup, or prints `Unable to connect to 127.0.0.1:8081`?
 
-First, tell your stakeholders this. A stopped or restarting CMDaemon on the head node does not kill running Slurm or Kubernetes jobs. Compute nodes keep executing their active training steps, `slurmctld` and `kube-apiserver` keep running, and NFS mounts stay up. What pauses is cluster management. New nodes cannot PXE-provision, `cmsh` and Base View cannot connect, and BCM health triggers pause.
+First, tell your stakeholders this. A stopped or restarting CMDaemon on the head node does not kill running Slurm or Kubernetes jobs. Compute nodes keep executing their active training steps, `slurmctld` and `kube-apiserver` keep running, and NFS mounts stay up. What pauses is cluster management. New nodes cannot PXE-provision, `cmsh` and Base View cannot connect, and BCM health triggers pause. Saying this early keeps people from panicking about the jobs when the real problem is the management layer.
 
-To diagnose `cmd.service` on the head node, follow four steps in order.
+To diagnose `cmd.service` on the head node, follow four steps in order. The order goes from the cheapest check to the most detailed one.
 
-1. Check the service and the database first. Run `systemctl status cmd.service` and `systemctl status mysql.service` (or `mariadb.service`). CMDaemon stores all object state in MySQL. So `cmd.service` refuses to start if MySQL is down, if `/var` is `100%` full, which you can check with `df -h /var`, or if the BCM license has expired. Check the license with `verify-license verify`, and read `/var/log/cmdaemon` for clues.
-2. Inspect `cmdaemonctl full-status`. When `cmd` runs but feels sluggish, this command reports active client sessions, worker thread use and request rates. A runaway script that opened hundreds of concurrent `cmsh` processes in a shell loop shows up here immediately.
-3. Check `/var/log/cmdaemon` and turn off stray debug logging. Someone who ran `cmdaemonctl debugon` during an earlier investigation, and forgot `cmdaemonctl debugoff`, leaves verbose debug trace logging on. That logging can fill `/var/log/cmdaemon` at gigabytes per hour and stall worker threads on disk I/O.
-4. Verify daemon versions across the fleet. After any head-node package update, run `cmsh -c "device; cmdaemonversions"` to confirm that the head node and all regular nodes run compatible CMDaemon builds.
+1. Check the service and the database first. Run `systemctl status cmd.service` and `systemctl status mysql.service` (or `mariadb.service`). CMDaemon stores all object state in MySQL. So `cmd.service` refuses to start if MySQL is down, if `/var` is `100%` full, which you can check with `df -h /var`, or if the BCM license has expired. Check the license with `verify-license verify`, and read `/var/log/cmdaemon` for clues. A full `/var` is an easy cause to miss, so check the disk early.
+2. Inspect `cmdaemonctl full-status`. When `cmd` runs but feels sluggish, this command reports active client sessions, worker thread use and request rates. A worker thread is a piece of the daemon that handles one request at a time. A runaway script that opened hundreds of concurrent `cmsh` processes in a shell loop shows up here immediately.
+3. Check `/var/log/cmdaemon` and turn off stray debug logging. Someone who ran `cmdaemonctl debugon` during an earlier investigation, and forgot `cmdaemonctl debugoff`, leaves verbose debug trace logging on. That logging can fill `/var/log/cmdaemon` at gigabytes per hour and stall worker threads on disk I/O. Turning debug off is the cheapest fix in this list, so do it as soon as you find it.
+4. Verify daemon versions across the fleet. After any head-node package update, run `cmsh -c "device; cmdaemonversions"` to confirm that the head node and all regular nodes run compatible CMDaemon builds. A version mismatch can look like a random fault, so this check is worth the seconds it takes.
 
-Work through the four steps in order, and note what each one shows before you change anything.
+Work through the four steps in order, and note what each one shows before you change anything. Writing the output down first gives you a record to compare with after the fix.
 
 ### 12.4 Side-by-side translation: Common cluster tasks in Base View vs `cmsh`
 
-Even if you do ninety percent of your daily engineering work in `cmsh`, you should know how the same operations look in Base View. That helps when you train new operators or walk executives and auditors through a live dashboard. Every view in the web UI reads and writes the same CMDaemon objects over TCP port `8081`.
+Even if you do ninety percent of your daily engineering work in `cmsh`, you should know how the same operations look in Base View. That helps when you train new operators or walk executives and auditors through a live dashboard. Every view in the web UI reads and writes the same CMDaemon objects over TCP port `8081`. The table lines up each common task with its two routes, so you can pick the one that suits the moment.
 
 | Operational Task | `cmsh` Command Sequence | Base View Navigation Path |
 |---|---|---|
@@ -309,26 +311,26 @@ Even if you do ninety percent of your daily engineering work in `cmsh`, you shou
 | **Watch live metrics and health graphs** | `monitoring; samplenow node001` / `latesthealthdata` | Top-right **Monitoring** icon → **Critical Services** |
 | **Hold, release, or inspect a WLM job** | `wlm; jobs; list` / `info <id>` / `hold <id>` | Top-right **HPC** icon → **Jobs** (`..` action menu) |
 
-Notice why experienced teams avoid editing the same object in Base View and `cmsh` at the same time. Whichever session commits second overwrites the properties the first one committed. Use Base View for visual awareness, time-series metric exploration and one-off inspection. Use `cmsh`, with `modified` and `set revision "<ticket>"`, whenever you change cluster state.
+Notice why experienced teams avoid editing the same object in Base View and `cmsh` at the same time. Whichever session commits second overwrites the properties the first one committed. Two sessions editing one object is a race, and the later save silently wins. Use Base View for visual awareness, time-series metric exploration and one-off inspection. Use `cmsh`, with `modified` and `set revision "<ticket>"`, whenever you change cluster state.
 
 When you onboard a new engineer, have them pair Base View with `cmsh` during their first week. In Base View's left-hand resource tree, they can look at a category, overlay or rack layout and see how the objects connect. Then they run `path` and `show` on the same object in `cmsh`. That shows them the exact CLI path and property names that go into your change-management runbooks and `.cmsh` scripts. The habit builds a visual sense of the object graph and muscle memory for the command line.
 
 ## Exercises
 
-Work through these after you have read the chapter. Each one uses the same skills as the sections above.
+These steps were not run on a live cluster, so treat the lab output as a rehearsal. Work through them after you have read the chapter. Each one uses the same skills as the sections above.
 
-1. Run `python3 cmsh_lab.py`. Choose four of its checks, and explain each rule in your own words.
-2. With `cmsh_sim.Session`, replay the manual's add, commit and remove session. Write down each prompt as you go, and note the point where the asterisks disappear.
-3. Write a node list for each of these. Cover all nodes of racks 1 to 3, with 8 nodes each. Cover every odd node of a 64-node cluster. Cover all of `node001..node032` except `node013`.
-4. A script changes the category of nodes 5 to 8. Write it so that it prints the affected nodes first, then asks for `commit` only if the count is 4.
-5. Rename `node[001-004]` and `node[005-008]` so that the odd and even nodes become `left` and `right`.
+1. Run `python3 cmsh_lab.py`. Choose four of its checks. For each one, explain the rule in your own words. Start with the checks about the commit model, because they guard the most common mistake.
+2. With `cmsh_sim.Session`, replay the manual's add, commit and remove session. Write down each prompt as you go. Note the point where the asterisks disappear, and say why they disappear there.
+3. Write a node list for all nodes in racks 1 to 3. Each rack has 8 nodes. Then write a node list for every odd node of a 64-node cluster. Last, write a node list for all of `node001..node032` except `node013`.
+4. A script changes the category of nodes 5 to 8. Write it so that it prints the affected nodes first. Then have it ask for `commit` only if the count is 4.
+5. Rename `node[001-004]` and `node[005-008]` so that the odd and even nodes become `left` and `right`. Dry-run the rename before you commit it.
 6. Explain the difference between `device status node001` and `device; status node001`.
 
 ## 14. Interview angles
 
-These are the questions this chapter prepares you for.
+Interviewers tend to ask about the moment a change goes wrong, because that is when habits show. These are the questions this chapter prepares you for, with short answers.
 
-"How do you change a setting on one rack safely?" Select with a printed node list or `-r`, and run `get` first. Then `set`, `modified` and `commit`, verify the result, and use `refresh` if something looks wrong.
+"How do you change a setting on one rack safely?" Select with a printed node list or `-r`, and run `get` first. Then `set`, `modified` and `commit`, verify the result, and use `refresh` if something looks wrong. The order is the answer, because each step checks the one before it.
 
 "Base View or cmsh?" Both reach CMDaemon on 8081. Use Base View to look and explain, and `cmsh` to repeat and script.
 
