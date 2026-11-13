@@ -812,54 +812,54 @@ Reading about LVM and RAID only goes so far. You learn them when you run the com
 python3 code/part01/lvm_raid_nvme_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM that uses loop devices, work through these steps. Every interactive VM command below is `untested here`.
+Next, on a disposable GCP Ubuntu VM that uses loop devices, work through these steps. Every interactive VM command below has not been run on live hardware.
 
 **A. Create four loop "disks".**
 
 ```bash
-for i in 1 2 3 4; do sudo truncate -s 512M /tmp/d$i.img; done # (untested here)
-sudo losetup -f --show /tmp/d1.img; sudo losetup -f --show /tmp/d2.img; sudo losetup -f --show /tmp/d3.img; sudo losetup -f --show /tmp/d4.img # (untested here)
-losetup -a                              # (untested here) note the /dev/loopN names; below L1..L4 stand for them
+for i in 1 2 3 4; do sudo truncate -s 512M /tmp/d$i.img; done
+sudo losetup -f --show /tmp/d1.img; sudo losetup -f --show /tmp/d2.img; sudo losetup -f --show /tmp/d3.img; sudo losetup -f --show /tmp/d4.img
+losetup -a                              # note the /dev/loopN names; below L1..L4 stand for them
 ```
 
 **B. LVM: create, use, extend, move, snapshot.**
 
 ```bash
-sudo apt install -y lvm2 mdadm xfsprogs # (untested here)
-sudo vgcreate labvg L1 L2               # (untested here)
-sudo lvcreate -L 300M -n lv1 labvg; sudo lvcreate -L 300M -n lv2 labvg # (untested here)
-sudo pvs; sudo vgs; sudo lvs -o +devices # (untested here)
-sudo mkfs.ext4 /dev/labvg/lv1; sudo mkdir -p /mnt/lv1; sudo mount /dev/labvg/lv1 /mnt/lv1 # (untested here)
-echo hello | sudo tee /mnt/lv1/f.txt    # (untested here)
-sudo vgextend labvg L3; sudo lvextend -r -L +400M /dev/labvg/lv1; df -h /mnt/lv1 # (untested here)
-sudo dmsetup ls --tree; sudo dmsetup table | head # (untested here)
-sudo pvmove L1 && sudo pvs              # (untested here) empty the first PV online
-sudo vgreduce labvg L1 && sudo pvremove L1 # (untested here)
-sudo lvcreate -s -L 100M -n lv1snap /dev/labvg/lv1; sudo lvs # (untested here)
-echo changed | sudo tee /mnt/lv1/f.txt  # (untested here)
-sudo mkdir -p /mnt/snap && sudo mount -o ro /dev/labvg/lv1snap /mnt/snap && cat /mnt/snap/f.txt # (untested here)
-sudo umount /mnt/snap /mnt/lv1; sudo lvremove -y labvg/lv1snap # (untested here)
-sudo lvs -a; sudo vgdisplay labvg | head -20 # (untested here)
+sudo apt install -y lvm2 mdadm xfsprogs
+sudo vgcreate labvg L1 L2
+sudo lvcreate -L 300M -n lv1 labvg; sudo lvcreate -L 300M -n lv2 labvg
+sudo pvs; sudo vgs; sudo lvs -o +devices
+sudo mkfs.ext4 /dev/labvg/lv1; sudo mkdir -p /mnt/lv1; sudo mount /dev/labvg/lv1 /mnt/lv1
+echo hello | sudo tee /mnt/lv1/f.txt
+sudo vgextend labvg L3; sudo lvextend -r -L +400M /dev/labvg/lv1; df -h /mnt/lv1
+sudo dmsetup ls --tree; sudo dmsetup table | head
+sudo pvmove L1 && sudo pvs              # empty the first PV online
+sudo vgreduce labvg L1 && sudo pvremove L1
+sudo lvcreate -s -L 100M -n lv1snap /dev/labvg/lv1; sudo lvs
+echo changed | sudo tee /mnt/lv1/f.txt
+sudo mkdir -p /mnt/snap && sudo mount -o ro /dev/labvg/lv1snap /mnt/snap && cat /mnt/snap/f.txt
+sudo umount /mnt/snap /mnt/lv1; sudo lvremove -y labvg/lv1snap
+sudo lvs -a; sudo vgdisplay labvg | head -20
 ```
 
 **C. Thin pool (watch `Data%`).**
 
 ```bash
-sudo lvcreate -L 200M --thinpool tp labvg # (untested here)
-sudo lvcreate -V 1G --thin -n thin1 labvg/tp # (untested here) 1 GiB virtual on a 200 MiB pool: over-provisioned
-sudo lvs -a -o +data_percent,metadata_percent # (untested here)
+sudo lvcreate -L 200M --thinpool tp labvg
+sudo lvcreate -V 1G --thin -n thin1 labvg/tp # 1 GiB virtual on a 200 MiB pool: over-provisioned
+sudo lvs -a -o +data_percent,metadata_percent
 ```
 
 **D. md RAID: build, break, repair.**
 
 ```bash
-sudo mdadm --create /dev/md0 --level=1 --raid-devices=2 L3 L4 --run # (untested here)
-cat /proc/mdstat; sudo mdadm --detail /dev/md0 | head -20 # (untested here)
-sudo mkfs.ext4 /dev/md0; sudo mount /dev/md0 /mnt/lv1; echo data | sudo tee /mnt/lv1/x # (untested here)
-sudo mdadm /dev/md0 --fail L4 --remove L4; cat /proc/mdstat # (untested here) [U_] degraded, still working
-sudo mdadm /dev/md0 --add L4; watch -n1 cat /proc/mdstat # (untested here) rebuild
-echo check | sudo tee /sys/block/md0/md/sync_action; cat /sys/block/md0/md/mismatch_cnt # (untested here)
-sudo umount /mnt/lv1; sudo mdadm --stop /dev/md0 # (untested here)
+sudo mdadm --create /dev/md0 --level=1 --raid-devices=2 L3 L4 --run
+cat /proc/mdstat; sudo mdadm --detail /dev/md0 | head -20
+sudo mkfs.ext4 /dev/md0; sudo mount /dev/md0 /mnt/lv1; echo data | sudo tee /mnt/lv1/x
+sudo mdadm /dev/md0 --fail L4 --remove L4; cat /proc/mdstat # [U_] degraded, still working
+sudo mdadm /dev/md0 --add L4; watch -n1 cat /proc/mdstat # rebuild
+echo check | sudo tee /sys/block/md0/md/sync_action; cat /sys/block/md0/md/mismatch_cnt
+sudo umount /mnt/lv1; sudo mdadm --stop /dev/md0
 ```
 
 L3 was used by the VG above. Free it first with `vgreduce` and `pvremove`, or use fresh loop devices for this step.
@@ -867,39 +867,39 @@ L3 was used by the VG above. Free it first with `vgreduce` and `pvremove`, or us
 **E. RAID 0 and a stripe-aware XFS.**
 
 ```bash
-sudo mdadm --create /dev/md1 --level=0 --raid-devices=2 --chunk=256K LA LB --run # (untested here)
-sudo mkfs.xfs -f /dev/md1; sudo xfs_info /dev/md1 | grep -E 'sunit|swidth' # (untested here)
-sudo mdadm --detail --scan              # (untested here)
+sudo mdadm --create /dev/md1 --level=0 --raid-devices=2 --chunk=256K LA LB --run
+sudo mkfs.xfs -f /dev/md1; sudo xfs_info /dev/md1 | grep -E 'sunit|swidth'
+sudo mdadm --detail --scan
 ```
 
 **F. LUKS (encrypted volume).**
 
 ```bash
-sudo cryptsetup luksFormat -q /dev/labvg/lv2 # (untested here) type YES / passphrase when asked (use a throwaway one)
-sudo cryptsetup open /dev/labvg/lv2 secret; sudo mkfs.ext4 /dev/mapper/secret # (untested here)
-sudo mount /dev/mapper/secret /mnt/lv1; sudo umount /mnt/lv1; sudo cryptsetup close secret # (untested here)
-sudo cryptsetup luksDump /dev/labvg/lv2 | head -20 # (untested here)
+sudo cryptsetup luksFormat -q /dev/labvg/lv2 # type YES / passphrase when asked (use a throwaway one)
+sudo cryptsetup open /dev/labvg/lv2 secret; sudo mkfs.ext4 /dev/mapper/secret
+sudo mount /dev/mapper/secret /mnt/lv1; sudo umount /mnt/lv1; sudo cryptsetup close secret
+sudo cryptsetup luksDump /dev/labvg/lv2 | head -20
 ```
 
 **G. NVMe commands (read-only; on a node with NVMe).**
 
 ```bash
-sudo nvme list; sudo nvme id-ctrl /dev/nvme0 | head -25; sudo nvme id-ns /dev/nvme0n1 | head -20 # (untested here)
-sudo nvme smart-log /dev/nvme0          # (untested here)
-cat /sys/class/nvme/nvme0/device/{current_link_speed,current_link_width,max_link_speed,max_link_width} # (untested here)
-cat /sys/block/nvme0n1/queue/{scheduler,nr_requests,rotational,logical_block_size} # (untested here)
-ls /sys/block/nvme0n1/mq | head         # (untested here) one directory per hardware queue
+sudo nvme list; sudo nvme id-ctrl /dev/nvme0 | head -25; sudo nvme id-ns /dev/nvme0n1 | head -20
+sudo nvme smart-log /dev/nvme0
+cat /sys/class/nvme/nvme0/device/{current_link_speed,current_link_width,max_link_speed,max_link_width}
+cat /sys/block/nvme0n1/queue/{scheduler,nr_requests,rotational,logical_block_size}
+ls /sys/block/nvme0n1/mq | head         # one directory per hardware queue
 ```
 
 **H. Disk performance method on a spare device or file.**
 
 ```bash
-iostat -xz 1 5 &                        # (untested here)
-sudo fio --name=lat --filename=/tmp/fio.dat --size=1G --rw=randread --bs=4k --iodepth=1 --direct=1 --runtime=15 --time_based --lat_percentiles=1 # (untested here)
-sudo fio --name=qd --filename=/tmp/fio.dat --size=1G --rw=randread --bs=4k --iodepth=64 --numjobs=4 --direct=1 --runtime=15 --time_based --group_reporting # (untested here)
-sudo ioping -c 5 /tmp                   # (untested here)
-cat /proc/pressure/io                   # (untested here)
-sudo biolatency 10 1 2>/dev/null || echo "install bpfcc-tools / bcc" # (untested here)
+iostat -xz 1 5 &
+sudo fio --name=lat --filename=/tmp/fio.dat --size=1G --rw=randread --bs=4k --iodepth=1 --direct=1 --runtime=15 --time_based --lat_percentiles=1
+sudo fio --name=qd --filename=/tmp/fio.dat --size=1G --rw=randread --bs=4k --iodepth=64 --numjobs=4 --direct=1 --runtime=15 --time_based --group_reporting
+sudo ioping -c 5 /tmp
+cat /proc/pressure/io
+sudo biolatency 10 1 2>/dev/null || echo "install bpfcc-tools / bcc"
 ```
 
 Compare the IOPS and the latency percentiles at queue depth 1 with those at depth 64 across 4 jobs. Which of the two would a single synchronous reader experience? What does `%util` show in each case?
@@ -907,13 +907,13 @@ Compare the IOPS and the latency percentiles at queue depth 1 with those at dept
 **I. cgroup I/O limit (cgroup v2).**
 
 ```bash
-sudo systemd-run --scope -p IOReadBandwidthMax="/tmp 10M" dd if=/tmp/fio.dat of=/dev/null bs=1M iflag=direct # (untested here)
+sudo systemd-run --scope -p IOReadBandwidthMax="/tmp 10M" dd if=/tmp/fio.dat of=/dev/null bs=1M iflag=direct
 ```
 
 **J. Clean up.**
 
 ```bash
-sudo vgremove -f labvg 2>/dev/null; for d in /dev/loop*; do sudo losetup -d $d 2>/dev/null; done; sudo rm -f /tmp/d?.img /tmp/fio.dat # (untested here)
+sudo vgremove -f labvg 2>/dev/null; for d in /dev/loop*; do sudo losetup -d $d 2>/dev/null; done; sudo rm -f /tmp/d?.img /tmp/fio.dat
 ```
 
 Finish by removing the test devices, as in step J, so that nothing is left behind.
@@ -1057,4 +1057,4 @@ Stage datasets on local NVMe when shared storage bandwidth or metadata is the bo
   - `nvidia-devops/volume-01/02-linux-storage-io-masterclass.md` and `nvidia-zero-to-hero/volume-15/` (`index.md`, `chapter-01-why-ai-storage-is-different.md`, `chapter-02-the-ai-data-path-from-storage-to-gpu.md`, `chapter-03-local-nvme-and-data-staging.md`, and cross-references to `chapter-04-gpudirect-storage-architecture.md`, `chapter-05-lustre-for-ai-and-hpc.md`, `chapter-06-beegfs-for-gpu-clusters.md`, `chapter-07-object-storage-and-dataset-pipelines.md`, `chapter-08-checkpoint-architecture-and-recovery.md`, `chapter-09-metadata-small-files-and-data-loading.md`, `chapter-10-capacity-performance-and-cost-planning.md`, `chapter-11-production-troubleshooting.md`, `chapter-12-volume-15-summary.md`, and `labs/lab-01-baseline-an-ai-storage-path.md`, `labs/lab-02-benchmark-local-nvme-and-shared-storage.md`, `labs/lab-03-validate-a-gpudirect-storage-design.md`, `labs/lab-04-troubleshoot-checkpoint-and-data-loading-bottlenecks.md`, plus original study items 21–30).
 - **Run here:** `python3 code/part01/lvm_raid_nvme_lab.py` (21 passed, 0 failed).
 - **Explicitly labelled inferences:** DGX OS RAID 1 + NVMe RAID 0 scratch layouts, `current_link_speed/width` sysfs link checks, TopoLVM / OpenEBS LVM-LocalPV Kubernetes CSI drivers, and NVMe-oF RDMA port `4420` connect Linux LVM/RAID/NVMe management to Chapters 1.18, 1.22, 1.23, 1.25, 6.19, 6.21, and Parts 5, 6, and 11 AI storage architectures (plus original study items 22, 23, 24, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM, loop-device, RAID, LUKS, and NVMe commands (`vgcreate`, `lvcreate`, `pvmove`, `dmsetup`, `mdadm`, `cryptsetup`, `multipath`, `nvme`, `fio`, `ioping`, `biolatency`) are marked (untested here) and must be executed only on disposable loop devices or test VMs.
+- **Not verified on live hardware:** All interactive VM, loop-device, RAID, LUKS, and NVMe commands (`vgcreate`, `lvcreate`, `pvmove`, `dmsetup`, `mdadm`, `cryptsetup`, `multipath`, `nvme`, `fio`, `ioping`, `biolatency`) are marked and must be executed only on disposable loop devices or test VMs.

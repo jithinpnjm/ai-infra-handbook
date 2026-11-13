@@ -559,18 +559,18 @@ Start with the self-checking Python lab, which you can run on your own machine a
 python3 code/part01/logging_time_cron_lab.py
 ```
 
-Next, work through the steps below on a disposable GCP Ubuntu VM. Every interactive VM command is marked `untested here`, so treat its output as unverified until you run it yourself.
+Next, work through the steps below on a disposable GCP Ubuntu VM. Every interactive VM command has not been run on live hardware, so treat its output as unverified until you run it yourself.
 
 **A. Inspect logging.**
 
 ```bash
-systemctl is-active systemd-journald rsyslog; ls -l /var/log | head -20; ls -ld /var/log/journal # (untested here)
-journalctl --disk-usage; journalctl --list-boots | tail -3 # (untested here)
-logger -t labtest -p local3.warning "hello from the lab" # (untested here)
-journalctl -t labtest -n 2 --no-pager; grep -h labtest /var/log/syslog 2>/dev/null | tail -2 # (untested here)
-journalctl -S -1h -p warning --no-pager | tail; journalctl -k -g 'Linux version' --no-pager | head -2 # (untested here)
-journalctl -N | head -20; journalctl -F _SYSTEMD_UNIT | head # (untested here)
-last -n 5; lastb -n 5 2>/dev/null; lastlog | head -5 # (untested here)
+systemctl is-active systemd-journald rsyslog; ls -l /var/log | head -20; ls -ld /var/log/journal
+journalctl --disk-usage; journalctl --list-boots | tail -3
+logger -t labtest -p local3.warning "hello from the lab"
+journalctl -t labtest -n 2 --no-pager; grep -h labtest /var/log/syslog 2>/dev/null | tail -2
+journalctl -S -1h -p warning --no-pager | tail; journalctl -k -g 'Linux version' --no-pager | head -2
+journalctl -N | head -20; journalctl -F _SYSTEMD_UNIT | head
+last -n 5; lastb -n 5 2>/dev/null; lastlog | head -5
 ```
 
 **B. rsyslog rule.**
@@ -578,10 +578,10 @@ last -n 5; lastb -n 5 2>/dev/null; lastlog | head -5 # (untested here)
 Add a rule that sends `local3` messages to their own file.
 
 ```bash
-sudo apt install -y rsyslog             # (untested here)
-echo 'local3.*   /var/log/lab-local3.log' | sudo tee /etc/rsyslog.d/50-lab.conf # (untested here)
-sudo rsyslogd -N1 && sudo systemctl restart rsyslog # (untested here)
-logger -p local3.info -t labtest "to the local3 file"; cat /var/log/lab-local3.log # (untested here)
+sudo apt install -y rsyslog
+echo 'local3.*   /var/log/lab-local3.log' | sudo tee /etc/rsyslog.d/50-lab.conf
+sudo rsyslogd -N1 && sudo systemctl restart rsyslog
+logger -p local3.info -t labtest "to the local3 file"; cat /var/log/lab-local3.log
 ```
 
 **C. logrotate.**
@@ -603,19 +603,19 @@ sudo tee /etc/logrotate.d/lab >/dev/null <<'EOF'
     endscript
 }
 EOF
-for i in $(seq 1 60); do logger -p local3.info -t labtest "line $i padding padding padding"; done # (untested here)
-sudo logrotate -d /etc/logrotate.d/lab 2>&1 | tail -15 # (untested here)
-sudo logrotate -f /etc/logrotate.d/lab; ls -l /var/log/lab-local3.log* # (untested here)
+for i in $(seq 1 60); do logger -p local3.info -t labtest "line $i padding padding padding"; done
+sudo logrotate -d /etc/logrotate.d/lab 2>&1 | tail -15
+sudo logrotate -f /etc/logrotate.d/lab; ls -l /var/log/lab-local3.log*
 ```
 
 **D. Time.**
 
 ```bash
-timedatectl; date -u; date +%s; date -d @0; TZ=Asia/Kolkata date; sudo hwclock --show # (untested here)
-sudo apt install -y chrony; sudo systemctl disable --now systemd-timesyncd 2>/dev/null; sudo systemctl enable --now chrony # (untested here)
-chronyc tracking; chronyc sources -v; chronyc sourcestats # (untested here)
-sudo date -s '+90 seconds'; chronyc tracking | head -4; sudo chronyc makestep; sleep 2; chronyc tracking | head -4 # (untested here)
-cat /sys/devices/system/clocksource/clocksource0/current_clocksource # (untested here)
+timedatectl; date -u; date +%s; date -d @0; TZ=Asia/Kolkata date; sudo hwclock --show
+sudo apt install -y chrony; sudo systemctl disable --now systemd-timesyncd 2>/dev/null; sudo systemctl enable --now chrony
+chronyc tracking; chronyc sources -v; chronyc sourcestats
+sudo date -s '+90 seconds'; chronyc tracking | head -4; sudo chronyc makestep; sleep 2; chronyc tracking | head -4
+cat /sys/devices/system/clocksource/clocksource0/current_clocksource
 ```
 
 **E. cron.**
@@ -623,26 +623,26 @@ cat /sys/devices/system/clocksource/clocksource0/current_clocksource # (untested
 The first job writes the date every minute. The second file shows the minimal environment cron gives a job. The third shows `flock` skipping overlapping starts.
 
 ```bash
-crontab -l 2>/dev/null; (crontab -l 2>/dev/null; echo '* * * * * date >> /tmp/cron-lab.txt 2>&1') | crontab - # (untested here)
-sleep 70; cat /tmp/cron-lab.txt; journalctl -u cron --since -5min --no-pager | tail -5 # (untested here)
+crontab -l 2>/dev/null; (crontab -l 2>/dev/null; echo '* * * * * date >> /tmp/cron-lab.txt 2>&1') | crontab -
+sleep 70; cat /tmp/cron-lab.txt; journalctl -u cron --since -5min --no-pager | tail -5
 sudo tee /etc/cron.d/lab-env >/dev/null <<'EOF'
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 * * * * * root env > /tmp/cron-env.txt 2>&1; echo "date \% test: $(date +\%F)" >> /tmp/cron-env.txt
 EOF
-sleep 70; cat /tmp/cron-env.txt         # (untested here) note the minimal environment
+sleep 70; cat /tmp/cron-env.txt         # note the minimal environment
 sudo tee /etc/cron.d/lab-flock >/dev/null <<'EOF'
 * * * * * root flock -n /run/lock/lab.lock sh -c 'echo start $(date +\%T) >> /tmp/lab-flock.txt; sleep 90; echo end $(date +\%T) >> /tmp/lab-flock.txt'
 EOF
-sleep 200; cat /tmp/lab-flock.txt       # (untested here) overlapping starts are skipped
+sleep 200; cat /tmp/lab-flock.txt       # overlapping starts are skipped
 ```
 
 **F. at and systemd-run.**
 
 ```bash
-sudo apt install -y at; echo 'date >> /tmp/at-lab.txt' | at now + 1 minute; atq # (untested here)
-sudo systemd-run --on-active=45s --unit=lab-once sh -c 'date >> /tmp/run-lab.txt'; systemctl list-timers | grep lab-once # (untested here)
-sleep 90; cat /tmp/at-lab.txt /tmp/run-lab.txt # (untested here)
+sudo apt install -y at; echo 'date >> /tmp/at-lab.txt' | at now + 1 minute; atq
+sudo systemd-run --on-active=45s --unit=lab-once sh -c 'date >> /tmp/run-lab.txt'; systemctl list-timers | grep lab-once
+sleep 90; cat /tmp/at-lab.txt /tmp/run-lab.txt
 ```
 
 **G. Clean up.**
@@ -650,8 +650,8 @@ sleep 90; cat /tmp/at-lab.txt /tmp/run-lab.txt # (untested here)
 Step G removes the lab's crontab, files and config. Run it only on the disposable VM.
 
 ```bash
-crontab -r; sudo rm -f /etc/cron.d/lab-env /etc/cron.d/lab-flock /etc/rsyslog.d/50-lab.conf /etc/logrotate.d/lab /var/log/lab-local3.log* /tmp/cron-*.txt /tmp/lab-flock.txt /tmp/at-lab.txt /tmp/run-lab.txt # (untested here)
-sudo systemctl restart rsyslog          # (untested here)
+crontab -r; sudo rm -f /etc/cron.d/lab-env /etc/cron.d/lab-flock /etc/rsyslog.d/50-lab.conf /etc/logrotate.d/lab /var/log/lab-local3.log* /tmp/cron-*.txt /tmp/lab-flock.txt /tmp/at-lab.txt /tmp/run-lab.txt
+sudo systemctl restart rsyslog
 ```
 
 ## Exercises
@@ -792,4 +792,4 @@ Wrap the command in `flock -n /run/lock/health.lock`, which skips a run while th
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** (services, cron, and logging basics) and **Chapter 28: One-Two-Three Instructions** (NTP server and compute-node configuration; cross-referenced with Chapters 1.7, 1.12, 1.30, 6.19, 6.23, 6.24, and 6.30, plus original study items 21–30).
 - **Run here:** `python3 code/part01/logging_time_cron_lab.py` (21 passed, 0 failed).
 - **Explicitly labelled inferences:** The `chrony` `local stratum 10 orphan` head-node pattern (RFC 5905), Munge/Kerberos `300 s` (`5`-minute) skew failure diagnosis, `/proc/PID/fd/N` truncation, `/var/log/messages` vs `/var/log/syslog`, `/var/lib/docker` and `/var/lib/systemd/coredump` space cleanup, `_PID=1234`, `loghost:514`, and GPU node central log pipeline (Fluent Bit / Vector / Loki / OpenSearch) connect Linux logging, timekeeping, and scheduling to Part 6 Slurm and Part 9 observability operations (plus original study items 26, 27, and 29).
-- **Not verified on live hardware:** All interactive VM commands (`logger`, `rsyslogd`, `logrotate`, `timedatectl`, `hwclock`, `chronyc`, `crontab`, `at`, `systemd-run`) are marked (untested here) and should be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM commands (`logger`, `rsyslogd`, `logrotate`, `timedatectl`, `hwclock`, `chronyc`, `crontab`, `at`, `systemd-run`) are marked and should be executed on a disposable Linux VM.

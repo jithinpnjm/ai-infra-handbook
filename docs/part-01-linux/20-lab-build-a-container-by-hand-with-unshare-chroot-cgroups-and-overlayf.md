@@ -64,13 +64,13 @@ The script checks the 6-stage `enter.sh` assembly order. It checks the `pivot_ro
 python3 code/part01/build_container_hand_lab.py
 ```
 
-Then move to your disposable Ubuntu 22.04+ VM. Every interactive command from here on carries the marker `untested here`, because its output was not captured on live hardware. Run each one yourself, and write down what you really see. Your own output is the record that matters.
+Then move to your disposable Ubuntu 22.04+ VM. No interactive command from here on has been run on live hardware, because its output was not captured. Run each one yourself, and write down what you really see. Your own output is the record that matters.
 
 ```bash
-sudo -i                                 # (untested here)
-stat -fc %T /sys/fs/cgroup              # (untested here) expect cgroup2fs
-uname -r; unshare --version; ip -V      # (untested here)
-mkdir -p /lab && cd /lab                # (untested here)
+sudo -i
+stat -fc %T /sys/fs/cgroup              # expect cgroup2fs
+uname -r; unshare --version; ip -V
+mkdir -p /lab && cd /lab
 ```
 
 ## Step 1. Root filesystem
@@ -411,4 +411,4 @@ Unprivileged user namespaces cannot create host `veth` pairs or attach interface
   - `nvidia-devops/volume-01/04-linux-systemd-containers-masterclass.md` — migrated the `unshare`, `pivot_root`, `OverlayFS`, `cgroup v2`, and `veth`/`br-lab` hand-built container lab (cross-referenced with Chapters 1.18, 1.19, and 1.21, plus original study items 21–30).
 - **Run here:** `python3 code/part01/build_container_hand_lab.py` (15 passed, 0 failed).
 - **Explicitly labelled inferences:** The Step 8 comparison table between the hand-built `unshare` container (`/proc/PID/ns`) and `docker run` (`containerd`/`runc` OCI bundle) connects kernel primitives to production Kubernetes and Docker runtimes (plus original study items 22, 23, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** Every interactive VM command in Steps 0–10 (`unshare`, `chroot`, `mount -t overlay`, `pivot_root`, `mknod`, `ip link`, `iptables`, `nsenter`, `capsh`, `setpriv`, `docker`) is marked (untested here) and must be run on a disposable VM.
+- **Not verified on live hardware:** Every interactive VM command in Steps 0–10 (`unshare`, `chroot`, `mount -t overlay`, `pivot_root`, `mknod`, `ip link`, `iptables`, `nsenter`, `capsh`, `setpriv`, `docker`) is marked and must be run on a disposable VM.

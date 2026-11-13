@@ -407,7 +407,7 @@ Start with the self-checking Python lab. It runs on your own machine and checks 
 python3 code/part02/network_monitoring_telemetry_lab.py
 ```
 
-Next, move to a disposable Linux VM with Docker and the Chapter 2.27 containerlab fabric. Every interactive VM command below is `untested here`, so treat each step as a starting point. Work through these steps in order.
+Next, move to a disposable Linux VM with Docker and the Chapter 2.27 containerlab fabric. Every interactive VM command below has not been run on live hardware, so treat each step as a starting point. Work through these steps in order.
 
 1. Start the stack with Docker Compose: Prometheus, Alertmanager, Grafana, Loki, node_exporter, the blackbox exporter and gNMIc. Load the Prometheus config shown above.
 2. Turn on the ethtool, infiniband and softnet collectors on the VM. Build a dashboard covering throughput, utilisation, errors, drops, retransmits, softnet squeeze and conntrack. Generate load with `iperf3` and `tc netem` loss, then watch the counters respond.
@@ -635,4 +635,4 @@ Five guardrails must be in place first.
   - `nvidia-devops/volume-07` — migrated observability masterclass patterns (metrics/logs/traces, PromQL reasoning, cardinality math, InfiniBand/RoCE `port_xmit_wait` backpressure, link flaps, symbol errors, alerting, and SLO practice).
 - **Run here:** `python3 code/part02/network_monitoring_telemetry_lab.py` (8 passed, 0 failed).
 - **Explicitly labelled inferences:** The Section 3 Prometheus (`prometheus.yml`), `node_exporter`, and `gNMIc` (`gnmic.yaml`) configurations and Section 4 PromQL queries and Alertmanager rules (`LinkFlapping`, `PfcStorm`, `LosslessQueueDrops`, `RailBandwidthSkew`, `OpticsDegrading`) are the author's constructions synthesizing the Prometheus, `node_exporter`, `gNMIc`, and OpenConfig documentation (cross-referenced with Chapters 2.16, 2.18, 2.19, 2.22, 2.26, 2.28–2.30, and Part 10, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** All interactive Docker Compose, Prometheus, `node_exporter`, `gNMIc`, and `sFlow` commands are marked (untested here) and must be verified against the exact metric names of your target exporters and switch NOS versions.
+- **Not verified on live hardware:** All interactive Docker Compose, Prometheus, `node_exporter`, `gNMIc`, and `sFlow` commands are marked and must be verified against the exact metric names of your target exporters and switch NOS versions.

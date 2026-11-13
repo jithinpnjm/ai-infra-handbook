@@ -647,7 +647,7 @@ Start with the self-checking Python lab. Run it on your own machine, and it veri
 python3 code/part03/python_clis_agents_exporters_lab.py
 ```
 
-After the lab passes, you can move to a machine with Python 3.11 or later. The interactive shell steps below are `untested here`, so you are the one to run and confirm them.
+After the lab passes, you can move to a machine with Python 3.11 or later. The interactive shell steps below have not been run on live hardware, so you are the one to run and confirm them.
 
 1. Build `gpuctl status|drain` with argparse, then port it to Click and to Typer. Compare the help output, the tests and the shell completion. Add `--output json`, then check that piping the output to `jq` works while the logs stay on stderr.
 2. Add exit codes for partial failure and for an unhealthy result. Write a shell wrapper that reacts to each code. Then confirm that `--dry-run` never changes anything.
@@ -861,4 +861,4 @@ Suppose `subprocess.run(cmd, timeout=30)` times out. Python then kills only the 
   - `redfish-spec` — DMTF Redfish Specification (`SessionService`, `@odata.id` resource traversal, `Systems`/`Chassis`/`Managers`, `#ComputerSystem.Reset` and `ResetType@Redfish.AllowableValues`, and `202 Accepted` Task monitors), plus Prometheus client library custom collector and multi-target exporter documentation.
 - **Run here:** `python3 code/part03/python_clis_agents_exporters_lab.py` (6 passed, 0 failed).
 - **Explicitly labelled inferences:** The `gpuctl` `argparse`/`Click`/`Typer` examples, `FleetCollector`, `Redfish` client class, `nodeagent.service` systemd unit, and Section 10 GPU diagnostics capstone are the author's constructions applying *Practical MLOps* Chapter 11, `volume-02`, and the DMTF Redfish specification to GPU cluster operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live BMC Redfish calls, `nvidia-smi`, `dcgmi diag`, `prometheus_client.start_http_server(9101)`, `promtool check metrics`, and `systemd` service execution (`500` machines, `9101`, `9102`, `600`s, `412 ok, 3 failed`, `300M`, `20%`, `1.4.0`, `85`C) are marked (`untested here`) where not executed by `python_clis_agents_exporters_lab.py`.
+- **Not verified on live hardware:** Live BMC Redfish calls, `nvidia-smi`, `dcgmi diag`, `prometheus_client.start_http_server(9101)`, `promtool check metrics`, and `systemd` service execution (`500` machines, `9101`, `9102`, `600`s, `412 ok, 3 failed`, `300M`, `20%`, `1.4.0`, `85`C) are marked where not executed by `python_clis_agents_exporters_lab.py`.

@@ -470,7 +470,7 @@ python3 code/part01/text_pipeline_lab.py
 Next, on a GCP Ubuntu VM, build a synthetic training log and a GPU metrics CSV. Synthetic data matters here, because you can break it as often as you like while you practice. The interactive VM commands below were not run on live hardware.
 
 ```bash
-mkdir -p ~/lab/text && cd ~/lab/text # (untested here)
+mkdir -p ~/lab/text && cd ~/lab/text
 awk 'BEGIN{srand(42); for(i=1;i<=2000;i++){loss=2.5/(1+i/200)+rand()*0.05;
  printf "2026-10-23T10:%02d:%02d step=%d loss=%.4f tokens_per_sec=%d gpu=%d\n", int(i/60)%60, i%60, i, loss, 90000+int(rand()*10000), i%8}}' > train.log
 printf '%s\n' "2026-10-23T10:20:01 ERROR NCCL timeout on rank 3" "2026-10-23T10:21:44 WARN loss spike at step 1300" \
@@ -633,4 +633,4 @@ Windows text files end each line with `CRLF`, the `\r\n` pair. From Linux's view
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** and **Chapter 8: UNIX and Linux – Working Techniques**. Read "Tips for Some Often-Used Commands" in full (`less` flags `-F`, `-R`, `-S`, `-N`, `-n`, `-f`, `grep -E`, `sort -u`, `tail -n +N`, and `diff -u`).
 - **Run here:** `python3 code/part01/text_pipeline_lab.py` (25 passed, 0 failed).
 - **Explicitly labelled inferences:** The `nvidia-smi --query-gpu`, `squeue -h -o`, `sinfo -N -h -o`, and `kubectl -o jsonpath` / `jq` recipes apply standard CLI flags from Parts 5, 6, 10, 15, and 17 (chapters 15.14, 17.3, and 17.4) to the Unix text pipeline model.
-- **Not verified on live hardware:** All interactive VM shell commands (`nvidia-smi`, `squeue`, `sinfo`, `kubectl`, `dmesg`, `jq`) are marked (untested here) and should be executed on a Linux VM or cluster login node.
+- **Not verified on live hardware:** All interactive VM shell commands (`nvidia-smi`, `squeue`, `sinfo`, `kubectl`, `dmesg`, `jq`) are marked and should be executed on a Linux VM or cluster login node.

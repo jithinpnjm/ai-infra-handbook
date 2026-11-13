@@ -465,7 +465,7 @@ Start with the self-checking Python lab, `code/part01/namespaces_containers_lab.
 python3 code/part01/namespaces_containers_lab.py
 ```
 
-Next, use a disposable Ubuntu 22.04 or later VM with `root`. All interactive VM commands below are `untested here`. A full container is assembled in Chapter 1.20. Work through these steps in order.
+Next, use a disposable Ubuntu 22.04 or later VM with `root`. All interactive VM commands below have not been run on live hardware. A full container is assembled in Chapter 1.20. Work through these steps in order.
 
 1. **Inspect**: `ls -l /proc/$$/ns`, `lsns`. Start `docker run -d --name nsdemo alpine sleep 600` (if Docker is installed), get its PID with `docker inspect -f '{{.State.Pid}}' nsdemo`, then run `sudo ls -l /proc/<PID>/ns` and compare inode numbers with the host shell. Which are the same, and which differ? With default settings, `user` should be the same, while `mnt`, `pid`, `net`, `ipc`, `uts` and `cgroup` differ.
 2. **UTS**: `sudo unshare --uts bash -c 'hostname lab-box; hostname'`, then run `hostname` in your original shell.
@@ -647,4 +647,4 @@ Python `venv` is purely a change to user-space paths. Running `python3 -m venv t
   - `nvidia-devops/volume-01/04-linux-systemd-containers-masterclass.md` — migrated the namespace deep dive, `unshare` lab, OverlayFS mechanics, and PID 1 signal handling (cross-referenced with Chapters 1.8, 1.10, 1.12, 1.18, 1.20, 1.21, 1.22, 1.26, and 1.27, plus original study items 21–30).
 - **Run here:** `python3 code/part01/namespaces_containers_lab.py` (19 passed, 0 failed).
 - **Explicitly labelled inferences:** The `containerd` -> `containerd-shim` -> `runc` sequence diagram, `/run/netns/name` bind mounts, `/dev/shm` `64 MiB` PyTorch `DataLoader` `SIGBUS` diagnosis, `nvidia-ctk` CDI injection, and `Enroot` + `Pyxis` Slurm comparison connect Linux namespaces and OverlayFS to Part 5, Part 6, and Part 7 GPU cluster operations (plus original study items 22, 23, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM, `unshare`, `nsenter`, `ip netns`, `mount -t overlay`, and `docker` commands are marked (untested here) and must be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM, `unshare`, `nsenter`, `ip netns`, `mount -t overlay`, and `docker` commands are marked and must be executed on a disposable Linux VM.

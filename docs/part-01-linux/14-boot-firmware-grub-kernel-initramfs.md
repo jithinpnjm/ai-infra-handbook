@@ -599,9 +599,9 @@ The interface the server listens on is set separately. Use `INTERFACESv4=` in `/
 **Collecting MAC addresses** (*Supercomputers for Linux Sysadmins* Chapter 23) matters because a fixed address needs each node's MAC. You can read the label, or query the BMC with `ipmitool lan print` or Redfish. You can also query the switch's bridge forwarding table by port with `snmpwalk`:
 
 ```bash
-# 1. List MAC addresses learned by the switch (dot1dTpFdbEntry.1; untested here)
+# 1. List MAC addresses learned by the switch (dot1dTpFdbEntry.1)
 snmpwalk -c public -v2c swaddr iso.org.dod.internet.mgmt.mib-2.dot1dBridge.dot1dTp.dot1dTpFdbTable.dot1dTpFdbEntry.1
-# 2. List the corresponding switch port numbers for those entries (dot1dTpFdbEntry.2; untested here)
+# 2. List the corresponding switch port numbers for those entries (dot1dTpFdbEntry.2)
 snmpwalk -c public -v2c swaddr iso.org.dod.internet.mgmt.mib-2.dot1dBridge.dot1dTp.dot1dTpFdbTable.dot1dTpFdbEntry.2
 ```
 
@@ -692,25 +692,25 @@ First, run the self-checking Python lab at `code/part01/boot_grub_initramfs_lab.
 python3 code/part01/boot_grub_initramfs_lab.py
 ```
 
-Next, use a disposable local VM, such as QEMU/KVM, VirtualBox or UTM, or a throwaway GCP VM with serial console access. Every interactive VM command below is marked `untested here`, so treat each one as a step to confirm. Work through these steps in order.
+Next, use a disposable local VM, such as QEMU/KVM, VirtualBox or UTM, or a throwaway GCP VM with serial console access. Every interactive VM command below has not been run on live hardware, so treat each one as a step to confirm. Work through these steps in order.
 
 **A. Observe the boot.**
 
 ```bash
-cat /proc/cmdline; uname -r; ls -l /boot; ls /lib/modules # (untested here)
-[ -d /sys/firmware/efi ] && echo UEFI || echo BIOS; efibootmgr -v 2>/dev/null | head # (untested here)
-journalctl -k | grep -E 'Command line|Run /init|mounted filesystem|systemd\[1\]' | head # (untested here)
-journalctl -b -1 -k | head -3           # (untested here) previous boot (persistent journal needed)
-systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head # (untested here)
+cat /proc/cmdline; uname -r; ls -l /boot; ls /lib/modules
+[ -d /sys/firmware/efi ] && echo UEFI || echo BIOS; efibootmgr -v 2>/dev/null | head
+journalctl -k | grep -E 'Command line|Run /init|mounted filesystem|systemd\[1\]' | head
+journalctl -b -1 -k | head -3           # previous boot (persistent journal needed)
+systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head
 ```
 
 **B. GRUB configuration.**
 
 ```bash
-sudo cp /etc/default/grub /etc/default/grub.bak # (untested here)
-grep -E '^GRUB_' /etc/default/grub; ls /etc/grub.d; sudo grub-mkconfig 2>/dev/null | head -60 # (untested here)
-sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=10/; s/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub # (untested here)
-sudo update-grub && grep -n 'timeout' /boot/grub/grub.cfg | head # (untested here)
+sudo cp /etc/default/grub /etc/default/grub.bak
+grep -E '^GRUB_' /etc/default/grub; ls /etc/grub.d; sudo grub-mkconfig 2>/dev/null | head -60
+sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=10/; s/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
+sudo update-grub && grep -n 'timeout' /boot/grub/grub.cfg | head
 ```
 
 Reboot, press `e` on the entry, and add `systemd.unit=rescue.target`. Do not save that change. Press Ctrl-X. In the rescue shell, run `systemctl default` or `exit` to continue. Then, at the menu, press `c`, and run `ls`, `ls (hd0,gpt1)/`, `echo $prefix` and `set`. Finish with `Esc`.
@@ -718,48 +718,48 @@ Reboot, press `e` on the entry, and add `systemd.unit=rescue.target`. Do not sav
 **C. A kernel parameter, temporarily and permanently.**
 
 ```bash
-sudo sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200n8 loglevel=7"/' /etc/default/grub # (untested here)
-sudo update-grub; sudo reboot           # (untested here)
-cat /proc/cmdline                       # (untested here) verify; then undo from /etc/default/grub.bak and update-grub
+sudo sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200n8 loglevel=7"/' /etc/default/grub
+sudo update-grub; sudo reboot
+cat /proc/cmdline                       # verify; then undo from /etc/default/grub.bak and update-grub
 ```
 
 **D. Look inside the initramfs, then rebuild it.**
 
 ```bash
-lsinitramfs /boot/initrd.img-$(uname -r) | head -30 # (untested here) RHEL: lsinitrd
-lsinitramfs /boot/initrd.img-$(uname -r) | grep -E 'nvme|virtio|dm-|raid' | head # (untested here)
-sudo update-initramfs -u -k "$(uname -r)" # (untested here) RHEL: sudo dracut -f
-ls -l /boot/initrd.img-$(uname -r)      # (untested here)
+lsinitramfs /boot/initrd.img-$(uname -r) | head -30 # RHEL: lsinitrd
+lsinitramfs /boot/initrd.img-$(uname -r) | grep -E 'nvme|virtio|dm-|raid' | head
+sudo update-initramfs -u -k "$(uname -r)" # RHEL: sudo dracut -f
+ls -l /boot/initrd.img-$(uname -r)
 ```
 
 **E. Break and repair `fstab` (VM only).**
 
 ```bash
-echo 'UUID=00000000-0000-0000-0000-000000000000 /mnt/ghost ext4 defaults 0 2' | sudo tee -a /etc/fstab # (untested here)
-sudo findmnt --verify | tail -3         # (untested here)
-sudo reboot                             # (untested here) observe the wait and the emergency shell on the console; fix the file
-sudo sed -i '$ s/defaults 0 2/defaults,nofail,x-systemd.device-timeout=5s 0 2/' /etc/fstab # (untested here)
+echo 'UUID=00000000-0000-0000-0000-000000000000 /mnt/ghost ext4 defaults 0 2' | sudo tee -a /etc/fstab
+sudo findmnt --verify | tail -3
+sudo reboot                             # observe the wait and the emergency shell on the console; fix the file
+sudo sed -i '$ s/defaults 0 2/defaults,nofail,x-systemd.device-timeout=5s 0 2/' /etc/fstab
 ```
 
 **F. Rescue a broken GRUB from a live ISO (VM).**
 
-Boot a live ISO, and mount the VM's root and ESP. Bind-mount `/dev /proc /sys /run`, and run `chroot`. Then run `grub-install` and `update-grub`, and reboot. The commands are in section 7, which is `untested here`.
+Boot a live ISO, and mount the VM's root and ESP. Bind-mount `/dev /proc /sys /run`, and run `chroot`. Then run `grub-install` and `update-grub`, and reboot. The commands are in section 7, which has not been run on live hardware.
 
 **G. Lost root password drill (VM).**
 
-At the GRUB menu, add `rd.break` on RHEL, or `init=/bin/bash` on Ubuntu. Then run `mount -o remount,rw /sysroot` or `/`, `chroot /sysroot`, and `passwd`. On SELinux systems, also run `touch /.autorelabel`. Reboot (untested here). Note how a LUKS-encrypted root would stop this drill.
+At the GRUB menu, add `rd.break` on RHEL, or `init=/bin/bash` on Ubuntu. Then run `mount -o remount,rw /sysroot` or `/`, `chroot /sysroot`, and `passwd`. On SELinux systems, also run `touch /.autorelabel`. Reboot. Note how a LUKS-encrypted root would stop this drill.
 
 **H. PXE in a virtual lab (optional, two VMs on a private network).**
 
-Install `isc-dhcp-server` and `tftpd-hpa`, or `dnsmasq`, on VM1. Copy `pxelinux.0`, `ldlinux.c32`, a kernel and an initrd into `/srv/tftp`. Write `pxelinux.cfg/default`, and configure `dhcpd.conf` with `next-server` and `filename`. Boot VM2 with PXE first (untested here). Watch the traffic with `tcpdump -ni <if> port 67 or 68 or 69`. Then add an NFS root export and try `root=/dev/nfs`. Record what you see at each step.
+Install `isc-dhcp-server` and `tftpd-hpa`, or `dnsmasq`, on VM1. Copy `pxelinux.0`, `ldlinux.c32`, a kernel and an initrd into `/srv/tftp`. Write `pxelinux.cfg/default`, and configure `dhcpd.conf` with `next-server` and `filename`. Boot VM2 with PXE first. Watch the traffic with `tcpdump -ni <if> port 67 or 68 or 69`. Then add an NFS root export and try `root=/dev/nfs`. Record what you see at each step.
 
 **I. Serial console.**
 
 ```bash
-sudo systemctl enable --now serial-getty@ttyS0.service # (untested here)
-sudo sed -i 's/^#\?GRUB_TERMINAL=.*/GRUB_TERMINAL="console serial"/' /etc/default/grub # (untested here)
-echo 'GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"' | sudo tee -a /etc/default/grub # (untested here)
-sudo update-grub                        # (untested here) on GCP: gcloud compute instances get-serial-port-output NAME
+sudo systemctl enable --now serial-getty@ttyS0.service
+sudo sed -i 's/^#\?GRUB_TERMINAL=.*/GRUB_TERMINAL="console serial"/' /etc/default/grub
+echo 'GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"' | sudo tee -a /etc/default/grub
+sudo update-grub                        # on GCP: gcloud compute instances get-serial-port-output NAME
 ```
 
 Run the Python lab first, then work through the VM steps, and write down each result before you move on.
@@ -906,4 +906,4 @@ Run five checks before you reboot a GPU node after a kernel upgrade. First, conf
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 23: Booting and Init** (BIOS/MBR vs UEFI/GPT `128` partitions & `> 18` exabytes, GRUB stages, `initrd`/`initramfs`, SystemV vs BSD `init`, `/etc/inittab` and runlevels `0`–`6`, LSB `### BEGIN INIT INFO` `skeleton` headers, Lennart Poettering and Kay Sievers `systemd` design, cloning `/dev/disk/by-id` pitfalls, and PXE network booting: ISC `dhcpd.conf`, `snmpwalk` `dot1dTpFdbEntry.1`/`.2` switch MAC discovery and `macs.txt` generator script, `tftpd`, `pxelinux.cfg/default`, NFS-root with `tmpfs` writable overlays, and `1`–`2` s staggered boot-storm prevention; cross-referenced with Chapters 21, 22, 24, 25, 26, 27, 28, 29, and 30).
 - **Run here:** `python3 code/part01/boot_grub_initramfs_lab.py` (23 passed, 0 failed).
 - **Explicitly labelled inferences:** GPU server BIOS/UEFI settings (Above-4G Decoding, `ReBAR`, `SR-IOV`, `IOMMU`, `NPS` modes), `mokutil` MOK signing for DKMS `nvidia.ko` (Chapters 1.21 and 1.22), and `kdump` `crashkernel=` configurations connect the Linux boot pipeline to Part 6, Part 7, Part 8, and Part 10 GPU cluster operations.
-- **Not verified on live hardware:** All interactive VM, GRUB, `initramfs`, `chroot`, and PXE/DHCP/TFTP commands (`efibootmgr`, `mokutil`, `update-grub`, `grub-install`, `update-initramfs`, `dracut`, `snmpwalk`, `dhcpd`) are marked (untested here) and must be tested on a disposable VM with console access.
+- **Not verified on live hardware:** All interactive VM, GRUB, `initramfs`, `chroot`, and PXE/DHCP/TFTP commands (`efibootmgr`, `mokutil`, `update-grub`, `grub-install`, `update-initramfs`, `dracut`, `snmpwalk`, `dhcpd`) are marked and must be tested on a disposable VM with console access.

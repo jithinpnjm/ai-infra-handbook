@@ -269,16 +269,16 @@ A teammate from another team needs to read one project directory, and nothing el
 The commands below cover the whole life of an ACL, from granting access to removing it.
 
 ```bash
-setfacl -m u:alice:rw,u:bob:rw mydir          # (untested here) grant specific users (-m modifies)
-setfacl -m u:user1:rw,u:user2:rw,u:user3:rw mydir # (untested here) grant three writers (SCL Ch. 12 example)
-setfacl -m u:reader1:r,u:reader2:r,u:reader3:r mydir # (untested here) grant three read-only users
-setfacl -m g:readers:r mydir                  # (untested here) grant a group
-chmod o-rwx mydir                             # (untested here) classic bits: remove access for everyone else
-getfacl mydir                                 # (untested here) view the ACL
-setfacl -d -m g:projx:rwx /data/projx         # (untested here) DEFAULT ACL (-d): applied to new files created inside
-setfacl -R -m u:carol:rX /data/projx          # (untested here) recurse (capital X = execute only for dirs)
-setfacl -b mydir                              # (untested here) remove all ACL entries
-ls -l mydir                                   # (untested here) a '+' sign at the end of permissions means an ACL is set
+setfacl -m u:alice:rw,u:bob:rw mydir          # grant specific users (-m modifies)
+setfacl -m u:user1:rw,u:user2:rw,u:user3:rw mydir # grant three writers (SCL Ch. 12 example)
+setfacl -m u:reader1:r,u:reader2:r,u:reader3:r mydir # grant three read-only users
+setfacl -m g:readers:r mydir                  # grant a group
+chmod o-rwx mydir                             # classic bits: remove access for everyone else
+getfacl mydir                                 # view the ACL
+setfacl -d -m g:projx:rwx /data/projx         # DEFAULT ACL (-d): applied to new files created inside
+setfacl -R -m u:carol:rX /data/projx          # recurse (capital X = execute only for dirs)
+setfacl -b mydir                              # remove all ACL entries
+ls -l mydir                                   # a '+' sign at the end of permissions means an ACL is set
 ```
 
 Read the first three lines as grants for named users, the fourth as a grant for a group, and the rest as tools for viewing, removing and inheriting the rules. The default ACL on the directory is the one that reaches new files, and the recursive form reaches the files that already exist.
@@ -505,7 +505,7 @@ Put the synchronization commands in a dedicated script on every node, called `/u
 
 ```bash
 #!/usr/bin/env bash
-# /usr/sbin/master-sync (runs on each destination node at boot and on demand; untested here)
+# /usr/sbin/master-sync (runs on each destination node at boot and on demand)
 SYNC="rsync -e 'ssh -i /root/secret_key'"
 SRC_ADDR=root@master.cluster
 $SYNC $SRC_ADDR:/etc/passwd /etc/passwd
@@ -523,7 +523,7 @@ What about the case where the administrator adds or removes a batch of users on 
 
 ```bash
 #!/usr/bin/env bash
-# Fleet-wide trigger script run on the master node after account changes (untested here)
+# Fleet-wide trigger script run on the master node after account changes
 TIMEOUT=600
 CT=3
 # Exit the script cleanly if the overall ALRM watchdog timer fires
@@ -643,39 +643,39 @@ Start with the self-checking Python lab, which you can run locally. It verifies 
 python3 code/part01/users_permissions_lab.py
 ```
 
-Next, use a GCP Ubuntu VM with `sudo` rights. Every interactive VM command below is marked as untested here, so run each one on a test machine first. The exercises are grouped by topic.
+Next, use a GCP Ubuntu VM with `sudo` rights. Every interactive VM command below has not been run on live hardware, so run each one on a test machine first. The exercises are grouped by topic.
 
 **Part A: identity files and tools.**
-1. Read the real files with `head -5 /etc/passwd`, `sudo head -3 /etc/shadow` and `head -5 /etc/group` (untested here). Pick one line from each file and name every field. Then run `id`, `groups` and `getent passwd $USER`, and compare the result with `grep $USER /etc/passwd`.
-2. Create a test user and group with `sudo useradd -m -s /bin/bash -c "Lab One" lab1`, `sudo passwd lab1` and `sudo groupadd -g 2001 projx` (untested here). Add `lab1` and your own user to projx with `usermod -aG`. Then run `usermod -G projx lab1` on a throwaway user to see what it removes, and correct it.
-3. Show that new group membership needs a new session. Add yourself to projx, run `id`, and confirm that projx is not listed. Then run `newgrp projx`, or log out and back in, and run `id` again (untested here).
+1. Read the real files with `head -5 /etc/passwd`, `sudo head -3 /etc/shadow` and `head -5 /etc/group`. Pick one line from each file and name every field. Then run `id`, `groups` and `getent passwd $USER`, and compare the result with `grep $USER /etc/passwd`.
+2. Create a test user and group with `sudo useradd -m -s /bin/bash -c "Lab One" lab1`, `sudo passwd lab1` and `sudo groupadd -g 2001 projx`. Add `lab1` and your own user to projx with `usermod -aG`. Then run `usermod -G projx lab1` on a throwaway user to see what it removes, and correct it.
+3. Show that new group membership needs a new session. Add yourself to projx, run `id`, and confirm that projx is not listed. Then run `newgrp projx`, or log out and back in, and run `id` again.
 
 **Part B: permissions.**
-4. In a scratch directory, create a file and a directory. Set the modes with both symbolic and octal forms, and predict the `ls -l` output before you run it (untested here). Remove the directory's `x` bit, then try `cd`, `ls` and `cat dir/file`. Restore `x`, remove `r` instead, and repeat. Record what each combination allows.
-5. Show that deletion depends on the directory. Create a read-only file with `chmod 444` in a writable directory and remove it. Then try the same in a directory without `w` (untested here).
-6. Show the non-cumulative checks. Make a file that you own with mode `070` and group projx. As yourself, try to read it. You will be denied, even though the group triple allows it, because the owner matched first (untested here).
-7. Study umask. Run umask, then create a file and a directory. Repeat with `umask 077` and `umask 002`, and tabulate the resulting modes (untested here).
+4. In a scratch directory, create a file and a directory. Set the modes with both symbolic and octal forms, and predict the `ls -l` output before you run it. Remove the directory's `x` bit, then try `cd`, `ls` and `cat dir/file`. Restore `x`, remove `r` instead, and repeat. Record what each combination allows.
+5. Show that deletion depends on the directory. Create a read-only file with `chmod 444` in a writable directory and remove it. Then try the same in a directory without `w`.
+6. Show the non-cumulative checks. Make a file that you own with mode `070` and group projx. As yourself, try to read it. You will be denied, even though the group triple allows it, because the owner matched first.
+7. Study umask. Run umask, then create a file and a directory. Repeat with `umask 077` and `umask 002`, and tabulate the resulting modes.
 
 **Part C: special bits and a shared directory.**
-8. Build the `2770` project directory recipe from section 3, using two test users (untested here). As user one, create a file and check its group and mode. As user two, edit it. Then remove the setgid bit and repeat, so you can see the difference. Confirm the sticky bit on `/tmp` with `ls -ld /tmp`. Show that user two cannot delete user one's file in a `1777` directory, but can do so in a `777` one.
-9. List the setuid programs on the system with `find / -xdev -perm -4000 -type f 2>/dev/null`, and explain two of them, `passwd` and `sudo` (untested here). In a test directory, make a setuid copy of `sleep`. Run it in one terminal. In another terminal, run `ps -eo pid,euser,ruser,comm | grep sleep` to see the real and effective users. Then delete the copy.
+8. Build the `2770` project directory recipe from section 3, using two test users. As user one, create a file and check its group and mode. As user two, edit it. Then remove the setgid bit and repeat, so you can see the difference. Confirm the sticky bit on `/tmp` with `ls -ld /tmp`. Show that user two cannot delete user one's file in a `1777` directory, but can do so in a `777` one.
+9. List the setuid programs on the system with `find / -xdev -perm -4000 -type f 2>/dev/null`, and explain two of them, `passwd` and `sudo`. In a test directory, make a setuid copy of `sleep`. Run it in one terminal. In another terminal, run `ps -eo pid,euser,ruser,comm | grep sleep` to see the real and effective users. Then delete the copy.
 
 **Part D: ACLs.**
-10. Install the ACL tools if they are missing, with `sudo apt-get install -y acl` (untested here). Create a directory. Grant two users read-write and one user read-only with `setfacl`. Remove access for "other", view the result with `getfacl`, and test access as each user. Add a default ACL and show that new files inherit it. Change the group bits with `chmod g=r`, and watch the mask in `getfacl`.
+10. Install the ACL tools if they are missing, with `sudo apt-get install -y acl`. Create a directory. Grant two users read-write and one user read-only with `setfacl`. Remove access for "other", view the result with `getfacl`, and test access as each user. Add a default ACL and show that new files inherit it. Change the group bits with `chmod g=r`, and watch the mask in `getfacl`.
 
 **Part E: sudo.**
-11. Create `/etc/sudoers.d/lab` with `visudo -f`. It should let the test user run one specific command without a password (untested here). Verify it with `sudo -l -U lab1`, then run the command. Try a command that is not on the list. Introduce a deliberate syntax error and watch `visudo` refuse to save it. Check the logs with `journalctl SYSLOG_IDENTIFIER=sudo | tail`, or with `/var/log/auth.log`.
-12. Show the environment difference. Run `export FOO=1; sudo env | grep FOO`, which shows nothing. Then run it with `sudo -E` or `sudo FOO=1 env` (untested here). Show the redirection trap with `sudo echo x > /root/f`, and fix it with `tee`.
+11. Create `/etc/sudoers.d/lab` with `visudo -f`. It should let the test user run one specific command without a password. Verify it with `sudo -l -U lab1`, then run the command. Try a command that is not on the list. Introduce a deliberate syntax error and watch `visudo` refuse to save it. Check the logs with `journalctl SYSLOG_IDENTIFIER=sudo | tail`, or with `/var/log/auth.log`.
+12. Show the environment difference. Run `export FOO=1; sudo env | grep FOO`, which shows nothing. Then run it with `sudo -E` or `sudo FOO=1 env`. Show the redirection trap with `sudo echo x > /root/f`, and fix it with `tee`.
 
 **Part F: startup files.**
-13. Create a clean test user with an empty home directory (untested here). Write a minimal `~/.bashrc` that sets the path, prompt, editor and umask. Write a `~/.bash_profile` that sources it. Log in as that user in four ways: `su - lab1`, `ssh lab1@localhost`, `bash` inside a session, and `ssh lab1@localhost 'echo $PATH'`. Note which file is read in each case.
+13. Create a clean test user with an empty home directory. Write a minimal `~/.bashrc` that sets the path, prompt, editor and umask. Write a `~/.bash_profile` that sources it. Log in as that user in four ways: `su - lab1`, `ssh lab1@localhost`, `bash` inside a session, and `ssh lab1@localhost 'echo $PATH'`. Note which file is read in each case.
 
 **Part G: limits and access restriction (mostly reading).**
-14. Look at `ulimit -a`. Lower `ulimit -u` in a subshell, then run a small fork loop on a throwaway VM to see the limit stop the fork bomb's effect (untested here). Read `/etc/security/limits.conf`, and write the lines you would add for a compute node, covering `nofile` and `memlock`.
-15. Restrict a test user. Set `chsh -s /usr/sbin/nologin lab1` and test SSH, then revert the change (untested here). In a copy of `sshd_config`, add `DenyUsers lab1` and validate the file with `sshd -t -f`.
+14. Look at `ulimit -a`. Lower `ulimit -u` in a subshell, then run a small fork loop on a throwaway VM to see the limit stop the fork bomb's effect. Read `/etc/security/limits.conf`, and write the lines you would add for a compute node, covering `nofile` and `memlock`.
+15. Restrict a test user. Set `chsh -s /usr/sbin/nologin lab1` and test SSH, then revert the change. In a copy of `sshd_config`, add `DenyUsers lab1` and validate the file with `sshd -t -f`.
 
 **Part H: cluster identity thought exercise.**
-16. With two VMs, create user `lab2` with a different UID on each one. Export a directory from one VM over NFS to the other, or use `sshfs`. Create a file as `lab2` on VM1, then look at its owner on VM2 (untested here). Fix the problem by aligning the UIDs and running `chown` on the files.
+16. With two VMs, create user `lab2` with a different UID on each one. Export a directory from one VM over NFS to the other, or use `sshfs`. Create a file as `lab2` on VM1, then look at its owner on VM2. Fix the problem by aligning the UIDs and running `chown` on the files.
 
 ## Exercises
 
@@ -817,4 +817,4 @@ At job launch, all 500 nodes query the LDAP server at once for the user's UID an
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 11: Users – Accounting Management** and **Chapter 12: Users – Quotas and Access Rights**. Read Chapter 11 in full. Covers account synchronization across compute and service nodes, classic file sync pros and cons, pull-based `/usr/sbin/master-sync`, the `0.1–0.5s` staggered trigger loop with `TIMEOUT=600` `ALRM` trap, 1985 Sun *Yellow Pages* (`yp`) NIS/NIS+ history, the `30–40` client limit, `ypserv`/`yppasswdd`/`ypxfrd` 8-step setup, and LDAP explosive job-start storms (`authconfig`, `phpLDAPadmin`, `LDAP Account Manager`). Read Chapter 12 in full (filesystem quotas, `ulimit` and `limits.conf`, UNIX groups and `setfacl`/`getfacl` ACLs, and restricting access via `DenyUsers`/`AllowUsers`, `pam_access`, `chsh`, and `scponly`).
 - **Run here:** `python3 code/part01/users_permissions_lab.py` (25 passed, 0 failed).
 - **Explicitly labelled inferences:** Container `--user` / `fsGroup` ownership and `/dev/nvidia*` `0666` cgroup device isolation connect Linux UID/GID rules to Part 5, Part 6, and Part 11 GPU scheduling.
-- **Not verified on live hardware:** All interactive VM commands (`useradd`, `usermod`, `vipw`, `chmod`, `setfacl`, `visudo`, `/usr/sbin/master-sync`) are marked (untested here) and should be executed on a test VM.
+- **Not verified on live hardware:** All interactive VM commands (`useradd`, `usermod`, `vipw`, `chmod`, `setfacl`, `visudo`, `/usr/sbin/master-sync`) are marked and should be executed on a test VM.

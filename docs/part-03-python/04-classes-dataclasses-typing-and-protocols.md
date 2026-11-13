@@ -102,7 +102,7 @@ Keep one rule in mind for the rest of the chapter. **Class attributes are shared
 The second idea concerns scope. A `class` body runs in its own local namespace, and that namespace becomes the class's attribute dictionary. However, a class is not an enclosing scope for the methods inside it. Under the LEGB rule (Local, Enclosing, Global, Built-in), an unqualified name inside a method skips the class entirely. It resolves in enclosing `def` functions, the module's global scope or the built-ins. Methods must therefore reach class attributes through `self.attr` or `ClassName.attr`. The example below is the book's `classscope3.py`:
 
 ```python
-# In the book's classscope3.py example (untested here):
+# In the book's classscope3.py example:
 X = 1
 def nester():
     X = 2                        # enclosing function scope (E)
@@ -1172,4 +1172,4 @@ In unit tests, you pass a five-line in-memory `FakeCompute` that satisfies the P
   - `nvidia-devops` (`volume-02/01-python-core-oop-masterclass.md` and `volume-02/05-advanced-oop-design-masterclass.md`): ABC provider interfaces, factories, MRO and multiple inheritance, class vs instance variables, dataclasses, and Pydantic configuration validation and secrets.
 - **Run here:** `python3 code/part03/python_classes_typing_protocols_lab.py` (6 passed, 0 failed).
 - **Explicitly labelled inferences:** The `Node`, `RedfishClient`, `Provider` ABC, `GpuNode`/`Cluster` dataclasses, `NodeSpec`/`Settings` Pydantic models, `Version`/`Bytes`, and `Instance`/`Compute`/`FakeCompute` examples are the author's constructions applying *Fluent Python* and *Learning Python* OOP/typing principles to infrastructure code (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
-- **Not verified on live hardware:** Interactive `mypy`, `pyright`, `stubgen`, and `pydantic` CLI commands (`10.0.0.5`, `63`, `16`, `1024`, `3.9`, `3.10`, `3.11`, `3.12`, `3.14`, `484`, `695`) are marked (`untested here`) where not executed by `python_classes_typing_protocols_lab.py`.
+- **Not verified on live hardware:** Interactive `mypy`, `pyright`, `stubgen`, and `pydantic` CLI commands (`10.0.0.5`, `63`, `16`, `1024`, `3.9`, `3.10`, `3.11`, `3.12`, `3.14`, `484`, `695`) are marked where not executed by `python_classes_typing_protocols_lab.py`.

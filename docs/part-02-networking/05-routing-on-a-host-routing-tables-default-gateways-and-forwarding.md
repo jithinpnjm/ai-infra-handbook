@@ -424,13 +424,13 @@ Next, on a disposable Linux VM with `root`, build two subnets joined by a router
 
 ```bash
 # topology:  hA(10.1.0.2/24) -- r(10.1.0.1/24, 10.2.0.1/24) -- hB(10.2.0.2/24)
-for n in hA r hB; do sudo ip netns add $n; sudo ip -n $n link set lo up; done # (untested here)
-sudo ip link add vA type veth peer name rA; sudo ip link set vA netns hA; sudo ip link set rA netns r # (untested here)
-sudo ip link add vB type veth peer name rB; sudo ip link set vB netns hB; sudo ip link set rB netns r # (untested here)
-sudo ip -n hA addr add 10.1.0.2/24 dev vA ; sudo ip -n r addr add 10.1.0.1/24 dev rA # (untested here)
-sudo ip -n hB addr add 10.2.0.2/24 dev vB ; sudo ip -n r addr add 10.2.0.1/24 dev rB # (untested here)
-for d in "hA vA" "r rA" "r rB" "hB vB"; do set -- $d; sudo ip -n $1 link set $2 up; done # (untested here)
-sudo ip netns exec hA ping -c1 10.2.0.2      # (untested here) fails: Network is unreachable (no route)
+for n in hA r hB; do sudo ip netns add $n; sudo ip -n $n link set lo up; done
+sudo ip link add vA type veth peer name rA; sudo ip link set vA netns hA; sudo ip link set rA netns r
+sudo ip link add vB type veth peer name rB; sudo ip link set vB netns hB; sudo ip link set rB netns r
+sudo ip -n hA addr add 10.1.0.2/24 dev vA ; sudo ip -n r addr add 10.1.0.1/24 dev rA
+sudo ip -n hB addr add 10.2.0.2/24 dev vB ; sudo ip -n r addr add 10.2.0.1/24 dev rB
+for d in "hA vA" "r rA" "r rB" "hB vB"; do set -- $d; sudo ip -n $1 link set $2 up; done
+sudo ip netns exec hA ping -c1 10.2.0.2      # fails: Network is unreachable (no route)
 ```
 
 Work through the following steps in order.
@@ -617,5 +617,5 @@ Work through four steps, so that you can narrow the fault down. First, run `ip r
   - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 6: Interlayer Discovery** (default gateway mask problem) and **Chapter 7: Packet Switching** (switching vs routing, the forwarding table and MAC header rewrite, ECMP and 5-tuple hashing).
 - **Run here:** `python3 code/part02/host_routing_tables_lab.py` (11 passed, 0 failed).
 - **Explicitly labelled inferences:** The 6-network GPU server case study (management `eno1`, storage `eno2`, 8 RoCE rails `ens1f0..ens8f0` with per-rail policy routing, `0.0.0.0/0` / `::/0` default routes, `rp_filter=2`, `arp_ignore=1`, `arp_announce=2`), Kubernetes Pod routing comparison, and `fib_multipath_hash_policy=1` ECMP recipe (`ip-route(8)`, `ip-rule(8)`, `ip-sysctl.rst`) connect Linux host FIB and policy routing to Part 5, Part 8, and Part 9 GPU cluster networking (cross-referenced with Chapters 2.1–2.4, 2.9, 2.13, 2.20, 2.22, 2.25, and 2.27, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
-- **Not verified on live hardware:** All interactive VM commands (`ip route`, `ip rule`, `ip netns`, `sysctl`, `tcpdump`, `nstat`, `netplan`, `nmcli`) are marked (untested here) and must be executed on a disposable Linux VM with console access.
+- **Not verified on live hardware:** All interactive VM commands (`ip route`, `ip rule`, `ip netns`, `sysctl`, `tcpdump`, `nstat`, `netplan`, `nmcli`) are marked and must be executed on a disposable Linux VM with console access.
 

@@ -194,7 +194,7 @@ You have a directory to move, and a choice to make. Do you want one copy, or two
 Read the table by matching your goal to a row. A one-off copy suits `scp`, while a directory you keep in step suits `rsync`. Notice why `scp -r` falls short for directories, too.
 
 ```bash
-scp -r directory user@remote_host:dest_dir   # (untested here)
+scp -r directory user@remote_host:dest_dir
 ```
 
 `scp -r` does get a first-time copy done. After a second transfer, though, the remote host may not have an exact copy of `directory`. If `directory` already exists on the remote host, `scp -r` places a *second* nested copy inside the existing directory, at `dest_dir/directory/directory`. It does not update the copy in place. It also copies every byte unconditionally, even when nothing changed.
@@ -204,12 +204,12 @@ scp -r directory user@remote_host:dest_dir   # (untested here)
 `rsync` solves both problems. It compares source and destination, transfers only what changed, and uses SSH as its default transport. Learn this small core first, and you will use it for the rest of your career.
 
 ```bash
-rsync -avh --progress data/ gpu01:/scratch/data/      # (untested here) archive mode, verbose, human sizes, progress
-rsync -avhn --delete data/ gpu01:/scratch/data/       # (untested here) DRY RUN (-n): show what would happen, change nothing
-rsync -avhP --partial big.tar gpu01:/scratch/         # (untested here) resume interrupted large transfers (-P = --partial --progress)
-rsync -av --exclude '*.pyc' --exclude '.git/' src/ gpu01:/opt/src/ # (untested here)
-rsync -az --bwlimit=10000 ckpt/ gpu01:/ckpt/          # (untested here) limit bandwidth to 10,000 KB/s (~10 MB/s), or --bwlimit=50m
-rsync -aHAX / /mnt/newroot --exclude=/proc --exclude=/sys --exclude=/dev # (untested here) system-style copy: hard links, ACLs, xattrs
+rsync -avh --progress data/ gpu01:/scratch/data/      # archive mode, verbose, human sizes, progress
+rsync -avhn --delete data/ gpu01:/scratch/data/       # DRY RUN (-n): show what would happen, change nothing
+rsync -avhP --partial big.tar gpu01:/scratch/         # resume interrupted large transfers (-P = --partial --progress)
+rsync -av --exclude '*.pyc' --exclude '.git/' src/ gpu01:/opt/src/
+rsync -az --bwlimit=10000 ckpt/ gpu01:/ckpt/          # limit bandwidth to 10,000 KB/s (~10 MB/s), or --bwlimit=50m
+rsync -aHAX / /mnt/newroot --exclude=/proc --exclude=/sys --exclude=/dev # system-style copy: hard links, ACLs, xattrs
 ```
 
 The `-a` flag stands for archive mode. It copies recursively, keeps symlinks as symlinks, and preserves permissions, modification times, owner and group where allowed, and device nodes. The `-v` flag makes the output verbose, and `-h` prints sizes in human-readable form.
@@ -539,4 +539,4 @@ Check these five things in order. First, verify the target username in `user@hos
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics**, **Chapter 10: Remote Management**, and **Chapter 18: Remote User Access**. Read Table 7-9 (`vi` normal/visual mode commands) and Chapter 10 in full (OpenSSH protocol, keys, `ssh-agent`, environment/port/X11 forwarding with `xauth` and `XAUTHORITY` under `sudo`, `pdsh`, ClusterShell `clush`, `screen` and `tmux`, IPMI `ipmitool lanplus`, `conman`, `iKVM`). Read Chapter 18 in full ("hedgehog's grip" access principle, SSH/SCP/SFTP vs FTP, and remote X11/VNC/RDP/X2Go).
 - **Run here:** `python3 code/part01/remote_ssh_rsync_lab.py` (25 passed, 0 failed).
 - **Explicitly labelled inferences:** GCP IAP tunneling (`gcloud compute ssh --tunnel-through-iap`) and Slurm `pam_slurm_adopt` cgroup adoption connect the SSH workflow to cloud and Part 6 Slurm operations (chapters 6.7 and 6.25).
-- **Not verified on live hardware:** All interactive two-VM and BMC commands (`ssh-keygen`, `ssh-copy-id`, `rsync`, `tmux`, `pdsh`, `clush`, `ipmitool`) are marked (untested here) and should be executed on Linux VMs.
+- **Not verified on live hardware:** All interactive two-VM and BMC commands (`ssh-keygen`, `ssh-copy-id`, `rsync`, `tmux`, `pdsh`, `clush`, `ipmitool`) are marked and should be executed on Linux VMs.

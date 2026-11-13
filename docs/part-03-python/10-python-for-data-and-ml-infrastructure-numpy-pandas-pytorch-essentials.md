@@ -375,7 +375,7 @@ Start with the self-checking Python lab, on your own machine. It is at `code/par
 python3 code/part03/python_data_ml_infra_lab.py
 ```
 
-Next, work through the steps below on any machine with Python 3.11+. Each step tests one idea from this chapter, so you can check the claim in your own measurements. All interactive shell steps are `untested here`.
+Next, work through the steps below on any machine with Python 3.11+. Each step tests one idea from this chapter, so you can check the claim in your own measurements. All interactive shell steps have not been run on live hardware.
 
 1. Start with the NumPy model. Create arrays and print `shape/strides/dtype`. Demonstrate a view mutation bug. Compare a Python loop, a list comprehension and a vectorised pairwise-distance version, timing each with `%timeit` or `timeit`. Show that `np.concatenate` in a loop grows quadratically, and compare it with preallocation. Map a large `.npy` file with `mmap_mode`, and read it from two processes.
 2. See what oversubscription costs. Time a matrix multiply with `OMP_NUM_THREADS` set to 1, to 4 and to all cores. Spawn 8 worker processes that each use all the BLAS threads, and watch the slowdown. Then fix it with `threadpoolctl`.
@@ -579,4 +579,4 @@ Standard `torch.save` and `torch.load` serialize objects with Python's **`pickle
   - `nvidia-devops` (`volume-02` and `volume-13`) and NumPy, pandas, Apache Arrow/Parquet, Polars, DuckDB, and PyTorch documentation (autograd, `DataLoader`, AMP, `torch.profiler`, CUDA semantics, reproducibility, and distributed hooks).
 - **Run here:** `python3 code/part03/python_data_ml_infra_lab.py` (4 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_ndarray_strides`, `broadcast_shapes`, `compare_row_vs_columnar_io`, `estimate_adam_mixed_precision_memory_gb`, and `diagnose_dataloader_vs_gpu_bottleneck` models in `code/part03/python_data_ml_infra.py` and the `MLP` training loop are the author's deterministic constructions encoding the memory and throughput formulas from *AI Engineering* and *Designing Machine Learning Systems* (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live CUDA `torch.cuda.synchronize()`, `DataLoader(num_workers=8, pin_memory=True)`, `torch.profiler`, `nsys profile`, and `torchrun` commands (`4096x4096` `67.1 MB`, `7B` `112 GB`, `80 GB`, `128 MB to 1 GB`, `:4096:8`, `1234`, `30 GB` / `32 GB`, `hour 40`, `200 GB`) are marked (`untested here`) where not executed by `python_data_ml_infra_lab.py`.
+- **Not verified on live hardware:** Live CUDA `torch.cuda.synchronize()`, `DataLoader(num_workers=8, pin_memory=True)`, `torch.profiler`, `nsys profile`, and `torchrun` commands (`4096x4096` `67.1 MB`, `7B` `112 GB`, `80 GB`, `128 MB to 1 GB`, `:4096:8`, `1234`, `30 GB` / `32 GB`, `hour 40`, `200 GB`) are marked where not executed by `python_data_ml_infra_lab.py`.

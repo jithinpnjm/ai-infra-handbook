@@ -989,22 +989,22 @@ Start with the self-checking Python lab, and run it locally before you touch a V
 python3 code/part01/packages_toolchain_lab.py
 ```
 
-Next, work through steps A to I on a disposable GCP Ubuntu VM with `sudo`. Every interactive VM command below is `untested here`, so confirm each one on your own VM before you rely on it.
+Next, work through steps A to I on a disposable GCP Ubuntu VM with `sudo`. Every interactive VM command below has not been run on live hardware, so confirm each one on your own VM before you rely on it.
 
 **A. Inspect the package database (Ubuntu).**
 
 ```bash
-dpkg -l | wc -l                         # (untested here) how many packages are installed?
-dpkg -S /usr/bin/ssh                    # (untested here) which package owns ssh? (openssh-client)
-dpkg -L openssh-client | head -20       # (untested here) what did it install?
-apt show openssh-client | head -30      # (untested here) metadata and dependencies
-apt depends openssh-client              # (untested here) its dependency list
-apt policy openssh-client               # (untested here) which repository and version
-sudo apt install -s tree                # (untested here) simulate installing 'tree' (-s = simulate)
-sudo apt install -y tree && tree -L 1 /etc | head # (untested here)
-dpkg -S "$(which tree)"                 # (untested here)
-sudo apt remove -y tree                 # (untested here)
-sudo apt purge -y tree                  # (untested here)
+dpkg -l | wc -l                         # how many packages are installed?
+dpkg -S /usr/bin/ssh                    # which package owns ssh? (openssh-client)
+dpkg -L openssh-client | head -20       # what did it install?
+apt show openssh-client | head -30      # metadata and dependencies
+apt depends openssh-client              # its dependency list
+apt policy openssh-client               # which repository and version
+sudo apt install -s tree                # simulate installing 'tree' (-s = simulate)
+sudo apt install -y tree && tree -L 1 /etc | head
+dpkg -S "$(which tree)"
+sudo apt remove -y tree
+sudo apt purge -y tree
 ```
 
 Write down what changed between `remove` and `purge`. Look in `/var/lib/dpkg/info`, and run `dpkg -l tree` to see whether the package shows `rc` (removed, configuration left behind) or is gone.
@@ -1012,51 +1012,51 @@ Write down what changed between `remove` and `purge`. Look in `/var/lib/dpkg/inf
 **B. Verify integrity.**
 
 ```bash
-sudo apt install -y debsums             # (untested here)
-sudo debsums -s                         # (untested here) should be quiet on a fresh VM
-sudo cp /bin/ls /tmp/ls.bak             # (untested here)
-echo x | sudo tee -a /bin/ls >/dev/null # (untested here) corrupt a packaged binary (on a throwaway VM only)
-sudo debsums coreutils | grep -v OK     # (untested here) detects the change
-sudo cp /tmp/ls.bak /bin/ls             # (untested here)
+sudo apt install -y debsums
+sudo debsums -s                         # should be quiet on a fresh VM
+sudo cp /bin/ls /tmp/ls.bak
+echo x | sudo tee -a /bin/ls >/dev/null # corrupt a packaged binary (on a throwaway VM only)
+sudo debsums coreutils | grep -v OK     # detects the change
+sudo cp /tmp/ls.bak /bin/ls
 ```
 
 **C. Holds.**
 
 ```bash
-sudo apt-mark hold tree 2>/dev/null || sudo apt install -y tree && sudo apt-mark hold tree # (untested here)
-apt-mark showhold                       # (untested here)
-sudo apt-mark unhold tree               # (untested here)
+sudo apt-mark hold tree 2>/dev/null || sudo apt install -y tree && sudo apt-mark hold tree
+apt-mark showhold
+sudo apt-mark unhold tree
 ```
 
 **D. Find which package provides a header.**
 
 ```bash
-sudo apt install -y apt-file build-essential # (untested here)
-sudo apt-file update                    # (untested here)
-apt-file search zlib.h | head           # (untested here)
+sudo apt install -y apt-file build-essential
+sudo apt-file update
+apt-file search zlib.h | head
 echo '#include <zlib.h>
 int main(void){return 0;}' > z.c
-cc z.c -o z                             # (untested here) fails: header missing
-sudo apt install -y zlib1g-dev          # (untested here)
-cc z.c -o z && echo built               # (untested here)
-pkg-config --cflags --libs zlib         # (untested here)
+cc z.c -o z                             # fails: header missing
+sudo apt install -y zlib1g-dev
+cc z.c -o z && echo built
+pkg-config --cflags --libs zlib
 ```
 
 **E. Build from source in a private prefix.**
 
 ```bash
-mkdir -p ~/src && cd ~/src              # (untested here)
-curl -LO https://ftp.gnu.org/gnu/hello/hello-2.12.1.tar.gz # (untested here)
-tar tzf hello-2.12.1.tar.gz | head      # (untested here) list BEFORE extracting; check for absolute paths
-tar xzf hello-2.12.1.tar.gz && cd hello-2.12.1 # (untested here)
-less README INSTALL | head -5           # (untested here)
-./configure --prefix=$HOME/opt/hello-2.12.1 # (untested here)
-make -j"$(nproc)" && make check         # (untested here)
-make -n install | head -20              # (untested here)
-make install                            # (untested here)
-$HOME/opt/hello-2.12.1/bin/hello        # (untested here)
-ldd $HOME/opt/hello-2.12.1/bin/hello    # (untested here)
-make distclean                          # (untested here)
+mkdir -p ~/src && cd ~/src
+curl -LO https://ftp.gnu.org/gnu/hello/hello-2.12.1.tar.gz
+tar tzf hello-2.12.1.tar.gz | head      # list BEFORE extracting; check for absolute paths
+tar xzf hello-2.12.1.tar.gz && cd hello-2.12.1
+less README INSTALL | head -5
+./configure --prefix=$HOME/opt/hello-2.12.1
+make -j"$(nproc)" && make check
+make -n install | head -20
+make install
+$HOME/opt/hello-2.12.1/bin/hello
+ldd $HOME/opt/hello-2.12.1/bin/hello
+make distclean
 ```
 
 Write down which `configure` option you would need to move the install to `/opt/tools/hello`, and what `DESTDIR` would let you do.
@@ -1064,17 +1064,17 @@ Write down which `configure` option you would need to move the install to `/opt/
 **F. Break and fix the linker, by hand.**
 
 ```bash
-cd ~/lab/build                          # (untested here) the greet/main example from section 7
-cc -o hello main.o                      # (untested here) undefined reference to 'greet'
-cc -o hello main.o greet.o && ./hello   # (untested here)
-cc -fPIC -shared -o libgreet.so greet.c # (untested here) make a shared library
-cc -o hello2 main.c -L. -lgreet         # (untested here)
-./hello2                                # (untested here) fails: cannot open shared object file
-ldd ./hello2 | grep greet               # (untested here)
-LD_LIBRARY_PATH=. ./hello2              # (untested here) works, for this command only
-cc -o hello3 main.c -L. -lgreet -Wl,-rpath='$ORIGIN' # (untested here)
-./hello3                                # (untested here) works with no environment variable
-readelf -d hello3 | grep -E 'RPATH|RUNPATH' # (untested here)
+cd ~/lab/build                          # the greet/main example from section 7
+cc -o hello main.o                      # undefined reference to 'greet'
+cc -o hello main.o greet.o && ./hello
+cc -fPIC -shared -o libgreet.so greet.c # make a shared library
+cc -o hello2 main.c -L. -lgreet
+./hello2                                # fails: cannot open shared object file
+ldd ./hello2 | grep greet
+LD_LIBRARY_PATH=. ./hello2              # works, for this command only
+cc -o hello3 main.c -L. -lgreet -Wl,-rpath='$ORIGIN'
+./hello3                                # works with no environment variable
+readelf -d hello3 | grep -E 'RPATH|RUNPATH'
 ```
 
 **G. A Makefile.**
@@ -1088,9 +1088,9 @@ hello: $(OBJS)
 clean:
 	rm -f $(OBJS) hello
 EOF
-make && make                            # (untested here) second run: nothing to do
-touch greet.c && make                   # (untested here) only greet.o and hello rebuild
-make -n clean                           # (untested here)
+make && make                            # second run: nothing to do
+touch greet.c && make                   # only greet.o and hello rebuild
+make -n clean
 ```
 
 Break it on purpose. Replace the tab before `$(CC)` with spaces, and note the error you get.
@@ -1098,15 +1098,15 @@ Break it on purpose. Replace the tab before `$(CC)` with spaces, and note the er
 **H. A patch.**
 
 ```bash
-mkdir -p ~/lab/patch && cd ~/lab/patch  # (untested here)
-printf 'one\ntwo\nthree\n' > a.txt      # (untested here)
-cp a.txt b.txt && sed -i 's/two/TWO/' b.txt # (untested here)
-diff -u a.txt b.txt > fix.patch         # (untested here)
-patch -p0 --dry-run < fix.patch         # (untested here) (a.txt, as named in the patch)
-patch -p0 < fix.patch && cat a.txt      # (untested here)
+mkdir -p ~/lab/patch && cd ~/lab/patch
+printf 'one\ntwo\nthree\n' > a.txt
+cp a.txt b.txt && sed -i 's/two/TWO/' b.txt
+diff -u a.txt b.txt > fix.patch
+patch -p0 --dry-run < fix.patch         # (a.txt, as named in the patch)
+patch -p0 < fix.patch && cat a.txt
 ```
 
-**I. (Optional, Rocky/Alma) rpm and dnf.** Repeat A and B with the RPM-family equivalents: `rpm -qa | wc -l`, `rpm -qf /usr/bin/ssh`, `rpm -ql openssh-clients | head`, `sudo dnf install -y tree`, `dnf history`, `rpm -V openssh-server`, and `dnf provides '*/zlib.h'` (untested here).
+**I. (Optional, Rocky/Alma) rpm and dnf.** Repeat A and B with the RPM-family equivalents: `rpm -qa | wc -l`, `rpm -qf /usr/bin/ssh`, `rpm -ql openssh-clients | head`, `sudo dnf install -y tree`, `dnf history`, `rpm -V openssh-server`, and `dnf provides '*/zlib.h'`.
 
 ## Exercises
 
@@ -1246,4 +1246,4 @@ Before you clone, do three things. (1) Replace hardware-specific `/dev/disk/by-i
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** (package metadata, dependencies, checksum verification `rpm -V`, `.rpmnew`/`.rpmsave` config handling, repositories, `yum`/`dnf` and `rpm` flags) and **Chapter 24: Node Setup and Software Installation** (Ethernet/switch management, InfiniBand OFED backup and `memlock unlimited` rules, `IPoIB` hostnames, RAID, the 10-step mini-cluster build order, login node firewall/dual-NIC design, NFS `/etc/exports` + `exportfs -ra` and `/etc/fstab` 6 fields, shared compilers and Environment Modules, compute node 50–100 GB OS + `/tmp` scratch layout, Kickstart `/root/anaconda-ks.cfg` and `<IP-address>-kickstart`, disk cloning `/dev/disk/by-id` and MAC binding pitfalls, NFS-root read-only switch, and the 5-step acceptance test; cross-referenced with Chapters 21, 23, 25, 26, 27, and 28 in Part 6).
 - **Run here:** `python3 code/part01/packages_toolchain_lab.py` (24 passed, 0 failed).
 - **Explicitly labelled inferences:** Modern `deb822` `.sources` keyrings (`/etc/apt/keyrings/` with `signed-by=`) and `nvidia-container-toolkit` / `cuda-keyring` pinning connect the classic package-management model to current Ubuntu LTS and RHEL 9 GPU node operations.
-- **Not verified on live hardware:** All interactive VM and cluster installation commands (`apt`, `dpkg`, `dnf`, `rpm`, `debsums`, `./configure`, `make`, `ldconfig`, `exportfs`) are marked (untested here) and should be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM and cluster installation commands (`apt`, `dpkg`, `dnf`, `rpm`, `debsums`, `./configure`, `make`, `ldconfig`, `exportfs`) are marked and should be executed on a disposable Linux VM.

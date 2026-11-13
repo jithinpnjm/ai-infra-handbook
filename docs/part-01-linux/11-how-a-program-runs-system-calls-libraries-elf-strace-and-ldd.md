@@ -549,19 +549,19 @@ Start with the self-checking Python lab, and run it on your own machine before y
 python3 code/part01/program_execution_elf_lab.py
 ```
 
-Next, use a scratch directory on a disposable GCP Ubuntu VM. Every interactive command below is marked `untested here`, so confirm its output before you rely on it. Work through the steps in order.
+Next, use a scratch directory on a disposable GCP Ubuntu VM. Every interactive command below has not been run on live hardware, so confirm its output before you rely on it. Work through the steps in order.
 
 **A. Trace a program's life.** Start with the smallest program you can write. Compile it, then trace it, so that you see the startup sequence from the earlier sections on a real binary.
 
 ```bash
-mkdir -p ~/lab/run && cd ~/lab/run      # (untested here)
+mkdir -p ~/lab/run && cd ~/lab/run
 cat > hello.c <<'EOF'
 #include <stdio.h>
 int main(void) { puts("hello"); return 0; }
 EOF
-cc -o hello hello.c && strace -f -tt ./hello 2>&1 | head -60 # (untested here)
-strace -c ./hello 2>&1 | tail -15       # (untested here)
-ltrace ./hello 2>&1 | head              # (untested here)
+cc -o hello hello.c && strace -f -tt ./hello 2>&1 | head -60
+strace -c ./hello 2>&1 | tail -15
+ltrace ./hello 2>&1 | head
 ```
 
 Find these items in the output: the `execve`, the opening of `ld.so.cache` and `libc.so.6`, the `mmap` calls, the `write` of "hello", and `exit_group`. Then answer a question. Why is there no `printf` or `puts` in the `strace` output, while `ltrace` shows one?
@@ -569,9 +569,9 @@ Find these items in the output: the `execve`, the opening of `ld.so.cache` and `
 **B. Dynamic versus static.** Build the same program twice, once dynamically and once statically. Then compare what each one needs at run time.
 
 ```bash
-cc -o hello_static -static hello.c 2>/dev/null || echo "install libc6-dev static libs (apt: libc6-dev) if this fails" # (untested here)
-ls -l hello hello_static; file hello hello_static; ldd hello hello_static # (untested here)
-strace ./hello_static 2>&1 | head       # (untested here)
+cc -o hello_static -static hello.c 2>/dev/null || echo "install libc6-dev static libs (apt: libc6-dev) if this fails"
+ls -l hello hello_static; file hello hello_static; ldd hello hello_static
+strace ./hello_static 2>&1 | head
 ```
 
 Compare the file sizes and the `ldd` output of the two builds. Then look at the first lines of the static binary's `strace`.
@@ -579,12 +579,12 @@ Compare the file sizes and the `ldd` output of the two builds. Then look at the 
 **C. Inspect ELF.** Read the ELF headers of the program you just built. Each command answers one question from section 2.
 
 ```bash
-readelf -h hello | head -15             # (untested here)
-readelf -l hello | grep -E 'INTERP|LOAD|interpreter' # (untested here)
-readelf -d hello | grep -E 'NEEDED|RUNPATH|RPATH' # (untested here)
-nm -D hello | head; nm hello | head -5  # (untested here)
-objdump -d hello --no-show-raw-insn | sed -n '/<main>:/,/ret/p' # (untested here)
-strip -o hello_stripped hello; ls -l hello hello_stripped; nm hello_stripped 2>&1 | head -2 # (untested here)
+readelf -h hello | head -15
+readelf -l hello | grep -E 'INTERP|LOAD|interpreter'
+readelf -d hello | grep -E 'NEEDED|RUNPATH|RPATH'
+nm -D hello | head; nm hello | head -5
+objdump -d hello --no-show-raw-insn | sed -n '/<main>:/,/ret/p'
+strip -o hello_stripped hello; ls -l hello hello_stripped; nm hello_stripped 2>&1 | head -2
 ```
 
 Match each line of output to a field you learned in section 2: the interpreter, the NEEDED libraries, the symbols, and the stripped copy.
@@ -592,7 +592,7 @@ Match each line of output to a field you learned in section 2: the interpreter, 
 **D. A library problem, on purpose.** Break a library load deliberately. Then find the cause with `LD_DEBUG`, and repair it first with `LD_LIBRARY_PATH` and then with an embedded `RPATH`.
 
 ```bash
-mkdir -p ~/lab/lib && cd ~/lab/lib      # (untested here)
+mkdir -p ~/lab/lib && cd ~/lab/lib
 cat > foo.c <<'EOF'
 int foo(void) { return 42; }
 EOF
@@ -601,24 +601,24 @@ cat > main.c <<'EOF'
 int foo(void);
 int main(void) { printf("%d\n", foo()); return 0; }
 EOF
-cc -fPIC -shared -Wl,-soname,libfoo.so.1 -o libfoo.so.1.0.0 foo.c # (untested here)
-ln -sf libfoo.so.1.0.0 libfoo.so.1; ln -sf libfoo.so.1 libfoo.so # (untested here)
-cc -o app main.c -L. -lfoo              # (untested here)
-./app                                   # (untested here) fails: cannot open shared object file
-ldd ./app | grep foo                    # (untested here)
-LD_DEBUG=libs ./app 2>&1 | grep -i 'foo\|search' | head # (untested here)
-LD_LIBRARY_PATH=. ./app                 # (untested here) works
-cc -o app2 main.c -L. -lfoo -Wl,-rpath,'$ORIGIN' # (untested here)
-./app2; readelf -d app2 | grep -E 'RPATH|RUNPATH' # (untested here)
-patchelf --print-rpath app2 2>/dev/null || sudo apt install -y patchelf # (untested here)
+cc -fPIC -shared -Wl,-soname,libfoo.so.1 -o libfoo.so.1.0.0 foo.c
+ln -sf libfoo.so.1.0.0 libfoo.so.1; ln -sf libfoo.so.1 libfoo.so
+cc -o app main.c -L. -lfoo
+./app                                   # fails: cannot open shared object file
+ldd ./app | grep foo
+LD_DEBUG=libs ./app 2>&1 | grep -i 'foo\|search' | head
+LD_LIBRARY_PATH=. ./app                 # works
+cc -o app2 main.c -L. -lfoo -Wl,-rpath,'$ORIGIN'
+./app2; readelf -d app2 | grep -E 'RPATH|RUNPATH'
+patchelf --print-rpath app2 2>/dev/null || sudo apt install -y patchelf
 ```
 
 **E. Symbol versions and glibc.** Check which glibc your system offers, and which versions a standard binary needs.
 
 ```bash
-ldd --version | head -1                 # (untested here)
-objdump -T /bin/ls | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -3 # (untested here)
-readelf -V /bin/ls | head -20           # (untested here)
+ldd --version | head -1
+objdump -T /bin/ls | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -3
+readelf -V /bin/ls | head -20
 ```
 
 **F. `LD_PRELOAD`.** Use `LD_PRELOAD` to replace one function in a program that you did not change. The fake `sleep` in this example skips the wait.
@@ -629,13 +629,13 @@ cat > fake.c <<'EOF'
 #include <stdio.h>
 unsigned int sleep(unsigned int s) { fprintf(stderr, "(sleep(%u) skipped)\n", s); return 0; }
 EOF
-cc -fPIC -shared -o libfake.so fake.c   # (untested here)
-time sleep 3                            # (untested here) coreutils sleep uses nanosleep; try a program that calls sleep()
+cc -fPIC -shared -o libfake.so fake.c
+time sleep 3                            # coreutils sleep uses nanosleep; try a program that calls sleep()
 cat > s.c <<'EOF'
 #include <unistd.h>
 int main(void) { sleep(3); return 0; }
 EOF
-cc -o s s.c && time ./s && time LD_PRELOAD=./libfake.so ./s # (untested here)
+cc -o s s.c && time ./s && time LD_PRELOAD=./libfake.so ./s
 ```
 
 **G. Address space and demand paging.** Repeat the `mmap` experiment from section 3, and watch the numbers change as you touch the pages. Start the program in the background, then read its size with `ps` and `pmap`.
@@ -654,19 +654,19 @@ int main(void) {
   return 0;
 }
 EOF
-cd ~/lab/run && cc -o mapdemo mapdemo.c # (untested here)
-./mapdemo &                             # (untested here)
-sleep 1; ps -o pid,vsz,rss,cmd -p $!; pmap -x $! | tail -5 # (untested here)
-echo | cat >/proc/$!/fd/0 2>/dev/null; kill $! # (untested here)
-/usr/bin/time -v ./mapdemo < <(printf '\n\n') 2>&1 | grep -E 'Maximum resident|Minor' # (untested here)
+cd ~/lab/run && cc -o mapdemo mapdemo.c
+./mapdemo &
+sleep 1; ps -o pid,vsz,rss,cmd -p $!; pmap -x $! | tail -5
+echo | cat >/proc/$!/fd/0 2>/dev/null; kill $!
+/usr/bin/time -v ./mapdemo < <(printf '\n\n') 2>&1 | grep -E 'Maximum resident|Minor'
 ```
 
 **H. A system-call profile.** Measure the per-call overhead directly. Run the same copy with different block sizes, with and without `strace`.
 
 ```bash
-strace -c -f dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -12 # (untested here)
-dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -1 # (untested here)
-dd if=/dev/zero of=/dev/null bs=1M count=200 2>&1 | tail -1 # (untested here)
+strace -c -f dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -12
+dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -1
+dd if=/dev/zero of=/dev/null bs=1M count=200 2>&1 | tail -1
 ```
 
 Compare throughput with and without `strace`, and with 1 KiB versus 1 MiB blocks. What do you conclude about per-call overhead?
@@ -674,22 +674,22 @@ Compare throughput with and without `strace`, and with 1 KiB versus 1 MiB blocks
 **I. perf and a flame graph (optional).** This optional step profiles a small CPU-bound program, and then reads the result as a flame graph.
 
 ```bash
-sudo apt install -y linux-tools-common linux-tools-$(uname -r) 2>/dev/null # (untested here)
+sudo apt install -y linux-tools-common linux-tools-$(uname -r) 2>/dev/null
 cat > spin.c <<'EOF'
 #include <math.h>
 double work(int n){ double s=0; for(int i=1;i<n;i++) s+=sqrt(i); return s; }
 int main(void){ double t=0; for(int k=0;k<2000;k++) t+=work(200000); return t>0?0:1; }
 EOF
-cc -O2 -fno-omit-frame-pointer -g -o spin spin.c -lm # (untested here)
-sudo perf record -F 99 -g -- ./spin && sudo perf report --stdio | head -30 # (untested here)
+cc -O2 -fno-omit-frame-pointer -g -o spin spin.c -lm
+sudo perf record -F 99 -g -- ./spin && sudo perf report --stdio | head -30
 ```
 
 **J. (GPU VM, optional) What a CUDA program loads.** On a GPU VM, check the files that a CUDA program loads, as section 8 describes.
 
 ```bash
-strace -f -e trace=openat,connect python3 -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|/dev/nvidia' | grep -v ENOENT | head -40 # (untested here)
-ldd $(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cuda.so"))') | grep -E 'cuda|cudnn|nccl|not found' # (untested here)
-ldconfig -p | grep -E 'libcuda\.so|libnvidia-ml' # (untested here)
+strace -f -e trace=openat,connect python3 -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|/dev/nvidia' | grep -v ENOENT | head -40
+ldd $(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cuda.so"))') | grep -E 'cuda|cudnn|nccl|not found'
+ldconfig -p | grep -E 'libcuda\.so|libnvidia-ml'
 ```
 
 When a step fails, write down the exact error message before you change anything. That message is the clue that the rest of this chapter helps you read.
@@ -838,4 +838,4 @@ The nine thread states are: User on-CPU, Kernel on-CPU, Runnable (waiting on run
   - `nvidia-devops/volume-01/01-linux-compute-memory-masterclass.md` — migrated the `mapdemo.c` `1 GiB` `mmap` demand-paging example (`262,144` minor page faults), the Python/glibc arena retention explanation, and the `strace` production overhead warning (cross-referenced with Chapters 1.7, 1.8, 1.9, 1.10, 1.15, 1.17, 1.18, 1.22, 1.23, 1.24, 1.25, 1.28, and 2.23, plus items 21–30 in the original study list).
 - **Run here:** `python3 code/part01/program_execution_elf_lab.py` (21 passed, 0 failed).
 - **Explicitly labelled inferences:** The PyTorch `_C.cpython-*.so` / `libtorch_cuda.so` `RUNPATH` `$ORIGIN` packaging, `nvidia-container-runtime` CDI / `--gpus` injection of `libcuda.so.1`, and `TORCH_CUDA_ARCH_LIST` fatbin diagnostics connect the ELF/loader model to Part 5, Part 7, and Part 10 GPU workloads (and original study items 22, 23, 24, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM and GPU commands (`readelf`, `objdump`, `nm`, `ldd`, `strace`, `ltrace`, `patchelf`, `perf`, `./mapdemo`) are marked (untested here) and should be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM and GPU commands (`readelf`, `objdump`, `nm`, `ldd`, `strace`, `ltrace`, `patchelf`, `perf`, `./mapdemo`) are marked and should be executed on a disposable Linux VM.

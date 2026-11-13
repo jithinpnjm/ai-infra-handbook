@@ -461,13 +461,13 @@ Rule syntax errors are logged, but they do not stop other rules. So always test.
 | `udevadm control --reload` / `--log-level=debug` | Reload rules; raise logging. |
 | `udevadm settle` | Wait until all queued events have been processed (use in scripts after triggering). |
 
-The commands below run on a disposable VM. Each line marked `(untested here)` has not been run on hardware yet.
+The commands below run on a disposable VM. Each line marked `` has not been run on hardware yet.
 
 ```bash
-udevadm info --query=property --name=/dev/nvme0n1 | grep -E 'ID_MODEL|ID_SERIAL|ID_PATH' # (untested here)
-udevadm info -a -n /dev/ttyUSB0 | grep -E 'ATTRS\{(idVendor|idProduct|serial)\}' # (untested here)
-sudo udevadm monitor --udev --subsystem-match=block     # (untested here) then plug/attach a disk in another window
-udevadm monitor --kernel --subsystem-match=scsi         # (untested here) filter for kernel SCSI uevents only
+udevadm info --query=property --name=/dev/nvme0n1 | grep -E 'ID_MODEL|ID_SERIAL|ID_PATH'
+udevadm info -a -n /dev/ttyUSB0 | grep -E 'ATTRS\{(idVendor|idProduct|serial)\}'
+sudo udevadm monitor --udev --subsystem-match=block     # then plug/attach a disk in another window
+udevadm monitor --kernel --subsystem-match=scsi         # filter for kernel SCSI uevents only
 ```
 
 When you run `udevadm monitor` and insert a USB flash drive (*How Linux Works* Section 3.5.3), you see two waves of lines. They tell the story of the device in the order it happens.
@@ -669,53 +669,53 @@ Start with the self-checking Python lab, and run it on your own machine first. I
 python3 code/part01/devices_udev_sysfs_lab.py
 ```
 
-Next, work through these drills on a disposable GCP Ubuntu VM. All the interactive VM commands below are `untested here`, so treat each one as a step to check rather than a known result.
+Next, work through these drills on a disposable GCP Ubuntu VM. All the interactive VM commands below have not been run on live hardware, so treat each one as a step to check rather than a known result.
 
 **A. Device files.**
 
 ```bash
-ls -l /dev | head -40                   # (untested here)
-ls -l /dev/null /dev/zero /dev/random /dev/urandom /dev/tty /dev/sda* /dev/nvme* 2>/dev/null # (untested here)
-cat /proc/devices | head -30            # (untested here)
-stat -c '%F major=%t minor=%T %n' /dev/null /dev/sda 2>/dev/null # (untested here) hex major/minor
-sudo mknod /tmp/mynull c 1 3 && ls -l /tmp/mynull && echo hello > /tmp/mynull && cat /tmp/mynull; sudo rm /tmp/mynull # (untested here)
-sudo mount -o nodev,remount /tmp 2>/dev/null; echo "(on a real system, nodev makes such nodes unusable)" # (untested here)
+ls -l /dev | head -40
+ls -l /dev/null /dev/zero /dev/random /dev/urandom /dev/tty /dev/sda* /dev/nvme* 2>/dev/null
+cat /proc/devices | head -30
+stat -c '%F major=%t minor=%T %n' /dev/null /dev/sda 2>/dev/null # hex major/minor
+sudo mknod /tmp/mynull c 1 3 && ls -l /tmp/mynull && echo hello > /tmp/mynull && cat /tmp/mynull; sudo rm /tmp/mynull
+sudo mount -o nodev,remount /tmp 2>/dev/null; echo "(on a real system, nodev makes such nodes unusable)"
 ```
 
 **B. sysfs.**
 
 ```bash
-lsblk -o NAME,MAJ:MIN,SIZE,TYPE,MODEL,MOUNTPOINT # (untested here)
-readlink -f /sys/block/sda 2>/dev/null || readlink -f /sys/block/nvme0n1 # (untested here)
-cat /sys/block/*/dev | head             # (untested here)
-cat /sys/block/*/queue/scheduler 2>/dev/null | head # (untested here)
-for d in /sys/bus/pci/devices/*; do echo "$(basename $d) $(cat $d/vendor) $(cat $d/device) numa=$(cat $d/numa_node)"; done | head # (untested here)
-cat /sys/class/net/*/operstate /sys/class/net/*/speed 2>/dev/null # (untested here)
-ls /sys/devices/system/node 2>/dev/null; cat /sys/devices/system/node/node0/cpulist 2>/dev/null # (untested here)
-cat /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null # (untested here)
+lsblk -o NAME,MAJ:MIN,SIZE,TYPE,MODEL,MOUNTPOINT
+readlink -f /sys/block/sda 2>/dev/null || readlink -f /sys/block/nvme0n1
+cat /sys/block/*/dev | head
+cat /sys/block/*/queue/scheduler 2>/dev/null | head
+for d in /sys/bus/pci/devices/*; do echo "$(basename $d) $(cat $d/vendor) $(cat $d/device) numa=$(cat $d/numa_node)"; done | head
+cat /sys/class/net/*/operstate /sys/class/net/*/speed 2>/dev/null
+ls /sys/devices/system/node 2>/dev/null; cat /sys/devices/system/node/node0/cpulist 2>/dev/null
+cat /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor 2>/dev/null
 ```
 
 **C. procfs and sysctl.**
 
 ```bash
-cat /proc/loadavg /proc/uptime; head -5 /proc/meminfo; head -20 /proc/interrupts # (untested here)
-sysctl vm.swappiness net.ipv4.ip_forward # (untested here)
-sudo sysctl -w vm.swappiness=10; sysctl vm.swappiness # (untested here)
-echo 'vm.swappiness = 10' | sudo tee /etc/sysctl.d/99-lab.conf && sudo sysctl --system | grep swappiness # (untested here)
-sudo rm /etc/sysctl.d/99-lab.conf; sudo sysctl vm.swappiness=60 # (untested here)
+cat /proc/loadavg /proc/uptime; head -5 /proc/meminfo; head -20 /proc/interrupts
+sysctl vm.swappiness net.ipv4.ip_forward
+sudo sysctl -w vm.swappiness=10; sysctl vm.swappiness
+echo 'vm.swappiness = 10' | sudo tee /etc/sysctl.d/99-lab.conf && sudo sysctl --system | grep swappiness
+sudo rm /etc/sysctl.d/99-lab.conf; sudo sysctl vm.swappiness=60
 ```
 
 **D. udev.**
 
 ```bash
-udevadm info --query=all --name=/dev/sda 2>/dev/null | head -30 || udevadm info --query=all --name=/dev/nvme0n1 | head -30 # (untested here)
-ls -l /dev/disk/by-id /dev/disk/by-uuid /dev/disk/by-path 2>/dev/null | head -30 # (untested here)
-sudo udevadm monitor --udev --subsystem-match=block & # (untested here)
-sudo udevadm trigger --subsystem-match=block --action=change; sleep 3; kill %1 # (untested here)
-echo 'KERNEL=="loop0", SYMLINK+="mylab-loop"' | sudo tee /etc/udev/rules.d/90-lab.rules # (untested here)
-sudo udevadm control --reload && sudo udevadm trigger --name-match=loop0 --action=add # (untested here)
-ls -l /dev/mylab-loop; sudo udevadm test /sys/block/loop0 2>&1 | grep -i 'mylab\|90-lab' | head # (untested here)
-sudo rm /etc/udev/rules.d/90-lab.rules; sudo udevadm control --reload # (untested here)
+udevadm info --query=all --name=/dev/sda 2>/dev/null | head -30 || udevadm info --query=all --name=/dev/nvme0n1 | head -30
+ls -l /dev/disk/by-id /dev/disk/by-uuid /dev/disk/by-path 2>/dev/null | head -30
+sudo udevadm monitor --udev --subsystem-match=block &
+sudo udevadm trigger --subsystem-match=block --action=change; sleep 3; kill %1
+echo 'KERNEL=="loop0", SYMLINK+="mylab-loop"' | sudo tee /etc/udev/rules.d/90-lab.rules
+sudo udevadm control --reload && sudo udevadm trigger --name-match=loop0 --action=add
+ls -l /dev/mylab-loop; sudo udevadm test /sys/block/loop0 2>&1 | grep -i 'mylab\|90-lab' | head
+sudo rm /etc/udev/rules.d/90-lab.rules; sudo udevadm control --reload
 ```
 
 Explain why the rule needed a `trigger`, and what would have happened for a USB disk plugged in after the rule existed.
@@ -723,22 +723,22 @@ Explain why the rule needed a `trigger`, and what would have happened for a USB 
 **E. Loop device (a safe block device).**
 
 ```bash
-dd if=/dev/zero of=/tmp/disk.img bs=1M count=64 status=none # (untested here)
-L=$(sudo losetup --find --show /tmp/disk.img); echo "$L" # (untested here)
-lsblk "$L"; udevadm info --query=property --name="$L" | head # (untested here)
-sudo mkfs.ext4 -q "$L"; sudo blkid "$L" # (untested here)
-ls -l /dev/disk/by-uuid | grep "$(basename $L)" # (untested here)
-sudo losetup -d "$L"; rm /tmp/disk.img   # (untested here)
+dd if=/dev/zero of=/tmp/disk.img bs=1M count=64 status=none
+L=$(sudo losetup --find --show /tmp/disk.img); echo "$L"
+lsblk "$L"; udevadm info --query=property --name="$L" | head
+sudo mkfs.ext4 -q "$L"; sudo blkid "$L"
+ls -l /dev/disk/by-uuid | grep "$(basename $L)"
+sudo losetup -d "$L"; rm /tmp/disk.img
 ```
 
 **F. Inventory.**
 
 ```bash
-lspci -nn | head -20; lspci -tv | head -20 # (untested here)
-lscpu | grep -E 'Model name|Socket|NUMA|Thread|Core' # (untested here)
-sudo dmidecode -t system | head -15; sudo dmidecode -t memory | grep -E 'Size|Speed|Locator' | head # (untested here)
-sudo dmesg --level=err,warn | tail -20  # (untested here)
-ip -br link; ethtool -i $(ls /sys/class/net | grep -v lo | head -1) # (untested here)
+lspci -nn | head -20; lspci -tv | head -20
+lscpu | grep -E 'Model name|Socket|NUMA|Thread|Core'
+sudo dmidecode -t system | head -15; sudo dmidecode -t memory | grep -E 'Size|Speed|Locator' | head
+sudo dmesg --level=err,warn | tail -20
+ip -br link; ethtool -i $(ls /sys/class/net | grep -v lo | head -1)
 ```
 
 You can skip section G if you do not have a GPU VM.
@@ -746,11 +746,11 @@ You can skip section G if you do not have a GPU VM.
 **G. (GPU VM, optional.)**
 
 ```bash
-ls -l /dev/nvidia*; cat /proc/driver/nvidia/version; nvidia-smi -L; nvidia-smi topo -m # (untested here)
+ls -l /dev/nvidia*; cat /proc/driver/nvidia/version; nvidia-smi -L; nvidia-smi topo -m
 for d in $(lspci -D | grep -i nvidia | awk '{print $1}'); do
   echo "$d numa=$(cat /sys/bus/pci/devices/$d/numa_node) link=$(cat /sys/bus/pci/devices/$d/current_link_speed) x$(cat /sys/bus/pci/devices/$d/current_link_width) (max $(cat /sys/bus/pci/devices/$d/max_link_speed) x$(cat /sys/bus/pci/devices/$d/max_link_width))"
-done # (untested here)
-sudo fuser -v /dev/nvidia* 2>&1 | head  # (untested here)
+done
+sudo fuser -v /dev/nvidia* 2>&1 | head
 ```
 
 ## Exercises
@@ -897,4 +897,4 @@ These notes list the sources behind this chapter and how they were checked. Read
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, by Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*. The relevant parts are Chapter 7, UNIX and Linux, the basics, which covers devices and special files, and Chapter 8, UNIX and Linux, working techniques. Chapter 8 covers `/proc` and `sysctl`, the `udev` subsystem with its match and assignment tables, the `%k`, `%n`, `%p`, `%M` and `%m` substitution variables, and `udevadm info -a`. The source was cross-referenced with Chapters 15, 16, 17, 18 and 20.
 - **Run here:** `python3 code/part01/devices_udev_sysfs_lab.py`, which passed 23 checks and failed none.
 - **Explicitly labelled inferences:** The `/dev/nvidia*` and `/dev/infiniband/*` node tables are inferences. So are the `nvidia-smi topo -m` legend (`NV#`, `PIX`, `PXB`, `PHB`, `NODE`, `SYS`), the link speed and width comparison (`current_link_speed/width` against `max_link_speed/width`), and the `DEVNAME` uevent properties. The `/proc/PID` against `/proc/sys/...` distinction, the `Documentation/ABI/` and `Documentation/admin-guide/sysctl/` references, and the `vfio-pci` `driver_override` sequence are inferences too. These connect the Linux device model to Chapters 1.11, 1.15, 1.21 and 1.25, and to Parts 5, 6 and 10 (*Supercomputers for Linux Sysadmins* Chapter 25), which cover GPU cluster operations.
-- **Not verified on live hardware:** All the interactive VM and GPU hardware commands, including `mknod`, `sysctl`, `udevadm`, `losetup`, `lspci`, `dmidecode` and `nvidia-smi`, are marked `(untested here)`. Run them on a disposable Linux VM before you rely on them.
+- **Not verified on live hardware:** All the interactive VM and GPU hardware commands, including `mknod`, `sysctl`, `udevadm`, `losetup`, `lspci`, `dmidecode` and `nvidia-smi`, are marked ``. Run them on a disposable Linux VM before you rely on them.

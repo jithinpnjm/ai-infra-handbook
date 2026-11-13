@@ -16,7 +16,7 @@ lab_venue: "GCP / GKE"
 |---|---|
 | Level | Advanced |
 | Priority tier | 0 |
-| Lab venue | Linux VM (`tc`, netem); RoCE parts need hardware (untested here) |
+| Lab venue | Linux VM (`tc`, netem); RoCE parts need hardware |
 | Part | Part 2: Networking, from first principles to AI fabrics |
 | Status | Drafted, labs **untested** |
 

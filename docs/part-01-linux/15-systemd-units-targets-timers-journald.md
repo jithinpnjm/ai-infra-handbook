@@ -754,18 +754,18 @@ Start with the self-checking Python lab (`code/part01/systemd_units_journald_lab
 python3 code/part01/systemd_units_journald_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM with `sudo` (all interactive VM commands below are `untested here`), work through these steps:
+Next, on a disposable GCP Ubuntu VM with `sudo` (none of the interactive VM commands below has been run on live hardware), work through these steps:
 
 **A. Look around.**
 
 ```bash
-ps -p 1 -o comm=; systemctl --version | head -1; systemctl get-default # (untested here)
-systemctl -p UnitPath show; systemctl list-units --type=service --state=running | head -20 # (untested here)
-systemctl status ssh 2>/dev/null || systemctl status sshd # (untested here)
-systemctl cat ssh 2>/dev/null | head -30 # (untested here)
-systemctl list-dependencies multi-user.target | head -30 # (untested here)
-systemctl list-timers --all | head; systemctl list-sockets | head # (untested here)
-systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head # (untested here)
+ps -p 1 -o comm=; systemctl --version | head -1; systemctl get-default
+systemctl -p UnitPath show; systemctl list-units --type=service --state=running | head -20
+systemctl status ssh 2>/dev/null || systemctl status sshd
+systemctl cat ssh 2>/dev/null | head -30
+systemctl list-dependencies multi-user.target | head -30
+systemctl list-timers --all | head; systemctl list-sockets | head
+systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head
 ```
 
 **B. Write, enable and break a service.**
@@ -777,7 +777,7 @@ echo "started pid $$ as $(id -un)"
 trap 'echo "got SIGTERM, exiting"; exit 0' TERM
 while true; do sleep 5; done
 EOF
-sudo chmod +x /usr/local/bin/hello.sh   # (untested here)
+sudo chmod +x /usr/local/bin/hello.sh
 sudo tee /etc/systemd/system/hello.service >/dev/null <<'EOF'
 [Unit]
 Description=Hello demo
@@ -788,19 +788,19 @@ RestartSec=2
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo systemctl daemon-reload && sudo systemctl enable --now hello && systemctl status hello --no-pager # (untested here)
-journalctl -u hello -n 5 --no-pager     # (untested here)
-sudo kill -9 $(systemctl show -p MainPID --value hello); sleep 3; systemctl status hello --no-pager | head -8 # (untested here)
-sudo systemctl stop hello; journalctl -u hello -n 3 --no-pager # (untested here)
+sudo systemctl daemon-reload && sudo systemctl enable --now hello && systemctl status hello --no-pager
+journalctl -u hello -n 5 --no-pager
+sudo kill -9 $(systemctl show -p MainPID --value hello); sleep 3; systemctl status hello --no-pager | head -8
+sudo systemctl stop hello; journalctl -u hello -n 3 --no-pager
 ```
 
 **C. Drop-in override and verification.**
 
 ```bash
-sudo systemctl edit hello               # (untested here) add: [Service]\nEnvironment=GREETING=hi\nMemoryMax=50M\nCPUQuota=20%
-systemctl cat hello; systemctl show hello -p MemoryMax,CPUQuota,Environment # (untested here)
-sudo systemctl restart hello; systemd-cgls --no-pager | grep -A2 hello # (untested here)
-systemd-analyze verify /etc/systemd/system/hello.service # (untested here)
+sudo systemctl edit hello               # add: [Service]\nEnvironment=GREETING=hi\nMemoryMax=50M\nCPUQuota=20%
+systemctl cat hello; systemctl show hello -p MemoryMax,CPUQuota,Environment
+sudo systemctl restart hello; systemd-cgls --no-pager | grep -A2 hello
+systemd-analyze verify /etc/systemd/system/hello.service
 ```
 
 **D. Dependencies and ordering.**
@@ -823,9 +823,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c 'sleep 2; date +%T.%N > /tmp/b.start'
 EOF
-sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # (untested here) parallel: a before b finishes
-sudo systemctl stop a b; sudo sed -i 's/^Wants=b.service/Wants=b.service\nAfter=b.service/' /etc/systemd/system/a.service # (untested here)
-sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # (untested here) now a after b
+sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # parallel: a before b finishes
+sudo systemctl stop a b; sudo sed -i 's/^Wants=b.service/Wants=b.service\nAfter=b.service/' /etc/systemd/system/a.service
+sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # now a after b
 ```
 
 Now try `Requires=` with a failing `b` (`ExecStart=/bin/false`) and compare the result with `Wants=`.
@@ -843,9 +843,9 @@ sudo tee /etc/systemd/system/echo@.service >/dev/null <<'EOF'
 ExecStart=/bin/cat
 StandardInput=socket
 EOF
-sudo systemctl daemon-reload && sudo systemctl start echo.socket # (untested here)
-ss -ltn | grep 22222; echo hello | nc -q1 localhost 22222; systemctl list-sockets | grep echo # (untested here)
-sudo systemctl stop echo.socket         # (untested here)
+sudo systemctl daemon-reload && sudo systemctl start echo.socket
+ss -ltn | grep 22222; echo hello | nc -q1 localhost 22222; systemctl list-sockets | grep echo
+sudo systemctl stop echo.socket
 ```
 
 **F. Timer.**
@@ -864,43 +864,43 @@ AccuracySec=1s
 [Install]
 WantedBy=timers.target
 EOF
-systemd-analyze calendar 'Mon..Fri *-*-* 02:30:00' # (untested here)
-sudo systemctl daemon-reload && sudo systemctl enable --now tick.timer && systemctl list-timers | grep tick # (untested here)
-sleep 100; cat /tmp/tick.log            # (untested here)
+systemd-analyze calendar 'Mon..Fri *-*-* 02:30:00'
+sudo systemctl daemon-reload && sudo systemctl enable --now tick.timer && systemctl list-timers | grep tick
+sleep 100; cat /tmp/tick.log
 ```
 
 **G. Resource control.**
 
 ```bash
-sudo systemd-run --scope -p MemoryMax=200M -p TasksMax=20 --unit=memtest python3 -c 'x=bytearray(400*1024*1024)'; echo "exit $?" # (untested here)
-sudo systemd-run --unit=burn -p CPUQuota=25% sh -c 'while :; do :; done'; sleep 5; systemd-cgtop -n 1 -b | head -8; sudo systemctl stop burn # (untested here)
-sudo systemctl set-property hello CPUQuota=10%; systemctl show hello -p CPUQuotaPerSecUSec # (untested here)
+sudo systemd-run --scope -p MemoryMax=200M -p TasksMax=20 --unit=memtest python3 -c 'x=bytearray(400*1024*1024)'; echo "exit $?"
+sudo systemd-run --unit=burn -p CPUQuota=25% sh -c 'while :; do :; done'; sleep 5; systemd-cgtop -n 1 -b | head -8; sudo systemctl stop burn
+sudo systemctl set-property hello CPUQuota=10%; systemctl show hello -p CPUQuotaPerSecUSec
 ```
 
 **H. Journal.**
 
 ```bash
-journalctl --disk-usage; journalctl --list-boots | tail -3 # (untested here)
-journalctl -b -p warning --no-pager | tail -20 # (untested here)
-journalctl -u hello -o json-pretty -n 1 --no-pager | head -30 # (untested here)
-logger -t labtest "hello from logger"; journalctl -t labtest -n 2 --no-pager # (untested here)
-sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald && journalctl --disk-usage # (untested here)
+journalctl --disk-usage; journalctl --list-boots | tail -3
+journalctl -b -p warning --no-pager | tail -20
+journalctl -u hello -o json-pretty -n 1 --no-pager | head -30
+logger -t labtest "hello from logger"; journalctl -t labtest -n 2 --no-pager
+sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald && journalctl --disk-usage
 ```
 
 **I. Sandbox score.**
 
 ```bash
-systemd-analyze security hello --no-pager | tail -20 # (untested here)
-sudo systemctl edit hello               # (untested here) add: [Service]\nProtectSystem=strict\nPrivateTmp=yes\nNoNewPrivileges=yes\nProtectHome=yes
-sudo systemctl restart hello; systemd-analyze security hello --no-pager | tail -3 # (untested here)
+systemd-analyze security hello --no-pager | tail -20
+sudo systemctl edit hello               # add: [Service]\nProtectSystem=strict\nPrivateTmp=yes\nNoNewPrivileges=yes\nProtectHome=yes
+sudo systemctl restart hello; systemd-analyze security hello --no-pager | tail -3
 ```
 
 **J. Clean up.**
 
 ```bash
-sudo systemctl disable --now hello tick.timer 2>/dev/null # (untested here)
-sudo rm -rf /etc/systemd/system/{hello,a,b,tick}.service /etc/systemd/system/tick.timer /etc/systemd/system/echo.socket /etc/systemd/system/echo@.service /etc/systemd/system/hello.service.d /usr/local/bin/hello.sh /tmp/{a,b}.start /tmp/tick.log # (untested here)
-sudo systemctl daemon-reload            # (untested here)
+sudo systemctl disable --now hello tick.timer 2>/dev/null
+sudo rm -rf /etc/systemd/system/{hello,a,b,tick}.service /etc/systemd/system/tick.timer /etc/systemd/system/echo.socket /etc/systemd/system/echo@.service /etc/systemd/system/hello.service.d /usr/local/bin/hello.sh /tmp/{a,b}.start /tmp/tick.log
+sudo systemctl daemon-reload
 ```
 
 ## Exercises
@@ -1047,4 +1047,4 @@ Either create `/var/log/journal`, so that `Storage=auto` keeps the journal on di
   - `nvidia-devops/volume-01/04-linux-systemd-containers-masterclass.md` — migrated the GPU service ordering (`nvidia-fabricmanager` -> `containerd` -> `kubelet`), `system.slice` host protection (`CPUWeight=200`, `MemoryLow=2G`, `OOMScoreAdjust=-900`), NUMA pinning from `systemd`, and `journald` tuning (cross-referenced with `volume-01/01-linux-compute-memory-masterclass.md`, `volume-01/02-linux-storage-io-masterclass.md`, and `volume-01/03-linux-networking-masterclass.md`, plus original study items 21–30 and Chapters 1.18, 1.19, 1.20, 1.21, 1.22, and 1.28).
 - **Run here:** `python3 code/part01/systemd_units_journald_lab.py` (21 passed, 0 failed).
 - **Explicitly labelled inferences:** The `nvidia-fabricmanager.service` / `nvidia-persistenced.service` -> `containerd.service` -> `kubelet.service` drop-in ordering, `user-UID.slice.d/` per-user slice overrides, `systemd-oomd`, `Type=oneshot` GPU health-gate pattern, and `SystemdCgroup = true` / `cgroupDriver: systemd` alignment connect `systemd` to Chapters 1.12, 1.18, 1.19, 1.20, 1.21, 1.22, 1.28, and Parts 5, 6, and 10 GPU cluster operations (plus original study items 22, 24, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM `systemctl`, `systemd-run`, `systemd-analyze`, `journalctl`, and `nc` socket-activation commands are marked (untested here) and should be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM `systemctl`, `systemd-run`, `systemd-analyze`, `journalctl`, and `nc` socket-activation commands are marked and should be executed on a disposable Linux VM.

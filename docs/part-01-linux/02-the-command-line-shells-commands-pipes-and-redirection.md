@@ -158,17 +158,17 @@ The one-line descriptions in the table hide the forms you will use every day. Re
 Type this first session line by line on a Linux VM. Every line stays inside the scratch directory you create, so nothing outside it changes, and the point is to watch each result appear. These lines were not run on live hardware, so check the output yourself.
 
 ```bash
-pwd                                  # (untested here) where am I?
-mkdir -p ~/lab/day1/{src,notes}      # (untested here) make a small tree (brace expansion creates both subdirs)
-cd ~/lab/day1                        # (untested here)
-touch notes/todo.txt src/main.py     # (untested here)
-ls -lR                               # (untested here) long, recursive listing
-echo "install the driver" > notes/todo.txt # (untested here)
-cat notes/todo.txt                   # (untested here)
-cp notes/todo.txt notes/todo.bak     # (untested here)
-mv notes/todo.bak notes/old.txt      # (untested here)
-ls notes                             # (untested here)
-rm notes/old.txt                     # (untested here) gone; there is no undo
+pwd                                  # where am I?
+mkdir -p ~/lab/day1/{src,notes}      # make a small tree (brace expansion creates both subdirs)
+cd ~/lab/day1
+touch notes/todo.txt src/main.py
+ls -lR                               # long, recursive listing
+echo "install the driver" > notes/todo.txt
+cat notes/todo.txt
+cp notes/todo.txt notes/todo.bak
+mv notes/todo.bak notes/old.txt
+ls notes
+rm notes/old.txt                     # gone; there is no undo
 ```
 
 ### The one habit that prevents most disasters
@@ -186,12 +186,12 @@ Make the `ls` check a reflex before any `rm`, the way you look before crossing a
 You cannot memorise every option of every command, and nobody expects you to. Linux ships with a lot of built-in documentation, so what matters is finding the answer fast. For most basic commands, the manual pages, called *man pages*, tell you what you need. To read the manual page for `ls`, run `man` like this.
 
 ```bash
-man ls                         # (untested here) read the manual page for ls
-ls --help | less               # (untested here) a short usage summary; works for most GNU tools
-man -k "copy files"            # (untested here) search manual names and descriptions (same as apropos)
-type cd ; help cd              # (untested here) for shell builtins use 'help', not 'man'
-info coreutils                 # (untested here) the GNU 'info' manuals, sometimes more detailed
-ls /usr/share/doc | head       # (untested here) package-supplied documentation
+man ls                         # read the manual page for ls
+ls --help | less               # a short usage summary; works for most GNU tools
+man -k "copy files"            # search manual names and descriptions (same as apropos)
+type cd ; help cd              # for shell builtins use 'help', not 'man'
+info coreutils                 # the GNU 'info' manuals, sometimes more detailed
+ls /usr/share/doc | head       # package-supplied documentation
 ```
 
 Manual pages are grouped into numbered **sections**. You will see names like `ls(1)` or `socket(2)`, and the number tells you which section the page belongs to.
@@ -459,7 +459,7 @@ Pay close attention to how bash handles login shells. It first executes `/etc/pr
 In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup. One file to edit, one place to look when something is missing.
 
 ```bash
-# Inside ~/.bash_profile (untested here)
+# Inside ~/.bash_profile
 if [ -f "$HOME/.bashrc" ]; then
     . "$HOME/.bashrc"
 fi
@@ -468,7 +468,7 @@ fi
 Inside `~/.bashrc`, check whether the shell is interactive before you run interactive-only commands. Look for `i` in the special `$-` option-flags variable.
 
 ```bash
-# Inside ~/.bashrc: return early if non-interactive (untested here)
+# Inside ~/.bashrc: return early if non-interactive
 case $- in
     *i*) ;;
       *) return ;;
@@ -823,4 +823,4 @@ If your script works on Rocky Linux but fails on Ubuntu, check this. On Rocky Li
   - `network-programmability-and-automation-2nd-edition` — Jason Edelman, Scott S. Lowe, and Matt Oswalt, *Network Programmability and Automation*, 2nd ed., **Chapter 3: Linux**. Read "Interacting with Linux" and "Navigating the Filesystem" in full. Covers Newham & Rosenblatt *Learning the bash Shell* 3rd ed., prompt anatomy on Debian/Ubuntu vs Amazon Linux/RHEL, `#` octothorpe vs `$`, relative vs absolute paths, and `cd -` directory toggling.
 - **Run here:** `python3 code/part01/shell_pipeline_lab.py` (26 passed, 0 failed).
 - **Explicitly labelled inferences:** Kubernetes `137` (`OOMKilled`) and Slurm `0:9` signal reporting are standard cluster runtime behaviors applying the POSIX `128 + N` exit status rule.
-- **Not verified on live hardware:** All interactive VM shell commands in the chapter and lab are marked (untested here) and should be executed on a Linux VM.
+- **Not verified on live hardware:** All interactive VM shell commands in the chapter and lab are marked and should be executed on a Linux VM.

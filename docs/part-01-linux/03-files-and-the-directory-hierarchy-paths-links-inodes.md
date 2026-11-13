@@ -249,10 +249,10 @@ A **hard link** is simply another directory entry pointing at the same inode. Af
 The lines below were not run on live hardware, so run them on a Linux machine and check the output yourself.
 
 ```bash
-echo hello > a.txt          # (untested here)
-ln a.txt b.txt              # (untested here) hard link: same inode
-ls -li a.txt b.txt          # (untested here) identical inode numbers, link count 2
-rm a.txt; cat b.txt         # (untested here) still prints hello
+echo hello > a.txt
+ln a.txt b.txt              # hard link: same inode
+ls -li a.txt b.txt          # identical inode numbers, link count 2
+rm a.txt; cat b.txt         # still prints hello
 ```
 
 Hard links have three limits, and each one follows from the inode model. First, they cannot cross filesystems. Inode numbers are unique only within one filesystem, so linking across mount points fails with Invalid cross-device link (`EXDEV`). Second, by default they cannot point to directories. The exception is the `.` and `..` entries, which the filesystem manages itself to prevent directory-tree loops. Third, they need a Unix-style filesystem that keeps directory entries separate from inodes.
@@ -646,4 +646,4 @@ Quoting `'*.log'` stops the shell from expanding the wildcard against the curren
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** and **Chapter 8: UNIX and Linux – Working Techniques**. Read file naming conventions, extension agreements, templates, commands for working with the directory tree and catalogs, and `tar`/`gzip` streaming.
 - **Run here:** `python3 code/part01/fs_inodes_links_lab.py` (20 passed, 0 failed).
 - **Explicitly labelled inferences:** The Docker `64 MB` `/dev/shm` default and the WebDataset/Parquet/TFRecord sharding recommendations connect the Linux inode model to Part 11 and Part 13 AI storage practices (chapters 13.6 and 13.7).
-- **Not verified on live hardware:** All interactive VM shell commands (`tree`, `mount -t tmpfs`, `dd`, `lsof +L1`, `find`, `tar`) are marked (untested here) and should be executed on a Linux VM.
+- **Not verified on live hardware:** All interactive VM shell commands (`tree`, `mount -t tmpfs`, `dd`, `lsof +L1`, `find`, `tar`) are marked and should be executed on a Linux VM.

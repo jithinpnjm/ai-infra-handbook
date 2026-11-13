@@ -481,7 +481,7 @@ Start with the self-checking Python lab, which runs on your own machine, no clus
 python3 code/part03/python_testing_quality_ci_lab.py
 ```
 
-Next, move to any machine with Python 3.11 or later. You can work through these on your own machine. All the interactive shell steps below are `untested here`. Work through these exercises in order, since later ones reuse code from earlier ones.
+Next, move to any machine with Python 3.11 or later. You can work through these on your own machine. All the interactive shell steps below have not been run on live hardware. Work through these exercises in order, since later ones reuse code from earlier ones.
 
 1. Take the parser and rules module from 3.8, and write parametrised tests for it. Include `[N/A]` fields, wrong column counts and empty output. Aim for 100% branch coverage on the core, and run `pytest -q --cov --cov-branch`.
 2. Implement the `Drainer` with an injected clock and sleep, and add a `FakeKube`. Test the timeout and success paths without any real sleeping. Then rewrite the tests with `mocker.patch`, and compare how readable and how fragile each version is.
@@ -710,4 +710,4 @@ For `subprocess.run` wrappers, either patch `subprocess.run` with `autospec=True
   - `nvidia-devops` (`volume-02/03-python-tooling-operations-masterclass.md`): testing infrastructure code with `pytest`, fixtures and teardown, mocking external APIs, preventing leaked test state, and CI/CD pipelines with GitHub Actions.
 - **Run here:** `python3 code/part03/python_testing_quality_ci_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `Drainer` + `FakeKube` clock-injection test, `Hypothesis` round-trip property on `parse_smi_csv`, `pyproject.toml` (`ruff`, `mypy`, `coverage`), `.pre-commit-config.yaml`, and GitHub Actions `ci` workflow are the author's constructions applying the cited testing and benchmarking principles to GPU fleet tooling (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Live `pytest`, `hypothesis`, `respx`, `ruff`, `mypy`, `pre-commit`, `mutmut`, `molecule`, and GitHub Actions runner invocations (`v0.6.9`, `v1.11.2`, `v4.6.0`, `fail_under = 85`, `8.0`, `10.16.0.0/24`) are marked (`untested here`) where not executed by `python_testing_quality_ci_lab.py`.
+- **Not verified on live hardware:** Live `pytest`, `hypothesis`, `respx`, `ruff`, `mypy`, `pre-commit`, `mutmut`, `molecule`, and GitHub Actions runner invocations (`v0.6.9`, `v1.11.2`, `v4.6.0`, `fail_under = 85`, `8.0`, `10.16.0.0/24`) are marked where not executed by `python_testing_quality_ci_lab.py`.

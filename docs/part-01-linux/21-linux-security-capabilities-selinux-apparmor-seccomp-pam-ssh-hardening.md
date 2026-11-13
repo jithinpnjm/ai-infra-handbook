@@ -554,7 +554,7 @@ Start with a practice run that needs no VM. Run the self-checking Python lab fir
 python3 code/part01/linux_security_hardening_lab.py
 ```
 
-Once the lab passes, move to a disposable VM. Use an Ubuntu 22.04 or newer VM, plus a Rocky or Alma 9 VM for SELinux. Every interactive VM command below is `untested here`. Keep a second SSH session and console access open the whole time, so that one mistake does not lock you out. Then work through these steps.
+Once the lab passes, move to a disposable VM. Use an Ubuntu 22.04 or newer VM, plus a Rocky or Alma 9 VM for SELinux. Every interactive VM command below has not been run on live hardware. Keep a second SSH session and console access open the whole time, so that one mistake does not lock you out. Then work through these steps.
 
 1. **Baseline**: Run `lynis audit system` (install `lynis`) and `systemd-analyze security | head -20`, and save the report. List setuid files, listening ports (`ss -tlnp`), enabled services, and users with shells.
 2. **Accounts**: Create `alice` and a `gpuops` group, and add a sudoers drop-in that allows one command. Verify it with `sudo -l -U alice` and `visudo -c`. Then lock an account and show how the shadow field changes.
@@ -739,4 +739,4 @@ After authentication and RBAC authorization, every API request passes through **
   - `nvidia-devops/volume-10/03-os-provisioning-and-linux-security-hardening.md` — migrated the AI/HPC node hardening guidance, CIS benchmark adjustments (core dumps, `ptrace_scope=1`, RoCEv2 UDP `4791` and InfiniBand `PKeys`, multi-homed `rp_filter=2`), SELinux with GPU devices, and UEFI Secure Boot MOK module signing (cross-referenced with Chapters 1.4, 1.5, 1.6, 1.8, 1.10, 1.14, 1.18, 1.19, 1.22, 1.24, 1.28, 5.14, and 6.24, plus original study items 21–30).
 - **Run here:** `python3 code/part01/linux_security_hardening_lab.py` (19 passed, 0 failed).
 - **Explicitly labelled inferences:** The CIS-versus-AI/HPC exception matrix, `pam_slurm_adopt` cgroup adoption workflow, and Kubernetes Pod Security Standards mapping for GPU Operator vs tenant namespaces connect Linux kernel security mechanisms to Part 5 and Part 6 cluster operations (plus original study items 22, 23, 24, 25, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM, PAM, `sshd`, `setcap`, `setpriv`, SELinux (`semanage`, `restorecon`, `audit2allow`), AppArmor (`aa-status`), `auditd`, and `mokutil` commands are marked (untested here) and must be tested on a disposable VM with an open rescue console.
+- **Not verified on live hardware:** All interactive VM, PAM, `sshd`, `setcap`, `setpriv`, SELinux (`semanage`, `restorecon`, `audit2allow`), AppArmor (`aa-status`), `auditd`, and `mokutil` commands are marked and must be tested on a disposable VM with an open rescue console.

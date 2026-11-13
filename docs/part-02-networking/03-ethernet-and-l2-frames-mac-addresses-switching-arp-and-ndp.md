@@ -427,17 +427,17 @@ Next, move to a disposable Linux VM where you have root. You need `iproute2`, `b
 1. Build the switch and three hosts. Each host gets its own namespace, joined to the bridge by a veth pair.
 
 ```bash
-sudo ip link add br0 type bridge && sudo ip link set br0 up # (untested here)
+sudo ip link add br0 type bridge && sudo ip link set br0 up
 for n in h1 h2 h3; do
   sudo ip netns add $n
   sudo ip link add v-$n type veth peer name e0 netns $n
   sudo ip link set v-$n master br0 up
   sudo ip -n $n link set lo up ; sudo ip -n $n link set e0 up
-done # (untested here)
-sudo ip -n h1 addr add 10.20.0.1/24 dev e0 # (untested here)
-sudo ip -n h2 addr add 10.20.0.2/24 dev e0 # (untested here)
-sudo ip -n h3 addr add 10.20.0.3/24 dev e0 # (untested here)
-bridge link show ; bridge fdb show br br0  # (untested here)
+done
+sudo ip -n h1 addr add 10.20.0.1/24 dev e0
+sudo ip -n h2 addr add 10.20.0.2/24 dev e0
+sudo ip -n h3 addr add 10.20.0.3/24 dev e0
+bridge link show ; bridge fdb show br br0
 ```
 
 2. Watch ARP and learning. In one terminal, run `sudo ip netns exec h3 tcpdump -nn -e -i e0`. In another, run `sudo ip netns exec h1 ping -c1 10.20.0.2`. The broadcast ARP request reaches h3, because the switch floods it. Once the switch has learned both addresses, the unicast reply and the ICMP traffic no longer reach h3. Check `ip -n h1 neigh` and `bridge fdb show br br0` before and after. To age the table, run `sudo bridge fdb flush dev v-h2`, or wait, and watch flooding resume. `brctl setageing br0 10` shortens the timer.
@@ -624,5 +624,5 @@ You create the bridge with `ip link add br0 type bridge`, and attach ports with 
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (sections 9.9 physical layer and Ethernet, 9.10 kernel network interfaces, 9.26 Ethernet, IP, ARP and NDP, and 9.27 wireless).
 - **Run here:** `python3 code/part02/ethernet_l2_arp_ndp_lab.py` (15 passed, 0 failed).
 - **Explicitly labelled inferences:** The 10G–800G transceiver/optics table (`SFP28`, `QSFP28`, `QSFP-DD`, `OSFP`, `DAC`/`AOC`/`MMF`/`SMF`, `NRZ` vs `PAM4` `RS-FEC`), multi-NIC AI server ARP sysctl recipe (`arp_ignore=1`, `arp_announce=2`, `rp_filter=2`), and `ethtool`/`mlxlink`/`lldpcli` fabric diagnostics connect L2 Ethernet and ARP/NDP fundamentals to Part 8 and Part 9 GPU cluster operations (cross-referenced with Chapters 1.28, 2.1, 2.2, 2.8, 2.9, 2.11, 2.12, 2.16, 2.18, 2.19, 2.20, 2.24, and 2.25, plus original study items 21, 22, 26, 27, and 29).
-- **Not verified on live hardware:** All interactive VM and NIC commands (`ip link`, `ip neigh`, `bridge`, `ethtool`, `mlxlink`, `mlnx_qos`, `lldpcli`, `arping`, `arp-scan`, `ndisc6`, `rdisc6`, `tcpdump`, `iw`) are marked (untested here) and must be executed on a disposable Linux VM or test switch/node.
+- **Not verified on live hardware:** All interactive VM and NIC commands (`ip link`, `ip neigh`, `bridge`, `ethtool`, `mlxlink`, `mlnx_qos`, `lldpcli`, `arping`, `arp-scan`, `ndisc6`, `rdisc6`, `tcpdump`, `iw`) are marked and must be executed on a disposable Linux VM or test switch/node.
 

@@ -816,20 +816,20 @@ Start with the self-checking Python lab in `code/part01/shell_scripting_lab.py`,
 python3 code/part01/shell_scripting_lab.py
 ```
 
-Next, use a scratch directory on a disposable GCP Ubuntu VM. Every interactive VM command below is marked `untested here`, so you are the one who confirms each result as you work through these steps.
+Next, use a scratch directory on a disposable GCP Ubuntu VM. Every interactive VM command below has not been run on live hardware, so you are the one who confirms each result as you work through these steps.
 
 **A. Quoting and expansion.**
 
 ```bash
-mkdir -p ~/lab/sh && cd ~/lab/sh        # (untested here)
-touch 'my file.txt' r.input r.output -rf # (untested here)
-echo $100; echo "$100"; echo '$100'     # (untested here) observe
-grep r.*t /etc/passwd; grep 'r.*t' /etc/passwd # (untested here) why can they differ here?
-for f in *; do echo "[$f]"; done        # (untested here)
-for f in $(ls); do echo "[$f]"; done    # (untested here) broken: compare
-rm -- -rf 'my file.txt'                 # (untested here)
-set -- 'abc 123' qwe                    # (untested here)
-for a in "$@"; do echo "[$a]"; done; for a in $@; do echo "[$a]"; done # (untested here)
+mkdir -p ~/lab/sh && cd ~/lab/sh
+touch 'my file.txt' r.input r.output -rf
+echo $100; echo "$100"; echo '$100'     # observe
+grep r.*t /etc/passwd; grep 'r.*t' /etc/passwd # why can they differ here?
+for f in *; do echo "[$f]"; done
+for f in $(ls); do echo "[$f]"; done    # broken: compare
+rm -- -rf 'my file.txt'
+set -- 'abc 123' qwe
+for a in "$@"; do echo "[$a]"; done; for a in $@; do echo "[$a]"; done
 ```
 
 **B. A first script with arguments, exit codes, `getopts`.**
@@ -847,9 +847,9 @@ for n in "$@"; do
   if (( upper )); then printf 'Hello, %s\n' "${n^^}"; else printf 'Hello, %s\n' "$n"; fi
 done
 EOF
-chmod +x greet.sh                       # (untested here)
-./greet.sh; echo "status $?"            # (untested here)
-./greet.sh -u alice 'bob smith'; echo "status $?" # (untested here)
+chmod +x greet.sh
+./greet.sh; echo "status $?"
+./greet.sh -u alice 'bob smith'; echo "status $?"
 ```
 
 **C. Tests and `case`.**
@@ -865,23 +865,23 @@ for p in "$@"; do
   else echo "$p: other or missing"; fi
 done
 EOF
-bash kind.sh /etc /bin/ls /etc/passwd /nonexistent # (untested here)
+bash kind.sh /etc /bin/ls /etc/passwd /nonexistent
 ```
 
 **D. Parameter expansion.**
 
 ```bash
-p=/data/run42/model.final.ckpt          # (untested here)
-echo "${p##*/} ${p%/*} ${p%.*} ${p##*.} ${#p}" # (untested here)
-unset X; echo "${X:-fallback}"; echo "[${X:=set-now}]"; echo "$X" # (untested here)
+p=/data/run42/model.final.ckpt
+echo "${p##*/} ${p%/*} ${p%.*} ${p##*.} ${#p}"
+unset X; echo "${X:-fallback}"; echo "[${X:=set-now}]"; echo "$X"
 ```
 
 **E. Subshell, pipeline and `read`.**
 
 ```bash
-v=1; ( v=2 ); echo "$v"                 # (untested here)
-count=0; printf '1\n2\n3\n' | while read -r n; do count=$((count+n)); done; echo "count after pipe-loop: $count" # (untested here)
-count=0; while read -r n; do count=$((count+n)); done < <(printf '1\n2\n3\n'); echo "count with process substitution: $count" # (untested here)
+v=1; ( v=2 ); echo "$v"
+count=0; printf '1\n2\n3\n' | while read -r n; do count=$((count+n)); done; echo "count after pipe-loop: $count"
+count=0; while read -r n; do count=$((count+n)); done < <(printf '1\n2\n3\n'); echo "count with process substitution: $count"
 ```
 
 **F. `trap`, `mktemp`, `flock`.**
@@ -895,8 +895,8 @@ flock -n 9 || { echo "already running" >&2; exit 0; }
 tmp=$(mktemp -d); trap 'echo cleanup; rm -rf -- "$tmp"' EXIT
 echo "work in $tmp"; sleep 30
 EOF
-chmod +x safe.sh                        # (untested here)
-./safe.sh & sleep 1; ./safe.sh; kill %1; wait; ls /tmp | grep tmp\\. | head -3 # (untested here)
+chmod +x safe.sh
+./safe.sh & sleep 1; ./safe.sh; kill %1; wait; ls /tmp | grep tmp\\. | head -3
 ```
 
 Why did `cleanup` print when the first copy was killed with `SIGTERM`? Try `kill -9` and explain.
@@ -904,12 +904,12 @@ Why did `cleanup` print when the first copy was killed with `SIGTERM`? Try `kill
 **G. `set -e` surprises.**
 
 ```bash
-bash -c 'set -e; false; echo "not reached"'; echo "status $?" # (untested here)
-bash -c 'set -e; if false; then :; fi; echo "reached"' # (untested here)
-bash -c 'set -e; false || true; echo "reached"' # (untested here)
-bash -c 'set -e; x=$(false); echo "reached? status of assignment hides nothing here"' # (untested here)
-bash -c 'set -eo pipefail; false | cat; echo "not reached"'; echo "status $?" # (untested here)
-bash -c 'set -e; f() { false; echo "inside f after false"; }; f && echo "ok"' # (untested here)
+bash -c 'set -e; false; echo "not reached"'; echo "status $?"
+bash -c 'set -e; if false; then :; fi; echo "reached"'
+bash -c 'set -e; false || true; echo "reached"'
+bash -c 'set -e; x=$(false); echo "reached? status of assignment hides nothing here"'
+bash -c 'set -eo pipefail; false | cat; echo "not reached"'; echo "status $?"
+bash -c 'set -e; f() { false; echo "inside f after false"; }; f && echo "ok"'
 ```
 
 Predict each result before you run it.
@@ -917,14 +917,14 @@ Predict each result before you run it.
 **H. ShellCheck.**
 
 ```bash
-sudo apt install -y shellcheck          # (untested here)
+sudo apt install -y shellcheck
 cat > bad.sh <<'EOF'
 #!/bin/sh
 for f in $(ls *.txt); do cat $f; done
 [ $1 = yes ] && echo ok
 cd /tmp; rm -rf $dir/*
 EOF
-shellcheck bad.sh                       # (untested here)
+shellcheck bad.sh
 ```
 
 Fix every warning, then run `bash -n`, then `bash -x`.
@@ -933,11 +933,11 @@ Fix every warning, then run `bash -n`, then `bash -x`.
 
 ```bash
 retry() { local n=1 max=$1 d=$2; shift 2; until "$@"; do (( n>=max )) && return 1; sleep "$d"; ((n++)); done; }
-retry 3 1 false; echo "status $?"       # (untested here)
-timeout 2 sleep 10; echo "timeout status $?" # (untested here) 124
+retry 3 1 false; echo "status $?"
+timeout 2 sleep 10; echo "timeout status $?" # 124
 ```
 
-**J. A health check.** Write the health check from section 12 with `EXPECT_GPUS=0` on a CPU VM, make it exit 0, then break each condition and confirm the message (untested here).
+**J. A health check.** Write the health check from section 12 with `EXPECT_GPUS=0` on a CPU VM, make it exit 0, then break each condition and confirm the message.
 
 ## Exercises
 
@@ -1077,4 +1077,4 @@ Switch from shell to Python when you need any of these five things. (1) Structur
   - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 28: One-Two-Three Instructions** (staged UPS power-failure shutdown scripts adapted in Section 12, cross-referenced with Chapters 1.16, 1.30, 6.19, 6.23, 6.24, and 6.30) and **Chapter 29: Shell Scripts – Basics and Common Mistakes** (shebang and UTF-8 BOM, command separators, truthiness by return code, `test`/`[ ]`, quoting and `"$@"`, `&&`/`||`, comparison operators, redirection, `select`, `read`, `getopts`, `()` vs `{ ; }`, functions and `local`, `trap`, and the parameter-expansion shortcut table; cross-referenced with Chapters 21, 25, 26, and 27).
 - **Run here:** `python3 code/part01/shell_scripting_lab.py` (24 passed, 0 failed).
 - **Explicitly labelled inferences:** The `torchrun` container entrypoint, Slurm `#SBATCH` wrapper, and GPU node `HealthCheckProgram` script in Section 12 apply the chapter's production shell patterns (and `SIGINT` / `SIGTERM` trap handling from Chapters 1.5, 1.8, and 1.15) to Parts 5, 6, and 10 (including *Supercomputers for Linux Sysadmins* Chapters 22 and 23).
-- **Not verified on live hardware:** All interactive VM shell snippets and cluster health/shutdown scripts are marked (untested here) and should be tested in a scratch directory on a disposable VM.
+- **Not verified on live hardware:** All interactive VM shell snippets and cluster health/shutdown scripts are marked and should be tested in a scratch directory on a disposable VM.

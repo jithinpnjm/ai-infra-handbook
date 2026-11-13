@@ -598,22 +598,22 @@ Time to see these ideas move. Start with the self-checking Python lab, and run i
 python3 code/part01/memory_numa_oom_lab.py
 ```
 
-Next, use a disposable GCP Ubuntu VM with at least 4 GiB RAM and `sudo`, and work through the steps below. All interactive VM commands in this section are `untested here`. Never run memory-exhaustion drills on a shared or production machine. Take a snapshot first, then enjoy watching a VM misbehave on purpose.
+Next, use a disposable GCP Ubuntu VM with at least 4 GiB RAM and `sudo`, and work through the steps below. All interactive VM commands in this section have not been run on live hardware. Never run memory-exhaustion drills on a shared or production machine. Take a snapshot first, then enjoy watching a VM misbehave on purpose.
 
 **A. Read memory.** Begin with the counters you already know, and see what they show on a quiet machine. This is your baseline, and every later change is easier to read against it.
 
 ```bash
-free -h; grep -E 'MemAvailable|Cached|AnonPages|Slab|SReclaimable|SUnreclaim|PageTables|Mlocked|Huge|Committed_AS|CommitLimit' /proc/meminfo # (untested here)
-vmstat 1 3; cat /proc/pressure/memory; sar -B 1 3 2>/dev/null # (untested here)
-ps -eo pid,rss,vsz,comm --sort=-rss | head -5 # (untested here)
-cat /proc/$$/smaps_rollup; pmap -x $$ | tail -5 # (untested here)
-sudo slabtop -o -s c | head -10         # (untested here)
+free -h; grep -E 'MemAvailable|Cached|AnonPages|Slab|SReclaimable|SUnreclaim|PageTables|Mlocked|Huge|Committed_AS|CommitLimit' /proc/meminfo
+vmstat 1 3; cat /proc/pressure/memory; sar -B 1 3 2>/dev/null
+ps -eo pid,rss,vsz,comm --sort=-rss | head -5
+cat /proc/$$/smaps_rollup; pmap -x $$ | tail -5
+sudo slabtop -o -s c | head -10
 ```
 
 **B. Demand paging.** Map one gigabyte, touch none of it, and watch RSS and the minor fault count. Then touch every page and watch them change. This is the clearest demonstration in the chapter of the gap between promised and real memory.
 
 ```bash
-python3 - <<'EOF' # (untested here)
+python3 - <<'EOF'
 import mmap, os, time, resource
 n = 1<<30
 m = mmap.mmap(-1, n)        # 1 GiB anonymous, untouched
@@ -627,49 +627,49 @@ EOF
 **C. Page cache and `available`.** Write a file, then compare `buff/cache` with `available`. Watch how much the cache grows and how little `available` moves. Dropping the cache is a test step, and the file is removed at the end.
 
 ```bash
-free -h; dd if=/dev/zero of=/tmp/big bs=1M count=2048 status=none; sync # (untested here)
-free -h                                 # (untested here) buff/cache grew, available barely changed
-echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; free -h # (untested here)
-rm /tmp/big                             # (untested here)
+free -h; dd if=/dev/zero of=/tmp/big bs=1M count=2048 status=none; sync
+free -h                                 # buff/cache grew, available barely changed
+echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; free -h
+rm /tmp/big
 ```
 
 **D. cgroup memory limit and OOM.** Run a process that allocates past a `MemoryMax` limit, then read the kernel log. You are watching the cgroup version of the OOM killer, which is the one a container usually meets. The second run shows `MemoryHigh` throttling before the hard limit.
 
 ```bash
-sudo systemd-run --scope -p MemoryMax=300M -p MemorySwapMax=0 --unit=oomlab python3 -c 'x=[bytearray(10*1024*1024) for _ in range(100)]'; echo "exit $?" # (untested here)
-sudo dmesg -T | tail -15 | grep -iE 'oom|killed' # (untested here)
+sudo systemd-run --scope -p MemoryMax=300M -p MemorySwapMax=0 --unit=oomlab python3 -c 'x=[bytearray(10*1024*1024) for _ in range(100)]'; echo "exit $?"
+sudo dmesg -T | tail -15 | grep -iE 'oom|killed'
 sudo systemd-run --scope -p MemoryHigh=200M -p MemoryMax=600M --unit=highlab python3 -c '
 import time
 x=[bytearray(10*1024*1024) for _ in range(40)]
-time.sleep(5)' # (untested here)
+time.sleep(5)'
 # inspect while running in another shell: systemctl show highlab.scope -p MemoryCurrent; cat /sys/fs/cgroup/system.slice/highlab.scope/memory.events
 ```
 
 **E. oom_score_adj.** Start a sleeping process, read its score, then raise its `oom_score_adj` and read the score again. The number is the kernel's ranking, and you are moving your process up the list on purpose.
 
 ```bash
-sleep 600 & P=$!; cat /proc/$P/oom_score /proc/$P/oom_score_adj # (untested here)
-echo 500 | sudo tee /proc/$P/oom_score_adj; cat /proc/$P/oom_score; sudo kill $P # (untested here)
+sleep 600 & P=$!; cat /proc/$P/oom_score /proc/$P/oom_score_adj
+echo 500 | sudo tee /proc/$P/oom_score_adj; cat /proc/$P/oom_score; sudo kill $P
 ```
 
 **F. NUMA (on a multi-node machine, or `numactl --hardware` on any).** Read the topology, then see where a process's pages land. A single-node VM is still useful, because the commands and the output shape are the same.
 
 ```bash
-sudo apt install -y numactl hwloc       # (untested here)
-numactl --hardware; numastat; lscpu | grep -i numa # (untested here)
-numactl --cpunodebind=0 --membind=0 python3 -c 'import os; print(open("/proc/self/numa_maps").read()[:400])' # (untested here)
-numastat -p $$                          # (untested here)
+sudo apt install -y numactl hwloc
+numactl --hardware; numastat; lscpu | grep -i numa
+numactl --cpunodebind=0 --membind=0 python3 -c 'import os; print(open("/proc/self/numa_maps").read()[:400])'
+numastat -p $$
 ```
 
 **G. Huge pages and THP.** Read the THP settings, reserve a small pool of explicit huge pages, then test THP with `always` and return it to `madvise`. Put the setting back when you finish, so the VM is not left in an unusual state.
 
 ```bash
-cat /sys/kernel/mm/transparent_hugepage/{enabled,defrag}; grep -E 'AnonHugePages|HugePages_|Hugepagesize' /proc/meminfo # (untested here)
-echo 128 | sudo tee /proc/sys/vm/nr_hugepages; grep HugePages_ /proc/meminfo; echo 0 | sudo tee /proc/sys/vm/nr_hugepages # (untested here)
-sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled' # (untested here)
-python3 -c 'import mmap,time; m=mmap.mmap(-1,512<<20); [m.__setitem__(i,1) for i in range(0,512<<20,4096)]; print(open("/proc/self/smaps_rollup").read().split("AnonHugePages:")[1].split()[0],"kB in THP"); time.sleep(1)' # (untested here)
-sudo sh -c 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled' # (untested here)
-grep -E 'thp_fault_alloc|thp_collapse_alloc|compact_stall' /proc/vmstat # (untested here)
+cat /sys/kernel/mm/transparent_hugepage/{enabled,defrag}; grep -E 'AnonHugePages|HugePages_|Hugepagesize' /proc/meminfo
+echo 128 | sudo tee /proc/sys/vm/nr_hugepages; grep HugePages_ /proc/meminfo; echo 0 | sudo tee /proc/sys/vm/nr_hugepages
+sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled'
+python3 -c 'import mmap,time; m=mmap.mmap(-1,512<<20); [m.__setitem__(i,1) for i in range(0,512<<20,4096)]; print(open("/proc/self/smaps_rollup").read().split("AnonHugePages:")[1].split()[0],"kB in THP"); time.sleep(1)'
+sudo sh -c 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled'
+grep -E 'thp_fault_alloc|thp_collapse_alloc|compact_stall' /proc/vmstat
 ```
 
 **H. Allocator behaviour.** Build a large list of strings, free it, and watch whether RSS comes back. Then repeat the run with jemalloc and with a single glibc arena. The three runs answer the allocator question with evidence rather than opinion.
@@ -682,21 +682,21 @@ d=[str(i)*1000 for i in range(1000000)]; print("allocated", rss())
 del d; print("after del", rss())
 import gc; gc.collect(); print("after gc", rss())
 EOF
-python3 /tmp/alloc.py                   # (untested here)
-sudo apt install -y libjemalloc2; LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python3 /tmp/alloc.py # (untested here)
-MALLOC_ARENA_MAX=1 python3 /tmp/alloc.py # (untested here)
+python3 /tmp/alloc.py
+sudo apt install -y libjemalloc2; LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python3 /tmp/alloc.py
+MALLOC_ARENA_MAX=1 python3 /tmp/alloc.py
 ```
 
 **I. memlock.** Lower the soft `memlock` limit, then try to lock one megabyte and read the error code. This is the failure that stops RDMA and pinned allocations on an otherwise healthy node.
 
 ```bash
-ulimit -l; ulimit -Sl 64; python3 -c 'import mmap,ctypes; libc=ctypes.CDLL("libc.so.6",use_errno=True); b=ctypes.create_string_buffer(1<<20); print(libc.mlock(b,ctypes.c_size_t(1<<20)), ctypes.get_errno())' # (untested here)
+ulimit -l; ulimit -Sl 64; python3 -c 'import mmap,ctypes; libc=ctypes.CDLL("libc.so.6",use_errno=True); b=ctypes.create_string_buffer(1<<20); print(libc.mlock(b,ctypes.c_size_t(1<<20)), ctypes.get_errno())'
 ```
 
 **J. (GPU VM, optional) pinned versus pageable.** Copy the same buffer to the GPU from pageable and pinned memory, then compare the bandwidth. The gap is why serious data loaders pin their staging buffers.
 
 ```bash
-python3 - <<'EOF' # (untested here)
+python3 - <<'EOF'
 import torch,time
 x=torch.empty(1<<28,dtype=torch.uint8); y=torch.empty(1<<28,dtype=torch.uint8).pin_memory()
 for name,t in (("pageable",x),("pinned",y)):
@@ -851,4 +851,4 @@ Budget the host RAM as a sum. Start with the OS and daemon reserve, about `~16 G
   - `nvidia-devops/volume-01/01-linux-compute-memory-masterclass.md` — migrated the NUMA GPU trap, page tables and TLB walk, page cache and reclaim watermarks, `vm.swappiness`, NUMA policies and `numactl`, OOM score mechanics, the `mmap` and Python allocator arena examples, `numastat`, and `sysctl` tuning guide (cross-referenced with `volume-01/02-linux-storage-io-masterclass.md`, `volume-01/03-linux-networking-masterclass.md`, and `volume-01/04-linux-systemd-containers-masterclass.md`, plus original study items 21–30 and Chapters 1.8, 1.11, 1.12, 1.14, 1.15, 1.18, 1.22, 1.24, and 1.28).
 - **Run here:** `python3 code/part01/memory_numa_oom_lab.py` (21 passed, 0 failed).
 - **Explicitly labelled inferences:** The 8-GPU `DataLoader` worker RAM budget formula, CPython copy-on-write reference-count page dirtying in forked workers, `OOMScoreAdjust=-900/-1000`, `numa_pages_migrated`, kernel docs (`admin-guide/mm/transhuge.rst`, `admin-guide/mm/hugetlbpage.rst`, `admin-guide/cgroup-v2.rst`, `accounting/psi.rst`), and Grace GH200/GB200 NVLink-C2C NUMA topology guidance connect Linux virtual memory and NUMA internals to Part 5, Part 6, and Part 10 GPU workloads (plus original study items 22, 23, 24, 25, 26, 27, and 29).
-- **Not verified on live hardware:** All interactive VM and GPU commands (`free`, `vmstat`, `sar`, `slabtop`, `systemd-run`, `numactl`, `numastat`, `pmap`, `ulimit -l`) are marked (untested here) and must be executed on a disposable test VM, never on a production host.
+- **Not verified on live hardware:** All interactive VM and GPU commands (`free`, `vmstat`, `sar`, `slabtop`, `systemd-run`, `numactl`, `numastat`, `pmap`, `ulimit -l`) are marked and must be executed on a disposable test VM, never on a production host.

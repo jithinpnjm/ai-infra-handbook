@@ -425,11 +425,11 @@ python3 code/part02/tcp_in_depth_lab.py
 Next, use a disposable Linux VM. Build two network namespaces joined by a `veth` pair, and shape the link with `tc netem`.
 
 ```bash
-sudo ip netns add c; sudo ip netns add s # (untested here)
-sudo ip link add vc type veth peer name vs; sudo ip link set vc netns c; sudo ip link set vs netns s # (untested here)
-sudo ip -n c addr add 10.9.0.1/24 dev vc; sudo ip -n s addr add 10.9.0.2/24 dev vs # (untested here)
-sudo ip -n c link set vc up; sudo ip -n s link set vs up; sudo ip -n c link set lo up; sudo ip -n s link set lo up # (untested here)
-sudo ip netns exec s iperf3 -s -D       # (untested here)
+sudo ip netns add c; sudo ip netns add s
+sudo ip link add vc type veth peer name vs; sudo ip link set vc netns c; sudo ip link set vs netns s
+sudo ip -n c addr add 10.9.0.1/24 dev vc; sudo ip -n s addr add 10.9.0.2/24 dev vs
+sudo ip -n c link set vc up; sudo ip -n s link set vs up; sudo ip -n c link set lo up; sudo ip -n s link set lo up
+sudo ip netns exec s iperf3 -s -D
 ```
 
 Then work through these 11 steps.
@@ -614,5 +614,5 @@ QUIC runs over UDP so that its encrypted transport headers can pass through exis
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 10: Network** (TCP connection backlog queues, socket buffers and autotuning, Nagle and delayed ACK, congestion control algorithms Reno/CUBIC/BBR, and `ss -ti` / `nstat` diagnostics).
 - **Run here:** `python3 code/part02/tcp_in_depth_lab.py` (14 passed, 0 failed).
 - **Explicitly labelled inferences:** The BDP and window-scaling table (`25 Gb/s * 0.04 s = 125 MB`, `4 MB / 0.08 s = 50 MB/s = 400 Mb/s`), Linux `sysctl` tuning reference (`somaxconn`, `tcp_rmem`/`tcp_wmem`, `tcp_tw_reuse`, `tcp_slow_start_after_idle=0`, `tcp_notsent_lowat`), `ss -ti` diagnostic flowchart, and AI workload notes (`NCCL_SOCKET_IFNAME`, `NCCL_SOCKET_NTHREADS`, `NCCL_NSOCKS_PERTHREAD`, incast RTO penalties, and gRPC/HTTP2 head-of-line blocking) synthesize kernel documentation (`ip-sysctl`), RFCs 793, 2018, 5681, 6298, 6528, 8312 (CUBIC), and 9000 (QUIC), and `ss(8)` (cross-referenced with Chapters 1.25, 2.2, 2.4, 2.5, 2.7, 2.20, 2.22, 2.23, and Part 11, plus original study items 21, 23, 26, 27, 29, 31, 33, 34, 36, 37, 38, and 39).
-- **Not verified on live hardware:** All interactive VM commands (`ip netns`, `tc qdisc netem`, `iperf3`, `ss -ti`, `tcpdump`, `nstat`, `sysctl`) are marked (untested here) and must be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM commands (`ip netns`, `tc qdisc netem`, `iperf3`, `ss -ti`, `tcpdump`, `nstat`, `sysctl`) are marked and must be executed on a disposable Linux VM.
 

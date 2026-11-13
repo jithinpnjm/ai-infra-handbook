@@ -105,7 +105,7 @@ Reloading does not fix `from` imports. The function `reload(mod)` takes a module
 The book's `changer.py` example shows the effect. The first version sets `message = 'First version'` and defines `printer` to print `message`. After you edit the file, the second version sets `message = 'After editing'`. Its `printer` prints `reloaded:` before the message. A second `import changer` does nothing, because `changer` is already in `sys.modules`. Running `from importlib import reload; reload(changer)` updates `changer.printer()` in place. Code that calls `changer.printer()` sees the new version at once. Code that ran `from changer import printer` keeps the old function. It must run that import again to get the new one.
 
 ```python
-# In the book's init.py, share.py, and changer.py examples (untested here):
+# In the book's init.py, share.py, and changer.py examples:
 # init.py: print('hello'); flag = 1 -> runs once on first import; second import init keeps init.flag = 2
 # share.py:
 # x = 1
@@ -130,7 +130,7 @@ The book's `spaces.py` example makes this concrete. Its body prints `starting to
 For any module, `spaces.var` and `spaces.__dict__['var']` return the same value, `23`. The expression `vars(spaces) == spaces.__dict__` is `True`. So is `dir(spaces) == sorted(spaces.__dict__)`.
 
 ```python
-# Inspecting user-assigned names in a module namespace (LP Ch. 23 spaces.py, untested here):
+# Inspecting user-assigned names in a module namespace (LP Ch. 23 spaces.py):
 # >>> list(name for name in spaces.__dict__ if not name.startswith('__'))
 # ['sys', 'var', 'func', 'klass']
 # >>> dir(spaces) == sorted(spaces.__dict__) == sorted(vars(spaces))
@@ -195,7 +195,7 @@ When Python first imports a module, or reloads it, it runs the top-level stateme
 The book's forward-reference example shows both sides.
 
 ```python
-# In the book's forward-reference example (untested here):
+# In the book's forward-reference example:
 # func1()              # NameError: func1 not yet assigned
 
 def func1():
@@ -921,4 +921,4 @@ Importing a large venv from shared Lustre or NFS is also a problem at scale. On 
   - `nvidia-devops` (`volume-02/00-python-fundamentals-for-infrastructure-masterclass.md` and `volume-02/03-python-tooling-operations-masterclass.md`) and packaging standards (PEP 420, 427, 440, 503/691, 517/518, 562, 621, 668).
 - **Run here:** `python3 code/part03/python_modules_packaging_lab.py` (8 passed, 0 failed).
 - **Explicitly labelled inferences:** The `myops` `pyproject.toml`, multi-stage Dockerfile, and Section 6–9 GPU/container packaging checklists are the author's constructions applying PEP packaging standards and *Learning Python* Part V semantics to AI infrastructure operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
-- **Not verified on live hardware:** Interactive `pip`, `uv`, `pip-tools`, `poetry`, `conda`, `build`, `twine`, `devpi-server`, Docker, and GPU VM commands (`cu118`, `cu121`, `24.xx-py3`, `2.25.1`, `0.20`, `0.3.1`, `20.3`, `2026.10.1`, `10001`, `500`) are marked (`untested here`) where not executed by `python_modules_packaging_lab.py`.
+- **Not verified on live hardware:** Interactive `pip`, `uv`, `pip-tools`, `poetry`, `conda`, `build`, `twine`, `devpi-server`, Docker, and GPU VM commands (`cu118`, `cu121`, `24.xx-py3`, `2.25.1`, `0.20`, `0.3.1`, `20.3`, `2026.10.1`, `10001`, `500`) are marked where not executed by `python_modules_packaging_lab.py`.

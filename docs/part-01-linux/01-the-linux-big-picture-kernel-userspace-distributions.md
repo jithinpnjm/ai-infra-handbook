@@ -240,12 +240,12 @@ Maps are useful, but this chapter truly lands the day you see the layers on a re
 ### 5.1 What machine and which kernel is this?
 
 ```bash
-uname -a            # (untested here) kernel name, node name, kernel release, architecture
-cat /etc/os-release # (untested here) which distribution and version this is (the user-space side)
-lscpu | head -20    # (untested here) CPU model, sockets, cores, threads, NUMA nodes
-free -h             # (untested here) RAM and swap, human-readable
-lsblk               # (untested here) block devices: disks, partitions, mount points
-ip -br addr         # (untested here) network interfaces and addresses
+uname -a            # kernel name, node name, kernel release, architecture
+cat /etc/os-release # which distribution and version this is (the user-space side)
+lscpu | head -20    # CPU model, sockets, cores, threads, NUMA nodes
+free -h             # RAM and swap, human-readable
+lsblk               # block devices: disks, partitions, mount points
+ip -br addr         # network interfaces and addresses
 ```
 
 Two of these commands answer different questions, and people mix up the answers all the time. `uname -r` prints the **kernel release**, such as `6.8.0-1020-gcp`; that tells you which kernel is running. `/etc/os-release` names the **distribution**, such as Ubuntu 24.04 or Rocky Linux 9; that tells you which user space you have. Read both every time you log into an unfamiliar machine. They are separate facts, you can update one without the other, and mismatches between them cause real trouble.
@@ -253,11 +253,11 @@ Two of these commands answer different questions, and people mix up the answers 
 ### 5.2 What is running, and in what tree?
 
 ```bash
-ps -ef --forest | head -40     # (untested here) every process, drawn as a tree (PID, parent PID)
-pstree -p | head -30           # (untested here) the same tree, compact
-ps -eo pid,ppid,user,stat,comm | head   # (untested here) chosen columns
-ls /proc/1                     # (untested here) PID 1's "files": cmdline, status, maps, fd, ns ...
-cat /proc/1/cmdline | tr '\0' ' '; echo # (untested here)
+ps -ef --forest | head -40     # every process, drawn as a tree (PID, parent PID)
+pstree -p | head -30           # the same tree, compact
+ps -eo pid,ppid,user,stat,comm | head   # chosen columns
+ls /proc/1                     # PID 1's "files": cmdline, status, maps, fd, ns ...
+cat /proc/1/cmdline | tr '\0' ' '; echo
 ```
 
 Start a small hunt in that output. First find PID 1, which is `systemd` or `init`; that is the root of the tree. Then look for the processes in square brackets, such as `[kthreadd]` and `[kworker/0:0]`: those are the kernel threads you met earlier. Everything else descends from PID 1. The `STAT` column tells you what each process is doing right now. `S` means sleeping and `R` means running. `D` marks uninterruptible sleep, where a process waits on I/O and cannot be interrupted, and `Z` marks a zombie, a process that finished but has not yet been collected by its parent. Remember `D` and `Z`; both return in the failure stories at the end of the chapter.
@@ -265,8 +265,8 @@ Start a small hunt in that output. First find PID 1, which is `systemd` or `init
 ### 5.3 Watch a command start: `strace`
 
 ```bash
-sudo apt-get install -y strace     # (untested here) Debian/Ubuntu; use dnf on Rocky/RHEL
-strace -f -e trace=execve,clone,clone3,wait4,exit_group bash -c 'ls /tmp > /dev/null' 2>&1 | head -30 # (untested here)
+sudo apt-get install -y strace     # Debian/Ubuntu; use dnf on Rocky/RHEL
+strace -f -e trace=execve,clone,clone3,wait4,exit_group bash -c 'ls /tmp > /dev/null' 2>&1 | head -30
 ```
 
 In the output you should recognise the four moves from the diagram. The shell calls `clone` or `clone3`. The child calls `execve("/usr/bin/ls", ...)`. The child exits with `exit_group`, and the parent waits with `wait4`. Want to see everything? Drop the `-e trace=` filter and send the output to a file, then read the opening lines: they show the dynamic loader at work, mapping the C library, reading `/etc/ld.so.cache`, and calling `mmap` for memory before the real work starts. Reading even a few dozen lines of `strace` output for a simple program is the single best habit you can build for understanding Linux.
@@ -280,7 +280,7 @@ cat > hello.c <<'EOF'
 #include <unistd.h>
 int main(void) { write(1, "hello from user space\n", 22); return 0; }
 EOF
-gcc -static -o hello hello.c && strace ./hello # (untested here)
+gcc -static -o hello hello.c && strace ./hello
 ```
 
 The static build keeps the trace tiny. You will see `execve`, a few memory calls, the `write(1, "hello from user space\n", 22)` request to the kernel, and then `exit_group`. Drop the `-static` flag and you will also watch the dynamic loader join in. Either way, you can now see without any trust required that *a program is just a sequence of ordinary computation and system calls*.
@@ -288,10 +288,10 @@ The static build keeps the trace tiny. You will see `execve`, a few memory calls
 ### 5.5 Where do devices and kernel modules show up?
 
 ```bash
-ls /dev | head -30            # (untested here) device files (null, zero, tty, sda or nvme0n1, ...)
-lsmod | head                  # (untested here) kernel modules currently loaded into the running kernel
-modinfo nvme 2>/dev/null | head -5   # (untested here) details of a module
-dmesg | tail -20              # (untested here) kernel log ring buffer (may need sudo)
+ls /dev | head -30            # device files (null, zero, tty, sda or nvme0n1, ...)
+lsmod | head                  # kernel modules currently loaded into the running kernel
+modinfo nvme 2>/dev/null | head -5   # details of a module
+dmesg | tail -20              # kernel log ring buffer (may need sudo)
 ```
 
 On a GPU machine, the same commands tell a richer story. The device list adds `/dev/nvidia0`, `/dev/nvidiactl`, and `/dev/nvidia-uvm`, and the `lsmod` output adds `nvidia`, `nvidia_uvm`, and `nvidia_modeset`. File this away for your first on-call shift: whenever a user-space tool reports that no GPUs are present, check `lsmod` and `/dev/nvidia*` first.
@@ -609,4 +609,4 @@ A process in state `D`, uninterruptible sleep, is inside the kernel. It waits on
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance*, 2nd ed., **Chapter 3: Operating Systems**. Cross-checked kernel vs user mode, system calls, interrupts, context switches, and virtual memory.
 - **Run here:** `python3 code/part01/linux_layers_lab.py` (26 passed, 0 failed).
 - **Explicitly labelled inferences:** The EEVDF scheduler note (Linux kernel 6.6 onward) and x86 ring 0 / ring 3 terminology are standard architecture background alongside the cited books.
-- **Not verified on live hardware:** All interactive VM shell commands (`uname -a`, `ps`, `pstree`, `strace`, `gcc -static`, `lsmod`, `modinfo`, `dmesg`, `docker run`) are marked (untested here) and should be executed on a Linux VM.
+- **Not verified on live hardware:** All interactive VM shell commands (`uname -a`, `ps`, `pstree`, `strace`, `gcc -static`, `lsmod`, `modinfo`, `dmesg`, `docker run`) are marked and should be executed on a Linux VM.

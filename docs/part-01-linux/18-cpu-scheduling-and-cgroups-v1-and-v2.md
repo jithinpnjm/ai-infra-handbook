@@ -580,7 +580,7 @@ Start with the self-checking Python lab, which you run locally. The lab is `code
 python3 code/part01/cpu_sched_cgroups_lab.py
 ```
 
-Next, use a disposable Ubuntu 22.04 or newer VM with at least 4 vCPUs and cgroup v2. All the interactive VM commands below are `untested here`. Work through these steps in order. If a command fails, check that you are root and that the controller is enabled before you go on.
+Next, use a disposable Ubuntu 22.04 or newer VM with at least 4 vCPUs and cgroup v2. All the interactive VM commands below have not been run on live hardware. Work through these steps in order. If a command fails, check that you are root and that the controller is enabled before you go on.
 
 1. **Topology**: run `lscpu -e`, `cat /sys/devices/system/cpu/cpu0/topology/thread_siblings_list` and `numactl -H`. Record the sockets, cores and SMT setting.
 2. **Generate load**: install `stress-ng` with `apt install stress-ng`. In one terminal, run `stress-ng --cpu 4 --timeout 300 &`, and watch `mpstat -P ALL 1`.
@@ -761,4 +761,4 @@ Under `cgroup v2`'s single-writer rule, `systemd` owns `/sys/fs/cgroup`. If the 
   - `nvidia-devops/volume-01/01-linux-compute-memory-masterclass.md` and `nvidia-devops/volume-01/04-linux-systemd-containers-masterclass.md` — migrated the scheduler concepts, CFS `vruntime` vs EEVDF, `numactl --physcpubind`, `systemd` slices, and `cgroup v2` hierarchy (cross-referenced with `volume-01/02-linux-storage-io-masterclass.md` and `volume-01/03-linux-networking-masterclass.md`, plus original study items 21–30 and Chapters 1.8, 1.10, 1.11, 1.13, 1.15, 1.17, 1.19, 1.22, and 1.24).
 - **Run here:** `python3 code/part01/cpu_sched_cgroups_lab.py` (22 passed, 0 failed).
 - **Explicitly labelled inferences:** The 16-thread `cpu.max = "200000 100000"` (`12.5 ms` active / `87.5 ms` throttled) worked calculation, kernel `Documentation/` references, Kubernetes CPU Manager `static` + Topology Manager `single-numa-node` recipe for GPU pods, and Slurm `task/cgroup` `ConstrainCores=yes` / `ConstrainDevices=yes` settings connect the Linux scheduler and cgroups v2 to Part 5 and Part 6 cluster operations (plus original study items 24, 26, 27, 28, and 29).
-- **Not verified on live hardware:** All interactive VM, `stress-ng`, `/sys/fs/cgroup`, `chrt`, `taskset`, `cpupower`, `turbostat`, and `docker` commands are marked (untested here) and must be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM, `stress-ng`, `/sys/fs/cgroup`, `chrt`, `taskset`, `cpupower`, `turbostat`, and `docker` commands are marked and must be executed on a disposable Linux VM.

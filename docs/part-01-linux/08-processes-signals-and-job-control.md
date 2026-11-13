@@ -452,9 +452,9 @@ There are two ways to work with `lsof`. You can list everything, pipe the output
 Pass a path, and `lsof` lists only the entries under it. This command shows the open files in `/usr` and all of its subdirectories.
 
 ```bash
-lsof +D /usr                # (untested here) open files under /usr, recursively
-lsof -p 1994                # (untested here) open files of one process ID
-lsof -h                     # (untested here) a short summary of the options
+lsof +D /usr                # open files under /usr, recursively
+lsof -p 1994                # open files of one process ID
+lsof -h                     # a short summary of the options
 ```
 
 Most options only change the output format. Use the summary to find the one you need.
@@ -774,10 +774,10 @@ The kernel loads and allocates pages **on demand**, which is called demand pagin
 - A **major page fault** means the page must be read from **disk**. That covers program code on first execution, or memory that was swapped out. It is slow. A burst when a program first runs is normal. A continuous stream means memory pressure, when the kernel spends its time moving pages to and from swap (thrashing).
 
 ```bash
-free -h                             # (untested here) total, used, free, shared, buff/cache, available
-grep -E 'MemTotal|MemAvailable|SwapTotal|SwapFree|Dirty' /proc/meminfo # (untested here)
-ps -o pid,min_flt,maj_flt,rss,comm -p 1234 # (untested here)
-/usr/bin/time cal >/dev/null        # (untested here) e.g. 0.00user 0.00system 0:00.06elapsed ... (2major+254minor)pagefaults 0swaps
+free -h                             # total, used, free, shared, buff/cache, available
+grep -E 'MemTotal|MemAvailable|SwapTotal|SwapFree|Dirty' /proc/meminfo
+ps -o pid,min_flt,maj_flt,rss,comm -p 1234
+/usr/bin/time cal >/dev/null        # e.g. 0.00user 0.00system 0:00.06elapsed ... (2major+254minor)pagefaults 0swaps
 ```
 
 When `/usr/bin/time cal > /dev/null` runs (*How Linux Works* Section 8.5.4), it prints a summary line such as `0.00user 0.00system 0:00.06elapsed 0%CPU (0avgtext+0avgdata 3328maxresident)k 648inputs+0outputs (2major+254minor)pagefaults 0swaps`. That line shows `2` major page faults, which read from disk, and `254` minor page faults, which map pages already in RAM.
@@ -838,15 +838,15 @@ Many of these I/O tools are not installed by default. You get `iostat`, `pidstat
 If you run `iostat` without options, it shows averages since boot. It prints an `avg-cpu:` block with `%user`, `%nice`, `%system`, `%iowait`, `%steal` and `%idle`. Then it prints a `Device` block with `tps`, `kB_read/s`, `kB_wrtn/s`, `kB_read` and `kB_wrtn`. By default, `iostat` leaves out partition information. Pass `-p ALL` to show partitions such as `sda1` alongside whole devices such as `sda`.
 
 ```bash
-iostat                    # (untested here) uptime average CPU and block device tps, kB_read/s, kB_wrtn/s
-iostat -p ALL             # (untested here) include all partitions (e.g., sda1, sda2, nvme0n1p1)
-iostat -xz 2              # (untested here) extended per-device stats every 2 s; -z hides idle devices
-iostat -dp ALL 5          # (untested here) per-partition, device report only
-sudo iotop -oPa           # (untested here) processes actually doing I/O, accumulated
-pidstat -p 1329 1         # (untested here) CPU of one process every second (UID, PID, %usr, %system, %guest, %CPU, CPU, Command)
-pidstat -u -r -d -t 2     # (untested here) CPU, memory, disk I/O, per thread, every 2 s
-mpstat -P ALL 2           # (untested here) per-core utilisation (spot one saturated core)
-sar -u 1 5                # (untested here) CPU; sar also records history (see below)
+iostat                    # uptime average CPU and block device tps, kB_read/s, kB_wrtn/s
+iostat -p ALL             # include all partitions (e.g., sda1, sda2, nvme0n1p1)
+iostat -xz 2              # extended per-device stats every 2 s; -z hides idle devices
+iostat -dp ALL 5          # per-partition, device report only
+sudo iotop -oPa           # processes actually doing I/O, accumulated
+pidstat -p 1329 1         # CPU of one process every second (UID, PID, %usr, %system, %guest, %CPU, CPU, Command)
+pidstat -u -r -d -t 2     # CPU, memory, disk I/O, per thread, every 2 s
+mpstat -P ALL 2           # per-core utilisation (spot one saturated core)
+sar -u 1 5                # CPU; sar also records history (see below)
 ```
 
 When you open `iostat -x`, you will see that `r/s` and `w/s` are requests per second, and `rkB/s` and `wkB/s` are throughput. `await` is the average time, in milliseconds, that a request spends queued and being serviced. It is the latency number to watch. `aqu-sz` is the average queue length. `%util` is the fraction of time the device was busy. It is meaningful for a single spinning disk, but misleading for NVMe or for arrays that handle many requests in parallel.
@@ -892,7 +892,7 @@ There are three classes. `be` (best effort) is the default, and most processes u
 `pidstat` solves a different problem from `top` and `iotop`. Those tools redraw the screen and erase the last update. `pidstat` prints a new line for each sample, so you can compare them.
 
 ```bash
-pidstat -p 1329 1          # (untested here) CPU of one process, one sample per second
+pidstat -p 1329 1          # CPU of one process, one sample per second
 ```
 
 ```text
@@ -1076,18 +1076,18 @@ Start with the self-checking Python lab (`code/part01/processes_signals_lab.py`)
 python3 code/part01/processes_signals_lab.py
 ```
 
-After each step, compare what you see with the result the text describes. Next, on a disposable GCP Ubuntu VM (all interactive VM commands below are `untested here`), work through these steps:
+After each step, compare what you see with the result the text describes. Next, on a disposable GCP Ubuntu VM (none of the interactive VM commands below has been run on live hardware), work through these steps:
 
 **A. Process basics.**
 
 ```bash
-echo "my shell PID is $$, parent is $PPID" # (untested here)
-ps -o pid,ppid,stat,etime,cmd -p $$     # (untested here)
-pstree -ap $$ | head                    # (untested here)
-ls -l /proc/$$/fd                       # (untested here)
-grep -E 'State|Threads|VmRSS' /proc/$$/status # (untested here)
-sleep 300 &                             # (untested here) a background job
-jobs -l; ps -o pid,ppid,pgid,sid,tty,stat,cmd -p $! # (untested here)
+echo "my shell PID is $$, parent is $PPID"
+ps -o pid,ppid,stat,etime,cmd -p $$
+pstree -ap $$ | head
+ls -l /proc/$$/fd
+grep -E 'State|Threads|VmRSS' /proc/$$/status
+sleep 300 &                             # a background job
+jobs -l; ps -o pid,ppid,pgid,sid,tty,stat,cmd -p $!
 ```
 
 **B. Zombies.** Create one on purpose and observe it.
@@ -1100,9 +1100,9 @@ if pid == 0:
     os._exit(0)          # child exits immediately
 time.sleep(60)           # parent never calls wait()
 EOF
-sleep 1                                 # (untested here)
-ps axo stat,pid,ppid,comm | awk '$1 ~ /^Z/' # (untested here) the defunct child
-kill %1                                 # (untested here) kill the parent: the zombie disappears (re-parented to PID 1 and reaped)
+sleep 1
+ps axo stat,pid,ppid,comm | awk '$1 ~ /^Z/' # the defunct child
+kill %1                                 # kill the parent: the zombie disappears (re-parented to PID 1 and reaped)
 ```
 
 **C. Signals.**
@@ -1116,10 +1116,10 @@ trap 'echo "bye (EXIT trap)"' EXIT
 echo "pid $$"
 while true; do sleep 1; done
 EOF
-chmod +x /tmp/sig.sh                    # (untested here)
-/tmp/sig.sh &  P=$!                     # (untested here)
-sleep 1; kill -USR1 $P; sleep 1; kill -TERM $P; wait $P; echo "exit status $?" # (untested here)
-/tmp/sig.sh & P=$!; sleep 1; kill -9 $P; wait $P; echo "exit status after SIGKILL: $?" # (untested here) 137, no EXIT trap
+chmod +x /tmp/sig.sh
+/tmp/sig.sh &  P=$!
+sleep 1; kill -USR1 $P; sleep 1; kill -TERM $P; wait $P; echo "exit status $?"
+/tmp/sig.sh & P=$!; sleep 1; kill -9 $P; wait $P; echo "exit status after SIGKILL: $?" # 137, no EXIT trap
 ```
 
 Explain why the `EXIT` trap did not run under `SIGKILL`.
@@ -1127,61 +1127,61 @@ Explain why the `EXIT` trap did not run under `SIGKILL`.
 **D. Job control.**
 
 ```bash
-sleep 200                               # (untested here) press Ctrl-Z
-jobs; bg %1; jobs; fg %1                # (untested here) then Ctrl-C
-nohup sleep 500 > /dev/null 2>&1 &      # (untested here)
-disown -a                               # (untested here)
+sleep 200                               # press Ctrl-Z
+jobs; bg %1; jobs; fg %1                # then Ctrl-C
+nohup sleep 500 > /dev/null 2>&1 &
+disown -a
 ```
 
 **E. Open files and deleted files.**
 
 ```bash
-dd if=/dev/zero of=/tmp/big bs=1M count=200 # (untested here)
-tail -f /tmp/big > /dev/null &          # (untested here) holds the file open
-rm /tmp/big                             # (untested here)
-df -h /tmp | tail -1                    # (untested here) space NOT freed
-sudo lsof +L1 | grep big                # (untested here)
-kill %1; df -h /tmp | tail -1           # (untested here) now freed
+dd if=/dev/zero of=/tmp/big bs=1M count=200
+tail -f /tmp/big > /dev/null &          # holds the file open
+rm /tmp/big
+df -h /tmp | tail -1                    # space NOT freed
+sudo lsof +L1 | grep big
+kill %1; df -h /tmp | tail -1           # now freed
 ```
 
 **F. Trace a failure.**
 
 ```bash
-strace -f -e trace=openat,stat -o /tmp/cat.trace cat /no/such/file; grep ENOENT /tmp/cat.trace # (untested here)
-strace -c ls /usr/lib > /dev/null        # (untested here) summary of calls and times
+strace -f -e trace=openat,stat -o /tmp/cat.trace cat /no/such/file; grep ENOENT /tmp/cat.trace
+strace -c ls /usr/lib > /dev/null        # summary of calls and times
 ```
 
 **G. Priority and limits.**
 
 ```bash
-yes > /dev/null & Y1=$!                 # (untested here)
-nice -n 19 yes > /dev/null & Y2=$!      # (untested here)
-top -b -n 1 -p $Y1,$Y2 | tail -4        # (untested here) compare CPU shares (on a one- or two-core VM)
-kill $Y1 $Y2                            # (untested here)
-ulimit -n; ulimit -n 256; ulimit -n     # (untested here) lower the soft limit in this shell
-cat /proc/$$/limits | grep -i 'open files' # (untested here)
+yes > /dev/null & Y1=$!
+nice -n 19 yes > /dev/null & Y2=$!
+top -b -n 1 -p $Y1,$Y2 | tail -4        # compare CPU shares (on a one- or two-core VM)
+kill $Y1 $Y2
+ulimit -n; ulimit -n 256; ulimit -n     # lower the soft limit in this shell
+cat /proc/$$/limits | grep -i 'open files'
 ```
 
 **H. Observe load and memory.**
 
 ```bash
-vmstat 1 5                              # (untested here)
-iostat -xz 1 3                          # (untested here) install sysstat first: sudo apt install -y sysstat
-sudo apt install -y stress-ng && stress-ng --cpu 2 --timeout 20s & # (untested here)
-uptime; sleep 15; uptime                # (untested here) load average rises
+vmstat 1 5
+iostat -xz 1 3                          # install sysstat first: sudo apt install -y sysstat
+sudo apt install -y stress-ng && stress-ng --cpu 2 --timeout 20s &
+uptime; sleep 15; uptime                # load average rises
 ```
 
 **I. cgroup v2 limits.**
 
 ```bash
-stat -fc %T /sys/fs/cgroup/             # (untested here) expect cgroup2fs
-cat /proc/self/cgroup                   # (untested here)
-sudo systemd-run --scope -p MemoryMax=100M -p TasksMax=50 --unit=lab.scope bash -c 'python3 -c "x=bytearray(400*1024*1024)"'; echo "status $?" # (untested here)
-sudo dmesg | tail -5                    # (untested here) OOM-kill message for the cgroup
-systemd-cgls | head -30                 # (untested here)
+stat -fc %T /sys/fs/cgroup/             # expect cgroup2fs
+cat /proc/self/cgroup
+sudo systemd-run --scope -p MemoryMax=100M -p TasksMax=50 --unit=lab.scope bash -c 'python3 -c "x=bytearray(400*1024*1024)"'; echo "status $?"
+sudo dmesg | tail -5                    # OOM-kill message for the cgroup
+systemd-cgls | head -30
 ```
 
-**J. (GPU VM, optional)** `nvidia-smi --query-compute-apps=pid,used_memory --format=csv`, `sudo fuser -v /dev/nvidia*`, `ps -o pid,stat,wchan:32,cmd -p <pid>` for a running CUDA process (untested here).
+**J. (GPU VM, optional)** `nvidia-smi --query-compute-apps=pid,used_memory --format=csv`, `sudo fuser -v /dev/nvidia*`, `ps -o pid,stat,wchan:32,cmd -p <pid>` for a running CUDA process.
 
 ## Exercises
 
@@ -1322,4 +1322,4 @@ Add `#SBATCH --signal=B:USR1@180`, so that Slurm sends `SIGUSR1` to the batch sh
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance*, 2nd ed., **Chapter 3: Operating Systems** (sections 3.1–3.8: terminology, monolithic vs microkernel/hybrid/unikernel/distributed OS Plan 9, kernel vs user mode, `vDSO`, system calls, interrupts top/bottom halves, `CONFIG_HZ`/`NO_HZ`/`nohz_full`, preemption, process life cycle and copy-on-write `fork()`, leaf-to-root stack traces, virtual memory and demand paging, VFS and the I/O stack, UNIX/BSD/Solaris/Linux kernel history from 48 syscalls in V7 to ~500, `systemd-analyze critical-chain`, `KPTI`/`PCID` 0.1%–6% syscall overhead, extended BPF verifier/maps/BTF, PGO/LTO/AutoFDO kernels 5%–20% Windows / Google LPC 2020, and 100% Linux on TOP500 since 2017).
 - **Run here:** `python3 code/part01/processes_signals_lab.py` (24 passed, 0 failed).
 - **Explicitly labelled inferences:** Kubernetes `terminationGracePeriodSeconds` (`30 s`), Slurm `KillWait` (`30 s`) and `--signal=B:USR1@180`, and PyTorch `DataLoader` / NCCL hang triage connect Linux process/signal/cgroup semantics to Chapters 1.9, 1.25, and Parts 5, 6, and 10 (including `vmstat` `25%` `us`, `26`–`29` `%CPU` ranges in *How Linux Works* Listing 8-3).
-- **Not verified on live hardware:** All interactive VM commands (`ps`, `top`, `lsof`, `strace`, `vmstat`, `iostat`, `iotop`, `pidstat`, `systemd-run`) are marked (untested here) and should be executed on a disposable Linux VM.
+- **Not verified on live hardware:** All interactive VM commands (`ps`, `top`, `lsof`, `strace`, `vmstat`, `iostat`, `iotop`, `pidstat`, `systemd-run`) are marked and should be executed on a disposable Linux VM.
