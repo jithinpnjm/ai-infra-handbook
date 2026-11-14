@@ -102,3 +102,6 @@ Part 16 (15 ch) rewritten and committed (+29-39% words, guard 0 hard, chain <=0.
 
 ## Part 17 status (2026-11-14)
 Part 17 (16 ch) rewritten and committed (+28-39% words, guard 0 hard, chain <=1.1 (17.11 locked IC table cells), spans 0 lost, Mermaid 776 ok, build ok). OWNER DECISION: RULES rule 10 asks for scenario-style checkpoints in Parts 16-18, but rule 5 locks checkpoint text; many Part 17 (and some 16/18) checkpoints are recall-style (e.g. 17.13 #8, 17.14 #8, 18.2 #6). Left unchanged; decide whether a separate checkpoint-rewrite pass is wanted. Other open items in ledgers voice_rewrite_part17_*.md (Kubecost pin, 17.11 severity rule, unverified attributions). Part 18 (7 ch) in progress; Part 19 next.
+
+## Part 18 status (2026-11-14)
+Part 18 (7 ch) rewritten and committed (+31-37% words, guard 0 hard, chain 0.0, spans 0 lost). Open: checkpoints that read as bare definitions (18.2 #6, 18.6 #15, 18.7 #8) are locked, see the Part 17 owner decision on rule 10; 18.3 Gatekeeper skeleton calls undefined cosign_verify and the Kyverno rule checks a label not a signature (locked YAML, flagged in prose); 18.4 Pod Security label namespace (team-data-science) vs VAP binding (mlops) mismatch, lab step 2 references rbac_rolebinding.yaml not shown. Part 19 (15 ch) in progress.
