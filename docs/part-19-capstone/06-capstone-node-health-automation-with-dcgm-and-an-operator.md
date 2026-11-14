@@ -24,15 +24,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-It is 3 a.m. A training job on a pool of four GPU nodes keeps dying and restarting. The on-call engineer finally notices that the pod always lands on the same node. One GPU on that node has been reporting Xid errors for two days. Nothing drained the node and nothing paged anyone, so the scheduler kept sending work to failing hardware.
+It is 3 a.m. A training job on a pool of four GPU nodes keeps dying and restarting. The on-call engineer finally notices that the pod always lands on the same node. One GPU on that node has been reporting Xid errors for two days. An Xid is an error code the NVIDIA driver writes to the kernel log when the GPU hits a fault. Nothing drained the node and nothing paged anyone, so the scheduler kept sending work to failing hardware.
 
-Every check in that story was green. The exporter was up, Prometheus was scraping and the dashboard looked healthy. What was missing was the loop between the signal and the action. That loop is this capstone.
+Every check in that story was green. The exporter was up, Prometheus was scraping and the dashboard looked healthy. What was missing was the loop between the signal and the action. A signal is a measurement, such as an Xid code or a temperature. A signal can be wrong, late or missing, and the loop has to be designed for all three. An action is a change to the cluster, such as cordoning a node so nothing new lands on it. That loop is this capstone.
 
-The loop has five surfaces. The first is the signal set, meaning the DCGM fields that must reach Prometheus. The second is the alert design, which separates a GPU that fell off the bus from a harmless remap event. The third is the safety model, which decides what a machine may do alone and caps the damage it can cause. The fourth is the operator, which turns a node condition into a cordon and a drain. The fifth is the game day, which proves the loop before the first real failure.
+The loop has five surfaces. The first is the signal set, meaning the DCGM fields that must reach Prometheus. DCGM is NVIDIA's Data Center GPU Manager, the library that reads GPU health. The second is the alert design, which separates a GPU that fell off the bus from a harmless remap event. A remap event means the GPU has moved a damaged memory row to a spare row, which is normal wear. The third is the safety model, which decides what a machine may do alone and caps the damage it can cause. The fourth is the operator, which turns a node condition into a cordon and a drain. A cordon marks a node unschedulable, and a drain moves its running pods elsewhere. The fifth is the game day, which proves the loop before the first real failure.
 
 This chapter is also an interview anchor. The same topic appears from the design side in [Chapter 20.16](../part-20-nebius-sre-interview/16-design-gpu-fleet-health-and-capacity.md). That chapter owns the fleet-level reasoning, the spare-pool arithmetic and the drain order for inference traffic. This one builds the pieces and runs what can be run on a laptop. I reuse its checked facts by link and do not repeat them.
 
-A word on what was run. The host for this chapter is a Mac with no GPU and no cluster. The alert rules, the Alertmanager routing, the policy model, the arithmetic and the Go operator tests were all run here. Every step that needs a GPU, DCGM or a GKE cluster is marked as not run, and no output is invented.
+A word on what was run. The host for this chapter is a Mac with no GPU and no cluster. The alert rules, the Alertmanager routing, the policy model, the arithmetic and the Go operator tests were all run here. Every step that needs a GPU, DCGM or a GKE cluster is marked as not run, and no output is invented. Read the lab with that split in mind, because the first half of it is evidence and the second half is a plan.
 
 ## Prerequisites and outcomes
 
@@ -46,28 +46,21 @@ A word on what was run. The host for this chapter is a Mac with no GPU and no cl
 
 ### Outcomes
 
-After this capstone you will be able to:
-
-1. Enable the DCGM counters that are off by default and check each metric name against the exporter's own file.
-2. Write and unit-test alert rules that page on hardware faults and stay quiet on noise.
-3. State which events a machine may remediate alone and which it must hand to a person.
-4. Explain what the Go operator does, what it does not do, and what the reference model adds.
-5. Work the Xid runbooks from the NVIDIA catalog and collect the evidence before any reset.
-6. Run a game day with time targets that are derived from the loop's own settings.
+Picture the first week after the pool goes into production. The team needs counters that actually report, alerts that page on hardware faults and stay quiet on noise, and a clear line between what a machine may do alone and what a person must decide. The chapter follows that line. It turns on the DCGM counters that are off by default and checks each metric name against the exporter's own file. It writes alert rules that are unit-tested in both directions. It states which events a machine may remediate alone, and it explains what the Go operator does, what it does not do and what the reference model adds. It then works the Xid runbooks from the NVIDIA catalog, collecting evidence before any reset, and ends with a game day whose time targets come from the loop's own settings.
 
 ---
 
 ## 1. The signal set: what the exporter must expose
 
-A GPU in a four-node pool looked healthy for two weeks. Snapshots from `nvidia-smi` showed a stable temperature and no errors. Then a training job produced corrupt output overnight. The post-mortem found that the corrected-error counter had been climbing for days. Nobody saw it, because the team looked at snapshots and watched nothing over time.
+A GPU in a four-node pool looked healthy for two weeks. Snapshots from `nvidia-smi` showed a stable temperature and no errors. Then a training job produced corrupt output overnight. The post-mortem found that the corrected-error counter had been climbing for days. Nobody saw it, because the team looked at snapshots and watched nothing over time. A corrected error is a memory bit flip that the hardware fixed on its own, and a rising count of them is an early warning. Watching a counter over time is the whole reason for a metrics pipeline.
 
-DCGM, the Data Center GPU Manager, reads GPU state through the driver. The DCGM exporter turns that state into Prometheus metrics. On Kubernetes the GPU Operator deploys the exporter for you. The exporter pods carry the label `app=nvidia-dcgm-exporter`, and the exporter serves metrics on port 9400. Its default collection interval is 30000 milliseconds, which is 30 seconds.
+DCGM, the Data Center GPU Manager, reads GPU state through the driver. The DCGM exporter turns that state into Prometheus metrics. Prometheus is the time-series store that scrapes and keeps those numbers. On Kubernetes the GPU Operator deploys the exporter for you. The exporter pods carry the label `app=nvidia-dcgm-exporter`, and the exporter serves metrics on port 9400. Its default collection interval is 30000 milliseconds, which is 30 seconds. So every value on the dashboard is up to half a minute old.
 
-The exporter does not export every field. It reads a collector file with three columns: the DCGM field, the Prometheus type and a help text. The default file in release 4.9.0 turns on a short list of fields. It lists many others as comments. Release 4.9.0 was published on 2026-11-06, and I read its `etc/default-counters.csv` on 2026-11-10.
+The exporter does not export every field. It reads a collector file with three columns: the DCGM field, the Prometheus type and a help text. A field is one measured quantity inside DCGM. The default file in release 4.9.0 turns on a short list of fields. It lists many others as comments, which means they exist but produce no data until someone removes the comment marker. Release 4.9.0 was published on 2026-11-06, and I read its `etc/default-counters.csv` on 2026-11-10.
 
-This matters because the names changed. Older material, including some of this handbook, uses names such as `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_XID_ERRORS` and `DCGM_FI_DEV_FB_USED`. None of them appear in the 4.9.0 default file. The same file uses `DCGM_FI_DEV_GPU_UTIL_RATIO`, `DCGM_FI_DEV_XID_ERROR` and `DCGM_FI_DEV_FB_USED_BYTES`. This chapter uses only names that the file contains, and a test checks that.
+This matters because the names changed. Older material, including some of this handbook, uses names such as `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_XID_ERRORS` and `DCGM_FI_DEV_FB_USED`. None of them appear in the 4.9.0 default file. The same file uses `DCGM_FI_DEV_GPU_UTIL_RATIO`, `DCGM_FI_DEV_XID_ERROR` and `DCGM_FI_DEV_FB_USED_BYTES`. An alert written on an old name never matches anything, so it stays silent forever. This chapter uses only names that the file contains, and a test checks that.
 
-The table lists the signals this capstone alerts on. The last column says whether the field is on in the default file. A field marked "off" must be enabled in your own collector file before the alert can ever fire.
+The table lists the signals this capstone alerts on. The last column says whether the field is on in the default file. A field marked "off" must be enabled in your own collector file before the alert can ever fire. Read the table as a checklist for your own file, one row at a time.
 
 | Group | Metric in 4.9.0 | Type | Default file | What it tells you |
 |---|---|---|---|---|
@@ -81,9 +74,11 @@ The table lists the signals this capstone alerts on. The last column says whethe
 | Interconnect | `DCGM_FI_DEV_PCIE_REPLAY_TOTAL` | counter | on | PCIe retries |
 | Interconnect | `DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL` | counter | off | Data-link CRC errors, the Hopper counter |
 
-The Hopper counter in the last row has older siblings for earlier GPUs. They carry different names, such as `DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_TOTAL`. Check which one your GPU generation reports before you write the rule. The default file marks that split with its own comments.
+The groups in that table answer different questions. Events tell you that something broke. Thermal and power counters tell you that the GPU is being held back, which can look like a slow job rather than a fault. Memory counters tell you whether the GPU's own memory is wearing out, and the interconnect counters tell you whether the wires between GPUs are noisy. A complete signal set covers all four groups, because a single group can miss the failure that the others would have caught.
 
-Because the GPU Operator replaces the shipped file when you supply a custom one, your file must list every field your alerts use. The file below does that for this chapter. The ConfigMap key must be `dcgm-metrics.csv`.
+The Hopper counter in the last row has older siblings for earlier GPUs. Hopper is the GPU generation that this chapter's counters are written against. The older siblings carry different names, such as `DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_TOTAL`. Check which one your GPU generation reports before you write the rule. The default file marks that split with its own comments.
+
+Because the GPU Operator replaces the shipped file when you supply a custom one, your file must list every field your alerts use. A ConfigMap is the Kubernetes object that holds a small file for a pod to read. The file below does that for this chapter. The ConfigMap key must be `dcgm-metrics.csv`. If a field is missing from the file, the exporter never reads it, and an alert on that field fails silently.
 
 ```csv
 # Custom collector file for the node-health capstone (chapter 19.6).
@@ -101,7 +96,7 @@ DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL, counter, Time below application cl
 DCGM_FI_DEV_NVLINK_CRC_ERROR_TOTAL, counter, Total number of NVLink data-link CRC errors.
 ```
 
-Two commands point the operator at that file. They follow the DCGM exporter installation page. The namespace `gpu-operator` and the ClusterPolicy name `cluster-policy` come from the GPU Operator getting-started page. The script was syntax-checked here and not run, because it needs a cluster.
+Two commands point the operator at that file. They follow the DCGM exporter installation page. The first creates the ConfigMap from the file, and the second patches the ClusterPolicy so the exporter reads it. A ClusterPolicy is the GPU Operator's cluster-wide configuration object. The namespace `gpu-operator` and the ClusterPolicy name `cluster-policy` come from the GPU Operator getting-started page. The script was syntax-checked here and not run, because it needs a cluster. The last command is the check that the exporter pods are present after the change. Run it before you trust the new file. A pod that failed to restart with the new file keeps serving nothing, and the dashboard shows no error for it. If the pods are present but a metric is still missing, check the ConfigMap key first. A key with the wrong name is the most common reason the custom file is silently ignored.
 
 ```bash
 #!/usr/bin/env bash
@@ -127,17 +122,17 @@ kubectl patch clusterpolicy "${POLICY}" --type merge \
 kubectl get pods --all-namespaces --selector app=nvidia-dcgm-exporter
 ```
 
-One metric deserves its own warning. `DCGM_FI_DEV_XID_ERROR` holds the value of the last Xid. It stays at that value until another Xid replaces it or the exporter restarts. A rule that says "equals 79" keeps firing after the repair unless the node reboots. Chapter 20.16 makes the same point, and the rule file below handles it by leaving the cleanup to the operator and the restart.
+One metric deserves its own warning. `DCGM_FI_DEV_XID_ERROR` holds the value of the last Xid. It stays at that value until another Xid replaces it or the exporter restarts. A rule that says "equals 79" keeps firing after the repair unless the node reboots. Chapter 20.16 makes the same point, and the rule file below handles it by leaving the cleanup to the operator and the restart. Think of the gauge as a sticky note. It shows the last thing written on it, and it does not show whether that thing is still true.
 
 The default file also lists exporter-owned metrics as comments. They include `DCGM_EXP_GPU_HEALTH_STATUS`, which carries the DCGM-reported health status, and `DCGM_EXP_XID_ERRORS_TOTAL`, a counter of Xid errors. Both are off by default. They are worth enabling once you have checked their semantics on your build. The rules do not use them, because their value ranges could not be read in the sources consulted.
 
 ### Watching the watcher
 
-If the exporter dies, you lose GPU visibility with no GPU symptom at all. The fleet looks healthy because it is silent. Two rules cover this. The first uses the standard `up` metric for the exporter job. The second counts GPU series per node and fires when the count drops below the expected eight. A GPU that falls off the bus is removed from DCGM's groups, so it produces no series. A count check catches that. Both rules appear in Section 2.
+If the exporter dies, you lose GPU visibility with no GPU symptom at all. The fleet looks healthy because it is silent. Silence is the dangerous state, because nothing on the dashboard turns red. Two rules cover this. The first uses the standard `up` metric for the exporter job, which Prometheus sets to 0 when a scrape fails. The second counts GPU series per node and fires when the count drops below the expected eight. A GPU that falls off the bus is removed from DCGM's groups, so it produces no series. A count check catches that. Both rules appear in Section 2.
 
-There is no freshness alert for series that stop updating while the target still answers. Prometheus stamps each sample with the scrape time, so the timestamp cannot show that the exporter served a cached value. I have no tested rule that detects that failure, and I will not ship one I cannot test.
+There is no freshness alert for series that stop updating while the target still answers. Prometheus stamps each sample with the scrape time, so the timestamp cannot show that the exporter served a cached value. I have no tested rule that detects that failure, and I will not ship one I cannot test. Say so in the runbook, so that the on-call engineer does not assume a green panel means fresh data.
 
-The `health` side of DCGM is a second source worth knowing. The DCGM documentation describes background health checks that you set with `dcgmi health` and read with `dcgmi health -c`. The watch flags are p for PCIe, m for memory, i for InfoROM, t for thermal and power, n for NVLink, d for driver, x for ConnectX and a for all. These checks run while jobs run and, per the documentation, have no effect on application behaviour. A warning means the work can finish but the issue needs a look. An error means the work is likely compromised.
+The `health` side of DCGM is a second source worth knowing. The DCGM documentation describes background health checks that you set with `dcgmi health` and read with `dcgmi health -c`. The `dcgmi` command is DCGM's own command-line tool. The watch flags are p for PCIe, m for memory, i for InfoROM, t for thermal and power, n for NVLink, d for driver, x for ConnectX and a for all. InfoROM is the small storage area on the board that holds the GPU's configuration data. These checks run while jobs run and, per the documentation, have no effect on application behaviour. A warning means the work can finish but the issue needs a look. An error means the work is likely compromised.
 
 **Decision rule:** a signal set is ready only when every metric name in your rules exists in your exporter's own file, the off-by-default counters are enabled, and the exporter's liveness and GPU count are watched.
 
@@ -147,9 +142,9 @@ The `health` side of DCGM is a second source worth knowing. The DCGM documentati
 
 ## 2. Alert design: classes, thresholds and routing
 
-An early cluster paged on every Xid. Within a week the on-call engineer knew exactly which pages to ignore. Then the page that mattered arrived during a night when that engineer had already muted the channel. The lesson is not better thresholds. The lesson is to decide which events deserve a page at all.
+An early cluster paged on every Xid. Within a week the on-call engineer knew exactly which pages to ignore. Then the page that mattered arrived during a night when that engineer had already muted the channel. Alert fatigue is the name for this pattern, where the volume of pages teaches people to stop listening. The lesson is not better thresholds. The lesson is to decide which events deserve a page at all, and to send everything else somewhere quieter.
 
-The NVIDIA Xid catalog gives each code an immediate action. This chapter groups codes by that action. The grouping is the chapter's policy, not NVIDIA's, and the catalog does not define the groups. The table shows the rows this chapter handles. I fetched the catalog on 2026-11-10, and its footer says it was last updated on 2026-11-04.
+The NVIDIA Xid catalog gives each code an immediate action. The immediate action is the first step the catalog recommends, such as restarting an application or resetting a GPU. This chapter groups codes by that action. The grouping is the chapter's policy, not NVIDIA's, and the catalog does not define the groups. The table shows the rows this chapter handles. I fetched the catalog on 2026-11-10, and its footer says it was last updated on 2026-11-04. Read the table left to right: the code, what the catalog says it means, what the catalog says to do, and which policy class this chapter puts it in.
 
 | Xid | Catalog description | Catalog immediate action | Class in this policy |
 |---|---|---|---|
@@ -171,11 +166,13 @@ The NVIDIA Xid catalog gives each code an immediate action. This chapter groups 
 | 119 | GSP RPC Timeout | RESET_GPU | unrecoverable |
 | 120 | GSP Error | RESET_GPU | unrecoverable |
 
-Three points come from this table. Xid 61 is listed as unused, so it has no alert rule. Xid 62 is the micro-controller halt. And Xid 92 has an immediate action of IGNORE, which is why it is a trend to review and never a real-time page. The investigatory column for 92 says to contact support, so a rising rate still deserves a ticket.
+Three points come from this table, and each one changes what goes on the pager. Read the table again with those three points in mind, and the class column will make more sense. Xid 61 is listed as unused, so it has no alert rule. Nothing can fire on a code that the catalog never issues. Xid 62 is the micro-controller halt, which means the GPU's internal controller stopped, and the catalog wants a reset. And Xid 92 has an immediate action of IGNORE, which is why it is a trend to review and never a real-time page. The investigatory column for 92 says to contact support, so a rising rate still deserves a ticket. A trend is a number you read on a schedule, and a page is a call that wakes someone up.
 
-Xid 94 needs a note. The catalog says to restart the application, and it also recommends a GPU reset when convenient. I class it as an application event and keep it out of the page rules. Treat a repeat on the same GPU as a reason to look at hardware. That escalation is my reasoning, not catalog text.
+Xid 94 needs a note. The catalog says to restart the application, and it also recommends a GPU reset when convenient. I class it as an application event and keep it out of the page rules. Treat a repeat on the same GPU as a reason to look at hardware. That escalation is my reasoning, not catalog text. The reset is a convenience, not an emergency, so it belongs in the next maintenance window rather than in the middle of the night. A page in the middle of the night for a code that the catalog itself says to fix when convenient would train people to ignore the pager.
 
-The class table lives in code, so the policy and the alert rules cannot drift apart without a failing test. This module holds it. A test compares its table to a snapshot file of the catalog rows.
+Here is how the module answers a question in practice. Given a code, `classify_xid` looks it up and returns its class. A code that is not in the table comes back as unknown, and an unknown code always goes to a person. The module never assumes that an unfamiliar code is harmless. That single rule is what keeps a new catalog entry from being silently ignored.
+
+The class table lives in code, so the policy and the alert rules cannot drift apart without a failing test. A drift is what happens when two copies of the same rule slowly disagree. This module holds the table. A test compares its table to a snapshot file of the catalog rows, so a change to one side without the other makes the test fail.
 
 ```python
 """Map an Xid to the action class this chapter's policy uses (chapter 19.6).
@@ -214,7 +211,9 @@ def classify_xid(xid):
     return CLASS_OF.get(xid, UNKNOWN)
 ```
 
-The rules follow the classes. Reset-class Xids page at once with `for: 0m`. Waiting is how a failed GPU keeps taking work. Xid 74 gets a warning, since its workflow is its own. Counters use `increase()` over a window instead of raw values, so an old double-bit error does not alert forever.
+Read the rule file from the top down, one block at a time. Each block has a name, a condition written as a query, a `for` clause, and labels that route the alert. The comments at the top name the source of every metric, so you can check a metric name against the exporter's file without leaving the page. The thresholds are the second thing to read, and the comment on each one says whether it came from a source or from the chapter.
+
+The rules follow the classes. Reset-class Xids page at once with `for: 0m`. The `for` clause is how long a condition must hold before the alert fires, so zero means fire on the first sample. Waiting is how a failed GPU keeps taking work. Xid 74 gets a warning, since its workflow is its own. Counters use `increase()` over a window instead of raw values, so an old double-bit error does not alert forever. `increase()` measures how much a counter grew inside the window, and a counter that stopped growing years ago stops alerting.
 
 ```yaml
 # Node-health alert rules for the capstone (chapter 19.6).
@@ -393,15 +392,15 @@ groups:
 
 Four design points sit inside that file.
 
-First, the thresholds marked "start value" are mine. They are 100 corrected ECC errors per hour, 10 PCIe replays per hour, 1000 NVLink CRC errors in six hours, 60 throttled seconds in 15 minutes and a temperature rise of 2 degrees per minute. No vendor document gives them. The nvidia-devops fan-failure chapter lists a rise of 2 to 3 degrees per minute under load as a symptom of a failing fan, which is where I took the idea. Tune them on your own fleet.
+First, the thresholds marked "start value" are mine. They are 100 corrected ECC errors per hour, 10 PCIe replays per hour, 1000 NVLink CRC errors in six hours, 60 throttled seconds in 15 minutes and a temperature rise of 2 degrees per minute. No vendor document gives them. The nvidia-devops fan-failure chapter lists a rise of 2 to 3 degrees per minute under load as a symptom of a failing fan, which is where I took the idea. Tune them on your own fleet, and write down the healthy baseline you tuned against, so the next person can see where the numbers came from.
 
-Second, the temperature rule watches the rate of rise and not a level. Data-centre GPUs run warm by design. A level alert fires on healthy clusters every day. A fast rise means something changed.
+Second, the temperature rule watches the rate of rise and not a level. Data-centre GPUs run warm by design, and a level alert would fire on healthy clusters every day. A fast rise means something changed, such as a failed fan or a blocked airflow path. Picture a kettle that is hot because it is working. Only a kettle that heats up faster than usual is a concern.
 
-Third, there is no memory-pressure alert. A training process that reserves nearly all GPU memory is normal, so the alert would fire constantly and say nothing about the node's health. That is a workload signal and belongs on a workload dashboard.
+Third, there is no memory-pressure alert. A training process that reserves nearly all GPU memory is normal, so the alert would fire constantly and say nothing about the node's health. That is a workload signal and belongs on a workload dashboard, where the team that owns the job can act on it.
 
-Fourth, `FleetWideXid` pages when three or more GPUs report reset-class Xids at once. Three simultaneous hardware failures are rarer than one shared cause, such as a driver rollout or a power event. Section 4 shows the circuit breaker that matches this alert.
+Fourth, `FleetWideXid` pages when three or more GPUs report reset-class Xids at once. Three simultaneous hardware failures are rarer than one shared cause, such as a driver rollout or a power event. A shared cause is the kind of event that should stop automation, not feed it. Section 4 shows the circuit breaker that matches this alert.
 
-Every alert has a `severity` and an `event_class` label. Alertmanager routes on them. The routing file reads its two secrets from files. A Kubernetes Secret should mount those files with mode 0400, owned by the Alertmanager user. Nothing secret appears in the file.
+Every alert has a `severity` and an `event_class` label. Alertmanager is the component that receives alerts and decides who hears about them, and it routes on those two labels. The routing file reads its two secrets from files. A Kubernetes Secret should mount those files with mode 0400, owned by the Alertmanager user. Mode 0400 means only the owner can read the file. Nothing secret appears in the file.
 
 ```yaml
 # Alertmanager routing for node health (chapter 19.6).
@@ -434,9 +433,9 @@ receivers:
         channel: "#node-health"
 ```
 
-All of this was run here. `promtool check rules` found 14 rules. `promtool test rules` passed 11 test groups, including the failure cases: Xid 63 and Xid 13 do not fire the reset rule, two nodes with Xid 79 do not fire the fleet rule, and a node with eight GPUs does not fire the count rule. `amtool check-config` passed, and `amtool config routes test` sent a fleet-class alert and a critical alert to PagerDuty, a thermal warning to Slack and an unlabelled alert to the default receiver.
+A rule file is only as useful as the alerts it sends, so the rules and the routing are checked together. A rule that fires into a receiver nobody reads is the same as a rule that never fires. The checks below do not need a cluster. They need the rule file, the routing file and two command-line tools. Here is what was run for the rule file and the routing. Promtool is Prometheus's own tool for checking rule files, and amtool is the matching tool for Alertmanager. `promtool check rules` found 14 rules. `promtool test rules` passed 11 test groups, including the failure cases: Xid 63 and Xid 13 do not fire the reset rule, two nodes with Xid 79 do not fire the fleet rule, and a node with eight GPUs does not fire the count rule. `amtool check-config` passed, and `amtool config routes test` sent a fleet-class alert and a critical alert to PagerDuty, a thermal warning to Slack and an unlabelled alert to the default receiver.
 
-An alert needs an objective behind it. The arithmetic below is computed by a tested script. Three results matter. A 99 percent availability target allows 438 minutes, which is 7.3 hours a month. A 99.9 percent target allows 43.8 minutes. And a 98 percent GPU-health target allows 2 failing GPUs out of 100, but allows none out of 32.
+An alert needs an objective behind it, and the objective needs arithmetic. A service level objective, or SLO, is the availability target the team promises. Without the arithmetic, a target like "99 percent" sounds generous until it is turned into minutes. The arithmetic below is computed by a tested script. Three results matter. A 99 percent availability target allows 438 minutes, which is 7.3 hours a month. A 99.9 percent target allows 43.8 minutes. And a 98 percent GPU-health target allows 2 failing GPUs out of 100, but allows none out of 32.
 
 ```python
 """Worked arithmetic for chapter 19.6: error budgets, pool fractions and loop latency.
@@ -488,7 +487,7 @@ if __name__ == "__main__":
           f"worst-case cordon after the condition {worst_case_cordon_seconds()} s")
 ```
 
-On this chapter's pool one node is 8 of 32 GPUs, which is 25 percent. A single drain therefore already costs more than the 2 percent a 98 percent GPU-health target allows at that size. That is not a flaw in the loop. It is the reason a small pool needs a spare node, which Chapter 20.16 sizes.
+On this chapter's pool one node is 8 of 32 GPUs, which is 25 percent. A single drain therefore already costs more than the 2 percent a 98 percent GPU-health target allows at that size. That is not a flaw in the loop. It is the reason a small pool needs a spare node, which Chapter 20.16 sizes. The point of the arithmetic is to make the trade visible before the first drain happens, not after.
 
 **Decision rule:** classify the event from the catalog's immediate action before you write the rule, page only on classes that need a person now, and unit-test every rule with a case that must fire and a case that must not.
 
@@ -498,11 +497,11 @@ On this chapter's pool one node is 8 of 32 GPUs, which is 25 percent. A single d
 
 ## 3. The safety model: what automation may do alone
 
-A first-generation remediator watched a health metric. A scrape backlog made the metric look stale, so the remediator decided the fleet was sick and cordoned every node it could reach. Nothing could be scheduled afterwards. A second incident taught the other half. A person cordoned a node for maintenance and forgot it, and the half-empty pool survived two weeks before a capacity review noticed. These two stories are composites. I wrote them to make two rules concrete: silence is not a fault, and a cordon needs an owner.
+A first-generation remediator watched a health metric. A scrape backlog made the metric look stale, so the remediator decided the fleet was sick and cordoned every node it could reach. Nothing could be scheduled afterwards. A second incident taught the other half. A person cordoned a node for maintenance and forgot it, and the half-empty pool survived two weeks before a capacity review noticed. These two stories are composites. I wrote them to make two rules concrete: silence is not a fault, and a cordon needs an owner. The first story is about a machine that acted on silence, and the second is about a human who left a cordon behind with no record of why.
 
-The first rule is to separate detection from action. A condition agent publishes a node condition named `GPUHealthy`. The operator reads only that condition. It never detects anything. A bad detector can be wrong, but the operator's budget and windows decide how much that wrongness can cost. The same split appears in Chapter 20.16 as three separate components.
+The first rule is to separate detection from action, and it is the rule that the rest of the chapter depends on. A condition agent publishes a node condition named `GPUHealthy`. A node condition is a status field on the Kubernetes node object that says whether something is true about the node. The operator reads only that condition. It never detects anything. A bad detector can be wrong, but the operator's budget and windows decide how much that wrongness can cost. The same split appears in Chapter 20.16 as three separate components.
 
-The second rule is to classify every event by what the machine may do. The table is this chapter's policy. The last column names the human owner, because every automated action needs a person who can take it back.
+The second rule is to classify every event by what the machine may do. The table is this chapter's policy. The last column names the human owner, because every automated action needs a person who can take it back. An action that nobody owns is an action nobody can reverse on a bad night.
 
 | Event class | Example | What the machine does | What the human owns |
 |---|---|---|---|
@@ -513,20 +512,20 @@ The second rule is to classify every event by what the machine may do. The table
 | Thermal or power | Sustained throttling | Nothing, or reduce load. Never drain | The cooling and power checks |
 | Detection blind spot | Exporter down, condition missing | Page. Cordon nothing | Restore detection |
 
-Why does the line sit there? A drain is cheap to undo. A healthy node that is drained loses only capacity. A bad node that is drained stops corrupting work. An uncordon is different. It can send work back to a dying GPU. So the return path carries a gate and not a timer. This is my reasoning, and Chapter 20.16 draws the same asymmetry.
+Why does the line sit there? A drain is cheap to undo. A healthy node that is drained loses only capacity. A bad node that is drained stops corrupting work. An uncordon is different. It can send work back to a dying GPU. So the return path carries a gate and not a timer. A gate is a condition that must be proven, such as a passed diagnostic, while a timer only says that time has gone by. This is my reasoning, and Chapter 20.16 draws the same asymmetry.
 
 The AI Factory book offers a useful frame in its chapter on data-driven decision making. It notes that recommended maintenance actions carry uncertainty, and that a person can ignore an unsuitable recommendation while a machine may apply it blindly. That is why the policy gives the machine only the actions whose cost is bounded.
 
-Four limits keep safe actions from becoming a meltdown. They match the fields of the `GPUHealthPolicy` in Section 4.
+Four limits keep safe actions from becoming a meltdown. They match the fields of the `GPUHealthPolicy` in Section 4. Each limit answers a different way that automation can go wrong, so read them as four separate brakes.
 
-- A stabilisation window, `unhealthyFor`, defaults to 2 minutes. The condition must stay false that long before any action.
-- A recovery window, `healthyFor`, defaults to 5 minutes. The condition must stay true that long before a node returns.
-- A budget, `maxUnavailableNodes`, caps how many matched nodes may be unschedulable. A percentage rounds up.
-- A dry-run flag reports what would happen and changes nothing.
+- A stabilisation window, `unhealthyFor`, defaults to 2 minutes. The condition must stay false that long before any action. This stops a short blip from causing a cordon. A blip is a reading that spikes for a moment and then returns to normal, and a cordon for a blip wastes capacity for no gain.
+- A recovery window, `healthyFor`, defaults to 5 minutes. The condition must stay true that long before a node returns. This stops a node that flickers from bouncing in and out of the pool. A node that returns and fails again within minutes costs more than one that stays out for a while.
+- A budget, `maxUnavailableNodes`, caps how many matched nodes may be unschedulable. A percentage rounds up. This stops a bad rule from taking the whole pool down at once. The budget is the limit that protects you when the detector is wrong.
+- A dry-run flag reports what would happen and changes nothing. This lets you watch a new policy before it can act. Run it long enough to see the kinds of events the policy would act on in a normal week.
 
-The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. The operator's own `Budget` function returns both numbers.
+The budget needs an example. On this chapter's pool of four nodes, 10 percent rounds up to 1 node. On a pool of 32 nodes it is 4. The operator's own `Budget` function returns both numbers. Rounding up is the safer choice on a small pool, because a budget that rounded down to zero would block every cordon.
 
-The Go operator enforces the rule that an unlimited drain cannot exist. Its custom resource definition carries a validation rule. I created a policy with `action: CordonAndDrain` and no budget against a real kube-apiserver, version 1.31.0, started by the operator's envtest suite. The server answered with this text.
+The Go operator enforces the rule that an unlimited drain cannot exist. The reason for a hard rule in the schema, and not just a note in the documentation, is that a policy written in a hurry is the one most likely to leave the budget out. Putting the check in the API server means the mistake is caught at apply time, before any node is touched. Its custom resource definition carries a validation rule. A custom resource definition, or CRD, is the schema that tells the API server what a custom object may contain. I created a policy with `action: CordonAndDrain` and no budget against a real kube-apiserver, version 1.31.0, started by the operator's envtest suite. Envtest is the test harness that starts a real API server and etcd for a test run. The server answered with this text.
 
 ```text
 GPUHealthPolicy.platform.example.com "tmp-nobudget" is invalid: spec: Invalid value: "object": maxUnavailableNodes is required when action is CordonAndDrain
@@ -540,9 +539,9 @@ GPUHealthPolicy.platform.example.com "tmp-nobudget" is invalid: spec: Invalid va
 
 ## 4. The operator and the policy model
 
-A node sat in `SchedulingDisabled` for two weeks. The only record of why was a chat message from a previous shift. Pods that should have landed there went to a costlier pool, and the capacity review was wrong for a month. A manual cordon has no owner, no reason and no release. An operator can make a cordon a state with all three.
+Picture the capacity review that opens with a question nobody can answer. Why is one node still unschedulable after two weeks? A node sat in `SchedulingDisabled` for two weeks. That is the state Kubernetes shows for a cordoned node. The only record of why was a chat message from a previous shift. Pods that should have landed there went to a costlier pool, and the capacity review was wrong for a month. A manual cordon has no owner, no reason and no release. An operator can make a cordon a state with all three, because it writes the owner and the reason onto the node and it knows when the cordon should end.
 
-[Chapter 5.32](../part-05-kubernetes/32-project-a-gpu-node-health-operator.md) builds that operator in Go with controller-runtime. This chapter does not copy its code. It runs it, reads it against the safety model, and adds what it lacks. The diagram shows the whole loop. The solid boxes are in the Go operator. The dashed boxes are in the reference model.
+[Chapter 5.32](../part-05-kubernetes/32-project-a-gpu-node-health-operator.md) builds that operator in Go with controller-runtime, which is the library that Go controllers use to watch objects and react to changes. This chapter does not copy its code. It runs it, reads it against the safety model, and adds what it lacks. The diagram shows the whole loop. The solid boxes are in the Go operator. The dashed boxes are in the reference model.
 
 ```mermaid
 flowchart LR
@@ -567,11 +566,11 @@ flowchart LR
 | Circuit breaker | Not present | Freeze when several nodes flag together |
 | Ticket and diagnostic gate | Not present | Required before an owned node returns |
 
-On the Go side, `go build ./...` and `go vet ./...` in `code/gpuhealth` completed without output. The test suite passes, and it needs the envtest binaries, which start a real kube-apiserver and etcd. Without them the tests stop in `TestMain`. With them, the tests ran against Kubernetes 1.31.0 and seven tests passed: `TestJudge`, `TestBudgetAndPlan`, `TestCordonThenUncordon`, `TestBudgetLimitsCordons`, `TestDryRunDoesNothing`, `TestPendingWindowWaits` and `TestFinalizerReleasesOwnCordonsOnly`. The Kubebuilder and controller-runtime material describes this structure. The Reconcile function makes the system match the resource, and other controllers act on the objects it changes.
+Read the table as a feature comparison. Every row the two columns share is the same design, and every empty cell is a gap the reference model fills. On the Go side, `go build ./...` and `go vet ./...` in `code/gpuhealth` completed without output. Silence from `go vet` is the good result here. The test suite passes, and it needs the envtest binaries, which start a real kube-apiserver and etcd. Without them the tests stop in `TestMain`. With them, the tests ran against Kubernetes 1.31.0 and seven tests passed: `TestJudge`, `TestBudgetAndPlan`, `TestCordonThenUncordon`, `TestBudgetLimitsCordons`, `TestDryRunDoesNothing`, `TestPendingWindowWaits` and `TestFinalizerReleasesOwnCordonsOnly`. The Kubebuilder and controller-runtime material describes this structure. The Reconcile function makes the system match the resource, and other controllers act on the objects it changes.
 
-Reading the code against the safety model turned up a gap. In `Judge`, a node with no `GPUHealthy` condition counts as healthy. For cordoning that is right, because a missing signal must never cordon. For uncordoning it is risky. The reconciler releases any owned, unschedulable node that `Judge` calls healthy. If the condition vanished after a cordon, the node would be released with no proof. Calling `Judge` on a node with no condition returns healthy, which confirms the first half. The second half follows from reading the controller loop. No scenario that deletes a condition was run, so treat the release path as read and not run. The reference model closes the gap by requiring an explicit true condition before any return.
+Reading the code against the safety model turned up a gap, and it is the kind of gap that only a line-by-line read finds. A test suite would have passed without it, because every test in the suite starts from a node that has a condition. The gap shows up only when the condition disappears, which is a case nobody wrote a test for. On a bad night that is exactly when the operator would have to be right. In `Judge`, a node with no `GPUHealthy` condition counts as healthy. For cordoning that is right, because a missing signal must never cordon. For uncordoning it is risky. The reconciler releases any owned, unschedulable node that `Judge` calls healthy. If the condition vanished after a cordon, the node would be released with no proof. Calling `Judge` on a node with no condition returns healthy, which confirms the first half. The second half follows from reading the controller loop. No scenario that deletes a condition was run, so treat the release path as read and not run. The reference model closes the gap by requiring an explicit true condition before any return.
 
-Next, the policy objects. They are validated against the operator's CRD with `tools/check_crd_yaml.py`, which rejects unknown fields. The first is the production policy for the training pool.
+Next, the policy objects. A policy object is the YAML that tells the operator which nodes to watch and how far it may act. They are validated against the operator's CRD with `tools/check_crd_yaml.py`, which rejects unknown fields, so a typo in a field name fails before the policy is applied. The first is the production policy for the training pool.
 
 ```yaml
 # GPUHealthPolicy for the 4-node, 32-GPU training pool (chapter 19.6).
@@ -591,7 +590,7 @@ spec:
   dryRun: false
 ```
 
-Every rollout starts in dry-run mode, with the budget set to one node. The operator then emits events saying what it would do.
+Every rollout starts in dry-run mode, with the budget set to one node. Dry-run mode is the safe way to meet a new policy, because the operator reports its decisions as events and changes no node. The operator then emits events saying what it would do, and a person reads those events before the flag is turned off.
 
 ```yaml
 # First rollout of the policy: report what would happen, change nothing.
@@ -610,7 +609,7 @@ spec:
   dryRun: true
 ```
 
-The detector side needs a stand-in for the lab. This script sets the `GPUHealthy` condition by hand with a strategic merge patch on the node status. `kubectl` was not run here. The same patch shape was run against the envtest apiserver. Two patches in a row, true and then false, left one `GPUHealthy` condition set to false and the `Ready` condition untouched.
+The detector side needs a stand-in for the lab, because the real detector needs a GPU. This script sets the `GPUHealthy` condition by hand. It uses a strategic merge patch on the node status, which is a Kubernetes update that changes only the fields it names and leaves the others alone. `kubectl` was not run here. The same patch shape was run against the envtest apiserver. Two patches in a row, true and then false, left one `GPUHealthy` condition set to false and the `Ready` condition untouched.
 
 ```bash
 #!/usr/bin/env bash
@@ -632,11 +631,13 @@ JSON
 
 ### The reference model
 
-The file `c06_node_policy.py` is a pure-Python model of the policy. Time is a number of seconds, so the tests need no clock. It has 57 tests, and several are failure cases. A short summary follows. I do not paste the file, because the tests are the specification.
+A reference model is a small program that restates the policy in plain code, so its behaviour can be tested without a cluster. The file `c06_node_policy.py` is a pure-Python model of the policy. Time is a number of seconds, so the tests need no clock, and they run in the same second every time. It has 57 tests, and several are failure cases. A failure case is a test that checks the bad path, such as a node that must not be cordoned. Good suites contain more failure cases than happy-path cases, because the bad path is where the damage happens. A short summary follows. I do not paste the file, because the tests are the specification.
 
 The `ConditionAgent` turns events into conditions. Only unrecoverable Xids flip the condition to false. An Xid 74 puts a label on the node and changes nothing else. Application, self-healing and unknown codes leave the condition alone.
 
 The `NodeHealthController.reconcile` call works in a fixed order.
+
+The steps are numbered because the order matters. Each step only sees what the earlier steps left behind, so a node judged in step 1 is the same node the budget counts in step 4.
 
 1. Judge each node. A false condition inside the window is pending. A false condition past the window is unhealthy. A missing condition is no signal.
 2. Page once if half the nodes or more have no signal. Cordon nothing because of it.
@@ -646,19 +647,19 @@ The `NodeHealthController.reconcile` call works in a fixed order.
 6. Drain by eviction, leaving pods that a disruption budget protects. Or taint with NoExecute if the policy chooses the taint method.
 7. Return an owned node only after its condition has been true for `healthyFor`, and only when its ticket is closed and its diagnostic passed.
 
-The circuit breaker is the piece the Go operator lacks. It trips when three distinct nodes flag within ten minutes, and the defaults are mine. Three flags in ten minutes is a pattern, not a coincidence. The test with 40 nodes shows it. Six nodes report Xid 79 together, the controller freezes, pages once and cordons nothing. A second test shows slow failures, one node every 20 minutes, never trip it. A third shows that when a person releases the breaker, only the nodes they acknowledge proceed. The others stay held.
+The circuit breaker is the piece the Go operator lacks. A circuit breaker stops a process when something looks wrong, the same way a household breaker cuts power to a circuit. It trips when three distinct nodes flag within ten minutes, and the defaults are mine. Three flags in ten minutes is a pattern, not a coincidence, so a shared cause is the likely explanation. The test with 40 nodes shows it. Six nodes report Xid 79 together, the controller freezes, pages once and cordons nothing. A second test shows slow failures, one node every 20 minutes, never trip it. A third shows that when a person releases the breaker, only the nodes they acknowledge proceed. The others stay held.
 
-That last behaviour matters. Without it, the breaker would release, the next tick would see the same unhealthy nodes, and the controller would act on all of them. The model keeps held nodes held until a person acknowledges them.
+That last behaviour matters for a second reason. Without it, the breaker would release, the next tick would see the same unhealthy nodes, and the controller would act on all of them. The shared cause would still be there, and the automation would repeat the damage it was meant to stop. The model keeps held nodes held until a person acknowledges them, which puts the decision back with someone who can look at the cause.
 
 Other tests cover the rules this chapter states. A human's cordon is never released. A cordon placed by the policy is released only after the recovery window. A node with an Xid 79 opens a ticket and stays cordoned for an hour of healthy signal. It returns only after a passed diagnostic and a closed ticket. A failed diagnostic sends it back to repair. A node in the wrong state cannot receive a diagnostic result, and an illegal move raises an error. Running the same input twice gives the same actions, and a second reconcile with no change cordons nothing.
 
 ### Cordon and drain, or taint
 
-Cordon sets the node unschedulable. It stops new pods and leaves running ones alone. The drain then evicts pods through the eviction API. The Kubernetes documentation says an eviction that a disruption budget forbids returns HTTP 429, and one blocked by misconfiguration returns 500. Production Kubernetes, in its chapter on application considerations, notes that platform teams drain and cordon nodes during lifecycle work, and that the kubelet sends SIGTERM and then waits out the grace period.
+Cordon sets the node unschedulable. It stops new pods and leaves running ones alone, so the node keeps working while its existing jobs finish. The drain then evicts pods through the eviction API, which asks the cluster to move each pod off the node in an orderly way. The Kubernetes documentation says an eviction that a disruption budget forbids returns HTTP 429, and one blocked by misconfiguration returns 500. Production Kubernetes, in its chapter on application considerations, notes that platform teams drain and cordon nodes during lifecycle work, and that the kubelet sends SIGTERM and then waits out the grace period.
 
-A taint with the NoExecute effect works differently. The Kubernetes documentation says pods that do not tolerate it are evicted immediately, and pods that tolerate it with `tolerationSeconds` stay for that time. The control plane does the eviction, not your operator. That fits a node that is being replaced and not repaired, or an operator that lacks eviction permissions. The eviction page says API-initiated evictions respect disruption budgets. The taint page does not say the same for NoExecute, so I treat budget protection on the taint path as unverified. The model supports both paths, and the Go operator supports only eviction.
+Choosing between the two paths is a question about who should do the work. A drain keeps the operator in the loop, because the operator asks for each eviction and can see a refusal. A refusal is useful information, because it tells the operator that a service is protected right now and the drain should wait. A taint hands the work to the control plane, which then acts on its own clock. A taint with the NoExecute effect works differently. The Kubernetes documentation says pods that do not tolerate it are evicted immediately, and pods that tolerate it with `tolerationSeconds` stay for that time. The control plane does the eviction, not your operator. That fits a node that is being replaced and not repaired, or an operator that lacks eviction permissions. The eviction page says API-initiated evictions respect disruption budgets. The taint page does not say the same for NoExecute, so I treat budget protection on the taint path as unverified. The model supports both paths, and the Go operator supports only eviction.
 
-Here is a disruption budget for a four-replica inference service. A drain that would leave fewer than three replicas ready is refused and retried.
+A disruption budget is the rule that limits how many pods of one service may be down at the same time. Here is a disruption budget for a four-replica inference service. A replica is one copy of the service. A drain that would leave fewer than three replicas ready is refused and retried, so the drain waits until the service can spare a pod.
 
 ```yaml
 # A disruption budget for a four-replica inference service. A drain that would
@@ -683,25 +684,25 @@ spec:
 
 ## 5. The Xid runbooks
 
-Three lines appear in `dmesg` within six seconds. Xid 92, then Xid 45, then Xid 79. The engineer paged for the 92 earlier that week treated it as noise. In hindsight the 92 was early warning, and the 45 was the driver cleaning up after a failure. This story is a composite I wrote to show why the order matters.
+Three lines appear in `dmesg` within six seconds. Xid 92, then Xid 45, then Xid 79. The engineer paged for the 92 earlier that week treated it as noise. In hindsight the 92 was early warning, and the 45 was the driver cleaning up after a failure. This story is a composite I wrote to show why the order matters. The same three lines, read out of order, would send the engineer to the wrong fix.
 
-Every diagnosis starts from the code, not the free-text message. The text changes with driver versions. Classify the code first. Then read the sequence oldest first, because the Xid that looks like the cause is often one that came after the real one. The catalog supports the second habit. It says Xid 45 is logged when the kernel tears down an application, and that in many cases it is not a bug but a user or system action.
+Every diagnosis starts from the code, not the free-text message. The text changes with driver versions, but the code number stays the same. Classify the code first. Then read the sequence oldest first, because the Xid that looks like the cause is often one that came after the real one. The catalog supports the second habit. It says Xid 45 is logged when the kernel tears down an application, and that in many cases it is not a bug but a user or system action. A teardown is the orderly shutdown of a process and its GPU resources, so a 45 on its own says that something ended.
 
 ### The runbook for unrecoverable Xids
 
-This is the runbook the operator automates and the human follows when it may not act.
+This is the runbook the operator automates and the human follows when it may not act. Each numbered step is one decision, and the steps happen in the order listed. Do not skip ahead, because the evidence in step 2 disappears once step 3 resets the GPU.
 
-1. Confirm the class from the table in Section 2 and stop scheduling. On Kubernetes that is a cordon and a drain. On Slurm it is `scontrol update NodeName=<node> State=DRAIN Reason="Xid <code>"`, the same decision that Chapter 19.1 shows in its health script.
+1. Confirm the class from the table in Section 2 and stop scheduling. On Kubernetes that is a cordon and a drain. On Slurm it is `scontrol update NodeName=<node> State=DRAIN Reason="Xid <code>"`, the same decision that Chapter 19.1 shows in its health script. The reason text is what the next person reads, so include the Xid code.
 2. Capture evidence before any reset. A reset can erase the state you want to show a vendor. The script below does it.
 3. Follow the catalog's immediate action. For Xid 79 it says restart the bare-metal node. For Xid 48, 64, 95, 62, 119 and 120 it says reset the GPU. For Xid 48 together with 63 or 64 it says drain and reset.
 4. For Xid 48 and 95, review the jobs that ran in the affected window. An uncorrectable or uncontained memory error means data integrity was not guaranteed. Flag those outputs for review or re-run.
 5. Do not return the node without a passed diagnostic and a closed ticket.
 
-The catalog's investigatory column adds that for Xid 48 a solo event should run the field diagnostic, and an SRAM error that exceeds its threshold follows the RMA flow. This chapter does not restate that flow. Read the catalog entry for your driver.
+The catalog's investigatory column adds that for Xid 48 a solo event should run the field diagnostic, and an SRAM error that exceeds its threshold follows the RMA flow. SRAM here means the on-chip memory that holds the GPU's internal state, and RMA is the return-merchandise process that the vendor uses to replace hardware. This chapter does not restate that flow. Read the catalog entry for your driver.
 
-The catalog does not give a PCIe rescan procedure for Xid 79, and the nvidia-devops DCGM chapter says to collect a bug report and hand it to the hardware owner. So this chapter keeps only the catalog's action.
+The catalog does not give a PCIe rescan procedure for Xid 79, and the nvidia-devops DCGM chapter says to collect a bug report and hand it to the hardware owner. So this chapter keeps only the catalog's action. Do not invent a rescan on the spot, because a rescan that goes wrong can hide the evidence the vendor needs.
 
-This script collects the bundle. It was syntax-checked here and not run, because it needs an NVIDIA driver and DCGM. It runs the diagnostic last, since that test is invasive and must only run on a drained node.
+The bundle is the evidence that a vendor or an auditor will ask for. It should be complete before anyone touches the node again, and it should be stored somewhere that the reset cannot reach. This script collects the bundle. It was syntax-checked here and not run, because it needs an NVIDIA driver and DCGM. It runs the diagnostic last, since that test is invasive and must only run on a drained node.
 
 ```bash
 #!/usr/bin/env bash
@@ -734,7 +735,7 @@ echo "wrote ${OUT}.tar.gz"
 
 ### The diagnostic gate
 
-The DCGM diagnostic has four run levels. The table gives the durations from the DCGM documentation. A level 3 run on an 8-GPU system is documented as under 35 minutes.
+The DCGM diagnostic has four run levels. Each level runs a longer and deeper set of tests, so the level you pick is a trade between time and coverage. The table gives the durations from the DCGM documentation. A level 3 run on an 8-GPU system is documented as under 35 minutes, which is short enough to run during a maintenance window.
 
 | Level | Command | Duration in the documentation |
 |---|---|---|
@@ -747,18 +748,20 @@ Add `-j` for JSON output. An exit code of 0 means success, and 226 means the dia
 
 ### Application and self-healing codes
 
-For application codes such as 13, 31 and 32, restart the process and watch the count. One restart followed by stability points at the application. Repeats on one GPU across unrelated applications point at hardware, and that is my escalation rule, not catalog text. For self-healing codes such as 63 and 92, take no action in real time. Review the rate weekly. A threshold such as a 3x week-over-week rise is a starting idea, not a sourced rule.
+Application codes are the ones that point at the program rather than the card. For application codes such as 13, 31 and 32, restart the process and watch the count. One restart followed by stability points at the application. Repeats on one GPU across unrelated applications point at hardware, and that is my escalation rule, not catalog text. For self-healing codes such as 63 and 92, take no action in real time. Review the rate weekly. A threshold such as a 3x week-over-week rise is a starting idea, not a sourced rule.
 
 ### Xid 74, NVLink
 
-The catalog says Xid 74 means the GPU detected a problem on a connection to another GPU or an NVSwitch. It also says that a GPU reset or node reboot is needed to clear it, and that the fault may be in the link or in the device at the other end. A failed GPU can cause a neighbour to report Xid 74 only because the link went down. So look at both ends. The catalog mentions `nvidia-smi nvlink` for more detail and gives a decoding procedure for the error registers. The path is my reading of it. Look at both ends of the link, then reset, then drain, then open a ticket, and keep mesh-critical jobs off the node until it is fixed.
+A link is the physical path between two devices, and a bad link can be the fault of either end. The catalog says Xid 74 means the GPU detected a problem on a connection to another GPU or an NVSwitch. It also says that a GPU reset or node reboot is needed to clear it, and that the fault may be in the link or in the device at the other end. A failed GPU can cause a neighbour to report Xid 74 only because the link went down. So look at both ends. The catalog mentions `nvidia-smi nvlink` for more detail and gives a decoding procedure for the error registers. The path is my reading of it. Look at both ends of the link, then reset, then drain, then open a ticket, and keep mesh-critical jobs off the node until it is fixed.
 
 
 ### Failures that are not Xids
 
-Several failures never produce an Xid. The nvidia-devops fan-failure chapter lists symptoms of a failing fan: speed stuck at 0 RPM with a high temperature, a rise of 2 to 3 degrees per minute under load, and throttling within minutes of starting work. Those map to the rate-of-rise and throttle rules in Section 2. The Systems Performance book gives the general method. For every resource, check utilization, saturation and errors. The Xid and ECC counters are the errors, and the throttle counters are a form of saturation.
+Several failures never produce an Xid, so a runbook built only on Xid codes would miss them. The nvidia-devops fan-failure chapter lists symptoms of a failing fan: speed stuck at 0 RPM with a high temperature, a rise of 2 to 3 degrees per minute under load, and throttling within minutes of starting work. Those map to the rate-of-rise and throttle rules in Section 2. The Systems Performance book gives the general method. For every resource, check utilization, saturation and errors. The Xid and ECC counters are the errors, and the throttle counters are a form of saturation.
 
 **Decision rule:** start from the code and its class, capture evidence before any reset, and return a node only after a passed diagnostic and a closed ticket.
+
+The order of these runbook steps is the same as the order of a careful engineer's questions. What is the class? What evidence must be kept? What does the catalog say to do? Who must review the work? When can the node return? Keep that sequence in mind during an incident, because a rushed responder tends to skip the second question and lose the evidence.
 
 **In one minute:** classify the Xid, then run the class's runbook. Unrecoverable codes drain, capture evidence and follow the catalog's reset or restart action. Application codes restart the process. Self-healing codes are a weekly rate review. Xid 74 looks at both ends of the link. A level 3 diagnostic gates return, and it is not a substitute for the vendor's offline diagnostics.
 
@@ -766,9 +769,11 @@ Several failures never produce an Xid. The nvidia-devops fan-failure chapter lis
 
 ## 6. The game day
 
-A team spent a quarter building node-health automation and never ran it against a fault. The first real incident was also the first time the paging key had been rotated, the first time a drain met a disruption budget, and the first time the runbook link pointed to a retired channel. This story is a composite that I wrote. The fix it argues for is real: break something on purpose, on a quiet afternoon, and find the gaps before 3 a.m. does.
+Picture a team that spent a quarter building node-health automation and never ran it against a fault. The first real incident was also the first time the paging key had been rotated, the first time a drain met a disruption budget, and the first time the runbook link pointed to a retired channel. This story is a composite that I wrote. The fix it argues for is real: break something on purpose, on a quiet afternoon, and find the gaps before 3 a.m. does.
 
-A game day is a hypothesis with a clock. The targets here are this chapter's own, derived from the loop's settings so each one is checkable. The incident-response project in the source material has success criteria about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem.
+A game day is a rehearsal with a stopwatch. Teams that run one find out which parts of the loop they only assumed worked. Nobody on the team enjoys a failed rehearsal, but a failed rehearsal on a quiet afternoon is cheap.
+
+A game day is a hypothesis with a clock. You state what the loop should do, you break something on purpose, and you start a timer. The targets here are this chapter's own, derived from the loop's settings so each one is checkable. The incident-response project in the source material has success criteria about finding an NVLink fault within 15 minutes, and they say nothing about 5 minutes to detect or 48 hours to a post-mortem. A post-mortem is the written review of what happened and why. Borrowing another team's numbers would make the game day look like a test it did not run.
 
 | Clause | Target | Why this number |
 |---|---|---|
@@ -778,7 +783,7 @@ A game day is a hypothesis with a clock. The targets here are this chapter's own
 | Verify | A smoke job completes on the healthy nodes | The pool still has three of four nodes |
 | Review | A written post-mortem within 48 hours | My choice |
 
-The target is a cordon within 3 minutes of the condition. A 2-minute target cannot be met when `unhealthyFor` is 2 minutes.
+The target is a cordon within 3 minutes of the condition. A 2-minute target cannot be met when `unhealthyFor` is 2 minutes, because the window alone already uses up the full two minutes before the cordon can start. The 3-minute figure leaves a margin above the 121-second worst case that section 2 derives, so the target stays honest on a slow night.
 
 ```mermaid
 flowchart TD
@@ -795,7 +800,9 @@ flowchart TD
 
 ### The injection plan, safest first
 
-Run the safe injections before the dangerous ones.
+Run the game day with a person watching each dashboard and a second person holding the stop button. Announce the window to the team first, so that nobody mistakes the injected fault for a real one. Keep the list of injections in front of you, and cross each one off as you finish it.
+
+Run the safe injections before the dangerous ones. Start with the faults that cannot hurt a node, so the team learns the loop before it meets a real hardware fault. Each injection has one question to answer.
 
 1. Exporter down. Delete the exporter pod on one node. The exporter and GPU-count alerts must fire and the operator must cordon nothing. This tests the missing-signal rule.
 2. Condition false. Set `GPUHealthy` to false on one node with the stand-in script. Check the cordon, the owner annotation and the eviction.
@@ -806,7 +813,7 @@ Run the safe injections before the dangerous ones.
 
 ### The record
 
-For each injection, write one row per clause: seconds from fault to alert, seconds from alert to cordon, pods evicted, the ticket opened and the difference between the runbook and what happened. Name each gap with a fixed vocabulary so the post-mortem stays honest. A detection gap means no alert fired. A routing gap means the alert fired and nobody was paged. An action gap means the operator did not act or acted past its budget. A recovery gap means the node did not return when it should. A runbook gap means the steps were wrong, stale or incomplete. Each gap gets an owner and a deadline.
+For each injection, write one row per clause: seconds from fault to alert, seconds from alert to cordon, pods evicted, the ticket opened and the difference between the runbook and what happened. A clause is one link in the chain, from the fault to the return to service. Name each gap with a fixed vocabulary so the post-mortem stays honest. A detection gap means no alert fired. A routing gap means the alert fired and nobody was paged. An action gap means the operator did not act or acted past its budget. A recovery gap means the node did not return when it should. A runbook gap means the steps were wrong, stale or incomplete. Each gap gets an owner and a deadline, so that it does not sit in the list forever.
 
 **Decision rule:** the automation is not ready until a game day has proven detection, action, budget and recovery on injected faults, and every gap it found has an owner.
 
@@ -816,7 +823,7 @@ For each injection, write one row per clause: seconds from fault to alert, secon
 
 ## 7. Hands-on lab
 
-This lab splits cleanly. Steps 1 to 5 run on a laptop and were run there. Steps 6 to 10 need a GKE cluster with a GPU node pool and were not run. These cluster steps are untested, and the expected shape of the output is labeled as such.
+Picture a laptop on a train with no cluster in reach. Most of the chapter can still be checked from there, and the lab is written with that in mind. This lab splits cleanly. Steps 1 to 5 run on a laptop and were run there. Steps 6 to 10 need a GKE cluster with a GPU node pool and were not run. These cluster steps are untested, and the expected shape of the output is labeled as such.
 
 ### 7.1 Prerequisites
 
@@ -824,6 +831,8 @@ This lab splits cleanly. Steps 1 to 5 run on a laptop and were run there. Steps 
 - For the cluster steps, a GKE cluster with a GPU pool of 4 nodes with 8 GPUs each, the GPU Operator, Prometheus and Alertmanager, and `kubectl` with cluster-admin.
 
 ### 7.2 Step 1: run the rules and the routing
+
+Start with the cheapest question. Do the alert rules parse, and does each alert reach the right receiver? Promtool and amtool answer both without touching a cluster. Run this step first every time the rule file changes, because a broken rule file is the one failure that can silence every alert at once.
 
 ```bash
 cd code/part19
@@ -833,11 +842,13 @@ amtool check-config c06_alertmanager.yml
 amtool config routes test --config.file=c06_alertmanager.yml severity=critical event_class=fleet
 ```
 
-Observed here: 14 rules found, the test file passes, the config is valid with 3 receivers, and the routing test prints `pagerduty-node-health`.
+Observed here: 14 rules found, and the test file passes. The config is valid with 3 receivers. The routing test prints `pagerduty-node-health`.
 
 What to record: the count of rules and the receiver for each severity.
 
 ### 7.3 Step 2: run the policy model and the cross-checks
+
+Now the question is whether the safety rules behave as written. The policy model and the arithmetic script can answer it with no cluster at all. Read the test names as a list of promises. Each name says what the policy promises to do, and the test is the proof that it does.
 
 ```bash
 cd code/part19
@@ -845,11 +856,17 @@ python3 -m pytest test_c06_node_policy.py test_c06_budget_math.py test_c06_valid
 python3 c06_budget_math.py
 ```
 
-Observed here: 78 passed in 1.13s. The script prints 438.0 minutes at 99 percent, 43.8 at 99.9 percent, 0 GPUs allowed failing at 98 percent on a pool of 32, and 121 seconds for the worst-case cordon.
+Observed here: 78 passed in 1.13s.
+
+The script prints 438.0 minutes at 99 percent and 43.8 at 99.9 percent. It also prints 0 GPUs allowed failing at 98 percent on a pool of 32.
+
+It prints 121 seconds for the worst-case cordon.
 
 What to record: which test covers each safety rule. The fleet-wide fault, the held nodes and the human cordon are the three to read.
 
 ### 7.4 Step 3: validate the policy against the CRD
+
+Next, the policy has to be valid YAML for the CRD, or the API server will reject it when it is applied. A rejected policy is the safe failure, because nothing gets applied at all. A silently accepted typo would be the dangerous one. This check runs the validator against both policy blocks.
 
 ```bash
 python3 -I tools/check_crd_yaml.py code/gpuhealth/config/crd/platform.example.com_gpuhealthpolicies.yaml -- docs/part-19-capstone/06-capstone-node-health-automation-with-dcgm-and-an-operator.md
@@ -859,17 +876,19 @@ Observed here: the check reads both policy blocks in this chapter and reports no
 
 ### 7.5 Step 4: build and test the Go operator
 
+The operator is the last piece of code on the laptop. Build it first, then run the tests against a real API server, because the tests need one. A build that compiles only proves the syntax and the types. It does not prove that the controller reacts to the right events, which is why the tests start a real server.
+
 ```bash
 cd code/gpuhealth
 go build ./... && go vet ./...
 KUBEBUILDER_ASSETS="<path to envtest 1.31.0 binaries>" go test ./... -count=1
 ```
 
-Observed here: build and vet printed nothing, and the test package passed with seven tests against Kubernetes 1.31.0. Without the envtest binaries the package stops in `TestMain`. Install them with `setup-envtest`.
+Observed here: build and vet printed nothing. The test package passed with seven tests against Kubernetes 1.31.0. Without the envtest binaries the package stops in `TestMain`. Install them with `setup-envtest`.
 
 ### 7.6 Step 5: confirm the missing-condition behaviour
 
-I called `Judge` on a node with no condition from a throwaway test, and it reported healthy. Repeat this if you change `evaluate.go`. Then decide whether your release path should demand an explicit true condition.
+This step checks the gap found in section 4. Does a node with no condition come back as healthy? I called `Judge` on a node with no condition from a throwaway test, and it reported healthy. Repeat this if you change `evaluate.go`. Then decide whether your release path should demand an explicit true condition.
 
 ### 7.7 Step 6: verify the signal set (not run)
 
@@ -879,36 +898,36 @@ kubectl -n gpu-operator port-forward pod/<exporter-pod> 9400:9400
 curl -s localhost:9400/metrics | grep DCGM_FI_DEV_XID_ERROR
 ```
 
-Expected shape, not run: one `DCGM_FI_DEV_XID_ERROR` series per GPU, with labels that include `gpu`. After you apply `c06_enable_counters.sh`, the ECC, throttle and NVLink counters should appear. Check label names on your build before you rely on them. The rules select only on `instance` and `gpu`.
+This is the first cluster step. It checks that the signal set reaches Prometheus at all. Expected shape, not run: one `DCGM_FI_DEV_XID_ERROR` series per GPU, with labels that include `gpu`. Labels are the key-value tags that Prometheus attaches to each series, and they are how a query selects one GPU from the others. After you apply `c06_enable_counters.sh`, the ECC, throttle and NVLink counters should appear. Check label names on your build before you rely on them. The rules select only on `instance` and `gpu`.
 
 ### 7.8 Step 7: deploy the alerts and the dry-run policy (not run)
 
-Load `c06_node_health_alerts.yml` into Prometheus and `c06_alertmanager.yml` into Alertmanager with real secrets in the mounted files. Apply `c06_gpu_health_policy_dryrun.yaml`. Expected shape, not run: the policy reports 4 matched nodes, none cordoned, and a Ready condition set to true.
+Now the alerts and the policy go live, in dry-run mode only. Dry-run first means that a mistake in the policy shows up as a line in the event log instead of a cordoned node. Only after the dry-run looks right does the team switch the flag. Load `c06_node_health_alerts.yml` into Prometheus and `c06_alertmanager.yml` into Alertmanager, with real secrets in the mounted files. Apply `c06_gpu_health_policy_dryrun.yaml`. A Ready condition is the node's own health report to Kubernetes, separate from the `GPUHealthy` condition, so the two should not interfere. Expected shape, not run: the policy reports 4 matched nodes, none cordoned, and a Ready condition set to true.
 
 ### 7.9 Step 8: inject the safe faults (not run)
 
-Delete the exporter pod on one node and watch the two detection alerts. Then run `./c06_set_condition.sh <node> False` and wait past `unhealthyFor`. Expected shape, not run: with the dry-run policy you see a would-cordon event and nothing else. After you switch to the production policy, the node is cordoned with the owner annotation, and pods leave through the eviction API.
+Now the first real injection. Delete the exporter pod on one node and watch the two detection alerts. The exporter will come back on its own, because the DaemonSet recreates it. A DaemonSet is the Kubernetes object that runs one copy of a pod on every node. Watch how long the gap lasts, because that gap is the detection window you are testing. Then run `./c06_set_condition.sh <node> False` and wait past `unhealthyFor`. Watch the events while you do this, because the events are the record of what the operator decided. Expected shape, not run: with the dry-run policy you see a would-cordon event and nothing else. After you switch to the production policy, the node is cordoned with the owner annotation, and pods leave through the eviction API.
 
 ### 7.10 Step 9: exercise the budget and the human cordon (not run)
 
-Make two nodes unhealthy with a budget of one. Cordon a third node by hand with `kubectl cordon`. Restore the conditions. Expected shape, not run: one operator cordon, one blocked-node warning, and after the recovery window the operator releases only its own node while the hand-cordoned node stays cordoned.
+This step tests the budget and the ownership rule together. Make two nodes unhealthy with a budget of one. Cordon a third node by hand with `kubectl cordon`. Restore the conditions. Expected shape, not run: one operator cordon, one blocked-node warning. After the recovery window, the operator releases only its own node. The hand-cordoned node stays cordoned.
 
 ### 7.11 Step 10: write the game-day record
 
-Fill one row per clause from Section 6 and name each gap. Chase the oldest open gap first.
+After the injections, the record is the product. Fill one row per clause from Section 6 and name each gap. Chase the oldest open gap first, because the oldest one has waited longest for an owner.
 
-What to record: the five answers you should be able to give in five seconds each. Which alerts fired and how long each took? Which nodes did the operator cordon and which limit bound it? Which node did it refuse to release and why? What was in the evidence bundle? What gap did the runbook have?
+What to record: five short answers, each one quick to give in a review.  Which alerts fired and how long each took? Which nodes did the operator cordon and which limit bound it? Which node did it refuse to release and why? What was in the evidence bundle? What gap did the runbook have?
 
 ---
 
 ## Exercises
 
-1. **Add the GPU-count alert to the exporter-down runbook.** Put `GpuCountMismatch` and `GpuExporterDown` on one runbook page and state why neither may cordon a node. *Solution sketch:* the first step says restore detection first. A missing signal is not a fault. The header lists `up{job="dcgm-exporter"} == 0` and `count by (instance) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) < 8`. The test `test_missing_signal_never_cordons_and_pages_once` is the evidence.
-2. **Add a rule for Xid 94 repeating on one GPU.** The catalog treats Xid 94 as an application error that needs a restart, so a plain value check would page too early. *Solution sketch:* the exporter gauge holds only the last code, so a repeat count needs the counter `DCGM_EXP_XID_ERRORS_TOTAL` enabled after you check its semantics, or the kernel log. Write the rule against the counter, set a severity of warning, and add a promtool case that must fire and one that must not.
-3. **Tune the breaker for a fleet of 200 nodes.** The default trips at 3 nodes in 10 minutes, which suits four nodes and is far too tight for 200. *Solution sketch:* pick the threshold from the largest shared-cause event you expect, say 5 percent of the fleet, which is 10 nodes. Then rerun `test_fleet_wide_fault_trips_the_breaker_and_cordons_nothing` with `breaker_nodes=10` and 15 simultaneous failures, and add a test where 9 failures do not trip it.
+1. **Add the GPU-count alert to the exporter-down runbook.** Your on-call page for a silent node needs to say what to do first. Put `GpuCountMismatch` and `GpuExporterDown` on one runbook page. State why neither may cordon a node. *Solution sketch:* the first step says restore detection first. A missing signal is not a fault. The header lists `up{job="dcgm-exporter"} == 0` and `count by (instance) (DCGM_FI_DEV_GPU_TEMP_CELSIUS) < 8`. The test `test_missing_signal_never_cordons_and_pages_once` is the evidence.
+2. **Add a rule for Xid 94 repeating on one GPU.** Your team sees the same application fault return on one GPU every night. The catalog treats Xid 94 as an application error that needs a restart, so a plain value check would page too early. *Solution sketch:* the exporter gauge holds only the last code, so a repeat count needs the counter `DCGM_EXP_XID_ERRORS_TOTAL` enabled after you check its semantics, or the kernel log. Write the rule against the counter, set a severity of warning, and add a promtool case that must fire and one that must not.
+3. **Tune the breaker for a fleet of 200 nodes.** The default trips at 3 nodes in 10 minutes. That suits four nodes. It is far too tight for 200. *Solution sketch:* pick the threshold from the largest shared-cause event you expect, say 5 percent of the fleet, which is 10 nodes. Then rerun `test_fleet_wide_fault_trips_the_breaker_and_cordons_nothing` with `breaker_nodes=10` and 15 simultaneous failures. Add a test where 9 failures do not trip it.
 4. **Close the release gap in the Go operator.** The reconciler releases an owned node when `Judge` says healthy, and `Judge` treats a missing condition as healthy. *Solution sketch:* add a `ConditionPresent` field to the verdict. Release only when it is true and the condition is true. Add an envtest case that cordons a node, deletes its condition and expects the node to stay cordoned. The Python test `test_signal_loss_after_a_cordon_does_not_return_the_node` is the model.
-5. **Add a new class to the policy.** Suppose the catalog adds an Xid whose immediate action is RESET_GPU. *Solution sketch:* add the row to `c06_xid_catalog_snapshot.csv`, add the code to `CATALOG_IMMEDIATE` and `CLASS_OF`, add it to the `GpuXidNeedsReset` expression, and add a promtool case. The test that compares the module to the snapshot fails until both agree, and that failure is the point.
-6. **Add the ticket to the node record.** Make the operator write the ticket number to a node annotation so the cordon, the ticket and the owner are one record. *Solution sketch:* add an annotation key beside the owner key, set it in the same patch as the cordon, and have the return gate read it. Test that a node with the annotation and an open ticket stays cordoned, and that clearing both releases it.
+5. **Add a new class to the policy.** A new catalog release lands with an Xid code you have never seen. Suppose its immediate action is RESET_GPU. *Solution sketch:* add the row to `c06_xid_catalog_snapshot.csv`, add the code to `CATALOG_IMMEDIATE` and `CLASS_OF`, add it to the `GpuXidNeedsReset` expression, and add a promtool case. The test that compares the module to the snapshot fails until both agree, and that failure is the point.
+6. **Add the ticket to the node record.** Today a cordon and its ticket live in two different systems, so they drift apart. Make the operator write the ticket number to a node annotation so the cordon, the ticket and the owner are one record. An annotation is a free-form key-value note on a Kubernetes object, and it travels with the object. *Solution sketch:* add an annotation key beside the owner key, set it in the same patch as the cordon, and have the return gate read it. Test that a node with the annotation and an open ticket stays cordoned, and that clearing both releases it.
 
 ---
 
