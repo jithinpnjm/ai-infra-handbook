@@ -20,32 +20,25 @@ lab_venue: "Nebius GPU"
 | Part | Part 12: Complete AI networking |
 | Coverage file | `planning/coverage/chapters/12-23.md` |
 | Claim ledger | `planning/ledgers/12-23.md` |
-
 ## Why this matters for AI infrastructure
 
-Acceptance means proving, with saved evidence, that a new cluster does what its design says before real jobs run on it. Two mistakes make acceptance fail. The first is calling a cluster ready because every port reports `LinkUp` and `ping` gets a reply. The second is sizing capacity by adding up port speeds on a datasheet. That sum ignores the bottleneck cut, which is the set of links that separates the senders from their receivers.
+Picture the day a new cluster is handed over. The vendor says it is ready, the racks are powered, and the switches all show green. Someone asks you to sign the acceptance form. Before you sign, you need to know what "ready" actually means, and what evidence would prove it. Acceptance means proving, with saved evidence, that a new cluster does what its design says before real jobs run on it. Two mistakes make acceptance fail. The first is calling a cluster ready because every port reports `LinkUp` and `ping` gets a reply. The second is sizing capacity by adding up port speeds on a datasheet. That sum ignores the bottleneck cut, which is the set of links that separates the senders from their receivers.
 
-Picture a multi-rack InfiniBand cluster that passes commissioning. Every host is reachable, every port shows `State: Active`, and isolated point-to-point RDMA tests succeed. Once distributed training starts, step time varies by more than twenty percent across racks. Three defects were stacked on top of each other. A replacement cable had trained at half lane width. Adaptive routing was not balancing flows across spines. Several GPU ranks were paired with network cards on the far side of a NUMA boundary.
+Consider a multi-rack InfiniBand cluster that passes commissioning. Every host is reachable, every port shows `State: Active`, and isolated point-to-point RDMA tests succeed. Once distributed training starts, step time varies by more than twenty percent across racks. Three defects were stacked on top of each other. A replacement cable had trained at half lane width. Adaptive routing was not balancing flows across spines. Several GPU ranks were paired with network cards on the far side of a NUMA boundary. Each defect passed its own small test, and none of the small tests looked at the whole job.
 
-The same trap appears on RoCEv2 Ethernet. A new GPU rack passes the optical checks, an ICMP `ping` and a two-node bandwidth test. A week after it joins shared production, multi-rank AllReduce and AllToAll jobs stall. The switches show heavy ECN marking, which signals that queues are filling. They also show Priority Flow Control pauses and hardware tail drops.
+The same trap appears on RoCEv2 Ethernet. A new GPU rack passes the optical checks, an ICMP `ping` and a two-node bandwidth test. A week after it joins shared production, multi-rank AllReduce and AllToAll jobs stall. The switches show heavy ECN marking, which signals that queues are filling. They also show Priority Flow Control pauses and hardware tail drops. Nothing in the acceptance paperwork predicted that, because nobody loaded the fabric the way the real jobs do.
 
-The isolated test never loaded the oversubscribed leaf-to-spine uplinks, and it never ran with one link down for maintenance. Acceptance therefore needs a ladder of evidence gates that starts at physical optics and ends in multi-hour burn-in. Pair the ladder with a deterministic bill of materials and a capacity model built on the bottleneck cut.
+The isolated test never loaded the oversubscribed leaf-to-spine uplinks, and it never ran with one link down for maintenance. Acceptance therefore needs a ladder of evidence gates that starts at physical optics and ends in multi-hour burn-in. Pair the ladder with a deterministic bill of materials and a capacity model built on the bottleneck cut. The bill of materials is the exact list of switches, cables, and optics you need, and the capacity model tells you whether the fabric can carry the traffic.
 
-The numbers from the RoCEv2 case are worth working through once. Sixteen nodes each connect with two 400 Gb/s links, so the downlink demand is 12,800 Gb/s. The leaf has eight 400 Gb/s uplinks, which is 3,200 Gb/s. The oversubscription is 4 to 1. With one uplink drained for maintenance it becomes 4.57 to 1. A single pair of nodes reached 392 Gb/s on a 400 Gb/s link with no drops, because it never filled the uplinks. Under shared load, the switch counters showed 288,400 ECN marks, 61,200 pause frames and 38,210 tail drops.
+The numbers from the RoCEv2 case are worth working through once. Sixteen nodes each connect with two 400 Gb/s links, so the downlink demand is 12,800 Gb/s. The leaf has eight 400 Gb/s uplinks, which is 3,200 Gb/s. The oversubscription is 4 to 1. With one uplink drained for maintenance it becomes 4.57 to 1. A single pair of nodes reached 392 Gb/s on a 400 Gb/s link with no drops, because it never filled the uplinks. Under shared load, the switch counters showed 288,400 ECN marks, 61,200 pause frames and 38,210 tail drops. Each of those counters tells a different part of the story, and you will learn to read them in the sections below.
 
-Decide up front what evidence a cluster must produce before anyone signs for it.
+Decide up front what evidence a cluster must produce before anyone signs for it. A signed form with no saved output behind it is only a promise, and a promise cannot be checked later when a job stalls.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:**
-- Review PFC, ECN, and DCQCN congestion control in Chapter 12.4, InfiniBand Subnet Manager routing in Chapter 12.7, and optics and cabling in Chapter 12.10.
-- Review fabric topology and oversubscription design in Chapter 12.13, plus `nccl-tests` and fabric benchmarking in Chapter 12.17.
+You get the most from this chapter if you already know the congestion and routing material that comes before it. Start with PFC, ECN, and DCQCN congestion control in Chapter 12.4, then review InfiniBand Subnet Manager routing in Chapter 12.7, and optics and cabling in Chapter 12.10. Next, review fabric topology and oversubscription design in Chapter 12.13. The `nccl-tests` and fabric benchmarking work in Chapter 12.17 is also useful, because the final gates use the same kind of collective tests.
 
-**Expected learning outcomes:**
-- Run a five-stage acceptance ladder, from L1 physical optics and BER through L5 multi-hour burn-in and N-1 link drains.
-- Check physical cabling against the Point-to-Point BOM with `ibnetdiscover`, `iblinkinfo`, `lldpctl`, `netq`, and NVIDIA Base Command Manager Topograph.
-- Calculate switch, transceiver, and cable BOMs with field spares and cable-reach derating for two-tier and three-tier Clos fabrics and SuperPODs.
-- Model bottleneck cuts in normal and N-1 degraded states, measure their effect on collective step time and inference tail latency, and apply the seven-input architecture decision framework.
+The chapter walks through the acceptance ladder first, from L1 physical optics and BER up to L5 multi-hour burn-in and N-1 link drains. BER means bit error rate, the share of bits that arrive wrong. It then shows how to check physical cabling against the Point-to-Point BOM, using tools such as `ibnetdiscover`, `iblinkinfo`, `lldpctl`, `netq`, and NVIDIA Base Command Manager Topograph. After that comes the BOM itself, with switches, transceivers, and cables counted for two-tier and three-tier Clos fabrics and SuperPODs, including field spares and cable-reach derating. The last part models bottleneck cuts in normal and N-1 degraded states, measures their effect on collective step time and inference tail latency, and applies a seven-input architecture decision framework.
 
 Start with the acceptance ladder, because the capacity model assumes its evidence is already sound. If you skip the ladder, every later number inherits the gap.
 
@@ -53,9 +46,11 @@ Start with the acceptance ladder, because the capacity model assumes its evidenc
 
 ## 1. The multi-stage cluster acceptance gating ladder
 
-On a typical enterprise network, a passing `ping` or a green switch LED is good enough to call a link ready. An AI fabric needs more. A `ping` only shows that the host CPU can send one small ICMP packet over the default kernel route. It says nothing about RDMA Verbs Queue Pairs, RoCEv2 encapsulation, the lossless Priority 3 queues, GPUDirect RDMA locality, or whether a thousand GPUs can synchronize across the spine cuts.
+Imagine a colleague says a link is fine because a ping went through. You know the test passed, but you do not yet know what it proved. On a typical enterprise network, a passing `ping` or a green switch LED is good enough to call a link ready. An AI fabric needs more. A `ping` only shows that the host CPU can send one small ICMP packet over the default kernel route. It says nothing about RDMA Verbs Queue Pairs, RoCEv2 encapsulation, the lossless Priority 3 queues, GPUDirect RDMA locality, or whether a thousand GPUs can synchronize across the spine cuts.
 
-Commissioning has to climb the ladder from the bottom: Stage L1 first, then L2, all the way to L5. A later stage cannot make up for an earlier one. If you skip ahead, you have no proof for the lower layers. Suppose `all_reduce_perf` passes at Stage L4, but a transceiver shows rising uncorrected FEC blocks at Stage L1. Forward error correction (FEC) is the error correction built into the link. The cluster must still be rejected and quarantined. Each lower gate has to keep its raw passing evidence before anyone signs. Keep the output of every gate, because you will need it at sign-off.
+Commissioning has to climb the ladder from the bottom: Stage L1 first, then L2, all the way to L5. A later stage cannot make up for an earlier one. If you skip ahead, you have no proof for the lower layers. Suppose `all_reduce_perf` passes at Stage L4, but a transceiver shows rising uncorrected FEC blocks at Stage L1. Forward error correction (FEC) is the error correction built into the link, and uncorrected blocks are the ones it could not repair. The cluster must still be rejected and quarantined. Each lower gate has to keep its raw passing evidence before anyone signs. Keep the output of every gate, because you will need it at sign-off.
+
+Think of the ladder as a building inspection. The electrician checks the wiring before the plumber connects the water, and the plumber checks the pipes before anyone hangs a door. Nobody accepts the finished house because the front door closes. Each trade signs its own sheet, and the final walk-through relies on all of them. The same logic applies here. A full-scale benchmark is the final walk-through, and it only means something when the wiring and the pipes were checked first.
 
 ```mermaid
 flowchart TD
@@ -68,7 +63,7 @@ flowchart TD
     GATE -->|"No (any stage skipped/failed)"| REJ["REJECT / QUARANTINE<br/>Fix first failed layer & re-run"]
 ```
 
-The table lists each gate with its tools, its pass criteria, and the action to take when it fails.
+The table lists each gate with its tools, its pass criteria, and the action to take when it fails. Read it as the checklist that a commissioning engineer walks through, one row at a time.
 
 | Stage | What it proves | Main tools | Pass criteria | Typical failure and fix |
 |---|---|---|---|---|
@@ -78,11 +73,13 @@ The table lists each gate with its tools, its pass criteria, and the action to t
 | L4 Collectives | Real collectives run clean at full scale | `nccl-tests` through `mpirun` or `srun` | No wrong results, bus bandwidth inside your own baseline, no pause storms or tail drops | A 2-node run passes but a 64-node run stalls. Check adaptive routing, congestion control and rails |
 | L5 Burn-in | The fabric stays healthy for hours and survives one failure | Canary harness, UFM or NetQ, `perfquery`, `ethtool -S` | No link flaps, drops or Xid events over 12 to 72 hours, p99 step time within 5 percent, N-1 drain matches the model | Idle had no drops, but burn-in shows tail drops. Adjust admission, QoS or cut capacity |
 
-Each failure signature points to one layer to fix first. That is why the ladder runs from the bottom up.
+Each failure signature points to one layer to fix first. That is why the ladder runs from the bottom up. If you start at the top, you will spend hours tuning a collective that is only slow because a cable is dirty.
+
+A useful way to run the ladder is to keep a single shared log. Each gate writes its results with the date, the node names, and the command that produced them. When a later gate fails, you can open the log and see exactly which lower gate last passed, and when. That history turns a confusing failure into a short search.
 
 ### Stage L1: Physical layer, DOM optical budgets, FEC/BER, and inventory truth
 
-Picture a cable plugged into the wrong leaf switch, or a dirty optical ferrule that drops codewords. Collective benchmarks on that cluster waste days of triage before anyone finds the fault. Stage L1 checks that every physical link exists, matches the cable matrix, and has enough optical and Forward Error Correction margin. Inventory needs care too. An InfiniBand `Base lid` can change whenever OpenSM re-sweeps the subnet. Inventory records should therefore key on the immutable `Port GUID` rather than the LID.
+Picture a cable plugged into the wrong leaf switch, or a dirty optical ferrule that drops codewords. Collective benchmarks on that cluster waste days of triage before anyone finds the fault. Stage L1 checks that every physical link exists, matches the cable matrix, and has enough optical and Forward Error Correction margin. DOM, digital optical monitoring, reports the light levels that a transceiver sees, so you can compare them with the budget. Inventory needs care too. An InfiniBand `Base lid` can change whenever OpenSM re-sweeps the subnet. Inventory records should therefore key on the immutable `Port GUID` rather than the LID. A GUID is a globally unique identifier that stays with the hardware, while a LID is an address the subnet manager hands out, and it can move.
 
 On RoCEv2 nodes, the same stage checks the Ethernet side. Each interface must map to its expected RDMA device at full line rate with a jumbo MTU. Stage L1 also confirms PCIe switch locality, meaning the path between each GPU and its paired rail NIC. Corrected FEC codewords are normal on high-speed PAM4 links with RS-FEC, which use a four-level signal. A non-zero corrected count alone is not a failure. An uncorrected FEC block delta or low optical receive power is, and you must fix it before Stage L2.
 
@@ -104,11 +101,13 @@ Stage L1 baseline inventory and optical/FEC reference values :
    - Fail example: Rx -8.4 dBm with 12 uncorrected FEC blocks
 ```
 
-Record these baseline values while the links are known to be good, so you can spot later drift.
+Record these baseline values while the links are known to be good, so you can spot later drift. A baseline is the reference you compare against when something feels slow next month. Without one, every reading looks normal.
+
+Choose the baseline moment carefully. Take it right after the links pass, before any job touches the fabric, and before anyone has had a chance to clean or re-seat a connector. A baseline taken after a week of production load already contains the drift you are trying to find. Store the baseline next to the cable matrix, so the two always travel together.
 
 ### Stage L2: Subnet/IP routing, QoS queue verification, and point-to-point RDMA
 
-A link can pass every Stage L1 optical check and still fail in use. An RDMA process might select the wrong GID index, cross NUMA sockets, or land in a lossy queue. Stage L2 checks the addressing and queue mapping first. Then it tests one pair of nodes for bandwidth and latency across host DRAM and GPU HBM. On InfiniBand, `sminfo` must show a single master Subnet Manager, and `smpquery pkeys` must match the partition policy. On RoCEv2, `ip route get` must resolve to the intended rail interface and source IP.
+A link can pass every Stage L1 optical check and still fail in use. An RDMA process might select the wrong GID index, cross NUMA sockets, or land in a lossy queue. A GID is the address RoCE uses to identify a port on the Ethernet side. Stage L2 checks the addressing and queue mapping first. Then it tests one pair of nodes for bandwidth and latency across host DRAM and GPU HBM. On InfiniBand, `sminfo` must show a single master Subnet Manager, and `smpquery pkeys` must match the partition policy. On RoCEv2, `ip route get` must resolve to the intended rail interface and source IP.
 
 Next, operators run NUMA-pinned `ib_write_lat` and `ib_write_bw`, first without and then with `--use_cuda`. Those two runs check the host path and the GPUDirect RDMA path. Here is the failure to watch for. A benchmark bound to a misaligned RoCE device or secondary GID can collapse in throughput while Layers 1 and 2 still look clean, and RDMA retries surge. The last test is a bounded two-sender contention run. It shows that RoCEv2 packets enter the lossless Priority 3 queue and slow down smoothly through DCQCN, with zero drops.
 
@@ -128,13 +127,15 @@ Stage L2 Routing, Process-Scoped Fault Isolation, and 60s QoS Contention Evidenc
    - Result: Sender A (89.2 Gb/s) + Sender B (87.1 Gb/s) = 176.3 Gb/s combined throughput with 0 packet drops
 ```
 
-Compare the two single-pair runs. The switches are the same and only the device differs. The fix belongs in device, NUMA, and route selection, not in switch PFC or ECN settings.
+Compare the two single-pair runs. The switches are the same and only the device differs. The fix belongs in device, NUMA, and route selection, not in switch PFC or ECN settings. This is the most common trap at this stage. Engineers see a slow pair and reach for the switch, when the problem sits in the server.
+
+A helpful habit at Stage L2 is to change one thing at a time. Run the same pair on the expected device, then on the other device, and keep everything else fixed. If only the device changes and the throughput changes with it, you have isolated the variable. If the switch configuration changes between runs too, the result tells you almost nothing, because two things moved at once.
 
 ### Stages L3, L4, and L5: From pairwise rings and bisection cuts to full-scale burn-in
 
-A single-pair `ib_write_bw` test at Stage L2 exercises one link at a time. It cannot reveal spine oversubscription or static routing polarization, which only appear when many pairs talk at once. Stage L3 runs an all-node ring sweep for each rail, so every host NIC and cable gets tested. Then it runs a half-bisection test, where half the cluster sends across the spine to the other half. When you compare same-leaf bandwidth with cross-rack bandwidth, check the switch uplink `PortXmitData` counters. Undersized leaf uplinks or static route pinning show up quickly in that comparison.
+A single-pair `ib_write_bw` test at Stage L2 exercises one link at a time. It cannot reveal spine oversubscription or static routing polarization, which only appear when many pairs talk at once. Polarization is what happens when a hash sends many flows down the same path while other paths sit idle. Stage L3 runs an all-node ring sweep for each rail, so every host NIC and cable gets tested. Then it runs a half-bisection test, where half the cluster sends across the spine to the other half. When you compare same-leaf bandwidth with cross-rack bandwidth, check the switch uplink `PortXmitData` counters. Undersized leaf uplinks or static route pinning show up quickly in that comparison.
 
-Stage L4 runs full-scale `nccl-tests` collectives across every rank and rail. The pass condition is zero data corruption errors and full bus bandwidth parity. Stage L5 is the long test. It runs a multi-hour burn-in that combines distributed training with concurrent storage checkpoint I/O. During that burn-in, operators deliberately drain one uplink or one spine switch, which shows how the cluster behaves in the N-1 state.
+Stage L4 runs full-scale `nccl-tests` collectives across every rank and rail. The pass condition is zero data corruption errors and full bus bandwidth parity. Bus bandwidth is the NCCL figure that compares the collective to the link speed, so parity means the collective uses the hardware as expected. Stage L5 is the long test. It runs a multi-hour burn-in that combines distributed training with concurrent storage checkpoint I/O. During that burn-in, operators deliberately drain one uplink or one spine switch, which shows how the cluster behaves in the N-1 state.
 
 ```text
 Stages L3, L4, and L5 Quantitative Gate Benchmarks :
@@ -149,15 +150,21 @@ Stages L3, L4, and L5 Quantitative Gate Benchmarks :
   - 0 link flaps, 0 WJH tail drops (vs 38,210 drops on unvalidated 4:1 rack), 0 Xid/SXid/CQE timeouts over 12–72 h, p99 step within <= 5%, N-1 drain verified (4.00:1 -> 4.57:1)
 ```
 
-Treat each number above as a gate, not a goal. When you miss one, you go back to the layer it names. A run that misses one of them goes back to the layer named in the table.
+Treat each number above as a gate, not a goal.
+
+The stages build on each other like the load tests on a bridge. A ring sweep tests each joint on its own. A bisection test loads the whole span. A burn-in drives traffic across the bridge for hours, which is the only test that shows how the joints behave when they heat up. A bridge that passes only the first test is not ready for a convoy. When you miss one, you go back to the layer it names. A run that misses one of them goes back to the layer named in the table. A gate that passes on a quiet afternoon can still fail during the night burn-in, so the long test is the one that counts for sign-off.
 
 Do not sign a cluster until you have raw evidence for every stage on file.
+
+Sign-off is also a handover. The person who signs takes on the responsibility for the cluster from that point, so the evidence has to stand on its own without the engineer who ran the tests. A future on-call engineer should be able to open the folder and understand each result without asking anyone. A summary line in an email is not evidence. The raw output, with its timestamps, is.
 
 ---
 
 ## 2. Automated cable matrix validation
 
-Picture a thousand-GPU cluster with thousands of point-to-point cables. Manual visual inspection misses human wiring errors. During installation, a technician can cross-patch a cable between rails, swap two ports on the same leaf switch, or leave a connector partly unlatched. In a Rail-Optimized Design, a Rail 0 NIC plugged into a Rail 1 leaf pushes traffic that should stay one hop inside the rail across two spine hops. It can also blackhole the subnet.
+Picture a thousand-GPU cluster with thousands of point-to-point cables. Nobody can check each one by eye, and the mistakes are easy to make. Manual visual inspection misses human wiring errors. During installation, a technician can cross-patch a cable between rails, swap two ports on the same leaf switch, or leave a connector partly unlatched. In a Rail-Optimized Design, a Rail 0 NIC plugged into a Rail 1 leaf pushes traffic that should stay one hop inside the rail across two spine hops. It can also blackhole the subnet. A blackhole is a path that accepts traffic and never delivers it, so the job simply waits.
+
+The fix is to compare the wiring you intended with the wiring you have. Keep the intended wiring in a cable matrix, which is a table of every expected link. Then let the fabric tell you what it actually sees, and diff the two.
 
 ```mermaid
 flowchart LR
@@ -168,7 +175,9 @@ flowchart LR
     DIFF -->|"Discrepancy Found"| ERR["Work Order: MISSING_LINK,<br/>RAIL_SWITCH_MISMATCH, PORT_SWAP,<br/>SPEED_OR_WIDTH_DOWNTRAIN"]
 ```
 
-The table lists the discovery tools and what each one checks against the BOM.
+The table lists the discovery tools and what each one checks against the BOM. Each tool sees the fabric from a slightly different angle, so the best check usually uses more than one.
+
+Think of the discovery tools as witnesses to one event. One witness saw the cable from the switch side, another from the host, and a third from the topology service. When two witnesses disagree, the disagreement is itself a clue, and it points you to the link that needs a closer look.
 
 | Discovery / Validation Tool | Fabric Type | Primary CLI / API Interface | What It Verifies Against the Point-to-Point Cable BOM |
 |---|---|---|---|
@@ -180,14 +189,18 @@ The table lists the discovery tools and what each one checks against the BOM.
 
 ### Reconciling discovered links against the Point-to-Point BOM
 
-Automated commissioning compares the expected Point-to-Point Cable BOM with live output from `ibnetdiscover`, `iblinkinfo`, or `lldpctl`. Every wiring error lands in one of four work-order categories, and each one has its own fix.
+Automated commissioning compares the expected Point-to-Point Cable BOM with live output from `ibnetdiscover`, `iblinkinfo`, or `lldpctl`. Every wiring error lands in one of four work-order categories, and each one has its own fix. Sorting the errors this way means a technician gets a clear task, not a vague note that the cluster looks wrong.
 
-- `MISSING_LINK`: the expected host port is absent or down. Technicians check dust caps, MPO polarity, latches, and optics.
-- `RAIL_SWITCH_MISMATCH`: a host NIC sits on a leaf switch from the wrong rail, so it must be re-patched.
-- `PORT_SWAP`: the cable reaches the right leaf switch but the wrong port number, which breaks static LFTs and runbook labels.
-- `SPEED_OR_WIDTH_DOWNTRAIN`: the cable is on the right switch and port but trained at half width, because of a dirty ferrule or a damaged lane.
+A good work order says what is wrong, where it is, and what the fix looks like. A note that says the cluster looks wrong sends a technician walking the whole row. A note that names the switch, the port, and the category sends them straight to the cable.
 
-The worked example below runs the diff engine on four links. Each line of its output maps to one of the four categories above.
+- Is the expected host port absent or down? That is `MISSING_LINK`. Technicians check dust caps, MPO polarity, latches, and optics.
+- Is a host NIC on a leaf switch from the wrong rail? That is `RAIL_SWITCH_MISMATCH`, and the cable must be re-patched.
+- Does the cable reach the right leaf switch but the wrong port number? That is `PORT_SWAP`, which breaks static LFTs and runbook labels. An LFT is the linear forwarding table that tells a switch which port to use for each destination.
+- Is the cable on the right switch and port, but trained at half width? That is `SPEED_OR_WIDTH_DOWNTRAIN`, usually caused by a dirty ferrule or a damaged lane.
+
+The worked example below runs the diff engine on four links. Each line of its output maps to one of the four categories above. Read the output the way you would read a delivery manifest, checking each line against what you expected to arrive.
+
+If a line is missing, the link never came up. If a line is present but names the wrong switch or port, the cable reached the wrong place. If a line shows a lower speed or width than the design, the link trained down. Matching each line to one category keeps the triage quick.
 
 ```text
 Cable Matrix Diff Worked Example (validate_cable_matrix_diff):
@@ -203,9 +216,9 @@ Cable Matrix Diff Worked Example (validate_cable_matrix_diff):
 
 ### NVIDIA Base Command Manager switch discovery and Topograph integration
 
-Good cabling is not enough by itself. If Slurm's static `topology.conf` file drifts out of sync, Slurm places jobs across switches that are far apart. In NVIDIA Base Command Manager clusters, `cmsh` can discover MAC addresses and map them to switch ports. It also works with Topograph to generate Slurm tree and block topologies automatically. From `cmsh`, operators can look up host MAC locations, map breakout ports, preview switch MAC assignments, and rotate factory default switch passwords.
+Good cabling is not enough by itself. If Slurm's static `topology.conf` file drifts out of sync, Slurm places jobs across switches that are far apart. Slurm is the scheduler that decides which nodes a job runs on, and it uses the topology file to keep communicating ranks close together. In NVIDIA Base Command Manager clusters, `cmsh` can discover MAC addresses and map them to switch ports. A MAC address is the hardware address of a network interface. It also works with Topograph to generate Slurm tree and block topologies automatically. From `cmsh`, operators can look up host MAC locations, map breakout ports, preview switch MAC assignments, and rotate factory default switch passwords. A breakout port splits one fast port into several slower ones, which is a common way to connect a switch to more hosts.
 
-For automatic Slurm topology, BCM runs `topograph` or `topograph4` on the head node. The service listens on HTTPS and exports Prometheus metrics. When it is triggered, Topograph queries the InfiniBand, Ethernet, or cloud topology APIs and writes a new `topology.conf`. Then it runs `scontrol reconfigure`, so running jobs are not restarted.
+For automatic Slurm topology, BCM runs `topograph` or `topograph4` on the head node. The head node is the management server that runs the cluster software. The service listens on HTTPS and exports Prometheus metrics. When it is triggered, Topograph queries the InfiniBand, Ethernet, or cloud topology APIs and writes a new `topology.conf`. Then it runs `scontrol reconfigure`, so running jobs are not restarted. The job queue keeps moving while the new topology takes effect for the jobs that start next.
 
 ```text
 BCM 11 Switch Discovery & Topograph Service Reference :
@@ -231,17 +244,21 @@ BCM 11 Switch Discovery & Topograph Service Reference :
    - Healthcheck retention: set drainreasonpolicy APPEND (or drain --reason="+...") preserves historical failure reasons during Stage L5 burn-in
 ```
 
-Check the generated file against the cable matrix before you trust it. A topology file that disagrees with the wiring sends jobs to the wrong switches.
+Check the generated file against the cable matrix before you trust it. A topology file that disagrees with the wiring sends jobs to the wrong switches. The comparison takes minutes, and it prevents a whole class of slow runs that look like software bugs.
+
+A simple routine works well here. Regenerate the topology file after every cabling change, diff it against the matrix, and only then let the scheduler read it. Keeping this step in the change process means the topology never quietly drifts away from the cables.
 
 ---
 
 ## 3. Switch, transceiver, and cable BOM sizing
 
-Order too few optical transceivers, or miss the jump from two-tier to three-tier Clos cabling, and the build can stall on the data center floor for weeks. Capacity planning turns a target GPU count and oversubscription ratio into an exact Bill of Materials. That BOM covers switches, point-to-point cables, standalone optical transceivers, rack power budgets, and field spares.
+Order too few optical transceivers, or miss the jump from two-tier to three-tier Clos cabling, and the build can stall on the data center floor for weeks. A Clos fabric is a layout of leaf and spine switches in which every leaf connects to every spine. Two tiers mean leaves and spines. Three tiers add a layer of super-spines above them. Capacity planning turns a target GPU count and oversubscription ratio into an exact Bill of Materials. That BOM covers switches, point-to-point cables, standalone optical transceivers, rack power budgets, and field spares. A field spare is a part kept on site so a failed unit can be swapped without waiting for a shipment.
 
 ### General 2-tier and 3-tier Clos BOM equations
 
-Start with the notation, because you will need it for every formula below. `G` is the total number of GPUs, `g` is the number of GPUs per node, and `R` is the switch radix, meaning the number of ports on each switch. A two-tier folded Clos fabric reaches at most R squared divided by 2 endpoints. At a leaf oversubscription of k to 1, each leaf gets R times k divided by (k plus 1) ports for hosts, rounded, and the rest are uplinks.
+Start with the notation, because you will need it for every formula below. `G` is the total number of GPUs, `g` is the number of GPUs per node, and `R` is the switch radix, meaning the number of ports on each switch. A two-tier folded Clos fabric reaches at most R squared divided by 2 endpoints. At a leaf oversubscription of k to 1, each leaf gets R times k divided by (k plus 1) ports for hosts, rounded, and the rest are uplinks. Read the formula as a split of one switch's ports between the hosts below it and the links above it.
+
+A helpful picture is a power strip. The strip has a fixed number of sockets, and each one you use for an appliance is one less socket for the next. Raising the ratio gives more sockets to the appliances and fewer to the uplinks. Lowering it does the opposite, and the choice always trades cost against headroom.
 
 ```text
 Two-tier counts:
@@ -251,9 +268,11 @@ Two-tier counts:
   spine switches  = ceil(leaf-spine cables / R)
 ```
 
-These steps give the leaf, spine and cable counts for a two-tier fabric, and you can work them through by hand.
+These steps give the leaf, spine and cable counts for a two-tier fabric, and you can work them through by hand. Pick a switch radix, pick a ratio, and the rest follows from the formulas. Doing the arithmetic yourself once makes the vendor quote much easier to question.
 
-Once the cluster grows past R squared divided by 2 GPUs, a two-tier fabric is no longer enough. Pods of leaves and spines then connect through a third tier of super-spines. Each spine gives R/2 ports to leaves, and the rest go up, set by the spine oversubscription ratio.
+When a vendor quote arrives, run the same formulas against it. If the leaf count does not match what the radix and ratio predict, ask why. Sometimes the answer is a legitimate design choice, such as extra spares, and sometimes it is a padded order. Either way, the question is easy to ask when you already know the arithmetic.
+
+Once the cluster grows past R squared divided by 2 GPUs, a two-tier fabric is no longer enough. Pods of leaves and spines then connect through a third tier of super-spines. Each spine gives R/2 ports to leaves, and the rest go up, set by the spine oversubscription ratio. The extra tier costs more switches and more cables, but it is the only way to reach the larger GPU counts without bottlenecks.
 
 ```text
 Three-tier counts:
@@ -262,7 +281,7 @@ Three-tier counts:
   super-spine switches = ceil(spine-superspine cables / R)
 ```
 
-Take the non-blocking case first. A two-tier fabric needs `2G` cables and `4G` discrete optical transceivers. A three-tier fabric needs `3G` cables and `6G` transceivers. Now change the spine-to-super-spine ratio to two to one. That halves the Super-Spine switches and the upper-tier cables, which brings the count to `2.5G` cables and `5G` optics. Bonded Active Optical Cables and Direct Attach Copper cables need no standalone transceivers at all. Real builds also order field spares and pre-pull spare cables into the overhead trays. Build in power supply redundancy on DGX nodes, and keep every cable run under ninety percent of its maximum reach.
+Take the non-blocking case first. A two-tier fabric needs `2G` cables and `4G` discrete optical transceivers. A three-tier fabric needs `3G` cables and `6G` transceivers. Now change the spine-to-super-spine ratio to two to one. That halves the Super-Spine switches and the upper-tier cables, which brings the count to `2.5G` cables and `5G` optics. Bonded Active Optical Cables and Direct Attach Copper cables need no standalone transceivers at all. Real builds also order field spares and pre-pull spare cables into the overhead trays. Build in power supply redundancy on DGX nodes, and keep every cable run under ninety percent of its maximum reach. Reach is the longest distance a cable type can carry data reliably, and derating it leaves a safety margin.
 
 The table compares five cluster designs on 64-port switches, with and without a 5% spare allowance.
 
@@ -276,11 +295,15 @@ The table compares five cluster designs on 64-port switches, with and without a 
 
 When you read the table, treat the bold columns as order quantities and the plain columns as the working count.
 
+Keep the two columns apart in every conversation with procurement. The working count is what the fabric needs to run on day one. The order quantity is what you buy so that a failed part does not stop the build. Mixing them up is a common reason a project ends with too many switches in the wrong place or too few spares on the shelf. The working count is what the fabric needs to run. The order quantity adds the spares you will want on the shelf.
+
 ### Reference BOMs: NVIDIA DGX B200 and DGX GB300 SuperPODs
 
-Real SuperPOD builds must size several parallel fabrics: compute InfiniBand, storage and in-band management Ethernet, and out-of-band management. They must also respect strict rack power and cable distance rules. Each Scalable Unit in a DGX B200 SuperPOD holds 31 nodes. The unit uses 8 rail leaves with 4 UFM links, and all of its cables stay under ninety percent of rated reach.
+Real SuperPOD builds must size several parallel fabrics: compute InfiniBand, storage and in-band management Ethernet, and out-of-band management.
 
-In a DGX GB300 SuperPOD, eight NVL72 liquid-cooled racks form one Scalable Unit. The compute fabric uses high-radix Quantum-X800 `Q3400-RD` switches. Because of that radix, the fabric scales to 16 Scalable Units in a two-tier topology, with no super-spines. The storage and management fabric is separate. It uses `SN5600D` Ethernet switches to meet either the Standard or the Enhanced storage throughput targets.
+Each of those fabrics has its own switches, cables, and failure modes. Sizing them separately keeps a storage problem from quietly eating the bandwidth that the GPUs need. It also means a failure in the management network does not stop a training run that is healthy on the compute fabric. Out-of-band management is a separate network that still works when a server's main network is down. They must also respect strict rack power and cable distance rules. Each Scalable Unit in a DGX B200 SuperPOD holds 31 nodes. The unit uses 8 rail leaves with 4 UFM links, and all of its cables stay under ninety percent of rated reach. UFM is the Unified Fabric Manager that watches and manages the InfiniBand fabric.
+
+In a DGX GB300 SuperPOD, eight NVL72 liquid-cooled racks form one Scalable Unit. The compute fabric uses high-radix Quantum-X800 `Q3400-RD` switches. Because of that radix, the fabric scales to 16 Scalable Units in a two-tier topology, with no super-spines. High radix means each switch has many ports, so a two-tier fabric can reach a large cluster before it needs a third tier. The storage and management fabric is separate. It uses `SN5600D` Ethernet switches to meet either the Standard or the Enhanced storage throughput targets.
 
 ```text
 SuperPOD DGX B200 and DGX GB300 Hardware, Power, Distance & Storage Specifications:
@@ -301,7 +324,7 @@ SuperPOD DGX B200 and DGX GB300 Hardware, Power, Distance & Storage Specificatio
    - 4 SUs (2,304 GPUs): 360 GB/s Read / 180 GB/s Write (Standard) vs 1,120 GB/s Read / 560 GB/s Write (Enhanced)
 ```
 
-The GB300 table below scales the design from 2 to 16 Scalable Units. Find your unit count in the first column, then read across for the switch and storage counts to order.
+The GB300 table below scales the design from 2 to 16 Scalable Units. Find your unit count in the first column, then read across for the switch and storage counts to order. Each row is a complete design, so you do not add rows together.
 
 | Scale (`# SUs`) | Total `# GPUs` (`Racks`) | IB Leaves (`Q3400-RD`: Per SU / Total) | IB Spines (`Q3400-RD` Total) | Ethernet Spines (`SN5600D`) | Ethernet Compute Leaves (`1:3`) | Ethernet Storage Leaves (`1:1`) | Max Storage BW (`400GbE` Links) | Mgmt Leaves + OOB Spines |
 |---|---|---|---|---|---|---|---|---|
@@ -312,24 +335,36 @@ The GB300 table below scales the design from 2 to 16 Scalable Units. Find your u
 
 Decide the oversubscription ratio before you order, because that single choice sets the transceiver count.
 
+A useful check is to walk the BOM with the owner of the oversubscription decision in the room. Ask what happens to step time when a leaf is drained, and ask what the business expects during that repair. The answers should match the ratio you chose. If they do not, change the ratio now, while the change is still cheap. Changing the ratio after the purchase order is signed usually means buying more optics, which delays the build.
+
 ---
 
 ## 4. Capacity modeling at the bottleneck cut and N-1 failure analysis
 
-Size a fabric by summing switch port speeds and you will build bottlenecks that stall the synchronous collective jobs running on it. A rigorous capacity model starts by finding the bottleneck cut. That is the exact set of links separating the active senders from their receivers. It then divides the demand crossing that cut by the usable link capacity. Production clusters must survive planned maintenance and single hardware faults. So you evaluate every cut twice: in its normal state and in its N-1 state, where one link or spine is out of service.
+Size a fabric by summing switch port speeds and you will build bottlenecks that stall the synchronous collective jobs running on it.
+
+The mistake is easy to make because port speeds add up nicely on a slide. A cut is different. It is the narrow gate that all the traffic from one half of the cluster must pass through. A wide front door does not help if the hallway behind it is narrow. A rigorous capacity model starts by finding the bottleneck cut. That is the exact set of links separating the active senders from their receivers. It then divides the demand crossing that cut by the usable link capacity. Production clusters must survive planned maintenance and single hardware faults.
+
+A useful test is to name the cut for a particular job before the job starts. Write down which nodes sit on each side, then count the links that carry their traffic across. Repeat the count with one link removed. The two numbers tell you whether the job will run at full speed on a normal day and on a bad day. So you evaluate every cut twice: in its normal state and in its N-1 state, where one link or spine is out of service. N-1 means the design still works with one piece missing.
 
 ### Worked cut-capacity and collective step-time calculations
 
-Picture a RoCEv2 rack where every GPU node injects two high-speed rails into one leaf switch. That leaf has limited spine uplinks. In the worst case, cross-rack demand exceeds the uplink capacity by four to one. Draining one uplink for maintenance makes the ratio worse. Topology-aware job placement works the other way. If half the traffic stays inside the rack, cross-spine demand is cut in half.
+Picture a RoCEv2 rack where every GPU node injects two high-speed rails into one leaf switch.
+
+Think of the leaf uplinks as a set of toll lanes at a bridge. Many cars want to cross in the same minute. If the lanes are fewer than the cars, a queue forms on the near side, and the queue grows the longer the rush lasts. Closing one lane for repairs does not change the number of cars, so the queue gets worse. Moving some cars to a different bridge, which is what job placement does, cuts the queue without building a new lane. That leaf has limited spine uplinks. In the worst case, cross-rack demand exceeds the uplink capacity by four to one. Draining one uplink for maintenance makes the ratio worse. Topology-aware job placement works the other way. If half the traffic stays inside the rack, cross-spine demand is cut in half. Placement is the choice of which nodes a job lands on, and it is one of the cheapest ways to relieve a cut.
 
 ```text
 Oversubscription in the normal state = downlink demand / normal uplink capacity
 Oversubscription in the N-1 state    = downlink demand / degraded uplink capacity
 ```
 
-Only the denominator changes between the normal and degraded states. Keep both ratios in your capacity review, not just the healthy one.
+Only the denominator changes between the normal and degraded states.
 
-The same cut math also decides InfiniBand leaf radix and AllReduce step time. Take a constrained leaf with half as many uplinks as downlinks, instead of a non-blocking leaf. Cross-rack bandwidth per node drops in half, so a large AllReduce transfer takes twice as long. Now suppose that two-spine fabric loses one spine during a job. Per-node bandwidth falls to a quarter of line rate, and the AllReduce takes four times as long.
+The numerator, which is the demand, stays the same in both states. That is the important point. A repair does not reduce what the jobs want to send. It only reduces the capacity that carries it, so the ratio moves against you. Keep both ratios in your capacity review, not just the healthy one. The healthy ratio is the best case, and the degraded ratio is the one your team will live with during a repair.
+
+The same cut math also decides InfiniBand leaf radix and AllReduce step time.
+
+Work through the example slowly. Start with the link count on each side of the cut. Then find the traffic that must cross. Divide the traffic by the usable capacity, and only then turn the ratio into a time. Each step is simple, and the mistakes usually come from skipping one of them. Take a constrained leaf with half as many uplinks as downlinks, instead of a non-blocking leaf. Cross-rack bandwidth per node drops in half, so a large AllReduce transfer takes twice as long. Now suppose that two-spine fabric loses one spine during a job. Per-node bandwidth falls to a quarter of line rate, and the AllReduce takes four times as long. Those multipliers are the reason a fabric that looks fine on a normal day can grind to a halt during a single repair.
 
 ```text
 Worked Bottleneck Cut and N-1 Failure Derivations :
@@ -349,25 +384,31 @@ Worked Bottleneck Cut and N-1 Failure Derivations :
    - True N-1 spine resilience rule: size surviving N-1 spines to carry 100% of required workload bandwidth X
 ```
 
-The failure case is the one to size for. Size the surviving spines to carry 100% of the required workload bandwidth.
+The failure case is the one to size for.
+
+A common argument is that spine failures are rare, so the design should be sized for the normal state. The counter-argument is that a rare failure during a long job costs a full run of GPU time. Sizing for N-1 is usually cheaper than paying for the lost hours, and the decision should be made on those numbers, not on a gut feeling about how often hardware fails. Size the surviving spines to carry 100% of the required workload bandwidth. A design that only works when every spine is healthy has not really been designed for production.
 
 ---
 
 ## 5. Production architecture decision framework and 10 enterprise design scenarios
 
-Design an AI fabric from marketing slides or guesswork, and you will pay for it later. The usual costs are recabling in the middle of the project, tail-latency SLA breaches, or spine failures you cannot recover from. Before any hardware is ordered, each architecture decision should rest on seven evidence inputs.
+Design an AI fabric from marketing slides or guesswork, and you will pay for it later.
 
-- Start with the business and service objectives: the availability SLAs in your contracts, the time-to-market target, and the funded multi-year expansion horizon.
-- Next comes the workload communication pattern: how much of each step goes to AllReduce, AllToAll, or point-to-point stages, and how often checkpoints burst.
-- Scale and growth compares the initial GPU count with the funded expansion steps across nodes, racks, or Scalable Units.
-- The performance target sets the scaling efficiency goal for multi-node collectives and the p99 tail-latency limit for real-time inference.
-- Reliability and failure domains define the blast radius you can tolerate from a failed cable, NIC, leaf switch, spine switch under N-1, or Subnet Manager.
-- Operations and skills ask what engineering headcount and expertise you have, in InfiniBand OpenSM and UFM versus Ethernet BGP, EVPN, and NetQ.
-- Cost and constraints cover the capital trade-offs between non-blocking and oversubscribed tiers, the rack power limits, and the overhead cable tray capacity.
+Think of the seven inputs as the questions a good architect asks before drawing a single line. Each answer narrows the choice. Skipping a question does not make the answer disappear. It only means you find out later, when the fix is expensive. Picture a project that bought its switches before anyone asked what the training jobs would send across them. The usual costs are recabling in the middle of the project, tail-latency SLA breaches, or spine failures you cannot recover from. An SLA, or service level agreement, is the promised performance that a customer can enforce. Before any hardware is ordered, each architecture decision should rest on seven evidence inputs.
 
-If any of these seven inputs is still a guess, run discovery or a proof-of-concept benchmark before you lock in switch radix or cabling.
+- What are the business and service objectives? Look at the availability SLAs in your contracts, the time-to-market target, and the funded multi-year expansion horizon.
+- What does the workload communication pattern look like? Measure how much of each step goes to AllReduce, AllToAll, or point-to-point stages, and how often checkpoints burst.
+- How will scale and growth play out? Compare the initial GPU count with the funded expansion steps across nodes, racks, or Scalable Units.
+- What is the performance target? It sets the scaling efficiency goal for multi-node collectives and the p99 tail-latency limit for real-time inference.
+- Which failure domains matter? Reliability and failure domains define the blast radius you can tolerate from a failed cable, NIC, leaf switch, spine switch under N-1, or Subnet Manager. A blast radius is the set of jobs that one failure takes down.
+- What skills does the team have? Operations and skills ask what engineering headcount and expertise you have, in InfiniBand OpenSM and UFM versus Ethernet BGP, EVPN, and NetQ. OpenSM is the open-source subnet manager, and BGP, EVPN, and NetQ are the routing and telemetry tools used on Ethernet fabrics.
+- What does it cost, and what limits you? Cost and constraints cover the capital trade-offs between non-blocking and oversubscribed tiers, the rack power limits, and the overhead cable tray capacity.
+
+If any of these seven inputs is still a guess, run discovery or a proof-of-concept benchmark before you lock in switch radix or cabling. A proof of concept is a small, time-boxed test that answers one open question, and it costs far less than a wrong order.
 
 The ten scenarios below show how the seven inputs play out in real designs. Scan the risk column first, since it names what goes wrong when a design skips a check.
+
+Read the scenarios as stories rather than as a catalog. Each one starts with a customer who has a constraint and a goal, and each one shows the risk that appears when that constraint is ignored. Pick the scenario closest to your own project, and ask what your team would do differently.
 
 | Enterprise Design Scenario | Customer Constraint & Goal | Primary Architectural Risk | Recommended Design & Validation Control |
 |---|---|---|---|
@@ -384,21 +425,25 @@ The ten scenarios below show how the seven inputs play out in real designs. Scan
 
 ### Production release management and canary promotion gates
 
-If you treat acceptance as a one-time event, the fabric is exposed each time something changes. That includes a new node batch, a NIC firmware update, a switch OS upgrade, or a DPU image rollout. Keep the acceptance baseline as a versioned release artifact with five required fields. They are design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts.
+If you treat acceptance as a one-time event, the fabric is exposed each time something changes. That includes a new node batch, a NIC firmware update, a switch OS upgrade, or a DPU image rollout. A DPU is a data processing unit, a card that runs its own software next to the host. Keep the acceptance baseline as a versioned release artifact with five required fields. They are design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts. A rollback artifact is whatever you need to return to the previous state if the change goes wrong.
 
-Before you promote any change, such as ConnectX firmware `28.39.2048`, a Cumulus Linux or NVOS update, or BlueField image `dpu-image-24.10-prod-3`, run the five-step canary workflow. First, diff inventory and configuration against the design. Then run Stages L1 through L4. Next, run Stage L5 concurrent load with an N-1 link drain. Compare step times and QoS counters against the baseline, and promote only after the owner signs off.
+Before you promote any change, such as ConnectX firmware `28.39.2048`, a Cumulus Linux or NVOS update, or BlueField image `dpu-image-24.10-prod-3`, run the five-step canary workflow. A canary is a small first rollout that tests the change before the whole fleet gets it. First, diff inventory and configuration against the design. Then run Stages L1 through L4. Next, run Stage L5 concurrent load with an N-1 link drain. Compare step times and QoS counters against the baseline, and promote only after the owner signs off.
 
 Treat the baseline file as a release gate, not a record you file away.
+
+In practice, the release gate works like a rehearsal. Before a change reaches the fleet, the same tests that passed at commissioning run again on the canary. If the numbers match the baseline, the change moves forward. If they drift, the change stops and the team investigates before the whole cluster is affected. The next upgrade will be judged against it, so keep it current.
 
 ---
 
 ## Commands and configurations that matter
 
-The commands below were not run on live hardware, because this workspace has no physical switches or HCAs attached. Only the deterministic Python lab, `code/part12/fabric_validation_capacity_lab.py`, was run and checked locally.
+The commands below were not run on live hardware, because this workspace has no physical switches or HCAs attached. Only the deterministic Python lab, `code/part12/fabric_validation_capacity_lab.py`, was run and checked locally. HCA means host channel adapter, the InfiniBand network card in a server. Use the blocks as a map of what to run on your own fabric, and read each one before you paste it.
+
+Each block is a sequence, and the order matters. Early blocks collect the evidence that later blocks depend on, so running them out of order can leave you with a snapshot that looks complete but is missing a piece. Keep the output files together, and name them so the order is obvious later.
 
 ### 1. Stage L1 & L2 InfiniBand inventory, routing, and counter baseline
 
-Start by building the evidence folder, so you always know where each output went. Then check the HCAs, the Subnet Manager, and the counters.
+Start by building the evidence folder, so you always know where each output went. A folder per run, with the date in its name, makes it easy to compare two runs months apart. Then check the HCAs, the Subnet Manager, and the counters.
 
 ```bash
 # (untested here) Create timestamped acceptance evidence bundle
@@ -441,7 +486,7 @@ tar -czf acceptance-ib-evidence.tar.gz acceptance-ib
 
 ### 2. Stage L1–L4 RoCEv2 Ethernet path inventory, QoS under load, and collectives
 
-These checks confirm the RoCEv2 endpoint identity, and then capture the counters before and after load so you can compare them. The last two commands run the full-scale collectives.
+These checks confirm the RoCEv2 endpoint identity, and then capture the counters before and after load so you can compare them. The counters before the load are your baseline, and the counters after are the evidence. The last two commands run the full-scale collectives.
 
 ```bash
 # (untested here) RoCEv2 endpoint identity, MTU 9000, DOM/FEC, and prio3 ECN/PFC deltas
@@ -474,7 +519,9 @@ srun --nodes=16 --ntasks-per-node=8 --mpi=pmix \
 
 ### 3. NVIDIA Base Command Manager switch port mapping and Topograph configuration
 
-This block maps node MACs to switch ports, then upgrades Topograph and turns on Prometheus scraping. Run it in order, because each step depends on the one before.
+This block maps node MACs to switch ports, then upgrades Topograph and turns on Prometheus scraping. Run it in order, because each step depends on the one before. A scrape is one pull of metrics by Prometheus, and it only works once the service is listening.
+
+If a scrape fails, check the service before you check the metrics. A dead listener looks exactly like a quiet fabric on a dashboard, which is why the order matters.
 
 ```bash
 # (untested here) 1. Map all node MACs to switch ports via cmsh showport & finddevicebyswitchport
@@ -529,7 +576,7 @@ EOF
 
 ## How it fails
 
-Six failure modes come up again and again. The table pairs each symptom with its root cause and the gate that catches it. If you have seen one of these before, the table tells you where to look.
+Six failure modes come up again and again. The table pairs each symptom with its root cause and the gate that catches it. If you have seen one of these before, the table tells you where to look. Read the symptom first, because that is what the users and the scheduler report, and then work down to the cause.
 
 | Failure Mode | Observable Symptom | Root-Cause Diagnosis | Remediation & Verification Gate |
 |---|---|---|---|
@@ -540,19 +587,23 @@ Six failure modes come up again and again. The table pairs each symptom with its
 | **5. Shared Training and Inference `SL`/`VL` head-of-line blocking** | Inference `p99` jumps **`7.89x`** (`1.8 -> 14.2 ms`) when training starts | Training elephant flows saturate shared switch buffer credits (`VL0`/`prio3`) | Map training and inference to dedicated SLs/VLs (recovering `p99` to `3.1 ms`) or isolate onto separate physical planes |
 | **6. Unverified `N-1` spine resilience or `topograph4` package conflict** | Losing `1` of `2` spines halves BW (`2:1 -> 4:1`, `AllReduce` `80 -> 160 ms`); or `topograph` fails | Spines sized for `N` instead of `N-1`; or `topograph4` installed without `version4 = true` / removing `topograph` | Size each spine for full load under `N-1` and test by draining a link in `L5`; remove `topograph` before `topograph4` and set `version4 = true` |
 
-The pattern is the same across all six. The symptom shows up in the application, but the fix usually lives in a lower layer. You will save time if you check that lower layer first.
+The pattern is the same across all six. The symptom shows up in the application, but the fix usually lives in a lower layer.
+
+The table is most useful when you read it with a specific job in mind. Pick the symptom your users reported, find the row, and walk down the diagnosis column. Stop at the first lower layer that has not been checked yet. You will save time if you check that lower layer first. A slow job rarely means a slow application. It usually means a lower layer that was never tested under load.
 
 ---
 
 ## Hands-on lab
 
-You can run the lab on your own workstation or on a Nebius GPU node. It needs only the Python standard library, and it uses two files, `code/part12/fabric_validation_capacity.py` and `code/part12/fabric_validation_capacity_lab.py`. The run performs 26 self-checks. They cover acceptance gating, Clos and SuperPOD BOMs, bottleneck cut models, and Topograph cable-matrix diff validation.
+You can run the lab on your own workstation or on a Nebius GPU node. It needs only the Python standard library, and it uses two files, `code/part12/fabric_validation_capacity.py` and `code/part12/fabric_validation_capacity_lab.py`. The run performs 26 self-checks. They cover acceptance gating, Clos and SuperPOD BOMs, bottleneck cut models, and Topograph cable-matrix diff validation. Each check compares a computed value with the value the chapter states, so a drift between the text and the code shows up as a failed line.
+
+Run the lab with the command below.
 
 ```bash
 python3 -B code/part12/fabric_validation_capacity_lab.py
 ```
 
-Expected output verified locally.
+A passing run prints one PASS line for each check, followed by a summary. The output below shows what a good run looks like.
 
 ```text
 === Chapter 12.23 Lab: Fabric Validation and Capacity Planning ===
@@ -566,30 +617,36 @@ Summary: 26 passed, 0 failed
 
 If your summary line matches the one above, the lab agrees with the numbers in this chapter.
 
+The lab is useful for checking your own calculations as well. When you change an input, rerun the lab and compare the result to your hand arithmetic. A mismatch means one of the two is wrong, and finding out which one is the real learning. If one line fails, look at the check name first, because it tells you which section the mismatch belongs to.
+
 ---
 
 ## Common first mistakes
 
-- **Trusting `ping`, `State: Active`, or a passing `all_reduce_perf` run.** An empty collective can pass even with a marginal optical transceiver, a cross-patched rail cable, or unverified PFC and ECN counters. Gate acceptance on all five stages every time.
-- **Summing port speeds instead of modeling the bottleneck traffic cut and its N-1 state.** Aggregate switch bandwidth hides an oversubscribed leaf-to-spine uplink cut. Calculate both the normal and the N-1 degraded cut ratios, because you need both to see the risk.
-- **Keying inventory on mutable InfiniBand LIDs, and assuming uniform numeric RoCE GID indices.** OpenSM can reassign a port's Base lid on any sweep, and rdma-core assigns GID indices dynamically. Anchor inventory on the Port GUID, and verify RoCE GIDs with `show_gids` and `ip route get`.
-- **Resetting shared hardware counters with `perfquery -R` during live troubleshooting.** Clearing cumulative counters blinds UFM, NetQ, and Prometheus collectors. Capture snapshots and compute deltas instead.
-- **Forgetting optical transceiver fan-out, spare factors, and cable reach derating.** Moving from a two-tier to a three-tier non-blocking Clos raises the cables per GPU from two to three. Include two standalone optics per patch fiber cable, add field spares, and keep cable runs within ninety percent of rated distance.
+These are the mistakes that come up most often in acceptance reviews. Each bullet is a question you might ask yourself, followed by the answer the chapter supports.
 
-Keep these five mistakes in mind during every acceptance review.
+- Is a `ping`, a `State: Active` flag, or a passing `all_reduce_perf` run enough to call a fabric ready? No. An empty collective can pass even with a marginal optical transceiver, a cross-patched rail cable, or unverified PFC and ECN counters. Gate acceptance on all five stages every time.
+- Is a port-speed sum a fair capacity figure? No. Aggregate switch bandwidth hides an oversubscribed leaf-to-spine uplink cut. Calculate both the normal and the N-1 degraded cut ratios, because you need both to see the risk.
+- Can you key inventory on InfiniBand LIDs and assume RoCE GID indices stay the same? No. OpenSM can reassign a port's Base lid on any sweep, and rdma-core assigns GID indices dynamically. Anchor inventory on the Port GUID, and verify RoCE GIDs with `show_gids` and `ip route get`.
+- Should you reset shared counters with `perfquery -R` during live troubleshooting? No. Clearing cumulative counters blinds UFM, NetQ, and Prometheus collectors. Capture snapshots and compute deltas instead.
+- Did you count the optical transceiver fan-out, spare factors, and cable reach derating? Moving from a two-tier to a three-tier non-blocking Clos raises the cables per GPU from two to three. Include two standalone optics per patch fiber cable, add field spares, and keep cable runs within ninety percent of rated distance.
+
+Keep these five questions in mind during every acceptance review.
+
+Each question matches one of the failure modes above, so the list doubles as a quick review before the sign-off meeting. Going through it takes only a few minutes, and it often catches the gap that would have cost the most later. Asking them out loud before the sign-off meeting is often enough to catch the problem.
 
 ---
 
 ## Exercises
 
-Work through these exercises with the lab functions open, so you can check each answer against code.
+Work through these exercises with the lab functions open, so you can check each answer against code. Write each answer as one short line before you move on to the next exercise.
 
-1. **Exercise 1 — Bottleneck Cut and N-1 Oversubscription Math:** Use `model_bottleneck_cut` with the rack and cluster parameters below. Compute the worst-case downlink demand, the normal uplink capacity and oversubscription, and the N-1 capacity and oversubscription. Then repeat the ratios with rack-local placement, and work out the AllReduce transfer times across the three leaf and spine states.
-2. **Exercise 2 — 2-Tier vs. 3-Tier Clos Switch, Cable, and Transceiver BOM:** Use `calculate_clos_bom` to do the arithmetic. For the cluster sizes below, compute the active and spare-inclusive leaves, spines, super-spines, cables, and optics for the two-tier fabrics. Then compute the same BOM for the three-tier fabrics at non-blocking and two-to-one super-spine oversubscription.
-3. **Exercise 3 — SuperPOD DGX B200 and DGX GB300 Reference Architecture Sizing:** Use the reference tables above. For the DGX B200 SuperPOD, state the node, GPU, leaf, spine, and cable counts for one to four Scalable Units. For the DGX GB300 SuperPOD, state the InfiniBand and Ethernet switch counts, along with the Standard and Enhanced storage targets.
-4. **Exercise 4 — Multi-Stage Acceptance Gate Diagnosis:** Run `evaluate_acceptance_ladder` against the five commissioning failure signatures below. For each one, find the first stage that fails and the fix, even when the full-scale collective benchmark looks like it passed.
-5. **Exercise 5 — Cable Matrix Diff & BCM 11 Topograph Validation:** Feed the expected and discovered links below into `validate_cable_matrix_diff`, and classify all four wiring discrepancies. Then write the three-line Slurm `topology.conf` that BCM Topograph generates for `switch03` and its six child nodes.
-6. **Exercise 6 — Shared Training, Inference, and Storage Contention:** Use the contention parameters below. Work out the Priority 3 packet deltas and the combined throughput from the two-sender RoCEv2 test. Then measure the inference tail-latency spike on a shared Virtual Lane, compare it with separated Virtual Lanes, and explain why `P_Key` partitions do not isolate bandwidth.
+1. **Exercise 1 — Bottleneck Cut and N-1 Oversubscription Math:** Use `model_bottleneck_cut` with the rack and cluster parameters below. What is the worst-case downlink demand? What are the normal uplink capacity and the oversubscription? What are the N-1 capacity and the oversubscription? Repeat the ratios with rack-local placement. Then work out the AllReduce transfer times across the three leaf and spine states.
+2. **Exercise 2 — 2-Tier vs. 3-Tier Clos Switch, Cable, and Transceiver BOM:** Use `calculate_clos_bom` for the arithmetic. For the cluster sizes below, compute the active leaves and spines. Then compute the spare-inclusive leaves and spines. Do the same for the cables and optics in the two-tier fabrics. Then compute the same BOM for the three-tier fabrics at non-blocking. Finally, repeat it at two-to-one super-spine oversubscription.
+3. **Exercise 3 — SuperPOD DGX B200 and DGX GB300 Reference Architecture Sizing:** Use the reference tables above. For the DGX B200 SuperPOD, state the node count for one Scalable Unit. Then state the GPU, leaf, spine, and cable counts for one to four Scalable Units. For the DGX GB300 SuperPOD, state the InfiniBand switch count. Then state the Ethernet switch count. Finally, state the Standard and Enhanced storage targets.
+4. **Exercise 4 — Multi-Stage Acceptance Gate Diagnosis:** Run `evaluate_acceptance_ladder` against the five commissioning failure signatures below. For each signature, find the first stage that fails. Then name the fix. Do this even when the full-scale collective benchmark looks like it passed.
+5. **Exercise 5 — Cable Matrix Diff & BCM 11 Topograph Validation:** Feed the expected and discovered links below into `validate_cable_matrix_diff`. Classify all four wiring discrepancies. Then write the three-line Slurm `topology.conf` that BCM Topograph generates for `switch03` and its six child nodes.
+6. **Exercise 6 — Shared Training, Inference, and Storage Contention:** Use the contention parameters below. Work out the Priority 3 packet deltas from the two-sender RoCEv2 test. Then work out the combined throughput from the same test. Next, measure the inference tail-latency spike on a shared Virtual Lane. Compare it with separated Virtual Lanes. Last, explain why `P_Key` partitions do not isolate bandwidth.
 
 ```text
 Exercise Input Parameters and Reference Evidence:
@@ -610,12 +667,14 @@ Exercise Input Parameters and Reference Evidence:
 
 Check your answers against the lab before you trust a capacity number in a design review.
 
+A good habit is to write the answer first and the lab result second. If you look at the lab first, it is easy to nudge your reasoning until it agrees, and then you have not really tested your own understanding. If your answer and the lab disagree, find the input that differs before you change either one.
+
 ---
 
 ## Interview angles
 
 1. **"Why does a port-speed inventory or a clean pairwise `ib_write_bw` test not constitute fabric acceptance or a capacity model?"**.
-   - *Model answer:* Pairwise `ib_write_bw` tests one source, one destination, and one path in isolation. It ignores concurrent demand on a shared leaf-to-spine cut and static route collisions. Sixteen nodes that each inject two rails generate four times more downlink demand than an eight-uplink leaf can carry. Draining one uplink makes that ratio worse. A pairwise test can pass at line rate while a multi-rank collective triggers hundreds of thousands of ECN marks, PFC pauses, and hardware tail drops. So acceptance requires the full five-stage ladder, with retained evidence at every stage.
+   - *Model answer:* Picture the interviewer asking why a neat pairwise test is not enough. A pairwise `ib_write_bw` test uses one source, one destination, and one path in isolation. It ignores concurrent demand on a shared leaf-to-spine cut and static route collisions. Sixteen nodes that each inject two rails generate four times more downlink demand than an eight-uplink leaf can carry. Draining one uplink makes that ratio worse. A pairwise test can pass at line rate while a multi-rank collective triggers hundreds of thousands of ECN marks, PFC pauses, and hardware tail drops. So acceptance requires the full five-stage ladder, with retained evidence at every stage.
 
 2. **"How do you design and verify a multi-rack fabric for one-switch N-1 failure tolerance without endangering production?"**.
    - *Model answer:* Size the spine uplinks so the required bisection bandwidth still fits on the N-1 surviving spines, not on all N spines. Otherwise, losing one of two spines halves bandwidth and doubles AllReduce transfer time. Put the standby Subnet Manager in its own power and out-of-band management domain. Validate resilience during a maintenance window at Stage L5 by draining a real uplink or spine. Then rerun the collective matrix, and confirm that tail latency and queue counters match the degraded baseline.
@@ -828,3 +887,4 @@ Primary sources cited:
 ```
 
 corrected 2026-11-11: the 340 to 361.36 GB/s busbw gate is labelled an illustrative policy and not a vendor figure; source docs/part-19-capstone/05-capstone-an-nccl-tests-fabric-lab.md.
+
