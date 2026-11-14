@@ -24,6 +24,8 @@ lab_venue: "GCP / GKE"
 
 ## Access controls at a glance
 
+Picture a training job in one tenant's namespace that tries to read a Secret stored in another namespace. Several controls stand between that request and the answer, and each one can say no. The diagram shows them in the order a request meets them, so you can see where a missing control would let the request through.
+
 ```mermaid
 flowchart LR
     subgraph Identity["Identity"]
@@ -45,29 +47,25 @@ flowchart LR
     RB --> NW
 ```
 
-A workload first proves who it is through its ServiceAccount and Workload Identity. RBAC and NetworkPolicy then decide what that identity may do and where it may connect. Pod Security Standards and Secrets control what runs inside the pod and what credentials it holds. Each layer can be checked on its own.
+A workload first proves who it is through its ServiceAccount and Workload Identity. RBAC and NetworkPolicy then decide what that identity may do and where it may connect. Pod Security Standards and Secrets control what runs inside the pod and what credentials it holds. Each layer can be checked on its own, and that matters, because a gap in one layer is often hidden by the others until something goes wrong.
 
 ## Why this matters for AI infrastructure
 
 A data scientist is given permission to create pods in a namespace on the shared GPU cluster, so they can launch training jobs. The Kubernetes documentation on RBAC good practices says what that permission really grants. Permission to create pods implicitly grants access to the Secrets, ConfigMaps and PersistentVolumes in that namespace, because a pod can mount them. Since a pod can run as any ServiceAccount in the namespace, it also grants the API access of every one of them. A user who can run privileged pods can use that access to reach the node.
 
-Chapters 18.2 and 18.3 checked firmware and software supply chain. This chapter checks the access controls on the cluster itself, with a focus on what changes when the cluster runs GPUs. GPU clusters add components that run privileged on every node, and they add namespaces where tenants launch long-lived jobs. Those two facts shape the controls below.
+The data scientist did not ask for any of that. They asked for a place to run a job. Each control below narrows the grant, so a request for pods stays a request for pods.
+
+Chapters 18.2 and 18.3 checked firmware and software supply chain. This chapter checks the access controls on the cluster itself, with a focus on what changes when the cluster runs GPUs. GPU clusters add components that run privileged on every node, and they add namespaces where tenants launch long-lived jobs. Those two facts shape the controls below. A privileged component on every node means one mistake reaches every node, and a long-lived job means a leaked credential stays useful for a long time.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-Chapter 18.1 for the threat model, Chapter 18.3 for the artifact layer, Chapter 11 for GPU Kubernetes, and Chapter 5 for the cluster primitives.
+Suppose you are about to grant a new team its first namespace on the GPU cluster. Read these before you do. Chapter 18.1 for the threat model, Chapter 18.3 for the artifact layer, Chapter 11 for GPU Kubernetes, and Chapter 5 for the cluster primitives. If you have not yet read how a request moves through the API server, Chapter 5 gives the background you need before the RBAC section makes sense.
 
 ### Outcomes
 
-After this chapter you will be able to:
-
-1. Write least-privilege Roles and RoleBindings for each tenant namespace.
-2. List the RBAC permissions that quietly give node or secret access.
-3. Keep tenant namespaces at the Restricted Pod Security level while GPU components run privileged elsewhere.
-4. Write NetworkPolicies that deny by default and allow only what a workload needs.
-5. Keep secrets out of manifests and out of etcd in plain text.
+Picture an access review where nobody can say what a service account is for. Most of the work in this chapter comes down to one habit. For each identity on the cluster, you ask what it can do, then you cut the list down to the actions it needs. The chapter starts with Roles and RoleBindings, then the permissions that look harmless and are not, then Workload Identity for cloud access. Next it covers the three Pod Security levels and why GPU components need a different level from tenant pods. It then shows NetworkPolicies that deny by default and open one path at a time, and it ends with secrets kept out of manifests and out of etcd in plain text.
 
 ---
 
@@ -75,7 +73,7 @@ After this chapter you will be able to:
 
 ### 1.1 Roles and RoleBindings
 
-A data scientist needs to watch training jobs in one namespace and nothing else. RBAC, which stands for role-based access control, grants exactly that. A Role lists permissions, and a RoleBinding attaches the Role to a user, a group or a ServiceAccount.
+A data scientist needs to watch training jobs in one namespace and nothing else. Picture the request in a ticket: "can you give my team access to the jobs?" The honest answer is yes, but only for jobs, only in their namespace, and only for the verbs they use. RBAC, which stands for role-based access control, grants exactly that. A Role lists permissions, and a RoleBinding attaches the Role to a user, a group or a ServiceAccount. A ServiceAccount is the identity that a pod uses when it talks to the Kubernetes API.
 
 ```yaml
 # code/part18/rbac_role.yaml
@@ -93,11 +91,11 @@ rules:
     verbs: ["get", "list", "watch", "create", "delete"]
 ```
 
-This Role reads pods, services and config maps, and it can create and delete Jobs. A RoleBinding attaches it to the ServiceAccount that the workload runs under. Production Kubernetes, in its multitenancy chapter, describes the built-in view, edit and admin roles. The admin role can create Roles and RoleBindings, so give it only to a tenant administrator.
+This Role reads pods, services and config maps, and it can create and delete Jobs. A RoleBinding attaches it to the ServiceAccount that the workload runs under. Production Kubernetes, in its multitenancy chapter, describes the built-in view, edit and admin roles. The admin role can create Roles and RoleBindings, so give it only to a tenant administrator. A role that can grant roles is a role that can grow its own power, which is why it deserves a short list of holders.
 
 ### 1.2 ClusterRoles
 
-A ClusterRole works across the whole cluster. You need one for resources that do not belong to a namespace, such as nodes.
+Picture a platform engineer who needs to see every node, not just one namespace. A ClusterRole works across the whole cluster. You need one for resources that do not belong to a namespace, such as nodes. Think of nodes as the building itself rather than a room inside it. A namespace-scoped Role cannot describe the building, so the platform team needs a ClusterRole for that kind of read access.
 
 ```yaml
 # code/part18/rbac_clusterrole.yaml
@@ -114,9 +112,11 @@ rules:
     verbs: ["get", "list", "watch"]
 ```
 
-Bind a ClusterRole with a RoleBinding when you want its rules to apply inside one namespace only.
+Bind a ClusterRole with a RoleBinding when you want its rules to apply inside one namespace only. That pattern is useful for a shared reader role. The same role definition then serves many namespaces, and each namespace gets its own binding, so the grant stays where you put it.
 
 ### 1.3 Common mistakes
+
+The mistakes below show up in almost every cluster that grew quickly. Each one is easy to make on a Friday and hard to find on a Monday. The table lists the mistake, why it is wrong, and the fix you can apply the same day.
 
 | Mistake | Why it is wrong | The fix |
 |---|---|---|
@@ -129,7 +129,7 @@ Tenants can usually list every namespace. Production Kubernetes notes that RBAC 
 
 ### 1.4 Permissions that give more than they say
 
-The Kubernetes RBAC good practices page lists permissions that allow privilege escalation. Review every tenant role against this list.
+Picture a tenant role that looks read-only in the YAML and still lets its holder reach a secret. The Kubernetes RBAC good practices page lists permissions that allow privilege escalation. Escalation here means a role that gives more power than its name suggests. Review every tenant role against this list, because a role that looks like read-only can carry one of these permissions inside it.
 
 | Permission | What it quietly gives |
 |---|---|
@@ -139,13 +139,13 @@ The Kubernetes RBAC good practices page lists permissions that allow privilege e
 | The escalate, bind and impersonate verbs | Bypass the protections against granting rights you do not hold |
 | Access to the nodes proxy subresource | Reaches the kubelet API on nodes |
 
-For a GPU cluster the first two rows matter most. A tenant who can create pods in a namespace can reach every secret mounted there. Put each team in its own namespace and keep model credentials in a ServiceAccount that the team's pods alone use.
+For a GPU cluster the first two rows matter most. A tenant who can create pods in a namespace can reach every secret mounted there. Put each team in its own namespace and keep model credentials in a ServiceAccount that the team's pods alone use. When you audit a role, search for these rows first, because they are the ones that turn a small grant into a large one.
 
 ---
 
 ## 2. Workload Identity
 
-A training job must read a model file from a cloud bucket. The job should not carry a password for that bucket. Workload Identity links the job's Kubernetes ServiceAccount to a cloud IAM role, so the job gets short-lived credentials.
+A training job must read a model file from a cloud bucket. The job should not carry a password for that bucket. A password copied into a pod is a password that can be read by anyone who can read the pod, and it stays valid until someone remembers to change it. Workload Identity links the job's Kubernetes ServiceAccount to a cloud IAM role, so the job gets short-lived credentials instead.
 
 ```yaml
 # code/part18/workload_identity.yaml
@@ -158,15 +158,15 @@ metadata:
     iam.gke.io/gcp-service-account: churn-trainer@gke-prod.iam.gserviceaccount.com
 ```
 
-The annotation names the cloud service account that this ServiceAccount maps to. Give each workload its own ServiceAccount, not the namespace default. Production Kubernetes recommends turning off automatic token mounting when a workload never calls the Kubernetes API. Set `automountServiceAccountToken: false` on the ServiceAccount or the Pod. The Pod setting wins when both are present.
+The annotation names the cloud service account that this ServiceAccount maps to. Give each workload its own ServiceAccount, not the namespace default. The default ServiceAccount is shared by every pod in the namespace that does not name another one, so a grant to it reaches all of them. Production Kubernetes recommends turning off automatic token mounting when a workload never calls the Kubernetes API. Set `automountServiceAccountToken: false` on the ServiceAccount or the Pod. The Pod setting wins when both are present, so check the Pod spec when you want to be sure which one is in force.
 
-Confirm the credential works from inside a pod.
+Confirm the credential works from inside a pod. A quick test shows you whether the mapping is correct before a real job depends on it.
 
 ```bash
 kubectl exec -it POD_NAME -- gcloud auth print-access-token
 ```
 
-Before you grant cloud access, ask which single IAM role the workload needs, and grant only that role.
+Before you grant cloud access, ask which single IAM role the workload needs, and grant only that role. A training job that reads one bucket does not need project-wide storage rights. When the role is narrow, a leaked token does less damage, and the audit log shows exactly what the job touched.
 
 ---
 
@@ -174,7 +174,7 @@ Before you grant cloud access, ask which single IAM role the workload needs, and
 
 ### 3.1 The three levels
 
-A pod can ask for powerful things, such as the host's network or privileged access to the node. Pod Security Standards set how far a pod may go. The Kubernetes documentation defines three cumulative levels.
+A pod can ask for powerful things, such as the host's network or privileged access to the node. Pod Security Standards set how far a pod may go. Think of them as three doors of increasing trust. The Kubernetes documentation defines three cumulative levels, which means each level includes the rules of the one before it.
 
 | Level | What it allows |
 |---|---|
@@ -182,13 +182,13 @@ A pod can ask for powerful things, such as the host's network or privileged acce
 | Baseline | Minimally restrictive, prevents known privilege escalations |
 | Restricted | Heavily restricted, following current pod hardening practice |
 
-The Baseline level forbids hostPath volumes and host ports. The RBAC documentation says to enforce Baseline or Restricted where you do not fully trust the people who create pods.
+The Baseline level forbids hostPath volumes and host ports. The RBAC documentation says to enforce Baseline or Restricted where you do not fully trust the people who create pods. That sentence is the reason this section exists. For a shared GPU cluster, most of the people who create pods are people you trust, and a few are not, and you cannot tell which from the manifest alone.
 
 ### 3.2 Tenants and GPU components need different levels
 
-Not every pod on a GPU node can be Restricted. The Kubernetes device plugin documentation says the device plugin directory under /var/lib/kubelet requires privileged access, so a device plugin must run in a privileged security context and mount that directory. The NVIDIA GPU Operator documentation tells you, when your cluster uses Pod Security Admission, to label the operator's namespace with enforce set to privileged.
+Picture a device plugin pod that refuses to start in a namespace labelled Restricted. Not every pod on a GPU node can be Restricted. A GPU device plugin is the component that makes the GPU visible to the kubelet and to pods. Its job touches the host, so the rules that protect tenants get in its way. The Kubernetes device plugin documentation says the device plugin directory under /var/lib/kubelet requires privileged access, so a device plugin must run in a privileged security context and mount that directory. The NVIDIA GPU Operator documentation tells you, when your cluster uses Pod Security Admission, to label the operator's namespace with enforce set to privileged.
 
-So the pattern is two kinds of namespace. The GPU Operator namespace runs privileged, and only the platform team may create anything in it. Tenant namespaces run Restricted, and their pods request GPUs through resource limits rather than through host paths or privileged mode.
+So the pattern is two kinds of namespace. The GPU Operator namespace runs privileged, and only the platform team may create anything in it. Tenant namespaces run Restricted, and their pods request GPUs through resource limits rather than through host paths or privileged mode. That split lets the components that must touch the node do so, while the tenant workloads stay boxed in.
 
 ```yaml
 # code/part18/pss_restricted.yaml
@@ -205,13 +205,13 @@ metadata:
     pod-security.kubernetes.io/audit-version: latest
 ```
 
-A namespace with these labels applies Restricted to the pods inside it. A namespace without them is not covered, so check every namespace. Check from time to time that nobody has labelled a tenant namespace privileged to make a job start.
+A namespace with these labels applies Restricted to the pods inside it. A namespace without them is not covered, so check every namespace. Check from time to time that nobody has labelled a tenant namespace privileged to make a job start. That relabel is a small change that undoes a large control, and it often happens under deadline pressure.
 
-Never allow tenants to create workloads in the privileged operator namespace. Treat write access to that namespace as node administrator access.
+Never allow tenants to create workloads in the privileged operator namespace. Treat write access to that namespace as node administrator access, because a pod there can reach the host the same way the operator's own pods do.
 
 ### 3.3 Custom admission rules
 
-Pod Security admission handles one job. For an extra rule, such as requiring allowPrivilegeEscalation to be false, Kubernetes offers ValidatingAdmissionPolicy, which evaluates a rule written in CEL with no webhook to run.
+Picture a team that needs one extra rule that the built-in levels do not express. Pod Security admission handles one job. For an extra rule, such as requiring allowPrivilegeEscalation to be false, Kubernetes offers ValidatingAdmissionPolicy, which evaluates a rule written in CEL with no webhook to run. CEL is the Common Expression Language, a small expression language that Kubernetes uses for these checks. The policy below is an example of what the rule looks like in practice.
 
 ```yaml
 # code/part18/pss_admission.yaml
@@ -253,7 +253,7 @@ A policy takes effect only once a binding selects where it applies. The policy h
 
 ## 4. NetworkPolicies
 
-Imagine a pod in one tenant's namespace opening a connection to a pod in another's. Nothing in the network stopped it. A default-deny policy closes that gap by blocking all traffic to and from the pods in a namespace until you allow it. Production Kubernetes makes the same point: a namespace alone has no effect on the workload plane until you add policy.
+Imagine a pod in one tenant's namespace opening a connection to a pod in another's. Nothing in the network stopped it. The cluster network is open by default, so the connection simply worked, and nobody noticed until a log review found it. A default-deny policy closes that gap by blocking all traffic to and from the pods in a namespace until you allow it. Production Kubernetes makes the same point: a namespace alone has no effect on the workload plane until you add policy.
 
 ```yaml
 # code/part18/networkpolicy_default_deny.yaml
@@ -269,7 +269,7 @@ spec:
     - Egress
 ```
 
-Then open one path at a time. This policy lets pods labelled `app: churn-model` accept traffic on two ports, but only from the namespace labelled `name: ingress`.
+Then open one path at a time. Each path you open is a decision someone can explain. This policy lets pods labelled `app: churn-model` accept traffic on two ports, but only from the namespace labelled `name: ingress`.
 
 ```yaml
 # code/part18/networkpolicy_explicit_allow.yaml
@@ -300,7 +300,7 @@ spec:
 | Egress to 0.0.0.0/0 | All outbound traffic is allowed | Restrict to the destinations the job needs |
 | Missing policyTypes | The policy may cover less than you meant | Specify Ingress and Egress |
 
-A NetworkPolicy needs a network plugin that enforces it. Confirm that your cluster's does.
+A NetworkPolicy needs a network plugin that enforces it. Confirm that your cluster's does. A policy object that the plugin ignores looks correct in `kubectl get` and protects nothing, so test it with a real connection from another namespace before you rely on it.
 
 ---
 
@@ -308,7 +308,7 @@ A NetworkPolicy needs a network plugin that enforces it. Confirm that your clust
 
 ### 5.1 Types and placement
 
-Secrets are the passwords and keys your workloads need. Kubernetes has several types, including Opaque for generic data, dockerconfigjson for image pull credentials, and tls for certificates.
+Picture a pod that fails to connect to the experiment tracker because its password is missing. Secrets are the passwords and keys your workloads need. A pod that connects to an experiment tracker needs a password for it, and a pod that pulls a private image needs registry credentials. Kubernetes has several types, including Opaque for generic data, dockerconfigjson for image pull credentials, and tls for certificates. The type tells the cluster what the data is for, so it can validate the shape of it.
 
 ```yaml
 # code/part18/secret_opaque.yaml
@@ -323,11 +323,11 @@ stringData:
   password: <random-password>
 ```
 
-The password above is a placeholder. The real value should never go into Git. Chapter 18.7 explains how to make sure Secrets are encrypted in etcd.
+The password above is a placeholder. The real value should never go into Git. Once a value is in Git, it lives in the history forever, even after you delete the file. Chapter 18.7 explains how to make sure Secrets are encrypted in etcd, which is the database that stores the cluster state, so the stored form is not readable by anyone who copies the disk.
 
 ### 5.2 External Secrets Operator
 
-Production Kubernetes says the built-in Secret API may fall short for enterprise secret data. External Secrets Operator syncs secrets from external managers such as Vault, AWS Secrets Manager or GCP Secret Manager into Kubernetes Secrets. It syncs on a refresh interval and does not rotate the secret in the external manager. Rotation happens there.
+Picture a team whose secrets already live in an enterprise manager with its own rotation schedule. Production Kubernetes says the built-in Secret API may fall short for enterprise secret data. Enterprise teams often already run a secret manager with audit trails, approval flows and rotation. External Secrets Operator syncs secrets from external managers such as Vault, AWS Secrets Manager or GCP Secret Manager into Kubernetes Secrets. It syncs on a refresh interval and does not rotate the secret in the external manager. Rotation happens there, and the operator copies the new value in on its next sync.
 
 ```yaml
 # code/part18/external_secret.yaml
@@ -354,44 +354,46 @@ The `refreshInterval` field sets how often the sync runs. If you rotate the valu
 
 ## 6. How it fails
 
+Picture an alert that fires because a tenant can read a secret it should never see. Access problems usually show up as something that should be impossible but is not. The sections below describe the common ones. Each starts with the situation you would see, then names the cause and the first change to make.
+
 ### 6.1 A tenant job has cluster-admin
 
-The job can list secrets in every namespace and create pods anywhere. Its ServiceAccount is bound to the cluster-admin ClusterRole. Remove the binding, write a least-privilege Role and bind that.
+A training job starts listing secrets in other namespaces, and nobody asked it to. The job can list secrets in every namespace and create pods anywhere. The cause is usually a binding someone created to make a job start, which attached a powerful role to a ServiceAccount. Its ServiceAccount is bound to the cluster-admin ClusterRole. Remove the binding, write a least-privilege Role and bind that.
 
 ### 6.2 A privileged pod runs in a tenant namespace
 
-A pod sets `privileged: true`. The namespace enforces privileged, perhaps relabelled to make a job start. Change it to Restricted and recreate the pod without the privileged fields. Check who may relabel namespaces.
+A pod with `privileged: true` is running in a namespace meant for tenants. The namespace enforces privileged, perhaps relabelled to make a job start. Nobody set the pod to privileged on purpose, but the namespace allowed it. Change the namespace back to Restricted and recreate the pod without the privileged fields. Check who may relabel namespaces, because that permission is the real problem.
 
 ### 6.3 A tenant reads a neighbour's secrets
 
-The tenant has permission to create pods or list secrets in a namespace that holds shared credentials. Move shared credentials out of tenant namespaces and remove the list permission.
+A tenant reads a credential that belongs to another team, and the team does not know it happened. The tenant has permission to create pods or list secrets in a namespace that holds shared credentials. Shared credentials should not sit in a namespace that tenants can reach. Move shared credentials out of tenant namespaces and remove the list permission.
 
 ### 6.4 The network allows all traffic
 
-A pod in namespace A reaches a pod in namespace B. There is no policy, or one allows all ingress. Add default-deny and then explicit allows.
+A pod in namespace A reaches a pod in namespace B, and the owner of B did not expect it. There is no policy, or one allows all ingress. Nothing in the logs flags the connection, because nothing denied it. Add default-deny and then explicit allows.
 
 ### 6.5 A secret is hard-coded in a manifest in Git
 
-Use External Secrets Operator and refer to the Secret by name. Rotate the leaked value at once, because Git history keeps it.
+A developer copies a password into a manifest so the pod can start, then commits the file. The value is now in the repository history. Use External Secrets Operator and refer to the Secret by name. Rotate the leaked value at once, because Git history keeps it, and deleting the file in a later commit does not remove the old copy.
 
 ### 6.6 A long-lived token was never rotated
 
-A workload holds a ServiceAccount token as an environment variable. Move it to Workload Identity and rotate the token.
+A workload holds a ServiceAccount token as an environment variable, and the token has not changed in a long time. A stolen token keeps working until someone notices. Move it to Workload Identity and rotate the token. Then check that the old token no longer authenticates.
 
 ---
 
 ## 7. Hands-on lab
 
-The lab applies the repository files on a test cluster. It has not been run on a live GKE cluster here.
+Picture a test cluster that a teammate has just handed over for a practice run. The lab applies the repository files on a test cluster. It was not run on a live GKE cluster here. Work on a test namespace first, and keep the output of each step so you can compare it with the next run.
 
-1. Apply the least-privilege Role and its binding.
+1. Apply the least-privilege Role and its binding. Start here, because every later check depends on the binding being in place.
 
 ```bash
 kubectl apply -f code/part18/rbac_role.yaml
 kubectl apply -f code/part18/rbac_rolebinding.yaml
 ```
 
-2. Check what the ServiceAccount can do.
+2. Check what the ServiceAccount can do. The two answers should match the Role you wrote, and any surprise is a finding.
 
 ```bash
 kubectl auth can-i create pods --as=system:serviceaccount:team-data-science:trainer -n team-data-science
@@ -404,14 +406,14 @@ kubectl auth can-i list secrets --as=system:serviceaccount:team-data-science:tra
 kubectl apply -f code/part18/pss_restricted.yaml
 ```
 
-4. Apply default-deny and the explicit allow, then test a connection from another namespace.
+4. Apply default-deny and the explicit allow, then test a connection from another namespace. A blocked connection is the result you want from the other namespace.
 
 ```bash
 kubectl apply -f code/part18/networkpolicy_default_deny.yaml
 kubectl apply -f code/part18/networkpolicy_explicit_allow.yaml
 ```
 
-5. Check which namespaces carry the privileged label.
+5. Check which namespaces carry the privileged label. Read the list and ask whether each entry has a reason to be there.
 
 ```bash
 kubectl get ns -L pod-security.kubernetes.io/enforce
@@ -422,6 +424,8 @@ Record the answer to one question: which namespaces are privileged, and who may 
 ---
 
 ## Exercises
+
+Picture a sprint review in which a team asks whether its permissions are safe.
 
 1. A team can create pods in its namespace and says it has no access to secrets. Is that right? *Solution sketch:* no. Creating pods implicitly grants access to Secrets, ConfigMaps and PersistentVolumes mounted in pods in that namespace, and to the API rights of the ServiceAccounts there. Check with `kubectl auth can-i` and restrict what is stored in the namespace.
 2. List the namespaces on your cluster whose Pod Security enforce label is missing or privileged. *Solution sketch:* run `kubectl get ns -L pod-security.kubernetes.io/enforce` and justify each exception, such as the GPU Operator namespace.

@@ -24,11 +24,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Picture an engineer on call at two in the morning. An alert shows that an unknown client is pulling large volumes of responses from your inference API. Is this a traffic spike, or is someone copying the model? The engineer can answer that quickly only if the team already wrote down what must be protected and how it could be attacked. That written list is the threat model.
+Picture an engineer on call at two in the morning. An alert shows that an unknown client is pulling large volumes of responses from your inference API. The first question is whether this is an ordinary traffic spike or someone quietly copying the model. The engineer can answer that quickly only if the team already wrote down what must be protected and how it could be attacked. That written list is the threat model.
 
-Every other chapter in this part starts from a known threat. This chapter explains how the team builds that list in the first place. Without a threat model, security controls are educated guesses. With one, each control points to the threat it answers, so an auditor who asks why it exists gets a clear answer.
+Every other chapter in this part starts from a known threat. This one explains how the team builds that list in the first place. Without a threat model, security controls are educated guesses made one at a time, and nobody can say later why a given control exists. With one, each control points to the threat it answers, so an auditor who asks why a control is there gets a clear reply.
 
-Compare "we have a firewall" with "we have a firewall that addresses threats T1 through T7". The second statement is the one an auditor wants to hear, and a threat model is what makes it possible.
+Compare the sentence "we have a firewall" with "we have a firewall that addresses threats T1 through T7". The second statement is the one an auditor wants to hear. A threat model is what makes it possible to say it honestly, because the threats are written down first and the controls are matched to them.
 
 ```text
 Why threat modeling is on the critical path (background reading: NVIDIA Zero-to-Hero volume 18; NVIDIA Zero-to-Hero volume 8; Engineering AI Systems; the figures below are examples, not quotations):
@@ -43,37 +43,32 @@ Why threat modeling is on the critical path (background reading: NVIDIA Zero-to-
   The threat model is the living artefact.
 ```
 
-The note above gives a range of 30 to 100 threats. Treat that as an example size, not a target your platform has to reach.
+The note above gives a range of 30 to 100 threats. Treat that as an example size, not a target your platform has to reach. A small platform with a handful of models may end up with a shorter list, and that is fine as long as every entry on it is real and every entry has an owner.
 
-Three points make this a platform-team job rather than a data-science task.
+Three questions explain why this is a platform-team job rather than a data-science task. Each one comes up again and again in reviews.
 
-1. The platform team owns the view of the whole system, including the attack surface and the controls.
-2. Data scientists use the results, but they rarely see every path into the platform.
-3. The model needs an owner who keeps it current, because new CVEs and attack patterns appear while old gaps get closed.
+1. Who sees the whole system? The platform team does. It holds the view of the attack surface and of the controls that already exist.
+2. Who uses the results? Data scientists do, but they rarely see every path into the platform, so they need the platform team to show them.
+3. Who keeps the model current? The model needs a named owner, because new CVEs and attack patterns keep appearing while old gaps get closed.
 
-The chapter suggests a quarterly review. That cadence is a practice you can adjust, but a model that nobody revisits quickly falls behind the platform it describes.
+The chapter suggests a quarterly review. Treat that cadence as a practice you can adjust to your own team. The reason it matters is simple. A model that nobody revisits quickly falls behind the platform it describes, and then it stops helping anyone make decisions.
 
-**Write the threat down before you write the control.** Before you adopt a security control from the rest of this part, name the threat it answers.
+**Write the threat down before you write the control.** Before you adopt a security control from the rest of this part, name the threat it answers. A control with no named threat is hard to justify in a review and easy to remove by mistake.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 16.13 covers governance, privacy, and compliance, which give the regulatory context.
-- Chapter 11 covers GPU Kubernetes and the cluster layout you will model.
-- Chapter 5 covers the Kubernetes primitives used throughout this chapter.
-- You should know the STRIDE method, which the next section explains.
+Suppose a new hire asks where to start. Read these first.
+
+- Chapter 16.13 covers governance, privacy, and compliance, which give the regulatory context. You need that context before you can say what a leak would cost.
+- Chapter 11 covers GPU Kubernetes and the cluster layout you will model. The threat model is only as good as your picture of the cluster, so re-read this chapter if the layout feels unfamiliar.
+- Chapter 5 covers the Kubernetes primitives used throughout this chapter, such as service accounts, roles, and namespaces.
+- Know the STRIDE method before the workshop. The first section below explains each category in plain words.
 
 ### Outcomes
 
-After completing this chapter, you will be able to:
-
-1. Apply STRIDE to AI infrastructure, checking for spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege.
-2. Build an asset inventory that lists models, weights, datasets, keys, audit logs, credentials, and GPUs.
-3. Map the attack surface across north-south traffic, east-west traffic, the supply chain, and insiders.
-4. Build a threat catalogue that covers model theft, weight exfiltration, prompt injection, training data poisoning, denial of service, and privilege escalation.
-5. Score each threat by likelihood and impact, and record its mitigation status in a risk matrix.
-6. Run the threat model on GKE with quarterly reviews, automated updates, and controls backed by evidence.
+A team that has never written a threat model usually starts with a meeting and no document. This section describes the path from that meeting to a working model. The chapter walks through STRIDE applied to AI infrastructure, then the asset inventory that lists what to protect, then the attack surface that shows where attackers can act. After that it builds the threat catalogue with scores, uses a risk matrix to rank the work, and ends with how to run the whole process on GKE with reviews and evidence.
 
 ---
 
@@ -81,11 +76,9 @@ After completing this chapter, you will be able to:
 
 ### 1.1 STRIDE adapted for AI infrastructure
 
-Imagine a security review that starts with the question "what could go wrong?" and nothing more. Different people answer that question differently, and the important risks are often the ones nobody thought to name. STRIDE gives the review a fixed list of questions to work through.
+Picture a security review that starts with the question "what could go wrong?" and nothing more. People answer that question from their own experience, so the answers pile up in no order. The risks that matter most are often the ones nobody thought to name, because they sit in a part of the system that belongs to someone else. STRIDE gives the review a fixed list of questions to work through, so every part of the system gets asked the same things.
 
-STRIDE is the standard threat-modeling method, described in *Engineering AI Systems* Chapter 9. It names six threat types: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege. For AI infrastructure, each type gets an AI-specific version, as the table shows.
-
-Production Kubernetes, chapter 10, draws a line that helps here. Authentication establishes who a user or application is. Authorization decides what that identity may do once it is known. A spoofing threat attacks the first step, so a permission check cannot help if the identity itself is faked.
+STRIDE is the standard threat-modeling method, described in *Engineering AI Systems* Chapter 9. It names six threat types: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege. Each letter stands for one type. For AI infrastructure, each type gets an AI-specific version, as the table shows.
 
 | Category | Generic threat | AI-specific threat |
 |---|---|---|
@@ -96,13 +89,15 @@ Production Kubernetes, chapter 10, draws a line that helps here. Authentication 
 | **Denial of Service** | An attacker makes the service unavailable | An attacker exhausts the GPU pool (denial of service to other workloads) |
 | **Elevation of Privilege** | An attacker gains more access than they should | An attacker escalates from a tenant namespace to the cluster admin |
 
-Walk through each row of the table in a workshop. For each category, write down the AI-specific variant that your platform could realistically face.
+Production Kubernetes, chapter 10, draws a line that helps here. Authentication establishes who a user or application is. Authorization decides what that identity may do once it is known. A spoofing threat attacks the first step. That means a permission check cannot help you when the identity itself is faked, because the check trusts the identity it was given.
+
+Take the rows of the table one at a time. For each category, ask what the AI-specific version looks like on your platform. A row that feels abstract becomes concrete once you name a real model, a real registry, or a real GPU pool that the threat would touch.
 
 ### 1.2 The threat-model workshop
 
-A threat model written by one team alone misses the risks that other teams can see. The workshop brings those teams into one room. It has a scope, which is the system being modelled, and a time limit. Its deliverable is the threat catalogue, the risk matrix, and the mitigation status.
+Picture a platform team that writes its threat model alone on a Thursday afternoon. A threat model written by one team alone misses the risks that other teams can see. The workshop brings those teams into one room. It has a scope, which is the system being modelled, and a time limit, so the discussion stays focused. Its deliverables are the threat catalogue, the risk matrix, and the mitigation status for each threat.
 
-Invite people from the platform team, the security team, the data science team, and the compliance team. Each group sees different failure modes, and the mix is what catches them.
+Invite people from the platform team, the security team, the data science team, and the compliance team. Each group sees different failure modes. A data scientist notices that a fine-tune can be swapped without anyone noticing. A compliance officer notices that the audit log is not kept long enough. A platform engineer notices that a service account has more rights than its job needs. The mix of people is what catches these problems.
 
 ```text
 Threat-model workshop:
@@ -112,11 +107,11 @@ Threat-model workshop:
 - Deliverable: the threat catalogue (50-100 threats), the risk matrix (likelihood × impact), the mitigation status
 ```
 
-The duration and the catalogue size in this block are example settings. Choose your own based on how large and complex your system is.
+The duration and the catalogue size in this block are example settings. Choose your own based on how large and complex your system is. A small team with a narrow scope can finish faster, and a large platform may need more than one session.
 
 ### 1.3 The threat model document
 
-Six months after a review, someone will ask why a particular control exists. The threat model document should answer that question in one place. It is version-controlled, reviewed on a schedule, and kept as the audit trail.
+Six months after a review, someone will ask why a particular control exists. The threat model document should answer that question in one place, without a search through old chat messages. It is version-controlled, reviewed on a schedule, and kept as the audit trail for the platform.
 
 ```markdown
 # Threat Model: AI Inference Platform
@@ -149,7 +144,7 @@ The AI inference platform: the InferenceService, the model registry, the feature
 (Snip of which threats are mitigated; which are accepted; which are in progress)
 ```
 
-The counts in this sample are placeholders that show the shape of the document. They are not targets. Keep the document in Git, so every change to a threat has an author and a date.
+The counts in this sample are placeholders that show the shape of the document. They are not targets for your platform. Keep the document in Git, so every change to a threat has an author and a date. A change you cannot trace is a change nobody can defend in an audit.
 
 ---
 
@@ -157,7 +152,7 @@ The counts in this sample are placeholders that show the shape of the document. 
 
 ### 2.1 What is in the asset inventory
 
-Consider two lost laptops. One holds only public documentation, and losing it is a small inconvenience. The other holds model weights that took months to train, and losing it is a serious incident. You cannot protect what you have not listed, so the inventory starts by naming the things that would hurt most if they were copied, changed, or deleted.
+Consider two lost laptops. One holds only public documentation, and losing it is a small inconvenience. The other holds model weights that took months to train, and losing it is a serious incident. The two laptops look the same from across the room, so you need a list to tell them apart. You cannot protect what you have not listed, so the inventory starts by naming the things that would hurt most if they were copied, changed, or deleted.
 
 | Asset category | Examples | Why it matters |
 |---|---|---|
@@ -169,13 +164,13 @@ Consider two lost laptops. One holds only public documentation, and losing it is
 | **GPUs** | GPU nodes; GPU memory; GPU bandwidth | The compute |
 | **Credentials** | Service accounts; IAM roles; Kubernetes secrets; database credentials | The access |
 
-Keys and credentials need extra care. Kubernetes Secrets are base64 encoded, which is encoding and not encryption. Production Kubernetes, chapter 7, makes the same point. The real protection comes from RBAC, the permission system that decides who can read a Secret.
+Keys and credentials need extra care. A Kubernetes Secret is base64 encoded, which is a way of writing bytes as text, and it is not encryption. Anyone who can read the Secret can decode it with a single command, so the stored form gives no protection on its own. Production Kubernetes, chapter 7, makes the same point. The real protection comes from RBAC, the permission system that decides who can read a Secret in the first place.
 
-Every asset in the table needs three things: a value, a threat, and a control. The inventory is the starting point for the rest of the threat model.
+Every asset in the table needs three things: a value, a threat, and a control. The value tells you how much a loss would cost. The threat tells you how the loss could happen. The control tells you what stops it. The inventory is the starting point for the rest of the threat model, so a missing row here means a missing branch everywhere else.
 
 ### 2.2 The asset value
 
-Asset value is the cost of losing something. For a model, that includes the training bill and the advantage a competitor gains from a copy. For a log, it includes the cost of rebuilding the record and the cost of failing an audit.
+Picture a model that a competitor copies from your registry before anyone notices. Asset value is the cost of losing something, or of having it changed without you knowing. For a model, that includes the training bill and the advantage a competitor gains from a copy. For a log, it includes the cost of rebuilding the record and the cost of failing an audit. For a key, it includes the cost of rotating it everywhere it is used, plus the cost of an impersonation that happens before the rotation finishes.
 
 ```text
 Asset value formula:
@@ -188,11 +183,11 @@ Asset value formula:
 - Credentials: cost of credential rotation + cost of unauthorized access
 ```
 
-The dollar ranges in this block are examples that show the kind of cost to count. They are not market prices. Replace them with figures from your own finance team before you use them to set budgets.
+The dollar ranges in this block are examples that show the kind of cost to count. They are not market prices. Replace them with figures from your own finance team before you use them to set budgets. The useful part is the list of cost types, because it reminds you that a copied file costs more than the storage it sits on.
 
 ### 2.3 The asset owner
 
-When a key leaks at night, someone must be paged. The asset owner is that person or team. The owner also approves access to the asset and stays accountable for its security.
+When a key leaks at night, someone must be paged. The asset owner is that person or team. The owner also approves access to the asset and stays accountable for its security over time. Without a named owner, a leak becomes a discussion about whose problem it is, and that discussion takes time you do not have.
 
 | Asset category | Asset owner |
 |---|---|
@@ -204,7 +199,7 @@ When a key leaks at night, someone must be paged. The asset owner is that person
 | GPUs | Infrastructure team |
 | Credentials | Security team |
 
-Assign an owner to every asset before you list its threats, not after an incident forces the question.
+Assign an owner to every asset before you list its threats, not after an incident forces the question. The owner is the person who gets the page, so choose someone who can act on it.
 
 ---
 
@@ -212,7 +207,7 @@ Assign an owner to every asset before you list its threats, not after an inciden
 
 ### 3.1 The four attack surfaces
 
-Follow one request through your platform. It arrives from the internet, passes through a load balancer, calls an internal service, loads a model image, and reads a dataset. Each step is a place where someone could act. Grouping those places gives you four attack surfaces, and each one needs its own controls.
+Follow one request through your platform. It arrives from the internet, passes through a load balancer, calls an internal service, loads a model image, and reads a dataset. Each step is a place where someone could act, either to abuse the request or to slip into the path behind it. Grouping those places gives you four attack surfaces, and each one needs its own controls.
 
 ```mermaid
 flowchart TB
@@ -251,9 +246,11 @@ flowchart TB
     I3 -.audit.-> Svc
 ```
 
+The diagram shows where traffic and trust move. Traffic from outside comes in at the top left. Traffic between your services runs through the middle. Artifacts from the supply chain feed the services from the side. People with access sit at the bottom, and they can reach the same places the services can.
+
 ### 3.2 The north-south attack surface
 
-Traffic from outside your network is the surface most people think of first. The public API is the entry point, and anyone on the internet can send it requests. The threats here are DDoS, API abuse, prompt injection, bypassed authentication, and rate-limit bypass.
+Picture a public inference API that a stranger starts hammering with requests at midnight. Traffic from outside your network is the surface most people think of first. The public API is the entry point, and anyone on the internet can send it requests. That openness is the reason it is a product, and it is also the reason it is a target. The threats here are DDoS, API abuse, prompt injection, bypassed authentication, and rate-limit bypass.
 
 | Threat | Mitigation |
 |---|---|
@@ -263,11 +260,13 @@ Traffic from outside your network is the surface most people think of first. The
 | Authentication bypass | OAuth 2.1; mTLS; service mesh |
 | Rate limit bypass | Per-key rate limiting; per-tenant rate limiting |
 
-Rate limits are only as strong as the identity behind them. A limit per key does little if one attacker can create many keys.
+Rate limits are only as strong as the identity behind them. A limit per key does little if one attacker can create many keys, because each new key starts with a fresh allowance. That is why the table lists per-tenant limits next to per-key limits.
+
+Here is how the reasoning plays out on a quiet afternoon. A client that hits the limit on one key simply signs up for another. The gateway sees a stream of new keys, each one behaving well on its own, and the total load still lands on the same GPUs. The fix is to count the tenant, the account behind the keys, so that the allowance follows the customer and not the credential. Ask yourself, for each limit you set, who could get a second allowance by doing something cheap.
 
 ### 3.3 The east-west attack surface
 
-East-west traffic is the traffic between your own services. An attacker who has already got a foothold will try to move sideways along these paths. The threats are lateral movement, man-in-the-middle attacks, service impersonation, and container escape.
+Picture one compromised pod inside the cluster looking for a neighbour that trusts it. East-west traffic is the traffic between your own services. It never leaves the cluster, so people often treat it as safe by default. An attacker who has already got a foothold will try to move sideways along these paths, looking for a service that trusts whatever calls it. The threats are lateral movement, man-in-the-middle attacks, service impersonation, and container escape.
 
 | Threat | Mitigation |
 |---|---|
@@ -276,11 +275,11 @@ East-west traffic is the traffic between your own services. An attacker who has 
 | Service impersonation | ServiceAccount; Workload Identity; SPIFFE |
 | Container escape | Pod Security Standards; seccomp; AppArmor |
 
-Production Kubernetes, chapter 15, explains why the runtime user matters for container escape. A container that runs as root gives an attacker a stronger position. If the attacker breaks out of the container, root inside it can become root on the host.
+Production Kubernetes, chapter 15, explains why the runtime user matters for container escape. A container that runs as root gives an attacker a stronger position from the start. If the attacker breaks out of the container, root inside it can become root on the host. That is why the mitigations in the table focus on what the container is allowed to do.
 
 ### 3.4 The supply chain attack surface
 
-Some attacks never touch your network. A tampered base image or a poisoned model file can reach production through the normal build and deploy path. The threats are image poisoning, model backdoors, dataset poisoning, and dependency confusion.
+Picture a base image that a build pulled last week without anyone checking where it came from. Some attacks never touch your network at the moment they succeed. A tampered base image or a poisoned model file can reach production through the normal build and deploy path, carried in by a process you trust. The threats are image poisoning, model backdoors, dataset poisoning, and dependency confusion. Each one enters through an artifact that someone downloaded, built, or trained, so the defence starts with knowing where every artifact came from.
 
 | Threat | Mitigation |
 |---|---|
@@ -291,7 +290,7 @@ Some attacks never touch your network. A tampered base image or a poisoned model
 
 ### 3.5 The insider attack surface
 
-Not every threat comes from outside. A team member with legitimate access can copy weights, misuse a credential, or export data. The threats are data exfiltration, privilege abuse, credential theft, and model theft by an employee.
+Picture a colleague with valid access who copies a folder of weights on the way out. Not every threat comes from outside. A team member with legitimate access can copy weights, misuse a credential, or export data, and the logs will show a valid identity doing it. The threats are data exfiltration, privilege abuse, credential theft, and model theft by an employee. This surface is harder than the others, because the access that enables the threat is the access people need to do their jobs.
 
 | Threat | Mitigation |
 |---|---|
@@ -300,7 +299,7 @@ Not every threat comes from outside. A team member with legitimate access can co
 | Credential theft | MFA; short-lived credentials; Workload Identity |
 | Model theft by employee | Watermarking; access logging; NDAs |
 
-Each insider threat in the table needs a mitigation that is enforced through IAM and checked through audit logs.
+Each insider threat in the table needs a mitigation that is enforced through IAM and checked through audit logs. A policy document alone does not stop a determined insider, but a rule that the system enforces, with a log entry for every use, makes misuse visible.
 
 ---
 
@@ -308,7 +307,7 @@ Each insider threat in the table needs a mitigation that is enforced through IAM
 
 ### 4.1 The threat template
 
-A new vulnerability report arrives on a Friday afternoon. The question is whether anything in your catalogue already covers it. A catalogue works only when every threat has the same fields, because then you can compare, sort, and search them quickly.
+A new vulnerability report arrives on a Friday afternoon. The question is whether anything in your catalogue already covers it. A catalogue is only useful when every threat has the same fields, because then you can compare, sort, and search the entries in minutes rather than reading each one from the top. Without a shared template, the same risk gets written three different ways by three different teams.
 
 ```markdown
 ## Threat: T-001 Model weight exfiltration
@@ -334,11 +333,11 @@ A new vulnerability report arrives on a Friday afternoon. The question is whethe
 **Last reviewed:** 2024-03-15
 ```
 
-Each threat gets a stable ID, an owner, and a review date. The owner is the person who answers for the threat when it changes.
+Each threat gets a stable ID, an owner, and a review date. The ID lets people refer to the same threat in a ticket, a risk acceptance, or an incident report. The owner is the person who answers for the threat when it changes, and the review date tells the next reader how old the entry is.
 
 ### 4.2 The top threats for AI infrastructure
 
-The table below lists threats that an AI platform often needs to track. The likelihood and impact numbers are example scores, not measured frequencies. Score your own threats with your own team, using evidence from your system.
+Picture the first meeting where the team tries to rank its threats in one list. The table below lists threats that an AI platform often needs to track. The likelihood and impact numbers are example scores, not measured frequencies. Nobody measured how often these events happen on a typical platform, so the scores are a starting point for a discussion. Score your own threats with your own team, using evidence from your system such as past incidents and logs.
 
 | ID | Threat | STRIDE | Likelihood × Impact |
 |---|---|---|---|
@@ -353,13 +352,13 @@ The table below lists threats that an AI platform often needs to track. The like
 | T-009 | Audit log tampering | Repudiation | 2 × 5 |
 | T-010 | Credential theft (service account) | Spoofing | 3 × 5 |
 
-Production Kubernetes, chapter 7, walks through an attacker who gets root on the API server node and then reads Secrets from etcd. The chapter then argues that an RBAC mistake or a compromised application is the more likely way a secret leaks. Use the same reasoning when you rank the threats above.
+Production Kubernetes, chapter 7, walks through an attacker who gets root on the API server node and then reads Secrets from etcd. The chapter then argues that an RBAC mistake or a compromised application is the more likely way a secret leaks. Use the same reasoning when you rank the threats above. The loud attack is not always the one that happens.
 
-A catalogue usually holds the top 10 to 20 threats, with the same fields on each one.
+A catalogue usually holds the top 10 to 20 threats, with the same fields on each one. Anything below that line can wait in an archive until the next review.
 
 ### 4.3 The threat catalogue maintenance
 
-The catalogue is a living document. You add new threats, retire old ones, and update likelihood, impact, and mitigation status as your system changes. Make each change through a script or a reviewed commit, so the change leaves a record.
+Picture a new model family arriving in the registry on a Tuesday. The catalogue is a living document. You add new threats, retire old ones, and update likelihood, impact, and mitigation status as your system changes. A new model family, a new registry, or a new vendor each changes the list. Make each change through a script or a reviewed commit, so the change leaves a record that someone can read later.
 
 ```bash
 # Update the threat catalogue
@@ -369,13 +368,15 @@ python code/part18/threat_catalogue_update.py \
 # expected: the threat catalogue is updated; the audit log is updated; the change is reviewed
 ```
 
+The script does two jobs at once. It changes the entry, and it leaves a record of who changed it and why. Ask for both every time. A catalogue edited by hand in a shared document may look correct today, but nobody can tell in six months who changed a mitigation or when the change happened. That gap is exactly what an auditor will ask about.
+
 ---
 
 ## 5. The risk matrix
 
 ### 5.1 The likelihood-impact grid
 
-Your team has more open threats than budget to fix them this quarter. The risk matrix tells you which ones come first. Multiply the likelihood of a threat by its impact, and the result is the score you use to rank the threats.
+Your team has more open threats than budget to fix them this quarter. The risk matrix tells you which ones come first. You multiply the likelihood of a threat by its impact, and the result is the score you use to rank the threats. A threat that is likely and severe rises to the top. A threat that is unlikely and minor drops to the bottom and may be accepted.
 
 | | Impact 1 (Low) | Impact 2 | Impact 3 | Impact 4 | Impact 5 (High) |
 |---|---|---|---|---|---|
@@ -385,11 +386,11 @@ Your team has more open threats than budget to fix them this quarter. The risk m
 | **Likelihood 2 (Low)** | 2 | 4 | 6 | 8 | 10 |
 | **Likelihood 1 (Very Low)** | 1 | 2 | 3 | 4 | 5 |
 
-Because the score multiplies two values, a rare threat with a severe impact can score as high as a common threat with a modest impact. Read the grid with both numbers in mind, not only the total.
+Because the score multiplies two values, a rare threat with a severe impact can score as high as a common threat with a modest impact. Read the grid with both numbers in mind, not only the total. A score of 10 can mean a likely nuisance or an unlikely disaster, and those two call for very different responses.
 
 ### 5.2 The risk-driven priority
 
-The score sets the order of work. The table below maps score ranges to priority levels and example timelines.
+Picture two threats that both need work and only one budget to pay for them. The score sets the order of work. The table below maps score ranges to priority levels and example timelines. A Critical threat is one you act on this week, while a Very Low threat is one you accept on purpose and write down. The point of the table is to make the order of work visible to everyone, so nobody has to argue about it again in every meeting.
 
 | Risk score | Priority | Mitigation timeline |
 |---|---|---|
@@ -399,11 +400,11 @@ The score sets the order of work. The table below maps score ranges to priority 
 | 5-9 | Low | Within 1 year |
 | 1-4 | Very Low | Accept the risk |
 
-The bands and timelines in this table are examples. Set your own with the people who own each risk, because the right cut-offs depend on how much risk your business accepts.
+The bands and timelines in this table are examples. Set your own with the people who own each risk, because the right cut-offs depend on how much risk your business accepts. A regulated bank and a research lab will draw these lines in different places.
 
 ### 5.3 The risk-driven budget
 
-The budget follows the risk score, so the money goes where the risk is highest. The block below shows the shape of that rule.
+Picture a finance meeting where every threat asks for the same amount of money. The budget follows the risk score, so the money goes where the risk is highest. A team that spends the same amount on every threat usually underfunds the worst ones and overspends on the trivial ones. The block below shows the shape of the rule. Read it as a way of thinking about spending, not as a price list.
 
 ```text
 Security budget formula:
@@ -414,7 +415,9 @@ Security budget formula:
 - Very low threats (1-4): $0 (accept the risk)
 ```
 
-The dollar figures in the block are placeholders, not benchmarks. Replace them with your own cost estimates. Your organization may also route the approval to finance, so that the spending is visible and checked.
+A useful way to read the block is to ask what happens when the money runs short. A Critical threat that gets less than its share is still a Critical threat on the list next month, so a shortfall at the top should trigger a conversation with the risk owner rather than a quiet deferral. Low threats are the opposite case. Spending a lot on them is a sign that the budget is following habit rather than risk.
+
+The dollar figures in the block are placeholders, not benchmarks. Replace them with your own cost estimates. Your organization may also route the approval to finance, so that the spending is visible and checked by people who did not write the threat model.
 
 ---
 
@@ -422,7 +425,7 @@ The dollar figures in the block are placeholders, not benchmarks. Replace them w
 
 ### 6.1 The components
 
-Six months from now, a new engineer will ask where the threat catalogue lives and whether it is current. If nobody can answer quickly, the model has become a document that nobody reads. Each component below needs a home, a backing store, and a check that tells you it is still working.
+Six months from now, a new engineer will ask where the threat catalogue lives and whether it is current. If nobody can answer quickly, the model has turned into a document that nobody reads. Each component below needs a home, a backing store, and a check that tells you it is still working. Without those three things, the threat model drifts away from the platform it is supposed to describe.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -431,11 +434,13 @@ Six months from now, a new engineer will ask where the threat catalogue lives an
 | Threat model workshop | (human) | (meeting notes) | Workshop held quarterly |
 | Audit log | Object storage | Object storage | Audit log retention 7 years |
 
-The targets in the SLO column are example values. Choose targets that match your own review cadence and retention rules.
+Notice that the components are not all software. The workshop is a meeting, and a meeting has no metrics unless someone writes down when it happened. Give each human step a record, such as meeting notes checked into the same repo as the catalogue, so the process can be checked the same way the storage can.
+
+The targets in the SLO column are example values. Choose targets that match your own review cadence and retention rules. An SLO here is a promise to yourself about how fresh the model stays, and it only helps if someone checks it.
 
 ### 6.2 IAM and the threat model
 
-The threat model needs its own access rules. Every team should be able to read it. A smaller group should be able to change it. A single approver should sign off on risk acceptance.
+Picture a new contractor who asks whether they can read the threat catalogue. The threat model needs its own access rules. Every team needs to read it, because every team can be the source of a threat. A smaller group should be able to change it, so changes go through people who understand the platform. A single approver should sign off on risk acceptance, so one person answers for each decision to accept a risk.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -443,11 +448,11 @@ The threat model needs its own access rules. Every team should be able to read i
 | `threatmodel.writer` | The security team and the platform team | Update the threat catalogue; update the risk matrix |
 | `threatmodel.admin` | The CISO's office | Approve the threat model; approve the risk acceptance |
 
-The role names are one way to split these permissions. Decide who can approve a risk acceptance before the first review, not during an incident.
+The role names are one way to split these permissions. Decide who can approve a risk acceptance before the first review, not during an incident. When the pressure is high, a vague rule about approvals turns into a quick decision that nobody owns.
 
 ### 6.3 Observability
 
-Track a few signals that show whether the threat model is still doing its job. Each one has an alert, so a stale model triggers a message rather than waiting to be noticed. The thresholds in the table are examples to adjust.
+Picture a dashboard that stays green for a long stretch while the catalogue quietly goes stale. Track a few signals that show whether the threat model is still doing its job. Each signal gets an alert, so a stale model sends a message rather than waiting for someone to notice. The thresholds in the table are examples to adjust for your own team and cadence. A signal with no alert is a number on a dashboard that nobody reads.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -456,76 +461,80 @@ Track a few signals that show whether the threat model is still doing its job. E
 | Risk-driven budget utilisation | Budget discipline | > 120% per quarter |
 | Quarterly workshop completion | Process compliance | > 1 quarter since last workshop |
 
-Of these, the mitigation status of your top threats tells you the most. An unmitigated top threat needs a named owner and a due date.
+Of these, the mitigation status of your top threats tells you the most. An unmitigated top threat needs a named owner and a due date. If a top threat sits without either, the review should spend its time on that one line before it looks at anything else.
 
 ---
 
 ## 7. How it fails
 
-Six failure modes show up often in teams that run a threat model. Each one has a recognisable symptom, a likely cause, and a fix you can start this week. If you recognise a symptom in your own team, start with the fix.
+Picture the first quarterly review after the model goes live, when a stale entry comes up. Teams that run a threat model tend to fail in a few predictable ways. Each failure has a recognisable symptom, a likely cause, and a fix you can start this week. If you recognise a symptom in your own team, start with the fix that matches it, and only then look for a bigger change.
 
 ### 7.1 "The threat model is out of date"
 
-**Symptom:** A new CVE is published, the threat model does not list it, and nobody realises it applies.
+What it looks like: a new CVE is published, the threat model does not list it, and nobody realises it applies. The team learns about it from a vendor email or a news post, which is the wrong way round.
 
-**Diagnosis:** Nobody reviews the model on a schedule, and nobody watches the CVE feeds.
+Why it happens: nobody reviews the model on a schedule, and nobody watches the CVE feeds for the components the platform actually runs.
 
-**Fix:** Schedule the quarterly workshop, automate CVE monitoring, and add each relevant new threat to the catalogue.
+What to do: schedule the quarterly workshop, automate CVE monitoring for your images and frameworks, and add each relevant new threat to the catalogue.
 
 ### 7.2 "The threat model is too generic"
 
-**Symptom:** The model lists 30 generic threats and none that are specific to AI, so it misses the risks the AI team worries about.
+What it looks like: the model lists 30 generic threats and none that are specific to AI, so it misses the risks the AI team worries about every day.
 
-**Diagnosis:** The workshop left out the AI team, so the AI-specific variants never came up.
+Why it happens: the workshop left out the AI team, so the AI-specific variants never came up in the room.
 
-**Fix:** Bring the data science team into the workshop, add the AI-specific variants, and review the model with that team.
+What to do: bring the data science team into the workshop, add the AI-specific variants from the STRIDE table, and review the model with that team before you sign it off.
 
 ### 7.3 "The threat model is too long"
 
-**Symptom:** The catalogue holds 500 threats, so the team cannot decide what to work on first.
+What it looks like: the catalogue holds 500 threats, so the team cannot decide what to work on first. Every meeting ends with the same list and no decision.
 
-**Diagnosis:** The workshop produced too many threats, and nobody filtered them.
+Why it happens: the workshop produced too many threats, and nobody filtered them into a short list of priorities.
 
-**Fix:** Keep the top 10 to 20 threats, archive the rest, and review the top threats each quarter.
+What to do: keep the top 10 to 20 threats, archive the rest, and review the top threats each quarter. A short list is what turns a catalogue back into a work order.
 
 ### 7.4 "The threat model is not used"
 
-**Symptom:** The threat model exists and the controls are in place, but no control points to a threat.
+What it looks like: the threat model exists and the controls are in place, but no control points to a threat. When someone asks why a control exists, the answer is "someone added it last year".
 
-**Diagnosis:** The controls were designed ad hoc, and the threat model is not the source of truth for them.
+Why it happens: the controls were designed ad hoc, and the threat model is not the source of truth for them.
 
-**Fix:** Make the threat model the source of truth. Every control must justify a threat, and every threat must have a control.
+What to do: make the threat model the source of truth. Every control must justify a threat, and every threat must have a control. When both rules hold, the review can trace each control back to its reason in a minute.
 
 ### 7.5 "The risk matrix is not updated"
 
-**Symptom:** The likelihood and impact scores have not changed in a year, even though the real situation has.
+What it looks like: the likelihood and impact scores have not changed in a year, even though the real situation has changed a great deal. A new model family has arrived, but the scores still describe the old platform.
 
-**Diagnosis:** Nobody reviews the matrix on a schedule, and nobody compares it with the incidents that actually happened.
+Why it happens: nobody reviews the matrix on a schedule, and nobody compares it with the incidents that actually happened.
 
-**Fix:** Review the matrix quarterly, track real incidents, and update the scores from what you observe.
+What to do: review the matrix quarterly, track real incidents as they happen, and update the scores from what you observe rather than from what you remember.
 
 ### 7.6 "The threat-driven budget is not approved"
 
-**Symptom:** The security team identifies the risks and proposes fixes, but the budget request stalls.
+What it looks like: the security team identifies the risks and proposes fixes, but the budget request stalls and nothing gets bought.
 
-**Diagnosis:** The budget request does not connect to business priorities, so the finance team does not see the value.
+Why it happens: the request does not connect to business priorities, so the finance team does not see the value in it.
 
-**Fix:** Present the threat model to the people who approve spending, show the budget against the risk scores, and tie each fix to a business priority.
+What to do: present the threat model to the people who approve spending, show the budget against the risk scores, and tie each fix to a business priority that the approvers already care about.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab builds a threat model for an AI inference platform, one step at a time. You will hold the workshop, inventory the assets, map the attack surface, build the catalogue, score the risks, and schedule the review. The lab is untested in this repository.
+Picture a Tuesday afternoon when the team first tries the workshop from start to finish. Think of this lab as a rehearsal of the workshop. You will hold the meeting, inventory the assets, map the attack surface, build the catalogue, score the risks, and book the review, one step at a time. The lab is untested in this repository, so run each step against your own cluster first and check the output before you rely on it.
 
 ### 8.1 Prerequisites
 
-- Four to six people from the platform, security, data science, and compliance teams.
-- A scope: the AI inference platform.
-- Half a day of time.
-- A whiteboard, physical or virtual.
+Picture the calendar invite going out to every team in the room.
+
+- Four to six people from the platform, security, data science, and compliance teams. Make sure each group has someone in the room who knows its part of the system.
+- A scope: the AI inference platform. Write the scope down before the meeting, so the discussion does not drift into other systems.
+- Half a day of time. Protect the calendar slot, because a workshop cut short tends to leave the risk matrix half-finished.
+- A whiteboard, physical or virtual. The diagram from the attack surface section is a good starting picture.
 
 ### 8.2 Step 1: hold the threat-model workshop
+
+Picture a calendar where no single slot fits every team. Start by booking the meeting with the right people in the room. The script below writes the booking for you, and the output tells you whether the invitations went out.
 
 ```bash
 # Schedule the workshop
@@ -539,6 +548,8 @@ python code/part18/schedule_workshop.py \
 
 ### 8.3 Step 2: build the asset inventory
 
+Picture a platform with no written list of its assets, which is the usual starting point. Next, generate a first draft of the asset inventory from the cluster. The draft is a starting list, and the workshop should review it line by line before anyone trusts it.
+
 ```bash
 # Generate the asset inventory
 python code/part18/asset_inventory.py \
@@ -549,6 +560,8 @@ python code/part18/asset_inventory.py \
 
 ### 8.4 Step 3: map the attack surface
 
+Picture a security reviewer who asks which services talk to which, and gets a shrug. With the inventory in hand, map where the traffic and trust move. The output is a document that shows the four surfaces from the diagram, populated with your real services.
+
 ```bash
 # Generate the attack surface diagram
 python code/part18/attack_surface.py \
@@ -558,6 +571,8 @@ python code/part18/attack_surface.py \
 ```
 
 ### 8.5 Step 4: build the threat catalogue
+
+Picture the moment the inventory and the attack surface are both done and someone asks for the catalogue. Now combine the inventory and the attack surface into a catalogue. Each threat that comes out of this step should carry the standard fields from the template.
 
 ```bash
 # Generate the threat catalogue
@@ -571,6 +586,8 @@ python code/part18/threat_catalogue.py \
 
 ### 8.6 Step 5: compute the risk matrix
 
+Picture a catalogue sitting in a spreadsheet with no order to the work. Score the catalogue and rank the threats. The top of the ranked list is where the team's next decisions should start.
+
 ```bash
 # Compute the risk matrix
 python code/part18/risk_matrix.py \
@@ -580,6 +597,8 @@ python code/part18/risk_matrix.py \
 ```
 
 ### 8.7 Step 6: review the threat model
+
+Picture the review that everyone forgot to book after the workshop ended. Finally, book the next review, so the model does not go stale the moment the workshop ends. A review on the calendar is the cheapest control in this whole chapter.
 
 ```bash
 # Schedule the quarterly review
@@ -591,18 +610,20 @@ python code/part18/schedule_review.py \
 
 ### 8.8 What to record
 
-Afterwards, you should be able to answer five questions quickly. Check the catalogue freshness, the risk budget in use, the mitigation status of the top 10 threats, the newest threat added, and the date of the next review. The 30-second bar in the chapter is an example, not a standard. If an answer takes much longer than that, the threat model is not yet run as a production service.
+Picture a manager who asks for the catalogue freshness during a board call. After the steps are done, check that the model answers basic questions quickly. Look at the catalogue freshness, the risk budget in use, the mitigation status of the top 10 threats, the newest threat added, and the date of the next review. The 30-second bar in the chapter is an example, not a standard. If an answer takes much longer than that, the threat model is not yet run as a production service, and the next step is to make the answers easier to find.
 
 ---
 
 ## Exercises
 
-1. **Add a new threat to the catalogue.** Pick a recent incident, add it to the catalogue, and update the risk matrix. *Solution sketch:* use the threat template in Section 4.1 and the script in Section 4.3.
-2. **Add an AI-specific threat variant.** For each STRIDE category, write the AI-specific variant that fits your platform. *Solution sketch:* use the table in Section 1.1 and the catalogue in Section 4.2.
-3. **Compute a risk-driven budget.** Work out the budget for your top 10 threats. *Solution sketch:* use the budget formula in Section 5.3 and the spreadsheet in the Git repo.
-4. **Map each top threat to a control.** For every top threat, name the control that answers it. *Solution sketch:* use the control table in Section 3 and the GitHub issue tracker.
-5. **Set up a quarterly review.** Schedule the workshop, review the threat model, and update the risk matrix. *Solution sketch:* use the calendar event, the workshop agenda, and the script in Section 8.7.
-6. **Build a threat dashboard.** Make a Grafana dashboard that shows the top threats, their risk scores, and their mitigation status. *Solution sketch:* start from the dashboard JSON and connect the threat catalogue as the data source.
+Picture the first week after the lab, when your team starts using the model for real.
+
+1. **Add a new threat to the catalogue.** Pick a recent incident from your own platform. Ask where it fits in the catalogue, then add it and update the risk matrix. *Solution sketch:* use the threat template in Section 4.1 and the script in Section 4.3.
+2. **Add an AI-specific threat variant.** Go through the STRIDE categories one at a time. Ask what each category looks like for a model rather than a web app. *Solution sketch:* use the table in Section 1.1 and the catalogue in Section 4.2.
+3. **Compute a risk-driven budget.** Take your top threats and ask what each one would cost to mitigate. *Solution sketch:* use the budget formula in Section 5.3 and the spreadsheet in the Git repo.
+4. **Map each top threat to a control.** For each top threat, ask which control answers it. If no control answers it, write that down as a gap. *Solution sketch:* use the control table in Section 3 and the GitHub issue tracker.
+5. **Set up a quarterly review.** Book the workshop, run the review, and update the risk matrix in the same session. *Solution sketch:* use the calendar event, the workshop agenda, and the script in Section 8.7.
+6. **Build a threat dashboard.** Picture a dashboard that shows your top threats, their risk scores, and their mitigation status side by side. *Solution sketch:* start from the dashboard JSON and connect the threat catalogue as the data source.
 
 ---
 
