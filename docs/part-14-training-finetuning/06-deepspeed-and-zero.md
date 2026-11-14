@@ -20,15 +20,17 @@ lab_venue: "Nebius GPU"
 | Part | Part 14: Distributed training and fine-tuning |
 ## Why this matters for AI infrastructure
 
-A team launches a 30B model with standard DistributedDataParallel on 80 GB GPUs. Every GPU keeps a full copy of the weights, gradients and AdamW states, so the job fails at initialization. Microsoft Research built the Zero Redundancy Optimizer, called ZeRO, and the DeepSpeed engine to remove that duplication. PyTorch FSDP2 later offered the same idea natively, and `fully_shard()` matches ZeRO Stage 3 on GPU memory. DeepSpeed stays in wide use because it adds offload tiers, communication compression and long-context support.
+A team launches a 30B model with standard DistributedDataParallel on 80 GB GPUs. Every GPU keeps a full copy of the weights, gradients and AdamW states, so the job fails at initialization. The fix is not a bigger GPU. It is a change in who holds what. Microsoft Research built the Zero Redundancy Optimizer, called ZeRO, and the DeepSpeed engine to remove that duplication. The idea is simple to state. Each GPU keeps only its share of the model state, and the shares are gathered when they are needed. PyTorch FSDP2 later offered the same idea natively, and `fully_shard()` matches ZeRO Stage 3 on GPU memory. DeepSpeed stays in wide use because it adds offload tiers, communication compression and long-context support. Those extras matter most when the cluster is tight on memory or on bandwidth.
 
-The ZeRO stages form a ladder. Stage 1 shards only the optimizer states across data-parallel ranks. Stage 2 also shards the gradients and moves the same number of bytes as DDP. Stage 3 shards the weights too, so memory shrinks in proportion to the GPU count, but collective traffic grows by fifty percent.
+The ZeRO stages form a ladder, and each rung removes one more copy. Stage 1 shards only the optimizer states across data-parallel ranks. Stage 2 also shards the gradients and moves the same number of bytes as DDP. Stage 3 shards the weights too, so memory shrinks in proportion to the GPU count, but collective traffic grows by fifty percent. Start at the bottom of the ladder and climb only when the memory math says the lower rung will not fit.
 
-When Stage 3 still does not fit, ZeRO-Offload moves optimizer state into host CPU memory. ZeRO-Infinity goes further and pages to local NVMe drives. Both cross slow PCIe links and stall the GPU, unless the node has a coherent link such as the Grace-Blackwell NVLink-C2C.
+When Stage 3 still does not fit, ZeRO-Offload moves optimizer state into host CPU memory. ZeRO-Infinity goes further and pages to local NVMe drives. NVMe is the flash storage that plugs straight into the PCIe bus. Both paths cross slow PCIe links and stall the GPU, unless the node has a coherent link such as the Grace-Blackwell NVLink-C2C. A coherent link lets the GPU and the CPU share memory without copying it back and forth.
 
-Stage 3 also adds a weight AllGather to every layer, so multi-node jobs over InfiniBand tend to become network-bound. ZeRO++ quantizes weights and gradients and partitions weights inside each node, which cuts cross-node traffic by a factor of four. For long sequences, DeepSpeed-Ulysses replaces Ring Attention with two AllToAll transposes across attention heads.
+Stage 3 also adds a weight AllGather to every layer, so multi-node jobs over InfiniBand tend to become network-bound. ZeRO++ quantizes weights and gradients and partitions weights inside each node, which cuts cross-node traffic by a factor of four. Quantizing means storing numbers in fewer bits, so each message is smaller. For long sequences, DeepSpeed-Ulysses replaces Ring Attention with two AllToAll transposes across attention heads. A transpose here means swapping which dimension of the tensor is split across GPUs.
 
-One more distinction matters. ZeRO and FSDP2 shard storage at rest, and they assume a single layer still runs on one GPU after the AllGather. They do not replace Megatron-LM. When one matrix multiplication, the pipeline depth, the sequence activations or an expert router outgrows a GPU, you combine state sharding with Megatron computation sharding.
+One more distinction matters. ZeRO and FSDP2 shard storage at rest, and they assume a single layer still runs on one GPU after the AllGather. They do not replace Megatron-LM. When one matrix multiplication, the pipeline depth, the sequence activations or an expert router outgrows a GPU, you combine state sharding with Megatron computation sharding. Think of state sharding as the answer to too much stored memory, and computation sharding as the answer to a single piece of work that is too big to run at all.
+
+**Match the ZeRO stage, the offload tier and the compression setting to the interconnect bandwidth and the memory of each node.**
 
 **Match the ZeRO stage, the offload tier and the compression setting to the interconnect bandwidth and the memory of each node.**
 
@@ -62,22 +64,17 @@ Core DeepSpeed & ZeRO Architectural Pillars (2019/2020 Rajbhandari et al., DAI C
 - Familiarity with DDP AllReduce, FSDP1 versus FSDP2, and NCCL Ring versus Tree collectives including AllGather, ReduceScatter, and AllToAll from Chapters 12.15 through 12.17, 14.4, and 14.5.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Compute exact per-GPU static memory across ZeRO Stage 0, Stage 1, Stage 2, and Stage 3 for 7B to 70B models.
-2. Derive why ZeRO Stage 1 and Stage 2 communicate twice the parameter count per step while Stage 3 communicates three times that volume. You will also calculate how ZeRO++ cuts cross-node traffic by four times.
-3. Size and diagnose ZeRO-Offload on CPU, ZeRO-Infinity on NVMe with `libaio`, and Grace-Blackwell SuperOffload over NVLink-C2C.
-4. Configure and validate production DeepSpeed JSON files including batch size identities, communication bucket thresholds, and asynchronous I/O settings.
-5. Distinguish state sharding from Megatron computation sharding and design hybrid parallel configurations for dense and Mixture-of-Experts models.
+The chapter starts with the per-GPU static memory for ZeRO Stage 0 through Stage 3 at 7B to 70B scale. It then explains why Stages 1 and 2 move the same bytes as DDP while Stage 3 moves three times the parameter volume, and how ZeRO++ cuts cross-node traffic. Next comes offload, first to CPU RAM, then to NVMe with `libaio`, and finally to the Grace-Blackwell superchip path. After that it covers the production JSON files, the bucket thresholds that go in them, and where state sharding stops and Megatron computation sharding starts. The last part collects the production failures, with the signature each one leaves behind.
 
 ---
 
 ## 1. The ZeRO Sharding Spectrum: Stage 0, Stage 1, Stage 2, and Stage 3
 
-When engineers scale training with standard DDP, every GPU holds an identical copy of all model parameters, gradients, and optimizer states. That replication wastes massive amounts of high-bandwidth memory on tensors that sit idle during most of the training step. Microsoft's Zero Redundancy Optimizer paper solved this problem by observing a simple execution truth. Every GPU needs the active layer's weights during forward and backward compute. However, no GPU ever needs to store all parameters, gradients, and optimizer states simultaneously at rest.
+Picture a team that buys a larger cluster to fix an out-of-memory error and finds the job still fails. The cluster has more total memory, but each GPU still stores the same full copy. When engineers scale training with standard DDP, every GPU holds an identical copy of all model parameters, gradients, and optimizer states. That replication wastes massive amounts of high-bandwidth memory on tensors that sit idle during most of the training step. Microsoft's Zero Redundancy Optimizer paper solved this problem by observing a simple execution truth. Every GPU needs the active layer's weights during forward and backward compute. However, no GPU ever needs to store all parameters, gradients, and optimizer states simultaneously at rest. The paper's answer is to store one share per GPU and fetch the rest only when a layer needs it.
 
 ### 1.1 Eliminating Redundancy Across Data-Parallel Ranks
 
-ZeRO eliminates memory redundancy progressively across three distinct stages. Stage 0 corresponds to baseline DDP with full replication across all data-parallel ranks. Stage 1 partitions only the optimizer states across the data-parallel group. Each GPU stores and updates only its assigned shard of the AdamW moments. Stage 2 partitions both the gradients and the optimizer states while keeping model weights replicated on every device. Stage 3 partitions the model weights, gradients, and optimizer states across all ranks. It materializes full layer weights on the fly only when a layer executes.
+ZeRO eliminates memory redundancy progressively across three distinct stages. Stage 0 corresponds to baseline DDP with full replication across all data-parallel ranks. Each stage removes one more kind of copy, so you can read the stages as a sequence of cuts. Stage 1 partitions only the optimizer states across the data-parallel group. Each GPU stores and updates only its assigned shard of the AdamW moments. Stage 2 partitions both the gradients and the optimizer states while keeping model weights replicated on every device. Stage 3 partitions the model weights, gradients, and optimizer states across all ranks. It materializes full layer weights on the fly only when a layer executes. Materialize here means the full weights are rebuilt in memory for that layer and then thrown away.
 
 ```mermaid
 flowchart TD
@@ -113,7 +110,7 @@ flowchart TD
     S3 --> CPU
 ```
 
-Published ZeRO material counts the state of one parameter in more than one way, and mixing them gives wrong totals. The standard mixed-precision count is 16 bytes. It has 2 bytes for the 16-bit weight, 2 bytes for the gradient, and 12 bytes for the FP32 master weight, momentum and variance. A shorter 12-byte count leaves out the FP32 master copy. A pure FP32 run also totals 16 bytes, because weight and gradient take 4 bytes each and the two moments take 8. The worked examples below say which count they use.
+Published ZeRO material counts the state of one parameter in more than one way, and mixing them gives wrong totals. This is the most common source of a memory estimate that looks right on paper and fails on the cluster. The standard mixed-precision count is 16 bytes. It has 2 bytes for the 16-bit weight, 2 bytes for the gradient, and 12 bytes for the FP32 master weight, momentum and variance. The FP32 master weight is the full-precision copy the optimizer updates, so small learning-rate steps are not lost to rounding. A shorter 12-byte count leaves out the FP32 master copy, and that is why two sources can disagree about the same model. A pure FP32 run also totals 16 bytes, because weight and gradient take 4 bytes each and the two moments take 8. The worked examples below say which count they use, so read the label before you trust a total.
 
 ```text
 ZeRO Static Memory Accounting Conventions (Psi = parameter count, N_d = data-parallel GPUs):
@@ -133,9 +130,9 @@ ZeRO Static Memory Accounting Conventions (Psi = parameter count, N_d = data-par
 
 ### 1.2 Side-by-Side Memory Math for 7B, 10B, 30B, and 70B Models
 
-If you miscalculate static state memory before launching a job, you either waste money over-provisioning nodes or hit immediate out-of-memory crashes. By applying the stage formulas directly, you can find the exact ZeRO stage needed for your GPU memory capacity.
+If you miscalculate static state memory before launching a job, you either waste money over-provisioning nodes or hit immediate out-of-memory crashes. By applying the stage formulas directly, you can find the exact ZeRO stage needed for your GPU memory capacity. Do the arithmetic before you request the nodes, because the cluster bill arrives whether the job runs or not.
 
-For a 10B model trained in pure FP32 on eight GPUs, both Stage 0 and Stage 1 overflow an 80 GB card. Moving to ZeRO Stage 2 drops per-GPU state to 55 GB, leaving comfortable headroom for activations without Stage 3 communication overhead. For a 70B model on eight GPUs, even ZeRO Stage 3 exceeds a single 80 GB card. That footprint forces either horizontal scaling to sixteen GPUs or memory offloading.
+For a 10B model trained in pure FP32 on eight GPUs, both Stage 0 and Stage 1 overflow an 80 GB card. Moving to ZeRO Stage 2 drops per-GPU state to 55 GB, leaving comfortable headroom for activations without Stage 3 communication overhead. For a 70B model on eight GPUs, even ZeRO Stage 3 exceeds a single 80 GB card. That footprint forces either horizontal scaling to sixteen GPUs or memory offloading. Horizontal scaling means adding GPUs, which spreads the same state across more shares. Offloading means borrowing memory from the host, which costs speed. The three cases below show the arithmetic behind each claim.
 
 ```text
 Case 1: 70B Model in Mixed Precision (16*Psi = 1,120 GB total state) on N_d = 8 GPUs (DAI Ch. 5):
@@ -175,15 +172,17 @@ Case 3: 7B Model in Mixed Precision (12*Psi = 84 GB total state) on N_d = 2 GPUs
 | **`10B` Pure `FP32` (`16 * Psi = 160 GB`)** | `8` | `160.0 GB` | `90.0 GB` (`1.78x`) | **`55.0 GB`** (`~2.9x`) | **`20.0 GB`** (`8.0x`) | `ZeRO-2` is the sweet spot: fits on `80 GB` GPU with `25 GB` activation headroom. |
 | **`7B` Mixed (`12 * Psi = 84 GB`)** | `2` | `84.0 GB` | `56.0 GB` (`1.50x`) | `49.0 GB` (`1.71x`) | **`42.0 GB`** (`2.0x`) | Even `2` GPUs cut `7B` state from `84 GB` to `42 GB` (`10.5 GB` on `8` GPUs). |
 
+Read the table one row at a time, and ask what the row costs on the memory bar. In the 70B mixed-precision row, the Stage 0 cell is the replicated baseline, and every later cell shows one more cut. The "Key Infrastructure Takeaway" column is the part to read aloud to your team, because it turns the arithmetic into a decision. Notice the 7B row at the bottom. Even two GPUs cut the state in half, so sharding helps long before you reach a large cluster. The table also shows why the memory saving and the traffic cost have to be read together, which the next subsection explains.
+
 ### 1.3 Collective Communication Volume Across ZeRO Stages
 
-Many engineers assume that sharding model state always increases network traffic. Jumping straight to ZeRO Stage 3 when Stage 2 already fits in memory adds unnecessary collective latency and slows down multi-node training. Understanding the exact collective breakdown explains why ZeRO Stage 1 and Stage 2 are free in communication volume compared to DDP.
+Suppose a teammate suggests moving straight to Stage 3 because it saves the most memory. Your cluster is already tight on network bandwidth. Before you agree, you need to know what each stage costs on the wire. Many engineers assume that sharding model state always increases network traffic. Jumping straight to ZeRO Stage 3 when Stage 2 already fits in memory adds unnecessary collective latency and slows down multi-node training. Understanding the exact collective breakdown explains why ZeRO Stage 1 and Stage 2 are free in communication volume compared to DDP.
 
-In ZeRO Stage 1, parameters remain replicated on every GPU, so the forward pass requires zero network communication. During the backward pass, instead of running a full AllReduce on all gradients, Stage 1 runs a ReduceScatter. That single collective averages and delivers only the 1/N_d gradient shard whose optimizer state each rank owns. Each rank then steps its local optimizer shard and runs an AllGather to broadcast the updated weights back to all peers. Because one ReduceScatter plus one AllGather equals the exact byte volume of a single ring AllReduce, Stage 1 communicates the exact same volume as DDP.
+In ZeRO Stage 1, parameters remain replicated on every GPU, so the forward pass requires zero network communication. During the backward pass, instead of running a full AllReduce on all gradients, Stage 1 runs a ReduceScatter. That single collective averages and delivers only the 1/N_d gradient shard whose optimizer state each rank owns. Each rank then steps its local optimizer shard and runs an AllGather to broadcast the updated weights back to all peers. Because one ReduceScatter plus one AllGather equals the exact byte volume of a single ring AllReduce, Stage 1 communicates the exact same volume as DDP. The collective is split in two, but the total is unchanged.
 
-ZeRO Stage 2 executes the exact same collectives as Stage 1: one ReduceScatter during backpropagation and one AllGather after the optimizer step. The only difference is lifetime management. As soon as a gradient bucket finishes its ReduceScatter during the backward pass, Stage 2 immediately frees the non-local gradient slices instead of holding them until the step ends.
+ZeRO Stage 2 executes the exact same collectives as Stage 1: one ReduceScatter during backpropagation and one AllGather after the optimizer step. The only difference is lifetime management. As soon as a gradient bucket finishes its ReduceScatter during the backward pass, Stage 2 immediately frees the non-local gradient slices instead of holding them until the step ends. That early release is the memory gain, and it costs no extra traffic.
 
-ZeRO Stage 3 shards the model weights themselves at rest, which breaks this communication parity. Every layer must run an AllGather during the forward pass to materialize weights and then discard the non-local slices immediately after compute. During the backward pass, every layer must run a second AllGather to rematerialize weights before running a ReduceScatter on the gradients. **ZeRO Stage 1 and Stage 2 transfer 2M bytes per step just like DDP, whereas ZeRO Stage 3 transfers 3M bytes per step—a 50 percent increase in network traffic.**
+ZeRO Stage 3 shards the model weights themselves at rest, which breaks this communication parity. Every layer must run an AllGather during the forward pass to materialize weights and then discard the non-local slices immediately after compute. During the backward pass, every layer must run a second AllGather to rematerialize weights before running a ReduceScatter on the gradients. The weights travel twice, once for each pass, and that is the extra cost. **ZeRO Stage 1 and Stage 2 transfer 2M bytes per step just like DDP, whereas ZeRO Stage 3 transfers 3M bytes per step—a 50 percent increase in network traffic.**
 
 ```text
 Per-Step Collective Volume Breakdown (M = 2 * Psi bytes for FP16/BF16 weights/gradients):
@@ -202,15 +201,17 @@ Per-Step Collective Volume Breakdown (M = 2 * Psi bytes for FP16/BF16 weights/gr
    - Stage 3:           420.0 GB asymptotic | 367.5 GB exact ring (3 * 7/8 * 140.0 GB)
 ```
 
+Read the volume breakdown as three rows of a ledger. The first row is the forward pass, where Stages 1 and 2 pay nothing because the weights are already local. The second row is the backward collectives, where Stage 1 and Stage 2 pay one ReduceScatter. The third row is the optimizer end, where they pay one AllGather. Stage 3 adds two more rows of traffic, because the weights are gathered once more in each pass. Add the rows for each stage, and the totals reproduce the 2M and 3M figures in the text. Once you have the totals, the comparison is simple. Ask whether the extra traffic fits inside the compute time of each layer.
+
 ---
 
 ## 2. ZeRO-Offload, ZeRO-Infinity, and Grace-Blackwell SuperOffload
 
-Sometimes even ZeRO Stage 3 exceeds available GPU memory. This happens when fine-tuning a 70B model on a single 8-GPU A100 node or on consumer 24 GB RTX 4090 cards. When engineers enable CPU or NVMe offloading blindly to avoid out-of-memory errors, training throughput often collapses by an order of magnitude. Host PCIe links are far slower than GPU HBM. You must calculate the exact host bus bottleneck before deciding whether to offload state or add more GPUs.
+Sometimes even ZeRO Stage 3 exceeds available GPU memory. This happens when fine-tuning a 70B model on a single 8-GPU A100 node or on consumer 24 GB RTX 4090 cards. Picture the engineer who turns on offload late at night to get past an out-of-memory error. The job starts, the error is gone, and the throughput has dropped to a crawl. When engineers enable CPU or NVMe offloading blindly to avoid out-of-memory errors, training throughput often collapses by an order of magnitude. Host PCIe links are far slower than GPU HBM. You must calculate the exact host bus bottleneck before deciding whether to offload state or add more GPUs. The three subsections below go from the simplest tier to the most exotic one, and each one ends with the cost it carries.
 
 ### 2.1 ZeRO-Offload: Extending Optimizer and Gradient State to Host CPU RAM
 
-Consider a 70B model under the twelve-byte convention running with ZeRO-3 across eight 80 GB A100 GPUs. The total model state is 840 GB, which divides into 105 GB per GPU and leaves a 25 GB per-GPU shortfall. ZeRO-Offload resolves this shortfall by moving the FP32 AdamW optimizer states out of GPU HBM and into host CPU DRAM. It can also optionally offload gradients or Stage 3 parameters.
+Consider a 70B model under the twelve-byte convention running with ZeRO-3 across eight 80 GB A100 GPUs. The total model state is 840 GB, which divides into 105 GB per GPU and leaves a 25 GB per-GPU shortfall. The shortfall is the amount that does not fit, and it is what offload has to cover. ZeRO-Offload resolves this shortfall by moving the FP32 AdamW optimizer states out of GPU HBM and into host CPU DRAM. The optimizer states are the biggest slice of the twelve bytes, so they are the natural thing to move. It can also optionally offload gradients or Stage 3 parameters, but each extra item you move adds more traffic on the same slow road.
 
 ```text
 70B Model (12 * Psi = 840.0 GB total state) on 8 x 80 GB A100 GPUs with ZeRO-3 (V13 Ch. 5):
@@ -219,9 +220,9 @@ Consider a 70B model under the twelve-byte convention running with ZeRO-3 across
   Per-GPU VRAM Shortfall:                      25.0 GB
 ```
 
-During execution, forward and backward matrix multiplications stay on the GPU to run at high HBM bandwidth. As backpropagation produces gradients, DeepSpeed streams them over PCIe into page-locked host DRAM. The host CPU then runs the FP32 Adam update using AVX-vectorized `DeepSpeedCPUAdam`. DeepSpeed streams the updated 16-bit weights back to the GPU while overlapping transfers with computation.
+During execution, forward and backward matrix multiplications stay on the GPU to run at high HBM bandwidth. Keep that split in mind, because it is the reason offload can work at all. As backpropagation produces gradients, DeepSpeed streams them over PCIe into page-locked host DRAM. Page-locked memory cannot be swapped out, so the transfer can run as a direct copy. The host CPU then runs the FP32 Adam update using AVX-vectorized `DeepSpeedCPUAdam`. AVX is the wide vector instruction set on x86 CPUs, and it lets the CPU update many weights at once. DeepSpeed streams the updated 16-bit weights back to the GPU while overlapping transfers with computation.
 
-However, PCIe Gen4 and Gen5 buses are thirty to one hundred times slower than GPU HBM. When ZeRO-2 offloads only optimizer states for a moderate model with heavy per-layer compute, throughput drops by a manageable twenty to forty percent. When ZeRO-3 offloads state for a 70B model on eight A100 GPUs over PCIe Gen4, the PCIe bus saturates. Training speed plunges by twenty-one times and GPU utilization drops to twelve percent.
+However, PCIe Gen4 and Gen5 buses are thirty to one hundred times slower than GPU HBM. The gap is the whole story of this section. When ZeRO-2 offloads only optimizer states for a moderate model with heavy per-layer compute, throughput drops by a manageable twenty to forty percent. The GPU has enough compute per layer to hide some of the copy time. When ZeRO-3 offloads state for a 70B model on eight A100 GPUs over PCIe Gen4, the PCIe bus saturates. Weights must cross the bus on every layer, so there is no compute left to hide the copies behind. Training speed plunges by twenty-one times and GPU utilization drops to twelve percent.
 
 | Offload Scenario & Interconnect | Hardware Bandwidth | Memory Footprint Breakdown | Measured Throughput & Utilization Impact (*Distributed AI Systems* Ch. 5) |
 |---|---|---|---|
@@ -229,9 +230,11 @@ However, PCIe Gen4 and Gen5 buses are thirty to one hundred times slower than GP
 | **Moderate Model `ZeRO-2` CPU Offload** | `PCIe Gen4 x16` (**`32 GB/s`**) or `Gen5 x16` (**`64 GB/s`**) | `354.3M` params (`0.71 GB` `FP16`) uses **`3.41–3.52 GB`** peak GPU VRAM across steps `0–10` | **`20–40%` throughput reduction** when compute overlaps optimizer transfer |
 | **`70B` `ZeRO-3` + CPU Offload (`8 x A100`)** | `PCIe Gen4 x16` (**`32 GB/s`**) | **`60 GB`** GPU VRAM + **`~800–850 GB`** host CPU RAM (swaps if host RAM is smaller) | Drops from `8.5` to **`0.4 tokens/sec`** (**`21.25x` ~ `21x` slower**), **`12%`** GPU utilization (`10–100x` slower when parameter offload saturates `PCIe`) |
 
+The offload table gives the numbers you need for a decision. The first row is the baseline, with the highest throughput and the healthiest GPU utilization. The second row is the moderate case, where offload costs a manageable share of speed because the model has enough compute per layer to hide some copies. The third row is the cliff, where the 70B run on PCIe loses most of its speed. A simple rule follows from the table. If the offload row you are considering is the third one, another GPU is often the cheaper fix than another tier, and you should price both before you choose.
+
 ### 2.2 ZeRO-Infinity: Three-Tier Memory Hierarchy with NVMe SSDs
 
-When models reach hundreds of billions or trillions of parameters, even 512 GB or 1 TB of host CPU DRAM fills up completely. ZeRO-Infinity, introduced in 2021, adds a third storage tier by paging cold parameters and optimizer states onto local PCIe NVMe SSDs managed by the DeepSpeed Infinity Engine.
+When models reach hundreds of billions or trillions of parameters, even 512 GB or 1 TB of host CPU DRAM fills up completely. At that point the CPU's memory is no longer a safe place to park state. ZeRO-Infinity, introduced in 2021, adds a third storage tier by paging cold parameters and optimizer states onto local PCIe NVMe SSDs managed by the DeepSpeed Infinity Engine. Cold means the data is not needed for the layer that is running right now. The engine's job is to move each piece up to the faster tier just before it is needed, and back down after use.
 
 ```mermaid
 flowchart LR
@@ -239,29 +242,31 @@ flowchart LR
     DRAM <-->|"libaio Async I/O (block_size=1MB, queue_depth=16)<br/>PCIe Gen4 NVMe 5-7 GB/s Sequential Read"| NVME["Tier 3: Local NVMe SSD RAID0<br/>Multi-Terabyte Capacity<br/>Cold Parameters & Optimizer States"]
 ```
 
-To keep the SSDs busy, ZeRO-Infinity needs three things from the Linux host. The `nvme_path` must point to a mounted directory with two to four times the model size in free space, never to a raw device like `/dev/nvme0n1p7`. The native asynchronous I/O library (`libaio-dev` or `libaio-devel`) must be installed, and the open-file limit raised with `ulimit -n 65535`. The asynchronous I/O block should use a 1 MB block size and a queue depth of 16.
+To keep the SSDs busy, ZeRO-Infinity needs three things from the Linux host. Think of them as the preconditions for the disk to be useful at all. The `nvme_path` must point to a mounted directory with two to four times the model size in free space, never to a raw device like `/dev/nvme0n1p7`. A raw device path skips the filesystem, and the engine cannot manage its swap files that way. The native asynchronous I/O library (`libaio-dev` or `libaio-devel`) must be installed, and the open-file limit raised with `ulimit -n 65535`. Many swap files are open at once, so the default limit runs out quickly. The asynchronous I/O block should use a 1 MB block size and a queue depth of 16. Queue depth is how many reads are in flight at the same time, and a deep queue keeps the drive busy while the CPU works.
 
-Even with RAID0 striping across multiple drives, ZeRO-Infinity is a feasibility mechanism rather than a speed optimization. Modern PCIe Gen4 NVMe SSDs deliver only 5 to 7 GB/s of sequential read bandwidth per drive. Paging both parameters and optimizer states to NVMe runs 30 to 50 percent slower than CPU offload. Compared to pure GPU training, it runs 50 to 85 times slower and drops a 70B run to 0.1 tokens/sec.
+Even with RAID0 striping across multiple drives, ZeRO-Infinity is a feasibility mechanism rather than a speed optimization. RAID0 spreads data across drives to add speed and capacity, with no redundancy. Modern PCIe Gen4 NVMe SSDs deliver only 5 to 7 GB/s of sequential read bandwidth per drive. Sequential means reading contiguous blocks, which is the easy case for a drive. Paging both parameters and optimizer states to NVMe runs 30 to 50 percent slower than CPU offload. Compared to pure GPU training, it runs 50 to 85 times slower and drops a 70B run to 0.1 tokens/sec. Use it to make a model fit, and expect to pay for that fit in time.
+
+Look at the diagram as three tiers stacked on top of each other. The GPU sits at the top, fastest and smallest. Host DRAM sits in the middle, slower and larger. The NVMe drives sit at the bottom, slowest and largest. Each arrow is a road, and each road has its own speed. The engine moves data along these roads on purpose, one piece at a time, so the layer that runs next is already on the GPU. When a tier is full, its cold data slides down the stack. The label on each arrow tells you where the bottleneck will be if the job slows down.
 
 ### 2.3 Grace-Blackwell SuperOffload and GraceAdam
 
-Classical CPU offloading crawls because a 32 GB/s PCIe Gen4 bus starves the GPU and forces synchronous stalls before the CPU optimizer steps. NVIDIA's Grace-Blackwell architecture and the 2025 SuperOffload framework transform offloading from a last-resort fallback into a high-throughput production tier.
+Classical CPU offloading crawls because a 32 GB/s PCIe Gen4 bus starves the GPU and forces synchronous stalls before the CPU optimizer steps. A synchronous stall means the GPU stops and waits for the CPU to finish before it can continue. NVIDIA's Grace-Blackwell architecture and the 2025 SuperOffload framework transform offloading from a last-resort fallback into a high-throughput production tier. The change is in the road between the processors, and in how the work is scheduled across them.
 
-The Grace ARM CPU and the Blackwell GPU do not cross a narrow PCIe bus. They talk over a cache-coherent NVLink-C2C interconnect at 900 GB/s. That link provides 28.125 times the bandwidth of PCIe Gen4 x16. It gives the GPU direct access to up to 512 GB of fast LPDDR5X host memory per Grace CPU.
+The Grace ARM CPU and the Blackwell GPU do not cross a narrow PCIe bus. They talk over a cache-coherent NVLink-C2C interconnect at 900 GB/s. That link provides 28.125 times the bandwidth of PCIe Gen4 x16. It gives the GPU direct access to up to 512 GB of fast LPDDR5X host memory per Grace CPU. LPDDR5X is the low-power memory used on the Grace side, and it is far closer in speed to the GPU than ordinary server DIMMs are.
 
-SuperOffload also removes the synchronization barrier between GPU backpropagation and the CPU optimizer step using Speculation-Then-Validation. In standard ZeRO-Offload, the CPU must wait until the GPU finishes checking the entire backward pass for NaN or Inf gradient norms. Speculation-Then-Validation streams gradients over NVLink-C2C and starts the CPU optimizer update concurrently with GPU backpropagation. It rolls back only on the rare step where an overflow actually occurs.
+SuperOffload also removes the synchronization barrier between GPU backpropagation and the CPU optimizer step using Speculation-Then-Validation. A barrier is a point where one side waits for the other to finish. In standard ZeRO-Offload, the CPU must wait until the GPU finishes checking the entire backward pass for NaN or Inf gradient norms. Speculation-Then-Validation streams gradients over NVLink-C2C and starts the CPU optimizer update concurrently with GPU backpropagation. The CPU works on the guess that the step is clean, and it checks that guess afterward. It rolls back only on the rare step where an overflow actually occurs.
 
-Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**. That figure is a reported number, not measured in this chapter.
+Finally, SuperOffload partitions the optimizer update between GPU HBM and Grace LPDDR5X so both processors finish at the exact same instant. Neither side should sit idle while the other catches up. On the Grace CPU side, it executes GraceAdam, a custom AdamW kernel hand-vectorized for the ARM Scalable Vector Extension instruction set. Together, the fast link, Speculation-Then-Validation and GraceAdam let SuperOffload sustain over **80 percent GPU utilization**. That figure is a reported number, not measured in this chapter. Treat it as the target to verify on your hardware.
 
 ---
 
 ## 3. ZeRO++ and DeepSpeed-Ulysses: Multi-Node and Long-Context Scaling
 
-When ZeRO Stage 3 scales beyond a single node, training jobs hit two new walls: slow cross-node network links and exploding long-context activation memory. Inside a node, NVLink provides 600 to 900 GB/s of bandwidth, whereas cross-node InfiniBand links deliver only 25 to 50 GB/s per NIC. Meanwhile, extending sequence lengths from 4K to 32K or 128K tokens causes single-GPU activation memory to overflow even when weights are sharded. DeepSpeed addresses multi-node collective bottlenecks with ZeRO++ and solves long-context activation scaling with DeepSpeed-Ulysses.
+Picture a job that ran well on one node and slowed down the moment it spanned two. The GPUs did not change, but the job now sends traffic across the cable between servers. When ZeRO Stage 3 scales beyond a single node, training jobs hit two new walls: slow cross-node network links and exploding long-context activation memory. Inside a node, NVLink provides 600 to 900 GB/s of bandwidth, whereas cross-node InfiniBand links deliver only 25 to 50 GB/s per NIC. A NIC is the network card that connects a server to the fabric. Meanwhile, extending sequence lengths from 4K to 32K or 128K tokens causes single-GPU activation memory to overflow even when weights are sharded. DeepSpeed addresses multi-node collective bottlenecks with ZeRO++ and solves long-context activation scaling with DeepSpeed-Ulysses. The two tools attack different walls, so you may need both.
 
 ### 3.1 ZeRO++: Cutting Cross-Node Collective Volume by Four Times
 
-Standard ZeRO Stage 3 transfers 3M bytes per step across the entire data-parallel group. That traffic saturates cross-node InfiniBand links on every forward and backward layer. Introduced by Wang et al. in 2023, ZeRO++ combines three orthogonal collective optimizations to slash cross-node communication volume by four times.
+Standard ZeRO Stage 3 transfers 3M bytes per step across the entire data-parallel group. That traffic saturates cross-node InfiniBand links on every forward and backward layer. The name ZeRO++ is a reminder that it extends ZeRO rather than replacing it. Introduced by Wang et al. in 2023, ZeRO++ combines three orthogonal collective optimizations to slash cross-node communication volume by four times. Orthogonal means each one works on a different part of the traffic, so their savings can be added together.
 
 ```mermaid
 flowchart TD
@@ -275,11 +280,11 @@ flowchart TD
     end
 ```
 
-Quantized Weights (`qwZ`) compress the forward AllGather. Before transmitting its FP16 weight shard, each rank dynamically quantizes the 2-byte weights into block-based 1-byte INT8 tensors using `CUDAQuantizer`. That step cuts AllGather byte volume in half from 1.0M to 0.5M. Because the optimizer maintains unquantized FP32 master weights at rest, quantization errors do not accumulate across training steps.
+Quantized Weights (`qwZ`) compress the forward AllGather. Before transmitting its FP16 weight shard, each rank dynamically quantizes the 2-byte weights into block-based 1-byte INT8 tensors using `CUDAQuantizer`. Block-based means the tensor is cut into small groups, and each group gets its own scale, so the rounding stays accurate. That step cuts AllGather byte volume in half from 1.0M to 0.5M. Because the optimizer maintains unquantized FP32 master weights at rest, quantization errors do not accumulate across training steps. The rounding happens only on the copy in flight, and the master copy stays exact.
 
-Hierarchical Weight Partitioning (`hpZ`) eliminates cross-node traffic during the backward AllGather. Instead of discarding gathered weights completely after the forward pass, `hpZ` retains a secondary full-model weight partition across the 8 GPUs inside each node. During the backward pass, each GPU gathers weights purely inside its own node over fast 600 to 900 GB/s NVLink. That local collective drops cross-node backward AllGather traffic to zero.
+Hierarchical Weight Partitioning (`hpZ`) eliminates cross-node traffic during the backward AllGather. Instead of discarding gathered weights completely after the forward pass, `hpZ` retains a secondary full-model weight partition across the 8 GPUs inside each node. Keeping a node-local copy is the trick. During the backward pass, each GPU gathers weights purely inside its own node over fast 600 to 900 GB/s NVLink. That local collective drops cross-node backward AllGather traffic to zero. The cost is memory, because each node holds its own copy of the weights.
 
-Quantized Gradients (`qgZ`) replace the flat cross-node ring ReduceScatter with a two-hop hierarchical collective. It reduces gradients inside the node first and then transmits block-quantized INT8 gradients across nodes. That hierarchy cuts cross-node gradient volume in half from 1.0M to 0.5M.
+Quantized Gradients (`qgZ`) replace the flat cross-node ring ReduceScatter with a two-hop hierarchical collective. Two hops means the traffic is handled in two stages. It reduces gradients inside the node first and then transmits block-quantized INT8 gradients across nodes. Only the already-reduced result crosses the slow link, and it is smaller. That hierarchy cuts cross-node gradient volume in half from 1.0M to 0.5M.
 
 | ZeRO++ Component | JSON Configuration Key | Cross-Node Byte Volume | Mechanism & Hardware Path (*Distributed AI Systems* Ch. 5, arXiv:`2306.10209`) |
 |---|---|---|---|
@@ -290,16 +295,18 @@ Quantized Gradients (`qgZ`) replace the flat cross-node ring ReduceScatter with 
 | **Combined `ZeRO++` (`qwZ + hpZ + qgZ`)** | All three enabled with `"fp16": {"enabled": true}` | **`0.75 * M`** (`105.0 GB` for `70B` `FP16`, **`4.0x` reduction**) | Slashes cross-node InfiniBand volume from `420.0 GB` to `105.0 GB` per step |
 
 :::caution ZeRO++ Requires FP16 Due to CUDAQuantizer Dtype Constraints
-As documented in *Distributed AI Systems* Chapter 5, DeepSpeed's `CUDAQuantizer` dequantizes INT8 buffers directly into FP16 tensors. Enabling `zero_quantized_weights` or `zero_quantized_gradients` alongside BF16 fails immediately with `RuntimeError: expected scalar type BFloat16 but found Half`. Always enable FP16 in your DeepSpeed JSON config when running ZeRO++.
+As documented in *Distributed AI Systems* Chapter 5, DeepSpeed's `CUDAQuantizer` dequantizes INT8 buffers directly into FP16 tensors. Enabling `zero_quantized_weights` or `zero_quantized_gradients` alongside BF16 fails immediately with `RuntimeError: expected scalar type BFloat16 but found Half`. Always enable FP16 in your DeepSpeed JSON config when running ZeRO++. If your team standardized on BF16 for every other job, this is the one place where the choice has to flip.
 :::
+
+Take the ZeRO++ table one row at a time, because each row is a separate lever. The baseline row is the reference point, and it is the number you start from. The three middle rows each cut one part of the traffic, and the combined row shows what happens when you turn all three on. The key idea is that each lever works on a different collective. That is why their cuts add up instead of overlapping. Enable them one at a time when you test. If one of them changes the loss curve, you will know which lever caused it.
 
 ### 3.2 DeepSpeed-Ulysses vs Ring Attention for Long-Context Training
 
-When sequence length grows to 32K or 128K tokens, single-GPU activation memory easily exceeds 40 GB for a 32-layer model. Sequence and context parallelism solve this problem by splitting the input sequence across multiple GPUs so each rank starts with a local sequence chunk.
+Here is a situation that shows up with long documents. The model trains fine at a short context, and then the sequence length is raised. Memory climbs faster than the weights would suggest, and the activations are the reason. When sequence length grows to 32K or 128K tokens, single-GPU activation memory easily exceeds 40 GB for a 32-layer model. Sequence and context parallelism solve this problem by splitting the input sequence across multiple GPUs so each rank starts with a local sequence chunk. A token is one unit of text the model reads, so a 128K context is a very long input.
 
-Megatron Context Parallelism uses Ring Attention. It keeps queries local and rotates key-value chunks around a logical ring in multiple steps while accumulating partial softmax denominators. While Ring Attention scales to arbitrary GPU counts, it requires complex online-softmax bookkeeping and careful causal-mask load balancing.
+Megatron Context Parallelism uses Ring Attention. It keeps queries local and rotates key-value chunks around a logical ring in multiple steps while accumulating partial softmax denominators. Softmax is the normalization step inside attention, and the denominators are the sums it needs to finish. While Ring Attention scales to arbitrary GPU counts, it requires complex online-softmax bookkeeping and careful causal-mask load balancing. The causal mask hides future tokens, so some GPUs have less work than others unless the chunks are balanced.
 
-DeepSpeed-Ulysses takes a much simpler transpose approach. Before the attention kernel runs, Ulysses executes an AllToAll collective (`all_to_all_seq_to_head`) that transposes the tensor from sequence-sharded to head-sharded layout. Each GPU now holds the full sequence for a subset of attention heads and runs unmodified standard FlashAttention locally. After attention completes, a second AllToAll collective (`all_to_all_head_to_seq`) transposes the output back to sequence-sharded layout.
+DeepSpeed-Ulysses takes a much simpler transpose approach. Before the attention kernel runs, Ulysses executes an AllToAll collective (`all_to_all_seq_to_head`) that transposes the tensor from sequence-sharded to head-sharded layout. Each GPU now holds the full sequence for a subset of attention heads and runs unmodified standard FlashAttention locally. FlashAttention is a fast, memory-efficient attention kernel that many libraries already use. After attention completes, a second AllToAll collective (`all_to_all_head_to_seq`) transposes the output back to sequence-sharded layout. The appeal is that the attention code itself does not change.
 
 | Feature | Ring Attention (Megatron Context Parallelism `CP`) | **DeepSpeed-Ulysses (`2D` `AllToAll` Transpose)** |
 |---|---|---|
@@ -307,17 +314,19 @@ DeepSpeed-Ulysses takes a much simpler transpose approach. Before the attention 
 | **Implementation Complexity** | High: requires custom online-softmax accumulation and causal-mask load balancing across ring steps. | **Low:** between `all_to_all_seq_to_head` and `all_to_all_head_to_seq`, each GPU runs unmodified self-attention on its `H / P` heads. |
 | **Communication Volume & Sweet Spot** | Sends `K, V` around `P` ring hops overlapped with attention compute; scales to arbitrary `P` (`100K+` tokens across many nodes). | `1 / P` communication volume per link via simultaneous `AllToAll`; **wins for `P <= 8`** on high-bandwidth intra-node `NVLink` (`P` cannot exceed the number of attention/KV heads `H`). |
 
+Compare the two rows of the Ulysses table with a simple question. Which one would you rather debug at two in the morning? Ring Attention gives you the widest reach across GPU counts, but its online-softmax bookkeeping is delicate. Ulysses keeps the attention kernel unchanged, and its limit is clear. The number of GPUs in the parallel group cannot exceed the number of heads, since each GPU needs at least one head to work on. For the common case of a single node with fast NVLink, Ulysses is the simpler choice, and the table marks that sweet spot.
+
 ---
 
 ## 4. Beyond State Sharding: Combining ZeRO/FSDP with Megatron Computation Sharding
 
-A pervasive mistake among infrastructure teams is assuming that ZeRO-3 or FSDP2 can replace Megatron-LM for frontier models. When engineers try to train a 175B dense model or a large Mixture-of-Experts model using ZeRO-3 alone, single layers overflow GPU memory during AllGather or suffer severe communication stalls. You must treat state sharding and computation sharding as two orthogonal axes that work together.
+A pervasive mistake among infrastructure teams is assuming that ZeRO-3 or FSDP2 can replace Megatron-LM for frontier models. The mistake is easy to make, because the sharded memory numbers look so good on a slide. When engineers try to train a 175B dense model or a large Mixture-of-Experts model using ZeRO-3 alone, single layers overflow GPU memory during AllGather or suffer severe communication stalls. A Mixture-of-Experts model routes each token to a few specialist sub-networks, called experts, instead of one dense block. You must treat state sharding and computation sharding as two orthogonal axes that work together. The rest of this section explains why, and shows how the two axes combine.
 
 ### 4.1 Why State Sharding Cannot Replace Computation Sharding
 
-State sharding methods—including ZeRO, FSDP2, Megatron-FSDP, and the Megatron Distributed Optimizer—only partition model storage at rest. Whenever a layer executes, every GPU must still gather the entire layer's weight matrix via AllGather and compute that layer locally. Computation sharding methods in Megatron Core—including Tensor Parallelism, Pipeline Parallelism, Context Parallelism, and Expert Parallelism—split the active computation and activation memory across GPUs.
+State sharding methods—including ZeRO, FSDP2, Megatron-FSDP, and the Megatron Distributed Optimizer—only partition model storage at rest. Whenever a layer executes, every GPU must still gather the entire layer's weight matrix via AllGather and compute that layer locally. The gather restores the full matrix on each GPU, so the one-layer peak is still there. Computation sharding methods in Megatron Core—including Tensor Parallelism, Pipeline Parallelism, Context Parallelism, and Expert Parallelism—split the active computation and activation memory across GPUs. The question for each layer is no longer where the bytes are stored, but which GPU does the math.
 
-In a 7B model, a single MLP weight matrix contains 67.1 million parameters and occupies only half a gigabyte across the block in FP16. One GPU easily holds and multiplies that unsharded layer after an AllGather. In a 175B model, however, a single MLP matrix contains more than 600 million parameters and occupies 1.2 GB in FP16 alone. Applying 8-way Tensor Parallelism via `ColumnParallelLinear` and `RowParallelLinear` splits a massive matrix across 8 NVLink-connected GPUs. No single device ever holds or multiplies the full weight tensor.
+In a 7B model, a single MLP weight matrix contains 67.1 million parameters and occupies only half a gigabyte across the block in FP16. One GPU easily holds and multiplies that unsharded layer after an AllGather. The MLP is the feed-forward block inside each Transformer layer, and it is where a large share of the weights sit. In a 175B model, however, a single MLP matrix contains more than 600 million parameters and occupies 1.2 GB in FP16 alone. Applying 8-way Tensor Parallelism via `ColumnParallelLinear` and `RowParallelLinear` splits a massive matrix across 8 NVLink-connected GPUs. Tensor Parallelism cuts each matrix into pieces that different GPUs multiply in parallel. No single device ever holds or multiplies the full weight tensor. That is the point where state sharding has run out of road.
 
 ```text
 State Sharding vs Computation Sharding Layer Scale Comparison (DAI Ch. 5):
@@ -330,11 +339,13 @@ State Sharding vs Computation Sharding Layer Scale Comparison (DAI Ch. 5):
      A 16K x 16K matrix is split into eight 16K x 2K slices across intra-node NVLink.
 ```
 
+The tensor shapes in the block above are the whole argument in miniature. A single 175B MLP matrix is too large for one GPU to hold and multiply after a gather, so Tensor Parallelism cuts it into column and row slices. Each GPU then does a slice of the math, and only a small reduction crosses the wire at the end of the block. Read the block by asking, for each step, which GPU holds which piece and whether any GPU ever sees the whole matrix. In the tensor-parallel case, the answer is no, and that is the difference between state sharding and computation sharding.
+
 ### 4.2 Megatron Core Native State Sharders: Distributed Optimizer and Megatron-FSDP
 
-When you use Megatron Core (`nvcr.io/nvidia/pytorch:25.04-py3` or `pip install --no-build-isolation megatron-core[mlm,dev] pybind11`), bolting external DeepSpeed ZeRO-3 onto the job requires keeping process groups strictly disjoint. Some teams use wrappers like Colossal-AI Gemini, but Megatron Core provides two native, topology-aware state sharders that integrate directly with its parallel process groups.
+When you use Megatron Core (`nvcr.io/nvidia/pytorch:25.04-py3` or `pip install --no-build-isolation megatron-core[mlm,dev] pybind11`), bolting external DeepSpeed ZeRO-3 onto the job requires keeping process groups strictly disjoint. A process group is the set of ranks that talk to each other in one kind of collective. If two frameworks each build their own groups over the same GPUs, the collectives can interleave and hang. Some teams use wrappers like Colossal-AI Gemini, but Megatron Core provides two native, topology-aware state sharders that integrate directly with its parallel process groups. Topology-aware means the sharder knows which GPUs share a node, so it places traffic on the right wires.
 
-The first native sharder is the Megatron Distributed Optimizer (`--use-distributed-optimizer`), which is functionally equivalent to ZeRO Stage 1. It shards the FP32 master weights, momentum, and variance across the data-parallel group. It also copies gradients into contiguous buffers for overlapped ReduceScatter (`--overlap-grad-reduce`) and overlapped parameter AllGather (`--overlap-param-gather`). Across 8 data-parallel ranks, it reduces BF16 parameter and FP32 gradient memory from 18 bytes per parameter down to 7.5 bytes per parameter.
+The first native sharder is the Megatron Distributed Optimizer (`--use-distributed-optimizer`), which is functionally equivalent to ZeRO Stage 1. It shards the FP32 master weights, momentum, and variance across the data-parallel group. It also copies gradients into contiguous buffers for overlapped ReduceScatter (`--overlap-grad-reduce`) and overlapped parameter AllGather (`--overlap-param-gather`). Overlap here means the collective runs while compute keeps going. Across 8 data-parallel ranks, it reduces BF16 parameter and FP32 gradient memory from 18 bytes per parameter down to 7.5 bytes per parameter. The table below shows how the saving grows with the number of data-parallel GPUs.
 
 | Precision Configuration | Without Distributed Optimizer (`d = 1`) | With Distributed Optimizer (`d` DP GPUs) | At `d = 8` GPUs | Reduction at `d = 8` |
 |---|---|---|---|---|
@@ -342,15 +353,17 @@ The first native sharder is the Megatron Distributed Optimizer (`--use-distribut
 | **`bf16` params, `fp32` grads** | `18 bytes/param` (`2 + 4 + 12`) | `6 + 12 / d bytes/param` | **`7.5 bytes/param`** | **`2.40x`** |
 | **`fp32` params, `fp32` grads** | `16 bytes/param` (`4 + 4 + 8`) | `8 + 8 / d bytes/param` | **`9.0 bytes/param`** | **`1.78x`** |
 
-The second native sharder is Megatron-FSDP (`--use-megatron-fsdp --data-parallel-sharding-strategy optim_grads_params`), which is equivalent to ZeRO Stage 3. Megatron-FSDP understands TP, PP, CP, and EP process groups natively and uses NCCL `userbuffer` registration to minimize GPU Streaming Multiprocessor consumption during collectives. As a result, it delivers 15 to 25 percent higher throughput and roughly 23 percent memory savings compared to PyTorch FSDP2. On Hopper, Ada, and Blackwell GPUs, you can pair Megatron-FSDP with FP8 hybrid training (`--fp8-format hybrid --fp8-amax-history-len 1024 --fp8-amax-compute-algo max`). Adding `--fp8-param-gather` gathers sharded weights in 1-byte FP8, cutting AllGather volume in half while delivering 1.5 to 2x GEMM speedups.
+The second native sharder is Megatron-FSDP (`--use-megatron-fsdp --data-parallel-sharding-strategy optim_grads_params`), which is equivalent to ZeRO Stage 3. Megatron-FSDP understands TP, PP, CP, and EP process groups natively and uses NCCL `userbuffer` registration to minimize GPU Streaming Multiprocessor consumption during collectives. A user buffer registration lets NCCL move data without extra copies, so the compute units are not busy handling the transfer. As a result, it delivers 15 to 25 percent higher throughput and roughly 23 percent memory savings compared to PyTorch FSDP2. On Hopper, Ada, and Blackwell GPUs, you can pair Megatron-FSDP with FP8 hybrid training (`--fp8-format hybrid --fp8-amax-history-len 1024 --fp8-amax-compute-algo max`). FP8 stores numbers in 8 bits, and the hybrid format uses different FP8 layouts for the forward and backward passes. Adding `--fp8-param-gather` gathers sharded weights in 1-byte FP8, cutting AllGather volume in half while delivering 1.5 to 2x GEMM speedups. GEMM is the general matrix multiply kernel, the heart of the Transformer's math.
+
+Read the precision table column by column. The first column is the cost without a distributed optimizer, when each GPU keeps every byte of optimizer state. The second column shows how the cost falls as the data-parallel group grows, because the optimizer part is divided by d. The third column plugs in d equal to 8, which is the common single-node case. The last column is the ratio, so you can compare the three precisions on one scale. The savings are largest for the setup with the most optimizer bytes, so the first column is where the sharding pays off most.
 
 ### 4.3 The Hybrid Parallelism Decision Framework
 
-Hybrid parallelism works because each dimension attacks a different physical limit. State sharding via ZeRO or FSDP eliminates redundant optimizer storage across data-parallel replicas. Tensor Parallelism splits wide matrix multiplications inside a single high-bandwidth NVLink node. Pipeline Parallelism bounds active layer depth across nodes using 1F1B or interleaved Virtual Pipeline Parallelism (`--num-layers-per-virtual-pipeline-stage 2`). Finally, Context Parallelism or DeepSpeed-Ulysses shards long-sequence activations.
+Hybrid parallelism works because each dimension attacks a different physical limit. State sharding via ZeRO or FSDP eliminates redundant optimizer storage across data-parallel replicas. Tensor Parallelism splits wide matrix multiplications inside a single high-bandwidth NVLink node. Pipeline Parallelism bounds active layer depth across nodes using 1F1B or interleaved Virtual Pipeline Parallelism (`--num-layers-per-virtual-pipeline-stage 2`). In 1F1B, each stage alternates one forward micro-batch with one backward micro-batch, which keeps the pipeline full. Finally, Context Parallelism or DeepSpeed-Ulysses shards long-sequence activations. Each dimension answers a different question, so you should pick them by the limit you are hitting, not by habit.
 
-For a dense model under roughly 10B to 30B parameters, start with pure state sharding and add computation sharding only when needed. Keep Tensor Parallelism and Expert Parallelism groups inside one NVLink node and set `CUDA_DEVICE_MAX_CONNECTIONS=1`. Changing the TP or PP layout means resharding the checkpoint, which Megatron distributed checkpointing does up to 50 times faster than naive `torch.save`. Turn on communication overlap with `--overlap-grad-reduce`, `--overlap-param-gather` and `--tp-comm-overlap`. Use `offload_optimizer` and `offload_param` only after GPU memory is exhausted.
+For a dense model under roughly 10B to 30B parameters, start with pure state sharding and add computation sharding only when needed. Keep Tensor Parallelism and Expert Parallelism groups inside one NVLink node and set `CUDA_DEVICE_MAX_CONNECTIONS=1`. Changing the TP or PP layout means resharding the checkpoint, which Megatron distributed checkpointing does up to 50 times faster than naive `torch.save`. Resharding means rewriting the saved shards so they match the new layout. Turn on communication overlap with `--overlap-grad-reduce`, `--overlap-param-gather` and `--tp-comm-overlap`. Use `offload_optimizer` and `offload_param` only after GPU memory is exhausted. Offload is the last rung, as the earlier sections showed.
 
-The remaining Megatron options are lookup material, not a recipe. They are `--sequence-parallel`, `--recompute-activations`, `--calculate-per-token-loss` and CUDA graphs.
+The remaining Megatron options are lookup material, not a recipe. They are `--sequence-parallel`, `--recompute-activations`, `--calculate-per-token-loss` and CUDA graphs. Read them when a specific symptom sends you there, and leave them out of a first config.
 
 ```mermaid
 flowchart TD
@@ -372,15 +385,19 @@ flowchart TD
 | **`GPT-3 175B` (`L = 96`, `H = 12288`, `96` heads, `S = 2048`)** | `128` GPUs (`16` nodes x `8` GPUs) | **`TP = 8`** (full intra-node `NVLink`), **`PP = 16`** (**`6` layers/stage**, `96 / 16`), **`DP = 128 / (8 * 16) = 1`** | Accumulates micro-batches across `--global-batch-size 1536` |
 | **`Mixtral 8x7B` MoE (`L = 32`, `H = 4096`, `8` experts, `topk = 2`)** | `64` GPUs (`8` nodes x `8` GPUs) | **`EP = 8`** (`--expert-model-parallel-size 8`, `1` expert/GPU), `TP = 1`, **`PP = 4`** (**`8` layers/stage**) | Uses `--moe-grouped-gemm --moe-permute-fusion --sequence-parallel --use-distributed-optimizer` and `DeepEP` `AllToAll` routing |
 
+Use the decision diagram as a sequence of questions, and answer each one with a number rather than a feeling. First ask whether the full model and its batch fit on one GPU. If they do, DDP is the simplest answer. If they do not, ask whether one layer fits and computes fast on one GPU. Only when a single layer is too large do you add tensor parallelism, and only for deep models or long contexts do you add pipeline or context parallelism. The mixture-of-experts branch is separate, and it adds expert parallelism only when the architecture calls for it. Following the questions in order keeps you from reaching for the heaviest tool first.
+
+The layout table adds the concrete topologies. Each row shows how the GPU count splits across the four parallel axes, and the arithmetic is the check. The data-parallel degree is whatever is left after the other axes multiply out. If that number is not a whole number, the layout is wrong before the job starts.
+
 ---
 
 ## 5. Commands and configurations that matter
 
-A wrong DeepSpeed JSON file, or a direct call to a PyTorch optimizer, can corrupt gradients without any error. Run the training loop through the DeepSpeed engine. Check the batch-size and bucket-size settings before a multi-node launch. The commands below were not run on live multi-GPU hardware.
+A wrong DeepSpeed JSON file, or a direct call to a PyTorch optimizer, can corrupt gradients without any error. The job keeps running and the loss curve looks plausible, which is what makes this mistake expensive. Run the training loop through the DeepSpeed engine. Check the batch-size and bucket-size settings before a multi-node launch. The commands below were not run on live multi-GPU hardware.
 
 ### 5.1 DeepSpeed Engine Initialization
 
-Unlike PyTorch DDP, where you instantiate `torch.optim.AdamW` manually and wrap the module in `DistributedDataParallel`, DeepSpeed takes a declarative JSON configuration file. Calling `deepspeed.initialize()` builds the sharded optimizer, gradient scaler, and communication buckets automatically. For huge models like a 70B Transformer that exceed single-GPU or host memory at construction time, wrap model instantiation inside `deepspeed.zero.Init()`. That context manager partitions parameters immediately as each layer is allocated.
+Unlike PyTorch DDP, where you instantiate `torch.optim.AdamW` manually and wrap the module in `DistributedDataParallel`, DeepSpeed takes a declarative JSON configuration file. Declarative means you describe what you want in the file, and the engine decides how to build it. Calling `deepspeed.initialize()` builds the sharded optimizer, gradient scaler, and communication buckets automatically. You do not write those pieces yourself, which is both the convenience and the risk. For huge models like a 70B Transformer that exceed single-GPU or host memory at construction time, wrap model instantiation inside `deepspeed.zero.Init()`. That context manager partitions parameters immediately as each layer is allocated, so the full model never sits in one place. Think of it as building the house one room at a time and never holding the whole house in one hand.
 
 ```python
 import deepspeed
@@ -405,7 +422,7 @@ for batch in dataloader:
 
 ### 5.2 Production DeepSpeed JSON Configurations
 
-Every DeepSpeed configuration must satisfy a strict batch-size identity. The global training batch size must equal the product of the per-GPU micro-batch size, gradient accumulation steps, and data-parallel world size. Violating this identity causes `deepspeed.initialize()` to abort with an assertion error at startup.
+Every DeepSpeed configuration must satisfy a strict batch-size identity. The global training batch size must equal the product of the per-GPU micro-batch size, gradient accumulation steps, and data-parallel world size. In plain words, the three smaller numbers multiply out to the big one, and DeepSpeed checks that they do. Violating this identity causes `deepspeed.initialize()` to abort with an assertion error at startup. The fix is quick, but the check happens before any GPU work, so the error is at least easy to spot. The buckets that follow in the next table control how much traffic each collective carries at once.
 
 ```text
 DeepSpeed Batch-Size Identity:
@@ -489,9 +506,11 @@ DeepSpeed Batch-Size Identity:
 | **`stage3_max_live_parameters`** | `1e9` (`1B` elements) | **`2.0 GB`** | Hard upper bound on total unsharded parameter elements allowed to reside in GPU `HBM` simultaneously before DeepSpeed forces a wait/free (analogous to `FSDP`'s `limit_all_gathers=True`). |
 | **`sub_group_size`** | `1e9` (`1B` elements) | **`2.0 GB`** | Number of parameters updated together in a single optimizer sub-step when offloading or sharding very large models. |
 
+Read the bucket table with one question in mind. Each bucket size is a trade between bus efficiency and buffer memory. A larger bucket lets NCCL move more data in one call, which uses the bus better, but it holds more space while the call is in flight. The memory column gives the cost in gigabytes for FP16 or BF16 elements, so you can check it against your headroom. Start from the defaults. Change one bucket at a time, and measure the step time after each change. Changing several at once makes it impossible to say which one helped.
+
 ### 5.3 Launch, NVMe Pre-Flight, and Production Monitoring Commands
 
-Before blaming DeepSpeed for slow step times, verify your NVMe mountpoints, benchmark raw NCCL bus bandwidth, and monitor the ratio of communication time to total step time.
+Before blaming DeepSpeed for slow step times, verify your NVMe mountpoints, benchmark raw NCCL bus bandwidth, and monitor the ratio of communication time to total step time. Work in that order, because each check rules out one cause. A slow NVMe mount explains a slow offload job, and weak NCCL bandwidth explains a slow ZeRO-3 job. Only when both look healthy should you start reading the DeepSpeed config itself.
 
 ```bash
 # 1. Verify NVMe mountpoint (use a mounted directory, NEVER raw /dev/nvme0n1p7) and install libaio
@@ -516,11 +535,13 @@ tail -n 100 train.log | awk '/step_time/ {print}'
 | **GPU memory used / total** | **`70–90%`** (flat after warmup) | **`> 95%`** or climbing linearly | Lower `stage3_max_live_parameters` / `reduce_bucket_size` or enable activation checkpointing. |
 | **GPU utilization (`%`)** | **`80–95%`** sustained | **`< 50%`** (`12%` on CPU offload, `5%` on NVMe) | Offload `PCIe` / `NVMe` thrashing or dataloader starvation (`iostat -x 1`). |
 
+Read the production table as a set of alarms, each with a healthy band and a red line. The first signal is communication as a share of step time. Between the healthy band and the red line, the job is working but paying for its traffic. Past the red line, the network is the limit, and the fix is in the topology or the ZeRO++ levers. The second signal is per-rank variance, which catches a straggler before it becomes a hang. The memory and utilization rows tell you whether there is room to spare. Check these four signals on a schedule, not only when a job is already in trouble.
+
 ---
 
 ## 6. How it fails
 
-When a multi-node DeepSpeed job hangs or drops to a fraction of its expected speed, guessing at configuration flags wastes hours of cluster time. Each failure mode leaves a distinct signature in NCCL logs, `iostat` disk metrics, or `nvidia-smi` topology tables.
+When a multi-node DeepSpeed job hangs or drops to a fraction of its expected speed, guessing at configuration flags wastes hours of cluster time. Each failure mode leaves a distinct signature in NCCL logs, `iostat` disk metrics, or `nvidia-smi` topology tables. Read the signature first, then pick the matching section below. The five modes are not the only ways a job can fail, but they are the ones that show up most often on these stacks.
 
 ### Failure Mode 1: ZeRO-3 AllGather Straggler Hang and Collective Timeout
 
@@ -535,9 +556,9 @@ A multi-GPU ZeRO-3 job runs cleanly for hours, then stalls during a layer AllGat
 [14:24:00] Error: NCCL operation aborted
 ```
 
-Because ZeRO-3 issues an AllGather on every layer in both forward and backward passes, every rank is tightly synchronized at layer granularity. One rank might suffer a five-second stall due to local disk I/O contention, CPU throttling, an InfiniBand link flap, or an uncorrectable ECC memory error. When that happens, the remaining ranks block waiting at the collective barrier until the watchdog aborts.
+Because ZeRO-3 issues an AllGather on every layer in both forward and backward passes, every rank is tightly synchronized at layer granularity. A straggler is one rank that runs slower than the rest. One rank might suffer a five-second stall due to local disk I/O contention, CPU throttling, an InfiniBand link flap, or an uncorrectable ECC memory error. When that happens, the remaining ranks block waiting at the collective barrier until the watchdog aborts. The watchdog is the timer that gives up on a collective that never finishes, and it turns a silent hang into an error.
 
-To diagnose and fix this stall, inspect the straggler node and configure the PyTorch process-group timeout properly. Remember that collective timeout is a PyTorch `dist.init_process_group` setting combined with `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`. There is no `NCCL_TIMEOUT` environment variable in NCCL.
+To diagnose and fix this stall, inspect the straggler node and configure the PyTorch process-group timeout properly. The timeout is the time the watchdog waits before giving up. Set it too short and healthy slow steps get killed. Set it too long and a dead node holds the whole cluster for an hour. Remember that collective timeout is a PyTorch `dist.init_process_group` setting combined with `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`. There is no `NCCL_TIMEOUT` environment variable in NCCL.
 
 ```bash
 # In Python dist.init_process_group("nccl", timeout=datetime.timedelta(seconds=1200)) # or 3600
@@ -564,7 +585,7 @@ Diagnosis & Fix:
   - Fix 2: Scale horizontally to 16 GPUs (52.5 GB/GPU under 12 * Psi, 70.0 GB/GPU under 16 * Psi).
 ```
 
-This thrashing happens when both `offload_param` and `offload_optimizer` point to NVMe. Every forward and backward layer must then page parameters in and out over local PCIe SSDs. To fix it, keep parameters in GPU HBM via ZeRO-3 and offload only optimizer states, or scale out horizontally to sixteen GPUs.
+This thrashing happens when both `offload_param` and `offload_optimizer` point to NVMe. Every forward and backward layer must then page parameters in and out over local PCIe SSDs. Thrashing means the disks are busy all the time without making progress, because the same data keeps getting moved. To fix it, keep parameters in GPU HBM via ZeRO-3 and offload only optimizer states, or scale out horizontally to sixteen GPUs. Read the `iostat` output above as the proof. The CPU is waiting on I/O, and the disks are at their limit, so the bottleneck is the storage path and not the math.
 
 ### Failure Mode 3: Raw Device Path or File Descriptor Exhaustion in ZeRO-Infinity
 
@@ -572,17 +593,19 @@ ZeRO-Infinity crashes immediately at initialization with `NotADirectoryError`, a
 
 ### Failure Mode 4: ZeRO++ CUDAQuantizer BF16 vs FP16 Dtype Mismatch
 
-Enabling `zero_quantized_weights` or `zero_quantized_gradients` alongside BF16 crashes on the very first AllGather with a `Half` versus `BFloat16` tensor type error. DeepSpeed's `CUDAQuantizer` dequantizes INT8 communication buffers exclusively to FP16 (`torch.float16`). Disable BF16 and enable FP16 when using ZeRO++ quantization, or use Megatron-FSDP with `--fp8-format hybrid --fp8-param-gather` on Hopper and Blackwell GPUs.
+Enabling `zero_quantized_weights` or `zero_quantized_gradients` alongside BF16 crashes on the very first AllGather with a `Half` versus `BFloat16` tensor type error. The crash is quick and clear, so the fix is a config change rather than a debugging session. DeepSpeed's `CUDAQuantizer` dequantizes INT8 communication buffers exclusively to FP16 (`torch.float16`). Disable BF16 and enable FP16 when using ZeRO++ quantization, or use Megatron-FSDP with `--fp8-format hybrid --fp8-param-gather` on Hopper and Blackwell GPUs. The second option is a different stack, so do not mix the two settings in one config.
 
 ### Failure Mode 5: PCIe Fallback Crippling ZeRO-3 After Reboot
 
-After a node reboot, ZeRO-3 throughput drops from 950 tokens/sec to 310 tokens/sec. Running `all_reduce_perf` reports a fraction of normal bus bandwidth alongside `NCCL INFO Using PCIe interface`. This happens when `nvidia-fabricmanager` fails to start after reboot or PCIe Access Control Services is enabled in BIOS. Either fault forces NVLink traffic to fall back to PCIe (`PIX` instead of `NV#` in `nvidia-smi topo -m`). Inspect `nvidia-smi topo -m`, restart `nvidia-fabricmanager`, verify `unset NCCL_P2P_DISABLE`, and confirm bandwidth recovery with `all_reduce_perf`.
+After a node reboot, ZeRO-3 throughput drops from 950 tokens/sec to 310 tokens/sec. The code did not change, and that is the clue. Running `all_reduce_perf` reports a fraction of normal bus bandwidth alongside `NCCL INFO Using PCIe interface`. This happens when `nvidia-fabricmanager` fails to start after reboot or PCIe Access Control Services is enabled in BIOS. Either fault forces NVLink traffic to fall back to PCIe (`PIX` instead of `NV#` in `nvidia-smi topo -m`). The fallback is silent, so the job runs, only slower. Inspect `nvidia-smi topo -m`, restart `nvidia-fabricmanager`, verify `unset NCCL_P2P_DISABLE`, and confirm bandwidth recovery with `all_reduce_perf`.
+
+Most of these failures leave a clue before they stop the job. The stalls show up in the NCCL log as one slow rank. The disk thrash shows up in `iostat`. The silent PCIe fallback shows up as a link name in the topology table. When a run goes wrong, collect the log, the disk view and the topology view before you change any setting. Changing settings first destroys the evidence that would have told you the cause.
 
 ---
 
 ## 7. Hands-on lab
 
-This verification lab runs anywhere with standard-library `python3` and pairs with Nebius GPU clusters for live `deepspeed` and `nccl-tests` execution. The implementation lives in `code/part14/deepspeed_zero.py` and `code/part14/deepspeed_zero_lab.py`.
+This verification lab runs anywhere with standard-library `python3` and pairs with Nebius GPU clusters for live `deepspeed` and `nccl-tests` execution. Start with the local run, because it needs no GPU and shows you the arithmetic before any cluster time is spent. The implementation lives in `code/part14/deepspeed_zero.py` and `code/part14/deepspeed_zero_lab.py`. The first file holds the formulas, and the second file checks them against the numbers in this chapter.
 
 Run the deterministic verification suite locally:
 
@@ -623,36 +646,40 @@ python3 -B code/part14/deepspeed_zero_lab.py
 Summary: 25 passed, 0 failed
 ```
 
+A clean run prints PASS on every line and ends with the summary above. If one line fails, its label names the claim that broke, so you know which section to reread. Compare the printed value with the chapter text before you change the code. A mismatch usually means an input moved, such as a GPU count or a precision setting, and the check caught it for you.
+
 ---
 
 ## Common first mistakes
 
-1. Creating an external PyTorch optimizer and stepping it alongside `model_engine.step()`. DeepSpeed builds and shards its own internal optimizer from the JSON configuration file. Calling `loss.backward()` or `optimizer.step()` directly bypasses ReduceScatter and corrupts sharded state. Always call `model_engine.backward(loss)` and `model_engine.step()`.
-2. Jumping straight to ZeRO Stage 3 when ZeRO Stage 2 fits in HBM. Stage 2 shards seven-eighths of the mixed-precision state while keeping AllGather out of the forward and backward passes. Use Stage 2 whenever replicated weights fit in HBM with enough activation headroom.
-3. Enabling ZeRO-Offload or ZeRO-Infinity for production pretraining instead of scaling horizontally. Over PCIe Gen4, ZeRO-3 CPU offload slows 70B training by twenty-one times, and NVMe parameter offload slows it by up to eighty-five times. Reserve PCIe and NVMe offload for memory-constrained fine-tuning, or use Grace-Blackwell SuperOffload over NVLink-C2C.
-4. Expecting ZeRO-3 or FSDP2 to split a single gigantic layer across GPUs. ZeRO-3 only shards storage at rest and still materializes the full layer on every GPU during AllGather. When a single layer's weights or long-context activations overflow one GPU, combine state sharding with Megatron Tensor Parallelism and Context Parallelism.
-5. Restoring a sharded checkpoint without optimizer states, LR scheduler, RNG state, or `dist.barrier()`. Resuming only `model.state_dict()` resets AdamW momentum and variance to zero. That omission causes immediate post-resume loss spikes or silent trajectory divergence.
+1. Creating an external PyTorch optimizer and stepping it alongside `model_engine.step()`. DeepSpeed builds and shards its own internal optimizer from the JSON configuration file, so a second optimizer is a second owner of the same state. Calling `loss.backward()` or `optimizer.step()` directly bypasses ReduceScatter and corrupts sharded state. Always call `model_engine.backward(loss)` and `model_engine.step()`, and let the engine handle the collectives.
+2. Jumping straight to ZeRO Stage 3 when ZeRO Stage 2 fits in HBM. Stage 2 shards seven-eighths of the mixed-precision state while keeping AllGather out of the forward and backward passes. Stage 3 adds the per-layer gathers and their latency for memory you did not need. Use Stage 2 whenever replicated weights fit in HBM with enough activation headroom.
+3. Enabling ZeRO-Offload or ZeRO-Infinity for production pretraining instead of scaling horizontally. Over PCIe Gen4, ZeRO-3 CPU offload slows 70B training by twenty-one times, and NVMe parameter offload slows it by up to eighty-five times. Those are the numbers that make offload a poor default for pretraining. Reserve PCIe and NVMe offload for memory-constrained fine-tuning, or use Grace-Blackwell SuperOffload over NVLink-C2C.
+4. Expecting ZeRO-3 or FSDP2 to split a single gigantic layer across GPUs. ZeRO-3 only shards storage at rest and still materializes the full layer on every GPU during AllGather. When a single layer's weights or long-context activations overflow one GPU, combine state sharding with Megatron Tensor Parallelism and Context Parallelism. Sharding the storage does not shrink the matrix that each GPU has to multiply.
+5. Restoring a sharded checkpoint without optimizer states, LR scheduler, RNG state, or `dist.barrier()`. Resuming only `model.state_dict()` resets AdamW momentum and variance to zero. That omission causes immediate post-resume loss spikes or silent trajectory divergence. The run looks restored, but its path has quietly changed.
 
 ---
 
 ## Exercises
 
-Each exercise is one situation. The reference numbers are in the lab output above.
+Each exercise is one situation. Work through them with the reference numbers from the lab output above. Read each situation once, then write down the formula before you touch a calculator. Keep your units with every number, because most wrong answers in this area come from mixing bytes with gigabytes or bytes per parameter with bytes per GPU. When an answer does not match the table, check the units first, then the formula, and only then the arithmetic.
 
-1. A 70B model uses the 16-byte mixed-precision count on 8 GPUs. Compute the per-GPU memory for ZeRO Stage 0, 1, 2 and 3. Then compute the Stage 3 memory on 16 GPUs.
-2. A 10B model trains in pure FP32 on eight 80 GB GPUs. Find the stage that first fits. Then compute a 30B model with ZeRO-2 on 16 GPUs under the 12-byte count, once with FP32 weights and once with FP16 weights.
-3. A 70B FP16 model runs on 8 GPUs. Compute the bytes each GPU sends per step under Stage 1, Stage 2 and Stage 3. After that, say how much `qwZ` alone changes the Stage 3 volume on 64 GPUs.
+1. A 70B model uses the 16-byte mixed-precision count. It runs on 8 GPUs. Compute the per-GPU memory for each ZeRO stage, from Stage 0 up to Stage 3. Then compute the Stage 3 memory on 16 GPUs.
+2. A 10B model trains in pure FP32 on eight 80 GB GPUs. Find the stage that first fits. Then take a 30B model and set it to ZeRO-2. Put it on 16 GPUs and use the 12-byte count. Compute its per-GPU memory with FP32 weights first. Then compute it once more with FP16 weights.
+3. A 70B FP16 model runs on 8 GPUs. Compute the bytes each GPU sends per step under Stage 1. Then do the same for Stage 2. Then do the same for Stage 3. After that, say how much `qwZ` alone changes the Stage 3 volume on 64 GPUs.
 4. A cluster team asks why ZeRO++ needs FP16 and not BF16. Answer from the `CUDAQuantizer` behavior in Section 3.1, and name the error you would see.
-5. A 70B model uses the 12-byte count with ZeRO-3 on eight 80 GB A100 GPUs. Compute the memory per GPU and the shortfall. Then give the slowdown for CPU offload and for NVMe offload over PCIe Gen4.
-6. Compare NVLink-C2C at 900 GB/s with PCIe Gen4 x16 at 32 GB/s. Give the ratio. Then explain how SuperOffload keeps GPU utilization above 80 percent.
-7. A job has a micro-batch of 4, 8 accumulation steps and 8 GPUs. What must `train_batch_size` be?
+5. A 70B model uses the 12-byte count. It runs ZeRO-3 on eight A100 GPUs. Each has 80 GB. Compute the memory per GPU and the shortfall. Then give the slowdown for CPU offload and for NVMe offload over PCIe Gen4.
+6. Compare NVLink-C2C at 900 GB/s with PCIe Gen4. The PCIe link runs at 32 GB/s. Give the ratio of the two bandwidths. Then explain how SuperOffload keeps GPU utilization above 80 percent.
+7. A job has a micro-batch of 4. It uses 8 accumulation steps. It runs on 8 GPUs. What must `train_batch_size` be?
 8. From Configuration B in Section 5.2, convert the four bucket and live-parameter settings to FP16 gigabytes. Then say what `stage3_param_persistence_threshold` does.
-9. A layer has batch 2, sequence 32,768, 32 heads and head dimension 128 on four GPUs. Write the tensor shape on each GPU before and after `all_to_all_seq_to_head`. Then say what limits Ulysses parallelism.
-10. A 70B model runs on 64 GPUs with 4-way TP and 2-way PP. Find the data-parallel degree. Then give the Distributed Optimizer bytes per parameter for each precision setup.
+9. A layer has batch size 2 and sequence length 32,768. It has 32 heads, each of dimension 128, and it runs on four GPUs. Write the tensor shape on each GPU before and after `all_to_all_seq_to_head`. Then say what limits Ulysses parallelism.
+10. A 70B model runs on 64 GPUs. It uses 4-way TP and 2-way PP. Find the data-parallel degree. Then give the Distributed Optimizer bytes per parameter for each precision setup.
 
 ---
 
 ## Interview angles
+
+Interviewers use these questions to see how you reason, not to hear a memorized number. A good answer names the constraint first, then walks through the arithmetic, then states the trade. The answers below follow that order.
 
 1. "Why does ZeRO-2 have less communication overhead than ZeRO-3, even though both shard model state?"
    - Strong answer: "ZeRO-2 keeps model weights replicated on every GPU and shards only gradients and optimizer states. Because every GPU already holds the full weights, forward and backward passes require zero weight AllGather collectives. ZeRO-2 only runs a ReduceScatter on gradients during backward and an AllGather on updated weights after the optimizer step. That totals twice the parameter bytes, which is the exact same volume as DDP's AllReduce. ZeRO-3 additionally shards weights, so it must run an AllGather before every layer's forward pass and another before every backward pass. Combined with the gradient ReduceScatter, that increases collective volume by fifty percent to three times the parameter bytes and adds per-layer latency."
